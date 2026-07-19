@@ -6,6 +6,7 @@
 // than set to null, because MNX distinguishes an absent key from a present one.
 
 import type {
+  AccidentalDisplay,
   Beam,
   Clef,
   Lyric,
@@ -37,6 +38,7 @@ import type {
   MNXBeam,
   MNXLyricLine,
   MNXLyrics,
+  MNXAccidentalDisplay,
 } from '../types/mnx.js'
 
 /** The MNX version this converter emits. */
@@ -49,7 +51,12 @@ export function writeMnx(score: Score): MNXDocument {
   const referenced = referencedIds(score)
 
   return {
-    mnx: { version: MNX_VERSION },
+    mnx: {
+      version: MNX_VERSION,
+      // Declared once the document draws its accidentals explicitly, so a
+      // reader takes the marked notes as the whole of it.
+      ...(score.usesAccidentalDisplay ? { support: { useAccidentalDisplay: true } } : {}),
+    },
     global: { measures: score.globalMeasures.map(writeGlobalMeasure) },
     parts: score.parts.map((part) => writePart(part, referenced)),
   }
@@ -221,6 +228,16 @@ function writeNote(note: Note, referenced: ReadonlySet<string>): MNXNote {
     ...(referenced.has(note.id) ? { id: note.id } : {}),
     pitch: writePitch(note.pitch),
     ...(note.ties.length > 0 ? { ties: note.ties.map((tie) => ({ target: tie.target })) } : {}),
+    ...(note.accidentalDisplay
+      ? { accidentalDisplay: writeAccidental(note.accidentalDisplay) }
+      : {}),
+  }
+}
+
+function writeAccidental(display: AccidentalDisplay): MNXAccidentalDisplay {
+  return {
+    show: display.show,
+    ...(display.enclosure ? { enclosure: { symbol: display.enclosure } } : {}),
   }
 }
 

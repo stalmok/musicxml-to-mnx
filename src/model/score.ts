@@ -67,11 +67,21 @@ export interface Slur {
   side: CurveSide | undefined
 }
 
+/**
+ * Whether a note's accidental is drawn, and how it is enclosed. Set only on
+ * the notes whose accidental the source actually draws.
+ */
+export interface AccidentalDisplay {
+  show: boolean
+  enclosure: 'parentheses' | 'brackets' | undefined
+}
+
 export interface Note {
   /** Unique in the document. Written out only where something refers to it. */
   id: string
   pitch: Pitch
   ties: readonly Tie[]
+  accidentalDisplay: AccidentalDisplay | undefined
 }
 
 export interface Event {
@@ -213,4 +223,9 @@ export interface GlobalMeasure {
 export interface Score {
   globalMeasures: readonly GlobalMeasure[]
   parts: readonly Part[]
+  /**
+   * True when the source draws its accidentals explicitly, which the document
+   * declares once so a reader does not work them out for itself.
+   */
+  usesAccidentalDisplay: boolean
 }

@@ -384,6 +384,41 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     expect(fromMnx.sort()).toEqual(fromSource.sort())
   })
 
+  // MusicXML draws an accidental exactly where it writes an <accidental>, so
+  // the count of shown accidentals in the output must match the count in the
+  // source. The schema types accidentalDisplay but cannot count.
+  test('shows exactly the accidentals the source draws', () => {
+    let shown = 0
+    const walk = (items: readonly MNXSequenceItem[]): void => {
+      for (const item of items) {
+        if ('type' in item && (item.type === 'tuplet' || item.type === 'grace')) {
+          walk(item.content)
+          continue
+        }
+        if ('notes' in item) {
+          for (const note of item.notes ?? []) if (note.accidentalDisplay?.show) shown++
+        }
+      }
+    }
+    for (const part of mnx.parts) {
+      for (const measure of part.measures) {
+        for (const sequence of measure.sequences) walk(sequence.content)
+      }
+    }
+
+    let inSource = 0
+    const count = (element: XmlElement): void => {
+      if (element.name === 'accidental') {
+        inSource++
+        return
+      }
+      for (const child of element.children) count(child)
+    }
+    count(parseXmlRoot(source))
+
+    expect(shown).toBe(inSource)
+  })
+
   test('keeps every pitch the source wrote, in order', () => {
     expect(pitchesOf(mnx)).toEqual(sourcePitches(parseXmlRoot(source)))
   })

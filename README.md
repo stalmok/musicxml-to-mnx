@@ -64,6 +64,11 @@ differs from plain 1, 2, 3, so a pickup measure keeps its number.
 Tuplets, including nested ones, and grace notes, which are gathered into
 groups and keep out of the measure's time.
 
+Accidentals: the note whose accidental the source draws is marked, and the
+document declares once that it states accidental display, so a reader takes
+the marked notes as the whole of it. Cautionary accidentals keep their
+parentheses or brackets.
+
 Lyrics, verse by verse, keyed to each note with the syllable's place in its
 word, and stem directions.
 

@@ -15,6 +15,7 @@ import type {
   ClefSign,
   Event,
   GlobalMeasure,
+  AccidentalDisplay,
   Key,
   Lyric,
   Measure,
@@ -117,6 +118,7 @@ const HANDLED_IN_NOTE: ReadonlySet<string> = new Set([
   'staff',
   'lyric',
   'stem',
+  'accidental',
 ])
 // <notations> holds a mixture: some of it is converted, most is not yet. It
 // is reported item by item rather than wholesale, so the loss report does not
@@ -141,6 +143,8 @@ interface PartReading {
  */
 interface PartState {
   divisions: number | undefined
+  /** Shared across the score: true once any accidental is drawn. */
+  usesAccidentalDisplay: { value: boolean }
   /** How many staves the part is written on, once it says. */
   staves: number
   /** Shared across the score, so every id in the document is distinct. */
@@ -169,8 +173,9 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
 
   const names = readPartNames(root)
   const ids = new IdGenerator()
+  const usesAccidentalDisplay = { value: false }
   const readings = children(root, 'part').map((element) =>
-    readPart(element, names, ids, warnings, path),
+    readPart(element, names, ids, usesAccidentalDisplay, warnings, path),
   )
 
   const globalMeasures: GlobalMeasure[] = []
@@ -178,7 +183,11 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
     mergeGlobalMeasures(globalMeasures, reading.globals)
   }
 
-  return { globalMeasures, parts: readings.map((reading) => reading.part) }
+  return {
+    globalMeasures,
+    parts: readings.map((reading) => reading.part),
+    usesAccidentalDisplay: usesAccidentalDisplay.value,
+  }
 }
 
 // Parts restate the same key and time; the first to declare one wins, so a
@@ -213,6 +222,7 @@ function readPart(
   element: XmlElement,
   names: ReadonlyMap<string, string>,
   ids: IdGenerator,
+  usesAccidentalDisplay: { value: boolean },
   warnings: WarningCollector,
   path: DocumentPath,
 ): PartReading {
@@ -232,6 +242,7 @@ function readPart(
     divisions: undefined,
     staves: 1,
     ids,
+    usesAccidentalDisplay,
     spanners: new SpannerResolver(),
   }
   const readings = children(element, 'measure').map((measureElement, index) =>
@@ -469,7 +480,7 @@ function readNote(
     if (!pitchElement) {
       throw new MusicXMLError('A rest cannot be part of a chord.', { path, line: element.line })
     }
-    const chordNote = readNoteAt(pitchElement, state, path)
+    const chordNote = readNoteAt(element, pitchElement, state, path)
     builder.addChordNote(voice, chordNote, duration, path, element.line)
     readTies(element, chordNote, state, warnings, context)
     closeTuplets(builder, voice, tupletBrackets(element), path, element.line)
@@ -532,7 +543,7 @@ function readNote(
   }
 
   const value = written ?? measuredValue(element, duration, path)
-  const notes: Note[] = pitchElement ? [readNoteAt(pitchElement, state, path)] : []
+  const notes: Note[] = pitchElement ? [readNoteAt(element, pitchElement, state, path)] : []
   const staffElement = child(element, 'staff')
   const staff =
     state.staves > 1 && staffElement
@@ -641,8 +652,46 @@ function readStemDirection(
   return undefined
 }
 
-function readNoteAt(pitchElement: XmlElement, state: PartState, path: DocumentPath): Note {
-  return { id: state.ids.nextNote(), pitch: readPitch(pitchElement, path), ties: [] }
+const ENCLOSURES = new Map<string, 'parentheses' | 'brackets'>([
+  ['parentheses', 'parentheses'],
+  ['bracket', 'brackets'],
+])
+
+function readNoteAt(
+  element: XmlElement,
+  pitchElement: XmlElement,
+  state: PartState,
+  path: DocumentPath,
+): Note {
+  return {
+    id: state.ids.nextNote(),
+    pitch: readPitch(pitchElement, path),
+    ties: [],
+    accidentalDisplay: readAccidentalDisplay(element, state),
+  }
+}
+
+/**
+ * How a note's accidental is drawn, or nothing where the source draws none.
+ * MusicXML draws an accidental exactly where it writes an <accidental>, so its
+ * presence is what marks the note; a note with an alter but no <accidental> is
+ * covered by the key or a note before it.
+ */
+function readAccidentalDisplay(
+  element: XmlElement,
+  state: PartState,
+): AccidentalDisplay | undefined {
+  const accidental = child(element, 'accidental')
+  if (!accidental) return undefined
+
+  // The document states its accidentals explicitly, which it declares once.
+  state.usesAccidentalDisplay.value = true
+
+  let enclosure: 'parentheses' | 'brackets' | undefined
+  for (const [source, symbol] of ENCLOSURES) {
+    if (attribute(accidental, source) === 'yes') enclosure = symbol
+  }
+  return { show: true, enclosure }
 }
 
 /**

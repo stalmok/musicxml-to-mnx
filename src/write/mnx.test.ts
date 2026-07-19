@@ -16,7 +16,14 @@ const WHOLE_C: Event = {
   slurs: [],
   lyrics: [],
   stemDirection: undefined,
-  notes: [{ id: 'note1', pitch: { step: 'C', octave: 4, alter: 0 }, ties: [] }],
+  notes: [
+    {
+      id: 'note1',
+      pitch: { step: 'C', octave: 4, alter: 0 },
+      ties: [],
+      accidentalDisplay: undefined,
+    },
+  ],
   isRest: false,
 }
 
@@ -27,6 +34,7 @@ function scoreOf(
   return {
     globalMeasures: globals,
     parts: [{ id: 'P1', name: undefined, staves: 1, measures: [measure] }],
+    usesAccidentalDisplay: false,
   }
 }
 
@@ -74,7 +82,14 @@ test.each([
         slurs: [],
         lyrics: [],
         stemDirection: undefined,
-        notes: [{ id: 'note2', pitch: { step: 'B', octave: 3, alter: -1 }, ties: [] }],
+        notes: [
+          {
+            id: 'note2',
+            pitch: { step: 'B', octave: 3, alter: -1 },
+            ties: [],
+            accidentalDisplay: undefined,
+          },
+        ],
         isRest: false,
       }),
     ),
@@ -166,7 +181,14 @@ describe('ties and slurs', () => {
     slurs: [],
     lyrics: [],
     stemDirection: undefined,
-    notes: [{ id: 'note-target', pitch: { step: 'G', octave: 4, alter: 0 }, ties: [] }],
+    notes: [
+      {
+        id: 'note-target',
+        pitch: { step: 'G', octave: 4, alter: 0 },
+        ties: [],
+        accidentalDisplay: undefined,
+      },
+    ],
     isRest: false,
   }
   const start: Event = {
@@ -182,6 +204,7 @@ describe('ties and slurs', () => {
         id: 'note-start',
         pitch: { step: 'G', octave: 4, alter: 0 },
         ties: [{ target: 'note-target' }],
+        accidentalDisplay: undefined,
       },
     ],
     isRest: false,
@@ -437,7 +460,14 @@ describe('events', () => {
   test('writes an alteration when the pitch is altered', () => {
     const flat: Event = {
       ...WHOLE_C,
-      notes: [{ id: 'note9', pitch: { step: 'B', octave: 3, alter: -1 }, ties: [] }],
+      notes: [
+        {
+          id: 'note9',
+          pitch: { step: 'B', octave: 3, alter: -1 },
+          ties: [],
+          accidentalDisplay: undefined,
+        },
+      ],
     }
 
     expect(firstEvent(scoreOf(measureOf(flat)))?.notes?.[0]?.pitch).toEqual({

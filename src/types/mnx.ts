@@ -62,11 +62,19 @@ export interface MNXSlur {
   side?: MNXCurveSide
 }
 
+export type MNXAccidentalEnclosureSymbol = 'parentheses' | 'brackets'
+
+export interface MNXAccidentalDisplay {
+  show: boolean
+  enclosure?: { symbol: MNXAccidentalEnclosureSymbol }
+}
+
 export interface MNXNote {
   /** Present only where something refers to this note. */
   id?: string
   pitch: MNXPitch
   ties?: MNXTie[]
+  accidentalDisplay?: MNXAccidentalDisplay
 }
 
 export interface MNXNoteValue {
@@ -190,8 +198,13 @@ export interface MNXGlobal {
   measures: MNXGlobalMeasure[]
 }
 
+export interface MNXSupport {
+  useAccidentalDisplay?: boolean
+  useBeams?: boolean
+}
+
 export interface MNXDocument {
-  mnx: { version: number }
+  mnx: { version: number; support?: MNXSupport }
   global: MNXGlobal
   parts: MNXPart[]
 }

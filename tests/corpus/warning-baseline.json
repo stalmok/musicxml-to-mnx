@@ -1,6 +1,5 @@
 {
   "abbott-think-of-today": {
-    "accidental": 74,
     "direction": 19,
     "cue": 2,
     "barline": 2,
@@ -8,7 +7,6 @@
     "identification": 1
   },
   "arne-love-relaps-d": {
-    "accidental": 41,
     "note": 36,
     "print": 18,
     "barline": 15,
@@ -23,7 +21,6 @@
   "barnard-milly-s-faith": {
     "articulations": 176,
     "direction": 81,
-    "accidental": 34,
     "fermata": 24,
     "arpeggiate": 12,
     "cue": 9,
@@ -33,7 +30,6 @@
     "identification": 1
   },
   "barns-sleep-weary-heart": {
-    "accidental": 110,
     "direction": 84,
     "articulations": 19,
     "fermata": 4,
@@ -43,7 +39,6 @@
     "identification": 1
   },
   "beethoven-2-feuerfarb": {
-    "accidental": 29,
     "articulations": 16,
     "direction": 15,
     "arpeggiate": 7,
@@ -59,7 +54,6 @@
   "bishop-sappho-at-her-loom": {
     "note": 48,
     "direction": 17,
-    "accidental": 13,
     "fermata": 12,
     "barline": 8,
     "arpeggiate": 7,
@@ -69,7 +63,6 @@
     "identification": 1
   },
   "bonis-le-chat-sur-le-toit-op-93": {
-    "accidental": 421,
     "direction": 128,
     "articulations": 98,
     "note": 64,
@@ -86,7 +79,6 @@
     "identification": 1
   },
   "boulton-4-truant-wings": {
-    "accidental": 157,
     "direction": 149,
     "arpeggiate": 7,
     "fermata": 5,
@@ -101,7 +93,6 @@
     "print": 8,
     "credit": 5,
     "barline": 2,
-    "accidental": 2,
     "work": 1,
     "movement-number": 1,
     "movement-title": 1,
@@ -110,7 +101,6 @@
   },
   "browne-the-reply-of-the-messenger-bird": {
     "articulations": 39,
-    "accidental": 23,
     "arpeggiate": 14,
     "fermata": 11,
     "direction": 11,
@@ -121,7 +111,6 @@
     "notehead": 1
   },
   "butterworth-1-bredon-hill": {
-    "accidental": 162,
     "direction": 140,
     "barline": 24,
     "arpeggiate": 24,
@@ -138,7 +127,6 @@
     "note": 279,
     "direction": 223,
     "articulations": 156,
-    "accidental": 123,
     "arpeggiate": 24,
     "fermata": 10,
     "unclosed:spanner": 10,
@@ -150,7 +138,6 @@
     "identification": 1
   },
   "chausson-7-le-colibri": {
-    "accidental": 87,
     "direction": 63,
     "arpeggiate": 35,
     "articulations": 28,
@@ -165,7 +152,6 @@
   },
   "coleridge-taylor-5-unmindful-of-the-roses": {
     "articulations": 163,
-    "accidental": 126,
     "direction": 77,
     "arpeggiate": 7,
     "barline": 4,
@@ -176,7 +162,6 @@
   },
   "cornelius-1-in-lust-und-schmerzen": {
     "note": 1616,
-    "accidental": 257,
     "direction": 181,
     "barline": 6,
     "articulations": 4,
@@ -188,7 +173,6 @@
   },
   "davies-5-the-fly-and-the-humble-bee": {},
   "delius-2-so-white-so-soft-so-sweet-is-she": {
-    "accidental": 173,
     "direction": 51,
     "barline": 2,
     "work": 1,
@@ -198,7 +182,6 @@
   },
   "donaudy-10-spirate-pur-spirate": {
     "direction": 125,
-    "accidental": 49,
     "print": 24,
     "credit": 7,
     "sound": 6,
@@ -215,7 +198,6 @@
   },
   "elgar-4-the-poet-s-life": {
     "direction": 237,
-    "accidental": 130,
     "articulations": 55,
     "cue": 22,
     "fermata": 3,
@@ -226,7 +208,6 @@
     "identification": 1
   },
   "faltis-3-sprich": {
-    "accidental": 217,
     "articulations": 164,
     "note": 160,
     "direction": 110,
@@ -239,7 +220,6 @@
   },
   "faure-4-a-clymene": {
     "direction": 211,
-    "accidental": 196,
     "note": 68,
     "notehead": 59,
     "articulations": 12,
@@ -254,7 +234,6 @@
     "note": 372,
     "direction": 178,
     "print": 54,
-    "accidental": 53,
     "fermata": 19,
     "sound": 12,
     "credit": 10,
@@ -267,7 +246,6 @@
     "notehead": 1
   },
   "freer-2-daughter-of-egypt-veil-thine-eyes": {
-    "accidental": 68,
     "articulations": 56,
     "direction": 43,
     "note": 15,
@@ -281,7 +259,6 @@
     "identification": 1
   },
   "gail-les-langueurs": {
-    "accidental": 59,
     "barline": 17,
     "fermata": 4,
     "direction": 2,
@@ -290,7 +267,6 @@
   },
   "german-2-the-dew-upon-the-lily": {
     "direction": 137,
-    "accidental": 16,
     "articulations": 15,
     "arpeggiate": 6,
     "barline": 2,
@@ -301,7 +277,6 @@
   },
   "gounod-5-le-lever": {
     "direction": 69,
-    "accidental": 17,
     "barline": 2,
     "work": 1,
     "movement-number": 1,
@@ -309,7 +284,6 @@
     "identification": 1
   },
   "gray-then-and-now": {
-    "accidental": 80,
     "direction": 48,
     "arpeggiate": 28,
     "articulations": 10,
@@ -322,7 +296,6 @@
   },
   "guest-the-bonnie-wee-wife": {
     "articulations": 417,
-    "accidental": 96,
     "direction": 79,
     "fermata": 37,
     "arpeggiate": 7,
@@ -334,7 +307,6 @@
   },
   "hahn-a-chloris": {
     "note": 87,
-    "accidental": 40,
     "direction": 37,
     "articulations": 31,
     "print": 22,
@@ -347,7 +319,6 @@
   },
   "haydn-5-sympathy-hob-xxvia33": {
     "articulations": 118,
-    "accidental": 51,
     "direction": 46,
     "fermata": 15,
     "barline": 2,
@@ -358,7 +329,6 @@
     "identification": 1
   },
   "hodges-dreams": {
-    "accidental": 107,
     "direction": 69,
     "fermata": 36,
     "articulations": 22,
@@ -369,7 +339,6 @@
   },
   "hopekirk-my-lady-of-sleep": {
     "direction": 70,
-    "accidental": 31,
     "barline": 6,
     "fermata": 5,
     "articulations": 3,
@@ -377,7 +346,6 @@
     "identification": 1
   },
   "ives-108-songs-my-mother-taught-me": {
-    "accidental": 134,
     "direction": 64,
     "print": 14,
     "credit": 6,
@@ -393,7 +361,6 @@
   },
   "jaell-5-en-ramant": {},
   "kinkel-2-nachtliche-fahrt": {
-    "accidental": 54,
     "direction": 35,
     "arpeggiate": 6,
     "fermata": 3,
@@ -406,7 +373,6 @@
   },
   "lang-4-o-warst-du-da": {
     "direction": 30,
-    "accidental": 18,
     "barline": 8,
     "fermata": 3,
     "articulations": 2,
@@ -416,7 +382,6 @@
     "identification": 1
   },
   "lehmann-the-highland-plaid": {
-    "accidental": 22,
     "direction": 15,
     "fermata": 9,
     "arpeggiate": 9,
@@ -428,7 +393,6 @@
   "leoncavallo-mattinata": {
     "articulations": 180,
     "note": 177,
-    "accidental": 73,
     "direction": 29,
     "print": 22,
     "credit": 6,
@@ -440,7 +404,6 @@
     "defaults": 1
   },
   "lindsay-good-night-good-night-beloved": {
-    "accidental": 163,
     "direction": 66,
     "barline": 25,
     "unsupported:measure-label": 15,
@@ -449,7 +412,6 @@
   },
   "mackenzie-5-april-weather": {
     "direction": 166,
-    "accidental": 119,
     "note": 72,
     "articulations": 69,
     "arpeggiate": 11,
@@ -462,7 +424,6 @@
   },
   "marshall-behold-the-sun-in-gold-descending": {
     "direction": 182,
-    "accidental": 155,
     "articulations": 18,
     "barline": 15,
     "fermata": 12,
@@ -474,7 +435,6 @@
   },
   "mayer-2-o-lass-mich-dein-gedenken": {
     "note": 273,
-    "accidental": 30,
     "direction": 10,
     "barline": 8,
     "ornaments": 6,
@@ -485,7 +445,6 @@
     "other-notation": 1
   },
   "mounsey-bartholomew-4-the-warrior-boy": {
-    "accidental": 166,
     "direction": 28,
     "articulations": 16,
     "arpeggiate": 8,
@@ -497,7 +456,6 @@
     "identification": 1
   },
   "netzel-1-rappelle-toi": {
-    "accidental": 112,
     "direction": 38,
     "barline": 2,
     "unclosed:spanner": 2,
@@ -508,7 +466,6 @@
   },
   "paladilhe-psyche": {
     "direction": 68,
-    "accidental": 30,
     "print": 22,
     "credit": 6,
     "note": 6,
@@ -523,7 +480,6 @@
   },
   "parratt-3-hark-the-world-is-full-of-thy-praise": {
     "direction": 333,
-    "accidental": 247,
     "articulations": 177,
     "barline": 40,
     "arpeggiate": 7,
@@ -537,7 +493,6 @@
     "note": 625,
     "direction": 99,
     "articulations": 83,
-    "accidental": 74,
     "print": 40,
     "credit": 8,
     "barline": 6,
@@ -549,7 +504,6 @@
     "defaults": 1
   },
   "schumann-1-ich-stand-in-dunklen-traumen": {
-    "accidental": 55,
     "direction": 48,
     "articulations": 13,
     "note": 10,
@@ -561,7 +515,6 @@
     "identification": 1
   },
   "schumann-1-im-wunderschonen-monat-mai": {
-    "accidental": 36,
     "direction": 28,
     "print": 16,
     "notehead": 11,
