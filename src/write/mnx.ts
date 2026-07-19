@@ -96,6 +96,8 @@ function writeGlobalMeasure(measure: GlobalMeasure): MNXGlobalMeasure {
 function writePart(part: Part, referenced: ReadonlySet<string>): MNXPart {
   return {
     ...(part.name !== undefined ? { name: part.name } : {}),
+    // One staff is the default, so saying so adds nothing.
+    ...(part.staves > 1 ? { staves: part.staves } : {}),
     measures: part.measures.map((measure) => writeMeasure(measure, referenced)),
   }
 }
@@ -117,12 +119,16 @@ function writeBeam(beam: Beam): MNXBeam {
 }
 
 function writeClef(clef: Clef): MNXPositionedClef {
-  return { clef: { sign: clef.sign, staffPosition: clef.staffPosition } }
+  return {
+    clef: { sign: clef.sign, staffPosition: clef.staffPosition },
+    ...(clef.staff !== undefined ? { staff: clef.staff } : {}),
+  }
 }
 
 function writeSequence(sequence: Sequence, referenced: ReadonlySet<string>): MNXSequence {
   return {
     ...(sequence.voice !== undefined ? { voice: sequence.voice } : {}),
+    ...(sequence.staff !== undefined ? { staff: sequence.staff } : {}),
     content: sequence.content.map((item) => writeItem(item, referenced)),
     // A sequence that is a full-measure rest holds no events: the rest is
     // stated on the sequence itself.
@@ -170,6 +176,7 @@ function writeQuantity(quantity: NoteValueQuantity): MNXNoteValueQuantity {
 function writeEvent(event: Event, referenced: ReadonlySet<string>): MNXEvent {
   return {
     ...(referenced.has(event.id) ? { id: event.id } : {}),
+    ...(event.staff !== undefined ? { staff: event.staff } : {}),
     duration: writeNoteValue(event.value),
     // A rest is marked by the presence of an empty object, not by a flag.
     ...(event.isRest

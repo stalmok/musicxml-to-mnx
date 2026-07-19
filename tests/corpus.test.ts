@@ -294,6 +294,36 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     expect(referenced.filter((id) => !named.has(id)).slice(0, 5)).toEqual([])
   })
 
+  // A staff number that names a staff the part does not have would place
+  // music nowhere. The schema types it as a bare integer, so it cannot tell.
+  test('never names a staff the part does not have', () => {
+    const stray: string[] = []
+
+    mnx.parts.forEach((part, partIndex) => {
+      const staves = part.staves ?? 1
+      const check = (staff: number | undefined, where: string): void => {
+        if (staff !== undefined && (staff < 1 || staff > staves)) {
+          stray.push(
+            `part ${String(partIndex + 1)} ${where}: staff ${String(staff)} of ${String(staves)}`,
+          )
+        }
+      }
+
+      part.measures.forEach((measure, index) => {
+        for (const clef of measure.clefs ?? [])
+          check(clef.staff, `measure ${String(index + 1)} clef`)
+        for (const sequence of measure.sequences) {
+          check(sequence.staff, `measure ${String(index + 1)} sequence`)
+          for (const item of sequence.content) {
+            if ('staff' in item) check(item.staff, `measure ${String(index + 1)} event`)
+          }
+        }
+      })
+    })
+
+    expect(stray.slice(0, 5)).toEqual([])
+  })
+
   test('keeps every pitch the source wrote, in order', () => {
     expect(pitchesOf(mnx)).toEqual(sourcePitches(parseXmlRoot(source)))
   })

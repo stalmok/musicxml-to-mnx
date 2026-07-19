@@ -11,6 +11,7 @@ import { writeMnx } from './mnx.js'
 const WHOLE_C: Event = {
   kind: 'event',
   id: 'ev1',
+  staff: undefined,
   value: { base: 'whole', dots: 0 },
   slurs: [],
   notes: [{ id: 'note1', pitch: { step: 'C', octave: 4, alter: 0 }, ties: [] }],
@@ -23,7 +24,7 @@ function scoreOf(
 ): Score {
   return {
     globalMeasures: globals,
-    parts: [{ id: 'P1', name: undefined, measures: [measure] }],
+    parts: [{ id: 'P1', name: undefined, staves: 1, measures: [measure] }],
   }
 }
 
@@ -31,7 +32,7 @@ function measureOf(...events: Event[]): Measure {
   return {
     clefs: [],
     beams: [],
-    sequences: [{ voice: undefined, content: events, fullMeasure: undefined }],
+    sequences: [{ voice: undefined, staff: undefined, content: events, fullMeasure: undefined }],
   }
 }
 
@@ -50,6 +51,7 @@ test.each([
       measureOf({
         kind: 'event' as const,
         id: 'ev2',
+        staff: undefined,
         value: { base: 'half', dots: 0 },
         slurs: [],
         notes: [],
@@ -63,6 +65,7 @@ test.each([
       measureOf({
         kind: 'event',
         id: 'ev3',
+        staff: undefined,
         value: { base: 'quarter', dots: 2 },
         slurs: [],
         notes: [{ id: 'note2', pitch: { step: 'B', octave: 3, alter: -1 }, ties: [] }],
@@ -74,9 +77,11 @@ test.each([
     'clefs and a key',
     scoreOf(
       {
-        clefs: [{ sign: 'F', staffPosition: 2 }],
+        clefs: [{ sign: 'F', staffPosition: 2, staff: undefined }],
         beams: [],
-        sequences: [{ voice: undefined, content: [WHOLE_C], fullMeasure: undefined }],
+        sequences: [
+          { voice: undefined, staff: undefined, content: [WHOLE_C], fullMeasure: undefined },
+        ],
       },
       [{ key: { fifths: -3 }, time: { count: 6, unit: 8 }, number: 0 }],
     ),
@@ -113,7 +118,7 @@ describe('parts', () => {
     const score = scoreOf(measureOf(WHOLE_C))
     const named: Score = {
       ...score,
-      parts: [{ id: 'P1', name: 'Flute', measures: score.parts[0]?.measures ?? [] }],
+      parts: [{ id: 'P1', name: 'Flute', staves: 1, measures: score.parts[0]?.measures ?? [] }],
     }
 
     expect(writeMnx(named).parts[0]?.name).toBe('Flute')
@@ -127,9 +132,11 @@ describe('parts', () => {
 describe('measures', () => {
   test('writes clefs when the measure has them', () => {
     const score = scoreOf({
-      clefs: [{ sign: 'F', staffPosition: 2 }],
+      clefs: [{ sign: 'F', staffPosition: 2, staff: undefined }],
       beams: [],
-      sequences: [{ voice: undefined, content: [WHOLE_C], fullMeasure: undefined }],
+      sequences: [
+        { voice: undefined, staff: undefined, content: [WHOLE_C], fullMeasure: undefined },
+      ],
     })
 
     expect(writeMnx(score).parts[0]?.measures[0]?.clefs).toEqual([
@@ -148,6 +155,7 @@ describe('ties and slurs', () => {
   const target: Event = {
     kind: 'event',
     id: 'ev-target',
+    staff: undefined,
     value: { base: 'whole', dots: 0 },
     slurs: [],
     notes: [{ id: 'note-target', pitch: { step: 'G', octave: 4, alter: 0 }, ties: [] }],
@@ -156,6 +164,7 @@ describe('ties and slurs', () => {
   const start: Event = {
     kind: 'event',
     id: 'ev-start',
+    staff: undefined,
     value: { base: 'whole', dots: 0 },
     slurs: [{ target: 'ev-target', side: 'up' }],
     notes: [
@@ -172,7 +181,9 @@ describe('ties and slurs', () => {
     return scoreOf({
       clefs: [],
       beams: [],
-      sequences: [{ voice: undefined, content: [start, target], fullMeasure: undefined }],
+      sequences: [
+        { voice: undefined, staff: undefined, content: [start, target], fullMeasure: undefined },
+      ],
     })
   }
 
@@ -212,7 +223,9 @@ describe('beams', () => {
     return scoreOf({
       clefs: [],
       beams: [{ events: ['ev1', 'ev2'], beams: [], direction: undefined }],
-      sequences: [{ voice: undefined, content: [first, second], fullMeasure: undefined }],
+      sequences: [
+        { voice: undefined, staff: undefined, content: [first, second], fullMeasure: undefined },
+      ],
     })
   }
 
@@ -241,6 +254,7 @@ describe('beams', () => {
       sequences: [
         {
           voice: undefined,
+          staff: undefined,
           content: [
             { ...WHOLE_C, id: 'ev1' },
             { ...WHOLE_C, id: 'ev2' },
@@ -267,7 +281,7 @@ describe('voices and spaces', () => {
     return scoreOf({
       clefs: [],
       beams: [],
-      sequences: [{ voice, content, fullMeasure: undefined }],
+      sequences: [{ voice, staff: undefined, content, fullMeasure: undefined }],
     })
   }
 
@@ -311,7 +325,7 @@ describe('tuplets and grace groups', () => {
     return scoreOf({
       clefs: [],
       beams: [],
-      sequences: [{ voice: undefined, content: [item], fullMeasure: undefined }],
+      sequences: [{ voice: undefined, staff: undefined, content: [item], fullMeasure: undefined }],
     })
   }
 
@@ -354,7 +368,7 @@ describe('full-measure rests', () => {
     return scoreOf({
       clefs: [],
       beams: [],
-      sequences: [{ voice: undefined, content: [], fullMeasure }],
+      sequences: [{ voice: undefined, staff: undefined, content: [], fullMeasure }],
     })
   }
 
@@ -382,6 +396,7 @@ describe('events', () => {
     const rest: Event = {
       kind: 'event' as const,
       id: 'ev9',
+      staff: undefined,
       value: { base: 'half', dots: 0 },
       slurs: [],
       notes: [],

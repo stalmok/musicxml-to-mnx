@@ -93,7 +93,13 @@ const HANDLED_IN_SCORE: ReadonlySet<string> = new Set(['part-list', 'part'])
 // one says which voice the skipped time belongs to, which the model cannot
 // yet express.
 const HANDLED_IN_CURSOR_MOVE: ReadonlySet<string> = new Set(['duration'])
-const HANDLED_IN_ATTRIBUTES: ReadonlySet<string> = new Set(['divisions', 'key', 'time', 'clef'])
+const HANDLED_IN_ATTRIBUTES: ReadonlySet<string> = new Set([
+  'divisions',
+  'key',
+  'time',
+  'clef',
+  'staves',
+])
 const HANDLED_IN_NOTE: ReadonlySet<string> = new Set([
   'pitch',
   'rest',
@@ -107,6 +113,7 @@ const HANDLED_IN_NOTE: ReadonlySet<string> = new Set([
   'tie',
   'notations',
   'beam',
+  'staff',
 ])
 // <notations> holds a mixture: some of it is converted, most is not yet. It
 // is reported item by item rather than wholesale, so the loss report does not
@@ -131,6 +138,8 @@ interface PartReading {
  */
 interface PartState {
   divisions: number | undefined
+  /** How many staves the part is written on, once it says. */
+  staves: number
   /** Shared across the score, so every id in the document is distinct. */
   ids: IdGenerator
   /** Per part: a tie or slur may span measures, but not parts. */
@@ -216,7 +225,12 @@ function readPart(
     })
   }
 
-  const state: PartState = { divisions: undefined, ids, spanners: new SpannerResolver() }
+  const state: PartState = {
+    divisions: undefined,
+    staves: 1,
+    ids,
+    spanners: new SpannerResolver(),
+  }
   const readings = children(element, 'measure').map((measureElement, index) =>
     readMeasure(measureElement, index, id, state, warnings, partPath),
   )
@@ -224,7 +238,12 @@ function readPart(
   state.spanners.reportUnclosed(warnings, partPath)
 
   return {
-    part: { id, name: names.get(id), measures: readings.map((reading) => reading.measure) },
+    part: {
+      id,
+      name: names.get(id),
+      staves: state.staves,
+      measures: readings.map((reading) => reading.measure),
+    },
     globals: readings.map((reading) => reading.global),
   }
 }
@@ -262,14 +281,40 @@ function readMeasure(
           state.divisions = readIntegerInRange(divisionsElement, measurePath, 1, 1_000_000)
         }
 
-        const keyElement = child(found, 'key')
-        if (keyElement) key ??= readKey(keyElement, measurePath)
+        const stavesElement = child(found, 'staves')
+        if (stavesElement) {
+          state.staves = readIntegerInRange(stavesElement, measurePath, 1, 16)
+        }
 
-        const timeElement = child(found, 'time')
-        if (timeElement) time ??= readTime(timeElement, measurePath)
+        // MusicXML allows one key and one time signature per staff. MNX
+        // states them for the whole score, so staves that disagree cannot
+        // both be carried.
+        const keys = children(found, 'key').map((element) => readKey(element, measurePath))
+        if (keys.length > 0) key ??= keys[0]
+        if (keys.some((other) => other.fifths !== keys[0]?.fifths)) {
+          warnings.add(
+            'unsupported:per-staff-key',
+            'The staves of this part are in different keys, and MNX states one key for ' +
+              'the score. The first is the one converted.',
+            { ...context, line: found.line },
+          )
+        }
+
+        const times = children(found, 'time').map((element) => readTime(element, measurePath))
+        if (times.length > 0) time ??= times[0]
+        if (
+          times.some((other) => other.count !== times[0]?.count || other.unit !== times[0]?.unit)
+        ) {
+          warnings.add(
+            'unsupported:per-staff-time',
+            'The staves of this part are in different time signatures, and MNX states one ' +
+              'for the score. The first is the one converted.',
+            { ...context, line: found.line },
+          )
+        }
 
         for (const clefElement of children(found, 'clef')) {
-          clefs.push(readClef(clefElement, measurePath))
+          clefs.push(readClef(clefElement, state, measurePath))
         }
         break
       }
@@ -361,7 +406,7 @@ function readTime(element: XmlElement, path: DocumentPath): TimeSignature {
   return { count, unit }
 }
 
-function readClef(element: XmlElement, path: DocumentPath): Clef {
+function readClef(element: XmlElement, state: PartState, path: DocumentPath): Clef {
   const sign = trimmedText(requireChild(element, 'sign', path))
   if (!isClefSign(sign)) {
     throw new MusicXMLError(`The "${sign}" clef cannot be represented in MNX.`, {
@@ -373,9 +418,14 @@ function readClef(element: XmlElement, path: DocumentPath): Clef {
   const lineElement = child(element, 'line')
   const line = lineElement ? readIntegerInRange(lineElement, path, 1, 5) : DEFAULT_CLEF_LINES[sign]
 
+  // A clef says which staff it belongs to, which only matters where the part
+  // has more than one.
+  const stated = attribute(element, 'number')
+  const staff = state.staves > 1 && stated !== undefined ? Number(stated) : undefined
+
   // MusicXML counts staff lines from 1 at the bottom; MNX counts staff steps
   // from 0 at the middle line. On a five-line staff they differ by this.
-  return { sign, staffPosition: 2 * line - 6 }
+  return { sign, staffPosition: 2 * line - 6, staff }
 }
 
 function readNote(
@@ -480,9 +530,16 @@ function readNote(
 
   const value = written ?? measuredValue(element, duration, path)
   const notes: Note[] = pitchElement ? [readNoteAt(pitchElement, state, path)] : []
+  const staffElement = child(element, 'staff')
+  const staff =
+    state.staves > 1 && staffElement
+      ? readIntegerInRange(staffElement, path, 1, state.staves)
+      : undefined
+
   const event: Event = {
     kind: 'event',
     id: state.ids.nextEvent(),
+    staff: undefined,
     value,
     slurs: [],
     notes,
@@ -502,7 +559,7 @@ function readNote(
 
   // Where the source states no <duration>, the written value is how long the
   // note lasts.
-  builder.addEvent(voice, event, duration ?? lengthOf(value), path, element.line)
+  builder.addEvent(voice, event, duration ?? lengthOf(value), path, element.line, staff)
 
   for (const note of notes) readTies(element, note, state, warnings, context)
   readSlurs(element, event, state, warnings, context)

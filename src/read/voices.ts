@@ -31,6 +31,8 @@ const UNNAMED_VOICE = ''
 interface VoiceBuilder {
   /** What each event said about its beams, in the order they were read. */
   beamed: BeamedEvent[]
+  /** Which staff each event named, paired with the event that named it. */
+  placed: { event: Event; staff: number | undefined }[]
   /**
    * The item lists currently being filled, outermost first. A tuplet or a
    * grace group opens a new one, so notes land inside it until it closes.
@@ -48,6 +50,25 @@ interface VoiceBuilder {
   /** How long that event lasts, for chord notes to agree with. */
   lastDuration: Fraction | undefined
   fullMeasure: FullMeasureRest | undefined
+}
+
+/** The staff a voice is mostly on, or nothing when it names no staff at all. */
+function commonestStaff(staves: readonly (number | undefined)[]): number | undefined {
+  const counts = new Map<number, number>()
+  for (const staff of staves) {
+    if (staff !== undefined) counts.set(staff, (counts.get(staff) ?? 0) + 1)
+  }
+
+  let commonest: number | undefined
+  let seen = 0
+  // Ties go to the staff seen first, which the insertion order gives.
+  for (const [staff, count] of counts) {
+    if (count > seen) {
+      commonest = staff
+      seen = count
+    }
+  }
+  return commonest
 }
 
 /** The list a note added now would land in: the innermost one still open. */
@@ -90,6 +111,7 @@ export class MeasureBuilder {
     duration: Fraction,
     path: DocumentPath,
     line: number,
+    staff?: number,
   ): void {
     const builder = this.#builderFor(voice)
     if (builder.fullMeasure) {
@@ -112,6 +134,7 @@ export class MeasureBuilder {
     }
 
     innermost(builder).push(event)
+    builder.placed.push({ event, staff })
     this.#lastVoice = voice ?? UNNAMED_VOICE
     builder.lastEvent = event
     builder.lastDuration = duration
@@ -251,16 +274,34 @@ export class MeasureBuilder {
     }
   }
 
-  /** The sequences, in the order their voices first appeared. */
+  /**
+   * The sequences, in the order their voices first appeared.
+   *
+   * A voice belongs to the staff it spends most of its time on, and only the
+   * events that reach across to another say so. Choosing the commonest that
+   * way keeps the overrides to the notes that genuinely cross.
+   */
   sequences(): Sequence[] {
-    return [...this.#voices].map(([voice, builder]) => ({
-      // Whenever the source named the voice. MNX treats the name as a label
-      // for the line across the whole score, so deciding it per measure would
-      // give one musical line a different identity from bar to bar.
-      voice: voice === UNNAMED_VOICE ? undefined : voice,
-      content: builder.content,
-      fullMeasure: builder.fullMeasure,
-    }))
+    return [...this.#voices].map(([voice, builder]) => {
+      const staff = commonestStaff(builder.placed.map((placed) => placed.staff))
+
+      // Only the events that reach across to another staff say so.
+      for (const placed of builder.placed) {
+        if (placed.staff !== undefined && placed.staff !== staff) {
+          placed.event.staff = placed.staff
+        }
+      }
+
+      return {
+        staff,
+        // Whenever the source named the voice. MNX treats the name as a label
+        // for the line across the whole score, so deciding it per measure would
+        // give one musical line a different identity from bar to bar.
+        voice: voice === UNNAMED_VOICE ? undefined : voice,
+        content: builder.content,
+        fullMeasure: builder.fullMeasure,
+      }
+    })
   }
 
   #builderFor(voice: string | undefined): VoiceBuilder {
@@ -271,6 +312,7 @@ export class MeasureBuilder {
     const content: SequenceItem[] = []
     const created: VoiceBuilder = {
       beamed: [],
+      placed: [],
       open: [content],
       content,
       end: fraction(0),

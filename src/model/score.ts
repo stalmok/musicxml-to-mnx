@@ -68,6 +68,8 @@ export interface Event {
   kind: 'event'
   /** Unique in the document. Written out only where something refers to it. */
   id: string
+  /** Set only where this event sits on a staff other than its voice's. */
+  staff: number | undefined
   value: NoteValue
   slurs: readonly Slur[]
   /** Empty for a rest. More than one note makes it a chord. */
@@ -128,6 +130,8 @@ export interface FullMeasureRest {
 export interface Sequence {
   /** The voice as the source named it, when a measure holds more than one. */
   voice: string | undefined
+  /** The staff this voice sits on, where the part has more than one. */
+  staff: number | undefined
   content: readonly SequenceItem[]
   fullMeasure: FullMeasureRest | undefined
 }
@@ -136,6 +140,8 @@ export interface Clef {
   sign: ClefSign
   /** Staff steps from the middle line; negative is below it. */
   staffPosition: number
+  /** Which staff of the part, where it has more than one. */
+  staff: number | undefined
 }
 
 /**
@@ -158,6 +164,8 @@ export interface Measure {
 export interface Part {
   id: string
   name: string | undefined
+  /** How many staves the part is written on. One unless the source says. */
+  staves: number
   measures: readonly Measure[]
 }
 

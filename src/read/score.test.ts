@@ -483,9 +483,11 @@ describe('reporting what is not converted', () => {
   })
 
   test('reports unconverted attributes', () => {
-    const { warnings } = read(measure(`<attributes><staves>2</staves></attributes>${NOTE}`))
+    const { warnings } = read(
+      measure(`<attributes><instruments>2</instruments></attributes>${NOTE}`),
+    )
 
-    expect(warnings.map((w) => w.message)).toEqual(['<staves> is not converted yet.'])
+    expect(warnings.map((w) => w.message)).toEqual(['<instruments> is not converted yet.'])
   })
 
   test('reports unconverted parts of a note', () => {

@@ -64,6 +64,8 @@ export interface MNXNoteValue {
 export interface MNXEvent {
   /** Present only where something refers to this event. */
   id?: string
+  /** Present only where this event sits on a staff other than its voice's. */
+  staff?: number
   duration: MNXNoteValue
   slurs?: MNXSlur[]
   notes?: MNXNote[]
@@ -110,6 +112,8 @@ export type MNXSequenceItem = MNXEvent | MNXSpace | MNXTuplet | MNXGraceGroup
 export interface MNXSequence {
   /** The voice this sequence belongs to, where a measure holds more than one. */
   voice?: string
+  /** The staff this voice sits on, where the part has more than one. */
+  staff?: number
   content: MNXSequenceItem[]
   /** Present when the sequence is a rest filling the whole measure. */
   fullMeasure?: MNXFullMeasureRest
@@ -123,6 +127,8 @@ export interface MNXClef {
 
 export interface MNXPositionedClef {
   clef: MNXClef
+  /** Which staff of the part, where it has more than one. */
+  staff?: number
 }
 
 /** Which way a hook points away from its note. */
@@ -144,6 +150,8 @@ export interface MNXPartMeasure {
 
 export interface MNXPart {
   name?: string
+  /** How many staves the part is written on. Absent means one. */
+  staves?: number
   measures: MNXPartMeasure[]
 }
 

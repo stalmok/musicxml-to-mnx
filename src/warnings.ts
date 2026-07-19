@@ -17,6 +17,10 @@ export type WarningCode =
   // A note's written value and its measured duration disagree, outside a
   // tuplet where they are meant to. The written value is the one converted.
   | 'inconsistent:duration'
+  // The staves of a part are in different keys, or different time signatures,
+  // and MNX states one of each for the whole score.
+  | 'unsupported:per-staff-key'
+  | 'unsupported:per-staff-time'
   // A tie or slur has only one of its two ends, so there is nothing to join
   // it to. Real scores contain these, so it is reported rather than refused.
   | 'unclosed:spanner'

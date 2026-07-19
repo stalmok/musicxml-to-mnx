@@ -64,6 +64,10 @@ differs from plain 1, 2, 3, so a pickup measure keeps its number.
 Tuplets, including nested ones, and grace notes, which are gathered into
 groups and keep out of the measure's time.
 
+Multi-staff parts: a piano part stays one part, with the staff stated on each
+voice and an override on the events of a voice that reaches across to the
+other hand.
+
 Beams, including secondary beams and hooks. MusicXML puts them on the notes,
 one marking per beam level; MNX states them over the measure as a tree, and
 that is what gets built.
@@ -79,8 +83,8 @@ recovered from its duration where none is written, and time a voice passes
 over in silence is stated as a space. A rest filling its measure becomes what
 MNX states it as, rather than being given an invented note value.
 
-Planned for v1: multi-staff parts, lyrics, dynamics, hairpins, tempo,
-articulations, repeat barlines and endings, and octave shifts.
+Planned for v1: lyrics, dynamics, hairpins, tempo, articulations, repeat
+barlines and endings, and octave shifts.
 
 Constructs that MNX cannot express at all, such as pedal marks and percent
 repeats, will always surface as warnings rather than silent loss. Out of scope
