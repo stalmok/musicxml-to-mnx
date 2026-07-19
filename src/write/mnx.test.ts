@@ -29,7 +29,9 @@ const WHOLE_C: Event = {
 
 function scoreOf(
   measure: Measure,
-  globals: Score['globalMeasures'] = [{ key: undefined, time: undefined, number: undefined }],
+  globals: Score['globalMeasures'] = [
+    { key: undefined, time: undefined, tempos: [], number: undefined },
+  ],
 ): Score {
   return {
     globalMeasures: globals,
@@ -42,6 +44,7 @@ function measureOf(...events: Event[]): Measure {
   return {
     clefs: [],
     beams: [],
+    dynamics: [],
     sequences: [{ voice: undefined, staff: undefined, content: events, fullMeasure: undefined }],
   }
 }
@@ -100,11 +103,12 @@ test.each([
       {
         clefs: [{ sign: 'F', staffPosition: 2, staff: undefined }],
         beams: [],
+        dynamics: [],
         sequences: [
           { voice: undefined, staff: undefined, content: [WHOLE_C], fullMeasure: undefined },
         ],
       },
-      [{ key: { fifths: -3 }, time: { count: 6, unit: 8 }, number: 0 }],
+      [{ key: { fifths: -3 }, time: { count: 6, unit: 8 }, tempos: [], number: 0 }],
     ),
   ],
 ])('writes MNX the spec schema accepts for %s', (_name, score) => {
@@ -120,7 +124,7 @@ describe('the document', () => {
 describe('global measures', () => {
   test('writes the key and time signature when the score states them', () => {
     const score = scoreOf(measureOf(WHOLE_C), [
-      { key: { fifths: 2 }, time: { count: 3, unit: 8 }, number: undefined },
+      { key: { fifths: 2 }, time: { count: 3, unit: 8 }, tempos: [], number: undefined },
     ])
 
     expect(writeMnx(score).global.measures[0]).toEqual({
@@ -131,6 +135,43 @@ describe('global measures', () => {
 
   test('leaves them out when the score states neither', () => {
     expect(writeMnx(scoreOf(measureOf(WHOLE_C))).global.measures[0]).toEqual({})
+  })
+
+  test('writes a tempo at the start of the measure without a location', () => {
+    const score = scoreOf(measureOf(WHOLE_C), [
+      {
+        key: undefined,
+        time: undefined,
+        tempos: [{ position: { num: 0, den: 1 }, value: { base: 'quarter', dots: 0 }, bpm: 100 }],
+        number: undefined,
+      },
+    ])
+
+    expect(writeMnx(score).global.measures[0]?.tempos).toEqual([
+      { value: { base: 'quarter' }, bpm: 100 },
+    ])
+  })
+
+  test('gives a tempo partway through the measure a location', () => {
+    const score = scoreOf(measureOf(WHOLE_C), [
+      {
+        key: undefined,
+        time: undefined,
+        tempos: [{ position: { num: 1, den: 2 }, value: { base: 'half', dots: 0 }, bpm: 60 }],
+        number: undefined,
+      },
+    ])
+
+    expect(writeMnx(score).global.measures[0]?.tempos?.[0]?.location).toEqual({ fraction: [1, 2] })
+  })
+
+  test('writes a dynamic that MNX schema accepts', () => {
+    const measure = {
+      ...measureOf(WHOLE_C),
+      dynamics: [{ position: { num: 0, den: 1 }, value: 'f' as const }],
+    }
+
+    expect(schemaErrors(writeMnx(scoreOf(measure)))).toEqual([])
   })
 })
 
@@ -155,6 +196,7 @@ describe('measures', () => {
     const score = scoreOf({
       clefs: [{ sign: 'F', staffPosition: 2, staff: undefined }],
       beams: [],
+      dynamics: [],
       sequences: [
         { voice: undefined, staff: undefined, content: [WHOLE_C], fullMeasure: undefined },
       ],
@@ -214,6 +256,7 @@ describe('ties and slurs', () => {
     return scoreOf({
       clefs: [],
       beams: [],
+      dynamics: [],
       sequences: [
         { voice: undefined, staff: undefined, content: [start, target], fullMeasure: undefined },
       ],
@@ -256,6 +299,7 @@ describe('beams', () => {
     return scoreOf({
       clefs: [],
       beams: [{ events: ['ev1', 'ev2'], beams: [], direction: undefined }],
+      dynamics: [],
       sequences: [
         { voice: undefined, staff: undefined, content: [first, second], fullMeasure: undefined },
       ],
@@ -284,6 +328,7 @@ describe('beams', () => {
           direction: undefined,
         },
       ],
+      dynamics: [],
       sequences: [
         {
           voice: undefined,
@@ -314,6 +359,7 @@ describe('voices and spaces', () => {
     return scoreOf({
       clefs: [],
       beams: [],
+      dynamics: [],
       sequences: [{ voice, staff: undefined, content, fullMeasure: undefined }],
     })
   }
@@ -358,6 +404,7 @@ describe('tuplets and grace groups', () => {
     return scoreOf({
       clefs: [],
       beams: [],
+      dynamics: [],
       sequences: [{ voice: undefined, staff: undefined, content: [item], fullMeasure: undefined }],
     })
   }
@@ -401,6 +448,7 @@ describe('full-measure rests', () => {
     return scoreOf({
       clefs: [],
       beams: [],
+      dynamics: [],
       sequences: [{ voice: undefined, staff: undefined, content: [], fullMeasure }],
     })
   }

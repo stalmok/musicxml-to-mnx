@@ -165,9 +165,22 @@ export interface MNXBeam {
   direction?: MNXBeamHookDirection
 }
 
+export type MNXDynamicValue = 'ppp' | 'pp' | 'p' | 'mp' | 'mf' | 'f' | 'ff' | 'fff' | 'n'
+
+export interface MNXRhythmicPosition {
+  fraction: [number, number]
+}
+
+export interface MNXDynamic {
+  position: MNXRhythmicPosition
+  type: 'immediate' | 'gradual' | 'relative' | 'accent'
+  value?: MNXDynamicValue
+}
+
 export interface MNXPartMeasure {
   clefs?: MNXPositionedClef[]
   beams?: MNXBeam[]
+  dynamics?: MNXDynamic[]
   sequences: MNXSequence[]
 }
 
@@ -187,11 +200,18 @@ export interface MNXTime {
   unit: TimeSignatureUnit
 }
 
+export interface MNXTempo {
+  value: MNXNoteValue
+  bpm: number
+  location?: MNXRhythmicPosition
+}
+
 export interface MNXGlobalMeasure {
   /** Stated only where it differs from the measure's position in the score. */
   number?: number
   key?: MNXKey
   time?: MNXTime
+  tempos?: MNXTempo[]
 }
 
 export interface MNXGlobal {

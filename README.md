@@ -64,6 +64,10 @@ differs from plain 1, 2, 3, so a pickup measure keeps its number.
 Tuplets, including nested ones, and grace notes, which are gathered into
 groups and keep out of the measure's time.
 
+Dynamics and tempo marks: a dynamic sits on its measure at the point the
+cursor has reached; a metronome mark becomes a tempo on the score. Marks
+outside MNX's vocabulary, like a sforzando, are reported.
+
 Accidentals: the note whose accidental the source draws is marked, and the
 document declares once that it states accidental display, so a reader takes
 the marked notes as the whole of it. Cautionary accidentals keep their

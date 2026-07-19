@@ -419,6 +419,31 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     expect(shown).toBe(inSource)
   })
 
+  // A dynamic or tempo sits at a point in its measure, so its position cannot
+  // run past the measure's length. The schema types the position but cannot
+  // bound it.
+  test('never places a direction past the end of its measure', () => {
+    const stray: string[] = []
+    let time = { count: 4, unit: 4 }
+
+    mnx.parts.forEach((part, partIndex) => {
+      part.measures.forEach((measure, index) => {
+        time = mnx.global.measures[index]?.time ?? time
+        const barLength = time.count / time.unit
+        for (const dynamic of measure.dynamics ?? []) {
+          const at = dynamic.position.fraction[0] / dynamic.position.fraction[1]
+          if (at > barLength + 1e-9) {
+            stray.push(
+              `part ${String(partIndex + 1)} measure ${String(index + 1)}: dynamic at ${String(at)}`,
+            )
+          }
+        }
+      })
+    })
+
+    expect(stray.slice(0, 5)).toEqual([])
+  })
+
   test('keeps every pitch the source wrote, in order', () => {
     expect(pitchesOf(mnx)).toEqual(sourcePitches(parseXmlRoot(source)))
   })

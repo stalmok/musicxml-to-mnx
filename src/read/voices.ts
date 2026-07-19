@@ -89,6 +89,11 @@ export class MeasureBuilder {
   /** The voice of the most recent event, which a chord member joins. */
   #lastVoice: string | undefined
 
+  /** Where the cursor has reached, from the start of the measure. */
+  position(): Fraction {
+    return this.#cursor
+  }
+
   /** Moves the cursor, as <backup> and <forward> do. */
   shift(by: Fraction, path: DocumentPath, line: number): void {
     const moved = addFractions(this.#cursor, by)

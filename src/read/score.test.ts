@@ -126,7 +126,12 @@ describe('measure attributes', () => {
       ),
     )
 
-    expect(result.globalMeasures[0]).toEqual({ key: { fifths: -3 }, time: { count: 3, unit: 4 } })
+    expect(result.globalMeasures[0]).toEqual({
+      key: { fifths: -3 },
+      time: { count: 3, unit: 4 },
+      tempos: [],
+      number: undefined,
+    })
     expect(result.parts[0]?.measures[0]?.clefs).toEqual([{ sign: 'F', staffPosition: 2 }])
   })
 
@@ -135,7 +140,12 @@ describe('measure attributes', () => {
       measure(`<attributes><key><fifths>4</fifths></key></attributes>${NOTE}`),
     )
 
-    expect(result.globalMeasures[0]).toEqual({ key: { fifths: 4 }, time: undefined })
+    expect(result.globalMeasures[0]).toEqual({
+      key: { fifths: 4 },
+      time: undefined,
+      tempos: [],
+      number: undefined,
+    })
   })
 
   test('places a clef by its default line when none is written', () => {
@@ -461,14 +471,14 @@ describe('measure numbering', () => {
 describe('reporting what is not converted', () => {
   test('reports an unconverted element with its name, place, and line', () => {
     const { warnings } = read(
-      '<score-partwise>\n<part id="P1">\n<measure number="1">\n<direction/>\n' +
+      '<score-partwise>\n<part id="P1">\n<measure number="1">\n<sound tempo="60"/>\n' +
         `${NOTE}\n</measure>\n</part>\n</score-partwise>`,
     )
 
     expect(warnings).toEqual([
       {
         code: 'unsupported:element',
-        message: '<direction> is not converted yet.',
+        message: '<sound> is not converted yet.',
         context: { part: 'P1', measure: 1, line: 4 },
       },
     ])
@@ -544,7 +554,12 @@ describe('the global measure list', () => {
 
     expect(result.globalMeasures).toHaveLength(3)
     expect(result.globalMeasures[0]?.time).toEqual({ count: 4, unit: 4 })
-    expect(result.globalMeasures[2]).toEqual({ key: undefined, time: undefined, number: undefined })
+    expect(result.globalMeasures[2]).toEqual({
+      key: undefined,
+      time: undefined,
+      tempos: [],
+      number: undefined,
+    })
   })
 
   test('is as long as the longest part', () => {
@@ -606,7 +621,9 @@ describe('several parts', () => {
       ),
     )
 
-    expect(result.globalMeasures).toEqual([{ key: undefined, time: { count: 6, unit: 8 } }])
+    expect(result.globalMeasures).toEqual([
+      { key: undefined, time: { count: 6, unit: 8 }, tempos: [], number: undefined },
+    ])
     expect(result.parts).toHaveLength(2)
   })
 })

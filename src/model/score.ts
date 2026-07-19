@@ -176,10 +176,20 @@ export interface Beam {
   direction: 'left' | 'right' | undefined
 }
 
+/** MNX's plain dynamic marks, from softest to loudest. */
+export type DynamicValue = 'ppp' | 'pp' | 'p' | 'mp' | 'mf' | 'f' | 'ff' | 'fff' | 'n'
+
+/** A dynamic mark, at a position measured from the start of the measure. */
+export interface Dynamic {
+  position: Fraction
+  value: DynamicValue
+}
+
 export interface Measure {
   clefs: readonly Clef[]
   /** Stated over the measure rather than on the notes, as MNX has it. */
   beams: readonly Beam[]
+  dynamics: readonly Dynamic[]
   sequences: readonly Sequence[]
 }
 
@@ -213,9 +223,17 @@ export interface TimeSignature {
  * the score's measure list, and each part's measures line up with it by
  * position.
  */
+/** A tempo mark: this many of the given note value per minute. */
+export interface Tempo {
+  position: Fraction
+  value: NoteValue
+  bpm: number
+}
+
 export interface GlobalMeasure {
   key: Key | undefined
   time: TimeSignature | undefined
+  tempos: readonly Tempo[]
   /** Only when the score numbers the measure differently from its position. */
   number: number | undefined
 }

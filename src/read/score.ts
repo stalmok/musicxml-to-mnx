@@ -16,6 +16,7 @@ import type {
   Event,
   GlobalMeasure,
   AccidentalDisplay,
+  Dynamic,
   Key,
   Lyric,
   Measure,
@@ -27,6 +28,7 @@ import type {
   Pitch,
   Score,
   Step,
+  Tempo,
   TimeSignature,
   TimeUnit,
 } from '../model/score.js'
@@ -42,6 +44,7 @@ import {
 } from '../xml/tree.js'
 import { describeLength, describeValue, lengthOf, noteValueOf } from './duration.js'
 import { buildBeams } from './beams.js'
+import { readDirection } from './directions.js'
 import { IdGenerator, SpannerResolver } from './spanners.js'
 import { MeasureBuilder } from './voices.js'
 
@@ -199,6 +202,9 @@ function mergeGlobalMeasures(target: GlobalMeasure[], found: readonly GlobalMeas
     target[index] = {
       key: existing?.key ?? measure.key,
       time: existing?.time ?? measure.time,
+      // Tempo is the score's, so the parts do not each carry it; whichever
+      // part states one in this measure contributes it.
+      tempos: [...(existing?.tempos ?? []), ...measure.tempos],
       number: existing?.number ?? measure.number,
     }
   })
@@ -278,6 +284,8 @@ function readMeasure(
   const clefs: Clef[] = []
   let key: Key | undefined
   let time: TimeSignature | undefined
+  const dynamics: Dynamic[] = []
+  const tempos: Tempo[] = []
 
   const builder = new MeasureBuilder()
 
@@ -337,6 +345,13 @@ function readMeasure(
         readNote(found, state, builder, warnings, context, measurePath)
         break
 
+      case 'direction': {
+        const reading = readDirection(found, builder.position(), warnings, context, measurePath)
+        dynamics.push(...reading.dynamics)
+        tempos.push(...reading.tempos)
+        break
+      }
+
       // Both only move the cursor: <backup> against the flow of the measure,
       // <forward> with it.
       case 'backup':
@@ -362,10 +377,10 @@ function readMeasure(
   const beams = builder.beamedEvents().flatMap((events) => buildBeams(events))
 
   return {
-    measure: { clefs, beams, sequences: builder.sequences() },
+    measure: { clefs, beams, dynamics, sequences: builder.sequences() },
     // Only worth carrying when it differs from where the measure sits;
     // otherwise MNX's implicit numbering already says it.
-    global: { key, time, number: stated !== position ? stated : undefined },
+    global: { key, time, tempos, number: stated !== position ? stated : undefined },
   }
 }
 

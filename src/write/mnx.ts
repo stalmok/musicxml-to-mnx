@@ -5,10 +5,12 @@
 // this is a walk with a few shape decisions. Optional keys are omitted rather
 // than set to null, because MNX distinguishes an absent key from a present one.
 
+import type { Fraction } from '../fraction.js'
 import type {
   AccidentalDisplay,
   Beam,
   Clef,
+  Dynamic,
   Lyric,
   Event,
   GlobalMeasure,
@@ -21,6 +23,7 @@ import type {
   NoteValueQuantity,
   Sequence,
   SequenceItem,
+  Tempo,
 } from '../model/score.js'
 import type {
   MNXDocument,
@@ -39,6 +42,9 @@ import type {
   MNXLyricLine,
   MNXLyrics,
   MNXAccidentalDisplay,
+  MNXDynamic,
+  MNXRhythmicPosition,
+  MNXTempo,
 } from '../types/mnx.js'
 
 /** The MNX version this converter emits. */
@@ -100,7 +106,21 @@ function writeGlobalMeasure(measure: GlobalMeasure): MNXGlobalMeasure {
     ...(measure.number !== undefined ? { number: measure.number } : {}),
     ...(measure.key ? { key: { fifths: measure.key.fifths } } : {}),
     ...(measure.time ? { time: { count: measure.time.count, unit: measure.time.unit } } : {}),
+    ...(measure.tempos.length > 0 ? { tempos: measure.tempos.map(writeTempo) } : {}),
   }
+}
+
+function writeTempo(tempo: Tempo): MNXTempo {
+  return {
+    value: writeNoteValue(tempo.value),
+    bpm: tempo.bpm,
+    // A tempo at the start of the measure needs no position.
+    ...(tempo.position.num === 0 ? {} : { location: writePosition(tempo.position) }),
+  }
+}
+
+function writePosition(position: Fraction): MNXRhythmicPosition {
+  return { fraction: [position.num, position.den] }
 }
 
 function writePart(part: Part, referenced: ReadonlySet<string>): MNXPart {
@@ -116,8 +136,14 @@ function writeMeasure(measure: Measure, referenced: ReadonlySet<string>): MNXPar
   return {
     ...(measure.clefs.length > 0 ? { clefs: measure.clefs.map(writeClef) } : {}),
     ...(measure.beams.length > 0 ? { beams: measure.beams.map(writeBeam) } : {}),
+    ...(measure.dynamics.length > 0 ? { dynamics: measure.dynamics.map(writeDynamic) } : {}),
     sequences: measure.sequences.map((sequence) => writeSequence(sequence, referenced)),
   }
+}
+
+function writeDynamic(dynamic: Dynamic): MNXDynamic {
+  // Every dynamic converted so far is a mark that takes effect at once.
+  return { position: writePosition(dynamic.position), type: 'immediate', value: dynamic.value }
 }
 
 function writeBeam(beam: Beam): MNXBeam {
