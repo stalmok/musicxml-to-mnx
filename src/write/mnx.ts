@@ -3,7 +3,7 @@
 //
 // Thin by design: the reader has already resolved MusicXML's ambiguities, so
 // this is a walk with a few shape decisions. Optional keys are omitted rather
-// than set to null — MNX distinguishes an absent key from a present one.
+// than set to null, because MNX distinguishes an absent key from a present one.
 
 import type {
   Clef,

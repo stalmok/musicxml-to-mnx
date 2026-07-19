@@ -5,7 +5,7 @@
     "moduleResolution": "Bundler",
     // Neither DOM nor Node: the library is pure data transformation and runs
     // in both, so it must not reach for either one's globals. This config
-    // covers src alone, which is what keeps that guarantee honest — the tests
+    // covers src alone, which is what keeps that guarantee honest. The tests
     // are Node programs and are checked by tsconfig.test.json instead.
     "lib": ["ES2022"],
     "types": [],

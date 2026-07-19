@@ -1,7 +1,7 @@
 // The loss report. Anything MusicXML expresses that this converter does not
-// carry into MNX — because MNX cannot express it, or because the construct
-// isn't handled yet — is reported here rather than dropped. A pipeline can
-// then gate on "zero warnings" and have that mean something.
+// carry into MNX, whether because MNX cannot express it or because the
+// construct isn't handled yet, is reported here rather than dropped. A
+// pipeline can then gate on "zero warnings" and have that mean something.
 
 // Stable, machine-readable codes. Consumers match on these, so a code's
 // meaning must never change once released; add a new one instead.

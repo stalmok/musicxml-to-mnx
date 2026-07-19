@@ -1,4 +1,4 @@
-// Flat config. Basic, non-type-checked TypeScript linting — fast and
+// Flat config. Basic, non-type-checked TypeScript linting: fast and
 // dependency-light. tsc (pnpm typecheck) owns type correctness; ESLint owns
 // lint-level code smells; Prettier owns formatting.
 
@@ -34,7 +34,7 @@ export default tseslint.config(
             {
               group: ['**/write/*', '**/types/mnx*'],
               message:
-                'The reader produces the neutral score model — it must not know the MNX output shape.',
+                'The reader produces the neutral score model, so it must not know the MNX output shape.',
             },
           ],
         },
@@ -52,7 +52,7 @@ export default tseslint.config(
             {
               group: ['**/read/*', '**/xml/*'],
               message:
-                'The writer consumes the neutral score model — it must not know MusicXML or the XML layer.',
+                'The writer consumes the neutral score model, so it must not know MusicXML or the XML layer.',
             },
           ],
         },
@@ -78,5 +78,5 @@ export default tseslint.config(
       ],
     },
   },
-  prettier, // must stay last — disables rules that conflict with Prettier
+  prettier, // must stay last, because it disables rules that conflict with Prettier
 )

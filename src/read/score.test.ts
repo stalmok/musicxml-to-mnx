@@ -401,7 +401,7 @@ describe('the global measure list', () => {
   })
 
   // A pickup is numbered 0, which shifts every later measure's number one
-  // below its position — so all of them have to be carried, not just the
+  // below its position, so all of them have to be carried, not just the
   // pickup itself.
   test('keeps measure numbers that do not match their positions', () => {
     const { score: result } = read(

@@ -3,10 +3,10 @@ dist
 coverage
 pnpm-lock.yaml
 
-# Local scratchpad and session-tool state (gitignored) — not source to format
+# Local scratchpad and session-tool state (gitignored), not source to format
 .superpowers
 .remember
 
-# Vendored spec artefacts — keep upstream bytes pristine (integrity pinned in
+# Vendored spec artefacts: keep upstream bytes pristine (integrity pinned in
 # the neighbouring PROVENANCE.md)
 schema/*.json

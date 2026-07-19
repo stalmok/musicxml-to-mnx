@@ -1,10 +1,10 @@
 // Thrown for MusicXML input the converter cannot honestly convert: malformed
 // structure, or values the format does not allow. Input that is valid but
-// merely unconvertible produces a warning instead (see warnings.ts) — losing
+// merely unconvertible produces a warning instead (see warnings.ts). Losing
 // notation is reportable, not fatal.
 
 // Where in the document the problem was found, as the trail of elements
-// leading to it — e.g. ['part P1', 'measure 3', 'note']. Empty for
+// leading to it, for example ['part P1', 'measure 3', 'note']. Empty for
 // document-level failures.
 export type DocumentPath = readonly string[]
 

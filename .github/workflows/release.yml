@@ -1,9 +1,9 @@
 # Publish to npm when a version tag (v0.1.0, …) is pushed. The full CI gate
-# set runs first — by CALLING ci.yml, so releases and pushes are guarded by
+# set runs first, by CALLING ci.yml, so releases and pushes are guarded by
 # the identical list and a gate added there cannot be forgotten here. The
 # publish job then builds explicitly (install scripts stay blocked) and
 # publishes via npm trusted publishing: the workflow's OIDC token IS the
-# credential — no npm token secret exists to leak — and provenance
+# credential, so no npm token secret exists to leak, and provenance
 # attestation is automatic.
 #
 # One-time setup on npmjs.com (package settings → Trusted Publisher):
@@ -18,7 +18,7 @@ on:
     tags: ['v*']
 
 # Read-only by default. The OIDC token that can mint an npm publish
-# credential is granted to the publish job alone — not to the gates job, which
+# credential is granted to the publish job alone, not to the gates job, which
 # runs the test suite and third-party actions.
 permissions:
   contents: read
@@ -55,7 +55,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # The tag must match package.json — a mismatched release fails loudly.
+      # The tag must match package.json, so a mismatched release fails loudly.
       - name: Check tag matches package version
         run: |
           pkg="v$(node -p "require('./package.json').version")"

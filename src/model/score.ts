@@ -2,7 +2,7 @@
 // writer needs. It exists so that MusicXML's encoding decisions stop at the
 // reader and MNX's start at the writer.
 //
-// Internal by design — it is not exported from the package, and it is scoped
+// Internal by design: it is not exported from the package, and it is scoped
 // to conversion. It is not a general notation model, and should not grow into
 // one.
 

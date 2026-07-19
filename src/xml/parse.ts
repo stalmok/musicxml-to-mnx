@@ -16,7 +16,7 @@ export interface XmlElement {
   readonly attributes: Readonly<Record<string, string>>
   readonly children: readonly XmlElement[]
   /**
-   * Direct text content, exactly as written — element children contribute
+   * Direct text content, exactly as written. Element children contribute
    * nothing to it. Left untrimmed on purpose: a reader that wants a number or
    * a keyword trims it, but lyric text is meaningful to the space, and once
    * this layer has trimmed it there is no way to get it back.
@@ -43,8 +43,8 @@ export function parseXmlRoot(source: string): XmlElement {
     return convertElement(root, lineStarts(source))
   } catch (cause) {
     // Deliberately broad. Besides the parser's own errors, a document nested
-    // tens of thousands of elements deep exhausts the stack inside the parser
-    // — a RangeError, which callers should still receive as a rejected
+    // tens of thousands of elements deep exhausts the stack inside the parser,
+    // a RangeError, which callers should still receive as a rejected
     // document rather than as a crash escaping the library.
     throw parseFailure(cause)
   }

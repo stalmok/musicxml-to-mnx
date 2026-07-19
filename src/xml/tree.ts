@@ -1,6 +1,6 @@
 // Accessors for the parsed element tree. The `require*` variants turn an
 // absent element or attribute into a MusicXMLError naming what was missing,
-// where it was expected, and the line — so a reader can state what it needs
+// where it was expected, and the line, so a reader can state what it needs
 // and let the failure explain itself.
 
 import { MusicXMLError } from '../errors.js'
@@ -12,9 +12,10 @@ export function child(element: XmlElement, name: string): XmlElement | undefined
 }
 
 /**
- * An element's text with surrounding whitespace removed — what a reader wants
- * for a number or a keyword, where the source's indentation is not part of the
- * value. Text whose spacing matters (lyrics) should read `element.text`.
+ * An element's text with surrounding whitespace removed, which is what a
+ * reader wants for a number or a keyword, where the source's indentation is
+ * not part of the value. Text whose spacing matters (lyrics) should read
+ * `element.text`.
  */
 export function trimmedText(element: XmlElement): string {
   return element.text.trim()

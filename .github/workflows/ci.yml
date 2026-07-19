@@ -1,8 +1,8 @@
-# Every gate, on every push to main and every pull request — the same checks
+# Every gate, on every push to main and every pull request: the same checks
 # the pre-commit hook runs, plus the dependency audit, the library build, and
 # a check that the build ships what the package's exports promise. Also
 # callable as a unit (workflow_call), so the release workflow runs the
-# identical gate set — a gate added here guards releases too, with no second
+# identical gate set. A gate added here guards releases too, with no second
 # list to forget.
 #
 # Actions are pinned to commit SHAs (not tags) to match the repo's
@@ -20,7 +20,7 @@ permissions:
   contents: read
 
 # Rapid pushes supersede in-flight runs of the same PR branch. Runs on main
-# always finish — a cancelled run on main would hide a broken commit.
+# always finish, because a cancelled run on main would hide a broken commit.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}

@@ -5,7 +5,7 @@ Convert [MusicXML](https://www.w3.org/2021/06/musicxml40/) to
 Group's JSON successor format.
 
 > **Early development.** The public API below works, but only a small slice of
-> MusicXML converts so far — see [What converts today](#what-converts-today).
+> MusicXML converts so far. See [What converts today](#what-converts-today).
 > MNX itself has no stable 1.0, so output is pinned to a dated spec snapshot.
 
 ---
@@ -30,8 +30,8 @@ const { mnx, warnings } = convertMusicXML(musicXmlSource)
 
 console.log(JSON.stringify(mnx, null, 2))
 
-// Anything MusicXML expressed that MNX can't — or that this converter doesn't
-// handle yet — is reported, never dropped silently.
+// Anything MusicXML expressed that MNX cannot carry, or that this
+// converter does not handle yet, is reported rather than dropped silently.
 for (const w of warnings) {
   console.warn(`${w.code}: ${w.message}`, w.context)
 }
@@ -90,7 +90,7 @@ so a pipeline can gate on "zero losses" and know it means something.
 and source line rather than being guessed at. Every heuristic that does exist
 is documented and announces itself through a warning when it fires.
 
-**Exact timing.** Durations are exact rationals, never floats — tuplets produce
+**Exact timing.** Durations are exact rationals, never floats, because tuplets produce
 values like 1/3 of a beat, and float drift makes measure-fill checks unreliable.
 
 **Safe on untrusted input.** MusicXML files carry a DOCTYPE referencing an

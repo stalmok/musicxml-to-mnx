@@ -85,7 +85,7 @@ const DEFAULT_CLEF_LINES: Record<ClefSign, number> = { G: 2, F: 4, C: 3 }
 const HANDLED_IN_SCORE: ReadonlySet<string> = new Set(['part-list', 'part'])
 const HANDLED_IN_MEASURE: ReadonlySet<string> = new Set(['attributes', 'note'])
 // <divisions> and <duration> measure time in the source's own units. Note
-// values come from <type>, so they are not read yet — which also means a file
+// values come from <type>, so they are not read yet. That also means a file
 // whose <duration> disagrees with its <type> converts by the <type>, without
 // that disagreement being noticed. Cross-checking them is the timing core's
 // job.
@@ -331,9 +331,9 @@ function readEvent(
 function readNoteValue(element: XmlElement, path: DocumentPath): NoteValue {
   const typeElement = child(element, 'type')
   if (!typeElement) {
-    // Recoverable in principle — the value can be derived from <duration> and
-    // <divisions> — but not until the timing core lands, and guessing here
-    // would silently invent a rhythm.
+    // Recoverable in principle, since the value can be derived from
+    // <duration> and <divisions>, but not until the timing core lands.
+    // Guessing here would silently invent a rhythm.
     throw new MusicXMLError('A <note> without a <type> is not supported yet.', {
       path,
       line: element.line,
@@ -364,7 +364,7 @@ function readPitch(element: XmlElement, path: DocumentPath): Pitch {
     step,
     octave,
     // MusicXML allows fractional alterations for microtones; MNX's alter is an
-    // integer, so anything fractional would have to be rounded — silently
+    // integer, so anything fractional would have to be rounded, silently
     // retuning the note. Two semitones covers double sharps and flats.
     alter: alterElement ? readIntegerInRange(alterElement, path, -2, 2) : 0,
   }
@@ -372,7 +372,7 @@ function readPitch(element: XmlElement, path: DocumentPath): Pitch {
 
 function readInteger(element: XmlElement, path: DocumentPath): number {
   // Deliberately stricter than Number(), which reads "0x10" as 16 and "1e3"
-  // as 1000 — reinterpreting a score's digits is the kind of guessing this
+  // as 1000. Reinterpreting a score's digits is the kind of guessing this
   // converter exists to avoid.
   const text = trimmedText(element)
   const value = Number(text)
