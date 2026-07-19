@@ -418,6 +418,22 @@ function readNote(
   }
 
   const brackets = tupletBrackets(element)
+
+  // A tremolo written across two notes gives each of them the value of the
+  // pair while the pair lasts only one of them, so its written values
+  // overfill the measure exactly as a tuplet's do. MNX states it as a
+  // multi-note tremolo, which is not converted yet, and emitting the written
+  // values on their own would hand back a measure that does not add up.
+  if (hasMultiNoteTremolo(element)) {
+    throw new MusicXMLError('A tremolo written across two notes is not converted yet.', {
+      path,
+      line: element.line,
+    })
+  }
+
+  // A tremolo on a single note carries no <time-modification> and lasts what
+  // it is written as, so only the ornament itself is lost, and that is
+  // reported where <ornaments> is.
   const ratio = child(element, 'time-modification')
 
   // A tuplet is bracketed in the source, and that bracket is what says where
@@ -560,6 +576,17 @@ function readSlurs(
       )
     }
   }
+}
+
+function hasMultiNoteTremolo(element: XmlElement): boolean {
+  return children(element, 'notations').some((notations) =>
+    children(notations, 'ornaments').some((ornaments) =>
+      children(ornaments, 'tremolo').some((tremolo) => {
+        const type = attribute(tremolo, 'type')
+        return type === 'start' || type === 'stop'
+      }),
+    ),
+  )
 }
 
 /**

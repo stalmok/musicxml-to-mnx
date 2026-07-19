@@ -172,6 +172,31 @@ describe('tuplets', () => {
     expect(readFailure(measure(tupletNote('C', 4, 'eighth'))).message).toContain('bracket')
   })
 
+  // A tremolo written across two notes carries <time-modification> as well,
+  // and its written values overfill the measure exactly as a tuplet's do.
+  test('rejects a tremolo written across two notes rather than reading it as a tuplet', () => {
+    const tremolo =
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>12</duration>' +
+      '<type>half</type><time-modification><actual-notes>2</actual-notes>' +
+      '<normal-notes>1</normal-notes></time-modification>' +
+      '<notations><ornaments><tremolo type="start">3</tremolo></ornaments></notations></note>'
+
+    expect(readFailure(measure(tremolo)).message).toContain('tremolo written across two notes')
+  })
+
+  // One written on a single note lasts what it is written as, so only the
+  // ornament is lost.
+  test('converts a note carrying a tremolo of its own', () => {
+    const tremolo =
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>24</duration>' +
+      '<type>half</type>' +
+      '<notations><ornaments><tremolo type="single">3</tremolo></ornaments></notations></note>'
+    const { content, warnings } = read(measure(tremolo))
+
+    expect(content?.[0]?.kind === 'event' && content[0].value).toEqual({ base: 'half', dots: 0 })
+    expect(warnings.map((w) => w.message)).toContain('<ornaments> is not converted yet.')
+  })
+
   test('rejects a tuplet opening on a note that states no ratio', () => {
     const noRatio =
       '<note><rest/><duration>4</duration><type>eighth</type>' +

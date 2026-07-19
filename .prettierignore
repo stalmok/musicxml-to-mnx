@@ -8,7 +8,7 @@ pnpm-lock.yaml
 .remember
 
 # Vendored songs, kept byte-for-byte as retrieved (see tests/corpus/PROVENANCE.md)
-tests/corpus/*.musicxml
+tests/corpus/*.mxl
 
 # Vendored spec artefacts: keep upstream bytes pristine (integrity pinned in
 # the neighbouring PROVENANCE.md)

@@ -18,24 +18,47 @@
 // that says the wrong thing about the music.
 
 import { describe, expect, test } from 'vitest'
-import { readFileSync, readdirSync } from 'node:fs'
-import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { convertMusicXML } from '../src/index.js'
 import type { MNXDocument, MNXNoteValue, MNXSequenceItem } from '../src/index.js'
 import { parseXmlRoot } from '../src/xml/parse.js'
 import type { XmlElement } from '../src/xml/parse.js'
 import { schemaErrors } from './support/schema.js'
+import { songs } from './support/corpus.js'
 import baseline from './corpus/warning-baseline.json' with { type: 'json' }
 
-const corpusDir = fileURLToPath(new URL('./corpus', import.meta.url))
+// Converted once each, up front. Every check below reads the same result,
+// rather than converting the same song six times over.
+const attempted = songs().map((song) => {
+  try {
+    return { ...song, ...convertMusicXML(song.source), rejected: undefined }
+  } catch (error) {
+    return { ...song, rejected: error instanceof Error ? error.message : String(error) }
+  }
+})
 
-const songs = readdirSync(corpusDir)
-  .filter((name) => name.endsWith('.musicxml'))
-  .map((name) => ({ name: name.replace('.musicxml', ''), path: join(corpusDir, name) }))
+const converted = attempted.filter((song) => song.rejected === undefined)
 
-test('there are songs to convert', () => {
-  expect(songs.length).toBeGreaterThan(0)
+test('the whole corpus is present', () => {
+  expect(attempted.length).toBe(Object.keys(baseline).length)
+  expect(attempted.length).toBeGreaterThan(40)
+})
+
+// A song is refused only where converting it would mean handing back music
+// the source did not write. Which songs those are is pinned here, so that one
+// starting or ceasing to convert is a change somebody chose.
+test('refuses only the songs it is known to refuse', () => {
+  const refused = attempted
+    .filter((song) => song.rejected !== undefined)
+    // Without the location, which moves whenever a file is re-exported.
+    .map((song) => `${song.name}: ${(song.rejected ?? '').split(' (at ')[0] ?? ''}`)
+
+  expect(refused.sort()).toEqual(
+    [
+      'berlioz-2-le-spectre-de-la-rose',
+      'davies-5-the-fly-and-the-humble-bee',
+      'jaell-5-en-ramant',
+    ].map((name) => `${name}: A tremolo written across two notes is not converted yet.`),
+  )
 })
 
 // How long a written note value lasts, as a fraction of a whole note. Kept
@@ -181,53 +204,47 @@ function sourceMeasureLengths(root: XmlElement): number[][] {
   return perPart
 }
 
-describe.each(songs)('$name', ({ path }) => {
-  const source = readFileSync(path, 'utf8')
-
-  test('converts without rejecting the file', () => {
-    expect(() => convertMusicXML(source)).not.toThrow()
-  })
-
+describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   test('produces MNX the spec schema accepts', () => {
-    expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A voice may legitimately stop before the barline, so being short is fine.
-  // Running past it is not: it means time was invented.
+  // Running past the end is not: it means time was invented.
+  //
+  // Measured against the source's own measure rather than the time signature,
+  // because real scores contain measures that do not match it. One song here
+  // writes five quarters in a 3/4 bar, and the converter carrying that over
+  // faithfully is right.
   test('never writes a voice past the end of its measure', () => {
-    const { mnx } = convertMusicXML(source)
+    const lengths = sourceMeasureLengths(parseXmlRoot(source))
     const overfull: string[] = []
-    let time = { count: 4, unit: 4 }
 
     mnx.parts.forEach((part, partIndex) => {
       part.measures.forEach((measure, index) => {
-        time = mnx.global.measures[index]?.time ?? time
-        const barLength = time.count / time.unit
+        const inSource = lengths[partIndex]?.[index] ?? 0
 
         measure.sequences.forEach((sequence, voice) => {
           if (sequence.fullMeasure) return
           const total = sequence.content.reduce((sum, item) => sum + sounding(item), 0)
-          if (total > barLength + 1e-9) {
+          if (total > inSource + 1e-9) {
             overfull.push(
               `part ${String(partIndex + 1)} measure ${String(index + 1)} voice ` +
-                `${String(voice + 1)}: ${String(total)} against a bar of ${String(barLength)}`,
+                `${String(voice + 1)}: ${String(total)} against ${String(inSource)} in the source`,
             )
           }
         })
       })
     })
 
-    expect(overfull).toEqual([])
+    expect(overfull.slice(0, 5)).toEqual([])
   })
 
   test('keeps every pitch the source wrote, in order', () => {
-    const { mnx } = convertMusicXML(source)
-
     expect(pitchesOf(mnx)).toEqual(sourcePitches(parseXmlRoot(source)))
   })
 
   test('sounds for as long as the source does, measure by measure', () => {
-    const { mnx } = convertMusicXML(source)
     const expected = sourceMeasureLengths(parseXmlRoot(source))
     const disagreements: string[] = []
 
@@ -259,16 +276,13 @@ describe.each(songs)('$name', ({ path }) => {
   // Losses may only shrink. A rise means something stopped being converted
   // that used to be; a fall means the baseline is due an update.
   test('loses no more than the recorded baseline', () => {
-    const { warnings } = convertMusicXML(source)
     const counts: Record<string, number> = {}
     for (const warning of warnings) {
       const element = /<([a-z-]+)>/.exec(warning.message)?.[1] ?? warning.code
       counts[element] = (counts[element] ?? 0) + 1
     }
 
-    const recorded = (baseline as Record<string, Record<string, number>>)[
-      path.split('/').at(-1)?.replace('.musicxml', '') ?? ''
-    ]
+    const recorded = (baseline as Record<string, Record<string, number>>)[name]
     expect(recorded).toBeDefined()
 
     const risen = Object.entries(counts).filter(
