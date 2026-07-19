@@ -125,8 +125,20 @@ export interface MNXPositionedClef {
   clef: MNXClef
 }
 
+/** Which way a hook points away from its note. */
+export type MNXBeamHookDirection = 'left' | 'right' | 'auto'
+
+export interface MNXBeam {
+  events: string[]
+  /** The secondary beams under this one. */
+  beams?: MNXBeam[]
+  /** Present on a beam of one event, which is a hook. */
+  direction?: MNXBeamHookDirection
+}
+
 export interface MNXPartMeasure {
   clefs?: MNXPositionedClef[]
+  beams?: MNXBeam[]
   sequences: MNXSequence[]
 }
 

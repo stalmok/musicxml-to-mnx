@@ -226,6 +226,29 @@ describe('tuplets', () => {
   })
 })
 
+describe('beam levels', () => {
+  const beamed = (level: string) =>
+    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+    `<type>eighth</type><beam number="${level}">begin</beam></note>`
+
+  test('reads a beam that states no level as the first one', () => {
+    const { content } = read(
+      measure(
+        '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+          '<type>eighth</type><beam>begin</beam></note>' +
+          '<note><pitch><step>D</step><octave>4</octave></pitch><duration>4</duration>' +
+          '<type>eighth</type><beam>end</beam></note>',
+      ),
+    )
+
+    expect(content).toHaveLength(2)
+  })
+
+  test.each(['0', '99', 'first'])('rejects "%s" as a beam level', (level) => {
+    expect(readFailure(measure(beamed(level))).message).toContain('not a beam level')
+  })
+})
+
 describe('grace notes', () => {
   const grace = (step: string, extra = '') =>
     `<note><grace${extra}/><pitch><step>${step}</step><octave>5</octave></pitch>` +

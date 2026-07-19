@@ -2,7 +2,6 @@
   "abbott-think-of-today": {
     "stem": 604,
     "staff": 515,
-    "beam": 214,
     "lyric": 124,
     "accidental": 74,
     "direction": 19,
@@ -15,7 +14,6 @@
   "arne-love-relaps-d": {
     "stem": 427,
     "staff": 305,
-    "beam": 150,
     "lyric": 129,
     "accidental": 41,
     "note": 36,
@@ -34,7 +32,6 @@
     "stem": 1538,
     "staff": 1391,
     "lyric": 370,
-    "beam": 352,
     "articulations": 176,
     "direction": 81,
     "accidental": 34,
@@ -54,7 +51,6 @@
     "accidental": 110,
     "direction": 84,
     "articulations": 19,
-    "beam": 11,
     "fermata": 4,
     "cue": 2,
     "barline": 2,
@@ -64,7 +60,6 @@
   },
   "beethoven-2-feuerfarb": {
     "stem": 522,
-    "beam": 470,
     "staff": 446,
     "lyric": 264,
     "accidental": 29,
@@ -82,7 +77,6 @@
   },
   "berlioz-2-le-spectre-de-la-rose": {},
   "bishop-sappho-at-her-loom": {
-    "beam": 1399,
     "stem": 1082,
     "staff": 898,
     "lyric": 164,
@@ -101,7 +95,6 @@
   "bonis-le-chat-sur-le-toit-op-93": {
     "stem": 1038,
     "staff": 978,
-    "beam": 556,
     "accidental": 421,
     "lyric": 162,
     "direction": 128,
@@ -120,7 +113,6 @@
     "staves": 1
   },
   "boulton-4-truant-wings": {
-    "beam": 1761,
     "stem": 1249,
     "staff": 1166,
     "lyric": 181,
@@ -139,7 +131,6 @@
     "stem": 253,
     "staff": 205,
     "lyric": 90,
-    "beam": 38,
     "direction": 10,
     "print": 8,
     "credit": 5,
@@ -155,7 +146,6 @@
   "browne-the-reply-of-the-messenger-bird": {
     "stem": 836,
     "staff": 747,
-    "beam": 288,
     "lyric": 154,
     "articulations": 39,
     "accidental": 23,
@@ -172,7 +162,6 @@
   "butterworth-1-bredon-hill": {
     "stem": 1471,
     "staff": 1456,
-    "beam": 813,
     "lyric": 224,
     "accidental": 162,
     "direction": 140,
@@ -191,7 +180,6 @@
   "chabrier-chanson-pour-jeanne": {
     "stem": 1360,
     "staff": 1190,
-    "beam": 580,
     "note": 279,
     "direction": 223,
     "lyric": 179,
@@ -210,7 +198,6 @@
   "chausson-7-le-colibri": {
     "stem": 943,
     "staff": 803,
-    "beam": 157,
     "lyric": 149,
     "accidental": 87,
     "direction": 63,
@@ -229,7 +216,6 @@
   "coleridge-taylor-5-unmindful-of-the-roses": {
     "stem": 746,
     "staff": 733,
-    "beam": 206,
     "articulations": 163,
     "accidental": 126,
     "direction": 77,
@@ -245,7 +231,6 @@
   "cornelius-1-in-lust-und-schmerzen": {
     "staff": 2109,
     "stem": 1857,
-    "beam": 1735,
     "note": 1616,
     "lyric": 392,
     "accidental": 257,
@@ -277,7 +262,6 @@
     "stem": 838,
     "staff": 744,
     "direction": 125,
-    "beam": 92,
     "lyric": 84,
     "accidental": 49,
     "print": 24,
@@ -299,7 +283,6 @@
     "stem": 1504,
     "staff": 1420,
     "lyric": 394,
-    "beam": 324,
     "direction": 237,
     "accidental": 130,
     "articulations": 55,
@@ -315,7 +298,6 @@
   "faltis-3-sprich": {
     "stem": 889,
     "staff": 866,
-    "beam": 507,
     "accidental": 217,
     "articulations": 164,
     "note": 160,
@@ -332,7 +314,6 @@
   "faure-4-a-clymene": {
     "staff": 1032,
     "stem": 991,
-    "beam": 524,
     "direction": 211,
     "accidental": 196,
     "lyric": 120,
@@ -350,7 +331,6 @@
   "flegier-le-cor": {
     "stem": 1610,
     "staff": 1513,
-    "beam": 616,
     "lyric": 422,
     "note": 372,
     "direction": 178,
@@ -372,7 +352,6 @@
     "stem": 482,
     "staff": 381,
     "lyric": 112,
-    "beam": 97,
     "accidental": 68,
     "articulations": 56,
     "direction": 43,
@@ -390,7 +369,6 @@
   "gail-les-langueurs": {
     "stem": 868,
     "staff": 613,
-    "beam": 354,
     "lyric": 295,
     "accidental": 59,
     "barline": 17,
@@ -403,7 +381,6 @@
   "german-2-the-dew-upon-the-lily": {
     "stem": 843,
     "staff": 726,
-    "beam": 332,
     "direction": 137,
     "lyric": 124,
     "accidental": 16,
@@ -419,7 +396,6 @@
   "gounod-5-le-lever": {
     "stem": 2024,
     "staff": 1981,
-    "beam": 824,
     "lyric": 262,
     "direction": 69,
     "accidental": 17,
@@ -433,7 +409,6 @@
   "gray-then-and-now": {
     "stem": 1239,
     "staff": 1045,
-    "beam": 548,
     "lyric": 251,
     "accidental": 80,
     "direction": 48,
@@ -450,7 +425,6 @@
   "guest-the-bonnie-wee-wife": {
     "stem": 2254,
     "staff": 1870,
-    "beam": 1449,
     "articulations": 417,
     "lyric": 333,
     "accidental": 96,
@@ -467,7 +441,6 @@
   "hahn-a-chloris": {
     "stem": 832,
     "staff": 714,
-    "beam": 379,
     "lyric": 111,
     "note": 87,
     "accidental": 40,
@@ -483,7 +456,6 @@
     "staves": 1
   },
   "haydn-5-sympathy-hob-xxvia33": {
-    "beam": 1389,
     "stem": 1084,
     "staff": 1033,
     "articulations": 118,
@@ -502,7 +474,6 @@
   "hodges-dreams": {
     "stem": 1721,
     "staff": 1506,
-    "beam": 688,
     "lyric": 269,
     "accidental": 107,
     "direction": 69,
@@ -517,7 +488,6 @@
   "hopekirk-my-lady-of-sleep": {
     "stem": 1009,
     "staff": 821,
-    "beam": 217,
     "lyric": 170,
     "direction": 70,
     "accidental": 31,
@@ -532,7 +502,6 @@
     "stem": 522,
     "staff": 451,
     "accidental": 134,
-    "beam": 123,
     "lyric": 85,
     "direction": 64,
     "print": 14,
@@ -552,7 +521,6 @@
   "kinkel-2-nachtliche-fahrt": {
     "stem": 898,
     "staff": 790,
-    "beam": 538,
     "lyric": 184,
     "accidental": 54,
     "direction": 35,
@@ -570,7 +538,6 @@
     "stem": 287,
     "staff": 248,
     "lyric": 215,
-    "beam": 32,
     "direction": 30,
     "accidental": 18,
     "barline": 8,
@@ -585,7 +552,6 @@
   "lehmann-the-highland-plaid": {
     "stem": 921,
     "staff": 793,
-    "beam": 225,
     "lyric": 171,
     "accidental": 22,
     "direction": 15,
@@ -600,7 +566,6 @@
   "leoncavallo-mattinata": {
     "stem": 680,
     "staff": 616,
-    "beam": 447,
     "articulations": 180,
     "note": 177,
     "lyric": 106,
@@ -624,7 +589,6 @@
     "direction": 66,
     "barline": 25,
     "unsupported:measure-label": 15,
-    "beam": 7,
     "work": 1,
     "identification": 1,
     "staves": 1
@@ -632,7 +596,6 @@
   "mackenzie-5-april-weather": {
     "stem": 924,
     "staff": 793,
-    "beam": 356,
     "direction": 166,
     "accidental": 119,
     "lyric": 109,
@@ -649,7 +612,6 @@
   },
   "marshall-behold-the-sun-in-gold-descending": {
     "stem": 1448,
-    "beam": 824,
     "staff": 721,
     "lyric": 572,
     "direction": 182,
@@ -667,7 +629,6 @@
   "mayer-2-o-lass-mich-dein-gedenken": {
     "stem": 747,
     "staff": 680,
-    "beam": 381,
     "note": 273,
     "lyric": 196,
     "accidental": 30,
@@ -684,7 +645,6 @@
   "mounsey-bartholomew-4-the-warrior-boy": {
     "stem": 1346,
     "staff": 1196,
-    "beam": 1068,
     "lyric": 190,
     "accidental": 166,
     "direction": 28,
@@ -703,7 +663,6 @@
     "staff": 519,
     "accidental": 112,
     "lyric": 102,
-    "beam": 46,
     "direction": 38,
     "barline": 2,
     "unclosed:spanner": 2,
@@ -718,7 +677,6 @@
     "staff": 340,
     "lyric": 114,
     "direction": 68,
-    "beam": 43,
     "accidental": 30,
     "print": 22,
     "credit": 6,
@@ -737,7 +695,6 @@
     "stem": 2239,
     "staff": 1362,
     "lyric": 1061,
-    "beam": 338,
     "direction": 333,
     "accidental": 247,
     "articulations": 177,
@@ -753,7 +710,6 @@
   "schubert-5-der-lindenbaum": {
     "stem": 1665,
     "staff": 1540,
-    "beam": 1455,
     "note": 625,
     "lyric": 188,
     "direction": 99,
@@ -773,7 +729,6 @@
   "schumann-1-ich-stand-in-dunklen-traumen": {
     "stem": 935,
     "staff": 855,
-    "beam": 442,
     "lyric": 83,
     "accidental": 55,
     "direction": 48,
@@ -788,7 +743,6 @@
     "staves": 1
   },
   "schumann-1-im-wunderschonen-monat-mai": {
-    "beam": 473,
     "stem": 412,
     "staff": 388,
     "lyric": 58,

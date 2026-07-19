@@ -64,6 +64,10 @@ differs from plain 1, 2, 3, so a pickup measure keeps its number.
 Tuplets, including nested ones, and grace notes, which are gathered into
 groups and keep out of the measure's time.
 
+Beams, including secondary beams and hooks. MusicXML puts them on the notes,
+one marking per beam level; MNX states them over the measure as a tree, and
+that is what gets built.
+
 Ties and slurs, joined up across barlines. MusicXML marks both ends and leaves
 the connection implied; MNX states it once, on the end where it begins, as a
 reference to the end where it finishes. Anything with only one of its two ends
@@ -75,17 +79,17 @@ recovered from its duration where none is written, and time a voice passes
 over in silence is stated as a space. A rest filling its measure becomes what
 MNX states it as, rather than being given an invented note value.
 
-Planned for v1: multi-staff parts, beams including secondary breaks and hooks,
-lyrics, dynamics, hairpins, tempo, articulations, repeat barlines and endings,
-and octave shifts.
+Planned for v1: multi-staff parts, lyrics, dynamics, hairpins, tempo,
+articulations, repeat barlines and endings, and octave shifts.
 
 Constructs that MNX cannot express at all, such as pedal marks and percent
 repeats, will always surface as warnings rather than silent loss. Out of scope
 for v1: percussion, chord symbols, transposing-instrument handling, and
 `score-timewise` documents, which are rejected with a clear error.
 
-**What is rejected rather than half-converted:** a tuplet whose extent the
-source does not bracket. MusicXML states a tuplet twice, as a ratio on every
+**What is rejected rather than half-converted:** a tremolo written across two
+notes, whose written values overfill the measure exactly as a tuplet's do, and
+a tuplet whose extent the source does not bracket. MusicXML states a tuplet twice, as a ratio on every
 note and as a bracket around them, and without the bracket there is nothing to
 say where one tuplet ends and the next begins. Guessing would invent a
 grouping the source never wrote.

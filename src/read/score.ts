@@ -39,6 +39,7 @@ import {
   trimmedText,
 } from '../xml/tree.js'
 import { describeLength, describeValue, lengthOf, noteValueOf } from './duration.js'
+import { buildBeams } from './beams.js'
 import { IdGenerator, SpannerResolver } from './spanners.js'
 import { MeasureBuilder } from './voices.js'
 
@@ -105,6 +106,7 @@ const HANDLED_IN_NOTE: ReadonlySet<string> = new Set([
   'time-modification',
   'tie',
   'notations',
+  'beam',
 ])
 // <notations> holds a mixture: some of it is converted, most is not yet. It
 // is reported item by item rather than wholesale, so the loss report does not
@@ -296,8 +298,12 @@ function readMeasure(
 
   builder.checkAllClosed(measurePath, element.line)
 
+  // Beams are stated over the measure in MNX rather than on the notes, and
+  // each voice is beamed on its own.
+  const beams = builder.beamedEvents().flatMap((events) => buildBeams(events))
+
   return {
-    measure: { clefs, sequences: builder.sequences() },
+    measure: { clefs, beams, sequences: builder.sequences() },
     // Only worth carrying when it differs from where the measure sits;
     // otherwise MNX's implicit numbering already says it.
     global: { key, time, number: stated !== position ? stated : undefined },
@@ -500,6 +506,7 @@ function readNote(
 
   for (const note of notes) readTies(element, note, state, warnings, context)
   readSlurs(element, event, state, warnings, context)
+  builder.addBeamMarkers(voice, event.id, beamMarkers(element, path))
 
   closeTuplets(builder, voice, brackets, path, element.line)
 }
@@ -576,6 +583,34 @@ function readSlurs(
       )
     }
   }
+}
+
+/**
+ * What a note says about its beams, by level. A note carries one <beam> per
+ * level it is beamed at, so all of them are read: level 1 is the eighth-note
+ * beam, level 2 the sixteenth, and so on.
+ */
+function beamMarkers(element: XmlElement, path: DocumentPath): ReadonlyMap<number, string> {
+  const markers = new Map<number, string>()
+  for (const beam of children(element, 'beam')) {
+    // The level is the attribute; the element's own text says what the beam
+    // does there, as "begin" or "end".
+    const stated = attribute(beam, 'number')
+    if (stated === undefined) {
+      markers.set(1, trimmedText(beam))
+      continue
+    }
+
+    const level = Number(stated)
+    if (!/^\d+$/.test(stated) || level < 1 || level > 8) {
+      throw new MusicXMLError(`A <beam> is at level "${stated}", which is not a beam level.`, {
+        path,
+        line: beam.line,
+      })
+    }
+    markers.set(level, trimmedText(beam))
+  }
+  return markers
 }
 
 function hasMultiNoteTremolo(element: XmlElement): boolean {

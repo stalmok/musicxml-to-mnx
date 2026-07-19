@@ -492,11 +492,11 @@ describe('reporting what is not converted', () => {
     const { warnings } = read(
       measure(
         '<note><pitch><step>C</step><octave>4</octave></pitch><type>whole</type>' +
-          '<beam number="1">begin</beam></note>',
+          '<stem>up</stem></note>',
       ),
     )
 
-    expect(warnings.map((w) => w.message)).toEqual(['<beam> is not converted yet.'])
+    expect(warnings.map((w) => w.message)).toEqual(['<stem> is not converted yet.'])
   })
 
   // <notations> holds a mixture, and some of it is converted now. Reporting

@@ -138,8 +138,20 @@ export interface Clef {
   staffPosition: number
 }
 
+/**
+ * A beam over several events, with the secondary beams nested inside it. A
+ * beam of one event is a hook, and says which way it points.
+ */
+export interface Beam {
+  events: readonly string[]
+  beams: readonly Beam[]
+  direction: 'left' | 'right' | undefined
+}
+
 export interface Measure {
   clefs: readonly Clef[]
+  /** Stated over the measure rather than on the notes, as MNX has it. */
+  beams: readonly Beam[]
   sequences: readonly Sequence[]
 }
 

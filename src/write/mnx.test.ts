@@ -28,7 +28,11 @@ function scoreOf(
 }
 
 function measureOf(...events: Event[]): Measure {
-  return { clefs: [], sequences: [{ voice: undefined, content: events, fullMeasure: undefined }] }
+  return {
+    clefs: [],
+    beams: [],
+    sequences: [{ voice: undefined, content: events, fullMeasure: undefined }],
+  }
 }
 
 function firstEvent(score: Score) {
@@ -71,6 +75,7 @@ test.each([
     scoreOf(
       {
         clefs: [{ sign: 'F', staffPosition: 2 }],
+        beams: [],
         sequences: [{ voice: undefined, content: [WHOLE_C], fullMeasure: undefined }],
       },
       [{ key: { fifths: -3 }, time: { count: 6, unit: 8 }, number: 0 }],
@@ -123,6 +128,7 @@ describe('measures', () => {
   test('writes clefs when the measure has them', () => {
     const score = scoreOf({
       clefs: [{ sign: 'F', staffPosition: 2 }],
+      beams: [],
       sequences: [{ voice: undefined, content: [WHOLE_C], fullMeasure: undefined }],
     })
 
@@ -165,6 +171,7 @@ describe('ties and slurs', () => {
   function joined(): Score {
     return scoreOf({
       clefs: [],
+      beams: [],
       sequences: [{ voice: undefined, content: [start, target], fullMeasure: undefined }],
     })
   }
@@ -198,11 +205,70 @@ describe('ties and slurs', () => {
   })
 })
 
+describe('beams', () => {
+  const beamed = (): Score => {
+    const first = { ...WHOLE_C, id: 'ev1' }
+    const second = { ...WHOLE_C, id: 'ev2' }
+    return scoreOf({
+      clefs: [],
+      beams: [{ events: ['ev1', 'ev2'], beams: [], direction: undefined }],
+      sequences: [{ voice: undefined, content: [first, second], fullMeasure: undefined }],
+    })
+  }
+
+  test('states the beam over the measure rather than on the notes', () => {
+    expect(writeMnx(beamed()).parts[0]?.measures[0]?.beams).toEqual([{ events: ['ev1', 'ev2'] }])
+  })
+
+  // A beam names its events, so those events have to be named in turn.
+  test('names the events a beam refers to', () => {
+    const content = writeMnx(beamed()).parts[0]?.measures[0]?.sequences[0]?.content ?? []
+
+    expect((content[0] as MNXEvent).id).toBe('ev1')
+    expect((content[1] as MNXEvent).id).toBe('ev2')
+  })
+
+  test('nests secondary beams and marks a hook with its direction', () => {
+    const score = scoreOf({
+      clefs: [],
+      beams: [
+        {
+          events: ['ev1', 'ev2'],
+          beams: [{ events: ['ev1'], beams: [], direction: 'right' }],
+          direction: undefined,
+        },
+      ],
+      sequences: [
+        {
+          voice: undefined,
+          content: [
+            { ...WHOLE_C, id: 'ev1' },
+            { ...WHOLE_C, id: 'ev2' },
+          ],
+          fullMeasure: undefined,
+        },
+      ],
+    })
+
+    expect(writeMnx(score).parts[0]?.measures[0]?.beams).toEqual([
+      { events: ['ev1', 'ev2'], beams: [{ events: ['ev1'], direction: 'right' }] },
+    ])
+  })
+
+  test('writes MNX the spec schema accepts', () => {
+    expect(schemaErrors(writeMnx(beamed()))).toEqual([])
+  })
+})
+
 describe('voices and spaces', () => {
   const gap = { kind: 'space', duration: { num: 1, den: 4 } } as const
 
   function voicedScore(voice: string | undefined, content: SequenceItem[]): Score {
-    return scoreOf({ clefs: [], sequences: [{ voice, content, fullMeasure: undefined }] })
+    return scoreOf({
+      clefs: [],
+      beams: [],
+      sequences: [{ voice, content, fullMeasure: undefined }],
+    })
   }
 
   test('writes a space as a duration and a type, not as a note', () => {
@@ -244,6 +310,7 @@ describe('tuplets and grace groups', () => {
   function itemScore(item: SequenceItem): Score {
     return scoreOf({
       clefs: [],
+      beams: [],
       sequences: [{ voice: undefined, content: [item], fullMeasure: undefined }],
     })
   }
@@ -284,7 +351,11 @@ describe('tuplets and grace groups', () => {
 
 describe('full-measure rests', () => {
   function restingScore(fullMeasure: FullMeasureRest): Score {
-    return scoreOf({ clefs: [], sequences: [{ voice: undefined, content: [], fullMeasure }] })
+    return scoreOf({
+      clefs: [],
+      beams: [],
+      sequences: [{ voice: undefined, content: [], fullMeasure }],
+    })
   }
 
   test('states the rest on the sequence, which then holds no events', () => {

@@ -286,6 +286,15 @@ describe('spanner markings that are not simply a start or a stop', () => {
     )
   })
 
+  test.each([
+    ['tie', '<tie/>'],
+    ['slur', '<notations><slur/></notations>'],
+  ])('reports a %s that states no type at all', (kind, markup) => {
+    const { warnings } = read(measures(DIVISIONS + note('C', markup)))
+
+    expect(warnings.map((w) => w.message)).toContain(`A <${kind}> of type "" is not converted yet.`)
+  })
+
   test('reports a tie it has no reading for', () => {
     const { warnings } = read(measures(DIVISIONS + note('C', '<tie type="let-ring"/>')))
 

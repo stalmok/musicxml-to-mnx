@@ -19,7 +19,7 @@
 
 import { describe, expect, test } from 'vitest'
 import { convertMusicXML } from '../src/index.js'
-import type { MNXDocument, MNXNoteValue, MNXSequenceItem } from '../src/index.js'
+import type { MNXBeam, MNXDocument, MNXNoteValue, MNXSequenceItem } from '../src/index.js'
 import { parseXmlRoot } from '../src/xml/parse.js'
 import type { XmlElement } from '../src/xml/parse.js'
 import { schemaErrors } from './support/schema.js'
@@ -238,6 +238,60 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     })
 
     expect(overfull.slice(0, 5)).toEqual([])
+  })
+
+  // A beam, tie or slur names what it joins, and MNX writes an id only where
+  // something names it. A reference with no named event behind it is a broken
+  // document that the schema cannot see, since it checks the shape of an id
+  // and not whether it leads anywhere.
+  test('every reference leads to something named', () => {
+    const named = new Set<string>()
+    const collect = (items: readonly MNXSequenceItem[]): void => {
+      for (const item of items) {
+        if ('type' in item && (item.type === 'tuplet' || item.type === 'grace')) {
+          collect(item.content)
+          continue
+        }
+        if ('id' in item && item.id !== undefined) named.add(item.id)
+        if ('notes' in item) {
+          for (const note of item.notes ?? []) if (note.id !== undefined) named.add(note.id)
+        }
+      }
+    }
+
+    const referenced: string[] = []
+    const fromBeams = (beams: readonly MNXBeam[]): void => {
+      for (const beam of beams) {
+        referenced.push(...beam.events)
+        fromBeams(beam.beams ?? [])
+      }
+    }
+    const fromSpanners = (items: readonly MNXSequenceItem[]): void => {
+      for (const item of items) {
+        if ('type' in item && (item.type === 'tuplet' || item.type === 'grace')) {
+          fromSpanners(item.content)
+          continue
+        }
+        if ('slurs' in item) referenced.push(...(item.slurs ?? []).map((slur) => slur.target))
+        if ('notes' in item) {
+          for (const note of item.notes ?? []) {
+            referenced.push(...(note.ties ?? []).map((tie) => tie.target))
+          }
+        }
+      }
+    }
+
+    for (const part of mnx.parts) {
+      for (const measure of part.measures) {
+        fromBeams(measure.beams ?? [])
+        for (const sequence of measure.sequences) {
+          collect(sequence.content)
+          fromSpanners(sequence.content)
+        }
+      }
+    }
+
+    expect(referenced.filter((id) => !named.has(id)).slice(0, 5)).toEqual([])
   })
 
   test('keeps every pitch the source wrote, in order', () => {

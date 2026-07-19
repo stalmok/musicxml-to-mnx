@@ -6,6 +6,7 @@
 // than set to null, because MNX distinguishes an absent key from a present one.
 
 import type {
+  Beam,
   Clef,
   Event,
   GlobalMeasure,
@@ -32,6 +33,7 @@ import type {
   MNXNoteValueQuantity,
   MNXSequence,
   MNXSequenceItem,
+  MNXBeam,
 } from '../types/mnx.js'
 
 /** The MNX version this converter emits. */
@@ -65,8 +67,18 @@ function referencedIds(score: Score): ReadonlySet<string> {
       }
     }
   }
+  // A beam names the events it runs over, so those events have to be named
+  // in turn.
+  const fromBeams = (beams: readonly Beam[]): void => {
+    for (const beam of beams) {
+      for (const id of beam.events) targets.add(id)
+      fromBeams(beam.beams)
+    }
+  }
+
   for (const part of score.parts) {
     for (const measure of part.measures) {
+      fromBeams(measure.beams)
       for (const sequence of measure.sequences) walk(sequence.content)
     }
   }
@@ -91,7 +103,16 @@ function writePart(part: Part, referenced: ReadonlySet<string>): MNXPart {
 function writeMeasure(measure: Measure, referenced: ReadonlySet<string>): MNXPartMeasure {
   return {
     ...(measure.clefs.length > 0 ? { clefs: measure.clefs.map(writeClef) } : {}),
+    ...(measure.beams.length > 0 ? { beams: measure.beams.map(writeBeam) } : {}),
     sequences: measure.sequences.map((sequence) => writeSequence(sequence, referenced)),
+  }
+}
+
+function writeBeam(beam: Beam): MNXBeam {
+  return {
+    events: [...beam.events],
+    ...(beam.beams.length > 0 ? { beams: beam.beams.map(writeBeam) } : {}),
+    ...(beam.direction ? { direction: beam.direction } : {}),
   }
 }
 

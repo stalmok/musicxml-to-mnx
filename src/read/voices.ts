@@ -13,6 +13,7 @@ import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
 import { addFractions, compareFractions, fraction, subtractFractions } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
+import type { BeamedEvent } from './beams.js'
 import type {
   Event,
   FullMeasureRest,
@@ -28,6 +29,8 @@ import type {
 const UNNAMED_VOICE = ''
 
 interface VoiceBuilder {
+  /** What each event said about its beams, in the order they were read. */
+  beamed: BeamedEvent[]
   /**
    * The item lists currently being filled, outermost first. A tuplet or a
    * grace group opens a new one, so notes land inside it until it closes.
@@ -187,6 +190,20 @@ export class MeasureBuilder {
     builder.open.push(content)
   }
 
+  /** Records what an event said about the beams it carries. */
+  addBeamMarkers(
+    voice: string | undefined,
+    id: string,
+    markers: ReadonlyMap<number, string>,
+  ): void {
+    if (markers.size > 0) this.#builderFor(voice).beamed.push({ id, markers })
+  }
+
+  /** What every voice said about its beams, voice by voice. */
+  beamedEvents(): BeamedEvent[][] {
+    return [...this.#voices.values()].map((builder) => builder.beamed)
+  }
+
   /** Whether this voice is currently inside a tuplet. */
   insideTuplet(voice: string | undefined): boolean {
     return this.#builderFor(voice).open.length > 1
@@ -253,6 +270,7 @@ export class MeasureBuilder {
 
     const content: SequenceItem[] = []
     const created: VoiceBuilder = {
+      beamed: [],
       open: [content],
       content,
       end: fraction(0),
