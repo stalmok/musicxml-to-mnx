@@ -87,6 +87,23 @@ describe('conversion output the schema has to accept', () => {
     'a rest filling the measure':
       '<attributes><divisions>4</divisions></attributes>' +
       '<note><rest measure="yes"/><duration>16</duration></note>',
+    'a triplet':
+      '<attributes><divisions>12</divisions></attributes>' +
+      ['start', '', 'stop']
+        .map(
+          (bracket) =>
+            '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+            '<type>eighth</type><time-modification><actual-notes>3</actual-notes>' +
+            '<normal-notes>2</normal-notes></time-modification>' +
+            (bracket ? `<notations><tuplet type="${bracket}"/></notations>` : '') +
+            '</note>',
+        )
+        .join(''),
+    'a grace note':
+      '<attributes><divisions>4</divisions></attributes>' +
+      '<note><grace slash="yes"/><pitch><step>B</step><octave>4</octave></pitch>' +
+      '<type>eighth</type></note>' +
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration></note>',
     'a value recovered from its duration':
       '<attributes><divisions>4</divisions></attributes>' +
       '<note><rest/><duration>6</duration></note>',

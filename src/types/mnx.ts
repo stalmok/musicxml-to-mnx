@@ -64,7 +64,30 @@ export interface MNXSpace {
   duration: [number, number]
 }
 
-export type MNXSequenceItem = MNXEvent | MNXSpace
+/** A count of note values, as in "three eighths". */
+export interface MNXNoteValueQuantity {
+  duration: MNXNoteValue
+  multiple: number
+}
+
+/** Notes played in the time of a different number of them. */
+export interface MNXTuplet {
+  type: 'tuplet'
+  /** What is played. */
+  inner: MNXNoteValueQuantity
+  /** The space it is played in. */
+  outer: MNXNoteValueQuantity
+  content: MNXSequenceItem[]
+}
+
+/** Notes squeezed in before the beat, taking none of the measure's time. */
+export interface MNXGraceGroup {
+  type: 'grace'
+  content: MNXEvent[]
+  slash?: boolean
+}
+
+export type MNXSequenceItem = MNXEvent | MNXSpace | MNXTuplet | MNXGraceGroup
 
 export interface MNXSequence {
   /** The voice this sequence belongs to, where a measure holds more than one. */

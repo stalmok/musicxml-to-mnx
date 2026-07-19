@@ -15,6 +15,7 @@ import type {
   Part,
   Pitch,
   Score,
+  NoteValueQuantity,
   Sequence,
   SequenceItem,
 } from '../model/score.js'
@@ -28,6 +29,7 @@ import type {
   MNXPartMeasure,
   MNXPitch,
   MNXPositionedClef,
+  MNXNoteValueQuantity,
   MNXSequence,
   MNXSequenceItem,
 } from '../types/mnx.js'
@@ -86,12 +88,34 @@ function writeSequence(sequence: Sequence): MNXSequence {
 }
 
 function writeItem(item: SequenceItem): MNXSequenceItem {
-  // A space is time the voice passes over without sounding. MNX writes a
-  // duration as a [numerator, denominator] pair.
-  if (item.kind === 'space') {
-    return { type: 'space', duration: [item.duration.num, item.duration.den] }
+  switch (item.kind) {
+    // A space is time the voice passes over without sounding. MNX writes a
+    // duration as a [numerator, denominator] pair.
+    case 'space':
+      return { type: 'space', duration: [item.duration.num, item.duration.den] }
+
+    case 'tuplet':
+      return {
+        type: 'tuplet',
+        inner: writeQuantity(item.inner),
+        outer: writeQuantity(item.outer),
+        content: item.content.map(writeItem),
+      }
+
+    case 'grace':
+      return {
+        type: 'grace',
+        content: item.content.map(writeEvent),
+        ...(item.slashed ? { slash: true } : {}),
+      }
+
+    default:
+      return writeEvent(item)
   }
-  return writeEvent(item)
+}
+
+function writeQuantity(quantity: NoteValueQuantity): MNXNoteValueQuantity {
+  return { duration: writeNoteValue(quantity.value), multiple: quantity.multiple }
 }
 
 function writeEvent(event: Event): MNXEvent {

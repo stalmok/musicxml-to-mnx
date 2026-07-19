@@ -61,6 +61,9 @@ several voices in a measure, clefs (including a second `<attributes>` block
 mid-measure), key and time signatures, part names, and measure numbering that
 differs from plain 1, 2, 3, so a pickup measure keeps its number.
 
+Tuplets, including nested ones, and grace notes, which are gathered into
+groups and keep out of the measure's time.
+
 Timing is followed properly: durations are read in `<divisions>` as exact
 fractions, `<backup>` and `<forward>` move the cursor, a note value is
 recovered from its duration where none is written, and time a voice passes
@@ -68,19 +71,19 @@ over in silence is stated as a space. A rest filling its measure becomes what
 MNX states it as, rather than being given an invented note value.
 
 Planned for v1: multi-staff parts, ties, slurs, beams including secondary
-breaks and hooks, tuplets, grace notes, lyrics, dynamics, hairpins, tempo,
-articulations, repeat barlines and endings, and octave shifts.
+breaks and hooks, lyrics, dynamics, hairpins, tempo, articulations, repeat
+barlines and endings, and octave shifts.
 
 Constructs that MNX cannot express at all, such as pedal marks and percent
 repeats, will always surface as warnings rather than silent loss. Out of scope
 for v1: percussion, chord symbols, transposing-instrument handling, and
 `score-timewise` documents, which are rejected with a clear error.
 
-**What is rejected rather than half-converted:** a note inside a tuplet, since
-its written value is deliberately longer than it sounds and converting it on
-its own would emit a measure that does not add up. Grace notes are left out
-with a warning, which keeps the rest of the measure correct. Both arrive with
-the work that can represent them.
+**What is rejected rather than half-converted:** a tuplet whose extent the
+source does not bracket. MusicXML states a tuplet twice, as a ratio on every
+note and as a bracket around them, and without the bracket there is nothing to
+say where one tuplet ends and the next begins. Guessing would invent a
+grouping the source never wrote.
 
 ---
 

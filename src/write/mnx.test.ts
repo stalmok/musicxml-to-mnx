@@ -162,6 +162,57 @@ describe('voices and spaces', () => {
   })
 })
 
+describe('tuplets and grace groups', () => {
+  const eighths = (multiple: number) => ({ value: { base: 'eighth', dots: 0 } as const, multiple })
+
+  const triplet = {
+    kind: 'tuplet',
+    inner: eighths(3),
+    outer: eighths(2),
+    content: [WHOLE_C, WHOLE_C, WHOLE_C],
+  } as const
+
+  function itemScore(item: SequenceItem): Score {
+    return scoreOf({
+      clefs: [],
+      sequences: [{ voice: undefined, content: [item], fullMeasure: undefined }],
+    })
+  }
+
+  test('states what is played and the space it is played in', () => {
+    const written = writeMnx(itemScore(triplet))
+
+    expect(written.parts[0]?.measures[0]?.sequences[0]?.content[0]).toMatchObject({
+      type: 'tuplet',
+      inner: { multiple: 3, duration: { base: 'eighth' } },
+      outer: { multiple: 2, duration: { base: 'eighth' } },
+    })
+  })
+
+  test('writes a grace group without a slash it does not have', () => {
+    const group = { kind: 'grace', content: [WHOLE_C], slashed: false } as const
+
+    expect(writeMnx(itemScore(group)).parts[0]?.measures[0]?.sequences[0]?.content[0]).toEqual({
+      type: 'grace',
+      content: [{ duration: { base: 'whole' }, notes: [{ pitch: { step: 'C', octave: 4 } }] }],
+    })
+  })
+
+  test('writes the slash when the group is drawn with one', () => {
+    const group = { kind: 'grace', content: [WHOLE_C], slashed: true } as const
+    const written = writeMnx(itemScore(group))
+
+    expect(written.parts[0]?.measures[0]?.sequences[0]?.content[0]).toHaveProperty('slash', true)
+  })
+
+  test.each([
+    ['a tuplet', triplet],
+    ['a grace group', { kind: 'grace', content: [WHOLE_C], slashed: true } as const],
+  ])('writes MNX the spec schema accepts for %s', (_name, item) => {
+    expect(schemaErrors(writeMnx(itemScore(item)))).toEqual([])
+  })
+})
+
 describe('full-measure rests', () => {
   function restingScore(fullMeasure: FullMeasureRest): Score {
     return scoreOf({ clefs: [], sequences: [{ voice: undefined, content: [], fullMeasure }] })

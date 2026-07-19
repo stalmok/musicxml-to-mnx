@@ -20,6 +20,7 @@ import type {
   Note,
   NoteValue,
   NoteValueBase,
+  NoteValueQuantity,
   Part,
   Pitch,
   Score,
@@ -100,6 +101,7 @@ const HANDLED_IN_NOTE: ReadonlySet<string> = new Set([
   'chord',
   'voice',
   'grace',
+  'time-modification',
 ])
 
 interface PartReading {
@@ -270,6 +272,8 @@ function readMeasure(
     }
   }
 
+  builder.checkAllClosed(measurePath, element.line)
+
   return {
     measure: { clefs, sequences: builder.sequences() },
     // Only worth carrying when it differs from where the measure sits;
@@ -372,33 +376,10 @@ function readNote(
   const duration = readDuration(element, state, path)
   const written = readWrittenValue(element, path)
 
-  // A grace note is squeezed in before the beat and takes none of the
-  // measure's time, which is why it carries no <duration>. Until grace groups
-  // are converted it has to be left out; what it must not do in the meantime
-  // is stand in as an ordinary note, which would give it a length it does not
-  // have and shift everything after it.
-  // A tuplet's written value is deliberately longer than it sounds, so
-  // converting the note on its own would emit a measure that does not add up.
-  // The same music without a <type> is already rejected below; this makes the
-  // ordinary case behave the same rather than quietly handing back a wrong
-  // rhythm.
-  if (child(element, 'time-modification')) {
-    throw new MusicXMLError('A note inside a tuplet is not converted yet.', {
-      path,
-      line: element.line,
-    })
-  }
-
-  if (child(element, 'grace')) {
-    warnings.add('unsupported:element', 'A grace note is not converted yet, and is left out.', {
-      ...context,
-      line: element.line,
-    })
-    return
-  }
-
   // A note carrying <chord> sounds with the one before it, so it joins that
-  // event rather than starting another.
+  // event rather than starting another. It is settled first because it is
+  // not an event of its own: it opens no tuplet, and the ratio it repeats
+  // belongs to the event it joins.
   if (child(element, 'chord')) {
     if (!pitchElement) {
       throw new MusicXMLError('A rest cannot be part of a chord.', { path, line: element.line })
@@ -410,7 +391,34 @@ function readNote(
       path,
       element.line,
     )
+    closeTuplets(builder, voice, tupletBrackets(element), path, element.line)
     return
+  }
+
+  const brackets = tupletBrackets(element)
+  const ratio = child(element, 'time-modification')
+
+  // A tuplet is bracketed in the source, and that bracket is what says where
+  // one ends and the next begins. Without it there is nothing to group by,
+  // and guessing would invent a grouping the source never wrote.
+  if (ratio && brackets.length === 0 && !builder.insideTuplet(voice)) {
+    throw new MusicXMLError(
+      'A note carries a tuplet ratio but no <tuplet> bracket marks where the tuplet runs.',
+      { path, line: element.line },
+    )
+  }
+
+  for (const bracket of brackets) {
+    if (bracket === 'start') {
+      if (!ratio) {
+        throw new MusicXMLError('A tuplet starts on a note with no <time-modification>.', {
+          path,
+          line: element.line,
+        })
+      }
+      const quantities = readTupletRatio(ratio, element, path)
+      builder.openTuplet(voice, quantities.inner, quantities.outer)
+    }
   }
 
   // A rest marked as filling the measure is not an event with a length: MNX
@@ -430,9 +438,83 @@ function readNote(
   const notes: Note[] = pitchElement ? [{ pitch: readPitch(pitchElement, path) }] : []
   const event: Event = { kind: 'event', value, notes, isRest: restElement !== undefined }
 
+  // A grace note is squeezed in before the beat and takes none of the
+  // measure's time, which is why it carries no <duration>. It joins a group
+  // rather than standing in the cursor's path.
+  const graceElement = child(element, 'grace')
+  if (graceElement) {
+    builder.addGraceNote(voice, event, attribute(graceElement, 'slash') === 'yes')
+    return
+  }
+
   // Where the source states no <duration>, the written value is how long the
   // note lasts.
   builder.addEvent(voice, event, duration ?? lengthOf(value), path, element.line)
+
+  closeTuplets(builder, voice, brackets, path, element.line)
+}
+
+function closeTuplets(
+  builder: MeasureBuilder,
+  voice: string | undefined,
+  brackets: readonly string[],
+  path: DocumentPath,
+  line: number,
+): void {
+  for (const bracket of brackets) {
+    if (bracket === 'stop') builder.closeTuplet(voice, path, line)
+  }
+}
+
+/**
+ * The tuplet brackets a note carries, in the order they are written. A note
+ * may hold several <notations> blocks, and exporters use that: a tie in one,
+ * a tuplet marker in another.
+ */
+function tupletBrackets(element: XmlElement): readonly string[] {
+  return children(element, 'notations')
+    .flatMap((notations) => children(notations, 'tuplet'))
+    .map((tuplet) => attribute(tuplet, 'type'))
+    .filter((type): type is string => type !== undefined)
+}
+
+/**
+ * What a <time-modification> says is played, and the space it is played in.
+ * The value counted is <normal-type> where the source gives one, and the
+ * note's own written value otherwise.
+ */
+function readTupletRatio(
+  ratio: XmlElement,
+  element: XmlElement,
+  path: DocumentPath,
+): { inner: NoteValueQuantity; outer: NoteValueQuantity } {
+  const played = readIntegerInRange(requireChild(ratio, 'actual-notes', path), path, 1, 1_000)
+  const space = readIntegerInRange(requireChild(ratio, 'normal-notes', path), path, 1, 1_000)
+
+  const normalType = child(ratio, 'normal-type')
+  const value = normalType
+    ? { base: requireNoteValueBase(normalType, path), dots: children(ratio, 'normal-dot').length }
+    : readWrittenValue(element, path)
+
+  if (!value) {
+    throw new MusicXMLError('A tuplet states no note value to count.', {
+      path,
+      line: ratio.line,
+    })
+  }
+
+  return { inner: { value, multiple: played }, outer: { value, multiple: space } }
+}
+
+function requireNoteValueBase(element: XmlElement, path: DocumentPath): NoteValueBase {
+  const base = NOTE_VALUE_BASES.get(trimmedText(element))
+  if (!base) {
+    throw new MusicXMLError(`Unknown note type "${trimmedText(element)}".`, {
+      path,
+      line: element.line,
+    })
+  }
+  return base
 }
 
 /** The duration of a <backup> or <forward>, which must state one. */

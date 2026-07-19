@@ -148,11 +148,12 @@ describe('chords', () => {
 })
 
 // A grace note is squeezed in before the beat and takes no time of its own.
-// Until grace groups are converted it has to be left out, but leaving it in
-// the cursor's path would shift every note after it.
+// What matters here is that it stays out of the cursor's path; what it
+// converts to is covered in tuplets.test.ts.
 describe('grace notes', () => {
   const GRACE =
-    '<note><grace/><pitch><step>D</step><octave>4</octave></pitch><type>eighth</type></note>'
+    '<note><grace/><pitch><step>D</step><octave>4</octave></pitch><type>eighth</type>' +
+    '<voice>1</voice></note>'
 
   test('does not take time from the measure', () => {
     const { measure: result } = read(
@@ -163,19 +164,13 @@ describe('grace notes', () => {
     expect(result?.sequences[1]?.content[0]?.kind).toBe('event')
   })
 
-  test('is left out rather than written as an ordinary note', () => {
+  test('stands beside the note it leads to rather than in the cursor', () => {
     const { measure: result } = read(measure(GRACE + note('C', 1)))
     const content = result?.sequences[0]?.content
 
-    expect(content).toHaveLength(1)
-    // The note that remains is the real one, not the grace note.
-    expect(content?.[0]?.kind === 'event' && content[0].notes[0]?.pitch.step).toBe('C')
-  })
-
-  test('says that it was left out', () => {
-    const { warnings } = read(measure(GRACE + note('C', 1)))
-
-    expect(warnings.some((w) => w.message.includes('grace note'))).toBe(true)
+    expect(content?.map((item) => item.kind)).toEqual(['grace', 'event'])
+    // The event that follows is the real note, at its full value.
+    expect(content?.[1]?.kind === 'event' && content[1].notes[0]?.pitch.step).toBe('C')
   })
 })
 

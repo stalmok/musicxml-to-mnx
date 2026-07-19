@@ -62,7 +62,35 @@ export interface Space {
   duration: Fraction
 }
 
-export type SequenceItem = Event | Space
+/** A count of note values, as in "three eighths". */
+export interface NoteValueQuantity {
+  value: NoteValue
+  multiple: number
+}
+
+/**
+ * Notes played in the time of a different number of them. The events inside
+ * keep the values they are written with; the ratio says how much time they
+ * actually occupy.
+ */
+export interface Tuplet {
+  kind: 'tuplet'
+  /** What is played, for example three eighths. */
+  inner: NoteValueQuantity
+  /** The space they are played in, for example two eighths. */
+  outer: NoteValueQuantity
+  content: readonly SequenceItem[]
+}
+
+/** Notes squeezed in before the beat, taking none of the measure's time. */
+export interface GraceGroup {
+  kind: 'grace'
+  content: readonly Event[]
+  /** True when the group is drawn with a slash through it. */
+  slashed: boolean
+}
+
+export type SequenceItem = Event | Space | Tuplet | GraceGroup
 
 /**
  * A rest that fills its measure, whatever the time signature says that is.

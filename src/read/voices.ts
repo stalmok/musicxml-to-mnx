@@ -13,18 +13,46 @@ import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
 import { addFractions, compareFractions, fraction, subtractFractions } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
-import type { Event, FullMeasureRest, Note, Sequence, SequenceItem } from '../model/score.js'
+import type {
+  Event,
+  FullMeasureRest,
+  GraceGroup,
+  Note,
+  NoteValueQuantity,
+  Sequence,
+  SequenceItem,
+  Tuplet,
+} from '../model/score.js'
 
 /** The name a voice goes under when the source does not give it one. */
 const UNNAMED_VOICE = ''
 
 interface VoiceBuilder {
+  /**
+   * The item lists currently being filled, outermost first. A tuplet or a
+   * grace group opens a new one, so notes land inside it until it closes.
+   */
+  open: SequenceItem[][]
   content: SequenceItem[]
   /** Where this voice's content runs out, measured from the measure start. */
   end: Fraction
-  /** How long the most recent event lasts, for chord notes to agree with. */
+  /**
+   * The most recent event, which a chord note joins. Held directly rather
+   * than looked up, because it can sit inside a tuplet or a grace group that
+   * has since closed.
+   */
+  lastEvent: Event | undefined
+  /** How long that event lasts, for chord notes to agree with. */
   lastDuration: Fraction | undefined
   fullMeasure: FullMeasureRest | undefined
+}
+
+/** The list a note added now would land in: the innermost one still open. */
+function innermost(builder: VoiceBuilder): SequenceItem[] {
+  const list = builder.open.at(-1)
+  /* v8 ignore next -- the root list is never popped, so one is always open. */
+  if (!list) throw new Error('A voice has no open content list.')
+  return list
 }
 
 /**
@@ -77,11 +105,12 @@ export class MeasureBuilder {
       })
     }
     if (compareFractions(gap, fraction(0)) > 0) {
-      builder.content.push({ kind: 'space', duration: gap })
+      innermost(builder).push({ kind: 'space', duration: gap })
     }
 
-    builder.content.push(event)
+    innermost(builder).push(event)
     this.#lastVoice = voice ?? UNNAMED_VOICE
+    builder.lastEvent = event
     builder.lastDuration = duration
     builder.end = addFractions(this.#cursor, duration)
     this.#cursor = builder.end
@@ -99,8 +128,8 @@ export class MeasureBuilder {
     line: number,
   ): void {
     const builder = this.#builderFor(voice ?? this.#lastVoice)
-    const previous = builder.content.at(-1)
-    if (previous?.kind !== 'event') {
+    const previous = builder.lastEvent
+    if (!previous) {
       throw new MusicXMLError('A <note> is marked as a chord with no note for it to join.', {
         path,
         line,
@@ -145,6 +174,66 @@ export class MeasureBuilder {
     if (covering) builder.end = addFractions(this.#cursor, covering)
   }
 
+  /**
+   * Starts a tuplet in this voice. Notes added after it go inside, until it
+   * is closed.
+   */
+  openTuplet(voice: string | undefined, inner: NoteValueQuantity, outer: NoteValueQuantity): void {
+    const builder = this.#builderFor(voice)
+    const content: SequenceItem[] = []
+    const tuplet: Tuplet = { kind: 'tuplet', inner, outer, content }
+
+    innermost(builder).push(tuplet)
+    builder.open.push(content)
+  }
+
+  /** Whether this voice is currently inside a tuplet. */
+  insideTuplet(voice: string | undefined): boolean {
+    return this.#builderFor(voice).open.length > 1
+  }
+
+  closeTuplet(voice: string | undefined, path: DocumentPath, line: number): void {
+    const builder = this.#builderFor(voice)
+    if (builder.open.length < 2) {
+      throw new MusicXMLError('A tuplet is closed where no tuplet is open.', { path, line })
+    }
+    builder.open.pop()
+  }
+
+  /**
+   * Adds a grace note, which takes none of the measure's time. Consecutive
+   * grace notes gather into one group, as they are played and drawn.
+   */
+  addGraceNote(voice: string | undefined, event: Event, slashed: boolean): void {
+    const builder = this.#builderFor(voice)
+    const list = innermost(builder)
+    const previous = list.at(-1)
+
+    builder.lastEvent = event
+    this.#lastVoice = voice ?? UNNAMED_VOICE
+    // Grace notes have no duration of their own, so a chord note joining one
+    // has nothing to agree with.
+    builder.lastDuration = undefined
+
+    if (previous?.kind === 'grace') {
+      previous.content = [...previous.content, event]
+      if (slashed) previous.slashed = true
+      return
+    }
+
+    const group: GraceGroup = { kind: 'grace', content: [event], slashed }
+    list.push(group)
+  }
+
+  /** Reports any tuplet the measure opened and never closed. */
+  checkAllClosed(path: DocumentPath, line: number): void {
+    for (const builder of this.#voices.values()) {
+      if (builder.open.length > 1) {
+        throw new MusicXMLError('A tuplet is opened and never closed.', { path, line })
+      }
+    }
+  }
+
   /** The sequences, in the order their voices first appeared. */
   sequences(): Sequence[] {
     return [...this.#voices].map(([voice, builder]) => ({
@@ -162,9 +251,12 @@ export class MeasureBuilder {
     const existing = this.#voices.get(key)
     if (existing) return existing
 
+    const content: SequenceItem[] = []
     const created: VoiceBuilder = {
-      content: [],
+      open: [content],
+      content,
       end: fraction(0),
+      lastEvent: undefined,
       lastDuration: undefined,
       fullMeasure: undefined,
     }
