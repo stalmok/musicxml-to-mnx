@@ -16,6 +16,7 @@ import type {
   Event,
   GlobalMeasure,
   Key,
+  Lyric,
   Measure,
   Note,
   NoteValue,
@@ -114,6 +115,8 @@ const HANDLED_IN_NOTE: ReadonlySet<string> = new Set([
   'notations',
   'beam',
   'staff',
+  'lyric',
+  'stem',
 ])
 // <notations> holds a mixture: some of it is converted, most is not yet. It
 // is reported item by item rather than wholesale, so the loss report does not
@@ -542,6 +545,8 @@ function readNote(
     staff: undefined,
     value,
     slurs: [],
+    lyrics: readLyrics(element, warnings, context, path),
+    stemDirection: readStemDirection(element, warnings, context),
     notes,
     isRest: restElement !== undefined,
   }
@@ -578,6 +583,62 @@ function closeTuplets(
   for (const bracket of brackets) {
     if (bracket === 'stop') builder.closeTuplet(voice, path, line)
   }
+}
+
+// MusicXML's syllabic values, in MNX's spelling. A syllable standing on its
+// own carries no type in MNX, so "single", and no syllabic at all, map to
+// nothing. Anything outside these is not a syllabic value.
+const LYRIC_TYPES = new Map<string, 'start' | 'middle' | 'end' | undefined>([
+  ['single', undefined],
+  ['begin', 'start'],
+  ['middle', 'middle'],
+  ['end', 'end'],
+])
+
+/** The syllables under a note, one per verse. A note carries one <lyric> each. */
+function readLyrics(
+  element: XmlElement,
+  warnings: WarningCollector,
+  context: WarningContext,
+  path: DocumentPath,
+): Lyric[] {
+  return children(element, 'lyric').map((lyric) => {
+    const line = attribute(lyric, 'number') ?? '1'
+    // The text is meaningful down to the space, so it is not trimmed.
+    const text = requireChild(lyric, 'text', path).text
+
+    const syllabic = child(lyric, 'syllabic')
+    // No <syllabic> means the syllable stands on its own, as "single" does.
+    if (!syllabic) return { line, text, type: undefined }
+
+    const spelling = syllabic.text.trim()
+    if (!LYRIC_TYPES.has(spelling)) {
+      warnings.add('unsupported:element', `A <syllabic> of "${spelling}" is not converted yet.`, {
+        ...context,
+        line: syllabic.line,
+      })
+    }
+    return { line, text, type: LYRIC_TYPES.get(spelling) }
+  })
+}
+
+function readStemDirection(
+  element: XmlElement,
+  warnings: WarningCollector,
+  context: WarningContext,
+): 'up' | 'down' | undefined {
+  const stem = child(element, 'stem')
+  if (!stem) return undefined
+
+  const direction = stem.text.trim()
+  if (direction === 'up' || direction === 'down') return direction
+
+  // MNX states only up or down; "none" and "double" have nowhere to go.
+  warnings.add('unsupported:element', `A <stem> of "${direction}" is not converted yet.`, {
+    ...context,
+    line: stem.line,
+  })
+  return undefined
 }
 
 function readNoteAt(pitchElement: XmlElement, state: PartState, path: DocumentPath): Note {

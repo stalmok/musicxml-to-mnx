@@ -40,6 +40,19 @@ export interface MNXPitch {
 /** Which way a curve bends away from the notes it joins. */
 export type MNXCurveSide = 'up' | 'down'
 
+/** How a syllable joins the word it is part of. */
+export type MNXLyricLineType = 'start' | 'middle' | 'end' | 'whole'
+
+export interface MNXLyricLine {
+  text: string
+  type?: MNXLyricLineType
+}
+
+/** The lyric under an event, its verses keyed by line. */
+export interface MNXLyrics {
+  lines: Record<string, MNXLyricLine>
+}
+
 export interface MNXTie {
   target: string
 }
@@ -68,6 +81,8 @@ export interface MNXEvent {
   staff?: number
   duration: MNXNoteValue
   slurs?: MNXSlur[]
+  lyrics?: MNXLyrics
+  stemDirection?: 'up' | 'down'
   notes?: MNXNote[]
   /** Present, and empty, when the event is a rest. */
   rest?: Record<string, never>

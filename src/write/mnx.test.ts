@@ -14,6 +14,8 @@ const WHOLE_C: Event = {
   staff: undefined,
   value: { base: 'whole', dots: 0 },
   slurs: [],
+  lyrics: [],
+  stemDirection: undefined,
   notes: [{ id: 'note1', pitch: { step: 'C', octave: 4, alter: 0 }, ties: [] }],
   isRest: false,
 }
@@ -54,6 +56,8 @@ test.each([
         staff: undefined,
         value: { base: 'half', dots: 0 },
         slurs: [],
+        lyrics: [],
+        stemDirection: undefined,
         notes: [],
         isRest: true,
       }),
@@ -68,6 +72,8 @@ test.each([
         staff: undefined,
         value: { base: 'quarter', dots: 2 },
         slurs: [],
+        lyrics: [],
+        stemDirection: undefined,
         notes: [{ id: 'note2', pitch: { step: 'B', octave: 3, alter: -1 }, ties: [] }],
         isRest: false,
       }),
@@ -158,6 +164,8 @@ describe('ties and slurs', () => {
     staff: undefined,
     value: { base: 'whole', dots: 0 },
     slurs: [],
+    lyrics: [],
+    stemDirection: undefined,
     notes: [{ id: 'note-target', pitch: { step: 'G', octave: 4, alter: 0 }, ties: [] }],
     isRest: false,
   }
@@ -167,6 +175,8 @@ describe('ties and slurs', () => {
     staff: undefined,
     value: { base: 'whole', dots: 0 },
     slurs: [{ target: 'ev-target', side: 'up' }],
+    lyrics: [],
+    stemDirection: undefined,
     notes: [
       {
         id: 'note-start',
@@ -399,6 +409,8 @@ describe('events', () => {
       staff: undefined,
       value: { base: 'half', dots: 0 },
       slurs: [],
+      lyrics: [],
+      stemDirection: undefined,
       notes: [],
       isRest: true,
     }

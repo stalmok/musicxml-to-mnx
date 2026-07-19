@@ -64,6 +64,9 @@ differs from plain 1, 2, 3, so a pickup measure keeps its number.
 Tuplets, including nested ones, and grace notes, which are gathered into
 groups and keep out of the measure's time.
 
+Lyrics, verse by verse, keyed to each note with the syllable's place in its
+word, and stem directions.
+
 Multi-staff parts: a piano part stays one part, with the staff stated on each
 voice and an override on the events of a voice that reaches across to the
 other hand.

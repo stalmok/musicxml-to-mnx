@@ -1,0 +1,140 @@
+// The words under the notes, and which way a stem points. A note carries one
+// <lyric> per verse, and each says how its syllable joins the ones around it.
+// MNX states the lyric on the event, keyed by verse, with a line type where
+// the syllable is part of a word.
+
+import { describe, expect, test } from 'vitest'
+import { WarningCollector } from '../warnings.js'
+import { parseXmlRoot } from '../xml/parse.js'
+import { readScore } from './score.js'
+import type { Event } from '../model/score.js'
+
+function note(step: string, body = ''): string {
+  return (
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    `<duration>4</duration><type>quarter</type>${body}</note>`
+  )
+}
+
+function lyric(text: string, syllabic = 'single', number = '1'): string {
+  return `<lyric number="${number}"><syllabic>${syllabic}</syllabic><text>${text}</text></lyric>`
+}
+
+function measure(body: string): string {
+  return (
+    '<score-partwise><part id="P1"><measure number="1">' +
+    '<attributes><divisions>4</divisions></attributes>' +
+    `${body}</measure></part></score-partwise>`
+  )
+}
+
+function read(source: string) {
+  const warnings = new WarningCollector()
+  const score = readScore(parseXmlRoot(source), warnings)
+  const events = (score.parts[0]?.measures[0]?.sequences[0]?.content ?? []).filter(
+    (item): item is Event => item.kind === 'event',
+  )
+  return { events, warnings: warnings.list() }
+}
+
+describe('lyrics', () => {
+  test('states the syllable on the event, keyed by verse', () => {
+    const { events } = read(measure(note('C', lyric('Are'))))
+
+    expect(events[0]?.lyrics).toEqual([{ line: '1', text: 'Are', type: undefined }])
+  })
+
+  test('reads a word split across notes as a start, middle and end', () => {
+    const { events } = read(
+      measure(note('C', lyric('Brun', 'begin')) + note('D', lyric('nen', 'end'))),
+    )
+
+    expect(events[0]?.lyrics[0]?.type).toBe('start')
+    expect(events[1]?.lyrics[0]?.type).toBe('end')
+  })
+
+  test('reads a middle syllable', () => {
+    const { events } = read(measure(note('C', lyric('ll', 'middle'))))
+
+    expect(events[0]?.lyrics[0]?.type).toBe('middle')
+  })
+
+  test('leaves the type off a syllable that stands on its own', () => {
+    const { events } = read(measure(note('C', lyric('vor', 'single'))))
+
+    expect(events[0]?.lyrics[0]?.type).toBeUndefined()
+  })
+
+  test('keeps the verses apart by their number', () => {
+    const { events } = read(
+      measure(note('C', lyric('Are', 'single', '1') + lyric('Am', 'single', '2'))),
+    )
+
+    expect(events[0]?.lyrics).toEqual([
+      { line: '1', text: 'Are', type: undefined },
+      { line: '2', text: 'Am', type: undefined },
+    ])
+  })
+
+  test('reads a lyric with no syllabic as standing on its own', () => {
+    const { events } = read(measure(note('C', '<lyric number="1"><text>Ah</text></lyric>')))
+
+    expect(events[0]?.lyrics).toEqual([{ line: '1', text: 'Ah', type: undefined }])
+  })
+
+  test('keeps the text exactly, spaces and all', () => {
+    const { events } = read(measure(note('C', '<lyric number="1"><text>o </text></lyric>')))
+
+    expect(events[0]?.lyrics[0]?.text).toBe('o ')
+  })
+
+  test('reports a syllabic it does not know rather than dropping the type', () => {
+    const { warnings } = read(
+      measure(note('C', '<lyric number="1"><syllabic>trailing</syllabic><text>x</text></lyric>')),
+    )
+
+    expect(warnings.map((w) => w.message)).toContain(
+      'A <syllabic> of "trailing" is not converted yet.',
+    )
+  })
+
+  test('takes a lyric with no verse number as the first verse', () => {
+    const { events } = read(measure(note('C', '<lyric><text>Ah</text></lyric>')))
+
+    expect(events[0]?.lyrics[0]?.line).toBe('1')
+  })
+
+  test('gives a note no lyrics when it carries none', () => {
+    const { events } = read(measure(note('C')))
+
+    expect(events[0]?.lyrics).toEqual([])
+  })
+})
+
+describe('stem direction', () => {
+  test('reads a stem pointing up', () => {
+    const { events } = read(measure(note('C', '<stem>up</stem>')))
+
+    expect(events[0]?.stemDirection).toBe('up')
+  })
+
+  test('reads a stem pointing down', () => {
+    const { events } = read(measure(note('C', '<stem>down</stem>')))
+
+    expect(events[0]?.stemDirection).toBe('down')
+  })
+
+  // MNX states only up or down; "none" and "double" have no place there.
+  test('leaves the direction unset where the stem is neither up nor down', () => {
+    const { events, warnings } = read(measure(note('C', '<stem>none</stem>')))
+
+    expect(events[0]?.stemDirection).toBeUndefined()
+    expect(warnings.map((w) => w.message)).toContain('A <stem> of "none" is not converted yet.')
+  })
+
+  test('leaves the direction unset where there is no stem', () => {
+    const { events } = read(measure(note('C')))
+
+    expect(events[0]?.stemDirection).toBeUndefined()
+  })
+})

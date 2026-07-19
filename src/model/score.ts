@@ -51,6 +51,16 @@ export interface Tie {
   target: string
 }
 
+/**
+ * A syllable of a lyric under an event, on a given verse line. The type says
+ * how the syllable joins the word, and is left off where it stands alone.
+ */
+export interface Lyric {
+  line: string
+  text: string
+  type: 'start' | 'middle' | 'end' | undefined
+}
+
 /** A slur joining this event to a later one. */
 export interface Slur {
   target: string
@@ -72,6 +82,8 @@ export interface Event {
   staff: number | undefined
   value: NoteValue
   slurs: readonly Slur[]
+  lyrics: readonly Lyric[]
+  stemDirection: 'up' | 'down' | undefined
   /** Empty for a rest. More than one note makes it a chord. */
   notes: readonly Note[]
   isRest: boolean

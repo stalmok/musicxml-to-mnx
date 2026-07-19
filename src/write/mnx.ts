@@ -8,6 +8,7 @@
 import type {
   Beam,
   Clef,
+  Lyric,
   Event,
   GlobalMeasure,
   Measure,
@@ -34,6 +35,8 @@ import type {
   MNXSequence,
   MNXSequenceItem,
   MNXBeam,
+  MNXLyricLine,
+  MNXLyrics,
 } from '../types/mnx.js'
 
 /** The MNX version this converter emits. */
@@ -190,7 +193,20 @@ function writeEvent(event: Event, referenced: ReadonlySet<string>): MNXEvent {
           })),
         }
       : {}),
+    ...(event.stemDirection ? { stemDirection: event.stemDirection } : {}),
+    ...(event.lyrics.length > 0 ? { lyrics: writeLyrics(event.lyrics) } : {}),
   }
+}
+
+function writeLyrics(lyrics: readonly Lyric[]): MNXLyrics {
+  const lines: Record<string, MNXLyricLine> = {}
+  for (const lyric of lyrics) {
+    lines[lyric.line] = {
+      text: lyric.text,
+      ...(lyric.type ? { type: lyric.type } : {}),
+    }
+  }
+  return { lines }
 }
 
 function writeNoteValue(value: NoteValue): MNXNoteValue {
