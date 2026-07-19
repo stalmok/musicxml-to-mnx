@@ -148,6 +148,28 @@ describe('slurs', () => {
 })
 
 describe('the ends a spanner is keyed by', () => {
+  // A tie routinely runs between voices, which MNX allows for with a
+  // crossVoice target type, so the voice is not part of the match.
+  test('joins a tie that runs from one voice into another', () => {
+    const voiced = (step: string, voice: string, body: string) =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>4</duration>` +
+      `<type>quarter</type><voice>${voice}</voice>${body}</note>`
+    const collector = new WarningCollector()
+    readScore(
+      parseXmlRoot(
+        measures(
+          DIVISIONS +
+            voiced('C', '1', tied('start')) +
+            '<backup><duration>4</duration></backup>' +
+            voiced('C', '2', tied('stop')),
+        ),
+      ),
+      collector,
+    )
+
+    expect(collector.list().filter((w) => w.code === 'unclosed:spanner')).toEqual([])
+  })
+
   test('tells apart ties of different pitch left open at once', () => {
     const { notes } = read(
       measures(
@@ -164,7 +186,10 @@ describe('the ends a spanner is keyed by', () => {
     expect(g1.ties).toEqual([{ target: g2.id }])
   })
 
-  test('keeps one voice\u2019s slur out of another\u2019s', () => {
+  // In piano writing a slur routinely runs from one hand to the other, which
+  // is a different voice and a different staff. Scoping the number to a voice
+  // breaks every one of those, so it is scoped to the part.
+  test('joins a slur that runs from one voice into another', () => {
     const voiced = (step: string, voice: string, body: string) =>
       `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>4</duration>` +
       `<type>quarter</type><voice>${voice}</voice>${body}</note>`
@@ -175,10 +200,8 @@ describe('the ends a spanner is keyed by', () => {
           measures(
             DIVISIONS +
               voiced('C', '1', slur('start')) +
-              voiced('E', '1', slur('stop')) +
-              '<backup><duration>8</duration></backup>' +
-              voiced('G', '2', slur('start')) +
-              voiced('B', '2', slur('stop')),
+              '<backup><duration>4</duration></backup>' +
+              voiced('G', '2', slur('stop')),
           ),
         ),
         collector,
@@ -186,9 +209,24 @@ describe('the ends a spanner is keyed by', () => {
       return collector.list()
     })()
 
-    // Both voices number their slur 1, and neither should have swallowed the
-    // other's.
     expect(warnings.filter((w) => w.code === 'unclosed:spanner')).toEqual([])
+  })
+
+  test('closes the most recently opened slur when two share a number', () => {
+    const { events } = read(
+      measures(
+        DIVISIONS +
+          note('C', slur('start')) +
+          note('D', slur('start')) +
+          note('E', slur('stop')) +
+          note('F', slur('stop')),
+      ),
+    )
+    const [outer, inner, first, second] = events as [Event, Event, Event, Event]
+
+    // The inner slur closes first, the outer one second.
+    expect(inner.slurs[0]?.target).toBe(first.id)
+    expect(outer.slurs[0]?.target).toBe(second.id)
   })
 })
 

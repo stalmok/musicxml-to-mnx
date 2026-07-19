@@ -412,7 +412,7 @@ function readNote(
     }
     const chordNote = readNoteAt(pitchElement, state, path)
     builder.addChordNote(voice, chordNote, duration, path, element.line)
-    readTies(element, chordNote, voice, state, warnings, context)
+    readTies(element, chordNote, state, warnings, context)
     closeTuplets(builder, voice, tupletBrackets(element), path, element.line)
     return
   }
@@ -473,8 +473,8 @@ function readNote(
   const graceElement = child(element, 'grace')
   if (graceElement) {
     builder.addGraceNote(voice, event, attribute(graceElement, 'slash') === 'yes')
-    for (const note of notes) readTies(element, note, voice, state, warnings, context)
-    readSlurs(element, event, voice, state, warnings, context)
+    for (const note of notes) readTies(element, note, state, warnings, context)
+    readSlurs(element, event, state, warnings, context)
     return
   }
 
@@ -482,8 +482,8 @@ function readNote(
   // note lasts.
   builder.addEvent(voice, event, duration ?? lengthOf(value), path, element.line)
 
-  for (const note of notes) readTies(element, note, voice, state, warnings, context)
-  readSlurs(element, event, voice, state, warnings, context)
+  for (const note of notes) readTies(element, note, state, warnings, context)
+  readSlurs(element, event, state, warnings, context)
 
   closeTuplets(builder, voice, brackets, path, element.line)
 }
@@ -511,15 +511,14 @@ function readNoteAt(pitchElement: XmlElement, state: PartState, path: DocumentPa
 function readTies(
   element: XmlElement,
   note: Note,
-  voice: string | undefined,
   state: PartState,
   warnings: WarningCollector,
   context: WarningContext,
 ): void {
   for (const tie of children(element, 'tie')) {
     const type = attribute(tie, 'type')
-    if (type === 'stop') state.spanners.stopTie(note, voice, warnings, context)
-    else if (type === 'start') state.spanners.startTie(note, voice, context)
+    if (type === 'stop') state.spanners.stopTie(note, warnings, context)
+    else if (type === 'start') state.spanners.startTie(note, context)
     else {
       // MusicXML 4.0 also has "let-ring", which MNX states as a tie's `lv`.
       warnings.add(
@@ -531,11 +530,10 @@ function readTies(
   }
 }
 
-/** Slurs are matched by the number the source gives them. */
+/** Slurs are matched by the number the source gives them, across the part. */
 function readSlurs(
   element: XmlElement,
   event: Event,
-  voice: string | undefined,
   state: PartState,
   warnings: WarningCollector,
   context: WarningContext,
@@ -546,11 +544,11 @@ function readSlurs(
     const type = attribute(slur, 'type')
     const number = attribute(slur, 'number') ?? '1'
     if (type === 'stop') {
-      state.spanners.stopSlur(event, voice, number, warnings, context)
+      state.spanners.stopSlur(event, number, warnings, context)
     } else if (type === 'start') {
       const placement = attribute(slur, 'placement')
       const side = placement === 'above' ? 'up' : placement === 'below' ? 'down' : undefined
-      state.spanners.startSlur(event, voice, number, side, context)
+      state.spanners.startSlur(event, number, side, context)
     } else if (type !== 'continue') {
       // "continue" marks a note partway along a slur. MNX states only where a
       // slur begins and ends, so there is nothing for it to carry, and
