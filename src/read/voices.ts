@@ -34,6 +34,8 @@ interface VoiceBuilder {
 export class MeasureBuilder {
   readonly #voices = new Map<string, VoiceBuilder>()
   #cursor: Fraction = fraction(0)
+  /** The voice of the most recent event, which a chord member joins. */
+  #lastVoice: string | undefined
 
   /** Moves the cursor, as <backup> and <forward> do. */
   shift(by: Fraction, path: DocumentPath, line: number): void {
@@ -59,6 +61,13 @@ export class MeasureBuilder {
     line: number,
   ): void {
     const builder = this.#builderFor(voice)
+    if (builder.fullMeasure) {
+      throw new MusicXMLError('A voice has both a rest that fills the measure and notes in it.', {
+        path,
+        line,
+      })
+    }
+
     const gap = subtractFractions(this.#cursor, builder.end)
 
     if (compareFractions(gap, fraction(0)) < 0) {
@@ -72,6 +81,7 @@ export class MeasureBuilder {
     }
 
     builder.content.push(event)
+    this.#lastVoice = voice ?? UNNAMED_VOICE
     builder.lastDuration = duration
     builder.end = addFractions(this.#cursor, duration)
     this.#cursor = builder.end
@@ -88,7 +98,7 @@ export class MeasureBuilder {
     path: DocumentPath,
     line: number,
   ): void {
-    const builder = this.#builderFor(voice)
+    const builder = this.#builderFor(voice ?? this.#lastVoice)
     const previous = builder.content.at(-1)
     if (previous?.kind !== 'event') {
       throw new MusicXMLError('A <note> is marked as a chord with no note for it to join.', {
@@ -110,19 +120,38 @@ export class MeasureBuilder {
     previous.notes = [...previous.notes, note]
   }
 
-  /** Marks this voice as a rest filling the measure. */
-  setFullMeasure(voice: string | undefined, rest: FullMeasureRest): void {
+  /**
+   * Marks this voice as a rest filling the measure, which then holds nothing
+   * else: MNX states the rest on the sequence instead of as an event, so a
+   * voice cannot be both.
+   */
+  setFullMeasure(
+    voice: string | undefined,
+    rest: FullMeasureRest,
+    covering: Fraction | undefined,
+    path: DocumentPath,
+    line: number,
+  ): void {
     const builder = this.#builderFor(voice)
-    builder.fullMeasure ??= rest
+    if (builder.fullMeasure || builder.content.length > 0) {
+      throw new MusicXMLError('A voice has more than one rest that fills the measure.', {
+        path,
+        line,
+      })
+    }
+
+    builder.fullMeasure = rest
+    // The rest occupies the whole voice, so nothing may follow it there.
+    if (covering) builder.end = addFractions(this.#cursor, covering)
   }
 
   /** The sequences, in the order their voices first appeared. */
   sequences(): Sequence[] {
-    const named = this.#voices.size > 1
     return [...this.#voices].map(([voice, builder]) => ({
-      // With a single voice the name adds nothing, since there is nothing to
-      // tell it apart from.
-      voice: named && voice !== UNNAMED_VOICE ? voice : undefined,
+      // Whenever the source named the voice. MNX treats the name as a label
+      // for the line across the whole score, so deciding it per measure would
+      // give one musical line a different identity from bar to bar.
+      voice: voice === UNNAMED_VOICE ? undefined : voice,
       content: builder.content,
       fullMeasure: builder.fullMeasure,
     }))

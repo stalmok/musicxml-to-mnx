@@ -67,6 +67,32 @@ describe('arithmetic', () => {
   })
 })
 
+// Denominators are reduced against each other before multiplying, not after,
+// so ordinary music does not run into the safe-integer limit. Two <divisions>
+// values in one measure is legal MusicXML, and each one contributes a
+// denominator.
+describe('staying within exact arithmetic', () => {
+  test('adds fractions whose denominators multiply past the safe limit', () => {
+    const a = fraction(1, 2 ** 26)
+    const b = fraction(1, 2 ** 26)
+
+    expect(addFractions(a, b)).toEqual({ num: 1, den: 2 ** 25 })
+  })
+
+  test('multiplies without building a product it does not need', () => {
+    const a = fraction(1, 3 * 2 ** 25)
+    const b = fraction(3 * 2 ** 25, 7)
+
+    expect(multiplyFractions(a, b)).toEqual({ num: 1, den: 7 })
+  })
+
+  test('subtracts to zero rather than overflowing on the way', () => {
+    const a = fraction(1, 3 * 2 ** 25)
+
+    expect(subtractFractions(a, a)).toEqual({ num: 0, den: 1 })
+  })
+})
+
 describe('comparison', () => {
   test('orders two fractions', () => {
     expect(compareFractions(fraction(1, 3), fraction(1, 2))).toBeLessThan(0)

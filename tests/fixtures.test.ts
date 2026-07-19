@@ -66,3 +66,35 @@ describe.each(fixtures)('$name', ({ musicXmlPath, goldenPath }) => {
     expect(warnings).toEqual([])
   })
 })
+
+// The fixture above is one voice in one measure. Real music is not, and the
+// shapes that only appear in harder music (spaces, several sequences, chords,
+// a rest filling the measure) would otherwise never be schema-checked as
+// conversion output.
+describe('conversion output the schema has to accept', () => {
+  const cases: Record<string, string> = {
+    'two voices, one entering late':
+      '<attributes><divisions>4</divisions></attributes>' +
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>8</duration>' +
+      '<voice>1</voice></note>' +
+      '<backup><duration>4</duration></backup>' +
+      '<note><pitch><step>G</step><octave>4</octave></pitch><duration>4</duration>' +
+      '<voice>2</voice></note>',
+    'a chord':
+      '<attributes><divisions>4</divisions></attributes>' +
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration></note>' +
+      '<note><chord/><pitch><step>E</step><octave>4</octave></pitch><duration>4</duration></note>',
+    'a rest filling the measure':
+      '<attributes><divisions>4</divisions></attributes>' +
+      '<note><rest measure="yes"/><duration>16</duration></note>',
+    'a value recovered from its duration':
+      '<attributes><divisions>4</divisions></attributes>' +
+      '<note><rest/><duration>6</duration></note>',
+  }
+
+  test.each(Object.entries(cases))('%s', (_name, body) => {
+    const source = `<score-partwise><part id="P1"><measure number="1">${body}</measure></part></score-partwise>`
+
+    expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
+  })
+})

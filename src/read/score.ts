@@ -86,6 +86,10 @@ const DEFAULT_CLEF_LINES: Record<ClefSign, number> = { G: 2, F: 4, C: 3 }
 // Elements consumed at each level. Anything else found there carries notation
 // we don't convert yet, and is reported.
 const HANDLED_IN_SCORE: ReadonlySet<string> = new Set(['part-list', 'part'])
+// <backup> and <forward> only state how far to move. A <voice> or <staff> on
+// one says which voice the skipped time belongs to, which the model cannot
+// yet express.
+const HANDLED_IN_CURSOR_MOVE: ReadonlySet<string> = new Set(['duration'])
 const HANDLED_IN_ATTRIBUTES: ReadonlySet<string> = new Set(['divisions', 'key', 'time', 'clef'])
 const HANDLED_IN_NOTE: ReadonlySet<string> = new Set([
   'pitch',
@@ -252,6 +256,7 @@ function readMeasure(
       // <forward> with it.
       case 'backup':
       case 'forward': {
+        reportUnhandled(found, HANDLED_IN_CURSOR_MOVE, warnings, context)
         const by = requireDuration(found, state, measurePath)
         builder.shift(found.name === 'backup' ? negate(by) : by, measurePath, found.line)
         break
@@ -372,6 +377,18 @@ function readNote(
   // are converted it has to be left out; what it must not do in the meantime
   // is stand in as an ordinary note, which would give it a length it does not
   // have and shift everything after it.
+  // A tuplet's written value is deliberately longer than it sounds, so
+  // converting the note on its own would emit a measure that does not add up.
+  // The same music without a <type> is already rejected below; this makes the
+  // ordinary case behave the same rather than quietly handing back a wrong
+  // rhythm.
+  if (child(element, 'time-modification')) {
+    throw new MusicXMLError('A note inside a tuplet is not converted yet.', {
+      path,
+      line: element.line,
+    })
+  }
+
   if (child(element, 'grace')) {
     warnings.add('unsupported:element', 'A grace note is not converted yet, and is left out.', {
       ...context,
@@ -400,7 +417,7 @@ function readNote(
   // states it on the sequence, and how long the measure runs is the time
   // signature's business.
   if (restElement && attribute(restElement, 'measure') === 'yes') {
-    builder.setFullMeasure(voice, { visualDuration: written })
+    builder.setFullMeasure(voice, { visualDuration: written }, duration, path, element.line)
     if (duration) builder.shift(duration, path, element.line)
     return
   }
@@ -502,10 +519,6 @@ function reportDurationMismatch(
   context: WarningContext,
 ): void {
   if (compareFractions(lengthOf(written), duration) === 0) return
-
-  // Inside a tuplet the two are meant to disagree, and the unconverted
-  // <time-modification> is reported on its own account.
-  if (child(element, 'time-modification')) return
 
   warnings.add(
     'inconsistent:duration',

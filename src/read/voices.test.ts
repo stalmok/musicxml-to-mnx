@@ -78,8 +78,13 @@ describe('voices', () => {
       measure(note('C', 2, '1') + '<backup><duration>8</duration></backup>' + note('G', 2, '2')),
     )
 
-    expect(result?.sequences[0]?.content).toHaveLength(1)
-    expect(result?.sequences[1]?.content).toHaveLength(1)
+    const pitchOf = (index: number) => {
+      const item = result?.sequences[index]?.content[0]
+      return item?.kind === 'event' ? item.notes[0]?.pitch.step : undefined
+    }
+
+    expect(pitchOf(0)).toBe('C')
+    expect(pitchOf(1)).toBe('G')
   })
 })
 
@@ -110,6 +115,22 @@ describe('chords', () => {
     expect(readFailure(measure(note('C', 1, '1', '<chord/>'))).message).toContain(
       'no note for it to join',
     )
+  })
+
+  // <voice> is optional on a chord member: it belongs to whatever voice the
+  // note it joins belongs to.
+  test('takes the voice of the note it joins when it states none', () => {
+    const { measure: result } = read(
+      measure(
+        note('C', 1, '1') +
+          '<note><chord/><pitch><step>E</step><octave>4</octave></pitch>' +
+          '<duration>4</duration></note>',
+      ),
+    )
+    const first = result?.sequences[0]?.content[0]
+
+    expect(result?.sequences).toHaveLength(1)
+    expect(first?.kind === 'event' && first.notes.map((n) => n.pitch.step)).toEqual(['C', 'E'])
   })
 
   test('rejects a rest marked as part of a chord', () => {
@@ -144,14 +165,47 @@ describe('grace notes', () => {
 
   test('is left out rather than written as an ordinary note', () => {
     const { measure: result } = read(measure(GRACE + note('C', 1)))
+    const content = result?.sequences[0]?.content
 
-    expect(result?.sequences[0]?.content).toHaveLength(1)
+    expect(content).toHaveLength(1)
+    // The note that remains is the real one, not the grace note.
+    expect(content?.[0]?.kind === 'event' && content[0].notes[0]?.pitch.step).toBe('C')
   })
 
   test('says that it was left out', () => {
     const { warnings } = read(measure(GRACE + note('C', 1)))
 
     expect(warnings.some((w) => w.message.includes('grace note'))).toBe(true)
+  })
+})
+
+describe('rests filling the measure', () => {
+  const measureRest = (quarters: number, voice = '1') =>
+    `<note><rest measure="yes"/><duration>${String(quarters * 4)}</duration>` +
+    `<voice>${voice}</voice></note>`
+
+  test('rejects a voice holding both a measure rest and notes', () => {
+    expect(readFailure(measure(measureRest(1) + note('C', 1))).message).toContain(
+      'fills the measure',
+    )
+  })
+
+  test('rejects a second measure rest in the same voice', () => {
+    expect(readFailure(measure(measureRest(1) + measureRest(1))).message).toContain(
+      'fills the measure',
+    )
+  })
+
+  test('lets each voice have its own measure rest', () => {
+    const { measure: result } = read(
+      measure(
+        '<note><rest measure="yes"/><duration>4</duration><voice>1</voice></note>' +
+          '<backup><duration>4</duration></backup>' +
+          '<note><rest measure="yes"/><duration>4</duration><voice>2</voice></note>',
+      ),
+    )
+
+    expect(result?.sequences.map((s) => s.fullMeasure !== undefined)).toEqual([true, true])
   })
 })
 
@@ -184,6 +238,14 @@ describe('the measure cursor', () => {
 
   test.each(['backup', 'forward'])('rejects a <%s> that states no duration', (name) => {
     expect(readFailure(measure(note('C', 1) + `<${name}/>`)).message).toContain('states no')
+  })
+
+  test('reports what it does not convert inside a backup or forward', () => {
+    const { warnings } = read(
+      measure(note('C', 1) + '<backup><duration>4</duration><staff>2</staff></backup>'),
+    )
+
+    expect(warnings.map((w) => w.message)).toContain('<staff> is not converted yet.')
   })
 
   test('rejects two notes of one voice overlapping', () => {

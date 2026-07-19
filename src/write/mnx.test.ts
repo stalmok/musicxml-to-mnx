@@ -151,7 +151,7 @@ describe('voices and spaces', () => {
     expect(written.parts[0]?.measures[0]?.sequences[0]?.voice).toBe('2')
   })
 
-  test('leaves the voice out when there was nothing to distinguish', () => {
+  test('leaves the voice out when the source never named one', () => {
     const written = writeMnx(voicedScore(undefined, [WHOLE_C]))
 
     expect(written.parts[0]?.measures[0]?.sequences[0]).not.toHaveProperty('voice')

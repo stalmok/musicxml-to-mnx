@@ -11,10 +11,29 @@ describe('lengthOf', () => {
     expect(lengthOf({ base: 'half', dots: 1 })).toEqual(fraction(3, 4))
   })
 
-  test('round-trips every value it can name', () => {
-    for (const dots of [0, 1, 2, 3]) {
-      const value = { base: '16th', dots } as const
-      expect(noteValueOf(lengthOf(value))).toEqual(value)
+  test('round-trips every value and dot count it can name', () => {
+    const bases = [
+      'maxima',
+      'longa',
+      'breve',
+      'whole',
+      'half',
+      'quarter',
+      'eighth',
+      '16th',
+      '32nd',
+      '64th',
+      '128th',
+      '256th',
+      '512th',
+      '1024th',
+    ] as const
+
+    for (const base of bases) {
+      for (const dots of [0, 1, 2, 3]) {
+        const value = { base, dots }
+        expect(noteValueOf(lengthOf(value))).toEqual(value)
+      }
     }
   })
 })

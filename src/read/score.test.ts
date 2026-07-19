@@ -379,20 +379,20 @@ describe('durations', () => {
     expect(warnings).toEqual([])
   })
 
-  // Inside a tuplet the two legitimately disagree, and the unconverted
-  // <time-modification> is already reported, so a second warning would only
-  // be noise.
-  test('does not report the disagreement a tuplet is expected to cause', () => {
-    const { warnings } = read(
-      measure(
-        '<attributes><divisions>3</divisions></attributes>' +
-          '<note><rest/><type>eighth</type><duration>1</duration>' +
-          '<time-modification><actual-notes>3</actual-notes>' +
-          '<normal-notes>2</normal-notes></time-modification></note>',
-      ),
-    )
-
-    expect(warnings.map((w) => w.code)).toEqual(['unsupported:element'])
+  // A tuplet's written value is deliberately longer than it sounds, so
+  // converting it as an ordinary note would emit a measure that does not add
+  // up. Better to say so than to hand back the wrong rhythm.
+  test('rejects a note inside a tuplet', () => {
+    expect(
+      readFailure(
+        measure(
+          '<attributes><divisions>3</divisions></attributes>' +
+            '<note><rest/><type>eighth</type><duration>1</duration>' +
+            '<time-modification><actual-notes>3</actual-notes>' +
+            '<normal-notes>2</normal-notes></time-modification></note>',
+        ),
+      ).message,
+    ).toContain('tuplet')
   })
 })
 

@@ -35,16 +35,30 @@ export function fraction(num: number, den = 1): Fraction {
   return divisor > 1 ? { num: num / divisor, den: den / divisor } : { num, den }
 }
 
+// Each of these reduces before it multiplies. Doing it the other way round
+// builds products that overflow the safe-integer range on values the result
+// itself sits well inside: two <divisions> values in one measure is legal
+// MusicXML, and each contributes a denominator.
+
 export function addFractions(a: Fraction, b: Fraction): Fraction {
-  return fraction(a.num * b.den + b.num * a.den, a.den * b.den)
+  const common = greatestCommonDivisor(a.den, b.den)
+  const aScale = b.den / common
+  const bScale = a.den / common
+  return fraction(a.num * aScale + b.num * bScale, a.den * aScale)
 }
 
 export function subtractFractions(a: Fraction, b: Fraction): Fraction {
-  return fraction(a.num * b.den - b.num * a.den, a.den * b.den)
+  const common = greatestCommonDivisor(a.den, b.den)
+  const aScale = b.den / common
+  const bScale = a.den / common
+  return fraction(a.num * aScale - b.num * bScale, a.den * aScale)
 }
 
 export function multiplyFractions(a: Fraction, b: Fraction): Fraction {
-  return fraction(a.num * b.num, a.den * b.den)
+  // Cross-reduce: each numerator against the other's denominator.
+  const left = greatestCommonDivisor(Math.abs(a.num), b.den)
+  const right = greatestCommonDivisor(Math.abs(b.num), a.den)
+  return fraction((a.num / left) * (b.num / right), (a.den / right) * (b.den / left))
 }
 
 /** Negative when a is the smaller, zero when they are equal, else positive. */
