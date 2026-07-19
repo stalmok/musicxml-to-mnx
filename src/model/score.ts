@@ -6,6 +6,8 @@
 // to conversion. It is not a general notation model, and should not grow into
 // one.
 
+import type { Fraction } from '../fraction.js'
+
 export type Step = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G'
 
 export type NoteValueBase =
@@ -43,11 +45,24 @@ export interface Note {
 }
 
 export interface Event {
+  kind: 'event'
   value: NoteValue
-  /** Empty for a rest. */
+  /** Empty for a rest. More than one note makes it a chord. */
   notes: readonly Note[]
   isRest: boolean
 }
+
+/**
+ * Time a voice passes over without sounding. MusicXML leaves such a gap
+ * implicit, by moving its cursor; MNX has to state it, because a sequence
+ * runs without interruption from wherever it starts.
+ */
+export interface Space {
+  kind: 'space'
+  duration: Fraction
+}
+
+export type SequenceItem = Event | Space
 
 /**
  * A rest that fills its measure, whatever the time signature says that is.
@@ -60,7 +75,9 @@ export interface FullMeasureRest {
 }
 
 export interface Sequence {
-  events: readonly Event[]
+  /** The voice as the source named it, when a measure holds more than one. */
+  voice: string | undefined
+  content: readonly SequenceItem[]
   fullMeasure: FullMeasureRest | undefined
 }
 

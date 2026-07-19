@@ -22,6 +22,16 @@ function read(source: string) {
   return { score: result, warnings: warnings.list() }
 }
 
+/**
+ * The first item of a measure's first sequence, when that item is an event.
+ * A sequence can also hold a space, so reaching for a note value needs to say
+ * which it expects.
+ */
+function firstEvent(result: ReturnType<typeof read>['score'], measure = 0) {
+  const item = result.parts[0]?.measures[measure]?.sequences[0]?.content[0]
+  return item?.kind === 'event' ? item : undefined
+}
+
 function readFailure(source: string): MusicXMLError {
   try {
     read(source)
@@ -216,7 +226,7 @@ describe('notes', () => {
       ),
     )
 
-    expect(result.parts[0]?.measures[0]?.sequences[0]?.events[0]?.notes[0]?.pitch).toEqual({
+    expect(firstEvent(result)?.notes[0]?.pitch).toEqual({
       step: 'B',
       octave: 3,
       alter: -1,
@@ -230,7 +240,7 @@ describe('notes', () => {
       ),
     )
 
-    expect(result.parts[0]?.measures[0]?.sequences[0]?.events[0]?.value).toEqual({
+    expect(firstEvent(result)?.value).toEqual({
       base: 'half',
       dots: 2,
     })
@@ -238,7 +248,7 @@ describe('notes', () => {
 
   test('reads a rest as an event with no notes', () => {
     const { score: result } = read(measure('<note><rest/><type>whole</type></note>'))
-    const event = result.parts[0]?.measures[0]?.sequences[0]?.events[0]
+    const event = firstEvent(result)
 
     expect(event?.isRest).toBe(true)
     expect(event?.notes).toEqual([])
@@ -247,7 +257,7 @@ describe('notes', () => {
   test("spells MusicXML's long as MNX's longa", () => {
     const { score: result } = read(measure('<note><rest/><type>long</type></note>'))
 
-    expect(result.parts[0]?.measures[0]?.sequences[0]?.events[0]?.value.base).toBe('longa')
+    expect(firstEvent(result)?.value.base).toBe('longa')
   })
 
   test('refuses to guess a rhythm when the note states no length at all', () => {
@@ -306,7 +316,7 @@ describe('durations', () => {
       ),
     )
 
-    expect(result.parts[0]?.measures[0]?.sequences[0]?.events[0]?.value).toEqual({
+    expect(firstEvent(result)?.value).toEqual({
       base: 'quarter',
       dots: 1,
     })
@@ -323,7 +333,7 @@ describe('durations', () => {
       ),
     )
 
-    expect(result.parts[0]?.measures[1]?.sequences[0]?.events[0]?.value).toEqual({
+    expect(firstEvent(result, 1)?.value).toEqual({
       base: 'half',
       dots: 0,
     })
@@ -397,7 +407,7 @@ describe('whole-measure rests', () => {
     const sequence = result.parts[0]?.measures[0]?.sequences[0]
 
     expect(sequence?.fullMeasure).toEqual({ visualDuration: undefined })
-    expect(sequence?.events).toEqual([])
+    expect(sequence?.content).toEqual([])
   })
 
   test('keeps the drawn value when the rest says which one it is', () => {
@@ -410,6 +420,16 @@ describe('whole-measure rests', () => {
 
     expect(result.parts[0]?.measures[0]?.sequences[0]?.fullMeasure).toEqual({
       visualDuration: { base: 'whole', dots: 0 },
+    })
+  })
+
+  // Rare, but a measure rest need not state how long it lasts, because the
+  // time signature already says. Nothing then moves the cursor.
+  test('does not need a duration to be understood', () => {
+    const { score: result } = read(measure('<note><rest measure="yes"/></note>'))
+
+    expect(result.parts[0]?.measures[0]?.sequences[0]?.fullMeasure).toEqual({
+      visualDuration: undefined,
     })
   })
 

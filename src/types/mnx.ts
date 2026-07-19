@@ -57,8 +57,19 @@ export interface MNXFullMeasureRest {
   visualDuration?: MNXNoteValue
 }
 
+/** Time a voice passes over without sounding. */
+export interface MNXSpace {
+  type: 'space'
+  /** A [numerator, denominator] pair, as a fraction of a whole note. */
+  duration: [number, number]
+}
+
+export type MNXSequenceItem = MNXEvent | MNXSpace
+
 export interface MNXSequence {
-  content: MNXEvent[]
+  /** The voice this sequence belongs to, where a measure holds more than one. */
+  voice?: string
+  content: MNXSequenceItem[]
   /** Present when the sequence is a rest filling the whole measure. */
   fullMeasure?: MNXFullMeasureRest
 }

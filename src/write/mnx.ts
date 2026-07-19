@@ -16,6 +16,7 @@ import type {
   Pitch,
   Score,
   Sequence,
+  SequenceItem,
 } from '../model/score.js'
 import type {
   MNXDocument,
@@ -28,6 +29,7 @@ import type {
   MNXPitch,
   MNXPositionedClef,
   MNXSequence,
+  MNXSequenceItem,
 } from '../types/mnx.js'
 
 /** The MNX version this converter emits. */
@@ -69,7 +71,8 @@ function writeClef(clef: Clef): MNXPositionedClef {
 
 function writeSequence(sequence: Sequence): MNXSequence {
   return {
-    content: sequence.events.map(writeEvent),
+    ...(sequence.voice !== undefined ? { voice: sequence.voice } : {}),
+    content: sequence.content.map(writeItem),
     // A sequence that is a full-measure rest holds no events: the rest is
     // stated on the sequence itself.
     ...(sequence.fullMeasure
@@ -80,6 +83,15 @@ function writeSequence(sequence: Sequence): MNXSequence {
         }
       : {}),
   }
+}
+
+function writeItem(item: SequenceItem): MNXSequenceItem {
+  // A space is time the voice passes over without sounding. MNX writes a
+  // duration as a [numerator, denominator] pair.
+  if (item.kind === 'space') {
+    return { type: 'space', duration: [item.duration.num, item.duration.den] }
+  }
+  return writeEvent(item)
 }
 
 function writeEvent(event: Event): MNXEvent {

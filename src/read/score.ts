@@ -14,7 +14,6 @@ import type {
   Clef,
   ClefSign,
   Event,
-  FullMeasureRest,
   GlobalMeasure,
   Key,
   Measure,
@@ -24,7 +23,6 @@ import type {
   Part,
   Pitch,
   Score,
-  Sequence,
   Step,
   TimeSignature,
   TimeUnit,
@@ -40,6 +38,7 @@ import {
   trimmedText,
 } from '../xml/tree.js'
 import { describeLength, describeValue, lengthOf, noteValueOf } from './duration.js'
+import { MeasureBuilder } from './voices.js'
 
 // MusicXML's note types, in MNX's spelling. The two agree everywhere except
 // MusicXML's "long", which MNX calls "longa".
@@ -87,9 +86,17 @@ const DEFAULT_CLEF_LINES: Record<ClefSign, number> = { G: 2, F: 4, C: 3 }
 // Elements consumed at each level. Anything else found there carries notation
 // we don't convert yet, and is reported.
 const HANDLED_IN_SCORE: ReadonlySet<string> = new Set(['part-list', 'part'])
-const HANDLED_IN_MEASURE: ReadonlySet<string> = new Set(['attributes', 'note'])
 const HANDLED_IN_ATTRIBUTES: ReadonlySet<string> = new Set(['divisions', 'key', 'time', 'clef'])
-const HANDLED_IN_NOTE: ReadonlySet<string> = new Set(['pitch', 'rest', 'duration', 'type', 'dot'])
+const HANDLED_IN_NOTE: ReadonlySet<string> = new Set([
+  'pitch',
+  'rest',
+  'duration',
+  'type',
+  'dot',
+  'chord',
+  'voice',
+  'grace',
+])
 
 interface PartReading {
   part: Part
@@ -105,9 +112,6 @@ interface PartReading {
 interface PartState {
   divisions: number | undefined
 }
-
-/** A `<note>` is either an event in a sequence, or a rest filling the measure. */
-type NoteReading = { kind: 'event'; event: Event } | { kind: 'fullMeasure'; rest: FullMeasureRest }
 
 interface MeasureReading {
   measure: Measure
@@ -208,44 +212,61 @@ function readMeasure(
   const stated = readMeasureLabel(element, warnings, context)
   const measurePath: DocumentPath = [...path, `measure ${String(stated ?? position)}`]
 
-  reportUnhandled(element, HANDLED_IN_MEASURE, warnings, context)
-
   const clefs: Clef[] = []
   let key: Key | undefined
   let time: TimeSignature | undefined
 
-  // A measure may carry more than one <attributes>: exporters emit a second
-  // block mid-measure for a clef or divisions change.
-  for (const attributes of children(element, 'attributes')) {
-    reportUnhandled(attributes, HANDLED_IN_ATTRIBUTES, warnings, context)
+  const builder = new MeasureBuilder()
 
-    const divisionsElement = child(attributes, 'divisions')
-    if (divisionsElement) {
-      state.divisions = readIntegerInRange(divisionsElement, measurePath, 1, 1_000_000)
-    }
+  // Walked in document order, because MusicXML states a measure as one stream
+  // with a cursor running through it: what a <note> means depends on the
+  // <backup> before it, and on the <divisions> in force by the time it is
+  // reached. A measure may carry more than one <attributes> for that reason.
+  for (const found of element.children) {
+    switch (found.name) {
+      case 'attributes': {
+        reportUnhandled(found, HANDLED_IN_ATTRIBUTES, warnings, context)
 
-    const keyElement = child(attributes, 'key')
-    if (keyElement) key ??= readKey(keyElement, measurePath)
+        const divisionsElement = child(found, 'divisions')
+        if (divisionsElement) {
+          state.divisions = readIntegerInRange(divisionsElement, measurePath, 1, 1_000_000)
+        }
 
-    const timeElement = child(attributes, 'time')
-    if (timeElement) time ??= readTime(timeElement, measurePath)
+        const keyElement = child(found, 'key')
+        if (keyElement) key ??= readKey(keyElement, measurePath)
 
-    for (const clefElement of children(attributes, 'clef')) {
-      clefs.push(readClef(clefElement, measurePath))
+        const timeElement = child(found, 'time')
+        if (timeElement) time ??= readTime(timeElement, measurePath)
+
+        for (const clefElement of children(found, 'clef')) {
+          clefs.push(readClef(clefElement, measurePath))
+        }
+        break
+      }
+
+      case 'note':
+        readNote(found, state, builder, warnings, context, measurePath)
+        break
+
+      // Both only move the cursor: <backup> against the flow of the measure,
+      // <forward> with it.
+      case 'backup':
+      case 'forward': {
+        const by = requireDuration(found, state, measurePath)
+        builder.shift(found.name === 'backup' ? negate(by) : by, measurePath, found.line)
+        break
+      }
+
+      default:
+        warnings.add('unsupported:element', `<${found.name}> is not converted yet.`, {
+          ...context,
+          line: found.line,
+        })
     }
   }
-
-  const events: Event[] = []
-  let fullMeasure: FullMeasureRest | undefined
-  for (const noteElement of children(element, 'note')) {
-    const reading = readNote(noteElement, state, warnings, context, measurePath)
-    if (reading.kind === 'event') events.push(reading.event)
-    else fullMeasure ??= reading.rest
-  }
-  const sequences: Sequence[] = [{ events, fullMeasure }]
 
   return {
-    measure: { clefs, sequences },
+    measure: { clefs, sequences: builder.sequences() },
     // Only worth carrying when it differs from where the measure sits;
     // otherwise MNX's implicit numbering already says it.
     global: { key, time, number: stated !== position ? stated : undefined },
@@ -323,10 +344,11 @@ function readClef(element: XmlElement, path: DocumentPath): Clef {
 function readNote(
   element: XmlElement,
   state: PartState,
+  builder: MeasureBuilder,
   warnings: WarningCollector,
   context: WarningContext,
   path: DocumentPath,
-): NoteReading {
+): void {
   reportUnhandled(element, HANDLED_IN_NOTE, warnings, context)
 
   const restElement = child(element, 'rest')
@@ -341,14 +363,46 @@ function readNote(
     })
   }
 
+  const voice = child(element, 'voice')?.text.trim()
   const duration = readDuration(element, state, path)
   const written = readWrittenValue(element, path)
+
+  // A grace note is squeezed in before the beat and takes none of the
+  // measure's time, which is why it carries no <duration>. Until grace groups
+  // are converted it has to be left out; what it must not do in the meantime
+  // is stand in as an ordinary note, which would give it a length it does not
+  // have and shift everything after it.
+  if (child(element, 'grace')) {
+    warnings.add('unsupported:element', 'A grace note is not converted yet, and is left out.', {
+      ...context,
+      line: element.line,
+    })
+    return
+  }
+
+  // A note carrying <chord> sounds with the one before it, so it joins that
+  // event rather than starting another.
+  if (child(element, 'chord')) {
+    if (!pitchElement) {
+      throw new MusicXMLError('A rest cannot be part of a chord.', { path, line: element.line })
+    }
+    builder.addChordNote(
+      voice,
+      { pitch: readPitch(pitchElement, path) },
+      duration,
+      path,
+      element.line,
+    )
+    return
+  }
 
   // A rest marked as filling the measure is not an event with a length: MNX
   // states it on the sequence, and how long the measure runs is the time
   // signature's business.
   if (restElement && attribute(restElement, 'measure') === 'yes') {
-    return { kind: 'fullMeasure', rest: { visualDuration: written } }
+    builder.setFullMeasure(voice, { visualDuration: written })
+    if (duration) builder.shift(duration, path, element.line)
+    return
   }
 
   if (written && duration) {
@@ -357,8 +411,27 @@ function readNote(
 
   const value = written ?? measuredValue(element, duration, path)
   const notes: Note[] = pitchElement ? [{ pitch: readPitch(pitchElement, path) }] : []
+  const event: Event = { kind: 'event', value, notes, isRest: restElement !== undefined }
 
-  return { kind: 'event', event: { value, notes, isRest: restElement !== undefined } }
+  // Where the source states no <duration>, the written value is how long the
+  // note lasts.
+  builder.addEvent(voice, event, duration ?? lengthOf(value), path, element.line)
+}
+
+/** The duration of a <backup> or <forward>, which must state one. */
+function requireDuration(element: XmlElement, state: PartState, path: DocumentPath): Fraction {
+  const duration = readDuration(element, state, path)
+  if (!duration) {
+    throw new MusicXMLError(`A <${element.name}> states no <duration>.`, {
+      path,
+      line: element.line,
+    })
+  }
+  return duration
+}
+
+function negate(value: Fraction): Fraction {
+  return fraction(-value.num, value.den)
 }
 
 /** The value as written: `<type>` plus however many `<dot>`s follow it. */

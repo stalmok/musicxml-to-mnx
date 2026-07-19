@@ -4,10 +4,11 @@
 
 import { describe, expect, test } from 'vitest'
 import { schemaErrors } from '../../tests/support/schema.js'
-import type { Event, FullMeasureRest, Measure, Score } from '../model/score.js'
+import type { Event, FullMeasureRest, Measure, Score, SequenceItem } from '../model/score.js'
 import { writeMnx } from './mnx.js'
 
 const WHOLE_C: Event = {
+  kind: 'event',
   value: { base: 'whole', dots: 0 },
   notes: [{ pitch: { step: 'C', octave: 4, alter: 0 } }],
   isRest: false,
@@ -24,22 +25,34 @@ function scoreOf(
 }
 
 function measureOf(...events: Event[]): Measure {
-  return { clefs: [], sequences: [{ events, fullMeasure: undefined }] }
+  return { clefs: [], sequences: [{ voice: undefined, content: events, fullMeasure: undefined }] }
 }
 
 function firstEvent(score: Score) {
-  return writeMnx(score).parts[0]?.measures[0]?.sequences[0]?.content[0]
+  const item = writeMnx(score).parts[0]?.measures[0]?.sequences[0]?.content[0]
+  return item && 'duration' in item && !('type' in item) ? item : undefined
 }
 
 // Asserting on shape alone would happily pass output no MNX reader accepts,
 // so every score these tests build is also put to the spec schema.
 test.each([
   ['a plain note', scoreOf(measureOf(WHOLE_C))],
-  ['a rest', scoreOf(measureOf({ value: { base: 'half', dots: 0 }, notes: [], isRest: true }))],
+  [
+    'a rest',
+    scoreOf(
+      measureOf({
+        kind: 'event' as const,
+        value: { base: 'half', dots: 0 },
+        notes: [],
+        isRest: true,
+      }),
+    ),
+  ],
   [
     'a dotted, altered note',
     scoreOf(
       measureOf({
+        kind: 'event',
         value: { base: 'quarter', dots: 2 },
         notes: [{ pitch: { step: 'B', octave: 3, alter: -1 } }],
         isRest: false,
@@ -51,7 +64,7 @@ test.each([
     scoreOf(
       {
         clefs: [{ sign: 'F', staffPosition: 2 }],
-        sequences: [{ events: [WHOLE_C], fullMeasure: undefined }],
+        sequences: [{ voice: undefined, content: [WHOLE_C], fullMeasure: undefined }],
       },
       [{ key: { fifths: -3 }, time: { count: 6, unit: 8 }, number: 0 }],
     ),
@@ -103,7 +116,7 @@ describe('measures', () => {
   test('writes clefs when the measure has them', () => {
     const score = scoreOf({
       clefs: [{ sign: 'F', staffPosition: 2 }],
-      sequences: [{ events: [WHOLE_C], fullMeasure: undefined }],
+      sequences: [{ voice: undefined, content: [WHOLE_C], fullMeasure: undefined }],
     })
 
     expect(writeMnx(score).parts[0]?.measures[0]?.clefs).toEqual([
@@ -116,9 +129,42 @@ describe('measures', () => {
   })
 })
 
+describe('voices and spaces', () => {
+  const gap = { kind: 'space', duration: { num: 1, den: 4 } } as const
+
+  function voicedScore(voice: string | undefined, content: SequenceItem[]): Score {
+    return scoreOf({ clefs: [], sequences: [{ voice, content, fullMeasure: undefined }] })
+  }
+
+  test('writes a space as a duration and a type, not as a note', () => {
+    const written = writeMnx(voicedScore(undefined, [gap, WHOLE_C]))
+
+    expect(written.parts[0]?.measures[0]?.sequences[0]?.content[0]).toEqual({
+      type: 'space',
+      duration: [1, 4],
+    })
+  })
+
+  test('names the voice when the source distinguished one', () => {
+    const written = writeMnx(voicedScore('2', [WHOLE_C]))
+
+    expect(written.parts[0]?.measures[0]?.sequences[0]?.voice).toBe('2')
+  })
+
+  test('leaves the voice out when there was nothing to distinguish', () => {
+    const written = writeMnx(voicedScore(undefined, [WHOLE_C]))
+
+    expect(written.parts[0]?.measures[0]?.sequences[0]).not.toHaveProperty('voice')
+  })
+
+  test('writes MNX the spec schema accepts', () => {
+    expect(schemaErrors(writeMnx(voicedScore('2', [gap, WHOLE_C])))).toEqual([])
+  })
+})
+
 describe('full-measure rests', () => {
   function restingScore(fullMeasure: FullMeasureRest): Score {
-    return scoreOf({ clefs: [], sequences: [{ events: [], fullMeasure }] })
+    return scoreOf({ clefs: [], sequences: [{ voice: undefined, content: [], fullMeasure }] })
   }
 
   test('states the rest on the sequence, which then holds no events', () => {
@@ -142,7 +188,12 @@ describe('full-measure rests', () => {
 
 describe('events', () => {
   test('writes a rest as an empty rest object with no notes', () => {
-    const rest: Event = { value: { base: 'half', dots: 0 }, notes: [], isRest: true }
+    const rest: Event = {
+      kind: 'event' as const,
+      value: { base: 'half', dots: 0 },
+      notes: [],
+      isRest: true,
+    }
 
     expect(firstEvent(scoreOf(measureOf(rest)))).toEqual({
       duration: { base: 'half' },
