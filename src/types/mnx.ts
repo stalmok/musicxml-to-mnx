@@ -53,8 +53,14 @@ export interface MNXEvent {
   rest?: Record<string, never>
 }
 
+export interface MNXFullMeasureRest {
+  visualDuration?: MNXNoteValue
+}
+
 export interface MNXSequence {
   content: MNXEvent[]
+  /** Present when the sequence is a rest filling the whole measure. */
+  fullMeasure?: MNXFullMeasureRest
 }
 
 export interface MNXClef {

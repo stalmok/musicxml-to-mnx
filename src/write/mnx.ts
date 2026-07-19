@@ -68,7 +68,18 @@ function writeClef(clef: Clef): MNXPositionedClef {
 }
 
 function writeSequence(sequence: Sequence): MNXSequence {
-  return { content: sequence.events.map(writeEvent) }
+  return {
+    content: sequence.events.map(writeEvent),
+    // A sequence that is a full-measure rest holds no events: the rest is
+    // stated on the sequence itself.
+    ...(sequence.fullMeasure
+      ? {
+          fullMeasure: sequence.fullMeasure.visualDuration
+            ? { visualDuration: writeNoteValue(sequence.fullMeasure.visualDuration) }
+            : {},
+        }
+      : {}),
+  }
 }
 
 function writeEvent(event: Event): MNXEvent {

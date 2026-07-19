@@ -250,10 +250,10 @@ describe('notes', () => {
     expect(result.parts[0]?.measures[0]?.sequences[0]?.events[0]?.value.base).toBe('longa')
   })
 
-  test('refuses to guess a rhythm when the note has no type', () => {
+  test('refuses to guess a rhythm when the note states no length at all', () => {
     expect(
       readFailure(measure('<note><pitch><step>C</step><octave>4</octave></pitch></note>')).message,
-    ).toContain('without a <type> is not supported yet')
+    ).toContain('states neither a <type> nor a <duration>')
   })
 
   test('rejects a note type it does not know', () => {
@@ -294,6 +294,129 @@ describe('notes', () => {
 
     expect(failure.path).toEqual(['score-partwise', 'part P2', 'measure 7'])
     expect(failure.line).toBe(4)
+  })
+})
+
+describe('durations', () => {
+  test('recovers a note value from the duration when nothing is written', () => {
+    const { score: result } = read(
+      measure(
+        '<attributes><divisions>4</divisions></attributes>' +
+          '<note><pitch><step>C</step><octave>4</octave></pitch><duration>6</duration></note>',
+      ),
+    )
+
+    expect(result.parts[0]?.measures[0]?.sequences[0]?.events[0]?.value).toEqual({
+      base: 'quarter',
+      dots: 1,
+    })
+  })
+
+  test('carries divisions forward into later measures', () => {
+    const { score: result } = read(
+      score(
+        '<part id="P1">' +
+          '<measure number="1"><attributes><divisions>4</divisions></attributes>' +
+          `${NOTE}</measure>` +
+          '<measure number="2"><note><rest/><duration>8</duration></note></measure>' +
+          '</part>',
+      ),
+    )
+
+    expect(result.parts[0]?.measures[1]?.sequences[0]?.events[0]?.value).toEqual({
+      base: 'half',
+      dots: 0,
+    })
+  })
+
+  test('rejects a duration when the score never said what a division is', () => {
+    expect(readFailure(measure('<note><rest/><duration>4</duration></note>')).message).toContain(
+      '<divisions>',
+    )
+  })
+
+  test('rejects a duration that no note value can write', () => {
+    expect(
+      readFailure(
+        measure(
+          '<attributes><divisions>3</divisions></attributes>' +
+            '<note><rest/><duration>1</duration></note>',
+        ),
+      ).message,
+    ).toContain('no note value')
+  })
+
+  test('reports a duration that disagrees with the written note value', () => {
+    const { warnings } = read(
+      measure(
+        '<attributes><divisions>4</divisions></attributes>' +
+          '<note><rest/><type>half</type><duration>4</duration></note>',
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:duration'])
+    expect(warnings[0]?.message).toContain('lasts a quarter')
+  })
+
+  test('says nothing when the duration matches the written note value', () => {
+    const { warnings } = read(
+      measure(
+        '<attributes><divisions>4</divisions></attributes>' +
+          '<note><rest/><type>half</type><duration>8</duration></note>',
+      ),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  // Inside a tuplet the two legitimately disagree, and the unconverted
+  // <time-modification> is already reported, so a second warning would only
+  // be noise.
+  test('does not report the disagreement a tuplet is expected to cause', () => {
+    const { warnings } = read(
+      measure(
+        '<attributes><divisions>3</divisions></attributes>' +
+          '<note><rest/><type>eighth</type><duration>1</duration>' +
+          '<time-modification><actual-notes>3</actual-notes>' +
+          '<normal-notes>2</normal-notes></time-modification></note>',
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['unsupported:element'])
+  })
+})
+
+describe('whole-measure rests', () => {
+  test('marks the sequence rather than inventing a note value for it', () => {
+    const { score: result } = read(
+      measure(
+        '<attributes><divisions>4</divisions></attributes>' +
+          '<note><rest measure="yes"/><duration>12</duration></note>',
+      ),
+    )
+    const sequence = result.parts[0]?.measures[0]?.sequences[0]
+
+    expect(sequence?.fullMeasure).toEqual({ visualDuration: undefined })
+    expect(sequence?.events).toEqual([])
+  })
+
+  test('keeps the drawn value when the rest says which one it is', () => {
+    const { score: result } = read(
+      measure(
+        '<attributes><divisions>4</divisions></attributes>' +
+          '<note><rest measure="yes"/><duration>12</duration><type>whole</type></note>',
+      ),
+    )
+
+    expect(result.parts[0]?.measures[0]?.sequences[0]?.fullMeasure).toEqual({
+      visualDuration: { base: 'whole', dots: 0 },
+    })
+  })
+
+  test('is not confused with an ordinary rest', () => {
+    const { score: result } = read(measure('<note><rest/><type>whole</type></note>'))
+
+    expect(result.parts[0]?.measures[0]?.sequences[0]?.fullMeasure).toBeUndefined()
   })
 })
 

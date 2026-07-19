@@ -14,6 +14,9 @@ export type WarningCode =
   // A part's id has no matching entry in the part list, so its name and any
   // other part-list detail are unavailable.
   | 'unresolved:part-id'
+  // A note's written value and its measured duration disagree, outside a
+  // tuplet where they are meant to. The written value is the one converted.
+  | 'inconsistent:duration'
 
 export interface WarningContext {
   /** The MusicXML part id the warning came from, when known. */

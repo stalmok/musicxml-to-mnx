@@ -4,7 +4,7 @@
 
 import { describe, expect, test } from 'vitest'
 import { schemaErrors } from '../../tests/support/schema.js'
-import type { Event, Measure, Score } from '../model/score.js'
+import type { Event, FullMeasureRest, Measure, Score } from '../model/score.js'
 import { writeMnx } from './mnx.js'
 
 const WHOLE_C: Event = {
@@ -24,7 +24,7 @@ function scoreOf(
 }
 
 function measureOf(...events: Event[]): Measure {
-  return { clefs: [], sequences: [{ events }] }
+  return { clefs: [], sequences: [{ events, fullMeasure: undefined }] }
 }
 
 function firstEvent(score: Score) {
@@ -48,9 +48,13 @@ test.each([
   ],
   [
     'clefs and a key',
-    scoreOf({ clefs: [{ sign: 'F', staffPosition: 2 }], sequences: [{ events: [WHOLE_C] }] }, [
-      { key: { fifths: -3 }, time: { count: 6, unit: 8 }, number: 0 },
-    ]),
+    scoreOf(
+      {
+        clefs: [{ sign: 'F', staffPosition: 2 }],
+        sequences: [{ events: [WHOLE_C], fullMeasure: undefined }],
+      },
+      [{ key: { fifths: -3 }, time: { count: 6, unit: 8 }, number: 0 }],
+    ),
   ],
 ])('writes MNX the spec schema accepts for %s', (_name, score) => {
   expect(schemaErrors(writeMnx(score))).toEqual([])
@@ -99,7 +103,7 @@ describe('measures', () => {
   test('writes clefs when the measure has them', () => {
     const score = scoreOf({
       clefs: [{ sign: 'F', staffPosition: 2 }],
-      sequences: [{ events: [WHOLE_C] }],
+      sequences: [{ events: [WHOLE_C], fullMeasure: undefined }],
     })
 
     expect(writeMnx(score).parts[0]?.measures[0]?.clefs).toEqual([
@@ -109,6 +113,30 @@ describe('measures', () => {
 
   test('leaves clefs out when the measure has none', () => {
     expect(writeMnx(scoreOf(measureOf(WHOLE_C))).parts[0]?.measures[0]).not.toHaveProperty('clefs')
+  })
+})
+
+describe('full-measure rests', () => {
+  function restingScore(fullMeasure: FullMeasureRest): Score {
+    return scoreOf({ clefs: [], sequences: [{ events: [], fullMeasure }] })
+  }
+
+  test('states the rest on the sequence, which then holds no events', () => {
+    const written = writeMnx(restingScore({ visualDuration: undefined }))
+
+    expect(written.parts[0]?.measures[0]?.sequences[0]).toEqual({ content: [], fullMeasure: {} })
+  })
+
+  test('carries the drawn value when the source gave one', () => {
+    const written = writeMnx(restingScore({ visualDuration: { base: 'whole', dots: 0 } }))
+
+    expect(written.parts[0]?.measures[0]?.sequences[0]?.fullMeasure).toEqual({
+      visualDuration: { base: 'whole' },
+    })
+  })
+
+  test('writes MNX the spec schema accepts', () => {
+    expect(schemaErrors(writeMnx(restingScore({ visualDuration: undefined })))).toEqual([])
   })
 })
 

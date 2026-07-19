@@ -8,10 +8,13 @@
 
 import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
+import { compareFractions, fraction } from '../fraction.js'
+import type { Fraction } from '../fraction.js'
 import type {
   Clef,
   ClefSign,
   Event,
+  FullMeasureRest,
   GlobalMeasure,
   Key,
   Measure,
@@ -36,6 +39,7 @@ import {
   requireChild,
   trimmedText,
 } from '../xml/tree.js'
+import { describeLength, describeValue, lengthOf, noteValueOf } from './duration.js'
 
 // MusicXML's note types, in MNX's spelling. The two agree everywhere except
 // MusicXML's "long", which MNX calls "longa".
@@ -84,11 +88,6 @@ const DEFAULT_CLEF_LINES: Record<ClefSign, number> = { G: 2, F: 4, C: 3 }
 // we don't convert yet, and is reported.
 const HANDLED_IN_SCORE: ReadonlySet<string> = new Set(['part-list', 'part'])
 const HANDLED_IN_MEASURE: ReadonlySet<string> = new Set(['attributes', 'note'])
-// <divisions> and <duration> measure time in the source's own units. Note
-// values come from <type>, so they are not read yet. That also means a file
-// whose <duration> disagrees with its <type> converts by the <type>, without
-// that disagreement being noticed. Cross-checking them is the timing core's
-// job.
 const HANDLED_IN_ATTRIBUTES: ReadonlySet<string> = new Set(['divisions', 'key', 'time', 'clef'])
 const HANDLED_IN_NOTE: ReadonlySet<string> = new Set(['pitch', 'rest', 'duration', 'type', 'dot'])
 
@@ -97,6 +96,18 @@ interface PartReading {
   /** What this part declared for each of its measures, by position. */
   globals: readonly GlobalMeasure[]
 }
+
+/**
+ * What a part carries from one measure to the next. `<divisions>` is stated
+ * once and stays in force until restated, so a measure is not readable on its
+ * own.
+ */
+interface PartState {
+  divisions: number | undefined
+}
+
+/** A `<note>` is either an event in a sequence, or a rest filling the measure. */
+type NoteReading = { kind: 'event'; event: Event } | { kind: 'fullMeasure'; rest: FullMeasureRest }
 
 interface MeasureReading {
   measure: Measure
@@ -173,8 +184,9 @@ function readPart(
     })
   }
 
+  const state: PartState = { divisions: undefined }
   const readings = children(element, 'measure').map((measureElement, index) =>
-    readMeasure(measureElement, index, id, warnings, partPath),
+    readMeasure(measureElement, index, id, state, warnings, partPath),
   )
 
   return {
@@ -187,6 +199,7 @@ function readMeasure(
   element: XmlElement,
   index: number,
   partId: string,
+  state: PartState,
   warnings: WarningCollector,
   path: DocumentPath,
 ): MeasureReading {
@@ -206,6 +219,11 @@ function readMeasure(
   for (const attributes of children(element, 'attributes')) {
     reportUnhandled(attributes, HANDLED_IN_ATTRIBUTES, warnings, context)
 
+    const divisionsElement = child(attributes, 'divisions')
+    if (divisionsElement) {
+      state.divisions = readIntegerInRange(divisionsElement, measurePath, 1, 1_000_000)
+    }
+
     const keyElement = child(attributes, 'key')
     if (keyElement) key ??= readKey(keyElement, measurePath)
 
@@ -217,10 +235,14 @@ function readMeasure(
     }
   }
 
-  const events = children(element, 'note').map((noteElement) =>
-    readEvent(noteElement, warnings, context, measurePath),
-  )
-  const sequences: Sequence[] = [{ events }]
+  const events: Event[] = []
+  let fullMeasure: FullMeasureRest | undefined
+  for (const noteElement of children(element, 'note')) {
+    const reading = readNote(noteElement, state, warnings, context, measurePath)
+    if (reading.kind === 'event') events.push(reading.event)
+    else fullMeasure ??= reading.rest
+  }
+  const sequences: Sequence[] = [{ events, fullMeasure }]
 
   return {
     measure: { clefs, sequences },
@@ -298,47 +320,51 @@ function readClef(element: XmlElement, path: DocumentPath): Clef {
   return { sign, staffPosition: 2 * line - 6 }
 }
 
-function readEvent(
+function readNote(
   element: XmlElement,
+  state: PartState,
   warnings: WarningCollector,
   context: WarningContext,
   path: DocumentPath,
-): Event {
+): NoteReading {
   reportUnhandled(element, HANDLED_IN_NOTE, warnings, context)
 
-  const value = readNoteValue(element, path)
-  const isRest = child(element, 'rest') !== undefined
+  const restElement = child(element, 'rest')
   const pitchElement = child(element, 'pitch')
-
-  if (isRest && pitchElement) {
-    throw new MusicXMLError('A <note> is both a rest and a pitch.', {
-      path,
-      line: element.line,
-    })
+  if (restElement && pitchElement) {
+    throw new MusicXMLError('A <note> is both a rest and a pitch.', { path, line: element.line })
   }
-
-  const notes: Note[] = pitchElement ? [{ pitch: readPitch(pitchElement, path) }] : []
-  if (!isRest && notes.length === 0) {
+  if (!restElement && !pitchElement) {
     throw new MusicXMLError('A <note> has neither <pitch> nor <rest>.', {
       path,
       line: element.line,
     })
   }
 
-  return { value, notes, isRest }
+  const duration = readDuration(element, state, path)
+  const written = readWrittenValue(element, path)
+
+  // A rest marked as filling the measure is not an event with a length: MNX
+  // states it on the sequence, and how long the measure runs is the time
+  // signature's business.
+  if (restElement && attribute(restElement, 'measure') === 'yes') {
+    return { kind: 'fullMeasure', rest: { visualDuration: written } }
+  }
+
+  if (written && duration) {
+    reportDurationMismatch(element, written, duration, warnings, context)
+  }
+
+  const value = written ?? measuredValue(element, duration, path)
+  const notes: Note[] = pitchElement ? [{ pitch: readPitch(pitchElement, path) }] : []
+
+  return { kind: 'event', event: { value, notes, isRest: restElement !== undefined } }
 }
 
-function readNoteValue(element: XmlElement, path: DocumentPath): NoteValue {
+/** The value as written: `<type>` plus however many `<dot>`s follow it. */
+function readWrittenValue(element: XmlElement, path: DocumentPath): NoteValue | undefined {
   const typeElement = child(element, 'type')
-  if (!typeElement) {
-    // Recoverable in principle, since the value can be derived from
-    // <duration> and <divisions>, but not until the timing core lands.
-    // Guessing here would silently invent a rhythm.
-    throw new MusicXMLError('A <note> without a <type> is not supported yet.', {
-      path,
-      line: element.line,
-    })
-  }
+  if (!typeElement) return undefined
 
   const base = NOTE_VALUE_BASES.get(trimmedText(typeElement))
   if (!base) {
@@ -347,8 +373,73 @@ function readNoteValue(element: XmlElement, path: DocumentPath): NoteValue {
       line: typeElement.line,
     })
   }
-
   return { base, dots: children(element, 'dot').length }
+}
+
+/** How long the note lasts, as a fraction of a whole note. */
+function readDuration(
+  element: XmlElement,
+  state: PartState,
+  path: DocumentPath,
+): Fraction | undefined {
+  const durationElement = child(element, 'duration')
+  if (!durationElement) return undefined
+
+  if (state.divisions === undefined) {
+    throw new MusicXMLError('A <duration> appears before any <divisions> said how long one is.', {
+      path,
+      line: durationElement.line,
+    })
+  }
+
+  // <divisions> counts per quarter note, and a whole note is four of those.
+  const count = readIntegerInRange(durationElement, path, 0, 1_000_000_000)
+  return fraction(count, state.divisions * 4)
+}
+
+/** The value to use when the note does not say which one is written. */
+function measuredValue(
+  element: XmlElement,
+  duration: Fraction | undefined,
+  path: DocumentPath,
+): NoteValue {
+  if (!duration) {
+    throw new MusicXMLError('A <note> states neither a <type> nor a <duration>.', {
+      path,
+      line: element.line,
+    })
+  }
+
+  const value = noteValueOf(duration)
+  if (!value) {
+    throw new MusicXMLError(
+      `A <note> lasts ${describeLength(duration)}, which no note value can write. ` +
+        'It needs a tuplet, which is not converted yet.',
+      { path, line: element.line },
+    )
+  }
+  return value
+}
+
+function reportDurationMismatch(
+  element: XmlElement,
+  written: NoteValue,
+  duration: Fraction,
+  warnings: WarningCollector,
+  context: WarningContext,
+): void {
+  if (compareFractions(lengthOf(written), duration) === 0) return
+
+  // Inside a tuplet the two are meant to disagree, and the unconverted
+  // <time-modification> is reported on its own account.
+  if (child(element, 'time-modification')) return
+
+  warnings.add(
+    'inconsistent:duration',
+    `A <note> is written as ${describeValue(written)} but lasts ` +
+      `${describeLength(duration)}. The written value is the one converted.`,
+    { ...context, line: element.line },
+  )
 }
 
 function readPitch(element: XmlElement, path: DocumentPath): Pitch {

@@ -49,8 +49,19 @@ export interface Event {
   isRest: boolean
 }
 
+/**
+ * A rest that fills its measure, whatever the time signature says that is.
+ * It is a property of the sequence rather than an event in it, because that
+ * is how MNX states it: the sequence holds no events at all.
+ */
+export interface FullMeasureRest {
+  /** The value actually drawn, when the source says which one. */
+  visualDuration: NoteValue | undefined
+}
+
 export interface Sequence {
   events: readonly Event[]
+  fullMeasure: FullMeasureRest | undefined
 }
 
 export interface Clef {
