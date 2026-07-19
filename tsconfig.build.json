@@ -1,0 +1,14 @@
+{
+  // Declaration-only build for the published package: the JS comes from Vite
+  // (library mode); this emits the matching .d.ts tree into dist/types.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "noEmit": false,
+    "outDir": "dist/types",
+    "rootDir": "src"
+  },
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts"]
+}

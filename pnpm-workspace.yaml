@@ -1,0 +1,22 @@
+# pnpm reads its configuration from this file (pnpm 11+).
+# === Supply-chain hardening ===
+
+# Block dependency lifecycle/build scripts. Empty allowlist = no dependency may
+# run install/postinstall scripts — the cheapest defence against a compromised
+# release executing code at install time. Add a package here only after
+# auditing why it needs a build step.
+onlyBuiltDependencies: []
+
+# Also block the root package's own lifecycle scripts during install.
+ignoreScripts: true
+
+# Pin exact versions on `pnpm add` — no ^ / ~ ranges, so the lockfile is the
+# only thing that moves a version.
+saveExact: true
+
+# Refuse to install under an unsupported Node (see "engines" in package.json).
+engineStrict: true
+
+# Cooldown: don't resolve a dependency version younger than this many minutes,
+# so a freshly-published compromised release has time to be caught. 1440 = 24h.
+minimumReleaseAge: 1440

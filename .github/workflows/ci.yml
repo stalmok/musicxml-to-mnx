@@ -1,0 +1,89 @@
+# Every gate, on every push to main and every pull request — the same checks
+# the pre-commit hook runs, plus the dependency audit, the library build, and
+# a check that the build ships what the package's exports promise. Also
+# callable as a unit (workflow_call), so the release workflow runs the
+# identical gate set — a gate added here guards releases too, with no second
+# list to forget.
+#
+# Actions are pinned to commit SHAs (not tags) to match the repo's
+# supply-chain posture: a tag can be moved, a SHA cannot.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+
+# Default-deny: jobs get read-only access to the repo and nothing else.
+permissions:
+  contents: read
+
+# Rapid pushes supersede in-flight runs of the same PR branch. Runs on main
+# always finish — a cancelled run on main would hide a broken commit.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          # The job only reads the tree; no step pushes.
+          persist-credentials: false
+
+      # Reads the pinned pnpm version from package.json's packageManager field.
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          # One Node version everywhere: .nvmrc is the single source.
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm audit
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm format:check
+      - run: pnpm test:coverage
+
+      - run: pnpm build
+
+      # The build must ship what the package's exports promise: the bundle and
+      # the type entry.
+      - name: Check the build's shipped files
+        # Explicit bash: adds pipefail to the default -e, so a future edit that
+        # pipes a check cannot swallow its failure.
+        shell: bash
+        run: |
+          test -s dist/mnxml.js
+          test -s dist/types/index.d.ts
+
+      # The vendored MNX schema is the conformance oracle for every test in
+      # the suite, so its bytes must be the ones PROVENANCE.md attests to. A
+      # silently-edited schema would weaken every gate at once.
+      - name: Verify vendored schema integrity
+        shell: bash
+        run: |
+          cd schema
+          sha256sum --check SHA256SUMS
+
+  # Blocks a pull request that introduces a dependency with a known
+  # vulnerability or a disallowed licence, before it can reach the lockfile.
+  # Pull requests only: it diffs the PR against its base.
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          persist-credentials: false
+      - uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
+        with:
+          fail-on-severity: low

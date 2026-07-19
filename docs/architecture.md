@@ -1,0 +1,117 @@
+# Architecture
+
+How the converter is put together. Usage and current capability are in the
+README; working conventions are in `CLAUDE.md`.
+
+## Shape
+
+Two stages with a neutral model between them. MusicXML knowledge stops at the
+reader, MNX knowledge starts at the writer, and nothing knows both.
+
+```
+MusicXML string or bytes
+  -> xml/    parse into a light element tree carrying line numbers
+  -> read/   MusicXML semantics into the score model
+  -> write/  score model into MNX JSON
+  -> { mnx, warnings }
+```
+
+Nearly all the difficulty sits in the reader, because the two formats disagree
+about how music is written down. MusicXML encodes time as a cursor that
+`<backup>` and `<forward>` move around, spreads one voice across interleaved
+elements, and links spanners by a `number` attribute that has to be matched
+up. MNX states the same music directly. Once the reader has resolved that, the
+writer is close to a walk.
+
+The split also keeps a moving spec cheap: MNX has no stable 1.0, so when it
+changes, only `write/` and `types/mnx.ts` should have to move.
+
+## Modules
+
+```
+src/
+  xml/          element tree with source line numbers, and typed accessors
+  read/         MusicXML semantics. Grows one file per concern: timing,
+                voices, staves, spanners, directions, lyrics, attributes
+  model/        the neutral score model
+  write/        the MNX writer
+  types/mnx.ts  MNX output types, exported
+  fraction.ts   exact rational arithmetic for timing, never floats
+  warnings.ts   the warning code registry
+  errors.ts     MusicXMLError
+```
+
+Stage boundaries are enforced by `no-restricted-imports` rules in
+`eslint.config.js`, not left to discipline. A crossing is an architecture
+change: amend this document first.
+
+## The model
+
+`model/` exists to decouple the two stages, and for nothing else. It is
+internal, never exported, and scoped to conversion. It is not a general
+notation model and should not grow into one: every concept added to it has to
+earn its place by being something both a reader and a writer need.
+
+Its types are deliberately narrow (`TimeUnit`, `ClefSign`, `Step`). That makes
+validation the reader's job and lets the writer emit without a single cast. An
+`as` in the writer would stand for an invariant nothing enforces, which is
+exactly how a non-power-of-two time signature once reached the output.
+
+## Errors and warnings
+
+Two tiers, and the distinction is a contract rather than a style.
+
+**Fatal**, a `MusicXMLError` carrying a document path and source line: input
+that is structurally broken, or that cannot be converted faithfully. Rejecting
+is better than guessing.
+
+**Warning**, collected into the result: valid input the output does not carry,
+whether because MNX has no target for it or because the converter does not
+handle it yet. Every one has a stable code and measure context, so a pipeline
+can tell a lossless conversion from a lossy one. Dropping something silently
+is a bug by definition.
+
+## Dependencies
+
+At runtime, `@rgrove/parse-xml`, and nothing else so far. `fflate` joins it
+when `.mxl` input lands. `ajv` and the vendored schema are dev-only, because
+the schema gate runs in the test suite.
+
+The parser was chosen over the more widely used `saxes` mainly for safety on
+untrusted input. It never processes DTDs, and treats an undefined entity as a
+parse error rather than something to resolve, which closes off XXE and
+entity-expansion attacks by construction. That is not theoretical: every
+MusicXML file carries a DOCTYPE pointing at
+`http://www.musicxml.org/dtds/partwise.dtd`, so a parser that resolved
+external references would turn every conversion into a network fetch. It also
+has zero dependencies, is actively maintained, and reports the character
+offsets and error positions the location reporting needs.
+
+The vendored MNX schema is the conformance oracle. Output with the shape a
+test expected can still be illegal MNX, and the schema is the only thing that
+knows the difference.
+
+## Decisions worth remembering
+
+- **The XML layer does not trim text.** Readers wanting a number or a keyword
+  trim it themselves. Lyric text is meaningful down to the space, and once
+  this layer has trimmed it there is no recovering it.
+- **Attribute objects have a null prototype**, because attribute names come
+  from the document. A plain object would let one named `constructor` be read
+  back as an inherited function where a string was promised.
+- **`MusicXMLError.path` is a `readonly string[]`**, not a display string, so
+  callers can match a segment without parsing prose.
+- **Type-checking runs twice**: `tsconfig.json` over `src`, and
+  `tsconfig.test.json` over the tests. The tests are Node programs, but the
+  library must touch neither Node nor DOM globals, and giving only the test
+  pass those types enforces that rather than asserting it. Note that `exclude`
+  is inherited through `extends`, so the test config clears it explicitly.
+  Without that, tests beside the source go unchecked by both passes.
+- **`fraction.ts` arrives with the timing work.** Nothing needed rational
+  arithmetic while note values came straight from `<type>`.
+
+## References
+
+- MNX spec: https://w3c-cg.github.io/mnx/docs/
+- MNX schema: https://github.com/w3c/mnx/blob/main/docs/mnx-schema.json
+- MusicXML spec: https://www.w3.org/2021/06/musicxml40/

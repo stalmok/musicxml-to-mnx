@@ -1,0 +1,15 @@
+{
+  // The tests are Node programs: they read fixtures from disk and load the
+  // vendored schema. They get Node's types, which the library itself
+  // deliberately does not (see tsconfig.json) — running both passes is what
+  // proves src stays free of Node and DOM APIs.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  // `exclude` is inherited through `extends`, so it has to be cleared here —
+  // otherwise the base config's exclusion of src/**/*.test.ts would leave the
+  // tests beside the source unchecked by either pass.
+  "exclude": [],
+  "include": ["src", "tests"]
+}

@@ -1,0 +1,20 @@
+#!/bin/sh
+# Pre-commit gate: typecheck, lint, formatting, and the test suite (with its
+# coverage thresholds) must all pass before a commit is created. Mirrors the
+# manual workflow in CLAUDE.md so broken code can't slip through.
+#
+# Version-controlled here and activated per clone with:
+#   pnpm hooks:install      # = git config core.hooksPath .githooks
+set -e
+
+echo "pre-commit → pnpm typecheck"
+pnpm typecheck
+
+echo "pre-commit → pnpm lint"
+pnpm lint
+
+echo "pre-commit → pnpm format:check"
+pnpm format:check
+
+echo "pre-commit → pnpm test:coverage"
+pnpm test:coverage
