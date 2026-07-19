@@ -40,13 +40,36 @@ export interface NoteValue {
   dots: number
 }
 
+/** Which way a curve bends away from the notes it joins. */
+export type CurveSide = 'up' | 'down'
+
+/**
+ * A tie joining this note to a later one of the same pitch. Stated once, on
+ * the note where it begins, as a reference to the note where it ends.
+ */
+export interface Tie {
+  target: string
+}
+
+/** A slur joining this event to a later one. */
+export interface Slur {
+  target: string
+  side: CurveSide | undefined
+}
+
 export interface Note {
+  /** Unique in the document. Written out only where something refers to it. */
+  id: string
   pitch: Pitch
+  ties: readonly Tie[]
 }
 
 export interface Event {
   kind: 'event'
+  /** Unique in the document. Written out only where something refers to it. */
+  id: string
   value: NoteValue
+  slurs: readonly Slur[]
   /** Empty for a rest. More than one note makes it a chord. */
   notes: readonly Note[]
   isRest: boolean

@@ -492,13 +492,27 @@ describe('reporting what is not converted', () => {
     const { warnings } = read(
       measure(
         '<note><pitch><step>C</step><octave>4</octave></pitch><type>whole</type>' +
-          '<beam number="1">begin</beam><notations/></note>',
+          '<beam number="1">begin</beam></note>',
+      ),
+    )
+
+    expect(warnings.map((w) => w.message)).toEqual(['<beam> is not converted yet.'])
+  })
+
+  // <notations> holds a mixture, and some of it is converted now. Reporting
+  // the block wholesale would claim a slur was dropped when it was carried
+  // over, so what is inside it is reported instead.
+  test('reports what a notations block holds, not the block itself', () => {
+    const { warnings } = read(
+      measure(
+        '<note><pitch><step>C</step><octave>4</octave></pitch><type>whole</type>' +
+          '<notations><tied type="start"/><articulations/><fermata/></notations></note>',
       ),
     )
 
     expect(warnings.map((w) => w.message)).toEqual([
-      '<beam> is not converted yet.',
-      '<notations> is not converted yet.',
+      '<articulations> is not converted yet.',
+      '<fermata> is not converted yet.',
     ])
   })
 

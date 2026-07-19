@@ -5,12 +5,15 @@
 import { describe, expect, test } from 'vitest'
 import { schemaErrors } from '../../tests/support/schema.js'
 import type { Event, FullMeasureRest, Measure, Score, SequenceItem } from '../model/score.js'
+import type { MNXEvent } from '../types/mnx.js'
 import { writeMnx } from './mnx.js'
 
 const WHOLE_C: Event = {
   kind: 'event',
+  id: 'ev1',
   value: { base: 'whole', dots: 0 },
-  notes: [{ pitch: { step: 'C', octave: 4, alter: 0 } }],
+  slurs: [],
+  notes: [{ id: 'note1', pitch: { step: 'C', octave: 4, alter: 0 }, ties: [] }],
   isRest: false,
 }
 
@@ -42,7 +45,9 @@ test.each([
     scoreOf(
       measureOf({
         kind: 'event' as const,
+        id: 'ev2',
         value: { base: 'half', dots: 0 },
+        slurs: [],
         notes: [],
         isRest: true,
       }),
@@ -53,8 +58,10 @@ test.each([
     scoreOf(
       measureOf({
         kind: 'event',
+        id: 'ev3',
         value: { base: 'quarter', dots: 2 },
-        notes: [{ pitch: { step: 'B', octave: 3, alter: -1 } }],
+        slurs: [],
+        notes: [{ id: 'note2', pitch: { step: 'B', octave: 3, alter: -1 }, ties: [] }],
         isRest: false,
       }),
     ),
@@ -126,6 +133,68 @@ describe('measures', () => {
 
   test('leaves clefs out when the measure has none', () => {
     expect(writeMnx(scoreOf(measureOf(WHOLE_C))).parts[0]?.measures[0]).not.toHaveProperty('clefs')
+  })
+})
+
+describe('ties and slurs', () => {
+  // An id exists so that a tie or slur can point at something. Anything
+  // nothing points at should not be named.
+  const target: Event = {
+    kind: 'event',
+    id: 'ev-target',
+    value: { base: 'whole', dots: 0 },
+    slurs: [],
+    notes: [{ id: 'note-target', pitch: { step: 'G', octave: 4, alter: 0 }, ties: [] }],
+    isRest: false,
+  }
+  const start: Event = {
+    kind: 'event',
+    id: 'ev-start',
+    value: { base: 'whole', dots: 0 },
+    slurs: [{ target: 'ev-target', side: 'up' }],
+    notes: [
+      {
+        id: 'note-start',
+        pitch: { step: 'G', octave: 4, alter: 0 },
+        ties: [{ target: 'note-target' }],
+      },
+    ],
+    isRest: false,
+  }
+
+  function joined(): Score {
+    return scoreOf({
+      clefs: [],
+      sequences: [{ voice: undefined, content: [start, target], fullMeasure: undefined }],
+    })
+  }
+
+  test('states the tie on the note it starts from', () => {
+    const written = writeMnx(joined()).parts[0]?.measures[0]?.sequences[0]?.content[0]
+
+    expect(written).toMatchObject({ notes: [{ ties: [{ target: 'note-target' }] }] })
+  })
+
+  test('states the slur on the event it starts from, with its side', () => {
+    const written = writeMnx(joined()).parts[0]?.measures[0]?.sequences[0]?.content[0]
+
+    expect(written).toMatchObject({ slurs: [{ target: 'ev-target', side: 'up' }] })
+  })
+
+  test('names only what something points at', () => {
+    const content = writeMnx(joined()).parts[0]?.measures[0]?.sequences[0]?.content ?? []
+    const from = content[0] as MNXEvent
+    const to = content[1] as MNXEvent
+
+    // Nothing refers to the starting event or note, so neither is named.
+    expect(from).not.toHaveProperty('id')
+    expect(from.notes?.[0]).not.toHaveProperty('id')
+    expect(to.id).toBe('ev-target')
+    expect(to.notes?.[0]?.id).toBe('note-target')
+  })
+
+  test('writes MNX the spec schema accepts', () => {
+    expect(schemaErrors(writeMnx(joined()))).toEqual([])
   })
 })
 
@@ -241,7 +310,9 @@ describe('events', () => {
   test('writes a rest as an empty rest object with no notes', () => {
     const rest: Event = {
       kind: 'event' as const,
+      id: 'ev9',
       value: { base: 'half', dots: 0 },
+      slurs: [],
       notes: [],
       isRest: true,
     }
@@ -268,7 +339,7 @@ describe('events', () => {
   test('writes an alteration when the pitch is altered', () => {
     const flat: Event = {
       ...WHOLE_C,
-      notes: [{ pitch: { step: 'B', octave: 3, alter: -1 } }],
+      notes: [{ id: 'note9', pitch: { step: 'B', octave: 3, alter: -1 }, ties: [] }],
     }
 
     expect(firstEvent(scoreOf(measureOf(flat)))?.notes?.[0]?.pitch).toEqual({

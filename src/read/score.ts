@@ -39,6 +39,7 @@ import {
   trimmedText,
 } from '../xml/tree.js'
 import { describeLength, describeValue, lengthOf, noteValueOf } from './duration.js'
+import { IdGenerator, SpannerResolver } from './spanners.js'
 import { MeasureBuilder } from './voices.js'
 
 // MusicXML's note types, in MNX's spelling. The two agree everywhere except
@@ -102,6 +103,17 @@ const HANDLED_IN_NOTE: ReadonlySet<string> = new Set([
   'voice',
   'grace',
   'time-modification',
+  'tie',
+  'notations',
+])
+// <notations> holds a mixture: some of it is converted, most is not yet. It
+// is reported item by item rather than wholesale, so the loss report does not
+// claim a slur was dropped when it was carried over.
+const HANDLED_IN_NOTATIONS: ReadonlySet<string> = new Set([
+  'slur',
+  'tuplet',
+  // The visual counterpart of <tie>, which is what the tie is read from.
+  'tied',
 ])
 
 interface PartReading {
@@ -117,6 +129,10 @@ interface PartReading {
  */
 interface PartState {
   divisions: number | undefined
+  /** Shared across the score, so every id in the document is distinct. */
+  ids: IdGenerator
+  /** Per part: a tie or slur may span measures, but not parts. */
+  spanners: SpannerResolver
 }
 
 interface MeasureReading {
@@ -138,7 +154,10 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
   reportUnhandled(root, HANDLED_IN_SCORE, warnings, {})
 
   const names = readPartNames(root)
-  const readings = children(root, 'part').map((element) => readPart(element, names, warnings, path))
+  const ids = new IdGenerator()
+  const readings = children(root, 'part').map((element) =>
+    readPart(element, names, ids, warnings, path),
+  )
 
   const globalMeasures: GlobalMeasure[] = []
   for (const reading of readings) {
@@ -179,6 +198,7 @@ function readPartNames(root: XmlElement): ReadonlyMap<string, string> {
 function readPart(
   element: XmlElement,
   names: ReadonlyMap<string, string>,
+  ids: IdGenerator,
   warnings: WarningCollector,
   path: DocumentPath,
 ): PartReading {
@@ -194,10 +214,12 @@ function readPart(
     })
   }
 
-  const state: PartState = { divisions: undefined }
+  const state: PartState = { divisions: undefined, ids, spanners: new SpannerResolver() }
   const readings = children(element, 'measure').map((measureElement, index) =>
     readMeasure(measureElement, index, id, state, warnings, partPath),
   )
+  // Whatever is still open once the part ends is never going to close.
+  state.spanners.reportUnclosed(warnings, partPath)
 
   return {
     part: { id, name: names.get(id), measures: readings.map((reading) => reading.measure) },
@@ -372,6 +394,10 @@ function readNote(
     })
   }
 
+  for (const notations of children(element, 'notations')) {
+    reportUnhandled(notations, HANDLED_IN_NOTATIONS, warnings, context)
+  }
+
   const voice = child(element, 'voice')?.text.trim()
   const duration = readDuration(element, state, path)
   const written = readWrittenValue(element, path)
@@ -384,13 +410,9 @@ function readNote(
     if (!pitchElement) {
       throw new MusicXMLError('A rest cannot be part of a chord.', { path, line: element.line })
     }
-    builder.addChordNote(
-      voice,
-      { pitch: readPitch(pitchElement, path) },
-      duration,
-      path,
-      element.line,
-    )
+    const chordNote = readNoteAt(pitchElement, state, path)
+    builder.addChordNote(voice, chordNote, duration, path, element.line)
+    readTies(element, chordNote, voice, state, warnings, context)
     closeTuplets(builder, voice, tupletBrackets(element), path, element.line)
     return
   }
@@ -435,8 +457,15 @@ function readNote(
   }
 
   const value = written ?? measuredValue(element, duration, path)
-  const notes: Note[] = pitchElement ? [{ pitch: readPitch(pitchElement, path) }] : []
-  const event: Event = { kind: 'event', value, notes, isRest: restElement !== undefined }
+  const notes: Note[] = pitchElement ? [readNoteAt(pitchElement, state, path)] : []
+  const event: Event = {
+    kind: 'event',
+    id: state.ids.nextEvent(),
+    value,
+    slurs: [],
+    notes,
+    isRest: restElement !== undefined,
+  }
 
   // A grace note is squeezed in before the beat and takes none of the
   // measure's time, which is why it carries no <duration>. It joins a group
@@ -444,12 +473,17 @@ function readNote(
   const graceElement = child(element, 'grace')
   if (graceElement) {
     builder.addGraceNote(voice, event, attribute(graceElement, 'slash') === 'yes')
+    for (const note of notes) readTies(element, note, voice, state, warnings, context)
+    readSlurs(element, event, voice, state, warnings, context)
     return
   }
 
   // Where the source states no <duration>, the written value is how long the
   // note lasts.
   builder.addEvent(voice, event, duration ?? lengthOf(value), path, element.line)
+
+  for (const note of notes) readTies(element, note, voice, state, warnings, context)
+  readSlurs(element, event, voice, state, warnings, context)
 
   closeTuplets(builder, voice, brackets, path, element.line)
 }
@@ -463,6 +497,70 @@ function closeTuplets(
 ): void {
   for (const bracket of brackets) {
     if (bracket === 'stop') builder.closeTuplet(voice, path, line)
+  }
+}
+
+function readNoteAt(pitchElement: XmlElement, state: PartState, path: DocumentPath): Note {
+  return { id: state.ids.nextNote(), pitch: readPitch(pitchElement, path), ties: [] }
+}
+
+/**
+ * A <tie> says a tie begins or ends on this note. A note in the middle of a
+ * chain carries both, which is why every one of them is read.
+ */
+function readTies(
+  element: XmlElement,
+  note: Note,
+  voice: string | undefined,
+  state: PartState,
+  warnings: WarningCollector,
+  context: WarningContext,
+): void {
+  for (const tie of children(element, 'tie')) {
+    const type = attribute(tie, 'type')
+    if (type === 'stop') state.spanners.stopTie(note, voice, warnings, context)
+    else if (type === 'start') state.spanners.startTie(note, voice, context)
+    else {
+      // MusicXML 4.0 also has "let-ring", which MNX states as a tie's `lv`.
+      warnings.add(
+        'unsupported:element',
+        `A <tie> of type "${type ?? ''}" is not converted yet.`,
+        context,
+      )
+    }
+  }
+}
+
+/** Slurs are matched by the number the source gives them. */
+function readSlurs(
+  element: XmlElement,
+  event: Event,
+  voice: string | undefined,
+  state: PartState,
+  warnings: WarningCollector,
+  context: WarningContext,
+): void {
+  const slurs = children(element, 'notations').flatMap((notations) => children(notations, 'slur'))
+
+  for (const slur of slurs) {
+    const type = attribute(slur, 'type')
+    const number = attribute(slur, 'number') ?? '1'
+    if (type === 'stop') {
+      state.spanners.stopSlur(event, voice, number, warnings, context)
+    } else if (type === 'start') {
+      const placement = attribute(slur, 'placement')
+      const side = placement === 'above' ? 'up' : placement === 'below' ? 'down' : undefined
+      state.spanners.startSlur(event, voice, number, side, context)
+    } else if (type !== 'continue') {
+      // "continue" marks a note partway along a slur. MNX states only where a
+      // slur begins and ends, so there is nothing for it to carry, and
+      // nothing is lost by passing over it.
+      warnings.add(
+        'unsupported:element',
+        `A <slur> of type "${type ?? ''}" is not converted yet.`,
+        context,
+      )
+    }
   }
 }
 

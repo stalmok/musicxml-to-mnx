@@ -64,15 +64,20 @@ differs from plain 1, 2, 3, so a pickup measure keeps its number.
 Tuplets, including nested ones, and grace notes, which are gathered into
 groups and keep out of the measure's time.
 
+Ties and slurs, joined up across barlines. MusicXML marks both ends and leaves
+the connection implied; MNX states it once, on the end where it begins, as a
+reference to the end where it finishes. Anything with only one of its two ends
+is reported rather than guessed at, because real scores contain those.
+
 Timing is followed properly: durations are read in `<divisions>` as exact
 fractions, `<backup>` and `<forward>` move the cursor, a note value is
 recovered from its duration where none is written, and time a voice passes
 over in silence is stated as a space. A rest filling its measure becomes what
 MNX states it as, rather than being given an invented note value.
 
-Planned for v1: multi-staff parts, ties, slurs, beams including secondary
-breaks and hooks, lyrics, dynamics, hairpins, tempo, articulations, repeat
-barlines and endings, and octave shifts.
+Planned for v1: multi-staff parts, beams including secondary breaks and hooks,
+lyrics, dynamics, hairpins, tempo, articulations, repeat barlines and endings,
+and octave shifts.
 
 Constructs that MNX cannot express at all, such as pedal marks and percent
 repeats, will always surface as warnings rather than silent loss. Out of scope

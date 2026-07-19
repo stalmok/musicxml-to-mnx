@@ -37,8 +37,23 @@ export interface MNXPitch {
   alter?: number
 }
 
+/** Which way a curve bends away from the notes it joins. */
+export type MNXCurveSide = 'up' | 'down'
+
+export interface MNXTie {
+  target: string
+}
+
+export interface MNXSlur {
+  target: string
+  side?: MNXCurveSide
+}
+
 export interface MNXNote {
+  /** Present only where something refers to this note. */
+  id?: string
   pitch: MNXPitch
+  ties?: MNXTie[]
 }
 
 export interface MNXNoteValue {
@@ -47,7 +62,10 @@ export interface MNXNoteValue {
 }
 
 export interface MNXEvent {
+  /** Present only where something refers to this event. */
+  id?: string
   duration: MNXNoteValue
+  slurs?: MNXSlur[]
   notes?: MNXNote[]
   /** Present, and empty, when the event is a rest. */
   rest?: Record<string, never>

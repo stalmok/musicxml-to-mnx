@@ -1,0 +1,267 @@
+// MusicXML marks a tie or a slur at both ends and leaves the connection
+// implied. MNX states it once, on the note or event where it begins, as a
+// reference to the one where it ends. Resolving that means holding the open
+// ends until their partner turns up, which can be several measures later.
+
+import { describe, expect, test } from 'vitest'
+import { WarningCollector } from '../warnings.js'
+import { parseXmlRoot } from '../xml/parse.js'
+import { readScore } from './score.js'
+import type { Event, Note } from '../model/score.js'
+
+const DIVISIONS = '<attributes><divisions>4</divisions></attributes>'
+
+function note(step: string, body = ''): string {
+  return (
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    `<duration>4</duration><type>quarter</type><voice>1</voice>${body}</note>`
+  )
+}
+
+function tied(type: string): string {
+  return `<tie type="${type}"/><notations><tied type="${type}"/></notations>`
+}
+
+function slur(type: string, number = '1', placement = ''): string {
+  return `<notations><slur type="${type}" number="${number}"${placement}/></notations>`
+}
+
+function measures(...bodies: string[]): string {
+  const inner = bodies
+    .map((body, index) => `<measure number="${String(index + 1)}">${body}</measure>`)
+    .join('')
+  return `<score-partwise><part id="P1">${inner}</part></score-partwise>`
+}
+
+function read(source: string) {
+  const warnings = new WarningCollector()
+  const score = readScore(parseXmlRoot(source), warnings)
+  const events = (score.parts[0]?.measures ?? []).flatMap(
+    (measure) =>
+      measure.sequences[0]?.content.filter((item): item is Event => item.kind === 'event') ?? [],
+  )
+  return { events, notes: events.flatMap((event) => event.notes), warnings: warnings.list() }
+}
+
+describe('ties', () => {
+  test('points the note where the tie starts at the note where it ends', () => {
+    const { notes } = read(measures(DIVISIONS + note('C', tied('start')) + note('C', tied('stop'))))
+    const [first, second] = notes as [Note, Note]
+
+    expect(first.ties).toEqual([{ target: second.id }])
+    expect(second.ties).toEqual([])
+  })
+
+  test('carries a tie across a barline', () => {
+    const { notes } = read(measures(DIVISIONS + note('C', tied('start')), note('C', tied('stop'))))
+    const [first, second] = notes as [Note, Note]
+
+    expect(first.ties).toEqual([{ target: second.id }])
+  })
+
+  // A note in the middle of a chain both ends the tie before it and starts the
+  // next, so it carries two <tie> elements.
+  test('follows a chain of ties through the note that both ends and starts one', () => {
+    const middle = `<tie type="stop"/><tie type="start"/>`
+    const { notes } = read(
+      measures(DIVISIONS + note('C', tied('start')) + note('C', middle) + note('C', tied('stop'))),
+    )
+    const [first, second, third] = notes as [Note, Note, Note]
+
+    expect(first.ties).toEqual([{ target: second.id }])
+    expect(second.ties).toEqual([{ target: third.id }])
+    expect(third.ties).toEqual([])
+  })
+
+  test('ties the note of the same pitch, not merely the next one', () => {
+    const { notes } = read(
+      measures(DIVISIONS + note('C', tied('start')) + note('G') + note('C', tied('stop'))),
+    )
+    const [first, , third] = notes as [Note, Note, Note]
+
+    expect(first.ties).toEqual([{ target: third.id }])
+  })
+
+  test('reports a tie the source never ends', () => {
+    const { warnings, notes } = read(measures(DIVISIONS + note('C', tied('start')) + note('G')))
+
+    expect(warnings.map((w) => w.code)).toContain('unclosed:spanner')
+    expect(notes[0]?.ties).toEqual([])
+  })
+
+  test('reports a tie that ends without having started', () => {
+    const { warnings } = read(measures(DIVISIONS + note('C', tied('stop'))))
+
+    expect(warnings.map((w) => w.code)).toContain('unclosed:spanner')
+  })
+})
+
+describe('slurs', () => {
+  test('points the event where the slur starts at the event where it ends', () => {
+    const { events } = read(
+      measures(DIVISIONS + note('C', slur('start')) + note('G', slur('stop'))),
+    )
+    const [first, second] = events as [Event, Event]
+
+    expect(first.slurs).toEqual([{ target: second.id, side: undefined }])
+    expect(second.slurs).toEqual([])
+  })
+
+  test('carries a slur across a barline', () => {
+    const { events } = read(measures(DIVISIONS + note('C', slur('start')), note('G', slur('stop'))))
+    const [first, second] = events as [Event, Event]
+
+    expect(first.slurs[0]?.target).toBe(second.id)
+  })
+
+  test('keeps two slurs apart by the number the source gives them', () => {
+    const { events } = read(
+      measures(
+        DIVISIONS +
+          note('C', slur('start', '1')) +
+          note('D', slur('start', '2')) +
+          note('E', slur('stop', '1')) +
+          note('F', slur('stop', '2')),
+      ),
+    )
+    const [first, second, third, fourth] = events as [Event, Event, Event, Event]
+
+    expect(first.slurs[0]?.target).toBe(third.id)
+    expect(second.slurs[0]?.target).toBe(fourth.id)
+  })
+
+  test('reads which side of the notes the slur is drawn on', () => {
+    const { events } = read(
+      measures(
+        DIVISIONS + note('C', slur('start', '1', ' placement="below"')) + note('G', slur('stop')),
+      ),
+    )
+
+    expect(events[0]?.slurs[0]?.side).toBe('down')
+  })
+
+  test('reports a slur the source never ends', () => {
+    const { warnings } = read(measures(DIVISIONS + note('C', slur('start')) + note('G')))
+
+    expect(warnings.map((w) => w.code)).toContain('unclosed:spanner')
+  })
+})
+
+describe('the ends a spanner is keyed by', () => {
+  test('tells apart ties of different pitch left open at once', () => {
+    const { notes } = read(
+      measures(
+        DIVISIONS +
+          note('C', tied('start')) +
+          note('G', tied('start')) +
+          note('G', tied('stop')) +
+          note('C', tied('stop')),
+      ),
+    )
+    const [c1, g1, g2, c2] = notes as [Note, Note, Note, Note]
+
+    expect(c1.ties).toEqual([{ target: c2.id }])
+    expect(g1.ties).toEqual([{ target: g2.id }])
+  })
+
+  test('keeps one voice\u2019s slur out of another\u2019s', () => {
+    const voiced = (step: string, voice: string, body: string) =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>4</duration>` +
+      `<type>quarter</type><voice>${voice}</voice>${body}</note>`
+    const warnings = (() => {
+      const collector = new WarningCollector()
+      readScore(
+        parseXmlRoot(
+          measures(
+            DIVISIONS +
+              voiced('C', '1', slur('start')) +
+              voiced('E', '1', slur('stop')) +
+              '<backup><duration>8</duration></backup>' +
+              voiced('G', '2', slur('start')) +
+              voiced('B', '2', slur('stop')),
+          ),
+        ),
+        collector,
+      )
+      return collector.list()
+    })()
+
+    // Both voices number their slur 1, and neither should have swallowed the
+    // other's.
+    expect(warnings.filter((w) => w.code === 'unclosed:spanner')).toEqual([])
+  })
+})
+
+describe('spanners on music that names no voice', () => {
+  const bare = (step: string, body = '') =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    `<duration>4</duration><type>quarter</type>${body}</note>`
+
+  test('joins a tie', () => {
+    const { notes } = read(measures(DIVISIONS + bare('C', tied('start')) + bare('C', tied('stop'))))
+
+    expect(notes[0]?.ties).toEqual([{ target: notes[1]?.id }])
+  })
+
+  test('joins a slur that states no number either', () => {
+    const unnumbered = (type: string) => `<notations><slur type="${type}"/></notations>`
+    const { events } = read(
+      measures(DIVISIONS + bare('C', unnumbered('start')) + bare('G', unnumbered('stop'))),
+    )
+
+    expect(events[0]?.slurs[0]?.target).toBe(events[1]?.id)
+  })
+
+  test('reads a slur drawn above the notes', () => {
+    const { events } = read(
+      measures(
+        DIVISIONS + bare('C', slur('start', '1', ' placement="above"')) + bare('G', slur('stop')),
+      ),
+    )
+
+    expect(events[0]?.slurs[0]?.side).toBe('up')
+  })
+})
+
+describe('spanner markings that are not simply a start or a stop', () => {
+  test('passes over a slur marked as continuing, which MNX has no need of', () => {
+    const { events, warnings } = read(
+      measures(
+        DIVISIONS +
+          note('C', slur('start')) +
+          note('D', slur('continue')) +
+          note('E', slur('stop')),
+      ),
+    )
+
+    expect(warnings).toEqual([])
+    expect(events[0]?.slurs[0]?.target).toBe(events[2]?.id)
+  })
+
+  test('reports a slur it has no reading for', () => {
+    const { warnings } = read(
+      measures(DIVISIONS + note('C', '<notations><slur type="backward hook"/></notations>')),
+    )
+
+    expect(warnings.map((w) => w.message)).toContain(
+      'A <slur> of type "backward hook" is not converted yet.',
+    )
+  })
+
+  test('reports a tie it has no reading for', () => {
+    const { warnings } = read(measures(DIVISIONS + note('C', '<tie type="let-ring"/>')))
+
+    expect(warnings.map((w) => w.message)).toContain(
+      'A <tie> of type "let-ring" is not converted yet.',
+    )
+  })
+})
+
+describe('ids', () => {
+  test('gives every event and note a distinct one', () => {
+    const { events, notes } = read(measures(DIVISIONS + note('C') + note('G')))
+    const all = [...events.map((e) => e.id), ...notes.map((n) => n.id)]
+
+    expect(new Set(all).size).toBe(all.length)
+  })
+})

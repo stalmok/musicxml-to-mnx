@@ -17,6 +17,9 @@ export type WarningCode =
   // A note's written value and its measured duration disagree, outside a
   // tuplet where they are meant to. The written value is the one converted.
   | 'inconsistent:duration'
+  // A tie or slur has only one of its two ends, so there is nothing to join
+  // it to. Real scores contain these, so it is reported rather than refused.
+  | 'unclosed:spanner'
 
 export interface WarningContext {
   /** The MusicXML part id the warning came from, when known. */
