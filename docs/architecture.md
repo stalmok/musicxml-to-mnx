@@ -30,16 +30,35 @@ changes, only `write/` and `types/mnx.ts` should have to move.
 
 ```
 src/
-  xml/          element tree with source line numbers, and typed accessors
-  read/         MusicXML semantics. Grows one file per concern: timing,
-                voices, staves, spanners, directions, lyrics, attributes
-  model/        the neutral score model
-  write/        the MNX writer
-  types/mnx.ts  MNX output types, exported
-  fraction.ts   exact rational arithmetic for timing, never floats
-  warnings.ts   the warning code registry
-  errors.ts     MusicXMLError
+  xml/                 element tree with source line numbers, typed accessors
+  read/                MusicXML semantics, one file per concern
+    score.ts           the score, its parts, and the walk through a measure
+    attributes.ts      divisions, staves, key, time, clef
+    notes.ts           a <note>: pitch, value, ties, slurs, accidentals
+    voices.ts          the cursor, and one sequence per voice
+    spanners.ts        joining the two ends of a tie or slur, and event ids
+    beams.ts           per-note beam markings into MNX's tree of beams
+    directions.ts      dynamics and tempo marks
+    lyrics.ts          the words under a note
+    duration.ts        note-value arithmetic, no XML in it
+    divisions.ts       a <duration>, in the <divisions> in force
+    noteValues.ts      MusicXML's note-type spellings, in the model's
+    numbers.ts         reading a number stricter than Number() does
+    element.ts         records which children a reader actually read
+    unrepresentable.ts what MNX has nowhere to put
+    state.ts           what a part carries between its measures
+  model/               the neutral score model
+  write/               the MNX writer
+  types/mnx.ts         MNX output types, exported
+  fraction.ts          exact rational arithmetic for timing, never floats
+  warnings.ts          the warning code registry
+  errors.ts            MusicXMLError
 ```
+
+The reader is the only part with much shape to it, and it is split so that
+each file answers one question. `score.ts` holds the walk and nothing that can
+be lifted off it, because the walk is the part that has to stay in document
+order.
 
 Stage boundaries are enforced by `no-restricted-imports` rules in
 `eslint.config.js`, not left to discipline. A crossing is an architecture
