@@ -14,6 +14,7 @@ import type { Dynamic, DynamicValue, Tempo } from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import { children, trimmedText } from '../xml/tree.js'
+import type { ElementReader } from './element.js'
 import { noteValueBaseOf } from './noteValues.js'
 
 /** What one <direction> was found to carry. */
@@ -37,7 +38,7 @@ const DYNAMIC_VALUES: ReadonlySet<string> = new Set([
 ])
 
 export function readDirection(
-  element: XmlElement,
+  element: ElementReader,
   position: Fraction,
   warnings: WarningCollector,
   context: WarningContext,
@@ -45,7 +46,7 @@ export function readDirection(
 ): DirectionReading {
   const reading: DirectionReading = { dynamics: [], tempos: [] }
 
-  for (const directionType of children(element, 'direction-type')) {
+  for (const directionType of element.children('direction-type')) {
     for (const found of directionType.children) {
       switch (found.name) {
         case 'dynamics':

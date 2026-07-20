@@ -27,20 +27,13 @@ import { readAttributes } from './attributes.js'
 import { buildBeams } from './beams.js'
 import { readDirection } from './directions.js'
 import { requireDuration } from './divisions.js'
+import { ElementReader } from './element.js'
 import { negate } from '../fraction.js'
 import { readNote } from './notes.js'
 import { IdGenerator } from './spanners.js'
-import { newPartState, reportUnhandled } from './state.js'
+import { newPartState } from './state.js'
 import type { PartState } from './state.js'
 import { MeasureBuilder } from './voices.js'
-
-// Elements consumed at each level. Anything else found there carries notation
-// we don't convert yet, and is reported.
-const HANDLED_IN_SCORE: ReadonlySet<string> = new Set(['part-list', 'part'])
-// <backup> and <forward> only state how far to move. A <voice> or <staff> on
-// one says which voice the skipped time belongs to, which the model cannot
-// yet express.
-const HANDLED_IN_CURSOR_MOVE: ReadonlySet<string> = new Set(['duration'])
 
 interface PartReading {
   part: Part
@@ -64,7 +57,9 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
   }
 
   const path: DocumentPath = ['score-partwise']
-  reportUnhandled(root, HANDLED_IN_SCORE, warnings, {})
+  const reader = new ElementReader(root)
+  reader.skip('part-list', 'part')
+  reader.reportUnread(warnings, {})
 
   const names = readPartNames(root)
   const ids = new IdGenerator()
@@ -180,9 +175,15 @@ function readMeasure(
   // <backup> before it, and on the <divisions> in force by the time it is
   // reached. A measure may carry more than one <attributes> for that reason.
   for (const found of element.children) {
+    // Each reader records what it reads out of the element, and reports the
+    // rest once it is done. Built here rather than inside, so a reader that
+    // returns early down one of its paths still has everything it passed over
+    // reported.
+    const reader = new ElementReader(found)
+
     switch (found.name) {
       case 'attributes': {
-        const reading = readAttributes(found, state, warnings, context, measurePath)
+        const reading = readAttributes(reader, state, warnings, context, measurePath)
         key ??= reading.key
         time ??= reading.time
         clefs.push(...reading.clefs)
@@ -190,22 +191,23 @@ function readMeasure(
       }
 
       case 'note':
-        readNote(found, state, builder, warnings, context, measurePath)
+        readNote(reader, state, builder, warnings, context, measurePath)
         break
 
       case 'direction': {
-        const reading = readDirection(found, builder.position(), warnings, context, measurePath)
+        const reading = readDirection(reader, builder.position(), warnings, context, measurePath)
         dynamics.push(...reading.dynamics)
         tempos.push(...reading.tempos)
         break
       }
 
       // Both only move the cursor: <backup> against the flow of the measure,
-      // <forward> with it.
+      // <forward> with it. A <voice> or <staff> on one says which voice the
+      // skipped time belongs to, which the model cannot yet express, so it
+      // stays unread and is reported.
       case 'backup':
       case 'forward': {
-        reportUnhandled(found, HANDLED_IN_CURSOR_MOVE, warnings, context)
-        const by = requireDuration(found, state, measurePath)
+        const by = requireDuration(reader, state, measurePath)
         builder.shift(found.name === 'backup' ? negate(by) : by, measurePath, found.line)
         break
       }
@@ -215,7 +217,10 @@ function readMeasure(
           ...context,
           line: found.line,
         })
+        continue
     }
+
+    reader.reportUnread(warnings, context)
   }
 
   builder.checkAllClosed(measurePath, element.line)

@@ -1,8 +1,6 @@
 // What the readers of one part share: the running state a measure cannot be
-// read without, and the loss reporting they all use.
+// read without.
 
-import type { WarningCollector, WarningContext } from '../warnings.js'
-import type { XmlElement } from '../xml/parse.js'
 import { IdGenerator, SpannerResolver } from './spanners.js'
 
 /**
@@ -32,20 +30,5 @@ export function newPartState(
     staves: 1,
     ids,
     spanners: new SpannerResolver(),
-  }
-}
-
-export function reportUnhandled(
-  element: XmlElement,
-  handled: ReadonlySet<string>,
-  warnings: WarningCollector,
-  context: WarningContext,
-): void {
-  for (const found of element.children) {
-    if (handled.has(found.name)) continue
-    warnings.add('unsupported:element', `<${found.name}> is not converted yet.`, {
-      ...context,
-      line: found.line,
-    })
   }
 }

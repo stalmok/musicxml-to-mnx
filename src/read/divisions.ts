@@ -8,18 +8,17 @@ import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
 import { fraction } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
-import type { XmlElement } from '../xml/parse.js'
-import { child } from '../xml/tree.js'
+import type { ElementReader } from './element.js'
 import { readIntegerInRange } from './numbers.js'
 import type { PartState } from './state.js'
 
 /** How long the element lasts, as a fraction of a whole note. */
 export function readDuration(
-  element: XmlElement,
+  element: ElementReader,
   state: PartState,
   path: DocumentPath,
 ): Fraction | undefined {
-  const durationElement = child(element, 'duration')
+  const durationElement = element.child('duration')
   if (!durationElement) return undefined
 
   if (state.divisions === undefined) {
@@ -36,7 +35,7 @@ export function readDuration(
 
 /** The duration of a <backup> or <forward>, which must state one. */
 export function requireDuration(
-  element: XmlElement,
+  element: ElementReader,
   state: PartState,
   path: DocumentPath,
 ): Fraction {

@@ -25,41 +25,12 @@ import type { XmlElement } from '../xml/parse.js'
 import { attribute, child, children, requireChild, trimmedText } from '../xml/tree.js'
 import { readDuration } from './divisions.js'
 import { describeLength, describeValue, lengthOf, noteValueOf } from './duration.js'
+import type { ElementReader } from './element.js'
 import { readLyrics } from './lyrics.js'
 import { noteValueBaseOf, requireNoteValueBase } from './noteValues.js'
 import { readIntegerInRange } from './numbers.js'
 import type { PartState } from './state.js'
-import { reportUnhandled } from './state.js'
 import { MeasureBuilder } from './voices.js'
-
-const HANDLED_IN_NOTE: ReadonlySet<string> = new Set([
-  'pitch',
-  'rest',
-  'duration',
-  'type',
-  'dot',
-  'chord',
-  'voice',
-  'grace',
-  'time-modification',
-  'tie',
-  'notations',
-  'beam',
-  'staff',
-  'lyric',
-  'stem',
-  'accidental',
-])
-
-// <notations> holds a mixture: some of it is converted, most is not yet. It
-// is reported item by item rather than wholesale, so the loss report does not
-// claim a slur was dropped when it was carried over.
-const HANDLED_IN_NOTATIONS: ReadonlySet<string> = new Set([
-  'slur',
-  'tuplet',
-  // The visual counterpart of <tie>, which is what the tie is read from.
-  'tied',
-])
 
 // A recogniser rather than a bare set: it narrows the value it accepts to the
 // model's type, so a validated value reaches the writer without a cast.
@@ -70,17 +41,15 @@ function isStep(value: string): value is Step {
 }
 
 export function readNote(
-  element: XmlElement,
+  element: ElementReader,
   state: PartState,
   builder: MeasureBuilder,
   warnings: WarningCollector,
   context: WarningContext,
   path: DocumentPath,
 ): void {
-  reportUnhandled(element, HANDLED_IN_NOTE, warnings, context)
-
-  const restElement = child(element, 'rest')
-  const pitchElement = child(element, 'pitch')
+  const restElement = element.child('rest')
+  const pitchElement = element.child('pitch')
   if (restElement && pitchElement) {
     throw new MusicXMLError('A <note> is both a rest and a pitch.', { path, line: element.line })
   }
@@ -91,37 +60,64 @@ export function readNote(
     })
   }
 
-  for (const notations of children(element, 'notations')) {
-    reportUnhandled(notations, HANDLED_IN_NOTATIONS, warnings, context)
-  }
+  const notations = element.blocks('notations')
+  // <tied> is the visual counterpart of <tie>, which is what the tie is read
+  // from, so a document stating both loses nothing by this reader ignoring it.
+  for (const block of notations) block.skip('tied')
 
-  const voice = child(element, 'voice')?.text.trim()
+  const voice = element.child('voice')?.text.trim()
   const duration = readDuration(element, state, path)
   const written = readWrittenValue(element, path)
+  const graceElement = element.child('grace')
+
+  // Which staff the note names, where the part has more than one. On one
+  // staff there is only ever the one to name, so it says nothing.
+  const staffElement = element.child('staff')
+  const staff =
+    state.staves > 1 && staffElement
+      ? readIntegerInRange(staffElement, path, 1, state.staves)
+      : undefined
 
   // A note carrying <chord> sounds with the one before it, so it joins that
   // event rather than starting another. It is settled first because it is
   // not an event of its own: it opens no tuplet, and the ratio it repeats
   // belongs to the event it joins.
-  if (child(element, 'chord')) {
+  if (element.child('chord')) {
     if (!pitchElement) {
       throw new MusicXMLError('A rest cannot be part of a chord.', { path, line: element.line })
     }
+    // A chord member is drawn with the event it joins, so its stem and its
+    // beams are that event's and are read from the note carrying them. The
+    // ratio it repeats is likewise the event's.
+    element.skip('stem', 'beam', 'time-modification')
+
+    // MNX states the staff on the event, so every note of a chord is on the
+    // event's staff. One naming a different staff is reaching across on its
+    // own, which is the one thing here that cannot be carried.
+    if (staff !== undefined && staff !== builder.staffOfChord(voice)) {
+      warnings.add(
+        'unsupported:element',
+        'A <note> in a chord is on a different staff from the chord, and MNX states ' +
+          'the staff for the whole chord.',
+        { ...context, line: element.line },
+      )
+    }
+
     const chordNote = readNoteAt(element, pitchElement, state, path)
     builder.addChordNote(voice, chordNote, duration, path, element.line)
     readTies(element, chordNote, state, warnings, context)
-    closeTuplets(builder, voice, tupletBrackets(element), path, element.line)
+    closeTuplets(builder, voice, tupletBrackets(notations), path, element.line)
     return
   }
 
-  const brackets = tupletBrackets(element)
+  const brackets = tupletBrackets(notations)
 
   // A tremolo written across two notes gives each of them the value of the
   // pair while the pair lasts only one of them, so its written values
   // overfill the measure exactly as a tuplet's do. MNX states it as a
   // multi-note tremolo, which is not converted yet, and emitting the written
   // values on their own would hand back a measure that does not add up.
-  if (hasMultiNoteTremolo(element)) {
+  if (hasMultiNoteTremolo(notations)) {
     throw new MusicXMLError('A tremolo written across two notes is not converted yet.', {
       path,
       line: element.line,
@@ -131,7 +127,7 @@ export function readNote(
   // A tremolo on a single note carries no <time-modification> and lasts what
   // it is written as, so only the ornament itself is lost, and that is
   // reported where <ornaments> is.
-  const ratio = child(element, 'time-modification')
+  const ratio = element.child('time-modification')
 
   // A tuplet is bracketed in the source, and that bracket is what says where
   // one ends and the next begins. Without it there is nothing to group by,
@@ -160,7 +156,11 @@ export function readNote(
   // states it on the sequence, and how long the measure runs is the time
   // signature's business.
   if (restElement && attribute(restElement, 'measure') === 'yes') {
-    builder.setFullMeasure(voice, { visualDuration: written }, duration, path, element.line)
+    // A rest is not drawn with a stem, and a beam over one alone is not a
+    // beam, so a source stating either says nothing this loses.
+    element.skip('stem', 'beam')
+
+    builder.setFullMeasure(voice, { visualDuration: written }, duration, staff, path, element.line)
     if (duration) builder.shift(duration, path, element.line)
     return
   }
@@ -171,11 +171,6 @@ export function readNote(
 
   const value = written ?? measuredValue(element, duration, path)
   const notes: Note[] = pitchElement ? [readNoteAt(element, pitchElement, state, path)] : []
-  const staffElement = child(element, 'staff')
-  const staff =
-    state.staves > 1 && staffElement
-      ? readIntegerInRange(staffElement, path, 1, state.staves)
-      : undefined
 
   const event: Event = {
     kind: 'event',
@@ -192,11 +187,10 @@ export function readNote(
   // A grace note is squeezed in before the beat and takes none of the
   // measure's time, which is why it carries no <duration>. It joins a group
   // rather than standing in the cursor's path.
-  const graceElement = child(element, 'grace')
   if (graceElement) {
     builder.addGraceNote(voice, event, attribute(graceElement, 'slash') === 'yes')
     for (const note of notes) readTies(element, note, state, warnings, context)
-    readSlurs(element, event, state, warnings, context)
+    readSlurs(notations, event, state, warnings, context)
     return
   }
 
@@ -205,7 +199,7 @@ export function readNote(
   builder.addEvent(voice, event, duration ?? lengthOf(value), path, element.line, staff)
 
   for (const note of notes) readTies(element, note, state, warnings, context)
-  readSlurs(element, event, state, warnings, context)
+  readSlurs(notations, event, state, warnings, context)
   builder.addBeamMarkers(voice, event.id, beamMarkers(element, path))
 
   closeTuplets(builder, voice, brackets, path, element.line)
@@ -224,11 +218,11 @@ function closeTuplets(
 }
 
 function readStemDirection(
-  element: XmlElement,
+  element: ElementReader,
   warnings: WarningCollector,
   context: WarningContext,
 ): 'up' | 'down' | undefined {
-  const stem = child(element, 'stem')
+  const stem = element.child('stem')
   if (!stem) return undefined
 
   const direction = stem.text.trim()
@@ -248,7 +242,7 @@ const ENCLOSURES = new Map<string, 'parentheses' | 'brackets'>([
 ])
 
 function readNoteAt(
-  element: XmlElement,
+  element: ElementReader,
   pitchElement: XmlElement,
   state: PartState,
   path: DocumentPath,
@@ -268,10 +262,10 @@ function readNoteAt(
  * covered by the key or a note before it.
  */
 function readAccidentalDisplay(
-  element: XmlElement,
+  element: ElementReader,
   state: PartState,
 ): AccidentalDisplay | undefined {
-  const accidental = child(element, 'accidental')
+  const accidental = element.child('accidental')
   if (!accidental) return undefined
 
   // The document states its accidentals explicitly, which it declares once.
@@ -289,13 +283,13 @@ function readAccidentalDisplay(
  * chain carries both, which is why every one of them is read.
  */
 function readTies(
-  element: XmlElement,
+  element: ElementReader,
   note: Note,
   state: PartState,
   warnings: WarningCollector,
   context: WarningContext,
 ): void {
-  for (const tie of children(element, 'tie')) {
+  for (const tie of element.children('tie')) {
     const type = attribute(tie, 'type')
     if (type === 'stop') state.spanners.stopTie(note, warnings, context)
     else if (type === 'start') state.spanners.startTie(note, context)
@@ -312,15 +306,13 @@ function readTies(
 
 /** Slurs are matched by the number the source gives them, across the part. */
 function readSlurs(
-  element: XmlElement,
+  notations: readonly ElementReader[],
   event: Event,
   state: PartState,
   warnings: WarningCollector,
   context: WarningContext,
 ): void {
-  const slurs = children(element, 'notations').flatMap((notations) => children(notations, 'slur'))
-
-  for (const slur of slurs) {
+  for (const slur of notations.flatMap((block) => block.children('slur'))) {
     const type = attribute(slur, 'type')
     const number = attribute(slur, 'number') ?? '1'
     if (type === 'stop') {
@@ -350,9 +342,9 @@ function slurSide(slur: XmlElement): CurveSide | undefined {
  * level it is beamed at, so all of them are read: level 1 is the eighth-note
  * beam, level 2 the sixteenth, and so on.
  */
-function beamMarkers(element: XmlElement, path: DocumentPath): ReadonlyMap<number, string> {
+function beamMarkers(element: ElementReader, path: DocumentPath): ReadonlyMap<number, string> {
   const markers = new Map<number, string>()
-  for (const beam of children(element, 'beam')) {
+  for (const beam of element.children('beam')) {
     // The level is the attribute; the element's own text says what the beam
     // does there, as "begin" or "end".
     const stated = attribute(beam, 'number')
@@ -373,9 +365,11 @@ function beamMarkers(element: XmlElement, path: DocumentPath): ReadonlyMap<numbe
   return markers
 }
 
-function hasMultiNoteTremolo(element: XmlElement): boolean {
-  return children(element, 'notations').some((notations) =>
-    children(notations, 'ornaments').some((ornaments) =>
+function hasMultiNoteTremolo(notations: readonly ElementReader[]): boolean {
+  return notations.some((block) =>
+    // Left unread on purpose: <ornaments> carries much this converter does
+    // not handle, so it stays in the loss report either way.
+    children(block.element, 'ornaments').some((ornaments) =>
       children(ornaments, 'tremolo').some((tremolo) => {
         const type = attribute(tremolo, 'type')
         return type === 'start' || type === 'stop'
@@ -389,9 +383,9 @@ function hasMultiNoteTremolo(element: XmlElement): boolean {
  * may hold several <notations> blocks, and exporters use that: a tie in one,
  * a tuplet marker in another.
  */
-function tupletBrackets(element: XmlElement): readonly string[] {
-  return children(element, 'notations')
-    .flatMap((notations) => children(notations, 'tuplet'))
+function tupletBrackets(notations: readonly ElementReader[]): readonly string[] {
+  return notations
+    .flatMap((block) => block.children('tuplet'))
     .map((tuplet) => attribute(tuplet, 'type'))
     .filter((type): type is string => type !== undefined)
 }
@@ -403,7 +397,7 @@ function tupletBrackets(element: XmlElement): readonly string[] {
  */
 function readTupletRatio(
   ratio: XmlElement,
-  element: XmlElement,
+  element: ElementReader,
   path: DocumentPath,
 ): { inner: NoteValueQuantity; outer: NoteValueQuantity } {
   const played = readIntegerInRange(requireChild(ratio, 'actual-notes', path), path, 1, 1_000)
@@ -425,8 +419,11 @@ function readTupletRatio(
 }
 
 /** The value as written: `<type>` plus however many `<dot>`s follow it. */
-function readWrittenValue(element: XmlElement, path: DocumentPath): NoteValue | undefined {
-  const typeElement = child(element, 'type')
+function readWrittenValue(element: ElementReader, path: DocumentPath): NoteValue | undefined {
+  const typeElement = element.child('type')
+  // <dot> is read either way: a note with dots and no <type> has still stated
+  // them, and leaving them unread would report them as a loss.
+  const dots = element.children('dot').length
   if (!typeElement) return undefined
 
   const base = noteValueBaseOf(typeElement)
@@ -436,12 +433,12 @@ function readWrittenValue(element: XmlElement, path: DocumentPath): NoteValue | 
       line: typeElement.line,
     })
   }
-  return { base, dots: children(element, 'dot').length }
+  return { base, dots }
 }
 
 /** The value to use when the note does not say which one is written. */
 function measuredValue(
-  element: XmlElement,
+  element: ElementReader,
   duration: Fraction | undefined,
   path: DocumentPath,
 ): NoteValue {
@@ -464,7 +461,7 @@ function measuredValue(
 }
 
 function reportDurationMismatch(
-  element: XmlElement,
+  element: ElementReader,
   written: NoteValue,
   duration: Fraction,
   warnings: WarningCollector,

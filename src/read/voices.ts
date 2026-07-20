@@ -31,8 +31,12 @@ const UNNAMED_VOICE = ''
 interface VoiceBuilder {
   /** What each event said about its beams, in the order they were read. */
   beamed: BeamedEvent[]
-  /** Which staff each event named, paired with the event that named it. */
-  placed: { event: Event; staff: number | undefined }[]
+  /**
+   * Which staff each note named, paired with the event that named it. A rest
+   * filling the measure names one without being an event, so it contributes
+   * the staff and nothing to override.
+   */
+  placed: { event: Event | undefined; staff: number | undefined }[]
   /**
    * The item lists currently being filled, outermost first. A tuplet or a
    * grace group opens a new one, so notes land inside it until it closes.
@@ -147,6 +151,11 @@ export class MeasureBuilder {
     this.#cursor = builder.end
   }
 
+  /** The staff the event a chord note would join was placed on. */
+  staffOfChord(voice: string | undefined): number | undefined {
+    return this.#builderFor(voice ?? this.#lastVoice).placed.at(-1)?.staff
+  }
+
   /**
    * Adds a note carrying <chord>, which sounds with the event before it
    * rather than after. The cursor does not move.
@@ -189,6 +198,7 @@ export class MeasureBuilder {
     voice: string | undefined,
     rest: FullMeasureRest,
     covering: Fraction | undefined,
+    staff: number | undefined,
     path: DocumentPath,
     line: number,
   ): void {
@@ -200,6 +210,9 @@ export class MeasureBuilder {
       })
     }
 
+    // The rest is the whole of this voice in this measure, so the staff it
+    // names is the staff the sequence sits on.
+    builder.placed.push({ event: undefined, staff })
     builder.fullMeasure = rest
     // The rest occupies the whole voice, so nothing may follow it there.
     if (covering) builder.end = addFractions(this.#cursor, covering)
@@ -292,7 +305,7 @@ export class MeasureBuilder {
 
       // Only the events that reach across to another staff say so.
       for (const placed of builder.placed) {
-        if (placed.staff !== undefined && placed.staff !== staff) {
+        if (placed.event && placed.staff !== undefined && placed.staff !== staff) {
           placed.event.staff = placed.staff
         }
       }

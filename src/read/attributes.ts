@@ -10,18 +10,10 @@ import type { DocumentPath } from '../errors.js'
 import type { Clef, ClefSign, Key, TimeSignature, TimeUnit } from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
-import { attribute, child, children, requireChild, trimmedText } from '../xml/tree.js'
+import { attribute, child, requireChild, trimmedText } from '../xml/tree.js'
+import type { ElementReader } from './element.js'
 import { readInteger, readIntegerInRange } from './numbers.js'
 import type { PartState } from './state.js'
-import { reportUnhandled } from './state.js'
-
-const HANDLED_IN_ATTRIBUTES: ReadonlySet<string> = new Set([
-  'divisions',
-  'key',
-  'time',
-  'clef',
-  'staves',
-])
 
 // Recognisers rather than bare sets: each one narrows the value it accepts to
 // the model's type, so a validated value reaches the writer without a cast
@@ -50,27 +42,25 @@ export interface AttributesReading {
 }
 
 export function readAttributes(
-  element: XmlElement,
+  element: ElementReader,
   state: PartState,
   warnings: WarningCollector,
   context: WarningContext,
   path: DocumentPath,
 ): AttributesReading {
-  reportUnhandled(element, HANDLED_IN_ATTRIBUTES, warnings, context)
-
-  const divisionsElement = child(element, 'divisions')
+  const divisionsElement = element.child('divisions')
   if (divisionsElement) {
     state.divisions = readIntegerInRange(divisionsElement, path, 1, 1_000_000)
   }
 
-  const stavesElement = child(element, 'staves')
+  const stavesElement = element.child('staves')
   if (stavesElement) {
     state.staves = readIntegerInRange(stavesElement, path, 1, 16)
   }
 
   // MusicXML allows one key and one time signature per staff. MNX states them
   // for the whole score, so staves that disagree cannot both be carried.
-  const keys = children(element, 'key').map((found) => readKey(found, path))
+  const keys = element.children('key').map((found) => readKey(found, path))
   if (keys.some((other) => other.fifths !== keys[0]?.fifths)) {
     warnings.add(
       'unsupported:per-staff-key',
@@ -80,7 +70,7 @@ export function readAttributes(
     )
   }
 
-  const times = children(element, 'time').map((found) => readTime(found, path))
+  const times = element.children('time').map((found) => readTime(found, path))
   if (times.some((other) => other.count !== times[0]?.count || other.unit !== times[0]?.unit)) {
     warnings.add(
       'unsupported:per-staff-time',
@@ -93,7 +83,7 @@ export function readAttributes(
   return {
     key: keys[0],
     time: times[0],
-    clefs: children(element, 'clef').map((found) => readClef(found, state, path)),
+    clefs: element.children('clef').map((found) => readClef(found, state, path)),
   }
 }
 

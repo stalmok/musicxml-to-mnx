@@ -7,8 +7,8 @@
 import type { DocumentPath } from '../errors.js'
 import type { Lyric } from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
-import type { XmlElement } from '../xml/parse.js'
-import { attribute, child, children, requireChild } from '../xml/tree.js'
+import { attribute, child, requireChild } from '../xml/tree.js'
+import type { ElementReader } from './element.js'
 
 // MusicXML's syllabic values, in MNX's spelling. A syllable standing on its
 // own carries no type in MNX, so "single", and no syllabic at all, map to
@@ -22,12 +22,12 @@ const LYRIC_TYPES = new Map<string, 'start' | 'middle' | 'end' | undefined>([
 
 /** The syllables under a note, one per verse. */
 export function readLyrics(
-  element: XmlElement,
+  element: ElementReader,
   warnings: WarningCollector,
   context: WarningContext,
   path: DocumentPath,
 ): Lyric[] {
-  return children(element, 'lyric').map((lyric) => {
+  return element.children('lyric').map((lyric) => {
     const line = attribute(lyric, 'number') ?? '1'
     // The text is meaningful down to the space, so it is not trimmed.
     const text = requireChild(lyric, 'text', path).text
