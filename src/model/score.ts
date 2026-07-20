@@ -183,6 +183,8 @@ export type DynamicValue = 'ppp' | 'pp' | 'p' | 'mp' | 'mf' | 'f' | 'ff' | 'fff'
 export interface Dynamic {
   position: Fraction
   value: DynamicValue
+  /** Which staff it belongs under, where the part has more than one. */
+  staff: number | undefined
 }
 
 export interface Measure {

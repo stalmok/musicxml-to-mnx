@@ -180,3 +180,59 @@ describe('directions MNX cannot state', () => {
     expect(warnings).toEqual([])
   })
 })
+
+// A dynamic sits under a particular hand of a piano part, and MNX states the
+// staff on the mark itself. A tempo is the whole score's, so it has no use
+// for one.
+describe('which staff a direction belongs under', () => {
+  const twoStaves = '<attributes><divisions>4</divisions><staves>2</staves></attributes>'
+  const noteOn = (staff: string) =>
+    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+    `<type>quarter</type><staff>${staff}</staff></note>`
+
+  function dynamicsOf(body: string) {
+    const warnings = new WarningCollector()
+    const score = readScore(
+      parseXmlRoot(
+        `<score-partwise><part id="P1"><measure number="1">${body}</measure></part></score-partwise>`,
+      ),
+      warnings,
+    )
+    return { dynamics: score.parts[0]?.measures[0]?.dynamics ?? [], warnings: warnings.list() }
+  }
+
+  test('carries the staff a dynamic names', () => {
+    const { dynamics, warnings } = dynamicsOf(
+      twoStaves +
+        noteOn('1') +
+        '<direction><direction-type><dynamics><p/></dynamics></direction-type>' +
+        '<staff>2</staff></direction>',
+    )
+
+    expect(dynamics.map((d) => d.staff)).toEqual([2])
+    expect(warnings).toEqual([])
+  })
+
+  test('leaves it unset where the part has only one staff to name', () => {
+    const { dynamics } = dynamicsOf(
+      '<attributes><divisions>4</divisions></attributes>' +
+        '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+        '<type>quarter</type></note>' +
+        '<direction><direction-type><dynamics><p/></dynamics></direction-type>' +
+        '<staff>1</staff></direction>',
+    )
+
+    expect(dynamics.map((d) => d.staff)).toEqual([undefined])
+  })
+
+  test('rejects a staff the part does not have', () => {
+    expect(() =>
+      dynamicsOf(
+        twoStaves +
+          noteOn('1') +
+          '<direction><direction-type><dynamics><p/></dynamics></direction-type>' +
+          '<staff>3</staff></direction>',
+      ),
+    ).toThrow('outside the range 1 to 2')
+  })
+})

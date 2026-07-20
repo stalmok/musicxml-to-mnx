@@ -167,7 +167,7 @@ describe('global measures', () => {
   test('writes a dynamic that MNX schema accepts', () => {
     const measure = {
       ...measureOf(WHOLE_C),
-      dynamics: [{ position: { num: 0, den: 1 }, value: 'f' as const }],
+      dynamics: [{ position: { num: 0, den: 1 }, value: 'f' as const, staff: undefined }],
     }
 
     expect(schemaErrors(writeMnx(scoreOf(measure)))).toEqual([])

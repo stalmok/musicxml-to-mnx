@@ -16,6 +16,8 @@ import type { XmlElement } from '../xml/parse.js'
 import { children, trimmedText } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
 import { noteValueBaseOf } from './noteValues.js'
+import { readIntegerInRange } from './numbers.js'
+import type { PartState } from './state.js'
 import { elementLoss } from './unrepresentable.js'
 
 /** What one <direction> was found to carry. */
@@ -41,17 +43,25 @@ const DYNAMIC_VALUES: ReadonlySet<string> = new Set([
 export function readDirection(
   element: ElementReader,
   position: Fraction,
+  state: PartState,
   warnings: WarningCollector,
   context: WarningContext,
   path: DocumentPath,
 ): DirectionReading {
   const reading: DirectionReading = { dynamics: [], tempos: [] }
 
+  // A direction says which staff it belongs under. A tempo is the score's, so
+  // it has no use for one, but a dynamic sits under a particular hand and MNX
+  // states the staff on it. Only worth carrying where there is a choice.
+  const staffElement = element.child('staff')
+  const named = staffElement ? readIntegerInRange(staffElement, path, 1, state.staves) : undefined
+  const staff = state.staves > 1 ? named : undefined
+
   for (const directionType of element.children('direction-type')) {
     for (const found of directionType.children) {
       switch (found.name) {
         case 'dynamics':
-          reading.dynamics.push(...readDynamics(found, position, warnings, context))
+          reading.dynamics.push(...readDynamics(found, position, staff, warnings, context))
           break
         case 'metronome':
           reading.tempos.push(...readMetronome(found, position, warnings, context, path))
@@ -74,13 +84,14 @@ export function readDirection(
 function readDynamics(
   element: XmlElement,
   position: Fraction,
+  staff: number | undefined,
   warnings: WarningCollector,
   context: WarningContext,
 ): Dynamic[] {
   const dynamics: Dynamic[] = []
   for (const mark of element.children) {
     if (DYNAMIC_VALUES.has(mark.name)) {
-      dynamics.push({ position, value: mark.name as DynamicValue })
+      dynamics.push({ position, value: mark.name as DynamicValue, staff })
     } else {
       warnings.add(
         'unsupported:element',

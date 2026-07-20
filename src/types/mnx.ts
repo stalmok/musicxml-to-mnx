@@ -180,6 +180,8 @@ export interface MNXDynamic {
   position: MNXRhythmicPosition
   type: 'immediate' | 'gradual' | 'relative' | 'accent'
   value?: MNXDynamicValue
+  /** Which staff of the part it sits under, where it has more than one. */
+  staff?: number
 }
 
 export interface MNXPartMeasure {

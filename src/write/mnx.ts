@@ -152,7 +152,12 @@ function writeMeasure(measure: Measure, referenced: ReadonlySet<string>): MNXPar
 
 function writeDynamic(dynamic: Dynamic): MNXDynamic {
   // Every dynamic converted so far is a mark that takes effect at once.
-  return { position: writePosition(dynamic.position), type: 'immediate', value: dynamic.value }
+  return {
+    position: writePosition(dynamic.position),
+    type: 'immediate',
+    value: dynamic.value,
+    ...(dynamic.staff !== undefined ? { staff: dynamic.staff } : {}),
+  }
 }
 
 function writeBeam(beam: Beam): MNXBeam {

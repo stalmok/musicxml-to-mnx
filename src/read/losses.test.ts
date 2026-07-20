@@ -126,8 +126,8 @@ describe('a direction', () => {
     expect(lost(direction('<sound tempo="120"/>'))).toEqual(['sound'])
   })
 
-  test('reports the staff it belongs to, which is not carried over', () => {
-    expect(lost(direction('<staff>2</staff>'))).toEqual(['staff'])
+  test('says nothing about the staff it belongs to, which is carried over', () => {
+    expect(lost(direction('<staff>1</staff>'))).toEqual([])
   })
 
   test('says nothing when it carries only what is converted', () => {

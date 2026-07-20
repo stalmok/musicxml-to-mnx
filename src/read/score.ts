@@ -231,7 +231,14 @@ function readMeasure(
         break
 
       case 'direction': {
-        const reading = readDirection(reader, builder.position(), warnings, context, measurePath)
+        const reading = readDirection(
+          reader,
+          builder.position(),
+          state,
+          warnings,
+          context,
+          measurePath,
+        )
         dynamics.push(...reading.dynamics)
         tempos.push(...reading.tempos)
         break
