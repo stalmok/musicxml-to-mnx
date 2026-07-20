@@ -64,12 +64,25 @@ differs from plain 1, 2, 3, so a pickup measure keeps its number.
 Tuplets, including nested ones, and grace notes, which are gathered into
 groups and keep out of the measure's time.
 
-Dynamics and tempo marks: a dynamic sits on its measure at the point the
-cursor has reached, under the staff it belongs to; a metronome mark becomes a
-tempo on the score, as does the tempo a `<sound>` states where no metronome
-beside it already says the same thing. An `<offset>` moves a mark from where
-it is written to where it belongs, which is usually backwards. Marks outside
-MNX's vocabulary, like a sforzando, are reported.
+Dynamics, hairpins and tempo marks: a dynamic sits on its measure at the point
+the cursor has reached, under the staff it belongs to; a metronome mark becomes
+a tempo on the score, as does the tempo a `<sound>` states where no metronome
+beside it already says the same thing. An `<offset>` moves a mark from where it
+is written to where it belongs, which is usually backwards. Marks outside MNX's
+vocabulary, like a sforzando, are reported.
+
+A hairpin is matched to its other end across the measures between, and stated
+once as a gradual dynamic pointing at the measure where it stops.
+
+Articulations and fermatas: staccatos, tenutos, accents, staccatissimos,
+spiccatos, stresses, soft accents, and strong accents with the way they point;
+breath marks with the glyph they are drawn with; and a fermata with its shape
+and which way it faces.
+
+Barlines, repeat signs, and first and second time endings. MusicXML hangs these
+off one element at the edge of a measure and marks an ending's two ends several
+measures apart; MNX states them on the score's measure, an ending as the number
+of measures it covers.
 
 Accidentals: the note whose accidental the source draws is marked, and the
 document declares once that it states accidental display, so a reader takes
@@ -98,8 +111,7 @@ recovered from its duration where none is written, and time a voice passes
 over in silence is stated as a space. A rest filling its measure becomes what
 MNX states it as, rather than being given an invented note value.
 
-Planned for v1: hairpins, articulations, repeat barlines and endings, and
-octave shifts.
+Planned for v1: octave shifts, arpeggios, and free text directions.
 
 Constructs that MNX cannot express at all, such as pedal marks and percent
 repeats, will always surface as warnings rather than silent loss. Out of scope
