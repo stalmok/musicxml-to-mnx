@@ -37,7 +37,7 @@ interface VoiceBuilder {
    * group sitting between two beamed notes would otherwise open a beam in the
    * middle of theirs and leave the outer one with no end to close it.
    */
-  graceBeamed: BeamedEvent[]
+  graceBeamed: BeamedEvent[][]
   /**
    * Which staff each note named, paired with the event that named it. A rest
    * filling the measure names one without being an event, so it contributes
@@ -137,17 +137,13 @@ export class MeasureBuilder {
       })
     }
 
-    const gap = subtractFractions(this.#cursor, builder.end)
-
-    if (compareFractions(gap, fraction(0)) < 0) {
+    if (compareFractions(subtractFractions(this.#cursor, builder.end), fraction(0)) < 0) {
       throw new MusicXMLError('A <note> overlaps the one before it in the same voice.', {
         path,
         line,
       })
     }
-    if (compareFractions(gap, fraction(0)) > 0) {
-      innermost(builder).push({ kind: 'space', duration: gap })
-    }
+    this.#fillGap(builder)
 
     innermost(builder).push(event)
     builder.placed.push({ event, staff })
@@ -156,6 +152,20 @@ export class MeasureBuilder {
     builder.lastDuration = duration
     builder.end = addFractions(this.#cursor, duration)
     this.#cursor = builder.end
+  }
+
+  /**
+   * States as a space whatever time this voice has passed over in silence
+   * since it last sounded. MusicXML leaves such a gap implicit by moving its
+   * cursor; MNX has to state it, because a sequence runs without interruption
+   * from wherever it starts.
+   */
+  #fillGap(builder: VoiceBuilder): void {
+    const gap = subtractFractions(this.#cursor, builder.end)
+    if (compareFractions(gap, fraction(0)) > 0) {
+      innermost(builder).push({ kind: 'space', duration: gap })
+      builder.end = this.#cursor
+    }
   }
 
   /** The staff the event a chord note would join was placed on. */
@@ -210,8 +220,14 @@ export class MeasureBuilder {
     line: number,
   ): void {
     const builder = this.#builderFor(voice)
-    if (builder.fullMeasure || builder.content.length > 0) {
+    if (builder.fullMeasure) {
       throw new MusicXMLError('A voice has more than one rest that fills the measure.', {
+        path,
+        line,
+      })
+    }
+    if (builder.content.length > 0) {
+      throw new MusicXMLError('A voice has both a rest that fills the measure and notes in it.', {
         path,
         line,
       })
@@ -247,14 +263,21 @@ export class MeasureBuilder {
   ): void {
     if (markers.size === 0) return
     const builder = this.#builderFor(voice)
-    const into = inGraceGroup ? builder.graceBeamed : builder.beamed
-    into.push({ id, markers })
+    if (!inGraceGroup) {
+      builder.beamed.push({ id, markers })
+      return
+    }
+    const run = builder.graceBeamed.at(-1)
+    /* v8 ignore next -- a grace note joins its group before its beams are
+       read, so a run is always open by the time this is reached. */
+    if (!run) throw new Error('A grace note has no group to beam within.')
+    run.push({ id, markers })
   }
 
   /** What every voice said about its beams, voice by voice. */
   beamedEvents(): BeamedEvent[][] {
     const builders = [...this.#voices.values()]
-    return [...builders.map((b) => b.beamed), ...builders.map((b) => b.graceBeamed)]
+    return [...builders.map((b) => b.beamed), ...builders.flatMap((b) => b.graceBeamed)]
   }
 
   /** Whether this voice is currently inside a tuplet. */
@@ -274,8 +297,14 @@ export class MeasureBuilder {
    * Adds a grace note, which takes none of the measure's time. Consecutive
    * grace notes gather into one group, as they are played and drawn.
    */
-  addGraceNote(voice: string | undefined, event: Event, slashed: boolean): void {
+  addGraceNote(voice: string | undefined, event: Event, slashed: boolean, staff?: number): void {
     const builder = this.#builderFor(voice)
+    // A grace note is squeezed in before the note it ornaments, so time the
+    // voice has passed over in silence is passed over before the group rather
+    // than after it. Filling the gap here keeps the group beside its note
+    // instead of stranding it at the point the voice last sounded.
+    this.#fillGap(builder)
+
     const list = innermost(builder)
     const previous = list.at(-1)
 
@@ -284,6 +313,9 @@ export class MeasureBuilder {
     // Grace notes have no duration of their own, so a chord note joining one
     // has nothing to agree with.
     builder.lastDuration = undefined
+    // Recorded like any other event, so the voice's staff counts it and a
+    // grace note reaching across to the other staff says so.
+    builder.placed.push({ event, staff })
 
     if (previous?.kind === 'grace') {
       previous.content = [...previous.content, event]
@@ -293,6 +325,8 @@ export class MeasureBuilder {
 
     const group: GraceGroup = { kind: 'grace', content: [event], slashed }
     list.push(group)
+    // Each group beams within itself, so each starts a run of its own.
+    builder.graceBeamed.push([])
   }
 
   /** Reports any tuplet the measure opened and never closed. */

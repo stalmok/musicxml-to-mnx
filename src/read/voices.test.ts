@@ -251,3 +251,41 @@ describe('the measure cursor', () => {
     ).toContain('overlaps')
   })
 })
+
+// MNX states a rest that fills the measure on the sequence rather than as an
+// event, so a voice cannot hold both. The two ways that happens are different
+// mistakes, and used to share a message that named only one of them.
+describe('a rest filling a measure that already holds something', () => {
+  test('names the notes it clashes with, not a second rest', () => {
+    let thrown = ''
+    try {
+      read(
+        measure(
+          '<note><grace/><pitch><step>B</step><octave>4</octave></pitch><type>eighth</type></note>' +
+            '<note><rest measure="yes"/><duration>16</duration></note>',
+        ),
+      )
+    } catch (error) {
+      thrown = error instanceof Error ? error.message : String(error)
+    }
+
+    expect(thrown).toContain('both a rest that fills the measure and notes in it')
+  })
+
+  test('still names a second rest as one', () => {
+    let thrown = ''
+    try {
+      read(
+        measure(
+          '<note><rest measure="yes"/><duration>16</duration></note>' +
+            '<backup><duration>16</duration></backup>' +
+            '<note><rest measure="yes"/><duration>16</duration></note>',
+        ),
+      )
+    } catch (error) {
+      thrown = error instanceof Error ? error.message : String(error)
+    }
+
+    expect(thrown).toContain('more than one rest that fills the measure')
+  })
+})
