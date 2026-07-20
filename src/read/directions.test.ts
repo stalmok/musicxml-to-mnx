@@ -236,3 +236,80 @@ describe('which staff a direction belongs under', () => {
     ).toThrow('outside the range 1 to 2')
   })
 })
+
+// A direction sits where the cursor has reached, and <offset> shifts it from
+// there, in divisions. It is routinely negative: a mark written after the
+// note it belongs under is pulled back on to it.
+describe('an offset moving a direction', () => {
+  function at(body: string) {
+    const warnings = new WarningCollector()
+    const score = readScore(
+      parseXmlRoot(
+        '<score-partwise><part id="P1"><measure number="1">' +
+          `<attributes><divisions>4</divisions></attributes>${body}</measure></part></score-partwise>`,
+      ),
+      warnings,
+    )
+    return {
+      positions: (score.parts[0]?.measures[0]?.dynamics ?? []).map((d) => d.position),
+      warnings: warnings.list(),
+    }
+  }
+
+  const quarter =
+    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+    '<type>quarter</type></note>'
+  const dynamic = (body: string) =>
+    `<direction><direction-type><dynamics><p/></dynamics></direction-type>${body}</direction>`
+
+  test('moves the mark forward by that many divisions', () => {
+    const { positions, warnings } = at(quarter + dynamic('<offset>2</offset>'))
+
+    // One quarter in, plus two of four divisions, is three eighths.
+    expect(positions).toEqual([{ num: 3, den: 8 }])
+    expect(warnings).toEqual([])
+  })
+
+  test('pulls the mark back where the offset is negative', () => {
+    const { positions, warnings } = at(quarter + quarter + dynamic('<offset>-4</offset>'))
+
+    expect(positions).toEqual([{ num: 1, den: 4 }])
+    expect(warnings).toEqual([])
+  })
+
+  // MNX counts a position from the start of its measure, so there is nowhere
+  // to put a mark an offset drags behind the barline.
+  test('leaves the mark where it was where the offset reaches behind the barline', () => {
+    const { positions, warnings } = at(quarter + dynamic('<offset>-8</offset>'))
+
+    expect(positions).toEqual([{ num: 1, den: 4 }])
+    expect(warnings.map((w) => w.element)).toEqual(['offset'])
+    expect(warnings[0]?.message).toContain('before the start of the measure')
+  })
+
+  // An offset is counted in divisions, so it cannot be read before something
+  // has said how long one is. readDuration refuses the same way.
+  test('rejects an offset stated before any <divisions>', () => {
+    const warnings = new WarningCollector()
+
+    expect(() =>
+      readScore(
+        parseXmlRoot(
+          '<score-partwise><part id="P1"><measure number="1">' +
+            `${dynamic('<offset>2</offset>')}</measure></part></score-partwise>`,
+        ),
+        warnings,
+      ),
+    ).toThrow('before any <divisions>')
+  })
+
+  // MusicXML allows a fractional offset. Rounding one would put the mark
+  // somewhere the source did not.
+  test('leaves the mark where it was where the offset is not a whole number', () => {
+    const { positions, warnings } = at(quarter + dynamic('<offset>2.5</offset>'))
+
+    expect(positions).toEqual([{ num: 1, den: 4 }])
+    expect(warnings.map((w) => w.element)).toEqual(['offset'])
+    expect(warnings[0]?.message).toContain('not a whole number')
+  })
+})

@@ -9,6 +9,7 @@
 
 import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
+import { addFractions, compareFractions, fraction } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type { Dynamic, DynamicValue, Tempo } from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
@@ -57,14 +58,16 @@ export function readDirection(
   const named = staffElement ? readIntegerInRange(staffElement, path, 1, state.staves) : undefined
   const staff = state.staves > 1 ? named : undefined
 
+  const at = offsetPosition(element, position, state, warnings, context, path)
+
   for (const directionType of element.children('direction-type')) {
     for (const found of directionType.children) {
       switch (found.name) {
         case 'dynamics':
-          reading.dynamics.push(...readDynamics(found, position, staff, warnings, context))
+          reading.dynamics.push(...readDynamics(found, at, staff, warnings, context))
           break
         case 'metronome':
-          reading.tempos.push(...readMetronome(found, position, warnings, context, path))
+          reading.tempos.push(...readMetronome(found, at, warnings, context, path))
           break
         default: {
           const loss = elementLoss(found.name)
@@ -79,6 +82,64 @@ export function readDirection(
     }
   }
   return reading
+}
+
+/**
+ * Where the direction actually belongs, which is where the cursor has reached
+ * plus whatever <offset> says. The offset is routinely negative: a mark
+ * written after the note it sits under is pulled back on to it, and nine of
+ * the corpus's thirteen offsets do exactly that.
+ */
+function offsetPosition(
+  element: ElementReader,
+  position: Fraction,
+  state: PartState,
+  warnings: WarningCollector,
+  context: WarningContext,
+  path: DocumentPath,
+): Fraction {
+  const offset = element.child('offset')
+  if (!offset) return position
+
+  const written = trimmedText(offset)
+  if (!/^[+-]?\d+$/.test(written) || !Number.isSafeInteger(Number(written))) {
+    // MusicXML measures an offset in divisions and allows a fractional one.
+    // Rounding it would put the mark somewhere the source did not, so the
+    // offset is reported and the mark stays where it was written.
+    warnings.add(
+      'unsupported:element',
+      `An <offset> of "${written}" is not a whole number of divisions, and is not applied.`,
+      { ...context, line: offset.line },
+      'offset',
+    )
+    return position
+  }
+
+  if (state.divisions === undefined) {
+    throw new MusicXMLError('An <offset> appears before any <divisions> said how long one is.', {
+      path,
+      line: offset.line,
+    })
+  }
+
+  const moved = addFractions(position, fraction(Number(written), state.divisions * 4))
+
+  // MNX states a position within its measure, counting from the start, so
+  // there is nowhere to put a mark that an offset drags behind the barline.
+  // Carrying it over would need it moved into the measure before, which is
+  // not something this converter does yet.
+  if (compareFractions(moved, fraction(0)) < 0) {
+    warnings.add(
+      'unsupported:element',
+      `An <offset> of ${written} reaches back before the start of the measure, and is ` +
+        'not applied.',
+      { ...context, line: offset.line },
+      'offset',
+    )
+    return position
+  }
+
+  return moved
 }
 
 function readDynamics(

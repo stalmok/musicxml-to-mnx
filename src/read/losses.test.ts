@@ -118,8 +118,8 @@ describe('a direction', () => {
         `<direction><direction-type><dynamics><p/></dynamics></direction-type>${body}</direction>`,
     )
 
-  test('reports the offset that moves it, which is not applied', () => {
-    expect(lost(direction('<offset>2</offset>'))).toEqual(['offset'])
+  test('says nothing about the offset that moves it, which is applied', () => {
+    expect(lost(direction('<offset>2</offset>'))).toEqual([])
   })
 
   test('reports the playback it carries, which is not converted', () => {
