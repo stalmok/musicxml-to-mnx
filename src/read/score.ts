@@ -10,8 +10,11 @@
 import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
 import type {
+  BarlineType,
   Clef,
   Dynamic,
+  Fermata,
+  RepeatEnd,
   GlobalMeasure,
   Key,
   Measure,
@@ -24,6 +27,7 @@ import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, children, requireAttribute } from '../xml/tree.js'
 import { readAttributes } from './attributes.js'
+import { readBarline, resolveEndings } from './barlines.js'
 import { buildBeams } from './beams.js'
 import { readDirection, readSound } from './directions.js'
 import { requireDuration } from './divisions.js'
@@ -45,6 +49,9 @@ interface PartReading {
 interface MeasureReading {
   measure: Measure
   global: GlobalMeasure
+  /** Held until the part can join it to its other end. */
+  endingStart: { numbers: readonly number[] } | undefined
+  endingStop: { open: boolean } | undefined
 }
 
 export function readScore(root: XmlElement, warnings: WarningCollector): Score {
@@ -107,6 +114,13 @@ function mergeGlobalMeasures(target: GlobalMeasure[], found: readonly GlobalMeas
       time: existing?.time ?? measure.time,
       tempos: mergeTempos(existing?.tempos ?? [], measure.tempos),
       number: existing?.number ?? measure.number,
+      // A barline is the whole score's: every part is cut at the same place,
+      // and each writes the same thing, so the first to state one wins.
+      barline: existing?.barline ?? measure.barline,
+      repeatStart: (existing?.repeatStart ?? false) || measure.repeatStart,
+      repeatEnd: existing?.repeatEnd ?? measure.repeatEnd,
+      ending: existing?.ending ?? measure.ending,
+      fermata: existing?.fermata ?? measure.fermata,
     }
   })
 }
@@ -188,6 +202,7 @@ function readPart(
   )
   // Whatever is still open once the part ends is never going to close.
   state.spanners.reportUnclosed(warnings)
+  resolveEndings(readings, warnings, id)
 
   return {
     part: {
@@ -218,6 +233,12 @@ function readMeasure(
   let time: TimeSignature | undefined
   const dynamics: Dynamic[] = []
   const tempos: Tempo[] = []
+  let barline: BarlineType | undefined
+  let repeatStart = false
+  let repeatEnd: RepeatEnd | undefined
+  let endingStart: { numbers: readonly number[] } | undefined
+  let endingStop: { open: boolean } | undefined
+  let fermata: Fermata | undefined
 
   const builder = new MeasureBuilder()
 
@@ -256,6 +277,17 @@ function readMeasure(
         )
         dynamics.push(...reading.dynamics)
         tempos.push(...reading.tempos)
+        break
+      }
+
+      case 'barline': {
+        const reading = readBarline(reader, warnings, context, measurePath)
+        barline ??= reading.barline
+        repeatStart ||= reading.repeatStart
+        repeatEnd ??= reading.repeatEnd
+        endingStart ??= reading.endingStart
+        endingStop ??= reading.endingStop
+        fermata ??= reading.fermata
         break
       }
 
@@ -305,7 +337,20 @@ function readMeasure(
     measure: { clefs, beams, dynamics, sequences: builder.sequences() },
     // Only worth carrying when it differs from where the measure sits;
     // otherwise MNX's implicit numbering already says it.
-    global: { key, time, tempos, number: stated !== position ? stated : undefined },
+    global: {
+      key,
+      time,
+      tempos,
+      number: stated !== position ? stated : undefined,
+      barline,
+      repeatStart,
+      repeatEnd,
+      // Filled in by the part, once the ending's other end has been met.
+      ending: undefined,
+      fermata,
+    },
+    endingStart,
+    endingStop,
   }
 }
 

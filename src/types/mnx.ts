@@ -273,12 +273,49 @@ export interface MNXTempo {
   location?: MNXRhythmicPosition
 }
 
+export type MNXBarlineType =
+  | 'regular'
+  | 'dotted'
+  | 'dashed'
+  | 'heavy'
+  | 'double'
+  | 'final'
+  | 'heavyLight'
+  | 'heavyHeavy'
+  | 'tick'
+  | 'short'
+  | 'noBarline'
+
+export interface MNXBarline {
+  type: MNXBarlineType
+}
+
+/** A repeat sign closing a measure. Present and empty opens one. */
+export interface MNXRepeatEnd {
+  times?: number
+}
+
+/** A first or second time bracket, stated on the measure where it starts. */
+export interface MNXEnding {
+  /** Measures covered, counted inclusively. */
+  duration: number
+  numbers?: number[]
+  /** True where the bracket has no closing hook. */
+  open?: boolean
+}
+
 export interface MNXGlobalMeasure {
   /** Stated only where it differs from the measure's position in the score. */
   number?: number
   key?: MNXKey
   time?: MNXTime
   tempos?: MNXTempo[]
+  barline?: MNXBarline
+  /** Present, and empty, where the measure opens a repeat. */
+  repeatStart?: Record<string, never>
+  repeatEnd?: MNXRepeatEnd
+  ending?: MNXEnding
+  fermata?: MNXFermata
 }
 
 export interface MNXGlobal {

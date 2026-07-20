@@ -42,6 +42,17 @@ function readFailure(source: string): MusicXMLError {
   throw new Error('Expected the read to fail, but it succeeded.')
 }
 
+// Everything a global measure can state beyond a key, a time and a tempo.
+// Spread into the expectations below so that adding a field to the model does
+// not mean editing every one of them.
+const NO_BARLINE = {
+  barline: undefined,
+  repeatStart: false,
+  repeatEnd: undefined,
+  ending: undefined,
+  fermata: undefined,
+}
+
 describe('the document element', () => {
   test('rejects timewise MusicXML, naming the conversion needed', () => {
     expect(readFailure('<score-timewise/>').message).toContain('Timewise MusicXML is not supported')
@@ -131,6 +142,7 @@ describe('measure attributes', () => {
       time: { count: 3, unit: 4 },
       tempos: [],
       number: undefined,
+      ...NO_BARLINE,
     })
     expect(result.parts[0]?.measures[0]?.clefs).toEqual([{ sign: 'F', staffPosition: 2 }])
   })
@@ -145,6 +157,7 @@ describe('measure attributes', () => {
       time: undefined,
       tempos: [],
       number: undefined,
+      ...NO_BARLINE,
     })
   })
 
@@ -471,17 +484,17 @@ describe('measure numbering', () => {
 describe('reporting what is not converted', () => {
   test('reports an unconverted element with its name, place, and line', () => {
     const { warnings } = read(
-      '<score-partwise>\n<part id="P1">\n<measure number="1">\n<barline location="right"/>\n' +
+      '<score-partwise>\n<part id="P1">\n<measure number="1">\n<print/>\n' +
         `${NOTE}\n</measure>\n</part>\n</score-partwise>`,
     )
 
     expect(warnings).toEqual([
       {
         code: 'unsupported:element',
-        message: '<barline> is not converted yet.',
+        message: '<print> is not converted yet.',
         // Named as a field, so a report can be grouped by what was lost
         // without parsing the sentence written for a person to read.
-        element: 'barline',
+        element: 'print',
         context: { part: 'P1', measure: 1, line: 4 },
       },
     ])
@@ -562,6 +575,7 @@ describe('the global measure list', () => {
       time: undefined,
       tempos: [],
       number: undefined,
+      ...NO_BARLINE,
     })
   })
 
@@ -623,7 +637,7 @@ describe('several parts', () => {
     )
 
     expect(result.globalMeasures).toEqual([
-      { key: undefined, time: { count: 6, unit: 8 }, tempos: [], number: undefined },
+      { key: undefined, time: { count: 6, unit: 8 }, tempos: [], number: undefined, ...NO_BARLINE },
     ])
     expect(result.parts).toHaveLength(2)
   })

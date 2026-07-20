@@ -293,14 +293,30 @@ function readFermata(
   warnings: WarningCollector,
   context: WarningContext,
 ): Fermata | undefined {
-  const found = notations.flatMap((block) => block.children('fermata'))
+  return readFermataAt(
+    notations.flatMap((block) => block.children('fermata')),
+    warnings,
+    context,
+  )
+}
+
+/**
+ * The pause the given <fermata> elements state. Shared with the barline
+ * reader, because MusicXML writes the same element over a note and over a
+ * barline, and MNX reads it the same way in both places.
+ */
+export function readFermataAt(
+  found: readonly XmlElement[],
+  warnings: WarningCollector,
+  context: WarningContext,
+): Fermata | undefined {
   const first = found[0]
   if (!first) return undefined
 
   if (found.length > 1) {
     warnings.add(
       'unrepresentable:fermata',
-      'An event carries more than one fermata, and MNX states one for the event. ' +
+      'More than one fermata is written at the same place, and MNX states one. ' +
         'The first is the one converted.',
       { ...context, line: first.line },
       'fermata',

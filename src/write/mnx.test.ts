@@ -4,7 +4,14 @@
 
 import { describe, expect, test } from 'vitest'
 import { schemaErrors } from '../../tests/support/schema.js'
-import type { Event, FullMeasureRest, Measure, Score, SequenceItem } from '../model/score.js'
+import type {
+  Ending,
+  Event,
+  FullMeasureRest,
+  Measure,
+  Score,
+  SequenceItem,
+} from '../model/score.js'
 import type { MNXEvent } from '../types/mnx.js'
 import { writeMnx } from './mnx.js'
 
@@ -29,10 +36,21 @@ const WHOLE_C: Event = {
   isRest: false,
 }
 
+// Everything a global measure can state beyond a key, a time and a tempo.
+// Spread into the literals below so that adding a field to the model does not
+// mean editing every one of them.
+const NO_BARLINE = {
+  barline: undefined,
+  repeatStart: false,
+  repeatEnd: undefined,
+  ending: undefined,
+  fermata: undefined,
+} as const
+
 function scoreOf(
   measure: Measure,
   globals: Score['globalMeasures'] = [
-    { key: undefined, time: undefined, tempos: [], number: undefined },
+    { key: undefined, time: undefined, tempos: [], number: undefined, ...NO_BARLINE },
   ],
 ): Score {
   return {
@@ -113,7 +131,7 @@ test.each([
           { voice: undefined, staff: undefined, content: [WHOLE_C], fullMeasure: undefined },
         ],
       },
-      [{ key: { fifths: -3 }, time: { count: 6, unit: 8 }, tempos: [], number: 0 }],
+      [{ key: { fifths: -3 }, time: { count: 6, unit: 8 }, tempos: [], number: 0, ...NO_BARLINE }],
     ),
   ],
 ])('writes MNX the spec schema accepts for %s', (_name, score) => {
@@ -129,7 +147,13 @@ describe('the document', () => {
 describe('global measures', () => {
   test('writes the key and time signature when the score states them', () => {
     const score = scoreOf(measureOf(WHOLE_C), [
-      { key: { fifths: 2 }, time: { count: 3, unit: 8 }, tempos: [], number: undefined },
+      {
+        key: { fifths: 2 },
+        time: { count: 3, unit: 8 },
+        tempos: [],
+        number: undefined,
+        ...NO_BARLINE,
+      },
     ])
 
     expect(writeMnx(score).global.measures[0]).toEqual({
@@ -148,6 +172,7 @@ describe('global measures', () => {
         key: undefined,
         time: undefined,
         tempos: [{ position: { num: 0, den: 1 }, value: { base: 'quarter', dots: 0 }, bpm: 100 }],
+        ...NO_BARLINE,
         number: undefined,
       },
     ])
@@ -163,6 +188,7 @@ describe('global measures', () => {
         key: undefined,
         time: undefined,
         tempos: [{ position: { num: 1, den: 2 }, value: { base: 'half', dots: 0 }, bpm: 60 }],
+        ...NO_BARLINE,
         number: undefined,
       },
     ])
@@ -538,6 +564,41 @@ describe('events', () => {
 
   test('leaves the alteration out when the pitch is unaltered', () => {
     expect(firstEvent(scoreOf(measureOf(WHOLE_C)))?.notes?.[0]?.pitch).not.toHaveProperty('alter')
+  })
+})
+
+// MNX states an ending on the measure where it starts, as how many measures
+// it covers, and leaves out what the source did not say.
+describe('endings', () => {
+  function endingOf(ending: Ending) {
+    const score = scoreOf(measureOf(), [
+      {
+        key: undefined,
+        time: undefined,
+        tempos: [],
+        number: undefined,
+        ...NO_BARLINE,
+        ending,
+      },
+    ])
+    expect(schemaErrors(writeMnx(score))).toEqual([])
+    return writeMnx(score).global.measures[0]?.ending
+  }
+
+  test('writes the times where the bracket names any', () => {
+    expect(endingOf({ duration: 2, numbers: [1, 2], open: false })).toEqual({
+      duration: 2,
+      numbers: [1, 2],
+    })
+  })
+
+  test('leaves the times out where the bracket names none', () => {
+    expect(endingOf({ duration: 1, numbers: [], open: false })).toEqual({ duration: 1 })
+  })
+
+  // A closed bracket is the ordinary one, so only an open one is stated.
+  test('states only an open bracket as open', () => {
+    expect(endingOf({ duration: 1, numbers: [], open: true })).toEqual({ duration: 1, open: true })
   })
 })
 

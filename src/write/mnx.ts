@@ -13,6 +13,7 @@ import type {
   Dynamic,
   Lyric,
   Marking,
+  Ending,
   Event,
   Fermata,
   GlobalMeasure,
@@ -46,6 +47,7 @@ import type {
   MNXAccidentalDisplay,
   MNXDynamic,
   MNXEventMarkings,
+  MNXEnding,
   MNXFermata,
   MNXRhythmicPosition,
   MNXTempo,
@@ -120,6 +122,26 @@ function writeGlobalMeasure(measure: GlobalMeasure): MNXGlobalMeasure {
     ...(measure.key ? { key: { fifths: measure.key.fifths } } : {}),
     ...(measure.time ? { time: { count: measure.time.count, unit: measure.time.unit } } : {}),
     ...(measure.tempos.length > 0 ? { tempos: measure.tempos.map(writeTempo) } : {}),
+    ...(measure.barline ? { barline: { type: measure.barline } } : {}),
+    // Opening a repeat is stated by the key being there at all.
+    ...(measure.repeatStart ? { repeatStart: {} } : {}),
+    ...(measure.repeatEnd
+      ? {
+          repeatEnd:
+            measure.repeatEnd.times === undefined ? {} : { times: measure.repeatEnd.times },
+        }
+      : {}),
+    ...(measure.ending ? { ending: writeEnding(measure.ending) } : {}),
+    ...(measure.fermata ? { fermata: writeFermata(measure.fermata) } : {}),
+  }
+}
+
+function writeEnding(ending: Ending): MNXEnding {
+  return {
+    duration: ending.duration,
+    ...(ending.numbers.length > 0 ? { numbers: [...ending.numbers] } : {}),
+    // A closed bracket is the ordinary one, so only an open one is stated.
+    ...(ending.open ? { open: true } : {}),
   }
 }
 

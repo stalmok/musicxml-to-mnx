@@ -46,6 +46,9 @@ export type WarningCode =
   | 'unrepresentable:lyric-syllabic'
   // An event carrying more than one fermata. MNX states one per event.
   | 'unrepresentable:fermata'
+  // A barline drawn at the opening edge of a measure. MNX states the one that
+  // closes a measure.
+  | 'unrepresentable:barline'
 
   // --- The source disagreeing with itself -------------------------------
   // A part's id has no matching entry in the part list, so its name and any
@@ -57,6 +60,8 @@ export type WarningCode =
   // A tie or slur has only one of its two ends, so there is nothing to join
   // it to. Real scores contain these, so it is reported rather than refused.
   | 'unclosed:spanner'
+  // A first or second time bracket with only one of its two ends.
+  | 'unclosed:ending'
   // A part holds a different number of measures from the score, so it stops
   // before the score does or runs past the end of it.
   | 'inconsistent:measure-count'

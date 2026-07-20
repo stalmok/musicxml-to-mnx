@@ -285,12 +285,52 @@ export interface Tempo {
   bpm: number
 }
 
+/** The line closing a measure, as MNX names the result rather than the strokes. */
+export type BarlineType =
+  | 'regular'
+  | 'dotted'
+  | 'dashed'
+  | 'heavy'
+  | 'double'
+  | 'final'
+  | 'heavyLight'
+  | 'heavyHeavy'
+  | 'tick'
+  | 'short'
+  | 'noBarline'
+
+/** A repeat sign closing a measure, and how many times the passage is played. */
+export interface RepeatEnd {
+  times: number | undefined
+}
+
+/**
+ * A first or second time bracket. MusicXML marks where one starts and where it
+ * stops; MNX states it on the measure where it starts, as how many measures it
+ * covers.
+ */
+export interface Ending {
+  /** Measures covered, counted inclusively, so one measure is a duration of 1. */
+  duration: number
+  /** The times it covers, as written over the bracket. */
+  numbers: readonly number[]
+  /** True where the bracket has no closing hook, as a final ending has none. */
+  open: boolean
+}
+
 export interface GlobalMeasure {
   key: Key | undefined
   time: TimeSignature | undefined
   tempos: readonly Tempo[]
   /** Only when the score numbers the measure differently from its position. */
   number: number | undefined
+  /** The line that closes the measure, where the source draws other than a plain one. */
+  barline: BarlineType | undefined
+  repeatStart: boolean
+  repeatEnd: RepeatEnd | undefined
+  ending: Ending | undefined
+  /** A pause written over the barline rather than over a note. */
+  fermata: Fermata | undefined
 }
 
 export interface Score {
