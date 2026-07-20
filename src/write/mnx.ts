@@ -51,25 +51,33 @@ import type {
 const MNX_VERSION = 1
 
 export function writeMnx(score: Score): MNXDocument {
-  // Ids exist so that a tie or slur can point at something. Writing them on
-  // everything else would be noise, so the targets are gathered first and
-  // only those are named.
-  const referenced = referencedIds(score)
+  const survey = surveyScore(score)
 
   return {
     mnx: {
       version: MNX_VERSION,
-      // Declared once the document draws its accidentals explicitly, so a
+      // Declared once the document draws any accidental explicitly, so a
       // reader takes the marked notes as the whole of it.
-      ...(score.usesAccidentalDisplay ? { support: { useAccidentalDisplay: true } } : {}),
+      ...(survey.drawsAccidentals ? { support: { useAccidentalDisplay: true } } : {}),
     },
     global: { measures: score.globalMeasures.map(writeGlobalMeasure) },
-    parts: score.parts.map((part) => writePart(part, referenced)),
+    parts: score.parts.map((part) => writePart(part, survey.referenced)),
   }
 }
 
-function referencedIds(score: Score): ReadonlySet<string> {
-  const targets = new Set<string>()
+/**
+ * The two things about a document that can only be known once all of it has
+ * been seen: which ids something points at, and whether any accidental is
+ * drawn. Both are read off the finished model in one walk rather than
+ * accumulated while it is built, so nothing has to be threaded through the
+ * reader to be true by the time the writer asks.
+ */
+function surveyScore(score: Score): { referenced: ReadonlySet<string>; drawsAccidentals: boolean } {
+  // Ids exist so that a tie or slur can point at something. Writing them on
+  // everything else would be noise, so only the targets are named.
+  const referenced = new Set<string>()
+  let drawsAccidentals = false
+
   const walk = (items: readonly SequenceItem[]): void => {
     for (const item of items) {
       if (item.kind === 'tuplet' || item.kind === 'grace') {
@@ -77,9 +85,10 @@ function referencedIds(score: Score): ReadonlySet<string> {
         continue
       }
       if (item.kind !== 'event') continue
-      for (const slur of item.slurs) targets.add(slur.target)
+      for (const slur of item.slurs) referenced.add(slur.target)
       for (const note of item.notes) {
-        for (const tie of note.ties) targets.add(tie.target)
+        for (const tie of note.ties) referenced.add(tie.target)
+        if (note.accidentalDisplay?.show) drawsAccidentals = true
       }
     }
   }
@@ -87,7 +96,7 @@ function referencedIds(score: Score): ReadonlySet<string> {
   // in turn.
   const fromBeams = (beams: readonly Beam[]): void => {
     for (const beam of beams) {
-      for (const id of beam.events) targets.add(id)
+      for (const id of beam.events) referenced.add(id)
       fromBeams(beam.beams)
     }
   }
@@ -98,7 +107,7 @@ function referencedIds(score: Score): ReadonlySet<string> {
       for (const sequence of measure.sequences) walk(sequence.content)
     }
   }
-  return targets
+  return { referenced, drawsAccidentals }
 }
 
 function writeGlobalMeasure(measure: GlobalMeasure): MNXGlobalMeasure {

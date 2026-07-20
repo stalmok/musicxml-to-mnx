@@ -10,8 +10,6 @@ import { IdGenerator, SpannerResolver } from './spanners.js'
  */
 export interface PartState {
   divisions: number | undefined
-  /** Shared across the score: true once any accidental is drawn. */
-  usesAccidentalDisplay: { value: boolean }
   /** How many staves the part is written on, once it says. */
   staves: number
   /** Shared across the score, so every id in the document is distinct. */
@@ -20,15 +18,6 @@ export interface PartState {
   spanners: SpannerResolver
 }
 
-export function newPartState(
-  ids: IdGenerator,
-  usesAccidentalDisplay: { value: boolean },
-): PartState {
-  return {
-    divisions: undefined,
-    usesAccidentalDisplay,
-    staves: 1,
-    ids,
-    spanners: new SpannerResolver(),
-  }
+export function newPartState(ids: IdGenerator): PartState {
+  return { divisions: undefined, staves: 1, ids, spanners: new SpannerResolver() }
 }

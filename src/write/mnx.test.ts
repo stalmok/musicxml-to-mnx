@@ -36,7 +36,6 @@ function scoreOf(
   return {
     globalMeasures: globals,
     parts: [{ id: 'P1', name: undefined, staves: 1, measures: [measure] }],
-    usesAccidentalDisplay: false,
   }
 }
 

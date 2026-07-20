@@ -241,9 +241,4 @@ export interface GlobalMeasure {
 export interface Score {
   globalMeasures: readonly GlobalMeasure[]
   parts: readonly Part[]
-  /**
-   * True when the source draws its accidentals explicitly, which the document
-   * declares once so a reader does not work them out for itself.
-   */
-  usesAccidentalDisplay: boolean
 }

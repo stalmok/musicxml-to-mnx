@@ -255,7 +255,7 @@ function readNoteAt(
     id: state.ids.nextNote(),
     pitch: readPitch(pitchElement, path),
     ties: [],
-    accidentalDisplay: readAccidentalDisplay(element, state),
+    accidentalDisplay: readAccidentalDisplay(element),
   }
 }
 
@@ -265,15 +265,9 @@ function readNoteAt(
  * presence is what marks the note; a note with an alter but no <accidental> is
  * covered by the key or a note before it.
  */
-function readAccidentalDisplay(
-  element: ElementReader,
-  state: PartState,
-): AccidentalDisplay | undefined {
+function readAccidentalDisplay(element: ElementReader): AccidentalDisplay | undefined {
   const accidental = element.child('accidental')
   if (!accidental) return undefined
-
-  // The document states its accidentals explicitly, which it declares once.
-  state.usesAccidentalDisplay.value = true
 
   let enclosure: 'parentheses' | 'brackets' | undefined
   for (const [source, symbol] of ENCLOSURES) {

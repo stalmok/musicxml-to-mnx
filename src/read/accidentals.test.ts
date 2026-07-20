@@ -77,19 +77,33 @@ describe('an enclosed accidental', () => {
   })
 })
 
+// Whether the document draws its accidentals is a fact about the whole of it,
+// so it is read off the finished score rather than accumulated while it is
+// built. That keeps it a property of what was converted rather than of the
+// order the reader happened to visit things in.
 describe('the document declaring it states accidentals', () => {
-  test('says so once a note draws an accidental', () => {
+  test('says so once any note draws an accidental', () => {
     const { score: result } = read(score(note('G', '1', '<accidental>sharp</accidental>')))
 
-    expect(result.usesAccidentalDisplay).toBe(true)
     expect(writeMnx(result).mnx.support).toEqual({ useAccidentalDisplay: true })
   })
 
   test('does not claim it where the source never draws one', () => {
     const { score: result } = read(score(note('C', '', '')))
 
-    expect(result.usesAccidentalDisplay).toBe(false)
     expect(writeMnx(result).mnx.support).toBeUndefined()
+  })
+
+  test('finds one drawn inside a tuplet or a grace group', () => {
+    const { score: result } = read(
+      score(
+        '<note><grace/><pitch><step>G</step><octave>4</octave></pitch><type>eighth</type>' +
+          '<accidental>sharp</accidental></note>' +
+          note('C', '', ''),
+      ),
+    )
+
+    expect(writeMnx(result).mnx.support).toEqual({ useAccidentalDisplay: true })
   })
 })
 

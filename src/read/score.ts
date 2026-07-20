@@ -64,9 +64,8 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
 
   const names = readPartNames(root)
   const ids = new IdGenerator()
-  const usesAccidentalDisplay = { value: false }
   const readings = children(root, 'part').map((element) =>
-    readPart(element, names, ids, usesAccidentalDisplay, warnings, path),
+    readPart(element, names, ids, warnings, path),
   )
 
   const globalMeasures: GlobalMeasure[] = []
@@ -74,11 +73,7 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
     mergeGlobalMeasures(globalMeasures, reading.globals)
   }
 
-  return {
-    globalMeasures,
-    parts: readings.map((reading) => reading.part),
-    usesAccidentalDisplay: usesAccidentalDisplay.value,
-  }
+  return { globalMeasures, parts: readings.map((reading) => reading.part) }
 }
 
 // Parts restate the same key and time; the first to declare one wins, so a
@@ -116,7 +111,6 @@ function readPart(
   element: XmlElement,
   names: ReadonlyMap<string, string>,
   ids: IdGenerator,
-  usesAccidentalDisplay: { value: boolean },
   warnings: WarningCollector,
   path: DocumentPath,
 ): PartReading {
@@ -134,7 +128,7 @@ function readPart(
     )
   }
 
-  const state = newPartState(ids, usesAccidentalDisplay)
+  const state = newPartState(ids)
   const readings = children(element, 'measure').map((measureElement, index) =>
     readMeasure(measureElement, index, id, state, warnings, partPath),
   )
