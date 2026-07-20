@@ -14,6 +14,8 @@ import type {
   AccidentalDisplay,
   CurveSide,
   Event,
+  Fermata,
+  FermataSymbol,
   Marking,
   MarkingKind,
   Note,
@@ -184,6 +186,7 @@ export function readNote(
     lyrics: readLyrics(element, warnings, context),
     stemDirection: readStemDirection(element, warnings, context),
     markings: readMarkings(notations),
+    fermata: readFermata(notations, warnings, context),
     notes,
     isRest: restElement !== undefined,
   }
@@ -265,6 +268,63 @@ function readMarkings(notations: readonly ElementReader[]): Marking[] {
     }
   }
   return markings
+}
+
+// MusicXML's fermata shapes, in MNX's spelling. The two agree apart from the
+// hyphens. An empty <fermata> states no shape, which MNX reads as its default.
+const FERMATA_SYMBOLS = new Map<string, FermataSymbol>([
+  ['normal', 'normal'],
+  ['angled', 'angled'],
+  ['square', 'square'],
+  ['double-angled', 'doubleAngled'],
+  ['double-square', 'doubleSquare'],
+  ['double-dot', 'doubleDot'],
+  ['half-curve', 'halfCurve'],
+  ['curlew', 'curlew'],
+])
+
+/**
+ * The pause held over this event. MusicXML allows a <notations> to carry
+ * several, one per staff of a part; MNX states one on the event, so the first
+ * is the one converted.
+ */
+function readFermata(
+  notations: readonly ElementReader[],
+  warnings: WarningCollector,
+  context: WarningContext,
+): Fermata | undefined {
+  const found = notations.flatMap((block) => block.children('fermata'))
+  const first = found[0]
+  if (!first) return undefined
+
+  if (found.length > 1) {
+    warnings.add(
+      'unrepresentable:fermata',
+      'An event carries more than one fermata, and MNX states one for the event. ' +
+        'The first is the one converted.',
+      { ...context, line: first.line },
+      'fermata',
+    )
+  }
+
+  const shape = trimmedText(first)
+  const symbol = FERMATA_SYMBOLS.get(shape)
+  if (shape !== '' && !symbol) {
+    warnings.add(
+      'unsupported:element',
+      `A <fermata> of "${shape}" is not converted yet.`,
+      { ...context, line: first.line },
+      'fermata',
+    )
+  }
+
+  // MusicXML says which way it faces with "upright" and "inverted".
+  const type = attribute(first, 'type')
+  return {
+    symbol,
+    pointing: type === 'upright' ? 'up' : type === 'inverted' ? 'down' : undefined,
+    orient: placementOf(first),
+  }
 }
 
 function placementOf(element: XmlElement): 'above' | 'below' | undefined {

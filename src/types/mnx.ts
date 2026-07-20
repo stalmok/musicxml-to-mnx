@@ -118,6 +118,33 @@ export interface MNXEventMarkings {
   breath?: MNXBreathMark
 }
 
+export type MNXFermataSymbol =
+  | 'normal'
+  | 'angled'
+  | 'square'
+  | 'doubleAngled'
+  | 'doubleSquare'
+  | 'doubleDot'
+  | 'halfCurve'
+  | 'curlew'
+
+/** How long a fermata holds, where a document says. */
+export type MNXFermataDuration =
+  | 'auto'
+  | 'none'
+  | 'veryLong'
+  | 'long'
+  | 'normal'
+  | 'short'
+  | 'veryShort'
+
+export interface MNXFermata {
+  symbol?: MNXFermataSymbol
+  duration?: MNXFermataDuration
+  pointing?: 'up' | 'down' | 'auto'
+  orient?: MNXOrientation
+}
+
 export interface MNXEvent {
   /** Present only where something refers to this event. */
   id?: string
@@ -128,6 +155,7 @@ export interface MNXEvent {
   lyrics?: MNXLyrics
   stemDirection?: 'up' | 'down'
   markings?: MNXEventMarkings
+  fermata?: MNXFermata
   notes?: MNXNote[]
   /** Present, and empty, when the event is a rest. */
   rest?: Record<string, never>

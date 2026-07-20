@@ -17,6 +17,7 @@ const WHOLE_C: Event = {
   lyrics: [],
   stemDirection: undefined,
   markings: [],
+  fermata: undefined,
   notes: [
     {
       id: 'note1',
@@ -70,6 +71,7 @@ test.each([
         lyrics: [],
         stemDirection: undefined,
         markings: [],
+        fermata: undefined,
         notes: [],
         isRest: true,
       }),
@@ -87,6 +89,7 @@ test.each([
         lyrics: [],
         stemDirection: undefined,
         markings: [],
+        fermata: undefined,
         notes: [
           {
             id: 'note2',
@@ -226,6 +229,7 @@ describe('ties and slurs', () => {
     lyrics: [],
     stemDirection: undefined,
     markings: [],
+    fermata: undefined,
     notes: [
       {
         id: 'note-target',
@@ -245,6 +249,7 @@ describe('ties and slurs', () => {
     lyrics: [],
     stemDirection: undefined,
     markings: [],
+    fermata: undefined,
     notes: [
       {
         id: 'note-start',
@@ -487,6 +492,7 @@ describe('events', () => {
       lyrics: [],
       stemDirection: undefined,
       markings: [],
+      fermata: undefined,
       notes: [],
       isRest: true,
     }
@@ -535,6 +541,53 @@ describe('events', () => {
   })
 })
 
+// MusicXML says which way a fermata faces and what shape it is; MNX states
+// both, and leaves out what the source does not say.
+describe('fermatas', () => {
+  function fermataOf(fermata: Event['fermata']) {
+    const event: Event = {
+      kind: 'event',
+      id: 'ev1',
+      staff: undefined,
+      value: { base: 'quarter', dots: 0 },
+      slurs: [],
+      lyrics: [],
+      stemDirection: undefined,
+      markings: [],
+      fermata,
+      notes: [
+        {
+          id: 'note1',
+          pitch: { step: 'C', octave: 4, alter: 0 },
+          ties: [],
+          accidentalDisplay: undefined,
+        },
+      ],
+      isRest: false,
+    }
+    const score = scoreOf(measureOf(event))
+    expect(schemaErrors(writeMnx(score))).toEqual([])
+    return firstEvent(score)?.fermata
+  }
+
+  test('writes everything the source stated', () => {
+    expect(fermataOf({ symbol: 'angled', pointing: 'down', orient: 'below' })).toEqual({
+      symbol: 'angled',
+      pointing: 'down',
+      orient: 'below',
+    })
+  })
+
+  // An empty object is how MNX states a fermata with nothing said about it.
+  test('writes an empty object where the source said only that it is there', () => {
+    expect(fermataOf({ symbol: undefined, pointing: undefined, orient: undefined })).toEqual({})
+  })
+
+  test('leaves the key out altogether where there is no fermata', () => {
+    expect(fermataOf(undefined)).toBeUndefined()
+  })
+})
+
 // MNX keys the marks on an event by name, and allows a mark no property
 // beyond the ones it names for that mark, so the two that carry more than an
 // orientation are written out rather than folded in with the rest.
@@ -549,6 +602,7 @@ describe('event markings', () => {
       lyrics: [],
       stemDirection: undefined,
       markings,
+      fermata: undefined,
       notes: [
         {
           id: 'note1',

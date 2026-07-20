@@ -14,6 +14,7 @@ import type {
   Lyric,
   Marking,
   Event,
+  Fermata,
   GlobalMeasure,
   Measure,
   Note,
@@ -45,6 +46,7 @@ import type {
   MNXAccidentalDisplay,
   MNXDynamic,
   MNXEventMarkings,
+  MNXFermata,
   MNXRhythmicPosition,
   MNXTempo,
 } from '../types/mnx.js'
@@ -244,6 +246,7 @@ function writeEvent(event: Event, referenced: ReadonlySet<string>): MNXEvent {
       : {}),
     ...(event.stemDirection ? { stemDirection: event.stemDirection } : {}),
     ...(event.markings.length > 0 ? { markings: writeMarkings(event.markings) } : {}),
+    ...(event.fermata ? { fermata: writeFermata(event.fermata) } : {}),
     ...(event.lyrics.length > 0 ? { lyrics: writeLyrics(event.lyrics) } : {}),
   }
 }
@@ -274,6 +277,14 @@ function writeMarkings(markings: readonly Marking[]): MNXEventMarkings {
     }
   }
   return written
+}
+
+function writeFermata(fermata: Fermata): MNXFermata {
+  return {
+    ...(fermata.symbol ? { symbol: fermata.symbol } : {}),
+    ...(fermata.pointing ? { pointing: fermata.pointing } : {}),
+    ...(fermata.orient ? { orient: fermata.orient } : {}),
+  }
 }
 
 function writeLyrics(lyrics: readonly Lyric[]): MNXLyrics {

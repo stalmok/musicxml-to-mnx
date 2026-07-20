@@ -142,3 +142,67 @@ describe('articulations', () => {
     expect(warnings.list()).toEqual([])
   })
 })
+
+// A pause held over a note. MusicXML names its shape as the element's text
+// and which way it faces as its type; MNX states both on the event.
+describe('fermatas', () => {
+  test('reads one that says only that it is there', () => {
+    const { events, warnings } = read(note('<fermata/>'))
+
+    expect(events[0]?.fermata).toEqual({
+      symbol: undefined,
+      pointing: undefined,
+      orient: undefined,
+    })
+    expect(warnings).toEqual([])
+  })
+
+  test('reads which way it faces and which side it is drawn on', () => {
+    const { events } = read(note('<fermata type="inverted" placement="below"/>'))
+
+    expect(events[0]?.fermata).toMatchObject({ pointing: 'down', orient: 'below' })
+  })
+
+  test('reads an upright one as pointing up', () => {
+    const { events } = read(note('<fermata type="upright"/>'))
+
+    expect(events[0]?.fermata?.pointing).toBe('up')
+  })
+
+  test.each([
+    ['normal', 'normal'],
+    ['angled', 'angled'],
+    ['square', 'square'],
+    ['double-angled', 'doubleAngled'],
+    ['double-square', 'doubleSquare'],
+    ['double-dot', 'doubleDot'],
+    ['half-curve', 'halfCurve'],
+    ['curlew', 'curlew'],
+  ])('reads the "%s" shape as MNX spells it', (written, expected) => {
+    const { events, warnings } = read(note(`<fermata>${written}</fermata>`))
+
+    expect(events[0]?.fermata?.symbol).toBe(expected)
+    expect(warnings).toEqual([])
+  })
+
+  test('reports a shape MNX has no symbol for, keeping the fermata', () => {
+    const { events, warnings } = read(note('<fermata>wibble</fermata>'))
+
+    expect(events[0]?.fermata?.symbol).toBeUndefined()
+    expect(warnings.map((w) => w.element)).toEqual(['fermata'])
+  })
+
+  // MusicXML allows one per staff of a part; MNX states one per event.
+  test('reports an event carrying more than one, keeping the first', () => {
+    const { events, warnings } = read(note('<fermata type="upright"/><fermata type="inverted"/>'))
+
+    expect(events[0]?.fermata?.pointing).toBe('up')
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:fermata'])
+  })
+
+  test('states none where the note carries none', () => {
+    const { events } = read(note())
+
+    expect(events[0]?.fermata).toBeUndefined()
+  })
+})

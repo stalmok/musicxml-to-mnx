@@ -44,6 +44,8 @@ export type WarningCode =
   // A verse whose elided syllables each say how they join their word. MNX
   // states one lyric type for the whole event.
   | 'unrepresentable:lyric-syllabic'
+  // An event carrying more than one fermata. MNX states one per event.
+  | 'unrepresentable:fermata'
 
   // --- The source disagreeing with itself -------------------------------
   // A part's id has no matching entry in the part list, so its name and any

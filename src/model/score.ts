@@ -112,6 +112,29 @@ export interface Marking {
   symbol: string | undefined
 }
 
+/**
+ * A pause held over an event. MusicXML names the shape as the element's text
+ * and which way it faces as its type; MNX states both, plus how long the
+ * pause runs, which MusicXML has no way to say.
+ */
+export type FermataSymbol =
+  | 'normal'
+  | 'angled'
+  | 'square'
+  | 'doubleAngled'
+  | 'doubleSquare'
+  | 'doubleDot'
+  | 'halfCurve'
+  | 'curlew'
+
+export interface Fermata {
+  symbol: FermataSymbol | undefined
+  /** Which way it faces, where the source says. */
+  pointing: 'up' | 'down' | undefined
+  /** Which side of the notes it is drawn on, where the source says. */
+  orient: 'above' | 'below' | undefined
+}
+
 export interface Event {
   kind: 'event'
   /** Unique in the document. Written out only where something refers to it. */
@@ -123,6 +146,7 @@ export interface Event {
   lyrics: readonly Lyric[]
   stemDirection: 'up' | 'down' | undefined
   markings: readonly Marking[]
+  fermata: Fermata | undefined
   /** Empty for a rest. More than one note makes it a chord. */
   notes: readonly Note[]
   isRest: boolean
