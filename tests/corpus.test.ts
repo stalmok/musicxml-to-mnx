@@ -383,7 +383,15 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
           const voice = note.children.find((c) => c.name === 'voice')?.text.trim() ?? ''
           for (const lyric of note.children.filter((c) => c.name === 'lyric')) {
             const key = `${voice}|${lyric.attributes.number ?? '1'}`
-            const text = lyric.children.find((c) => c.name === 'text')?.text ?? ''
+            // Every <text>, joined by whatever the source put between them.
+            // Two syllables sung on one note are written as two <text>s, and
+            // taking the first was this check making the same mistake the
+            // converter used to: it would pass while half the word was lost.
+            const text = lyric.children
+              .filter((c) => c.name === 'text' || c.name === 'elision')
+              .map((c) => c.text)
+              .join('')
+            if (text === '') continue
             const list = byVoiceLine.get(key) ?? []
             list.push(text)
             byVoiceLine.set(key, list)

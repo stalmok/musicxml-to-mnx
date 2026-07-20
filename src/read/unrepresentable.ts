@@ -15,6 +15,9 @@
 const NO_HOME_IN_MNX: ReadonlySet<string> = new Set([
   // Sustain, sostenuto and una corda. The schema has no pedalling of any kind.
   'pedal',
+  // The line drawn under a melisma, and the one under a held figured bass.
+  // MNX's event-lyric-line is a text and a type, with nowhere for either.
+  'extend',
 ])
 
 /**

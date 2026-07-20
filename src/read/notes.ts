@@ -179,7 +179,7 @@ export function readNote(
     staff: undefined,
     value,
     slurs: [],
-    lyrics: readLyrics(element, warnings, context, path),
+    lyrics: readLyrics(element, warnings, context),
     stemDirection: readStemDirection(element, warnings, context),
     notes,
     isRest: restElement !== undefined,
@@ -189,7 +189,7 @@ export function readNote(
   // measure's time, which is why it carries no <duration>. It joins a group
   // rather than standing in the cursor's path.
   if (graceElement) {
-    builder.addGraceNote(voice, event, attribute(graceElement, 'slash') === 'yes')
+    builder.addGraceNote(voice, event, attribute(graceElement, 'slash') === 'yes', staff)
     for (const note of notes) readTies(element, note, state, warnings, context)
     readSlurs(notations, event, state, warnings, context)
     builder.addBeamMarkers(voice, event.id, beamMarkers(element, path), true)

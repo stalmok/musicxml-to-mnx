@@ -138,3 +138,63 @@ describe('stem direction', () => {
     expect(events[0]?.stemDirection).toBeUndefined()
   })
 })
+
+// A verse is not always one <text>. Where two syllables are sung on one note,
+// which French sets constantly, MusicXML writes each as its own <text> with
+// the elision character between them. Taking only the first lost half the word,
+// silently: fourteen lyrics in the vendored corpus do it.
+describe('a verse written as several pieces', () => {
+  test('joins the pieces with whatever the source put between them', () => {
+    const { events, warnings } = read(
+      measure(
+        note(
+          'C',
+          '<lyric number="1"><syllabic>end</syllabic><text>le</text>' +
+            '<elision> </elision><text>aux</text></lyric>',
+        ),
+      ),
+    )
+
+    expect(events[0]?.lyrics).toEqual([{ line: '1', text: 'le aux', type: 'end' }])
+    expect(warnings).toEqual([])
+  })
+
+  // Some exporters write the pieces with no <elision> at all, and the corpus
+  // contains fourteen of those. Nothing is invented to sit between them.
+  test('joins them with nothing where the source states no elision', () => {
+    const { events } = read(
+      measure(
+        note(
+          'C',
+          '<lyric number="1"><syllabic>end</syllabic><text>_</text><text> rait</text></lyric>',
+        ),
+      ),
+    )
+
+    expect(events[0]?.lyrics.map((l) => l.text)).toEqual(['_ rait'])
+  })
+
+  test('reports the syllabics it cannot state, keeping the first', () => {
+    const { events, warnings } = read(
+      measure(
+        note(
+          'C',
+          '<lyric number="1"><syllabic>begin</syllabic><text>to</text>' +
+            '<elision>-</elision><syllabic>end</syllabic><text>day</text></lyric>',
+        ),
+      ),
+    )
+
+    expect(events[0]?.lyrics).toEqual([{ line: '1', text: 'to-day', type: 'start' }])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:lyric-syllabic'])
+  })
+
+  // A <lyric> holding only an <extend> is how MusicXML continues a melisma
+  // under a later note. There is no syllable in it to write.
+  test('states no verse for a lyric that is only a melisma line', () => {
+    const { events, warnings } = read(measure(note('C', '<lyric number="1"><extend/></lyric>')))
+
+    expect(events[0]?.lyrics).toEqual([])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:element'])
+  })
+})

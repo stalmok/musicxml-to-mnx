@@ -41,6 +41,9 @@ export type WarningCode =
   // A tempo written as one note value equalling another. MNX states a tempo
   // as a note value and a count of them per minute, which has no room for it.
   | 'unrepresentable:tempo'
+  // A verse whose elided syllables each say how they join their word. MNX
+  // states one lyric type for the whole event.
+  | 'unrepresentable:lyric-syllabic'
 
   // --- The source disagreeing with itself -------------------------------
   // A part's id has no matching entry in the part list, so its name and any
