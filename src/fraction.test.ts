@@ -108,3 +108,26 @@ describe('comparison', () => {
     expect(isZero(fraction(1, 5))).toBe(false)
   })
 })
+
+// Two <divisions> values in one measure is legal MusicXML, and each
+// contributes a denominator, so the products a comparison builds run far past
+// the values being compared. Getting the sign wrong here would silently
+// decide that a full measure is not full.
+describe('comparing without overflowing', () => {
+  test('gets the sign right where the plain cross product would not', () => {
+    const a = fraction(1, 2 ** 26 + 1)
+    const b = fraction(1, 2 ** 26 + 3)
+
+    // The plain form multiplies the two denominators, past 2^52.
+    expect(a.den * b.den).toBeGreaterThan(Number.MAX_SAFE_INTEGER / 2)
+    expect(compareFractions(a, b)).toBeGreaterThan(0)
+    expect(compareFractions(b, a)).toBeLessThan(0)
+  })
+
+  test('refuses rather than guess where it cannot compare exactly', () => {
+    const huge = fraction(Number.MAX_SAFE_INTEGER, 2)
+    const small = fraction(1, Number.MAX_SAFE_INTEGER - 1)
+
+    expect(() => compareFractions(huge, small)).toThrow('Cannot compare')
+  })
+})

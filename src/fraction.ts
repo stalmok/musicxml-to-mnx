@@ -65,9 +65,30 @@ export function negate(value: Fraction): Fraction {
   return fraction(-value.num, value.den)
 }
 
-/** Negative when a is the smaller, zero when they are equal, else positive. */
+/**
+ * Negative when a is the smaller, zero when they are equal, else positive.
+ *
+ * Reduces before it multiplies, like the arithmetic above, and for the same
+ * reason: two <divisions> values in one measure give denominators whose plain
+ * product runs past the safe-integer range on values the comparison itself
+ * sits nowhere near. It also compares the two sides rather than subtracting
+ * them, because the difference can overflow where neither side does, and a
+ * silently wrong sign here is worse than a wrong number anywhere else: it is
+ * what decides whether a measure is full and whether a voice runs backwards.
+ */
 export function compareFractions(a: Fraction, b: Fraction): number {
-  return a.num * b.den - b.num * a.den
+  const common = greatestCommonDivisor(a.den, b.den)
+  const left = a.num * (b.den / common)
+  const right = b.num * (a.den / common)
+
+  if (!Number.isSafeInteger(left) || !Number.isSafeInteger(right)) {
+    throw new Error(
+      `Cannot compare ${String(a.num)}/${String(a.den)} with ` +
+        `${String(b.num)}/${String(b.den)} exactly.`,
+    )
+  }
+
+  return left < right ? -1 : left > right ? 1 : 0
 }
 
 export function isZero(value: Fraction): boolean {
