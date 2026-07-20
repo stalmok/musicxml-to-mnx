@@ -14,6 +14,8 @@ import type {
   AccidentalDisplay,
   CurveSide,
   Event,
+  Marking,
+  MarkingKind,
   Note,
   NoteValue,
   NoteValueQuantity,
@@ -181,6 +183,7 @@ export function readNote(
     slurs: [],
     lyrics: readLyrics(element, warnings, context),
     stemDirection: readStemDirection(element, warnings, context),
+    markings: readMarkings(notations),
     notes,
     isRest: restElement !== undefined,
   }
@@ -217,6 +220,60 @@ function closeTuplets(
   for (const bracket of brackets) {
     if (bracket === 'stop') builder.closeTuplet(voice, path, line)
   }
+}
+
+// MusicXML's <articulations> children, in MNX's spelling. Everything else it
+// allows there, from a caesura to a falloff, has no home in event-markings and
+// stays unread, which is what reports it.
+const ARTICULATIONS = new Map<string, MarkingKind>([
+  ['accent', 'accent'],
+  ['staccato', 'staccato'],
+  ['staccatissimo', 'staccatissimo'],
+  ['tenuto', 'tenuto'],
+  ['spiccato', 'spiccato'],
+  ['stress', 'stress'],
+  ['unstress', 'unstress'],
+  ['soft-accent', 'softAccent'],
+  ['strong-accent', 'strongAccent'],
+  // MusicXML files a breath mark among the articulations; MNX states it
+  // beside them, under its own name.
+  ['breath-mark', 'breath'],
+])
+
+/**
+ * The marks written on this event. Read in a fixed order rather than the
+ * source's, because MNX keys them by name, so a note carries at most one of
+ * each and the order they were written in is not part of what it says.
+ */
+function readMarkings(notations: readonly ElementReader[]): Marking[] {
+  const markings: Marking[] = []
+
+  for (const block of notations) {
+    for (const articulations of block.blocks('articulations')) {
+      for (const [written, kind] of ARTICULATIONS) {
+        for (const found of articulations.children(written)) {
+          markings.push({
+            kind,
+            orient: placementOf(found),
+            // Which way the wedge of a strong accent points.
+            pointing: kind === 'strongAccent' ? upOrDown(attribute(found, 'type')) : undefined,
+            // A breath mark names its glyph as its text: a comma, a tick.
+            symbol: kind === 'breath' ? trimmedText(found) || undefined : undefined,
+          })
+        }
+      }
+    }
+  }
+  return markings
+}
+
+function placementOf(element: XmlElement): 'above' | 'below' | undefined {
+  const placement = attribute(element, 'placement')
+  return placement === 'above' || placement === 'below' ? placement : undefined
+}
+
+function upOrDown(value: string | undefined): 'up' | 'down' | undefined {
+  return value === 'up' || value === 'down' ? value : undefined
 }
 
 function readStemDirection(

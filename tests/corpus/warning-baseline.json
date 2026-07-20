@@ -29,7 +29,6 @@
   },
   "barnard-milly-s-faith": {
     "arpeggiate": 12,
-    "articulations": 176,
     "barline": 8,
     "cue": 9,
     "fermata": 24,
@@ -46,7 +45,6 @@
     "work": 1
   },
   "barns-sleep-weary-heart": {
-    "articulations": 19,
     "barline": 2,
     "cue": 2,
     "dashes": 2,
@@ -66,7 +64,6 @@
   },
   "beethoven-2-feuerfarb": {
     "arpeggiate": 7,
-    "articulations": 16,
     "barline": 6,
     "extend": 15,
     "fermata": 3,
@@ -104,7 +101,6 @@
   },
   "bonis-le-chat-sur-le-toit-op-93": {
     "arpeggiate": 8,
-    "articulations": 98,
     "barline": 12,
     "extend": 3,
     "fermata": 2,
@@ -163,7 +159,6 @@
   },
   "browne-the-reply-of-the-messenger-bird": {
     "arpeggiate": 14,
-    "articulations": 39,
     "barline": 4,
     "extend": 8,
     "fermata": 11,
@@ -180,7 +175,6 @@
   },
   "butterworth-1-bredon-hill": {
     "arpeggiate": 24,
-    "articulations": 20,
     "barline": 24,
     "extend": 18,
     "fermata": 9,
@@ -204,7 +198,6 @@
   },
   "chabrier-chanson-pour-jeanne": {
     "arpeggiate": 24,
-    "articulations": 156,
     "barline": 4,
     "cue": 2,
     "extend": 24,
@@ -225,7 +218,6 @@
   },
   "chausson-7-le-colibri": {
     "arpeggiate": 35,
-    "articulations": 28,
     "barline": 2,
     "extend": 15,
     "fermata": 3,
@@ -244,7 +236,6 @@
   },
   "coleridge-taylor-5-unmindful-of-the-roses": {
     "arpeggiate": 7,
-    "articulations": 163,
     "barline": 4,
     "dashes": 4,
     "extend": 5,
@@ -261,7 +252,6 @@
     "work": 1
   },
   "cornelius-1-in-lust-und-schmerzen": {
-    "articulations": 4,
     "barline": 6,
     "extend": 26,
     "fermata": 3,
@@ -294,7 +284,6 @@
     "work": 1
   },
   "donaudy-10-spirate-pur-spirate": {
-    "articulations": 1,
     "barline": 6,
     "credit": 7,
     "dashes": 16,
@@ -317,7 +306,6 @@
     "work": 1
   },
   "elgar-4-the-poet-s-life": {
-    "articulations": 55,
     "barline": 2,
     "cue": 22,
     "extend": 41,
@@ -337,7 +325,6 @@
     "work": 1
   },
   "faltis-3-sprich": {
-    "articulations": 164,
     "barline": 6,
     "dashes": 6,
     "extend": 7,
@@ -359,7 +346,6 @@
     "work": 1
   },
   "faure-4-a-clymene": {
-    "articulations": 12,
     "barline": 6,
     "extend": 15,
     "identification": 1,
@@ -378,7 +364,6 @@
     "work": 1
   },
   "flegier-le-cor": {
-    "articulations": 8,
     "barline": 2,
     "credit": 10,
     "cue": 7,
@@ -400,7 +385,6 @@
   },
   "freer-2-daughter-of-egypt-veil-thine-eyes": {
     "arpeggiate": 12,
-    "articulations": 56,
     "barline": 4,
     "fermata": 10,
     "identification": 1,
@@ -431,7 +415,6 @@
   },
   "german-2-the-dew-upon-the-lily": {
     "arpeggiate": 6,
-    "articulations": 15,
     "barline": 2,
     "extend": 6,
     "identification": 1,
@@ -464,7 +447,6 @@
   },
   "gray-then-and-now": {
     "arpeggiate": 28,
-    "articulations": 10,
     "barline": 2,
     "dashes": 12,
     "extend": 1,
@@ -484,7 +466,6 @@
   },
   "guest-the-bonnie-wee-wife": {
     "arpeggiate": 7,
-    "articulations": 417,
     "barline": 6,
     "dashes": 2,
     "extend": 2,
@@ -503,7 +484,6 @@
   },
   "hahn-a-chloris": {
     "arpeggiate": 3,
-    "articulations": 31,
     "barline": 6,
     "credit": 6,
     "defaults": 1,
@@ -520,7 +500,6 @@
     "words": 12
   },
   "haydn-5-sympathy-hob-xxvia33": {
-    "articulations": 118,
     "barline": 2,
     "extend": 6,
     "fermata": 15,
@@ -539,7 +518,6 @@
     "work": 1
   },
   "hodges-dreams": {
-    "articulations": 22,
     "barline": 20,
     "extend": 2,
     "fermata": 36,
@@ -555,7 +533,6 @@
     "work": 1
   },
   "hopekirk-my-lady-of-sleep": {
-    "articulations": 3,
     "barline": 6,
     "extend": 3,
     "fermata": 5,
@@ -591,7 +568,6 @@
   "jaell-5-en-ramant": {},
   "kinkel-2-nachtliche-fahrt": {
     "arpeggiate": 6,
-    "articulations": 2,
     "barline": 2,
     "extend": 8,
     "fermata": 3,
@@ -609,7 +585,6 @@
     "work": 1
   },
   "lang-4-o-warst-du-da": {
-    "articulations": 2,
     "barline": 8,
     "extend": 4,
     "fermata": 3,
@@ -642,7 +617,6 @@
     "work": 1
   },
   "leoncavallo-mattinata": {
-    "articulations": 180,
     "barline": 2,
     "credit": 6,
     "dashes": 2,
@@ -678,7 +652,6 @@
   },
   "mackenzie-5-april-weather": {
     "arpeggiate": 11,
-    "articulations": 69,
     "barline": 2,
     "extend": 12,
     "fermata": 3,
@@ -697,7 +670,6 @@
     "work": 1
   },
   "marshall-behold-the-sun-in-gold-descending": {
-    "articulations": 18,
     "barline": 15,
     "cue": 2,
     "dashes": 64,
@@ -735,7 +707,6 @@
   },
   "mounsey-bartholomew-4-the-warrior-boy": {
     "arpeggiate": 8,
-    "articulations": 16,
     "barline": 2,
     "dashes": 4,
     "extend": 2,
@@ -771,7 +742,6 @@
   },
   "paladilhe-psyche": {
     "arpeggiate": 3,
-    "articulations": 1,
     "barline": 2,
     "credit": 6,
     "cue": 1,
@@ -792,7 +762,6 @@
   },
   "parratt-3-hark-the-world-is-full-of-thy-praise": {
     "arpeggiate": 7,
-    "articulations": 177,
     "barline": 40,
     "extend": 61,
     "fermata": 6,
@@ -809,7 +778,6 @@
     "work": 1
   },
   "schubert-5-der-lindenbaum": {
-    "articulations": 83,
     "barline": 6,
     "credit": 8,
     "defaults": 1,
@@ -831,7 +799,6 @@
     "work": 1
   },
   "schumann-1-ich-stand-in-dunklen-traumen": {
-    "articulations": 13,
     "barline": 2,
     "identification": 1,
     "midi-device": 2,

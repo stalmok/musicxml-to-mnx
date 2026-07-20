@@ -521,12 +521,12 @@ describe('reporting what is not converted', () => {
     const { warnings } = read(
       measure(
         '<note><pitch><step>C</step><octave>4</octave></pitch><type>whole</type>' +
-          '<notations><tied type="start"/><articulations/><fermata/></notations></note>',
+          '<notations><tied type="start"/><technical/><fermata/></notations></note>',
       ),
     )
 
     expect(warnings.map((w) => w.message)).toEqual([
-      '<articulations> is not converted yet.',
+      '<technical> is not converted yet.',
       '<fermata> is not converted yet.',
     ])
   })

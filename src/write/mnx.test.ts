@@ -16,6 +16,7 @@ const WHOLE_C: Event = {
   slurs: [],
   lyrics: [],
   stemDirection: undefined,
+  markings: [],
   notes: [
     {
       id: 'note1',
@@ -68,6 +69,7 @@ test.each([
         slurs: [],
         lyrics: [],
         stemDirection: undefined,
+        markings: [],
         notes: [],
         isRest: true,
       }),
@@ -84,6 +86,7 @@ test.each([
         slurs: [],
         lyrics: [],
         stemDirection: undefined,
+        markings: [],
         notes: [
           {
             id: 'note2',
@@ -222,6 +225,7 @@ describe('ties and slurs', () => {
     slurs: [],
     lyrics: [],
     stemDirection: undefined,
+    markings: [],
     notes: [
       {
         id: 'note-target',
@@ -240,6 +244,7 @@ describe('ties and slurs', () => {
     slurs: [{ target: 'ev-target', side: 'up' }],
     lyrics: [],
     stemDirection: undefined,
+    markings: [],
     notes: [
       {
         id: 'note-start',
@@ -481,6 +486,7 @@ describe('events', () => {
       slurs: [],
       lyrics: [],
       stemDirection: undefined,
+      markings: [],
       notes: [],
       isRest: true,
     }
@@ -526,5 +532,80 @@ describe('events', () => {
 
   test('leaves the alteration out when the pitch is unaltered', () => {
     expect(firstEvent(scoreOf(measureOf(WHOLE_C)))?.notes?.[0]?.pitch).not.toHaveProperty('alter')
+  })
+})
+
+// MNX keys the marks on an event by name, and allows a mark no property
+// beyond the ones it names for that mark, so the two that carry more than an
+// orientation are written out rather than folded in with the rest.
+describe('event markings', () => {
+  function eventWith(markings: Event['markings']): Event {
+    return {
+      kind: 'event',
+      id: 'ev1',
+      staff: undefined,
+      value: { base: 'quarter', dots: 0 },
+      slurs: [],
+      lyrics: [],
+      stemDirection: undefined,
+      markings,
+      notes: [
+        {
+          id: 'note1',
+          pitch: { step: 'C', octave: 4, alter: 0 },
+          ties: [],
+          accidentalDisplay: undefined,
+        },
+      ],
+      isRest: false,
+    }
+  }
+
+  function markingsOf(markings: Event['markings']) {
+    const score = scoreOf(measureOf(eventWith(markings)))
+    expect(schemaErrors(writeMnx(score))).toEqual([])
+    return firstEvent(score)?.markings
+  }
+
+  test('writes a strong accent with both where it points and which side', () => {
+    expect(
+      markingsOf([{ kind: 'strongAccent', orient: 'above', pointing: 'up', symbol: undefined }]),
+    ).toEqual({ strongAccent: { orient: 'above', pointing: 'up' } })
+  })
+
+  test('writes a breath mark with both its glyph and which side', () => {
+    expect(
+      markingsOf([{ kind: 'breath', orient: 'below', pointing: undefined, symbol: 'comma' }]),
+    ).toEqual({ breath: { orient: 'below', symbol: 'comma' } })
+  })
+
+  test('leaves out a pointing a strong accent does not state', () => {
+    expect(
+      markingsOf([
+        { kind: 'strongAccent', orient: undefined, pointing: undefined, symbol: undefined },
+      ]),
+    ).toEqual({ strongAccent: {} })
+  })
+
+  test('leaves out a glyph a breath mark does not name', () => {
+    expect(
+      markingsOf([{ kind: 'breath', orient: undefined, pointing: undefined, symbol: undefined }]),
+    ).toEqual({ breath: {} })
+  })
+
+  test('writes a plain mark as an empty object, which is how MNX states it', () => {
+    expect(
+      markingsOf([{ kind: 'staccato', orient: undefined, pointing: undefined, symbol: undefined }]),
+    ).toEqual({ staccato: {} })
+  })
+
+  // Two of the same kind cannot both be stated, because MNX keys them by name.
+  test('keeps one of each kind', () => {
+    expect(
+      markingsOf([
+        { kind: 'tenuto', orient: 'above', pointing: undefined, symbol: undefined },
+        { kind: 'tenuto', orient: 'below', pointing: undefined, symbol: undefined },
+      ]),
+    ).toEqual({ tenuto: { orient: 'below' } })
   })
 })

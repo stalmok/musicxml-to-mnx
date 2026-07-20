@@ -12,6 +12,7 @@ import type {
   Clef,
   Dynamic,
   Lyric,
+  Marking,
   Event,
   GlobalMeasure,
   Measure,
@@ -43,6 +44,7 @@ import type {
   MNXLyrics,
   MNXAccidentalDisplay,
   MNXDynamic,
+  MNXEventMarkings,
   MNXRhythmicPosition,
   MNXTempo,
 } from '../types/mnx.js'
@@ -241,8 +243,37 @@ function writeEvent(event: Event, referenced: ReadonlySet<string>): MNXEvent {
         }
       : {}),
     ...(event.stemDirection ? { stemDirection: event.stemDirection } : {}),
+    ...(event.markings.length > 0 ? { markings: writeMarkings(event.markings) } : {}),
     ...(event.lyrics.length > 0 ? { lyrics: writeLyrics(event.lyrics) } : {}),
   }
+}
+
+/**
+ * The marks on an event, as MNX keys them: by name, so a note carries at most
+ * one of each. Two of them hold more than which side they sit on, and both
+ * are written out rather than folded into the others, because MNX allows no
+ * property on a mark beyond the ones it names for that mark.
+ */
+function writeMarkings(markings: readonly Marking[]): MNXEventMarkings {
+  const written: MNXEventMarkings = {}
+
+  for (const marking of markings) {
+    const orient = marking.orient ? { orient: marking.orient } : {}
+    switch (marking.kind) {
+      case 'strongAccent':
+        written.strongAccent = {
+          ...orient,
+          ...(marking.pointing ? { pointing: marking.pointing } : {}),
+        }
+        break
+      case 'breath':
+        written.breath = { ...orient, ...(marking.symbol ? { symbol: marking.symbol } : {}) }
+        break
+      default:
+        written[marking.kind] = orient
+    }
+  }
+  return written
 }
 
 function writeLyrics(lyrics: readonly Lyric[]): MNXLyrics {

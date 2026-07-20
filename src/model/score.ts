@@ -84,6 +84,34 @@ export interface Note {
   accidentalDisplay: AccidentalDisplay | undefined
 }
 
+/**
+ * The marks written on an event: how it is attacked, and how long it is held.
+ * MNX states them as a set keyed by name, so a note carries at most one of
+ * each, and the kinds are spelled the way MNX spells them so the writer needs
+ * no second table.
+ */
+export type MarkingKind =
+  | 'accent'
+  | 'staccato'
+  | 'staccatissimo'
+  | 'tenuto'
+  | 'spiccato'
+  | 'stress'
+  | 'unstress'
+  | 'softAccent'
+  | 'strongAccent'
+  | 'breath'
+
+export interface Marking {
+  kind: MarkingKind
+  /** Which side of the notes it is drawn on, where the source says. */
+  orient: 'above' | 'below' | undefined
+  /** Which way a strong accent points, where the source says. */
+  pointing: 'up' | 'down' | undefined
+  /** The symbol a breath mark is drawn with, where the source names one. */
+  symbol: string | undefined
+}
+
 export interface Event {
   kind: 'event'
   /** Unique in the document. Written out only where something refers to it. */
@@ -94,6 +122,7 @@ export interface Event {
   slurs: readonly Slur[]
   lyrics: readonly Lyric[]
   stemDirection: 'up' | 'down' | undefined
+  markings: readonly Marking[]
   /** Empty for a rest. More than one note makes it a chord. */
   notes: readonly Note[]
   isRest: boolean

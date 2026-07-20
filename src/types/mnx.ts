@@ -87,6 +87,37 @@ export interface MNXNoteValue {
   dots?: number
 }
 
+/** Which side of the notes a mark is drawn on. */
+export type MNXOrientation = 'above' | 'below' | 'auto'
+
+/** A mark written on an event, such as a staccato dot or an accent. */
+export interface MNXMarking {
+  orient?: MNXOrientation
+}
+
+export interface MNXStrongAccent extends MNXMarking {
+  pointing?: 'up' | 'down' | 'auto'
+}
+
+export interface MNXBreathMark extends MNXMarking {
+  /** The glyph it is drawn with, such as a comma or a tick. */
+  symbol?: string
+}
+
+/** The marks on an event, keyed by name, so at most one of each. */
+export interface MNXEventMarkings {
+  accent?: MNXMarking
+  staccato?: MNXMarking
+  staccatissimo?: MNXMarking
+  tenuto?: MNXMarking
+  spiccato?: MNXMarking
+  stress?: MNXMarking
+  unstress?: MNXMarking
+  softAccent?: MNXMarking
+  strongAccent?: MNXStrongAccent
+  breath?: MNXBreathMark
+}
+
 export interface MNXEvent {
   /** Present only where something refers to this event. */
   id?: string
@@ -96,6 +127,7 @@ export interface MNXEvent {
   slurs?: MNXSlur[]
   lyrics?: MNXLyrics
   stemDirection?: 'up' | 'down'
+  markings?: MNXEventMarkings
   notes?: MNXNote[]
   /** Present, and empty, when the event is a rest. */
   rest?: Record<string, never>
