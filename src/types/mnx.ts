@@ -257,10 +257,31 @@ export interface MNXDynamic {
   staff?: number
 }
 
+/** The ids of the two notes a mark runs between. */
+export interface MNXIdPair {
+  start: string
+  end: string
+}
+
+export interface MNXArpeggio {
+  position: MNXRhythmicPosition
+  span: MNXIdPair
+  direction?: 'up' | 'down' | 'auto'
+  arrow?: boolean
+}
+
+/** A bracket saying a chord is struck together rather than rolled. */
+export interface MNXNonArpeggio {
+  position: MNXRhythmicPosition
+  span: MNXIdPair
+}
+
 export interface MNXPartMeasure {
   clefs?: MNXPositionedClef[]
   beams?: MNXBeam[]
   dynamics?: MNXDynamic[]
+  arpeggios?: MNXArpeggio[]
+  nonArpeggios?: MNXNonArpeggio[]
   sequences: MNXSequence[]
 }
 

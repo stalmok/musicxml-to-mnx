@@ -392,6 +392,10 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     for (const part of mnx.parts) {
       for (const measure of part.measures) {
         fromBeams(measure.beams ?? [])
+        // An arpeggio names the two notes it runs between.
+        for (const arpeggio of [...(measure.arpeggios ?? []), ...(measure.nonArpeggios ?? [])]) {
+          referenced.push(arpeggio.span.start, arpeggio.span.end)
+        }
         for (const sequence of measure.sequences) {
           collect(sequence.content)
           fromSpanners(sequence.content)

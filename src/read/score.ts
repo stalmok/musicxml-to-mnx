@@ -338,7 +338,13 @@ function readMeasure(
   const beams = builder.beamedEvents().flatMap((events) => buildBeams(events))
 
   return {
-    measure: { clefs, beams, dynamics, sequences: builder.sequences() },
+    measure: {
+      clefs,
+      beams,
+      dynamics,
+      arpeggios: builder.arpeggios(),
+      sequences: builder.sequences(),
+    },
     // Only worth carrying when it differs from where the measure sits;
     // otherwise MNX's implicit numbering already says it.
     global: {

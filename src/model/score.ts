@@ -256,11 +256,27 @@ export interface Dynamic {
   staff: number | undefined
 }
 
+/**
+ * A chord rolled rather than struck. MNX states it on the measure rather than
+ * on the event, spanning the notes it runs between, because it is drawn as a
+ * line beside them rather than as a mark on any one of them.
+ */
+export interface Arpeggio {
+  position: Fraction
+  /** The ids of the notes it runs between, lowest first. */
+  span: { start: string; end: string }
+  /** Which way it is rolled, where the source says. */
+  direction: 'up' | 'down' | undefined
+  /** A bracket saying the notes are struck together, rather than a roll. */
+  struck: boolean
+}
+
 export interface Measure {
   clefs: readonly Clef[]
   /** Stated over the measure rather than on the notes, as MNX has it. */
   beams: readonly Beam[]
   dynamics: readonly Dynamic[]
+  arpeggios: readonly Arpeggio[]
   sequences: readonly Sequence[]
 }
 

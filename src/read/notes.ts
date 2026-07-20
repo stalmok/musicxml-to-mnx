@@ -110,6 +110,7 @@ export function readNote(
 
     const chordNote = readNoteAt(element, pitchElement, state, path)
     builder.addChordNote(voice, chordNote, duration, path, element.line)
+    readArpeggio(notations, voice, builder)
     readTies(element, chordNote, state, warnings, context)
     closeTuplets(builder, voice, tupletBrackets(notations), path, element.line)
     return
@@ -203,6 +204,7 @@ export function readNote(
   // rather than standing in the cursor's path.
   if (graceElement) {
     builder.addGraceNote(voice, event, attribute(graceElement, 'slash') === 'yes', staff)
+    readArpeggio(notations, voice, builder)
     for (const note of notes) readTies(element, note, state, warnings, context)
     readSlurs(notations, event, state, warnings, context)
     builder.addBeamMarkers(voice, event.id, beamMarkers(element, path), true)
@@ -212,6 +214,7 @@ export function readNote(
   // Where the source states no <duration>, the written value is how long the
   // note lasts.
   builder.addEvent(voice, event, duration ?? lengthOf(value), path, element.line, staff)
+  readArpeggio(notations, voice, builder)
 
   for (const note of notes) readTies(element, note, state, warnings, context)
   readSlurs(notations, event, state, warnings, context)
@@ -377,6 +380,30 @@ function placementOf(element: XmlElement): 'above' | 'below' | undefined {
 
 function upOrDown(value: string | undefined): 'up' | 'down' | undefined {
   return value === 'up' || value === 'down' ? value : undefined
+}
+
+/**
+ * Whether the chord this note belongs to is rolled, or bracketed as struck
+ * together. MusicXML marks every note of the chord; MNX states it once, over
+ * the notes it runs between, so the mark is passed to the builder and the
+ * span worked out once the chord is complete.
+ */
+function readArpeggio(
+  notations: readonly ElementReader[],
+  voice: string | undefined,
+  builder: MeasureBuilder,
+): void {
+  for (const block of notations) {
+    for (const rolled of block.children('arpeggiate')) {
+      builder.markArpeggio(voice, false, upOrDown(attribute(rolled, 'direction')))
+    }
+    // <non-arpeggiate> says the opposite: a bracket meaning the notes are
+    // struck together. Its type names which end of the bracket this note is,
+    // which MNX has no use for, since the span already says where it runs.
+    for (const _ of block.children('non-arpeggiate')) {
+      builder.markArpeggio(voice, true, undefined)
+    }
+  }
 }
 
 function readStemDirection(

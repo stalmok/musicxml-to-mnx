@@ -104,6 +104,24 @@ describe('conversion output the schema has to accept', () => {
       '<note><grace slash="yes"/><pitch><step>B</step><octave>4</octave></pitch>' +
       '<type>eighth</type></note>' +
       '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration></note>',
+    'a rolled chord':
+      '<attributes><divisions>4</divisions></attributes>' +
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+      '<notations><arpeggiate/></notations></note>' +
+      '<note><chord/><pitch><step>E</step><octave>4</octave></pitch><duration>4</duration>' +
+      '<notations><arpeggiate/></notations></note>',
+    'a rolled chord that says which way':
+      '<attributes><divisions>4</divisions></attributes>' +
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+      '<notations><arpeggiate direction="up"/></notations></note>' +
+      '<note><chord/><pitch><step>E</step><octave>4</octave></pitch><duration>4</duration>' +
+      '<notations><arpeggiate direction="up"/></notations></note>',
+    'a chord bracketed as struck together':
+      '<attributes><divisions>4</divisions></attributes>' +
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+      '<notations><non-arpeggiate type="bottom"/></notations></note>' +
+      '<note><chord/><pitch><step>E</step><octave>4</octave></pitch><duration>4</duration>' +
+      '<notations><non-arpeggiate type="top"/></notations></note>',
     'a value recovered from its duration':
       '<attributes><divisions>4</divisions></attributes>' +
       '<note><rest/><duration>6</duration></note>',

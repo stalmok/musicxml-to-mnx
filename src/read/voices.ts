@@ -15,6 +15,7 @@ import { addFractions, compareFractions, fraction, subtractFractions } from '../
 import type { Fraction } from '../fraction.js'
 import type { BeamedEvent } from './beams.js'
 import type {
+  Arpeggio,
   Event,
   FullMeasureRest,
   GraceGroup,
@@ -60,7 +61,21 @@ interface VoiceBuilder {
   lastEvent: Event | undefined
   /** How long that event lasts, for chord notes to agree with. */
   lastDuration: Fraction | undefined
+  /**
+   * Where that event begins. Held because a chord note is read after the
+   * cursor has already moved past the event it joins, and an arpeggio over
+   * the chord belongs at the event's own place in the measure.
+   */
+  lastStart: Fraction | undefined
   fullMeasure: FullMeasureRest | undefined
+}
+
+/** A chord marked as rolled or struck, held until its notes are all in. */
+interface MarkedArpeggio {
+  event: Event
+  position: Fraction
+  struck: boolean
+  direction: 'up' | 'down' | undefined
 }
 
 /** The staff a voice is mostly on, or nothing when it names no staff at all. */
@@ -96,6 +111,7 @@ function innermost(builder: VoiceBuilder): SequenceItem[] {
  */
 export class MeasureBuilder {
   readonly #voices = new Map<string, VoiceBuilder>()
+  readonly #arpeggios: MarkedArpeggio[] = []
   #cursor: Fraction = fraction(0)
   /** The voice of the most recent event, which a chord member joins. */
   #lastVoice: string | undefined
@@ -150,6 +166,7 @@ export class MeasureBuilder {
     this.#lastVoice = voice ?? UNNAMED_VOICE
     builder.lastEvent = event
     builder.lastDuration = duration
+    builder.lastStart = this.#cursor
     builder.end = addFractions(this.#cursor, duration)
     this.#cursor = builder.end
   }
@@ -274,6 +291,54 @@ export class MeasureBuilder {
     run.push({ id, markers })
   }
 
+  /**
+   * Marks the event a note just joined as rolled, or as struck together. Both
+   * are drawn beside the chord rather than on one of its notes, so MNX states
+   * them on the measure, spanning the notes they run between.
+   */
+  markArpeggio(
+    voice: string | undefined,
+    struck: boolean,
+    direction: 'up' | 'down' | undefined,
+  ): void {
+    const builder = this.#builderFor(voice ?? this.#lastVoice)
+    const event = builder.lastEvent
+    const position = builder.lastStart
+    /* v8 ignore next 2 -- a note joins its voice before its notations are
+       read, so there is always an event here to mark. */
+    if (!event || !position) throw new Error('A chord is marked as rolled with no chord to roll.')
+
+    // Every note of a chord carries the mark, so the first one to arrive sets
+    // it up and the rest join the span it already covers.
+    const existing = this.#arpeggios.find((found) => found.event === event)
+    if (existing) {
+      existing.direction ??= direction
+      return
+    }
+
+    this.#arpeggios.push({ event, position, struck, direction })
+  }
+
+  /** The rolled and struck chords of the measure, in the order they sound. */
+  arpeggios(): Arpeggio[] {
+    return this.#arpeggios.flatMap((marked) => {
+      const start = marked.event.notes[0]
+      const end = marked.event.notes.at(-1)
+      // A mark on an event with no notes is a rest that says it is rolled,
+      // which spans nothing.
+      if (!start || !end) return []
+
+      return [
+        {
+          position: marked.position,
+          span: { start: start.id, end: end.id },
+          direction: marked.direction,
+          struck: marked.struck,
+        },
+      ]
+    })
+  }
+
   /** What every voice said about its beams, voice by voice. */
   beamedEvents(): BeamedEvent[][] {
     const builders = [...this.#voices.values()]
@@ -313,6 +378,7 @@ export class MeasureBuilder {
     // Grace notes have no duration of their own, so a chord note joining one
     // has nothing to agree with.
     builder.lastDuration = undefined
+    builder.lastStart = this.#cursor
     // Recorded like any other event, so the voice's staff counts it and a
     // grace note reaching across to the other staff says so.
     builder.placed.push({ event, staff })
@@ -383,6 +449,7 @@ export class MeasureBuilder {
       end: fraction(0),
       lastEvent: undefined,
       lastDuration: undefined,
+      lastStart: undefined,
       fullMeasure: undefined,
     }
     this.#voices.set(key, created)

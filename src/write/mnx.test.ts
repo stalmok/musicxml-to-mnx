@@ -64,6 +64,7 @@ function measureOf(...events: Event[]): Measure {
     clefs: [],
     beams: [],
     dynamics: [],
+    arpeggios: [],
     sequences: [{ voice: undefined, staff: undefined, content: events, fullMeasure: undefined }],
   }
 }
@@ -127,6 +128,7 @@ test.each([
         clefs: [{ sign: 'F', staffPosition: 2, staff: undefined }],
         beams: [],
         dynamics: [],
+        arpeggios: [],
         sequences: [
           { voice: undefined, staff: undefined, content: [WHOLE_C], fullMeasure: undefined },
         ],
@@ -199,6 +201,7 @@ describe('global measures', () => {
   test('writes a dynamic that MNX schema accepts', () => {
     const measure = {
       ...measureOf(WHOLE_C),
+      arpeggios: [],
       dynamics: [
         {
           position: { num: 0, den: 1 },
@@ -236,6 +239,7 @@ describe('measures', () => {
       clefs: [{ sign: 'F', staffPosition: 2, staff: undefined }],
       beams: [],
       dynamics: [],
+      arpeggios: [],
       sequences: [
         { voice: undefined, staff: undefined, content: [WHOLE_C], fullMeasure: undefined },
       ],
@@ -300,6 +304,7 @@ describe('ties and slurs', () => {
       clefs: [],
       beams: [],
       dynamics: [],
+      arpeggios: [],
       sequences: [
         { voice: undefined, staff: undefined, content: [start, target], fullMeasure: undefined },
       ],
@@ -343,6 +348,7 @@ describe('beams', () => {
       clefs: [],
       beams: [{ events: ['ev1', 'ev2'], beams: [], direction: undefined }],
       dynamics: [],
+      arpeggios: [],
       sequences: [
         { voice: undefined, staff: undefined, content: [first, second], fullMeasure: undefined },
       ],
@@ -372,6 +378,7 @@ describe('beams', () => {
         },
       ],
       dynamics: [],
+      arpeggios: [],
       sequences: [
         {
           voice: undefined,
@@ -403,6 +410,7 @@ describe('voices and spaces', () => {
       clefs: [],
       beams: [],
       dynamics: [],
+      arpeggios: [],
       sequences: [{ voice, staff: undefined, content, fullMeasure: undefined }],
     })
   }
@@ -448,6 +456,7 @@ describe('tuplets and grace groups', () => {
       clefs: [],
       beams: [],
       dynamics: [],
+      arpeggios: [],
       sequences: [{ voice: undefined, staff: undefined, content: [item], fullMeasure: undefined }],
     })
   }
@@ -492,6 +501,7 @@ describe('full-measure rests', () => {
       clefs: [],
       beams: [],
       dynamics: [],
+      arpeggios: [],
       sequences: [{ voice: undefined, staff: undefined, content: [], fullMeasure }],
     })
   }

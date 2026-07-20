@@ -8,6 +8,7 @@
 import type { Fraction } from '../fraction.js'
 import type {
   AccidentalDisplay,
+  Arpeggio,
   Beam,
   Clef,
   Dynamic,
@@ -129,6 +130,12 @@ function surveyScore(score: Score): {
       for (const dynamic of measure.dynamics) {
         if (dynamic.end) pointedAt.add(dynamic.end.measure)
       }
+      // An arpeggio names the two notes it runs between, so those notes have
+      // to be named in turn.
+      for (const arpeggio of measure.arpeggios) {
+        referenced.add(arpeggio.span.start)
+        referenced.add(arpeggio.span.end)
+      }
     }
   }
 
@@ -209,6 +216,9 @@ function writeMeasure(
     ...(measure.dynamics.length > 0
       ? { dynamics: measure.dynamics.map((dynamic) => writeDynamic(dynamic, measureIds)) }
       : {}),
+    // MNX keeps the two apart: a rolled chord and one bracketed as struck
+    // together are opposite instructions, so they are separate lists.
+    ...writeArpeggios(measure.arpeggios),
     sequences: measure.sequences.map((sequence) => writeSequence(sequence, referenced)),
   }
 }
@@ -217,6 +227,33 @@ function writeMeasure(
  * A dynamic mark. A hairpin is what makes one gradual rather than immediate,
  * and it points at the measure it stops in, which is why measures carry ids.
  */
+function writeArpeggios(
+  arpeggios: readonly Arpeggio[],
+): Pick<MNXPartMeasure, 'arpeggios' | 'nonArpeggios'> {
+  const rolled = arpeggios.filter((arpeggio) => !arpeggio.struck)
+  const struck = arpeggios.filter((arpeggio) => arpeggio.struck)
+
+  return {
+    ...(rolled.length > 0
+      ? {
+          arpeggios: rolled.map((arpeggio) => ({
+            position: writePosition(arpeggio.position),
+            span: { ...arpeggio.span },
+            ...(arpeggio.direction ? { direction: arpeggio.direction } : {}),
+          })),
+        }
+      : {}),
+    ...(struck.length > 0
+      ? {
+          nonArpeggios: struck.map((arpeggio) => ({
+            position: writePosition(arpeggio.position),
+            span: { ...arpeggio.span },
+          })),
+        }
+      : {}),
+  }
+}
+
 function writeDynamic(dynamic: Dynamic, measureIds: ReadonlyMap<number, string>): MNXDynamic {
   return {
     position: writePosition(dynamic.position),

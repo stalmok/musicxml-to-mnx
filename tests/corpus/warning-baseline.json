@@ -24,7 +24,6 @@
     "work": 1
   },
   "barnard-milly-s-faith": {
-    "arpeggiate": 12,
     "cue": 9,
     "identification": 1,
     "measure": 6,
@@ -53,7 +52,6 @@
     "work": 1
   },
   "beethoven-2-feuerfarb": {
-    "arpeggiate": 7,
     "extend": 15,
     "fp": 1,
     "identification": 1,
@@ -70,7 +68,6 @@
   },
   "berlioz-2-le-spectre-de-la-rose": {},
   "bishop-sappho-at-her-loom": {
-    "arpeggiate": 7,
     "extend": 20,
     "identification": 1,
     "midi-device": 2,
@@ -84,14 +81,12 @@
     "work": 1
   },
   "bonis-le-chat-sur-le-toit-op-93": {
-    "arpeggiate": 8,
     "extend": 3,
     "identification": 1,
     "midi-device": 2,
     "midi-instrument": 2,
     "movement-number": 1,
     "movement-title": 1,
-    "non-arpeggiate": 3,
     "note": 64,
     "notehead": 17,
     "ornaments": 2,
@@ -105,7 +100,6 @@
     "work": 1
   },
   "boulton-4-truant-wings": {
-    "arpeggiate": 7,
     "extend": 28,
     "identification": 1,
     "midi-device": 2,
@@ -135,7 +129,6 @@
     "work": 1
   },
   "browne-the-reply-of-the-messenger-bird": {
-    "arpeggiate": 14,
     "extend": 8,
     "identification": 1,
     "measure": 2,
@@ -148,7 +141,6 @@
     "work": 1
   },
   "butterworth-1-bredon-hill": {
-    "arpeggiate": 24,
     "extend": 18,
     "identification": 1,
     "metronome": 1,
@@ -168,7 +160,6 @@
     "work": 1
   },
   "chabrier-chanson-pour-jeanne": {
-    "arpeggiate": 24,
     "cue": 2,
     "extend": 24,
     "identification": 1,
@@ -185,7 +176,6 @@
     "work": 1
   },
   "chausson-7-le-colibri": {
-    "arpeggiate": 35,
     "extend": 15,
     "identification": 1,
     "midi-device": 2,
@@ -200,7 +190,6 @@
     "work": 1
   },
   "coleridge-taylor-5-unmindful-of-the-roses": {
-    "arpeggiate": 7,
     "dashes": 4,
     "extend": 5,
     "identification": 1,
@@ -330,7 +319,6 @@
     "words": 47
   },
   "freer-2-daughter-of-egypt-veil-thine-eyes": {
-    "arpeggiate": 12,
     "identification": 1,
     "midi-device": 2,
     "midi-instrument": 2,
@@ -355,7 +343,6 @@
     "work": 1
   },
   "german-2-the-dew-upon-the-lily": {
-    "arpeggiate": 6,
     "extend": 6,
     "identification": 1,
     "midi-device": 2,
@@ -383,7 +370,6 @@
     "work": 1
   },
   "gray-then-and-now": {
-    "arpeggiate": 28,
     "dashes": 12,
     "extend": 1,
     "identification": 1,
@@ -399,7 +385,6 @@
     "work": 1
   },
   "guest-the-bonnie-wee-wife": {
-    "arpeggiate": 7,
     "dashes": 2,
     "extend": 2,
     "identification": 1,
@@ -415,7 +400,6 @@
     "work": 1
   },
   "hahn-a-chloris": {
-    "arpeggiate": 3,
     "credit": 6,
     "defaults": 1,
     "extend": 11,
@@ -486,7 +470,6 @@
   },
   "jaell-5-en-ramant": {},
   "kinkel-2-nachtliche-fahrt": {
-    "arpeggiate": 6,
     "extend": 8,
     "identification": 1,
     "metronome": 1,
@@ -514,7 +497,6 @@
     "work": 1
   },
   "lehmann-the-highland-plaid": {
-    "arpeggiate": 9,
     "extend": 4,
     "identification": 1,
     "midi-device": 2,
@@ -557,7 +539,6 @@
     "work": 1
   },
   "mackenzie-5-april-weather": {
-    "arpeggiate": 11,
     "extend": 12,
     "identification": 1,
     "midi-device": 2,
@@ -604,7 +585,6 @@
     "work": 1
   },
   "mounsey-bartholomew-4-the-warrior-boy": {
-    "arpeggiate": 8,
     "dashes": 4,
     "extend": 2,
     "identification": 1,
@@ -635,7 +615,6 @@
     "work": 1
   },
   "paladilhe-psyche": {
-    "arpeggiate": 3,
     "credit": 6,
     "cue": 1,
     "defaults": 1,
@@ -654,7 +633,6 @@
     "words": 18
   },
   "parratt-3-hark-the-world-is-full-of-thy-praise": {
-    "arpeggiate": 7,
     "extend": 61,
     "identification": 1,
     "midi-device": 5,
