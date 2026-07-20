@@ -232,10 +232,24 @@ export interface Beam {
 /** MNX's plain dynamic marks, from softest to loudest. */
 export type DynamicValue = 'ppp' | 'pp' | 'p' | 'mp' | 'mf' | 'f' | 'ff' | 'fff' | 'n'
 
-/** A dynamic mark, at a position measured from the start of the measure. */
+/** Which way a hairpin opens. */
+export type WedgeType = 'increasing' | 'decreasing'
+
+/**
+ * A dynamic mark. An immediate one states a value and sits at a point; a
+ * gradual one is a hairpin, which opens one way or the other and runs from
+ * here to a point that may be several measures away.
+ */
 export interface Dynamic {
   position: Fraction
-  value: DynamicValue
+  value: DynamicValue | undefined
+  /** Set on a hairpin, which is what makes it gradual rather than immediate. */
+  wedge: WedgeType | undefined
+  /**
+   * Where a hairpin stops, as a measure's place in the score and a position
+   * within it. Unset where the source never closed it.
+   */
+  end: { measure: number; position: Fraction } | undefined
   /** Which staff it belongs under, where the part has more than one. */
   staff: number | undefined
 }

@@ -9,7 +9,8 @@
 // routinely several measures later. That is why this is kept per part rather
 // than per measure.
 
-import type { CurveSide, Event, Note, Pitch } from '../model/score.js'
+import type { Fraction } from '../fraction.js'
+import type { CurveSide, Dynamic, Event, Note, Pitch } from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 
 interface OpenTie {
@@ -20,6 +21,11 @@ interface OpenTie {
 interface OpenSlur {
   event: Event
   side: CurveSide | undefined
+  context: WarningContext
+}
+
+interface OpenWedge {
+  dynamic: Dynamic
   context: WarningContext
 }
 
@@ -47,6 +53,8 @@ export class SpannerResolver {
   // Several slurs may carry the same number at once, so each number holds a
   // stack: a stop closes the most recently opened of them.
   readonly #openSlurs = new Map<string, OpenSlur[]>()
+  // The same, for hairpins, which the source numbers the same way.
+  readonly #openWedges = new Map<string, OpenWedge[]>()
 
   startTie(note: Note, context: WarningContext): void {
     this.#openTies.set(tieKey(note.pitch), { note, context })
@@ -102,6 +110,39 @@ export class SpannerResolver {
   }
 
   /**
+   * Starts a hairpin. Like a slur it is matched on the number the source
+   * gives it, and several may carry the same number at once, so each number
+   * holds a stack and a stop closes the most recently opened.
+   */
+  startWedge(dynamic: Dynamic, number: string, context: WarningContext): void {
+    const waiting = this.#openWedges.get(number) ?? []
+    waiting.push({ dynamic, context })
+    this.#openWedges.set(number, waiting)
+  }
+
+  /** Fills in where the hairpin waiting on this number stops, if one is. */
+  stopWedge(
+    measure: number,
+    position: Fraction,
+    number: string,
+    warnings: WarningCollector,
+    context: WarningContext,
+  ): void {
+    const open = this.#openWedges.get(number)?.pop()
+    if (!open) {
+      warnings.add(
+        'unclosed:spanner',
+        'A hairpin stops where none had started, and is not carried over.',
+        context,
+        'wedge',
+      )
+      return
+    }
+
+    open.dynamic.end = { measure, position }
+  }
+
+  /**
    * Reports whatever is still open once the part is read. Real scores do
    * contain these, so they are worth saying rather than worth refusing.
    */
@@ -124,8 +165,23 @@ export class SpannerResolver {
         )
       }
     }
+    // A hairpin that nothing closes is still written, without an end: MNX
+    // allows that, and it says more than dropping the mark would. What it
+    // does not say is how far the hairpin runs, so it is reported.
+    for (const waiting of this.#openWedges.values()) {
+      for (const open of waiting) {
+        warnings.add(
+          'unclosed:spanner',
+          'A hairpin starts where nothing ends it, so how far it runs is not carried over.',
+          open.context,
+          'wedge',
+        )
+      }
+    }
+
     this.#openTies.clear()
     this.#openSlurs.clear()
+    this.#openWedges.clear()
   }
 }
 

@@ -49,6 +49,7 @@ import type {
   MNXEventMarkings,
   MNXEnding,
   MNXFermata,
+  MNXMeasureRhythmicPosition,
   MNXRhythmicPosition,
   MNXTempo,
 } from '../types/mnx.js'
@@ -66,8 +67,12 @@ export function writeMnx(score: Score): MNXDocument {
       // reader takes the marked notes as the whole of it.
       ...(survey.drawsAccidentals ? { support: { useAccidentalDisplay: true } } : {}),
     },
-    global: { measures: score.globalMeasures.map(writeGlobalMeasure) },
-    parts: score.parts.map((part) => writePart(part, survey.referenced)),
+    global: {
+      measures: score.globalMeasures.map((measure, index) =>
+        writeGlobalMeasure(measure, survey.measureIds.get(index)),
+      ),
+    },
+    parts: score.parts.map((part) => writePart(part, survey.referenced, survey.measureIds)),
   }
 }
 
@@ -78,7 +83,11 @@ export function writeMnx(score: Score): MNXDocument {
  * accumulated while it is built, so nothing has to be threaded through the
  * reader to be true by the time the writer asks.
  */
-function surveyScore(score: Score): { referenced: ReadonlySet<string>; drawsAccidentals: boolean } {
+function surveyScore(score: Score): {
+  referenced: ReadonlySet<string>
+  drawsAccidentals: boolean
+  measureIds: ReadonlyMap<number, string>
+} {
   // Ids exist so that a tie or slur can point at something. Writing them on
   // everything else would be noise, so only the targets are named.
   const referenced = new Set<string>()
@@ -107,17 +116,33 @@ function surveyScore(score: Score): { referenced: ReadonlySet<string>; drawsAcci
     }
   }
 
+  // A hairpin points at the measure it stops in, so those measures need
+  // naming. Deterministic, and in score order.
+  const pointedAt = new Set<number>()
+
   for (const part of score.parts) {
     for (const measure of part.measures) {
       fromBeams(measure.beams)
       for (const sequence of measure.sequences) walk(sequence.content)
+      for (const dynamic of measure.dynamics) {
+        if (dynamic.end) pointedAt.add(dynamic.end.measure)
+      }
     }
   }
-  return { referenced, drawsAccidentals }
+
+  const measureIds = new Map<number, string>()
+  for (const index of [...pointedAt].sort((a, b) => a - b)) {
+    measureIds.set(index, `m${String(index + 1)}`)
+  }
+
+  return { referenced, drawsAccidentals, measureIds }
 }
 
-function writeGlobalMeasure(measure: GlobalMeasure): MNXGlobalMeasure {
+function writeGlobalMeasure(measure: GlobalMeasure, id: string | undefined): MNXGlobalMeasure {
   return {
+    // Written only where something points at this measure, as a hairpin's end
+    // does. Naming every measure would be noise.
+    ...(id !== undefined ? { id } : {}),
     ...(measure.number !== undefined ? { number: measure.number } : {}),
     ...(measure.key ? { key: { fifths: measure.key.fifths } } : {}),
     ...(measure.time ? { time: { count: measure.time.count, unit: measure.time.unit } } : {}),
@@ -158,32 +183,59 @@ function writePosition(position: Fraction): MNXRhythmicPosition {
   return { fraction: [position.num, position.den] }
 }
 
-function writePart(part: Part, referenced: ReadonlySet<string>): MNXPart {
+function writePart(
+  part: Part,
+  referenced: ReadonlySet<string>,
+  measureIds: ReadonlyMap<number, string>,
+): MNXPart {
   return {
     ...(part.name !== undefined ? { name: part.name } : {}),
     // One staff is the default, so saying so adds nothing.
     ...(part.staves > 1 ? { staves: part.staves } : {}),
-    measures: part.measures.map((measure) => writeMeasure(measure, referenced)),
+    measures: part.measures.map((measure) => writeMeasure(measure, referenced, measureIds)),
   }
 }
 
-function writeMeasure(measure: Measure, referenced: ReadonlySet<string>): MNXPartMeasure {
+function writeMeasure(
+  measure: Measure,
+  referenced: ReadonlySet<string>,
+  measureIds: ReadonlyMap<number, string>,
+): MNXPartMeasure {
   return {
     ...(measure.clefs.length > 0 ? { clefs: measure.clefs.map(writeClef) } : {}),
     ...(measure.beams.length > 0 ? { beams: measure.beams.map(writeBeam) } : {}),
-    ...(measure.dynamics.length > 0 ? { dynamics: measure.dynamics.map(writeDynamic) } : {}),
+    ...(measure.dynamics.length > 0
+      ? { dynamics: measure.dynamics.map((dynamic) => writeDynamic(dynamic, measureIds)) }
+      : {}),
     sequences: measure.sequences.map((sequence) => writeSequence(sequence, referenced)),
   }
 }
 
-function writeDynamic(dynamic: Dynamic): MNXDynamic {
-  // Every dynamic converted so far is a mark that takes effect at once.
+/**
+ * A dynamic mark. A hairpin is what makes one gradual rather than immediate,
+ * and it points at the measure it stops in, which is why measures carry ids.
+ */
+function writeDynamic(dynamic: Dynamic, measureIds: ReadonlyMap<number, string>): MNXDynamic {
   return {
     position: writePosition(dynamic.position),
-    type: 'immediate',
-    value: dynamic.value,
+    type: dynamic.wedge ? 'gradual' : 'immediate',
+    ...(dynamic.value ? { value: dynamic.value } : {}),
+    ...(dynamic.wedge ? { wedgeType: dynamic.wedge } : {}),
+    ...(dynamic.end ? { end: writeHairpinEnd(dynamic.end, measureIds) } : {}),
     ...(dynamic.staff !== undefined ? { staff: dynamic.staff } : {}),
   }
+}
+
+function writeHairpinEnd(
+  end: { measure: number; position: Fraction },
+  measureIds: ReadonlyMap<number, string>,
+): MNXMeasureRhythmicPosition {
+  const measure = measureIds.get(end.measure)
+  /* v8 ignore next -- surveyScore names every measure a hairpin ends in,
+     which is where this map comes from. */
+  if (measure === undefined) throw new Error('A hairpin ends in a measure with no id.')
+
+  return { measure, position: writePosition(end.position) }
 }
 
 function writeBeam(beam: Beam): MNXBeam {

@@ -270,6 +270,7 @@ function readMeasure(
         const reading = readDirection(
           reader,
           builder.position(),
+          index,
           state,
           warnings,
           context,

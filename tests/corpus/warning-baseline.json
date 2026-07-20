@@ -6,7 +6,6 @@
     "midi-device": 2,
     "midi-instrument": 2,
     "score-instrument": 2,
-    "wedge": 8,
     "words": 11,
     "work": 1
   },
@@ -35,7 +34,6 @@
     "score-instrument": 2,
     "sf": 1,
     "sound": 30,
-    "wedge": 12,
     "words": 39,
     "work": 1
   },
@@ -51,7 +49,6 @@
     "pedal": 24,
     "score-instrument": 2,
     "sound": 26,
-    "wedge": 12,
     "words": 19,
     "work": 1
   },
@@ -68,7 +65,6 @@
     "other-dynamics": 1,
     "score-instrument": 2,
     "sound": 6,
-    "wedge": 4,
     "words": 5,
     "work": 1
   },
@@ -84,7 +80,6 @@
     "ornaments": 4,
     "score-instrument": 2,
     "sound": 3,
-    "wedge": 8,
     "words": 6,
     "work": 1
   },
@@ -105,7 +100,6 @@
     "sf": 2,
     "sound": 18,
     "stem": 16,
-    "wedge": 62,
     "words": 55,
     "work": 1
   },
@@ -121,7 +115,6 @@
     "pedal": 78,
     "score-instrument": 2,
     "sound": 25,
-    "wedge": 30,
     "words": 14,
     "work": 1
   },
@@ -137,7 +130,6 @@
     "print": 8,
     "score-instrument": 2,
     "sound": 1,
-    "wedge": 8,
     "words": 1,
     "work": 1
   },
@@ -151,7 +143,6 @@
     "notehead": 1,
     "score-instrument": 2,
     "sound": 4,
-    "wedge": 6,
     "words": 33,
     "work": 1
   },
@@ -173,7 +164,7 @@
     "score-instrument": 2,
     "sf": 5,
     "sound": 45,
-    "wedge": 60,
+    "wedge": 2,
     "words": 25,
     "work": 1
   },
@@ -191,7 +182,6 @@
     "sound": 93,
     "stem": 2,
     "tie": 10,
-    "wedge": 62,
     "words": 68,
     "work": 1
   },
@@ -207,7 +197,6 @@
     "score-instrument": 2,
     "sound": 14,
     "tie": 1,
-    "wedge": 32,
     "words": 17,
     "work": 1
   },
@@ -223,7 +212,6 @@
     "movement-title": 1,
     "score-instrument": 2,
     "sound": 11,
-    "wedge": 44,
     "words": 20,
     "work": 1
   },
@@ -238,7 +226,6 @@
     "note": 1616,
     "score-instrument": 2,
     "sound": 15,
-    "wedge": 136,
     "words": 38,
     "work": 1
   },
@@ -253,7 +240,6 @@
     "other-dynamics": 4,
     "score-instrument": 2,
     "sound": 23,
-    "wedge": 24,
     "words": 7,
     "work": 1
   },
@@ -273,7 +259,7 @@
     "segno": 1,
     "slide": 4,
     "sound": 30,
-    "wedge": 58,
+    "wedge": 2,
     "words": 32,
     "work": 1
   },
@@ -291,7 +277,7 @@
     "score-instrument": 2,
     "sf": 1,
     "sound": 29,
-    "wedge": 90,
+    "wedge": 4,
     "words": 56,
     "work": 1
   },
@@ -311,7 +297,6 @@
     "sf": 13,
     "sound": 27,
     "tie": 1,
-    "wedge": 4,
     "words": 21,
     "work": 1
   },
@@ -328,7 +313,6 @@
     "score-instrument": 2,
     "slur": 4,
     "sound": 20,
-    "wedge": 68,
     "words": 15,
     "work": 1
   },
@@ -348,7 +332,6 @@
     "print": 54,
     "score-instrument": 2,
     "sound": 44,
-    "wedge": 86,
     "words": 47
   },
   "freer-2-daughter-of-egypt-veil-thine-eyes": {
@@ -362,7 +345,6 @@
     "notehead": 2,
     "score-instrument": 2,
     "sound": 5,
-    "wedge": 26,
     "words": 12,
     "work": 1
   },
@@ -390,7 +372,6 @@
     "score-instrument": 2,
     "sf": 1,
     "sound": 23,
-    "wedge": 48,
     "words": 12,
     "work": 1
   },
@@ -403,7 +384,6 @@
     "movement-title": 1,
     "score-instrument": 2,
     "sound": 31,
-    "wedge": 18,
     "words": 22,
     "work": 1
   },
@@ -420,7 +400,6 @@
     "pedal": 2,
     "score-instrument": 2,
     "sound": 6,
-    "wedge": 16,
     "words": 18,
     "work": 1
   },
@@ -453,7 +432,6 @@
     "print": 22,
     "score-instrument": 2,
     "sound": 7,
-    "wedge": 18,
     "words": 12
   },
   "haydn-5-sympathy-hob-xxvia33": {
@@ -468,7 +446,6 @@
     "sf": 3,
     "sound": 24,
     "tie": 2,
-    "wedge": 18,
     "words": 4,
     "work": 1
   },
@@ -481,7 +458,6 @@
     "other-dynamics": 2,
     "score-instrument": 2,
     "sound": 17,
-    "wedge": 46,
     "words": 6,
     "work": 1
   },
@@ -493,7 +469,6 @@
     "other-dynamics": 1,
     "score-instrument": 2,
     "sound": 27,
-    "wedge": 34,
     "words": 9,
     "work": 1
   },
@@ -510,7 +485,7 @@
     "print": 14,
     "score-instrument": 2,
     "sound": 10,
-    "wedge": 45,
+    "wedge": 5,
     "words": 9,
     "work": 1
   },
@@ -527,7 +502,6 @@
     "other-dynamics": 1,
     "score-instrument": 2,
     "sound": 8,
-    "wedge": 20,
     "words": 7,
     "work": 1
   },
@@ -542,7 +516,6 @@
     "movement-title": 1,
     "score-instrument": 2,
     "sound": 12,
-    "wedge": 16,
     "words": 2,
     "work": 1
   },
@@ -573,7 +546,6 @@
     "print": 22,
     "score-instrument": 2,
     "sound": 2,
-    "wedge": 10,
     "words": 16
   },
   "lindsay-good-night-good-night-beloved": {
@@ -587,7 +559,6 @@
     "part-group": 2,
     "score-instrument": 5,
     "sound": 37,
-    "wedge": 12,
     "words": 26,
     "work": 1
   },
@@ -605,7 +576,7 @@
     "pedal": 4,
     "score-instrument": 2,
     "sound": 35,
-    "wedge": 94,
+    "wedge": 2,
     "words": 35,
     "work": 1
   },
@@ -622,7 +593,6 @@
     "part-group": 2,
     "score-instrument": 5,
     "sound": 54,
-    "wedge": 60,
     "words": 36,
     "work": 1
   },
@@ -638,7 +608,6 @@
     "other-notation": 1,
     "score-instrument": 2,
     "sound": 3,
-    "wedge": 6,
     "words": 1,
     "work": 1
   },
@@ -655,7 +624,6 @@
     "score-instrument": 2,
     "sf": 6,
     "sound": 15,
-    "wedge": 8,
     "words": 3,
     "work": 1
   },
@@ -671,7 +639,6 @@
     "score-instrument": 2,
     "slur": 2,
     "sound": 8,
-    "wedge": 18,
     "words": 7,
     "work": 1
   },
@@ -691,7 +658,7 @@
     "rfz": 2,
     "score-instrument": 2,
     "sound": 18,
-    "wedge": 9,
+    "wedge": 1,
     "words": 18
   },
   "parratt-3-hark-the-world-is-full-of-thy-praise": {
@@ -705,7 +672,7 @@
     "part-group": 2,
     "score-instrument": 5,
     "sound": 104,
-    "wedge": 182,
+    "wedge": 6,
     "words": 53,
     "work": 1
   },
@@ -724,7 +691,6 @@
     "print": 40,
     "score-instrument": 2,
     "sound": 20,
-    "wedge": 72,
     "words": 7,
     "work": 1
   },
@@ -738,7 +704,7 @@
     "score-instrument": 2,
     "slur": 2,
     "sound": 2,
-    "wedge": 40,
+    "wedge": 2,
     "words": 6,
     "work": 1
   },
@@ -759,7 +725,6 @@
     "slur": 4,
     "sound": 3,
     "tie": 3,
-    "wedge": 16,
     "words": 3,
     "work": 1
   }

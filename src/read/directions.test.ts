@@ -410,3 +410,127 @@ describe('the tempo a <sound> states', () => {
     expect(warnings[0]?.message).toContain('which is not a tempo')
   })
 })
+
+// A hairpin grows or fades from here to somewhere later, often several
+// measures away. MusicXML marks both ends and numbers them so they can be
+// matched, exactly as it does a slur; MNX states the pair once, on the end
+// where it begins, pointing at the measure where it stops.
+describe('hairpins', () => {
+  const NOTE =
+    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+    '<type>quarter</type></note>'
+
+  const wedge = (type: string, number = '1') =>
+    `<direction><direction-type><wedge type="${type}" number="${number}"/></direction-type></direction>`
+
+  function readMeasures(...bodies: string[]) {
+    const warnings = new WarningCollector()
+    const measures = bodies
+      .map(
+        (body, index) =>
+          `<measure number="${String(index + 1)}">` +
+          (index === 0 ? '<attributes><divisions>4</divisions></attributes>' : '') +
+          `${body}</measure>`,
+      )
+      .join('')
+    const score = readScore(
+      parseXmlRoot(`<score-partwise><part id="P1">${measures}</part></score-partwise>`),
+      warnings,
+    )
+    return {
+      dynamics: (score.parts[0]?.measures ?? []).map((m) => m.dynamics),
+      warnings: warnings.list(),
+    }
+  }
+
+  test('states a crescendo as a wedge opening out, with where it stops', () => {
+    const { dynamics, warnings } = readMeasures(wedge('crescendo') + NOTE, NOTE + wedge('stop'))
+
+    expect(dynamics[0]?.[0]).toEqual({
+      position: { num: 0, den: 1 },
+      value: undefined,
+      wedge: 'increasing',
+      end: { measure: 1, position: { num: 1, den: 4 } },
+      staff: undefined,
+    })
+    expect(dynamics[1]).toEqual([])
+    expect(warnings).toEqual([])
+  })
+
+  test('states a diminuendo as a wedge closing', () => {
+    const { dynamics } = readMeasures(wedge('diminuendo') + NOTE + wedge('stop'))
+
+    expect(dynamics[0]?.[0]?.wedge).toBe('decreasing')
+    expect(dynamics[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 1, den: 4 } })
+  })
+
+  // Several may be open at once, so each number holds a stack and a stop
+  // closes the most recently opened, exactly as a slur does.
+  test('matches each hairpin to the stop that carries its number', () => {
+    const { dynamics, warnings } = readMeasures(
+      wedge('crescendo', '1') + wedge('diminuendo', '2') + NOTE,
+      NOTE + wedge('stop', '2') + wedge('stop', '1'),
+    )
+
+    expect(dynamics[0]?.map((d) => d.wedge)).toEqual(['increasing', 'decreasing'])
+    expect(warnings).toEqual([])
+  })
+
+  // MNX allows a gradual mark with no end, and saying a hairpin starts here
+  // says more than dropping it would. What is lost is how far it runs.
+  test('keeps a hairpin nothing closes, and reports how far it runs is lost', () => {
+    const { dynamics, warnings } = readMeasures(wedge('crescendo') + NOTE)
+
+    expect(dynamics[0]?.[0]?.wedge).toBe('increasing')
+    expect(dynamics[0]?.[0]?.end).toBeUndefined()
+    expect(warnings.map((w) => w.element)).toEqual(['wedge'])
+    expect(warnings[0]?.message).toContain('nothing ends it')
+  })
+
+  test('reports a stop where no hairpin had started', () => {
+    const { dynamics, warnings } = readMeasures(NOTE + wedge('stop'))
+
+    expect(dynamics[0]).toEqual([])
+    expect(warnings.map((w) => w.element)).toEqual(['wedge'])
+    expect(warnings[0]?.message).toContain('none had started')
+  })
+
+  // "continue" marks a point partway along one, which MNX has no need of,
+  // since it states only where a hairpin begins and ends.
+  test('says nothing about a point partway along one', () => {
+    const { warnings } = readMeasures(
+      wedge('crescendo') + NOTE,
+      wedge('continue') + NOTE + wedge('stop'),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  test('reports a wedge of a type it does not know', () => {
+    const { warnings } = readMeasures(wedge('wibble') + NOTE)
+
+    expect(warnings.map((w) => w.element)).toEqual(['wedge'])
+    expect(warnings[0]?.message).toContain('not converted yet')
+  })
+
+  test('reports a wedge that states no type at all', () => {
+    const { warnings } = readMeasures(
+      '<direction><direction-type><wedge number="1"/></direction-type></direction>' + NOTE,
+    )
+
+    expect(warnings.map((w) => w.element)).toEqual(['wedge'])
+    expect(warnings[0]?.message).toContain('of type ""')
+  })
+
+  test('keeps the staff a hairpin belongs under', () => {
+    const { dynamics } = readMeasures(
+      '<attributes><staves>2</staves></attributes>' +
+        '<direction><direction-type><wedge type="crescendo"/></direction-type>' +
+        '<staff>2</staff></direction>' +
+        NOTE +
+        wedge('stop'),
+    )
+
+    expect(dynamics[0]?.[0]?.staff).toBe(2)
+  })
+})

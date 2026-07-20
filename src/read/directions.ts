@@ -11,10 +11,10 @@ import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
 import { addFractions, compareFractions, fraction } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
-import type { Dynamic, DynamicValue, Tempo } from '../model/score.js'
+import type { Dynamic, DynamicValue, Tempo, WedgeType } from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
-import { children, trimmedText } from '../xml/tree.js'
+import { attribute, children, trimmedText } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
 import { noteValueBaseOf } from './noteValues.js'
 import { readIntegerInRange } from './numbers.js'
@@ -44,6 +44,7 @@ const DYNAMIC_VALUES: ReadonlySet<string> = new Set([
 export function readDirection(
   element: ElementReader,
   position: Fraction,
+  measure: number,
   state: PartState,
   warnings: WarningCollector,
   context: WarningContext,
@@ -69,6 +70,11 @@ export function readDirection(
         case 'metronome':
           reading.tempos.push(...readMetronome(found, at, warnings, context, path))
           break
+        case 'wedge': {
+          const hairpin = readWedge(found, at, measure, staff, state, warnings, context)
+          if (hairpin) reading.dynamics.push(hairpin)
+          break
+        }
         default: {
           const loss = elementLoss(found.name)
           warnings.add(
@@ -159,6 +165,58 @@ function pastTheEnd(position: Fraction, state: PartState): boolean {
   return compareFractions(position, fraction(state.time.count, state.time.unit)) > 0
 }
 
+// MusicXML's wedge types, in MNX's. A hairpin opening to the right gets
+// louder; one closing gets softer.
+const WEDGE_TYPES = new Map<string, WedgeType>([
+  ['crescendo', 'increasing'],
+  ['diminuendo', 'decreasing'],
+])
+
+/**
+ * A hairpin: a dynamic that grows or fades from here to somewhere later,
+ * often several measures away. MusicXML marks both ends and numbers them so
+ * they can be matched, exactly as it does a slur, and MNX states the pair
+ * once, on the end where it begins.
+ */
+function readWedge(
+  found: XmlElement,
+  position: Fraction,
+  measure: number,
+  staff: number | undefined,
+  state: PartState,
+  warnings: WarningCollector,
+  context: WarningContext,
+): Dynamic | undefined {
+  const type = attribute(found, 'type')
+  const number = attribute(found, 'number') ?? '1'
+
+  if (type === 'stop') {
+    state.spanners.stopWedge(measure, position, number, warnings, context)
+    return undefined
+  }
+
+  const wedge = type === undefined ? undefined : WEDGE_TYPES.get(type)
+  if (!wedge) {
+    // "continue" marks a point partway along a hairpin, which MNX has no need
+    // of, since it states only where one begins and ends.
+    if (type !== 'continue') {
+      warnings.add(
+        'unsupported:element',
+        `A <wedge> of type "${type ?? ''}" is not converted yet.`,
+        { ...context, line: found.line },
+        'wedge',
+      )
+    }
+    return undefined
+  }
+
+  // A hairpin states no value of its own: what it grows from and to is said
+  // by the plain marks around it.
+  const hairpin: Dynamic = { position, value: undefined, wedge, end: undefined, staff }
+  state.spanners.startWedge(hairpin, number, context)
+  return hairpin
+}
+
 /**
  * What a <sound> carries that is notation rather than playback. Only the
  * tempo is: MNX has nowhere for a playback velocity, a pan position or a
@@ -238,7 +296,13 @@ function readDynamics(
   const dynamics: Dynamic[] = []
   for (const mark of element.children) {
     if (DYNAMIC_VALUES.has(mark.name)) {
-      dynamics.push({ position, value: mark.name as DynamicValue, staff })
+      dynamics.push({
+        position,
+        value: mark.name as DynamicValue,
+        wedge: undefined,
+        end: undefined,
+        staff,
+      })
     } else {
       warnings.add(
         'unsupported:element',

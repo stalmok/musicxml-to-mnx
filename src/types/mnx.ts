@@ -236,10 +236,22 @@ export interface MNXRhythmicPosition {
   fraction: [number, number]
 }
 
+export type MNXWedgeType = 'increasing' | 'decreasing'
+
+/** A point in the score: which measure, and where within it. */
+export interface MNXMeasureRhythmicPosition {
+  measure: string
+  position: MNXRhythmicPosition
+}
+
 export interface MNXDynamic {
   position: MNXRhythmicPosition
   type: 'immediate' | 'gradual' | 'relative' | 'accent'
   value?: MNXDynamicValue
+  /** Which way a hairpin opens. Present only on a gradual mark. */
+  wedgeType?: MNXWedgeType
+  /** Where a hairpin stops, which may be in a later measure. */
+  end?: MNXMeasureRhythmicPosition
   /** Which staff of the part it sits under, where it has more than one. */
   staff?: number
 }
@@ -305,6 +317,8 @@ export interface MNXEnding {
 }
 
 export interface MNXGlobalMeasure {
+  /** Written only where something points at this measure, as a hairpin's end does. */
+  id?: string
   /** Stated only where it differs from the measure's position in the score. */
   number?: number
   key?: MNXKey
