@@ -28,7 +28,7 @@ import { buildBeams } from './beams.js'
 import { readDirection } from './directions.js'
 import { requireDuration } from './divisions.js'
 import { ElementReader } from './element.js'
-import { negate } from '../fraction.js'
+import { compareFractions, negate } from '../fraction.js'
 import { readNote } from './notes.js'
 import { IdGenerator } from './spanners.js'
 import { newPartState } from './state.js'
@@ -73,6 +73,23 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
     mergeGlobalMeasures(globalMeasures, reading.globals)
   }
 
+  // The global list is the score's measure list, and every part's measures
+  // line up with it by position. A part with fewer of them stops before the
+  // score does, which nothing downstream can see: MNX gives a part a plain
+  // list of measures, so a short one is a well-formed document that says the
+  // part falls silent partway through.
+  for (const reading of readings) {
+    const found = reading.part.measures.length
+    if (found !== globalMeasures.length) {
+      warnings.add(
+        'inconsistent:measure-count',
+        `Part ${reading.part.id} has ${String(found)} measures where the score has ` +
+          `${String(globalMeasures.length)}.`,
+        { part: reading.part.id },
+      )
+    }
+  }
+
   return { globalMeasures, parts: readings.map((reading) => reading.part) }
 }
 
@@ -85,12 +102,34 @@ function mergeGlobalMeasures(target: GlobalMeasure[], found: readonly GlobalMeas
     target[index] = {
       key: existing?.key ?? measure.key,
       time: existing?.time ?? measure.time,
-      // Tempo is the score's, so the parts do not each carry it; whichever
-      // part states one in this measure contributes it.
-      tempos: [...(existing?.tempos ?? []), ...measure.tempos],
+      tempos: mergeTempos(existing?.tempos ?? [], measure.tempos),
       number: existing?.number ?? measure.number,
     }
   })
+}
+
+/**
+ * A tempo belongs to the score rather than to a part, but MusicXML has to
+ * write it inside one, and exporters routinely write the same mark into every
+ * part. Taking them all would state one tempo several times over, which a
+ * renderer would draw several times over; taking only the first part's would
+ * lose a mark that only a later part states. So each is kept once.
+ */
+function mergeTempos(existing: readonly Tempo[], found: readonly Tempo[]): Tempo[] {
+  const merged = [...existing]
+  for (const tempo of found) {
+    if (!merged.some((other) => sameTempo(other, tempo))) merged.push(tempo)
+  }
+  return merged
+}
+
+function sameTempo(a: Tempo, b: Tempo): boolean {
+  return (
+    a.bpm === b.bpm &&
+    a.value.base === b.value.base &&
+    a.value.dots === b.value.dots &&
+    compareFractions(a.position, b.position) === 0
+  )
 }
 
 function readPartNames(root: XmlElement): ReadonlyMap<string, string> {

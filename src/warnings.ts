@@ -52,6 +52,9 @@ export type WarningCode =
   // A tie or slur has only one of its two ends, so there is nothing to join
   // it to. Real scores contain these, so it is reported rather than refused.
   | 'unclosed:spanner'
+  // A part holds a different number of measures from the score, so it stops
+  // before the score does or runs past the end of it.
+  | 'inconsistent:measure-count'
 
 /**
  * True for a loss no release of this converter can close, short of MNX itself

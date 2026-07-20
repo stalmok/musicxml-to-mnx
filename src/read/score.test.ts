@@ -628,3 +628,67 @@ describe('several parts', () => {
     expect(result.parts).toHaveLength(2)
   })
 })
+
+// A tempo belongs to the score, but MusicXML has to write it inside a part,
+// and exporters routinely write the same mark into every one of them.
+describe('a tempo stated by more than one part', () => {
+  const metronome =
+    '<direction><direction-type><metronome><beat-unit>quarter</beat-unit>' +
+    '<per-minute>96</per-minute></metronome></direction-type></direction>'
+
+  test('states it once, however many parts wrote it', () => {
+    const { score: result } = read(
+      score(
+        `<part id="P1"><measure number="1">${metronome}${NOTE}</measure></part>` +
+          `<part id="P2"><measure number="1">${metronome}${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.tempos).toEqual([
+      { position: { num: 0, den: 1 }, value: { base: 'quarter', dots: 0 }, bpm: 96 },
+    ])
+  })
+
+  test('keeps both where the parts state different tempos', () => {
+    const slower = metronome.replace('96', '60')
+    const { score: result } = read(
+      score(
+        `<part id="P1"><measure number="1">${metronome}${NOTE}</measure></part>` +
+          `<part id="P2"><measure number="1">${slower}${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.tempos.map((t) => t.bpm)).toEqual([96, 60])
+  })
+})
+
+// The global list is the score's measure list and every part lines up with it
+// by position, so a part of a different length falls silent partway through
+// or runs past the end. MNX gives a part a plain list of measures, so nothing
+// downstream can tell.
+describe('parts of different lengths', () => {
+  test('reports a part that stops before the score does', () => {
+    const { warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${NOTE}</measure>` +
+          `<measure number="2">${NOTE}</measure></part>` +
+          `<part id="P2"><measure number="1">${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:measure-count'])
+    expect(warnings[0]?.message).toContain('P2 has 1 measures where the score has 2')
+    expect(warnings[0]?.context.part).toBe('P2')
+  })
+
+  test('says nothing where every part runs the whole score', () => {
+    const { warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${NOTE}</measure></part>` +
+          `<part id="P2"><measure number="1">${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(warnings).toEqual([])
+  })
+})

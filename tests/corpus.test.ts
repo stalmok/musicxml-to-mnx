@@ -294,6 +294,20 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     expect(referenced.filter((id) => !named.has(id)).slice(0, 5)).toEqual([])
   })
 
+  // Each part's measures line up with the global measure list by position, so
+  // a part holding a different number of them falls silent partway through the
+  // score or runs past its end. The schema types a part's measures as a plain
+  // list, so a short one is a well-formed document saying the wrong thing.
+  test('gives every part as many measures as the score has', () => {
+    const expected = mnx.global.measures.length
+    const uneven = mnx.parts
+      .map((part, index) => ({ index, found: part.measures.length }))
+      .filter((part) => part.found !== expected)
+      .map((part) => `part ${String(part.index + 1)}: ${String(part.found)} of ${String(expected)}`)
+
+    expect(uneven).toEqual([])
+  })
+
   // A staff number that names a staff the part does not have would place
   // music nowhere. The schema types it as a bare integer, so it cannot tell.
   test('never names a staff the part does not have', () => {
