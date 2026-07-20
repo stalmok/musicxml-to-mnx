@@ -3,7 +3,6 @@
     "barline": 2,
     "cue": 2,
     "identification": 1,
-    "sound": 1,
     "wedge": 8,
     "words": 11,
     "work": 1
@@ -17,7 +16,6 @@
     "measure": 9,
     "note": 36,
     "print": 18,
-    "sound": 1,
     "words": 3,
     "work": 1
   },
@@ -31,7 +29,7 @@
     "measure": 6,
     "other-dynamics": 7,
     "sf": 1,
-    "sound": 31,
+    "sound": 30,
     "wedge": 12,
     "words": 39,
     "work": 1
@@ -46,7 +44,7 @@
     "octave-shift": 2,
     "other-dynamics": 3,
     "pedal": 24,
-    "sound": 27,
+    "sound": 26,
     "wedge": 12,
     "words": 19,
     "work": 1
@@ -62,7 +60,7 @@
     "movement-number": 1,
     "movement-title": 1,
     "other-dynamics": 1,
-    "sound": 8,
+    "sound": 6,
     "wedge": 4,
     "words": 5,
     "work": 1
@@ -76,7 +74,7 @@
     "movement-title": 1,
     "note": 48,
     "ornaments": 4,
-    "sound": 6,
+    "sound": 3,
     "wedge": 8,
     "words": 6,
     "work": 1
@@ -95,7 +93,7 @@
     "ornaments": 2,
     "other-dynamics": 1,
     "sf": 2,
-    "sound": 29,
+    "sound": 18,
     "stem": 16,
     "wedge": 62,
     "words": 55,
@@ -110,7 +108,7 @@
     "movement-title": 1,
     "octave-shift": 2,
     "pedal": 78,
-    "sound": 26,
+    "sound": 25,
     "wedge": 30,
     "words": 14,
     "work": 1
@@ -123,7 +121,7 @@
     "movement-number": 1,
     "movement-title": 1,
     "print": 8,
-    "sound": 2,
+    "sound": 1,
     "wedge": 8,
     "words": 1,
     "work": 1
@@ -155,7 +153,7 @@
     "other-dynamics": 2,
     "pedal": 8,
     "sf": 5,
-    "sound": 49,
+    "sound": 45,
     "wedge": 60,
     "words": 25,
     "work": 1
@@ -186,7 +184,7 @@
     "movement-number": 1,
     "movement-title": 1,
     "note": 26,
-    "sound": 15,
+    "sound": 14,
     "tie": 1,
     "wedge": 32,
     "words": 17,
@@ -200,7 +198,7 @@
     "identification": 1,
     "movement-number": 1,
     "movement-title": 1,
-    "sound": 12,
+    "sound": 11,
     "wedge": 44,
     "words": 20,
     "work": 1
@@ -225,7 +223,7 @@
     "movement-number": 1,
     "movement-title": 1,
     "other-dynamics": 4,
-    "sound": 24,
+    "sound": 23,
     "wedge": 24,
     "words": 7,
     "work": 1
@@ -244,7 +242,7 @@
     "print": 24,
     "segno": 1,
     "slide": 4,
-    "sound": 43,
+    "sound": 30,
     "wedge": 58,
     "words": 32,
     "work": 1
@@ -260,7 +258,7 @@
     "other-dynamics": 4,
     "pedal": 62,
     "sf": 1,
-    "sound": 30,
+    "sound": 29,
     "wedge": 90,
     "words": 56,
     "work": 1
@@ -277,7 +275,7 @@
     "other-dynamics": 3,
     "pedal": 56,
     "sf": 13,
-    "sound": 30,
+    "sound": 27,
     "staff": 1,
     "tie": 1,
     "wedge": 4,
@@ -294,7 +292,7 @@
     "notehead": 59,
     "pedal": 108,
     "slur": 4,
-    "sound": 23,
+    "sound": 20,
     "wedge": 68,
     "words": 15,
     "work": 1
@@ -312,7 +310,7 @@
     "notehead": 1,
     "octave-shift": 4,
     "print": 54,
-    "sound": 76,
+    "sound": 44,
     "wedge": 86,
     "words": 47
   },
@@ -326,7 +324,7 @@
     "movement-title": 1,
     "note": 15,
     "notehead": 2,
-    "sound": 7,
+    "sound": 5,
     "wedge": 26,
     "words": 12,
     "work": 1
@@ -335,7 +333,7 @@
     "barline": 17,
     "fermata": 4,
     "identification": 1,
-    "sound": 2,
+    "sound": 1,
     "words": 1,
     "work": 1
   },
@@ -349,7 +347,7 @@
     "other-dynamics": 1,
     "pedal": 54,
     "sf": 1,
-    "sound": 24,
+    "sound": 23,
     "wedge": 48,
     "words": 12,
     "work": 1
@@ -359,7 +357,7 @@
     "identification": 1,
     "movement-number": 1,
     "movement-title": 1,
-    "sound": 34,
+    "sound": 31,
     "wedge": 18,
     "words": 22,
     "work": 1
@@ -375,7 +373,7 @@
     "movement-title": 1,
     "other-dynamics": 1,
     "pedal": 2,
-    "sound": 7,
+    "sound": 6,
     "wedge": 16,
     "words": 18,
     "work": 1
@@ -390,7 +388,7 @@
     "notehead": 5,
     "other-dynamics": 11,
     "sf": 25,
-    "sound": 55,
+    "sound": 54,
     "staff-details": 1,
     "words": 24,
     "work": 1
@@ -405,7 +403,7 @@
     "movement-title": 1,
     "note": 87,
     "print": 22,
-    "sound": 9,
+    "sound": 7,
     "wedge": 18,
     "words": 12
   },
@@ -418,7 +416,7 @@
     "movement-number": 1,
     "movement-title": 1,
     "sf": 3,
-    "sound": 25,
+    "sound": 24,
     "tie": 2,
     "wedge": 18,
     "words": 4,
@@ -431,7 +429,7 @@
     "identification": 1,
     "measure": 18,
     "other-dynamics": 2,
-    "sound": 18,
+    "sound": 17,
     "wedge": 46,
     "words": 6,
     "work": 1
@@ -442,7 +440,7 @@
     "fermata": 5,
     "identification": 1,
     "other-dynamics": 1,
-    "sound": 28,
+    "sound": 27,
     "wedge": 34,
     "words": 9,
     "work": 1
@@ -457,7 +455,7 @@
     "movement-number": 1,
     "movement-title": 1,
     "print": 14,
-    "sound": 12,
+    "sound": 10,
     "wedge": 45,
     "words": 9,
     "work": 1
@@ -472,7 +470,7 @@
     "movement-number": 1,
     "movement-title": 1,
     "other-dynamics": 1,
-    "sound": 9,
+    "sound": 8,
     "wedge": 20,
     "words": 7,
     "work": 1
@@ -485,7 +483,7 @@
     "identification": 1,
     "movement-number": 1,
     "movement-title": 1,
-    "sound": 13,
+    "sound": 12,
     "wedge": 16,
     "words": 2,
     "work": 1
@@ -497,7 +495,7 @@
     "identification": 1,
     "octave-shift": 2,
     "other-dynamics": 2,
-    "sound": 6,
+    "sound": 3,
     "tie": 3,
     "words": 10,
     "work": 1
@@ -513,7 +511,7 @@
     "movement-title": 1,
     "note": 177,
     "print": 22,
-    "sound": 8,
+    "sound": 2,
     "wedge": 10,
     "words": 16
   },
@@ -522,7 +520,7 @@
     "coda": 1,
     "identification": 1,
     "measure": 15,
-    "sound": 38,
+    "sound": 37,
     "wedge": 12,
     "words": 26,
     "work": 1
@@ -538,7 +536,7 @@
     "note": 72,
     "other-dynamics": 7,
     "pedal": 4,
-    "sound": 36,
+    "sound": 35,
     "wedge": 94,
     "words": 35,
     "work": 1
@@ -553,7 +551,7 @@
     "measure": 10,
     "movement-title": 1,
     "other-dynamics": 5,
-    "sound": 55,
+    "sound": 54,
     "wedge": 60,
     "words": 36,
     "work": 1
@@ -566,7 +564,7 @@
     "note": 273,
     "ornaments": 6,
     "other-notation": 1,
-    "sound": 4,
+    "sound": 3,
     "wedge": 6,
     "words": 1,
     "work": 1
@@ -581,7 +579,7 @@
     "movement-title": 1,
     "notehead": 6,
     "sf": 6,
-    "sound": 16,
+    "sound": 15,
     "wedge": 8,
     "words": 3,
     "work": 1
@@ -612,7 +610,7 @@
     "pedal": 24,
     "print": 22,
     "rfz": 2,
-    "sound": 22,
+    "sound": 18,
     "wedge": 9,
     "words": 18
   },
@@ -624,7 +622,7 @@
     "identification": 1,
     "movement-number": 1,
     "movement-title": 1,
-    "sound": 109,
+    "sound": 104,
     "wedge": 182,
     "words": 53,
     "work": 1
@@ -642,7 +640,7 @@
     "movement-title": 1,
     "note": 625,
     "print": 40,
-    "sound": 21,
+    "sound": 20,
     "wedge": 72,
     "words": 7,
     "work": 1
@@ -655,7 +653,7 @@
     "movement-title": 1,
     "note": 10,
     "slur": 2,
-    "sound": 3,
+    "sound": 2,
     "wedge": 40,
     "words": 6,
     "work": 1
@@ -673,7 +671,7 @@
     "pedal": 4,
     "print": 16,
     "slur": 4,
-    "sound": 4,
+    "sound": 3,
     "tie": 3,
     "wedge": 16,
     "words": 3,

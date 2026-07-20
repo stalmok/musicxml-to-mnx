@@ -81,6 +81,14 @@ export function readDirection(
       }
     }
   }
+
+  // Read after the direction types, so that a <metronome> beside it has
+  // already had its say about the tempo.
+  const sound = element.child('sound')
+  if (sound) {
+    reading.tempos.push(...readSound(sound, at, reading.tempos.length > 0, warnings, context))
+  }
+
   return reading
 }
 
@@ -140,6 +148,54 @@ function offsetPosition(
   }
 
   return moved
+}
+
+/**
+ * What a <sound> carries that is notation rather than playback. Only the
+ * tempo is: MNX has nowhere for a playback velocity, a pan position or a
+ * pedal instruction, so every other attribute stays in the loss report.
+ *
+ * MusicXML counts a sound tempo in quarter notes per minute, always, which is
+ * why no beat unit is read for it.
+ */
+export function readSound(
+  sound: XmlElement,
+  position: Fraction,
+  tempoAlreadyStated: boolean,
+  warnings: WarningCollector,
+  context: WarningContext,
+): Tempo[] {
+  for (const name of Object.keys(sound.attributes)) {
+    if (name === 'tempo') continue
+    warnings.add(
+      'unsupported:element',
+      `The "${name}" of a <sound> is not converted yet.`,
+      { ...context, line: sound.line },
+      'sound',
+    )
+  }
+
+  const written = sound.attributes['tempo']
+  if (written === undefined) return []
+
+  // A <sound tempo> beside a <metronome> is the same mark restated for
+  // playback, so taking it too would state one tempo twice.
+  if (tempoAlreadyStated) return []
+
+  const bpm = Number(written)
+  if (!Number.isFinite(bpm) || bpm <= 0) {
+    // Playback junk is not worth refusing a document over, so it is reported
+    // like anything else the output does not carry.
+    warnings.add(
+      'unsupported:element',
+      `A <sound> states "${written}" beats per minute, which is not a tempo.`,
+      { ...context, line: sound.line },
+      'sound',
+    )
+    return []
+  }
+
+  return [{ position, value: { base: 'quarter', dots: 0 }, bpm: Math.round(bpm) }]
 }
 
 function readDynamics(

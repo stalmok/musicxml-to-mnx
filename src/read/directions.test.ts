@@ -313,3 +313,76 @@ describe('an offset moving a direction', () => {
     expect(warnings[0]?.message).toContain('not a whole number')
   })
 })
+
+// <sound> is a playback element. The only thing in it MNX has anywhere for is
+// the tempo, which MusicXML always counts in quarter notes per minute.
+describe('the tempo a <sound> states', () => {
+  function tempos(body: string) {
+    const warnings = new WarningCollector()
+    const score = readScore(
+      parseXmlRoot(
+        '<score-partwise><part id="P1"><measure number="1">' +
+          `<attributes><divisions>4</divisions></attributes>${body}</measure></part></score-partwise>`,
+      ),
+      warnings,
+    )
+    return { tempos: score.globalMeasures[0]?.tempos ?? [], warnings: warnings.list() }
+  }
+
+  const quarter =
+    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+    '<type>quarter</type></note>'
+
+  test('reads it as that many quarter notes per minute', () => {
+    const { tempos: found, warnings } = tempos(
+      '<direction><sound tempo="120"/></direction>' + quarter,
+    )
+
+    expect(found).toEqual([
+      { position: { num: 0, den: 1 }, value: { base: 'quarter', dots: 0 }, bpm: 120 },
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  test('reads one written straight into the measure', () => {
+    const { tempos: found, warnings } = tempos(`<sound tempo="88"/>${quarter}`)
+
+    expect(found.map((t) => t.bpm)).toEqual([88])
+    expect(warnings).toEqual([])
+  })
+
+  // The two say the same thing, and the metronome is the one that is drawn.
+  test('passes over one that only restates a <metronome> beside it', () => {
+    const { tempos: found } = tempos(
+      '<direction><direction-type><metronome><beat-unit>half</beat-unit>' +
+        '<per-minute>60</per-minute></metronome></direction-type>' +
+        '<sound tempo="120"/></direction>' +
+        quarter,
+    )
+
+    expect(found).toEqual([
+      { position: { num: 0, den: 1 }, value: { base: 'half', dots: 0 }, bpm: 60 },
+    ])
+  })
+
+  test('reports the playback it carries besides the tempo', () => {
+    const { tempos: found, warnings } = tempos(
+      '<direction><sound tempo="100" dynamics="71"/></direction>' + quarter,
+    )
+
+    expect(found.map((t) => t.bpm)).toEqual([100])
+    expect(warnings.map((w) => w.message)).toEqual([
+      'The "dynamics" of a <sound> is not converted yet.',
+    ])
+  })
+
+  // Playback junk is not worth refusing a whole document over.
+  test('reports rather than refuses a tempo that is not a number', () => {
+    const { tempos: found, warnings } = tempos(
+      '<direction><sound tempo="fast"/></direction>' + quarter,
+    )
+
+    expect(found).toEqual([])
+    expect(warnings[0]?.message).toContain('which is not a tempo')
+  })
+})

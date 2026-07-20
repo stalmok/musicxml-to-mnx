@@ -25,7 +25,7 @@ import type { XmlElement } from '../xml/parse.js'
 import { attribute, child, children, requireAttribute } from '../xml/tree.js'
 import { readAttributes } from './attributes.js'
 import { buildBeams } from './beams.js'
-import { readDirection } from './directions.js'
+import { readDirection, readSound } from './directions.js'
 import { requireDuration } from './divisions.js'
 import { ElementReader } from './element.js'
 import { compareFractions, negate } from '../fraction.js'
@@ -243,6 +243,11 @@ function readMeasure(
         tempos.push(...reading.tempos)
         break
       }
+
+      // A <sound> outside a <direction> still carries the score's tempo.
+      case 'sound':
+        tempos.push(...readSound(found, builder.position(), false, warnings, context))
+        break
 
       // Both only move the cursor: <backup> against the flow of the measure,
       // <forward> with it. A <voice> or <staff> on one says which voice the
