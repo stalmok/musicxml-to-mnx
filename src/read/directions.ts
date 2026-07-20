@@ -10,10 +10,11 @@
 import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
 import type { Fraction } from '../fraction.js'
-import type { Dynamic, DynamicValue, NoteValueBase, Tempo } from '../model/score.js'
+import type { Dynamic, DynamicValue, Tempo } from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import { children, trimmedText } from '../xml/tree.js'
+import { noteValueBaseOf } from './noteValues.js'
 
 /** What one <direction> was found to carry. */
 export interface DirectionReading {
@@ -33,41 +34,6 @@ const DYNAMIC_VALUES: ReadonlySet<string> = new Set([
   'ff',
   'fff',
   'n',
-])
-
-const BEAT_UNIT_BASES: ReadonlySet<string> = new Set([
-  'maxima',
-  'long',
-  'breve',
-  'whole',
-  'half',
-  'quarter',
-  'eighth',
-  '16th',
-  '32nd',
-  '64th',
-  '128th',
-  '256th',
-  '512th',
-  '1024th',
-])
-
-// MusicXML's beat-unit spellings, in MNX's.
-const BEAT_UNIT_TO_BASE = new Map<string, NoteValueBase>([
-  ['maxima', 'maxima'],
-  ['long', 'longa'],
-  ['breve', 'breve'],
-  ['whole', 'whole'],
-  ['half', 'half'],
-  ['quarter', 'quarter'],
-  ['eighth', 'eighth'],
-  ['16th', '16th'],
-  ['32nd', '32nd'],
-  ['64th', '64th'],
-  ['128th', '128th'],
-  ['256th', '256th'],
-  ['512th', '512th'],
-  ['1024th', '1024th'],
 ])
 
 export function readDirection(
@@ -140,13 +106,12 @@ function readMetronome(
     return []
   }
 
-  const spelling = trimmedText(beatUnit)
-  const base = BEAT_UNIT_BASES.has(spelling) ? BEAT_UNIT_TO_BASE.get(spelling) : undefined
+  const base = noteValueBaseOf(beatUnit)
   if (!base) {
-    throw new MusicXMLError(`A metronome's beat unit "${spelling}" is not a note value.`, {
-      path,
-      line: beatUnit.line,
-    })
+    throw new MusicXMLError(
+      `A metronome's beat unit "${trimmedText(beatUnit)}" is not a note value.`,
+      { path, line: beatUnit.line },
+    )
   }
 
   const bpm = Number(trimmedText(perMinute))

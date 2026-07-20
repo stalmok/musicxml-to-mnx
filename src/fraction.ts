@@ -61,6 +61,10 @@ export function multiplyFractions(a: Fraction, b: Fraction): Fraction {
   return fraction((a.num / left) * (b.num / right), (a.den / right) * (b.den / left))
 }
 
+export function negate(value: Fraction): Fraction {
+  return fraction(-value.num, value.den)
+}
+
 /** Negative when a is the smaller, zero when they are equal, else positive. */
 export function compareFractions(a: Fraction, b: Fraction): number {
   return a.num * b.den - b.num * a.den

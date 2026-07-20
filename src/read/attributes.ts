@@ -1,0 +1,147 @@
+// Reading an <attributes> block: what is in force from here on, and the clefs
+// drawn at this point.
+//
+// A measure may carry more than one of these, because a clef can change
+// partway through, so what they declare is folded into the measure in the
+// order they are met.
+
+import { MusicXMLError } from '../errors.js'
+import type { DocumentPath } from '../errors.js'
+import type { Clef, ClefSign, Key, TimeSignature, TimeUnit } from '../model/score.js'
+import type { WarningCollector, WarningContext } from '../warnings.js'
+import type { XmlElement } from '../xml/parse.js'
+import { attribute, child, children, requireChild, trimmedText } from '../xml/tree.js'
+import { readInteger, readIntegerInRange } from './numbers.js'
+import type { PartState } from './state.js'
+import { reportUnhandled } from './state.js'
+
+const HANDLED_IN_ATTRIBUTES: ReadonlySet<string> = new Set([
+  'divisions',
+  'key',
+  'time',
+  'clef',
+  'staves',
+])
+
+// Recognisers rather than bare sets: each one narrows the value it accepts to
+// the model's type, so a validated value reaches the writer without a cast
+// and an unvalidated one cannot.
+const CLEF_SIGNS: ReadonlySet<string> = new Set(['C', 'F', 'G'])
+const TIME_UNITS: ReadonlySet<number> = new Set([1, 2, 4, 8, 16, 32, 64, 128])
+
+function isClefSign(value: string): value is ClefSign {
+  return CLEF_SIGNS.has(value)
+}
+
+function isTimeUnit(value: number): value is TimeUnit {
+  return TIME_UNITS.has(value)
+}
+
+// The line a clef sits on when it doesn't say, per MusicXML's defaults. A
+// record keyed by the sign type, not a Map, so every sign is required to have
+// one and the lookup cannot come back empty.
+const DEFAULT_CLEF_LINES: Record<ClefSign, number> = { G: 2, F: 4, C: 3 }
+
+/** What one <attributes> block declared. */
+export interface AttributesReading {
+  key: Key | undefined
+  time: TimeSignature | undefined
+  clefs: Clef[]
+}
+
+export function readAttributes(
+  element: XmlElement,
+  state: PartState,
+  warnings: WarningCollector,
+  context: WarningContext,
+  path: DocumentPath,
+): AttributesReading {
+  reportUnhandled(element, HANDLED_IN_ATTRIBUTES, warnings, context)
+
+  const divisionsElement = child(element, 'divisions')
+  if (divisionsElement) {
+    state.divisions = readIntegerInRange(divisionsElement, path, 1, 1_000_000)
+  }
+
+  const stavesElement = child(element, 'staves')
+  if (stavesElement) {
+    state.staves = readIntegerInRange(stavesElement, path, 1, 16)
+  }
+
+  // MusicXML allows one key and one time signature per staff. MNX states them
+  // for the whole score, so staves that disagree cannot both be carried.
+  const keys = children(element, 'key').map((found) => readKey(found, path))
+  if (keys.some((other) => other.fifths !== keys[0]?.fifths)) {
+    warnings.add(
+      'unsupported:per-staff-key',
+      'The staves of this part are in different keys, and MNX states one key for ' +
+        'the score. The first is the one converted.',
+      { ...context, line: element.line },
+    )
+  }
+
+  const times = children(element, 'time').map((found) => readTime(found, path))
+  if (times.some((other) => other.count !== times[0]?.count || other.unit !== times[0]?.unit)) {
+    warnings.add(
+      'unsupported:per-staff-time',
+      'The staves of this part are in different time signatures, and MNX states one ' +
+        'for the score. The first is the one converted.',
+      { ...context, line: element.line },
+    )
+  }
+
+  return {
+    key: keys[0],
+    time: times[0],
+    clefs: children(element, 'clef').map((found) => readClef(found, state, path)),
+  }
+}
+
+function readKey(element: XmlElement, path: DocumentPath): Key {
+  // Seven accidentals is the practical limit; beyond eleven a key signature
+  // cannot be written at all, so anything larger is a corrupt file.
+  return { fifths: readIntegerInRange(requireChild(element, 'fifths', path), path, -11, 11) }
+}
+
+function readTime(element: XmlElement, path: DocumentPath): TimeSignature {
+  const count = readInteger(requireChild(element, 'beats', path), path)
+  if (count <= 0) {
+    throw new MusicXMLError(`A time signature has ${String(count)} beats.`, {
+      path,
+      line: element.line,
+    })
+  }
+
+  const unitElement = requireChild(element, 'beat-type', path)
+  const unit = readInteger(unitElement, path)
+  if (!isTimeUnit(unit)) {
+    throw new MusicXMLError(
+      `A time signature's unit of ${String(unit)} cannot be written as a note value.`,
+      { path, line: unitElement.line },
+    )
+  }
+
+  return { count, unit }
+}
+
+function readClef(element: XmlElement, state: PartState, path: DocumentPath): Clef {
+  const sign = trimmedText(requireChild(element, 'sign', path))
+  if (!isClefSign(sign)) {
+    throw new MusicXMLError(`The "${sign}" clef cannot be represented in MNX.`, {
+      path,
+      line: element.line,
+    })
+  }
+
+  const lineElement = child(element, 'line')
+  const line = lineElement ? readIntegerInRange(lineElement, path, 1, 5) : DEFAULT_CLEF_LINES[sign]
+
+  // A clef says which staff it belongs to, which only matters where the part
+  // has more than one.
+  const stated = attribute(element, 'number')
+  const staff = state.staves > 1 && stated !== undefined ? Number(stated) : undefined
+
+  // MusicXML counts staff lines from 1 at the bottom; MNX counts staff steps
+  // from 0 at the middle line. On a five-line staff they differ by this.
+  return { sign, staffPosition: 2 * line - 6, staff }
+}

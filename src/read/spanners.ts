@@ -9,7 +9,6 @@
 // routinely several measures later. That is why this is kept per part rather
 // than per measure.
 
-import type { DocumentPath } from '../errors.js'
 import type { CurveSide, Event, Note, Pitch } from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 
@@ -104,7 +103,7 @@ export class SpannerResolver {
    * Reports whatever is still open once the part is read. Real scores do
    * contain these, so they are worth saying rather than worth refusing.
    */
-  reportUnclosed(warnings: WarningCollector, _path: DocumentPath): void {
+  reportUnclosed(warnings: WarningCollector): void {
     for (const open of this.#openTies.values()) {
       warnings.add(
         'unclosed:spanner',
