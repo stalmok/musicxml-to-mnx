@@ -59,7 +59,15 @@ export interface SpanEnd<T> {
   number: string
   /** Where in the score: a measure's place in the part, and a point in it. */
   measure: number
+  /** Where it is written, which is what puts the ends in order. */
   position: Fraction
+  /**
+   * The place it actually marks. The two differ for the stop of an octave
+   * shift: MNX states the end as the place of the last event covered, and
+   * MusicXML writes the stop after that event. Ordering must still use where
+   * the stop was written, or it would sort before the start it belongs to.
+   */
+  covers: Fraction
   /** Carried on a start, and handed back when its stop is found. */
   payload: T | undefined
   context: WarningContext
@@ -205,12 +213,28 @@ export class SpannerResolver {
     position: Fraction,
     context: WarningContext,
   ): void {
-    this.#wedgeEnds.push({ kind: 'start', number, measure, position, payload: dynamic, context })
+    this.#wedgeEnds.push({
+      kind: 'start',
+      number,
+      measure,
+      position,
+      covers: position,
+      payload: dynamic,
+      context,
+    })
   }
 
   /** The same, where one stops. */
   stopWedge(number: string, measure: number, position: Fraction, context: WarningContext): void {
-    this.#wedgeEnds.push({ kind: 'stop', number, measure, position, payload: undefined, context })
+    this.#wedgeEnds.push({
+      kind: 'stop',
+      number,
+      measure,
+      position,
+      covers: position,
+      payload: undefined,
+      context,
+    })
   }
 
   /** Joins every hairpin in the part, once all of both ends are in. */
@@ -218,7 +242,7 @@ export class SpannerResolver {
     pairSpans(
       this.#wedgeEnds,
       (dynamic, stop) => {
-        dynamic.end = { measure: stop.measure, position: stop.position }
+        dynamic.end = { measure: stop.measure, position: stop.covers }
       },
       (reason, end) => {
         warnings.add(
@@ -246,11 +270,33 @@ export class SpannerResolver {
     position: Fraction,
     context: WarningContext,
   ): void {
-    this.#ottavaEnds.push({ kind: 'start', number, measure, position, payload: open, context })
+    this.#ottavaEnds.push({
+      kind: 'start',
+      number,
+      measure,
+      position,
+      covers: position,
+      payload: open,
+      context,
+    })
   }
 
-  stopOttava(number: string, measure: number, position: Fraction, context: WarningContext): void {
-    this.#ottavaEnds.push({ kind: 'stop', number, measure, position, payload: undefined, context })
+  stopOttava(
+    number: string,
+    measure: number,
+    position: Fraction,
+    covers: Fraction,
+    context: WarningContext,
+  ): void {
+    this.#ottavaEnds.push({
+      kind: 'stop',
+      number,
+      measure,
+      position,
+      covers,
+      payload: undefined,
+      context,
+    })
   }
 
   /**
@@ -264,7 +310,7 @@ export class SpannerResolver {
       (open, stop) => {
         measures[open.measure]?.push({
           position: open.position,
-          end: { measure: stop.measure, position: stop.position },
+          end: { measure: stop.measure, position: stop.covers },
           value: open.value,
           staff: open.staff,
         })

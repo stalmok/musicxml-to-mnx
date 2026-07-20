@@ -234,10 +234,6 @@ function writeMeasure(
   }
 }
 
-/**
- * A dynamic mark. A hairpin is what makes one gradual rather than immediate,
- * and it points at the measure it stops in, which is why measures carry ids.
- */
 function writeArpeggios(
   arpeggios: readonly Arpeggio[],
 ): Pick<MNXPartMeasure, 'arpeggios' | 'nonArpeggios'> {
@@ -250,7 +246,10 @@ function writeArpeggios(
           arpeggios: rolled.map((arpeggio) => ({
             position: writePosition(arpeggio.position),
             span: { ...arpeggio.span },
-            ...(arpeggio.direction ? { direction: arpeggio.direction } : {}),
+            direction: arpeggio.direction,
+            // An arrowhead is the ordinary absence, so only its presence is
+            // stated.
+            ...(arpeggio.arrow ? { arrow: true } : {}),
           })),
         }
       : {}),
@@ -265,6 +264,10 @@ function writeArpeggios(
   }
 }
 
+/**
+ * A dynamic mark. A hairpin is what makes one gradual rather than immediate,
+ * and it points at the measure it stops in, which is why measures carry ids.
+ */
 function writeDynamic(dynamic: Dynamic, measureIds: ReadonlyMap<number, string>): MNXDynamic {
   return {
     position: writePosition(dynamic.position),

@@ -263,10 +263,15 @@ export interface Dynamic {
  */
 export interface Arpeggio {
   position: Fraction
-  /** The ids of the notes it runs between, lowest first. */
+  /**
+   * The ids of the notes it runs between. MNX names the first-played note
+   * first, so a roll going downwards runs from the highest to the lowest.
+   */
   span: { start: string; end: string }
-  /** Which way it is rolled, where the source says. */
-  direction: 'up' | 'down' | undefined
+  /** Which way it is rolled. MusicXML's default is upwards. */
+  direction: 'up' | 'down'
+  /** Whether an arrowhead is drawn, which is what a stated direction means. */
+  arrow: boolean
   /** A bracket saying the notes are struck together, rather than a roll. */
   struck: boolean
 }

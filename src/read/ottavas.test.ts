@@ -79,13 +79,17 @@ describe('which way an octave shift goes', () => {
 })
 
 describe('where an octave shift runs', () => {
-  test('states it on the measure it starts in, pointing at where it stops', () => {
+  // MNX states the end as the place of the last event the shift covers.
+  // MusicXML writes the stop after that event, so the cursor has already
+  // moved past it: the stop below sits at a quarter into the second measure,
+  // and the note it covers begins at the start of it.
+  test('ends at the last event it covers, not where the stop is written', () => {
     const { ottavas, warnings } = read(shift('down') + NOTE, NOTE + shift('stop'))
 
     expect(ottavas[0]).toEqual([
       {
         position: { num: 0, den: 1 },
-        end: { measure: 1, position: { num: 1, den: 4 } },
+        end: { measure: 1, position: { num: 0, den: 1 } },
         value: 1,
         staff: undefined,
       },
@@ -138,12 +142,22 @@ describe('where an octave shift runs', () => {
     expect(ottavas[0]).toEqual([
       {
         position: { num: 0, den: 1 },
-        end: { measure: 0, position: { num: 1, den: 2 } },
+        // The stop is written at the halfway point; the last event it covers
+        // is the quarter note beginning a quarter in.
+        end: { measure: 0, position: { num: 1, den: 4 } },
         value: 1,
         staff: undefined,
       },
     ])
     expect(warnings).toEqual([])
+  })
+
+  // A shift whose stop has no event before it in its measure has nothing
+  // nearer to point at than the stop's own place.
+  test('falls back to where the stop is written where nothing precedes it', () => {
+    const { ottavas } = read(shift('down') + NOTE, shift('stop') + NOTE)
+
+    expect(ottavas[0]?.[0]?.end).toEqual({ measure: 1, position: { num: 0, den: 1 } })
   })
 
   test('says nothing about a point partway along one', () => {

@@ -102,6 +102,41 @@ function sounding(item: MNXSequenceItem): number {
   return writtenLength((item as { duration: MNXNoteValue }).duration)
 }
 
+/**
+ * Where each event of a sequence begins, as a fraction of a whole note from
+ * the start of the measure. Walks into tuplets and grace groups, because an
+ * event inside one begins at a place of its own, and `scale` carries the
+ * tuplet's ratio down so the events inside it land where they sound.
+ */
+function collectStarts(
+  items: readonly MNXSequenceItem[],
+  at: number,
+  scale: number,
+  into: Set<string>,
+): number {
+  for (const item of items) {
+    if ('type' in item && item.type === 'tuplet') {
+      const outer = writtenLength(item.outer.duration) * item.outer.multiple
+      const inner = writtenLength(item.inner.duration) * item.inner.multiple
+      at = collectStarts(item.content, at, (scale * outer) / inner, into)
+      continue
+    }
+    // A grace note is squeezed in beside the event it ornaments and takes
+    // none of its time, so it begins where that event does.
+    if ('type' in item && item.type === 'grace') {
+      into.add(at.toFixed(9))
+      continue
+    }
+    if ('type' in item && item.type === 'space') {
+      at += (item.duration[0] / item.duration[1]) * scale
+      continue
+    }
+    into.add(at.toFixed(9))
+    at += writtenLength(item.duration) * scale
+  }
+  return at
+}
+
 interface Pitch {
   step: string
   octave: number
@@ -452,6 +487,74 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     })
 
     expect(converted).toEqual(sourceHairpins(parseXmlRoot(source)))
+  })
+
+  // An octave shift runs from its position to its end, both of which are
+  // places in the score. The schema can check neither that the end names a
+  // measure that exists nor that it comes after the start, and a shift that
+  // ran backwards would silently draw an 8va over the wrong music.
+  test('runs every octave shift forwards, to a measure that exists', () => {
+    const named = new Map<string, number>()
+    mnx.global.measures.forEach((measure, index) => {
+      if (measure.id !== undefined) named.set(measure.id, index)
+    })
+
+    const wrong: string[] = []
+    mnx.parts.forEach((part, partIndex) => {
+      part.measures.forEach((measure, index) => {
+        for (const ottava of measure.ottavas ?? []) {
+          const where = `part ${String(partIndex + 1)} measure ${String(index + 1)}`
+          const endsIn = named.get(ottava.end.measure)
+
+          if (endsIn === undefined) {
+            wrong.push(`${where}: ends in "${ottava.end.measure}", which names no measure`)
+            continue
+          }
+          if (endsIn < index) {
+            wrong.push(`${where}: ends in measure ${String(endsIn + 1)}, before it starts`)
+            continue
+          }
+
+          const from = ottava.position.fraction[0] / ottava.position.fraction[1]
+          const to = ottava.end.position.fraction[0] / ottava.end.position.fraction[1]
+          if (endsIn === index && to < from) {
+            wrong.push(`${where}: ends at ${String(to)}, before it starts at ${String(from)}`)
+          }
+        }
+      })
+    })
+
+    expect(wrong.slice(0, 5)).toEqual([])
+  })
+
+  // A shift's ends name places where an event actually begins, because MNX
+  // states them as the first and last events the shift covers. Walking into
+  // the tuplets matters: one of the corpus's shifts starts partway through a
+  // cadenza run, and a check that treated a tuplet as one lump said the shift
+  // began where nothing did.
+  test('starts every octave shift on an event', () => {
+    const stray: string[] = []
+
+    mnx.parts.forEach((part, partIndex) => {
+      part.measures.forEach((measure, index) => {
+        if ((measure.ottavas ?? []).length === 0) return
+
+        const places = new Set<string>()
+        for (const sequence of measure.sequences) collectStarts(sequence.content, 0, 1, places)
+
+        for (const ottava of measure.ottavas ?? []) {
+          const from = ottava.position.fraction[0] / ottava.position.fraction[1]
+          if (!places.has(from.toFixed(9))) {
+            stray.push(
+              `part ${String(partIndex + 1)} measure ${String(index + 1)}: ` +
+                `starts at ${String(from)}, where no event does`,
+            )
+          }
+        }
+      })
+    })
+
+    expect(stray.slice(0, 5)).toEqual([])
   })
 
   // A staff number that names a staff the part does not have would place

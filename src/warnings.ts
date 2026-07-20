@@ -48,6 +48,8 @@ export type WarningCode =
   | 'unrepresentable:fermata'
   // An event carrying two marks of one kind. MNX keys them by name.
   | 'unrepresentable:marking'
+  // A chord marked both as rolled and as struck together at once.
+  | 'unrepresentable:arpeggio'
   // A barline drawn at the opening edge of a measure. MNX states the one that
   // closes a measure.
   | 'unrepresentable:barline'

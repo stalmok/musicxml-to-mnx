@@ -31,14 +31,17 @@ const member = (step: string, notations = '') =>
 const ROLL = '<arpeggiate/>'
 
 describe('a rolled chord', () => {
-  test('spans the notes it runs between, lowest to highest', () => {
+  // MNX names the first-played note first, and MusicXML rolls from the lowest
+  // note up unless it says otherwise.
+  test('spans the notes it runs between, first-played first', () => {
     const { measure, warnings } = read(head(ROLL) + member('E', ROLL) + member('G', ROLL))
 
     expect(measure?.arpeggios).toEqual([
       {
         position: { num: 0, den: 1 },
         span: { start: 'note1', end: 'note3' },
-        direction: undefined,
+        direction: 'up',
+        arrow: false,
         struck: false,
       },
     ])
@@ -61,12 +64,54 @@ describe('a rolled chord', () => {
     expect(measure?.arpeggios[0]?.span).toEqual({ start: 'note1', end: 'note3' })
   })
 
-  test('keeps which way it is rolled', () => {
+  // A roll going downwards is played highest first, and MNX names the
+  // first-played note first, so the span runs the other way.
+  test('runs the span the other way where the roll goes downwards', () => {
     const { measure } = read(
       head('<arpeggiate direction="down"/>') + member('E', '<arpeggiate direction="down"/>'),
     )
 
     expect(measure?.arpeggios[0]?.direction).toBe('down')
+    expect(measure?.arpeggios[0]?.span).toEqual({ start: 'note2', end: 'note1' })
+  })
+
+  // MusicXML states a direction only where an arrowhead is drawn.
+  test('draws an arrowhead only where the source states a direction', () => {
+    const { measure } = read(head(ROLL) + member('E', ROLL))
+    const { measure: arrowed } = read(
+      head('<arpeggiate direction="up"/>') + member('E', '<arpeggiate direction="up"/>'),
+    )
+
+    expect(measure?.arpeggios[0]?.arrow).toBe(false)
+    expect(arrowed?.arpeggios[0]?.arrow).toBe(true)
+  })
+
+  // Two chords sounding together under one number are one roll across both,
+  // which is how a pianist's two hands are rolled as one gesture.
+  test('joins two chords that share a number into one roll', () => {
+    const { measure, warnings } = read(
+      '<note><pitch><step>C</step><octave>3</octave></pitch><duration>4</duration>' +
+        `<type>quarter</type><voice>2</voice><notations><arpeggiate number="1"/></notations></note>` +
+        '<backup><duration>4</duration></backup>' +
+        '<note><pitch><step>E</step><octave>5</octave></pitch><duration>4</duration>' +
+        `<type>quarter</type><voice>1</voice><notations><arpeggiate number="1"/></notations></note>`,
+    )
+
+    expect(measure?.arpeggios).toHaveLength(1)
+    expect(measure?.arpeggios[0]?.span).toEqual({ start: 'note1', end: 'note2' })
+    expect(warnings).toEqual([])
+  })
+
+  test('keeps two chords under different numbers as two rolls', () => {
+    const { measure } = read(
+      '<note><pitch><step>C</step><octave>3</octave></pitch><duration>4</duration>' +
+        `<type>quarter</type><voice>2</voice><notations><arpeggiate number="1"/></notations></note>` +
+        '<backup><duration>4</duration></backup>' +
+        '<note><pitch><step>E</step><octave>5</octave></pitch><duration>4</duration>' +
+        `<type>quarter</type><voice>1</voice><notations><arpeggiate number="2"/></notations></note>`,
+    )
+
+    expect(measure?.arpeggios).toHaveLength(2)
   })
 
   test('sits at the place in the measure the chord does', () => {
@@ -103,7 +148,8 @@ describe('a chord bracketed as struck together', () => {
       {
         position: { num: 0, den: 1 },
         span: { start: 'note1', end: 'note2' },
-        direction: undefined,
+        direction: 'up',
+        arrow: false,
         struck: true,
       },
     ])
@@ -113,10 +159,23 @@ describe('a chord bracketed as struck together', () => {
 
 // A rest cannot be rolled, and a mark on one spans nothing.
 describe('a roll marked on something with no notes', () => {
-  test('states nothing', () => {
-    const { measure } = read(`<note><rest/><duration>4</duration><type>quarter</type>
-      <notations>${ROLL}</notations></note>`)
+  test('states nothing, and says so', () => {
+    const { measure, warnings } = read(
+      `<note><rest/><duration>4</duration><type>quarter</type><notations>${ROLL}</notations></note>`,
+    )
 
     expect(measure?.arpeggios).toEqual([])
+    expect(warnings.map((w) => w.element)).toEqual(['arpeggiate'])
+  })
+})
+
+// Rolled and struck together are opposite instructions, and MNX keeps them in
+// separate lists, so a chord marked as both cannot be stated as both.
+describe('a chord marked both ways at once', () => {
+  test('keeps the first and says the other is lost', () => {
+    const { measure, warnings } = read(head('<non-arpeggiate type="bottom"/>') + member('E', ROLL))
+
+    expect(measure?.arpeggios).toHaveLength(1)
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:arpeggio'])
   })
 })

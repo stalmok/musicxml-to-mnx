@@ -395,13 +395,22 @@ function readArpeggio(
 ): void {
   for (const block of notations) {
     for (const rolled of block.children('arpeggiate')) {
-      builder.markArpeggio(voice, false, upOrDown(attribute(rolled, 'direction')))
+      // MusicXML states a direction only when an arrowhead is drawn, and
+      // rolls from the lowest note up when it states none.
+      const direction = upOrDown(attribute(rolled, 'direction'))
+      builder.markArpeggio(
+        voice,
+        attribute(rolled, 'number') ?? '1',
+        false,
+        direction,
+        direction !== undefined,
+      )
     }
     // <non-arpeggiate> says the opposite: a bracket meaning the notes are
     // struck together. Its type names which end of the bracket this note is,
     // which MNX has no use for, since the span already says where it runs.
-    for (const _ of block.children('non-arpeggiate')) {
-      builder.markArpeggio(voice, true, undefined)
+    for (const struck of block.children('non-arpeggiate')) {
+      builder.markArpeggio(voice, attribute(struck, 'number') ?? '1', true, undefined, false)
     }
   }
 }

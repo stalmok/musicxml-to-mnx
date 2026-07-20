@@ -277,6 +277,7 @@ function readMeasure(
         const reading = readDirection(
           reader,
           builder.position(),
+          builder.lastEventBefore(builder.position()),
           index,
           state,
           warnings,
@@ -346,7 +347,7 @@ function readMeasure(
       clefs,
       beams,
       dynamics,
-      arpeggios: builder.arpeggios(),
+      arpeggios: builder.arpeggios(warnings, context),
       // Filled in below, once the whole part has been read.
       ottavas: [],
       sequences: builder.sequences(),
