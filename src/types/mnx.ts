@@ -4,8 +4,13 @@
 // suite validates every emitted document against it.
 //
 // Only what we currently produce is modelled here; the format is much larger.
+//
+// Every name is MNX-prefixed, including the plain ones. These are exported
+// wholesale from the package, and `Step`, `ClefSign` and `NoteValueBase` are
+// names any notation program is likely to want for itself; taking them in a
+// consumer's namespace to describe our wire format would be rude.
 
-export type NoteValueBase =
+export type MNXNoteValueBase =
   | 'duplexMaxima'
   | 'maxima'
   | 'longa'
@@ -24,15 +29,15 @@ export type NoteValueBase =
   | '2048th'
   | '4096th'
 
-export type Step = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G'
+export type MNXStep = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G'
 
-export type ClefSign = 'C' | 'F' | 'G'
+export type MNXClefSign = 'C' | 'F' | 'G'
 
 /** The denominator of a time signature: a power of two up to 128. */
-export type TimeSignatureUnit = 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128
+export type MNXTimeSignatureUnit = 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128
 
 export interface MNXPitch {
-  step: Step
+  step: MNXStep
   octave: number
   alter?: number
 }
@@ -78,7 +83,7 @@ export interface MNXNote {
 }
 
 export interface MNXNoteValue {
-  base: NoteValueBase
+  base: MNXNoteValueBase
   dots?: number
 }
 
@@ -143,7 +148,7 @@ export interface MNXSequence {
 }
 
 export interface MNXClef {
-  sign: ClefSign
+  sign: MNXClefSign
   /** Staff steps from the middle line; negative is below it. */
   staffPosition: number
 }
@@ -197,7 +202,7 @@ export interface MNXKey {
 
 export interface MNXTime {
   count: number
-  unit: TimeSignatureUnit
+  unit: MNXTimeSignatureUnit
 }
 
 export interface MNXTempo {
