@@ -74,6 +74,14 @@ vocabulary, like a sforzando, are reported.
 A hairpin is matched to its other end across the measures between, and stated
 once as a gradual dynamic pointing at the measure where it stops.
 
+Rolled chords, and the bracket that says a chord is struck together instead.
+MusicXML marks every note; MNX states it once beside the chord, spanning the
+notes it runs between.
+
+Octave shifts, matched to their other end across the measures between. Both
+formats put the sounding pitch on the notes and use the shift only to say how
+the passage is drawn, so nothing is transposed.
+
 Articulations and fermatas: staccatos, tenutos, accents, staccatissimos,
 spiccatos, stresses, soft accents, and strong accents with the way they point;
 breath marks with the glyph they are drawn with; and a fermata with its shape
@@ -111,7 +119,8 @@ recovered from its duration where none is written, and time a voice passes
 over in silence is stated as a space. A rest filling its measure becomes what
 MNX states it as, rather than being given an invented note value.
 
-Planned for v1: octave shifts, arpeggios, and free text directions.
+Planned for v1: free text directions, which wait on the spec pin moving,
+since this snapshot has nowhere to put them.
 
 Constructs that MNX cannot express at all, such as pedal marks and percent
 repeats, will always surface as warnings rather than silent loss. Out of scope
