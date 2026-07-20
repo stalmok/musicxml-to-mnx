@@ -70,13 +70,13 @@ export function readNote(
   const written = readWrittenValue(element, path)
   const graceElement = element.child('grace')
 
-  // Which staff the note names, where the part has more than one. On one
-  // staff there is only ever the one to name, so it says nothing.
+  // Which staff the note names. Read and bounded whatever the part has, so
+  // that a note naming a staff before <staves> said the part had one is
+  // rejected rather than quietly placed on the first. It is only worth
+  // stating where the part has more than one staff to choose between.
   const staffElement = element.child('staff')
-  const staff =
-    state.staves > 1 && staffElement
-      ? readIntegerInRange(staffElement, path, 1, state.staves)
-      : undefined
+  const named = staffElement ? readIntegerInRange(staffElement, path, 1, state.staves) : undefined
+  const staff = state.staves > 1 ? named : undefined
 
   // A note carrying <chord> sounds with the one before it, so it joins that
   // event rather than starting another. It is settled first because it is

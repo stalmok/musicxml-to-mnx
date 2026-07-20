@@ -10,9 +10,9 @@ import type { DocumentPath } from '../errors.js'
 import type { Clef, ClefSign, Key, TimeSignature, TimeUnit } from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
-import { attribute, child, requireChild, trimmedText } from '../xml/tree.js'
+import { child, requireChild, trimmedText } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
-import { readInteger, readIntegerInRange } from './numbers.js'
+import { readAttributeInRange, readInteger, readIntegerInRange } from './numbers.js'
 import type { PartState } from './state.js'
 
 // Recognisers rather than bare sets: each one narrows the value it accepts to
@@ -128,10 +128,12 @@ function readClef(element: XmlElement, state: PartState, path: DocumentPath): Cl
   const lineElement = child(element, 'line')
   const line = lineElement ? readIntegerInRange(lineElement, path, 1, 5) : DEFAULT_CLEF_LINES[sign]
 
-  // A clef says which staff it belongs to, which only matters where the part
-  // has more than one.
-  const stated = attribute(element, 'number')
-  const staff = state.staves > 1 && stated !== undefined ? Number(stated) : undefined
+  // A clef says which staff it belongs to. Read and bounded whatever the part
+  // has, because a clef naming a staff the part does not have would place it
+  // nowhere, and a bare Number() here once let "oops" through as a NaN staff.
+  // It is only worth stating where the part has more than one staff.
+  const named = readAttributeInRange(element, 'number', path, 1, state.staves)
+  const staff = state.staves > 1 ? named : undefined
 
   // MusicXML counts staff lines from 1 at the bottom; MNX counts staff steps
   // from 0 at the middle line. On a five-line staff they differ by this.

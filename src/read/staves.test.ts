@@ -168,3 +168,66 @@ describe('key and time signatures stated per staff', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-time'])
   })
 })
+
+// A staff number that names a staff the part does not have places the music
+// nowhere, and MNX's schema types it as a bare integer, so nothing downstream
+// catches it. Every one is bounded here, whatever the part's staff count,
+// because the count is only known once <staves> has been met: reading the
+// number only when the part already has more than one staff let a note that
+// came first be placed on the first staff without a word.
+describe('a staff number the part does not have', () => {
+  test('rejects a clef whose number is not a whole number', () => {
+    let thrown = ''
+    try {
+      read(
+        measures(
+          '<attributes><divisions>4</divisions><staves>2</staves>' +
+            '<clef number="oops"><sign>G</sign></clef></attributes>' +
+            note('C', '1'),
+        ),
+      )
+    } catch (error) {
+      thrown = error instanceof Error ? error.message : String(error)
+    }
+
+    expect(thrown).toContain('"oops"')
+    expect(thrown).toContain('not a whole number')
+  })
+
+  test('rejects a clef on a staff beyond the part', () => {
+    let thrown = ''
+    try {
+      read(
+        measures(
+          '<attributes><divisions>4</divisions><staves>2</staves>' +
+            '<clef number="3"><sign>G</sign></clef></attributes>' +
+            note('C', '1'),
+        ),
+      )
+    } catch (error) {
+      thrown = error instanceof Error ? error.message : String(error)
+    }
+
+    expect(thrown).toContain('outside the range 1 to 2')
+  })
+
+  test('rejects a note naming a staff before <staves> said the part had one', () => {
+    let thrown = ''
+    try {
+      read(measures('<attributes><divisions>4</divisions></attributes>' + note('C', '2')))
+    } catch (error) {
+      thrown = error instanceof Error ? error.message : String(error)
+    }
+
+    expect(thrown).toContain('outside the range 1 to 1')
+  })
+
+  test('says nothing about a note naming the only staff there is', () => {
+    const { part, warnings } = read(
+      measures('<attributes><divisions>4</divisions></attributes>' + note('C', '1')),
+    )
+
+    expect(part?.staves).toBe(1)
+    expect(warnings).toEqual([])
+  })
+})

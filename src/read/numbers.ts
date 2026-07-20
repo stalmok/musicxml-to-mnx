@@ -8,7 +8,7 @@
 import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
 import type { XmlElement } from '../xml/parse.js'
-import { trimmedText } from '../xml/tree.js'
+import { attribute, trimmedText } from '../xml/tree.js'
 
 const WHOLE_NUMBER = /^[+-]?\d+$/
 
@@ -20,6 +20,39 @@ export function readInteger(element: XmlElement, path: DocumentPath): number {
       path,
       line: element.line,
     })
+  }
+  return value
+}
+
+/**
+ * The same, for a value written as an attribute rather than as an element's
+ * text. An attribute has no line of its own, so the element carrying it is
+ * what the failure points at.
+ */
+export function readAttributeInRange(
+  element: XmlElement,
+  name: string,
+  path: DocumentPath,
+  min: number,
+  max: number,
+): number | undefined {
+  const written = attribute(element, name)
+  if (written === undefined) return undefined
+
+  if (!WHOLE_NUMBER.test(written) || !Number.isSafeInteger(Number(written))) {
+    throw new MusicXMLError(
+      `<${element.name}> has a "${name}" of "${written}", which is not a whole number.`,
+      { path, line: element.line },
+    )
+  }
+
+  const value = Number(written)
+  if (value < min || value > max) {
+    throw new MusicXMLError(
+      `<${element.name}> has a "${name}" of ${String(value)}, outside the range ` +
+        `${String(min)} to ${String(max)}.`,
+      { path, line: element.line },
+    )
   }
   return value
 }
