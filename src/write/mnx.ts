@@ -119,8 +119,8 @@ function surveyScore(score: Score): {
     }
   }
 
-  // A hairpin points at the measure it stops in, so those measures need
-  // naming. Deterministic, and in score order.
+  // A hairpin and an octave shift each point at the measure they stop in, so
+  // those measures need naming. Deterministic, and in score order.
   const pointedAt = new Set<number>()
 
   for (const part of score.parts) {
@@ -130,6 +130,7 @@ function surveyScore(score: Score): {
       for (const dynamic of measure.dynamics) {
         if (dynamic.end) pointedAt.add(dynamic.end.measure)
       }
+      for (const ottava of measure.ottavas) pointedAt.add(ottava.end.measure)
       // An arpeggio names the two notes it runs between, so those notes have
       // to be named in turn.
       for (const arpeggio of measure.arpeggios) {
@@ -219,6 +220,16 @@ function writeMeasure(
     // MNX keeps the two apart: a rolled chord and one bracketed as struck
     // together are opposite instructions, so they are separate lists.
     ...writeArpeggios(measure.arpeggios),
+    ...(measure.ottavas.length > 0
+      ? {
+          ottavas: measure.ottavas.map((ottava) => ({
+            position: writePosition(ottava.position),
+            end: writeSpanEnd(ottava.end, measureIds),
+            value: ottava.value,
+            ...(ottava.staff !== undefined ? { staff: ottava.staff } : {}),
+          })),
+        }
+      : {}),
     sequences: measure.sequences.map((sequence) => writeSequence(sequence, referenced)),
   }
 }
@@ -260,19 +271,19 @@ function writeDynamic(dynamic: Dynamic, measureIds: ReadonlyMap<number, string>)
     type: dynamic.wedge ? 'gradual' : 'immediate',
     ...(dynamic.value ? { value: dynamic.value } : {}),
     ...(dynamic.wedge ? { wedgeType: dynamic.wedge } : {}),
-    ...(dynamic.end ? { end: writeHairpinEnd(dynamic.end, measureIds) } : {}),
+    ...(dynamic.end ? { end: writeSpanEnd(dynamic.end, measureIds) } : {}),
     ...(dynamic.staff !== undefined ? { staff: dynamic.staff } : {}),
   }
 }
 
-function writeHairpinEnd(
+function writeSpanEnd(
   end: { measure: number; position: Fraction },
   measureIds: ReadonlyMap<number, string>,
 ): MNXMeasureRhythmicPosition {
   const measure = measureIds.get(end.measure)
-  /* v8 ignore next -- surveyScore names every measure a hairpin ends in,
+  /* v8 ignore next -- surveyScore names every measure a span ends in,
      which is where this map comes from. */
-  if (measure === undefined) throw new Error('A hairpin ends in a measure with no id.')
+  if (measure === undefined) throw new Error('A span ends in a measure with no id.')
 
   return { measure, position: writePosition(end.position) }
 }

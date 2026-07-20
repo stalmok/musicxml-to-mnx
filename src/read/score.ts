@@ -203,6 +203,10 @@ function readPart(
   // Hairpins are paired once the whole part is in, because a hairpin is
   // written between the notes and the document's order is not the music's.
   state.spanners.resolveWedges(warnings)
+  state.spanners.resolveOttavas(
+    readings.map((reading) => reading.measure.ottavas),
+    warnings,
+  )
   // Whatever is still open once the part ends is never going to close.
   state.spanners.reportUnclosed(warnings)
   resolveEndings(readings, warnings, id)
@@ -343,6 +347,8 @@ function readMeasure(
       beams,
       dynamics,
       arpeggios: builder.arpeggios(),
+      // Filled in below, once the whole part has been read.
+      ottavas: [],
       sequences: builder.sequences(),
     },
     // Only worth carrying when it differs from where the measure sits;

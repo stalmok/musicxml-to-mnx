@@ -271,12 +271,33 @@ export interface Arpeggio {
   struck: boolean
 }
 
+/**
+ * An octave shift: a stretch of music drawn an octave or more away from where
+ * it sounds, to keep it off the ledger lines. Positive means the notes are
+ * written lower than they sound, which is 8va.
+ *
+ * Both formats state the sounding pitch on the notes themselves, so this
+ * changes nothing about them; it says only how they are drawn.
+ */
+export type OttavaAmount = 1 | 2 | 3 | -1 | -2 | -3
+
+export interface Ottava {
+  position: Fraction
+  /** Where it stops, as a measure's place in the score and a point in it. */
+  end: { measure: number; position: Fraction }
+  value: OttavaAmount
+  /** Which staff it applies to, where the part has more than one. */
+  staff: number | undefined
+}
+
 export interface Measure {
   clefs: readonly Clef[]
   /** Stated over the measure rather than on the notes, as MNX has it. */
   beams: readonly Beam[]
   dynamics: readonly Dynamic[]
   arpeggios: readonly Arpeggio[]
+  /** Filled in once the whole part is read, because a shift spans measures. */
+  ottavas: Ottava[]
   sequences: readonly Sequence[]
 }
 

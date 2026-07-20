@@ -276,12 +276,27 @@ export interface MNXNonArpeggio {
   span: MNXIdPair
 }
 
+/**
+ * How far a stretch of music is drawn from where it sounds. Positive means the
+ * written pitch is lower than the sounded one, which is 8va.
+ */
+export type MNXOttavaAmount = 1 | 2 | 3 | -1 | -2 | -3
+
+export interface MNXOttava {
+  position: MNXRhythmicPosition
+  end: MNXMeasureRhythmicPosition
+  value: MNXOttavaAmount
+  staff?: number
+  orient?: MNXOrientation
+}
+
 export interface MNXPartMeasure {
   clefs?: MNXPositionedClef[]
   beams?: MNXBeam[]
   dynamics?: MNXDynamic[]
   arpeggios?: MNXArpeggio[]
   nonArpeggios?: MNXNonArpeggio[]
+  ottavas?: MNXOttava[]
   sequences: MNXSequence[]
 }
 

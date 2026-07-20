@@ -11,12 +11,28 @@
 
 import { compareFractions } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
-import type { CurveSide, Dynamic, Event, Note, Pitch } from '../model/score.js'
+import type {
+  CurveSide,
+  Dynamic,
+  Event,
+  Note,
+  Ottava,
+  OttavaAmount,
+  Pitch,
+} from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 
 interface OpenTie {
   note: Note
   context: WarningContext
+}
+
+/** An octave shift that has begun, waiting to learn where it stops. */
+export interface OpenOttava {
+  measure: number
+  position: Fraction
+  value: OttavaAmount
+  staff: number | undefined
 }
 
 interface OpenSlur {
@@ -26,26 +42,79 @@ interface OpenSlur {
 }
 
 /**
- * One end of a hairpin, held until the whole part has been read.
+ * One end of something that spans a stretch of music and is written between
+ * the notes rather than on one: a hairpin, an octave shift.
  *
- * Hairpins cannot be paired up as they are met, the way ties and slurs are,
- * because a hairpin is written between the notes rather than on one, and
- * MusicXML's document order is not time order: a measure holding two voices
- * is written as one pass per voice with a <backup> between them, so a stop
- * belonging to the first voice is written before a start belonging to the
- * second even though the music has it the other way round. Pairing in
+ * These cannot be paired up as they are met, the way ties and slurs are,
+ * because MusicXML's document order is not time order: a measure holding two
+ * voices is written as one pass per voice with a <backup> between them, so a
+ * stop belonging to the first voice is written before a start belonging to
+ * the second even though the music has it the other way round. Pairing in
  * document order made a hairpin out of a stop and a start that had nothing to
  * do with each other, one of them 28 measures long.
  */
-interface WedgeEnd {
+export interface SpanEnd<T> {
   kind: 'start' | 'stop'
+  /** What the source numbers it, so two open at once can be told apart. */
   number: string
-  /** Where in the score, as a measure's place in the part and a point in it. */
+  /** Where in the score: a measure's place in the part, and a point in it. */
   measure: number
   position: Fraction
-  /** The mark itself, on a start, so its end can be filled in. */
-  dynamic: Dynamic | undefined
+  /** Carried on a start, and handed back when its stop is found. */
+  payload: T | undefined
   context: WarningContext
+}
+
+/**
+ * Joins each span's two ends, in the order the music has them: by measure,
+ * then by where in the measure the cursor had reached, with a stop before a
+ * start at the same point so one span can finish exactly where the next
+ * begins. Ends falling at the same point keep the order they were read in.
+ *
+ * Several may carry the same number at once, so each number holds a stack and
+ * a stop closes the most recently opened.
+ */
+export function pairSpans<T>(
+  ends: readonly SpanEnd<T>[],
+  join: (payload: T, stop: SpanEnd<T>) => void,
+  report: (reason: 'orphan-stop' | 'unclosed-start', end: SpanEnd<T>) => void,
+): void {
+  const open = new Map<string, SpanEnd<T>[]>()
+
+  for (const end of inTimeOrder(ends)) {
+    if (end.kind === 'start') {
+      open.set(end.number, [...(open.get(end.number) ?? []), end])
+      continue
+    }
+
+    const started = open.get(end.number)?.pop()
+    if (!started) {
+      report('orphan-stop', end)
+      continue
+    }
+    /* v8 ignore next 2 -- only a start carries a payload, and only a start is
+       ever pushed onto the stack this came off. */
+    if (started.payload === undefined) throw new Error('A span start with nothing to join.')
+
+    join(started.payload, end)
+  }
+
+  for (const waiting of open.values()) {
+    for (const start of waiting) report('unclosed-start', start)
+  }
+}
+
+function inTimeOrder<T>(ends: readonly SpanEnd<T>[]): SpanEnd<T>[] {
+  return ends
+    .map((end, index) => ({ end, index }))
+    .sort((a, b) => {
+      if (a.end.measure !== b.end.measure) return a.end.measure - b.end.measure
+      const byPosition = compareFractions(a.end.position, b.end.position)
+      if (byPosition !== 0) return byPosition
+      if (a.end.kind !== b.end.kind) return a.end.kind === 'stop' ? -1 : 1
+      return a.index - b.index
+    })
+    .map((entry) => entry.end)
 }
 
 // Ties are matched on pitch across the part, not within a voice. A tie
@@ -67,32 +136,13 @@ function tieKey(pitch: Pitch): string {
 // Allowing several slurs to share a number, and closing the most recently
 // opened one, accounts for most of the rest.
 
-/**
- * The ends of a hairpin, in the order the music has them: by measure, then by
- * where they sit in it, with a stop before a start at the same point so that
- * one hairpin can finish exactly where the next begins. Ends that fall at the
- * same point keep the order they were read in.
- */
-function inTimeOrder(ends: readonly WedgeEnd[]): WedgeEnd[] {
-  return ends
-    .map((end, index) => ({ end, index }))
-    .sort((a, b) => {
-      if (a.end.measure !== b.end.measure) return a.end.measure - b.end.measure
-      const byPosition = compareFractions(a.end.position, b.end.position)
-      if (byPosition !== 0) return byPosition
-      if (a.end.kind !== b.end.kind) return a.end.kind === 'stop' ? -1 : 1
-      return a.index - b.index
-    })
-    .map((entry) => entry.end)
-}
-
 export class SpannerResolver {
   readonly #openTies = new Map<string, OpenTie>()
   // Several slurs may carry the same number at once, so each number holds a
   // stack: a stop closes the most recently opened of them.
   readonly #openSlurs = new Map<string, OpenSlur[]>()
   // Both ends of every hairpin in the part, paired once all of them are in.
-  readonly #wedgeEnds: WedgeEnd[] = []
+  readonly #wedgeEnds: SpanEnd<Dynamic>[] = []
 
   startTie(note: Note, context: WarningContext): void {
     this.#openTies.set(tieKey(note.pitch), { note, context })
@@ -155,71 +205,83 @@ export class SpannerResolver {
     position: Fraction,
     context: WarningContext,
   ): void {
-    this.#wedgeEnds.push({ kind: 'start', number, measure, position, dynamic, context })
+    this.#wedgeEnds.push({ kind: 'start', number, measure, position, payload: dynamic, context })
   }
 
   /** The same, where one stops. */
   stopWedge(number: string, measure: number, position: Fraction, context: WarningContext): void {
-    this.#wedgeEnds.push({
-      kind: 'stop',
-      number,
-      measure,
-      position,
-      dynamic: undefined,
-      context,
-    })
+    this.#wedgeEnds.push({ kind: 'stop', number, measure, position, payload: undefined, context })
   }
 
-  /**
-   * Joins each hairpin's two ends, in the order the music has them rather
-   * than the order the document wrote them. Like a slur, a hairpin is matched
-   * on the number the source gives it, and several may carry the same number
-   * at once, so each number holds a stack and a stop closes the most recently
-   * opened.
-   */
+  /** Joins every hairpin in the part, once all of both ends are in. */
   resolveWedges(warnings: WarningCollector): void {
-    const open = new Map<string, WedgeEnd[]>()
-
-    for (const end of inTimeOrder(this.#wedgeEnds)) {
-      if (end.kind === 'start') {
-        const waiting = open.get(end.number) ?? []
-        waiting.push(end)
-        open.set(end.number, waiting)
-        continue
-      }
-
-      const started = open.get(end.number)?.pop()
-      if (!started) {
+    pairSpans(
+      this.#wedgeEnds,
+      (dynamic, stop) => {
+        dynamic.end = { measure: stop.measure, position: stop.position }
+      },
+      (reason, end) => {
         warnings.add(
           'unclosed:spanner',
-          'A hairpin stops where none had started, and is not carried over.',
+          reason === 'orphan-stop'
+            ? 'A hairpin stops where none had started, and is not carried over.'
+            : // MNX allows a gradual mark with no end, so the mark is still
+              // written; what is lost is how far it runs.
+              'A hairpin starts where nothing ends it, so how far it runs is not carried over.',
           end.context,
           'wedge',
         )
-        continue
-      }
-      /* v8 ignore next -- only a start carries a mark, and only a start is
-         ever pushed onto the stack this came off. */
-      if (!started.dynamic) throw new Error('A hairpin start with no mark to fill in.')
+      },
+    )
+    this.#wedgeEnds.length = 0
+  }
 
-      started.dynamic.end = { measure: end.measure, position: end.position }
-    }
+  // Both ends of every octave shift in the part, paired the same way.
+  readonly #ottavaEnds: SpanEnd<OpenOttava>[] = []
 
-    // A hairpin that nothing closes is still written, without an end: MNX
-    // allows that, and it says more than dropping the mark would. What it
-    // does not say is how far the hairpin runs, so it is reported.
-    for (const waiting of open.values()) {
-      for (const start of waiting) {
+  startOttava(
+    open: OpenOttava,
+    number: string,
+    measure: number,
+    position: Fraction,
+    context: WarningContext,
+  ): void {
+    this.#ottavaEnds.push({ kind: 'start', number, measure, position, payload: open, context })
+  }
+
+  stopOttava(number: string, measure: number, position: Fraction, context: WarningContext): void {
+    this.#ottavaEnds.push({ kind: 'stop', number, measure, position, payload: undefined, context })
+  }
+
+  /**
+   * Joins every octave shift in the part, putting each finished one on the
+   * measure it begins in. Unlike a hairpin, MNX requires a shift to say where
+   * it stops, so one the source never closed cannot be written at all.
+   */
+  resolveOttavas(measures: readonly Ottava[][], warnings: WarningCollector): void {
+    pairSpans(
+      this.#ottavaEnds,
+      (open, stop) => {
+        measures[open.measure]?.push({
+          position: open.position,
+          end: { measure: stop.measure, position: stop.position },
+          value: open.value,
+          staff: open.staff,
+        })
+      },
+      (reason, end) => {
         warnings.add(
           'unclosed:spanner',
-          'A hairpin starts where nothing ends it, so how far it runs is not carried over.',
-          start.context,
-          'wedge',
+          reason === 'orphan-stop'
+            ? 'An octave shift stops where none had started, and is not carried over.'
+            : 'An octave shift starts where nothing ends it, and MNX states where one ' +
+                'stops, so it is not carried over.',
+          end.context,
+          'octave-shift',
         )
-      }
-    }
-
-    this.#wedgeEnds.length = 0
+      },
+    )
+    this.#ottavaEnds.length = 0
   }
 
   /**

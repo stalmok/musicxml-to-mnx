@@ -65,6 +65,7 @@ function measureOf(...events: Event[]): Measure {
     beams: [],
     dynamics: [],
     arpeggios: [],
+    ottavas: [],
     sequences: [{ voice: undefined, staff: undefined, content: events, fullMeasure: undefined }],
   }
 }
@@ -129,6 +130,7 @@ test.each([
         beams: [],
         dynamics: [],
         arpeggios: [],
+        ottavas: [],
         sequences: [
           { voice: undefined, staff: undefined, content: [WHOLE_C], fullMeasure: undefined },
         ],
@@ -202,6 +204,7 @@ describe('global measures', () => {
     const measure = {
       ...measureOf(WHOLE_C),
       arpeggios: [],
+      ottavas: [],
       dynamics: [
         {
           position: { num: 0, den: 1 },
@@ -240,6 +243,7 @@ describe('measures', () => {
       beams: [],
       dynamics: [],
       arpeggios: [],
+      ottavas: [],
       sequences: [
         { voice: undefined, staff: undefined, content: [WHOLE_C], fullMeasure: undefined },
       ],
@@ -305,6 +309,7 @@ describe('ties and slurs', () => {
       beams: [],
       dynamics: [],
       arpeggios: [],
+      ottavas: [],
       sequences: [
         { voice: undefined, staff: undefined, content: [start, target], fullMeasure: undefined },
       ],
@@ -349,6 +354,7 @@ describe('beams', () => {
       beams: [{ events: ['ev1', 'ev2'], beams: [], direction: undefined }],
       dynamics: [],
       arpeggios: [],
+      ottavas: [],
       sequences: [
         { voice: undefined, staff: undefined, content: [first, second], fullMeasure: undefined },
       ],
@@ -379,6 +385,7 @@ describe('beams', () => {
       ],
       dynamics: [],
       arpeggios: [],
+      ottavas: [],
       sequences: [
         {
           voice: undefined,
@@ -411,6 +418,7 @@ describe('voices and spaces', () => {
       beams: [],
       dynamics: [],
       arpeggios: [],
+      ottavas: [],
       sequences: [{ voice, staff: undefined, content, fullMeasure: undefined }],
     })
   }
@@ -457,6 +465,7 @@ describe('tuplets and grace groups', () => {
       beams: [],
       dynamics: [],
       arpeggios: [],
+      ottavas: [],
       sequences: [{ voice: undefined, staff: undefined, content: [item], fullMeasure: undefined }],
     })
   }
@@ -502,6 +511,7 @@ describe('full-measure rests', () => {
       beams: [],
       dynamics: [],
       arpeggios: [],
+      ottavas: [],
       sequences: [{ voice: undefined, staff: undefined, content: [], fullMeasure }],
     })
   }

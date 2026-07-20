@@ -122,6 +122,19 @@ describe('conversion output the schema has to accept', () => {
       '<notations><non-arpeggiate type="bottom"/></notations></note>' +
       '<note><chord/><pitch><step>E</step><octave>4</octave></pitch><duration>4</duration>' +
       '<notations><non-arpeggiate type="top"/></notations></note>',
+    'an octave shift on a part of one staff':
+      '<attributes><divisions>4</divisions></attributes>' +
+      '<direction><direction-type><octave-shift type="down" size="15"/></direction-type></direction>' +
+      '<note><pitch><step>C</step><octave>6</octave></pitch><duration>4</duration></note>' +
+      '<direction><direction-type><octave-shift type="stop"/></direction-type></direction>',
+    'an octave shift under one hand of a two-staff part':
+      '<attributes><divisions>4</divisions><staves>2</staves></attributes>' +
+      '<direction><direction-type><octave-shift type="down" size="8"/></direction-type>' +
+      '<staff>2</staff></direction>' +
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+      '<staff>2</staff></note>' +
+      '<direction><direction-type><octave-shift type="stop"/></direction-type>' +
+      '<staff>2</staff></direction>',
     'a value recovered from its duration':
       '<attributes><divisions>4</divisions></attributes>' +
       '<note><rest/><duration>6</duration></note>',

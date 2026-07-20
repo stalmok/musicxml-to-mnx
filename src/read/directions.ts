@@ -11,7 +11,7 @@ import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
 import { addFractions, compareFractions, fraction } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
-import type { Dynamic, DynamicValue, Tempo, WedgeType } from '../model/score.js'
+import type { Dynamic, DynamicValue, OttavaAmount, Tempo, WedgeType } from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, children, trimmedText } from '../xml/tree.js'
@@ -69,6 +69,9 @@ export function readDirection(
           break
         case 'metronome':
           reading.tempos.push(...readMetronome(found, at, warnings, context, path))
+          break
+        case 'octave-shift':
+          readOctaveShift(found, at, measure, staff, state, warnings, context)
           break
         case 'wedge': {
           const hairpin = readWedge(found, at, measure, staff, state, warnings, context)
@@ -163,6 +166,67 @@ function offsetPosition(
 function pastTheEnd(position: Fraction, state: PartState): boolean {
   if (!state.time) return false
   return compareFractions(position, fraction(state.time.count, state.time.unit)) > 0
+}
+
+// How far MusicXML's octave-shift sizes move the music, in octaves. The
+// numbers are the ones written on the page: 8va is one octave, 15ma two.
+const SHIFT_SIZES = new Map<string, 1 | 2 | 3>([
+  ['8', 1],
+  ['15', 2],
+  ['22', 3],
+])
+
+/**
+ * An octave shift: a stretch drawn an octave or more from where it sounds, to
+ * keep it off the ledger lines.
+ *
+ * The sign is the one place this is easy to get backwards, and the two specs
+ * say it in opposite terms. MusicXML's type is which way the notes were moved
+ * to get them onto the staff, so 8va, where the music sounds higher than it
+ * is drawn, is written as a shift "down". MNX's value is how far the written
+ * pitch sits below the sounded one, so the same 8va is a positive 1. Both
+ * formats put the sounding pitch on the notes themselves, so nothing is
+ * transposed either way; this says only how the passage is drawn.
+ */
+function readOctaveShift(
+  found: XmlElement,
+  position: Fraction,
+  measure: number,
+  staff: number | undefined,
+  state: PartState,
+  warnings: WarningCollector,
+  context: WarningContext,
+): void {
+  const type = attribute(found, 'type')
+  const number = attribute(found, 'number') ?? '1'
+
+  if (type === 'stop') {
+    state.spanners.stopOttava(number, measure, position, context)
+    return
+  }
+  // "continue" marks a point partway along one, which MNX has no need of.
+  if (type === 'continue') return
+
+  const size = attribute(found, 'size') ?? '8'
+  const octaves = SHIFT_SIZES.get(size)
+  if ((type !== 'up' && type !== 'down') || !octaves) {
+    warnings.add(
+      'unsupported:element',
+      `An <octave-shift> of type "${type ?? ''}" and size "${size}" is not converted yet.`,
+      { ...context, line: found.line },
+      'octave-shift',
+    )
+    return
+  }
+
+  const value = type === 'down' ? octaves : (-octaves as OttavaAmount)
+  state.spanners.startOttava(
+    { measure, position, value, staff },
+    number,
+    measure,
+    position,
+    context,
+  )
 }
 
 // MusicXML's wedge types, in MNX's. A hairpin opening to the right gets
