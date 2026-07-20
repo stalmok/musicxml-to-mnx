@@ -65,8 +65,11 @@ Tuplets, including nested ones, and grace notes, which are gathered into
 groups and keep out of the measure's time.
 
 Dynamics and tempo marks: a dynamic sits on its measure at the point the
-cursor has reached; a metronome mark becomes a tempo on the score. Marks
-outside MNX's vocabulary, like a sforzando, are reported.
+cursor has reached, under the staff it belongs to; a metronome mark becomes a
+tempo on the score, as does the tempo a `<sound>` states where no metronome
+beside it already says the same thing. An `<offset>` moves a mark from where
+it is written to where it belongs, which is usually backwards. Marks outside
+MNX's vocabulary, like a sforzando, are reported.
 
 Accidentals: the note whose accidental the source draws is marked, and the
 document declares once that it states accidental display, so a reader takes
@@ -80,9 +83,9 @@ Multi-staff parts: a piano part stays one part, with the staff stated on each
 voice and an override on the events of a voice that reaches across to the
 other hand.
 
-Beams, including secondary beams and hooks. MusicXML puts them on the notes,
-one marking per beam level; MNX states them over the measure as a tree, and
-that is what gets built.
+Beams, including secondary beams, hooks, and beams over a grace group.
+MusicXML puts them on the notes, one marking per beam level; MNX states them
+over the measure as a tree, and that is what gets built.
 
 Ties and slurs, joined up across barlines. MusicXML marks both ends and leaves
 the connection implied; MNX states it once, on the end where it begins, as a
@@ -95,8 +98,8 @@ recovered from its duration where none is written, and time a voice passes
 over in silence is stated as a space. A rest filling its measure becomes what
 MNX states it as, rather than being given an invented note value.
 
-Planned for v1: lyrics, dynamics, hairpins, tempo, articulations, repeat
-barlines and endings, and octave shifts.
+Planned for v1: hairpins, articulations, repeat barlines and endings, and
+octave shifts.
 
 Constructs that MNX cannot express at all, such as pedal marks and percent
 repeats, will always surface as warnings rather than silent loss. Out of scope
