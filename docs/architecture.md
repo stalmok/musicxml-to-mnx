@@ -65,11 +65,39 @@ Two tiers, and the distinction is a contract rather than a style.
 that is structurally broken, or that cannot be converted faithfully. Rejecting
 is better than guessing.
 
-**Warning**, collected into the result: valid input the output does not carry,
-whether because MNX has no target for it or because the converter does not
-handle it yet. Every one has a stable code and measure context, so a pipeline
-can tell a lossless conversion from a lossy one. Dropping something silently
-is a bug by definition.
+**Warning**, collected into the result: valid input the output does not carry.
+Every one has a stable code and measure context, so a pipeline can tell a
+lossless conversion from a lossy one. Dropping something silently is a bug by
+definition.
+
+The code's prefix splits warnings three ways, and the split is the report's
+reason for existing rather than a nicety. `unsupported:` is a gap here, which
+a later release may close. `unrepresentable:` is a limit of MNX, which no
+release will close while the output format stays as it is. Anything else is
+the source disagreeing with itself. Someone deciding whether a file is worth
+reconverting after an upgrade needs those apart, and collapsing them into one
+code makes the report unable to answer the question it was built for.
+
+An element only counts as unrepresentable on a fact about the vendored schema:
+there has to be no definition in it that could hold the element. The registry
+is `read/unrepresentable.ts`, and calling something permanent when it is
+merely unfinished is the worse error of the two.
+
+Which of the two a reader is claiming is not left to the reader's memory
+either. `read/element.ts` wraps an element and records which children were
+actually read, and whatever is left over at the end is reported. The reason is
+that the previous arrangement, a hand-kept set of "children handled at this
+level", is a claim rather than a fact, and it drifted: it went on saying a
+`<lyric>` was carried over long after the path that reads a chord member
+stopped reading one. The only entries maintained by hand now are the
+exceptions, where something is genuinely carried elsewhere and has to say so.
+
+Fatal is all-or-nothing, deliberately. A document that hits something
+unconvertible is refused whole rather than converted in part, because the
+constructs that qualify are the ones that would make a measure fail to add up,
+and a score with a wrong bar in it is worse than no score: a pipeline can see
+that it got nothing, and cannot see that bar 41 is quietly wrong. That costs
+three of the vendored corpus songs, each for a single two-note tremolo.
 
 ## Dependencies
 

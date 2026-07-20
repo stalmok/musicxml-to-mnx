@@ -129,7 +129,7 @@ describe('stem direction', () => {
     const { events, warnings } = read(measure(note('C', '<stem>none</stem>')))
 
     expect(events[0]?.stemDirection).toBeUndefined()
-    expect(warnings.map((w) => w.message)).toContain('A <stem> of "none" is not converted yet.')
+    expect(warnings.map((w) => w.code)).toContain('unrepresentable:stem-direction')
   })
 
   test('leaves the direction unset where there is no stem', () => {

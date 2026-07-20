@@ -16,6 +16,7 @@ import type { XmlElement } from '../xml/parse.js'
 import { children, trimmedText } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
 import { noteValueBaseOf } from './noteValues.js'
+import { elementLoss } from './unrepresentable.js'
 
 /** What one <direction> was found to carry. */
 export interface DirectionReading {
@@ -55,11 +56,13 @@ export function readDirection(
         case 'metronome':
           reading.tempos.push(...readMetronome(found, position, warnings, context, path))
           break
-        default:
-          warnings.add('unsupported:element', `A <${found.name}> direction is not converted yet.`, {
+        default: {
+          const loss = elementLoss(found.name)
+          warnings.add(loss.code, `A <${found.name}> direction ${loss.ending}`, {
             ...context,
             line: found.line,
           })
+        }
       }
     }
   }
@@ -97,13 +100,16 @@ function readMetronome(
   const beatUnit = children(element, 'beat-unit')[0]
 
   // MusicXML can also state a metronome as one note value equalling another,
-  // which is a different shape MNX does not carry; only the beats-per-minute
-  // form is converted.
+  // a metrical modulation. MNX states a tempo as a note value and a count of
+  // them per minute, and that form carries no number at all, so there is
+  // nothing to put there.
   if (!perMinute || !beatUnit) {
-    warnings.add('unsupported:element', 'A <metronome> of this kind is not converted yet.', {
-      ...context,
-      line: element.line,
-    })
+    warnings.add(
+      'unrepresentable:tempo',
+      'A <metronome> written as one note value equalling another cannot be expressed ' +
+        'in MNX, which states a tempo as beats per minute.',
+      { ...context, line: element.line },
+    )
     return []
   }
 

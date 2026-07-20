@@ -602,9 +602,7 @@ describe('the global measure list', () => {
   test('reports a measure label it cannot represent as a number', () => {
     const { warnings } = read(score(`<part id="P1"><measure number="3a">${NOTE}</measure></part>`))
 
-    expect(warnings.map((w) => w.message)).toEqual([
-      'The measure label "3a" is not a number, and is not carried over.',
-    ])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:measure-label'])
   })
 })
 

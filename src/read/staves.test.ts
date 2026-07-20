@@ -151,7 +151,7 @@ describe('key and time signatures stated per staff', () => {
       ),
     )
 
-    expect(warnings.map((w) => w.code)).toEqual(['unsupported:per-staff-key'])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-key'])
     expect(warnings[0]?.message).toContain('one key')
   })
 
@@ -165,6 +165,6 @@ describe('key and time signatures stated per staff', () => {
       ),
     )
 
-    expect(warnings.map((w) => w.code)).toEqual(['unsupported:per-staff-time'])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-time'])
   })
 })

@@ -107,9 +107,7 @@ describe('tempo', () => {
       ),
     )
 
-    expect(warnings.map((w) => w.message)).toContain(
-      'A <metronome> of this kind is not converted yet.',
-    )
+    expect(warnings.map((w) => w.code)).toContain('unrepresentable:tempo')
   })
 
   test('rejects a metronome whose beat unit is not a note value', () => {
@@ -169,7 +167,11 @@ describe('directions MNX cannot state', () => {
   test('reports a pedal mark', () => {
     const { warnings } = read(inMeasure(direction('<pedal type="start"/>') + note('C')))
 
-    expect(warnings.map((w) => w.message)).toContain('A <pedal> direction is not converted yet.')
+    // MNX has no pedalling of any kind, so this one can never be converted.
+    expect(warnings.map((w) => w.code)).toContain('unrepresentable:element')
+    expect(warnings.map((w) => w.message)).toContain(
+      'A <pedal> direction cannot be expressed in MNX.',
+    )
   })
 
   test('says nothing about a direction it fully converts', () => {

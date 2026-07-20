@@ -18,7 +18,7 @@
     "note": 36,
     "print": 18,
     "sound": 1,
-    "unsupported:measure-label": 9,
+    "unrepresentable:measure-label": 9,
     "words": 3,
     "work": 1
   },
@@ -32,7 +32,7 @@
     "sound": 31,
     "staff": 52,
     "unsupported:element": 8,
-    "unsupported:measure-label": 6,
+    "unrepresentable:measure-label": 6,
     "wedge": 12,
     "words": 39,
     "work": 1
@@ -65,7 +65,7 @@
     "sound": 8,
     "staff": 11,
     "unsupported:element": 2,
-    "unsupported:measure-label": 2,
+    "unrepresentable:measure-label": 2,
     "wedge": 4,
     "words": 5,
     "work": 1
@@ -148,7 +148,7 @@
     "notehead": 1,
     "sound": 4,
     "staff": 11,
-    "unsupported:measure-label": 2,
+    "unrepresentable:measure-label": 2,
     "wedge": 6,
     "words": 33,
     "work": 1
@@ -466,7 +466,7 @@
     "sound": 18,
     "staff": 30,
     "unsupported:element": 2,
-    "unsupported:measure-label": 18,
+    "unrepresentable:measure-label": 18,
     "wedge": 46,
     "words": 6,
     "work": 1
@@ -567,7 +567,7 @@
     "identification": 1,
     "sound": 38,
     "staff": 11,
-    "unsupported:measure-label": 15,
+    "unrepresentable:measure-label": 15,
     "wedge": 12,
     "words": 26,
     "work": 1
@@ -601,7 +601,7 @@
     "sound": 55,
     "staff": 33,
     "unsupported:element": 5,
-    "unsupported:measure-label": 10,
+    "unrepresentable:measure-label": 10,
     "wedge": 60,
     "words": 36,
     "work": 1

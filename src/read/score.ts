@@ -32,6 +32,7 @@ import { negate } from '../fraction.js'
 import { readNote } from './notes.js'
 import { IdGenerator } from './spanners.js'
 import { newPartState } from './state.js'
+import { elementLoss } from './unrepresentable.js'
 import type { PartState } from './state.js'
 import { MeasureBuilder } from './voices.js'
 
@@ -212,12 +213,14 @@ function readMeasure(
         break
       }
 
-      default:
-        warnings.add('unsupported:element', `<${found.name}> is not converted yet.`, {
+      default: {
+        const loss = elementLoss(found.name)
+        warnings.add(loss.code, `<${found.name}> ${loss.ending}`, {
           ...context,
           line: found.line,
         })
         continue
+      }
     }
 
     reader.reportUnread(warnings, context)
@@ -252,8 +255,9 @@ function readMeasureLabel(
   const value = Number(written)
   if (!/^-?\d+$/.test(written) || !Number.isSafeInteger(value)) {
     warnings.add(
-      'unsupported:measure-label',
-      `The measure label "${written}" is not a number, and is not carried over.`,
+      'unrepresentable:measure-label',
+      `The measure label "${written}" is not a number, and MNX numbers a measure ` +
+        'with an integer, so it is not carried over.',
       { ...context, line: element.line },
     )
     return undefined

@@ -96,7 +96,7 @@ export function readNote(
     // own, which is the one thing here that cannot be carried.
     if (staff !== undefined && staff !== builder.staffOfChord(voice)) {
       warnings.add(
-        'unsupported:element',
+        'unrepresentable:chord-staff',
         'A <note> in a chord is on a different staff from the chord, and MNX states ' +
           'the staff for the whole chord.',
         { ...context, line: element.line },
@@ -228,11 +228,13 @@ function readStemDirection(
   const direction = stem.text.trim()
   if (direction === 'up' || direction === 'down') return direction
 
-  // MNX states only up or down; "none" and "double" have nowhere to go.
-  warnings.add('unsupported:element', `A <stem> of "${direction}" is not converted yet.`, {
-    ...context,
-    line: stem.line,
-  })
+  // MNX's stem direction is up or down and nothing else, so "none" and
+  // "double" have nowhere to go.
+  warnings.add(
+    'unrepresentable:stem-direction',
+    `A <stem> of "${direction}" cannot be expressed in MNX, which states only up or down.`,
+    { ...context, line: stem.line },
+  )
   return undefined
 }
 

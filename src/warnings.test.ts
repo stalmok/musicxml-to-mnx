@@ -1,5 +1,24 @@
 import { describe, expect, test } from 'vitest'
-import { WarningCollector } from './warnings.js'
+import { isFormatLimit, WarningCollector } from './warnings.js'
+
+// The two prefixes are the report's whole point: a gap here may close in a
+// later release, a limit of MNX will not, and a pipeline choosing what to
+// reconvert has to be able to tell them apart.
+describe('isFormatLimit', () => {
+  test('is true for a loss MNX has nowhere to put', () => {
+    expect(isFormatLimit('unrepresentable:element')).toBe(true)
+    expect(isFormatLimit('unrepresentable:per-staff-key')).toBe(true)
+  })
+
+  test('is false for a gap in this converter', () => {
+    expect(isFormatLimit('unsupported:element')).toBe(false)
+  })
+
+  test('is false for the source disagreeing with itself', () => {
+    expect(isFormatLimit('unclosed:spanner')).toBe(false)
+    expect(isFormatLimit('inconsistent:duration')).toBe(false)
+  })
+})
 
 describe('WarningCollector', () => {
   test('starts with nothing reported', () => {

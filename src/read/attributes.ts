@@ -63,7 +63,7 @@ export function readAttributes(
   const keys = element.children('key').map((found) => readKey(found, path))
   if (keys.some((other) => other.fifths !== keys[0]?.fifths)) {
     warnings.add(
-      'unsupported:per-staff-key',
+      'unrepresentable:per-staff-key',
       'The staves of this part are in different keys, and MNX states one key for ' +
         'the score. The first is the one converted.',
       { ...context, line: element.line },
@@ -73,7 +73,7 @@ export function readAttributes(
   const times = element.children('time').map((found) => readTime(found, path))
   if (times.some((other) => other.count !== times[0]?.count || other.unit !== times[0]?.unit)) {
     warnings.add(
-      'unsupported:per-staff-time',
+      'unrepresentable:per-staff-time',
       'The staves of this part are in different time signatures, and MNX states one ' +
         'for the score. The first is the one converted.',
       { ...context, line: element.line },

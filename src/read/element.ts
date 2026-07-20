@@ -14,6 +14,7 @@
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import { child, children } from '../xml/tree.js'
+import { elementLoss } from './unrepresentable.js'
 
 export class ElementReader {
   readonly element: XmlElement
@@ -72,7 +73,8 @@ export class ElementReader {
   reportUnread(warnings: WarningCollector, context: WarningContext): void {
     for (const found of this.element.children) {
       if (this.#read.has(found.name)) continue
-      warnings.add('unsupported:element', `<${found.name}> is not converted yet.`, {
+      const loss = elementLoss(found.name)
+      warnings.add(loss.code, `<${found.name}> ${loss.ending}`, {
         ...context,
         line: found.line,
       })
