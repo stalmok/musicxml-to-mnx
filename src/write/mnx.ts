@@ -16,6 +16,7 @@ import type {
   Ending,
   Event,
   Fermata,
+  FullMeasureRest,
   GlobalMeasure,
   Measure,
   Note,
@@ -49,6 +50,7 @@ import type {
   MNXEventMarkings,
   MNXEnding,
   MNXFermata,
+  MNXFullMeasureRest,
   MNXMeasureRhythmicPosition,
   MNXRhythmicPosition,
   MNXTempo,
@@ -260,13 +262,14 @@ function writeSequence(sequence: Sequence, referenced: ReadonlySet<string>): MNX
     content: sequence.content.map((item) => writeItem(item, referenced)),
     // A sequence that is a full-measure rest holds no events: the rest is
     // stated on the sequence itself.
-    ...(sequence.fullMeasure
-      ? {
-          fullMeasure: sequence.fullMeasure.visualDuration
-            ? { visualDuration: writeNoteValue(sequence.fullMeasure.visualDuration) }
-            : {},
-        }
-      : {}),
+    ...(sequence.fullMeasure ? { fullMeasure: writeFullMeasure(sequence.fullMeasure) } : {}),
+  }
+}
+
+function writeFullMeasure(rest: FullMeasureRest): MNXFullMeasureRest {
+  return {
+    ...(rest.visualDuration ? { visualDuration: writeNoteValue(rest.visualDuration) } : {}),
+    ...(rest.fermata ? { fermata: writeFermata(rest.fermata) } : {}),
   }
 }
 

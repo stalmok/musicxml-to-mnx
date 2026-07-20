@@ -285,7 +285,7 @@ function readMeasure(
       }
 
       case 'barline': {
-        const reading = readBarline(reader, warnings, context, measurePath)
+        const reading = readBarline(reader, warnings, context)
         barline ??= reading.barline
         repeatStart ||= reading.repeatStart
         repeatEnd ??= reading.repeatEnd

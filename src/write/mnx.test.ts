@@ -497,13 +497,15 @@ describe('full-measure rests', () => {
   }
 
   test('states the rest on the sequence, which then holds no events', () => {
-    const written = writeMnx(restingScore({ visualDuration: undefined }))
+    const written = writeMnx(restingScore({ visualDuration: undefined, fermata: undefined }))
 
     expect(written.parts[0]?.measures[0]?.sequences[0]).toEqual({ content: [], fullMeasure: {} })
   })
 
   test('carries the drawn value when the source gave one', () => {
-    const written = writeMnx(restingScore({ visualDuration: { base: 'whole', dots: 0 } }))
+    const written = writeMnx(
+      restingScore({ visualDuration: { base: 'whole', dots: 0 }, fermata: undefined }),
+    )
 
     expect(written.parts[0]?.measures[0]?.sequences[0]?.fullMeasure).toEqual({
       visualDuration: { base: 'whole' },
@@ -511,7 +513,9 @@ describe('full-measure rests', () => {
   })
 
   test('writes MNX the spec schema accepts', () => {
-    expect(schemaErrors(writeMnx(restingScore({ visualDuration: undefined })))).toEqual([])
+    expect(
+      schemaErrors(writeMnx(restingScore({ visualDuration: undefined, fermata: undefined }))),
+    ).toEqual([])
   })
 })
 

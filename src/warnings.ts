@@ -46,6 +46,8 @@ export type WarningCode =
   | 'unrepresentable:lyric-syllabic'
   // An event carrying more than one fermata. MNX states one per event.
   | 'unrepresentable:fermata'
+  // An event carrying two marks of one kind. MNX keys them by name.
+  | 'unrepresentable:marking'
   // A barline drawn at the opening edge of a measure. MNX states the one that
   // closes a measure.
   | 'unrepresentable:barline'

@@ -165,7 +165,14 @@ export function readNote(
     // beam, so a source stating either says nothing this loses.
     element.skip('stem', 'beam')
 
-    builder.setFullMeasure(voice, { visualDuration: written }, duration, staff, path, element.line)
+    builder.setFullMeasure(
+      voice,
+      { visualDuration: written, fermata: readFermata(notations, warnings, context) },
+      duration,
+      staff,
+      path,
+      element.line,
+    )
     if (duration) builder.shift(duration, path, element.line)
     return
   }
@@ -185,7 +192,7 @@ export function readNote(
     slurs: [],
     lyrics: readLyrics(element, warnings, context),
     stemDirection: readStemDirection(element, warnings, context),
-    markings: readMarkings(notations),
+    markings: readMarkings(notations, warnings, context),
     fermata: readFermata(notations, warnings, context),
     notes,
     isRest: restElement !== undefined,
@@ -248,13 +255,33 @@ const ARTICULATIONS = new Map<string, MarkingKind>([
  * source's, because MNX keys them by name, so a note carries at most one of
  * each and the order they were written in is not part of what it says.
  */
-function readMarkings(notations: readonly ElementReader[]): Marking[] {
+function readMarkings(
+  notations: readonly ElementReader[],
+  warnings: WarningCollector,
+  context: WarningContext,
+): Marking[] {
   const markings: Marking[] = []
+  const seen = new Set<MarkingKind>()
 
   for (const block of notations) {
     for (const articulations of block.blocks('articulations')) {
       for (const [written, kind] of ARTICULATIONS) {
         for (const found of articulations.children(written)) {
+          // MNX keys the marks by name, so a second of the same kind has
+          // nowhere to go. The first is the one converted, as it is for a
+          // second fermata.
+          if (seen.has(kind)) {
+            warnings.add(
+              'unrepresentable:marking',
+              `An event carries more than one <${written}>, and MNX states one of each ` +
+                'kind. The first is the one converted.',
+              { ...context, line: found.line },
+              written,
+            )
+            continue
+          }
+          seen.add(kind)
+
           markings.push({
             kind,
             orient: placementOf(found),

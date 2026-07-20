@@ -68,6 +68,16 @@ describe('the line closing a measure', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:barline'])
   })
 
+  // MusicXML's default location is the right edge, which is the closing line.
+  test('takes a barline that states no location as the closing one', () => {
+    const { globals, warnings } = read(
+      NOTE + '<barline><bar-style>light-heavy</bar-style></barline>',
+    )
+
+    expect(globals[0]?.barline).toBe('final')
+    expect(warnings).toEqual([])
+  })
+
   test('states none where the source draws a plain one', () => {
     const { globals } = read(NOTE)
 
@@ -93,13 +103,6 @@ describe('repeat signs', () => {
     const { globals } = read(NOTE + right('<repeat direction="backward" times="4"/>'))
 
     expect(globals[0]?.repeatEnd?.times).toBe(4)
-  })
-
-  // A repeat played fewer than twice is not a repeat.
-  test('rejects a count below two', () => {
-    expect(() => read(NOTE + right('<repeat direction="backward" times="1"/>'))).toThrow(
-      'outside the range 2 to 1000',
-    )
   })
 
   test('reports a repeat in neither direction', () => {
@@ -235,4 +238,41 @@ describe('a fermata over the barline', () => {
     expect(globals[0]?.fermata).toMatchObject({ pointing: 'up' })
     expect(warnings).toEqual([])
   })
+})
+
+// Everything below was found by a fresh-context review of the milestone.
+describe('what a barline can say that MNX cannot', () => {
+  // MusicXML allows a barline partway through a measure, which is neither the
+  // line that opens one nor the line that closes it.
+  test('reports a barline drawn partway through the measure, once', () => {
+    const { globals, warnings } = read(
+      NOTE + '<barline location="middle"><bar-style>light-light</bar-style></barline>' + NOTE,
+    )
+
+    expect(globals[0]?.barline).toBeUndefined()
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:barline'])
+  })
+
+  // A fermata at the opening edge is held over the barline closing the measure
+  // before, and moving it there would be a guess about what the source meant.
+  test('reports a fermata written at the start of a measure', () => {
+    const { globals, warnings } = read(left('<fermata/>') + NOTE)
+
+    expect(globals[0]?.fermata).toBeUndefined()
+    expect(warnings.map((w) => w.element)).toEqual(['fermata'])
+  })
+
+  // Both formats allow any whole number of repeats, so an odd count is worth
+  // reporting rather than refusing a whole score over.
+  test.each(['1', '0', 'lots'])(
+    'reports a repeat played "%s" times, keeping the repeat',
+    (times) => {
+      const { globals, warnings } = read(
+        NOTE + right(`<repeat direction="backward" times="${times}"/>`),
+      )
+
+      expect(globals[0]?.repeatEnd).toEqual({ times: undefined })
+      expect(warnings.map((w) => w.element)).toEqual(['repeat'])
+    },
+  )
 })

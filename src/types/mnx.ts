@@ -163,6 +163,7 @@ export interface MNXEvent {
 
 export interface MNXFullMeasureRest {
   visualDuration?: MNXNoteValue
+  fermata?: MNXFermata
 }
 
 /** Time a voice passes over without sounding. */

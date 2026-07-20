@@ -11,14 +11,12 @@
 // starts, as how many measures it runs for. Joining those two up is the same
 // shape of problem as a tie, and is done a part at a time in score.ts.
 
-import type { DocumentPath } from '../errors.js'
 import type { BarlineType, Ending, Fermata, RepeatEnd } from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, trimmedText } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
 import { readFermataAt } from './notes.js'
-import { readAttributeInRange } from './numbers.js'
 
 // MusicXML's bar styles, in MNX's spelling. The two describe the same lines;
 // only the names differ, MusicXML naming the two strokes and MNX the result.
@@ -61,22 +59,61 @@ export function readBarline(
   element: ElementReader,
   warnings: WarningCollector,
   context: WarningContext,
-  path: DocumentPath,
 ): BarlineReading {
-  // Where on the measure it sits. MusicXML's default is the right edge.
-  const atStart = attribute(element.element, 'location') === 'left'
+  // Where on the measure it sits. MusicXML's default is the right edge, and
+  // it also allows one partway through, which is neither edge.
+  const location = attribute(element.element, 'location') ?? 'right'
+  const atStart = location === 'left'
+
+  if (location !== 'left' && location !== 'right') {
+    warnings.add(
+      'unrepresentable:barline',
+      `A <barline> at "${location}" is drawn partway through the measure, and MNX ` +
+        'states the barline that closes one.',
+      { ...context, line: element.line },
+      'barline',
+    )
+    // The one warning accounts for the whole element, so what it holds is not
+    // reported a second time.
+    element.skip('bar-style', 'repeat', 'ending', 'fermata')
+    return NOTHING
+  }
 
   // The repeat is read first, because a bar style at the opening edge is
   // usually just how a repeat start is drawn.
-  const repeat = readRepeat(element, warnings, context, path)
+  const repeat = readRepeat(element, warnings, context)
 
   return {
     ...NOTHING,
     ...repeat,
     barline: readBarStyle(element, atStart, repeat.repeatStart, warnings, context),
     ...readEnding(element, warnings, context),
-    fermata: readFermataAt(element.children('fermata'), warnings, context),
+    fermata: atStart
+      ? reportOpeningFermata(element, warnings, context)
+      : readFermataAt(element.children('fermata'), warnings, context),
   }
+}
+
+/**
+ * A fermata written at the opening edge of a measure is held over the barline
+ * that closes the measure before, which is where MNX would state it. Moving it
+ * there is a guess about which measure the source meant, so it is reported.
+ */
+function reportOpeningFermata(
+  element: ElementReader,
+  warnings: WarningCollector,
+  context: WarningContext,
+): undefined {
+  for (const found of element.children('fermata')) {
+    warnings.add(
+      'unrepresentable:barline',
+      'A fermata is written at the start of a measure, and MNX states one over the ' +
+        'barline that closes a measure.',
+      { ...context, line: found.line },
+      'fermata',
+    )
+  }
+  return undefined
 }
 
 function readBarStyle(
@@ -127,7 +164,6 @@ function readRepeat(
   element: ElementReader,
   warnings: WarningCollector,
   context: WarningContext,
-  path: DocumentPath,
 ): { repeatStart: boolean; repeatEnd: RepeatEnd | undefined } {
   const repeat = element.child('repeat')
   if (!repeat) return { repeatStart: false, repeatEnd: undefined }
@@ -136,12 +172,7 @@ function readRepeat(
   if (direction === 'forward') return { repeatStart: true, repeatEnd: undefined }
 
   if (direction === 'backward') {
-    // How many times the passage is played, where the source counts them.
-    // Two is what a plain repeat means, so anything below that is not one.
-    return {
-      repeatStart: false,
-      repeatEnd: { times: readAttributeInRange(repeat, 'times', path, 2, 1_000) },
-    }
+    return { repeatStart: false, repeatEnd: { times: readTimes(repeat, warnings, context) } }
   }
 
   warnings.add(
@@ -151,6 +182,34 @@ function readRepeat(
     'repeat',
   )
   return { repeatStart: false, repeatEnd: undefined }
+}
+
+/**
+ * How many times the passage is played, where the source counts them. Both
+ * formats allow any whole number, so an odd one is reported rather than
+ * refused: a playback count that reads strangely is not worth rejecting a
+ * whole score over.
+ */
+function readTimes(
+  repeat: XmlElement,
+  warnings: WarningCollector,
+  context: WarningContext,
+): number | undefined {
+  const written = attribute(repeat, 'times')
+  if (written === undefined) return undefined
+
+  const times = Number(written)
+  if (!/^\d+$/.test(written) || !Number.isSafeInteger(times) || times < 2) {
+    warnings.add(
+      'unsupported:element',
+      `A <repeat> is played "${written}" times, which is not a count of two or more, ` +
+        'and is not carried over.',
+      { ...context, line: repeat.line },
+      'repeat',
+    )
+    return undefined
+  }
+  return times
 }
 
 function readEnding(

@@ -99,6 +99,7 @@
     "score-instrument": 2,
     "sf": 2,
     "sound": 18,
+    "staccato": 1,
     "stem": 16,
     "words": 55,
     "work": 1
@@ -149,7 +150,6 @@
   "butterworth-1-bredon-hill": {
     "arpeggiate": 24,
     "extend": 18,
-    "fermata": 1,
     "identification": 1,
     "metronome": 1,
     "midi-device": 2,
@@ -216,7 +216,6 @@
   },
   "cornelius-1-in-lust-und-schmerzen": {
     "extend": 26,
-    "fermata": 1,
     "identification": 1,
     "midi-device": 2,
     "midi-instrument": 2,
@@ -265,7 +264,6 @@
   "elgar-4-the-poet-s-life": {
     "cue": 22,
     "extend": 41,
-    "fermata": 1,
     "identification": 1,
     "midi-device": 2,
     "midi-instrument": 2,
@@ -319,7 +317,6 @@
     "cue": 7,
     "defaults": 1,
     "extend": 40,
-    "fermata": 4,
     "identification": 1,
     "midi-device": 2,
     "midi-instrument": 2,
@@ -505,7 +502,6 @@
   },
   "lang-4-o-warst-du-da": {
     "extend": 4,
-    "fermata": 1,
     "fz": 1,
     "identification": 1,
     "midi-device": 2,
@@ -563,7 +559,6 @@
   "mackenzie-5-april-weather": {
     "arpeggiate": 11,
     "extend": 12,
-    "fermata": 1,
     "identification": 1,
     "midi-device": 2,
     "midi-instrument": 2,
@@ -707,7 +702,6 @@
     "credit": 6,
     "dashes": 4,
     "defaults": 1,
-    "fermata": 1,
     "identification": 1,
     "midi-device": 2,
     "midi-instrument": 2,

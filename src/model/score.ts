@@ -200,6 +200,8 @@ export type SequenceItem = Event | Space | Tuplet | GraceGroup
 export interface FullMeasureRest {
   /** The value actually drawn, when the source says which one. */
   visualDuration: NoteValue | undefined
+  /** A pause held over the rest, which is where most fermatas are written. */
+  fermata: Fermata | undefined
 }
 
 export interface Sequence {

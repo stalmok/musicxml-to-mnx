@@ -206,3 +206,39 @@ describe('fermatas', () => {
     expect(events[0]?.fermata).toBeUndefined()
   })
 })
+
+// MNX keys the marks on an event by name, so a second of the same kind has
+// nowhere to go, exactly as a second fermata has none.
+describe('two marks of one kind', () => {
+  test('keeps the first and reports the rest', () => {
+    const { events, warnings } = read(
+      note(articulations('<accent placement="above"/><accent placement="below"/>')),
+    )
+
+    expect(events[0]?.markings.map((m) => m.orient)).toEqual(['above'])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:marking'])
+  })
+})
+
+// Most fermatas in real music sit over a rest that fills the measure, which
+// MNX states on the sequence rather than as an event.
+describe('a fermata over a rest filling the measure', () => {
+  test('states it on the rest', () => {
+    const warnings = new WarningCollector()
+    const score = readScore(
+      parseXmlRoot(
+        '<score-partwise><part id="P1"><measure number="1">' +
+          '<attributes><divisions>4</divisions></attributes>' +
+          '<note><rest measure="yes"/><duration>16</duration>' +
+          '<notations><fermata type="upright"/></notations></note>' +
+          '</measure></part></score-partwise>',
+      ),
+      warnings,
+    )
+
+    expect(score.parts[0]?.measures[0]?.sequences[0]?.fullMeasure?.fermata).toMatchObject({
+      pointing: 'up',
+    })
+    expect(warnings.list()).toEqual([])
+  })
+})
