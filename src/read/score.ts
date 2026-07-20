@@ -22,7 +22,7 @@ import type {
 } from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
-import { attribute, child, children, requireAttribute } from '../xml/tree.js'
+import { attribute, children, requireAttribute } from '../xml/tree.js'
 import { readAttributes } from './attributes.js'
 import { buildBeams } from './beams.js'
 import { readDirection, readSound } from './directions.js'
@@ -59,10 +59,13 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
 
   const path: DocumentPath = ['score-partwise']
   const reader = new ElementReader(root)
-  reader.skip('part-list', 'part')
+  // The parts themselves are read below, one at a time, each with a reader of
+  // its own. Everything else the document holds is read here or reported.
+  reader.skip('part')
+
+  const names = readPartNames(reader, warnings)
   reader.reportUnread(warnings, {})
 
-  const names = readPartNames(root)
   const ids = new IdGenerator()
   const readings = children(root, 'part').map((element) =>
     readPart(element, names, ids, warnings, path),
@@ -132,16 +135,28 @@ function sameTempo(a: Tempo, b: Tempo): boolean {
   )
 }
 
-function readPartNames(root: XmlElement): ReadonlyMap<string, string> {
+/**
+ * The name each part goes under. The part list holds a good deal more than
+ * that, from a part's abbreviation to the brace grouping two of them
+ * together, and every bit of it that is not read here is reported: it used to
+ * be skipped wholesale on the strength of the name being read.
+ */
+function readPartNames(
+  root: ElementReader,
+  warnings: WarningCollector,
+): ReadonlyMap<string, string> {
   const names = new Map<string, string>()
-  const list = child(root, 'part-list')
-  if (!list) return names
 
-  for (const scorePart of children(list, 'score-part')) {
-    const id = attribute(scorePart, 'id')
-    const name = child(scorePart, 'part-name')?.text.trim()
-    // An empty <part-name> states no name, so it is not one.
-    if (id !== undefined && name) names.set(id, name)
+  for (const list of root.blocks('part-list')) {
+    for (const element of list.children('score-part')) {
+      const scorePart = new ElementReader(element)
+      const id = attribute(element, 'id')
+      const name = scorePart.child('part-name')?.text.trim()
+      // An empty <part-name> states no name, so it is not one.
+      if (id !== undefined && name) names.set(id, name)
+
+      scorePart.reportUnread(warnings, id !== undefined ? { part: id } : {})
+    }
   }
   return names
 }
@@ -244,10 +259,15 @@ function readMeasure(
         break
       }
 
-      // A <sound> outside a <direction> still carries the score's tempo.
-      case 'sound':
-        tempos.push(...readSound(found, builder.position(), false, warnings, context))
+      // A <sound> outside a <direction> still carries the score's tempo, and
+      // is passed over where a <direction> at the same point has already
+      // stated one, which is the same mark written twice.
+      case 'sound': {
+        const at = builder.position()
+        const stated = tempos.some((tempo) => compareFractions(tempo.position, at) === 0)
+        tempos.push(...readSound(reader, at, stated, warnings, context))
         break
+      }
 
       // Both only move the cursor: <backup> against the flow of the measure,
       // <forward> with it. A <voice> or <staff> on one says which voice the

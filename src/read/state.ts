@@ -10,6 +10,12 @@ import { IdGenerator, SpannerResolver } from './spanners.js'
  */
 export interface PartState {
   divisions: number | undefined
+  /**
+   * The time signature in force, which like <divisions> stays until restated.
+   * Held only so that a direction moved by an <offset> can be checked against
+   * the length of the measure it lands in.
+   */
+  time: { count: number; unit: number } | undefined
   /** How many staves the part is written on, once it says. */
   staves: number
   /** Shared across the score, so every id in the document is distinct. */
@@ -19,5 +25,5 @@ export interface PartState {
 }
 
 export function newPartState(ids: IdGenerator): PartState {
-  return { divisions: undefined, staves: 1, ids, spanners: new SpannerResolver() }
+  return { divisions: undefined, time: undefined, staves: 1, ids, spanners: new SpannerResolver() }
 }

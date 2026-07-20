@@ -82,6 +82,10 @@ export function readAttributes(
     )
   }
 
+  // Held on the part so a later measure that restates neither still knows
+  // how long it runs.
+  state.time = times[0] ?? state.time
+
   return {
     key: keys[0],
     time: times[0],

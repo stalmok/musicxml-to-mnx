@@ -84,8 +84,7 @@ export function readDirection(
 
   // Read after the direction types, so that a <metronome> beside it has
   // already had its say about the tempo.
-  const sound = element.child('sound')
-  if (sound) {
+  for (const sound of element.blocks('sound')) {
     reading.tempos.push(...readSound(sound, at, reading.tempos.length > 0, warnings, context))
   }
 
@@ -133,14 +132,13 @@ function offsetPosition(
   const moved = addFractions(position, fraction(Number(written), state.divisions * 4))
 
   // MNX states a position within its measure, counting from the start, so
-  // there is nowhere to put a mark that an offset drags behind the barline.
-  // Carrying it over would need it moved into the measure before, which is
-  // not something this converter does yet.
-  if (compareFractions(moved, fraction(0)) < 0) {
+  // there is nowhere to put a mark an offset carries out of it, in either
+  // direction. Carrying one over would need it moved into the neighbouring
+  // measure, which is not something this converter does yet.
+  if (compareFractions(moved, fraction(0)) < 0 || pastTheEnd(moved, state)) {
     warnings.add(
       'unsupported:element',
-      `An <offset> of ${written} reaches back before the start of the measure, and is ` +
-        'not applied.',
+      `An <offset> of ${written} carries the mark outside its measure, and is not applied.`,
       { ...context, line: offset.line },
       'offset',
     )
@@ -148,6 +146,17 @@ function offsetPosition(
   }
 
   return moved
+}
+
+/**
+ * Whether a position runs past the end of the measure, as far as the time
+ * signature in force says. Unknowable before any time signature is stated,
+ * and real music does contain measures that do not match the one in force, so
+ * this only catches a mark that has plainly left the bar.
+ */
+function pastTheEnd(position: Fraction, state: PartState): boolean {
+  if (!state.time) return false
+  return compareFractions(position, fraction(state.time.count, state.time.unit)) > 0
 }
 
 /**
@@ -159,13 +168,13 @@ function offsetPosition(
  * why no beat unit is read for it.
  */
 export function readSound(
-  sound: XmlElement,
+  sound: ElementReader,
   position: Fraction,
   tempoAlreadyStated: boolean,
   warnings: WarningCollector,
   context: WarningContext,
 ): Tempo[] {
-  for (const name of Object.keys(sound.attributes)) {
+  for (const name of Object.keys(sound.element.attributes)) {
     if (name === 'tempo') continue
     warnings.add(
       'unsupported:element',
@@ -175,7 +184,7 @@ export function readSound(
     )
   }
 
-  const written = sound.attributes['tempo']
+  const written = sound.element.attributes['tempo']
   if (written === undefined) return []
 
   // A <sound tempo> beside a <metronome> is the same mark restated for
@@ -195,7 +204,28 @@ export function readSound(
     return []
   }
 
-  return [{ position, value: { base: 'quarter', dots: 0 }, bpm: Math.round(bpm) }]
+  return [
+    { position, value: { base: 'quarter', dots: 0 }, bpm: roundedBpm(bpm, warnings, context) },
+  ]
+}
+
+/**
+ * MNX states beats per minute as a whole number, so a source that writes a
+ * fraction of one has to be rounded, which moves the tempo by a little. Said
+ * out loud rather than swallowed.
+ */
+function roundedBpm(bpm: number, warnings: WarningCollector, context: WarningContext): number {
+  const rounded = Math.round(bpm)
+  if (rounded !== bpm) {
+    warnings.add(
+      'unrepresentable:tempo',
+      `A tempo of ${String(bpm)} beats per minute is written as ${String(rounded)}, because ` +
+        'MNX states beats per minute as a whole number.',
+      context,
+      'metronome',
+    )
+  }
+  return rounded
 }
 
 function readDynamics(
@@ -264,5 +294,5 @@ function readMetronome(
 
   // A beat unit can be dotted; MNX's bpm is a whole number.
   const dots = children(element, 'beat-unit-dot').length
-  return [{ position, value: { base, dots }, bpm: Math.round(bpm) }]
+  return [{ position, value: { base, dots }, bpm: roundedBpm(bpm, warnings, context) }]
 }

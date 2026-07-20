@@ -284,7 +284,7 @@ describe('an offset moving a direction', () => {
 
     expect(positions).toEqual([{ num: 1, den: 4 }])
     expect(warnings.map((w) => w.element)).toEqual(['offset'])
-    expect(warnings[0]?.message).toContain('before the start of the measure')
+    expect(warnings[0]?.message).toContain('outside its measure')
   })
 
   // An offset is counted in divisions, so it cannot be read before something
@@ -363,6 +363,30 @@ describe('the tempo a <sound> states', () => {
     expect(found).toEqual([
       { position: { num: 0, den: 1 }, value: { base: 'half', dots: 0 }, bpm: 60 },
     ])
+  })
+
+  // The two are the same mark written twice: the direction draws it, the
+  // <sound> beside it repeats it for playback.
+  test('passes over one at the same point as a tempo a <direction> already gave', () => {
+    const { tempos: found } = tempos(
+      '<direction><direction-type><metronome><beat-unit>quarter</beat-unit>' +
+        '<per-minute>120</per-minute></metronome></direction-type></direction>' +
+        '<sound tempo="90"/>' +
+        quarter,
+    )
+
+    expect(found.map((t) => t.bpm)).toEqual([120])
+  })
+
+  test('takes one that falls later in the measure than the tempo already given', () => {
+    const { tempos: found } = tempos(
+      '<direction><direction-type><metronome><beat-unit>quarter</beat-unit>' +
+        '<per-minute>120</per-minute></metronome></direction-type></direction>' +
+        quarter +
+        '<sound tempo="90"/>',
+    )
+
+    expect(found.map((t) => t.bpm)).toEqual([120, 90])
   })
 
   test('reports the playback it carries besides the tempo', () => {

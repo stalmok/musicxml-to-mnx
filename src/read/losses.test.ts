@@ -177,3 +177,29 @@ describe('a cursor move', () => {
     expect(lost(source)).toEqual(['voice'])
   })
 })
+
+// The part list holds a good deal more than the names read out of it, and it
+// used to be skipped wholesale on the strength of the name being read.
+describe('the part list', () => {
+  test('reports what it holds besides the name, against the part it describes', () => {
+    const warnings = new WarningCollector()
+    readScore(
+      parseXmlRoot(
+        '<score-partwise><part-list>' +
+          '<part-group type="start"><group-symbol>brace</group-symbol></part-group>' +
+          '<score-part id="P1"><part-name>Piano</part-name>' +
+          '<part-abbreviation>Pno.</part-abbreviation></score-part>' +
+          '</part-list>' +
+          '<part id="P1"><measure number="1">' +
+          '<attributes><divisions>4</divisions></attributes>' +
+          note('') +
+          '</measure></part></score-partwise>',
+      ),
+      warnings,
+    )
+
+    const reported = warnings.list()
+    expect(reported.map((w) => w.element).sort()).toEqual(['part-abbreviation', 'part-group'])
+    expect(reported.find((w) => w.element === 'part-abbreviation')?.context.part).toBe('P1')
+  })
+})
