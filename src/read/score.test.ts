@@ -479,6 +479,9 @@ describe('reporting what is not converted', () => {
       {
         code: 'unsupported:element',
         message: '<sound> is not converted yet.',
+        // Named as a field, so a report can be grouped by what was lost
+        // without parsing the sentence written for a person to read.
+        element: 'sound',
         context: { part: 'P1', measure: 1, line: 4 },
       },
     ])

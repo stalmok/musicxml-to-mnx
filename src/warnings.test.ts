@@ -28,19 +28,28 @@ describe('WarningCollector', () => {
   test('records a warning with its code, message, and context', () => {
     const warnings = new WarningCollector()
 
-    warnings.add('unsupported:element', 'The <pedal> element is not converted.', {
-      part: 'P1',
-      measure: 4,
-      line: 88,
-    })
+    warnings.add(
+      'unsupported:element',
+      'The <pedal> element is not converted.',
+      { part: 'P1', measure: 4, line: 88 },
+      'pedal',
+    )
 
     expect(warnings.list()).toEqual([
       {
         code: 'unsupported:element',
         message: 'The <pedal> element is not converted.',
+        element: 'pedal',
         context: { part: 'P1', measure: 4, line: 88 },
       },
     ])
+  })
+
+  test('leaves the element unset where the loss is not about one', () => {
+    const warnings = new WarningCollector()
+    warnings.add('inconsistent:duration', 'a note disagrees with itself', {})
+
+    expect(warnings.list()[0]?.element).toBeUndefined()
   })
 
   test('keeps warnings in the order they were reported', () => {

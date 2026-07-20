@@ -58,10 +58,12 @@ export function readDirection(
           break
         default: {
           const loss = elementLoss(found.name)
-          warnings.add(loss.code, `A <${found.name}> direction ${loss.ending}`, {
-            ...context,
-            line: found.line,
-          })
+          warnings.add(
+            loss.code,
+            `A <${found.name}> direction ${loss.ending}`,
+            { ...context, line: found.line },
+            found.name,
+          )
         }
       }
     }
@@ -80,10 +82,12 @@ function readDynamics(
     if (DYNAMIC_VALUES.has(mark.name)) {
       dynamics.push({ position, value: mark.name as DynamicValue })
     } else {
-      warnings.add('unsupported:element', `A dynamic of "${mark.name}" is not converted yet.`, {
-        ...context,
-        line: mark.line,
-      })
+      warnings.add(
+        'unsupported:element',
+        `A dynamic of "${mark.name}" is not converted yet.`,
+        { ...context, line: mark.line },
+        mark.name,
+      )
     }
   }
   return dynamics
@@ -109,6 +113,7 @@ function readMetronome(
       'A <metronome> written as one note value equalling another cannot be expressed ' +
         'in MNX, which states a tempo as beats per minute.',
       { ...context, line: element.line },
+      'metronome',
     )
     return []
   }

@@ -480,10 +480,13 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   // Losses may only shrink. A rise means something stopped being converted
   // that used to be; a fall means the baseline is due an update.
   test('loses no more than the recorded baseline', () => {
+    // Grouped by the element lost, which the warning states as a field. It
+    // used to be dug back out of the message with a regular expression, which
+    // made the baseline turn on how a sentence happened to be worded.
     const counts: Record<string, number> = {}
     for (const warning of warnings) {
-      const element = /<([a-z-]+)>/.exec(warning.message)?.[1] ?? warning.code
-      counts[element] = (counts[element] ?? 0) + 1
+      const key = warning.element ?? warning.code
+      counts[key] = (counts[key] ?? 0) + 1
     }
 
     const recorded = (baseline as Record<string, Record<string, number>>)[name]

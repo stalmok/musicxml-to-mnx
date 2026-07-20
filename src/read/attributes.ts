@@ -67,6 +67,7 @@ export function readAttributes(
       'The staves of this part are in different keys, and MNX states one key for ' +
         'the score. The first is the one converted.',
       { ...context, line: element.line },
+      'key',
     )
   }
 
@@ -77,6 +78,7 @@ export function readAttributes(
       'The staves of this part are in different time signatures, and MNX states one ' +
         'for the score. The first is the one converted.',
       { ...context, line: element.line },
+      'time',
     )
   }
 

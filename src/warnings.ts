@@ -74,14 +74,21 @@ export interface WarningContext {
 export interface ConversionWarning {
   readonly code: WarningCode
   readonly message: string
+  /**
+   * The MusicXML element the loss is about, without its angle brackets, where
+   * it is about one. A field rather than something to be recovered from the
+   * message, because grouping a report by what was lost is the first thing
+   * anyone does with it, and the message is prose written for a person.
+   */
+  readonly element: string | undefined
   readonly context: WarningContext
 }
 
 export class WarningCollector {
   readonly #warnings: ConversionWarning[] = []
 
-  add(code: WarningCode, message: string, context: WarningContext): void {
-    this.#warnings.push({ code, message, context })
+  add(code: WarningCode, message: string, context: WarningContext, element?: string): void {
+    this.#warnings.push({ code, message, element, context })
   }
 
   /** A copy, so the report cannot be mutated from outside. */

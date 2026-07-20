@@ -38,10 +38,12 @@ export function readLyrics(
 
     const spelling = syllabic.text.trim()
     if (!LYRIC_TYPES.has(spelling)) {
-      warnings.add('unsupported:element', `A <syllabic> of "${spelling}" is not converted yet.`, {
-        ...context,
-        line: syllabic.line,
-      })
+      warnings.add(
+        'unsupported:element',
+        `A <syllabic> of "${spelling}" is not converted yet.`,
+        { ...context, line: syllabic.line },
+        'syllabic',
+      )
     }
     return { line, text, type: LYRIC_TYPES.get(spelling) }
   })

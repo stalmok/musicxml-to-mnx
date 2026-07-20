@@ -126,10 +126,12 @@ function readPart(
   const partPath: DocumentPath = [...path, `part ${id}`]
 
   if (names.size > 0 && !names.has(id)) {
-    warnings.add('unresolved:part-id', `The part list has no entry for part ${id}.`, {
-      part: id,
-      line: element.line,
-    })
+    warnings.add(
+      'unresolved:part-id',
+      `The part list has no entry for part ${id}.`,
+      { part: id, line: element.line },
+      'score-part',
+    )
   }
 
   const state = newPartState(ids, usesAccidentalDisplay)
@@ -215,10 +217,12 @@ function readMeasure(
 
       default: {
         const loss = elementLoss(found.name)
-        warnings.add(loss.code, `<${found.name}> ${loss.ending}`, {
-          ...context,
-          line: found.line,
-        })
+        warnings.add(
+          loss.code,
+          `<${found.name}> ${loss.ending}`,
+          { ...context, line: found.line },
+          found.name,
+        )
         continue
       }
     }
@@ -259,6 +263,7 @@ function readMeasureLabel(
       `The measure label "${written}" is not a number, and MNX numbers a measure ` +
         'with an integer, so it is not carried over.',
       { ...context, line: element.line },
+      'measure',
     )
     return undefined
   }

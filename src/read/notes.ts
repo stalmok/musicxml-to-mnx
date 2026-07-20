@@ -100,6 +100,7 @@ export function readNote(
         'A <note> in a chord is on a different staff from the chord, and MNX states ' +
           'the staff for the whole chord.',
         { ...context, line: element.line },
+        'staff',
       )
     }
 
@@ -234,6 +235,7 @@ function readStemDirection(
     'unrepresentable:stem-direction',
     `A <stem> of "${direction}" cannot be expressed in MNX, which states only up or down.`,
     { ...context, line: stem.line },
+    'stem',
   )
   return undefined
 }
@@ -301,6 +303,7 @@ function readTies(
         'unsupported:element',
         `A <tie> of type "${type ?? ''}" is not converted yet.`,
         context,
+        'tie',
       )
     }
   }
@@ -329,6 +332,7 @@ function readSlurs(
         'unsupported:element',
         `A <slur> of type "${type ?? ''}" is not converted yet.`,
         context,
+        'slur',
       )
     }
   }
@@ -476,6 +480,7 @@ function reportDurationMismatch(
     `A <note> is written as ${describeValue(written)} but lasts ` +
       `${describeLength(duration)}. The written value is the one converted.`,
     { ...context, line: element.line },
+    'note',
   )
 }
 

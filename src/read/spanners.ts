@@ -61,6 +61,7 @@ export class SpannerResolver {
         'unclosed:spanner',
         'A tie ends on a note where none had started, and is not carried over.',
         context,
+        'tie',
       )
       return
     }
@@ -92,6 +93,7 @@ export class SpannerResolver {
         'unclosed:spanner',
         'A slur ends where none had started, and is not carried over.',
         context,
+        'slur',
       )
       return
     }
@@ -109,6 +111,7 @@ export class SpannerResolver {
         'unclosed:spanner',
         'A tie starts on a note that nothing ties to, and is not carried over.',
         open.context,
+        'tie',
       )
     }
     for (const waiting of this.#openSlurs.values()) {
@@ -117,6 +120,7 @@ export class SpannerResolver {
           'unclosed:spanner',
           'A slur starts where nothing ends it, and is not carried over.',
           open.context,
+          'slur',
         )
       }
     }

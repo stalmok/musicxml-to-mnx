@@ -74,10 +74,12 @@ export class ElementReader {
     for (const found of this.element.children) {
       if (this.#read.has(found.name)) continue
       const loss = elementLoss(found.name)
-      warnings.add(loss.code, `<${found.name}> ${loss.ending}`, {
-        ...context,
-        line: found.line,
-      })
+      warnings.add(
+        loss.code,
+        `<${found.name}> ${loss.ending}`,
+        { ...context, line: found.line },
+        found.name,
+      )
     }
     for (const blocks of this.#blocks.values()) {
       for (const block of blocks) block.reportUnread(warnings, context)
