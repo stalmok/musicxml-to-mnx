@@ -163,6 +163,114 @@ function sourcePitches(root: XmlElement): string[] {
 }
 
 /**
+ * Every hairpin in the source, paired the way the music has them rather than
+ * the way the document writes them: by measure, then by where in the measure
+ * the cursor had reached, with a stop closing the most recently opened of its
+ * number. Read straight from the XML, so it disagrees with the converter when
+ * the converter is wrong.
+ */
+function sourceHairpins(root: XmlElement): string[] {
+  const paired: string[] = []
+
+  root.children
+    .filter((c) => c.name === 'part')
+    .forEach((part, partIndex) => {
+      interface End {
+        kind: 'start' | 'stop'
+        wedge: string
+        number: string
+        measure: number
+        position: number
+        order: number
+      }
+      const ends: End[] = []
+      let divisions = 1
+
+      part.children
+        .filter((c) => c.name === 'measure')
+        .forEach((measure, measureIndex) => {
+          let position = 0
+
+          for (const item of measure.children) {
+            const durationOf = () =>
+              Number(item.children.find((c) => c.name === 'duration')?.text.trim() ?? '0')
+
+            if (item.name === 'attributes') {
+              const stated = item.children.find((c) => c.name === 'divisions')?.text.trim()
+              if (stated) divisions = Number(stated)
+            } else if (item.name === 'backup') {
+              position -= durationOf()
+            } else if (item.name === 'forward') {
+              position += durationOf()
+            } else if (item.name === 'note') {
+              const held =
+                item.children.some((c) => c.name === 'chord') ||
+                item.children.some((c) => c.name === 'grace')
+              if (!held) position += durationOf()
+            } else if (item.name === 'direction') {
+              const wedge = item.children
+                .filter((c) => c.name === 'direction-type')
+                .flatMap((c) => c.children)
+                .find((c) => c.name === 'wedge')
+              if (!wedge) continue
+
+              // The converter moves a direction by its offset, so this must too.
+              const offset = Number(
+                item.children.find((c) => c.name === 'offset')?.text.trim() ?? '0',
+              )
+              // Anything else a wedge can be, such as a point partway along
+              // one, is not an end and is not converted either.
+              const type = wedge.attributes.type ?? ''
+              if (type !== 'crescendo' && type !== 'diminuendo' && type !== 'stop') continue
+
+              ends.push({
+                kind: type === 'stop' ? 'stop' : 'start',
+                wedge: type === 'crescendo' ? 'increasing' : 'decreasing',
+                number: wedge.attributes.number ?? '1',
+                measure: measureIndex,
+                position: (position + offset) / (divisions * 4),
+                order: ends.length,
+              })
+            }
+          }
+        })
+
+      const inTime = [...ends].sort(
+        (a, b) =>
+          a.measure - b.measure ||
+          a.position - b.position ||
+          (a.kind === b.kind ? a.order - b.order : a.kind === 'stop' ? -1 : 1),
+      )
+
+      // Paired with a stack per number, then reported in the order the starts
+      // appear in the score, which is the order the converted list is in.
+      const open = new Map<string, End[]>()
+      const closed = new Map<number, End>()
+      for (const end of inTime) {
+        if (end.kind === 'start') {
+          open.set(end.number, [...(open.get(end.number) ?? []), end])
+          continue
+        }
+        const waiting = open.get(end.number) ?? []
+        const started = waiting.pop()
+        open.set(end.number, waiting)
+        if (started) closed.set(started.order, end)
+      }
+
+      for (const end of ends) {
+        if (end.kind !== 'start') continue
+        const stop = closed.get(end.order)
+        paired.push(
+          `part ${String(partIndex + 1)} ${end.wedge} m${String(end.measure + 1)} -> ` +
+            `${stop ? `m${String(stop.measure + 1)}` : 'open'}`,
+        )
+      }
+    })
+
+  return paired
+}
+
+/**
  * How long each measure of each part sounds in the source, counted in
  * divisions and reduced to whole notes. This follows MusicXML's cursor by
  * hand: notes advance it, chord notes and grace notes do not, and <backup>
@@ -306,6 +414,40 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
       .map((part) => `part ${String(part.index + 1)}: ${String(part.found)} of ${String(expected)}`)
 
     expect(uneven).toEqual([])
+  })
+
+  // A hairpin points at the measure it stops in, by id. The schema checks the
+  // shape of an id and not whether it leads anywhere.
+  //
+  // The pairing itself is read back out of the source here, following the
+  // cursor by hand, because pairing the two ends in the order the document
+  // writes them is wrong: a measure holding two voices is written as one pass
+  // per voice with a <backup> between them, so a stop belonging to the first
+  // voice is written before a start belonging to the second. Doing it that way
+  // made six hairpins out of ends that had nothing to do with each other, one
+  // of them 28 measures long, and every one of them ran forwards to a measure
+  // that existed, so nothing short of this noticed.
+  test('pairs every hairpin the way the source does', () => {
+    const named = new Map<string, number>()
+    mnx.global.measures.forEach((measure, index) => {
+      if (measure.id !== undefined) named.set(measure.id, index)
+    })
+
+    const converted: string[] = []
+    mnx.parts.forEach((part, partIndex) => {
+      part.measures.forEach((measure, index) => {
+        for (const dynamic of measure.dynamics ?? []) {
+          if (!dynamic.wedgeType) continue
+          const endsIn = dynamic.end ? named.get(dynamic.end.measure) : undefined
+          converted.push(
+            `part ${String(partIndex + 1)} ${dynamic.wedgeType} ` +
+              `m${String(index + 1)} -> ${endsIn === undefined ? 'open' : `m${String(endsIn + 1)}`}`,
+          )
+        }
+      })
+    })
+
+    expect(converted).toEqual(sourceHairpins(parseXmlRoot(source)))
   })
 
   // A staff number that names a staff the part does not have would place

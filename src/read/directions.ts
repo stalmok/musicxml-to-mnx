@@ -191,7 +191,7 @@ function readWedge(
   const number = attribute(found, 'number') ?? '1'
 
   if (type === 'stop') {
-    state.spanners.stopWedge(measure, position, number, warnings, context)
+    state.spanners.stopWedge(number, measure, position, context)
     return undefined
   }
 
@@ -213,7 +213,7 @@ function readWedge(
   // A hairpin states no value of its own: what it grows from and to is said
   // by the plain marks around it.
   const hairpin: Dynamic = { position, value: undefined, wedge, end: undefined, staff }
-  state.spanners.startWedge(hairpin, number, context)
+  state.spanners.startWedge(hairpin, number, measure, position, context)
   return hairpin
 }
 

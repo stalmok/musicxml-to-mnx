@@ -164,7 +164,6 @@
     "score-instrument": 2,
     "sf": 5,
     "sound": 45,
-    "wedge": 2,
     "words": 25,
     "work": 1
   },
@@ -277,7 +276,6 @@
     "score-instrument": 2,
     "sf": 1,
     "sound": 29,
-    "wedge": 4,
     "words": 56,
     "work": 1
   },
@@ -576,7 +574,6 @@
     "pedal": 4,
     "score-instrument": 2,
     "sound": 35,
-    "wedge": 2,
     "words": 35,
     "work": 1
   },
@@ -672,7 +669,6 @@
     "part-group": 2,
     "score-instrument": 5,
     "sound": 104,
-    "wedge": 6,
     "words": 53,
     "work": 1
   },
@@ -704,7 +700,6 @@
     "score-instrument": 2,
     "slur": 2,
     "sound": 2,
-    "wedge": 2,
     "words": 6,
     "work": 1
   },

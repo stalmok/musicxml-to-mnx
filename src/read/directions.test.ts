@@ -513,6 +513,41 @@ describe('hairpins', () => {
     expect(warnings[0]?.message).toContain('not converted yet')
   })
 
+  // MusicXML's document order is not time order: a measure holding two voices
+  // is written as one pass per voice with a <backup> between them, so a stop
+  // belonging to the first voice is written before a start belonging to the
+  // second. Pairing in document order made a hairpin out of two ends that had
+  // nothing to do with each other.
+  test('pairs the ends the music has together, not the ones written together', () => {
+    const { dynamics, warnings } = readMeasures(
+      // Voice 1 fills the measure and its hairpin stops at the halfway point.
+      NOTE +
+        NOTE +
+        wedge('stop') +
+        '<backup><duration>8</duration></backup>' +
+        // Voice 2, written afterwards, opens that hairpin at the start.
+        wedge('crescendo') +
+        `<note><voice>2</voice><pitch><step>E</step><octave>4</octave></pitch>` +
+        `<duration>8</duration><type>half</type></note>`,
+    )
+
+    expect(dynamics[0]?.map((d) => [d.wedge, d.position, d.end])).toEqual([
+      ['increasing', { num: 0, den: 1 }, { measure: 0, position: { num: 1, den: 2 } }],
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  test('closes a hairpin that ends exactly where the next one begins', () => {
+    const { dynamics, warnings } = readMeasures(
+      wedge('crescendo') + NOTE + wedge('stop') + wedge('diminuendo') + NOTE + wedge('stop'),
+    )
+
+    expect(dynamics[0]?.map((d) => d.wedge)).toEqual(['increasing', 'decreasing'])
+    expect(dynamics[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 1, den: 4 } })
+    expect(dynamics[0]?.[1]?.end).toEqual({ measure: 0, position: { num: 1, den: 2 } })
+    expect(warnings).toEqual([])
+  })
+
   test('reports a wedge that states no type at all', () => {
     const { warnings } = readMeasures(
       '<direction><direction-type><wedge number="1"/></direction-type></direction>' + NOTE,

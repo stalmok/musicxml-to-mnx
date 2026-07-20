@@ -200,6 +200,9 @@ function readPart(
   const readings = children(element, 'measure').map((measureElement, index) =>
     readMeasure(measureElement, index, id, state, warnings, partPath),
   )
+  // Hairpins are paired once the whole part is in, because a hairpin is
+  // written between the notes and the document's order is not the music's.
+  state.spanners.resolveWedges(warnings)
   // Whatever is still open once the part ends is never going to close.
   state.spanners.reportUnclosed(warnings)
   resolveEndings(readings, warnings, id)
