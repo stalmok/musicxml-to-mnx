@@ -102,8 +102,8 @@ describe('a grace note', () => {
         note(''),
     )
 
-  test('reports its beams, which are not carried over', () => {
-    expect(lost(grace('<beam number="1">begin</beam>'))).toEqual(['beam'])
+  test('says nothing about its beams, which are carried over', () => {
+    expect(lost(grace('<beam number="1">begin</beam>'))).toEqual([])
   })
 
   test('says nothing about the words under it, which are carried over', () => {

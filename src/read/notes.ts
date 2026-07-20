@@ -192,6 +192,7 @@ export function readNote(
     builder.addGraceNote(voice, event, attribute(graceElement, 'slash') === 'yes')
     for (const note of notes) readTies(element, note, state, warnings, context)
     readSlurs(notations, event, state, warnings, context)
+    builder.addBeamMarkers(voice, event.id, beamMarkers(element, path), true)
     return
   }
 

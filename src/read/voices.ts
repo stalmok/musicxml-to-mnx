@@ -32,6 +32,13 @@ interface VoiceBuilder {
   /** What each event said about its beams, in the order they were read. */
   beamed: BeamedEvent[]
   /**
+   * The same for the grace notes, kept apart from the rest. A grace group
+   * beams within itself, so its markers have to be read as their own run: a
+   * group sitting between two beamed notes would otherwise open a beam in the
+   * middle of theirs and leave the outer one with no end to close it.
+   */
+  graceBeamed: BeamedEvent[]
+  /**
    * Which staff each note named, paired with the event that named it. A rest
    * filling the measure names one without being an event, so it contributes
    * the staff and nothing to override.
@@ -236,13 +243,18 @@ export class MeasureBuilder {
     voice: string | undefined,
     id: string,
     markers: ReadonlyMap<number, string>,
+    inGraceGroup = false,
   ): void {
-    if (markers.size > 0) this.#builderFor(voice).beamed.push({ id, markers })
+    if (markers.size === 0) return
+    const builder = this.#builderFor(voice)
+    const into = inGraceGroup ? builder.graceBeamed : builder.beamed
+    into.push({ id, markers })
   }
 
   /** What every voice said about its beams, voice by voice. */
   beamedEvents(): BeamedEvent[][] {
-    return [...this.#voices.values()].map((builder) => builder.beamed)
+    const builders = [...this.#voices.values()]
+    return [...builders.map((b) => b.beamed), ...builders.map((b) => b.graceBeamed)]
   }
 
   /** Whether this voice is currently inside a tuplet. */
@@ -330,6 +342,7 @@ export class MeasureBuilder {
     const content: SequenceItem[] = []
     const created: VoiceBuilder = {
       beamed: [],
+      graceBeamed: [],
       placed: [],
       open: [content],
       content,
