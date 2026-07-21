@@ -9,11 +9,11 @@ export default defineConfig({
       formats: ['es'],
       fileName: 'mnxml',
     },
-    // The XML parser stays an external peer rather than being inlined, so
-    // consumers dedupe it and get its security fixes without waiting for a
-    // release here.
+    // The runtime dependencies stay external peers rather than being inlined,
+    // so consumers dedupe them and get their security fixes without waiting
+    // for a release here.
     rollupOptions: {
-      external: ['@rgrove/parse-xml'],
+      external: ['@rgrove/parse-xml', 'fflate'],
     },
     sourcemap: true,
   },

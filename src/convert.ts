@@ -1,5 +1,6 @@
 // The conversion pipeline, end to end.
 
+import { readMusicXML } from './container.js'
 import { readScore } from './read/score.js'
 import type { MNXDocument } from './types/mnx.js'
 import { WarningCollector } from './warnings.js'
@@ -20,12 +21,16 @@ export interface ConversionResult {
 /**
  * Converts a MusicXML document to MNX.
  *
+ * The source is either the XML text, or the bytes of a document or an `.mxl`
+ * package, which is told apart by its zip signature and unpacked. Raw bytes
+ * are read as UTF-8.
+ *
  * @throws {MusicXMLError} if the source is not well-formed, or encodes
  * something that cannot be converted faithfully.
  */
-export function convertMusicXML(source: string): ConversionResult {
+export function convertMusicXML(source: string | Uint8Array): ConversionResult {
   const warnings = new WarningCollector()
-  const score = readScore(parseXmlRoot(source), warnings)
+  const score = readScore(parseXmlRoot(readMusicXML(source)), warnings)
 
   return { mnx: writeMnx(score), warnings: warnings.list() }
 }

@@ -15,6 +15,8 @@ export function formatPath(path: DocumentPath): string {
 export interface ErrorLocation {
   path?: DocumentPath
   line?: number
+  /** The lower-level failure this one wraps, kept for debugging. */
+  cause?: unknown
 }
 
 function formatLocation(path: DocumentPath, line: number | undefined): string {
@@ -31,7 +33,7 @@ export class MusicXMLError extends Error {
 
   constructor(message: string, location: ErrorLocation = {}) {
     const path = location.path ?? []
-    super(message + formatLocation(path, location.line))
+    super(message + formatLocation(path, location.line), { cause: location.cause })
     this.name = 'MusicXMLError'
     this.path = path
     this.line = location.line

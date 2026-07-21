@@ -5,13 +5,13 @@
 // the XML inside it. Fifty songs come to under a megabyte that way, against
 // nearly twenty uncompressed.
 //
-// A container holds its own file listing in META-INF/container.xml naming the
-// root score, so that is what is followed rather than guessing at the name.
+// The unpacking is the library's own, so the corpus tests read the bytes the
+// same way a consumer would and exercise that path against real packages.
 
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { unzipSync, strFromU8 } from 'fflate'
+import { readMusicXML } from '../../src/container.js'
 
 const corpusDir = fileURLToPath(new URL('../corpus', import.meta.url))
 
@@ -22,25 +22,6 @@ export interface Song {
   source: string
 }
 
-function scoreInside(archive: Uint8Array, name: string): string {
-  const files = unzipSync(archive)
-
-  const container = files['META-INF/container.xml']
-  if (container) {
-    const rootfile = /full-path="([^"]+)"/.exec(strFromU8(container))?.[1]
-    const score = rootfile ? files[rootfile] : undefined
-    if (score) return strFromU8(score)
-  }
-
-  // No listing, or it names something absent: fall back to the only score in
-  // the container.
-  const fallback = Object.entries(files).find(
-    ([path]) => !path.startsWith('META-INF/') && /\.(musicxml|xml)$/.test(path),
-  )
-  if (!fallback) throw new Error(`${name} holds no score.`)
-  return strFromU8(fallback[1])
-}
-
 /** Every vendored song, in a stable order. */
 export function songs(): Song[] {
   return readdirSync(corpusDir)
@@ -48,6 +29,6 @@ export function songs(): Song[] {
     .sort()
     .map((file) => ({
       name: file.replace('.mxl', ''),
-      source: scoreInside(readFileSync(join(corpusDir, file)), file),
+      source: readMusicXML(new Uint8Array(readFileSync(join(corpusDir, file)))),
     }))
 }
