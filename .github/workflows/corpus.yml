@@ -1,0 +1,68 @@
+# The full-corpus gate: every OpenScore Lieder file through the converter,
+# held to the same source-independent checks the vendored fifty get, over the
+# whole corpus rather than a sample. It fetches ~1,500 files and takes minutes,
+# so it does not run per push. It runs weekly, catching a regression against
+# real music between releases, and on demand, so a maintainer runs it before
+# tagging a release as part of the deliberate release process.
+#
+# Actions are pinned to commit SHAs, matching the repo's supply-chain posture.
+name: Corpus
+
+on:
+  schedule:
+    # Mondays at 06:00 UTC.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: corpus-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # The CC0 corpus, shallow so only the current tree comes down, not its
+      # history. A pinned commit would be more reproducible, but the point of
+      # this gate is to meet the corpus as it stands, so it tracks the tip.
+      - name: Fetch the OpenScore Lieder corpus
+        run: git clone --depth 1 https://github.com/OpenScore/Lieder.git corpus-full
+
+      # Fails the job on a crash, illegal output, or output that disagrees with
+      # the source. The report file carries every refusal and loss for the
+      # summary step, which runs even when the gate fails.
+      - name: Run the corpus gate
+        env:
+          MNXML_CORPUS: corpus-full/scores
+          MNXML_CORPUS_REPORT: corpus-report.json
+        run: pnpm corpus-gate
+
+      - name: Summarise the run
+        if: always()
+        shell: bash
+        run: |
+          if [ -f corpus-report.json ]; then
+            {
+              echo '### Corpus gate'
+              echo '```json'
+              cat corpus-report.json
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi

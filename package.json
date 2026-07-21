@@ -47,7 +47,8 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "hooks:install": "git config core.hooksPath .githooks"
+    "hooks:install": "git config core.hooksPath .githooks",
+    "corpus-gate": "vitest run tests/corpus-full.test.ts"
   },
   "dependencies": {
     "@rgrove/parse-xml": "4.2.2",
