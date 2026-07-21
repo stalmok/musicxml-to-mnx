@@ -72,14 +72,27 @@ function assess(file: string): Outcome {
     return { kind: 'failed', failure: { file, kind: 'crash', detail } }
   }
 
-  const failure = firstFailure(file, xml, mnx)
+  // Where a note's written value disagrees with its measured duration, the
+  // converter deliberately carries the written value and says so with an
+  // inconsistent:duration warning. Its measures then sound as the written
+  // values do, not as the source's durations add up, so the length check
+  // below, which reads those durations, would compare against the wrong
+  // thing. The pitch and schema checks still hold that file to account.
+  const inconsistent = warnings.some((warning) => warning.code === 'inconsistent:duration')
+
+  const failure = firstFailure(file, xml, mnx, inconsistent)
   if (failure) return { kind: 'failed', failure }
 
   return { kind: 'converted', losses: warnings.map((warning) => warning.element ?? warning.code) }
 }
 
 /** The first check the converted output fails, or nothing when it passes all. */
-function firstFailure(file: string, xml: string, mnx: MNXDocument): Failure | undefined {
+function firstFailure(
+  file: string,
+  xml: string,
+  mnx: MNXDocument,
+  skipLengths: boolean,
+): Failure | undefined {
   const schema = schemaErrors(mnx)
   if (schema.length > 0) return { file, kind: 'schema', detail: schema.slice(0, 3).join('; ') }
 
@@ -94,6 +107,8 @@ function firstFailure(file: string, xml: string, mnx: MNXDocument): Failure | un
       detail: `${String(converted.length)} pitches against ${String(inSource.length)} in the source`,
     }
   }
+
+  if (skipLengths) return undefined
 
   const lengths = sourceMeasureLengths(root)
   for (const [partIndex, part] of mnx.parts.entries()) {
