@@ -11,5 +11,7 @@
   // otherwise the base config's exclusion of src/**/*.test.ts would leave the
   // tests beside the source unchecked by either pass.
   "exclude": [],
-  "include": ["src", "tests"]
+  // The command lives in cli/ and is a Node program, so it is type-checked
+  // here, with Node's types, rather than in the Node-free src pass.
+  "include": ["src", "tests", "cli"]
 }

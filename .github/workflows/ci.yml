@@ -54,8 +54,8 @@ jobs:
 
       - run: pnpm build
 
-      # The build must ship what the package's exports promise: the bundle and
-      # the type entry.
+      # The build must ship what the package's exports promise: the library
+      # bundle, its type entry, and the command with its shebang.
       - name: Check the build's shipped files
         # Explicit bash: adds pipefail to the default -e, so a future edit that
         # pipes a check cannot swallow its failure.
@@ -63,6 +63,13 @@ jobs:
         run: |
           test -s dist/mnxml.js
           test -s dist/types/index.d.ts
+          test -s dist/cli.js
+          head -1 dist/cli.js | grep -q '^#!/usr/bin/env node'
+
+      # The command's smoke test skips until the package is built, so it runs
+      # here, once dist/cli.js exists, to prove the shipped artifact runs.
+      - name: Exercise the built command
+        run: pnpm exec vitest run tests/cli-artifact.test.ts
 
       # The vendored MNX schema is the conformance oracle for every test in
       # the suite, so its bytes must be the ones PROVENANCE.md attests to. A

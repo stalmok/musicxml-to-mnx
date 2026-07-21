@@ -2,8 +2,10 @@ import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   build: {
-    // Library build: one ESM entry, consumed by bundlers. `pnpm build` also
-    // emits the matching .d.ts tree via tsc (see package.json / tsconfig.build).
+    // Library build: one self-contained ESM entry, consumed by bundlers. The
+    // Node command is built separately (vite.cli.config.ts) so the two do not
+    // share chunks and each stays a single file. `pnpm build` also emits the
+    // .d.ts tree via tsc (see package.json / tsconfig.build).
     lib: {
       entry: 'src/index.ts',
       formats: ['es'],
@@ -20,15 +22,18 @@ export default defineConfig({
   test: {
     // Node environment: no DOM is involved anywhere in the conversion.
     environment: 'node',
-    include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'cli/**/*.test.ts', 'tests/**/*.test.ts'],
     coverage: {
       // v8 = native coverage, no instrumentation step or extra Babel deps.
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
-      include: ['src/**/*.ts'],
+      include: ['src/**/*.ts', 'cli/**/*.ts'],
       // Test files and type-only modules (erased at compile time, no runtime
-      // to cover) would only add noise.
-      exclude: ['src/**/*.test.ts', 'src/types/**'],
+      // to cover) would only add noise. cli/main.ts is the process wiring
+      // around run(): it calls process.exit paths a subprocess smoke test
+      // covers, not the in-process run() tests, so it is measured there
+      // instead of here.
+      exclude: ['src/**/*.test.ts', 'src/types/**', 'cli/main.ts'],
       thresholds: { statements: 95, lines: 95, functions: 95, branches: 95 },
     },
   },
