@@ -97,6 +97,10 @@ export async function run(argv: readonly string[], io: CommandIO): Promise<numbe
   // Built only when asked for, so the ordinary path never touches the schema.
   const validate = values.validate ? buildValidator() : undefined
   const report: Record<string, readonly ConversionWarning[]> = {}
+  // What has been written where, so two inputs with the same name written into
+  // one --out directory are caught rather than one silently overwriting the
+  // other.
+  const writtenBy = new Map<string, string>()
   let failed = 0
   let lossy = 0
   let invalid = 0
@@ -115,8 +119,17 @@ export async function run(argv: readonly string[], io: CommandIO): Promise<numbe
     }
 
     const outDir = values.out ?? dirname(file)
-    mkdirSync(outDir, { recursive: true })
     const outPath = join(outDir, `${basename(file, extname(file))}.mnx`)
+
+    const already = writtenBy.get(outPath)
+    if (already !== undefined) {
+      io.log(`${file}: would overwrite ${outPath}, already written from ${already}; skipped.`)
+      failed += 1
+      continue
+    }
+    writtenBy.set(outPath, file)
+
+    mkdirSync(outDir, { recursive: true })
     writeFileSync(outPath, `${JSON.stringify(mnx, null, 2)}\n`)
 
     report[file] = warnings
@@ -138,6 +151,10 @@ export async function run(argv: readonly string[], io: CommandIO): Promise<numbe
   }
 
   if (values.report !== undefined) {
+    // Create the report's directory too, so --report into a path that does not
+    // exist yet writes there rather than dying after the outputs are already
+    // written.
+    mkdirSync(dirname(values.report), { recursive: true })
     writeFileSync(values.report, `${JSON.stringify(report, null, 2)}\n`)
   }
 

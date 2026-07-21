@@ -5,14 +5,25 @@
 // names which file inside is the score to read, since a package may carry
 // more than one. A caller passing bytes does not say which they have, so the
 // zip magic number is what tells them apart.
+//
+// The unpacking is careful with a hostile package, because this runs on
+// untrusted input like the rest of the reader. It decompresses only the
+// listing and the one score it names, never the other entries, so a package
+// cannot force a large decompression by hiding a bomb beside the score; and it
+// refuses a score that decompresses past a sane limit.
 
 import { strFromU8, unzipSync } from 'fflate'
+import type { UnzipFileInfo } from 'fflate'
 import { MusicXMLError } from './errors.js'
-import { children, requireChild } from './xml/tree.js'
+import { child, children } from './xml/tree.js'
 import { parseXmlRoot } from './xml/parse.js'
 
 // Every zip begins with these four bytes: "PK\x03\x04".
 const ZIP_SIGNATURE = [0x50, 0x4b, 0x03, 0x04]
+
+// A score's XML is a few megabytes at most, even for a large orchestral work.
+// Anything claiming to decompress past this is not a score a person wrote.
+const SCORE_LIMIT = 100 * 1024 * 1024
 
 /**
  * The MusicXML text to parse. A string is already that. Bytes are an `.mxl`
@@ -35,59 +46,104 @@ function isZip(bytes: Uint8Array): boolean {
  * the score rather than, say, a cover image or a second movement.
  */
 function scoreInside(archive: Uint8Array): string {
-  let files: Record<string, Uint8Array>
-  try {
-    files = unzipSync(archive)
-  } catch (cause) {
-    throw new MusicXMLError('The .mxl package could not be unzipped.', { cause })
+  // Learn the whole file listing while decompressing only the tiny
+  // container.xml. The other entries, which may be large, are left packed.
+  const names: string[] = []
+  const meta = extract(archive, (name) => {
+    names.push(name)
+    return name === 'META-INF/container.xml'
+  })
+
+  const listing = meta['META-INF/container.xml']
+  const named = listing ? rootFilePath(listing) : undefined
+
+  // The score is the file the listing names, or, where there is no usable
+  // listing, the one score in the package, which is unambiguous when there is
+  // exactly one.
+  const scores = names.filter(
+    (name) => !name.startsWith('META-INF/') && /\.(musicxml|xml)$/i.test(name),
+  )
+  const scoreName =
+    named !== undefined && names.includes(named)
+      ? named
+      : scores.length === 1
+        ? scores[0]
+        : undefined
+  if (scoreName === undefined) {
+    throw new MusicXMLError(
+      named !== undefined
+        ? `The .mxl package names "${named}" as its score, but does not contain it.`
+        : 'The .mxl package has no META-INF/container.xml naming its score.',
+    )
   }
 
-  const named = rootFilePath(files)
-  const score = named ? files[named] : undefined
-  if (score) return decode(score)
-
-  // No listing, or it names a file the package does not hold: fall back to the
-  // one score inside, which is unambiguous when there is exactly one.
-  const scores = Object.keys(files).filter(
-    (path) => !path.startsWith('META-INF/') && /\.(musicxml|xml)$/i.test(path),
-  )
-  const only = scores[0]
-  if (scores.length === 1 && only) return decode(files[only] as Uint8Array)
-
-  throw new MusicXMLError(
-    named
-      ? `The .mxl package names "${named}" as its score, but does not contain it.`
-      : 'The .mxl package has no META-INF/container.xml naming its score.',
-  )
+  const score = extract(archive, (name) => name === scoreName)[scoreName]
+  /* v8 ignore next -- the name came from this same archive's listing, so the
+     second pass always finds it. */
+  if (!score) throw new MusicXMLError('The .mxl package could not be unzipped.')
+  return decode(score)
 }
 
 /**
- * The path the package's listing gives for its score, or nothing when it has
- * no listing. The listing is itself XML, so it is read with the same parser as
- * everything else, which keeps it safe against the external-entity tricks a
- * hand-rolled reader would reopen.
+ * The entries a filter accepts, decompressed; the rest left packed. Refuses an
+ * accepted entry that declares a size past the limit before it is inflated,
+ * and turns fflate's own errors into a MusicXMLError.
  */
-function rootFilePath(files: Record<string, Uint8Array>): string | undefined {
-  const listing = files['META-INF/container.xml']
-  if (!listing) return undefined
+function extract(
+  archive: Uint8Array,
+  wanted: (name: string) => boolean,
+): Record<string, Uint8Array> {
+  try {
+    return unzipSync(archive, {
+      filter: (file: UnzipFileInfo) => {
+        if (!wanted(file.name)) return false
+        if (file.originalSize > SCORE_LIMIT) {
+          throw new MusicXMLError(
+            `An entry in the .mxl package decompresses to ${String(file.originalSize)} bytes, ` +
+              `over the ${String(SCORE_LIMIT)}-byte limit.`,
+          )
+        }
+        return true
+      },
+    })
+  } catch (cause) {
+    if (cause instanceof MusicXMLError) throw cause
+    throw new MusicXMLError('The .mxl package could not be unzipped.', { cause })
+  }
+}
 
+/**
+ * The path the package's listing gives for its score, or nothing when the
+ * listing does not name one. The listing is itself XML, so it is read with the
+ * same parser as everything else, which keeps it safe against the
+ * external-entity tricks a hand-rolled reader would reopen.
+ */
+function rootFilePath(listing: Uint8Array): string | undefined {
   const root = parseXmlRoot(decode(listing))
-  const path: readonly string[] = ['container']
-  const rootfiles = requireChild(root, 'rootfiles', path)
+  // A container that carries no <rootfiles> names nothing; the caller then
+  // falls back to the one score in the package.
+  const rootfiles = child(root, 'rootfiles')
+  if (!rootfiles) return undefined
+
   // The first rootfile is the primary score; the rest, where a package states
   // any, are alternatives this converter does not choose between. The path is
   // always an attribute, never a child element.
-  const first = children(rootfiles, 'rootfile')[0]
-  return first?.attributes['full-path']
+  return children(rootfiles, 'rootfile')[0]?.attributes['full-path']
 }
 
 /**
  * Bytes as UTF-8 text. fflate's decoder is used rather than a `TextDecoder`
  * global, so the core stays free of the platform globals the build forbids it.
- * A leading byte-order mark, which would otherwise reach the parser as a stray
- * character before the prolog, is stripped by that decoder as the encoding
- * spec requires.
+ * A leading UTF-8 byte-order mark, which would otherwise reach the parser as a
+ * stray character before the prolog, is stripped by that decoder as the
+ * encoding spec requires.
  */
 function decode(bytes: Uint8Array): string {
+  // A UTF-16 byte-order mark: fflate decodes UTF-8 only, so a UTF-16 document
+  // would come back as mojibake and fail deep in the parser with a message
+  // about the wrong thing. It is refused here, where the cause is plain.
+  if ((bytes[0] === 0xff && bytes[1] === 0xfe) || (bytes[0] === 0xfe && bytes[1] === 0xff)) {
+    throw new MusicXMLError('The document is UTF-16, which is not supported; convert it to UTF-8.')
+  }
   return strFromU8(bytes)
 }

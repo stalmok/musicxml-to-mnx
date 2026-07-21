@@ -21,6 +21,33 @@ function mxl(files: Record<string, string>): Uint8Array {
   return zipSync(entries)
 }
 
+/**
+ * A one-entry zip whose declared uncompressed size is forged to `size`, its
+ * data left tiny. A decompression bomb is only dangerous for the size it
+ * claims, and the reader refuses it on that claim before inflating anything,
+ * so forging the claim tests the guard without a 100 MB allocation. Both the
+ * uncompressed-size fields a zip carries — in the local header after
+ * `PK\x03\x04` and in the central directory after `PK\x01\x02` — are set.
+ */
+function withForgedSize(name: string, content: string, size: number): Uint8Array {
+  const zip = zipSync({ [name]: strToU8(content) })
+  writeSize(zip, [0x50, 0x4b, 0x03, 0x04], 22, size)
+  writeSize(zip, [0x50, 0x4b, 0x01, 0x02], 24, size)
+  return zip
+}
+
+function writeSize(zip: Uint8Array, signature: number[], fieldOffset: number, size: number): void {
+  const at = indexOf(zip, signature) + fieldOffset
+  for (let i = 0; i < 4; i++) zip[at + i] = (size >>> (i * 8)) & 0xff
+}
+
+function indexOf(bytes: Uint8Array, signature: number[]): number {
+  for (let i = 0; i + signature.length <= bytes.length; i++) {
+    if (signature.every((byte, j) => bytes[i + j] === byte)) return i
+  }
+  throw new Error('signature not found')
+}
+
 describe('a string', () => {
   test('is the document itself, and passes through untouched', () => {
     expect(readMusicXML(SCORE)).toBe(SCORE)
@@ -122,5 +149,49 @@ describe('an .mxl package', () => {
 
     expect(thrown).toBeInstanceOf(MusicXMLError)
     expect((thrown as MusicXMLError).message).toContain('could not be unzipped')
+  })
+
+  // A score that is itself a decompression bomb is refused by its declared
+  // size before it inflates. The declaration is forged rather than a real
+  // 100 MB entry, so the test is light: the point is that the size is checked
+  // before anything is decompressed, which is exactly what forging it proves.
+  test('refuses a score that decompresses past the limit', () => {
+    const archive = withForgedSize('big.musicxml', SCORE, 100 * 1024 * 1024 + 1)
+
+    let thrown: unknown
+    try {
+      readMusicXML(archive)
+    } catch (error) {
+      thrown = error
+    }
+
+    expect(thrown).toBeInstanceOf(MusicXMLError)
+    expect((thrown as MusicXMLError).message).toContain('over the')
+  })
+
+  test('falls back to the only score where the container carries no rootfiles', () => {
+    const archive = mxl({
+      'META-INF/container.xml': '<container></container>',
+      'score.musicxml': SCORE,
+    })
+
+    expect(readMusicXML(archive)).toBe(SCORE)
+  })
+})
+
+describe('a document in an unsupported encoding', () => {
+  test.each([
+    ['little-endian', [0xff, 0xfe, 0x3c, 0x00]],
+    ['big-endian', [0xfe, 0xff, 0x00, 0x3c]],
+  ])('refuses %s UTF-16, naming the encoding', (_name, bytes) => {
+    let thrown: unknown
+    try {
+      readMusicXML(new Uint8Array(bytes))
+    } catch (error) {
+      thrown = error
+    }
+
+    expect(thrown).toBeInstanceOf(MusicXMLError)
+    expect((thrown as MusicXMLError).message).toContain('UTF-16')
   })
 })

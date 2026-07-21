@@ -3,9 +3,9 @@
 // the lines it logged.
 
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { buildValidator, run } from './run.js'
 
 // A one-note score that converts with nothing lost, for the lossless paths.
@@ -31,9 +31,10 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true })
 })
 
-/** Writes an input file into the temp dir and returns its path. */
+/** Writes an input file into the temp dir, making its parent, and returns its path. */
 function input(name: string, xml: string): string {
   const path = join(dir, name)
+  mkdirSync(dirname(path), { recursive: true })
   writeFileSync(path, xml)
   return path
 }
@@ -104,6 +105,39 @@ describe('a file the converter refuses', () => {
     // The good one was still written.
     expect(() => readFileSync(join(dir, 'good.mnx'))).not.toThrow()
     expect(lines.at(-1)).toContain('1 refused')
+  })
+})
+
+describe('two inputs that would write to the same file', () => {
+  test('are caught rather than one silently overwriting the other', async () => {
+    // Same basename, different directories, into one --out.
+    const a = input('one/song.xml', LOSSLESS)
+    const b = input('two/song.xml', LOSSLESS.replace('<step>C</step>', '<step>D</step>'))
+    const out = join(dir, 'merged')
+
+    const code = await run(['to-mnx', a, b, '-o', out], io)
+
+    expect(code).toBe(1)
+    expect(lines.some((line) => line.includes('would overwrite'))).toBe(true)
+    // The first write stands; the second is skipped, not silently applied.
+    const mnx = JSON.parse(readFileSync(join(out, 'song.mnx'), 'utf8')) as {
+      parts: {
+        measures: { sequences: { content: { notes?: { pitch: { step: string } }[] }[] }[] }[]
+      }[]
+    }
+    expect(mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]?.notes?.[0]?.pitch.step).toBe('C')
+  })
+})
+
+describe('a report into a directory that does not exist', () => {
+  test('is written rather than crashing after the outputs are', async () => {
+    const file = input('song.xml', LOSSY)
+    const reportPath = join(dir, 'new', 'nested', 'report.json')
+
+    const code = await run(['to-mnx', file, '-o', dir, '--report', reportPath], io)
+
+    expect(code).toBe(0)
+    expect(() => readFileSync(reportPath)).not.toThrow()
   })
 })
 
