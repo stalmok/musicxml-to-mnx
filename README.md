@@ -4,9 +4,10 @@ Convert [MusicXML](https://www.w3.org/2021/06/musicxml40/) to
 [MNX](https://w3c-cg.github.io/mnx/docs/), the W3C Music Notation Community
 Group's JSON successor format.
 
-> **Early development.** The public API below works, but only a small slice of
-> MusicXML converts so far. See [What converts today](#what-converts-today).
-> MNX itself has no stable 1.0, so output is pinned to a dated spec snapshot.
+> **Pre-1.0.** MNX has no stable 1.0, so output is pinned to a dated spec
+> snapshot and the API may still change. Most of what real song repertoire uses
+> converts today — see [What converts today](#what-converts-today) — and
+> anything that does not is reported, never dropped silently.
 
 ---
 
@@ -16,8 +17,10 @@ Group's JSON successor format.
 npm install mnxml   # or: pnpm add mnxml
 ```
 
-Runs in Node and the browser. One runtime dependency
-([`@rgrove/parse-xml`](https://github.com/rgrove/parse-xml)).
+Runs in Node and the browser, and installs a `mnxml` command for the shell.
+Two runtime dependencies, each with none of its own:
+[`@rgrove/parse-xml`](https://github.com/rgrove/parse-xml) for parsing and
+[`fflate`](https://github.com/101arrowz/fflate) for unpacking `.mxl` packages.
 
 ---
 
@@ -37,6 +40,15 @@ for (const w of warnings) {
 }
 ```
 
+The source is either the XML as a string, or the bytes of a document or a
+compressed `.mxl` package, which is told apart by its signature and unpacked:
+
+```ts
+import { readFileSync } from 'node:fs'
+
+const { mnx } = convertMusicXML(readFileSync('song.mxl'))
+```
+
 Structurally broken input throws a `MusicXMLError` carrying the document path
 and the source line:
 
@@ -51,6 +63,24 @@ try {
   }
 }
 ```
+
+---
+
+## Command line
+
+The package installs a `mnxml` command:
+
+```bash
+mnxml to-mnx song.mxl                    # writes song.mnx beside it
+mnxml to-mnx scores/*.musicxml -o out/   # into a directory
+mnxml to-mnx *.mxl --fail-on-loss        # exit non-zero if anything is lost
+mnxml to-mnx song.mxl --validate --report losses.json
+```
+
+It accepts `.musicxml`, `.xml` and `.mxl`. A file it refuses is reported and
+the rest go on. `--fail-on-loss` is the gate a lossless pipeline runs on;
+`--report` writes every file's warnings as JSON; `--validate` checks each
+output against the vendored MNX schema.
 
 ---
 

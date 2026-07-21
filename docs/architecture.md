@@ -30,6 +30,7 @@ changes, only `write/` and `types/mnx.ts` should have to move.
 
 ```
 src/
+  container.ts         string, bytes, or an .mxl package into the XML to parse
   xml/                 element tree with source line numbers, typed accessors
   read/                MusicXML semantics, one file per concern
     score.ts           the score, its parts, and the walk through a measure
@@ -53,7 +54,18 @@ src/
   fraction.ts          exact rational arithmetic for timing, never floats
   warnings.ts          the warning code registry
   errors.ts            MusicXMLError
+
+cli/                   the Node command, outside src so the core stays Node-free
+  run.ts               convert files, returning an exit code
+  main.ts              wire argv and the console to run()
 ```
+
+The command lives outside `src/` on purpose. The library core is isomorphic
+and may touch neither Node nor DOM globals, which `tsconfig.json` enforces over
+`src` alone; the command is a Node program and reads the filesystem freely, so
+it sits in `cli/` and is type-checked with Node's types in the test pass. It
+builds as its own self-contained `cli.js` (`vite.cli.config.ts`) so it shares
+no chunks with the library bundle and carries the shebang the library must not.
 
 The reader is the only part with much shape to it, and it is split so that
 each file answers one question. `score.ts` holds the walk and nothing that can
@@ -120,9 +132,11 @@ three of the vendored corpus songs, each for a single two-note tremolo.
 
 ## Dependencies
 
-At runtime, `@rgrove/parse-xml`, and nothing else so far. `fflate` joins it
-when `.mxl` input lands. `ajv` and the vendored schema are dev-only, because
-the schema gate runs in the test suite.
+At runtime, `@rgrove/parse-xml` for parsing and `fflate` for unpacking `.mxl`
+packages, each with no dependencies of its own. `ajv` and the vendored schema
+are dev-only for the library: the schema gate runs in the test suite, and the
+command's `--validate`, which also uses them, is built as a self-contained
+`cli.js` with `ajv` bundled in, so no install of the library pays for it.
 
 The parser was chosen over the more widely used `saxes` mainly for safety on
 untrusted input. It never processes DTDs, and treats an undefined entity as a
