@@ -23,6 +23,8 @@ export default defineConfig({
         banner: '#!/usr/bin/env node',
       },
     },
-    sourcemap: true,
+    // No sourcemaps in the published bundles: they roughly triple the tarball,
+    // and local development runs against src, not dist.
+    sourcemap: false,
   },
 })

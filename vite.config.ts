@@ -17,7 +17,9 @@ export default defineConfig({
     rollupOptions: {
       external: ['@rgrove/parse-xml', 'fflate'],
     },
-    sourcemap: true,
+    // No sourcemaps in the published bundles: they roughly triple the tarball,
+    // and local development runs against src, not dist.
+    sourcemap: false,
   },
   test: {
     // Node environment: no DOM is involved anywhere in the conversion.
