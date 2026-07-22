@@ -31,12 +31,16 @@ jobs:
     needs: gates
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # BOOTSTRAP: the first publish uses an NPM_TOKEN secret, because trusted
+    # publishing cannot be configured on npmjs.com until the package exists.
+    # id-token:write is deliberately absent — with it, npm 11.5+ attempts the
+    # OIDC exchange and fails when no trusted publisher is set up yet, even with
+    # a token present. After this release, configure the trusted publisher,
+    # revoke the token, and restore id-token:write + provenance below.
     permissions:
       contents: read
-      id-token: write # npm provenance
-    # A second pair of eyes on every release: with trusted publishing the
-    # workflow needs no secret, so without this gate anyone who can push a
-    # v* tag could publish. Configure required reviewers on the environment.
+    # A second pair of eyes on every release, and where the NPM_TOKEN secret
+    # lives: configure required reviewers on the environment.
     environment: npm-publish
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
@@ -63,6 +67,9 @@ jobs:
 
       - run: pnpm build
 
-      # npm (not pnpm) publish: trusted-publishing support. The OIDC exchange
-      # authenticates and provenance is attached automatically.
+      # npm (not pnpm) publish. BOOTSTRAP: authenticated by the NPM_TOKEN
+      # secret. setup-node wrote an .npmrc that reads this variable. Once
+      # trusted publishing is configured, drop the env and add --provenance.
       - run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
