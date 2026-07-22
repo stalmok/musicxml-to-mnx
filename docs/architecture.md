@@ -1,7 +1,7 @@
 # Architecture
 
 How the converter is put together. Usage and current capability are in the
-README; working conventions are in `CLAUDE.md`.
+README.
 
 ## Shape
 
@@ -20,8 +20,7 @@ Nearly all the difficulty sits in the reader, because the two formats disagree
 about how music is written down. MusicXML encodes time as a cursor that
 `<backup>` and `<forward>` move around, spreads one voice across interleaved
 elements, and links spanners by a `number` attribute that has to be matched
-up. MNX states the same music directly. Once the reader has resolved that, the
-writer is close to a walk.
+up. MNX states the same music directly.
 
 The split also keeps a moving spec cheap: MNX has no stable 1.0, so when it
 changes, only `write/` and `types/mnx.ts` should have to move.
