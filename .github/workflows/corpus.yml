@@ -50,8 +50,8 @@ jobs:
       # summary step, which runs even when the gate fails.
       - name: Run the corpus gate
         env:
-          MNXML_CORPUS: corpus-full/scores
-          MNXML_CORPUS_REPORT: corpus-report.json
+          OSSIA_CORPUS: corpus-full/scores
+          OSSIA_CORPUS_REPORT: corpus-report.json
         run: pnpm corpus-gate
 
       - name: Summarise the run

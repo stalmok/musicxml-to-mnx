@@ -1,5 +1,5 @@
 {
-  "name": "mnxml",
+  "name": "ossia",
   "version": "0.1.0",
   "description": "Convert MusicXML to MNX, the W3C JSON music notation format.",
   "license": "MIT",
@@ -8,14 +8,14 @@
     "url": "git+https://github.com/stalmok/mnxml.git"
   },
   "type": "module",
-  "main": "./dist/mnxml.js",
-  "module": "./dist/mnxml.js",
+  "main": "./dist/ossia.js",
+  "module": "./dist/ossia.js",
   "types": "./dist/types/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/types/index.d.ts",
-      "import": "./dist/mnxml.js",
-      "default": "./dist/mnxml.js"
+      "import": "./dist/ossia.js",
+      "default": "./dist/ossia.js"
     }
   },
   "files": [
@@ -68,6 +68,6 @@
     "vitest": "4.1.9"
   },
   "bin": {
-    "mnxml": "./dist/cli.js"
+    "ossia": "./dist/cli.js"
   }
 }

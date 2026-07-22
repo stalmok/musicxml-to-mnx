@@ -1,4 +1,4 @@
-// The `mnxml` command, driven in-process: run() does the work and returns an
+// The `ossia` command, driven in-process: run() does the work and returns an
 // exit code, so a test can hand it arguments, then read the files it wrote and
 // the lines it logged.
 
@@ -23,7 +23,7 @@ const lines: string[] = []
 const io = { log: (line: string) => lines.push(line) }
 
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), 'mnxml-cli-'))
+  dir = mkdtempSync(join(tmpdir(), 'ossia-cli-'))
   lines.length = 0
 })
 
@@ -209,7 +209,7 @@ describe('checking the output against the schema', () => {
 describe('the command line itself', () => {
   test('shows help and succeeds for --help', async () => {
     expect(await run(['--help'], io)).toBe(0)
-    expect(lines[0]).toContain('Usage: mnxml to-mnx')
+    expect(lines[0]).toContain('Usage: ossia to-mnx')
   })
 
   test('prints a version for --version', async () => {

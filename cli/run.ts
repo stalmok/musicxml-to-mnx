@@ -29,7 +29,7 @@ const OPTIONS = {
   version: { type: 'boolean', short: 'v' },
 } as const
 
-const HELP = `Usage: mnxml to-mnx <files...> [options]
+const HELP = `Usage: ossia to-mnx <files...> [options]
 
 Convert MusicXML (.musicxml, .xml, .mxl) to MNX. Each <basename>.mnx is
 written beside its input, or into the directory given by --out.

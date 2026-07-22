@@ -4,11 +4,11 @@
 // the output to the same source-independent checks the vendored corpus test
 // applies to its fifty, over the whole of the OpenScore Lieder corpus rather
 // than a sample. It is not run per commit: it fetches ~1,500 files and takes
-// minutes, so it stays skipped unless MNXML_CORPUS points at a directory of
+// minutes, so it stays skipped unless OSSIA_CORPUS points at a directory of
 // scores, which the corpus workflow sets after cloning the corpus and a
 // maintainer sets before a release.
 //
-//   MNXML_CORPUS=<dir> [MNXML_CORPUS_REPORT=<file.json>] pnpm corpus-gate
+//   OSSIA_CORPUS=<dir> [OSSIA_CORPUS_REPORT=<file.json>] pnpm corpus-gate
 //
 // It fails on a crash, on output the schema rejects, or on output whose notes
 // or measure lengths disagree with the source. A file the converter refuses
@@ -27,7 +27,7 @@ import { parseXmlRoot } from '../src/xml/parse.js'
 import { schemaErrors } from './support/schema.js'
 import { pitchesOf, sounding, sourceMeasureLengths, sourcePitches } from './support/structural.js'
 
-const corpusDir = process.env.MNXML_CORPUS
+const corpusDir = process.env.OSSIA_CORPUS
 
 interface Failure {
   file: string
@@ -184,9 +184,9 @@ gate('the full corpus', () => {
   ]
   console.log(lines.join('\n'))
 
-  if (process.env.MNXML_CORPUS_REPORT !== undefined) {
+  if (process.env.OSSIA_CORPUS_REPORT !== undefined) {
     writeFileSync(
-      process.env.MNXML_CORPUS_REPORT,
+      process.env.OSSIA_CORPUS_REPORT,
       `${JSON.stringify(
         {
           total: files.length,

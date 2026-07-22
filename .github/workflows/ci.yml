@@ -61,7 +61,7 @@ jobs:
         # pipes a check cannot swallow its failure.
         shell: bash
         run: |
-          test -s dist/mnxml.js
+          test -s dist/ossia.js
           test -s dist/types/index.d.ts
           test -s dist/cli.js
           head -1 dist/cli.js | grep -q '^#!/usr/bin/env node'

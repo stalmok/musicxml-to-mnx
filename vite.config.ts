@@ -9,7 +9,7 @@ export default defineConfig({
     lib: {
       entry: 'src/index.ts',
       formats: ['es'],
-      fileName: 'mnxml',
+      fileName: 'ossia',
     },
     // The runtime dependencies stay external peers rather than being inlined,
     // so consumers dedupe them and get their security fixes without waiting

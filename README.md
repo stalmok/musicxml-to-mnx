@@ -1,4 +1,4 @@
-# mnxml
+# ossia
 
 Convert [MusicXML](https://www.w3.org/2021/06/musicxml40/) to
 [MNX](https://w3c-cg.github.io/mnx/docs/), the W3C Music Notation Community
@@ -7,41 +7,36 @@ Group's JSON successor format.
 > **Pre-1.0.** MNX has no stable 1.0, so output is pinned to a dated spec
 > snapshot and the API may still change. Most of what real song repertoire uses
 > converts today — see [What converts today](#what-converts-today) — and
-> anything that does not is reported, never dropped silently.
+> anything that does not is reported.
 
 ---
 
 ## Install
 
 ```bash
-npm install mnxml   # or: pnpm add mnxml
+npm install ossia   # or: pnpm add ossia
 ```
-
-Runs in Node and the browser, and installs a `mnxml` command for the shell.
-Two runtime dependencies, each with none of its own:
-[`@rgrove/parse-xml`](https://github.com/rgrove/parse-xml) for parsing and
-[`fflate`](https://github.com/101arrowz/fflate) for unpacking `.mxl` packages.
 
 ---
 
 ## Use
 
 ```ts
-import { convertMusicXML } from 'mnxml'
+import { convertMusicXML } from 'ossia'
 
 const { mnx, warnings } = convertMusicXML(musicXmlSource)
 
 console.log(JSON.stringify(mnx, null, 2))
 
 // Anything MusicXML expressed that MNX cannot carry, or that this
-// converter does not handle yet, is reported rather than dropped silently.
+// converter does not handle yet, is reported in warnings.
 for (const w of warnings) {
   console.warn(`${w.code}: ${w.message}`, w.context)
 }
 ```
 
 The source is either the XML as a string, or the bytes of a document or a
-compressed `.mxl` package, which is told apart by its signature and unpacked:
+compressed `.mxl` package:
 
 ```ts
 import { readFileSync } from 'node:fs'
@@ -53,7 +48,7 @@ Structurally broken input throws a `MusicXMLError` carrying the document path
 and the source line:
 
 ```ts
-import { MusicXMLError } from 'mnxml'
+import { MusicXMLError } from 'ossia'
 
 try {
   convertMusicXML(source)
@@ -68,13 +63,13 @@ try {
 
 ## Command line
 
-The package installs a `mnxml` command:
+The package installs a `ossia` command:
 
 ```bash
-mnxml to-mnx song.mxl                    # writes song.mnx beside it
-mnxml to-mnx scores/*.musicxml -o out/   # into a directory
-mnxml to-mnx *.mxl --fail-on-loss        # exit non-zero if anything is lost
-mnxml to-mnx song.mxl --validate --report losses.json
+ossia to-mnx song.mxl                    # writes song.mnx beside it
+ossia to-mnx scores/*.musicxml -o out/   # into a directory
+ossia to-mnx *.mxl --fail-on-loss        # exit non-zero if anything is lost
+ossia to-mnx song.mxl --validate --report losses.json
 ```
 
 It accepts `.musicxml`, `.xml` and `.mxl`. A file it refuses is reported and
@@ -179,7 +174,7 @@ else is the source disagreeing with itself. Reconverting a file after an
 upgrade is worth it for the first and never for the second.
 
 ```ts
-import { isFormatLimit } from 'mnxml'
+import { isFormatLimit } from 'ossia'
 
 const worthRetrying = warnings.some((w) => !isFormatLimit(w.code))
 ```

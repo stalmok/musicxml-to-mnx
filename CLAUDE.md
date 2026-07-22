@@ -1,4 +1,4 @@
-# mnxml
+# ossia
 
 > Converts MusicXML to MNX, the W3C JSON music notation format. MusicXML in, MNX out.
 
