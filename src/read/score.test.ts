@@ -207,6 +207,24 @@ describe('measure attributes', () => {
     ).toContain('0 beats')
   })
 
+  // A key stated without <fifths> is non-traditional, spelled as individual
+  // altered steps. MNX states a key as a count of fifths, so the signature is
+  // dropped and reported. The notes still sound right: each carries its own
+  // <alter>.
+  test('drops a key with no fifths, reporting the loss', () => {
+    const { score: result, warnings } = read(
+      measure(
+        '<attributes><key><key-step>B</key-step><key-alter>-1</key-alter></key></attributes>' +
+          NOTE,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.key).toBeUndefined()
+    expect(warnings).toEqual([
+      expect.objectContaining({ code: 'unrepresentable:non-traditional-key', element: 'key' }),
+    ])
+  })
+
   // <senza-misura> writes unmetered music, which MNX has no way to state.
   test('converts senza misura as a measure with no time signature', () => {
     const { score: result, warnings } = read(
@@ -249,12 +267,6 @@ describe('measure attributes', () => {
       readFailure(measure('<attributes><clef><sign>G</sign><line>９</line></clef></attributes>'))
         .message,
     ).toContain('is not a whole number')
-  })
-
-  test('rejects a key with no fifths', () => {
-    expect(readFailure(measure('<attributes><key/></attributes>')).message).toContain(
-      'missing a <fifths> child',
-    )
   })
 })
 

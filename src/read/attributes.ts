@@ -64,7 +64,10 @@ export function readAttributes(
 
   // MusicXML allows one key and one time signature per staff. MNX states them
   // for the whole score, so staves that disagree cannot both be carried.
-  const keys = element.children('key').map((found) => readKey(found, path))
+  const keys = element
+    .children('key')
+    .map((found) => readKey(found, warnings, context, path))
+    .filter((key): key is Key => key !== undefined)
   if (keys.some((other) => other.fifths !== keys[0]?.fifths)) {
     warnings.add(
       'unrepresentable:per-staff-key',
@@ -101,10 +104,30 @@ export function readAttributes(
   }
 }
 
-function readKey(element: XmlElement, path: DocumentPath): Key {
+function readKey(
+  element: XmlElement,
+  warnings: WarningCollector,
+  context: WarningContext,
+  path: DocumentPath,
+): Key | undefined {
+  // A key without <fifths> is non-traditional, spelled as individual altered
+  // steps, which MNX has no way to state. The notes still sound right,
+  // because each carries its own <alter>.
+  const fifths = child(element, 'fifths')
+  if (!fifths) {
+    warnings.add(
+      'unrepresentable:non-traditional-key',
+      'A key signature written as individual altered steps cannot be stated in MNX, ' +
+        'which counts fifths. The signature is not converted; the notes still sound right.',
+      { ...context, line: element.line },
+      'key',
+    )
+    return undefined
+  }
+
   // Seven accidentals is the practical limit; beyond eleven a key signature
   // cannot be written at all, so anything larger is a corrupt file.
-  return { fifths: readIntegerInRange(requireChild(element, 'fifths', path), path, -11, 11) }
+  return { fifths: readIntegerInRange(fifths, path, -11, 11) }
 }
 
 function readTime(

@@ -59,6 +59,10 @@ export type WarningCode =
   // A measure marked senza misura is unmetered, and MNX states meter as a
   // time signature or nothing. The measure carries no time signature.
   | 'unrepresentable:senza-misura'
+  // A key signature written as individual altered steps rather than a count
+  // of fifths, which is all MNX can state. The signature is dropped; the
+  // notes still sound right, because each carries its own alteration.
+  | 'unrepresentable:non-traditional-key'
 
   // --- The source disagreeing with itself -------------------------------
   // A part's id has no matching entry in the part list, so its name and any
