@@ -146,10 +146,11 @@ export function sourcePitches(root: XmlElement): string[] {
 }
 
 /**
- * How long each measure of each part sounds in the source, counted in
- * divisions and reduced to whole notes. This follows MusicXML's cursor by
- * hand: notes advance it, chord notes and grace notes do not, and <backup>
- * and <forward> move it directly.
+ * How long each measure of each part sounds in the source, in whole notes.
+ * This follows MusicXML's cursor by hand: notes advance it, chord notes and
+ * grace notes do not, and <backup> and <forward> move it directly. Each
+ * duration is reduced to whole notes at the divisions in force where it
+ * occurs, because <divisions> can change in the middle of a measure.
  */
 export function sourceMeasureLengths(root: XmlElement): number[][] {
   const perPart: number[][] = []
@@ -164,7 +165,8 @@ export function sourceMeasureLengths(root: XmlElement): number[][] {
 
       for (const item of measure.children) {
         const durationOf = () =>
-          Number(item.children.find((c) => c.name === 'duration')?.text.trim() ?? '0')
+          Number(item.children.find((c) => c.name === 'duration')?.text.trim() ?? '0') /
+          (divisions * 4)
 
         if (item.name === 'attributes') {
           const stated = item.children.find((c) => c.name === 'divisions')?.text.trim()
@@ -180,7 +182,7 @@ export function sourceMeasureLengths(root: XmlElement): number[][] {
         }
         furthest = Math.max(furthest, position)
       }
-      lengths.push(furthest / (divisions * 4))
+      lengths.push(furthest)
     }
     perPart.push(lengths)
   }
