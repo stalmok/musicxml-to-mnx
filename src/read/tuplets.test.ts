@@ -498,8 +498,91 @@ describe('two-note tremolos', () => {
     )
   })
 
-  test('rejects a count of beams no tremolo can be drawn with', () => {
-    expect(readFailure(measure(tremoloNote('C', 'start', '9'))).message).toContain('9 beams')
+  // The same degradation a single-note tremolo gets: the pair still
+  // converts, drawn the usual way, and the loss is reported.
+  test('draws three beams where the stated count cannot be', () => {
+    const { content, warnings } = read(
+      measure(tremoloNote('C', 'start', '9') + tremoloNote('E', 'stop', '9')),
+    )
+
+    expect(content?.[0]?.kind === 'multiNoteTremolo' && content[0].marks).toBe(3)
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:element',
+      'unrepresentable:element',
+    ])
+  })
+
+  // Both ends count the beams joining the pair, and there is one pair to
+  // draw.
+  test('reports ends that count different beams, keeping the start', () => {
+    const { content, warnings } = read(
+      measure(tremoloNote('C', 'start', '2') + tremoloNote('E', 'stop', '4')),
+    )
+
+    expect(content?.[0]?.kind === 'multiNoteTremolo' && content[0].marks).toBe(2)
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tremolo'])
+  })
+
+  // MNX has nowhere on a two-note tremolo to say which side it is drawn on.
+  test('reports a placement the pair cannot carry', () => {
+    const placed =
+      '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+      '<duration>12</duration><type>half</type>' +
+      '<time-modification><actual-notes>2</actual-notes><normal-notes>1</normal-notes>' +
+      '</time-modification>' +
+      '<notations><ornaments><tremolo type="start" placement="above">3</tremolo>' +
+      '</ornaments></notations></note>'
+    const { content, warnings } = read(measure(placed + tremoloNote('E', 'stop')))
+
+    expect(content?.[0]?.kind).toBe('multiNoteTremolo')
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:element'])
+  })
+
+  // A tuplet edge and a tremolo edge can land on different notes. Popping
+  // the wrong frame would lose notes without a word, so both directions
+  // refuse.
+  test('rejects a tuplet closing inside a tremolo', () => {
+    const opens =
+      '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+      '<duration>4</duration><type>eighth</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+      '</time-modification><notations><tuplet type="start"/></notations></note>'
+    const closesBoth =
+      '<note><pitch><step>D</step><octave>4</octave></pitch>' +
+      '<duration>4</duration><type>eighth</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+      '</time-modification><notations><tuplet type="stop"/>' +
+      '<ornaments><tremolo type="start">3</tremolo></ornaments></notations></note>'
+
+    expect(readFailure(measure(opens + closesBoth)).message).toContain(
+      'closes inside a two-note tremolo',
+    )
+  })
+
+  test('rejects a tuplet starting inside a tremolo', () => {
+    const startsBoth =
+      '<note><pitch><step>E</step><octave>4</octave></pitch>' +
+      '<duration>4</duration><type>eighth</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+      '</time-modification><notations><tuplet type="start"/>' +
+      '<ornaments><tremolo type="stop">3</tremolo></ornaments></notations></note>'
+
+    expect(readFailure(measure(tremoloNote('C', 'start') + startsBoth)).message).toContain(
+      'starts inside a two-note tremolo',
+    )
+  })
+
+  // An unmeasured tremolo names no beam count at all.
+  test('reports an unmeasured tremolo, which MNX cannot state', () => {
+    const unmeasured =
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>24</duration>' +
+      '<type>half</type>' +
+      '<notations><ornaments><tremolo type="unmeasured"/></ornaments></notations></note>'
+    const { content, warnings } = read(measure(unmeasured))
+
+    expect(content?.[0]?.kind === 'event' && content[0].markings).toEqual([])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:element'])
+    expect(warnings[0]?.message).toContain('unmeasured')
   })
 
   // A pair may sit inside a tuplet, its bracket starting and stopping on the

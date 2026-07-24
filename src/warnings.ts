@@ -75,6 +75,9 @@ export type WarningCode =
   // A tuplet whose written content does not add up to its stated ratio. The
   // content is converted as written.
   | 'inconsistent:tuplet'
+  // The two ends of a two-note tremolo count different beams. The start's
+  // count is the one converted.
+  | 'inconsistent:tremolo'
   // A tie or slur has only one of its two ends, so there is nothing to join
   // it to. Real scores contain these, so it is reported rather than refused.
   | 'unclosed:spanner'

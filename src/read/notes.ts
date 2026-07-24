@@ -121,7 +121,7 @@ export function readNote(
   // A tremolo written across two notes gives each of them the value of the
   // pair while the pair lasts only one of them. The pair is gathered into
   // one item, which is how MNX states it.
-  const tremolo = multiNoteTremoloOf(notations, path)
+  const tremolo = multiNoteTremoloOf(notations, warnings, context)
 
   // A tremolo on a single note carries no <time-modification> and lasts what
   // it is written as, so only the ornament itself is lost, and that is
@@ -148,7 +148,7 @@ export function readNote(
         })
       }
       const quantities = readTupletRatio(ratio, element, path)
-      builder.openTuplet(voice, quantities.inner, quantities.outer)
+      builder.openTuplet(voice, quantities.inner, quantities.outer, path, element.line)
     }
   }
 
@@ -238,7 +238,9 @@ export function readNote(
 
   // Closed before any tuplet stopping on the same note, because the pair
   // sits inside the bracket.
-  if (tremolo?.type === 'stop') builder.closeTremolo(voice, path, element.line)
+  if (tremolo?.type === 'stop') {
+    builder.closeTremolo(voice, tremolo.marks, warnings, context, path, element.line)
+  }
   closeTuplets(builder, voice, brackets, warnings, context, path, element.line)
 }
 
@@ -322,11 +324,22 @@ function readMarkings(
     // A tremolo on one note is drawn as beams across its stem, and MNX
     // states it with the other marks. One written across two notes is a
     // pair of events rather than a mark, gathered where the note is read,
-    // so its markers are passed over here.
+    // so its start and stop markers are passed over here.
     for (const ornaments of block.blocks('ornaments')) {
       for (const found of ornaments.children('tremolo')) {
         const type = attribute(found, 'type') ?? 'single'
-        if (type !== 'single') continue
+        if (type === 'start' || type === 'stop') continue
+        // An unmeasured tremolo has no beam count, and MNX states a tremolo
+        // as a count of beams.
+        if (type !== 'single') {
+          warnings.add(
+            'unrepresentable:element',
+            `A tremolo of type "${type}" cannot be stated in MNX, which counts beams.`,
+            { ...context, line: found.line },
+            'tremolo',
+          )
+          continue
+        }
 
         const text = trimmedText(found)
         const marks = text === '' ? 3 : Number(text)
@@ -637,7 +650,8 @@ function beamMarkers(element: ElementReader, path: DocumentPath): ReadonlyMap<nu
  */
 function multiNoteTremoloOf(
   notations: readonly ElementReader[],
-  path: DocumentPath,
+  warnings: WarningCollector,
+  context: WarningContext,
 ): { type: 'start' | 'stop'; marks: number } | undefined {
   for (const block of notations) {
     for (const ornaments of block.blocks('ornaments')) {
@@ -645,13 +659,31 @@ function multiNoteTremoloOf(
         const type = attribute(tremolo, 'type')
         if (type !== 'start' && type !== 'stop') continue
 
+        // MNX has nowhere on a two-note tremolo to say which side it is
+        // drawn on; the single-note kind carries that, this kind does not.
+        if (attribute(tremolo, 'placement') !== undefined) {
+          warnings.add(
+            'unrepresentable:element',
+            'A tremolo written across two notes says which side it is drawn on, and MNX ' +
+              'has nowhere to put that.',
+            { ...context, line: tremolo.line },
+            'tremolo',
+          )
+        }
+
         const text = tremolo.text.trim()
-        const marks = text === '' ? 3 : Number(text)
+        let marks = text === '' ? 3 : Number(text)
         if (!Number.isInteger(marks) || marks < 1 || marks > 8) {
-          throw new MusicXMLError(`A tremolo is drawn with ${text} beams, which cannot be.`, {
-            path,
-            line: tremolo.line,
-          })
+          // The same degradation the single-note kind gets: the pair still
+          // converts, drawn the usual way.
+          warnings.add(
+            'unrepresentable:element',
+            `A tremolo drawn with ${text} beams cannot be stated in MNX, which counts ` +
+              'from one to eight. Three beams are drawn instead.',
+            { ...context, line: tremolo.line },
+            'tremolo',
+          )
+          marks = 3
         }
         return { type, marks }
       }
