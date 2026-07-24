@@ -773,42 +773,109 @@ describe('event markings', () => {
 
   test('writes a strong accent with both where it points and which side', () => {
     expect(
-      markingsOf([{ kind: 'strongAccent', orient: 'above', pointing: 'up', symbol: undefined }]),
+      markingsOf([
+        {
+          kind: 'strongAccent',
+          orient: 'above',
+          pointing: 'up',
+          symbol: undefined,
+          marks: undefined,
+        },
+      ]),
     ).toEqual({ strongAccent: { orient: 'above', pointing: 'up' } })
   })
 
   test('writes a breath mark with both its glyph and which side', () => {
     expect(
-      markingsOf([{ kind: 'breath', orient: 'below', pointing: undefined, symbol: 'comma' }]),
+      markingsOf([
+        { kind: 'breath', orient: 'below', pointing: undefined, symbol: 'comma', marks: undefined },
+      ]),
     ).toEqual({ breath: { orient: 'below', symbol: 'comma' } })
   })
 
   test('leaves out a pointing a strong accent does not state', () => {
     expect(
       markingsOf([
-        { kind: 'strongAccent', orient: undefined, pointing: undefined, symbol: undefined },
+        {
+          kind: 'strongAccent',
+          orient: undefined,
+          pointing: undefined,
+          symbol: undefined,
+          marks: undefined,
+        },
       ]),
     ).toEqual({ strongAccent: {} })
   })
 
   test('leaves out a glyph a breath mark does not name', () => {
     expect(
-      markingsOf([{ kind: 'breath', orient: undefined, pointing: undefined, symbol: undefined }]),
+      markingsOf([
+        {
+          kind: 'breath',
+          orient: undefined,
+          pointing: undefined,
+          symbol: undefined,
+          marks: undefined,
+        },
+      ]),
     ).toEqual({ breath: {} })
   })
 
   test('writes a plain mark as an empty object, which is how MNX states it', () => {
     expect(
-      markingsOf([{ kind: 'staccato', orient: undefined, pointing: undefined, symbol: undefined }]),
+      markingsOf([
+        {
+          kind: 'staccato',
+          orient: undefined,
+          pointing: undefined,
+          symbol: undefined,
+          marks: undefined,
+        },
+      ]),
     ).toEqual({ staccato: {} })
+  })
+
+  test('writes a tremolo with how many beams it is drawn with', () => {
+    expect(
+      markingsOf([
+        { kind: 'tremolo', orient: 'above', pointing: undefined, symbol: undefined, marks: 2 },
+      ]),
+    ).toEqual({ tremolo: { orient: 'above', marks: 2 } })
+  })
+
+  // MNX requires a count, so a tremolo stating none is drawn the usual way.
+  test('draws three beams on a tremolo that does not count its own', () => {
+    expect(
+      markingsOf([
+        {
+          kind: 'tremolo',
+          orient: undefined,
+          pointing: undefined,
+          symbol: undefined,
+          marks: undefined,
+        },
+      ]),
+    ).toEqual({ tremolo: { marks: 3 } })
   })
 
   // Two of the same kind cannot both be stated, because MNX keys them by name.
   test('keeps one of each kind', () => {
     expect(
       markingsOf([
-        { kind: 'tenuto', orient: 'above', pointing: undefined, symbol: undefined },
-        { kind: 'tenuto', orient: 'below', pointing: undefined, symbol: undefined },
+        {
+          kind: 'tenuto',
+          orient: 'above',
+          pointing: undefined,
+          symbol: undefined,
+          marks: undefined,
+        },
+        {
+          kind: 'tenuto',
+          orient: 'below',
+          pointing: undefined,
+          symbol: undefined,
+          marks: undefined,
+        },
       ]),
     ).toEqual({ tenuto: { orient: 'below' } })
   })

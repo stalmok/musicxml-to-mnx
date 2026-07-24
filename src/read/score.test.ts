@@ -637,18 +637,21 @@ describe('reporting what is not converted', () => {
 
   // <notations> holds a mixture, and some of it is converted now. Reporting
   // the block wholesale would claim a slur was dropped when it was carried
-  // over, so what is inside it is reported instead.
+  // over, so what is inside it is reported instead. The same holds one level
+  // down: an <ornaments> whose tremolo is converted reports only what is
+  // actually passed over.
   test('reports what a notations block holds, not the block itself', () => {
     const { warnings } = read(
       measure(
         '<note><pitch><step>C</step><octave>4</octave></pitch><type>whole</type>' +
-          '<notations><tied type="start"/><technical/><ornaments/></notations></note>',
+          '<notations><tied type="start"/><technical/>' +
+          '<ornaments><trill-mark/></ornaments></notations></note>',
       ),
     )
 
     expect(warnings.map((w) => w.message)).toEqual([
       '<technical> is not converted yet.',
-      '<ornaments> is not converted yet.',
+      '<trill-mark> is not converted yet.',
     ])
   })
 

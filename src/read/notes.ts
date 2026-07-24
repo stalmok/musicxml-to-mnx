@@ -119,26 +119,23 @@ export function readNote(
   const brackets = tupletBrackets(notations)
 
   // A tremolo written across two notes gives each of them the value of the
-  // pair while the pair lasts only one of them, so its written values
-  // overfill the measure exactly as a tuplet's do. MNX states it as a
-  // multi-note tremolo, which is not converted yet, and emitting the written
-  // values on their own would hand back a measure that does not add up.
-  if (hasMultiNoteTremolo(notations)) {
-    throw new MusicXMLError('A tremolo written across two notes is not converted yet.', {
-      path,
-      line: element.line,
-    })
+  // pair while the pair lasts only one of them. The pair is gathered into
+  // one item, which is how MNX states it.
+  const tremolo = multiNoteTremoloOf(notations, path)
+  if (tremolo?.type === 'start') {
+    builder.openTremolo(voice, tremolo.marks, path, element.line)
   }
 
   // A tremolo on a single note carries no <time-modification> and lasts what
   // it is written as, so only the ornament itself is lost, and that is
-  // reported where <ornaments> is.
+  // reported where <ornaments> is. Across two notes it carries the pair's
+  // 2:1 ratio, which the tremolo item states.
   const ratio = element.child('time-modification')
 
   // A tuplet is bracketed in the source, and that bracket is what says where
   // one ends and the next begins. Without it there is nothing to group by,
   // and guessing would invent a grouping the source never wrote.
-  if (ratio && brackets.length === 0 && !builder.insideTuplet(voice)) {
+  if (ratio && brackets.length === 0 && !builder.insideTuplet(voice) && !tremolo) {
     throw new MusicXMLError(
       'A note carries a tuplet ratio but no <tuplet> bracket marks where the tuplet runs.',
       { path, line: element.line },
@@ -237,6 +234,7 @@ export function readNote(
   builder.addBeamMarkers(voice, event.id, beamMarkers(element, path))
 
   closeTuplets(builder, voice, brackets, warnings, context, path, element.line)
+  if (tremolo?.type === 'stop') builder.closeTremolo(voice, path, element.line)
 }
 
 function closeTuplets(
@@ -310,8 +308,54 @@ function readMarkings(
             pointing: kind === 'strongAccent' ? upOrDown(attribute(found, 'type')) : undefined,
             // A breath mark names its glyph as its text: a comma, a tick.
             symbol: kind === 'breath' ? trimmedText(found) || undefined : undefined,
+            marks: undefined,
           })
         }
+      }
+    }
+
+    // A tremolo on one note is drawn as beams across its stem, and MNX
+    // states it with the other marks. One written across two notes is a
+    // pair of events rather than a mark, gathered where the note is read,
+    // so its markers are passed over here.
+    for (const ornaments of block.blocks('ornaments')) {
+      for (const found of ornaments.children('tremolo')) {
+        const type = attribute(found, 'type') ?? 'single'
+        if (type !== 'single') continue
+
+        const text = trimmedText(found)
+        const marks = text === '' ? 3 : Number(text)
+        // Zero beams write an unmeasured tremolo, and MNX counts from one.
+        // Anything else out of range is not a tremolo a stem can carry.
+        if (!Number.isInteger(marks) || marks < 1 || marks > 8) {
+          warnings.add(
+            'unrepresentable:element',
+            `A tremolo drawn with ${text} beams cannot be stated in MNX, which counts ` +
+              'from one.',
+            { ...context, line: found.line },
+            'tremolo',
+          )
+          continue
+        }
+        if (seen.has('tremolo')) {
+          warnings.add(
+            'unrepresentable:marking',
+            'An event carries more than one <tremolo>, and MNX states one of each ' +
+              'kind. The first is the one converted.',
+            { ...context, line: found.line },
+            'tremolo',
+          )
+          continue
+        }
+        seen.add('tremolo')
+
+        markings.push({
+          kind: 'tremolo',
+          orient: placementOf(found),
+          pointing: undefined,
+          symbol: undefined,
+          marks,
+        })
       }
     }
   }
@@ -581,17 +625,34 @@ function beamMarkers(element: ElementReader, path: DocumentPath): ReadonlyMap<nu
   return markers
 }
 
-function hasMultiNoteTremolo(notations: readonly ElementReader[]): boolean {
-  return notations.some((block) =>
-    // Left unread on purpose: <ornaments> carries much this converter does
-    // not handle, so it stays in the loss report either way.
-    children(block.element, 'ornaments').some((ornaments) =>
-      children(ornaments, 'tremolo').some((tremolo) => {
+/**
+ * The end of a two-note tremolo this note carries, when it does. The
+ * element's text counts the beams joining the pair; three where it says
+ * nothing, which is how the mark is usually drawn.
+ */
+function multiNoteTremoloOf(
+  notations: readonly ElementReader[],
+  path: DocumentPath,
+): { type: 'start' | 'stop'; marks: number } | undefined {
+  for (const block of notations) {
+    for (const ornaments of block.blocks('ornaments')) {
+      for (const tremolo of ornaments.children('tremolo')) {
         const type = attribute(tremolo, 'type')
-        return type === 'start' || type === 'stop'
-      }),
-    ),
-  )
+        if (type !== 'start' && type !== 'stop') continue
+
+        const text = tremolo.text.trim()
+        const marks = text === '' ? 3 : Number(text)
+        if (!Number.isInteger(marks) || marks < 1 || marks > 8) {
+          throw new MusicXMLError(`A tremolo is drawn with ${text} beams, which cannot be.`, {
+            path,
+            line: tremolo.line,
+          })
+        }
+        return { type, marks }
+      }
+    }
+  }
+  return undefined
 }
 
 /**

@@ -26,6 +26,21 @@ function tupletNote(step: string, units: number, type: string, bracket = ''): st
   )
 }
 
+/**
+ * One note of a two-note tremolo: written as a half, lasting a quarter of
+ * the measure (12 divisions), with the pair's 2:1 ratio.
+ */
+function tremoloNote(step: string, type: string, marks = '3'): string {
+  return (
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    '<duration>12</duration><type>half</type>' +
+    '<time-modification><actual-notes>2</actual-notes><normal-notes>1</normal-notes>' +
+    '</time-modification>' +
+    `<notations><ornaments><tremolo type="${type}">${marks}</tremolo></ornaments></notations>` +
+    '</note>'
+  )
+}
+
 /** Three eighths in the time of two, which together fill one quarter. */
 const TRIPLET =
   tupletNote('C', 4, 'eighth', 'start') +
@@ -299,19 +314,15 @@ describe('tuplets', () => {
   })
 
   // A tremolo written across two notes carries <time-modification> as well,
-  // and its written values overfill the measure exactly as a tuplet's do.
-  test('rejects a tremolo written across two notes rather than reading it as a tuplet', () => {
-    const tremolo =
-      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>12</duration>' +
-      '<type>half</type><time-modification><actual-notes>2</actual-notes>' +
-      '<normal-notes>1</normal-notes></time-modification>' +
-      '<notations><ornaments><tremolo type="start">3</tremolo></ornaments></notations></note>'
+  // but it is not a tuplet: the pair is one tremolo item.
+  test('does not mistake a tremolo written across two notes for a tuplet', () => {
+    const { content } = read(measure(tremoloNote('C', 'start') + tremoloNote('E', 'stop')))
 
-    expect(readFailure(measure(tremolo)).message).toContain('tremolo written across two notes')
+    expect(content?.[0]?.kind).toBe('multiNoteTremolo')
   })
 
-  // One written on a single note lasts what it is written as, so only the
-  // ornament is lost.
+  // One written on a single note lasts what it is written as, and is a mark
+  // on the event.
   test('converts a note carrying a tremolo of its own', () => {
     const tremolo =
       '<note><pitch><step>C</step><octave>4</octave></pitch><duration>24</duration>' +
@@ -320,7 +331,10 @@ describe('tuplets', () => {
     const { content, warnings } = read(measure(tremolo))
 
     expect(content?.[0]?.kind === 'event' && content[0].value).toEqual({ base: 'half', dots: 0 })
-    expect(warnings.map((w) => w.message)).toContain('<ornaments> is not converted yet.')
+    expect(content?.[0]?.kind === 'event' && content[0].markings).toEqual([
+      { kind: 'tremolo', orient: undefined, pointing: undefined, symbol: undefined, marks: 3 },
+    ])
+    expect(warnings).toEqual([])
   })
 
   test('rejects a tuplet opening on a note that states no ratio', () => {
@@ -414,5 +428,144 @@ describe('grace notes', () => {
     // Two quarters and a grace note fill a 2/4 bar; the grace note adds
     // nothing to that.
     expect(content?.filter((item) => item.kind === 'event')).toHaveLength(2)
+  })
+})
+
+// A tremolo written across two notes gives each the value of the pair while
+// the pair occupies that value once, stated as the note's <duration> and a
+// 2:1 <time-modification>. MNX gathers the pair into one tremolo item.
+describe('two-note tremolos', () => {
+  test('gathers the pair into one item, warning about nothing', () => {
+    const { content, warnings } = read(
+      measure(tremoloNote('C', 'start') + tremoloNote('E', 'stop')),
+    )
+
+    expect(content).toHaveLength(1)
+    const item = content?.[0]
+    expect(item?.kind === 'multiNoteTremolo' && item.marks).toBe(3)
+    expect(item?.kind === 'multiNoteTremolo' && item.outer).toEqual({
+      value: { base: 'quarter', dots: 0 },
+      multiple: 2,
+    })
+    expect(
+      item?.kind === 'multiNoteTremolo' && item.content.map((event) => event.value.base),
+    ).toEqual(['half', 'half'])
+    expect(warnings).toEqual([])
+  })
+
+  // The mark is usually drawn with three beams, and that is what an empty
+  // element means.
+  test('draws three beams where the source does not count them', () => {
+    const { content } = read(measure(tremoloNote('C', 'start', '') + tremoloNote('E', 'stop', '')))
+
+    expect(content?.[0]?.kind === 'multiNoteTremolo' && content[0].marks).toBe(3)
+  })
+
+  test('keeps the notes of a chord together under the tremolo', () => {
+    const chord =
+      '<note><chord/><pitch><step>G</step><octave>4</octave></pitch>' +
+      '<duration>12</duration><type>half</type></note>'
+    const { content } = read(
+      measure(tremoloNote('C', 'start') + chord + tremoloNote('E', 'stop') + chord),
+    )
+
+    const item = content?.[0]
+    expect(
+      item?.kind === 'multiNoteTremolo' && item.content.map((event) => event.notes.length),
+    ).toEqual([2, 2])
+  })
+
+  test('rejects a tremolo that stops where none is open', () => {
+    expect(readFailure(measure(tremoloNote('C', 'stop'))).message).toContain(
+      'stops where none is open',
+    )
+  })
+
+  test('rejects a tremolo that is opened and never closed', () => {
+    expect(readFailure(measure(tremoloNote('C', 'start'))).message).toContain(
+      'opened and never closed',
+    )
+  })
+
+  test('rejects a pair whose notes last different times', () => {
+    const shorter =
+      '<note><pitch><step>E</step><octave>4</octave></pitch><duration>6</duration>' +
+      '<type>quarter</type><notations><ornaments><tremolo type="stop">3</tremolo>' +
+      '</ornaments></notations></note>'
+
+    expect(readFailure(measure(tremoloNote('C', 'start') + shorter)).message).toContain(
+      'last different times',
+    )
+  })
+
+  test('rejects a count of beams no tremolo can be drawn with', () => {
+    expect(readFailure(measure(tremoloNote('C', 'start', '9'))).message).toContain('9 beams')
+  })
+
+  test('rejects a tremolo starting inside another', () => {
+    expect(
+      readFailure(measure(tremoloNote('C', 'start') + tremoloNote('E', 'start'))).message,
+    ).toContain('inside another')
+  })
+
+  // A note between the pair belongs to neither of them.
+  test('rejects a tremolo holding more than its two notes', () => {
+    const between =
+      '<note><pitch><step>D</step><octave>4</octave></pitch>' +
+      '<duration>12</duration><type>quarter</type></note>'
+
+    expect(
+      readFailure(measure(tremoloNote('C', 'start') + between + tremoloNote('E', 'stop'))).message,
+    ).toContain('something other than two notes')
+  })
+
+  test('rejects a pair whose time no note value can write', () => {
+    const third = (step: string, type: string) =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+      '<duration>4</duration><type>half</type>' +
+      `<notations><ornaments><tremolo type="${type}">3</tremolo></ornaments></notations></note>`
+
+    expect(readFailure(measure(third('C', 'start') + third('E', 'stop'))).message).toContain(
+      'no note value can write',
+    )
+  })
+
+  // A bare <tremolo/> is a single-note tremolo, drawn the usual way: single
+  // is MusicXML's default type, and three beams is how the mark is drawn
+  // where the source does not count them.
+  test('reads a tremolo that states neither type nor count', () => {
+    const bare =
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>24</duration>' +
+      '<type>half</type><notations><ornaments><tremolo/></ornaments></notations></note>'
+    const { content, warnings } = read(measure(bare))
+
+    expect(
+      content?.[0]?.kind === 'event' && content[0].markings.map((m) => [m.kind, m.marks]),
+    ).toEqual([['tremolo', 3]])
+    expect(warnings).toEqual([])
+  })
+
+  // Zero beams write an unmeasured tremolo, which MNX cannot state.
+  test('reports a single-note tremolo drawn with no beams', () => {
+    const unmeasured =
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>24</duration>' +
+      '<type>half</type>' +
+      '<notations><ornaments><tremolo type="single">0</tremolo></ornaments></notations></note>'
+    const { content, warnings } = read(measure(unmeasured))
+
+    expect(content?.[0]?.kind === 'event' && content[0].markings).toEqual([])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:element'])
+  })
+
+  test('keeps the first of two single-note tremolos', () => {
+    const doubled =
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>24</duration>' +
+      '<type>half</type>' +
+      '<notations><ornaments><tremolo type="single">3</tremolo>' +
+      '<tremolo type="single">2</tremolo></ornaments></notations></note>'
+    const { content, warnings } = read(measure(doubled))
+
+    expect(content?.[0]?.kind === 'event' && content[0].markings.map((m) => m.marks)).toEqual([3])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:marking'])
   })
 })

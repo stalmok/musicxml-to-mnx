@@ -39,6 +39,11 @@ export function sounding(item: MNXSequenceItem): number {
   if ('type' in item && item.type === 'space') return item.duration[0] / item.duration[1]
   // A grace note is squeezed in and takes no time.
   if ('type' in item && item.type === 'grace') return 0
+  // A two-note tremolo occupies its outer duration: each note is written
+  // with the value of the pair, not with what it occupies.
+  if ('type' in item && item.type === 'tremolo') {
+    return writtenLength(item.outer.duration) * item.outer.multiple
+  }
   if ('type' in item && item.type === 'tuplet') {
     // Scaled by the ratio rather than assumed full, so a tuplet the source
     // only partly fills is still measured correctly.
@@ -67,6 +72,16 @@ export function collectStarts(
       const outer = writtenLength(item.outer.duration) * item.outer.multiple
       const inner = writtenLength(item.inner.duration) * item.inner.multiple
       at = collectStarts(item.content, at, (scale * outer) / inner, into)
+      continue
+    }
+    // The notes of a two-note tremolo begin one outer unit apart, whatever
+    // value they are written with.
+    if ('type' in item && item.type === 'tremolo') {
+      const unit = writtenLength(item.outer.duration) * scale
+      item.content.forEach((_, index) => {
+        into.add((at + index * unit).toFixed(9))
+      })
+      at += unit * item.outer.multiple
       continue
     }
     // A grace note is squeezed in beside the event it ornaments and takes
@@ -114,7 +129,10 @@ export function pitchesOf(document: MNXDocument): string[] {
         const found: string[] = []
         const walk = (items: readonly MNXSequenceItem[]): void => {
           for (const item of items) {
-            if ('type' in item && (item.type === 'tuplet' || item.type === 'grace')) {
+            if (
+              'type' in item &&
+              (item.type === 'tuplet' || item.type === 'grace' || item.type === 'tremolo')
+            ) {
               walk(item.content)
               continue
             }

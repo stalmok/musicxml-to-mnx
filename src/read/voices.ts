@@ -19,7 +19,7 @@ import {
   subtractFractions,
 } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
-import { lengthOf } from './duration.js'
+import { describeLength, lengthOf, noteValueOf } from './duration.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { BeamedEvent } from './beams.js'
 import type {
@@ -64,6 +64,11 @@ interface VoiceBuilder {
    * written value a note inside really lasts: 2/3 inside a triplet.
    */
   openTuplets: { tuplet: Tuplet; ratio: Fraction }[]
+  /**
+   * The two-note tremolo currently being gathered, when one is. Its item is
+   * not in the content yet: it joins once both notes are in and agree.
+   */
+  openTremolo: { marks: number; durations: Fraction[] } | undefined
   content: SequenceItem[]
   /** Where this voice's content runs out, measured from the measure start. */
   end: Fraction
@@ -229,6 +234,7 @@ export class MeasureBuilder {
     builder.lastDuration = duration
     builder.lastStart = this.#cursor
     this.#eventStarts.push(this.#cursor)
+    builder.openTremolo?.durations.push(duration)
     builder.end = addFractions(this.#cursor, duration)
     this.#cursor = builder.end
   }
@@ -364,12 +370,82 @@ export class MeasureBuilder {
   /**
    * How much of its written value a note in this voice really lasts, given
    * every tuplet currently open around it: 2/3 inside a triplet, and the
-   * ratios multiply where tuplets nest.
+   * ratios multiply where tuplets nest. Inside a two-note tremolo each note
+   * is written with the value of the pair, so it lasts half of it.
    */
   tupletFactor(voice: string | undefined): Fraction {
-    return this.#builderFor(voice)
-      .openTuplets.map((open) => open.ratio)
+    const builder = this.#builderFor(voice)
+    const factor = builder.openTuplets
+      .map((open) => open.ratio)
       .reduce(multiplyFractions, fraction(1))
+    return builder.openTremolo ? multiplyFractions(factor, fraction(1, 2)) : factor
+  }
+
+  /**
+   * Starts a two-note tremolo in this voice. The notes added while it is
+   * open are gathered, and join the content as one item when it closes.
+   */
+  openTremolo(voice: string | undefined, marks: number, path: DocumentPath, line: number): void {
+    const builder = this.#builderFor(voice)
+    if (builder.openTremolo) {
+      throw new MusicXMLError('A tremolo starts inside another tremolo.', { path, line })
+    }
+
+    // Time this voice has passed over in silence belongs before the tremolo.
+    this.#fillGap(builder)
+    const content: SequenceItem[] = []
+    builder.open.push(content)
+    builder.openTremolo = { marks, durations: [] }
+  }
+
+  /**
+   * Closes the tremolo: exactly two notes of one written value, together
+   * occupying twice their measured duration. Anything else is a tremolo this
+   * converter cannot make sense of, and refusing is better than emitting a
+   * measure that does not add up.
+   */
+  closeTremolo(voice: string | undefined, path: DocumentPath, line: number): void {
+    const builder = this.#builderFor(voice)
+    const pending = builder.openTremolo
+    if (!pending) {
+      throw new MusicXMLError('A tremolo stops where none is open.', { path, line })
+    }
+
+    const content = builder.open.pop()
+    builder.openTremolo = undefined
+    /* v8 ignore next 2 -- the content list is pushed when the tremolo opens,
+       so it is always there to pop. */
+    if (!content) throw new Error('A tremolo closed with no content gathered for it.')
+
+    const events = content.filter((item): item is Event => item.kind === 'event')
+    if (events.length !== 2 || content.length !== 2) {
+      throw new MusicXMLError(
+        'A tremolo written across two notes holds something other than two notes.',
+        { path, line },
+      )
+    }
+
+    const [first, second] = pending.durations
+    if (!first || !second || compareFractions(first, second) !== 0) {
+      throw new MusicXMLError('The two notes of a tremolo last different times.', { path, line })
+    }
+
+    // The time the tremolo occupies, stated one unit per note as MNX has it:
+    // a pair of written halves occupies two quarters.
+    const unit = noteValueOf(first)
+    if (!unit) {
+      throw new MusicXMLError(
+        `A note of a tremolo lasts ${describeLength(first)}, which no note value can write.`,
+        { path, line },
+      )
+    }
+
+    innermost(builder).push({
+      kind: 'multiNoteTremolo',
+      marks: pending.marks,
+      outer: { value: unit, multiple: 2 },
+      content: events,
+    })
   }
 
   /** Records what an event said about the beams it carries. */
@@ -579,9 +655,12 @@ export class MeasureBuilder {
     builder.graceBeamed.push([])
   }
 
-  /** Reports any tuplet the measure opened and never closed. */
+  /** Reports any tuplet or tremolo the measure opened and never closed. */
   checkAllClosed(path: DocumentPath, line: number): void {
     for (const builder of this.#voices.values()) {
+      if (builder.openTremolo) {
+        throw new MusicXMLError('A tremolo is opened and never closed.', { path, line })
+      }
       if (builder.open.length > 1) {
         throw new MusicXMLError('A tuplet is opened and never closed.', { path, line })
       }
@@ -630,6 +709,7 @@ export class MeasureBuilder {
       placed: [],
       open: [content],
       openTuplets: [],
+      openTremolo: undefined,
       content,
       end: fraction(0),
       lastEvent: undefined,

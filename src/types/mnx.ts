@@ -121,6 +121,14 @@ export interface MNXEventMarkings {
   softAccent?: MNXMarking
   strongAccent?: MNXStrongAccent
   breath?: MNXBreathMark
+  tremolo?: MNXSingleNoteTremolo
+}
+
+/** A tremolo on one note, drawn as beams across its stem. */
+export interface MNXSingleNoteTremolo {
+  /** How many beams the tremolo is drawn with. */
+  marks: number
+  orient?: 'above' | 'below'
 }
 
 export type MNXFermataSymbol =
@@ -201,7 +209,17 @@ export interface MNXGraceGroup {
   slash?: boolean
 }
 
-export type MNXSequenceItem = MNXEvent | MNXSpace | MNXTuplet | MNXGraceGroup
+/** A tremolo written across two notes, played as a rapid alternation. */
+export interface MNXMultiNoteTremolo {
+  type: 'tremolo'
+  content: MNXEvent[]
+  /** How many beams join the pair. */
+  marks: number
+  /** The time the tremolo occupies: one unit per event. */
+  outer: MNXNoteValueQuantity
+}
+
+export type MNXSequenceItem = MNXEvent | MNXSpace | MNXTuplet | MNXGraceGroup | MNXMultiNoteTremolo
 
 export interface MNXSequence {
   /** The voice this sequence belongs to, where a measure holds more than one. */

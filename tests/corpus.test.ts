@@ -59,13 +59,7 @@ test('refuses only the songs it is known to refuse', () => {
     // Without the location, which moves whenever a file is re-exported.
     .map((song) => `${song.name}: ${(song.rejected ?? '').split(' (at ')[0] ?? ''}`)
 
-  expect(refused.sort()).toEqual(
-    [
-      'berlioz-2-le-spectre-de-la-rose',
-      'davies-5-the-fly-and-the-humble-bee',
-      'jaell-5-en-ramant',
-    ].map((name) => `${name}: A tremolo written across two notes is not converted yet.`),
-  )
+  expect(refused.sort()).toEqual([])
 })
 
 /**
@@ -220,7 +214,10 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     const named = new Set<string>()
     const collect = (items: readonly MNXSequenceItem[]): void => {
       for (const item of items) {
-        if ('type' in item && (item.type === 'tuplet' || item.type === 'grace')) {
+        if (
+          'type' in item &&
+          (item.type === 'tuplet' || item.type === 'grace' || item.type === 'tremolo')
+        ) {
           collect(item.content)
           continue
         }
@@ -240,7 +237,10 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     }
     const fromSpanners = (items: readonly MNXSequenceItem[]): void => {
       for (const item of items) {
-        if ('type' in item && (item.type === 'tuplet' || item.type === 'grace')) {
+        if (
+          'type' in item &&
+          (item.type === 'tuplet' || item.type === 'grace' || item.type === 'tremolo')
+        ) {
           fromSpanners(item.content)
           continue
         }
@@ -432,7 +432,10 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
           const byLine = new Map<string, string[]>()
           const collect = (items: readonly MNXSequenceItem[]): void => {
             for (const item of items) {
-              if ('type' in item && (item.type === 'tuplet' || item.type === 'grace')) {
+              if (
+                'type' in item &&
+                (item.type === 'tuplet' || item.type === 'grace' || item.type === 'tremolo')
+              ) {
                 collect(item.content)
                 continue
               }
@@ -491,7 +494,10 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     let shown = 0
     const walk = (items: readonly MNXSequenceItem[]): void => {
       for (const item of items) {
-        if ('type' in item && (item.type === 'tuplet' || item.type === 'grace')) {
+        if (
+          'type' in item &&
+          (item.type === 'tuplet' || item.type === 'grace' || item.type === 'tremolo')
+        ) {
           walk(item.content)
           continue
         }

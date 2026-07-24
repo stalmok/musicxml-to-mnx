@@ -98,7 +98,7 @@ function surveyScore(score: Score): {
 
   const walk = (items: readonly SequenceItem[]): void => {
     for (const item of items) {
-      if (item.kind === 'tuplet' || item.kind === 'grace') {
+      if (item.kind === 'tuplet' || item.kind === 'grace' || item.kind === 'multiNoteTremolo') {
         walk(item.content)
         continue
       }
@@ -348,6 +348,14 @@ function writeItem(item: SequenceItem, referenced: ReadonlySet<string>): MNXSequ
         ...(item.slashed ? { slash: true } : {}),
       }
 
+    case 'multiNoteTremolo':
+      return {
+        type: 'tremolo',
+        marks: item.marks,
+        outer: writeQuantity(item.outer),
+        content: item.content.map((event) => writeEvent(event, referenced)),
+      }
+
     default:
       return writeEvent(item, referenced)
   }
@@ -401,6 +409,10 @@ function writeMarkings(markings: readonly Marking[]): MNXEventMarkings {
         break
       case 'breath':
         written.breath = { ...orient, ...(marking.symbol ? { symbol: marking.symbol } : {}) }
+        break
+      case 'tremolo':
+        // The reader always states how many beams a tremolo is drawn with.
+        written.tremolo = { ...orient, marks: marking.marks ?? 3 }
         break
       default:
         written[marking.kind] = orient

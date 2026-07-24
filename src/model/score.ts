@@ -103,6 +103,7 @@ export type MarkingKind =
   | 'softAccent'
   | 'strongAccent'
   | 'breath'
+  | 'tremolo'
 
 export interface Marking {
   kind: MarkingKind
@@ -112,6 +113,8 @@ export interface Marking {
   pointing: 'up' | 'down' | undefined
   /** The symbol a breath mark is drawn with, where the source names one. */
   symbol: string | undefined
+  /** How many beams a single-note tremolo is drawn with. */
+  marks: number | undefined
 }
 
 /**
@@ -192,7 +195,24 @@ export interface GraceGroup {
   slashed: boolean
 }
 
-export type SequenceItem = Event | Space | Tuplet | GraceGroup
+/**
+ * A tremolo written across two notes, played as a rapid alternation. Each
+ * note is drawn with the value of the whole tremolo, and together they
+ * occupy that value once.
+ */
+export interface MultiNoteTremolo {
+  kind: 'multiNoteTremolo'
+  /** How many beams join the pair. */
+  marks: number
+  /**
+   * The time the tremolo occupies: one unit per event, so a pair of written
+   * halves occupies two quarters.
+   */
+  outer: NoteValueQuantity
+  content: readonly Event[]
+}
+
+export type SequenceItem = Event | Space | Tuplet | GraceGroup | MultiNoteTremolo
 
 /**
  * A rest that fills its measure, whatever the time signature says that is.
