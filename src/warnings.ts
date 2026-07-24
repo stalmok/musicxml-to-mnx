@@ -56,6 +56,9 @@ export type WarningCode =
   // Two clefs written at the same point on the same staff, where MNX draws
   // one. The last declared is the one the following notes obey.
   | 'unrepresentable:clef'
+  // A measure marked senza misura is unmetered, and MNX states meter as a
+  // time signature or nothing. The measure carries no time signature.
+  | 'unrepresentable:senza-misura'
 
   // --- The source disagreeing with itself -------------------------------
   // A part's id has no matching entry in the part list, so its name and any

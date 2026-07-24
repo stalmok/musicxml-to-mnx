@@ -75,8 +75,11 @@ export function readAttributes(
     )
   }
 
-  const times = element.children('time').map((found) => readTime(found, path))
-  if (times.some((other) => other.count !== times[0]?.count || other.unit !== times[0]?.unit)) {
+  const times = element.children('time').map((found) => readTime(found, warnings, context, path))
+  const metered = times.filter((time): time is TimeSignature => time !== undefined)
+  if (
+    metered.some((other) => other.count !== metered[0]?.count || other.unit !== metered[0]?.unit)
+  ) {
     warnings.add(
       'unrepresentable:per-staff-time',
       'The staves of this part are in different time signatures, and MNX states one ' +
@@ -87,12 +90,13 @@ export function readAttributes(
   }
 
   // Held on the part so a later measure that restates neither still knows
-  // how long it runs.
-  state.time = times[0] ?? state.time
+  // how long it runs. A senza-misura statement clears it: the music is
+  // unmetered from here on, whatever was in force before.
+  if (times.length > 0) state.time = metered[0]
 
   return {
     key: keys[0],
-    time: times[0],
+    time: metered[0],
     clefs: element.children('clef').map((found) => readClef(found, state, position, path)),
   }
 }
@@ -103,7 +107,24 @@ function readKey(element: XmlElement, path: DocumentPath): Key {
   return { fifths: readIntegerInRange(requireChild(element, 'fifths', path), path, -11, 11) }
 }
 
-function readTime(element: XmlElement, path: DocumentPath): TimeSignature {
+function readTime(
+  element: XmlElement,
+  warnings: WarningCollector,
+  context: WarningContext,
+  path: DocumentPath,
+): TimeSignature | undefined {
+  // <senza-misura> writes unmetered music, which MNX has no way to state.
+  if (child(element, 'senza-misura')) {
+    warnings.add(
+      'unrepresentable:senza-misura',
+      'This music is written senza misura, and MNX states meter as a time signature ' +
+        'or nothing. The measure is converted with no time signature.',
+      { ...context, line: element.line },
+      'senza-misura',
+    )
+    return undefined
+  }
+
   const count = readInteger(requireChild(element, 'beats', path), path)
   if (count <= 0) {
     throw new MusicXMLError(`A time signature has ${String(count)} beats.`, {

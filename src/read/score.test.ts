@@ -207,6 +207,20 @@ describe('measure attributes', () => {
     ).toContain('0 beats')
   })
 
+  // <senza-misura> writes unmetered music, which MNX has no way to state.
+  test('converts senza misura as a measure with no time signature', () => {
+    const { score: result, warnings } = read(
+      measure(
+        '<attributes><divisions>1</divisions><time><senza-misura/></time></attributes>' + NOTE,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.time).toBeUndefined()
+    expect(warnings).toEqual([
+      expect.objectContaining({ code: 'unrepresentable:senza-misura', element: 'senza-misura' }),
+    ])
+  })
+
   test('rejects a number that is not whole, naming the element', () => {
     expect(
       readFailure(measure('<attributes><key><fifths>two</fifths></key></attributes>')).message,
