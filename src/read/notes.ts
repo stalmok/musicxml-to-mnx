@@ -122,9 +122,6 @@ export function readNote(
   // pair while the pair lasts only one of them. The pair is gathered into
   // one item, which is how MNX states it.
   const tremolo = multiNoteTremoloOf(notations, path)
-  if (tremolo?.type === 'start') {
-    builder.openTremolo(voice, tremolo.marks, path, element.line)
-  }
 
   // A tremolo on a single note carries no <time-modification> and lasts what
   // it is written as, so only the ornament itself is lost, and that is
@@ -153,6 +150,12 @@ export function readNote(
       const quantities = readTupletRatio(ratio, element, path)
       builder.openTuplet(voice, quantities.inner, quantities.outer)
     }
+  }
+
+  // Opened after any tuplet starting on the same note: the pair may sit
+  // inside a tuplet, and the bracket is the outer grouping.
+  if (tremolo?.type === 'start') {
+    builder.openTremolo(voice, tremolo.marks, path, element.line)
   }
 
   // A rest marked as filling the measure is not an event with a length: MNX
@@ -233,8 +236,10 @@ export function readNote(
   readSlurs(notations, event, state, warnings, context)
   builder.addBeamMarkers(voice, event.id, beamMarkers(element, path))
 
-  closeTuplets(builder, voice, brackets, warnings, context, path, element.line)
+  // Closed before any tuplet stopping on the same note, because the pair
+  // sits inside the bracket.
   if (tremolo?.type === 'stop') builder.closeTremolo(voice, path, element.line)
+  closeTuplets(builder, voice, brackets, warnings, context, path, element.line)
 }
 
 function closeTuplets(

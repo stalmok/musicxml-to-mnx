@@ -502,6 +502,32 @@ describe('two-note tremolos', () => {
     expect(readFailure(measure(tremoloNote('C', 'start', '9'))).message).toContain('9 beams')
   })
 
+  // A pair may sit inside a tuplet, its bracket starting and stopping on the
+  // same notes as the tremolo. The bracket is the outer grouping, and inside
+  // it the tremolo's time is stated in the written values the ratio scales: a
+  // pair of dotted quarters standing for three eighths in the time of two
+  // occupies two written dotted eighths.
+  test('nests a tremolo inside a tuplet whose bracket rides the same notes', () => {
+    const note = (step: string, edge: string) =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+      '<duration>6</duration><type>quarter</type><dot/>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+      '<normal-type>eighth</normal-type></time-modification>' +
+      `<notations><tuplet type="${edge}"/>` +
+      `<ornaments><tremolo type="${edge}">3</tremolo>` +
+      '</ornaments></notations></note>'
+    const { content, warnings } = read(measure(note('C', 'start') + note('E', 'stop')))
+
+    expect(content?.[0]?.kind).toBe('tuplet')
+    const inner = content?.[0]?.kind === 'tuplet' ? content[0].content[0] : undefined
+    expect(inner?.kind).toBe('multiNoteTremolo')
+    expect(inner?.kind === 'multiNoteTremolo' && inner.outer).toEqual({
+      value: { base: 'eighth', dots: 1 },
+      multiple: 2,
+    })
+    expect(warnings).toEqual([])
+  })
+
   test('rejects a tremolo starting inside another', () => {
     expect(
       readFailure(measure(tremoloNote('C', 'start') + tremoloNote('E', 'start'))).message,

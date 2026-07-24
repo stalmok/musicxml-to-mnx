@@ -150,8 +150,9 @@ function writtenLengthOf(items: readonly SequenceItem[]): Fraction {
     // A grace group takes none of the measure's time, so it adds nothing.
     if (item.kind === 'event') total = addFractions(total, lengthOf(item.value))
     if (item.kind === 'space') total = addFractions(total, item.duration)
-    if (item.kind === 'tuplet') {
-      // A nested tuplet stands in its parent for the space it is played in.
+    if (item.kind === 'tuplet' || item.kind === 'multiNoteTremolo') {
+      // A nested tuplet stands in its parent for the space it is played in,
+      // and a tremolo for the time its pair occupies.
       total = addFractions(
         total,
         multiplyFractions(fraction(item.outer.multiple), lengthOf(item.outer.value)),
@@ -431,8 +432,13 @@ export class MeasureBuilder {
     }
 
     // The time the tremolo occupies, stated one unit per note as MNX has it:
-    // a pair of written halves occupies two quarters.
-    const unit = noteValueOf(first)
+    // a pair of written halves occupies two quarters. Inside a tuplet
+    // everything is stated in written values the ratio scales, so the
+    // measured duration is unscaled back into them first.
+    const factor = builder.openTuplets
+      .map((open) => open.ratio)
+      .reduce(multiplyFractions, fraction(1))
+    const unit = noteValueOf(fraction(first.num * factor.den, first.den * factor.num))
     if (!unit) {
       throw new MusicXMLError(
         `A note of a tremolo lasts ${describeLength(first)}, which no note value can write.`,
