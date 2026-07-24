@@ -179,14 +179,37 @@ describe('an .mxl package', () => {
   })
 })
 
-describe('a document in an unsupported encoding', () => {
+// Finale ships UTF-16 MusicXML, so a byte-order mark means decoding it, not
+// refusing it.
+describe('a UTF-16 document', () => {
+  function utf16(text: string, littleEndian: boolean): Uint8Array {
+    const bytes = new Uint8Array(2 + text.length * 2)
+    ;[bytes[0], bytes[1]] = littleEndian ? [0xff, 0xfe] : [0xfe, 0xff]
+    for (let i = 0; i < text.length; i++) {
+      const unit = text.charCodeAt(i)
+      bytes[2 + i * 2] = littleEndian ? unit & 0xff : unit >> 8
+      bytes[3 + i * 2] = littleEndian ? unit >> 8 : unit & 0xff
+    }
+    return bytes
+  }
+
   test.each([
-    ['little-endian', [0xff, 0xfe, 0x3c, 0x00]],
-    ['big-endian', [0xfe, 0xff, 0x00, 0x3c]],
-  ])('refuses %s UTF-16, naming the encoding', (_name, bytes) => {
+    ['little-endian', true],
+    ['big-endian', false],
+  ])('decodes %s UTF-16 by its byte-order mark', (_name, littleEndian) => {
+    expect(readMusicXML(utf16(SCORE, littleEndian))).toBe(SCORE)
+  })
+
+  // A character outside the basic plane is two units in both encodings, and
+  // must survive the pairing.
+  test('keeps a character written as a surrogate pair', () => {
+    expect(readMusicXML(utf16('<x>𝄞</x>', true))).toBe('<x>𝄞</x>')
+  })
+
+  test('refuses a document ending in the middle of a character', () => {
     let thrown: unknown
     try {
-      readMusicXML(new Uint8Array(bytes))
+      readMusicXML(new Uint8Array([0xff, 0xfe, 0x3c]))
     } catch (error) {
       thrown = error
     }

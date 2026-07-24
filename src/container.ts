@@ -139,11 +139,36 @@ function rootFilePath(listing: Uint8Array): string | undefined {
  * encoding spec requires.
  */
 function decode(bytes: Uint8Array): string {
-  // A UTF-16 byte-order mark: fflate decodes UTF-8 only, so a UTF-16 document
-  // would come back as mojibake and fail deep in the parser with a message
-  // about the wrong thing. It is refused here, where the cause is plain.
+  // A UTF-16 byte-order mark: fflate decodes UTF-8 only, and Finale ships
+  // UTF-16 MusicXML, so it is decoded here by hand. JavaScript strings are
+  // UTF-16 code units already, so pairing bytes is the whole of the work and
+  // surrogate pairs pass through intact.
   if ((bytes[0] === 0xff && bytes[1] === 0xfe) || (bytes[0] === 0xfe && bytes[1] === 0xff)) {
-    throw new MusicXMLError('The document is UTF-16, which is not supported; convert it to UTF-8.')
+    return decodeUtf16(bytes, bytes[0] === 0xff)
   }
   return strFromU8(bytes)
+}
+
+/** UTF-16 bytes as text, past their byte-order mark. */
+function decodeUtf16(bytes: Uint8Array, littleEndian: boolean): string {
+  if (bytes.length % 2 !== 0) {
+    throw new MusicXMLError('The document is UTF-16 but ends in the middle of a character.')
+  }
+
+  const units = new Uint16Array((bytes.length - 2) / 2)
+  let index = 0
+  let first = 0
+  for (const byte of bytes.subarray(2)) {
+    if (index % 2 === 0) first = byte
+    else units[(index - 1) / 2] = littleEndian ? first | (byte << 8) : (first << 8) | byte
+    index++
+  }
+  // Built in chunks: String.fromCharCode takes its units as arguments, and a
+  // whole score at once would overflow the argument list.
+  const parts: string[] = []
+  const CHUNK = 8192
+  for (let at = 0; at < units.length; at += CHUNK) {
+    parts.push(String.fromCharCode(...units.subarray(at, at + CHUNK)))
+  }
+  return parts.join('')
 }
