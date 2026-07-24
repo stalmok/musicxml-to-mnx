@@ -7,6 +7,7 @@
 
 import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
+import type { Fraction } from '../fraction.js'
 import type { Clef, ClefSign, Key, TimeSignature, TimeUnit } from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
@@ -44,6 +45,9 @@ export interface AttributesReading {
 export function readAttributes(
   element: ElementReader,
   state: PartState,
+  // Where the measure's cursor has reached, which is where a clef declared
+  // here is drawn: a clef can change partway through a measure.
+  position: Fraction,
   warnings: WarningCollector,
   context: WarningContext,
   path: DocumentPath,
@@ -89,7 +93,7 @@ export function readAttributes(
   return {
     key: keys[0],
     time: times[0],
-    clefs: element.children('clef').map((found) => readClef(found, state, path)),
+    clefs: element.children('clef').map((found) => readClef(found, state, position, path)),
   }
 }
 
@@ -120,7 +124,12 @@ function readTime(element: XmlElement, path: DocumentPath): TimeSignature {
   return { count, unit }
 }
 
-function readClef(element: XmlElement, state: PartState, path: DocumentPath): Clef {
+function readClef(
+  element: XmlElement,
+  state: PartState,
+  position: Fraction,
+  path: DocumentPath,
+): Clef {
   const sign = trimmedText(requireChild(element, 'sign', path))
   if (!isClefSign(sign)) {
     throw new MusicXMLError(`The "${sign}" clef cannot be represented in MNX.`, {
@@ -141,5 +150,5 @@ function readClef(element: XmlElement, state: PartState, path: DocumentPath): Cl
 
   // MusicXML counts staff lines from 1 at the bottom; MNX counts staff steps
   // from 0 at the middle line. On a five-line staff they differ by this.
-  return { sign, staffPosition: 2 * line - 6, staff }
+  return { sign, staffPosition: 2 * line - 6, staff, position }
 }

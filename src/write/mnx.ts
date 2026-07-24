@@ -302,6 +302,8 @@ function writeBeam(beam: Beam): MNXBeam {
 function writeClef(clef: Clef): MNXPositionedClef {
   return {
     clef: { sign: clef.sign, staffPosition: clef.staffPosition },
+    // A clef at the start of the measure needs no position.
+    ...(clef.position.num === 0 ? {} : { position: writePosition(clef.position) }),
     ...(clef.staff !== undefined ? { staff: clef.staff } : {}),
   }
 }

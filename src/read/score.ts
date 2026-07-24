@@ -262,7 +262,14 @@ function readMeasure(
 
     switch (found.name) {
       case 'attributes': {
-        const reading = readAttributes(reader, state, warnings, context, measurePath)
+        const reading = readAttributes(
+          reader,
+          state,
+          builder.position(),
+          warnings,
+          context,
+          measurePath,
+        )
         key ??= reading.key
         time ??= reading.time
         clefs.push(...reading.clefs)
@@ -344,7 +351,7 @@ function readMeasure(
 
   return {
     measure: {
-      clefs,
+      clefs: dedupeClefs(clefs, warnings, context),
       beams,
       dynamics,
       arpeggios: builder.arpeggios(warnings, context),
@@ -369,6 +376,37 @@ function readMeasure(
     endingStart,
     endingStop,
   }
+}
+
+/**
+ * Drops a clef that another clef replaces at the same point on the same
+ * staff, which exporters write when the clef in force is restated after the
+ * barline. MNX draws one clef at a point, so the one the following notes
+ * obey — the last declared — is the one converted.
+ */
+function dedupeClefs(
+  clefs: readonly Clef[],
+  warnings: WarningCollector,
+  context: WarningContext,
+): Clef[] {
+  return clefs.filter((clef, index) => {
+    const replaced = clefs.some(
+      (later, at) =>
+        at > index &&
+        later.staff === clef.staff &&
+        compareFractions(later.position, clef.position) === 0,
+    )
+    if (replaced) {
+      warnings.add(
+        'unrepresentable:clef',
+        'Two clefs are written at the same point on the same staff, and MNX draws ' +
+          'one there. The last is the one converted.',
+        context,
+        'clef',
+      )
+    }
+    return !replaced
+  })
 }
 
 /**

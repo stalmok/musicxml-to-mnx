@@ -126,7 +126,7 @@ test.each([
     'clefs and a key',
     scoreOf(
       {
-        clefs: [{ sign: 'F', staffPosition: 2, staff: undefined }],
+        clefs: [{ sign: 'F', staffPosition: 2, staff: undefined, position: { num: 0, den: 1 } }],
         beams: [],
         dynamics: [],
         arpeggios: [],
@@ -239,7 +239,7 @@ describe('parts', () => {
 describe('measures', () => {
   test('writes clefs when the measure has them', () => {
     const score = scoreOf({
-      clefs: [{ sign: 'F', staffPosition: 2, staff: undefined }],
+      clefs: [{ sign: 'F', staffPosition: 2, staff: undefined, position: { num: 0, den: 1 } }],
       beams: [],
       dynamics: [],
       arpeggios: [],
@@ -252,6 +252,31 @@ describe('measures', () => {
     expect(writeMnx(score).parts[0]?.measures[0]?.clefs).toEqual([
       { clef: { sign: 'F', staffPosition: 2 } },
     ])
+  })
+
+  // A clef at the start of the measure needs no position; one partway
+  // through states where it falls, or it would claim the start as well.
+  test('gives a mid-measure clef change its position', () => {
+    const score = scoreOf({
+      clefs: [
+        { sign: 'G', staffPosition: -2, staff: undefined, position: { num: 0, den: 1 } },
+        { sign: 'F', staffPosition: 2, staff: undefined, position: { num: 1, den: 2 } },
+      ],
+      beams: [],
+      dynamics: [],
+      arpeggios: [],
+      ottavas: [],
+      sequences: [
+        { voice: undefined, staff: undefined, content: [WHOLE_C], fullMeasure: undefined },
+      ],
+    })
+    const written = writeMnx(score)
+
+    expect(written.parts[0]?.measures[0]?.clefs).toEqual([
+      { clef: { sign: 'G', staffPosition: -2 } },
+      { clef: { sign: 'F', staffPosition: 2 }, position: { fraction: [1, 2] } },
+    ])
+    expect(schemaErrors(written)).toEqual([])
   })
 
   test('leaves clefs out when the measure has none', () => {

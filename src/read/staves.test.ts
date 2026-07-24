@@ -60,8 +60,8 @@ describe('clefs', () => {
     const { part } = read(measures(GRAND_STAFF + note('C', '1')))
 
     expect(part?.measures[0]?.clefs).toEqual([
-      { sign: 'G', staffPosition: -2, staff: 1 },
-      { sign: 'F', staffPosition: 2, staff: 2 },
+      { sign: 'G', staffPosition: -2, staff: 1, position: { num: 0, den: 1 } },
+      { sign: 'F', staffPosition: 2, staff: 2, position: { num: 0, den: 1 } },
     ])
   })
 
@@ -74,6 +74,60 @@ describe('clefs', () => {
     )
 
     expect(part?.measures[0]?.clefs[0]?.staff).toBeUndefined()
+  })
+
+  // A clef can change partway through a measure, so each records where the
+  // cursor had reached when it was declared. Without the position, the two
+  // clefs of this measure would both claim its start.
+  test('records where in the measure a clef change falls', () => {
+    const { part } = read(
+      measures(
+        '<attributes><divisions>4</divisions><clef><sign>G</sign></clef></attributes>' +
+          note('C', '1') +
+          '<attributes><clef><sign>F</sign></clef></attributes>' +
+          note('D', '1'),
+      ),
+    )
+
+    expect(part?.measures[0]?.clefs.map((clef) => clef.position)).toEqual([
+      { num: 0, den: 1 },
+      { num: 1, den: 4 },
+    ])
+  })
+
+  // Exporters restate a staff's clef at the same point, as when the clef in
+  // force is immediately replaced by one drawn after the barline. MNX draws
+  // one clef at a point, so the one the following notes obey survives.
+  test('keeps only the last of two clefs at the same point on one staff', () => {
+    const { part, warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions><staves>2</staves>' +
+          '<clef number="1"><sign>G</sign></clef>' +
+          '<clef number="2"><sign>F</sign></clef></attributes>' +
+          '<attributes><clef number="2" after-barline="yes"><sign>G</sign></clef></attributes>' +
+          note('C', '1'),
+      ),
+    )
+
+    expect(part?.measures[0]?.clefs).toEqual([
+      { sign: 'G', staffPosition: -2, staff: 1, position: { num: 0, den: 1 } },
+      { sign: 'G', staffPosition: -2, staff: 2, position: { num: 0, den: 1 } },
+    ])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:clef'])
+  })
+
+  test('keeps two clefs of one staff apart when their positions differ', () => {
+    const { part, warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions><clef><sign>G</sign></clef></attributes>' +
+          note('C', '1') +
+          '<attributes><clef><sign>F</sign></clef></attributes>' +
+          note('D', '1'),
+      ),
+    )
+
+    expect(part?.measures[0]?.clefs).toHaveLength(2)
+    expect(warnings).toEqual([])
   })
 })
 

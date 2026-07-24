@@ -144,7 +144,9 @@ describe('measure attributes', () => {
       number: undefined,
       ...NO_BARLINE,
     })
-    expect(result.parts[0]?.measures[0]?.clefs).toEqual([{ sign: 'F', staffPosition: 2 }])
+    expect(result.parts[0]?.measures[0]?.clefs).toEqual([
+      { sign: 'F', staffPosition: 2, staff: undefined, position: { num: 0, den: 1 } },
+    ])
   })
 
   test('reads a key change in a measure that restates no time signature', () => {
@@ -164,7 +166,9 @@ describe('measure attributes', () => {
   test('places a clef by its default line when none is written', () => {
     const { score: result } = read(measure('<attributes><clef><sign>G</sign></clef></attributes>'))
 
-    expect(result.parts[0]?.measures[0]?.clefs).toEqual([{ sign: 'G', staffPosition: -2 }])
+    expect(result.parts[0]?.measures[0]?.clefs).toEqual([
+      { sign: 'G', staffPosition: -2, staff: undefined, position: { num: 0, den: 1 } },
+    ])
   })
 
   test('rejects a clef MNX has no sign for', () => {
@@ -182,8 +186,8 @@ describe('measure attributes', () => {
     )
 
     expect(result.parts[0]?.measures[0]?.clefs).toEqual([
-      { sign: 'G', staffPosition: -2 },
-      { sign: 'F', staffPosition: 2 },
+      { sign: 'G', staffPosition: -2, staff: undefined, position: { num: 0, den: 1 } },
+      { sign: 'F', staffPosition: 2, staff: undefined, position: { num: 1, den: 1 } },
     ])
   })
 

@@ -221,6 +221,8 @@ export interface MNXClef {
 
 export interface MNXPositionedClef {
   clef: MNXClef
+  /** Where in the measure the clef is drawn. Absent means its start. */
+  position?: MNXRhythmicPosition
   /** Which staff of the part, where it has more than one. */
   staff?: number
 }

@@ -221,6 +221,8 @@ export interface Clef {
   staffPosition: number
   /** Which staff of the part, where it has more than one. */
   staff: number | undefined
+  /** Where in the measure it is drawn: zero unless the clef changes partway. */
+  position: Fraction
 }
 
 /**
