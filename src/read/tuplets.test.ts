@@ -164,7 +164,9 @@ describe('tuplets', () => {
 
   test('reports a duration that disagrees even through the tuplet ratio', () => {
     // Written as a quarter inside a 3:2 tuplet, so it should last 8 of the
-    // measure's 12 divisions, but the source gives it 4.
+    // measure's 12 divisions, but the source gives it 4. The quarter also
+    // pushes the bracket's content past its ratio, which is reported over
+    // the tuplet.
     const { warnings } = read(
       measure(
         tupletNote('C', 4, 'eighth', 'start') +
@@ -172,8 +174,10 @@ describe('tuplets', () => {
           tupletNote('E', 4, 'eighth', 'stop'),
       ),
     )
+    const inconsistent = warnings.filter((w) => w.code === 'inconsistent:duration')
 
-    expect(warnings.filter((w) => w.code === 'inconsistent:duration')).toHaveLength(1)
+    expect(inconsistent.filter((w) => w.element === 'note')).toHaveLength(1)
+    expect(inconsistent.filter((w) => w.element === 'tuplet')).toHaveLength(1)
   })
 
   test('applies every open ratio to a note in a nested tuplet', () => {
@@ -198,6 +202,83 @@ describe('tuplets', () => {
     const { warnings } = read(source)
 
     expect(warnings.filter((w) => w.code === 'inconsistent:duration')).toEqual([])
+  })
+
+  // A voice that first sounds partway through the measure passes over the
+  // time before that in silence. When its first note opens a tuplet, that
+  // silence belongs before the bracket, not inside it, where the ratio would
+  // scale it.
+  test('puts the silence before a tuplet outside its bracket', () => {
+    const other =
+      '<note><pitch><step>G</step><octave>4</octave></pitch><duration>12</duration>' +
+      '<type>quarter</type><voice>1</voice></note>'
+    const late = (step: string, bracket = ''): string =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+      '<duration>4</duration><type>eighth</type><voice>2</voice>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+      '</time-modification>' +
+      (bracket ? `<notations><tuplet type="${bracket}"/></notations>` : '') +
+      '</note>'
+    const warnings = new WarningCollector()
+    const result = readScore(
+      parseXmlRoot(measure(other + late('C', 'start') + late('D') + late('E', 'stop'))),
+      warnings,
+    )
+    const content = result.parts[0]?.measures[0]?.sequences[1]?.content
+
+    expect(content?.map((item) => item.kind)).toEqual(['space', 'tuplet'])
+    expect(warnings.list().filter((w) => w.element === 'tuplet')).toEqual([])
+  })
+
+  // A gap inside the bracket, as a <forward> between its notes leaves, is
+  // scaled by the ratio like everything else there, so the space that states
+  // it has to be in written units: a skipped triplet eighth is written as an
+  // eighth even though it lasts a twelfth of a whole note.
+  test('states a gap inside the bracket in written values', () => {
+    const { content, warnings } = read(
+      measure(
+        tupletNote('C', 4, 'eighth', 'start') +
+          '<forward><duration>4</duration></forward>' +
+          tupletNote('E', 4, 'eighth', 'stop'),
+      ),
+    )
+    const tuplet = content?.[0]
+    const inside = tuplet?.kind === 'tuplet' ? tuplet.content : []
+
+    expect(inside.map((item) => item.kind)).toEqual(['event', 'space', 'event'])
+    expect(inside[1]?.kind === 'space' && inside[1].duration).toEqual({ num: 1, den: 8 })
+    expect(warnings.filter((w) => w.element === 'tuplet')).toEqual([])
+  })
+
+  // Real scores contain brackets whose content does not add up to the stated
+  // ratio: a lone quarter under a 3:2 eighth ratio, standing for a triplet
+  // quarter. The content is converted as written, and the disagreement is
+  // reported, because a consumer cannot tell how much time such a tuplet
+  // means to take.
+  test('reports a tuplet whose written content falls short of its ratio', () => {
+    const partial =
+      '<note><pitch><step>A</step><octave>3</octave></pitch><duration>8</duration>' +
+      '<type>quarter</type><time-modification><actual-notes>3</actual-notes>' +
+      '<normal-notes>2</normal-notes><normal-type>eighth</normal-type></time-modification>' +
+      '<notations><tuplet type="start"/><tuplet type="stop"/></notations></note>'
+    const { warnings } = read(measure(partial))
+
+    expect(warnings.map((w) => ({ code: w.code, element: w.element }))).toEqual([
+      { code: 'inconsistent:duration', element: 'tuplet' },
+    ])
+    expect(warnings[0]?.message).toContain('falls short')
+  })
+
+  test('reports a tuplet whose written content overruns its ratio', () => {
+    const over =
+      tupletNote('C', 4, 'eighth', 'start') +
+      tupletNote('D', 4, 'eighth') +
+      tupletNote('E', 4, 'eighth') +
+      tupletNote('F', 4, 'eighth', 'stop')
+    const { warnings } = read(measure(over))
+
+    expect(warnings.map((w) => w.element)).toEqual(['tuplet'])
+    expect(warnings[0]?.message).toContain('overruns')
   })
 
   test('rejects a tuplet the source never closes', () => {

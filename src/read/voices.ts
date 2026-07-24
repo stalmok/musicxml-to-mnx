@@ -60,10 +60,10 @@ interface VoiceBuilder {
    */
   open: SequenceItem[][]
   /**
-   * How much of its written value a note inside each open tuplet really
-   * lasts, innermost last: 2/3 inside a triplet.
+   * The tuplets currently open, innermost last, each with how much of its
+   * written value a note inside really lasts: 2/3 inside a triplet.
    */
-  openRatios: Fraction[]
+  openTuplets: { tuplet: Tuplet; ratio: Fraction }[]
   content: SequenceItem[]
   /** Where this voice's content runs out, measured from the measure start. */
   end: Fraction
@@ -136,6 +136,24 @@ function ratioOf(inner: NoteValueQuantity, outer: NoteValueQuantity): Fraction {
   const written = multiplyFractions(fraction(inner.multiple), lengthOf(inner.value))
   const played = multiplyFractions(fraction(outer.multiple), lengthOf(outer.value))
   return fraction(played.num * written.den, played.den * written.num)
+}
+
+/** How long a tuplet's content is written as, before its ratio scales it. */
+function writtenLengthOf(items: readonly SequenceItem[]): Fraction {
+  let total = fraction(0)
+  for (const item of items) {
+    // A grace group takes none of the measure's time, so it adds nothing.
+    if (item.kind === 'event') total = addFractions(total, lengthOf(item.value))
+    if (item.kind === 'space') total = addFractions(total, item.duration)
+    if (item.kind === 'tuplet') {
+      // A nested tuplet stands in its parent for the space it is played in.
+      total = addFractions(
+        total,
+        multiplyFractions(fraction(item.outer.multiple), lengthOf(item.outer.value)),
+      )
+    }
+  }
+  return total
 }
 
 /** The list a note added now would land in: the innermost one still open. */
@@ -224,7 +242,16 @@ export class MeasureBuilder {
   #fillGap(builder: VoiceBuilder): void {
     const gap = subtractFractions(this.#cursor, builder.end)
     if (compareFractions(gap, fraction(0)) > 0) {
-      innermost(builder).push({ kind: 'space', duration: gap })
+      // Inside a tuplet everything is written in values the ratio scales, so
+      // a gap there is stated in written units: a skipped triplet eighth is
+      // written as an eighth even though it lasts a twelfth of a whole note.
+      const factor = builder.openTuplets
+        .map((open) => open.ratio)
+        .reduce(multiplyFractions, fraction(1))
+      innermost(builder).push({
+        kind: 'space',
+        duration: fraction(gap.num * factor.den, gap.den * factor.num),
+      })
       builder.end = this.#cursor
     }
   }
@@ -326,9 +353,12 @@ export class MeasureBuilder {
     const content: SequenceItem[] = []
     const tuplet: Tuplet = { kind: 'tuplet', inner, outer, content }
 
+    // Time this voice has passed over in silence belongs before the bracket,
+    // not inside it, where the tuplet's ratio would scale it.
+    this.#fillGap(builder)
     innermost(builder).push(tuplet)
     builder.open.push(content)
-    builder.openRatios.push(ratioOf(inner, outer))
+    builder.openTuplets.push({ tuplet, ratio: ratioOf(inner, outer) })
   }
 
   /**
@@ -337,7 +367,9 @@ export class MeasureBuilder {
    * ratios multiply where tuplets nest.
    */
   tupletFactor(voice: string | undefined): Fraction {
-    return this.#builderFor(voice).openRatios.reduce(multiplyFractions, fraction(1))
+    return this.#builderFor(voice)
+      .openTuplets.map((open) => open.ratio)
+      .reduce(multiplyFractions, fraction(1))
   }
 
   /** Records what an event said about the beams it carries. */
@@ -472,13 +504,41 @@ export class MeasureBuilder {
     return this.#builderFor(voice).open.length > 1
   }
 
-  closeTuplet(voice: string | undefined, path: DocumentPath, line: number): void {
+  closeTuplet(
+    voice: string | undefined,
+    warnings: WarningCollector,
+    context: WarningContext,
+    path: DocumentPath,
+    line: number,
+  ): void {
     const builder = this.#builderFor(voice)
     if (builder.open.length < 2) {
       throw new MusicXMLError('A tuplet is closed where no tuplet is open.', { path, line })
     }
     builder.open.pop()
-    builder.openRatios.pop()
+    const closed = builder.openTuplets.pop()
+    /* v8 ignore next 2 -- a tuplet and its ratio are pushed together, so the
+       stacks cannot disagree. */
+    if (!closed) throw new Error('A tuplet closed with no ratio recorded for it.')
+
+    // Real scores contain brackets whose content does not add up to the
+    // stated ratio: a lone quarter under a 3:2 eighth ratio, standing for a
+    // triplet quarter. The content is converted as written, and the
+    // disagreement is reported, because a consumer cannot tell how much time
+    // such a tuplet means to take.
+    const { tuplet } = closed
+    const stated = multiplyFractions(fraction(tuplet.inner.multiple), lengthOf(tuplet.inner.value))
+    const held = writtenLengthOf(tuplet.content)
+    const compared = compareFractions(held, stated)
+    if (compared !== 0) {
+      warnings.add(
+        'inconsistent:duration',
+        `A tuplet's written content ${compared < 0 ? 'falls short of' : 'overruns'} its ` +
+          'stated ratio. The content is converted as written.',
+        { ...context, line },
+        'tuplet',
+      )
+    }
   }
 
   /**
@@ -569,7 +629,7 @@ export class MeasureBuilder {
       graceBeamed: [],
       placed: [],
       open: [content],
-      openRatios: [],
+      openTuplets: [],
       content,
       end: fraction(0),
       lastEvent: undefined,

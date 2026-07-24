@@ -112,7 +112,7 @@ export function readNote(
     builder.addChordNote(voice, chordNote, duration, path, element.line)
     readArpeggio(notations, voice, builder)
     readTies(element, chordNote, voice, state, warnings, context)
-    closeTuplets(builder, voice, tupletBrackets(notations), path, element.line)
+    closeTuplets(builder, voice, tupletBrackets(notations), warnings, context, path, element.line)
     return
   }
 
@@ -227,18 +227,20 @@ export function readNote(
   readSlurs(notations, event, state, warnings, context)
   builder.addBeamMarkers(voice, event.id, beamMarkers(element, path))
 
-  closeTuplets(builder, voice, brackets, path, element.line)
+  closeTuplets(builder, voice, brackets, warnings, context, path, element.line)
 }
 
 function closeTuplets(
   builder: MeasureBuilder,
   voice: string | undefined,
   brackets: readonly string[],
+  warnings: WarningCollector,
+  context: WarningContext,
   path: DocumentPath,
   line: number,
 ): void {
   for (const bracket of brackets) {
-    if (bracket === 'stop') builder.closeTuplet(voice, path, line)
+    if (bracket === 'stop') builder.closeTuplet(voice, warnings, context, path, line)
   }
 }
 
