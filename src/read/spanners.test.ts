@@ -11,10 +11,10 @@ import type { Event, Note } from '../model/score.js'
 
 const DIVISIONS = '<attributes><divisions>4</divisions></attributes>'
 
-function note(step: string, body = ''): string {
+function note(step: string, body = '', voice = '1'): string {
   return (
     `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
-    `<duration>4</duration><type>quarter</type><voice>1</voice>${body}</note>`
+    `<duration>4</duration><type>quarter</type><voice>${voice}</voice>${body}</note>`
   )
 }
 
@@ -48,7 +48,7 @@ describe('ties', () => {
     const { notes } = read(measures(DIVISIONS + note('C', tied('start')) + note('C', tied('stop'))))
     const [first, second] = notes as [Note, Note]
 
-    expect(first.ties).toEqual([{ target: second.id }])
+    expect(first.ties).toEqual([{ target: second.id, crossVoice: false }])
     expect(second.ties).toEqual([])
   })
 
@@ -56,7 +56,28 @@ describe('ties', () => {
     const { notes } = read(measures(DIVISIONS + note('C', tied('start')), note('C', tied('stop'))))
     const [first, second] = notes as [Note, Note]
 
-    expect(first.ties).toEqual([{ target: second.id }])
+    expect(first.ties).toEqual([{ target: second.id, crossVoice: false }])
+  })
+
+  // Ties are matched on pitch across the part, so one may end in a different
+  // voice from the one it started in. MNX says so on the tie; without the
+  // mark, a consumer reads the target as the same voice's next note.
+  test('marks a tie whose two ends are in different voices', () => {
+    const { notes } = read(
+      measures(DIVISIONS + note('C', tied('start')), note('C', tied('stop'), '2')),
+    )
+    const [first, second] = notes as [Note, Note]
+
+    expect(first.ties).toEqual([{ target: second.id, crossVoice: true }])
+  })
+
+  test('does not mark a tie between measures as crossing voices', () => {
+    const { notes } = read(
+      measures(DIVISIONS + note('C', tied('start'), '2'), note('C', tied('stop'), '2')),
+    )
+    const [first, second] = notes as [Note, Note]
+
+    expect(first.ties).toEqual([{ target: second.id, crossVoice: false }])
   })
 
   // A note in the middle of a chain both ends the tie before it and starts the
@@ -68,8 +89,8 @@ describe('ties', () => {
     )
     const [first, second, third] = notes as [Note, Note, Note]
 
-    expect(first.ties).toEqual([{ target: second.id }])
-    expect(second.ties).toEqual([{ target: third.id }])
+    expect(first.ties).toEqual([{ target: second.id, crossVoice: false }])
+    expect(second.ties).toEqual([{ target: third.id, crossVoice: false }])
     expect(third.ties).toEqual([])
   })
 
@@ -79,7 +100,7 @@ describe('ties', () => {
     )
     const [first, , third] = notes as [Note, Note, Note]
 
-    expect(first.ties).toEqual([{ target: third.id }])
+    expect(first.ties).toEqual([{ target: third.id, crossVoice: false }])
   })
 
   test('reports a tie the source never ends', () => {
@@ -182,8 +203,8 @@ describe('the ends a spanner is keyed by', () => {
     )
     const [c1, g1, g2, c2] = notes as [Note, Note, Note, Note]
 
-    expect(c1.ties).toEqual([{ target: c2.id }])
-    expect(g1.ties).toEqual([{ target: g2.id }])
+    expect(c1.ties).toEqual([{ target: c2.id, crossVoice: false }])
+    expect(g1.ties).toEqual([{ target: g2.id, crossVoice: false }])
   })
 
   // In piano writing a slur routinely runs from one hand to the other, which
@@ -238,7 +259,7 @@ describe('spanners on music that names no voice', () => {
   test('joins a tie', () => {
     const { notes } = read(measures(DIVISIONS + bare('C', tied('start')) + bare('C', tied('stop'))))
 
-    expect(notes[0]?.ties).toEqual([{ target: notes[1]?.id }])
+    expect(notes[0]?.ties).toEqual([{ target: notes[1]?.id, crossVoice: false }])
   })
 
   test('joins a slur that states no number either', () => {

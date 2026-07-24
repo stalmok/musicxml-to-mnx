@@ -437,7 +437,16 @@ function writeNote(note: Note, referenced: ReadonlySet<string>): MNXNote {
   return {
     ...(referenced.has(note.id) ? { id: note.id } : {}),
     pitch: writePitch(note.pitch),
-    ...(note.ties.length > 0 ? { ties: note.ties.map((tie) => ({ target: tie.target })) } : {}),
+    ...(note.ties.length > 0
+      ? {
+          ties: note.ties.map((tie) => ({
+            target: tie.target,
+            // Left unsaid for the ordinary tie, whose target is the same
+            // voice's next note.
+            ...(tie.crossVoice ? { targetType: 'crossVoice' as const } : {}),
+          })),
+        }
+      : {}),
     ...(note.accidentalDisplay
       ? { accidentalDisplay: writeAccidental(note.accidentalDisplay) }
       : {}),

@@ -24,6 +24,8 @@ import type { WarningCollector, WarningContext } from '../warnings.js'
 
 interface OpenTie {
   note: Note
+  /** The voice the tie starts in, to tell a tie that crosses voices. */
+  voice: string | undefined
   context: WarningContext
 }
 
@@ -152,12 +154,17 @@ export class SpannerResolver {
   // Both ends of every hairpin in the part, paired once all of them are in.
   readonly #wedgeEnds: SpanEnd<Dynamic>[] = []
 
-  startTie(note: Note, context: WarningContext): void {
-    this.#openTies.set(tieKey(note.pitch), { note, context })
+  startTie(note: Note, voice: string | undefined, context: WarningContext): void {
+    this.#openTies.set(tieKey(note.pitch), { note, voice, context })
   }
 
   /** Joins the tie waiting on this pitch, if one is. */
-  stopTie(note: Note, warnings: WarningCollector, context: WarningContext): void {
+  stopTie(
+    note: Note,
+    voice: string | undefined,
+    warnings: WarningCollector,
+    context: WarningContext,
+  ): void {
     const key = tieKey(note.pitch)
     const open = this.#openTies.get(key)
     if (!open) {
@@ -170,7 +177,9 @@ export class SpannerResolver {
       return
     }
 
-    open.note.ties = [...open.note.ties, { target: note.id }]
+    // A tie ending in a different voice says so, because without the mark a
+    // consumer reads the target as the same voice's next note.
+    open.note.ties = [...open.note.ties, { target: note.id, crossVoice: open.voice !== voice }]
     this.#openTies.delete(key)
   }
 

@@ -49,6 +49,8 @@ export type CurveSide = 'up' | 'down'
  */
 export interface Tie {
   target: string
+  /** True where the tie ends in a different voice from the one it starts in. */
+  crossVoice: boolean
 }
 
 /**

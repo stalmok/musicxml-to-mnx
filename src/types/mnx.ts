@@ -58,8 +58,13 @@ export interface MNXLyrics {
   lines: Record<string, MNXLyricLine>
 }
 
+/** How a tie's target relates to the note it starts from. Absent means the
+ * same voice's next note. */
+export type MNXTieTargetType = 'nextNote' | 'crossVoice' | 'arpeggio' | 'crossJump'
+
 export interface MNXTie {
   target: string
+  targetType?: MNXTieTargetType
 }
 
 export interface MNXSlur {

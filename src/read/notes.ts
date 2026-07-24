@@ -111,7 +111,7 @@ export function readNote(
     const chordNote = readNoteAt(element, pitchElement, state, path)
     builder.addChordNote(voice, chordNote, duration, path, element.line)
     readArpeggio(notations, voice, builder)
-    readTies(element, chordNote, state, warnings, context)
+    readTies(element, chordNote, voice, state, warnings, context)
     closeTuplets(builder, voice, tupletBrackets(notations), path, element.line)
     return
   }
@@ -205,7 +205,7 @@ export function readNote(
   if (graceElement) {
     builder.addGraceNote(voice, event, attribute(graceElement, 'slash') === 'yes', staff)
     readArpeggio(notations, voice, builder)
-    for (const note of notes) readTies(element, note, state, warnings, context)
+    for (const note of notes) readTies(element, note, voice, state, warnings, context)
     readSlurs(notations, event, state, warnings, context)
     builder.addBeamMarkers(voice, event.id, beamMarkers(element, path), true)
     return
@@ -216,7 +216,7 @@ export function readNote(
   builder.addEvent(voice, event, duration ?? lengthOf(value), path, element.line, staff)
   readArpeggio(notations, voice, builder)
 
-  for (const note of notes) readTies(element, note, state, warnings, context)
+  for (const note of notes) readTies(element, note, voice, state, warnings, context)
   readSlurs(notations, event, state, warnings, context)
   builder.addBeamMarkers(voice, event.id, beamMarkers(element, path))
 
@@ -480,14 +480,15 @@ function readAccidentalDisplay(element: ElementReader): AccidentalDisplay | unde
 function readTies(
   element: ElementReader,
   note: Note,
+  voice: string | undefined,
   state: PartState,
   warnings: WarningCollector,
   context: WarningContext,
 ): void {
   for (const tie of element.children('tie')) {
     const type = attribute(tie, 'type')
-    if (type === 'stop') state.spanners.stopTie(note, warnings, context)
-    else if (type === 'start') state.spanners.startTie(note, context)
+    if (type === 'stop') state.spanners.stopTie(note, voice, warnings, context)
+    else if (type === 'start') state.spanners.startTie(note, voice, context)
     else {
       // MusicXML 4.0 also has "let-ring", which MNX states as a tie's `lv`.
       warnings.add(

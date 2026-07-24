@@ -296,7 +296,7 @@ describe('ties and slurs', () => {
       {
         id: 'note-start',
         pitch: { step: 'G', octave: 4, alter: 0 },
-        ties: [{ target: 'note-target' }],
+        ties: [{ target: 'note-target', crossVoice: false }],
         accidentalDisplay: undefined,
       },
     ],
@@ -320,6 +320,36 @@ describe('ties and slurs', () => {
     const written = writeMnx(joined()).parts[0]?.measures[0]?.sequences[0]?.content[0]
 
     expect(written).toMatchObject({ notes: [{ ties: [{ target: 'note-target' }] }] })
+  })
+
+  // The target type is only written where it says something: a tie whose
+  // target is the same voice's next note is the ordinary one.
+  test('says nothing about the target type of a tie within one voice', () => {
+    const note = writeMnx(joined()).parts[0]?.measures[0]?.sequences[0]?.content[0]
+
+    expect(JSON.stringify(note)).not.toContain('targetType')
+  })
+
+  test('declares the target type of a tie that crosses voices', () => {
+    const crossing = structuredClone(start)
+    crossing.notes = [
+      { ...crossing.notes[0]!, ties: [{ target: 'note-target', crossVoice: true }] },
+    ]
+    const score = scoreOf({
+      clefs: [],
+      beams: [],
+      dynamics: [],
+      arpeggios: [],
+      ottavas: [],
+      sequences: [
+        { voice: undefined, staff: undefined, content: [crossing, target], fullMeasure: undefined },
+      ],
+    })
+    const written = writeMnx(score).parts[0]?.measures[0]?.sequences[0]?.content[0]
+
+    expect(written).toMatchObject({
+      notes: [{ ties: [{ target: 'note-target', targetType: 'crossVoice' }] }],
+    })
   })
 
   test('states the slur on the event it starts from, with its side', () => {
