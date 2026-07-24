@@ -95,54 +95,87 @@ function pitchKey(pitch: Pitch): string {
   return `${pitch.step}${String(pitch.octave)}${pitch.alter === 0 ? '' : `(${String(pitch.alter)})`}`
 }
 
-/** Every pitch in the converted document, in document order. */
+/** One line per part and measure: each voice's pitches in order, the voices
+ * sorted. The voices sort because the source interleaves a measure's voices
+ * through its cursor while MNX states each on its own, so their order is the
+ * one thing the two sides may legitimately disagree on. A lost, changed, or
+ * reordered pitch within a voice still shows. */
+function measureLine(part: number, measure: number, voices: readonly string[]): string {
+  const sounded = voices.filter((voice) => voice !== '')
+  return `part ${String(part + 1)} measure ${String(measure + 1)}: ${sounded.sort().join(' | ')}`
+}
+
+/** Every pitch in the converted document, one line per part and measure. */
 export function pitchesOf(document: MNXDocument): string[] {
-  const found: string[] = []
-  const walk = (items: readonly MNXSequenceItem[]): void => {
-    for (const item of items) {
-      if ('type' in item && (item.type === 'tuplet' || item.type === 'grace')) {
-        walk(item.content)
-        continue
-      }
-      if ('notes' in item && item.notes) {
-        for (const note of item.notes) {
-          found.push(pitchKey({ ...note.pitch, alter: note.pitch.alter ?? 0 }))
+  const lines: string[] = []
+  document.parts.forEach((part, partIndex) => {
+    part.measures.forEach((measure, measureIndex) => {
+      const voices = measure.sequences.map((sequence) => {
+        const found: string[] = []
+        const walk = (items: readonly MNXSequenceItem[]): void => {
+          for (const item of items) {
+            if ('type' in item && (item.type === 'tuplet' || item.type === 'grace')) {
+              walk(item.content)
+              continue
+            }
+            if ('notes' in item && item.notes) {
+              for (const note of item.notes) {
+                found.push(pitchKey({ ...note.pitch, alter: note.pitch.alter ?? 0 }))
+              }
+            }
+          }
         }
-      }
-    }
-  }
-  for (const part of document.parts) {
-    for (const measure of part.measures) {
-      for (const sequence of measure.sequences) walk(sequence.content)
-    }
-  }
-  return found
+        walk(sequence.content)
+        return found.join(' ')
+      })
+      lines.push(measureLine(partIndex, measureIndex, voices))
+    })
+  })
+  return lines
 }
 
 /**
- * Every pitch in the source, read straight from the XML. Deliberately not
- * routed through the converter's reader: the point is to disagree with it
- * when it is wrong.
+ * Every pitch in the source, one line per part and measure, read straight
+ * from the XML. Deliberately not routed through the converter's reader: the
+ * point is to disagree with it when it is wrong.
  */
 export function sourcePitches(root: XmlElement): string[] {
-  const found: string[] = []
-  const walk = (element: XmlElement): void => {
-    if (element.name === 'pitch') {
-      const text = (name: string) =>
-        element.children.find((c) => c.name === name)?.text.trim() ?? ''
-      found.push(
-        pitchKey({
-          step: text('step'),
-          octave: Number(text('octave')),
-          alter: text('alter') === '' ? 0 : Number(text('alter')),
-        }),
-      )
-      return
-    }
-    for (const child of element.children) walk(child)
-  }
-  walk(root)
-  return found
+  const lines: string[] = []
+  root.children
+    .filter((c) => c.name === 'part')
+    .forEach((part, partIndex) => {
+      part.children
+        .filter((c) => c.name === 'measure')
+        .forEach((measure, measureIndex) => {
+          // Grouped by voice in document order, which within one voice is the
+          // order the music has.
+          const byVoice = new Map<string, string[]>()
+          for (const note of measure.children.filter((c) => c.name === 'note')) {
+            const pitch = note.children.find((c) => c.name === 'pitch')
+            if (!pitch) continue
+            const text = (name: string) =>
+              pitch.children.find((c) => c.name === name)?.text.trim() ?? ''
+            const voice = note.children.find((c) => c.name === 'voice')?.text.trim() ?? ''
+            const list = byVoice.get(voice) ?? []
+            list.push(
+              pitchKey({
+                step: text('step'),
+                octave: Number(text('octave')),
+                alter: text('alter') === '' ? 0 : Number(text('alter')),
+              }),
+            )
+            byVoice.set(voice, list)
+          }
+          lines.push(
+            measureLine(
+              partIndex,
+              measureIndex,
+              [...byVoice.values()].map((v) => v.join(' ')),
+            ),
+          )
+        })
+    })
+  return lines
 }
 
 /**

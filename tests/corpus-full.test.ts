@@ -101,10 +101,14 @@ function firstFailure(
   const converted = pitchesOf(mnx)
   const inSource = sourcePitches(root)
   if (converted.length !== inSource.length || converted.some((p, i) => p !== inSource[i])) {
+    const at = converted.findIndex((p, i) => p !== inSource[i])
     return {
       file,
       kind: 'pitches',
-      detail: `${String(converted.length)} pitches against ${String(inSource.length)} in the source`,
+      detail:
+        at === -1
+          ? `${String(converted.length)} measure lines against ${String(inSource.length)} in the source`
+          : `"${converted[at] ?? ''}" against "${inSource[at] ?? ''}" in the source`,
     }
   }
 
