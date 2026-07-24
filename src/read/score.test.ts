@@ -249,6 +249,33 @@ describe('measure attributes', () => {
     ])
   })
 
+  // The first statement in a measure is the one it shows, and a statement
+  // MNX cannot carry is still a statement: a later block in the same measure
+  // may not fill in what an earlier one deliberately left empty.
+  test('does not let a later time signature overwrite senza misura', () => {
+    const { score: result } = read(
+      measure(
+        '<attributes><divisions>1</divisions><time><senza-misura/></time></attributes>' +
+          NOTE +
+          '<attributes><time><beats>4</beats><beat-type>4</beat-type></time></attributes>',
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.time).toBeUndefined()
+  })
+
+  test('does not let a later key overwrite a dropped non-traditional one', () => {
+    const { score: result } = read(
+      measure(
+        '<attributes><key><key-step>B</key-step><key-alter>-1</key-alter></key></attributes>' +
+          NOTE +
+          '<attributes><key><fifths>2</fifths></key></attributes>',
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.key).toBeUndefined()
+  })
+
   // <senza-misura> writes unmetered music, which MNX has no way to state.
   test('converts senza misura as a measure with no time signature', () => {
     const { score: result, warnings } = read(

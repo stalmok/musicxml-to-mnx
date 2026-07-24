@@ -37,6 +37,14 @@ const DEFAULT_CLEF_LINES: Record<ClefSign, number> = { G: 2, F: 4, C: 3 }
 
 /** What one <attributes> block declared. */
 export interface AttributesReading {
+  /**
+   * Whether the block stated a key or a time at all. Held apart from the
+   * values: a statement MNX cannot carry, such as senza misura or a
+   * non-traditional key, is a statement with no value, which is not the same
+   * as the block saying nothing.
+   */
+  keyStated: boolean
+  timeStated: boolean
   key: Key | undefined
   time: TimeSignature | undefined
   clefs: Clef[]
@@ -65,8 +73,8 @@ export function readAttributes(
 
   // MusicXML allows one key and one time signature per staff. MNX states them
   // for the whole score, so staves that disagree cannot both be carried.
-  const keys = element
-    .children('key')
+  const keyElements = element.children('key')
+  const keys = keyElements
     .map((found) => readKey(found, warnings, context, path))
     .filter((key): key is Key => key !== undefined)
   if (keys.some((other) => other.fifths !== keys[0]?.fifths)) {
@@ -99,6 +107,8 @@ export function readAttributes(
   if (times.length > 0) state.time = metered[0]
 
   return {
+    keyStated: keyElements.length > 0,
+    timeStated: times.length > 0,
     key: keys[0],
     time: metered[0],
     clefs: element.children('clef').map((found) => readClef(found, state, position, path)),

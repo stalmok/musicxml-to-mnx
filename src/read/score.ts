@@ -238,6 +238,12 @@ function readMeasure(
   const clefs: Clef[] = []
   let key: Key | undefined
   let time: TimeSignature | undefined
+  // Whether an <attributes> block has spoken on each. Kept apart from the
+  // values, because a statement MNX cannot carry, such as senza misura or a
+  // non-traditional key, reads as a statement with no value, and a later
+  // block in the same measure may not overwrite it.
+  let keySettled = false
+  let timeSettled = false
   const dynamics: Dynamic[] = []
   const tempos: Tempo[] = []
   let barline: BarlineType | undefined
@@ -270,8 +276,14 @@ function readMeasure(
           context,
           measurePath,
         )
-        key ??= reading.key
-        time ??= reading.time
+        if (!keySettled && reading.keyStated) {
+          key = reading.key
+          keySettled = true
+        }
+        if (!timeSettled && reading.timeStated) {
+          time = reading.time
+          timeSettled = true
+        }
         clefs.push(...reading.clefs)
         break
       }
