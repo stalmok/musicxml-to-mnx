@@ -8,7 +8,7 @@
 
 import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
-import { compareFractions } from '../fraction.js'
+import { compareFractions, multiplyFractions } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type {
   AccidentalDisplay,
@@ -179,7 +179,14 @@ export function readNote(
   }
 
   if (written && duration) {
-    reportDurationMismatch(element, written, duration, warnings, context)
+    reportDurationMismatch(
+      element,
+      written,
+      duration,
+      builder.tupletFactor(voice),
+      warnings,
+      context,
+    )
   }
 
   const value = written ?? measuredValue(element, duration, path)
@@ -658,14 +665,19 @@ function measuredValue(
   return value
 }
 
+// A note inside a tuplet is meant to last less than it is written as, by the
+// open tuplets' combined ratio, so the written value is scaled by it before
+// the two are compared. Only a disagreement beyond that is the source
+// disagreeing with itself.
 function reportDurationMismatch(
   element: ElementReader,
   written: NoteValue,
   duration: Fraction,
+  tupletFactor: Fraction,
   warnings: WarningCollector,
   context: WarningContext,
 ): void {
-  if (compareFractions(lengthOf(written), duration) === 0) return
+  if (compareFractions(multiplyFractions(lengthOf(written), tupletFactor), duration) === 0) return
 
   warnings.add(
     'inconsistent:duration',

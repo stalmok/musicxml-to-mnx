@@ -153,6 +153,53 @@ describe('tuplets', () => {
     expect(content?.[0]?.kind).toBe('tuplet')
   })
 
+  // A note inside a tuplet is meant to last less than it is written as; that
+  // is what the ratio says. Only a duration that disagrees even through the
+  // ratio is the source disagreeing with itself.
+  test('says nothing about a duration the tuplet ratio accounts for', () => {
+    const { warnings } = read(measure(TRIPLET))
+
+    expect(warnings.filter((w) => w.code === 'inconsistent:duration')).toEqual([])
+  })
+
+  test('reports a duration that disagrees even through the tuplet ratio', () => {
+    // Written as a quarter inside a 3:2 tuplet, so it should last 8 of the
+    // measure's 12 divisions, but the source gives it 4.
+    const { warnings } = read(
+      measure(
+        tupletNote('C', 4, 'eighth', 'start') +
+          tupletNote('D', 4, 'quarter') +
+          tupletNote('E', 4, 'eighth', 'stop'),
+      ),
+    )
+
+    expect(warnings.filter((w) => w.code === 'inconsistent:duration')).toHaveLength(1)
+  })
+
+  test('applies every open ratio to a note in a nested tuplet', () => {
+    // Divisions of 18 make both levels exact: a triplet eighth is 6, and a
+    // triplet 16th inside it is 2.
+    const note18 = (step: string, units: number, type: string, bracket = ''): string =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+      `<duration>${String(units)}</duration><type>${type}</type>` +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+      '</time-modification>' +
+      (bracket ? `<notations><tuplet type="${bracket}"/></notations>` : '') +
+      '</note>'
+    const source =
+      '<score-partwise><part id="P1"><measure number="1">' +
+      '<attributes><divisions>18</divisions></attributes>' +
+      note18('C', 6, 'eighth', 'start') +
+      note18('D', 2, '16th', 'start') +
+      note18('E', 2, '16th') +
+      note18('F', 2, '16th', 'stop') +
+      note18('G', 6, 'eighth', 'stop') +
+      '</measure></part></score-partwise>'
+    const { warnings } = read(source)
+
+    expect(warnings.filter((w) => w.code === 'inconsistent:duration')).toEqual([])
+  })
+
   test('rejects a tuplet the source never closes', () => {
     expect(
       readFailure(measure(tupletNote('C', 4, 'eighth', 'start') + tupletNote('D', 4, 'eighth')))

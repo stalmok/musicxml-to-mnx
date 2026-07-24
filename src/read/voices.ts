@@ -11,8 +11,15 @@
 
 import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
-import { addFractions, compareFractions, fraction, subtractFractions } from '../fraction.js'
+import {
+  addFractions,
+  compareFractions,
+  fraction,
+  multiplyFractions,
+  subtractFractions,
+} from '../fraction.js'
 import type { Fraction } from '../fraction.js'
+import { lengthOf } from './duration.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { BeamedEvent } from './beams.js'
 import type {
@@ -52,6 +59,11 @@ interface VoiceBuilder {
    * grace group opens a new one, so notes land inside it until it closes.
    */
   open: SequenceItem[][]
+  /**
+   * How much of its written value a note inside each open tuplet really
+   * lasts, innermost last: 2/3 inside a triplet.
+   */
+  openRatios: Fraction[]
   content: SequenceItem[]
   /** Where this voice's content runs out, measured from the measure start. */
   end: Fraction
@@ -117,6 +129,13 @@ function commonestStaff(staves: readonly (number | undefined)[]): number | undef
     }
   }
   return commonest
+}
+
+/** The space a tuplet is played in, against what is written in it. */
+function ratioOf(inner: NoteValueQuantity, outer: NoteValueQuantity): Fraction {
+  const written = multiplyFractions(fraction(inner.multiple), lengthOf(inner.value))
+  const played = multiplyFractions(fraction(outer.multiple), lengthOf(outer.value))
+  return fraction(played.num * written.den, played.den * written.num)
 }
 
 /** The list a note added now would land in: the innermost one still open. */
@@ -309,6 +328,16 @@ export class MeasureBuilder {
 
     innermost(builder).push(tuplet)
     builder.open.push(content)
+    builder.openRatios.push(ratioOf(inner, outer))
+  }
+
+  /**
+   * How much of its written value a note in this voice really lasts, given
+   * every tuplet currently open around it: 2/3 inside a triplet, and the
+   * ratios multiply where tuplets nest.
+   */
+  tupletFactor(voice: string | undefined): Fraction {
+    return this.#builderFor(voice).openRatios.reduce(multiplyFractions, fraction(1))
   }
 
   /** Records what an event said about the beams it carries. */
@@ -449,6 +478,7 @@ export class MeasureBuilder {
       throw new MusicXMLError('A tuplet is closed where no tuplet is open.', { path, line })
     }
     builder.open.pop()
+    builder.openRatios.pop()
   }
 
   /**
@@ -539,6 +569,7 @@ export class MeasureBuilder {
       graceBeamed: [],
       placed: [],
       open: [content],
+      openRatios: [],
       content,
       end: fraction(0),
       lastEvent: undefined,
