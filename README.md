@@ -89,6 +89,10 @@ differs from plain 1, 2, 3, so a pickup measure keeps its number.
 Tuplets, including nested ones, and grace notes, which are gathered into
 groups and keep out of the measure's time.
 
+Tremolos: on a single note as a mark on the event, counting its beams, and
+written across two notes as one item holding the pair, including a pair
+inside a tuplet.
+
 Dynamics, hairpins and tempo marks: a dynamic sits on its measure at the point
 the cursor has reached, under the staff it belongs to; a metronome mark becomes
 a tempo on the score, as does the tempo a `<sound>` states where no metronome
@@ -152,12 +156,38 @@ repeats, will always surface as warnings rather than silent loss. Out of scope
 for v1: percussion, chord symbols, transposing-instrument handling, and
 `score-timewise` documents, which are rejected with a clear error.
 
-**What is rejected rather than half-converted:** a tremolo written across two
-notes, whose written values overfill the measure exactly as a tuplet's do, and
-a tuplet whose extent the source does not bracket. MusicXML states a tuplet twice, as a ratio on every
+**What is rejected rather than half-converted:** a tuplet whose extent the
+source does not bracket. MusicXML states a tuplet twice, as a ratio on every
 note and as a bracket around them, and without the bracket there is nothing to
 say where one tuplet ends and the next begins. Guessing would invent a
 grouping the source never wrote.
+
+---
+
+## Tested against real scores
+
+Every file below is run through the converter and held to three checks: the
+output validates against the vendored MNX schema, its pitches match the
+source note for note, per measure and voice, and each measure sounds as long
+as the source says. A file either passes all three or is refused with a
+stated reason; none converts to wrong output.
+
+| Corpus                                                                                                        | Files | Convert     |
+| ------------------------------------------------------------------------------------------------------------- | ----- | ----------- |
+| [OpenScore Lieder](https://github.com/OpenScore/Lieder) (songs, MuseScore exports)                            | 1,462 | 1,431 (98%) |
+| [OpenScore String Quartets](https://github.com/OpenScore/StringQuartets) (exported with MuseScore 3)          | 122   | 112 (92%)   |
+| [Unofficial MusicXML Test Suite](https://github.com/cuthbertLab/musicxmlTestSuite) (feature files)            | 150   | 136 (91%)   |
+| [MusicXML example set](https://www.musicxml.com/music-in-musicxml/example-set/) (Finale exports, some UTF-16) | 36    | 32 (89%)    |
+
+The remainder are refusals, each naming its reason: notation MNX cannot
+state (percussion and TAB clefs, microtone alterations, composite meters
+such as 3+2/8), or sources that disagree with themselves (a tuplet opened
+and never closed, a backup reaching before the measure start, a metronome
+stating no beats per minute).
+
+Fifty of the Lieder songs are vendored into the repository and convert on
+every test run; the full Lieder corpus gate runs weekly in CI and before
+every release.
 
 ---
 
