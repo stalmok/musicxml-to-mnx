@@ -107,6 +107,25 @@ describe('hooks', () => {
     expect(beams[0]?.beams).toEqual([{ events: ['ev2'], beams: [], direction: 'left' }])
   })
 
+  // A 32nd note beside a double-dotted eighth carries hooks at level 2 and
+  // level 3 at once: one for its 16th beam, one for its 32nd beam. The
+  // deeper hook nests inside the shallower one.
+  test('nests a deeper hook inside the hook above it', () => {
+    const beams = buildBeams([
+      event('ev1', '1:begin'),
+      event('ev2', '1:continue'),
+      event('ev3', '1:end; 2:backward hook; 3:backward hook'),
+    ])
+
+    expect(beams[0]?.beams).toEqual([
+      {
+        events: ['ev3'],
+        beams: [{ events: ['ev3'], beams: [], direction: 'left' }],
+        direction: 'left',
+      },
+    ])
+  })
+
   test('keeps hooks in the order they appear alongside a nested beam', () => {
     const beams = buildBeams([
       event('ev1', '1:begin; 2:forward hook'),

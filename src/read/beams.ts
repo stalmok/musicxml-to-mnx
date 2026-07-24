@@ -56,8 +56,10 @@ function beamsAtLevel(events: readonly BeamedEvent[], level: number): Beam[] {
     const hook = marker === undefined ? undefined : HOOK_DIRECTIONS.get(marker)
     if (hook) {
       // A hook belongs to the level it is written at, beside whatever runs
-      // there rather than inside them.
-      beams.push({ events: [event.id], beams: [], direction: hook })
+      // there rather than inside them. A note may carry hooks at several
+      // levels at once, as a 32nd beside a double-dotted eighth does, and
+      // the deeper ones nest inside this one.
+      beams.push({ events: [event.id], beams: beamsAtLevel([event], level + 1), direction: hook })
       continue
     }
 
