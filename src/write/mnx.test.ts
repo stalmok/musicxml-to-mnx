@@ -370,11 +370,13 @@ describe('ties and slurs', () => {
         { voice: undefined, staff: undefined, content: [crossing, target], fullMeasure: undefined },
       ],
     })
-    const written = writeMnx(score).parts[0]?.measures[0]?.sequences[0]?.content[0]
+    const document = writeMnx(score)
+    const written = document.parts[0]?.measures[0]?.sequences[0]?.content[0]
 
     expect(written).toMatchObject({
       notes: [{ ties: [{ target: 'note-target', targetType: 'crossVoice' }] }],
     })
+    expect(schemaErrors(document)).toEqual([])
   })
 
   test('states the slur on the event it starts from, with its side', () => {

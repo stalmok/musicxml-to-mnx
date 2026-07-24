@@ -532,7 +532,7 @@ export class MeasureBuilder {
     const compared = compareFractions(held, stated)
     if (compared !== 0) {
       warnings.add(
-        'inconsistent:duration',
+        'inconsistent:tuplet',
         `A tuplet's written content ${compared < 0 ? 'falls short of' : 'overruns'} its ` +
           'stated ratio. The content is converted as written.',
         { ...context, line },

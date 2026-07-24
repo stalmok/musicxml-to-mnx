@@ -80,6 +80,21 @@ describe('ties', () => {
     expect(first.ties).toEqual([{ target: second.id, crossVoice: false }])
   })
 
+  // A note stating no voice and one stating an empty voice are both the
+  // unnamed voice, which is how the sequences bucket them.
+  test('treats a missing voice and an empty voice as the same voice', () => {
+    const unvoiced =
+      '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+      `<duration>4</duration><type>quarter</type>${tied('start')}</note>`
+    const emptyVoiced =
+      '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+      `<duration>4</duration><type>quarter</type><voice></voice>${tied('stop')}</note>`
+    const { notes } = read(measures(DIVISIONS + unvoiced, emptyVoiced))
+    const [first, second] = notes as [Note, Note]
+
+    expect(first.ties).toEqual([{ target: second.id, crossVoice: false }])
+  })
+
   // A note in the middle of a chain both ends the tie before it and starts the
   // next, so it carries two <tie> elements.
   test('follows a chain of ties through the note that both ends and starts one', () => {

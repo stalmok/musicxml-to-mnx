@@ -382,7 +382,7 @@ function readMeasure(
  * Drops a clef that another clef replaces at the same point on the same
  * staff, which exporters write when the clef in force is restated after the
  * barline. MNX draws one clef at a point, so the one the following notes
- * obey — the last declared — is the one converted.
+ * obey, which is the last declared, is the one converted.
  */
 function dedupeClefs(
   clefs: readonly Clef[],

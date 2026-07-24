@@ -174,10 +174,8 @@ describe('tuplets', () => {
           tupletNote('E', 4, 'eighth', 'stop'),
       ),
     )
-    const inconsistent = warnings.filter((w) => w.code === 'inconsistent:duration')
-
-    expect(inconsistent.filter((w) => w.element === 'note')).toHaveLength(1)
-    expect(inconsistent.filter((w) => w.element === 'tuplet')).toHaveLength(1)
+    expect(warnings.filter((w) => w.code === 'inconsistent:duration')).toHaveLength(1)
+    expect(warnings.filter((w) => w.code === 'inconsistent:tuplet')).toHaveLength(1)
   })
 
   test('applies every open ratio to a note in a nested tuplet', () => {
@@ -264,7 +262,7 @@ describe('tuplets', () => {
     const { warnings } = read(measure(partial))
 
     expect(warnings.map((w) => ({ code: w.code, element: w.element }))).toEqual([
-      { code: 'inconsistent:duration', element: 'tuplet' },
+      { code: 'inconsistent:tuplet', element: 'tuplet' },
     ])
     expect(warnings[0]?.message).toContain('falls short')
   })

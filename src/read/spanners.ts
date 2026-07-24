@@ -178,8 +178,11 @@ export class SpannerResolver {
     }
 
     // A tie ending in a different voice says so, because without the mark a
-    // consumer reads the target as the same voice's next note.
-    open.note.ties = [...open.note.ties, { target: note.id, crossVoice: open.voice !== voice }]
+    // consumer reads the target as the same voice's next note. Voices are
+    // compared the way sequences are bucketed: a note stating no voice and
+    // one stating an empty voice are both the unnamed voice.
+    const crossVoice = (open.voice ?? '') !== (voice ?? '')
+    open.note.ties = [...open.note.ties, { target: note.id, crossVoice }]
     this.#openTies.delete(key)
   }
 
