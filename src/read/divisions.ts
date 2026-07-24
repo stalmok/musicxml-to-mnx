@@ -17,9 +17,11 @@ import type { PartState } from './state.js'
  * The divisions in force. A file may state durations without ever saying how
  * many divisions make a quarter note; the spec names no default, but every
  * such file reads correctly at the customary one per quarter, so that is
- * assumed and reported. If the assumption is wrong, the written values
- * disagree with the measured ones and the inconsistent:duration warnings say
- * so. Held on the state, so the assumption is made and reported once per part.
+ * assumed and reported. The assumption is checkable only against a written
+ * note value: where one is stated, a wrong assumption shows as
+ * inconsistent:duration warnings, and a note without one is refused rather
+ * than guessed at. Held on the state, so the assumption is made and reported
+ * once per part.
  */
 export function divisionsInForce(
   state: PartState,
@@ -36,6 +38,7 @@ export function divisionsInForce(
       'divisions',
     )
     state.divisions = 1
+    state.divisionsAssumed = true
   }
   return state.divisions
 }

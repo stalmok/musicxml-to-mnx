@@ -167,6 +167,7 @@ export function readNote(
     restElement !== undefined &&
     written === undefined &&
     duration !== undefined &&
+    !state.divisionsAssumed &&
     state.time !== undefined &&
     compareFractions(duration, fraction(state.time.count, state.time.unit)) === 0
   if ((restElement && attribute(restElement, 'measure') === 'yes') || fillsMeasure) {
@@ -197,7 +198,7 @@ export function readNote(
     )
   }
 
-  const value = written ?? measuredValue(element, duration, path)
+  const value = written ?? measuredValue(element, duration, state, path)
   const notes: Note[] = pitchElement ? [readNoteAt(element, pitchElement, state, path)] : []
 
   const event: Event = {
@@ -655,6 +656,7 @@ function readWrittenValue(element: ElementReader, path: DocumentPath): NoteValue
 function measuredValue(
   element: ElementReader,
   duration: Fraction | undefined,
+  state: PartState,
   path: DocumentPath,
 ): NoteValue {
   if (!duration) {
@@ -662,6 +664,16 @@ function measuredValue(
       path,
       line: element.line,
     })
+  }
+
+  // The duration was measured in assumed divisions, and with no written value
+  // there is nothing to check the assumption against. A wrong guess here
+  // would be a silently wrong note length.
+  if (state.divisionsAssumed) {
+    throw new MusicXMLError(
+      'A <note> has no <type>, and no <divisions> ever said how long its <duration> is.',
+      { path, line: element.line },
+    )
   }
 
   const value = noteValueOf(duration)

@@ -222,6 +222,15 @@ describe('measure attributes', () => {
     expect(warnings.map((w) => w.code)).toEqual(['missing:divisions'])
   })
 
+  // The assumption is checkable only against a written value: a wrong guess
+  // shows as an inconsistent:duration warning. A note with no <type> offers
+  // nothing to check, and a wrong guess would be a silently wrong length.
+  test('refuses an untyped duration under an assumed divisions', () => {
+    expect(readFailure(measure('<note><rest/><duration>2</duration></note>')).message).toContain(
+      'no <divisions> ever said',
+    )
+  })
+
   // A key stated without <fifths> is non-traditional, spelled as individual
   // altered steps. MNX states a key as a count of fifths, so the signature is
   // dropped and reported. The notes still sound right: each carries its own

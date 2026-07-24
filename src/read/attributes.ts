@@ -55,6 +55,7 @@ export function readAttributes(
   const divisionsElement = element.child('divisions')
   if (divisionsElement) {
     state.divisions = readIntegerInRange(divisionsElement, path, 1, 1_000_000)
+    state.divisionsAssumed = false
   }
 
   const stavesElement = element.child('staves')
