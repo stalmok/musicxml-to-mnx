@@ -8,7 +8,7 @@
 
 import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
-import { compareFractions, multiplyFractions } from '../fraction.js'
+import { compareFractions, fraction, multiplyFractions } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type {
   AccidentalDisplay,
@@ -160,8 +160,16 @@ export function readNote(
 
   // A rest marked as filling the measure is not an event with a length: MNX
   // states it on the sequence, and how long the measure runs is the time
-  // signature's business.
-  if (restElement && attribute(restElement, 'measure') === 'yes') {
+  // signature's business. Some exporters leave measure="yes" off, so a rest
+  // with no written value lasting exactly the measure is read the same way;
+  // in an irregular measure that length may have no note value at all.
+  const fillsMeasure =
+    restElement !== undefined &&
+    written === undefined &&
+    duration !== undefined &&
+    state.time !== undefined &&
+    compareFractions(duration, fraction(state.time.count, state.time.unit)) === 0
+  if ((restElement && attribute(restElement, 'measure') === 'yes') || fillsMeasure) {
     // A rest is not drawn with a stem, and a beam over one alone is not a
     // beam, so a source stating either says nothing this loses.
     element.skip('stem', 'beam')

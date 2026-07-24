@@ -465,6 +465,39 @@ describe('whole-measure rests', () => {
 
     expect(result.parts[0]?.measures[0]?.sequences[0]?.fullMeasure).toBeUndefined()
   })
+
+  // Some exporters leave measure="yes" off: a rest with no written value
+  // lasting exactly the measure is the same statement. In 5/16 that length
+  // has no note value at all, so reading it as an ordinary rest would fail.
+  test('treats an untyped rest lasting the whole measure as one', () => {
+    const { score: result } = read(
+      measure(
+        '<attributes><divisions>4</divisions>' +
+          '<time><beats>5</beats><beat-type>16</beat-type></time></attributes>' +
+          '<note><rest/><duration>5</duration></note>',
+      ),
+    )
+    const sequence = result.parts[0]?.measures[0]?.sequences[0]
+
+    expect(sequence?.fullMeasure).toEqual({ visualDuration: undefined })
+    expect(sequence?.content).toEqual([])
+  })
+
+  // A shorter untyped rest is a fragment of the measure, not the whole of it.
+  test('leaves an untyped rest shorter than the measure an ordinary rest', () => {
+    const { score: result } = read(
+      measure(
+        '<attributes><divisions>4</divisions>' +
+          '<time><beats>4</beats><beat-type>4</beat-type></time></attributes>' +
+          '<note><rest/><duration>8</duration></note>' +
+          '<note><rest/><duration>8</duration></note>',
+      ),
+    )
+    const sequence = result.parts[0]?.measures[0]?.sequences[0]
+
+    expect(sequence?.fullMeasure).toBeUndefined()
+    expect(sequence?.content).toHaveLength(2)
+  })
 })
 
 describe('measure numbering', () => {
