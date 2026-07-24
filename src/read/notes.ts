@@ -70,7 +70,7 @@ export function readNote(
   for (const block of notations) block.skip('tied')
 
   const voice = element.child('voice')?.text.trim()
-  const duration = readDuration(element, state, path)
+  const duration = readDuration(element, state, warnings, context, path)
   const written = readWrittenValue(element, path)
   const graceElement = element.child('grace')
 

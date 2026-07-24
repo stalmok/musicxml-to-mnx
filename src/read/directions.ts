@@ -15,6 +15,7 @@ import type { Dynamic, DynamicValue, OttavaAmount, Tempo, WedgeType } from '../m
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, children, trimmedText } from '../xml/tree.js'
+import { divisionsInForce } from './divisions.js'
 import type { ElementReader } from './element.js'
 import { noteValueBaseOf } from './noteValues.js'
 import { readIntegerInRange } from './numbers.js'
@@ -60,7 +61,7 @@ export function readDirection(
   const named = staffElement ? readIntegerInRange(staffElement, path, 1, state.staves) : undefined
   const staff = state.staves > 1 ? named : undefined
 
-  const at = offsetPosition(element, position, state, warnings, context, path)
+  const at = offsetPosition(element, position, state, warnings, context)
 
   for (const directionType of element.children('direction-type')) {
     for (const found of directionType.children) {
@@ -113,7 +114,6 @@ function offsetPosition(
   state: PartState,
   warnings: WarningCollector,
   context: WarningContext,
-  path: DocumentPath,
 ): Fraction {
   const offset = element.child('offset')
   if (!offset) return position
@@ -132,14 +132,8 @@ function offsetPosition(
     return position
   }
 
-  if (state.divisions === undefined) {
-    throw new MusicXMLError('An <offset> appears before any <divisions> said how long one is.', {
-      path,
-      line: offset.line,
-    })
-  }
-
-  const moved = addFractions(position, fraction(Number(written), state.divisions * 4))
+  const divisions = divisionsInForce(state, warnings, context, offset.line)
+  const moved = addFractions(position, fraction(Number(written), divisions * 4))
 
   // MNX states a position within its measure, counting from the start, so
   // there is nowhere to put a mark an offset carries out of it, in either

@@ -287,20 +287,19 @@ describe('an offset moving a direction', () => {
     expect(warnings[0]?.message).toContain('outside its measure')
   })
 
-  // An offset is counted in divisions, so it cannot be read before something
-  // has said how long one is. readDuration refuses the same way.
-  test('rejects an offset stated before any <divisions>', () => {
+  // An offset is counted in divisions. Where a file never says how many make
+  // a quarter note, the customary one per quarter is assumed and reported.
+  test('assumes one division per quarter for an offset before any <divisions>', () => {
     const warnings = new WarningCollector()
-
-    expect(() =>
-      readScore(
-        parseXmlRoot(
-          '<score-partwise><part id="P1"><measure number="1">' +
-            `${dynamic('<offset>2</offset>')}</measure></part></score-partwise>`,
-        ),
-        warnings,
+    readScore(
+      parseXmlRoot(
+        '<score-partwise><part id="P1"><measure number="1">' +
+          `${dynamic('<offset>2</offset>')}</measure></part></score-partwise>`,
       ),
-    ).toThrow('before any <divisions>')
+      warnings,
+    )
+
+    expect(warnings.list().map((w) => w.code)).toContain('missing:divisions')
   })
 
   // MusicXML allows a fractional offset. Rounding one would put the mark

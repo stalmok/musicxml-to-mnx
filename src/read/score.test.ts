@@ -207,6 +207,21 @@ describe('measure attributes', () => {
     ).toContain('0 beats')
   })
 
+  // A file may state durations without ever saying how many divisions make a
+  // quarter note. The spec names no default; one per quarter is the customary
+  // reading, so it is assumed and reported once per part.
+  test('assumes one division per quarter when none was ever stated', () => {
+    const { score: result, warnings } = read(
+      measure(
+        '<note><rest/><duration>4</duration><type>whole</type></note>' +
+          '<note><rest/><duration>2</duration><type>half</type></note>',
+      ),
+    )
+
+    expect(result.parts[0]?.measures[0]?.sequences[0]?.content).toHaveLength(2)
+    expect(warnings.map((w) => w.code)).toEqual(['missing:divisions'])
+  })
+
   // A key stated without <fifths> is non-traditional, spelled as individual
   // altered steps. MNX states a key as a count of fifths, so the signature is
   // dropped and reported. The notes still sound right: each carries its own
@@ -390,12 +405,6 @@ describe('durations', () => {
       base: 'half',
       dots: 0,
     })
-  })
-
-  test('rejects a duration when the score never said what a division is', () => {
-    expect(readFailure(measure('<note><rest/><duration>4</duration></note>')).message).toContain(
-      '<divisions>',
-    )
   })
 
   test('rejects a duration that no note value can write', () => {

@@ -323,7 +323,7 @@ function readMeasure(
       // stays unread and is reported.
       case 'backup':
       case 'forward': {
-        const by = requireDuration(reader, state, measurePath)
+        const by = requireDuration(reader, state, warnings, context, measurePath)
         builder.shift(found.name === 'backup' ? negate(by) : by, measurePath, found.line)
         break
       }

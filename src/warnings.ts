@@ -82,6 +82,10 @@ export type WarningCode =
   // A part holds a different number of measures from the score, so it stops
   // before the score does or runs past the end of it.
   | 'inconsistent:measure-count'
+  // A duration or offset appears before any <divisions> said how long one
+  // is. One division per quarter note is assumed; if that is wrong, the
+  // written values disagree with the measured ones and say so.
+  | 'missing:divisions'
 
 /**
  * True for a loss no release of this converter can close, short of MNX itself
