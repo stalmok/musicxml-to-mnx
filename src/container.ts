@@ -132,11 +132,12 @@ function rootFilePath(listing: Uint8Array): string | undefined {
 }
 
 /**
- * Bytes as UTF-8 text. fflate's decoder is used rather than a `TextDecoder`
- * global, so the core stays free of the platform globals the build forbids it.
- * A leading UTF-8 byte-order mark, which would otherwise reach the parser as a
- * stray character before the prolog, is stripped by that decoder as the
- * encoding spec requires.
+ * Bytes as text: UTF-16 where a byte-order mark says so, UTF-8 otherwise.
+ * fflate's UTF-8 decoder is used rather than a `TextDecoder` global, so the
+ * core stays free of the platform globals the build forbids it. A leading
+ * UTF-8 byte-order mark, which would otherwise reach the parser as a stray
+ * character before the prolog, is stripped by that decoder as the encoding
+ * spec requires.
  */
 function decode(bytes: Uint8Array): string {
   // A UTF-16 byte-order mark: fflate decodes UTF-8 only, and Finale ships

@@ -13,8 +13,8 @@
 //   unrepresentable:*  a limit of MNX. There is nowhere in the output format
 //                      to put it, so no release will carry it while the
 //                      format stays as it is.
-//   anything else      the source disagreeing with itself, and what the
-//                      converter did about it.
+//   anything else      the source disagreeing with itself or omitting what
+//                      reading it needs, and what the converter did about it.
 
 // Stable, machine-readable codes. Consumers match on these, so a code's
 // meaning must never change once released; add a new one instead.
@@ -64,7 +64,8 @@ export type WarningCode =
   // notes still sound right, because each carries its own alteration.
   | 'unrepresentable:non-traditional-key'
 
-  // --- The source disagreeing with itself -------------------------------
+  // --- The source disagreeing with itself, or omitting what reading it
+  //     needs -------------------------------------------------------------
   // A part's id has no matching entry in the part list, so its name and any
   // other part-list detail are unavailable.
   | 'unresolved:part-id'
