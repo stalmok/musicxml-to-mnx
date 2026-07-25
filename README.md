@@ -174,21 +174,21 @@ stated reason; none converts to wrong output. Counts are from the corpora as
 of July 2026; the Lieder corpus keeps growing, and the gate meets it at its
 tip.
 
-| Corpus                                                                                                        | Files | Convert     |
-| ------------------------------------------------------------------------------------------------------------- | ----- | ----------- |
-| [OpenScore Lieder](https://github.com/OpenScore/Lieder) (songs, MuseScore exports)                            | 1,462 | 1,431 (98%) |
-| [OpenScore String Quartets](https://github.com/OpenScore/StringQuartets) (exported with MuseScore 3)          | 122   | 112 (92%)   |
-| [Unofficial MusicXML Test Suite](https://github.com/cuthbertLab/musicxmlTestSuite) (feature files)            | 150   | 136 (91%)   |
-| [MusicXML example set](https://www.musicxml.com/music-in-musicxml/example-set/) (Finale exports, some UTF-16) | 36    | 32 (89%)    |
-| [PDMX](https://zenodo.org/records/15571083) random sample (MuseScore.com, all genres)                         | 4,000 | 3,856 (96%) |
-| [music21 bundled corpus](https://github.com/cuthbertLab/music21) (hand-encoded, older tools, some UTF-16)     | 654   | 614 (94%)   |
+| Corpus                                                                                                        | Files  | Convert      |
+| ------------------------------------------------------------------------------------------------------------- | ------ | ------------ |
+| [OpenScore Lieder](https://github.com/OpenScore/Lieder) (songs, MuseScore exports)                            | 1,462  | 1,431 (98%)  |
+| [OpenScore String Quartets](https://github.com/OpenScore/StringQuartets) (exported with MuseScore 3)          | 122    | 112 (92%)    |
+| [Unofficial MusicXML Test Suite](https://github.com/cuthbertLab/musicxmlTestSuite) (feature files)            | 150    | 136 (91%)    |
+| [MusicXML example set](https://www.musicxml.com/music-in-musicxml/example-set/) (Finale exports, some UTF-16) | 36     | 32 (89%)     |
+| [PDMX](https://zenodo.org/records/15571083) random sample (MuseScore.com, all genres)                         | 24,000 | 23,065 (96%) |
+| [music21 bundled corpus](https://github.com/cuthbertLab/music21) (hand-encoded, older tools, some UTF-16)     | 654    | 614 (94%)    |
 
 The remainder are refusals, each naming its reason: notation MNX cannot
 state (percussion and TAB clefs, microtone alterations, composite meters
 such as 3+2/8), or sources that disagree with themselves (a tuplet opened
 and never closed, a backup reaching before the measure start, a metronome
 stating no beats per minute, a voice resting through the same measure
-twice). In the PDMX sample the two clef limits account for 113 of the 144
+twice). In the PDMX sample the two clef limits account for 692 of the 935
 refusals: MuseScore.com carries a lot of drum and guitar music.
 
 Fifty of the Lieder songs are vendored into the repository and convert on
