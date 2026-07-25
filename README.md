@@ -181,14 +181,15 @@ tip.
 | [Unofficial MusicXML Test Suite](https://github.com/cuthbertLab/musicxmlTestSuite) (feature files)            | 150   | 136 (91%)   |
 | [MusicXML example set](https://www.musicxml.com/music-in-musicxml/example-set/) (Finale exports, some UTF-16) | 36    | 32 (89%)    |
 | [PDMX](https://zenodo.org/records/15571083) random sample (MuseScore.com, all genres)                         | 4,000 | 3,856 (96%) |
+| [music21 bundled corpus](https://github.com/cuthbertLab/music21) (hand-encoded, older tools, some UTF-16)     | 654   | 614 (94%)   |
 
 The remainder are refusals, each naming its reason: notation MNX cannot
 state (percussion and TAB clefs, microtone alterations, composite meters
 such as 3+2/8), or sources that disagree with themselves (a tuplet opened
 and never closed, a backup reaching before the measure start, a metronome
-stating no beats per minute). In the PDMX sample the two clef limits
-account for 113 of the 144 refusals: MuseScore.com carries a lot of drum
-and guitar music.
+stating no beats per minute, a voice resting through the same measure
+twice). In the PDMX sample the two clef limits account for 113 of the 144
+refusals: MuseScore.com carries a lot of drum and guitar music.
 
 Fifty of the Lieder songs are vendored into the repository and convert on
 every test run; the full Lieder corpus gate runs weekly in CI and before
