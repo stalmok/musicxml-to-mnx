@@ -1,13 +1,10 @@
-// Where the time goes, measured rather than guessed.
-//
-// Run with `pnpm bench`. Three groups:
+// Benchmarks, run with `pnpm bench`. Three groups:
 //   1. the pipeline stages one by one, on the same mid-sized song, so a
 //      change can be traced to the stage it slowed down
 //   2. whole conversions of real songs, smallest to largest
 //   3. whole conversions of generated scores past corpus size
 //
-// These produce numbers, not verdicts; the pass/fail complexity guards live
-// in performance.test.ts.
+// The pass/fail complexity guards live in performance.test.ts.
 
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
