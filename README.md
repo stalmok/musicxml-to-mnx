@@ -170,7 +170,9 @@ Every file below is run through the converter and held to three checks: the
 output validates against the vendored MNX schema, its pitches match the
 source note for note, per measure and voice, and each measure sounds as long
 as the source says. A file either passes all three or is refused with a
-stated reason; none converts to wrong output.
+stated reason; none converts to wrong output. Counts are from the corpora as
+of July 2026; the Lieder corpus keeps growing, and the gate meets it at its
+tip.
 
 | Corpus                                                                                                        | Files | Convert     |
 | ------------------------------------------------------------------------------------------------------------- | ----- | ----------- |
