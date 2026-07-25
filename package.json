@@ -41,6 +41,7 @@
     "build": "vite build && vite build --config vite.cli.config.ts && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json --noEmit",
     "test": "vitest run",
+    "bench": "vitest bench --run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint .",
