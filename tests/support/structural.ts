@@ -166,14 +166,20 @@ export function sourcePitches(root: XmlElement): string[] {
         .filter((c) => c.name === 'measure')
         .forEach((measure, measureIndex) => {
           // Grouped by voice in document order, which within one voice is the
-          // order the music has.
+          // order the music has. A chord member belongs to the note it is
+          // chorded with, and some exports (Sibelius) state no <voice> on it,
+          // so a chord note without one inherits the voice in force.
           const byVoice = new Map<string, string[]>()
+          let voiceInForce = ''
           for (const note of measure.children.filter((c) => c.name === 'note')) {
+            const isChord = note.children.some((c) => c.name === 'chord')
+            const stated = note.children.find((c) => c.name === 'voice')?.text.trim() ?? ''
+            const voice = stated === '' && isChord ? voiceInForce : stated
+            if (!isChord) voiceInForce = voice
             const pitch = note.children.find((c) => c.name === 'pitch')
             if (!pitch) continue
             const text = (name: string) =>
               pitch.children.find((c) => c.name === name)?.text.trim() ?? ''
-            const voice = note.children.find((c) => c.name === 'voice')?.text.trim() ?? ''
             const list = byVoice.get(voice) ?? []
             list.push(
               pitchKey({
