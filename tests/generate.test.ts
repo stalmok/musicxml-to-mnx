@@ -1,6 +1,5 @@
-// The generator behind the performance tests, proven against the same
-// oracle as everything else: its output converts, the result is legal MNX,
-// and the conversion is lossless.
+// The generator behind the performance tests: its output converts, the
+// result is legal MNX, and the conversion is lossless.
 
 import { describe, expect, test } from 'vitest'
 import { convertMusicXML } from '../src/index.js'
@@ -18,11 +17,16 @@ describe('generated scores', () => {
       expect(mnx.parts).toHaveLength(2)
       expect(mnx.parts[0]?.measures).toHaveLength(5)
 
-      // Each measure carries its notes: the generated count per voice is
-      // notesPerMeasure plus a chord note on every fourth of them.
+      // A chord note joins the event of the note it follows, so the measure
+      // holds exactly notesPerMeasure events, and every fourth one carries
+      // two notes.
       const firstMeasure = mnx.parts[0]?.measures?.[0]
       const events = firstMeasure?.sequences?.[0]?.content ?? []
-      expect(events.length).toBeGreaterThanOrEqual(notesPerMeasure)
+      expect(events).toHaveLength(notesPerMeasure)
+      events.forEach((event, index) => {
+        const notes = 'notes' in event ? (event.notes ?? []) : []
+        expect(notes).toHaveLength(index % 4 === 0 ? 2 : 1)
+      })
     })
   }
 })
