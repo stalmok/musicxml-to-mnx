@@ -145,6 +145,39 @@ describe('chords', () => {
       'lasts',
     )
   })
+
+  // Sibelius writes some chord members with a duration that dropped the dot
+  // both notes are written with. Where the written values agree the chord is
+  // coherent: the written value is the one converted, and the duration is
+  // reported.
+  test('carries a chord member whose duration disagrees but whose written value matches', () => {
+    const { measure: result, warnings } = read(
+      measure(
+        '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+          '<duration>12</duration><voice>1</voice><type>half</type><dot/></note>' +
+          '<note><chord/><pitch><step>E</step><octave>4</octave></pitch>' +
+          '<duration>8</duration><voice>1</voice><type>half</type><dot/></note>',
+      ),
+    )
+    const first = result?.sequences[0]?.content[0]
+
+    expect(first?.kind === 'event' && first.notes.map((n) => n.pitch.step)).toEqual(['C', 'E'])
+    expect(first?.kind === 'event' && first.value).toEqual({ base: 'half', dots: 1 })
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:duration'])
+  })
+
+  test('rejects a chord member whose duration and written value both disagree', () => {
+    expect(
+      readFailure(
+        measure(
+          '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+            '<duration>8</duration><voice>1</voice><type>half</type></note>' +
+            '<note><chord/><pitch><step>E</step><octave>4</octave></pitch>' +
+            '<duration>4</duration><voice>1</voice><type>quarter</type></note>',
+        ),
+      ).message,
+    ).toContain('lasts a different time from the chord')
+  })
 })
 
 // A grace note is squeezed in before the beat and takes no time of its own.

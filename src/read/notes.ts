@@ -109,7 +109,40 @@ export function readNote(
     }
 
     const chordNote = readNoteAt(element, pitchElement, state, path)
-    builder.addChordNote(voice, chordNote, duration, path, element.line)
+
+    // Sibelius writes some chord members with a duration that disagrees with
+    // the value every note of the chord is written as (a dotted half whose
+    // duration dropped the dot). Where the written values agree the chord is
+    // coherent: the written value is the one converted, and the duration is
+    // reported rather than compared.
+    const joins = builder.chordValue(voice)
+    const writtenMatches =
+      written !== undefined &&
+      joins !== undefined &&
+      written.base === joins.base &&
+      written.dots === joins.dots
+    const chordDuration = builder.chordDuration(voice)
+    if (
+      writtenMatches &&
+      duration &&
+      chordDuration &&
+      compareFractions(duration, chordDuration) !== 0
+    ) {
+      warnings.add(
+        'inconsistent:duration',
+        `A <note> in a chord lasts ${describeLength(duration)} but is written as ` +
+          `${describeValue(written)}, as the chord is. The written value is the one converted.`,
+        { ...context, line: element.line },
+        'note',
+      )
+    }
+    builder.addChordNote(
+      voice,
+      chordNote,
+      writtenMatches ? undefined : duration,
+      path,
+      element.line,
+    )
     readArpeggio(notations, voice, builder)
     readTies(element, chordNote, voice, state, warnings, context)
     closeTuplets(builder, voice, tupletBrackets(notations), warnings, context, path, element.line)

@@ -28,6 +28,7 @@ import type {
   FullMeasureRest,
   GraceGroup,
   Note,
+  NoteValue,
   NoteValueQuantity,
   Pitch,
   Sequence,
@@ -289,6 +290,16 @@ export class MeasureBuilder {
   /** The staff the event a chord note would join was placed on. */
   staffOfChord(voice: string | undefined): number | undefined {
     return this.#builderFor(voice ?? this.#lastVoice).placed.at(-1)?.staff
+  }
+
+  /** The written value of the event a chord note would join. */
+  chordValue(voice: string | undefined): NoteValue | undefined {
+    return this.#builderFor(voice ?? this.#lastVoice).lastEvent?.value
+  }
+
+  /** How long the event a chord note would join lasts. */
+  chordDuration(voice: string | undefined): Fraction | undefined {
+    return this.#builderFor(voice ?? this.#lastVoice).lastDuration
   }
 
   /**
