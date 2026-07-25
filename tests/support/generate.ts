@@ -73,6 +73,10 @@ function measureLines(score: GeneratedScore, measure: number): string[] {
       const inBeat = note % perBeat
       const state = inBeat === 0 ? 'begin' : inBeat === perBeat - 1 ? 'end' : 'continue'
       lines.push(`        <beam number="1">${state}</beam>`)
+      // Sixteenths beam at two levels, as real music writes them.
+      if (score.notesPerMeasure === 16) {
+        lines.push(`        <beam number="2">${state}</beam>`)
+      }
     }
     if (note === 0 || note === score.notesPerMeasure - 1) {
       const slur = note === 0 ? 'start' : 'stop'
