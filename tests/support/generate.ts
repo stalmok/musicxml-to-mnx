@@ -82,9 +82,10 @@ function measureLines(score: GeneratedScore, measure: number): string[] {
       '        <lyric number="1"><syllabic>single</syllabic><text>la</text></lyric>',
       '      </note>',
     )
-    // Every downbeat is a two-note chord, so chord grouping is on the
-    // measured path too.
-    if (note % perBeat === 0) {
+    // Every fourth note is a two-note chord, so chord grouping is on the
+    // measured path and the note count still scales exactly with
+    // notesPerMeasure, which the scaling tests divide by.
+    if (note % 4 === 0) {
       lines.push(
         '      <note>',
         '        <chord/>',

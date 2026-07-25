@@ -53,12 +53,12 @@ test('time scales linearly with notes per measure', () => {
   const sparse = generateScore({ parts: 1, measures: 100, notesPerMeasure: 4 })
   const dense = generateScore({ parts: 1, measures: 100, notesPerMeasure: 16 })
 
-  // 4x the density: linear is 4x (observed ~3x), quadratic ~16x.
+  // 4x the density: linear is 4x (observed ~3.6x), quadratic ~16x.
   expect(timeRatio(sparse, dense)).toBeLessThan(12)
 }, 60_000)
 
 test('a large score converts in bounded time', () => {
-  // Four parts, a thousand measures, ~48,000 notes: an order of magnitude
+  // Four parts, a thousand measures, 40,000 notes: an order of magnitude
   // past the longest corpus songs. Observed around 1.5s plain and 6.5s under
   // coverage instrumentation; the bound leaves room for a loaded machine but
   // not for a complexity regression, which would take minutes at this size.

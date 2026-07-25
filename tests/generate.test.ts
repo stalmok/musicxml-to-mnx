@@ -19,7 +19,7 @@ describe('generated scores', () => {
       expect(mnx.parts[0]?.measures).toHaveLength(5)
 
       // Each measure carries its notes: the generated count per voice is
-      // notesPerMeasure plus one chord note per beat.
+      // notesPerMeasure plus a chord note on every fourth of them.
       const firstMeasure = mnx.parts[0]?.measures?.[0]
       const events = firstMeasure?.sequences?.[0]?.content ?? []
       expect(events.length).toBeGreaterThanOrEqual(notesPerMeasure)
