@@ -201,7 +201,9 @@ export function sourcePitches(root: XmlElement): string[] {
  * This follows MusicXML's cursor by hand: notes advance it, chord notes and
  * grace notes do not, and <backup> and <forward> move it directly. Each
  * duration is reduced to whole notes at the divisions in force where it
- * occurs, because <divisions> can change in the middle of a measure.
+ * occurs, because <divisions> can change in the middle of a measure. Only a
+ * note extends the measured length: a <forward> past the last note skips
+ * time nothing is written in, which the converter rightly leaves silent.
  */
 export function sourceMeasureLengths(root: XmlElement): number[][] {
   const perPart: number[][] = []
@@ -230,8 +232,8 @@ export function sourceMeasureLengths(root: XmlElement): number[][] {
           const isChord = item.children.some((c) => c.name === 'chord')
           const isGrace = item.children.some((c) => c.name === 'grace')
           if (!isChord && !isGrace) position += durationOf()
+          furthest = Math.max(furthest, position)
         }
-        furthest = Math.max(furthest, position)
       }
       lengths.push(furthest)
     }
