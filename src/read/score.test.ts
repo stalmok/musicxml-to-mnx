@@ -554,6 +554,55 @@ describe('whole-measure rests', () => {
     expect(sequence?.content).toEqual([])
   })
 
+  // Real scores write an occasional extra rest over the measure rest in the
+  // same voice. Both are silence, so the measure rest stands and the extra
+  // is reported.
+  test('drops an extra rest written over a measure rest, reporting it', () => {
+    const { score: result, warnings } = read(
+      measure(
+        '<attributes><divisions>4</divisions></attributes>' +
+          '<note><rest measure="yes"/><duration>16</duration><voice>1</voice></note>' +
+          '<backup><duration>4</duration></backup>' +
+          '<note><rest/><duration>4</duration><voice>1</voice><type>quarter</type></note>',
+      ),
+    )
+    const sequence = result.parts[0]?.measures[0]?.sequences[0]
+
+    expect(sequence?.fullMeasure).toEqual({ visualDuration: undefined })
+    expect(sequence?.content).toEqual([])
+    expect(warnings.map((w) => w.code)).toEqual(['redundant:rest'])
+  })
+
+  // Without a duration nothing moves the cursor, and the drop is the same.
+  test('drops an extra rest that states no duration', () => {
+    const { score: result, warnings } = read(
+      measure(
+        '<attributes><divisions>4</divisions></attributes>' +
+          '<note><rest measure="yes"/><duration>16</duration><voice>1</voice></note>' +
+          '<note><rest/><voice>1</voice><type>quarter</type></note>',
+      ),
+    )
+
+    expect(result.parts[0]?.measures[0]?.sequences[0]?.content).toEqual([])
+    expect(warnings.map((w) => w.code)).toEqual(['redundant:rest'])
+  })
+
+  // A pitched note over a measure rest is a real contradiction, not a
+  // redundancy.
+  test('still rejects a note written over a measure rest', () => {
+    expect(
+      readFailure(
+        measure(
+          '<attributes><divisions>4</divisions></attributes>' +
+            '<note><rest measure="yes"/><duration>16</duration><voice>1</voice></note>' +
+            '<backup><duration>4</duration></backup>' +
+            '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+            '<duration>4</duration><voice>1</voice><type>quarter</type></note>',
+        ),
+      ).message,
+    ).toContain('rest that fills the measure and notes')
+  })
+
   // A shorter untyped rest is a fragment of the measure, not the whole of it.
   test('leaves an untyped rest shorter than the measure an ordinary rest', () => {
     const { score: result } = read(

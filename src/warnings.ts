@@ -90,6 +90,9 @@ export type WarningCode =
   // is. One division per quarter note is assumed; if that is wrong, the
   // written values disagree with the measured ones and say so.
   | 'missing:divisions'
+  // A rest written over a rest that already fills the same voice's measure.
+  // Both are silence, so the measure rest stands and the extra is dropped.
+  | 'redundant:rest'
 
 /**
  * True for a loss no release of this converter can close, short of MNX itself

@@ -227,6 +227,21 @@ export function readNote(
     return
   }
 
+  // Real scores write an occasional extra rest over a rest that already
+  // fills the same voice's measure. Both are silence, so the measure rest
+  // stands, the extra is reported, and the cursor still moves past it.
+  if (event.isRest && builder.hasFullMeasure(voice)) {
+    warnings.add(
+      'redundant:rest',
+      'A rest is written over a rest that already fills the measure in the same ' +
+        'voice. The measure rest is the one converted.',
+      { ...context, line: element.line },
+      'rest',
+    )
+    if (duration) builder.shift(duration, path, element.line)
+    return
+  }
+
   // Where the source states no <duration>, the written value is how long the
   // note lasts.
   builder.addEvent(voice, event, duration ?? lengthOf(value), path, element.line, staff)

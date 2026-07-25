@@ -207,6 +207,11 @@ export class MeasureBuilder {
    * Adds a note that stands on its own, at the cursor, and advances past it.
    * A gap since this voice last sounded becomes a space.
    */
+  /** Whether this voice is already a rest filling the measure. */
+  hasFullMeasure(voice: string | undefined): boolean {
+    return this.#builderFor(voice).fullMeasure !== undefined
+  }
+
   addEvent(
     voice: string | undefined,
     event: Event,
