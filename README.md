@@ -248,7 +248,14 @@ pnpm test            # pnpm test:coverage enforces the ≥95% thresholds
 pnpm typecheck
 pnpm lint
 pnpm build
+
+pnpm bench           # times each pipeline stage and whole conversions
 ```
+
+Conversion time is guarded by tests: `tests/performance.test.ts` converts
+generated scores at two sizes along each axis (measures, parts, notes per
+measure) and fails if the time ratio approaches quadratic. The generator
+behind those scores is itself tested for lossless, schema-valid output.
 
 See [docs/architecture.md](docs/architecture.md) for how the converter is put
 together and why, and `CLAUDE.md` for the working conventions.
