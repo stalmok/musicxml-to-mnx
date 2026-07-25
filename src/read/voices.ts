@@ -229,6 +229,11 @@ export class MeasureBuilder {
       })
     }
 
+    // A known dialect trips this deliberately: closed-score hymnals write two
+    // lines in one voice, laid over each other with <backup> and told apart
+    // only by stem direction. Converting those would take a documented
+    // heuristic splitting the overlapping run into its own sequence, with the
+    // corpus checks taught the same reading. Refused until that is decided.
     if (compareFractions(subtractFractions(this.#cursor, builder.end), fraction(0)) < 0) {
       throw new MusicXMLError('A <note> overlaps the one before it in the same voice.', {
         path,
