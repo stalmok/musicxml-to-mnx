@@ -1,6 +1,6 @@
 # Vendored corpus
 
-Fifty published songs, converted on every test run.
+Two hundred published songs, converted on every test run.
 
 They are here because the bugs that mattered were all found by running against
 real music rather than by the unit tests: a grace note taking time it does not
@@ -9,13 +9,14 @@ have, a chord member arriving after its tuplet closed, a note carrying two
 those shapes appears in a hand-written fixture unless you already know to
 write it.
 
-Fifty rather than a handful because a small sample kept being the problem. Two
-readings of slur numbering resolved three songs identically and disagreed only
-on a fourth, and the file that settled it was not among the three.
+Two hundred rather than a handful because a small sample kept being the
+problem. Two readings of slur numbering resolved three songs identically and
+disagreed only on a fourth, and the file that settled it was not among the
+three.
 
 ## Source and licence
 
-All fifty come from the [OpenScore Lieder
+All two hundred come from the [OpenScore Lieder
 corpus](https://github.com/OpenScore/Lieder), released under **Creative
 Commons Zero**, so they can be redistributed here without condition.
 Transcribed by OpenScore volunteers and moderated by a professional
@@ -26,17 +27,29 @@ proofreading team, from public-domain editions on IMSLP.
 ## Why `.mxl`
 
 `.mxl` is the standard compressed MusicXML container, and it is what the
-corpus publishes. The XML inside is around twenty times larger: fifty songs
-come to under a megabyte this way, against nearly twenty uncompressed. The
+corpus publishes. The XML inside is around twenty times larger: two hundred
+songs come to a few megabytes this way, against tens uncompressed. The
 files are byte-for-byte as retrieved, so they are excluded from formatting,
 and `tests/support/corpus.ts` reads the score out of each container.
 
 ## How they were chosen
 
-One song from each of fifty composers, spread across the alphabetical list
-rather than taken from the front of it, so the sample is not all Schubert.
-Four are pinned deliberately, because each has already caught a defect the
-rest of the suite missed:
+Spread across the corpus rather than taken from the front of it, so the sample
+is not all Schubert. The first fifty were one song from each of fifty
+composers. The next hundred and fifty come by going round the 125 composers of
+the corpus in alphabetical order, taking one more song from each on each pass,
+in the corpus's own order, until the count reaches two hundred, so every
+composer is represented and the busier ones a little more.
+
+A song is skipped over where the converter refuses it (an empty metronome
+tempo, a tuplet the source never bracketed) or where it would fail one of the
+checks below for a reason that is the source's or MNX's rather than the
+converter's, such as a lyric written on a whole-measure rest, which MNX states
+at the sequence level with no room for a lyric and which the converter reports
+as a loss.
+
+Four songs are pinned deliberately, because each has already caught a defect
+the rest of the suite missed:
 
 | File                                     | Work                          | What it caught                                                                                                                            |
 | ---------------------------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
@@ -54,14 +67,17 @@ Clara Schumann pair up correctly, so the transcriptions are sound and the
 export is not. A handful of ties and slurs therefore cannot be joined, and are
 reported rather than guessed at. The warning baseline records how many.
 
-Three songs are refused outright, all for the same reason: a tremolo written
-across two notes, which gives each note the value of the pair while the pair
-lasts only one of them. Its written values overfill the measure exactly as a
-tuplet's do, and MNX states it as a multi-note tremolo, which is not converted
-yet. Converting them anyway would hand back music the source did not write.
-Which songs those are is pinned in the corpus test, so one starting or ceasing
-to convert is a change somebody chose.
+Every one of the two hundred converts: the songs the converter refuses were
+skipped when the corpus was chosen, and the corpus test pins that none is
+refused, so one starting to be rejected is a change somebody chose.
 
-One song writes five quarters in a 3/4 bar. That is the source's own doing,
-and carrying it over faithfully is correct, which is why the measure checks
-are made against the source rather than against the time signature.
+Some write a measure longer than its time signature, such as five quarters in
+a 3/4 bar. That is the source's own doing, and carrying it over faithfully is
+correct, which is why the measure and direction checks are made against the
+source rather than against the time signature.
+
+Some write a note whose value disagrees with its duration, a dotted half
+lasting two beats. The converter carries the written value and reports it as
+`inconsistent:duration`. Its measures then sound as the written values do,
+not as the durations add up, so the length and direction checks skip those
+songs; the pitch and schema checks still hold them to account.

@@ -195,8 +195,8 @@ CPDL sample the largest group is hymnals writing two lines over each
 other in a single voice, which the converter refuses rather than guesses
 apart.
 
-Fifty of the Lieder songs are vendored into the repository and convert on
-every test run; the full Lieder corpus gate runs weekly in CI and before
+Two hundred of the Lieder songs are vendored into the repository and convert
+on every test run; the full Lieder corpus gate runs weekly in CI and before
 every release.
 
 ---
