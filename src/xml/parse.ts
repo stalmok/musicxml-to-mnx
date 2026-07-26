@@ -92,7 +92,10 @@ function parseFailure(cause: unknown): MusicXMLError {
     .join('')
     .replace(/\s*\(line \d+, column \d+\)\s*$/, '')
   const line = (cause as { line?: unknown }).line
-  return new MusicXMLError(summary, typeof line === 'number' ? { line } : {})
+  return new MusicXMLError(summary, {
+    cause,
+    ...(typeof line === 'number' ? { line } : {}),
+  })
 }
 
 // Offsets to line numbers: the parser reports character offsets, but a person

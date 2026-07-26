@@ -90,6 +90,19 @@ describe('parseXmlRoot', () => {
   test('rejects an empty document', () => {
     expect(() => parseXmlRoot('')).toThrow(MusicXMLError)
   })
+
+  // The wrapped error keeps the parser's own error as its cause, so a stack
+  // trace still reaches what actually went wrong.
+  test('keeps the underlying parser error as the cause', () => {
+    let thrown: unknown
+    try {
+      parseXmlRoot('<part>\n  <measure>\n</part>')
+    } catch (e) {
+      thrown = e
+    }
+
+    expect((thrown as MusicXMLError).cause).toBeInstanceOf(Error)
+  })
 })
 
 // MusicXML files carry a DOCTYPE pointing at an external DTD over HTTP, and
@@ -101,15 +114,19 @@ describe('parseXmlRoot resists hostile documents', () => {
     const xxe =
       '<!DOCTYPE root [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>\n' + '<root>&xxe;</root>'
 
-    // Refusing outright is fine; silently resolving the file is not.
-    let text: string | undefined
+    // The parser treats the external entity as undefined rather than reading
+    // the file, so it rejects the reference outright, naming the entity it
+    // would not define. Asserting the rejection names the entity keeps this
+    // from passing on a throw that had nothing to do with the entity.
+    let thrown: unknown
     try {
-      text = parseXmlRoot(xxe).text
+      parseXmlRoot(xxe)
     } catch (e) {
-      expect(e).toBeInstanceOf(MusicXMLError)
+      thrown = e
     }
 
-    expect(text ?? '').not.toContain('root:')
+    expect(thrown).toBeInstanceOf(MusicXMLError)
+    expect((thrown as Error).message).toMatch(/xxe/)
   })
 
   test('does not fetch an external entity over the network', () => {
@@ -117,14 +134,18 @@ describe('parseXmlRoot resists hostile documents', () => {
       '<!DOCTYPE root [<!ENTITY probe SYSTEM "http://127.0.0.1:1/probe">]>\n' +
       '<root>&probe;</root>'
 
-    let text: string | undefined
+    // Rejected as an undefined entity, never fetched: the same guarantee as
+    // the file case, and named the same way so the assertion cannot pass on an
+    // unrelated failure.
+    let thrown: unknown
     try {
-      text = parseXmlRoot(ssrf).text
+      parseXmlRoot(ssrf)
     } catch (e) {
-      expect(e).toBeInstanceOf(MusicXMLError)
+      thrown = e
     }
 
-    expect(text ?? '').toBe('')
+    expect(thrown).toBeInstanceOf(MusicXMLError)
+    expect((thrown as Error).message).toMatch(/probe/)
   })
 
   test('does not expand nested entities into a memory bomb', () => {
