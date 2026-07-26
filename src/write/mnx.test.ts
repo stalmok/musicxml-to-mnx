@@ -599,6 +599,15 @@ describe('tuplets and grace groups', () => {
     content: [WHOLE_C, WHOLE_C, WHOLE_C],
   } as const
 
+  // A tremolo written across two notes: each is written at its full value
+  // while the pair together occupies the space one of them would.
+  const tremolo = {
+    kind: 'multiNoteTremolo',
+    marks: 3,
+    outer: eighths(2),
+    content: [WHOLE_C, WHOLE_C],
+  } as const
+
   function itemScore(item: SequenceItem): Score {
     return scoreOf({
       clefs: [],
@@ -636,9 +645,20 @@ describe('tuplets and grace groups', () => {
     expect(written.parts[0]?.measures[0]?.sequences[0]?.content[0]).toHaveProperty('slash', true)
   })
 
+  test('writes a two-note tremolo as the pair and the space it fills', () => {
+    const written = writeMnx(itemScore(tremolo))
+
+    expect(written.parts[0]?.measures[0]?.sequences[0]?.content[0]).toMatchObject({
+      type: 'tremolo',
+      marks: 3,
+      outer: { multiple: 2, duration: { base: 'eighth' } },
+    })
+  })
+
   test.each([
     ['a tuplet', triplet],
     ['a grace group', { kind: 'grace', content: [WHOLE_C], slashed: true } as const],
+    ['a two-note tremolo', tremolo],
   ])('writes MNX the spec schema accepts for %s', (_name, item) => {
     expect(schemaErrors(writeMnx(itemScore(item)))).toEqual([])
   })

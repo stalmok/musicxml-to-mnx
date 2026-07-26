@@ -44,6 +44,8 @@
     "bench": "vitest bench --run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:precommit": "vitest run --coverage --exclude '**/corpus.test.ts'",
+    "test:corpus": "vitest run tests/corpus.test.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",

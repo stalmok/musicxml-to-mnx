@@ -3,6 +3,12 @@
 # coverage thresholds) must all pass before a commit is created. Mirrors the
 # manual workflow in CLAUDE.md so broken code can't slip through.
 #
+# The test step excludes the 200-song vendored corpus, which converts every
+# song on every run and takes minutes; the fast suite still holds coverage
+# above its thresholds. The full corpus runs in CI on every push and pull
+# request (pnpm test:coverage), and can be run locally the same way or with
+# pnpm test:corpus.
+#
 # Version-controlled here and activated per clone with:
 #   pnpm hooks:install      # = git config core.hooksPath .githooks
 set -e
@@ -16,5 +22,5 @@ pnpm lint
 echo "pre-commit → pnpm format:check"
 pnpm format:check
 
-echo "pre-commit → pnpm test:coverage"
-pnpm test:coverage
+echo "pre-commit → pnpm test:precommit"
+pnpm test:precommit

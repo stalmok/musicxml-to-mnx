@@ -50,6 +50,9 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm format:check
+      # The full suite, including the 200-song vendored corpus that the
+      # pre-commit hook skips for speed. This is where that corpus is gated on
+      # every push and pull request.
       - run: pnpm test:coverage
 
       - run: pnpm build
