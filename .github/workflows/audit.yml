@@ -1,0 +1,43 @@
+# The dependency audit, on a schedule rather than per push. Run on every push
+# it reddened unrelated changes whenever a new advisory landed against a
+# dependency the change never touched, which is noise, not a fault in the
+# change. Weekly it still surfaces a new advisory promptly, and on demand a
+# maintainer runs it before tagging a release. Installing or updating a package
+# locally still runs `pnpm audit` there and then (see CLAUDE.md), so a change
+# that introduces a vulnerable dependency is caught before it is committed.
+#
+# Actions are pinned to commit SHAs, matching the repo's supply-chain posture.
+name: Audit
+
+on:
+  schedule:
+    # Mondays at 07:00 UTC, an hour after the corpus gate.
+    - cron: '0 7 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: audit-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm audit

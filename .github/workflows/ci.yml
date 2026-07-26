@@ -1,9 +1,12 @@
 # Every gate, on every push to main and every pull request: the same checks
-# the pre-commit hook runs, plus the dependency audit, the library build, and
-# a check that the build ships what the package's exports promise. Also
-# callable as a unit (workflow_call), so the release workflow runs the
-# identical gate set. A gate added here guards releases too, with no second
-# list to forget.
+# the pre-commit hook runs, plus the library build and a check that the build
+# ships what the package's exports promise. Also callable as a unit
+# (workflow_call), so the release workflow runs the identical gate set. A gate
+# added here guards releases too, with no second list to forget.
+#
+# The dependency audit is not here: a new advisory against a dependency a
+# change never touched would redden it. It runs weekly and on demand instead,
+# in audit.yml.
 #
 # Actions are pinned to commit SHAs (not tags) to match the repo's
 # supply-chain posture: a tag can be moved, a SHA cannot.
@@ -46,7 +49,6 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm audit
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm format:check
