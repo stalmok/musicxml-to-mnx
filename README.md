@@ -6,8 +6,8 @@ Group's JSON successor format.
 
 > **Pre-1.0.** MNX has no stable 1.0, so output is pinned to a dated spec
 > snapshot and the API may still change. Most of what real song repertoire uses
-> converts today — see [What converts today](#what-converts-today) — and
-> anything that does not is reported.
+> converts today (see [What converts today](#what-converts-today)); anything
+> that does not is reported.
 
 ---
 

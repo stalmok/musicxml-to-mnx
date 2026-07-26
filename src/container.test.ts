@@ -26,8 +26,8 @@ function mxl(files: Record<string, string>): Uint8Array {
  * data left tiny. A decompression bomb is only dangerous for the size it
  * claims, and the reader refuses it on that claim before inflating anything,
  * so forging the claim tests the guard without a 100 MB allocation. Both the
- * uncompressed-size fields a zip carries — in the local header after
- * `PK\x03\x04` and in the central directory after `PK\x01\x02` — are set.
+ * uncompressed-size fields a zip carries, in the local header after
+ * `PK\x03\x04` and in the central directory after `PK\x01\x02`, are set.
  */
 function withForgedSize(name: string, content: string, size: number): Uint8Array {
   const zip = zipSync({ [name]: strToU8(content) })

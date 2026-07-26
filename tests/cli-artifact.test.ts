@@ -1,6 +1,6 @@
 // The built command, run as a real subprocess. The in-process tests in
-// cli/run.test.ts cover the logic; this proves the shipped artifact itself —
-// its shebang, its entry wiring, its exit code — actually runs, which nothing
+// cli/run.test.ts cover the logic; this proves the shipped artifact itself
+// (its shebang, its entry wiring, its exit code) actually runs, which nothing
 // importing run() can show. It is skipped until the package is built.
 
 import { spawnSync } from 'node:child_process'
