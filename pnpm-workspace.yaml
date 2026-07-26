@@ -26,5 +26,11 @@ minimumReleaseAge: 1440
 # --validate), is GHSA-v2hh-gcrm-f6hx: host confusion via a backslash authority
 # delimiter. 3.1.4 patches it and satisfies ajv's ^3.0.1. Remove when ajv
 # depends on a patched range itself.
+#
+# brace-expansion <=5.0.7, pulled in by minimatch under eslint (dev-only), is
+# GHSA-mh99-v99m-4gvg: an out-of-memory DoS on unbounded expansion. 5.0.8
+# patches it and satisfies minimatch's range. Remove when eslint's minimatch
+# depends on a patched range itself.
 overrides:
   fast-uri: 3.1.4
+  brace-expansion: 5.0.8
