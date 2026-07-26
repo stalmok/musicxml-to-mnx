@@ -207,6 +207,55 @@ describe('measure attributes', () => {
     ).toContain('0 beats')
   })
 
+  // Common time is 4/4 drawn with a C, cut time 2/2 drawn with a slashed C.
+  // MNX carries the glyph as a display of the count and unit it still states.
+  test('carries the common-time symbol', () => {
+    const { score: result } = read(
+      measure(
+        '<attributes><time symbol="common"><beats>4</beats><beat-type>4</beat-type></time></attributes>',
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.time).toEqual({ count: 4, unit: 4, display: 'common' })
+  })
+
+  test('carries the cut-time symbol', () => {
+    const { score: result } = read(
+      measure(
+        '<attributes><time symbol="cut"><beats>2</beats><beat-type>2</beat-type></time></attributes>',
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.time).toEqual({ count: 2, unit: 2, display: 'cut' })
+  })
+
+  // "normal" is the default: the numbers, which MNX draws anyway. It states no
+  // glyph and is not a loss.
+  test('takes a normal time symbol as no glyph and no loss', () => {
+    const { score: result, warnings } = read(
+      measure(
+        '<attributes><time symbol="normal"><beats>4</beats><beat-type>4</beat-type></time></attributes>',
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.time).toEqual({ count: 4, unit: 4, display: undefined })
+    expect(warnings).toEqual([])
+  })
+
+  // MNX draws a time signature as a C, a cut C, or its numbers. A single-number
+  // or note-glyph symbol has no home there, so it is reported and the numbers
+  // are drawn.
+  test('reports a time symbol MNX cannot draw and keeps the numbers', () => {
+    const { score: result, warnings } = read(
+      measure(
+        '<attributes><time symbol="single-number"><beats>4</beats><beat-type>4</beat-type></time></attributes>',
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.time).toEqual({ count: 4, unit: 4, display: undefined })
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:time-symbol'])
+  })
+
   // A file may state durations without ever saying how many divisions make a
   // quarter note. The spec names no default; one per quarter is the customary
   // reading, so it is assumed and reported once per part.

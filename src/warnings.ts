@@ -59,6 +59,10 @@ export type WarningCode =
   // A measure marked senza misura is unmetered, and MNX states meter as a
   // time signature or nothing. The measure carries no time signature.
   | 'unrepresentable:senza-misura'
+  // A time signature drawn with a symbol other than a common or cut sign,
+  // such as a single number or a beat note. MNX draws a C, a cut C, or the
+  // numbers, so the numbers are drawn and the other glyphs are not.
+  | 'unrepresentable:time-symbol'
   // A key signature written as individual altered steps rather than a count
   // of fifths, which is all MNX can state. The signature is dropped; the
   // notes still sound right, because each carries its own alteration.
