@@ -11,7 +11,7 @@ import type { Fraction } from '../fraction.js'
 import type { Clef, ClefSign, Key, TimeSignature, TimeUnit } from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
-import { child, requireChild, trimmedText } from '../xml/tree.js'
+import { attribute, child, requireChild, trimmedText } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
 import { readAttributeInRange, readInteger, readIntegerInRange } from './numbers.js'
 import type { PartState } from './state.js'
@@ -176,7 +176,31 @@ function readTime(
     )
   }
 
-  return { count, unit }
+  return { count, unit, display: readTimeDisplay(element, warnings, context) }
+}
+
+// The glyph a time signature is drawn with, where it is not drawn as numbers.
+// MNX draws a C, a cut C, or the numbers; the other MusicXML symbols draw the
+// meter a way it has no equivalent for, so each is reported.
+function readTimeDisplay(
+  element: XmlElement,
+  warnings: WarningCollector,
+  context: WarningContext,
+): 'common' | 'cut' | undefined {
+  const symbol = attribute(element, 'symbol')
+  if (symbol === undefined) return undefined
+  if (symbol === 'common') return 'common'
+  if (symbol === 'cut') return 'cut'
+  // "normal" is the numbers, which is MNX's default: stating it loses nothing.
+  if (symbol === 'normal') return undefined
+  warnings.add(
+    'unrepresentable:time-symbol',
+    `A <time> is drawn with the "${symbol}" symbol, and MNX draws a time signature ` +
+      'as a common or cut sign or its numbers. The numbers are the ones drawn.',
+    { ...context, line: element.line },
+    'time',
+  )
+  return undefined
 }
 
 function readClef(
@@ -203,7 +227,19 @@ function readClef(
   const named = readAttributeInRange(element, 'number', path, 1, state.staves)
   const staff = state.staves > 1 ? named : undefined
 
+  // A clef may be transposed for drawing, as a treble-8 sits an octave lower.
+  // MNX carries the amount as an ottava, capped at three octaves either way;
+  // a change of zero is no transposition at all.
+  const octaveElement = child(element, 'clef-octave-change')
+  const change = octaveElement ? readIntegerInRange(octaveElement, path, -3, 3) : 0
+
   // MusicXML counts staff lines from 1 at the bottom; MNX counts staff steps
   // from 0 at the middle line. On a five-line staff they differ by this.
-  return { sign, staffPosition: 2 * line - 6, staff, position }
+  return {
+    sign,
+    staffPosition: 2 * line - 6,
+    staff,
+    position,
+    octave: change !== 0 ? change : undefined,
+  }
 }

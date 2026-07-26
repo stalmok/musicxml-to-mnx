@@ -126,7 +126,15 @@ test.each([
     'clefs and a key',
     scoreOf(
       {
-        clefs: [{ sign: 'F', staffPosition: 2, staff: undefined, position: { num: 0, den: 1 } }],
+        clefs: [
+          {
+            sign: 'F',
+            staffPosition: 2,
+            staff: undefined,
+            position: { num: 0, den: 1 },
+            octave: undefined,
+          },
+        ],
         beams: [],
         dynamics: [],
         arpeggios: [],
@@ -135,7 +143,15 @@ test.each([
           { voice: undefined, staff: undefined, content: [WHOLE_C], fullMeasure: undefined },
         ],
       },
-      [{ key: { fifths: -3 }, time: { count: 6, unit: 8 }, tempos: [], number: 0, ...NO_BARLINE }],
+      [
+        {
+          key: { fifths: -3 },
+          time: { count: 6, unit: 8, display: undefined },
+          tempos: [],
+          number: 0,
+          ...NO_BARLINE,
+        },
+      ],
     ),
   ],
 ])('writes MNX the spec schema accepts for %s', (_name, score) => {
@@ -153,7 +169,7 @@ describe('global measures', () => {
     const score = scoreOf(measureOf(WHOLE_C), [
       {
         key: { fifths: 2 },
-        time: { count: 3, unit: 8 },
+        time: { count: 3, unit: 8, display: undefined },
         tempos: [],
         number: undefined,
         ...NO_BARLINE,
@@ -168,6 +184,24 @@ describe('global measures', () => {
 
   test('leaves them out when the score states neither', () => {
     expect(writeMnx(scoreOf(measureOf(WHOLE_C))).global.measures[0]).toEqual({})
+  })
+
+  // Common time keeps its count and unit and adds the glyph to draw in their
+  // place, so a reader can show the C and still know the meter.
+  test('writes the common-time display alongside the count and unit', () => {
+    const score = scoreOf(measureOf(WHOLE_C), [
+      {
+        key: undefined,
+        time: { count: 4, unit: 4, display: 'common' },
+        tempos: [],
+        number: undefined,
+        ...NO_BARLINE,
+      },
+    ])
+    const written = writeMnx(score)
+
+    expect(written.global.measures[0]?.time).toEqual({ count: 4, unit: 4, display: 'common' })
+    expect(schemaErrors(written)).toEqual([])
   })
 
   test('writes a tempo at the start of the measure without a location', () => {
@@ -239,7 +273,15 @@ describe('parts', () => {
 describe('measures', () => {
   test('writes clefs when the measure has them', () => {
     const score = scoreOf({
-      clefs: [{ sign: 'F', staffPosition: 2, staff: undefined, position: { num: 0, den: 1 } }],
+      clefs: [
+        {
+          sign: 'F',
+          staffPosition: 2,
+          staff: undefined,
+          position: { num: 0, den: 1 },
+          octave: undefined,
+        },
+      ],
       beams: [],
       dynamics: [],
       arpeggios: [],
@@ -259,8 +301,20 @@ describe('measures', () => {
   test('gives a mid-measure clef change its position', () => {
     const score = scoreOf({
       clefs: [
-        { sign: 'G', staffPosition: -2, staff: undefined, position: { num: 0, den: 1 } },
-        { sign: 'F', staffPosition: 2, staff: undefined, position: { num: 1, den: 2 } },
+        {
+          sign: 'G',
+          staffPosition: -2,
+          staff: undefined,
+          position: { num: 0, den: 1 },
+          octave: undefined,
+        },
+        {
+          sign: 'F',
+          staffPosition: 2,
+          staff: undefined,
+          position: { num: 1, den: 2 },
+          octave: undefined,
+        },
       ],
       beams: [],
       dynamics: [],
@@ -275,6 +329,35 @@ describe('measures', () => {
     expect(written.parts[0]?.measures[0]?.clefs).toEqual([
       { clef: { sign: 'G', staffPosition: -2 } },
       { clef: { sign: 'F', staffPosition: 2 }, position: { fraction: [1, 2] } },
+    ])
+    expect(schemaErrors(written)).toEqual([])
+  })
+
+  // A transposed clef states its octave, and asks for the number to be drawn,
+  // so a reader shows the 8 that says the part sounds an octave away.
+  test('writes a clef octave change and shows it', () => {
+    const score = scoreOf({
+      clefs: [
+        {
+          sign: 'G',
+          staffPosition: -2,
+          staff: undefined,
+          position: { num: 0, den: 1 },
+          octave: -1,
+        },
+      ],
+      beams: [],
+      dynamics: [],
+      arpeggios: [],
+      ottavas: [],
+      sequences: [
+        { voice: undefined, staff: undefined, content: [WHOLE_C], fullMeasure: undefined },
+      ],
+    })
+    const written = writeMnx(score)
+
+    expect(written.parts[0]?.measures[0]?.clefs).toEqual([
+      { clef: { sign: 'G', staffPosition: -2, octave: -1, showOctave: true } },
     ])
     expect(schemaErrors(written)).toEqual([])
   })

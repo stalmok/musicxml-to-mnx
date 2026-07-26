@@ -235,6 +235,10 @@ export interface MNXClef {
   sign: MNXClefSign
   /** Staff steps from the middle line; negative is below it. */
   staffPosition: number
+  /** Octaves the clef is transposed for drawing, as an ottava amount. */
+  octave?: number
+  /** Whether the octave number is drawn beside the clef. */
+  showOctave?: boolean
 }
 
 export interface MNXPositionedClef {
@@ -339,6 +343,8 @@ export interface MNXKey {
 export interface MNXTime {
   count: number
   unit: MNXTimeSignatureUnit
+  /** The C or cut-C glyph drawn in place of the numbers, where one is. */
+  display?: 'common' | 'cut'
 }
 
 export interface MNXTempo {

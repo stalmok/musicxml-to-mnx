@@ -129,6 +129,21 @@ describe('clefs', () => {
     expect(part?.measures[0]?.clefs).toHaveLength(2)
     expect(warnings).toEqual([])
   })
+
+  // A treble-8 clef, drawn with an 8 below it, sits an octave lower than a
+  // plain treble. MusicXML states the transposition as <clef-octave-change>.
+  test('carries a clef octave change', () => {
+    const { part } = read(
+      measures(
+        '<attributes><divisions>4</divisions>' +
+          '<clef><sign>G</sign><line>2</line><clef-octave-change>-1</clef-octave-change></clef>' +
+          '</attributes>' +
+          note('C', '1'),
+      ),
+    )
+
+    expect(part?.measures[0]?.clefs[0]?.octave).toBe(-1)
+  })
 })
 
 describe('which staff a voice is on', () => {

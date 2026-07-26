@@ -155,7 +155,15 @@ function writeGlobalMeasure(measure: GlobalMeasure, id: string | undefined): MNX
     ...(id !== undefined ? { id } : {}),
     ...(measure.number !== undefined ? { number: measure.number } : {}),
     ...(measure.key ? { key: { fifths: measure.key.fifths } } : {}),
-    ...(measure.time ? { time: { count: measure.time.count, unit: measure.time.unit } } : {}),
+    ...(measure.time
+      ? {
+          time: {
+            count: measure.time.count,
+            unit: measure.time.unit,
+            ...(measure.time.display ? { display: measure.time.display } : {}),
+          },
+        }
+      : {}),
     ...(measure.tempos.length > 0 ? { tempos: measure.tempos.map(writeTempo) } : {}),
     ...(measure.barline ? { barline: { type: measure.barline } } : {}),
     // Opening a repeat is stated by the key being there at all.
@@ -301,7 +309,13 @@ function writeBeam(beam: Beam): MNXBeam {
 
 function writeClef(clef: Clef): MNXPositionedClef {
   return {
-    clef: { sign: clef.sign, staffPosition: clef.staffPosition },
+    clef: {
+      sign: clef.sign,
+      staffPosition: clef.staffPosition,
+      // A transposed clef states its octave and asks for the number to be
+      // drawn, as MusicXML always draws the 8 or 15 of a clef-octave-change.
+      ...(clef.octave !== undefined ? { octave: clef.octave, showOctave: true } : {}),
+    },
     // A clef at the start of the measure needs no position.
     ...(clef.position.num === 0 ? {} : { position: writePosition(clef.position) }),
     ...(clef.staff !== undefined ? { staff: clef.staff } : {}),

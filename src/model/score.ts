@@ -243,6 +243,11 @@ export interface Clef {
   staff: number | undefined
   /** Where in the measure it is drawn: zero unless the clef changes partway. */
   position: Fraction
+  /**
+   * Octaves the clef is transposed for drawing, as a treble-8 clef sits an
+   * octave below a plain treble. Undefined where the clef is untransposed.
+   */
+  octave: number | undefined
 }
 
 /**
@@ -352,6 +357,11 @@ export type TimeUnit = 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128
 export interface TimeSignature {
   count: number
   unit: TimeUnit
+  /**
+   * The C or cut-C glyph the signature is drawn with, in place of its numbers.
+   * Undefined where it is drawn as numbers.
+   */
+  display: 'common' | 'cut' | undefined
 }
 
 /**
