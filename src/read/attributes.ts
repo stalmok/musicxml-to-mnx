@@ -11,7 +11,7 @@ import type { Fraction } from '../fraction.js'
 import type { Clef, ClefSign, Key, TimeSignature, TimeUnit } from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
-import { attribute, child, children, requireChild, trimmedText } from '../xml/tree.js'
+import { attribute, requireChild, trimmedText } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
 import { readAttributeInRange, readInteger, readIntegerInRange } from './numbers.js'
 import type { PartState } from './state.js'
@@ -73,8 +73,12 @@ export function readAttributes(
 
   // MusicXML allows one key and one time signature per staff. MNX states them
   // for the whole score, so staves that disagree cannot both be carried.
-  const keyElements = element.children('key')
-  const keys = keyElements
+  //
+  // Read as blocks, not raw children, so that whatever these readers pass over
+  // inside a <key>, <time> or <clef> is reported along with the rest of the
+  // measure rather than vanishing a level down.
+  const keyBlocks = element.blocks('key')
+  const keys = keyBlocks
     .map((found) => readKey(found, warnings, context, path))
     .filter((key): key is Key => key !== undefined)
   if (keys.some((other) => other.fifths !== keys[0]?.fifths)) {
@@ -87,7 +91,7 @@ export function readAttributes(
     )
   }
 
-  const times = element.children('time').map((found) => readTime(found, warnings, context, path))
+  const times = element.blocks('time').map((found) => readTime(found, warnings, context, path))
   const metered = times.filter((time): time is TimeSignature => time !== undefined)
   if (
     metered.some((other) => other.count !== metered[0]?.count || other.unit !== metered[0]?.unit)
@@ -107,18 +111,18 @@ export function readAttributes(
   if (times.length > 0) state.time = metered[0]
 
   return {
-    keyStated: keyElements.length > 0,
+    keyStated: keyBlocks.length > 0,
     timeStated: times.length > 0,
     key: keys[0],
     time: metered[0],
     clefs: element
-      .children('clef')
+      .blocks('clef')
       .map((found) => readClef(found, state, position, warnings, context, path)),
   }
 }
 
 function readKey(
-  element: XmlElement,
+  element: ElementReader,
   warnings: WarningCollector,
   context: WarningContext,
   path: DocumentPath,
@@ -126,8 +130,11 @@ function readKey(
   // A key without <fifths> is non-traditional, spelled as individual altered
   // steps, which MNX has no way to state. The notes still sound right,
   // because each carries its own <alter>.
-  const fifths = child(element, 'fifths')
+  const fifths = element.child('fifths')
   if (!fifths) {
+    // The spelling elements are what the one warning below is about, so they
+    // are accounted for here rather than reported one by one on top of it.
+    element.skip('key-step', 'key-alter', 'key-accidental')
     warnings.add(
       'unrepresentable:non-traditional-key',
       'A key signature written as individual altered steps cannot be stated in MNX, ' +
@@ -138,19 +145,23 @@ function readKey(
     return undefined
   }
 
+  // Anything else a key carries (a <mode>, the <cancel> of a courtesy
+  // signature, a per-accidental <key-octave>) has no home in MNX's
+  // fifths-only key, and is reported by the unread-child sweep.
+
   // Seven accidentals is the practical limit; beyond eleven a key signature
   // cannot be written at all, so anything larger is a corrupt file.
   return { fifths: readIntegerInRange(fifths, path, -11, 11) }
 }
 
 function readTime(
-  element: XmlElement,
+  element: ElementReader,
   warnings: WarningCollector,
   context: WarningContext,
   path: DocumentPath,
 ): TimeSignature | undefined {
   // <senza-misura> writes unmetered music, which MNX has no way to state.
-  if (child(element, 'senza-misura')) {
+  if (element.child('senza-misura')) {
     warnings.add(
       'unrepresentable:senza-misura',
       'This music is written senza misura, and MNX states meter as a time signature ' +
@@ -165,7 +176,8 @@ function readTime(
   // pairs. MNX states one count and unit; keeping the first pair would say the
   // measure is shorter than it sounds, so it is refused rather than converted
   // to a meter it does not have.
-  if (children(element, 'beats').length > 1) {
+  const beatsElements = element.children('beats')
+  if (beatsElements.length > 1) {
     throw new MusicXMLError(
       'A composite time signature, written as several beats-and-beat-type pairs, ' +
         'cannot be stated in MNX, which states one count and unit.',
@@ -173,7 +185,8 @@ function readTime(
     )
   }
 
-  const count = readInteger(requireChild(element, 'beats', path), path)
+  const beatsElement = beatsElements[0] ?? requireChild(element.element, 'beats', path)
+  const count = readInteger(beatsElement, path)
   if (count <= 0) {
     throw new MusicXMLError(`A time signature has ${String(count)} beats.`, {
       path,
@@ -181,7 +194,7 @@ function readTime(
     })
   }
 
-  const unitElement = requireChild(element, 'beat-type', path)
+  const unitElement = element.child('beat-type') ?? requireChild(element.element, 'beat-type', path)
   const unit = readInteger(unitElement, path)
   if (!isTimeUnit(unit)) {
     throw new MusicXMLError(
@@ -192,7 +205,7 @@ function readTime(
 
   // An interchangeable meter offers a second reading of the same measures.
   // MNX states one, so the primary is converted and the alternative reported.
-  if (child(element, 'interchangeable')) {
+  if (element.child('interchangeable')) {
     warnings.add(
       'unrepresentable:interchangeable-time',
       'A time signature states a second, interchangeable meter, and MNX states one ' +
@@ -202,7 +215,7 @@ function readTime(
     )
   }
 
-  return { count, unit, display: readTimeDisplay(element, warnings, context) }
+  return { count, unit, display: readTimeDisplay(element.element, warnings, context) }
 }
 
 // The glyph a time signature is drawn with, where it is not drawn as numbers.
@@ -230,14 +243,14 @@ function readTimeDisplay(
 }
 
 function readClef(
-  element: XmlElement,
+  element: ElementReader,
   state: PartState,
   position: Fraction,
   warnings: WarningCollector,
   context: WarningContext,
   path: DocumentPath,
 ): Clef {
-  const sign = trimmedText(requireChild(element, 'sign', path))
+  const sign = trimmedText(element.child('sign') ?? requireChild(element.element, 'sign', path))
   if (!isClefSign(sign)) {
     throw new MusicXMLError(`The "${sign}" clef cannot be represented in MNX.`, {
       path,
@@ -245,14 +258,14 @@ function readClef(
     })
   }
 
-  const lineElement = child(element, 'line')
+  const lineElement = element.child('line')
   const line = lineElement ? readIntegerInRange(lineElement, path, 1, 5) : DEFAULT_CLEF_LINES[sign]
 
   // A clef says which staff it belongs to. Read and bounded whatever the part
   // has, because a clef naming a staff the part does not have would place it
   // nowhere, and a bare Number() here once let "oops" through as a NaN staff.
   // It is only worth stating where the part has more than one staff.
-  const named = readAttributeInRange(element, 'number', path, 1, state.staves)
+  const named = readAttributeInRange(element.element, 'number', path, 1, state.staves)
   const staff = state.staves > 1 ? named : undefined
 
   // A clef may be transposed for drawing, as a treble-8 sits an octave lower.
@@ -260,7 +273,7 @@ function readClef(
   // way; a change of zero is no transposition. A larger change is valid
   // MusicXML with no home in MNX, so the clef is drawn at pitch and the loss
   // is reported rather than the file refused.
-  const octaveElement = child(element, 'clef-octave-change')
+  const octaveElement = element.child('clef-octave-change')
   const change = octaveElement ? readInteger(octaveElement, path) : 0
   let octave: number | undefined
   if (change !== 0 && change >= -3 && change <= 3) {

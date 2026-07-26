@@ -177,6 +177,25 @@ describe('measure attributes', () => {
     ).toContain('"percussion" clef cannot be represented')
   })
 
+  test('rejects a clef that states no sign', () => {
+    expect(
+      readFailure(measure('<attributes><clef><line>2</line></clef></attributes>')).message,
+    ).toContain('missing a <sign>')
+  })
+
+  test('rejects a time signature that states no beats', () => {
+    expect(
+      readFailure(measure('<attributes><time><beat-type>4</beat-type></time></attributes>'))
+        .message,
+    ).toContain('missing a <beats>')
+  })
+
+  test('rejects a time signature that states no beat-type', () => {
+    expect(
+      readFailure(measure('<attributes><time><beats>4</beats></time></attributes>')).message,
+    ).toContain('missing a <beat-type>')
+  })
+
   test('reads every attributes block in a measure, not just the first', () => {
     const { score: result } = read(
       measure(
@@ -327,6 +346,53 @@ describe('measure attributes', () => {
     expect(warnings).toEqual([
       expect.objectContaining({ code: 'unrepresentable:non-traditional-key', element: 'key' }),
     ])
+  })
+
+  // MNX states a key as a count of fifths and nothing else. A mode, the
+  // courtesy naturals of a cancelled key, and a per-accidental octave all have
+  // no home there, so each is reported rather than dropped without a word.
+  test('reports a key mode, which MNX cannot state', () => {
+    const { warnings } = read(
+      measure('<attributes><key><fifths>2</fifths><mode>minor</mode></key></attributes>'),
+    )
+
+    expect(warnings.map((w) => `${w.code}/${w.element ?? ''}`)).toEqual([
+      'unrepresentable:element/mode',
+    ])
+  })
+
+  test('reports a cancelled key signature, which MNX cannot state', () => {
+    const { warnings } = read(
+      measure('<attributes><key><cancel>-3</cancel><fifths>2</fifths></key></attributes>'),
+    )
+
+    expect(warnings.map((w) => `${w.code}/${w.element ?? ''}`)).toEqual([
+      'unrepresentable:element/cancel',
+    ])
+  })
+
+  test('reports a key-octave, which MNX cannot state', () => {
+    const { warnings } = read(
+      measure(
+        '<attributes><key><fifths>2</fifths>' +
+          '<key-octave number="1">4</key-octave></key></attributes>',
+      ),
+    )
+
+    expect(warnings.map((w) => `${w.code}/${w.element ?? ''}`)).toEqual([
+      'unrepresentable:element/key-octave',
+    ])
+  })
+
+  // A plain key states only its fifths, all of which MNX carries, so it is
+  // converted with nothing reported.
+  test('reports nothing for a plain key signature', () => {
+    const { score: result, warnings } = read(
+      measure('<attributes><key><fifths>-3</fifths></key></attributes>'),
+    )
+
+    expect(result.globalMeasures[0]?.key).toEqual({ fifths: -3 })
+    expect(warnings).toEqual([])
   })
 
   // The first statement in a measure is the one it shows, and a statement
