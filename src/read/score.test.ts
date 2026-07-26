@@ -207,6 +207,37 @@ describe('measure attributes', () => {
     ).toContain('0 beats')
   })
 
+  // A composite meter such as 3+2/8 is written as several beats-and-beat-type
+  // pairs. MNX states one count and unit; keeping the first pair would say the
+  // measure is shorter than it sounds, so the file is refused rather than
+  // converted to a meter it does not have.
+  test('refuses a composite time signature written as several pairs', () => {
+    expect(
+      readFailure(
+        measure(
+          '<attributes><time><beats>3</beats><beat-type>8</beat-type>' +
+            '<beats>2</beats><beat-type>8</beat-type></time></attributes>',
+        ),
+      ).message,
+    ).toContain('composite time signature')
+  })
+
+  // An interchangeable meter offers a second reading of the same measures. The
+  // primary meter is a plain time signature MNX states; the alternative has no
+  // home, so it is reported and the primary is converted.
+  test('reports an interchangeable time signature and keeps the primary meter', () => {
+    const { score: result, warnings } = read(
+      measure(
+        '<attributes><time><beats>6</beats><beat-type>8</beat-type>' +
+          '<interchangeable><time-relation>equals</time-relation>' +
+          '<beats>3</beats><beat-type>4</beat-type></interchangeable></time></attributes>',
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.time).toEqual({ count: 6, unit: 8, display: undefined })
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:interchangeable-time'])
+  })
+
   // Common time is 4/4 drawn with a C, cut time 2/2 drawn with a slashed C.
   // MNX carries the glyph as a display of the count and unit it still states.
   test('carries the common-time symbol', () => {
