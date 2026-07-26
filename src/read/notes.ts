@@ -203,7 +203,23 @@ export function readNote(
     !state.divisionsAssumed &&
     state.time !== undefined &&
     compareFractions(duration, fraction(state.time.count, state.time.unit)) === 0
-  if ((restElement && attribute(restElement, 'measure') === 'yes') || fillsMeasure) {
+  const restFillsMeasure =
+    (restElement !== undefined && attribute(restElement, 'measure') === 'yes') || fillsMeasure
+
+  // A word spoken over an otherwise resting bar is written as a lyric on the
+  // whole-measure rest. MNX's sequence-level full-measure rest states only a
+  // visual duration and a fermata, with no room for a lyric, but a plain rest
+  // event carries one. So a measure-filling rest with a lyric stays an event
+  // where its length has a note value to state it with. An irregular measure
+  // whose length no note value can write still takes the full-measure rest,
+  // which needs none, and the lyric is reported as a loss. The check reads the
+  // element directly so that an unkept lyric stays unread and reported.
+  const carriesLyric = element.element.children.some((c) => c.name === 'lyric')
+  const canBeEvent =
+    written !== undefined ||
+    (duration !== undefined && !state.divisionsAssumed && noteValueOf(duration) !== undefined)
+
+  if (restFillsMeasure && !(carriesLyric && canBeEvent)) {
     // A rest is not drawn with a stem, and a beam over one alone is not a
     // beam, so a source stating either says nothing this loses.
     element.skip('stem', 'beam')

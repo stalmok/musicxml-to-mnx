@@ -155,6 +155,37 @@ describe('a rest that fills the measure', () => {
   test('says nothing about a stem or a beam, which a rest is not drawn with', () => {
     expect(lost(rest('<stem>up</stem><beam number="1">begin</beam>'))).toEqual([])
   })
+
+  // A word spoken over an otherwise resting bar is written as a lyric on the
+  // whole-measure rest. MNX's sequence-level full-measure rest has no room for
+  // one, but a plain rest event does, so the rest stays an event and the word
+  // is kept.
+  test('keeps a lyric written on it, which a full-measure rest cannot carry', () => {
+    const { score, warnings } = read(rest('<lyric number="1"><text>Oh!</text></lyric>'))
+    const sequence = score.parts[0]?.measures[0]?.sequences[0]
+    const first = sequence?.content[0]
+
+    expect(sequence?.fullMeasure).toBeUndefined()
+    expect(first?.kind === 'event' && first.isRest).toBe(true)
+    expect(first?.kind === 'event' && first.lyrics).toHaveLength(1)
+    expect(warnings).toEqual([])
+  })
+
+  // Where the measure's length is one no note value can write, the rest cannot
+  // become an event, so it stays a full-measure rest and the lyric it carries
+  // is reported rather than the file refused for want of a value.
+  test('reports a lyric on a full-measure rest whose length no note value writes', () => {
+    const { score, warnings } = read(
+      measure(
+        '<note><rest measure="yes"/><duration>10</duration>' +
+          '<lyric number="1"><text>Oh!</text></lyric></note>',
+        '<divisions>4</divisions><time><beats>5</beats><beat-type>8</beat-type></time>',
+      ),
+    )
+
+    expect(score.parts[0]?.measures[0]?.sequences[0]?.fullMeasure).toBeDefined()
+    expect(warnings.map((warning) => warning.element)).toContain('lyric')
+  })
 })
 
 describe('a note stating both kinds of tie', () => {
