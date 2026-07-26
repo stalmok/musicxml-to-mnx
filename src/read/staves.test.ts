@@ -144,6 +144,24 @@ describe('clefs', () => {
 
     expect(part?.measures[0]?.clefs[0]?.octave).toBe(-1)
   })
+
+  // MNX's ottava amount reaches three octaves. A larger transposition, which
+  // is valid MusicXML, has no home there, so the clef is drawn at pitch and
+  // the loss is reported rather than the file refused.
+  test('reports a clef octave change too large for MNX and keeps the clef', () => {
+    const { part, warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions>' +
+          '<clef><sign>G</sign><line>2</line><clef-octave-change>-4</clef-octave-change></clef>' +
+          '</attributes>' +
+          note('C', '1'),
+      ),
+    )
+
+    expect(part?.measures[0]?.clefs[0]?.sign).toBe('G')
+    expect(part?.measures[0]?.clefs[0]?.octave).toBeUndefined()
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:clef-octave'])
+  })
 })
 
 describe('which staff a voice is on', () => {

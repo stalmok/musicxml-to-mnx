@@ -11,7 +11,7 @@ import type { Fraction } from '../fraction.js'
 import type { Clef, ClefSign, Key, TimeSignature, TimeUnit } from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
-import { attribute, child, requireChild, trimmedText } from '../xml/tree.js'
+import { attribute, child, children, requireChild, trimmedText } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
 import { readAttributeInRange, readInteger, readIntegerInRange } from './numbers.js'
 import type { PartState } from './state.js'
@@ -111,7 +111,9 @@ export function readAttributes(
     timeStated: times.length > 0,
     key: keys[0],
     time: metered[0],
-    clefs: element.children('clef').map((found) => readClef(found, state, position, path)),
+    clefs: element
+      .children('clef')
+      .map((found) => readClef(found, state, position, warnings, context, path)),
   }
 }
 
@@ -159,6 +161,18 @@ function readTime(
     return undefined
   }
 
+  // A composite meter such as 3+2/8 is written as several beats-and-beat-type
+  // pairs. MNX states one count and unit; keeping the first pair would say the
+  // measure is shorter than it sounds, so it is refused rather than converted
+  // to a meter it does not have.
+  if (children(element, 'beats').length > 1) {
+    throw new MusicXMLError(
+      'A composite time signature, written as several beats-and-beat-type pairs, ' +
+        'cannot be stated in MNX, which states one count and unit.',
+      { path, line: element.line },
+    )
+  }
+
   const count = readInteger(requireChild(element, 'beats', path), path)
   if (count <= 0) {
     throw new MusicXMLError(`A time signature has ${String(count)} beats.`, {
@@ -173,6 +187,18 @@ function readTime(
     throw new MusicXMLError(
       `A time signature's unit of ${String(unit)} cannot be written as a note value.`,
       { path, line: unitElement.line },
+    )
+  }
+
+  // An interchangeable meter offers a second reading of the same measures.
+  // MNX states one, so the primary is converted and the alternative reported.
+  if (child(element, 'interchangeable')) {
+    warnings.add(
+      'unrepresentable:interchangeable-time',
+      'A time signature states a second, interchangeable meter, and MNX states one ' +
+        'count and unit. The primary meter is converted; the alternative is not.',
+      { ...context, line: element.line },
+      'time',
     )
   }
 
@@ -207,6 +233,8 @@ function readClef(
   element: XmlElement,
   state: PartState,
   position: Fraction,
+  warnings: WarningCollector,
+  context: WarningContext,
   path: DocumentPath,
 ): Clef {
   const sign = trimmedText(requireChild(element, 'sign', path))
@@ -228,18 +256,26 @@ function readClef(
   const staff = state.staves > 1 ? named : undefined
 
   // A clef may be transposed for drawing, as a treble-8 sits an octave lower.
-  // MNX carries the amount as an ottava, capped at three octaves either way;
-  // a change of zero is no transposition at all.
+  // MNX carries the amount as an ottava, which reaches three octaves either
+  // way; a change of zero is no transposition. A larger change is valid
+  // MusicXML with no home in MNX, so the clef is drawn at pitch and the loss
+  // is reported rather than the file refused.
   const octaveElement = child(element, 'clef-octave-change')
-  const change = octaveElement ? readIntegerInRange(octaveElement, path, -3, 3) : 0
+  const change = octaveElement ? readInteger(octaveElement, path) : 0
+  let octave: number | undefined
+  if (change !== 0 && change >= -3 && change <= 3) {
+    octave = change
+  } else if (change !== 0) {
+    warnings.add(
+      'unrepresentable:clef-octave',
+      `A clef is transposed by ${String(change)} octaves, and MNX states an ottava of ` +
+        'at most three. The clef is converted at pitch, without the transposition.',
+      { ...context, line: element.line },
+      'clef',
+    )
+  }
 
   // MusicXML counts staff lines from 1 at the bottom; MNX counts staff steps
   // from 0 at the middle line. On a five-line staff they differ by this.
-  return {
-    sign,
-    staffPosition: 2 * line - 6,
-    staff,
-    position,
-    octave: change !== 0 ? change : undefined,
-  }
+  return { sign, staffPosition: 2 * line - 6, staff, position, octave }
 }

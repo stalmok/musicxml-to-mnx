@@ -63,6 +63,13 @@ export type WarningCode =
   // such as a single number or a beat note. MNX draws a C, a cut C, or the
   // numbers, so the numbers are drawn and the other glyphs are not.
   | 'unrepresentable:time-symbol'
+  // A time signature stating a second, interchangeable meter. MNX states one
+  // count and unit, so the primary meter is converted and the alternative is
+  // not.
+  | 'unrepresentable:interchangeable-time'
+  // A clef transposed by more than three octaves, which MNX's ottava amount
+  // cannot state. The clef is converted at pitch, without the transposition.
+  | 'unrepresentable:clef-octave'
   // A key signature written as individual altered steps rather than a count
   // of fifths, which is all MNX can state. The signature is dropped; the
   // notes still sound right, because each carries its own alteration.
