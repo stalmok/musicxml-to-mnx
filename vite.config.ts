@@ -36,7 +36,7 @@ export default defineConfig({
       // covers, not the in-process run() tests, so it is measured there
       // instead of here.
       exclude: ['src/**/*.test.ts', 'src/types/**', 'cli/main.ts'],
-      thresholds: { statements: 95, lines: 95, functions: 95, branches: 95 },
+      thresholds: { statements: 98, lines: 98, functions: 98, branches: 98 },
     },
   },
 })
