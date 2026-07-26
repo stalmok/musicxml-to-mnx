@@ -530,30 +530,20 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   // bound it.
   test('never places a direction past the end of its measure', () => {
     const stray: string[] = []
+    const lengths = sourceMeasureLengths(parseXmlRoot(source))
     let time = { count: 4, unit: 4 }
 
-    // A note whose written value disagrees with its measured duration advances
-    // the cursor by its measured duration, so a direction after it sits at a
-    // measured position, while the measure's length here is summed from the
-    // written values the converter carried. The two are in different units, so
-    // this bound would not hold; the pitch and schema checks still do.
-    const inconsistent = warnings.some((warning) => warning.code === 'inconsistent:duration')
-
     mnx.parts.forEach((part, partIndex) => {
-      if (inconsistent) return
       part.measures.forEach((measure, index) => {
         time = mnx.global.measures[index]?.time ?? time
-        // A measure runs for as long as its notes reach, which is its time
-        // signature unless the source overfills the bar, and then longer. A
-        // direction near the end of such a measure is not past it; bounding by
-        // the time signature alone would say it was.
-        const content = Math.max(
-          0,
-          ...measure.sequences.map((sequence) =>
-            sequence.content.reduce((sum, item) => sum + sounding(item), 0),
-          ),
-        )
-        const barLength = Math.max(time.count / time.unit, content)
+        // A direction sits at a cursor position, which advances by the notes'
+        // measured durations, so the measure reaches at least that far, and at
+        // least its time signature. Its source length is that measured extent,
+        // which also holds where the source overfills the bar or where the
+        // converter carried a written value shorter than the duration it
+        // measured. Bounding by the time signature alone would flag a direction
+        // in such a measure as past its end.
+        const barLength = Math.max(time.count / time.unit, lengths[partIndex]?.[index] ?? 0)
         for (const dynamic of measure.dynamics ?? []) {
           const at = dynamic.position.fraction[0] / dynamic.position.fraction[1]
           if (at > barLength + 1e-9) {
