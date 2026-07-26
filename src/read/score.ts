@@ -56,12 +56,21 @@ interface MeasureReading {
 
 export function readScore(root: XmlElement, warnings: WarningCollector): Score {
   if (root.name !== 'score-partwise') {
-    throw new MusicXMLError(
-      root.name === 'score-timewise'
-        ? 'Timewise MusicXML is not supported; convert it to partwise first.'
-        : `Expected a <score-partwise> document, found <${root.name}>.`,
-      { line: root.line },
-    )
+    let message: string
+    if (root.name === 'score-timewise') {
+      message = 'Timewise MusicXML is not supported; convert it to partwise first.'
+    } else if (root.name.includes(':')) {
+      // The parser does not resolve XML namespaces, so a prefix stays on the
+      // element name and no reader will match it. Name the prefix rather than
+      // report a <score-partwise> document as merely missing.
+      message =
+        `This document's root is <${root.name}>, an element with an XML namespace ` +
+        'prefix. Namespaces are not resolved, so the prefix must be removed for the ' +
+        'root to read as <score-partwise>.'
+    } else {
+      message = `Expected a <score-partwise> document, found <${root.name}>.`
+    }
+    throw new MusicXMLError(message, { line: root.line })
   }
 
   const path: DocumentPath = ['score-partwise']

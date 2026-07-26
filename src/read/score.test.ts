@@ -61,6 +61,15 @@ describe('the document element', () => {
   test('rejects a document that is not a score at all', () => {
     expect(readFailure('<html/>').message).toContain('found <html>')
   })
+
+  // The parser does not resolve namespaces, so a prefix stays on the name and
+  // the plain "found <mx:score-partwise>" message is a puzzle. Name the cause.
+  test('rejects a namespace-prefixed document, explaining the prefix', () => {
+    const message = readFailure('<mx:score-partwise version="4.0"/>').message
+
+    expect(message).toContain('namespace')
+    expect(message).toContain('mx:score-partwise')
+  })
 })
 
 describe('parts', () => {
