@@ -41,12 +41,8 @@ the corpus in alphabetical order, taking one more song from each on each pass,
 in the corpus's own order, until the count reaches two hundred, so every
 composer is represented and the busier ones a little more.
 
-A song is skipped over where the converter refuses it (an empty metronome
-tempo, a tuplet the source never bracketed) or where it would fail one of the
-checks below for a reason that is the source's or MNX's rather than the
-converter's, such as a lyric written on a whole-measure rest, which MNX states
-at the sequence level with no room for a lyric and which the converter reports
-as a loss.
+A song is skipped over where the converter refuses it: an empty metronome
+tempo, or a tuplet the source never bracketed.
 
 Four songs are pinned deliberately, because each has already caught a defect
 the rest of the suite missed:

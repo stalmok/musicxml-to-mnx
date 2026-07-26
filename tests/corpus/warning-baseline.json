@@ -1507,18 +1507,14 @@
     "sf": 1,
     "other-dynamics": 1
   },
-  "gonzaga-a-sereia": {
+  "gonzaga-a-mulatinha": {
     "score-instrument": 2,
     "midi-device": 2,
     "midi-instrument": 2,
     "work": 1,
     "identification": 1,
-    "words": 9,
-    "sound": 16,
-    "pedal": 92,
-    "other-dynamics": 1,
-    "tie": 1,
-    "trill-mark": 1
+    "extend": 3,
+    "words": 25
   },
   "gounod-1-le-premier-jour-de-mai": {
     "score-instrument": 2,
