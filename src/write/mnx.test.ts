@@ -599,6 +599,24 @@ describe('tuplets and grace groups', () => {
     content: [WHOLE_C, WHOLE_C, WHOLE_C],
   } as const
 
+  // A triplet 16th group nested inside the triplet, each level stated as its
+  // own ratio.
+  const nestedTuplet = {
+    kind: 'tuplet',
+    inner: eighths(3),
+    outer: eighths(2),
+    content: [
+      WHOLE_C,
+      {
+        kind: 'tuplet',
+        inner: { value: { base: '16th', dots: 0 } as const, multiple: 3 },
+        outer: { value: { base: '16th', dots: 0 } as const, multiple: 2 },
+        content: [WHOLE_C, WHOLE_C, WHOLE_C],
+      },
+      WHOLE_C,
+    ],
+  } as const
+
   // A tremolo written across two notes: each is written at its full value
   // while the pair together occupies the space one of them would.
   const tremolo = {
@@ -657,6 +675,7 @@ describe('tuplets and grace groups', () => {
 
   test.each([
     ['a tuplet', triplet],
+    ['a nested tuplet', nestedTuplet],
     ['a grace group', { kind: 'grace', content: [WHOLE_C], slashed: true } as const],
     ['a two-note tremolo', tremolo],
   ])('writes MNX the spec schema accepts for %s', (_name, item) => {

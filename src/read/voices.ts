@@ -392,15 +392,34 @@ export class MeasureBuilder {
     if (builder.openTremolo) {
       throw new MusicXMLError('A tuplet starts inside a two-note tremolo.', { path, line })
     }
+    // A note's <time-modification> is cumulative: inside nested tuplets it
+    // states the combined ratio of every level, not this one's own. Recover
+    // the per-level ratio by dividing out the ratio of the tuplets already
+    // open around it, so the emitted bracket and tupletFactor each carry one
+    // level. The outermost tuplet has nothing to divide out, so its ratio is
+    // kept exactly as the source writes it.
+    const enclosing = builder.openTuplets
+      .map((open) => open.ratio)
+      .reduce(multiplyFractions, fraction(1))
+    let level = { inner, outer }
+    if (builder.openTuplets.length > 0) {
+      const cumulative = ratioOf(inner, outer)
+      const perLevel = multiplyFractions(cumulative, fraction(enclosing.den, enclosing.num))
+      level = {
+        inner: { value: inner.value, multiple: perLevel.den },
+        outer: { value: outer.value, multiple: perLevel.num },
+      }
+    }
+
     const content: SequenceItem[] = []
-    const tuplet: Tuplet = { kind: 'tuplet', inner, outer, content }
+    const tuplet: Tuplet = { kind: 'tuplet', inner: level.inner, outer: level.outer, content }
 
     // Time this voice has passed over in silence belongs before the bracket,
     // not inside it, where the tuplet's ratio would scale it.
     this.#fillGap(builder)
     innermost(builder).push(tuplet)
     builder.open.push({ list: content, opened: 'tuplet' })
-    builder.openTuplets.push({ tuplet, ratio: ratioOf(inner, outer) })
+    builder.openTuplets.push({ tuplet, ratio: ratioOf(level.inner, level.outer) })
   }
 
   /**

@@ -130,24 +130,52 @@ describe('tuplets', () => {
     expect(tuplet?.kind === 'tuplet' && tuplet.inner.value).toEqual({ base: 'eighth', dots: 0 })
   })
 
-  test('nests a tuplet inside another', () => {
-    const inner =
-      '<note><pitch><step>D</step><octave>4</octave></pitch><duration>1</duration>' +
-      '<type>16th</type><time-modification><actual-notes>3</actual-notes>' +
-      '<normal-notes>2</normal-notes></time-modification>'
-    const { content } = read(
-      measure(
-        tupletNote('C', 4, 'eighth', 'start') +
-          `${inner}<notations><tuplet type="start"/></notations></note>` +
-          `${inner}</note>` +
-          `${inner}<notations><tuplet type="stop"/></notations></note>` +
-          tupletNote('E', 4, 'eighth', 'stop'),
-      ),
-    )
+  // MusicXML's <time-modification> is cumulative: a note inside two tuplets
+  // states the combined ratio of both, not the inner level's own. A triplet
+  // 16th inside a triplet eighth carries 9:4 (3*3 : 2*2). The inner tuplet
+  // must still be stated as its own 3:2, and the durations must add up
+  // through both ratios.
+  test('recovers the inner ratio from a cumulative nested time-modification', () => {
+    const outerNote = (step: string, bracket = ''): string =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+      '<duration>6</duration><type>eighth</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+      '</time-modification>' +
+      (bracket ? `<notations><tuplet type="${bracket}"/></notations>` : '') +
+      '</note>'
+    const innerNote = (step: string, bracket = ''): string =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+      '<duration>2</duration><type>16th</type>' +
+      '<time-modification><actual-notes>9</actual-notes><normal-notes>4</normal-notes>' +
+      '</time-modification>' +
+      (bracket ? `<notations><tuplet type="${bracket}"/></notations>` : '') +
+      '</note>'
+    const source =
+      '<score-partwise><part id="P1"><measure number="1">' +
+      '<attributes><divisions>18</divisions></attributes>' +
+      outerNote('C', 'start') +
+      innerNote('D', 'start') +
+      innerNote('E') +
+      innerNote('F', 'stop') +
+      outerNote('G', 'stop') +
+      '</measure></part></score-partwise>'
+    const { content, warnings } = read(source)
     const outer = content?.[0]
     const nested = outer?.kind === 'tuplet' ? outer.content[1] : undefined
 
-    expect(nested?.kind).toBe('tuplet')
+    expect(nested?.kind === 'tuplet' && nested.inner).toEqual({
+      value: { base: '16th', dots: 0 },
+      multiple: 3,
+    })
+    expect(nested?.kind === 'tuplet' && nested.outer).toEqual({
+      value: { base: '16th', dots: 0 },
+      multiple: 2,
+    })
+    expect(
+      warnings.filter(
+        (w) => w.code === 'inconsistent:duration' || w.code === 'inconsistent:tuplet',
+      ),
+    ).toEqual([])
   })
 
   // MusicXML allows a note to carry several <notations> blocks, and exporters
@@ -191,30 +219,6 @@ describe('tuplets', () => {
     )
     expect(warnings.filter((w) => w.code === 'inconsistent:duration')).toHaveLength(1)
     expect(warnings.filter((w) => w.code === 'inconsistent:tuplet')).toHaveLength(1)
-  })
-
-  test('applies every open ratio to a note in a nested tuplet', () => {
-    // Divisions of 18 make both levels exact: a triplet eighth is 6, and a
-    // triplet 16th inside it is 2.
-    const note18 = (step: string, units: number, type: string, bracket = ''): string =>
-      `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
-      `<duration>${String(units)}</duration><type>${type}</type>` +
-      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
-      '</time-modification>' +
-      (bracket ? `<notations><tuplet type="${bracket}"/></notations>` : '') +
-      '</note>'
-    const source =
-      '<score-partwise><part id="P1"><measure number="1">' +
-      '<attributes><divisions>18</divisions></attributes>' +
-      note18('C', 6, 'eighth', 'start') +
-      note18('D', 2, '16th', 'start') +
-      note18('E', 2, '16th') +
-      note18('F', 2, '16th', 'stop') +
-      note18('G', 6, 'eighth', 'stop') +
-      '</measure></part></score-partwise>'
-    const { warnings } = read(source)
-
-    expect(warnings.filter((w) => w.code === 'inconsistent:duration')).toEqual([])
   })
 
   // A voice that first sounds partway through the measure passes over the
