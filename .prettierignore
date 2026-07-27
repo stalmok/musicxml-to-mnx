@@ -6,6 +6,7 @@ pnpm-lock.yaml
 # Local scratchpad and session-tool state (gitignored), not source to format
 .superpowers
 .remember
+plan.md
 
 # Vendored songs, kept byte-for-byte as retrieved (see tests/corpus/PROVENANCE.md)
 tests/corpus/*.mxl
