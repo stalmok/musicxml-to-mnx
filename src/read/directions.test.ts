@@ -518,10 +518,13 @@ describe('hairpins', () => {
   // second. Pairing in document order made a hairpin out of two ends that had
   // nothing to do with each other.
   test('pairs the ends the music has together, not the ones written together', () => {
+    const voiceOne =
+      '<note><voice>1</voice><pitch><step>C</step><octave>4</octave></pitch>' +
+      '<duration>4</duration><type>quarter</type></note>'
     const { dynamics, warnings } = readMeasures(
       // Voice 1 fills the measure and its hairpin stops at the halfway point.
-      NOTE +
-        NOTE +
+      voiceOne +
+        voiceOne +
         wedge('stop') +
         '<backup><duration>8</duration></backup>' +
         // Voice 2, written afterwards, opens that hairpin at the start.

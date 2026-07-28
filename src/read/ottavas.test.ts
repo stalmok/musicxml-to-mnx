@@ -129,9 +129,15 @@ describe('where an octave shift runs', () => {
   // The same trap as a hairpin: a measure with two voices is written one
   // voice at a time, so a stop can be written before the start it belongs to.
   test('pairs the ends the music has together, not the ones written together', () => {
+    // Voice 1 fills the measure with two quarters; voice 2, written after the
+    // backup, is a half note. Both lines name their voice, so neither trips the
+    // unnamed-voice warning.
+    const voiceOne =
+      '<note><voice>1</voice><pitch><step>C</step><octave>4</octave></pitch>' +
+      '<duration>4</duration><type>quarter</type></note>'
     const { ottavas, warnings } = read(
-      NOTE +
-        NOTE +
+      voiceOne +
+        voiceOne +
         shift('stop') +
         '<backup><duration>8</duration></backup>' +
         shift('down') +

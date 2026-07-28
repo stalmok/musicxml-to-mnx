@@ -761,7 +761,19 @@ export class MeasureBuilder {
    * events that reach across to another say so. Choosing the commonest that
    * way keeps the overrides to the notes that genuinely cross.
    */
-  sequences(): Sequence[] {
+  sequences(warnings: WarningCollector, context: WarningContext): Sequence[] {
+    // A note that names no voice lands in its own bucket. Beside notes that do
+    // name a voice, that splits one measure into two lines with no way to know
+    // the source meant them apart, so the split is reported rather than silent.
+    if (this.#voices.size > 1 && this.#voices.has(UNNAMED_VOICE)) {
+      warnings.add(
+        'missing:voice',
+        'A note names no voice while others in the measure do. It is kept as a ' + 'separate line.',
+        context,
+        'note',
+      )
+    }
+
     return [...this.#voices].map(([voice, builder]) => {
       const staff = commonestStaff(builder.placed.map((placed) => placed.staff))
 

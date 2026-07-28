@@ -378,7 +378,7 @@ function readMeasure(
       arpeggios: builder.arpeggios(warnings, context),
       // Filled in below, once the whole part has been read.
       ottavas: [],
-      sequences: builder.sequences(),
+      sequences: builder.sequences(warnings, context),
     },
     // Only worth carrying when it differs from where the measure sits;
     // otherwise MNX's implicit numbering already says it.

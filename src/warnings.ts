@@ -101,6 +101,10 @@ export type WarningCode =
   // is. One division per quarter note is assumed; if that is wrong, the
   // written values disagree with the measured ones and say so.
   | 'missing:divisions'
+  // A note omits its <voice> while others in the same measure name theirs.
+  // The unnamed notes are kept as a separate line, which may not be the one
+  // the source intended.
+  | 'missing:voice'
   // A rest written over a rest that already fills the same voice's measure.
   // Both are silence, so the measure rest stands and the extra is dropped.
   | 'redundant:rest'

@@ -235,6 +235,30 @@ describe('rests filling the measure', () => {
 
     expect(result?.sequences.map((s) => s.fullMeasure !== undefined)).toEqual([true, true])
   })
+
+  test('warns when a note without a voice appears beside voiced notes', () => {
+    const { measure: result, warnings } = read(
+      measure(
+        '<note><pitch><step>C</step><octave>4</octave></pitch><duration>16</duration></note>' +
+          '<backup><duration>16</duration></backup>' +
+          note('E', 4, '1'),
+      ),
+    )
+
+    expect(result?.sequences).toHaveLength(2)
+    expect(warnings.map((w) => w.code)).toContain('missing:voice')
+  })
+
+  test('does not warn when every note in the measure omits its voice', () => {
+    const { measure: result, warnings } = read(
+      measure(
+        '<note><pitch><step>C</step><octave>4</octave></pitch><duration>16</duration></note>',
+      ),
+    )
+
+    expect(result?.sequences).toHaveLength(1)
+    expect(warnings.map((w) => w.code)).not.toContain('missing:voice')
+  })
 })
 
 describe('the measure cursor', () => {
