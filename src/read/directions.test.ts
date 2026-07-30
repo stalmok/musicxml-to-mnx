@@ -127,21 +127,20 @@ describe('tempo', () => {
     expect(thrown).toContain('is not a note value')
   })
 
-  test('rejects a per-minute that is not a number', () => {
-    let thrown = ''
-    try {
-      read(
-        inMeasure(
-          direction(
-            '<metronome><beat-unit>quarter</beat-unit><per-minute>fast</per-minute></metronome>',
-          ) + note('C'),
-        ),
-      )
-    } catch (e) {
-      thrown = e instanceof Error ? e.message : ''
-    }
+  // MusicXML's per-minute is a string that can be a descriptive word such as
+  // "fast" rather than a number. MNX states a tempo as beats per minute, so
+  // there is nothing to carry, but a valid marking must not refuse the file.
+  test('reports rather than refuses a per-minute given as descriptive text', () => {
+    const { global, warnings } = read(
+      inMeasure(
+        direction(
+          '<metronome><beat-unit>quarter</beat-unit><per-minute>fast</per-minute></metronome>',
+        ) + note('C'),
+      ),
+    )
 
-    expect(thrown).toContain('beats per minute')
+    expect(global?.tempos).toEqual([])
+    expect(warnings.map((w) => w.code)).toContain('unrepresentable:tempo')
   })
 
   // An empty <per-minute> prints the beat-unit glyph alone, with the number

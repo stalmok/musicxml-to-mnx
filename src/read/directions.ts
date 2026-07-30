@@ -404,12 +404,19 @@ function readMetronome(
     return []
   }
 
+  // MusicXML's per-minute is a string, so it can be a descriptive word such as
+  // "fast" rather than a number. MNX states a tempo as a positive number of
+  // beats per minute, so a non-numeric one is a reported drop, not a refusal.
   const bpm = Number(written)
   if (!Number.isFinite(bpm) || bpm <= 0) {
-    throw new MusicXMLError(`A metronome states "${written}" beats per minute.`, {
-      path,
-      line: perMinute.line,
-    })
+    warnings.add(
+      'unrepresentable:tempo',
+      `A <metronome> states its tempo as "${written}", which cannot be expressed in MNX, ` +
+        'which states a tempo as a positive number of beats per minute.',
+      { ...context, line: perMinute.line },
+      'metronome',
+    )
+    return []
   }
 
   // A beat unit can be dotted; MNX's bpm is a whole number.
