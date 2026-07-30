@@ -144,6 +144,22 @@ describe('tempo', () => {
     expect(thrown).toContain('beats per minute')
   })
 
+  // An empty <per-minute> prints the beat-unit glyph alone, with the number
+  // supplied as adjacent text. It is valid, and refusing the whole file over
+  // it would be wrong; MNX has no numeric tempo to carry, so it is dropped.
+  test('reports rather than refuses a metronome with an empty per-minute', () => {
+    const { global, warnings } = read(
+      inMeasure(
+        direction(
+          '<metronome><beat-unit>quarter</beat-unit><per-minute></per-minute></metronome>',
+        ) + note('C'),
+      ),
+    )
+
+    expect(global?.tempos).toEqual([])
+    expect(warnings.map((w) => w.code)).toContain('unrepresentable:tempo')
+  })
+
   test('rounds a fractional per-minute to whole beats', () => {
     const { global } = read(
       inMeasure(

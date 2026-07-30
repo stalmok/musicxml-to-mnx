@@ -412,9 +412,24 @@ function readMetronome(
     )
   }
 
-  const bpm = Number(trimmedText(perMinute))
+  // An empty <per-minute> is valid: it prints the beat-unit glyph alone, with
+  // the number supplied as adjacent text. MNX's tempo needs a bpm, so there is
+  // nothing to carry, but it is a reported drop rather than a refusal.
+  const written = trimmedText(perMinute)
+  if (written === '') {
+    warnings.add(
+      'unrepresentable:tempo',
+      'A <metronome> with no beats-per-minute number cannot be expressed in MNX, ' +
+        'which states a tempo as beats per minute.',
+      { ...context, line: perMinute.line },
+      'metronome',
+    )
+    return []
+  }
+
+  const bpm = Number(written)
   if (!Number.isFinite(bpm) || bpm <= 0) {
-    throw new MusicXMLError(`A metronome states "${trimmedText(perMinute)}" beats per minute.`, {
+    throw new MusicXMLError(`A metronome states "${written}" beats per minute.`, {
       path,
       line: perMinute.line,
     })
