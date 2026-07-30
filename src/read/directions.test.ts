@@ -329,8 +329,10 @@ describe('an offset moving a direction', () => {
   })
 })
 
-// <sound> is a playback element. The only thing in it MNX has anywhere for is
-// the tempo, which MusicXML always counts in quarter notes per minute.
+// <sound> is a playback element. A tempo it states is playback, not notation:
+// MNX's tempo object is always drawn, so emitting one from a <sound> would
+// fabricate a metronome the source never displayed. A <metronome> beside it is
+// the drawn mark, and the <sound tempo> only echoes it for playback.
 describe('the tempo a <sound> states', () => {
   function tempos(body: string) {
     const warnings = new WarningCollector()
@@ -348,27 +350,28 @@ describe('the tempo a <sound> states', () => {
     '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
     '<type>quarter</type></note>'
 
-  test('reads it as that many quarter notes per minute', () => {
+  const soundTempoDropped = 'The "tempo" of a <sound> is not converted yet.'
+
+  test('drops a bare one rather than drawing a metronome the source never showed', () => {
     const { tempos: found, warnings } = tempos(
       '<direction><sound tempo="120"/></direction>' + quarter,
     )
 
-    expect(found).toEqual([
-      { position: { num: 0, den: 1 }, value: { base: 'quarter', dots: 0 }, bpm: 120 },
-    ])
-    expect(warnings).toEqual([])
+    expect(found).toEqual([])
+    expect(warnings.map((w) => w.message)).toContain(soundTempoDropped)
   })
 
-  test('reads one written straight into the measure', () => {
+  test('drops one written straight into the measure', () => {
     const { tempos: found, warnings } = tempos(`<sound tempo="88"/>${quarter}`)
 
-    expect(found.map((t) => t.bpm)).toEqual([88])
-    expect(warnings).toEqual([])
+    expect(found).toEqual([])
+    expect(warnings.map((w) => w.message)).toContain(soundTempoDropped)
   })
 
-  // The two say the same thing, and the metronome is the one that is drawn.
+  // The two say the same thing, and the metronome is the one that is drawn, so
+  // the sound's echo is passed over without a word.
   test('passes over one that only restates a <metronome> beside it', () => {
-    const { tempos: found } = tempos(
+    const { tempos: found, warnings } = tempos(
       '<direction><direction-type><metronome><beat-unit>half</beat-unit>' +
         '<per-minute>60</per-minute></metronome></direction-type>' +
         '<sound tempo="120"/></direction>' +
@@ -378,12 +381,13 @@ describe('the tempo a <sound> states', () => {
     expect(found).toEqual([
       { position: { num: 0, den: 1 }, value: { base: 'half', dots: 0 }, bpm: 60 },
     ])
+    expect(warnings.map((w) => w.message)).not.toContain(soundTempoDropped)
   })
 
-  // The two are the same mark written twice: the direction draws it, the
-  // <sound> beside it repeats it for playback.
+  // The same mark written twice: the direction draws it, the <sound> beside it
+  // repeats it for playback.
   test('passes over one at the same point as a tempo a <direction> already gave', () => {
-    const { tempos: found } = tempos(
+    const { tempos: found, warnings } = tempos(
       '<direction><direction-type><metronome><beat-unit>quarter</beat-unit>' +
         '<per-minute>120</per-minute></metronome></direction-type></direction>' +
         '<sound tempo="90"/>' +
@@ -391,38 +395,31 @@ describe('the tempo a <sound> states', () => {
     )
 
     expect(found.map((t) => t.bpm)).toEqual([120])
+    expect(warnings.map((w) => w.message)).not.toContain(soundTempoDropped)
   })
 
-  test('takes one that falls later in the measure than the tempo already given', () => {
-    const { tempos: found } = tempos(
+  test('drops one that falls later in the measure than a drawn metronome', () => {
+    const { tempos: found, warnings } = tempos(
       '<direction><direction-type><metronome><beat-unit>quarter</beat-unit>' +
         '<per-minute>120</per-minute></metronome></direction-type></direction>' +
         quarter +
         '<sound tempo="90"/>',
     )
 
-    expect(found.map((t) => t.bpm)).toEqual([120, 90])
+    expect(found.map((t) => t.bpm)).toEqual([120])
+    expect(warnings.map((w) => w.message)).toContain(soundTempoDropped)
   })
 
-  test('reports the playback it carries besides the tempo', () => {
+  test('reports the other playback it carries besides a dropped tempo', () => {
     const { tempos: found, warnings } = tempos(
       '<direction><sound tempo="100" dynamics="71"/></direction>' + quarter,
     )
 
-    expect(found.map((t) => t.bpm)).toEqual([100])
+    expect(found).toEqual([])
     expect(warnings.map((w) => w.message)).toEqual([
+      soundTempoDropped,
       'The "dynamics" of a <sound> is not converted yet.',
     ])
-  })
-
-  // Playback junk is not worth refusing a whole document over.
-  test('reports rather than refuses a tempo that is not a number', () => {
-    const { tempos: found, warnings } = tempos(
-      '<direction><sound tempo="fast"/></direction>' + quarter,
-    )
-
-    expect(found).toEqual([])
-    expect(warnings[0]?.message).toContain('which is not a tempo')
   })
 })
 

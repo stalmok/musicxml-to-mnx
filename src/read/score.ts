@@ -328,13 +328,14 @@ function readMeasure(
         break
       }
 
-      // A <sound> outside a <direction> still carries the score's tempo, and
-      // is passed over where a <direction> at the same point has already
-      // stated one, which is the same mark written twice.
+      // A <sound> is playback, so nothing it carries reaches the output. A
+      // <sound tempo> at the same point as a <metronome> the score has already
+      // drawn is that mark's playback echo, and is passed over in silence;
+      // a bare one is reported like any other playback the output cannot hold.
       case 'sound': {
         const at = builder.position()
         const stated = tempos.some((tempo) => compareFractions(tempo.position, at) === 0)
-        tempos.push(...readSound(reader, at, stated, warnings, context))
+        readSound(reader, stated, warnings, context)
         break
       }
 

@@ -122,8 +122,8 @@ describe('a direction', () => {
     expect(lost(direction('<offset>2</offset>'))).toEqual([])
   })
 
-  test('says nothing about a <sound> tempo, which is carried over', () => {
-    expect(lost(direction('<sound tempo="120"/>'))).toEqual([])
+  test('reports a bare <sound> tempo, which is playback the output cannot draw', () => {
+    expect(lost(direction('<sound tempo="120"/>'))).toEqual(['sound'])
   })
 
   test('reports the playback a <sound> carries beyond the tempo', () => {

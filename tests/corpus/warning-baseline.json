@@ -9,7 +9,7 @@
     "stem": 1,
     "cue": 6,
     "notehead": 1,
-    "sound": 5
+    "sound": 6
   },
   "abbott-think-of-today": {
     "score-instrument": 2,
@@ -19,7 +19,8 @@
     "identification": 1,
     "words": 11,
     "extend": 1,
-    "cue": 2
+    "cue": 2,
+    "sound": 1
   },
   "abrams-crazy-jane": {
     "score-instrument": 2,
@@ -30,7 +31,8 @@
     "words": 4,
     "extend": 3,
     "measure": 8,
-    "trill-mark": 6
+    "trill-mark": 6,
+    "sound": 1
   },
   "abrams-the-orphan-s-prayer": {
     "score-instrument": 2,
@@ -41,7 +43,7 @@
     "words": 7,
     "extend": 30,
     "measure": 8,
-    "sound": 11,
+    "sound": 12,
     "stem": 2,
     "notehead": 1
   },
@@ -56,7 +58,7 @@
     "part-group": 2,
     "print": 28,
     "words": 1,
-    "sound": 80,
+    "sound": 81,
     "extend": 39,
     "trill-mark": 1,
     "measure": 4
@@ -75,7 +77,7 @@
     "words": 12,
     "extend": 50,
     "cue": 2,
-    "sound": 8,
+    "sound": 10,
     "dashes": 2,
     "wedge": 5
   },
@@ -90,7 +92,8 @@
     "print": 18,
     "words": 3,
     "measure": 9,
-    "extend": 5
+    "extend": 5,
+    "sound": 1
   },
   "bantock-1-the-old-fisherman-of-the-mists-and-waters": {
     "score-instrument": 2,
@@ -102,7 +105,7 @@
     "identification": 1,
     "words": 30,
     "other-dynamics": 15,
-    "sound": 27,
+    "sound": 31,
     "extend": 21,
     "pedal": 30
   },
@@ -116,7 +119,7 @@
     "identification": 1,
     "words": 49,
     "other-dynamics": 15,
-    "sound": 38,
+    "sound": 39,
     "extend": 43,
     "bracket": 2,
     "cue": 4,
@@ -148,7 +151,7 @@
     "words": 11,
     "measure": 6,
     "cue": 3,
-    "sound": 15,
+    "sound": 16,
     "dashes": 20,
     "trill-mark": 3
   },
@@ -160,7 +163,7 @@
     "identification": 1,
     "words": 39,
     "measure": 6,
-    "sound": 30,
+    "sound": 31,
     "other-dynamics": 7,
     "cue": 9,
     "sf": 1
@@ -173,8 +176,7 @@
     "identification": 1,
     "words": 26,
     "extend": 4,
-    "sound": 17,
-    "metronome": 1,
+    "sound": 20,
     "other-dynamics": 1,
     "pedal": 26,
     "sf": 3
@@ -198,7 +200,7 @@
     "work": 1,
     "identification": 1,
     "words": 19,
-    "sound": 26,
+    "sound": 27,
     "other-dynamics": 3,
     "extend": 7,
     "cue": 2,
@@ -214,7 +216,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 16,
-    "sound": 11,
+    "sound": 12,
     "extend": 17,
     "other-dynamics": 4,
     "dashes": 2,
@@ -229,8 +231,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 33,
-    "metronome": 1,
-    "sound": 21,
+    "sound": 22,
     "extend": 22,
     "other-dynamics": 2,
     "pedal": 42,
@@ -246,7 +247,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 8,
-    "sound": 8,
+    "sound": 9,
     "sf": 1
   },
   "beethoven-2-die-liebe-des-nachsten": {
@@ -272,7 +273,7 @@
     "identification": 1,
     "words": 5,
     "measure": 2,
-    "sound": 6,
+    "sound": 8,
     "extend": 15,
     "other-dynamics": 1,
     "fp": 1
@@ -290,7 +291,7 @@
     "print": 40,
     "words": 13,
     "extend": 18,
-    "sound": 5,
+    "sound": 9,
     "pedal": 4,
     "wedge": 2
   },
@@ -310,7 +311,7 @@
     "notehead": 9,
     "stem": 5,
     "dashes": 8,
-    "sound": 15,
+    "sound": 19,
     "tie": 2,
     "slur": 2,
     "pedal": 16,
@@ -329,7 +330,7 @@
     "credit": 8,
     "print": 28,
     "words": 23,
-    "sound": 37,
+    "sound": 48,
     "extend": 38,
     "cue": 1,
     "pedal": 21,
@@ -342,7 +343,8 @@
     "work": 1,
     "identification": 1,
     "words": 7,
-    "extend": 2
+    "extend": 2,
+    "sound": 4
   },
   "bishop-home-sweet-home": {
     "score-instrument": 3,
@@ -356,7 +358,7 @@
     "trill-mark": 9,
     "extend": 3,
     "notehead": 8,
-    "sound": 14,
+    "sound": 19,
     "instruments": 2,
     "instrument": 891,
     "other-dynamics": 1,
@@ -374,7 +376,7 @@
     "extend": 20,
     "trill-mark": 4,
     "wavy-line": 8,
-    "sound": 3
+    "sound": 6
   },
   "bizet-10-serenade": {
     "score-instrument": 2,
@@ -399,7 +401,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 17,
-    "sound": 49,
+    "sound": 51,
     "dashes": 12,
     "extend": 5,
     "harmony": 1,
@@ -415,7 +417,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 15,
-    "sound": 9,
+    "sound": 12,
     "other-dynamics": 2,
     "extend": 2
   },
@@ -429,7 +431,7 @@
     "identification": 1,
     "words": 55,
     "extend": 3,
-    "sound": 18,
+    "sound": 27,
     "notehead": 17,
     "sf": 2,
     "staccato": 1,
@@ -447,7 +449,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 29,
-    "sound": 18,
+    "sound": 19,
     "extend": 6,
     "dashes": 8,
     "pedal": 6,
@@ -464,7 +466,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 34,
-    "sound": 22,
+    "sound": 23,
     "extend": 16,
     "stem": 3,
     "cue": 1,
@@ -485,7 +487,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 19,
-    "sound": 12,
+    "sound": 13,
     "extend": 16,
     "dashes": 2
   },
@@ -499,7 +501,7 @@
     "identification": 1,
     "words": 37,
     "dashes": 34,
-    "sound": 23,
+    "sound": 24,
     "extend": 5,
     "pedal": 6,
     "other-dynamics": 2
@@ -513,7 +515,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 14,
-    "sound": 25,
+    "sound": 26,
     "extend": 28,
     "pedal": 78
   },
@@ -529,7 +531,7 @@
     "words": 16,
     "extend": 16,
     "staff-details": 1,
-    "sound": 28,
+    "sound": 29,
     "other-dynamics": 5,
     "technical": 1,
     "notehead": 1,
@@ -547,7 +549,7 @@
     "extend": 16,
     "staff-details": 1,
     "other-dynamics": 20,
-    "sound": 33,
+    "sound": 35,
     "dashes": 2,
     "pedal": 12,
     "stem": 8
@@ -565,7 +567,7 @@
     "print": 8,
     "words": 1,
     "extend": 9,
-    "sound": 1
+    "sound": 2
   },
   "bridge-1-day-after-day": {
     "score-instrument": 2,
@@ -579,8 +581,7 @@
     "credit": 9,
     "print": 38,
     "words": 40,
-    "metronome": 2,
-    "sound": 33,
+    "sound": 55,
     "extend": 21,
     "wedge": 8,
     "slur": 2
@@ -597,7 +598,7 @@
     "credit": 10,
     "print": 46,
     "words": 41,
-    "sound": 38,
+    "sound": 56,
     "extend": 36,
     "wedge": 3,
     "pedal": 4,
@@ -614,7 +615,7 @@
     "measure": 2,
     "extend": 11,
     "cue": 2,
-    "sound": 7,
+    "sound": 8,
     "inverted-mordent": 1,
     "turn": 1,
     "dashes": 2
@@ -641,7 +642,7 @@
     "measure": 2,
     "inverted-turn": 13,
     "extend": 8,
-    "sound": 23,
+    "sound": 25,
     "fermata": 1,
     "trill-mark": 1,
     "other-dynamics": 1,
@@ -656,7 +657,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 31,
-    "sound": 20,
+    "sound": 21,
     "extend": 7,
     "offset": 1,
     "sfz": 1
@@ -684,10 +685,9 @@
     "movement-title": 1,
     "identification": 1,
     "words": 25,
-    "sound": 45,
+    "sound": 49,
     "extend": 18,
     "sf": 5,
-    "metronome": 1,
     "notehead": 4,
     "other-dynamics": 2,
     "pedal": 8
@@ -702,7 +702,7 @@
     "identification": 1,
     "part-group": 2,
     "words": 21,
-    "sound": 23,
+    "sound": 27,
     "extend": 8,
     "dashes": 22,
     "other-dynamics": 6,
@@ -718,7 +718,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 8,
-    "sound": 14,
+    "sound": 17,
     "extend": 5
   },
   "cellier-oh-woman-sweet-woman": {
@@ -730,7 +730,7 @@
     "words": 24,
     "measure": 4,
     "extend": 1,
-    "sound": 7
+    "sound": 8
   },
   "chabrier-chanson-pour-jeanne": {
     "score-instrument": 2,
@@ -754,7 +754,7 @@
     "work": 1,
     "identification": 1,
     "words": 6,
-    "sound": 64,
+    "sound": 66,
     "extend": 8,
     "sf": 16,
     "other-dynamics": 1
@@ -766,7 +766,7 @@
     "work": 1,
     "identification": 1,
     "words": 15,
-    "sound": 25,
+    "sound": 26,
     "extend": 3,
     "dashes": 6,
     "other-dynamics": 1
@@ -791,7 +791,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 19,
-    "sound": 18,
+    "sound": 24,
     "extend": 8,
     "sf": 2,
     "slur": 2,
@@ -805,7 +805,7 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
-    "sound": 10,
+    "sound": 13,
     "words": 22,
     "extend": 1,
     "tie": 8,
@@ -821,7 +821,7 @@
     "identification": 1,
     "words": 17,
     "extend": 15,
-    "sound": 14,
+    "sound": 15,
     "tie": 1
   },
   "chopin-1-zyczenie": {
@@ -869,7 +869,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 12,
-    "sound": 12,
+    "sound": 14,
     "extend": 11,
     "sf": 3,
     "pedal": 2,
@@ -884,7 +884,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 15,
-    "sound": 16,
+    "sound": 17,
     "extend": 16
   },
   "coleridge-taylor-5-unmindful-of-the-roses": {
@@ -896,8 +896,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 20,
-    "metronome": 1,
-    "sound": 11,
+    "sound": 12,
     "dashes": 4,
     "extend": 5
   },
@@ -910,7 +909,7 @@
     "words": 13,
     "note": 9,
     "extend": 5,
-    "sound": 2,
+    "sound": 3,
     "other-direction": 2
   },
   "cornelius-1-in-lust-und-schmerzen": {
@@ -936,7 +935,7 @@
     "identification": 1,
     "words": 8,
     "dashes": 4,
-    "sound": 8,
+    "sound": 9,
     "fp": 3,
     "pedal": 12
   },
@@ -948,7 +947,7 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
-    "sound": 5,
+    "sound": 6,
     "words": 3,
     "pedal": 14,
     "notehead": 1
@@ -974,7 +973,7 @@
     "identification": 1,
     "staff-details": 1,
     "words": 34,
-    "sound": 11,
+    "sound": 12,
     "extend": 4,
     "other-dynamics": 1,
     "dashes": 4
@@ -1031,7 +1030,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 15,
-    "sound": 17,
+    "sound": 19,
     "extend": 2,
     "cue": 2
   },
@@ -1044,7 +1043,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 18,
-    "sound": 12,
+    "sound": 14,
     "other-dynamics": 3,
     "notehead": 7,
     "dashes": 2
@@ -1058,7 +1057,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 11,
-    "sound": 31,
+    "sound": 33,
     "dashes": 4,
     "extend": 1,
     "other-dynamics": 2,
@@ -1074,8 +1073,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 5,
-    "metronome": 1,
-    "sound": 16,
+    "sound": 17,
     "extend": 1,
     "other-dynamics": 2
   },
@@ -1088,7 +1086,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 7,
-    "sound": 23,
+    "sound": 24,
     "extend": 9,
     "other-dynamics": 4
   },
@@ -1101,7 +1099,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 1,
-    "sound": 1
+    "sound": 2
   },
   "dickson-drifting": {
     "score-instrument": 2,
@@ -1129,7 +1127,7 @@
     "credit": 7,
     "print": 24,
     "words": 32,
-    "sound": 30,
+    "sound": 43,
     "segno": 1,
     "extend": 15,
     "dashes": 16,
@@ -1143,7 +1141,7 @@
     "work": 1,
     "identification": 1,
     "words": 6,
-    "sound": 4,
+    "sound": 7,
     "extend": 9,
     "turn": 2
   },
@@ -1154,7 +1152,7 @@
     "work": 1,
     "identification": 1,
     "words": 1,
-    "sound": 6,
+    "sound": 7,
     "turn": 1
   },
   "elgar-1-the-torch": {
@@ -1166,7 +1164,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 40,
-    "sound": 26,
+    "sound": 27,
     "extend": 12,
     "rf": 2,
     "sf": 3,
@@ -1182,7 +1180,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 104,
-    "sound": 69,
+    "sound": 70,
     "extend": 8,
     "cue": 2,
     "sf": 14,
@@ -1198,7 +1196,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 56,
-    "sound": 29,
+    "sound": 30,
     "extend": 41,
     "other-dynamics": 4,
     "cue": 22,
@@ -1215,7 +1213,7 @@
     "identification": 1,
     "words": 3,
     "cue": 3,
-    "sound": 15,
+    "sound": 16,
     "dashes": 2,
     "other-dynamics": 1
   },
@@ -1247,7 +1245,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 17,
-    "sound": 14,
+    "sound": 15,
     "extend": 2,
     "dashes": 8,
     "other-dynamics": 1,
@@ -1279,7 +1277,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 21,
-    "sound": 27,
+    "sound": 29,
     "extend": 7,
     "dashes": 6,
     "pedal": 56,
@@ -1293,7 +1291,8 @@
     "midi-instrument": 2,
     "work": 1,
     "identification": 1,
-    "words": 25
+    "words": 25,
+    "sound": 1
   },
   "faure-2-hymne": {
     "score-instrument": 2,
@@ -1304,7 +1303,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 16,
-    "sound": 18,
+    "sound": 19,
     "extend": 18,
     "other-dynamics": 2,
     "pedal": 32,
@@ -1319,7 +1318,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 19,
-    "sound": 11,
+    "sound": 12,
     "extend": 28,
     "dashes": 2,
     "other-dynamics": 3,
@@ -1336,7 +1335,7 @@
     "identification": 1,
     "words": 15,
     "extend": 15,
-    "sound": 20,
+    "sound": 22,
     "notehead": 59,
     "pedal": 108,
     "slur": 4
@@ -1348,7 +1347,7 @@
     "work": 1,
     "identification": 1,
     "words": 31,
-    "sound": 26,
+    "sound": 27,
     "extend": 2,
     "dashes": 4,
     "other-dynamics": 2,
@@ -1364,7 +1363,7 @@
     "words": 6,
     "extend": 31,
     "other-notation": 4,
-    "sound": 7,
+    "sound": 8,
     "pedal": 26
   },
   "flegier-le-cor": {
@@ -1377,7 +1376,7 @@
     "credit": 10,
     "print": 54,
     "words": 47,
-    "sound": 44,
+    "sound": 73,
     "extend": 40,
     "cue": 7,
     "notehead": 1
@@ -1391,7 +1390,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 10,
-    "sound": 33,
+    "sound": 34,
     "stem": 1,
     "notehead": 1,
     "extend": 38,
@@ -1408,8 +1407,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 8,
-    "metronome": 1,
-    "sound": 7,
+    "sound": 9,
     "extend": 4
   },
   "freer-2-daughter-of-egypt-veil-thine-eyes": {
@@ -1421,7 +1419,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 12,
-    "sound": 5,
+    "sound": 7,
     "notehead": 2
   },
   "gabriel-alone": {
@@ -1434,7 +1432,7 @@
     "identification": 1,
     "words": 21,
     "extend": 1,
-    "sound": 10,
+    "sound": 11,
     "dashes": 2,
     "other-dynamics": 2
   },
@@ -1446,7 +1444,7 @@
     "identification": 1,
     "part-group": 2,
     "words": 4,
-    "sound": 5
+    "sound": 6
   },
   "gail-les-langueurs": {
     "score-instrument": 3,
@@ -1457,7 +1455,7 @@
     "part-group": 2,
     "words": 1,
     "extend": 3,
-    "sound": 1
+    "sound": 2
   },
   "gambarini-behold-behold-and-listen": {
     "score-instrument": 2,
@@ -1472,7 +1470,8 @@
     "trill-mark": 13,
     "print": 2,
     "accidental-mark": 2,
-    "figured-bass": 85
+    "figured-bass": 85,
+    "sound": 1
   },
   "german-1-all-the-world-awakes-today": {
     "score-instrument": 2,
@@ -1484,7 +1483,7 @@
     "identification": 1,
     "words": 41,
     "note": 6,
-    "sound": 44,
+    "sound": 47,
     "extend": 20,
     "other-dynamics": 3,
     "dashes": 4,
@@ -1527,7 +1526,7 @@
     "words": 24,
     "extend": 7,
     "dashes": 8,
-    "sound": 13
+    "sound": 24
   },
   "gounod-5-le-lever": {
     "score-instrument": 2,
@@ -1539,7 +1538,7 @@
     "identification": 1,
     "words": 22,
     "extend": 18,
-    "sound": 31
+    "sound": 34
   },
   "grandval-1-les-clochettes": {
     "score-instrument": 3,
@@ -1551,7 +1550,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 10,
-    "sound": 24,
+    "sound": 25,
     "extend": 8,
     "segno": 2,
     "trill-mark": 5,
@@ -1573,7 +1572,7 @@
     "extend": 16,
     "cue": 8,
     "dashes": 8,
-    "sound": 2
+    "sound": 3
   },
   "gray-then-and-now": {
     "score-instrument": 2,
@@ -1586,7 +1585,7 @@
     "words": 18,
     "extend": 1,
     "dashes": 12,
-    "sound": 6,
+    "sound": 7,
     "other-dynamics": 1,
     "pedal": 2
   },
@@ -1610,7 +1609,7 @@
     "work": 1,
     "identification": 1,
     "words": 43,
-    "sound": 65,
+    "sound": 66,
     "sf": 45,
     "turn": 4,
     "measure": 2,
@@ -1626,7 +1625,7 @@
     "identification": 1,
     "staff-details": 1,
     "words": 24,
-    "sound": 54,
+    "sound": 55,
     "sf": 25,
     "dashes": 2,
     "other-dynamics": 11,
@@ -1642,7 +1641,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 25,
-    "sound": 33,
+    "sound": 39,
     "extend": 11,
     "dashes": 2,
     "other-dynamics": 2,
@@ -1660,7 +1659,7 @@
     "credit": 7,
     "print": 24,
     "words": 14,
-    "sound": 14,
+    "sound": 18,
     "extend": 1,
     "notehead": 20
   },
@@ -1674,7 +1673,7 @@
     "credit": 6,
     "print": 22,
     "words": 12,
-    "sound": 7,
+    "sound": 9,
     "extend": 11
   },
   "hardelot-afterwards-love": {
@@ -1700,7 +1699,7 @@
     "extend": 21,
     "cue": 2,
     "measure": 2,
-    "sound": 37,
+    "sound": 38,
     "sf": 2,
     "fz": 24,
     "tie": 2
@@ -1715,7 +1714,7 @@
     "identification": 1,
     "words": 4,
     "extend": 6,
-    "sound": 24,
+    "sound": 25,
     "sf": 3,
     "tie": 2,
     "fz": 2
@@ -1729,7 +1728,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 4,
-    "sound": 6,
+    "sound": 7,
     "extend": 14
   },
   "hodges-dreams": {
@@ -1740,7 +1739,7 @@
     "identification": 1,
     "words": 6,
     "measure": 18,
-    "sound": 17,
+    "sound": 18,
     "extend": 2,
     "other-dynamics": 2
   },
@@ -1766,7 +1765,7 @@
     "work": 1,
     "identification": 1,
     "words": 9,
-    "sound": 27,
+    "sound": 28,
     "extend": 3,
     "other-dynamics": 1
   },
@@ -1777,7 +1776,7 @@
     "work": 1,
     "identification": 1,
     "words": 18,
-    "sound": 20,
+    "sound": 21,
     "extend": 17
   },
   "ives-108-songs-my-mother-taught-me": {
@@ -1793,7 +1792,7 @@
     "print": 14,
     "words": 9,
     "extend": 8,
-    "sound": 10,
+    "sound": 12,
     "cue": 1,
     "wedge": 5
   },
@@ -1806,7 +1805,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 5,
-    "sound": 8,
+    "sound": 9,
     "cue": 1,
     "other-dynamics": 1
   },
@@ -1819,7 +1818,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 8,
-    "sound": 14,
+    "sound": 15,
     "pedal": 14,
     "technical": 12,
     "tie": 2,
@@ -1836,7 +1835,7 @@
     "identification": 1,
     "words": 13,
     "extend": 6,
-    "sound": 65,
+    "sound": 66,
     "pedal": 12,
     "fp": 1,
     "sf": 34
@@ -1860,7 +1859,7 @@
     "identification": 1,
     "part-group": 2,
     "words": 8,
-    "sound": 23,
+    "sound": 24,
     "extend": 2
   },
   "kinkel-2-nachtliche-fahrt": {
@@ -1872,9 +1871,8 @@
     "movement-title": 1,
     "identification": 1,
     "words": 7,
-    "metronome": 1,
     "extend": 8,
-    "sound": 8,
+    "sound": 9,
     "other-dynamics": 1
   },
   "kralik-1-maiglockchen": {
@@ -1886,7 +1884,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 7,
-    "sound": 3,
+    "sound": 4,
     "cue": 1,
     "pedal": 2,
     "other-dynamics": 1
@@ -1901,7 +1899,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 29,
-    "sound": 32,
+    "sound": 33,
     "trill-mark": 2,
     "dashes": 2,
     "extend": 7,
@@ -1918,7 +1916,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 2,
-    "sound": 12,
+    "sound": 13,
     "fz": 1,
     "extend": 4
   },
@@ -1931,7 +1929,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 1,
-    "sound": 28,
+    "sound": 29,
     "pedal": 30
   },
   "lehmann-1-the-mother-seal-s-lullaby": {
@@ -1945,7 +1943,7 @@
     "staff-details": 1,
     "words": 15,
     "trill-mark": 1,
-    "sound": 6,
+    "sound": 7,
     "cue": 3,
     "extend": 4,
     "dashes": 4,
@@ -1958,7 +1956,7 @@
     "work": 1,
     "identification": 1,
     "words": 43,
-    "sound": 6,
+    "sound": 7,
     "extend": 29,
     "cue": 2,
     "other-dynamics": 1,
@@ -1973,7 +1971,7 @@
     "words": 10,
     "extend": 4,
     "other-dynamics": 2,
-    "sound": 3,
+    "sound": 6,
     "tie": 3
   },
   "leoncavallo-mattinata": {
@@ -1988,7 +1986,7 @@
     "words": 16,
     "extend": 7,
     "dashes": 2,
-    "sound": 2
+    "sound": 8
   },
   "liliuokalani-aloha-oe": {
     "score-instrument": 4,
@@ -2000,7 +1998,7 @@
     "words": 2,
     "measure": 8,
     "other-dynamics": 1,
-    "sound": 5,
+    "sound": 6,
     "extend": 3
   },
   "lindsay-far-away": {
@@ -2013,7 +2011,7 @@
     "part-group": 2,
     "words": 8,
     "measure": 5,
-    "sound": 41,
+    "sound": 42,
     "extend": 10
   },
   "lindsay-good-night-good-night-beloved": {
@@ -2025,7 +2023,7 @@
     "identification": 1,
     "part-group": 2,
     "words": 26,
-    "sound": 37,
+    "sound": 38,
     "extend": 77,
     "measure": 15,
     "coda": 1
@@ -2043,7 +2041,7 @@
     "print": 57,
     "words": 31,
     "extend": 15,
-    "sound": 17,
+    "sound": 25,
     "barline": 6,
     "pedal": 100,
     "dashes": 8,
@@ -2094,7 +2092,7 @@
     "words": 34,
     "extend": 43,
     "sf": 1,
-    "sound": 18,
+    "sound": 34,
     "tie": 2
   },
   "marshall-ask-me-no-more": {
@@ -2161,7 +2159,7 @@
     "words": 2,
     "turn": 2,
     "sf": 1,
-    "sound": 3,
+    "sound": 4,
     "notehead": 1
   },
   "mayer-2-o-lass-mich-dein-gedenken": {
@@ -2173,7 +2171,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 1,
-    "sound": 3,
+    "sound": 4,
     "other-notation": 1,
     "turn": 1,
     "extend": 3,
@@ -2190,7 +2188,7 @@
     "identification": 1,
     "words": 20,
     "extend": 23,
-    "sound": 33,
+    "sound": 34,
     "other-dynamics": 5,
     "sf": 9,
     "pedal": 6
@@ -2204,7 +2202,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 12,
-    "sound": 7
+    "sound": 8
   },
   "mounsey-bartholomew-4-the-warrior-boy": {
     "score-instrument": 2,
@@ -2215,7 +2213,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 3,
-    "sound": 15,
+    "sound": 16,
     "extend": 2,
     "dashes": 4,
     "notehead": 6,
@@ -2231,7 +2229,7 @@
     "identification": 1,
     "words": 6,
     "extend": 8,
-    "sound": 12,
+    "sound": 13,
     "dashes": 8,
     "pedal": 2,
     "tie": 1
@@ -2278,7 +2276,7 @@
     "print": 30,
     "words": 7,
     "extend": 24,
-    "sound": 8,
+    "sound": 12,
     "dashes": 2,
     "trill-mark": 2,
     "wavy-line": 2
@@ -2294,7 +2292,7 @@
     "print": 54,
     "words": 35,
     "rfz": 5,
-    "sound": 68,
+    "sound": 76,
     "extend": 30,
     "note": 4,
     "pedal": 94,
@@ -2316,7 +2314,7 @@
     "extend": 4,
     "cue": 1,
     "rfz": 2,
-    "sound": 18,
+    "sound": 22,
     "pedal": 24,
     "wedge": 1
   },
@@ -2343,7 +2341,7 @@
     "identification": 1,
     "part-group": 2,
     "words": 114,
-    "sound": 104,
+    "sound": 105,
     "extend": 103,
     "sf": 10,
     "measure": 15,
@@ -2359,7 +2357,7 @@
     "identification": 1,
     "part-group": 2,
     "words": 53,
-    "sound": 104,
+    "sound": 109,
     "extend": 61
   },
   "parry-1-the-poet-s-song": {
@@ -2371,7 +2369,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 31,
-    "sound": 18,
+    "sound": 19,
     "extend": 2,
     "dashes": 2,
     "other-dynamics": 1,
@@ -2388,7 +2386,7 @@
     "identification": 1,
     "words": 9,
     "extend": 2,
-    "sound": 4
+    "sound": 5
   },
   "philp-bye-and-bye": {
     "score-instrument": 2,
@@ -2398,7 +2396,8 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
-    "words": 5
+    "words": 5,
+    "sound": 1
   },
   "poldowski-dans-une-musette": {
     "score-instrument": 2,
@@ -2407,7 +2406,7 @@
     "work": 1,
     "identification": 1,
     "words": 30,
-    "sound": 23,
+    "sound": 24,
     "notehead": 9,
     "pedal": 8,
     "other-dynamics": 3,
@@ -2423,7 +2422,7 @@
     "words": 18,
     "extend": 1,
     "trill-mark": 1,
-    "sound": 12,
+    "sound": 13,
     "measure": 6,
     "other-dynamics": 3,
     "print": 4
@@ -2440,7 +2439,7 @@
     "credit": 9,
     "print": 38,
     "words": 11,
-    "sound": 15,
+    "sound": 18,
     "extend": 17,
     "slur": 4,
     "pedal": 21,
@@ -2454,7 +2453,8 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
-    "words": 3
+    "words": 3,
+    "sound": 1
   },
   "rossini-5-l-invito": {
     "score-instrument": 2,
@@ -2481,8 +2481,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 7,
-    "metronome": 1,
-    "sound": 13,
+    "sound": 14,
     "extend": 2,
     "tie": 2
   },
@@ -2498,7 +2497,7 @@
     "credit": 7,
     "print": 18,
     "words": 17,
-    "sound": 13,
+    "sound": 18,
     "dashes": 4,
     "wedge": 1,
     "sf": 2,
@@ -2513,7 +2512,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 1,
-    "sound": 6
+    "sound": 7
   },
   "schubert-1-mignon-und-der-harfner": {
     "score-instrument": 3,
@@ -2525,7 +2524,7 @@
     "identification": 1,
     "words": 6,
     "extend": 18,
-    "sound": 22,
+    "sound": 23,
     "staccato": 20,
     "dashes": 2,
     "fz": 1
@@ -2542,7 +2541,7 @@
     "credit": 8,
     "print": 40,
     "words": 7,
-    "sound": 20,
+    "sound": 21,
     "extend": 2,
     "fp": 5,
     "fz": 2
@@ -2556,7 +2555,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 6,
-    "sound": 2,
+    "sound": 3,
     "slur": 2
   },
   "schumann-1-im-wunderschonen-monat-mai": {
@@ -2571,7 +2570,7 @@
     "credit": 6,
     "print": 16,
     "words": 3,
-    "sound": 3,
+    "sound": 4,
     "pedal": 4,
     "slur": 4,
     "tie": 3,
@@ -2587,7 +2586,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 5,
-    "sound": 4,
+    "sound": 5,
     "extend": 11,
     "cue": 6
   },
@@ -2602,7 +2601,7 @@
     "mode": 2,
     "words": 8,
     "extend": 3,
-    "sound": 10
+    "sound": 13
   },
   "shield-the-maid-of-lodi": {
     "score-instrument": 2,
@@ -2613,7 +2612,7 @@
     "words": 1,
     "measure": 4,
     "segno": 2,
-    "sound": 2
+    "sound": 3
   },
   "smyth-1-the-clown": {
     "score-instrument": 2,
@@ -2647,7 +2646,7 @@
     "identification": 1,
     "words": 9,
     "barline": 63,
-    "sound": 13,
+    "sound": 14,
     "extend": 4,
     "other-dynamics": 2
   },
@@ -2660,7 +2659,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 2,
-    "sound": 12,
+    "sound": 13,
     "sf": 1,
     "extend": 2
   },
@@ -2674,7 +2673,7 @@
     "identification": 1,
     "words": 23,
     "extend": 5,
-    "sound": 16,
+    "sound": 17,
     "pedal": 22,
     "sfz": 1,
     "dashes": 4
@@ -2698,7 +2697,7 @@
     "work": 1,
     "identification": 1,
     "words": 1,
-    "sound": 9
+    "sound": 10
   },
   "thys-petit-negre": {
     "score-instrument": 2,
@@ -2708,7 +2707,7 @@
     "identification": 1,
     "words": 33,
     "segno": 2,
-    "sound": 15,
+    "sound": 20,
     "extend": 17,
     "dashes": 4,
     "print": 8,
@@ -2726,7 +2725,7 @@
     "defaults": 1,
     "credit": 7,
     "print": 28,
-    "sound": 22,
+    "sound": 29,
     "extend": 5,
     "words": 39,
     "dashes": 8
@@ -2744,7 +2743,7 @@
     "words": 16,
     "dashes": 13,
     "extend": 3,
-    "sound": 6,
+    "sound": 12,
     "stem": 2,
     "wedge": 1
   },
@@ -2758,7 +2757,7 @@
     "identification": 1,
     "defaults": 1,
     "words": 9,
-    "sound": 15,
+    "sound": 19,
     "extend": 6,
     "bracket": 4,
     "sf": 1,
@@ -2788,7 +2787,7 @@
     "identification": 1,
     "words": 9,
     "extend": 11,
-    "sound": 10,
+    "sound": 11,
     "pedal": 2
   },
   "webern-1-dies-ist-ein-lied-fur-dich-allein": {
@@ -2817,7 +2816,7 @@
     "words": 18,
     "extend": 9,
     "other-dynamics": 3,
-    "sound": 9,
+    "sound": 11,
     "notehead": 4
   },
   "white-macushla": {
@@ -2830,7 +2829,7 @@
     "credit": 6,
     "print": 22,
     "words": 15,
-    "sound": 11,
+    "sound": 15,
     "cue": 7,
     "extend": 3,
     "pedal": 32,
@@ -2846,7 +2845,7 @@
     "identification": 1,
     "words": 17,
     "extend": 9,
-    "sound": 42,
+    "sound": 52,
     "trill-mark": 10,
     "sf": 10,
     "dashes": 6,
@@ -2879,7 +2878,7 @@
     "print": 30,
     "words": 7,
     "extend": 24,
-    "sound": 8,
+    "sound": 12,
     "dashes": 2,
     "trill-mark": 2,
     "wavy-line": 2
@@ -2893,6 +2892,7 @@
     "movement-title": 1,
     "identification": 1,
     "part-group": 2,
-    "words": 2
+    "words": 2,
+    "sound": 1
   }
 }

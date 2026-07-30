@@ -94,9 +94,10 @@ export function readDirection(
   }
 
   // Read after the direction types, so that a <metronome> beside it has
-  // already had its say about the tempo.
+  // already had its say about the tempo and a <sound> restating it is seen as
+  // the echo it is.
   for (const sound of element.blocks('sound')) {
-    reading.tempos.push(...readSound(sound, at, reading.tempos.length > 0, warnings, context))
+    readSound(sound, reading.tempos.length > 0, warnings, context)
   }
 
   return reading
@@ -282,22 +283,22 @@ function readWedge(
 }
 
 /**
- * What a <sound> carries that is notation rather than playback. Only the
- * tempo is: MNX has nowhere for a playback velocity, a pan position or a
- * pedal instruction, so every other attribute stays in the loss report.
- *
- * MusicXML counts a sound tempo in quarter notes per minute, always, which is
- * why no beat unit is read for it.
+ * A <sound> is a playback element, and nothing it carries reaches the output.
+ * Its tempo is playback rather than notation: MNX's tempo object is always
+ * drawn, so emitting one from a <sound> would fabricate a metronome the source
+ * never displayed. A <metronome> beside it is the drawn mark, and the <sound
+ * tempo> only echoes it for playback, so that echo is passed over without a
+ * word. A bare <sound tempo> with no metronome is playback-only and reported
+ * like a velocity or a pan position, which MNX also has nowhere for.
  */
 export function readSound(
   sound: ElementReader,
-  position: Fraction,
   tempoAlreadyStated: boolean,
   warnings: WarningCollector,
   context: WarningContext,
-): Tempo[] {
+): void {
   for (const name of Object.keys(sound.element.attributes)) {
-    if (name === 'tempo') continue
+    if (name === 'tempo' && tempoAlreadyStated) continue
     warnings.add(
       'unsupported:element',
       `The "${name}" of a <sound> is not converted yet.`,
@@ -305,30 +306,6 @@ export function readSound(
       'sound',
     )
   }
-
-  const written = sound.element.attributes['tempo']
-  if (written === undefined) return []
-
-  // A <sound tempo> beside a <metronome> is the same mark restated for
-  // playback, so taking it too would state one tempo twice.
-  if (tempoAlreadyStated) return []
-
-  const bpm = Number(written)
-  if (!Number.isFinite(bpm) || bpm <= 0) {
-    // Playback junk is not worth refusing a document over, so it is reported
-    // like anything else the output does not carry.
-    warnings.add(
-      'unsupported:element',
-      `A <sound> states "${written}" beats per minute, which is not a tempo.`,
-      { ...context, line: sound.line },
-      'sound',
-    )
-    return []
-  }
-
-  return [
-    { position, value: { base: 'quarter', dots: 0 }, bpm: roundedBpm(bpm, warnings, context) },
-  ]
 }
 
 /**
