@@ -111,6 +111,30 @@ describe('a grace note', () => {
   })
 })
 
+describe('a beam', () => {
+  // A fanned beam (accelerando or ritardando) has no home in this pin, and
+  // <beam> carries no children for the loss net to catch, so the fan is
+  // reported explicitly rather than dropped in silence.
+  test('reports the fan on it, which is not carried over', () => {
+    expect(
+      lost(
+        measure(
+          note('<beam number="1" fan="accel">begin</beam>') +
+            note('<beam number="1">end</beam>', 'D'),
+        ),
+      ),
+    ).toEqual(['beam'])
+  })
+
+  test('says nothing about a plain beam, which is carried over', () => {
+    expect(
+      lost(
+        measure(note('<beam number="1">begin</beam>') + note('<beam number="1">end</beam>', 'D')),
+      ),
+    ).toEqual([])
+  })
+})
+
 describe('a direction', () => {
   const direction = (body: string) =>
     measure(

@@ -272,7 +272,7 @@ export function readNote(
     readArpeggio(notations, voice, builder)
     for (const note of notes) readTies(element, note, voice, state, warnings, context)
     readSlurs(notations, event, state, warnings, context)
-    builder.addBeamMarkers(voice, event.id, beamMarkers(element, path), true)
+    builder.addBeamMarkers(voice, event.id, beamMarkers(element, warnings, context, path), true)
     return
   }
 
@@ -298,7 +298,7 @@ export function readNote(
 
   for (const note of notes) readTies(element, note, voice, state, warnings, context)
   readSlurs(notations, event, state, warnings, context)
-  builder.addBeamMarkers(voice, event.id, beamMarkers(element, path))
+  builder.addBeamMarkers(voice, event.id, beamMarkers(element, warnings, context, path))
 
   // Closed before any tuplet stopping on the same note, because the pair
   // sits inside the bracket.
@@ -684,9 +684,27 @@ function slurSide(slur: XmlElement): CurveSide | undefined {
  * level it is beamed at, so all of them are read: level 1 is the eighth-note
  * beam, level 2 the sixteenth, and so on.
  */
-function beamMarkers(element: ElementReader, path: DocumentPath): ReadonlyMap<number, string> {
+function beamMarkers(
+  element: ElementReader,
+  warnings: WarningCollector,
+  context: WarningContext,
+  path: DocumentPath,
+): ReadonlyMap<number, string> {
   const markers = new Map<number, string>()
   for (const beam of element.children('beam')) {
+    // A fanned beam draws an accelerando or ritardando by spreading the beams.
+    // MNX has no home for it in this pin, and <beam> has no children for the
+    // loss net to catch, so it is reported here rather than dropped silently.
+    const fan = attribute(beam, 'fan')
+    if (fan !== undefined && fan !== 'none') {
+      warnings.add(
+        'unsupported:element',
+        `A <beam> fanned as "${fan}" is not converted yet.`,
+        { ...context, line: beam.line },
+        'beam',
+      )
+    }
+
     // The level is the attribute; the element's own text says what the beam
     // does there, as "begin" or "end".
     const stated = attribute(beam, 'number')
