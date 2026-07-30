@@ -163,6 +163,29 @@ describe('a direction', () => {
   })
 })
 
+describe('a rest placed on the staff', () => {
+  // <display-step>/<display-octave> fix a rest's height, following the clef.
+  // MNX has a home (rest.staffPosition), but placing it needs the clef in
+  // force, which the reader does not track yet, so it is reported for now
+  // rather than dropped in silence.
+  test('reports its display position, which is not converted yet', () => {
+    expect(
+      lost(
+        measure(
+          '<note><rest><display-step>G</display-step><display-octave>4</display-octave></rest>' +
+            '<duration>4</duration><type>quarter</type></note>',
+        ),
+      ),
+    ).toEqual(['display-step'])
+  })
+
+  test('says nothing about a plain rest, which carries no position', () => {
+    expect(lost(measure('<note><rest/><duration>4</duration><type>quarter</type></note>'))).toEqual(
+      [],
+    )
+  })
+})
+
 describe('a rest that fills the measure', () => {
   const rest = (body: string, attributes?: string) =>
     measure(`<note><rest measure="yes"/><duration>16</duration>${body}</note>`, attributes)

@@ -316,7 +316,8 @@
     "slur": 2,
     "pedal": 16,
     "other-dynamics": 1,
-    "sf": 1
+    "sf": 1,
+    "display-step": 6
   },
   "berlioz-4-absence": {
     "score-instrument": 2,
@@ -334,7 +335,8 @@
     "extend": 38,
     "cue": 1,
     "pedal": 21,
-    "wedge": 2
+    "wedge": 2,
+    "display-step": 4
   },
   "bianchi-lacy-helen": {
     "score-instrument": 2,
@@ -584,7 +586,8 @@
     "sound": 55,
     "extend": 21,
     "wedge": 8,
-    "slur": 2
+    "slur": 2,
+    "display-step": 1
   },
   "bridge-2-speak-to-me-my-love": {
     "score-instrument": 2,
@@ -603,7 +606,8 @@
     "wedge": 3,
     "pedal": 4,
     "tie": 3,
-    "fz": 1
+    "fz": 1,
+    "display-step": 19
   },
   "browne-forever-thine": {
     "score-instrument": 2,
@@ -1661,7 +1665,8 @@
     "words": 14,
     "sound": 18,
     "extend": 1,
-    "notehead": 20
+    "notehead": 20,
+    "display-step": 2
   },
   "hahn-a-chloris": {
     "score-instrument": 2,
@@ -2048,7 +2053,8 @@
     "notehead": 40,
     "slur": 2,
     "tie": 10,
-    "staff-details": 21
+    "staff-details": 21,
+    "display-step": 1
   },
   "mackenzie-1-the-first-rose": {
     "score-instrument": 2,
@@ -2279,7 +2285,8 @@
     "sound": 12,
     "dashes": 2,
     "trill-mark": 2,
-    "wavy-line": 2
+    "wavy-line": 2,
+    "display-step": 2
   },
   "paladilhe-les-roses-d-ispahan": {
     "score-instrument": 2,
@@ -2299,7 +2306,8 @@
     "sfz": 4,
     "dashes": 6,
     "slur": 2,
-    "wedge": 1
+    "wedge": 1,
+    "display-step": 1
   },
   "paladilhe-psyche": {
     "score-instrument": 2,
@@ -2316,7 +2324,8 @@
     "rfz": 2,
     "sound": 22,
     "pedal": 24,
-    "wedge": 1
+    "wedge": 1,
+    "display-step": 1
   },
   "paradis-10-da-eben-seinen-lauf-verbracht": {
     "score-instrument": 2,
@@ -2443,7 +2452,8 @@
     "extend": 17,
     "slur": 4,
     "pedal": 21,
-    "wedge": 6
+    "wedge": 6,
+    "display-step": 19
   },
   "reichardt-10-ida-aus-ariels-offenbarungen": {
     "score-instrument": 2,
@@ -2470,7 +2480,8 @@
     "words": 1,
     "sound": 28,
     "extend": 17,
-    "sf": 4
+    "sf": 4,
+    "display-step": 20
   },
   "satie-1-elegie": {
     "score-instrument": 2,
@@ -2575,7 +2586,8 @@
     "slur": 4,
     "tie": 3,
     "notehead": 11,
-    "dashes": 4
+    "dashes": 4,
+    "display-step": 1
   },
   "schumann-1-sangers-trost": {
     "score-instrument": 2,
@@ -2881,7 +2893,8 @@
     "sound": 12,
     "dashes": 2,
     "trill-mark": 2,
-    "wavy-line": 2
+    "wavy-line": 2,
+    "display-step": 2
   },
   "zumsteeg-1-des-kaufmanns-liebeswerbung": {
     "score-instrument": 2,

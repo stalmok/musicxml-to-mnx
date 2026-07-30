@@ -64,6 +64,19 @@ export function readNote(
     })
   }
 
+  // A rest may carry <display-step>/<display-octave> to fix its height on the
+  // staff, read against the clef in force. MNX has a home for this on the rest
+  // (staffPosition), but placing it needs the clef, which the reader does not
+  // track yet, so the position is reported rather than dropped in silence.
+  if (restElement && (child(restElement, 'display-step') || child(restElement, 'display-octave'))) {
+    warnings.add(
+      'unsupported:element',
+      "A rest's staff position, given by <display-step> and <display-octave>, is not converted yet.",
+      { ...context, line: restElement.line },
+      'display-step',
+    )
+  }
+
   const notations = element.blocks('notations')
   // <tied> is the visual counterpart of <tie>, which is what the tie is read
   // from, so a document stating both loses nothing by this reader ignoring it.
