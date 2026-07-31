@@ -208,6 +208,7 @@ function writePart(
 ): MNXPart {
   return {
     ...(part.name !== undefined ? { name: part.name } : {}),
+    ...(part.shortName !== undefined ? { shortName: part.shortName } : {}),
     // One staff is the default, so saying so adds nothing.
     ...(part.staves > 1 ? { staves: part.staves } : {}),
     measures: part.measures.map((measure) => writeMeasure(measure, referenced, measureIds)),

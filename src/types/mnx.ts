@@ -352,6 +352,8 @@ export interface MNXPartMeasure {
 
 export interface MNXPart {
   name?: string
+  /** The abbreviated name, drawn on systems after the first. */
+  shortName?: string
   /** How many staves the part is written on. Absent means one. */
   staves?: number
   measures: MNXPartMeasure[]

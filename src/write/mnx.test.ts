@@ -55,7 +55,7 @@ function scoreOf(
 ): Score {
   return {
     globalMeasures: globals,
-    parts: [{ id: 'P1', name: undefined, staves: 1, measures: [measure] }],
+    parts: [{ id: 'P1', name: undefined, shortName: undefined, staves: 1, measures: [measure] }],
   }
 }
 
@@ -259,7 +259,15 @@ describe('parts', () => {
     const score = scoreOf(measureOf(WHOLE_C))
     const named: Score = {
       ...score,
-      parts: [{ id: 'P1', name: 'Flute', staves: 1, measures: score.parts[0]?.measures ?? [] }],
+      parts: [
+        {
+          id: 'P1',
+          name: 'Flute',
+          shortName: undefined,
+          staves: 1,
+          measures: score.parts[0]?.measures ?? [],
+        },
+      ],
     }
 
     expect(writeMnx(named).parts[0]?.name).toBe('Flute')
@@ -267,6 +275,29 @@ describe('parts', () => {
 
   test('leaves the name out when the part is unnamed', () => {
     expect(writeMnx(scoreOf(measureOf(WHOLE_C))).parts[0]).not.toHaveProperty('name')
+  })
+
+  test('writes the short name when there is one', () => {
+    const score = scoreOf(measureOf(WHOLE_C))
+    const abbreviated: Score = {
+      ...score,
+      parts: [
+        {
+          id: 'P1',
+          name: 'Flute',
+          shortName: 'Fl.',
+          staves: 1,
+          measures: score.parts[0]?.measures ?? [],
+        },
+      ],
+    }
+
+    expect(writeMnx(abbreviated).parts[0]?.shortName).toBe('Fl.')
+    expect(schemaErrors(writeMnx(abbreviated))).toEqual([])
+  })
+
+  test('leaves the short name out when the part has none', () => {
+    expect(writeMnx(scoreOf(measureOf(WHOLE_C))).parts[0]).not.toHaveProperty('shortName')
   })
 })
 

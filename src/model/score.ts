@@ -363,6 +363,9 @@ export interface Measure {
 export interface Part {
   id: string
   name: string | undefined
+  /** The abbreviated name drawn on systems after the first. Undefined where
+   * the source gives none, gives an empty one, or hides it. */
+  shortName: string | undefined
   /** How many staves the part is written on. One unless the source says. */
   staves: number
   measures: readonly Measure[]

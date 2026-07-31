@@ -171,11 +171,29 @@ function sameTempo(a: Tempo, b: Tempo): boolean {
  */
 interface PartList {
   names: ReadonlyMap<string, string>
+  shortNames: ReadonlyMap<string, string>
   listed: ReadonlySet<string>
+}
+
+/**
+ * The drawn text of a named element, or undefined where the source gives none.
+ * An empty element states no name, and one hidden with print-object="no" is
+ * one the source chose not to draw; MNX's part.name and part.shortName are both
+ * optional, so either is omitted rather than drawn.
+ *
+ * A <score-part> holds at most one <part-name> and one <part-abbreviation>, so
+ * taking the first with child() is right.
+ */
+function drawnName(reader: ElementReader, tag: string): string | undefined {
+  const element = reader.child(tag)
+  const text = element?.text.trim()
+  const hidden = element !== undefined && attribute(element, 'print-object') === 'no'
+  return text && !hidden ? text : undefined
 }
 
 function readPartNames(root: ElementReader, warnings: WarningCollector): PartList {
   const names = new Map<string, string>()
+  const shortNames = new Map<string, string>()
   const listed = new Set<string>()
 
   for (const list of root.blocks('part-list')) {
@@ -184,18 +202,17 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
       const id = attribute(element, 'id')
       if (id !== undefined) listed.add(id)
 
-      const partName = scorePart.child('part-name')
-      const name = partName?.text.trim()
-      // A part name hidden with print-object="no" is one the source chose not
-      // to draw; MNX's part.name is optional, so it is omitted. An empty
-      // <part-name> states no name, so it is not one either.
-      const hidden = partName !== undefined && attribute(partName, 'print-object') === 'no'
-      if (id !== undefined && name && !hidden) names.set(id, name)
+      const name = drawnName(scorePart, 'part-name')
+      const shortName = drawnName(scorePart, 'part-abbreviation')
+      if (id !== undefined) {
+        if (name) names.set(id, name)
+        if (shortName) shortNames.set(id, shortName)
+      }
 
       scorePart.reportUnread(warnings, id !== undefined ? { part: id } : {})
     }
   }
-  return { names, listed }
+  return { names, shortNames, listed }
 }
 
 function readPart(
@@ -237,6 +254,7 @@ function readPart(
     part: {
       id,
       name: partList.names.get(id),
+      shortName: partList.shortNames.get(id),
       staves: state.staves,
       measures: readings.map((reading) => reading.measure),
     },

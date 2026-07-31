@@ -351,7 +351,6 @@ describe('the part list', () => {
     )
 
     const reported = warnings.list()
-    expect(reported.map((w) => w.element).sort()).toEqual(['part-abbreviation', 'part-group'])
-    expect(reported.find((w) => w.element === 'part-abbreviation')?.context.part).toBe('P1')
+    expect(reported.map((w) => w.element)).toEqual(['part-group'])
   })
 })

@@ -539,7 +539,6 @@
     "print-object": 89
   },
   "brahms-1-gestillte-sehnsucht": {
-    "part-abbreviation": 1,
     "score-instrument": 3,
     "midi-device": 3,
     "midi-instrument": 3,
@@ -1615,7 +1614,6 @@
     "score-instrument": 3,
     "midi-device": 3,
     "midi-instrument": 3,
-    "part-abbreviation": 1,
     "work": 1,
     "movement-number": 1,
     "movement-title": 1,
@@ -1980,7 +1978,6 @@
     "print-object": 1
   },
   "lang-1-traumbild": {
-    "part-abbreviation": 3,
     "score-instrument": 3,
     "midi-device": 3,
     "midi-instrument": 3,
@@ -2101,7 +2098,6 @@
     "score-instrument": 5,
     "midi-device": 5,
     "midi-instrument": 5,
-    "part-abbreviation": 3,
     "work": 1,
     "identification": 1,
     "part-group": 2,
@@ -2112,7 +2108,6 @@
     "print-object": 11
   },
   "lindsay-good-night-good-night-beloved": {
-    "part-abbreviation": 4,
     "score-instrument": 5,
     "midi-device": 5,
     "midi-instrument": 5,

@@ -145,6 +145,44 @@ describe('parts', () => {
     expect(result.parts[0]?.name).toBeUndefined()
   })
 
+  test('takes the abbreviated name from the part list', () => {
+    const { score: result } = read(
+      score(
+        '<part-list><score-part id="P1"><part-name>Flute</part-name>' +
+          '<part-abbreviation>Fl.</part-abbreviation></score-part></part-list>' +
+          `<part id="P1"><measure number="1">${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(result.parts[0]?.shortName).toBe('Fl.')
+  })
+
+  test('leaves the short name unset when the part list gives none', () => {
+    const { score: result } = read(
+      score(
+        '<part-list><score-part id="P1"><part-name>Flute</part-name></score-part></part-list>' +
+          `<part id="P1"><measure number="1">${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(result.parts[0]?.shortName).toBeUndefined()
+  })
+
+  // A hidden abbreviation is one the source chose not to draw, so like a hidden
+  // name it is omitted rather than drawn.
+  test('leaves the short name unset when the part list hides it', () => {
+    const { score: result } = read(
+      score(
+        '<part-list><score-part id="P1"><part-name>Flute</part-name>' +
+          '<part-abbreviation print-object="no">Fl.</part-abbreviation>' +
+          '</score-part></part-list>' +
+          `<part id="P1"><measure number="1">${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(result.parts[0]?.shortName).toBeUndefined()
+  })
+
   // MusicXML requires the id, and it is what ties a part to its name and to
   // every warning reported against it.
   test('rejects a part with no id', () => {
