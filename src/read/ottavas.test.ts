@@ -154,6 +154,22 @@ describe('where an octave shift runs', () => {
     expect(warnings[0]?.message).toContain('none had started')
   })
 
+  // A stop with no start before it, then a start nothing stops, both in one
+  // part. Joining them by number alone would span backwards, ending before it
+  // begins: valid against the schema but refused downstream. Each end is
+  // instead reported on its own, and no shift is written.
+  test('does not join a stop to a start that comes after it', () => {
+    const { ottavas, warnings } = read(shift('stop') + NOTE + shift('down') + NOTE)
+
+    expect(ottavas[0]).toEqual([])
+    expect(warnings.map((w) => w.element)).toEqual(['octave-shift', 'octave-shift'])
+    expect(warnings.map((w) => w.message).sort()).toEqual([
+      'An octave shift starts where nothing ends it, and MNX states where one ' +
+        'stops, so it is not carried over.',
+      'An octave shift stops where none had started, and is not carried over.',
+    ])
+  })
+
   // The same trap as a hairpin: a measure with two voices is written one
   // voice at a time, so a stop can be written before the start it belongs to.
   test('pairs the ends the music has together, not the ones written together', () => {
