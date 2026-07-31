@@ -965,21 +965,6 @@ describe('event markings', () => {
     ).toEqual({ tremolo: { orient: 'above', marks: 2 } })
   })
 
-  // MNX requires a count, so a tremolo stating none is drawn the usual way.
-  test('draws three beams on a tremolo that does not count its own', () => {
-    expect(
-      markingsOf([
-        {
-          kind: 'tremolo',
-          orient: undefined,
-          pointing: undefined,
-          symbol: undefined,
-          marks: undefined,
-        },
-      ]),
-    ).toEqual({ tremolo: { marks: 3 } })
-  })
-
   // Two of the same kind cannot both be stated, because MNX keys them by name.
   test('keeps one of each kind', () => {
     expect(

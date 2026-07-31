@@ -431,8 +431,10 @@ function writeMarkings(markings: readonly Marking[]): MNXEventMarkings {
         written.breath = { ...orient, ...(marking.symbol ? { symbol: marking.symbol } : {}) }
         break
       case 'tremolo':
-        // The reader always states how many beams a tremolo is drawn with.
-        written.tremolo = { ...orient, marks: marking.marks ?? 3 }
+        /* v8 ignore next -- the reader states a beam count on every tremolo
+           marking, so the writer states it rather than defaulting it here. */
+        if (marking.marks === undefined) throw new Error('A tremolo marking carries no beam count.')
+        written.tremolo = { ...orient, marks: marking.marks }
         break
       default:
         written[marking.kind] = orient
