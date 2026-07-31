@@ -432,10 +432,11 @@ function readMarkings(
         }
 
         const text = trimmedText(found)
-        const marks = text === '' ? 3 : Number(text)
         // Zero beams write an unmeasured tremolo, and MNX counts from one.
-        // Anything else out of range is not a tremolo a stem can carry.
-        if (!Number.isInteger(marks) || marks < 1 || marks > 8) {
+        // Anything else out of range is not a tremolo a stem can carry, so the
+        // single-note mark is dropped rather than degraded.
+        const marks = tremoloBeamCount(text)
+        if (marks === undefined) {
           warnings.add(
             'unrepresentable:element',
             `A tremolo drawn with ${text} beams cannot be stated in MNX, which counts ` +
@@ -796,6 +797,18 @@ function beamMarkers(
  * element's text counts the beams joining the pair; three where it says
  * nothing, which is how the mark is usually drawn.
  */
+/**
+ * The beam count a `<tremolo>` states in its text: three where it states none,
+ * which is how the mark is usually drawn, or nothing where the text is not a
+ * whole number in the one-to-eight range MNX can draw. The single-note and
+ * two-note kinds part ways on what to do with an out-of-range count, so each
+ * reports its own loss; only the reading of the count is shared.
+ */
+function tremoloBeamCount(text: string): number | undefined {
+  const marks = text === '' ? 3 : Number(text)
+  return Number.isInteger(marks) && marks >= 1 && marks <= 8 ? marks : undefined
+}
+
 function multiNoteTremoloOf(
   notations: readonly ElementReader[],
   warnings: WarningCollector,
@@ -820,10 +833,10 @@ function multiNoteTremoloOf(
         }
 
         const text = tremolo.text.trim()
-        let marks = text === '' ? 3 : Number(text)
-        if (!Number.isInteger(marks) || marks < 1 || marks > 8) {
-          // The same degradation the single-note kind gets: the pair still
-          // converts, drawn the usual way.
+        let marks = tremoloBeamCount(text)
+        if (marks === undefined) {
+          // Unlike the single-note kind, the pair still converts, drawn the
+          // usual way with three beams.
           warnings.add(
             'unrepresentable:element',
             `A tremolo drawn with ${text} beams cannot be stated in MNX, which counts ` +
