@@ -90,6 +90,20 @@ describe('parts', () => {
     expect(result.parts[0]?.name).toBeUndefined()
   })
 
+  // A part name hidden with print-object="no" is one the source chose not to
+  // draw. MNX's part.name is optional, so it is omitted rather than drawn.
+  test('leaves the name unset when the part list hides it', () => {
+    const { score: result } = read(
+      score(
+        '<part-list><score-part id="P1"><part-name print-object="no">Flute</part-name>' +
+          '</score-part></part-list>' +
+          `<part id="P1"><measure number="1">${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(result.parts[0]?.name).toBeUndefined()
+  })
+
   test('ignores a part list entry with no id to attach a name to', () => {
     const { score: result } = read(
       score(

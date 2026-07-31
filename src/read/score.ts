@@ -79,12 +79,12 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
   // its own. Everything else the document holds is read here or reported.
   reader.skip('part')
 
-  const names = readPartNames(reader, warnings)
+  const partList = readPartNames(reader, warnings)
   reader.reportUnread(warnings, {})
 
   const ids = new IdGenerator()
   const readings = children(root, 'part').map((element) =>
-    readPart(element, names, ids, warnings, path),
+    readPart(element, partList, ids, warnings, path),
   )
 
   const globalMeasures: GlobalMeasure[] = []
@@ -164,29 +164,43 @@ function sameTempo(a: Tempo, b: Tempo): boolean {
  * together, and every bit of it that is not read here is reported: it used to
  * be skipped wholesale on the strength of the name being read.
  */
-function readPartNames(
-  root: ElementReader,
-  warnings: WarningCollector,
-): ReadonlyMap<string, string> {
+/**
+ * The part list, read once. `names` holds only the names actually drawn, while
+ * `listed` holds every part id the list introduces, named or not, so a part
+ * whose name is hidden or absent is still known to be listed.
+ */
+interface PartList {
+  names: ReadonlyMap<string, string>
+  listed: ReadonlySet<string>
+}
+
+function readPartNames(root: ElementReader, warnings: WarningCollector): PartList {
   const names = new Map<string, string>()
+  const listed = new Set<string>()
 
   for (const list of root.blocks('part-list')) {
     for (const element of list.children('score-part')) {
       const scorePart = new ElementReader(element)
       const id = attribute(element, 'id')
-      const name = scorePart.child('part-name')?.text.trim()
-      // An empty <part-name> states no name, so it is not one.
-      if (id !== undefined && name) names.set(id, name)
+      if (id !== undefined) listed.add(id)
+
+      const partName = scorePart.child('part-name')
+      const name = partName?.text.trim()
+      // A part name hidden with print-object="no" is one the source chose not
+      // to draw; MNX's part.name is optional, so it is omitted. An empty
+      // <part-name> states no name, so it is not one either.
+      const hidden = partName !== undefined && attribute(partName, 'print-object') === 'no'
+      if (id !== undefined && name && !hidden) names.set(id, name)
 
       scorePart.reportUnread(warnings, id !== undefined ? { part: id } : {})
     }
   }
-  return names
+  return { names, listed }
 }
 
 function readPart(
   element: XmlElement,
-  names: ReadonlyMap<string, string>,
+  partList: PartList,
   ids: IdGenerator,
   warnings: WarningCollector,
   path: DocumentPath,
@@ -196,7 +210,7 @@ function readPart(
   const id = requireAttribute(element, 'id', path)
   const partPath: DocumentPath = [...path, `part ${id}`]
 
-  if (names.size > 0 && !names.has(id)) {
+  if (partList.listed.size > 0 && !partList.listed.has(id)) {
     warnings.add(
       'unresolved:part-id',
       `The part list has no entry for part ${id}.`,
@@ -223,7 +237,7 @@ function readPart(
   return {
     part: {
       id,
-      name: names.get(id),
+      name: partList.names.get(id),
       staves: state.staves,
       measures: readings.map((reading) => reading.measure),
     },
