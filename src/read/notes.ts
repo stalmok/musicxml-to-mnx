@@ -23,6 +23,7 @@ import type {
   NoteValueQuantity,
   Pitch,
   Step,
+  TupletDisplay,
 } from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
@@ -35,6 +36,7 @@ import { noteValueBaseOf, requireNoteValueBase } from './noteValues.js'
 import { readIntegerInRange } from './numbers.js'
 import type { PartState } from './state.js'
 import { MeasureBuilder } from './voices.js'
+import type { TupletDisplaySettings } from './voices.js'
 
 // A recogniser rather than a bare set: it narrows the value it accepts to the
 // model's type, so a validated value reaches the writer without a cast.
@@ -194,7 +196,14 @@ export function readNote(
         })
       }
       const quantities = readTupletRatio(ratio, element, path)
-      builder.openTuplet(voice, quantities.inner, quantities.outer, path, element.line)
+      builder.openTuplet(
+        voice,
+        quantities.inner,
+        quantities.outer,
+        tupletDisplayOf(notations),
+        path,
+        element.line,
+      )
     }
   }
 
@@ -797,6 +806,41 @@ function tupletBrackets(notations: readonly ElementReader[]): readonly string[] 
     .flatMap((block) => block.children('tuplet'))
     .map((tuplet) => attribute(tuplet, 'type'))
     .filter((type): type is string => type !== undefined)
+}
+
+// MusicXML's show-number/show-type values in MNX's. "actual" is the played
+// count, which MNX calls the inner one.
+const TUPLET_DISPLAY = new Map<string, TupletDisplay>([
+  ['both', 'both'],
+  ['actual', 'inner'],
+  ['none', 'noNumber'],
+])
+
+/**
+ * What the start `<tuplet>` bracket says about how the tuplet is drawn: whether
+ * a bracket is shown, and whether its number and note value are. Each has a
+ * home on the MNX tuplet; absent leaves the renderer to decide.
+ */
+function tupletDisplayOf(notations: readonly ElementReader[]): TupletDisplaySettings {
+  const start = notations
+    .flatMap((block) => block.children('tuplet'))
+    .find((tuplet) => attribute(tuplet, 'type') === 'start')
+  if (!start) return {}
+
+  const settings: TupletDisplaySettings = {}
+
+  const bracket = attribute(start, 'bracket')
+  if (bracket === 'yes' || bracket === 'no') settings.bracket = bracket
+
+  const showNumber = attribute(start, 'show-number')
+  const number = showNumber === undefined ? undefined : TUPLET_DISPLAY.get(showNumber)
+  if (number !== undefined) settings.showNumber = number
+
+  const showType = attribute(start, 'show-type')
+  const value = showType === undefined ? undefined : TUPLET_DISPLAY.get(showType)
+  if (value !== undefined) settings.showValue = value
+
+  return settings
 }
 
 /**

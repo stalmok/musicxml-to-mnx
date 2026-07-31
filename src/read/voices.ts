@@ -34,7 +34,15 @@ import type {
   Sequence,
   SequenceItem,
   Tuplet,
+  TupletDisplay,
 } from '../model/score.js'
+
+/** What the source draws of a tuplet, read from its start bracket. */
+export interface TupletDisplaySettings {
+  bracket?: 'yes' | 'no'
+  showNumber?: TupletDisplay
+  showValue?: TupletDisplay
+}
 
 /** The name a voice goes under when the source does not give it one. */
 const UNNAMED_VOICE = ''
@@ -383,6 +391,7 @@ export class MeasureBuilder {
     voice: string | undefined,
     inner: NoteValueQuantity,
     outer: NoteValueQuantity,
+    display: TupletDisplaySettings,
     path: DocumentPath,
     line: number,
   ): void {
@@ -412,7 +421,15 @@ export class MeasureBuilder {
     }
 
     const content: SequenceItem[] = []
-    const tuplet: Tuplet = { kind: 'tuplet', inner: level.inner, outer: level.outer, content }
+    const tuplet: Tuplet = {
+      kind: 'tuplet',
+      inner: level.inner,
+      outer: level.outer,
+      content,
+      ...(display.bracket !== undefined ? { bracket: display.bracket } : {}),
+      ...(display.showNumber !== undefined ? { showNumber: display.showNumber } : {}),
+      ...(display.showValue !== undefined ? { showValue: display.showValue } : {}),
+    }
 
     // Time this voice has passed over in silence belongs before the bracket,
     // not inside it, where the tuplet's ratio would scale it.

@@ -193,6 +193,9 @@ export interface MNXNoteValueQuantity {
 }
 
 /** Notes played in the time of a different number of them. */
+/** Whether a tuplet's number or note value is drawn, and in what form. */
+export type MNXTupletDisplaySetting = 'noNumber' | 'inner' | 'both'
+
 export interface MNXTuplet {
   type: 'tuplet'
   /** What is played. */
@@ -200,6 +203,12 @@ export interface MNXTuplet {
   /** The space it is played in. */
   outer: MNXNoteValueQuantity
   content: MNXSequenceItem[]
+  /** Whether the bracket is drawn. */
+  bracket?: 'yes' | 'no' | 'auto'
+  /** Whether the tuplet number is drawn. */
+  showNumber?: MNXTupletDisplaySetting
+  /** Whether the tuplet note value is drawn. */
+  showValue?: MNXTupletDisplaySetting
 }
 
 /** Notes squeezed in before the beat, taking none of the measure's time. */

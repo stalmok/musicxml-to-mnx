@@ -8,6 +8,8 @@ import { MusicXMLError } from '../errors.js'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
+import { convertMusicXML } from '../index.js'
+import { schemaErrors } from '../../tests/support/schema.js'
 
 const DIVISIONS = '<attributes><divisions>12</divisions></attributes>'
 
@@ -66,6 +68,44 @@ function readFailure(source: string): MusicXMLError {
   }
   throw new Error('Expected the read to fail, but it succeeded.')
 }
+
+describe('tuplet display', () => {
+  const displayed =
+    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><type>eighth</type>' +
+    '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>' +
+    '<notations><tuplet type="start" bracket="no" show-number="none" show-type="both"/></notations></note>' +
+    tupletNote('D', 4, 'eighth') +
+    tupletNote('E', 4, 'eighth', 'stop')
+
+  test('carries the bracket and number and value display from the source', () => {
+    const { content } = read(measure(displayed))
+    const tuplet = content?.[0]
+
+    expect(tuplet?.kind === 'tuplet' && tuplet.bracket).toBe('no')
+    expect(tuplet?.kind === 'tuplet' && tuplet.showNumber).toBe('noNumber')
+    expect(tuplet?.kind === 'tuplet' && tuplet.showValue).toBe('both')
+  })
+
+  test('leaves the display unset when the source states none', () => {
+    const { content } = read(measure(TRIPLET))
+    const tuplet = content?.[0]
+
+    expect(tuplet?.kind === 'tuplet' && tuplet.bracket).toBeUndefined()
+    expect(tuplet?.kind === 'tuplet' && tuplet.showNumber).toBeUndefined()
+    expect(tuplet?.kind === 'tuplet' && tuplet.showValue).toBeUndefined()
+  })
+
+  test('writes the display onto schema-valid MNX', () => {
+    const { mnx } = convertMusicXML(measure(displayed))
+    const item = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
+    if (!item || !('type' in item) || item.type !== 'tuplet') throw new Error('expected a tuplet')
+
+    expect(item.bracket).toBe('no')
+    expect(item.showNumber).toBe('noNumber')
+    expect(item.showValue).toBe('both')
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+})
 
 describe('tuplets', () => {
   test('wraps the notes in one tuplet', () => {

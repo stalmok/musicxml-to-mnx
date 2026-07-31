@@ -178,6 +178,9 @@ export interface NoteValueQuantity {
  * keep the values they are written with; the ratio says how much time they
  * actually occupy.
  */
+/** Whether a tuplet's number or note value is drawn, and in what form. */
+export type TupletDisplay = 'noNumber' | 'inner' | 'both'
+
 export interface Tuplet {
   kind: 'tuplet'
   /** What is played, for example three eighths. */
@@ -185,6 +188,12 @@ export interface Tuplet {
   /** The space they are played in, for example two eighths. */
   outer: NoteValueQuantity
   content: readonly SequenceItem[]
+  /** Whether the bracket is drawn. Absent lets the renderer decide. */
+  bracket?: 'yes' | 'no'
+  /** Whether the tuplet number is drawn. Absent lets the renderer decide. */
+  showNumber?: TupletDisplay
+  /** Whether the tuplet note value is drawn. Absent lets the renderer decide. */
+  showValue?: TupletDisplay
 }
 
 /** Notes squeezed in before the beat, taking none of the measure's time. */

@@ -353,6 +353,9 @@ function writeItem(item: SequenceItem, referenced: ReadonlySet<string>): MNXSequ
         inner: writeQuantity(item.inner),
         outer: writeQuantity(item.outer),
         content: item.content.map((inner) => writeItem(inner, referenced)),
+        ...(item.bracket !== undefined ? { bracket: item.bracket } : {}),
+        ...(item.showNumber !== undefined ? { showNumber: item.showNumber } : {}),
+        ...(item.showValue !== undefined ? { showValue: item.showValue } : {}),
       }
 
     case 'grace':
