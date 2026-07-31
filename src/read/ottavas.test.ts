@@ -76,6 +76,17 @@ describe('which way an octave shift goes', () => {
 
     expect(ottavas[0]?.[0]?.value).toBe(1)
   })
+
+  test('reads the side the shift is drawn on', () => {
+    const { ottavas } = read(
+      '<direction placement="above"><direction-type><octave-shift type="down" number="1"/>' +
+        '</direction-type></direction>' +
+        NOTE +
+        shift('stop'),
+    )
+
+    expect(ottavas[0]?.[0]?.orient).toBe('above')
+  })
 })
 
 describe('where an octave shift runs', () => {

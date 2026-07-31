@@ -302,6 +302,8 @@ export interface Dynamic {
   end: { measure: number; position: Fraction } | undefined
   /** Which staff it belongs under, where the part has more than one. */
   staff: number | undefined
+  /** Which side of the staff it is drawn on, where the source states it. */
+  orient?: 'above' | 'below'
 }
 
 /**
@@ -341,6 +343,8 @@ export interface Ottava {
   value: OttavaAmount
   /** Which staff it applies to, where the part has more than one. */
   staff: number | undefined
+  /** Which side of the staff it is drawn on, where the source states it. */
+  orient?: 'above' | 'below'
 }
 
 export interface Measure {

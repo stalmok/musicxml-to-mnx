@@ -301,6 +301,8 @@ export interface MNXDynamic {
   end?: MNXMeasureRhythmicPosition
   /** Which staff of the part it sits under, where it has more than one. */
   staff?: number
+  /** Which side of the staff it is drawn on. */
+  orient?: MNXOrientation
 }
 
 /** The ids of the two notes a mark runs between. */

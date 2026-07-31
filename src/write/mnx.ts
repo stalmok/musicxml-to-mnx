@@ -235,6 +235,7 @@ function writeMeasure(
             end: writeSpanEnd(ottava.end, measureIds),
             value: ottava.value,
             ...(ottava.staff !== undefined ? { staff: ottava.staff } : {}),
+            ...(ottava.orient !== undefined ? { orient: ottava.orient } : {}),
           })),
         }
       : {}),
@@ -284,6 +285,7 @@ function writeDynamic(dynamic: Dynamic, measureIds: ReadonlyMap<number, string>)
     ...(dynamic.wedge ? { wedgeType: dynamic.wedge } : {}),
     ...(dynamic.end ? { end: writeSpanEnd(dynamic.end, measureIds) } : {}),
     ...(dynamic.staff !== undefined ? { staff: dynamic.staff } : {}),
+    ...(dynamic.orient ? { orient: dynamic.orient } : {}),
   }
 }
 

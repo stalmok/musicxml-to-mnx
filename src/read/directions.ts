@@ -61,22 +61,26 @@ export function readDirection(
   const named = staffElement ? readIntegerInRange(staffElement, path, 1, state.staves) : undefined
   const staff = state.staves > 1 ? named : undefined
 
+  // Which side of the staff the direction is drawn on. MNX states it on the
+  // dynamic and the octave shift; without it the renderer has to guess.
+  const orient = orientOf(element.element)
+
   const at = offsetPosition(element, position, state, warnings, context)
 
   for (const directionType of element.children('direction-type')) {
     for (const found of directionType.children) {
       switch (found.name) {
         case 'dynamics':
-          reading.dynamics.push(...readDynamics(found, at, staff, warnings, context))
+          reading.dynamics.push(...readDynamics(found, at, staff, orient, warnings, context))
           break
         case 'metronome':
           reading.tempos.push(...readMetronome(found, at, warnings, context, path))
           break
         case 'octave-shift':
-          readOctaveShift(found, at, lastEvent, measure, staff, state, warnings, context)
+          readOctaveShift(found, at, lastEvent, measure, staff, orient, state, warnings, context)
           break
         case 'wedge': {
-          const hairpin = readWedge(found, at, measure, staff, state, warnings, context)
+          const hairpin = readWedge(found, at, measure, staff, orient, state, warnings, context)
           if (hairpin) reading.dynamics.push(hairpin)
           break
         }
@@ -190,6 +194,7 @@ function readOctaveShift(
   lastEvent: Fraction | undefined,
   measure: number,
   staff: number | undefined,
+  orient: 'above' | 'below' | undefined,
   state: PartState,
   warnings: WarningCollector,
   context: WarningContext,
@@ -222,7 +227,7 @@ function readOctaveShift(
 
   const value = type === 'down' ? octaves : (-octaves as OttavaAmount)
   state.spanners.startOttava(
-    { measure, position, value, staff },
+    { measure, position, value, staff, ...(orient !== undefined ? { orient } : {}) },
     number,
     measure,
     position,
@@ -248,6 +253,7 @@ function readWedge(
   position: Fraction,
   measure: number,
   staff: number | undefined,
+  orient: 'above' | 'below' | undefined,
   state: PartState,
   warnings: WarningCollector,
   context: WarningContext,
@@ -277,7 +283,14 @@ function readWedge(
 
   // A hairpin states no value of its own: what it grows from and to is said
   // by the plain marks around it.
-  const hairpin: Dynamic = { position, value: undefined, wedge, end: undefined, staff }
+  const hairpin: Dynamic = {
+    position,
+    value: undefined,
+    wedge,
+    end: undefined,
+    staff,
+    ...(orient !== undefined ? { orient } : {}),
+  }
   state.spanners.startWedge(hairpin, number, measure, position, context)
   return hairpin
 }
@@ -327,10 +340,18 @@ function roundedBpm(bpm: number, warnings: WarningCollector, context: WarningCon
   return rounded
 }
 
+// The side a direction is drawn on, from its placement. MusicXML's above and
+// below are the words MNX states, so a known one passes straight through.
+function orientOf(element: XmlElement): 'above' | 'below' | undefined {
+  const placement = attribute(element, 'placement')
+  return placement === 'above' || placement === 'below' ? placement : undefined
+}
+
 function readDynamics(
   element: XmlElement,
   position: Fraction,
   staff: number | undefined,
+  orient: 'above' | 'below' | undefined,
   warnings: WarningCollector,
   context: WarningContext,
 ): Dynamic[] {
@@ -343,6 +364,7 @@ function readDynamics(
         wedge: undefined,
         end: undefined,
         staff,
+        ...(orient !== undefined ? { orient } : {}),
       })
     } else {
       warnings.add(

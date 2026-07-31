@@ -38,6 +38,7 @@ export interface OpenOttava {
   position: Fraction
   value: OttavaAmount
   staff: number | undefined
+  orient?: 'above' | 'below'
 }
 
 interface OpenSlur {
@@ -345,6 +346,7 @@ export class SpannerResolver {
           end: { measure: stop.measure, position: stop.covers },
           value: open.value,
           staff: open.staff,
+          ...(open.orient !== undefined ? { orient: open.orient } : {}),
         })
       },
       (reason, end) => {

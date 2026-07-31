@@ -7,6 +7,8 @@ import { describe, expect, test } from 'vitest'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
+import { convertMusicXML } from '../index.js'
+import { schemaErrors } from '../../tests/support/schema.js'
 
 function note(step: string, quarters = 1): string {
   return (
@@ -50,6 +52,31 @@ describe('dynamics', () => {
     )
 
     expect(measure?.dynamics[0]?.position).toEqual({ num: 1, den: 4 })
+  })
+
+  test('reads which side of the staff the dynamic is placed', () => {
+    const { measure } = read(
+      inMeasure(
+        '<direction placement="above"><direction-type><dynamics><f/></dynamics>' +
+          '</direction-type></direction>' +
+          note('C'),
+      ),
+    )
+
+    expect(measure?.dynamics[0]?.orient).toBe('above')
+  })
+
+  test('writes the dynamic side onto schema-valid MNX', () => {
+    const { mnx } = convertMusicXML(
+      inMeasure(
+        '<direction placement="below"><direction-type><dynamics><p/></dynamics>' +
+          '</direction-type></direction>' +
+          note('C'),
+      ),
+    )
+
+    expect(JSON.stringify(mnx)).toContain('"orient":"below"')
+    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test.each(['ppp', 'pp', 'p', 'mp', 'mf', 'f', 'ff', 'fff'])('reads %s', (value) => {
