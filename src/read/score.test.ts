@@ -104,6 +104,25 @@ describe('parts', () => {
     expect(result.parts[0]?.name).toBeUndefined()
   })
 
+  // A hidden name drops out of the names map, but the part is still listed, so
+  // it must not be reported as missing its list entry beside a named part.
+  test('does not fault a hidden name in a list beside a drawn one', () => {
+    const { score: result, warnings } = read(
+      score(
+        '<part-list>' +
+          '<score-part id="P1"><part-name>Flute</part-name></score-part>' +
+          '<score-part id="P2"><part-name print-object="no">Piano</part-name></score-part>' +
+          '</part-list>' +
+          `<part id="P1"><measure number="1">${NOTE}</measure></part>` +
+          `<part id="P2"><measure number="1">${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(result.parts[0]?.name).toBe('Flute')
+    expect(result.parts[1]?.name).toBeUndefined()
+    expect(warnings.map((warning) => warning.code)).not.toContain('unresolved:part-id')
+  })
+
   test('ignores a part list entry with no id to attach a name to', () => {
     const { score: result } = read(
       score(

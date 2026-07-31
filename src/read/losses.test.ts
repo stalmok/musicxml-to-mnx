@@ -172,6 +172,17 @@ describe('an element hidden with print-object="no"', () => {
     ).toHaveLength(1)
   })
 
+  test('reports a hidden key signature', () => {
+    expect(
+      hidden(
+        measure(
+          note(''),
+          '<divisions>4</divisions><key print-object="no"><fifths>2</fifths></key>',
+        ),
+      ),
+    ).toHaveLength(1)
+  })
+
   test('reports a hidden ending', () => {
     expect(
       hidden(
@@ -185,6 +196,16 @@ describe('an element hidden with print-object="no"', () => {
 
   test('says nothing about an element the source draws', () => {
     expect(hidden(measure(note('')))).toHaveLength(0)
+  })
+
+  test('says nothing about an element the source explicitly shows', () => {
+    expect(
+      hidden(
+        measure(
+          '<note print-object="yes"><rest/><duration>4</duration><type>quarter</type></note>',
+        ),
+      ),
+    ).toHaveLength(0)
   })
 })
 
