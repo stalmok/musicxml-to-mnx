@@ -86,6 +86,8 @@ export interface Slur {
 export interface AccidentalDisplay {
   show: boolean
   enclosure: 'parentheses' | 'brackets' | undefined
+  /** True where the accidental is forced, as a cautionary or editorial one is. */
+  force?: boolean
 }
 
 export interface Note {

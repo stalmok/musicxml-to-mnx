@@ -494,6 +494,7 @@ function writeAccidental(display: AccidentalDisplay): MNXAccidentalDisplay {
   return {
     show: display.show,
     ...(display.enclosure ? { enclosure: { symbol: display.enclosure } } : {}),
+    ...(display.force ? { force: true } : {}),
   }
 }
 

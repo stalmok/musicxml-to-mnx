@@ -85,6 +85,8 @@ export type MNXAccidentalEnclosureSymbol = 'parentheses' | 'brackets'
 export interface MNXAccidentalDisplay {
   show: boolean
   enclosure?: { symbol: MNXAccidentalEnclosureSymbol }
+  /** True where the accidental is forced, as a cautionary or editorial one is. */
+  force?: boolean
 }
 
 export interface MNXNote {

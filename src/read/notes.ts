@@ -640,7 +640,13 @@ function readAccidentalDisplay(element: ElementReader): AccidentalDisplay | unde
   for (const [source, symbol] of ENCLOSURES) {
     if (attribute(accidental, source) === 'yes') enclosure = symbol
   }
-  return { show: true, enclosure }
+
+  // A cautionary or editorial accidental is drawn though the key or a note
+  // before it would not require it, which is what MNX's `force` states.
+  const forced =
+    attribute(accidental, 'cautionary') === 'yes' || attribute(accidental, 'editorial') === 'yes'
+
+  return { show: true, enclosure, ...(forced ? { force: true } : {}) }
 }
 
 /**

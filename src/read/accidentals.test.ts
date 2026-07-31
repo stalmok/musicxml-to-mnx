@@ -8,6 +8,7 @@ import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
 import { writeMnx } from '../write/mnx.js'
+import { schemaErrors } from '../../tests/support/schema.js'
 import type { Note } from '../model/score.js'
 
 function note(step: string, alter: string, body: string): string {
@@ -74,6 +75,38 @@ describe('an enclosed accidental', () => {
     const { notes } = read(score(note('F', '1', '<accidental>sharp</accidental>')))
 
     expect(notes[0]?.accidentalDisplay?.enclosure).toBeUndefined()
+  })
+})
+
+// A cautionary or editorial accidental is shown though the rules would not
+// require it, which is exactly what MNX's accidental-display `force` means.
+describe('a forced accidental', () => {
+  test('forces a cautionary accidental', () => {
+    const { notes } = read(score(note('F', '1', '<accidental cautionary="yes">sharp</accidental>')))
+
+    expect(notes[0]?.accidentalDisplay?.force).toBe(true)
+  })
+
+  test('forces an editorial accidental', () => {
+    const { notes } = read(score(note('F', '1', '<accidental editorial="yes">sharp</accidental>')))
+
+    expect(notes[0]?.accidentalDisplay?.force).toBe(true)
+  })
+
+  test('does not force a plain accidental', () => {
+    const { notes } = read(score(note('F', '1', '<accidental>sharp</accidental>')))
+
+    expect(notes[0]?.accidentalDisplay?.force).toBeUndefined()
+  })
+
+  test('writes force onto schema-valid MNX', () => {
+    const { notes: _n, score: model } = read(
+      score(note('F', '1', '<accidental cautionary="yes">sharp</accidental>')),
+    )
+    const mnx = writeMnx(model)
+
+    expect(JSON.stringify(mnx)).toContain('"force":true')
+    expect(schemaErrors(mnx)).toEqual([])
   })
 })
 
