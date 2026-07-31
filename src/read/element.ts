@@ -18,7 +18,10 @@ import { elementLoss } from './unrepresentable.js'
 
 export class ElementReader {
   readonly element: XmlElement
-  readonly #read = new Set<string>()
+  // Which children were read, held by identity rather than by name: child()
+  // takes the first of a name, so tracking the name would report none of that
+  // name's siblings even though only one was read. The rest are a loss.
+  readonly #read = new Set<XmlElement>()
   // Readers over child elements that are themselves read into, so one report
   // at the top covers the whole tree this reader walked.
   readonly #blocks = new Map<string, ElementReader[]>()
@@ -38,13 +41,15 @@ export class ElementReader {
   // Only children are tracked. Attributes carry no notation of their own, so
   // a reader wanting one reads it off `element` directly.
   child(name: string): XmlElement | undefined {
-    this.#read.add(name)
-    return child(this.element, name)
+    const found = child(this.element, name)
+    if (found) this.#read.add(found)
+    return found
   }
 
   children(name: string): readonly XmlElement[] {
-    this.#read.add(name)
-    return children(this.element, name)
+    const found = children(this.element, name)
+    for (const one of found) this.#read.add(one)
+    return found
   }
 
   /**
@@ -55,8 +60,10 @@ export class ElementReader {
     const existing = this.#blocks.get(name)
     if (existing) return existing
 
-    this.#read.add(name)
-    const made = children(this.element, name).map((found) => new ElementReader(found))
+    const made = children(this.element, name).map((found) => {
+      this.#read.add(found)
+      return new ElementReader(found)
+    })
     this.#blocks.set(name, made)
     return made
   }
@@ -66,13 +73,15 @@ export class ElementReader {
    * carried over by some other means. Every call needs a comment saying which.
    */
   skip(...names: readonly string[]): void {
-    for (const name of names) this.#read.add(name)
+    for (const found of this.element.children) {
+      if (names.includes(found.name)) this.#read.add(found)
+    }
   }
 
   /** Everything this reader never looked at, reported as a loss. */
   reportUnread(warnings: WarningCollector, context: WarningContext): void {
     for (const found of this.element.children) {
-      if (this.#read.has(found.name)) continue
+      if (this.#read.has(found)) continue
       const loss = elementLoss(found.name)
       warnings.add(
         loss.code,

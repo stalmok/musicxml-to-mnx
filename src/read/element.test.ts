@@ -29,6 +29,17 @@ describe('reportUnread', () => {
     ])
   })
 
+  // child() takes the first of a name and is meant for a name MusicXML allows
+  // only one of. A second one is either malformed input or a name that should
+  // have been read with children(); either way it is a loss, not something to
+  // pass over on the strength of the first having been read.
+  test('reports a repeat of a child that child() took only the first of', () => {
+    const element = reader('<pitch/><pitch/>')
+    element.child('pitch')
+
+    expect(reported(element)).toEqual(['<pitch> is not converted yet.'])
+  })
+
   test('says nothing about a child that was asked for but is absent', () => {
     const element = reader('')
     element.child('pitch')
