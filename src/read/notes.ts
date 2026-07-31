@@ -295,10 +295,19 @@ export function readNote(
   // rather than standing in the cursor's path.
   if (graceElement) {
     builder.addGraceNote(voice, event, attribute(graceElement, 'slash') === 'yes', staff)
-    readArpeggio(notations, voice, builder)
-    for (const note of notes) readTies(element, note, voice, state, warnings, context, tieds)
-    readSlurs(notations, event, state, warnings, context)
-    builder.addBeamMarkers(voice, event.id, beamMarkers(element, warnings, context, path), true)
+    readEventSpanners(
+      element,
+      notations,
+      event,
+      voice,
+      builder,
+      state,
+      warnings,
+      context,
+      path,
+      tieds,
+      true,
+    )
     return
   }
 
@@ -320,11 +329,19 @@ export function readNote(
   // Where the source states no <duration>, the written value is how long the
   // note lasts.
   builder.addEvent(voice, event, duration ?? lengthOf(value), path, element.line, staff)
-  readArpeggio(notations, voice, builder)
-
-  for (const note of notes) readTies(element, note, voice, state, warnings, context, tieds)
-  readSlurs(notations, event, state, warnings, context)
-  builder.addBeamMarkers(voice, event.id, beamMarkers(element, warnings, context, path))
+  readEventSpanners(
+    element,
+    notations,
+    event,
+    voice,
+    builder,
+    state,
+    warnings,
+    context,
+    path,
+    tieds,
+    false,
+  )
 
   // Closed before any tuplet stopping on the same note, because the pair
   // sits inside the bracket.
@@ -332,6 +349,36 @@ export function readNote(
     builder.closeTremolo(voice, tremolo.marks, warnings, context, path, element.line)
   }
   closeTuplets(builder, voice, brackets, warnings, context, path, element.line)
+}
+
+/**
+ * The spanners and beams an event carries, read once it is in its voice: the
+ * arpeggio it rolls, the ties on its notes, the slurs it joins, and its beam
+ * markers. Shared by the grace path and the ordinary one, which differ only in
+ * that a grace note beams within its own group.
+ */
+function readEventSpanners(
+  element: ElementReader,
+  notations: readonly ElementReader[],
+  event: Event,
+  voice: string | undefined,
+  builder: MeasureBuilder,
+  state: PartState,
+  warnings: WarningCollector,
+  context: WarningContext,
+  path: DocumentPath,
+  tieds: readonly XmlElement[],
+  inGraceGroup: boolean,
+): void {
+  readArpeggio(notations, voice, builder)
+  for (const note of event.notes) readTies(element, note, voice, state, warnings, context, tieds)
+  readSlurs(notations, event, state, warnings, context)
+  builder.addBeamMarkers(
+    voice,
+    event.id,
+    beamMarkers(element, warnings, context, path),
+    inGraceGroup,
+  )
 }
 
 function closeTuplets(
