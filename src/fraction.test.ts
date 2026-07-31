@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest'
+import { MusicXMLError } from './errors.js'
 import {
   addFractions,
   compareFractions,
@@ -26,17 +27,19 @@ describe('fraction', () => {
   })
 
   test('rejects a denominator of zero', () => {
+    expect(() => fraction(1, 0)).toThrow(MusicXMLError)
     expect(() => fraction(1, 0)).toThrow('Invalid fraction')
   })
 
   // Past 2^53 the arithmetic keeps working on silently rounded values, which
-  // is worse than failing.
+  // is worse than failing. Reported as a MusicXMLError, not a bare Error, so
+  // the overflow surfaces as unconvertible input rather than a stray crash.
   test('rejects a value too large to stay exact', () => {
-    expect(() => fraction(2 ** 53 + 2, 3)).toThrow('Invalid fraction')
+    expect(() => fraction(2 ** 53 + 2, 3)).toThrow(MusicXMLError)
   })
 
   test('rejects a value that is not a whole number', () => {
-    expect(() => fraction(1.5, 2)).toThrow('Invalid fraction')
+    expect(() => fraction(1.5, 2)).toThrow(MusicXMLError)
   })
 })
 
@@ -128,6 +131,7 @@ describe('comparing without overflowing', () => {
     const huge = fraction(Number.MAX_SAFE_INTEGER, 2)
     const small = fraction(1, Number.MAX_SAFE_INTEGER - 1)
 
+    expect(() => compareFractions(huge, small)).toThrow(MusicXMLError)
     expect(() => compareFractions(huge, small)).toThrow('Cannot compare')
   })
 })

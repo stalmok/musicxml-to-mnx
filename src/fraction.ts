@@ -3,6 +3,13 @@
 // dividing, and the results do not stay binary: a triplet eighth is 1/12 of a
 // whole note. Accumulating those as floats would make "does this measure add
 // up" and "where does this voice start" unreliable, so nothing here uses one.
+//
+// A value past the safe-integer range cannot be held exactly, and this refuses
+// rather than round. That is a fact about the input's own numbers, reached
+// only on pathological divisions or durations, so it is a MusicXMLError like
+// any other input the converter cannot carry faithfully, not a bare crash.
+
+import { MusicXMLError } from './errors.js'
 
 export interface Fraction {
   num: number
@@ -25,7 +32,7 @@ function greatestCommonDivisor(a: number, b: number): number {
  */
 export function fraction(num: number, den = 1): Fraction {
   if (den === 0 || !Number.isSafeInteger(num) || !Number.isSafeInteger(den)) {
-    throw new Error(`Invalid fraction: ${String(num)}/${String(den)}`)
+    throw new MusicXMLError(`Invalid fraction: ${String(num)}/${String(den)}`)
   }
   if (den < 0) {
     num = -num
@@ -82,7 +89,7 @@ export function compareFractions(a: Fraction, b: Fraction): number {
   const right = b.num * (a.den / common)
 
   if (!Number.isSafeInteger(left) || !Number.isSafeInteger(right)) {
-    throw new Error(
+    throw new MusicXMLError(
       `Cannot compare ${String(a.num)}/${String(a.den)} with ` +
         `${String(b.num)}/${String(b.den)} exactly.`,
     )
