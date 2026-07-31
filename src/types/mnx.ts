@@ -70,7 +70,11 @@ export interface MNXTie {
 export interface MNXSlur {
   target: string
   side?: MNXCurveSide
+  lineType?: MNXLineType
 }
+
+/** How a slur or other line is drawn. */
+export type MNXLineType = 'dashed' | 'dotted' | 'solid' | 'wavy'
 
 export type MNXAccidentalEnclosureSymbol = 'parentheses' | 'brackets'
 

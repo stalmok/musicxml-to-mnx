@@ -396,6 +396,7 @@ function writeEvent(event: Event, referenced: ReadonlySet<string>): MNXEvent {
           slurs: event.slurs.map((slur) => ({
             target: slur.target,
             ...(slur.side ? { side: slur.side } : {}),
+            ...(slur.lineType ? { lineType: slur.lineType } : {}),
           })),
         }
       : {}),

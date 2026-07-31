@@ -43,6 +43,9 @@ export interface NoteValue {
 /** Which way a curve bends away from the notes it joins. */
 export type CurveSide = 'up' | 'down'
 
+/** How a slur or other line is drawn. */
+export type LineType = 'dashed' | 'dotted' | 'solid' | 'wavy'
+
 /**
  * A tie joining this note to a later one of the same pitch. Stated once, on
  * the note where it begins, as a reference to the note where it ends.
@@ -67,6 +70,8 @@ export interface Lyric {
 export interface Slur {
   target: string
   side: CurveSide | undefined
+  /** The line it is drawn with, where the source states one other than solid. */
+  lineType?: LineType
 }
 
 /**

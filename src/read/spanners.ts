@@ -15,6 +15,7 @@ import type {
   CurveSide,
   Dynamic,
   Event,
+  LineType,
   Note,
   Ottava,
   OttavaAmount,
@@ -40,6 +41,7 @@ export interface OpenOttava {
 interface OpenSlur {
   event: Event
   side: CurveSide | undefined
+  lineType: LineType | undefined
   context: WarningContext
 }
 
@@ -190,10 +192,11 @@ export class SpannerResolver {
     event: Event,
     number: string,
     side: CurveSide | undefined,
+    lineType: LineType | undefined,
     context: WarningContext,
   ): void {
     const waiting = this.#openSlurs.get(number) ?? []
-    waiting.push({ event, side, context })
+    waiting.push({ event, side, lineType, context })
     this.#openSlurs.set(number, waiting)
   }
 
@@ -214,7 +217,14 @@ export class SpannerResolver {
       return
     }
 
-    open.event.slurs = [...open.event.slurs, { target: event.id, side: open.side }]
+    open.event.slurs = [
+      ...open.event.slurs,
+      {
+        target: event.id,
+        side: open.side,
+        ...(open.lineType !== undefined ? { lineType: open.lineType } : {}),
+      },
+    ]
   }
 
   /** Notes where a hairpin begins, to be paired once the part is read. */

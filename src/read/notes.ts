@@ -16,6 +16,7 @@ import type {
   Event,
   Fermata,
   FermataSymbol,
+  LineType,
   Marking,
   MarkingKind,
   Note,
@@ -684,7 +685,7 @@ function readSlurs(
     if (type === 'stop') {
       state.spanners.stopSlur(event, number, warnings, context)
     } else if (type === 'start') {
-      state.spanners.startSlur(event, number, slurSide(slur), context)
+      state.spanners.startSlur(event, number, slurSide(slur), slurLineType(slur), context)
     } else if (type !== 'continue') {
       // "continue" marks a note partway along a slur. MNX states only where a
       // slur begins and ends, so there is nothing for it to carry, and
@@ -702,6 +703,15 @@ function readSlurs(
 function slurSide(slur: XmlElement): CurveSide | undefined {
   const placement = attribute(slur, 'placement')
   return placement === 'above' ? 'up' : placement === 'below' ? 'down' : undefined
+}
+
+// MusicXML's line-type values are the same words MNX states, so a known one
+// passes straight through; anything else leaves the slur drawn solid.
+const LINE_TYPES: ReadonlySet<string> = new Set(['dashed', 'dotted', 'solid', 'wavy'])
+
+function slurLineType(slur: XmlElement): LineType | undefined {
+  const lineType = attribute(slur, 'line-type')
+  return lineType !== undefined && LINE_TYPES.has(lineType) ? (lineType as LineType) : undefined
 }
 
 /**

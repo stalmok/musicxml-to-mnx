@@ -7,6 +7,8 @@ import { describe, expect, test } from 'vitest'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
+import { convertMusicXML } from '../index.js'
+import { schemaErrors } from '../../tests/support/schema.js'
 import type { Event, Note } from '../model/score.js'
 
 const DIVISIONS = '<attributes><divisions>4</divisions></attributes>'
@@ -174,6 +176,27 @@ describe('slurs', () => {
     )
 
     expect(events[0]?.slurs[0]?.side).toBe('down')
+  })
+
+  test('reads the line type the slur is drawn with', () => {
+    const { events } = read(
+      measures(
+        DIVISIONS + note('C', slur('start', '1', ' line-type="dashed"')) + note('G', slur('stop')),
+      ),
+    )
+
+    expect(events[0]?.slurs[0]?.lineType).toBe('dashed')
+  })
+
+  test('writes the slur line type onto schema-valid MNX', () => {
+    const { mnx } = convertMusicXML(
+      measures(
+        DIVISIONS + note('C', slur('start', '1', ' line-type="dashed"')) + note('G', slur('stop')),
+      ),
+    )
+
+    expect(JSON.stringify(mnx)).toContain('"lineType":"dashed"')
+    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('reports a slur the source never ends', () => {
