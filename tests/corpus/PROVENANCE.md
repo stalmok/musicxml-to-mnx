@@ -1,6 +1,6 @@
 # Vendored corpus
 
-Two hundred published songs, converted on every test run.
+Six hundred published songs, converted on every test run.
 
 They are here because the bugs that mattered were all found by running against
 real music rather than by the unit tests: a grace note taking time it does not
@@ -9,14 +9,17 @@ have, a chord member arriving after its tuplet closed, a note carrying two
 those shapes appears in a hand-written fixture unless you already know to
 write it.
 
-Two hundred rather than a handful because a small sample kept being the
+A large sample rather than a handful because a small one kept being the
 problem. Two readings of slur numbering resolved three songs identically and
 disagreed only on a fourth, and the file that settled it was not among the
-three.
+three. Each time the count has grown, real music the smaller sample never held
+has surfaced fresh defects: growing to six hundred found a lyric written twice
+on one note that the converter collapsed, and confirmed two spanner and beam
+fixes on shapes the two hundred never contained.
 
 ## Source and licence
 
-All two hundred come from the [OpenScore Lieder
+All six hundred come from the [OpenScore Lieder
 corpus](https://github.com/OpenScore/Lieder), released under **Creative
 Commons Zero**, so they can be redistributed here without condition.
 Transcribed by OpenScore volunteers and moderated by a professional
@@ -27,8 +30,9 @@ proofreading team, from public-domain editions on IMSLP.
 ## Why `.mxl`
 
 `.mxl` is the standard compressed MusicXML container, and it is what the
-corpus publishes. The XML inside is around twenty times larger: two hundred
-songs come to a few megabytes this way, against tens uncompressed. The
+corpus publishes. The XML inside is around twenty times larger: six hundred
+songs come to around ten megabytes this way, against two hundred uncompressed.
+The
 files are byte-for-byte as retrieved, so they are excluded from formatting,
 and `tests/support/corpus.ts` reads the score out of each container.
 
@@ -36,13 +40,19 @@ and `tests/support/corpus.ts` reads the score out of each container.
 
 Spread across the corpus rather than taken from the front of it, so the sample
 is not all Schubert. The first fifty were one song from each of fifty
-composers. The next hundred and fifty come by going round the 125 composers of
-the corpus in alphabetical order, taking one more song from each on each pass,
-in the corpus's own order, until the count reaches two hundred, so every
-composer is represented and the busier ones a little more.
+composers. The next hundred and fifty came by going round the composers of the
+corpus in alphabetical order, taking one more song from each on each pass, in
+the corpus's own order, until the count reached two hundred, so every composer
+is represented and the busier ones a little more.
+
+The four hundred that took it to six hundred continue the same round: for each
+composer in turn, the next songs not already vendored, ordered by their upstream
+path, one more per pass, until four hundred more convert. Eighty-six composers
+gained songs this way, at most six from any one.
 
 A song is skipped over where the converter refuses it: an empty metronome
-tempo, or a tuplet the source never bracketed.
+tempo, or a tuplet the source never bracketed. Ten were skipped over reaching
+six hundred, all in classes already recorded.
 
 Four songs are pinned deliberately, because each has already caught a defect
 the rest of the suite missed:
@@ -63,7 +73,7 @@ Clara Schumann pair up correctly, so the transcriptions are sound and the
 export is not. A handful of ties and slurs therefore cannot be joined, and are
 reported rather than guessed at. The warning baseline records how many.
 
-Every one of the two hundred converts: the songs the converter refuses were
+Every one of the six hundred converts: the songs the converter refuses were
 skipped when the corpus was chosen, and the corpus test pins that none is
 refused, so one starting to be rejected is a change somebody chose.
 

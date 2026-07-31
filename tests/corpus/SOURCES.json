@@ -35,11 +35,47 @@
     "song": "Blow, Blow, Thou Winter Wind",
     "source": "scores/Arne,_Thomas/_/Blow,_Blow,_Thou_Winter_Wind/lc8835588.mxl"
   },
+  "arne-by-dimpled-brook.mxl": {
+    "composer": "Arne, Thomas",
+    "work": " ",
+    "song": "By Dimpled Brook",
+    "source": "scores/Arne,_Thomas/_/By_Dimpled_Brook/lc8847705.mxl"
+  },
+  "arne-celia-s-complaint.mxl": {
+    "composer": "Arne, Thomas",
+    "work": " ",
+    "song": "Celia’s Complaint",
+    "source": "scores/Arne,_Thomas/_/Celia’s_Complaint/lc8859729.mxl"
+  },
+  "arne-hush-to-peace.mxl": {
+    "composer": "Arne, Thomas",
+    "work": " ",
+    "song": "Hush to Peace",
+    "source": "scores/Arne,_Thomas/_/Hush_to_Peace/lc8871933.mxl"
+  },
   "arne-love-relaps-d.mxl": {
     "composer": "Arne, Thomas",
     "work": " ",
     "song": "Love Relaps’d",
     "source": "scores/Arne,_Thomas/_/Love_Relaps’d/lc8873154.mxl"
+  },
+  "arne-rule-britannia.mxl": {
+    "composer": "Arne, Thomas",
+    "work": " ",
+    "song": "Rule, Britannia!",
+    "source": "scores/Arne,_Thomas/_/Rule,_Britannia!/lc29233346.mxl"
+  },
+  "arne-the-family-quarrel.mxl": {
+    "composer": "Arne, Thomas",
+    "work": " ",
+    "song": "The Family Quarrel",
+    "source": "scores/Arne,_Thomas/_/The_Family_Quarrel/lc28971056.mxl"
+  },
+  "arne-the-miller-of-mansfield.mxl": {
+    "composer": "Arne, Thomas",
+    "work": " ",
+    "song": "The Miller of Mansfield",
+    "source": "scores/Arne,_Thomas/_/The_Miller_of_Mansfield/lc28971308.mxl"
   },
   "bantock-1-the-old-fisherman-of-the-mists-and-waters.mxl": {
     "composer": "Bantock, Granville",
@@ -52,6 +88,24 @@
     "work": "5 Songs from the Chinese Poets, 1st Series",
     "song": "2 The Ghost Road",
     "source": "scores/Bantock,_Granville/5_Songs_from_the_Chinese_Poets,_1st_Series/2_The_Ghost_Road/lc6211549.mxl"
+  },
+  "bantock-3-under-the-moon.mxl": {
+    "composer": "Bantock, Granville",
+    "work": "5 Songs from the Chinese Poets, 1st Series",
+    "song": "3 Under the Moon",
+    "source": "scores/Bantock,_Granville/5_Songs_from_the_Chinese_Poets,_1st_Series/3_Under_the_Moon/lc6211555.mxl"
+  },
+  "bantock-4-the-celestial-weaver.mxl": {
+    "composer": "Bantock, Granville",
+    "work": "5 Songs from the Chinese Poets, 1st Series",
+    "song": "4 The Celestial Weaver",
+    "source": "scores/Bantock,_Granville/5_Songs_from_the_Chinese_Poets,_1st_Series/4_The_Celestial_Weaver/lc6211559.mxl"
+  },
+  "bantock-5-return-of-spring.mxl": {
+    "composer": "Bantock, Granville",
+    "work": "5 Songs from the Chinese Poets, 1st Series",
+    "song": "5 Return of Spring",
+    "source": "scores/Bantock,_Granville/5_Songs_from_the_Chinese_Poets,_1st_Series/5_Return_of_Spring/lc6211561.mxl"
   },
   "barnard-farewell-to-erin.mxl": {
     "composer": "Barnard, Charlotte Alington",
@@ -71,6 +125,18 @@
     "song": "Milly’s Faith",
     "source": "scores/Barnard,_Charlotte_Alington/_/Milly’s_Faith/lc6622814.mxl"
   },
+  "barnard-strangers-yet.mxl": {
+    "composer": "Barnard, Charlotte Alington",
+    "work": " ",
+    "song": "Strangers Yet",
+    "source": "scores/Barnard,_Charlotte_Alington/_/Strangers_Yet/lc6585571.mxl"
+  },
+  "barnard-the-brook.mxl": {
+    "composer": "Barnard, Charlotte Alington",
+    "work": " ",
+    "song": "The Brook",
+    "source": "scores/Barnard,_Charlotte_Alington/_/The_Brook/lc6586675.mxl"
+  },
   "barnby-the-beggar-maid.mxl": {
     "composer": "Barnby, Joseph",
     "work": " ",
@@ -89,6 +155,18 @@
     "song": "Sleep, Weary Heart",
     "source": "scores/Barns,_Ethel/_/Sleep,_Weary_Heart/lc6586696.mxl"
   },
+  "beach-1-ich-sagte-nicht.mxl": {
+    "composer": "Beach, Amy",
+    "work": "4 Songs, Op.51",
+    "song": "1 Ich sagte nicht",
+    "source": "scores/Beach,_Amy/4_Songs,_Op.51/1_Ich_sagte_nicht/lc6245971.mxl"
+  },
+  "beach-1-o-mistress-mine.mxl": {
+    "composer": "Beach, Amy",
+    "work": "3 Shakespeare Songs, Op.37",
+    "song": "1 O Mistress Mine",
+    "source": "scores/Beach,_Amy/3_Shakespeare_Songs,_Op.37/1_O_Mistress_Mine/lc6564424.mxl"
+  },
   "beach-1-the-year-s-at-the-spring.mxl": {
     "composer": "Beach, Amy",
     "work": "3 Browning Songs, Op.44",
@@ -101,11 +179,41 @@
     "song": "2 Ah, Love, but a Day!",
     "source": "scores/Beach,_Amy/3_Browning_Songs,_Op.44/2_Ah,_Love,_but_a_Day!/lc6212193.mxl"
   },
+  "beach-2-take-o-take-those-lips-away.mxl": {
+    "composer": "Beach, Amy",
+    "work": "3 Shakespeare Songs, Op.37",
+    "song": "2 Take, O Take those Lips Away",
+    "source": "scores/Beach,_Amy/3_Shakespeare_Songs,_Op.37/2_Take,_O_Take_those_Lips_Away/lc6564767.mxl"
+  },
+  "beach-2-wir-drei.mxl": {
+    "composer": "Beach, Amy",
+    "work": "4 Songs, Op.51",
+    "song": "2 Wir drei",
+    "source": "scores/Beach,_Amy/4_Songs,_Op.51/2_Wir_drei/lc6245972.mxl"
+  },
+  "beach-3-fairy-lullaby.mxl": {
+    "composer": "Beach, Amy",
+    "work": "3 Shakespeare Songs, Op.37",
+    "song": "3 Fairy Lullaby",
+    "source": "scores/Beach,_Amy/3_Shakespeare_Songs,_Op.37/3_Fairy_Lullaby/lc6564816.mxl"
+  },
+  "beach-3-i-send-my-heart-up-to-thee.mxl": {
+    "composer": "Beach, Amy",
+    "work": "3 Browning Songs, Op.44",
+    "song": "3 I Send My Heart up to Thee!",
+    "source": "scores/Beach,_Amy/3_Browning_Songs,_Op.44/3_I_Send_My_Heart_up_to_Thee!/lc6212196.mxl"
+  },
   "beethoven-1-bitten.mxl": {
     "composer": "Beethoven, Ludwig van",
     "work": "6 Lieder, Op.48",
     "song": "1 Bitten",
     "source": "scores/Beethoven,_Ludwig_van/6_Lieder,_Op.48/1_Bitten/lc5115311.mxl"
+  },
+  "beethoven-1-urians-reise-um-die-welt.mxl": {
+    "composer": "Beethoven, Ludwig van",
+    "work": "8 Lieder, Op.52",
+    "song": "1 Urians Reise um die Welt",
+    "source": "scores/Beethoven,_Ludwig_van/8_Lieder,_Op.52/1_Urians_Reise_um_die_Welt/lc6488630.mxl"
   },
   "beethoven-2-die-liebe-des-nachsten.mxl": {
     "composer": "Beethoven, Ludwig van",
@@ -118,6 +226,42 @@
     "work": "8 Lieder, Op.52",
     "song": "2 Feuerfarb",
     "source": "scores/Beethoven,_Ludwig_van/8_Lieder,_Op.52/2_Feuerfarb/lc6491340.mxl"
+  },
+  "beethoven-3-das-liedchen-von-der-ruhe.mxl": {
+    "composer": "Beethoven, Ludwig van",
+    "work": "8 Lieder, Op.52",
+    "song": "3 Das Liedchen von der Ruhe",
+    "source": "scores/Beethoven,_Ludwig_van/8_Lieder,_Op.52/3_Das_Liedchen_von_der_Ruhe/lc6491353.mxl"
+  },
+  "beethoven-3-vom-tode.mxl": {
+    "composer": "Beethoven, Ludwig van",
+    "work": "6 Lieder, Op.48",
+    "song": "3 Vom Tode",
+    "source": "scores/Beethoven,_Ludwig_van/6_Lieder,_Op.48/3_Vom_Tode/lc5115550.mxl"
+  },
+  "beethoven-4-die-ehre-gottes-aus-der-natur.mxl": {
+    "composer": "Beethoven, Ludwig van",
+    "work": "6 Lieder, Op.48",
+    "song": "4 Die Ehre Gottes aus der Natur",
+    "source": "scores/Beethoven,_Ludwig_van/6_Lieder,_Op.48/4_Die_Ehre_Gottes_aus_der_Natur/lc5121134.mxl"
+  },
+  "beethoven-5-gottes-macht-und-vorsehung.mxl": {
+    "composer": "Beethoven, Ludwig van",
+    "work": "6 Lieder, Op.48",
+    "song": "5 Gottes Macht und Vorsehung",
+    "source": "scores/Beethoven,_Ludwig_van/6_Lieder,_Op.48/5_Gottes_Macht_und_Vorsehung/lc5121692.mxl"
+  },
+  "beethoven-6-busslied.mxl": {
+    "composer": "Beethoven, Ludwig van",
+    "work": "6 Lieder, Op.48",
+    "song": "6 Busslied",
+    "source": "scores/Beethoven,_Ludwig_van/6_Lieder,_Op.48/6_Busslied/lc5125008.mxl"
+  },
+  "berg-1-nacht.mxl": {
+    "composer": "Berg, Alban",
+    "work": "7 frühe Lieder",
+    "song": "1 Nacht",
+    "source": "scores/Berg,_Alban/7_frühe_Lieder/1_Nacht/lc29749511.mxl"
   },
   "berlioz-1-villanelle.mxl": {
     "composer": "Berlioz, Hector",
@@ -155,6 +299,12 @@
     "song": "Sappho at her Loom",
     "source": "scores/Bishop,_Henry/_/Sappho_at_her_Loom/lc6446003.mxl"
   },
+  "bizet-1-chanson-d-avril.mxl": {
+    "composer": "Bizet, Georges",
+    "work": "20 Mélodies, Op.21",
+    "song": "1 Chanson d’avril",
+    "source": "scores/Bizet,_Georges/20_Mélodies,_Op.21/1_Chanson_d’avril/lc6877413.mxl"
+  },
   "bizet-10-serenade.mxl": {
     "composer": "Bizet, Georges",
     "work": "20 Mélodies, Op.21",
@@ -166,6 +316,36 @@
     "work": "20 Mélodies, Op.21",
     "song": "11 Berceuse",
     "source": "scores/Bizet,_Georges/20_Mélodies,_Op.21/11_Berceuse/lc6901078.mxl"
+  },
+  "bizet-12-la-chanson-du-fou.mxl": {
+    "composer": "Bizet, Georges",
+    "work": "20 Mélodies, Op.21",
+    "song": "12 La chanson du fou",
+    "source": "scores/Bizet,_Georges/20_Mélodies,_Op.21/12_La_chanson_du_fou/lc6901197.mxl"
+  },
+  "bizet-13-absence.mxl": {
+    "composer": "Bizet, Georges",
+    "work": "20 Mélodies, Op.21",
+    "song": "13 Absence",
+    "source": "scores/Bizet,_Georges/20_Mélodies,_Op.21/13_Absence/lc5079487.mxl"
+  },
+  "bizet-14-douce-mer.mxl": {
+    "composer": "Bizet, Georges",
+    "work": "20 Mélodies, Op.21",
+    "song": "14 Douce mer",
+    "source": "scores/Bizet,_Georges/20_Mélodies,_Op.21/14_Douce_mer/lc6902355.mxl"
+  },
+  "bizet-15-apres-l-hiver.mxl": {
+    "composer": "Bizet, Georges",
+    "work": "20 Mélodies, Op.21",
+    "song": "15 Après l’hiver",
+    "source": "scores/Bizet,_Georges/20_Mélodies,_Op.21/15_Après_l’hiver/lc6902615.mxl"
+  },
+  "bizet-16-la-coccinelle.mxl": {
+    "composer": "Bizet, Georges",
+    "work": "20 Mélodies, Op.21",
+    "song": "16 La coccinelle",
+    "source": "scores/Bizet,_Georges/20_Mélodies,_Op.21/16_La_coccinelle/lc6903757.mxl"
   },
   "bonis-allons-prier.mxl": {
     "composer": "Bonis, Mel",
@@ -179,6 +359,12 @@
     "song": "Le chat sur le toit, Op.93",
     "source": "scores/Bonis,_Mel/_/Le_chat_sur_le_toit,_Op.93/lc6635391.mxl"
   },
+  "boulanger-1-elle-etait-descendue-au-bas-de-la-prairie.mxl": {
+    "composer": "Boulanger, Lili",
+    "work": "Clairières dans le ciel",
+    "song": "1 Elle était descendue au bas de la prairie",
+    "source": "scores/Boulanger,_Lili/Clairières_dans_le_ciel/1_Elle_était_descendue_au_bas_de_la_prairie/lc5852737.mxl"
+  },
   "boulanger-10-deux-ancolies.mxl": {
     "composer": "Boulanger, Lili",
     "work": "Clairières dans le ciel",
@@ -190,6 +376,42 @@
     "work": "Clairières dans le ciel",
     "song": "11 Par ce que j’ai souffert",
     "source": "scores/Boulanger,_Lili/Clairières_dans_le_ciel/11_Par_ce_que_j’ai_souffert/lc5901729.mxl"
+  },
+  "boulanger-12-je-garde-une-medaille-d-elle.mxl": {
+    "composer": "Boulanger, Lili",
+    "work": "Clairières dans le ciel",
+    "song": "12 Je garde une médaille d’elle",
+    "source": "scores/Boulanger,_Lili/Clairières_dans_le_ciel/12_Je_garde_une_médaille_d’elle/lc5901950.mxl"
+  },
+  "boulanger-13-demain-fera-un-an.mxl": {
+    "composer": "Boulanger, Lili",
+    "work": "Clairières dans le ciel",
+    "song": "13 Demain fera un an",
+    "source": "scores/Boulanger,_Lili/Clairières_dans_le_ciel/13_Demain_fera_un_an/lc5902873.mxl"
+  },
+  "boulanger-attente.mxl": {
+    "composer": "Boulanger, Lili",
+    "work": " ",
+    "song": "Attente",
+    "source": "scores/Boulanger,_Lili/_/Attente/lc5983850.mxl"
+  },
+  "boulanger-dans-l-immense-tristesse.mxl": {
+    "composer": "Boulanger, Lili",
+    "work": " ",
+    "song": "Dans l’immense tristesse",
+    "source": "scores/Boulanger,_Lili/_/Dans_l’immense_tristesse/lc5983777.mxl"
+  },
+  "boulanger-reflets.mxl": {
+    "composer": "Boulanger, Lili",
+    "work": " ",
+    "song": "Reflets",
+    "source": "scores/Boulanger,_Lili/_/Reflets/lc5983679.mxl"
+  },
+  "boulton-1-constancy.mxl": {
+    "composer": "Boulton, Harold",
+    "work": "12 New Songs",
+    "song": "1 Constancy",
+    "source": "scores/Boulton,_Harold/12_New_Songs/1_Constancy/lc6403636.mxl"
   },
   "boulton-11-to-welcome-you.mxl": {
     "composer": "Boulton, Harold",
@@ -203,11 +425,47 @@
     "song": "12 The Windflower",
     "source": "scores/Boulton,_Harold/12_New_Songs/12_The_Windflower/lc6416290.mxl"
   },
+  "boulton-2-cradle-song.mxl": {
+    "composer": "Boulton, Harold",
+    "work": "12 New Songs",
+    "song": "2 Cradle Song",
+    "source": "scores/Boulton,_Harold/12_New_Songs/2_Cradle_Song/lc6403758.mxl"
+  },
+  "boulton-3-love-s-journey.mxl": {
+    "composer": "Boulton, Harold",
+    "work": "12 New Songs",
+    "song": "3 Love’s Journey",
+    "source": "scores/Boulton,_Harold/12_New_Songs/3_Love’s_Journey/lc6404150.mxl"
+  },
   "boulton-4-truant-wings.mxl": {
     "composer": "Boulton, Harold",
     "work": "12 New Songs",
     "song": "4 Truant Wings",
     "source": "scores/Boulton,_Harold/12_New_Songs/4_Truant_Wings/lc6404394.mxl"
+  },
+  "boulton-5-in-summer-weather.mxl": {
+    "composer": "Boulton, Harold",
+    "work": "12 New Songs",
+    "song": "5 In Summer Weather",
+    "source": "scores/Boulton,_Harold/12_New_Songs/5_In_Summer_Weather/lc6405467.mxl"
+  },
+  "boulton-6-robin-sly.mxl": {
+    "composer": "Boulton, Harold",
+    "work": "12 New Songs",
+    "song": "6 Robin Sly",
+    "source": "scores/Boulton,_Harold/12_New_Songs/6_Robin_Sly/lc6405594.mxl"
+  },
+  "brahms-1-denn-es-gehet-dem-menschen-wie-dem-vieh.mxl": {
+    "composer": "Brahms, Johannes",
+    "work": "4 Serious Songs, Op.121",
+    "song": "1 Denn es gehet dem Menschen wie dem Vieh",
+    "source": "scores/Brahms,_Johannes/4_Serious_Songs,_Op.121/1_Denn_es_gehet_dem_Menschen_wie_dem_Vieh/lc6686592.mxl"
+  },
+  "brahms-1-die-kranze.mxl": {
+    "composer": "Brahms, Johannes",
+    "work": "4 Gesänge, Op.46",
+    "song": "1 Die Kränze",
+    "source": "scores/Brahms,_Johannes/4_Gesänge,_Op.46/1_Die_Kränze/lc5084888.mxl"
   },
   "brahms-1-gestillte-sehnsucht.mxl": {
     "composer": "Brahms, Johannes",
@@ -220,6 +478,30 @@
     "work": "2 Gesänge, Op.91",
     "song": "2 Geistliches Wiegenlied",
     "source": "scores/Brahms,_Johannes/2_Gesänge,_Op.91/2_Geistliches_Wiegenlied/lc6320420.mxl"
+  },
+  "brahms-2-ich-wandte-mich-und-sahe.mxl": {
+    "composer": "Brahms, Johannes",
+    "work": "4 Serious Songs, Op.121",
+    "song": "2 Ich wandte mich und sahe",
+    "source": "scores/Brahms,_Johannes/4_Serious_Songs,_Op.121/2_Ich_wandte_mich_und_sahe/lc6686901.mxl"
+  },
+  "brahms-2-magyarisch.mxl": {
+    "composer": "Brahms, Johannes",
+    "work": "4 Gesänge, Op.46",
+    "song": "2 Magyarisch",
+    "source": "scores/Brahms,_Johannes/4_Gesänge,_Op.46/2_Magyarisch/lc5071668.mxl"
+  },
+  "brahms-3-die-schale-der-vergessenheit.mxl": {
+    "composer": "Brahms, Johannes",
+    "work": "4 Gesänge, Op.46",
+    "song": "3 Die Schale der Vergessenheit",
+    "source": "scores/Brahms,_Johannes/4_Gesänge,_Op.46/3_Die_Schale_der_Vergessenheit/lc5071654.mxl"
+  },
+  "brahms-4-an-die-nachtigall.mxl": {
+    "composer": "Brahms, Johannes",
+    "work": "4 Gesänge, Op.46",
+    "song": "4 An die Nachtigall",
+    "source": "scores/Brahms,_Johannes/4_Gesänge,_Op.46/4_An_die_Nachtigall/lc5084966.mxl"
   },
   "brahms-4-wiegenlied.mxl": {
     "composer": "Brahms, Johannes",
@@ -238,6 +520,36 @@
     "work": "3 Tagore Songs, H.164",
     "song": "2 Speak to Me, My Love!",
     "source": "scores/Bridge,_Frank/3_Tagore_Songs,_H.164/2_Speak_to_Me,_My_Love!/lc31741739.mxl"
+  },
+  "bridge-adoration-h-57.mxl": {
+    "composer": "Bridge, Frank",
+    "work": " ",
+    "song": "Adoration, H.57",
+    "source": "scores/Bridge,_Frank/_/Adoration,_H.57/lc6451405.mxl"
+  },
+  "bridge-blow-blow-thou-winter-wind-h-33.mxl": {
+    "composer": "Bridge, Frank",
+    "work": " ",
+    "song": "Blow, Blow Thou Winter Wind, H.33",
+    "source": "scores/Bridge,_Frank/_/Blow,_Blow_Thou_Winter_Wind,_H.33/lc31741250.mxl"
+  },
+  "bridge-come-to-me-in-my-dreams-h-71.mxl": {
+    "composer": "Bridge, Frank",
+    "work": " ",
+    "song": "Come to Me in my Dreams, H.71",
+    "source": "scores/Bridge,_Frank/_/Come_to_Me_in_my_Dreams,_H.71/lc6474919.mxl"
+  },
+  "bridge-fair-daffodils-h-51.mxl": {
+    "composer": "Bridge, Frank",
+    "work": " ",
+    "song": "Fair Daffodils, H.51",
+    "source": "scores/Bridge,_Frank/_/Fair_Daffodils,_H.51/lc6257518.mxl"
+  },
+  "bridge-love-went-a-riding-h-114.mxl": {
+    "composer": "Bridge, Frank",
+    "work": " ",
+    "song": "Love went a-riding, H.114",
+    "source": "scores/Bridge,_Frank/_/Love_went_a-riding,_H.114/lc6476797.mxl"
   },
   "browne-forever-thine.mxl": {
     "composer": "Browne, Augusta",
@@ -269,6 +581,42 @@
     "song": "2 The Jungle Flower",
     "source": "scores/Burleigh,_Harry_Thacker/5_Songs_of_Laurence_Hope/2_The_Jungle_Flower/lc6518134.mxl"
   },
+  "burleigh-3-kashmiri-song.mxl": {
+    "composer": "Burleigh, Harry Thacker",
+    "work": "5 Songs of Laurence Hope",
+    "song": "3 Kashmiri Song",
+    "source": "scores/Burleigh,_Harry_Thacker/5_Songs_of_Laurence_Hope/3_Kashmiri_Song/lc6518141.mxl"
+  },
+  "burleigh-4-among-the-fuchsias.mxl": {
+    "composer": "Burleigh, Harry Thacker",
+    "work": "5 Songs of Laurence Hope",
+    "song": "4 Among the Fuchsias",
+    "source": "scores/Burleigh,_Harry_Thacker/5_Songs_of_Laurence_Hope/4_Among_the_Fuchsias/lc6471377.mxl"
+  },
+  "burleigh-5-till-i-wake.mxl": {
+    "composer": "Burleigh, Harry Thacker",
+    "work": "5 Songs of Laurence Hope",
+    "song": "5 Till I Wake",
+    "source": "scores/Burleigh,_Harry_Thacker/5_Songs_of_Laurence_Hope/5_Till_I_Wake/lc6471199.mxl"
+  },
+  "burleigh-ethiopia-saluting-the-colors.mxl": {
+    "composer": "Burleigh, Harry Thacker",
+    "work": " ",
+    "song": "Ethiopia Saluting the Colors",
+    "source": "scores/Burleigh,_Harry_Thacker/_/Ethiopia_Saluting_the_Colors/lc6565727.mxl"
+  },
+  "burleigh-go-down-moses.mxl": {
+    "composer": "Burleigh, Harry Thacker",
+    "work": " ",
+    "song": "Go down, Moses",
+    "source": "scores/Burleigh,_Harry_Thacker/_/Go_down,_Moses/lc6351349.mxl"
+  },
+  "burleigh-nobody-knows-de-trouble-i-ve-seen.mxl": {
+    "composer": "Burleigh, Harry Thacker",
+    "work": " ",
+    "song": "Nobody Knows de Trouble I’ve Seen",
+    "source": "scores/Burleigh,_Harry_Thacker/_/Nobody_Knows_de_Trouble_I’ve_Seen/lc6753259.mxl"
+  },
   "butterworth-1-bredon-hill.mxl": {
     "composer": "Butterworth, George",
     "work": "Bredon Hill and Other Songs",
@@ -281,11 +629,47 @@
     "song": "1 Loveliest of trees, the Cherry now",
     "source": "scores/Butterworth,_George/6_Songs_from_A_Shropshire_Lad/1_Loveliest_of_trees,_the_Cherry_now/lc6214840.mxl"
   },
+  "butterworth-2-oh-fair-enough-are-sky-and-plain.mxl": {
+    "composer": "Butterworth, George",
+    "work": "Bredon Hill and Other Songs",
+    "song": "2 Oh Fair Enough are Sky and Plain",
+    "source": "scores/Butterworth,_George/Bredon_Hill_and_Other_Songs/2_Oh_Fair_Enough_are_Sky_and_Plain/lc6378337.mxl"
+  },
   "butterworth-2-when-i-was-one-and-twenty.mxl": {
     "composer": "Butterworth, George",
     "work": "6 Songs from A Shropshire Lad",
     "song": "2 When I was one and twenty",
     "source": "scores/Butterworth,_George/6_Songs_from_A_Shropshire_Lad/2_When_I_was_one_and_twenty/lc6214844.mxl"
+  },
+  "butterworth-3-look-not-in-my-eyes.mxl": {
+    "composer": "Butterworth, George",
+    "work": "6 Songs from A Shropshire Lad",
+    "song": "3 Look not in my eyes",
+    "source": "scores/Butterworth,_George/6_Songs_from_A_Shropshire_Lad/3_Look_not_in_my_eyes/lc6214845.mxl"
+  },
+  "butterworth-4-think-no-more-lad.mxl": {
+    "composer": "Butterworth, George",
+    "work": "6 Songs from A Shropshire Lad",
+    "song": "4 Think no more, lad",
+    "source": "scores/Butterworth,_George/6_Songs_from_A_Shropshire_Lad/4_Think_no_more,_lad/lc6214846.mxl"
+  },
+  "butterworth-5-the-lads-in-their-hundreds.mxl": {
+    "composer": "Butterworth, George",
+    "work": "6 Songs from A Shropshire Lad",
+    "song": "5 The lads in their hundreds",
+    "source": "scores/Butterworth,_George/6_Songs_from_A_Shropshire_Lad/5_The_lads_in_their_hundreds/lc6214847.mxl"
+  },
+  "butterworth-6-is-my-team-ploughing.mxl": {
+    "composer": "Butterworth, George",
+    "work": "6 Songs from A Shropshire Lad",
+    "song": "6 Is my team ploughing",
+    "source": "scores/Butterworth,_George/6_Songs_from_A_Shropshire_Lad/6_Is_my_team_ploughing/lc6214848.mxl"
+  },
+  "butterworth-love-blows-as-the-wind-blows.mxl": {
+    "composer": "Butterworth, George",
+    "work": " ",
+    "song": "Love blows as the wind blows",
+    "source": "scores/Butterworth,_George/_/Love_blows_as_the_wind_blows/lc6469541.mxl"
   },
   "cellier-oh-woman-sweet-woman.mxl": {
     "composer": "Cellier, Alfred",
@@ -317,17 +701,89 @@
     "song": "Amertume",
     "source": "scores/Chaminade,_Cécile/_/Amertume/lc6261036.mxl"
   },
+  "chaminade-amoroso.mxl": {
+    "composer": "Chaminade, Cécile",
+    "work": " ",
+    "song": "Amoroso",
+    "source": "scores/Chaminade,_Cécile/_/Amoroso/lc4999292.mxl"
+  },
+  "chaminade-amour-d-automne.mxl": {
+    "composer": "Chaminade, Cécile",
+    "work": " ",
+    "song": "Amour d’automne",
+    "source": "scores/Chaminade,_Cécile/_/Amour_d’automne/lc4999304.mxl"
+  },
+  "chaminade-au-pays-bleu.mxl": {
+    "composer": "Chaminade, Cécile",
+    "work": " ",
+    "song": "Au pays bleu",
+    "source": "scores/Chaminade,_Cécile/_/Au_pays_bleu/lc6261607.mxl"
+  },
+  "chaminade-aubade.mxl": {
+    "composer": "Chaminade, Cécile",
+    "work": " ",
+    "song": "Aubade",
+    "source": "scores/Chaminade,_Cécile/_/Aubade/lc6262515.mxl"
+  },
+  "chaminade-aupres-de-ma-mie.mxl": {
+    "composer": "Chaminade, Cécile",
+    "work": " ",
+    "song": "Auprès de ma mie",
+    "source": "scores/Chaminade,_Cécile/_/Auprès_de_ma_mie/lc4999309.mxl"
+  },
+  "chaminade-avril-s-eveille.mxl": {
+    "composer": "Chaminade, Cécile",
+    "work": " ",
+    "song": "Avril s’éveille",
+    "source": "scores/Chaminade,_Cécile/_/Avril_s’éveille/lc6262544.mxl"
+  },
   "chausson-1-nanny.mxl": {
     "composer": "Chausson, Ernest",
     "work": "7 Mélodies, Op.2",
     "song": "1 Nanny",
     "source": "scores/Chausson,_Ernest/7_Mélodies,_Op.2/1_Nanny/lc5077645.mxl"
   },
+  "chausson-1-serre-chaude.mxl": {
+    "composer": "Chausson, Ernest",
+    "work": "Serres chaudes, Op.24",
+    "song": "1 Serre chaude",
+    "source": "scores/Chausson,_Ernest/Serres_chaudes,_Op.24/1_Serre_chaude/lc5057840.mxl"
+  },
   "chausson-2-le-charme.mxl": {
     "composer": "Chausson, Ernest",
     "work": "7 Mélodies, Op.2",
     "song": "2 Le Charme",
     "source": "scores/Chausson,_Ernest/7_Mélodies,_Op.2/2_Le_Charme/lc5077651.mxl"
+  },
+  "chausson-2-serre-d-ennui.mxl": {
+    "composer": "Chausson, Ernest",
+    "work": "Serres chaudes, Op.24",
+    "song": "2 Serre d’ennui",
+    "source": "scores/Chausson,_Ernest/Serres_chaudes,_Op.24/2_Serre_d’ennui/lc5057844.mxl"
+  },
+  "chausson-3-les-papillons.mxl": {
+    "composer": "Chausson, Ernest",
+    "work": "7 Mélodies, Op.2",
+    "song": "3 Les Papillons",
+    "source": "scores/Chausson,_Ernest/7_Mélodies,_Op.2/3_Les_Papillons/lc5077660.mxl"
+  },
+  "chausson-4-la-derniere-feuille.mxl": {
+    "composer": "Chausson, Ernest",
+    "work": "7 Mélodies, Op.2",
+    "song": "4 La dernière feuille",
+    "source": "scores/Chausson,_Ernest/7_Mélodies,_Op.2/4_La_dernière_feuille/lc5077675.mxl"
+  },
+  "chausson-5-serenade-italienne.mxl": {
+    "composer": "Chausson, Ernest",
+    "work": "7 Mélodies, Op.2",
+    "song": "5 Sérénade italienne",
+    "source": "scores/Chausson,_Ernest/7_Mélodies,_Op.2/5_Sérénade_italienne/lc5920728.mxl"
+  },
+  "chausson-6-hebe.mxl": {
+    "composer": "Chausson, Ernest",
+    "work": "7 Mélodies, Op.2",
+    "song": "6 Hébé",
+    "source": "scores/Chausson,_Ernest/7_Mélodies,_Op.2/6_Hébé/lc5161599.mxl"
   },
   "chausson-7-le-colibri.mxl": {
     "composer": "Chausson, Ernest",
@@ -359,17 +815,53 @@
     "song": "2 When I am dead, my dearest",
     "source": "scores/Coleridge-Taylor,_Samuel/6_Sorrow_Songs,_Op.57/2_When_I_am_dead,_my_dearest/lc6189644.mxl"
   },
+  "coleridge-taylor-3-oh-roses-for-the-flush-of-youth.mxl": {
+    "composer": "Coleridge-Taylor, Samuel",
+    "work": "6 Sorrow Songs, Op.57",
+    "song": "3 Oh, Roses for the flush of youth",
+    "source": "scores/Coleridge-Taylor,_Samuel/6_Sorrow_Songs,_Op.57/3_Oh,_Roses_for_the_flush_of_youth/lc6189637.mxl"
+  },
+  "coleridge-taylor-4-she-sat-and-sang-alway.mxl": {
+    "composer": "Coleridge-Taylor, Samuel",
+    "work": "6 Sorrow Songs, Op.57",
+    "song": "4 She sat and sang alway",
+    "source": "scores/Coleridge-Taylor,_Samuel/6_Sorrow_Songs,_Op.57/4_She_sat_and_sang_alway/lc6189628.mxl"
+  },
   "coleridge-taylor-5-unmindful-of-the-roses.mxl": {
     "composer": "Coleridge-Taylor, Samuel",
     "work": "6 Sorrow Songs, Op.57",
     "song": "5 Unmindful of the Roses",
     "source": "scores/Coleridge-Taylor,_Samuel/6_Sorrow_Songs,_Op.57/5_Unmindful_of_the_Roses/lc6189622.mxl"
   },
+  "coleridge-taylor-6-too-late-for-love.mxl": {
+    "composer": "Coleridge-Taylor, Samuel",
+    "work": "6 Sorrow Songs, Op.57",
+    "song": "6 Too late for love",
+    "source": "scores/Coleridge-Taylor,_Samuel/6_Sorrow_Songs,_Op.57/6_Too_late_for_love/lc6189616.mxl"
+  },
+  "coleridge-taylor-oh-the-summer.mxl": {
+    "composer": "Coleridge-Taylor, Samuel",
+    "work": " ",
+    "song": "Oh, the Summer",
+    "source": "scores/Coleridge-Taylor,_Samuel/_/Oh,_the_Summer/lc6232117.mxl"
+  },
+  "coleridge-taylor-viking-song.mxl": {
+    "composer": "Coleridge-Taylor, Samuel",
+    "work": " ",
+    "song": "Viking Song",
+    "source": "scores/Coleridge-Taylor,_Samuel/_/Viking_Song/lc6548435.mxl"
+  },
   "corder-o-sun-that-wakenest.mxl": {
     "composer": "Corder, Frederick",
     "work": " ",
     "song": "O Sun, That Wakenest",
     "source": "scores/Corder,_Frederick/_/O_Sun,_That_Wakenest/lc6480349.mxl"
+  },
+  "cornelius-1-botschaft.mxl": {
+    "composer": "Cornelius, Peter",
+    "work": "6 Lieder, Op.5",
+    "song": "1 Botschaft",
+    "source": "scores/Cornelius,_Peter/6_Lieder,_Op.5/1_Botschaft/lc5051346.mxl"
   },
   "cornelius-1-in-lust-und-schmerzen.mxl": {
     "composer": "Cornelius, Peter",
@@ -383,11 +875,41 @@
     "song": "1 Untreu",
     "source": "scores/Cornelius,_Peter/6_Lieder,_Op.1/1_Untreu/lc5054931.mxl"
   },
+  "cornelius-2-auf-ein-schlummerndes-kind.mxl": {
+    "composer": "Cornelius, Peter",
+    "work": "6 Lieder, Op.5",
+    "song": "2 Auf ein schlummerndes Kind",
+    "source": "scores/Cornelius,_Peter/6_Lieder,_Op.5/2_Auf_ein_schlummerndes_Kind/lc5051349.mxl"
+  },
   "cornelius-2-veilchen.mxl": {
     "composer": "Cornelius, Peter",
     "work": "6 Lieder, Op.1",
     "song": "2 Veilchen",
     "source": "scores/Cornelius,_Peter/6_Lieder,_Op.1/2_Veilchen/lc5054941.mxl"
+  },
+  "cornelius-3-wiegenlied.mxl": {
+    "composer": "Cornelius, Peter",
+    "work": "6 Lieder, Op.1",
+    "song": "3 Wiegenlied",
+    "source": "scores/Cornelius,_Peter/6_Lieder,_Op.1/3_Wiegenlied/lc5054946.mxl"
+  },
+  "cornelius-4-schmetterling.mxl": {
+    "composer": "Cornelius, Peter",
+    "work": "6 Lieder, Op.1",
+    "song": "4 Schmetterling",
+    "source": "scores/Cornelius,_Peter/6_Lieder,_Op.1/4_Schmetterling/lc5054953.mxl"
+  },
+  "cornelius-5-nachts.mxl": {
+    "composer": "Cornelius, Peter",
+    "work": "6 Lieder, Op.1",
+    "song": "5 Nachts",
+    "source": "scores/Cornelius,_Peter/6_Lieder,_Op.1/5_Nachts/lc5054957.mxl"
+  },
+  "cornelius-6-denkst-du-an-mich.mxl": {
+    "composer": "Cornelius, Peter",
+    "work": "6 Lieder, Op.1",
+    "song": "6 Denkst du an mich",
+    "source": "scores/Cornelius,_Peter/6_Lieder,_Op.1/6_Denkst_du_an_mich/lc5124429.mxl"
   },
   "cowen-hail.mxl": {
     "composer": "Cowen, Frederic Hymen",
@@ -401,6 +923,12 @@
     "song": "Past and Future",
     "source": "scores/Cowen,_Frederic_Hymen/_/Past_and_Future/lc6484163.mxl"
   },
+  "cowen-the-better-land.mxl": {
+    "composer": "Cowen, Frederic Hymen",
+    "work": " ",
+    "song": "The Better Land",
+    "source": "scores/Cowen,_Frederic_Hymen/_/The_Better_Land/lc6484095.mxl"
+  },
   "davies-1-the-apology.mxl": {
     "composer": "Davies, Walford",
     "work": "8 New Nursery Rhymes, Op.23",
@@ -413,11 +941,47 @@
     "song": "2 Old Woman",
     "source": "scores/Davies,_Walford/8_New_Nursery_Rhymes,_Op.23/2_Old_Woman/lc6218722.mxl"
   },
+  "davies-3-a-tragedy.mxl": {
+    "composer": "Davies, Walford",
+    "work": "8 New Nursery Rhymes, Op.23",
+    "song": "3 A Tragedy",
+    "source": "scores/Davies,_Walford/8_New_Nursery_Rhymes,_Op.23/3_A_Tragedy/lc6218728.mxl"
+  },
+  "davies-4-a-little-old-man.mxl": {
+    "composer": "Davies, Walford",
+    "work": "8 New Nursery Rhymes, Op.23",
+    "song": "4 A little old Man",
+    "source": "scores/Davies,_Walford/8_New_Nursery_Rhymes,_Op.23/4_A_little_old_Man/lc6218732.mxl"
+  },
   "davies-5-the-fly-and-the-humble-bee.mxl": {
     "composer": "Davies, Walford",
     "work": "8 New Nursery Rhymes, Op.23",
     "song": "5 The fly and the humble bee",
     "source": "scores/Davies,_Walford/8_New_Nursery_Rhymes,_Op.23/5_The_fly_and_the_humble_bee/lc6218734.mxl"
+  },
+  "davies-6-bless-you.mxl": {
+    "composer": "Davies, Walford",
+    "work": "8 New Nursery Rhymes, Op.23",
+    "song": "6 Bless you",
+    "source": "scores/Davies,_Walford/8_New_Nursery_Rhymes,_Op.23/6_Bless_you/lc6218737.mxl"
+  },
+  "davies-7-an-old-cradle-song.mxl": {
+    "composer": "Davies, Walford",
+    "work": "8 New Nursery Rhymes, Op.23",
+    "song": "7 An old Cradle Song",
+    "source": "scores/Davies,_Walford/8_New_Nursery_Rhymes,_Op.23/7_An_old_Cradle_Song/lc6218740.mxl"
+  },
+  "davies-8-o-my-little-sixpence.mxl": {
+    "composer": "Davies, Walford",
+    "work": "8 New Nursery Rhymes, Op.23",
+    "song": "8 O my little sixpence",
+    "source": "scores/Davies,_Walford/8_New_Nursery_Rhymes,_Op.23/8_O_my_little_sixpence/lc6218743.mxl"
+  },
+  "debussy-1-c-est-l-extase-langoureuse.mxl": {
+    "composer": "Debussy, Claude",
+    "work": "Ariettes Oubliées",
+    "song": "1 C’est l’extase langoureuse",
+    "source": "scores/Debussy,_Claude/Ariettes_Oubliées/1_C’est_l’extase_langoureuse/lc5060910.mxl"
   },
   "debussy-1-l-ame-evaporee.mxl": {
     "composer": "Debussy, Claude",
@@ -425,17 +989,53 @@
     "song": "1 L’âme évaporée",
     "source": "scores/Debussy,_Claude/2_Romances/1_L’âme_évaporée/lc7163829.mxl"
   },
+  "debussy-1-rondel-le-temps-a-laisse-son-manteau.mxl": {
+    "composer": "Debussy, Claude",
+    "work": "3 Chansons de France",
+    "song": "1 Rondel Le temps a laissé son manteau",
+    "source": "scores/Debussy,_Claude/3_Chansons_de_France/1_Rondel_Le_temps_a_laissé_son_manteau/lc8830536.mxl"
+  },
+  "debussy-2-il-pleure-dans-mon-coeur.mxl": {
+    "composer": "Debussy, Claude",
+    "work": "Ariettes Oubliées",
+    "song": "2 Il pleure dans mon coeur",
+    "source": "scores/Debussy,_Claude/Ariettes_Oubliées/2_Il_pleure_dans_mon_coeur/lc5060918.mxl"
+  },
+  "debussy-2-la-grotte-aupres-de-cette-grotte-sombre.mxl": {
+    "composer": "Debussy, Claude",
+    "work": "3 Chansons de France",
+    "song": "2 La Grotte Auprès de cette grotte sombre",
+    "source": "scores/Debussy,_Claude/3_Chansons_de_France/2_La_Grotte_Auprès_de_cette_grotte_sombre/lc8832018.mxl"
+  },
   "debussy-2-les-cloches.mxl": {
     "composer": "Debussy, Claude",
     "work": "2 Romances",
     "song": "2 Les cloches",
     "source": "scores/Debussy,_Claude/2_Romances/2_Les_cloches/lc7086632.mxl"
   },
+  "debussy-3-rondel-pour-ce-que-plaisance-est-morte.mxl": {
+    "composer": "Debussy, Claude",
+    "work": "3 Chansons de France",
+    "song": "3 Rondel Pour ce que Plaisance est morte",
+    "source": "scores/Debussy,_Claude/3_Chansons_de_France/3_Rondel_Pour_ce_que_Plaisance_est_morte/lc8835063.mxl"
+  },
+  "debussy-mandoline.mxl": {
+    "composer": "Debussy, Claude",
+    "work": " ",
+    "song": "Mandoline",
+    "source": "scores/Debussy,_Claude/_/Mandoline/lc29748596.mxl"
+  },
   "delius-1-il-pleure-dans-mon-cœur.mxl": {
     "composer": "Delius, Frederick",
     "work": "2 Songs, RT V16",
     "song": "1 Il pleure dans mon cœur",
     "source": "scores/Delius,_Frederick/2_Songs,_RT_V16/1_Il_pleure_dans_mon_cœur/lc6510449.mxl"
+  },
+  "delius-1-it-was-a-lover-and-his-lass.mxl": {
+    "composer": "Delius, Frederick",
+    "work": "4 Old English Lyrics",
+    "song": "1 It was a Lover and His Lass",
+    "source": "scores/Delius,_Frederick/4_Old_English_Lyrics/1_It_was_a_Lover_and_His_Lass/lc6230256.mxl"
   },
   "delius-2-le-ciel-est-par-dessus-le-toit.mxl": {
     "composer": "Delius, Frederick",
@@ -449,6 +1049,18 @@
     "song": "2 So White, so Soft, so Sweet is She",
     "source": "scores/Delius,_Frederick/4_Old_English_Lyrics/2_So_White,_so_Soft,_so_Sweet_is_She/lc6230258.mxl"
   },
+  "delius-3-spring-the-sweet-spring.mxl": {
+    "composer": "Delius, Frederick",
+    "work": "4 Old English Lyrics",
+    "song": "3 Spring, the Sweet Spring",
+    "source": "scores/Delius,_Frederick/4_Old_English_Lyrics/3_Spring,_the_Sweet_Spring/lc6230260.mxl"
+  },
+  "delius-4-to-daffodils.mxl": {
+    "composer": "Delius, Frederick",
+    "work": "4 Old English Lyrics",
+    "song": "4 To Daffodils",
+    "source": "scores/Delius,_Frederick/4_Old_English_Lyrics/4_To_Daffodils/lc6230261.mxl"
+  },
   "dickson-destiny.mxl": {
     "composer": "Dickson, Ellen",
     "work": " ",
@@ -460,6 +1072,18 @@
     "work": " ",
     "song": "Drifting",
     "source": "scores/Dickson,_Ellen/_/Drifting/lc6601058.mxl"
+  },
+  "dickson-the-brook.mxl": {
+    "composer": "Dickson, Ellen",
+    "work": " ",
+    "song": "The Brook",
+    "source": "scores/Dickson,_Ellen/_/The_Brook/lc6600532.mxl"
+  },
+  "dickson-the-land-of-long-ago.mxl": {
+    "composer": "Dickson, Ellen",
+    "work": " ",
+    "song": "The Land of Long Ago",
+    "source": "scores/Dickson,_Ellen/_/The_Land_of_Long_Ago/lc6600932.mxl"
   },
   "donaudy-10-spirate-pur-spirate.mxl": {
     "composer": "Donaudy, Stefano",
@@ -479,11 +1103,35 @@
     "song": "Le matelot",
     "source": "scores/Duchambge,_Pauline/_/Le_matelot/lc6592662.mxl"
   },
+  "duchambge-priere-des-laboureurs.mxl": {
+    "composer": "Duchambge, Pauline",
+    "work": " ",
+    "song": "Prière des laboureurs",
+    "source": "scores/Duchambge,_Pauline/_/Prière_des_laboureurs/lc6593095.mxl"
+  },
+  "duchambge-ronde-des-pauvres.mxl": {
+    "composer": "Duchambge, Pauline",
+    "work": " ",
+    "song": "Ronde des pauvres",
+    "source": "scores/Duchambge,_Pauline/_/Ronde_des_pauvres/lc6594151.mxl"
+  },
+  "elgar-1-like-to-the-damask-rose.mxl": {
+    "composer": "Elgar, Edward",
+    "work": "7 Lieder",
+    "song": "1 Like to the Damask Rose",
+    "source": "scores/Elgar,_Edward/7_Lieder/1_Like_to_the_Damask_Rose/lc6236149.mxl"
+  },
   "elgar-1-the-torch.mxl": {
     "composer": "Elgar, Edward",
     "work": "2 Songs, Op.60",
     "song": "1 The Torch",
     "source": "scores/Elgar,_Edward/2_Songs,_Op.60/1_The_Torch/lc6233544.mxl"
+  },
+  "elgar-2-queen-mary-s-song.mxl": {
+    "composer": "Elgar, Edward",
+    "work": "7 Lieder",
+    "song": "2 Queen Mary’s Song",
+    "source": "scores/Elgar,_Edward/7_Lieder/2_Queen_Mary’s_Song/lc6236150.mxl"
   },
   "elgar-2-the-river.mxl": {
     "composer": "Elgar, Edward",
@@ -491,17 +1139,77 @@
     "song": "2 The River",
     "source": "scores/Elgar,_Edward/2_Songs,_Op.60/2_The_River/lc6233545.mxl"
   },
+  "elgar-3-a-song-of-autumn.mxl": {
+    "composer": "Elgar, Edward",
+    "work": "7 Lieder",
+    "song": "3 A Song of Autumn",
+    "source": "scores/Elgar,_Edward/7_Lieder/3_A_Song_of_Autumn/lc6236151.mxl"
+  },
   "elgar-4-the-poet-s-life.mxl": {
     "composer": "Elgar, Edward",
     "work": "7 Lieder",
     "song": "4 The Poet’s Life",
     "source": "scores/Elgar,_Edward/7_Lieder/4_The_Poet’s_Life/lc6236152.mxl"
   },
+  "elgar-5-through-the-long-days.mxl": {
+    "composer": "Elgar, Edward",
+    "work": "7 Lieder",
+    "song": "5 Through the Long Days",
+    "source": "scores/Elgar,_Edward/7_Lieder/5_Through_the_Long_Days/lc6236153.mxl"
+  },
+  "elgar-6-rondel.mxl": {
+    "composer": "Elgar, Edward",
+    "work": "7 Lieder",
+    "song": "6 Rondel",
+    "source": "scores/Elgar,_Edward/7_Lieder/6_Rondel/lc6236154.mxl"
+  },
+  "elgar-is-she-not-passing-fair.mxl": {
+    "composer": "Elgar, Edward",
+    "work": " ",
+    "song": "Is She Not Passing Fair",
+    "source": "scores/Elgar,_Edward/_/Is_She_Not_Passing_Fair/lc6546527.mxl"
+  },
+  "faisst-1-altdeutsches-lied.mxl": {
+    "composer": "Faisst, Clara Mathilda",
+    "work": "4 Lieder, Op.1",
+    "song": "1 Altdeutsches Lied",
+    "source": "scores/Faisst,_Clara_Mathilda/4_Lieder,_Op.1/1_Altdeutsches_Lied/lc29243405.mxl"
+  },
+  "faisst-1-die-insel-der-vergessenheit.mxl": {
+    "composer": "Faisst, Clara Mathilda",
+    "work": "2 Lieder, Op.8",
+    "song": "1 Die Insel der Vergessenheit",
+    "source": "scores/Faisst,_Clara_Mathilda/2_Lieder,_Op.8/1_Die_Insel_der_Vergessenheit/lc6164267.mxl"
+  },
+  "faisst-1-stimme-eines-seligen-geistes.mxl": {
+    "composer": "Faisst, Clara Mathilda",
+    "work": "2 Lieder, Op.19",
+    "song": "1 Stimme eines seligen Geistes",
+    "source": "scores/Faisst,_Clara_Mathilda/2_Lieder,_Op.19/1_Stimme_eines_seligen_Geistes/lc6575317.mxl"
+  },
   "faisst-1-unsern-getreuen.mxl": {
     "composer": "Faisst, Clara Mathilda",
     "work": "2 Kriegslieder",
     "song": "1 Unsern Getreuen",
     "source": "scores/Faisst,_Clara_Mathilda/2_Kriegslieder/1_Unsern_Getreuen/lc6569865.mxl"
+  },
+  "faisst-2-das-brunnlein.mxl": {
+    "composer": "Faisst, Clara Mathilda",
+    "work": "2 Lieder, Op.19",
+    "song": "2 Das Brünnlein",
+    "source": "scores/Faisst,_Clara_Mathilda/2_Lieder,_Op.19/2_Das_Brünnlein/lc6575466.mxl"
+  },
+  "faisst-2-das-mitleidige-madel.mxl": {
+    "composer": "Faisst, Clara Mathilda",
+    "work": "2 Lieder, Op.8",
+    "song": "2 Das mitleidige Mädel",
+    "source": "scores/Faisst,_Clara_Mathilda/2_Lieder,_Op.8/2_Das_mitleidige_Mädel/lc6164292.mxl"
+  },
+  "faisst-2-niederlandisches-wiegenlied.mxl": {
+    "composer": "Faisst, Clara Mathilda",
+    "work": "4 Lieder, Op.1",
+    "song": "2 Niederländisches Wiegenlied",
+    "source": "scores/Faisst,_Clara_Mathilda/4_Lieder,_Op.1/2_Niederländisches_Wiegenlied/lc6260377.mxl"
   },
   "faisst-2-reiterlied.mxl": {
     "composer": "Faisst, Clara Mathilda",
@@ -533,6 +1241,18 @@
     "song": "Le berger fidèle",
     "source": "scores/Farrenc,_Louise/_/Le_berger_fidèle/lc6598368.mxl"
   },
+  "faure-1-larmes.mxl": {
+    "composer": "Fauré, Gabriel",
+    "work": "4 Songs, Op.51",
+    "song": "1 Larmes",
+    "source": "scores/Fauré,_Gabriel/4_Songs,_Op.51/1_Larmes/lc6135958.mxl"
+  },
+  "faure-2-au-cimetiere.mxl": {
+    "composer": "Fauré, Gabriel",
+    "work": "4 Songs, Op.51",
+    "song": "2 Au cimetière",
+    "source": "scores/Fauré,_Gabriel/4_Songs,_Op.51/2_Au_cimetière/lc6137985.mxl"
+  },
   "faure-2-hymne.mxl": {
     "composer": "Fauré, Gabriel",
     "work": "3 Songs, Op.7",
@@ -545,11 +1265,29 @@
     "song": "3 Barcarolle",
     "source": "scores/Fauré,_Gabriel/3_Songs,_Op.7/3_Barcarolle/lc6772888.mxl"
   },
+  "faure-3-spleen.mxl": {
+    "composer": "Fauré, Gabriel",
+    "work": "4 Songs, Op.51",
+    "song": "3 Spleen",
+    "source": "scores/Fauré,_Gabriel/4_Songs,_Op.51/3_Spleen/lc6141092.mxl"
+  },
   "faure-4-a-clymene.mxl": {
     "composer": "Fauré, Gabriel",
     "work": "Cinq Mélodies, Op.58",
     "song": "4 A Clymène",
     "source": "scores/Fauré,_Gabriel/Cinq_Mélodies,_Op.58/4_A_Clymène/lc5612951.mxl"
+  },
+  "faure-4-la-rose.mxl": {
+    "composer": "Fauré, Gabriel",
+    "work": "4 Songs, Op.51",
+    "song": "4 La rose",
+    "source": "scores/Fauré,_Gabriel/4_Songs,_Op.51/4_La_rose/lc6138105.mxl"
+  },
+  "faure-vocalise-etude.mxl": {
+    "composer": "Fauré, Gabriel",
+    "work": " ",
+    "song": "Vocalise-étude",
+    "source": "scores/Fauré,_Gabriel/_/Vocalise-étude/lc29270672.mxl"
   },
   "ferrari-le-sommeil.mxl": {
     "composer": "Ferrari, Gabrielle",
@@ -569,11 +1307,47 @@
     "song": "Le cor",
     "source": "scores/Flégier,_Ange/_/Le_cor/lc30346709.mxl"
   },
+  "franz-1-ihr-auge.mxl": {
+    "composer": "Franz, Robert",
+    "work": "12 Gesänge, Op.1",
+    "song": "1 Ihr Auge",
+    "source": "scores/Franz,_Robert/12_Gesänge,_Op.1/1_Ihr_Auge/lc5660573.mxl"
+  },
   "franz-10-schlummerlied.mxl": {
     "composer": "Franz, Robert",
     "work": "12 Gesänge, Op.1",
     "song": "10 Schlummerlied",
     "source": "scores/Franz,_Robert/12_Gesänge,_Op.1/10_Schlummerlied/lc5801742.mxl"
+  },
+  "franz-11-voglein-wohin-so-schnell.mxl": {
+    "composer": "Franz, Robert",
+    "work": "12 Gesänge, Op.1",
+    "song": "11 Vöglein, wohin so schnell",
+    "source": "scores/Franz,_Robert/12_Gesänge,_Op.1/11_Vöglein,_wohin_so_schnell/lc5801791.mxl"
+  },
+  "franz-12-in-meinem-garten-die-nelken.mxl": {
+    "composer": "Franz, Robert",
+    "work": "12 Gesänge, Op.1",
+    "song": "12 In meinem Garten die Nelken",
+    "source": "scores/Franz,_Robert/12_Gesänge,_Op.1/12_In_meinem_Garten_die_Nelken/lc5801830.mxl"
+  },
+  "franz-2-nachtlied.mxl": {
+    "composer": "Franz, Robert",
+    "work": "12 Gesänge, Op.1",
+    "song": "2 Nachtlied",
+    "source": "scores/Franz,_Robert/12_Gesänge,_Op.1/2_Nachtlied/lc5660578.mxl"
+  },
+  "franz-3-die-lotosblume.mxl": {
+    "composer": "Franz, Robert",
+    "work": "12 Gesänge, Op.1",
+    "song": "3 Die Lotosblume",
+    "source": "scores/Franz,_Robert/12_Gesänge,_Op.1/3_Die_Lotosblume/lc5660581.mxl"
+  },
+  "franz-4-nun-holt-mir-eine-kanne-wein.mxl": {
+    "composer": "Franz, Robert",
+    "work": "12 Gesänge, Op.1",
+    "song": "4 Nun holt mir eine Kanne Wein",
+    "source": "scores/Franz,_Robert/12_Gesänge,_Op.1/4_Nun_holt_mir_eine_Kanne_Wein/lc5798936.mxl"
   },
   "freer-1-the-boat-is-chafing-at-our-long-delay.mxl": {
     "composer": "Freer, Eleanor Everest",
@@ -592,6 +1366,24 @@
     "work": " ",
     "song": "Alone",
     "source": "scores/Gabriel,_Virginia/_/Alone/lc6601231.mxl"
+  },
+  "gabriel-only.mxl": {
+    "composer": "Gabriel, Virginia",
+    "work": " ",
+    "song": "Only",
+    "source": "scores/Gabriel,_Virginia/_/Only/lc6603244.mxl"
+  },
+  "gabriel-sacred-vows.mxl": {
+    "composer": "Gabriel, Virginia",
+    "work": " ",
+    "song": "Sacred Vows",
+    "source": "scores/Gabriel,_Virginia/_/Sacred_Vows/lc6602016.mxl"
+  },
+  "gabriel-the-skipper-and-his-boy.mxl": {
+    "composer": "Gabriel, Virginia",
+    "work": " ",
+    "song": "The Skipper and his Boy",
+    "source": "scores/Gabriel,_Virginia/_/The_Skipper_and_his_Boy/lc6604146.mxl"
   },
   "gail-le-serment.mxl": {
     "composer": "Gail, Sophie",
@@ -623,11 +1415,53 @@
     "song": "2 The Dew Upon the Lily",
     "source": "scores/German,_Edward/3_Spring_Songs/2_The_Dew_Upon_the_Lily/lc6243838.mxl"
   },
+  "german-3-my-song-is-of-the-sturdy-north.mxl": {
+    "composer": "German, Edward",
+    "work": "3 Spring Songs",
+    "song": "3 My Song Is of the Sturdy North",
+    "source": "scores/German,_Edward/3_Spring_Songs/3_My_Song_Is_of_the_Sturdy_North/lc6243839.mxl"
+  },
   "gonzaga-a-mulatinha.mxl": {
     "composer": "Gonzaga, Chiquinha",
     "work": " ",
     "song": "A mulatinha",
     "source": "scores/Gonzaga,_Chiquinha/_/A_mulatinha/lc6608395.mxl"
+  },
+  "gonzaga-a-sereia.mxl": {
+    "composer": "Gonzaga, Chiquinha",
+    "work": " ",
+    "song": "A sereia",
+    "source": "scores/Gonzaga,_Chiquinha/_/A_sereia/lc6609884.mxl"
+  },
+  "gonzaga-ai-que-broma.mxl": {
+    "composer": "Gonzaga, Chiquinha",
+    "work": " ",
+    "song": "Ai que broma!",
+    "source": "scores/Gonzaga,_Chiquinha/_/Ai_que_broma!/lc6609555.mxl"
+  },
+  "gonzaga-ca-por-coisas.mxl": {
+    "composer": "Gonzaga, Chiquinha",
+    "work": " ",
+    "song": "Cá por coisas!",
+    "source": "scores/Gonzaga,_Chiquinha/_/Cá_por_coisas!/lc6609847.mxl"
+  },
+  "gonzaga-dona-adelaide.mxl": {
+    "composer": "Gonzaga, Chiquinha",
+    "work": " ",
+    "song": "Dona Adelaide",
+    "source": "scores/Gonzaga,_Chiquinha/_/Dona_Adelaide/lc6610193.mxl"
+  },
+  "gonzaga-espanha-e-brasil.mxl": {
+    "composer": "Gonzaga, Chiquinha",
+    "work": " ",
+    "song": "Espanha e Brasil",
+    "source": "scores/Gonzaga,_Chiquinha/_/Espanha_e_Brasil/lc6610246.mxl"
+  },
+  "gonzaga-fado-das-tricanas-de-coimbra.mxl": {
+    "composer": "Gonzaga, Chiquinha",
+    "work": " ",
+    "song": "Fado das tricanas de Coimbra",
+    "source": "scores/Gonzaga,_Chiquinha/_/Fado_das_tricanas_de_Coimbra/lc6611337.mxl"
   },
   "gounod-1-le-premier-jour-de-mai.mxl": {
     "composer": "Gounod, Charles",
@@ -635,11 +1469,47 @@
     "song": "1 Le Premier Jour de Mai",
     "source": "scores/Gounod,_Charles/6_Mélodies/1_Le_Premier_Jour_de_Mai/lc5079368.mxl"
   },
+  "gounod-2-o-ma-belle-rebelle.mxl": {
+    "composer": "Gounod, Charles",
+    "work": "6 Mélodies",
+    "song": "2 O Ma Belle Rebelle!",
+    "source": "scores/Gounod,_Charles/6_Mélodies/2_O_Ma_Belle_Rebelle!/lc5079373.mxl"
+  },
+  "gounod-3-aubade.mxl": {
+    "composer": "Gounod, Charles",
+    "work": "6 Mélodies",
+    "song": "3 Aubade",
+    "source": "scores/Gounod,_Charles/6_Mélodies/3_Aubade/lc5079378.mxl"
+  },
+  "gounod-4-chant-d-automne.mxl": {
+    "composer": "Gounod, Charles",
+    "work": "6 Mélodies",
+    "song": "4 Chant d’automne",
+    "source": "scores/Gounod,_Charles/6_Mélodies/4_Chant_d’automne/lc5079391.mxl"
+  },
   "gounod-5-le-lever.mxl": {
     "composer": "Gounod, Charles",
     "work": "6 Mélodies",
     "song": "5 Le lever",
     "source": "scores/Gounod,_Charles/6_Mélodies/5_Le_lever/lc5163799.mxl"
+  },
+  "gounod-6-venise.mxl": {
+    "composer": "Gounod, Charles",
+    "work": "6 Mélodies",
+    "song": "6 Venise",
+    "source": "scores/Gounod,_Charles/6_Mélodies/6_Venise/lc5079394.mxl"
+  },
+  "gounod-le-soir-cg-441.mxl": {
+    "composer": "Gounod, Charles",
+    "work": " ",
+    "song": "Le soir, CG 441",
+    "source": "scores/Gounod,_Charles/_/Le_soir,_CG_441/lc29748062.mxl"
+  },
+  "gounod-serenade-cg-437.mxl": {
+    "composer": "Gounod, Charles",
+    "work": " ",
+    "song": "Sérénade, CG 437",
+    "source": "scores/Gounod,_Charles/_/Sérénade,_CG_437/lc29588081.mxl"
   },
   "grandval-1-les-clochettes.mxl": {
     "composer": "Grandval, Clémence de",
@@ -647,11 +1517,59 @@
     "song": "1 Les clochettes",
     "source": "scores/Grandval,_Clémence_de/6_Nouvelles_mélodies/1_Les_clochettes/lc6613355.mxl"
   },
+  "grandval-chanson-de-barberine.mxl": {
+    "composer": "Grandval, Clémence de",
+    "work": " ",
+    "song": "Chanson de Barberine",
+    "source": "scores/Grandval,_Clémence_de/_/Chanson_de_Barberine/lc6625925.mxl"
+  },
+  "grandval-l-absence.mxl": {
+    "composer": "Grandval, Clémence de",
+    "work": " ",
+    "song": "L’absence",
+    "source": "scores/Grandval,_Clémence_de/_/L’absence/lc6624112.mxl"
+  },
+  "grandval-la-delaissee.mxl": {
+    "composer": "Grandval, Clémence de",
+    "work": " ",
+    "song": "La délaissée",
+    "source": "scores/Grandval,_Clémence_de/_/La_délaissée/lc6625953.mxl"
+  },
+  "grandval-le-bohemien.mxl": {
+    "composer": "Grandval, Clémence de",
+    "work": " ",
+    "song": "Le bohémien",
+    "source": "scores/Grandval,_Clémence_de/_/Le_bohémien/lc6239101.mxl"
+  },
+  "grandval-les-lucioles.mxl": {
+    "composer": "Grandval, Clémence de",
+    "work": " ",
+    "song": "Les lucioles",
+    "source": "scores/Grandval,_Clémence_de/_/Les_lucioles/lc6626192.mxl"
+  },
+  "grandval-sacrifice.mxl": {
+    "composer": "Grandval, Clémence de",
+    "work": " ",
+    "song": "Sacrifice",
+    "source": "scores/Grandval,_Clémence_de/_/Sacrifice/lc6626922.mxl"
+  },
   "gray-after-so-long.mxl": {
     "composer": "Gray, Louisa",
     "work": " ",
     "song": "After so long",
     "source": "scores/Gray,_Louisa/_/After_so_long/lc6617407.mxl"
+  },
+  "gray-he-doesn-t-love-me.mxl": {
+    "composer": "Gray, Louisa",
+    "work": " ",
+    "song": "He doesn’t love me",
+    "source": "scores/Gray,_Louisa/_/He_doesn’t_love_me/lc6617779.mxl"
+  },
+  "gray-sleep-on-and-dream-of-me.mxl": {
+    "composer": "Gray, Louisa",
+    "work": " ",
+    "song": "Sleep on, and dream of me",
+    "source": "scores/Gray,_Louisa/_/Sleep_on,_and_dream_of_me/lc6620571.mxl"
   },
   "gray-then-and-now.mxl": {
     "composer": "Gray, Louisa",
@@ -659,11 +1577,65 @@
     "song": "Then and now",
     "source": "scores/Gray,_Louisa/_/Then_and_now/lc6620454.mxl"
   },
+  "gray-under-the-cliffs.mxl": {
+    "composer": "Gray, Louisa",
+    "work": " ",
+    "song": "Under the Cliffs",
+    "source": "scores/Gray,_Louisa/_/Under_the_Cliffs/lc6620590.mxl"
+  },
+  "gray-unforgotten.mxl": {
+    "composer": "Gray, Louisa",
+    "work": " ",
+    "song": "Unforgotten",
+    "source": "scores/Gray,_Louisa/_/Unforgotten/lc6620711.mxl"
+  },
+  "gray-yes-and-no.mxl": {
+    "composer": "Gray, Louisa",
+    "work": " ",
+    "song": "Yes and No",
+    "source": "scores/Gray,_Louisa/_/Yes_and_No/lc6620845.mxl"
+  },
+  "greger-1-auf-den-schwingen-der-nacht.mxl": {
+    "composer": "Greger, Luise",
+    "work": "Lieder, Op.125",
+    "song": "1 Auf den Schwingen der Nacht",
+    "source": "scores/Greger,_Luise/Lieder,_Op.125/1_Auf_den_Schwingen_der_Nacht/lc6171447.mxl"
+  },
   "greger-1-dein.mxl": {
     "composer": "Greger, Luise",
     "work": "3 Lieder, Opp.122-124",
     "song": "1 Dein",
     "source": "scores/Greger,_Luise/3_Lieder,_Opp.122-124/1_Dein/lc6173951.mxl"
+  },
+  "greger-1-kumm-mit-op-32.mxl": {
+    "composer": "Greger, Luise",
+    "work": "Plattdeutsche Lieder, Opp.32-34",
+    "song": "1 Kumm mit, Op.32",
+    "source": "scores/Greger,_Luise/Plattdeutsche_Lieder,_Opp.32-34/1_Kumm_mit,_Op.32/lc6267934.mxl"
+  },
+  "greger-2-es-duften-suss-die-linden.mxl": {
+    "composer": "Greger, Luise",
+    "work": "Lieder, Op.125",
+    "song": "2 Es duften süss die Linden",
+    "source": "scores/Greger,_Luise/Lieder,_Op.125/2_Es_duften_süss_die_Linden/lc6171433.mxl"
+  },
+  "greger-2-o-geh-nicht-voruber.mxl": {
+    "composer": "Greger, Luise",
+    "work": "3 Lieder, Opp.122-124",
+    "song": "2 O, geh nicht vorüber",
+    "source": "scores/Greger,_Luise/3_Lieder,_Opp.122-124/2_O,_geh_nicht_vorüber/lc6174024.mxl"
+  },
+  "greger-3-ihr-gartchen.mxl": {
+    "composer": "Greger, Luise",
+    "work": "3 Lieder, Opp.122-124",
+    "song": "3 Ihr Gärtchen",
+    "source": "scores/Greger,_Luise/3_Lieder,_Opp.122-124/3_Ihr_Gärtchen/lc6174661.mxl"
+  },
+  "greger-liebeslied.mxl": {
+    "composer": "Greger, Luise",
+    "work": " ",
+    "song": "Liebeslied",
+    "source": "scores/Greger,_Luise/_/Liebeslied/lc6176486.mxl"
   },
   "guest-marion-or-will-ye-gang-to-the-burn-side.mxl": {
     "composer": "Guest, Jane Mary",
@@ -683,6 +1655,36 @@
     "song": "1 Orpheus",
     "source": "scores/Gurney,_Ivor/5_Elizabethan_Songs/1_Orpheus/lc6170065.mxl"
   },
+  "gurney-2-tears.mxl": {
+    "composer": "Gurney, Ivor",
+    "work": "5 Elizabethan Songs",
+    "song": "2 Tears",
+    "source": "scores/Gurney,_Ivor/5_Elizabethan_Songs/2_Tears/lc6154108.mxl"
+  },
+  "gurney-3-under-the-greenwood-tree.mxl": {
+    "composer": "Gurney, Ivor",
+    "work": "5 Elizabethan Songs",
+    "song": "3 Under the Greenwood Tree",
+    "source": "scores/Gurney,_Ivor/5_Elizabethan_Songs/3_Under_the_Greenwood_Tree/lc6157283.mxl"
+  },
+  "gurney-4-sleep.mxl": {
+    "composer": "Gurney, Ivor",
+    "work": "5 Elizabethan Songs",
+    "song": "4 Sleep",
+    "source": "scores/Gurney,_Ivor/5_Elizabethan_Songs/4_Sleep/lc6160387.mxl"
+  },
+  "gurney-5-spring.mxl": {
+    "composer": "Gurney, Ivor",
+    "work": "5 Elizabethan Songs",
+    "song": "5 Spring",
+    "source": "scores/Gurney,_Ivor/5_Elizabethan_Songs/5_Spring/lc6164234.mxl"
+  },
+  "gurney-i-will-go-with-my-father-a-ploughing.mxl": {
+    "composer": "Gurney, Ivor",
+    "work": " ",
+    "song": "I will go with my father a-ploughing",
+    "source": "scores/Gurney,_Ivor/_/I_will_go_with_my_father_a-ploughing/lc6466145.mxl"
+  },
   "hahn-5-l-heure-exquise.mxl": {
     "composer": "Hahn, Reynaldo",
     "work": "7 Chansons grises",
@@ -701,11 +1703,71 @@
     "song": "Afterwards, Love!",
     "source": "scores/Hardelot,_Guy_d’/_/Afterwards,_Love!/lc6627929.mxl"
   },
+  "hardelot-bouquet-de-violettes.mxl": {
+    "composer": "Hardelot, Guy d’",
+    "work": " ",
+    "song": "Bouquet de violettes",
+    "source": "scores/Hardelot,_Guy_d’/_/Bouquet_de_violettes/lc6627964.mxl"
+  },
+  "hardelot-i-hid-my-love.mxl": {
+    "composer": "Hardelot, Guy d’",
+    "work": " ",
+    "song": "I hid my love",
+    "source": "scores/Hardelot,_Guy_d’/_/I_hid_my_love/lc6629763.mxl"
+  },
+  "hardelot-i-knew.mxl": {
+    "composer": "Hardelot, Guy d’",
+    "work": " ",
+    "song": "I knew",
+    "source": "scores/Hardelot,_Guy_d’/_/I_knew/lc6629643.mxl"
+  },
+  "hardelot-i-know-a-lovely-garden.mxl": {
+    "composer": "Hardelot, Guy d’",
+    "work": " ",
+    "song": "I know a lovely garden",
+    "source": "scores/Hardelot,_Guy_d’/_/I_know_a_lovely_garden/lc6629724.mxl"
+  },
+  "hardelot-in-1822.mxl": {
+    "composer": "Hardelot, Guy d’",
+    "work": " ",
+    "song": "In 1822",
+    "source": "scores/Hardelot,_Guy_d’/_/In_1822/lc6629787.mxl"
+  },
+  "hardelot-la-chanson-de-ma-mie.mxl": {
+    "composer": "Hardelot, Guy d’",
+    "work": " ",
+    "song": "La chanson de ma mie",
+    "source": "scores/Hardelot,_Guy_d’/_/La_chanson_de_ma_mie/lc6628030.mxl"
+  },
+  "haydn-1-despair-hob-xxvia28.mxl": {
+    "composer": "Haydn, Joseph",
+    "work": "10 Canzonets",
+    "song": "1 Despair, Hob.XXVIa28",
+    "source": "scores/Haydn,_Joseph/10_Canzonets/1_Despair,_Hob.XXVIa28/lc6454673.mxl"
+  },
   "haydn-10-recollection-hob-xxvia26.mxl": {
     "composer": "Haydn, Joseph",
     "work": "10 Canzonets",
     "song": "10 Recollection, Hob.XXVIa26",
     "source": "scores/Haydn,_Joseph/10_Canzonets/10_Recollection,_Hob.XXVIa26/lc6474604.mxl"
+  },
+  "haydn-2-fidelity-hob-xxvia30.mxl": {
+    "composer": "Haydn, Joseph",
+    "work": "10 Canzonets",
+    "song": "2 Fidelity, Hob.XXVIa30",
+    "source": "scores/Haydn,_Joseph/10_Canzonets/2_Fidelity,_Hob.XXVIa30/lc6454809.mxl"
+  },
+  "haydn-3-the-spirit-s-song-hob-xxvia41.mxl": {
+    "composer": "Haydn, Joseph",
+    "work": "10 Canzonets",
+    "song": "3 The Spirit’s Song, Hob.XXVIa41",
+    "source": "scores/Haydn,_Joseph/10_Canzonets/3_The_Spirit’s_Song,_Hob.XXVIa41/lc6454913.mxl"
+  },
+  "haydn-4-sailor-s-song-hob-xxvia31.mxl": {
+    "composer": "Haydn, Joseph",
+    "work": "10 Canzonets",
+    "song": "4 Sailor’s Song, Hob.XXVIa31",
+    "source": "scores/Haydn,_Joseph/10_Canzonets/4_Sailor’s_Song,_Hob.XXVIa31/lc6456450.mxl"
   },
   "haydn-5-sympathy-hob-xxvia33.mxl": {
     "composer": "Haydn, Joseph",
@@ -713,11 +1775,59 @@
     "song": "5 Sympathy, Hob.XXVIa33",
     "source": "scores/Haydn,_Joseph/10_Canzonets/5_Sympathy,_Hob.XXVIa33/lc6456501.mxl"
   },
+  "haydn-6-a-pastoral-song-hob-xxvia27.mxl": {
+    "composer": "Haydn, Joseph",
+    "work": "10 Canzonets",
+    "song": "6 A Pastoral Song, Hob.XXVIa27",
+    "source": "scores/Haydn,_Joseph/10_Canzonets/6_A_Pastoral_Song,_Hob.XXVIa27/lc6465778.mxl"
+  },
+  "haydn-7-the-mermaid-s-song-hob-xxvia25.mxl": {
+    "composer": "Haydn, Joseph",
+    "work": "10 Canzonets",
+    "song": "7 The Mermaid’s Song, Hob.XXVIa25",
+    "source": "scores/Haydn,_Joseph/10_Canzonets/7_The_Mermaid’s_Song,_Hob.XXVIa25/lc6472842.mxl"
+  },
+  "hensel-1-das-heimweh.mxl": {
+    "composer": "Hensel, Fanny",
+    "work": "3 Songs",
+    "song": "1 Das Heimweh",
+    "source": "scores/Hensel,_Fanny/3_Songs/1_Das_Heimweh/lc6022316.mxl"
+  },
+  "hensel-1-nach-suden.mxl": {
+    "composer": "Hensel, Fanny",
+    "work": "5 Lieder, Op.10",
+    "song": "1 Nach Süden",
+    "source": "scores/Hensel,_Fanny/5_Lieder,_Op.10/1_Nach_Süden/lc5000467.mxl"
+  },
   "hensel-1-sehnsucht.mxl": {
     "composer": "Hensel, Fanny",
     "work": "3 Lieder",
     "song": "1 Sehnsucht",
     "source": "scores/Hensel,_Fanny/3_Lieder/1_Sehnsucht/lc6012947.mxl"
+  },
+  "hensel-2-italien.mxl": {
+    "composer": "Hensel, Fanny",
+    "work": "3 Songs",
+    "song": "2 Italien",
+    "source": "scores/Hensel,_Fanny/3_Songs/2_Italien/lc6022185.mxl"
+  },
+  "hensel-2-verlust.mxl": {
+    "composer": "Hensel, Fanny",
+    "work": "3 Lieder",
+    "song": "2 Verlust",
+    "source": "scores/Hensel,_Fanny/3_Lieder/2_Verlust/lc6013106.mxl"
+  },
+  "hensel-3-die-nonne.mxl": {
+    "composer": "Hensel, Fanny",
+    "work": "3 Lieder",
+    "song": "3 Die Nonne",
+    "source": "scores/Hensel,_Fanny/3_Lieder/3_Die_Nonne/lc6013171.mxl"
+  },
+  "hensel-3-suleika-und-hatem.mxl": {
+    "composer": "Hensel, Fanny",
+    "work": "3 Songs",
+    "song": "3 Suleika und Hatem",
+    "source": "scores/Hensel,_Fanny/3_Songs/3_Suleika_und_Hatem/lc6022146.mxl"
   },
   "hodges-dreams.mxl": {
     "composer": "Hodges, Faustina Hasse",
@@ -731,6 +1841,42 @@
     "song": "10 Hymne à Vénus",
     "source": "scores/Holmès,_Augusta_Mary_Anne/20_Mélodies/10_Hymne_à_Vénus/lc5873379.mxl"
   },
+  "holmes-a-trianon.mxl": {
+    "composer": "Holmès, Augusta Mary Anne",
+    "work": " ",
+    "song": "À Trianon",
+    "source": "scores/Holmès,_Augusta_Mary_Anne/_/À_Trianon/lc5930707.mxl"
+  },
+  "holmes-charme-du-jour.mxl": {
+    "composer": "Holmès, Augusta Mary Anne",
+    "work": " ",
+    "song": "Charme-du-jour",
+    "source": "scores/Holmès,_Augusta_Mary_Anne/_/Charme-du-jour/lc5946761.mxl"
+  },
+  "holmes-la-chanson-de-jean-prouvaire.mxl": {
+    "composer": "Holmès, Augusta Mary Anne",
+    "work": " ",
+    "song": "La chanson de Jean Prouvaire",
+    "source": "scores/Holmès,_Augusta_Mary_Anne/_/La_chanson_de_Jean_Prouvaire/lc6190351.mxl"
+  },
+  "holmes-le-ruban-rose.mxl": {
+    "composer": "Holmès, Augusta Mary Anne",
+    "work": " ",
+    "song": "Le ruban rose",
+    "source": "scores/Holmès,_Augusta_Mary_Anne/_/Le_ruban_rose/lc6189719.mxl"
+  },
+  "holmes-ogier-le-danois.mxl": {
+    "composer": "Holmès, Augusta Mary Anne",
+    "work": " ",
+    "song": "Ogier le Danois",
+    "source": "scores/Holmès,_Augusta_Mary_Anne/_/Ogier_le_Danois/lc5935864.mxl"
+  },
+  "holmes-ton-nom.mxl": {
+    "composer": "Holmès, Augusta Mary Anne",
+    "work": " ",
+    "song": "Ton nom",
+    "source": "scores/Holmès,_Augusta_Mary_Anne/_/Ton_nom/lc6169445.mxl"
+  },
   "hopekirk-my-lady-of-sleep.mxl": {
     "composer": "Hopekirk, Helen",
     "work": " ",
@@ -742,6 +1888,24 @@
     "work": " ",
     "song": "Cottage Cradle Song",
     "source": "scores/Horrocks,_Amy_Elsie/_/Cottage_Cradle_Song/lc6635580.mxl"
+  },
+  "horrocks-the-bird-and-the-rose.mxl": {
+    "composer": "Horrocks, Amy Elsie",
+    "work": " ",
+    "song": "The Bird and the Rose",
+    "source": "scores/Horrocks,_Amy_Elsie/_/The_Bird_and_the_Rose/lc6636096.mxl"
+  },
+  "horrocks-the-blackbird.mxl": {
+    "composer": "Horrocks, Amy Elsie",
+    "work": " ",
+    "song": "The Blackbird",
+    "source": "scores/Horrocks,_Amy_Elsie/_/The_Blackbird/lc6637145.mxl"
+  },
+  "horrocks-the-cuckoo.mxl": {
+    "composer": "Horrocks, Amy Elsie",
+    "work": " ",
+    "song": "The Cuckoo",
+    "source": "scores/Horrocks,_Amy_Elsie/_/The_Cuckoo/lc6636042.mxl"
   },
   "ives-108-songs-my-mother-taught-me.mxl": {
     "composer": "Ives, Charles",
@@ -755,11 +1919,71 @@
     "song": "1 Nothing But a Wild Rose",
     "source": "scores/Jacobs-Bond,_Carrie/3_Songs_as_Unpretentious_as_the_Wild_Rose/1_Nothing_But_a_Wild_Rose/lc6586980.mxl"
   },
+  "jacobs-bond-2-walking-in-her-garden.mxl": {
+    "composer": "Jacobs-Bond, Carrie",
+    "work": "3 Songs as Unpretentious as the Wild Rose",
+    "song": "2 Walking in Her Garden",
+    "source": "scores/Jacobs-Bond,_Carrie/3_Songs_as_Unpretentious_as_the_Wild_Rose/2_Walking_in_Her_Garden/lc6587062.mxl"
+  },
+  "jacobs-bond-3-the-angelus.mxl": {
+    "composer": "Jacobs-Bond, Carrie",
+    "work": "3 Songs as Unpretentious as the Wild Rose",
+    "song": "3 The Angelus",
+    "source": "scores/Jacobs-Bond,_Carrie/3_Songs_as_Unpretentious_as_the_Wild_Rose/3_The_Angelus/lc6588520.mxl"
+  },
+  "jacobs-bond-because-i-am-your-friend.mxl": {
+    "composer": "Jacobs-Bond, Carrie",
+    "work": " ",
+    "song": "Because I Am Your Friend",
+    "source": "scores/Jacobs-Bond,_Carrie/_/Because_I_Am_Your_Friend/lc6586916.mxl"
+  },
+  "jacobs-bond-do-you-remember.mxl": {
+    "composer": "Jacobs-Bond, Carrie",
+    "work": " ",
+    "song": "Do You Remember",
+    "source": "scores/Jacobs-Bond,_Carrie/_/Do_You_Remember/lc6586743.mxl"
+  },
   "jaell-1-a-toi.mxl": {
     "composer": "Jaëll, Marie",
     "work": "4 Mélodies",
     "song": "1 À toi",
     "source": "scores/Jaëll,_Marie/4_Mélodies/1_À_toi/lc5834392.mxl"
+  },
+  "jaell-1-quatre-heures-du-matin.mxl": {
+    "composer": "Jaëll, Marie",
+    "work": "La mer",
+    "song": "1 Quatre heures du matin",
+    "source": "scores/Jaëll,_Marie/La_mer/1_Quatre_heures_du_matin/lc6153748.mxl"
+  },
+  "jaell-2-causeries-de-vagues.mxl": {
+    "composer": "Jaëll, Marie",
+    "work": "La mer",
+    "song": "2 Causeries de vagues",
+    "source": "scores/Jaëll,_Marie/La_mer/2_Causeries_de_vagues/lc6156388.mxl"
+  },
+  "jaell-2-eternel-amour.mxl": {
+    "composer": "Jaëll, Marie",
+    "work": "4 Mélodies",
+    "song": "2 Éternel amour",
+    "source": "scores/Jaëll,_Marie/4_Mélodies/2_Éternel_amour/lc5837811.mxl"
+  },
+  "jaell-3-les-papillons.mxl": {
+    "composer": "Jaëll, Marie",
+    "work": "La mer",
+    "song": "3 Les papillons",
+    "source": "scores/Jaëll,_Marie/La_mer/3_Les_papillons/lc6155444.mxl"
+  },
+  "jaell-3-les-petits-oiseaux.mxl": {
+    "composer": "Jaëll, Marie",
+    "work": "4 Mélodies",
+    "song": "3 Les petits oiseaux",
+    "source": "scores/Jaëll,_Marie/4_Mélodies/3_Les_petits_oiseaux/lc5840072.mxl"
+  },
+  "jaell-4-le-bonheur-s-effeuille-et-passe.mxl": {
+    "composer": "Jaëll, Marie",
+    "work": "4 Mélodies",
+    "song": "4 Le bonheur s’effeuille et passe",
+    "source": "scores/Jaëll,_Marie/4_Mélodies/4_Le_bonheur_s’effeuille_et_passe/lc5840228.mxl"
   },
   "jaell-5-en-ramant.mxl": {
     "composer": "Jaëll, Marie",
@@ -779,11 +2003,59 @@
     "song": "1 Das Lied der Nachtigall",
     "source": "scores/Kinkel,_Johanna/3_Duetten,_Op.11/1_Das_Lied_der_Nachtigall/lc6128281.mxl"
   },
+  "kinkel-1-der-spanische-zitherknabe.mxl": {
+    "composer": "Kinkel, Johanna",
+    "work": "6 Gedichte, Op.8",
+    "song": "1 Der spanische Zitherknabe",
+    "source": "scores/Kinkel,_Johanna/6_Gedichte,_Op.8/1_Der_spanische_Zitherknabe/lc6130647.mxl"
+  },
+  "kinkel-2-die-geisterinsel.mxl": {
+    "composer": "Kinkel, Johanna",
+    "work": "3 Duetten, Op.11",
+    "song": "2 Die Geisterinsel",
+    "source": "scores/Kinkel,_Johanna/3_Duetten,_Op.11/2_Die_Geisterinsel/lc6126574.mxl"
+  },
   "kinkel-2-nachtliche-fahrt.mxl": {
     "composer": "Kinkel, Johanna",
     "work": "6 Lieder, Op.16",
     "song": "2 Nächtliche Fahrt",
     "source": "scores/Kinkel,_Johanna/6_Lieder,_Op.16/2_Nächtliche_Fahrt/lc6571960.mxl"
+  },
+  "kinkel-2-rheinsage.mxl": {
+    "composer": "Kinkel, Johanna",
+    "work": "6 Gedichte, Op.8",
+    "song": "2 Rheinsage",
+    "source": "scores/Kinkel,_Johanna/6_Gedichte,_Op.8/2_Rheinsage/lc6130751.mxl"
+  },
+  "kinkel-3-der-seejungfern-gesang.mxl": {
+    "composer": "Kinkel, Johanna",
+    "work": "3 Duetten, Op.11",
+    "song": "3 Der Seejungfern Gesang",
+    "source": "scores/Kinkel,_Johanna/3_Duetten,_Op.11/3_Der_Seejungfern_Gesang/lc6125479.mxl"
+  },
+  "kinkel-3-gondellied.mxl": {
+    "composer": "Kinkel, Johanna",
+    "work": "6 Gedichte, Op.8",
+    "song": "3 Gondellied",
+    "source": "scores/Kinkel,_Johanna/6_Gedichte,_Op.8/3_Gondellied/lc6130821.mxl"
+  },
+  "kinkel-4-abendfeier.mxl": {
+    "composer": "Kinkel, Johanna",
+    "work": "6 Gedichte, Op.8",
+    "song": "4 Abendfeier",
+    "source": "scores/Kinkel,_Johanna/6_Gedichte,_Op.8/4_Abendfeier/lc6137812.mxl"
+  },
+  "kralik-0-einleitung.mxl": {
+    "composer": "Kralik, Mathilde",
+    "work": "Jugend-Lieder",
+    "song": "0 Einleitung",
+    "source": "scores/Kralik,_Mathilde/Jugend-Lieder/0_Einleitung/lc6166579.mxl"
+  },
+  "kralik-1-die-sprode.mxl": {
+    "composer": "Kralik, Mathilde",
+    "work": "Jugend-Lieder",
+    "song": "1 Die Spröde",
+    "source": "scores/Kralik,_Mathilde/Jugend-Lieder/1_Die_Spröde/lc6206972.mxl"
   },
   "kralik-1-maiglockchen.mxl": {
     "composer": "Kralik, Mathilde",
@@ -791,11 +2063,53 @@
     "song": "1 Maiglöckchen",
     "source": "scores/Kralik,_Mathilde/Blumenlieder/1_Maiglöckchen/lc6165152.mxl"
   },
+  "kralik-2-himmelschlussel.mxl": {
+    "composer": "Kralik, Mathilde",
+    "work": "Blumenlieder",
+    "song": "2 Himmelschlüssel",
+    "source": "scores/Kralik,_Mathilde/Blumenlieder/2_Himmelschlüssel/lc6165185.mxl"
+  },
+  "kralik-3-veilchen.mxl": {
+    "composer": "Kralik, Mathilde",
+    "work": "Blumenlieder",
+    "song": "3 Veilchen",
+    "source": "scores/Kralik,_Mathilde/Blumenlieder/3_Veilchen/lc6165226.mxl"
+  },
+  "kralik-5-rosen.mxl": {
+    "composer": "Kralik, Mathilde",
+    "work": "Blumenlieder",
+    "song": "5 Rosen",
+    "source": "scores/Kralik,_Mathilde/Blumenlieder/5_Rosen/lc6166096.mxl"
+  },
+  "lang-1-in-welschland.mxl": {
+    "composer": "Lang, Josephine",
+    "work": "3 Lieder, Op.23",
+    "song": "1 In Welschland",
+    "source": "scores/Lang,_Josephine/3_Lieder,_Op.23/1_In_Welschland/lc6009685.mxl"
+  },
   "lang-1-traumbild.mxl": {
     "composer": "Lang, Josephine",
     "work": "2 Lieder, Op.28",
     "song": "1 Traumbild",
     "source": "scores/Lang,_Josephine/2_Lieder,_Op.28/1_Traumbild/lc6012375.mxl"
+  },
+  "lang-2-herz-mein-herz-so-schweig-auch-du.mxl": {
+    "composer": "Lang, Josephine",
+    "work": "2 Lieder, Op.28",
+    "song": "2 Herz, mein Herz, so schweig auch du!",
+    "source": "scores/Lang,_Josephine/2_Lieder,_Op.28/2_Herz,_mein_Herz,_so_schweig_auch_du!/lc6012390.mxl"
+  },
+  "lang-2-wenn-du-warst-mein-eigen.mxl": {
+    "composer": "Lang, Josephine",
+    "work": "3 Lieder, Op.23",
+    "song": "2 Wenn du wärst mein eigen",
+    "source": "scores/Lang,_Josephine/3_Lieder,_Op.23/2_Wenn_du_wärst_mein_eigen/lc6009759.mxl"
+  },
+  "lang-3-der-himmel-mit-all-seinen-sonnen-war-mein.mxl": {
+    "composer": "Lang, Josephine",
+    "work": "3 Lieder, Op.23",
+    "song": "3 Der Himmel mit all’ seinen Sonnen wär’ mein",
+    "source": "scores/Lang,_Josephine/3_Lieder,_Op.23/3_Der_Himmel_mit_all’_seinen_Sonnen_wär’_mein/lc6067231.mxl"
   },
   "lang-4-o-warst-du-da.mxl": {
     "composer": "Lang, Josephine",
@@ -803,11 +2117,59 @@
     "song": "4 O wärst du da",
     "source": "scores/Lang,_Josephine/6_Lieder,_Op.12/4_O_wärst_du_da/lc6059127.mxl"
   },
+  "lang-am-bache-op-20.mxl": {
+    "composer": "Lang, Josephine",
+    "work": " ",
+    "song": "Am Bache, Op.20",
+    "source": "scores/Lang,_Josephine/_/Am_Bache,_Op.20/lc6093956.mxl"
+  },
+  "lang-auf-der-reise-op-22.mxl": {
+    "composer": "Lang, Josephine",
+    "work": " ",
+    "song": "Auf der Reise, Op.22",
+    "source": "scores/Lang,_Josephine/_/Auf_der_Reise,_Op.22/lc6095279.mxl"
+  },
   "le-beau-1-fruhlingsanfang.mxl": {
     "composer": "Le Beau, Luise Adolpha",
     "work": "2 Duette, Op.6",
     "song": "1 Frühlingsanfang",
     "source": "scores/Le_Beau,_Luise_Adolpha/2_Duette,_Op.6/1_Frühlingsanfang/lc5883528.mxl"
+  },
+  "le-beau-1-gruss-an-die-nacht.mxl": {
+    "composer": "Le Beau, Luise Adolpha",
+    "work": "5 Lieder, Op.7",
+    "song": "1 Gruss an die Nacht",
+    "source": "scores/Le_Beau,_Luise_Adolpha/5_Lieder,_Op.7/1_Gruss_an_die_Nacht/lc6575645.mxl"
+  },
+  "le-beau-2-abendlied.mxl": {
+    "composer": "Le Beau, Luise Adolpha",
+    "work": "2 Duette, Op.6",
+    "song": "2 Abendlied",
+    "source": "scores/Le_Beau,_Luise_Adolpha/2_Duette,_Op.6/2_Abendlied/lc5883655.mxl"
+  },
+  "le-beau-2-ein-gebet.mxl": {
+    "composer": "Le Beau, Luise Adolpha",
+    "work": "5 Lieder, Op.7",
+    "song": "2 Ein Gebet",
+    "source": "scores/Le_Beau,_Luise_Adolpha/5_Lieder,_Op.7/2_Ein_Gebet/lc6575669.mxl"
+  },
+  "le-beau-3-juchhe.mxl": {
+    "composer": "Le Beau, Luise Adolpha",
+    "work": "5 Lieder, Op.7",
+    "song": "3 Juchhe",
+    "source": "scores/Le_Beau,_Luise_Adolpha/5_Lieder,_Op.7/3_Juchhe/lc6576011.mxl"
+  },
+  "le-beau-4-die-alpenrose.mxl": {
+    "composer": "Le Beau, Luise Adolpha",
+    "work": "5 Lieder, Op.7",
+    "song": "4 Die Alpenrose",
+    "source": "scores/Le_Beau,_Luise_Adolpha/5_Lieder,_Op.7/4_Die_Alpenrose/lc6577118.mxl"
+  },
+  "le-beau-5-wiegenlied.mxl": {
+    "composer": "Le Beau, Luise Adolpha",
+    "work": "5 Lieder, Op.7",
+    "song": "5 Wiegenlied",
+    "source": "scores/Le_Beau,_Luise_Adolpha/5_Lieder,_Op.7/5_Wiegenlied/lc6577137.mxl"
   },
   "lehmann-1-the-mother-seal-s-lullaby.mxl": {
     "composer": "Lehmann, Liza",
@@ -815,17 +2177,71 @@
     "song": "1 The Mother Seal’s Lullaby",
     "source": "scores/Lehmann,_Liza/2_Seal_Songs/1_The_Mother_Seal’s_Lullaby/lc6573515.mxl"
   },
+  "lehmann-1-there-s-a-bird-beneath-your-window.mxl": {
+    "composer": "Lehmann, Liza",
+    "work": "5 Little Love Songs",
+    "song": "1 There’s a bird beneath your window",
+    "source": "scores/Lehmann,_Liza/5_Little_Love_Songs/1_There’s_a_bird_beneath_your_window/lc6209594.mxl"
+  },
+  "lehmann-2-along-the-sunny-lane.mxl": {
+    "composer": "Lehmann, Liza",
+    "work": "5 Little Love Songs",
+    "song": "2 Along the sunny lane",
+    "source": "scores/Lehmann,_Liza/5_Little_Love_Songs/2_Along_the_sunny_lane/lc6209602.mxl"
+  },
+  "lehmann-2-you-mustn-t-swim-till-you-re-six-weeks-old.mxl": {
+    "composer": "Lehmann, Liza",
+    "work": "2 Seal Songs",
+    "song": "2 You mustn’t swim till you’re six weeks old",
+    "source": "scores/Lehmann,_Liza/2_Seal_Songs/2_You_mustn’t_swim_till_you’re_six_weeks_old/lc6573701.mxl"
+  },
+  "lehmann-3-just-a-multitude-of-curls.mxl": {
+    "composer": "Lehmann, Liza",
+    "work": "5 Little Love Songs",
+    "song": "3 Just a multitude of curls",
+    "source": "scores/Lehmann,_Liza/5_Little_Love_Songs/3_Just_a_multitude_of_curls/lc6209605.mxl"
+  },
+  "lehmann-4-if-i-were-a-bird-i-would-sing-all-day.mxl": {
+    "composer": "Lehmann, Liza",
+    "work": "5 Little Love Songs",
+    "song": "4 If I were a bird, I would sing all day",
+    "source": "scores/Lehmann,_Liza/5_Little_Love_Songs/4_If_I_were_a_bird,_I_would_sing_all_day/lc6209607.mxl"
+  },
+  "lehmann-5-clasp-mine-closer-little-dear-white-hand.mxl": {
+    "composer": "Lehmann, Liza",
+    "work": "5 Little Love Songs",
+    "song": "5 Clasp mine closer, little dear white hand",
+    "source": "scores/Lehmann,_Liza/5_Little_Love_Songs/5_Clasp_mine_closer,_little_dear_white_hand/lc6209608.mxl"
+  },
   "lehmann-bouton-de-rose.mxl": {
     "composer": "Lehmann, Amelia",
     "work": " ",
     "song": "Bouton de Rose",
     "source": "scores/Lehmann,_Amelia/_/Bouton_de_Rose/lc6644591.mxl"
   },
+  "lehmann-how-delicious-is-the-winning.mxl": {
+    "composer": "Lehmann, Amelia",
+    "work": " ",
+    "song": "How Delicious is the Winning",
+    "source": "scores/Lehmann,_Amelia/_/How_Delicious_is_the_Winning/lc6644635.mxl"
+  },
   "lehmann-the-highland-plaid.mxl": {
     "composer": "Lehmann, Amelia",
     "work": " ",
     "song": "The Highland Plaid",
     "source": "scores/Lehmann,_Amelia/_/The_Highland_Plaid/lc6644955.mxl"
+  },
+  "lehmann-when-love-is-kind.mxl": {
+    "composer": "Lehmann, Amelia",
+    "work": " ",
+    "song": "When Love is Kind",
+    "source": "scores/Lehmann,_Amelia/_/When_Love_is_Kind/lc6645039.mxl"
+  },
+  "lehmann-wisdom-and-love.mxl": {
+    "composer": "Lehmann, Amelia",
+    "work": " ",
+    "song": "Wisdom and Love",
+    "source": "scores/Lehmann,_Amelia/_/Wisdom_and_Love/lc6645396.mxl"
   },
   "leoncavallo-mattinata.mxl": {
     "composer": "Leoncavallo, Ruggero",
@@ -863,11 +2279,71 @@
     "song": "1 The First Rose",
     "source": "scores/Mackenzie,_Alexander/Spring_Songs,_Op.44/1_The_First_Rose/lc6505010.mxl"
   },
+  "mackenzie-2-hope.mxl": {
+    "composer": "Mackenzie, Alexander",
+    "work": "Spring Songs, Op.44",
+    "song": "2 Hope",
+    "source": "scores/Mackenzie,_Alexander/Spring_Songs,_Op.44/2_Hope/lc6505088.mxl"
+  },
+  "mackenzie-3-spring-s-secrets.mxl": {
+    "composer": "Mackenzie, Alexander",
+    "work": "Spring Songs, Op.44",
+    "song": "3 Spring’s Secrets",
+    "source": "scores/Mackenzie,_Alexander/Spring_Songs,_Op.44/3_Spring’s_Secrets/lc6505652.mxl"
+  },
+  "mackenzie-4-spring-is-not-dead.mxl": {
+    "composer": "Mackenzie, Alexander",
+    "work": "Spring Songs, Op.44",
+    "song": "4 Spring Is Not Dead",
+    "source": "scores/Mackenzie,_Alexander/Spring_Songs,_Op.44/4_Spring_Is_Not_Dead/lc6507219.mxl"
+  },
   "mackenzie-5-april-weather.mxl": {
     "composer": "Mackenzie, Alexander",
     "work": "Spring Songs, Op.44",
     "song": "5 April Weather",
     "source": "scores/Mackenzie,_Alexander/Spring_Songs,_Op.44/5_April_Weather/lc6508497.mxl"
+  },
+  "mackenzie-6-a-may-song.mxl": {
+    "composer": "Mackenzie, Alexander",
+    "work": "Spring Songs, Op.44",
+    "song": "6 A May Song",
+    "source": "scores/Mackenzie,_Alexander/Spring_Songs,_Op.44/6_A_May_Song/lc6508651.mxl"
+  },
+  "mackenzie-7-summer-at-last.mxl": {
+    "composer": "Mackenzie, Alexander",
+    "work": "Spring Songs, Op.44",
+    "song": "7 Summer At Last",
+    "source": "scores/Mackenzie,_Alexander/Spring_Songs,_Op.44/7_Summer_At_Last/lc6510065.mxl"
+  },
+  "mackenzie-one-who-never-turned-his-back.mxl": {
+    "composer": "Mackenzie, Alexander",
+    "work": " ",
+    "song": "One who never turned his back",
+    "source": "scores/Mackenzie,_Alexander/_/One_who_never_turned_his_back/lc6499366.mxl"
+  },
+  "mahler-1-nun-will-die-sonn-so-hell-aufgeh-n.mxl": {
+    "composer": "Mahler, Gustav",
+    "work": "Kindertotenlieder",
+    "song": "1 Nun will die Sonn’ so hell aufgeh’n",
+    "source": "scores/Mahler,_Gustav/Kindertotenlieder/1_Nun_will_die_Sonn’_so_hell_aufgeh’n/lc5054519.mxl"
+  },
+  "mahler-2-nun-seh-ich-wohl-warum-so-dunkle-flammen.mxl": {
+    "composer": "Mahler, Gustav",
+    "work": "Kindertotenlieder",
+    "song": "2 Nun seh’ ich wohl, warum so dunkle Flammen",
+    "source": "scores/Mahler,_Gustav/Kindertotenlieder/2_Nun_seh’_ich_wohl,_warum_so_dunkle_Flammen/lc5051724.mxl"
+  },
+  "mahler-3-wenn-dein-mutterlein.mxl": {
+    "composer": "Mahler, Gustav",
+    "work": "Kindertotenlieder",
+    "song": "3 Wenn dein Mütterlein",
+    "source": "scores/Mahler,_Gustav/Kindertotenlieder/3_Wenn_dein_Mütterlein/lc5052787.mxl"
+  },
+  "mahler-4-oft-denk-ich-sie-sind-nur-ausgegangen.mxl": {
+    "composer": "Mahler, Gustav",
+    "work": "Kindertotenlieder",
+    "song": "4 Oft denk’ ich, sie sind nur ausgegangen",
+    "source": "scores/Mahler,_Gustav/Kindertotenlieder/4_Oft_denk’_ich,_sie_sind_nur_ausgegangen/lc5062118.mxl"
   },
   "mahler-7-rheinlegendchen.mxl": {
     "composer": "Mahler, Gustav",
@@ -893,11 +2369,29 @@
     "song": "1 Chœur des Pastorale, DO.287",
     "source": "scores/Massenet,_Jules/Poème_pastoral/1_Chœur_des_Pastorale,_DO.287/lc29027279.mxl"
   },
+  "massenet-elegie.mxl": {
+    "composer": "Massenet, Jules",
+    "work": " ",
+    "song": "Élégie",
+    "source": "scores/Massenet,_Jules/_/Élégie/lc29026391.mxl"
+  },
   "mayer-1-abendglocken.mxl": {
     "composer": "Mayer, Emilie",
     "work": "2 Gesänge",
     "song": "1 Abendglocken",
     "source": "scores/Mayer,_Emilie/2_Gesänge/1_Abendglocken/lc5823419.mxl"
+  },
+  "mayer-1-du-bist-wie-eine-blume.mxl": {
+    "composer": "Mayer, Emilie",
+    "work": "3 Lieder, Op.7",
+    "song": "1 Du bist wie eine Blume",
+    "source": "scores/Mayer,_Emilie/3_Lieder,_Op.7/1_Du_bist_wie_eine_Blume/lc5840527.mxl"
+  },
+  "mayer-2-das-schlusselloch-im-herzen.mxl": {
+    "composer": "Mayer, Emilie",
+    "work": "2 Gesänge",
+    "song": "2 Das Schlüsselloch im Herzen",
+    "source": "scores/Mayer,_Emilie/2_Gesänge/2_Das_Schlüsselloch_im_Herzen/lc5834245.mxl"
   },
   "mayer-2-o-lass-mich-dein-gedenken.mxl": {
     "composer": "Mayer, Emilie",
@@ -905,11 +2399,59 @@
     "song": "2 O lass mich dein gedenken",
     "source": "scores/Mayer,_Emilie/3_Lieder,_Op.7/2_O_lass_mich_dein_gedenken/lc5840434.mxl"
   },
+  "mayer-3-wenn-der-abendstern-die-rosen.mxl": {
+    "composer": "Mayer, Emilie",
+    "work": "3 Lieder, Op.7",
+    "song": "3 Wenn der Abendstern die Rosen",
+    "source": "scores/Mayer,_Emilie/3_Lieder,_Op.7/3_Wenn_der_Abendstern_die_Rosen/lc5841419.mxl"
+  },
+  "mayer-der-erlkonig.mxl": {
+    "composer": "Mayer, Emilie",
+    "work": " ",
+    "song": "Der Erlkönig",
+    "source": "scores/Mayer,_Emilie/_/Der_Erlkönig/lc6573780.mxl"
+  },
+  "mendelssohn-1-das-fenster-mwv-k-29.mxl": {
+    "composer": "Mendelssohn, Felix",
+    "work": "6 Gesänge, Op.86",
+    "song": "1 Das Fenster, MWV K 29",
+    "source": "scores/Mendelssohn,_Felix/6_Gesänge,_Op.86/1_Das_Fenster,_MWV_K_29/lc6989284.mxl"
+  },
   "mendelssohn-1-ich-wollt-meine-lieb-ergosse-sich-mwv-j-5.mxl": {
     "composer": "Mendelssohn, Felix",
     "work": "6 Duets, Op.63",
     "song": "1 Ich wollt’, meine Lieb’ ergösse sich, MWV J 5",
     "source": "scores/Mendelssohn,_Felix/6_Duets,_Op.63/1_Ich_wollt’,_meine_Lieb’_ergösse_sich,_MWV_J_5/lc7074684.mxl"
+  },
+  "mendelssohn-2-abschiedslied-der-zugvogel-mwv-j-9.mxl": {
+    "composer": "Mendelssohn, Felix",
+    "work": "6 Duets, Op.63",
+    "song": "2 Abschiedslied der Zugvögel, MWV J 9",
+    "source": "scores/Mendelssohn,_Felix/6_Duets,_Op.63/2_Abschiedslied_der_Zugvögel,_MWV_J_9/lc7076589.mxl"
+  },
+  "mendelssohn-3-gruss-mwv-j-8.mxl": {
+    "composer": "Mendelssohn, Felix",
+    "work": "6 Duets, Op.63",
+    "song": "3 Gruss, MWV J 8",
+    "source": "scores/Mendelssohn,_Felix/6_Duets,_Op.63/3_Gruss,_MWV_J_8/lc7163985.mxl"
+  },
+  "mendelssohn-4-herbstlied-mwv-j-11.mxl": {
+    "composer": "Mendelssohn, Felix",
+    "work": "6 Duets, Op.63",
+    "song": "4 Herbstlied, MWV J 11",
+    "source": "scores/Mendelssohn,_Felix/6_Duets,_Op.63/4_Herbstlied,_MWV_J_11/lc7374512.mxl"
+  },
+  "mendelssohn-5-volkslied-mwv-j-10.mxl": {
+    "composer": "Mendelssohn, Felix",
+    "work": "6 Duets, Op.63",
+    "song": "5 Volkslied, MWV J 10",
+    "source": "scores/Mendelssohn,_Felix/6_Duets,_Op.63/5_Volkslied,_MWV_J_10/lc7374854.mxl"
+  },
+  "mendelssohn-6-maiglockchen-und-die-blumelein-mwv-j-7.mxl": {
+    "composer": "Mendelssohn, Felix",
+    "work": "6 Duets, Op.63",
+    "song": "6 Maiglöckchen und die Blümelein, MWV J 7",
+    "source": "scores/Mendelssohn,_Felix/6_Duets,_Op.63/6_Maiglöckchen_und_die_Blümelein,_MWV_J_7/lc7380386.mxl"
   },
   "mounsey-bartholomew-1-if-love-be-life-i-long-to-die.mxl": {
     "composer": "Mounsey Bartholomew, Ann",
@@ -917,17 +2459,83 @@
     "song": "1 If love be life, I long to die",
     "source": "scores/Mounsey_Bartholomew,_Ann/Songs_of_Remembrance/1_If_love_be_life,_I_long_to_die/lc6646808.mxl"
   },
+  "mounsey-bartholomew-2-the-will-o-the-wisp.mxl": {
+    "composer": "Mounsey Bartholomew, Ann",
+    "work": "Songs of Remembrance",
+    "song": "2 The Will o’ the Wisp",
+    "source": "scores/Mounsey_Bartholomew,_Ann/Songs_of_Remembrance/2_The_Will_o’_the_Wisp/lc6648208.mxl"
+  },
+  "mounsey-bartholomew-3-i-can-bid-thee-now-farewell.mxl": {
+    "composer": "Mounsey Bartholomew, Ann",
+    "work": "Songs of Remembrance",
+    "song": "3 I can bid thee now, Farewell!",
+    "source": "scores/Mounsey_Bartholomew,_Ann/Songs_of_Remembrance/3_I_can_bid_thee_now,_Farewell!/lc6648595.mxl"
+  },
   "mounsey-bartholomew-4-the-warrior-boy.mxl": {
     "composer": "Mounsey Bartholomew, Ann",
     "work": "Songs of Remembrance",
     "song": "4 The Warrior Boy",
     "source": "scores/Mounsey_Bartholomew,_Ann/Songs_of_Remembrance/4_The_Warrior_Boy/lc6648674.mxl"
   },
+  "mounsey-bartholomew-5-o-the-merry-merry-spring.mxl": {
+    "composer": "Mounsey Bartholomew, Ann",
+    "work": "Songs of Remembrance",
+    "song": "5 O the merry, merry Spring!",
+    "source": "scores/Mounsey_Bartholomew,_Ann/Songs_of_Remembrance/5_O_the_merry,_merry_Spring!/lc6649005.mxl"
+  },
+  "mounsey-bartholomew-6-song-of-the-summer-winds.mxl": {
+    "composer": "Mounsey Bartholomew, Ann",
+    "work": "Songs of Remembrance",
+    "song": "6 Song of the Summer Winds",
+    "source": "scores/Mounsey_Bartholomew,_Ann/Songs_of_Remembrance/6_Song_of_the_Summer_Winds/lc6649053.mxl"
+  },
+  "mounsey-bartholomew-6a-song-of-the-summer-winds.mxl": {
+    "composer": "Mounsey Bartholomew, Ann",
+    "work": "Songs of Remembrance",
+    "song": "6a Song of the Summer Winds",
+    "source": "scores/Mounsey_Bartholomew,_Ann/Songs_of_Remembrance/6a_Song_of_the_Summer_Winds/lc6646781.mxl"
+  },
+  "munktell-1-serenade.mxl": {
+    "composer": "Munktell, Helena",
+    "work": "10 Songs",
+    "song": "1 Sérénade",
+    "source": "scores/Munktell,_Helena/10_Songs/1_Sérénade/lc6654094.mxl"
+  },
   "munktell-10-fidelite.mxl": {
     "composer": "Munktell, Helena",
     "work": "10 Songs",
     "song": "10 Fidélité",
     "source": "scores/Munktell,_Helena/10_Songs/10_Fidélité/lc6656769.mxl"
+  },
+  "munktell-2-dans-le-lointain-des-bois.mxl": {
+    "composer": "Munktell, Helena",
+    "work": "10 Songs",
+    "song": "2 Dans le lointain des bois",
+    "source": "scores/Munktell,_Helena/10_Songs/2_Dans_le_lointain_des_bois/lc6654137.mxl"
+  },
+  "munktell-3-ce-qu-entendent-les-nuits.mxl": {
+    "composer": "Munktell, Helena",
+    "work": "10 Songs",
+    "song": "3 Ce qu’entendent les nuits",
+    "source": "scores/Munktell,_Helena/10_Songs/3_Ce_qu’entendent_les_nuits/lc6654215.mxl"
+  },
+  "munktell-4-d-un-berceau.mxl": {
+    "composer": "Munktell, Helena",
+    "work": "10 Songs",
+    "song": "4 D’un berceau",
+    "source": "scores/Munktell,_Helena/10_Songs/4_D’un_berceau/lc6654252.mxl"
+  },
+  "munktell-fjerran-pa-enslig-stig.mxl": {
+    "composer": "Munktell, Helena",
+    "work": " ",
+    "song": "Fjerran på enslig stig",
+    "source": "scores/Munktell,_Helena/_/Fjerran_på_enslig_stig/lc6652350.mxl"
+  },
+  "munktell-osterns-natt.mxl": {
+    "composer": "Munktell, Helena",
+    "work": " ",
+    "song": "Österns natt",
+    "source": "scores/Munktell,_Helena/_/Österns_natt/lc6652787.mxl"
   },
   "netzel-1-lied.mxl": {
     "composer": "Netzel, Laura",
@@ -941,11 +2549,47 @@
     "song": "1 Rappelle-toi",
     "source": "scores/Netzel,_Laura/4_Songs,_Op.46/1_Rappelle-toi/lc6661509.mxl"
   },
+  "netzel-2-malgre-moi.mxl": {
+    "composer": "Netzel, Laura",
+    "work": "4 Songs, Op.46",
+    "song": "2 Malgré-moi!",
+    "source": "scores/Netzel,_Laura/4_Songs,_Op.46/2_Malgré-moi!/lc6661586.mxl"
+  },
+  "netzel-2-wunsch.mxl": {
+    "composer": "Netzel, Laura",
+    "work": "3 Lieder, Op.44",
+    "song": "2 Wunsch",
+    "source": "scores/Netzel,_Laura/3_Lieder,_Op.44/2_Wunsch/lc6660043.mxl"
+  },
+  "netzel-3-gruss.mxl": {
+    "composer": "Netzel, Laura",
+    "work": "3 Lieder, Op.44",
+    "song": "3 Gruss",
+    "source": "scores/Netzel,_Laura/3_Lieder,_Op.44/3_Gruss/lc6660097.mxl"
+  },
+  "netzel-3-reve-encore.mxl": {
+    "composer": "Netzel, Laura",
+    "work": "4 Songs, Op.46",
+    "song": "3 Rêve encore!",
+    "source": "scores/Netzel,_Laura/4_Songs,_Op.46/3_Rêve_encore!/lc6661632.mxl"
+  },
+  "netzel-4-je-pense-a-toi.mxl": {
+    "composer": "Netzel, Laura",
+    "work": "4 Songs, Op.46",
+    "song": "4 Je pense à toi!",
+    "source": "scores/Netzel,_Laura/4_Songs,_Op.46/4_Je_pense_à_toi!/lc6661685.mxl"
+  },
   "obradors-1-la-mi-sola-laureola.mxl": {
     "composer": "Obradors, Fernando",
     "work": "Canciones Clásicas Españolas, Vol.1",
     "song": "1 La mi sola, Laureola",
     "source": "scores/Obradors,_Fernando/Canciones_Clásicas_Españolas,_Vol.1/1_La_mi_sola,_Laureola/lc30888626.mxl"
+  },
+  "obradors-6-del-cabello-mas-sutil.mxl": {
+    "composer": "Obradors, Fernando",
+    "work": "Canciones Clásicas Españolas, Vol.1",
+    "song": "6 Del cabello más sutil",
+    "source": "scores/Obradors,_Fernando/Canciones_Clásicas_Españolas,_Vol.1/6_Del_cabello_más_sutil/lc29382602.mxl"
   },
   "paladilhe-les-roses-d-ispahan.mxl": {
     "composer": "Paladilhe, Émile",
@@ -959,11 +2603,53 @@
     "song": "Psyché",
     "source": "scores/Paladilhe,_Émile/_/Psyché/lc30321734.mxl"
   },
+  "paradis-1-an-das-klavier.mxl": {
+    "composer": "Paradis, Maria Theresia von",
+    "work": "12 Lieder, 1786",
+    "song": "1 An das Klavier",
+    "source": "scores/Paradis,_Maria_Theresia_von/12_Lieder,_1786/1_An_das_Klavier/lc5842033.mxl"
+  },
   "paradis-10-da-eben-seinen-lauf-verbracht.mxl": {
     "composer": "Paradis, Maria Theresia von",
     "work": "12 Lieder, 1786",
     "song": "10 Da eben seinen Lauf verbracht",
     "source": "scores/Paradis,_Maria_Theresia_von/12_Lieder,_1786/10_Da_eben_seinen_Lauf_verbracht/lc5994814.mxl"
+  },
+  "paradis-11-wenn-ich-der-kaiser-ware.mxl": {
+    "composer": "Paradis, Maria Theresia von",
+    "work": "12 Lieder, 1786",
+    "song": "11 Wenn ich der Kaiser wäre",
+    "source": "scores/Paradis,_Maria_Theresia_von/12_Lieder,_1786/11_Wenn_ich_der_Kaiser_wäre/lc5995576.mxl"
+  },
+  "paradis-12-an-meine-entfernte-lieben.mxl": {
+    "composer": "Paradis, Maria Theresia von",
+    "work": "12 Lieder, 1786",
+    "song": "12 An meine entfernte Lieben",
+    "source": "scores/Paradis,_Maria_Theresia_von/12_Lieder,_1786/12_An_meine_entfernte_Lieben/lc5995663.mxl"
+  },
+  "paradis-2-sophia-an-siegwart.mxl": {
+    "composer": "Paradis, Maria Theresia von",
+    "work": "12 Lieder, 1786",
+    "song": "2 Sophia an Siegwart",
+    "source": "scores/Paradis,_Maria_Theresia_von/12_Lieder,_1786/2_Sophia_an_Siegwart/lc5842142.mxl"
+  },
+  "paradis-3-aus-dem-siegwart-wohl-und-immer-wohl-dem-mann.mxl": {
+    "composer": "Paradis, Maria Theresia von",
+    "work": "12 Lieder, 1786",
+    "song": "3 Aus dem Siegwart (Wohl und immer wohl dem Mann)",
+    "source": "scores/Paradis,_Maria_Theresia_von/12_Lieder,_1786/3_Aus_dem_Siegwart_(Wohl_und_immer_wohl_dem_Mann)/lc5900749.mxl"
+  },
+  "paradis-4-das-gartnerliedchen-aus-dem-siegwart-es-war-einmal-ein-gartner.mxl": {
+    "composer": "Paradis, Maria Theresia von",
+    "work": "12 Lieder, 1786",
+    "song": "4 Das Gärtnerliedchen aus dem Siegwart (Es war einmal ein Gärtner)",
+    "source": "scores/Paradis,_Maria_Theresia_von/12_Lieder,_1786/4_Das_Gärtnerliedchen_aus_dem_Siegwart_(Es_war_einmal_ein_Gärtner)/lc5907276.mxl"
+  },
+  "parratt-1-with-wisdom-goodness-grace.mxl": {
+    "composer": "Parratt, Walter",
+    "work": "Choral Songs in Honour of Her Majesty Queen Victoria",
+    "song": "1 With wisdom, goodness, grace",
+    "source": "scores/Parratt,_Walter/Choral_Songs_in_Honour_of_Her_Majesty_Queen_Victoria/1_With_wisdom,_goodness,_grace/lc6679725.mxl"
   },
   "parratt-10-to-her-beneath-whose-stedfast-star.mxl": {
     "composer": "Parratt, Walter",
@@ -971,17 +2657,83 @@
     "song": "10 To her beneath whose stedfast star",
     "source": "scores/Parratt,_Walter/Choral_Songs_in_Honour_of_Her_Majesty_Queen_Victoria/10_To_her_beneath_whose_stedfast_star/lc6686265.mxl"
   },
+  "parratt-11-a-thousand-years-by-sea-and-land.mxl": {
+    "composer": "Parratt, Walter",
+    "work": "Choral Songs in Honour of Her Majesty Queen Victoria",
+    "song": "11 A thousand years, by sea and land",
+    "source": "scores/Parratt,_Walter/Choral_Songs_in_Honour_of_Her_Majesty_Queen_Victoria/11_A_thousand_years,_by_sea_and_land/lc6688176.mxl"
+  },
+  "parratt-12-flora-s-queen.mxl": {
+    "composer": "Parratt, Walter",
+    "work": "Choral Songs in Honour of Her Majesty Queen Victoria",
+    "song": "12 Flora’s Queen",
+    "source": "scores/Parratt,_Walter/Choral_Songs_in_Honour_of_Her_Majesty_Queen_Victoria/12_Flora’s_Queen/lc6688667.mxl"
+  },
+  "parratt-13-the-triumph-of-victoria.mxl": {
+    "composer": "Parratt, Walter",
+    "work": "Choral Songs in Honour of Her Majesty Queen Victoria",
+    "song": "13 The Triumph of Victoria",
+    "source": "scores/Parratt,_Walter/Choral_Songs_in_Honour_of_Her_Majesty_Queen_Victoria/13_The_Triumph_of_Victoria/lc6690090.mxl"
+  },
+  "parratt-2-out-in-the-windy-west.mxl": {
+    "composer": "Parratt, Walter",
+    "work": "Choral Songs in Honour of Her Majesty Queen Victoria",
+    "song": "2 Out in the windy West",
+    "source": "scores/Parratt,_Walter/Choral_Songs_in_Honour_of_Her_Majesty_Queen_Victoria/2_Out_in_the_windy_West/lc6681689.mxl"
+  },
   "parratt-3-hark-the-world-is-full-of-thy-praise.mxl": {
     "composer": "Parratt, Walter",
     "work": "Choral Songs in Honour of Her Majesty Queen Victoria",
     "song": "3 Hark! The world is full of thy praise",
     "source": "scores/Parratt,_Walter/Choral_Songs_in_Honour_of_Her_Majesty_Queen_Victoria/3_Hark!_The_world_is_full_of_thy_praise/lc6682890.mxl"
   },
+  "parratt-4-for-all-the-wonder-of-thy-regal-day.mxl": {
+    "composer": "Parratt, Walter",
+    "work": "Choral Songs in Honour of Her Majesty Queen Victoria",
+    "song": "4 For all the wonder of thy regal day",
+    "source": "scores/Parratt,_Walter/Choral_Songs_in_Honour_of_Her_Majesty_Queen_Victoria/4_For_all_the_wonder_of_thy_regal_day/lc6683117.mxl"
+  },
+  "parry-1-my-true-love-hath-my-heart.mxl": {
+    "composer": "Parry, Hubert",
+    "work": "English Lyrics (1st Set)",
+    "song": "1 My true love hath my heart",
+    "source": "scores/Parry,_Hubert/English_Lyrics_(1st_Set)/1_My_true_love_hath_my_heart/lc6425218.mxl"
+  },
   "parry-1-the-poet-s-song.mxl": {
     "composer": "Parry, Hubert",
     "work": "3 Songs, Op.12",
     "song": "1 The Poet‘s Song",
     "source": "scores/Parry,_Hubert/3_Songs,_Op.12/1_The_Poet‘s_Song/lc6434272.mxl"
+  },
+  "parry-2-good-night.mxl": {
+    "composer": "Parry, Hubert",
+    "work": "English Lyrics (1st Set)",
+    "song": "2 Good night",
+    "source": "scores/Parry,_Hubert/English_Lyrics_(1st_Set)/2_Good_night/lc6425381.mxl"
+  },
+  "parry-2-more-fond-than-cushat-dove.mxl": {
+    "composer": "Parry, Hubert",
+    "work": "3 Songs, Op.12",
+    "song": "2 More Fond than Cushat Dove",
+    "source": "scores/Parry,_Hubert/3_Songs,_Op.12/2_More_Fond_than_Cushat_Dove/lc6434317.mxl"
+  },
+  "parry-3-where-shall-the-lover-rest.mxl": {
+    "composer": "Parry, Hubert",
+    "work": "English Lyrics (1st Set)",
+    "song": "3 Where shall the lover rest",
+    "source": "scores/Parry,_Hubert/English_Lyrics_(1st_Set)/3_Where_shall_the_lover_rest/lc6425416.mxl"
+  },
+  "parry-a-hymn-for-aviators.mxl": {
+    "composer": "Parry, Hubert",
+    "work": " ",
+    "song": "A Hymn for Aviators",
+    "source": "scores/Parry,_Hubert/_/A_Hymn_for_Aviators/lc6205868.mxl"
+  },
+  "parry-there-rolls-the-deep.mxl": {
+    "composer": "Parry, Hubert",
+    "work": " ",
+    "song": "There rolls the deep",
+    "source": "scores/Parry,_Hubert/_/There_rolls_the_deep/lc6210474.mxl"
   },
   "phillips-cushla-machree.mxl": {
     "composer": "Phillips, Elizabeth",
@@ -995,11 +2747,29 @@
     "song": "Bye-and-Bye",
     "source": "scores/Philp,_Elizabeth/_/Bye-and-Bye/lc6605890.mxl"
   },
+  "philp-forgiven.mxl": {
+    "composer": "Philp, Elizabeth",
+    "work": " ",
+    "song": "Forgiven",
+    "source": "scores/Philp,_Elizabeth/_/Forgiven/lc6606089.mxl"
+  },
   "poldowski-dans-une-musette.mxl": {
     "composer": "Poldowski",
     "work": " ",
     "song": "Dans une musette",
     "source": "scores/Poldowski/_/Dans_une_musette/lc6663305.mxl"
+  },
+  "poldowski-l-heure-exquise.mxl": {
+    "composer": "Poldowski",
+    "work": " ",
+    "song": "L’heure exquise",
+    "source": "scores/Poldowski/_/L’heure_exquise/lc6663350.mxl"
+  },
+  "poldowski-sur-l-herbe.mxl": {
+    "composer": "Poldowski",
+    "work": " ",
+    "song": "Sur l’herbe",
+    "source": "scores/Poldowski/_/Sur_l’herbe/lc6663427.mxl"
   },
   "puget-adieu-cousine.mxl": {
     "composer": "Puget, Loïsa",
@@ -1007,17 +2777,107 @@
     "song": "Adieu, cousine",
     "source": "scores/Puget,_Loïsa/_/Adieu,_cousine/lc6666995.mxl"
   },
+  "puget-la-dot-d-auvergne.mxl": {
+    "composer": "Puget, Loïsa",
+    "work": " ",
+    "song": "La dot d’Auvergne",
+    "source": "scores/Puget,_Loïsa/_/La_dot_d’Auvergne/lc6667483.mxl"
+  },
+  "puget-le-bon-cure-patience.mxl": {
+    "composer": "Puget, Loïsa",
+    "work": " ",
+    "song": "Le bon curé patience",
+    "source": "scores/Puget,_Loïsa/_/Le_bon_curé_patience/lc6669339.mxl"
+  },
   "quilter-1-come-away-death.mxl": {
     "composer": "Quilter, Roger",
     "work": "3 Shakespeare Songs, Op.6",
     "song": "1 Come Away, Death",
     "source": "scores/Quilter,_Roger/3_Shakespeare_Songs,_Op.6/1_Come_Away,_Death/lc29199584.mxl"
   },
+  "quilter-1-prelude.mxl": {
+    "composer": "Quilter, Roger",
+    "work": "To Julia, Op.8",
+    "song": "1 Prelude",
+    "source": "scores/Quilter,_Roger/To_Julia,_Op.8/1_Prelude/lc29093051.mxl"
+  },
+  "quilter-2-o-mistress-mine.mxl": {
+    "composer": "Quilter, Roger",
+    "work": "3 Shakespeare Songs, Op.6",
+    "song": "2 O Mistress Mine",
+    "source": "scores/Quilter,_Roger/3_Shakespeare_Songs,_Op.6/2_O_Mistress_Mine/lc29746199.mxl"
+  },
+  "quilter-2-the-bracelet.mxl": {
+    "composer": "Quilter, Roger",
+    "work": "To Julia, Op.8",
+    "song": "2 The Bracelet",
+    "source": "scores/Quilter,_Roger/To_Julia,_Op.8/2_The_Bracelet/lc321919.mxl"
+  },
+  "quilter-3-blow-blow-thou-winter-wind.mxl": {
+    "composer": "Quilter, Roger",
+    "work": "3 Shakespeare Songs, Op.6",
+    "song": "3 Blow, Blow, Thou Winter Wind",
+    "source": "scores/Quilter,_Roger/3_Shakespeare_Songs,_Op.6/3_Blow,_Blow,_Thou_Winter_Wind/lc31421012.mxl"
+  },
+  "quilter-3-the-maiden-blush.mxl": {
+    "composer": "Quilter, Roger",
+    "work": "To Julia, Op.8",
+    "song": "3 The Maiden Blush",
+    "source": "scores/Quilter,_Roger/To_Julia,_Op.8/3_The_Maiden_Blush/lc29092718.mxl"
+  },
+  "quilter-4-to-daisies.mxl": {
+    "composer": "Quilter, Roger",
+    "work": "To Julia, Op.8",
+    "song": "4 To Daisies",
+    "source": "scores/Quilter,_Roger/To_Julia,_Op.8/4_To_Daisies/lc30190781.mxl"
+  },
+  "reichardt-1-fruhlingslied.mxl": {
+    "composer": "Reichardt, Louise",
+    "work": "12 Deutsche und Italiänische Romantische Gesänge",
+    "song": "1 Frühlingslied",
+    "source": "scores/Reichardt,_Louise/12_Deutsche_und_Italiänische_Romantische_Gesänge/1_Frühlingslied/lc5067312.mxl"
+  },
   "reichardt-10-ida-aus-ariels-offenbarungen.mxl": {
     "composer": "Reichardt, Louise",
     "work": "12 Deutsche und Italiänische Romantische Gesänge",
     "song": "10 Ida (aus Ariels Offenbarungen)",
     "source": "scores/Reichardt,_Louise/12_Deutsche_und_Italiänische_Romantische_Gesänge/10_Ida_(aus_Ariels_Offenbarungen)/lc5002108.mxl"
+  },
+  "reichardt-11-aus-tiecks-genoveva.mxl": {
+    "composer": "Reichardt, Louise",
+    "work": "12 Deutsche und Italiänische Romantische Gesänge",
+    "song": "11 Aus Tiecks Genoveva",
+    "source": "scores/Reichardt,_Louise/12_Deutsche_und_Italiänische_Romantische_Gesänge/11_Aus_Tiecks_Genoveva/lc5002111.mxl"
+  },
+  "reichardt-12-heymdal-aus-ariels-offenbarungen.mxl": {
+    "composer": "Reichardt, Louise",
+    "work": "12 Deutsche und Italiänische Romantische Gesänge",
+    "song": "12 Heymdal (aus Ariels Offenbarungen)",
+    "source": "scores/Reichardt,_Louise/12_Deutsche_und_Italiänische_Romantische_Gesänge/12_Heymdal_(aus_Ariels_Offenbarungen)/lc5101826.mxl"
+  },
+  "reichardt-2-wenn-ich-ihn-nur-habe.mxl": {
+    "composer": "Reichardt, Louise",
+    "work": "12 Deutsche und Italiänische Romantische Gesänge",
+    "song": "2 Wenn ich ihn nur habe",
+    "source": "scores/Reichardt,_Louise/12_Deutsche_und_Italiänische_Romantische_Gesänge/2_Wenn_ich_ihn_nur_habe/lc5100067.mxl"
+  },
+  "reichardt-3-durch-die-bunten-rosenhecken.mxl": {
+    "composer": "Reichardt, Louise",
+    "work": "12 Deutsche und Italiänische Romantische Gesänge",
+    "song": "3 Durch die bunten Rosenhecken",
+    "source": "scores/Reichardt,_Louise/12_Deutsche_und_Italiänische_Romantische_Gesänge/3_Durch_die_bunten_Rosenhecken/lc5002087.mxl"
+  },
+  "reichardt-4-wohl-dem-mann.mxl": {
+    "composer": "Reichardt, Louise",
+    "work": "12 Deutsche und Italiänische Romantische Gesänge",
+    "song": "4 Wohl dem Mann",
+    "source": "scores/Reichardt,_Louise/12_Deutsche_und_Italiänische_Romantische_Gesänge/4_Wohl_dem_Mann/lc5100073.mxl"
+  },
+  "rootham-the-ballad-of-kingslea-mere.mxl": {
+    "composer": "Rootham, Cyril",
+    "work": " ",
+    "song": "The Ballad of Kingslea Mere",
+    "source": "scores/Rootham,_Cyril/_/The_Ballad_of_Kingslea_Mere/lc6449397.mxl"
   },
   "rossini-5-l-invito.mxl": {
     "composer": "Rossini, Gioachino",
@@ -1031,17 +2891,119 @@
     "song": "1 Elégie",
     "source": "scores/Satie,_Erik/4_Petites_mélodies/1_Elégie/lc6988229.mxl"
   },
+  "satie-2-danseuse.mxl": {
+    "composer": "Satie, Erik",
+    "work": "4 Petites mélodies",
+    "song": "2 Danseuse",
+    "source": "scores/Satie,_Erik/4_Petites_mélodies/2_Danseuse/lc6990723.mxl"
+  },
+  "satie-chez-le-docteur.mxl": {
+    "composer": "Satie, Erik",
+    "work": " ",
+    "song": "Chez le docteur",
+    "source": "scores/Satie,_Erik/_/Chez_le_docteur/lc6986065.mxl"
+  },
+  "satie-je-te-veux.mxl": {
+    "composer": "Satie, Erik",
+    "work": " ",
+    "song": "Je te veux",
+    "source": "scores/Satie,_Erik/_/Je_te_veux/lc6986302.mxl"
+  },
+  "satie-l-omnibus-automobile.mxl": {
+    "composer": "Satie, Erik",
+    "work": " ",
+    "song": "L’omnibus automobile",
+    "source": "scores/Satie,_Erik/_/L’omnibus_automobile/lc6987889.mxl"
+  },
+  "satie-la-diva-de-l-empire.mxl": {
+    "composer": "Satie, Erik",
+    "work": " ",
+    "song": "La diva de “L’Empire”",
+    "source": "scores/Satie,_Erik/_/La_diva_de_“L’Empire”/lc6987705.mxl"
+  },
   "schoenberg-1-unterm-schutz-von-dichten-blattergrunden.mxl": {
     "composer": "Schoenberg, Arnold",
     "work": "Das Buch der hängenden Gärten, Op.15",
     "song": "1 Unterm Schutz von dichten Blättergründen",
     "source": "scores/Schoenberg,_Arnold/Das_Buch_der_hängenden_Gärten,_Op.15/1_Unterm_Schutz_von_dichten_Blättergründen/lc9134208.mxl"
   },
+  "schoenberg-10-das-schone-beet-betracht-ich-mir-im-harren.mxl": {
+    "composer": "Schoenberg, Arnold",
+    "work": "Das Buch der hängenden Gärten, Op.15",
+    "song": "10 Das schöne Beet betracht ich mir im Harren",
+    "source": "scores/Schoenberg,_Arnold/Das_Buch_der_hängenden_Gärten,_Op.15/10_Das_schöne_Beet_betracht_ich_mir_im_Harren/lc30509480.mxl"
+  },
+  "schoenberg-2-hain-in-diesen-paradiesen.mxl": {
+    "composer": "Schoenberg, Arnold",
+    "work": "Das Buch der hängenden Gärten, Op.15",
+    "song": "2 Hain in diesen Paradiesen",
+    "source": "scores/Schoenberg,_Arnold/Das_Buch_der_hängenden_Gärten,_Op.15/2_Hain_in_diesen_Paradiesen/lc9134397.mxl"
+  },
+  "schoenberg-3-als-neuling-trat-ich-ein-in-dein-gehege.mxl": {
+    "composer": "Schoenberg, Arnold",
+    "work": "Das Buch der hängenden Gärten, Op.15",
+    "song": "3 Als Neuling trat ich ein in dein Gehege",
+    "source": "scores/Schoenberg,_Arnold/Das_Buch_der_hängenden_Gärten,_Op.15/3_Als_Neuling_trat_ich_ein_in_dein_Gehege/lc9134607.mxl"
+  },
+  "schoenberg-4-da-meine-lippen-reglos-sind-und-brennen.mxl": {
+    "composer": "Schoenberg, Arnold",
+    "work": "Das Buch der hängenden Gärten, Op.15",
+    "song": "4 Da meine Lippen reglos sind und brennen",
+    "source": "scores/Schoenberg,_Arnold/Das_Buch_der_hängenden_Gärten,_Op.15/4_Da_meine_Lippen_reglos_sind_und_brennen/lc9138438.mxl"
+  },
+  "schoenberg-5-saget-mir-auf-welchem-pfade.mxl": {
+    "composer": "Schoenberg, Arnold",
+    "work": "Das Buch der hängenden Gärten, Op.15",
+    "song": "5 Saget mir, auf welchem Pfade",
+    "source": "scores/Schoenberg,_Arnold/Das_Buch_der_hängenden_Gärten,_Op.15/5_Saget_mir,_auf_welchem_Pfade/lc9138579.mxl"
+  },
+  "schoenberg-6-jedem-werke-bin-ich-furder-tot.mxl": {
+    "composer": "Schoenberg, Arnold",
+    "work": "Das Buch der hängenden Gärten, Op.15",
+    "song": "6 Jedem Werke bin ich fürder tot",
+    "source": "scores/Schoenberg,_Arnold/Das_Buch_der_hängenden_Gärten,_Op.15/6_Jedem_Werke_bin_ich_fürder_tot/lc30437000.mxl"
+  },
+  "schroter-1-lied-der-morgenrote.mxl": {
+    "composer": "Schröter, Corona",
+    "work": "25 Lieder",
+    "song": "1 Lied der Morgenröte",
+    "source": "scores/Schröter,_Corona/25_Lieder/1_Lied_der_Morgenröte/lc6017264.mxl"
+  },
   "schroter-10-die-drei-fragen.mxl": {
     "composer": "Schröter, Corona",
     "work": "25 Lieder",
     "song": "10 Die drei Fragen",
     "source": "scores/Schröter,_Corona/25_Lieder/10_Die_drei_Fragen/lc6030481.mxl"
+  },
+  "schroter-11-das-madchen-am-ufer.mxl": {
+    "composer": "Schröter, Corona",
+    "work": "25 Lieder",
+    "song": "11 Das Mädchen am Ufer",
+    "source": "scores/Schröter,_Corona/25_Lieder/11_Das_Mädchen_am_Ufer/lc6111180.mxl"
+  },
+  "schroter-12-die-silberquelle.mxl": {
+    "composer": "Schröter, Corona",
+    "work": "25 Lieder",
+    "song": "12 Die Silberquelle",
+    "source": "scores/Schröter,_Corona/25_Lieder/12_Die_Silberquelle/lc6039262.mxl"
+  },
+  "schroter-13-brautlied.mxl": {
+    "composer": "Schröter, Corona",
+    "work": "25 Lieder",
+    "song": "13 Brautlied",
+    "source": "scores/Schröter,_Corona/25_Lieder/13_Brautlied/lc6045936.mxl"
+  },
+  "schroter-14-die-liebe.mxl": {
+    "composer": "Schröter, Corona",
+    "work": "25 Lieder",
+    "song": "14 Die Liebe",
+    "source": "scores/Schröter,_Corona/25_Lieder/14_Die_Liebe/lc6047364.mxl"
+  },
+  "schroter-15-der-wassermann.mxl": {
+    "composer": "Schröter, Corona",
+    "work": "25 Lieder",
+    "song": "15 Der Wassermann",
+    "source": "scores/Schröter,_Corona/25_Lieder/15_Der_Wassermann/lc6047553.mxl"
   },
   "schubert-1-mignon-und-der-harfner.mxl": {
     "composer": "Schubert, Franz",
@@ -1054,6 +3016,42 @@
     "work": "Winterreise, D.911",
     "song": "5 Der Lindenbaum",
     "source": "scores/Schubert,_Franz/Winterreise,_D.911/5_Der_Lindenbaum/lc5016466.mxl"
+  },
+  "schubert-an-die-musik-d-547.mxl": {
+    "composer": "Schubert, Franz",
+    "work": " ",
+    "song": "An die Musik, D.547",
+    "source": "scores/Schubert,_Franz/_/An_die_Musik,_D.547/lc6180725.mxl"
+  },
+  "schubert-auf-dem-wasser-zu-singen-d-774.mxl": {
+    "composer": "Schubert, Franz",
+    "work": " ",
+    "song": "Auf dem Wasser zu singen, D.774",
+    "source": "scores/Schubert,_Franz/_/Auf_dem_Wasser_zu_singen,_D.774/lc29589203.mxl"
+  },
+  "schubert-auflosung-d-807.mxl": {
+    "composer": "Schubert, Franz",
+    "work": " ",
+    "song": "Auflösung, D.807",
+    "source": "scores/Schubert,_Franz/_/Auflösung,_D.807/lc29588495.mxl"
+  },
+  "schubert-das-rosenband-d-280.mxl": {
+    "composer": "Schubert, Franz",
+    "work": " ",
+    "song": "Das Rosenband, D.280",
+    "source": "scores/Schubert,_Franz/_/Das_Rosenband,_D.280/lc5946872.mxl"
+  },
+  "schubert-der-erlkonig-d-328.mxl": {
+    "composer": "Schubert, Franz",
+    "work": " ",
+    "song": "Der Erlkönig, D.328",
+    "source": "scores/Schubert,_Franz/_/Der_Erlkönig,_D.328/lc29062370.mxl"
+  },
+  "schubert-die-forelle-op-32-d550d.mxl": {
+    "composer": "Schubert, Franz",
+    "work": " ",
+    "song": "Die Forelle, Op.32, D550d",
+    "source": "scores/Schubert,_Franz/_/Die_Forelle,_Op.32,_D550d/lc6900961.mxl"
   },
   "schumann-1-ich-stand-in-dunklen-traumen.mxl": {
     "composer": "Schumann, Clara",
@@ -1073,11 +3071,83 @@
     "song": "1 Sängers Trost",
     "source": "scores/Schumann,_Robert/5_Lieder_und_Gesänge,_Op.127/1_Sängers_Trost/lc6826352.mxl"
   },
+  "schumann-10-hor-ich-das-liedchen-klingen.mxl": {
+    "composer": "Schumann, Robert",
+    "work": "Dichterliebe, Op.48",
+    "song": "10 Hör’ ich das Liedchen klingen",
+    "source": "scores/Schumann,_Robert/Dichterliebe,_Op.48/10_Hör’_ich_das_Liedchen_klingen/lc5003150.mxl"
+  },
+  "schumann-11-ein-jungling-liebt-ein-madchen.mxl": {
+    "composer": "Schumann, Robert",
+    "work": "Dichterliebe, Op.48",
+    "song": "11 Ein Jüngling liebt ein Mädchen",
+    "source": "scores/Schumann,_Robert/Dichterliebe,_Op.48/11_Ein_Jüngling_liebt_ein_Mädchen/lc4978393.mxl"
+  },
+  "schumann-2-dein-angesicht.mxl": {
+    "composer": "Schumann, Robert",
+    "work": "5 Lieder und Gesänge, Op.127",
+    "song": "2 Dein Angesicht",
+    "source": "scores/Schumann,_Robert/5_Lieder_und_Gesänge,_Op.127/2_Dein_Angesicht/lc6834542.mxl"
+  },
   "schumann-2-sie-liebten-sich-beide.mxl": {
     "composer": "Schumann, Clara",
     "work": "6 Lieder, Op.13",
     "song": "2 Sie liebten sich beide",
     "source": "scores/Schumann,_Clara/6_Lieder,_Op.13/2_Sie_liebten_sich_beide/lc5125680.mxl"
+  },
+  "schumann-3-es-leuchtet-meine-liebe.mxl": {
+    "composer": "Schumann, Robert",
+    "work": "5 Lieder und Gesänge, Op.127",
+    "song": "3 Es leuchtet meine Liebe",
+    "source": "scores/Schumann,_Robert/5_Lieder_und_Gesänge,_Op.127/3_Es_leuchtet_meine_Liebe/lc6826597.mxl"
+  },
+  "schumann-3-liebeszauber.mxl": {
+    "composer": "Schumann, Clara",
+    "work": "6 Lieder, Op.13",
+    "song": "3 Liebeszauber",
+    "source": "scores/Schumann,_Clara/6_Lieder,_Op.13/3_Liebeszauber/lc5126774.mxl"
+  },
+  "schumann-4-der-mond-kommt-still-gegangen.mxl": {
+    "composer": "Schumann, Clara",
+    "work": "6 Lieder, Op.13",
+    "song": "4 Der Mond kommt still gegangen",
+    "source": "scores/Schumann,_Clara/6_Lieder,_Op.13/4_Der_Mond_kommt_still_gegangen/lc5126921.mxl"
+  },
+  "schumann-4-mein-altes-ross.mxl": {
+    "composer": "Schumann, Robert",
+    "work": "5 Lieder und Gesänge, Op.127",
+    "song": "4 Mein altes Ross",
+    "source": "scores/Schumann,_Robert/5_Lieder_und_Gesänge,_Op.127/4_Mein_altes_Ross/lc6827712.mxl"
+  },
+  "schumann-5-ich-hab-in-deinem-auge.mxl": {
+    "composer": "Schumann, Clara",
+    "work": "6 Lieder, Op.13",
+    "song": "5 Ich hab’ in Deinem Auge",
+    "source": "scores/Schumann,_Clara/6_Lieder,_Op.13/5_Ich_hab’_in_Deinem_Auge/lc5130351.mxl"
+  },
+  "schumann-5-schlusslied-des-narren.mxl": {
+    "composer": "Schumann, Robert",
+    "work": "5 Lieder und Gesänge, Op.127",
+    "song": "5 Schlusslied des Narren",
+    "source": "scores/Schumann,_Robert/5_Lieder_und_Gesänge,_Op.127/5_Schlusslied_des_Narren/lc6828018.mxl"
+  },
+  "schumann-6-die-stille-lotosblume.mxl": {
+    "composer": "Schumann, Clara",
+    "work": "6 Lieder, Op.13",
+    "song": "6 Die stille Lotosblume",
+    "source": "scores/Schumann,_Clara/6_Lieder,_Op.13/6_Die_stille_Lotosblume/lc5130634.mxl"
+  },
+  "schumann-die-gute-nacht.mxl": {
+    "composer": "Schumann, Clara",
+    "work": " ",
+    "song": "Die gute Nacht",
+    "source": "scores/Schumann,_Clara/_/Die_gute_Nacht/lc5000388.mxl"
+  },
+  "schumann-lorelei.mxl": {
+    "composer": "Schumann, Clara",
+    "work": " ",
+    "song": "Lorelei",
+    "source": "scores/Schumann,_Clara/_/Lorelei/lc4919673.mxl"
   },
   "shield-the-maid-of-lodi.mxl": {
     "composer": "Shield, William",
@@ -1091,11 +3161,53 @@
     "song": "1 The Clown",
     "source": "scores/Smyth,_Ethel/3_Songs/1_The_Clown/lc6665104.mxl"
   },
+  "somervell-1-loveliest-of-trees-the-cherry-now.mxl": {
+    "composer": "Somervell, Arthur",
+    "work": "A Shropshire Lad",
+    "song": "1 Loveliest of Trees, the Cherry now",
+    "source": "scores/Somervell,_Arthur/A_Shropshire_Lad/1_Loveliest_of_Trees,_the_Cherry_now/lc6210838.mxl"
+  },
   "somervell-10-the-lads-in-their-hundreds.mxl": {
     "composer": "Somervell, Arthur",
     "work": "A Shropshire Lad",
     "song": "10 The Lads in their hundreds",
     "source": "scores/Somervell,_Arthur/A_Shropshire_Lad/10_The_Lads_in_their_hundreds/lc6222828.mxl"
+  },
+  "somervell-2-when-i-was-one-and-twenty.mxl": {
+    "composer": "Somervell, Arthur",
+    "work": "A Shropshire Lad",
+    "song": "2 When I was one-and-twenty",
+    "source": "scores/Somervell,_Arthur/A_Shropshire_Lad/2_When_I_was_one-and-twenty/lc6210961.mxl"
+  },
+  "somervell-3-there-pass-the-careless-people.mxl": {
+    "composer": "Somervell, Arthur",
+    "work": "A Shropshire Lad",
+    "song": "3 There pass the careless People",
+    "source": "scores/Somervell,_Arthur/A_Shropshire_Lad/3_There_pass_the_careless_People/lc6211069.mxl"
+  },
+  "somervell-4-in-summer-time-on-bredon.mxl": {
+    "composer": "Somervell, Arthur",
+    "work": "A Shropshire Lad",
+    "song": "4 In Summer-time on Bredon",
+    "source": "scores/Somervell,_Arthur/A_Shropshire_Lad/4_In_Summer-time_on_Bredon/lc6211877.mxl"
+  },
+  "somervell-5-the-street-sounds-to-the-soldiers-tread.mxl": {
+    "composer": "Somervell, Arthur",
+    "work": "A Shropshire Lad",
+    "song": "5 The Street sounds to the Soldiers’ Tread",
+    "source": "scores/Somervell,_Arthur/A_Shropshire_Lad/5_The_Street_sounds_to_the_Soldiers’_Tread/lc6211903.mxl"
+  },
+  "somervell-6-on-the-idle-hill-of-summer.mxl": {
+    "composer": "Somervell, Arthur",
+    "work": "A Shropshire Lad",
+    "song": "6 On the idle hill of Summer",
+    "source": "scores/Somervell,_Arthur/A_Shropshire_Lad/6_On_the_idle_hill_of_Summer/lc6220532.mxl"
+  },
+  "stanford-1-as-thro-the-land.mxl": {
+    "composer": "Stanford, Charles Villiers",
+    "work": "A Cycle of Songs, Op.68",
+    "song": "1 As thro’ the land",
+    "source": "scores/Stanford,_Charles_Villiers/A_Cycle_of_Songs,_Op.68/1_As_thro’_the_land/lc6785268.mxl"
   },
   "stanford-1-since-thou-o-fondest-and-truest.mxl": {
     "composer": "Stanford, Charles Villiers",
@@ -1103,11 +3215,53 @@
     "song": "1 Since thou, o fondest and truest",
     "source": "scores/Stanford,_Charles_Villiers/3_Songs_of_Robert_Bridges,_Op.43/1_Since_thou,_o_fondest_and_truest/lc6205639.mxl"
   },
+  "stanford-2-i-praise-the-tender-flower.mxl": {
+    "composer": "Stanford, Charles Villiers",
+    "work": "3 Songs of Robert Bridges, Op.43",
+    "song": "2 I praise the tender flower",
+    "source": "scores/Stanford,_Charles_Villiers/3_Songs_of_Robert_Bridges,_Op.43/2_I_praise_the_tender_flower/lc6205693.mxl"
+  },
+  "stanford-2-sweet-and-low.mxl": {
+    "composer": "Stanford, Charles Villiers",
+    "work": "A Cycle of Songs, Op.68",
+    "song": "2 Sweet and low",
+    "source": "scores/Stanford,_Charles_Villiers/A_Cycle_of_Songs,_Op.68/2_Sweet_and_low/lc6788150.mxl"
+  },
+  "stanford-3-say-o-say-saith-the-music.mxl": {
+    "composer": "Stanford, Charles Villiers",
+    "work": "3 Songs of Robert Bridges, Op.43",
+    "song": "3 Say, o say! saith the music",
+    "source": "scores/Stanford,_Charles_Villiers/3_Songs_of_Robert_Bridges,_Op.43/3_Say,_o_say!_saith_the_music/lc6205716.mxl"
+  },
+  "stanford-3-the-splendour-falls.mxl": {
+    "composer": "Stanford, Charles Villiers",
+    "work": "A Cycle of Songs, Op.68",
+    "song": "3 The splendour falls",
+    "source": "scores/Stanford,_Charles_Villiers/A_Cycle_of_Songs,_Op.68/3_The_splendour_falls/lc6789660.mxl"
+  },
+  "stanford-4-tears-idle-tears.mxl": {
+    "composer": "Stanford, Charles Villiers",
+    "work": "A Cycle of Songs, Op.68",
+    "song": "4 Tears, idle tears",
+    "source": "scores/Stanford,_Charles_Villiers/A_Cycle_of_Songs,_Op.68/4_Tears,_idle_tears/lc6788555.mxl"
+  },
   "strauss-1-ruhe-meine-seele.mxl": {
     "composer": "Strauss, Richard",
     "work": "4 Lieder, Op.27",
     "song": "1 Ruhe, meine Seele!",
     "source": "scores/Strauss,_Richard/4_Lieder,_Op.27/1_Ruhe,_meine_Seele!/lc6183554.mxl"
+  },
+  "strauss-3-heimliche-aufforderung.mxl": {
+    "composer": "Strauss, Richard",
+    "work": "4 Lieder, Op.27",
+    "song": "3 Heimliche Aufforderung",
+    "source": "scores/Strauss,_Richard/4_Lieder,_Op.27/3_Heimliche_Aufforderung/lc6199576.mxl"
+  },
+  "strauss-4-morgen.mxl": {
+    "composer": "Strauss, Richard",
+    "work": "4 Lieder, Op.27",
+    "song": "4 Morgen!",
+    "source": "scores/Strauss,_Richard/4_Lieder,_Op.27/4_Morgen!/lc6199578.mxl"
   },
   "sullivan-the-long-day-closes.mxl": {
     "composer": "Sullivan, Arthur",
@@ -1115,11 +3269,23 @@
     "song": "The Long Day Closes",
     "source": "scores/Sullivan,_Arthur/_/The_Long_Day_Closes/lc6205297.mxl"
   },
+  "sullivan-the-lost-chord.mxl": {
+    "composer": "Sullivan, Arthur",
+    "work": " ",
+    "song": "The Lost Chord",
+    "source": "scores/Sullivan,_Arthur/_/The_Lost_Chord/lc6205441.mxl"
+  },
   "tegner-betlehems-stjarna.mxl": {
     "composer": "Tegnér, Alice",
     "work": " ",
     "song": "Betlehems stjärna",
     "source": "scores/Tegnér,_Alice/_/Betlehems_stjärna/lc6910499.mxl"
+  },
+  "tegner-walzer.mxl": {
+    "composer": "Tegnér, Alice",
+    "work": " ",
+    "song": "Walzer",
+    "source": "scores/Tegnér,_Alice/_/Walzer/lc6910483.mxl"
   },
   "thys-petit-negre.mxl": {
     "composer": "Thys, Pauline",
@@ -1133,6 +3299,12 @@
     "song": "Ideale",
     "source": "scores/Tosti,_Francesco_Paolo/_/Ideale/lc29381987.mxl"
   },
+  "tosti-sogno.mxl": {
+    "composer": "Tosti, Francesco Paolo",
+    "work": " ",
+    "song": "Sogno",
+    "source": "scores/Tosti,_Francesco_Paolo/_/Sogno/lc29748842.mxl"
+  },
   "verdi-3-in-solitaria-stanza.mxl": {
     "composer": "Verdi, Giuseppe",
     "work": "6 Romanze",
@@ -1145,11 +3317,77 @@
     "song": "1 À la Fontaine, VWV 1133",
     "source": "scores/Viardot,_Pauline/6_Mélodies,_VWV_1133-11371176/1_À_la_Fontaine,_VWV_1133/lc5978033.mxl"
   },
+  "viardot-bonjour-mon-cœur-vwv-1072.mxl": {
+    "composer": "Viardot, Pauline",
+    "work": " ",
+    "song": "Bonjour mon cœur!, VWV 1072",
+    "source": "scores/Viardot,_Pauline/_/Bonjour_mon_cœur!,_VWV_1072/lc6574373.mxl"
+  },
+  "viardot-desespoir-vwv-1138.mxl": {
+    "composer": "Viardot, Pauline",
+    "work": " ",
+    "song": "Désespoir, VWV 1138",
+    "source": "scores/Viardot,_Pauline/_/Désespoir,_VWV_1138/lc6574450.mxl"
+  },
+  "viardot-lamento-vwv-1139.mxl": {
+    "composer": "Viardot, Pauline",
+    "work": " ",
+    "song": "Lamento, VWV 1139",
+    "source": "scores/Viardot,_Pauline/_/Lamento,_VWV_1139/lc6575233.mxl"
+  },
+  "viardot-le-chene-et-le-roseau-vwv-1036.mxl": {
+    "composer": "Viardot, Pauline",
+    "work": " ",
+    "song": "Le chêne et le roseau, VWV 1036",
+    "source": "scores/Viardot,_Pauline/_/Le_chêne_et_le_roseau,_VWV_1036/lc6575283.mxl"
+  },
+  "viardot-le-reve-de-jesus-vwv-1074.mxl": {
+    "composer": "Viardot, Pauline",
+    "work": " ",
+    "song": "Le rêve de Jésus, VWV 1074",
+    "source": "scores/Viardot,_Pauline/_/Le_rêve_de_Jésus,_VWV_1074/lc6581327.mxl"
+  },
+  "viardot-les-attraits-vwv-1852.mxl": {
+    "composer": "Viardot, Pauline",
+    "work": " ",
+    "song": "Les Attraits, VWV 1852",
+    "source": "scores/Viardot,_Pauline/_/Les_Attraits,_VWV_1852/lc6581364.mxl"
+  },
   "wagner-1-der-engel.mxl": {
     "composer": "Wagner, Richard",
     "work": "5 Gedichte für eine Frauenstimme (Wesendonck-Lieder), WWV 91",
     "song": "1 Der Engel",
     "source": "scores/Wagner,_Richard/5_Gedichte_für_eine_Frauenstimme_(Wesendonck-Lieder),_WWV_91/1_Der_Engel/lc5026068.mxl"
+  },
+  "wagner-2-stehe-still.mxl": {
+    "composer": "Wagner, Richard",
+    "work": "5 Gedichte für eine Frauenstimme (Wesendonck-Lieder), WWV 91",
+    "song": "2 Stehe still!",
+    "source": "scores/Wagner,_Richard/5_Gedichte_für_eine_Frauenstimme_(Wesendonck-Lieder),_WWV_91/2_Stehe_still!/lc5026077.mxl"
+  },
+  "wagner-3-im-treibhaus.mxl": {
+    "composer": "Wagner, Richard",
+    "work": "5 Gedichte für eine Frauenstimme (Wesendonck-Lieder), WWV 91",
+    "song": "3 Im Treibhaus",
+    "source": "scores/Wagner,_Richard/5_Gedichte_für_eine_Frauenstimme_(Wesendonck-Lieder),_WWV_91/3_Im_Treibhaus/lc5026084.mxl"
+  },
+  "wagner-4-schmerzen.mxl": {
+    "composer": "Wagner, Richard",
+    "work": "5 Gedichte für eine Frauenstimme (Wesendonck-Lieder), WWV 91",
+    "song": "4 Schmerzen",
+    "source": "scores/Wagner,_Richard/5_Gedichte_für_eine_Frauenstimme_(Wesendonck-Lieder),_WWV_91/4_Schmerzen/lc5026087.mxl"
+  },
+  "wagner-5-traume.mxl": {
+    "composer": "Wagner, Richard",
+    "work": "5 Gedichte für eine Frauenstimme (Wesendonck-Lieder), WWV 91",
+    "song": "5 Träume",
+    "source": "scores/Wagner,_Richard/5_Gedichte_für_eine_Frauenstimme_(Wesendonck-Lieder),_WWV_91/5_Träume/lc5026092.mxl"
+  },
+  "warlock-1-along-the-stream.mxl": {
+    "composer": "Warlock, Peter",
+    "work": "Saudades",
+    "song": "1 Along the Stream",
+    "source": "scores/Warlock,_Peter/Saudades/1_Along_the_Stream/lc6232420.mxl"
   },
   "warlock-1-chopcherry.mxl": {
     "composer": "Warlock, Peter",
@@ -1157,11 +3395,77 @@
     "song": "1 Chopcherry",
     "source": "scores/Warlock,_Peter/Peterisms,_Set_1/1_Chopcherry/lc6447286.mxl"
   },
+  "warlock-1-roister-doister.mxl": {
+    "composer": "Warlock, Peter",
+    "work": "Peterisms, Set 2",
+    "song": "1 Roister Doister",
+    "source": "scores/Warlock,_Peter/Peterisms,_Set_2/1_Roister_Doister/lc6447758.mxl"
+  },
+  "warlock-2-a-sad-song.mxl": {
+    "composer": "Warlock, Peter",
+    "work": "Peterisms, Set 1",
+    "song": "2 A Sad Song",
+    "source": "scores/Warlock,_Peter/Peterisms,_Set_1/2_A_Sad_Song/lc6447342.mxl"
+  },
+  "warlock-2-spring.mxl": {
+    "composer": "Warlock, Peter",
+    "work": "Peterisms, Set 2",
+    "song": "2 Spring",
+    "source": "scores/Warlock,_Peter/Peterisms,_Set_2/2_Spring/lc6447825.mxl"
+  },
+  "warlock-3-lusty-juventus.mxl": {
+    "composer": "Warlock, Peter",
+    "work": "Peterisms, Set 2",
+    "song": "3 Lusty Juventus",
+    "source": "scores/Warlock,_Peter/Peterisms,_Set_2/3_Lusty_Juventus/lc6447910.mxl"
+  },
+  "warlock-3-rutterkin.mxl": {
+    "composer": "Warlock, Peter",
+    "work": "Peterisms, Set 1",
+    "song": "3 Rutterkin",
+    "source": "scores/Warlock,_Peter/Peterisms,_Set_1/3_Rutterkin/lc6447372.mxl"
+  },
   "webern-1-dies-ist-ein-lied-fur-dich-allein.mxl": {
     "composer": "Webern, Anton",
     "work": "5 Lieder aus “Der siebente Ring”, Op.3",
     "song": "1 Dies ist ein Lied für dich allein",
     "source": "scores/Webern,_Anton/5_Lieder_aus_“Der_siebente_Ring”,_Op.3/1_Dies_ist_ein_Lied_für_dich_allein/lc6715306.mxl"
+  },
+  "webern-1-eingang.mxl": {
+    "composer": "Webern, Anton",
+    "work": "5 Lieder nach Gedichten von Stefan George, Op.4",
+    "song": "1 Eingang",
+    "source": "scores/Webern,_Anton/5_Lieder_nach_Gedichten_von_Stefan_George,_Op.4/1_Eingang/lc6725471.mxl"
+  },
+  "webern-2-im-windesweben.mxl": {
+    "composer": "Webern, Anton",
+    "work": "5 Lieder aus “Der siebente Ring”, Op.3",
+    "song": "2 Im Windesweben",
+    "source": "scores/Webern,_Anton/5_Lieder_aus_“Der_siebente_Ring”,_Op.3/2_Im_Windesweben/lc6715339.mxl"
+  },
+  "webern-2-noch-zwingt-mich-treue.mxl": {
+    "composer": "Webern, Anton",
+    "work": "5 Lieder nach Gedichten von Stefan George, Op.4",
+    "song": "2 Noch zwingt mich Treue",
+    "source": "scores/Webern,_Anton/5_Lieder_nach_Gedichten_von_Stefan_George,_Op.4/2_Noch_zwingt_mich_Treue/lc6725510.mxl"
+  },
+  "webern-3-an-bachesranft.mxl": {
+    "composer": "Webern, Anton",
+    "work": "5 Lieder aus “Der siebente Ring”, Op.3",
+    "song": "3 An Bachesranft",
+    "source": "scores/Webern,_Anton/5_Lieder_aus_“Der_siebente_Ring”,_Op.3/3_An_Bachesranft/lc6715795.mxl"
+  },
+  "webern-4-im-morgentaun.mxl": {
+    "composer": "Webern, Anton",
+    "work": "5 Lieder aus “Der siebente Ring”, Op.3",
+    "song": "4 Im Morgentaun",
+    "source": "scores/Webern,_Anton/5_Lieder_aus_“Der_siebente_Ring”,_Op.3/4_Im_Morgentaun/lc6716614.mxl"
+  },
+  "webern-5-kahl-reckt-der-baum.mxl": {
+    "composer": "Webern, Anton",
+    "work": "5 Lieder aus “Der siebente Ring”, Op.3",
+    "song": "5 Kahl reckt der Baum",
+    "source": "scores/Webern,_Anton/5_Lieder_aus_“Der_siebente_Ring”,_Op.3/5_Kahl_reckt_der_Baum/lc6716631.mxl"
   },
   "white-1-when-the-swallows-homeward-fly.mxl": {
     "composer": "White, Maude Valérie",
@@ -1169,17 +3473,77 @@
     "song": "1 When the Swallows Homeward Fly",
     "source": "scores/White,_Maude_Valérie/3_Little_Songs/1_When_the_Swallows_Homeward_Fly/lc6202466.mxl"
   },
+  "white-2-a-memory.mxl": {
+    "composer": "White, Maude Valérie",
+    "work": "3 Little Songs",
+    "song": "2 A Memory",
+    "source": "scores/White,_Maude_Valérie/3_Little_Songs/2_A_Memory/lc6202530.mxl"
+  },
+  "white-3-let-us-forget.mxl": {
+    "composer": "White, Maude Valérie",
+    "work": "3 Little Songs",
+    "song": "3 Let Us Forget",
+    "source": "scores/White,_Maude_Valérie/3_Little_Songs/3_Let_Us_Forget/lc6202660.mxl"
+  },
+  "white-a-farewell-song.mxl": {
+    "composer": "White, Maude Valérie",
+    "work": " ",
+    "song": "A Farewell Song",
+    "source": "scores/White,_Maude_Valérie/_/A_Farewell_Song/lc6230776.mxl"
+  },
+  "white-a-finland-love-song.mxl": {
+    "composer": "White, Maude Valérie",
+    "work": " ",
+    "song": "A Finland Love Song",
+    "source": "scores/White,_Maude_Valérie/_/A_Finland_Love_Song/lc6230361.mxl"
+  },
   "white-macushla.mxl": {
     "composer": "White, Harold",
     "work": " ",
     "song": "Macushla",
     "source": "scores/White,_Harold/_/Macushla/lc30906395.mxl"
   },
+  "white-to-mary.mxl": {
+    "composer": "White, Maude Valérie",
+    "work": " ",
+    "song": "To Mary",
+    "source": "scores/White,_Maude_Valérie/_/To_Mary/lc6202745.mxl"
+  },
+  "wolf-1-der-freund.mxl": {
+    "composer": "Wolf, Hugo",
+    "work": "Eichendorff-Lieder",
+    "song": "1 Der Freund",
+    "source": "scores/Wolf,_Hugo/Eichendorff-Lieder/1_Der_Freund/lc5016637.mxl"
+  },
   "wolf-10-der-glucksritter.mxl": {
     "composer": "Wolf, Hugo",
     "work": "Eichendorff-Lieder",
     "song": "10 Der Glücksritter",
     "source": "scores/Wolf,_Hugo/Eichendorff-Lieder/10_Der_Glücksritter/lc5032950.mxl"
+  },
+  "wolf-11-lieber-alles.mxl": {
+    "composer": "Wolf, Hugo",
+    "work": "Eichendorff-Lieder",
+    "song": "11 Lieber Alles",
+    "source": "scores/Wolf,_Hugo/Eichendorff-Lieder/11_Lieber_Alles/lc4945807.mxl"
+  },
+  "wolf-12-heimweh.mxl": {
+    "composer": "Wolf, Hugo",
+    "work": "Eichendorff-Lieder",
+    "song": "12 Heimweh",
+    "source": "scores/Wolf,_Hugo/Eichendorff-Lieder/12_Heimweh/lc5057797.mxl"
+  },
+  "wolf-13-der-scholar.mxl": {
+    "composer": "Wolf, Hugo",
+    "work": "Eichendorff-Lieder",
+    "song": "13 Der Scholar",
+    "source": "scores/Wolf,_Hugo/Eichendorff-Lieder/13_Der_Scholar/lc5052792.mxl"
+  },
+  "wolf-14-der-verzweifelte-liebhaber.mxl": {
+    "composer": "Wolf, Hugo",
+    "work": "Eichendorff-Lieder",
+    "song": "14 Der verzweifelte Liebhaber",
+    "source": "scores/Wolf,_Hugo/Eichendorff-Lieder/14_Der_verzweifelte_Liebhaber/lc5052714.mxl"
   },
   "wood-ethiopia-saluting-the-colours.mxl": {
     "composer": "Wood, Charles",
@@ -1193,10 +3557,46 @@
     "song": "1 Liebe Schwalbe",
     "source": "scores/Zemlinsky,_Alexander_von/Walzer-Gesänge,_Op.6/1_Liebe_Schwalbe/lc30893834.mxl"
   },
+  "zemlinsky-3-fensterlein-nachts-bist-du-zu.mxl": {
+    "composer": "Zemlinsky, Alexander von",
+    "work": "Walzer-Gesänge, Op.6",
+    "song": "3 Fensterlein, nachts bist du zu",
+    "source": "scores/Zemlinsky,_Alexander_von/Walzer-Gesänge,_Op.6/3_Fensterlein,_nachts_bist_du_zu/lc30910133.mxl"
+  },
   "zumsteeg-1-des-kaufmanns-liebeswerbung.mxl": {
     "composer": "Zumsteeg, Emilie",
     "work": "5 Lieder",
     "song": "1 Des Kaufmanns Liebeswerbung",
     "source": "scores/Zumsteeg,_Emilie/5_Lieder/1_Des_Kaufmanns_Liebeswerbung/lc6158642.mxl"
+  },
+  "zumsteeg-1-die-kapelle.mxl": {
+    "composer": "Zumsteeg, Emilie",
+    "work": "6 Lieder, Op.4",
+    "song": "1 Die Kapelle",
+    "source": "scores/Zumsteeg,_Emilie/6_Lieder,_Op.4/1_Die_Kapelle/lc6159729.mxl"
+  },
+  "zumsteeg-2-der-geburtstag.mxl": {
+    "composer": "Zumsteeg, Emilie",
+    "work": "5 Lieder",
+    "song": "2 Der Geburtstag",
+    "source": "scores/Zumsteeg,_Emilie/5_Lieder/2_Der_Geburtstag/lc6158825.mxl"
+  },
+  "zumsteeg-3-in-das-stambuch-einer-freundin.mxl": {
+    "composer": "Zumsteeg, Emilie",
+    "work": "5 Lieder",
+    "song": "3 In das Stambuch einer Freundin",
+    "source": "scores/Zumsteeg,_Emilie/5_Lieder/3_In_das_Stambuch_einer_Freundin/lc6159296.mxl"
+  },
+  "zumsteeg-4-romanze.mxl": {
+    "composer": "Zumsteeg, Emilie",
+    "work": "5 Lieder",
+    "song": "4 Romanze",
+    "source": "scores/Zumsteeg,_Emilie/5_Lieder/4_Romanze/lc6159273.mxl"
+  },
+  "zumsteeg-5-sehnsucht-der-liebe.mxl": {
+    "composer": "Zumsteeg, Emilie",
+    "work": "5 Lieder",
+    "song": "5 Sehnsucht der Liebe",
+    "source": "scores/Zumsteeg,_Emilie/5_Lieder/5_Sehnsucht_der_Liebe/lc6163298.mxl"
   }
 }
