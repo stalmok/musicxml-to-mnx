@@ -192,10 +192,10 @@ export interface MNXNoteValueQuantity {
   multiple: number
 }
 
-/** Notes played in the time of a different number of them. */
 /** Whether a tuplet's number or note value is drawn, and in what form. */
 export type MNXTupletDisplaySetting = 'noNumber' | 'inner' | 'both'
 
+/** Notes played in the time of a different number of them. */
 export interface MNXTuplet {
   type: 'tuplet'
   /** What is played. */

@@ -173,14 +173,14 @@ export interface NoteValueQuantity {
   multiple: number
 }
 
+/** Whether a tuplet's number or note value is drawn, and in what form. */
+export type TupletDisplay = 'noNumber' | 'inner' | 'both'
+
 /**
  * Notes played in the time of a different number of them. The events inside
  * keep the values they are written with; the ratio says how much time they
  * actually occupy.
  */
-/** Whether a tuplet's number or note value is drawn, and in what form. */
-export type TupletDisplay = 'noNumber' | 'inner' | 'both'
-
 export interface Tuplet {
   kind: 'tuplet'
   /** What is played, for example three eighths. */
