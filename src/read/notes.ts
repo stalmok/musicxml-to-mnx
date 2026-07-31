@@ -235,23 +235,28 @@ export function readNote(
   // A word spoken over an otherwise resting bar is written as a lyric on the
   // whole-measure rest. MNX's sequence-level full-measure rest states only a
   // visual duration and a fermata, with no room for a lyric, but a plain rest
-  // event carries one. A slur reaching the rest is the same story: MNX states
-  // a slur as a reference to the event it ends on, and the full-measure rest is
-  // not an event with an id. So a measure-filling rest that carries a lyric or a
-  // slur stays an event where its length has a note value to state it with. An
-  // irregular measure whose length no note value can write still takes the
-  // full-measure rest, which needs none, and the lyric or slur is reported as a
-  // loss. The checks read the element directly so that an unkept one stays
-  // unread and reported.
+  // event carries one. A slur that starts or ends on the rest is the same
+  // story: MNX states a slur as a reference to the event it reaches, and the
+  // full-measure rest is not an event with an id. So a measure-filling rest that
+  // carries a lyric or a slur endpoint stays an event where its length has a
+  // note value to state it with. A slur only passing over the rest (a
+  // "continue") needs no target, so it does not force the event. An irregular
+  // measure whose length no note value can write still takes the full-measure
+  // rest, which needs none, and the lyric or slur is reported as a loss. The
+  // checks read the element directly so that an unkept one stays unread and
+  // reported.
   const carriesLyric = element.element.children.some((c) => c.name === 'lyric')
-  const carriesSlur = notations.some((block) =>
-    block.element.children.some((c) => c.name === 'slur'),
+  const carriesSlurEnd = notations.some((block) =>
+    block.element.children.some(
+      (c) =>
+        c.name === 'slur' && (attribute(c, 'type') === 'start' || attribute(c, 'type') === 'stop'),
+    ),
   )
   const canBeEvent =
     written !== undefined ||
     (duration !== undefined && !state.divisionsAssumed && noteValueOf(duration) !== undefined)
 
-  if (restFillsMeasure && !((carriesLyric || carriesSlur) && canBeEvent)) {
+  if (restFillsMeasure && !((carriesLyric || carriesSlurEnd) && canBeEvent)) {
     // A rest is not drawn with a stem, and a beam over one alone is not a
     // beam, so a source stating either says nothing this loses.
     element.skip('stem', 'beam')

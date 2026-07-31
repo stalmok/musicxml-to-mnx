@@ -275,6 +275,25 @@ describe('slurs', () => {
 
     expect(schemaErrors(mnx)).toEqual([])
   })
+
+  // A slur only passing over the rest carries no endpoint, so it needs no event
+  // to target. The rest keeps the sequence-level full-measure form.
+  test('keeps the full-measure form when a slur only passes over the rest', () => {
+    const contRest =
+      '<note><rest measure="yes"/><duration>4</duration><type>quarter</type><voice>1</voice>' +
+      '<notations><slur type="continue" number="1"/></notations></note>'
+    const warnings = new WarningCollector()
+    const score = readScore(
+      parseXmlRoot(
+        measures(DIVISIONS + note('C', slur('start')), contRest, note('G', slur('stop'))),
+      ),
+      warnings,
+    )
+    const second = score.parts[0]?.measures[1]?.sequences[0]
+
+    expect(second?.fullMeasure).toBeDefined()
+    expect(second?.content).toEqual([])
+  })
 })
 
 describe('the ends a spanner is keyed by', () => {
