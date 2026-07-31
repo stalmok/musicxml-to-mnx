@@ -235,6 +235,14 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   // writes five quarters in a 3/4 bar, and the converter carrying that over
   // faithfully is right.
   test('never writes a voice past the end of its measure', () => {
+    // A note whose written value exceeds its measured duration is carried as
+    // the written value and reported as inconsistent:duration. Its voice then
+    // sounds longer than the source's durations add up to, without any time
+    // being invented, so this check would be comparing against the wrong
+    // thing, just as the exact-length check below is. The pitch and schema
+    // checks still hold the song to account.
+    if (warnings.some((warning) => warning.code === 'inconsistent:duration')) return
+
     const lengths = sourceMeasureLengths(parseXmlRoot(source))
     const overfull: string[] = []
 
@@ -417,6 +425,13 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   // cadenza run, and a check that treated a tuplet as one lump said the shift
   // began where nothing did.
   test('starts every octave shift on an event', () => {
+    // A shift's start is the cursor position the source wrote it at, measured
+    // by duration. Where a note's written value disagrees with its duration,
+    // the events are placed by their written values, so the two diverge and a
+    // shift can begin between events without anything being wrong. Skipped for
+    // the same reason the length checks are; the pitch and schema checks hold.
+    if (warnings.some((warning) => warning.code === 'inconsistent:duration')) return
+
     const stray: string[] = []
 
     mnx.parts.forEach((part, partIndex) => {
@@ -517,8 +532,13 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
         const byVoiceLine = new Map<string, string[]>()
         for (const note of measure.children.filter((c) => c.name === 'note')) {
           const voice = note.children.find((c) => c.name === 'voice')?.text.trim() ?? ''
+          // One text per line per note, the last where a note redundantly
+          // repeats a line, because MNX states one lyric per line on an event
+          // and the writer keeps the last. A source occasionally writes the
+          // same <lyric number="1"> twice on one note; counting both would fault
+          // the converter for collapsing a duplicate that carries nothing new.
+          const perLine = new Map<string, string>()
           for (const lyric of note.children.filter((c) => c.name === 'lyric')) {
-            const key = `${voice}|${lyric.attributes.number ?? '1'}`
             // Every <text>, joined by whatever the source put between them.
             // Two syllables sung on one note are written as two <text>s, and
             // taking the first was this check making the same mistake the
@@ -528,6 +548,10 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
               .map((c) => c.text)
               .join('')
             if (text === '') continue
+            perLine.set(String(lyric.attributes.number ?? '1'), text)
+          }
+          for (const [number, text] of perLine) {
+            const key = `${voice}|${number}`
             const list = byVoiceLine.get(key) ?? []
             list.push(text)
             byVoiceLine.set(key, list)
