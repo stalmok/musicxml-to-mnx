@@ -8,13 +8,23 @@
 // and anyone deciding whether a file is worth reconverting later has to be
 // able to tell them apart without reading the prose.
 //
-//   unsupported:*      a gap here. MNX can state it; this converter does not
-//                      carry it over yet, and a later release may.
-//   unrepresentable:*  a limit of MNX. There is nowhere in the output format
-//                      to put it, so no release will carry it while the
-//                      format stays as it is.
-//   anything else      the source disagreeing with itself or omitting what
-//                      reading it needs, and what the converter did about it.
+//   a gap here          unsupported:*      MNX can state it; this converter
+//                                          does not carry it over yet, and a
+//                                          later release may.
+//   a limit of MNX      unrepresentable:*  there is nowhere in the output
+//                                          format to put it, so no release
+//                                          will carry it while the format
+//                                          stays as it is.
+//   a source problem    inconsistent:*     the source disagreeing with
+//                       missing:*          itself, or omitting or leaving
+//                       unresolved:*       open what reading it needs, and
+//                       unclosed:*         what the converter did about it.
+//                       redundant:*        No release changes what the source
+//                                          says, so these turn on the file,
+//                                          not on the converter.
+//
+// isFormatLimit and isConverterGap decide the first two in code; a prefix in
+// neither is a source problem.
 
 // Stable, machine-readable codes. Consumers match on these, so a code's
 // meaning must never change once released; add a new one instead.
@@ -116,6 +126,16 @@ export type WarningCode =
  */
 export function isFormatLimit(code: WarningCode): boolean {
   return code.startsWith('unrepresentable:')
+}
+
+/**
+ * True for a loss a later release of this converter may close: MNX can hold
+ * it, but this converter does not carry it over yet. The mirror of
+ * isFormatLimit; a code that is neither is the source's own problem, which no
+ * release changes.
+ */
+export function isConverterGap(code: WarningCode): boolean {
+  return code.startsWith('unsupported:')
 }
 
 export interface WarningContext {

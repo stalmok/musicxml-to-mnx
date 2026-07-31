@@ -207,16 +207,18 @@ every release.
 conversion emits a `ConversionWarning` with a stable code and measure context,
 so a pipeline can gate on "zero losses" and know it means something.
 
-The code says which of three kinds it is. `unsupported:` is a gap in this
-converter that a later release may close; `unrepresentable:` is a limit of MNX
-that no release will close, and `isFormatLimit(code)` tests for it; anything
-else is the source disagreeing with itself. Reconverting a file after an
-upgrade is worth it for the first and never for the second.
+The code's prefix says which of three kinds it is. `unsupported:` is a gap in
+this converter that a later release may close, and `isConverterGap(code)` tests
+for it; `unrepresentable:` is a limit of MNX that no release will close, and
+`isFormatLimit(code)` tests for it; anything else (`inconsistent:`, `missing:`,
+`unresolved:`, `unclosed:`, `redundant:`) is the source's own problem, which no
+release changes. Reconverting a file after an upgrade is worth it only for the
+first.
 
 ```ts
-import { isFormatLimit } from 'ossia'
+import { isConverterGap } from 'ossia'
 
-const worthRetrying = warnings.some((w) => !isFormatLimit(w.code))
+const worthRetrying = warnings.some((w) => isConverterGap(w.code))
 ```
 
 **Strict about broken input.** Malformed structure throws with a document path
