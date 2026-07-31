@@ -533,6 +533,30 @@ describe('hairpins', () => {
     expect(warnings[0]?.message).toContain('none had started')
   })
 
+  const placedWedge =
+    '<direction placement="below"><direction-type><wedge type="crescendo" number="1"/>' +
+    '</direction-type></direction>'
+
+  test('reads the side a hairpin is drawn on', () => {
+    const { dynamics } = readMeasures(placedWedge + NOTE + wedge('stop'))
+
+    expect(dynamics[0]?.[0]?.orient).toBe('below')
+  })
+
+  test('writes the side a hairpin is drawn on onto schema-valid MNX', () => {
+    const { mnx } = convertMusicXML(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        '<attributes><divisions>4</divisions></attributes>' +
+        placedWedge +
+        NOTE +
+        wedge('stop') +
+        '</measure></part></score-partwise>',
+    )
+
+    expect(JSON.stringify(mnx)).toContain('"orient":"below"')
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
   // "continue" marks a point partway along one, which MNX has no need of,
   // since it states only where a hairpin begins and ends.
   test('says nothing about a point partway along one', () => {

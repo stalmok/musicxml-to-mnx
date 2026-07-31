@@ -11,6 +11,8 @@ import { describe, expect, test } from 'vitest'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
+import { convertMusicXML } from '../index.js'
+import { schemaErrors } from '../../tests/support/schema.js'
 
 const NOTE =
   '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
@@ -86,6 +88,21 @@ describe('which way an octave shift goes', () => {
     )
 
     expect(ottavas[0]?.[0]?.orient).toBe('above')
+  })
+
+  test('writes the side the shift is drawn on onto schema-valid MNX', () => {
+    const { mnx } = convertMusicXML(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        '<attributes><divisions>4</divisions></attributes>' +
+        '<direction placement="above"><direction-type>' +
+        '<octave-shift type="down" size="8" number="1"/></direction-type></direction>' +
+        NOTE +
+        shift('stop') +
+        '</measure></part></score-partwise>',
+    )
+
+    expect(JSON.stringify(mnx)).toContain('"orient":"above"')
+    expect(schemaErrors(mnx)).toEqual([])
   })
 })
 
