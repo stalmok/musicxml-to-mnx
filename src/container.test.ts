@@ -169,6 +169,22 @@ describe('an .mxl package', () => {
     expect((thrown as MusicXMLError).message).toContain('over the')
   })
 
+  // Raw input carries no per-entry size field to check, so its own length is
+  // the bound. Without it the zip path is capped and the raw path is not.
+  test('refuses raw bytes past the limit', () => {
+    const huge = new Uint8Array(100 * 1024 * 1024 + 1)
+
+    let thrown: unknown
+    try {
+      readMusicXML(huge)
+    } catch (error) {
+      thrown = error
+    }
+
+    expect(thrown).toBeInstanceOf(MusicXMLError)
+    expect((thrown as MusicXMLError).message).toContain('over the')
+  })
+
   test('falls back to the only score where the container carries no rootfiles', () => {
     const archive = mxl({
       'META-INF/container.xml': '<container></container>',

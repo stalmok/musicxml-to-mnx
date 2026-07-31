@@ -31,9 +31,18 @@ const SCORE_LIMIT = 100 * 1024 * 1024
  * this converter reads as UTF-8.
  */
 export function readMusicXML(source: string | Uint8Array): string {
-  if (typeof source === 'string') return source
-  if (isZip(source)) return scoreInside(source)
-  return decode(source)
+  if (typeof source !== 'string' && isZip(source)) return scoreInside(source)
+  // Raw text or bytes carry no per-entry size field the way a package does,
+  // so their own length is the bound. Without this the package path is capped
+  // and the raw path is not, which is the same decompression-bomb size a
+  // package is refused for, only unpacked already.
+  if (source.length > SCORE_LIMIT) {
+    throw new MusicXMLError(
+      `The MusicXML document is ${String(source.length)} bytes, over the ` +
+        `${String(SCORE_LIMIT)}-byte limit.`,
+    )
+  }
+  return typeof source === 'string' ? source : decode(source)
 }
 
 function isZip(bytes: Uint8Array): boolean {
