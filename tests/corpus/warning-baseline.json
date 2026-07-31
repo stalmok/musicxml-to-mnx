@@ -242,7 +242,7 @@
     "other-dynamics": 2,
     "pedal": 42,
     "notehead": 1,
-    "tie": 1,
+    "tie": 2,
     "print-object": 6
   },
   "beethoven-1-bitten": {
@@ -554,7 +554,7 @@
     "other-dynamics": 5,
     "technical": 1,
     "notehead": 1,
-    "tie": 1,
+    "tie": 2,
     "print-object": 67
   },
   "brahms-2-geistliches-wiegenlied": {
@@ -1343,7 +1343,7 @@
     "pedal": 56,
     "sf": 13,
     "other-dynamics": 3,
-    "tie": 1,
+    "tie": 2,
     "print-object": 7
   },
   "farrenc-le-berger-fidele": {
@@ -2702,7 +2702,7 @@
     "sound": 4,
     "pedal": 4,
     "slur": 4,
-    "tie": 3,
+    "tie": 4,
     "notehead": 11,
     "dashes": 4,
     "display-step": 1,

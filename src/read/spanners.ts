@@ -152,7 +152,11 @@ function tieKey(pitch: Pitch): string {
 // opened one, accounts for most of the rest.
 
 export class SpannerResolver {
-  readonly #openTies = new Map<string, OpenTie>()
+  // Two ties of one pitch can be open at once, as when two hands each sustain
+  // it, so each pitch holds a stack rather than a single open tie: keyed by a
+  // single value, the second start would overwrite the first and drop it with
+  // no warning.
+  readonly #openTies = new Map<string, OpenTie[]>()
   // Several slurs may carry the same number at once, so each number holds a
   // stack: a stop closes the most recently opened of them.
   readonly #openSlurs = new Map<string, OpenSlur[]>()
@@ -165,7 +169,8 @@ export class SpannerResolver {
     side: CurveSide | undefined,
     context: WarningContext,
   ): void {
-    this.#openTies.set(tieKey(note.pitch), { note, voice, side, context })
+    const key = tieKey(note.pitch)
+    this.#openTies.set(key, [...(this.#openTies.get(key) ?? []), { note, voice, side, context }])
   }
 
   /** Joins the tie waiting on this pitch, if one is. */
@@ -175,9 +180,22 @@ export class SpannerResolver {
     warnings: WarningCollector,
     context: WarningContext,
   ): void {
-    const key = tieKey(note.pitch)
-    const open = this.#openTies.get(key)
-    if (!open) {
+    const open = this.#openTies.get(tieKey(note.pitch)) ?? []
+    // Prefer the most recent start in the same voice, so two hands each
+    // sustaining one pitch pair within a hand rather than across. A tie that
+    // finds no same-voice start falls back to the most recent open one, which
+    // is the cross-voice case MNX marks. Voices are compared the way sequences
+    // are bucketed: a note stating no voice and one stating an empty voice are
+    // both the unnamed voice.
+    let chosen = open.length - 1
+    for (let index = open.length - 1; index >= 0; index -= 1) {
+      if ((open[index]?.voice ?? '') === (voice ?? '')) {
+        chosen = index
+        break
+      }
+    }
+    const started = open[chosen]
+    if (!started) {
       warnings.add(
         'unclosed:spanner',
         'A tie ends on a note where none had started, and is not carried over.',
@@ -187,16 +205,16 @@ export class SpannerResolver {
       return
     }
 
-    // A tie ending in a different voice says so, because without the mark a
-    // consumer reads the target as the same voice's next note. Voices are
-    // compared the way sequences are bucketed: a note stating no voice and
-    // one stating an empty voice are both the unnamed voice.
-    const crossVoice = (open.voice ?? '') !== (voice ?? '')
-    open.note.ties = [
-      ...open.note.ties,
-      { target: note.id, crossVoice, ...(open.side !== undefined ? { side: open.side } : {}) },
+    const crossVoice = (started.voice ?? '') !== (voice ?? '')
+    started.note.ties = [
+      ...started.note.ties,
+      {
+        target: note.id,
+        crossVoice,
+        ...(started.side !== undefined ? { side: started.side } : {}),
+      },
     ]
-    this.#openTies.delete(key)
+    open.splice(chosen, 1)
   }
 
   startSlur(
@@ -369,13 +387,15 @@ export class SpannerResolver {
    * contain these, so they are worth saying rather than worth refusing.
    */
   reportUnclosed(warnings: WarningCollector): void {
-    for (const open of this.#openTies.values()) {
-      warnings.add(
-        'unclosed:spanner',
-        'A tie starts on a note that nothing ties to, and is not carried over.',
-        open.context,
-        'tie',
-      )
+    for (const waiting of this.#openTies.values()) {
+      for (const open of waiting) {
+        warnings.add(
+          'unclosed:spanner',
+          'A tie starts on a note that nothing ties to, and is not carried over.',
+          open.context,
+          'tie',
+        )
+      }
     }
     for (const waiting of this.#openSlurs.values()) {
       for (const open of waiting) {

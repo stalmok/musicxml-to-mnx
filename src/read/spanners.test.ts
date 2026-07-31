@@ -276,6 +276,38 @@ describe('the ends a spanner is keyed by', () => {
     expect(collector.list().filter((w) => w.code === 'unclosed:spanner')).toEqual([])
   })
 
+  // Two hands can each sustain the same pitch at once, so two ties of one
+  // pitch are open together. Keyed by pitch alone, the second start used to
+  // overwrite the first, dropping it with no warning. Each must resolve, and
+  // to its own voice's note rather than the other hand's.
+  test('joins two ties of the same pitch open at once in different voices', () => {
+    const voiced = (voice: string, body: string) =>
+      `<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>` +
+      `<type>quarter</type><voice>${voice}</voice>${body}</note>`
+    const backup = '<backup><duration>4</duration></backup>'
+    const collector = new WarningCollector()
+    const score = readScore(
+      parseXmlRoot(
+        measures(
+          DIVISIONS + voiced('1', tied('start')) + backup + voiced('2', tied('start')),
+          voiced('1', tied('stop')) + backup + voiced('2', tied('stop')),
+        ),
+      ),
+      collector,
+    )
+
+    const isEvent = (item: { kind: string }): item is Event => item.kind === 'event'
+    const allNotes = (score.parts[0]?.measures ?? [])
+      .flatMap((measure) => measure.sequences.flatMap((sequence) => sequence.content))
+      .filter(isEvent)
+      .flatMap((event) => event.notes)
+    const withTie = allNotes.filter((note) => note.ties.length > 0)
+
+    expect(collector.list().filter((w) => w.code === 'unclosed:spanner')).toEqual([])
+    expect(withTie).toHaveLength(2)
+    expect(withTie.every((note) => note.ties[0]?.crossVoice === false)).toBe(true)
+  })
+
   test('tells apart ties of different pitch left open at once', () => {
     const { notes } = read(
       measures(
