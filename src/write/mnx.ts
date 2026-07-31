@@ -105,7 +105,7 @@ function surveyScore(score: Score): {
       if (item.kind !== 'event') continue
       for (const slur of item.slurs) referenced.add(slur.target)
       for (const note of item.notes) {
-        for (const tie of note.ties) referenced.add(tie.target)
+        for (const tie of note.ties) if (tie.target !== undefined) referenced.add(tie.target)
         if (note.accidentalDisplay?.show) drawsAccidentals = true
       }
     }
@@ -472,10 +472,13 @@ function writeNote(note: Note, referenced: ReadonlySet<string>): MNXNote {
     ...(note.ties.length > 0
       ? {
           ties: note.ties.map((tie) => ({
-            target: tie.target,
+            // A let-ring tie has no target: it rings out with no ending note.
+            ...(tie.target !== undefined ? { target: tie.target } : {}),
             // Left unsaid for the ordinary tie, whose target is the same
             // voice's next note.
             ...(tie.crossVoice ? { targetType: 'crossVoice' as const } : {}),
+            ...(tie.lv ? { lv: true } : {}),
+            ...(tie.side ? { side: tie.side } : {}),
           })),
         }
       : {}),

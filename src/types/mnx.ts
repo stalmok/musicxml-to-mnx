@@ -63,8 +63,12 @@ export interface MNXLyrics {
 export type MNXTieTargetType = 'nextNote' | 'crossVoice' | 'arpeggio' | 'crossJump'
 
 export interface MNXTie {
-  target: string
+  /** Absent for a let-ring tie, which rings out with no ending note. */
+  target?: string
   targetType?: MNXTieTargetType
+  /** True for a let-ring (l.v.) tie. */
+  lv?: boolean
+  side?: MNXCurveSide
 }
 
 export interface MNXSlur {

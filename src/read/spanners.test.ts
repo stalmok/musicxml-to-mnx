@@ -134,6 +134,53 @@ describe('ties', () => {
   })
 })
 
+// <tied> is the visual side of a tie. Most of it repeats <tie>, but let-ring
+// and the drawn side live only there, so the reader must read it rather than
+// skip it.
+describe('let-ring and the drawn side', () => {
+  test('reads a let-ring <tied> as an lv tie with no target', () => {
+    const { notes } = read(
+      measures(DIVISIONS + note('C', '<notations><tied type="let-ring"/></notations>')),
+    )
+
+    expect(notes[0]?.ties).toEqual([{ crossVoice: false, lv: true }])
+  })
+
+  test('reads the side a tie is drawn on', () => {
+    const { notes } = read(
+      measures(
+        DIVISIONS +
+          note(
+            'C',
+            '<tie type="start"/><notations><tied type="start" orientation="over"/></notations>',
+          ) +
+          note('C', tied('stop')),
+      ),
+    )
+
+    expect(notes[0]?.ties[0]?.side).toBe('up')
+  })
+
+  test('writes let-ring and side onto schema-valid MNX', () => {
+    const { mnx } = convertMusicXML(
+      measures(
+        DIVISIONS +
+          note(
+            'C',
+            '<tie type="start"/><notations><tied type="start" placement="below"/></notations>',
+          ) +
+          note('C', tied('stop')) +
+          note('D', '<notations><tied type="let-ring"/></notations>'),
+      ),
+    )
+    const json = JSON.stringify(mnx)
+
+    expect(json).toContain('"lv":true')
+    expect(json).toContain('"side":"down"')
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+})
+
 describe('slurs', () => {
   test('points the event where the slur starts at the event where it ends', () => {
     const { events } = read(
@@ -354,11 +401,17 @@ describe('spanner markings that are not simply a start or a stop', () => {
     expect(warnings.map((w) => w.message)).toContain(`A <${kind}> of type "" is not converted yet.`)
   })
 
-  test('reports a tie it has no reading for', () => {
-    const { warnings } = read(measures(DIVISIONS + note('C', '<tie type="let-ring"/>')))
+  test('reads a let-ring <tie> as an lv tie', () => {
+    const { notes } = read(measures(DIVISIONS + note('C', '<tie type="let-ring"/>')))
+
+    expect(notes[0]?.ties).toEqual([{ crossVoice: false, lv: true }])
+  })
+
+  test('reports a tie type it has no reading for', () => {
+    const { warnings } = read(measures(DIVISIONS + note('C', '<tie type="bogus"/>')))
 
     expect(warnings.map((w) => w.message)).toContain(
-      'A <tie> of type "let-ring" is not converted yet.',
+      'A <tie> of type "bogus" is not converted yet.',
     )
   })
 })

@@ -84,9 +84,9 @@ export function readNote(
   }
 
   const notations = element.blocks('notations')
-  // <tied> is the visual counterpart of <tie>, which is what the tie is read
-  // from, so a document stating both loses nothing by this reader ignoring it.
-  for (const block of notations) block.skip('tied')
+  // <tied> is the visual side of a tie. Most of it repeats <tie>, but let-ring
+  // and the drawn side live only on it, so it is read rather than skipped.
+  const tieds = notations.flatMap((block) => block.children('tied'))
 
   const voice = element.child('voice')?.text.trim()
   const duration = readDuration(element, state, warnings, context, path)
@@ -163,7 +163,7 @@ export function readNote(
       element.line,
     )
     readArpeggio(notations, voice, builder)
-    readTies(element, chordNote, voice, state, warnings, context)
+    readTies(element, chordNote, voice, state, warnings, context, tieds)
     closeTuplets(builder, voice, tupletBrackets(notations), warnings, context, path, element.line)
     return
   }
@@ -296,7 +296,7 @@ export function readNote(
   if (graceElement) {
     builder.addGraceNote(voice, event, attribute(graceElement, 'slash') === 'yes', staff)
     readArpeggio(notations, voice, builder)
-    for (const note of notes) readTies(element, note, voice, state, warnings, context)
+    for (const note of notes) readTies(element, note, voice, state, warnings, context, tieds)
     readSlurs(notations, event, state, warnings, context)
     builder.addBeamMarkers(voice, event.id, beamMarkers(element, warnings, context, path), true)
     return
@@ -322,7 +322,7 @@ export function readNote(
   builder.addEvent(voice, event, duration ?? lengthOf(value), path, element.line, staff)
   readArpeggio(notations, voice, builder)
 
-  for (const note of notes) readTies(element, note, voice, state, warnings, context)
+  for (const note of notes) readTies(element, note, voice, state, warnings, context, tieds)
   readSlurs(notations, event, state, warnings, context)
   builder.addBeamMarkers(voice, event.id, beamMarkers(element, warnings, context, path))
 
@@ -654,13 +654,16 @@ function readTies(
   state: PartState,
   warnings: WarningCollector,
   context: WarningContext,
+  tieds: readonly XmlElement[],
 ): void {
-  for (const tie of element.children('tie')) {
+  const ties = element.children('tie')
+  const side = startTiedSide(tieds)
+
+  for (const tie of ties) {
     const type = attribute(tie, 'type')
     if (type === 'stop') state.spanners.stopTie(note, voice, warnings, context)
-    else if (type === 'start') state.spanners.startTie(note, voice, context)
-    else {
-      // MusicXML 4.0 also has "let-ring", which MNX states as a tie's `lv`.
+    else if (type === 'start') state.spanners.startTie(note, voice, side, context)
+    else if (type !== 'let-ring') {
       warnings.add(
         'unsupported:element',
         `A <tie> of type "${type ?? ''}" is not converted yet.`,
@@ -669,6 +672,28 @@ function readTies(
       )
     }
   }
+
+  // A let-ring (l.v.) tie rings out with no ending note. MusicXML 4.0 states
+  // it as type "let-ring" on either <tie> or <tied>; MNX states it as a tie's
+  // `lv`, with no target.
+  const letRing =
+    ties.some((tie) => attribute(tie, 'type') === 'let-ring') ||
+    tieds.some((tied) => attribute(tied, 'type') === 'let-ring')
+  if (letRing) note.ties = [...note.ties, { crossVoice: false, lv: true }]
+}
+
+// The side a tie is drawn on, from its start <tied>. MusicXML states it as an
+// orientation (over/under) or a placement (above/below); MNX states it as the
+// slur-side up or down.
+function startTiedSide(tieds: readonly XmlElement[]): CurveSide | undefined {
+  const start = tieds.find((tied) => attribute(tied, 'type') === 'start')
+  if (!start) return undefined
+
+  const orientation = attribute(start, 'orientation')
+  const placement = attribute(start, 'placement')
+  if (orientation === 'over' || placement === 'above') return 'up'
+  if (orientation === 'under' || placement === 'below') return 'down'
+  return undefined
 }
 
 /** Slurs are matched by the number the source gives them, across the part. */

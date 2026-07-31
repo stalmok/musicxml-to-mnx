@@ -27,6 +27,8 @@ interface OpenTie {
   note: Note
   /** The voice the tie starts in, to tell a tie that crosses voices. */
   voice: string | undefined
+  /** The side the tie is drawn on, where the start states it. */
+  side: CurveSide | undefined
   context: WarningContext
 }
 
@@ -156,8 +158,13 @@ export class SpannerResolver {
   // Both ends of every hairpin in the part, paired once all of them are in.
   readonly #wedgeEnds: SpanEnd<Dynamic>[] = []
 
-  startTie(note: Note, voice: string | undefined, context: WarningContext): void {
-    this.#openTies.set(tieKey(note.pitch), { note, voice, context })
+  startTie(
+    note: Note,
+    voice: string | undefined,
+    side: CurveSide | undefined,
+    context: WarningContext,
+  ): void {
+    this.#openTies.set(tieKey(note.pitch), { note, voice, side, context })
   }
 
   /** Joins the tie waiting on this pitch, if one is. */
@@ -184,7 +191,10 @@ export class SpannerResolver {
     // compared the way sequences are bucketed: a note stating no voice and
     // one stating an empty voice are both the unnamed voice.
     const crossVoice = (open.voice ?? '') !== (voice ?? '')
-    open.note.ties = [...open.note.ties, { target: note.id, crossVoice }]
+    open.note.ties = [
+      ...open.note.ties,
+      { target: note.id, crossVoice, ...(open.side !== undefined ? { side: open.side } : {}) },
+    ]
     this.#openTies.delete(key)
   }
 

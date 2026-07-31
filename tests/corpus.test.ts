@@ -247,7 +247,10 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
         if ('slurs' in item) referenced.push(...(item.slurs ?? []).map((slur) => slur.target))
         if ('notes' in item) {
           for (const note of item.notes ?? []) {
-            referenced.push(...(note.ties ?? []).map((tie) => tie.target))
+            // A let-ring tie has no target, so there is nothing to reference.
+            referenced.push(
+              ...(note.ties ?? []).flatMap((tie) => (tie.target !== undefined ? [tie.target] : [])),
+            )
           }
         }
       }

@@ -51,9 +51,14 @@ export type LineType = 'dashed' | 'dotted' | 'solid' | 'wavy'
  * the note where it begins, as a reference to the note where it ends.
  */
 export interface Tie {
-  target: string
+  /** The note the tie ends on. Absent for a let-ring tie, which rings out. */
+  target?: string
   /** True where the tie ends in a different voice from the one it starts in. */
   crossVoice: boolean
+  /** True for a let-ring (l.v.) tie, which has no ending note. */
+  lv?: boolean
+  /** Which side the tie is drawn on, where the source states it. */
+  side?: CurveSide
 }
 
 /**
