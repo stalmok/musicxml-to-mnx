@@ -29,6 +29,7 @@ import type {
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, child, children, requireChild, trimmedText } from '../xml/tree.js'
+import { beamCountForValue } from './beams.js'
 import { readDuration } from './divisions.js'
 import { describeLength, describeValue, lengthOf, noteValueOf } from './duration.js'
 import type { ElementReader } from './element.js'
@@ -388,6 +389,7 @@ function readEventSpanners(
     voice,
     event.id,
     beamMarkers(element, warnings, context, path),
+    beamCountForValue(event.value.base),
     inGraceGroup,
   )
 }

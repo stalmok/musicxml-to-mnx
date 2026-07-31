@@ -551,19 +551,20 @@ export class MeasureBuilder {
     voice: string | undefined,
     id: string,
     markers: ReadonlyMap<number, string>,
+    beamCount: number,
     inGraceGroup = false,
   ): void {
     if (markers.size === 0) return
     const builder = this.#builderFor(voice)
     if (!inGraceGroup) {
-      builder.beamed.push({ id, markers })
+      builder.beamed.push({ id, markers, beamCount })
       return
     }
     const run = builder.graceBeamed.at(-1)
     /* v8 ignore next -- a grace note joins its group before its beams are
        read, so a run is always open by the time this is reached. */
     if (!run) throw new Error('A grace note has no group to beam within.')
-    run.push({ id, markers })
+    run.push({ id, markers, beamCount })
   }
 
   /**

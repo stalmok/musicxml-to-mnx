@@ -9,12 +9,34 @@
 // an outer beam listing the events it runs over, nested beams for the
 // secondary levels, and a beam of one event with a direction for a hook.
 
-import type { Beam } from '../model/score.js'
+import type { Beam, NoteValueBase } from '../model/score.js'
 
 /** What one event says about the beams it carries, by level. */
 export interface BeamedEvent {
   id: string
   markers: ReadonlyMap<number, string>
+  /**
+   * How many beams the note's own value calls for: an eighth one, a 16th two,
+   * a 32nd three, and so on. A dropped inner beam matters only where the note
+   * needs it, so this tells the two apart.
+   */
+  beamCount: number
+}
+
+const BEAM_COUNTS: ReadonlyMap<NoteValueBase, number> = new Map([
+  ['eighth', 1],
+  ['16th', 2],
+  ['32nd', 3],
+  ['64th', 4],
+  ['128th', 5],
+  ['256th', 6],
+  ['512th', 7],
+  ['1024th', 8],
+])
+
+/** How many beams a note of this value carries. Zero for a quarter or longer. */
+export function beamCountForValue(base: NoteValueBase): number {
+  return BEAM_COUNTS.get(base) ?? 0
 }
 
 const HOOK_DIRECTIONS = new Map<string, 'left' | 'right'>([
@@ -46,7 +68,18 @@ function beamsAtLevel(events: readonly BeamedEvent[], level: number): Beam[] {
         beams: beamsAtLevel(run, level + 1),
         direction: undefined,
       })
+    } else if (run.length === 1 && level > 1 && (run[0]?.beamCount ?? 0) >= level) {
+      // A single event left at an inner level always came from a begin, since
+      // a continue or end only extends a run already open. Where the note's
+      // value needs this beam, a begin with nothing to carry it is a partial
+      // beam pointing forward, which MNX states as a one-event beam drawn to
+      // the right. This is the shape a repeated begin (two begins with no end
+      // between) leaves the first note in; dropping it would put the note in
+      // the outer beam with no inner one, which is internally inconsistent.
+      beams.push({ events: [run[0]?.id ?? ''], beams: [], direction: 'right' })
     }
+    // A single event whose value does not need this beam is a stray marker,
+    // dropped without a word: the note is drawn correctly without it.
     run = []
   }
 

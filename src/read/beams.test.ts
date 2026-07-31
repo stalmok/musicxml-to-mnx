@@ -13,15 +13,19 @@ import type { BeamedEvent } from './beams.js'
 
 /**
  * `levels` reads as "level:marker", separated by semicolons because a marker
- * may itself hold a space, as "forward hook" does.
+ * may itself hold a space, as "forward hook" does. The beam count defaults to
+ * the deepest level the event names, which is what a well-formed note carries;
+ * pass one to model a note whose value needs fewer beams than it marks.
  */
-function event(id: string, levels: string): BeamedEvent {
+function event(id: string, levels: string, beamCount?: number): BeamedEvent {
   const markers = new Map<number, string>()
+  let deepest = 0
   for (const part of levels.split(';').filter(Boolean)) {
     const [level, marker] = part.split(':')
     markers.set(Number(level), marker ?? '')
+    deepest = Math.max(deepest, Number(level))
   }
-  return { id, markers }
+  return { id, markers, beamCount: beamCount ?? deepest }
 }
 
 describe('a single beam', () => {
@@ -91,6 +95,39 @@ describe('secondary beams', () => {
 
     expect(second?.events).toEqual(['ev1', 'ev2', 'ev3'])
     expect(second?.beams[0]?.events).toEqual(['ev1', 'ev2'])
+  })
+
+  // A malformed source begins level 2 twice with no end between. The first note
+  // is left alone at level 2, and dropping it would put a 16th in the level-1
+  // beam with no level-2 beam of its own, which is internally inconsistent. It
+  // becomes a forward hook instead, since a lone begin is a partial beam.
+  test('draws a repeated begin as a forward hook on the first note', () => {
+    const beams = buildBeams([
+      event('ev1', '1:begin; 2:begin'),
+      event('ev2', '1:continue; 2:begin'),
+      event('ev3', '1:continue; 2:continue'),
+      event('ev4', '1:end; 2:end'),
+    ])
+
+    expect(beams[0]?.beams).toEqual([
+      { events: ['ev1'], beams: [], direction: 'right' },
+      { events: ['ev2', 'ev3', 'ev4'], beams: [], direction: undefined },
+    ])
+  })
+
+  // The same lone begin at level 2, but on a note whose value needs only one
+  // beam: the level-2 marker is stray, so it is dropped and the note keeps just
+  // its outer beam.
+  test('drops a stray inner marker a note does not need', () => {
+    const beams = buildBeams([
+      event('ev1', '1:begin; 2:begin', 1),
+      event('ev2', '1:continue; 2:begin', 1),
+      event('ev3', '1:continue', 1),
+      event('ev4', '1:end', 1),
+    ])
+
+    expect(beams[0]?.beams).toEqual([])
+    expect(beams[0]?.events).toEqual(['ev1', 'ev2', 'ev3', 'ev4'])
   })
 })
 
