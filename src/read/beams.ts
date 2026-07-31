@@ -62,13 +62,14 @@ function beamsAtLevel(events: readonly BeamedEvent[], level: number): Beam[] {
   let run: BeamedEvent[] = []
 
   const close = (): void => {
+    const [only] = run
     if (run.length > 1) {
       beams.push({
         events: run.map((event) => event.id),
         beams: beamsAtLevel(run, level + 1),
         direction: undefined,
       })
-    } else if (run.length === 1 && level > 1 && (run[0]?.beamCount ?? 0) >= level) {
+    } else if (only !== undefined && level > 1 && only.beamCount >= level) {
       // A single event left at an inner level always came from a begin, since
       // a continue or end only extends a run already open. Where the note's
       // value needs this beam, a begin with nothing to carry it is a partial
@@ -76,7 +77,7 @@ function beamsAtLevel(events: readonly BeamedEvent[], level: number): Beam[] {
       // the right. This is the shape a repeated begin (two begins with no end
       // between) leaves the first note in; dropping it would put the note in
       // the outer beam with no inner one, which is internally inconsistent.
-      beams.push({ events: [run[0]?.id ?? ''], beams: [], direction: 'right' })
+      beams.push({ events: [only.id], beams: [], direction: 'right' })
     }
     // A single event whose value does not need this beam is a stray marker,
     // dropped without a word: the note is drawn correctly without it.
