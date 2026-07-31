@@ -170,9 +170,61 @@ function sourceHairpins(root: XmlElement): string[] {
   return paired
 }
 
+/**
+ * Every id the document defines, and every id it points at. A tie, slur, beam,
+ * arpeggio or span end names an event, note or measure by id, and the writer
+ * emits an id only where something points at it. A reference with no definition
+ * therefore means the writer pointed at an id from a place its id survey does
+ * not know to name, so the id was never written. Collected by field name, so a
+ * new kind of reference is caught the moment it reuses one of them.
+ */
+function idReferences(document: unknown): { defined: Set<string>; referenced: Set<string> } {
+  const defined = new Set<string>()
+  const referenced = new Set<string>()
+
+  const visit = (node: unknown): void => {
+    if (Array.isArray(node)) {
+      for (const child of node) visit(child)
+      return
+    }
+    if (node === null || typeof node !== 'object') return
+    const record = node as Record<string, unknown>
+
+    if (typeof record.id === 'string') defined.add(record.id)
+    // A tie or slur names its far end; a rhythmic position names its measure.
+    if (typeof record.target === 'string') referenced.add(record.target)
+    if (typeof record.measure === 'string') referenced.add(record.measure)
+    // A beam names the events it runs over.
+    if (Array.isArray(record.events)) {
+      for (const id of record.events) if (typeof id === 'string') referenced.add(id)
+    }
+    // An arpeggio names the two notes it runs between.
+    if (record.span !== null && typeof record.span === 'object') {
+      const span = record.span as Record<string, unknown>
+      if (typeof span.start === 'string') referenced.add(span.start)
+      if (typeof span.end === 'string') referenced.add(span.end)
+    }
+
+    for (const value of Object.values(record)) visit(value)
+  }
+
+  visit(document)
+  return { defined, referenced }
+}
+
 describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   test('produces MNX the spec schema accepts', () => {
     expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // The writer names an event, note or measure only where something points at
+  // it, off a survey of where ids are pointed from. A reference with no
+  // definition means that survey missed a place, so the id was never written.
+  test('names every id it points at', () => {
+    const { defined, referenced } = idReferences(mnx)
+    const dangling = [...referenced].filter((id) => !defined.has(id))
+
+    expect(dangling).toEqual([])
   })
 
   // A voice may legitimately stop before the barline, so being short is fine.
