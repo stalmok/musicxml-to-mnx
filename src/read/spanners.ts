@@ -288,8 +288,23 @@ export class SpannerResolver {
     })
   }
 
+  /**
+   * Pairs every span that waits until the whole part is read, the hairpins and
+   * the octave shifts, and reports whatever is still open, the ties and slurs
+   * with them. One entry point on purpose: the three share the rule that
+   * nothing left open once the part ends may be dropped in silence, and as
+   * three separate calls a caller could pair the spans yet never report what
+   * stayed unpaired, because each pair step reports its own leftovers rather
+   * than leaving them to one flush at the end.
+   */
+  finish(measures: readonly Ottava[][], warnings: WarningCollector): void {
+    this.#resolveWedges(warnings)
+    this.#resolveOttavas(measures, warnings)
+    this.#reportUnclosed(warnings)
+  }
+
   /** Joins every hairpin in the part, once all of both ends are in. */
-  resolveWedges(warnings: WarningCollector): void {
+  #resolveWedges(warnings: WarningCollector): void {
     pairSpans(
       this.#wedgeEnds,
       (dynamic, stop) => {
@@ -355,7 +370,7 @@ export class SpannerResolver {
    * measure it begins in. Unlike a hairpin, MNX requires a shift to say where
    * it stops, so one the source never closed cannot be written at all.
    */
-  resolveOttavas(measures: readonly Ottava[][], warnings: WarningCollector): void {
+  #resolveOttavas(measures: readonly Ottava[][], warnings: WarningCollector): void {
     pairSpans(
       this.#ottavaEnds,
       (open, stop) => {
@@ -386,7 +401,7 @@ export class SpannerResolver {
    * Reports whatever is still open once the part is read. Real scores do
    * contain these, so they are worth saying rather than worth refusing.
    */
-  reportUnclosed(warnings: WarningCollector): void {
+  #reportUnclosed(warnings: WarningCollector): void {
     for (const waiting of this.#openTies.values()) {
       for (const open of waiting) {
         warnings.add(
