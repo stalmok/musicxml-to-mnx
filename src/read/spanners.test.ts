@@ -251,6 +251,30 @@ describe('slurs', () => {
 
     expect(warnings.map((w) => w.code)).toContain('unclosed:spanner')
   })
+
+  // A slur may reach a measure-filling rest. The sequence-level full-measure
+  // rest is not an event with an id, so a rest carrying a slur end stays a
+  // plain event, exactly as a lyric-bearing one does, giving the slur a target.
+  test('ends a slur on a measure-filling rest, which stays an event to carry it', () => {
+    const fullRest =
+      '<note><rest measure="yes"/><duration>4</duration><type>quarter</type><voice>1</voice>' +
+      '<notations><slur type="stop" number="1"/></notations></note>'
+    const { events, warnings } = read(measures(DIVISIONS + note('C', slur('start')), fullRest))
+    const [first, rest] = events
+
+    expect(rest?.isRest).toBe(true)
+    expect(first?.slurs[0]?.target).toBe(rest?.id)
+    expect(warnings).toEqual([])
+  })
+
+  test('writes the slur onto schema-valid MNX when it ends on a measure rest', () => {
+    const fullRest =
+      '<note><rest measure="yes"/><duration>4</duration><type>quarter</type><voice>1</voice>' +
+      '<notations><slur type="stop" number="1"/></notations></note>'
+    const { mnx } = convertMusicXML(measures(DIVISIONS + note('C', slur('start')), fullRest))
+
+    expect(schemaErrors(mnx)).toEqual([])
+  })
 })
 
 describe('the ends a spanner is keyed by', () => {

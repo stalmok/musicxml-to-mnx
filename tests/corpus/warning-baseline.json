@@ -699,7 +699,6 @@
     "sound": 22,
     "extend": 16,
     "fermata": 1,
-    "slur": 2,
     "print-object": 5
   },
   "butterworth-1-bredon-hill": {
@@ -2835,8 +2834,7 @@
     "print": 8,
     "coda": 3,
     "cue": 5,
-    "notehead": 1,
-    "slur": 4
+    "notehead": 1
   },
   "tosti-ideale": {
     "score-instrument": 2,
