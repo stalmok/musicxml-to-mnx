@@ -9,7 +9,8 @@
     "stem": 1,
     "cue": 6,
     "notehead": 1,
-    "sound": 6
+    "sound": 6,
+    "print-object": 11
   },
   "abbott-think-of-today": {
     "score-instrument": 2,
@@ -107,7 +108,8 @@
     "other-dynamics": 15,
     "sound": 31,
     "extend": 21,
-    "pedal": 30
+    "pedal": 30,
+    "print-object": 1
   },
   "bantock-2-the-ghost-road": {
     "score-instrument": 2,
@@ -126,7 +128,8 @@
     "notehead": 11,
     "stem": 13,
     "dashes": 4,
-    "pedal": 2
+    "pedal": 2,
+    "print-object": 11
   },
   "barnard-farewell-to-erin": {
     "score-instrument": 3,
@@ -140,7 +143,8 @@
     "words": 2,
     "extend": 5,
     "other-notation": 2,
-    "cue": 7
+    "cue": 7,
+    "print-object": 20
   },
   "barnard-five-o-clock-in-the-morning": {
     "score-instrument": 2,
@@ -179,7 +183,8 @@
     "sound": 20,
     "other-dynamics": 1,
     "pedal": 26,
-    "sf": 3
+    "sf": 3,
+    "print-object": 3
   },
   "barnby-to-england": {
     "score-instrument": 2,
@@ -220,7 +225,8 @@
     "extend": 17,
     "other-dynamics": 4,
     "dashes": 2,
-    "pedal": 38
+    "pedal": 38,
+    "print-object": 2
   },
   "beach-2-ah-love-but-a-day": {
     "score-instrument": 2,
@@ -236,7 +242,8 @@
     "other-dynamics": 2,
     "pedal": 42,
     "notehead": 1,
-    "tie": 1
+    "tie": 1,
+    "print-object": 6
   },
   "beethoven-1-bitten": {
     "score-instrument": 2,
@@ -248,7 +255,8 @@
     "identification": 1,
     "words": 8,
     "sound": 9,
-    "sf": 1
+    "sf": 1,
+    "print-object": 1
   },
   "beethoven-2-die-liebe-des-nachsten": {
     "score-instrument": 2,
@@ -346,7 +354,8 @@
     "identification": 1,
     "words": 7,
     "extend": 2,
-    "sound": 4
+    "sound": 4,
+    "print-object": 6
   },
   "bishop-home-sweet-home": {
     "score-instrument": 3,
@@ -409,7 +418,8 @@
     "harmony": 1,
     "pedal": 10,
     "other-dynamics": 4,
-    "sf": 4
+    "sf": 4,
+    "print-object": 32
   },
   "bonis-allons-prier": {
     "score-instrument": 2,
@@ -421,7 +431,8 @@
     "words": 15,
     "sound": 12,
     "other-dynamics": 2,
-    "extend": 2
+    "extend": 2,
+    "print-object": 1
   },
   "bonis-le-chat-sur-le-toit-op-93": {
     "score-instrument": 2,
@@ -440,7 +451,8 @@
     "other-dynamics": 1,
     "wavy-line": 1,
     "trill-mark": 1,
-    "stem": 16
+    "stem": 16,
+    "print-object": 16
   },
   "boulanger-10-deux-ancolies": {
     "score-instrument": 2,
@@ -457,7 +469,8 @@
     "pedal": 6,
     "clef": 1,
     "other-dynamics": 3,
-    "bracket": 4
+    "bracket": 4,
+    "print-object": 33
   },
   "boulanger-11-par-ce-que-j-ai-souffert": {
     "score-instrument": 2,
@@ -478,7 +491,8 @@
     "clef": 1,
     "pedal": 8,
     "slur": 2,
-    "bracket": 2
+    "bracket": 2,
+    "print-object": 18
   },
   "boulton-11-to-welcome-you": {
     "score-instrument": 2,
@@ -491,7 +505,8 @@
     "words": 19,
     "sound": 13,
     "extend": 16,
-    "dashes": 2
+    "dashes": 2,
+    "print-object": 2
   },
   "boulton-12-the-windflower": {
     "score-instrument": 2,
@@ -506,7 +521,8 @@
     "sound": 24,
     "extend": 5,
     "pedal": 6,
-    "other-dynamics": 2
+    "other-dynamics": 2,
+    "print-object": 27
   },
   "boulton-4-truant-wings": {
     "score-instrument": 2,
@@ -519,7 +535,8 @@
     "words": 14,
     "sound": 26,
     "extend": 28,
-    "pedal": 78
+    "pedal": 78,
+    "print-object": 89
   },
   "brahms-1-gestillte-sehnsucht": {
     "part-abbreviation": 1,
@@ -537,7 +554,8 @@
     "other-dynamics": 5,
     "technical": 1,
     "notehead": 1,
-    "tie": 1
+    "tie": 1,
+    "print-object": 67
   },
   "brahms-2-geistliches-wiegenlied": {
     "score-instrument": 3,
@@ -554,7 +572,8 @@
     "sound": 35,
     "dashes": 2,
     "pedal": 12,
-    "stem": 8
+    "stem": 8,
+    "print-object": 9
   },
   "brahms-4-wiegenlied": {
     "score-instrument": 2,
@@ -607,7 +626,8 @@
     "pedal": 4,
     "tie": 3,
     "fz": 1,
-    "display-step": 19
+    "display-step": 19,
+    "print-object": 2
   },
   "browne-forever-thine": {
     "score-instrument": 2,
@@ -622,7 +642,8 @@
     "sound": 8,
     "inverted-mordent": 1,
     "turn": 1,
-    "dashes": 2
+    "dashes": 2,
+    "print-object": 10
   },
   "browne-the-reply-of-the-messenger-bird": {
     "score-instrument": 2,
@@ -650,7 +671,8 @@
     "fermata": 1,
     "trill-mark": 1,
     "other-dynamics": 1,
-    "dashes": 4
+    "dashes": 4,
+    "print-object": 10
   },
   "burleigh-1-worth-while": {
     "score-instrument": 2,
@@ -664,7 +686,8 @@
     "sound": 21,
     "extend": 7,
     "offset": 1,
-    "sfz": 1
+    "sfz": 1,
+    "print-object": 6
   },
   "burleigh-2-the-jungle-flower": {
     "score-instrument": 2,
@@ -678,7 +701,8 @@
     "sound": 22,
     "extend": 16,
     "fermata": 1,
-    "slur": 2
+    "slur": 2,
+    "print-object": 5
   },
   "butterworth-1-bredon-hill": {
     "score-instrument": 2,
@@ -694,7 +718,8 @@
     "sf": 5,
     "notehead": 4,
     "other-dynamics": 2,
-    "pedal": 8
+    "pedal": 8,
+    "print-object": 17
   },
   "butterworth-1-loveliest-of-trees-the-cherry-now": {
     "score-instrument": 2,
@@ -711,7 +736,8 @@
     "dashes": 22,
     "other-dynamics": 6,
     "pedal": 6,
-    "slur": 2
+    "slur": 2,
+    "print-object": 7
   },
   "butterworth-2-when-i-was-one-and-twenty": {
     "score-instrument": 2,
@@ -734,7 +760,8 @@
     "words": 24,
     "measure": 4,
     "extend": 1,
-    "sound": 8
+    "sound": 8,
+    "print-object": 2
   },
   "chabrier-chanson-pour-jeanne": {
     "score-instrument": 2,
@@ -749,7 +776,8 @@
     "stem": 2,
     "cue": 2,
     "notehead": 2,
-    "tie": 10
+    "tie": 10,
+    "print-object": 2
   },
   "chabrier-villanelle-des-petits-canards": {
     "score-instrument": 2,
@@ -784,7 +812,8 @@
     "words": 19,
     "sound": 25,
     "extend": 11,
-    "other-dynamics": 2
+    "other-dynamics": 2,
+    "print-object": 2
   },
   "chausson-1-nanny": {
     "score-instrument": 2,
@@ -799,7 +828,8 @@
     "extend": 8,
     "sf": 2,
     "slur": 2,
-    "other-dynamics": 2
+    "other-dynamics": 2,
+    "print-object": 15
   },
   "chausson-2-le-charme": {
     "score-instrument": 2,
@@ -813,7 +843,8 @@
     "words": 22,
     "extend": 1,
     "tie": 8,
-    "notehead": 1
+    "notehead": 1,
+    "print-object": 11
   },
   "chausson-7-le-colibri": {
     "score-instrument": 2,
@@ -826,7 +857,8 @@
     "words": 17,
     "extend": 15,
     "sound": 15,
-    "tie": 1
+    "tie": 1,
+    "print-object": 5
   },
   "chopin-1-zyczenie": {
     "score-instrument": 2,
@@ -845,7 +877,8 @@
     "extend": 1,
     "trill-mark": 6,
     "pedal": 54,
-    "sf": 1
+    "sf": 1,
+    "print-object": 4
   },
   "chopin-2-wiosna": {
     "score-instrument": 2,
@@ -877,7 +910,8 @@
     "extend": 11,
     "sf": 3,
     "pedal": 2,
-    "tuplet": 1
+    "tuplet": 1,
+    "print-object": 3
   },
   "coleridge-taylor-2-when-i-am-dead-my-dearest": {
     "score-instrument": 2,
@@ -889,7 +923,8 @@
     "identification": 1,
     "words": 15,
     "sound": 17,
-    "extend": 16
+    "extend": 16,
+    "print-object": 1
   },
   "coleridge-taylor-5-unmindful-of-the-roses": {
     "score-instrument": 2,
@@ -902,7 +937,8 @@
     "words": 20,
     "sound": 12,
     "dashes": 4,
-    "extend": 5
+    "extend": 5,
+    "print-object": 10
   },
   "corder-o-sun-that-wakenest": {
     "score-instrument": 2,
@@ -914,7 +950,8 @@
     "note": 9,
     "extend": 5,
     "sound": 3,
-    "other-direction": 2
+    "other-direction": 2,
+    "print-object": 3
   },
   "cornelius-1-in-lust-und-schmerzen": {
     "score-instrument": 2,
@@ -927,7 +964,8 @@
     "words": 38,
     "sound": 15,
     "extend": 26,
-    "tuplet": 1
+    "tuplet": 1,
+    "print-object": 284
   },
   "cornelius-1-untreu": {
     "score-instrument": 2,
@@ -941,7 +979,8 @@
     "dashes": 4,
     "sound": 9,
     "fp": 3,
-    "pedal": 12
+    "pedal": 12,
+    "print-object": 7
   },
   "cornelius-2-veilchen": {
     "score-instrument": 2,
@@ -954,7 +993,8 @@
     "sound": 6,
     "words": 3,
     "pedal": 14,
-    "notehead": 1
+    "notehead": 1,
+    "print-object": 1
   },
   "cowen-hail": {
     "score-instrument": 2,
@@ -993,7 +1033,8 @@
     "part-group": 2,
     "words": 9,
     "sound": 25,
-    "extend": 12
+    "extend": 12,
+    "print-object": 4
   },
   "davies-2-old-woman": {
     "score-instrument": 5,
@@ -1008,7 +1049,8 @@
     "sound": 20,
     "extend": 13,
     "sf": 1,
-    "pedal": 2
+    "pedal": 2,
+    "print-object": 8
   },
   "davies-5-the-fly-and-the-humble-bee": {
     "score-instrument": 5,
@@ -1023,7 +1065,8 @@
     "other-dynamics": 44,
     "sound": 64,
     "extend": 11,
-    "pedal": 2
+    "pedal": 2,
+    "print-object": 10
   },
   "debussy-1-l-ame-evaporee": {
     "score-instrument": 2,
@@ -1036,7 +1079,8 @@
     "words": 15,
     "sound": 19,
     "extend": 2,
-    "cue": 2
+    "cue": 2,
+    "print-object": 16
   },
   "debussy-2-les-cloches": {
     "score-instrument": 2,
@@ -1050,7 +1094,8 @@
     "sound": 14,
     "other-dynamics": 3,
     "notehead": 7,
-    "dashes": 2
+    "dashes": 2,
+    "print-object": 2
   },
   "delius-1-il-pleure-dans-mon-cœur": {
     "score-instrument": 2,
@@ -1066,7 +1111,8 @@
     "extend": 1,
     "other-dynamics": 2,
     "notehead": 3,
-    "stem": 1
+    "stem": 1,
+    "print-object": 5
   },
   "delius-2-le-ciel-est-par-dessus-le-toit": {
     "score-instrument": 2,
@@ -1079,7 +1125,8 @@
     "words": 5,
     "sound": 17,
     "extend": 1,
-    "other-dynamics": 2
+    "other-dynamics": 2,
+    "print-object": 3
   },
   "delius-2-so-white-so-soft-so-sweet-is-she": {
     "score-instrument": 2,
@@ -1103,7 +1150,8 @@
     "movement-title": 1,
     "identification": 1,
     "words": 1,
-    "sound": 2
+    "sound": 2,
+    "print-object": 3
   },
   "dickson-drifting": {
     "score-instrument": 2,
@@ -1117,7 +1165,8 @@
     "words": 17,
     "dashes": 8,
     "extend": 2,
-    "other-dynamics": 2
+    "other-dynamics": 2,
+    "print-object": 13
   },
   "donaudy-10-spirate-pur-spirate": {
     "score-instrument": 2,
@@ -1173,7 +1222,8 @@
     "rf": 2,
     "sf": 3,
     "dashes": 4,
-    "pedal": 14
+    "pedal": 14,
+    "print-object": 3
   },
   "elgar-2-the-river": {
     "score-instrument": 2,
@@ -1189,7 +1239,8 @@
     "cue": 2,
     "sf": 14,
     "pedal": 10,
-    "fermata": 1
+    "fermata": 1,
+    "print-object": 3
   },
   "elgar-4-the-poet-s-life": {
     "score-instrument": 2,
@@ -1205,7 +1256,8 @@
     "other-dynamics": 4,
     "cue": 22,
     "pedal": 62,
-    "sf": 1
+    "sf": 1,
+    "print-object": 1
   },
   "faisst-1-unsern-getreuen": {
     "score-instrument": 2,
@@ -1219,7 +1271,8 @@
     "cue": 3,
     "sound": 16,
     "dashes": 2,
-    "other-dynamics": 1
+    "other-dynamics": 1,
+    "print-object": 17
   },
   "faisst-2-reiterlied": {
     "score-instrument": 2,
@@ -1238,7 +1291,8 @@
     "tie": 2,
     "dashes": 2,
     "scoop": 1,
-    "sf": 1
+    "sf": 1,
+    "print-object": 8
   },
   "faltis-1-unklarheit": {
     "score-instrument": 2,
@@ -1257,7 +1311,8 @@
     "bracket": 4,
     "sf": 3,
     "tie": 2,
-    "sfp": 1
+    "sfp": 1,
+    "print-object": 33
   },
   "faltis-2-zeig-mir-dein-wahres-bild": {
     "score-instrument": 2,
@@ -1270,7 +1325,8 @@
     "words": 3,
     "sound": 3,
     "extend": 6,
-    "pedal": 38
+    "pedal": 38,
+    "print-object": 8
   },
   "faltis-3-sprich": {
     "score-instrument": 2,
@@ -1287,7 +1343,8 @@
     "pedal": 56,
     "sf": 13,
     "other-dynamics": 3,
-    "tie": 1
+    "tie": 1,
+    "print-object": 7
   },
   "farrenc-le-berger-fidele": {
     "score-instrument": 2,
@@ -1311,7 +1368,8 @@
     "extend": 18,
     "other-dynamics": 2,
     "pedal": 32,
-    "slur": 2
+    "slur": 2,
+    "print-object": 16
   },
   "faure-3-barcarolle": {
     "score-instrument": 2,
@@ -1342,7 +1400,8 @@
     "sound": 22,
     "notehead": 59,
     "pedal": 108,
-    "slur": 4
+    "slur": 4,
+    "print-object": 86
   },
   "ferrari-le-sommeil": {
     "score-instrument": 2,
@@ -1356,7 +1415,8 @@
     "dashes": 4,
     "other-dynamics": 2,
     "other-direction": 2,
-    "stem": 1
+    "stem": 1,
+    "print-object": 19
   },
   "ferrari-lontan-dagli-occhi-lontan-dal-cuore-op-17": {
     "score-instrument": 2,
@@ -1368,7 +1428,8 @@
     "extend": 31,
     "other-notation": 4,
     "sound": 8,
-    "pedal": 26
+    "pedal": 26,
+    "print-object": 1
   },
   "flegier-le-cor": {
     "score-instrument": 2,
@@ -1400,7 +1461,8 @@
     "extend": 38,
     "pedal": 170,
     "fermata": 1,
-    "wedge": 1
+    "wedge": 1,
+    "print-object": 13
   },
   "freer-1-the-boat-is-chafing-at-our-long-delay": {
     "score-instrument": 2,
@@ -1412,7 +1474,8 @@
     "identification": 1,
     "words": 8,
     "sound": 9,
-    "extend": 4
+    "extend": 4,
+    "print-object": 1
   },
   "freer-2-daughter-of-egypt-veil-thine-eyes": {
     "score-instrument": 2,
@@ -1424,7 +1487,8 @@
     "identification": 1,
     "words": 12,
     "sound": 7,
-    "notehead": 2
+    "notehead": 2,
+    "print-object": 9
   },
   "gabriel-alone": {
     "score-instrument": 2,
@@ -1493,7 +1557,8 @@
     "dashes": 4,
     "pedal": 84,
     "sf": 16,
-    "notehead": 7
+    "notehead": 7,
+    "print-object": 3
   },
   "german-2-the-dew-upon-the-lily": {
     "score-instrument": 2,
@@ -1508,7 +1573,8 @@
     "extend": 6,
     "pedal": 54,
     "sf": 1,
-    "other-dynamics": 1
+    "other-dynamics": 1,
+    "print-object": 2
   },
   "gonzaga-a-mulatinha": {
     "score-instrument": 2,
@@ -1530,7 +1596,8 @@
     "words": 24,
     "extend": 7,
     "dashes": 8,
-    "sound": 24
+    "sound": 24,
+    "print-object": 8
   },
   "gounod-5-le-lever": {
     "score-instrument": 2,
@@ -1564,7 +1631,8 @@
     "turn": 1,
     "slur": 4,
     "staff-details": 2,
-    "note": 12
+    "note": 12,
+    "print-object": 6
   },
   "gray-after-so-long": {
     "score-instrument": 2,
@@ -1576,7 +1644,8 @@
     "extend": 16,
     "cue": 8,
     "dashes": 8,
-    "sound": 3
+    "sound": 3,
+    "print-object": 4
   },
   "gray-then-and-now": {
     "score-instrument": 2,
@@ -1591,7 +1660,8 @@
     "dashes": 12,
     "sound": 7,
     "other-dynamics": 1,
-    "pedal": 2
+    "pedal": 2,
+    "print-object": 9
   },
   "greger-1-dein": {
     "score-instrument": 2,
@@ -1604,7 +1674,8 @@
     "words": 2,
     "extend": 2,
     "sound": 7,
-    "pedal": 4
+    "pedal": 4,
+    "print-object": 14
   },
   "guest-marion-or-will-ye-gang-to-the-burn-side": {
     "score-instrument": 2,
@@ -1619,7 +1690,8 @@
     "measure": 2,
     "print": 2,
     "inverted-turn": 2,
-    "other-dynamics": 1
+    "other-dynamics": 1,
+    "print-object": 34
   },
   "guest-the-bonnie-wee-wife": {
     "score-instrument": 3,
@@ -1634,7 +1706,8 @@
     "dashes": 2,
     "other-dynamics": 11,
     "extend": 2,
-    "notehead": 5
+    "notehead": 5,
+    "print-object": 13
   },
   "gurney-1-orpheus": {
     "score-instrument": 2,
@@ -1649,7 +1722,8 @@
     "extend": 11,
     "dashes": 2,
     "other-dynamics": 2,
-    "pedal": 6
+    "pedal": 6,
+    "print-object": 4
   },
   "hahn-5-l-heure-exquise": {
     "score-instrument": 2,
@@ -1666,7 +1740,8 @@
     "sound": 18,
     "extend": 1,
     "notehead": 20,
-    "display-step": 2
+    "display-step": 2,
+    "print-object": 5
   },
   "hahn-a-chloris": {
     "score-instrument": 2,
@@ -1679,7 +1754,8 @@
     "print": 22,
     "words": 12,
     "sound": 9,
-    "extend": 11
+    "extend": 11,
+    "print-object": 2
   },
   "hardelot-afterwards-love": {
     "score-instrument": 2,
@@ -1690,7 +1766,8 @@
     "words": 20,
     "sound": 18,
     "extend": 4,
-    "pedal": 64
+    "pedal": 64,
+    "print-object": 2
   },
   "haydn-10-recollection-hob-xxvia26": {
     "score-instrument": 2,
@@ -1707,7 +1784,8 @@
     "sound": 38,
     "sf": 2,
     "fz": 24,
-    "tie": 2
+    "tie": 2,
+    "print-object": 8
   },
   "haydn-5-sympathy-hob-xxvia33": {
     "score-instrument": 2,
@@ -1722,7 +1800,8 @@
     "sound": 25,
     "sf": 3,
     "tie": 2,
-    "fz": 2
+    "fz": 2,
+    "print-object": 6
   },
   "hensel-1-sehnsucht": {
     "score-instrument": 2,
@@ -1734,7 +1813,8 @@
     "identification": 1,
     "words": 4,
     "sound": 7,
-    "extend": 14
+    "extend": 14,
+    "print-object": 1
   },
   "hodges-dreams": {
     "score-instrument": 2,
@@ -1746,7 +1826,8 @@
     "measure": 18,
     "sound": 18,
     "extend": 2,
-    "other-dynamics": 2
+    "other-dynamics": 2,
+    "print-object": 52
   },
   "holmes-10-hymne-a-venus": {
     "score-instrument": 2,
@@ -1828,7 +1909,8 @@
     "technical": 12,
     "tie": 2,
     "slur": 2,
-    "notehead": 2
+    "notehead": 2,
+    "print-object": 36
   },
   "jaell-5-en-ramant": {
     "score-instrument": 2,
@@ -1865,7 +1947,8 @@
     "part-group": 2,
     "words": 8,
     "sound": 24,
-    "extend": 2
+    "extend": 2,
+    "print-object": 17
   },
   "kinkel-2-nachtliche-fahrt": {
     "score-instrument": 2,
@@ -1878,7 +1961,8 @@
     "words": 7,
     "extend": 8,
     "sound": 9,
-    "other-dynamics": 1
+    "other-dynamics": 1,
+    "print-object": 12
   },
   "kralik-1-maiglockchen": {
     "score-instrument": 2,
@@ -1892,7 +1976,8 @@
     "sound": 4,
     "cue": 1,
     "pedal": 2,
-    "other-dynamics": 1
+    "other-dynamics": 1,
+    "print-object": 1
   },
   "lang-1-traumbild": {
     "part-abbreviation": 3,
@@ -1910,7 +1995,8 @@
     "extend": 7,
     "other-dynamics": 2,
     "stem": 1,
-    "pedal": 2
+    "pedal": 2,
+    "print-object": 11
   },
   "lang-4-o-warst-du-da": {
     "score-instrument": 2,
@@ -1923,7 +2009,8 @@
     "words": 2,
     "sound": 13,
     "fz": 1,
-    "extend": 4
+    "extend": 4,
+    "print-object": 4
   },
   "le-beau-1-fruhlingsanfang": {
     "score-instrument": 3,
@@ -1935,7 +2022,8 @@
     "identification": 1,
     "words": 1,
     "sound": 29,
-    "pedal": 30
+    "pedal": 30,
+    "print-object": 1
   },
   "lehmann-1-the-mother-seal-s-lullaby": {
     "score-instrument": 3,
@@ -1952,7 +2040,8 @@
     "cue": 3,
     "extend": 4,
     "dashes": 4,
-    "other-dynamics": 1
+    "other-dynamics": 1,
+    "print-object": 11
   },
   "lehmann-bouton-de-rose": {
     "score-instrument": 2,
@@ -1965,7 +2054,8 @@
     "extend": 29,
     "cue": 2,
     "other-dynamics": 1,
-    "pedal": 156
+    "pedal": 156,
+    "print-object": 23
   },
   "lehmann-the-highland-plaid": {
     "score-instrument": 2,
@@ -1977,7 +2067,8 @@
     "extend": 4,
     "other-dynamics": 2,
     "sound": 6,
-    "tie": 3
+    "tie": 3,
+    "print-object": 40
   },
   "leoncavallo-mattinata": {
     "score-instrument": 2,
@@ -2017,7 +2108,8 @@
     "words": 8,
     "measure": 5,
     "sound": 42,
-    "extend": 10
+    "extend": 10,
+    "print-object": 11
   },
   "lindsay-good-night-good-night-beloved": {
     "part-abbreviation": 4,
@@ -2031,7 +2123,8 @@
     "sound": 38,
     "extend": 77,
     "measure": 15,
-    "coda": 1
+    "coda": 1,
+    "print-object": 93
   },
   "liszt-2-pace-non-trovo": {
     "score-instrument": 3,
@@ -2054,7 +2147,8 @@
     "slur": 2,
     "tie": 10,
     "staff-details": 21,
-    "display-step": 1
+    "display-step": 1,
+    "print-object": 6
   },
   "mackenzie-1-the-first-rose": {
     "score-instrument": 2,
@@ -2068,7 +2162,8 @@
     "sound": 22,
     "extend": 9,
     "fz": 1,
-    "pedal": 2
+    "pedal": 2,
+    "print-object": 5
   },
   "mackenzie-5-april-weather": {
     "score-instrument": 2,
@@ -2082,7 +2177,8 @@
     "other-dynamics": 7,
     "sound": 35,
     "extend": 12,
-    "pedal": 4
+    "pedal": 4,
+    "print-object": 2
   },
   "mahler-7-rheinlegendchen": {
     "score-instrument": 2,
@@ -2113,7 +2209,8 @@
     "dashes": 6,
     "sf": 1,
     "pedal": 10,
-    "other-dynamics": 3
+    "other-dynamics": 3,
+    "print-object": 23
   },
   "marshall-behold-the-sun-in-gold-descending": {
     "score-instrument": 5,
@@ -2166,7 +2263,8 @@
     "turn": 2,
     "sf": 1,
     "sound": 4,
-    "notehead": 1
+    "notehead": 1,
+    "print-object": 1
   },
   "mayer-2-o-lass-mich-dein-gedenken": {
     "score-instrument": 2,
@@ -2182,7 +2280,8 @@
     "turn": 1,
     "extend": 3,
     "inverted-mordent": 4,
-    "trill-mark": 1
+    "trill-mark": 1,
+    "print-object": 10
   },
   "mendelssohn-1-ich-wollt-meine-lieb-ergosse-sich-mwv-j-5": {
     "score-instrument": 3,
@@ -2208,7 +2307,8 @@
     "movement-title": 1,
     "identification": 1,
     "words": 12,
-    "sound": 8
+    "sound": 8,
+    "print-object": 8
   },
   "mounsey-bartholomew-4-the-warrior-boy": {
     "score-instrument": 2,
@@ -2238,7 +2338,8 @@
     "sound": 13,
     "dashes": 8,
     "pedal": 2,
-    "tie": 1
+    "tie": 1,
+    "print-object": 3
   },
   "netzel-1-lied": {
     "score-instrument": 2,
@@ -2251,7 +2352,8 @@
     "sound": 15,
     "words": 5,
     "extend": 4,
-    "other-dynamics": 1
+    "other-dynamics": 1,
+    "print-object": 18
   },
   "netzel-1-rappelle-toi": {
     "score-instrument": 2,
@@ -2267,7 +2369,8 @@
     "clef": 1,
     "pedal": 4,
     "slur": 2,
-    "dashes": 2
+    "dashes": 2,
+    "print-object": 7
   },
   "obradors-1-la-mi-sola-laureola": {
     "score-instrument": 2,
@@ -2286,7 +2389,8 @@
     "dashes": 2,
     "trill-mark": 2,
     "wavy-line": 2,
-    "display-step": 2
+    "display-step": 2,
+    "print-object": 2
   },
   "paladilhe-les-roses-d-ispahan": {
     "score-instrument": 2,
@@ -2354,7 +2458,8 @@
     "extend": 103,
     "sf": 10,
     "measure": 15,
-    "other-direction": 1
+    "other-direction": 1,
+    "print-object": 10
   },
   "parratt-3-hark-the-world-is-full-of-thy-praise": {
     "score-instrument": 5,
@@ -2367,7 +2472,8 @@
     "part-group": 2,
     "words": 53,
     "sound": 109,
-    "extend": 61
+    "extend": 61,
+    "print-object": 60
   },
   "parry-1-the-poet-s-song": {
     "score-instrument": 2,
@@ -2383,7 +2489,8 @@
     "dashes": 2,
     "other-dynamics": 1,
     "notehead": 1,
-    "pedal": 2
+    "pedal": 2,
+    "print-object": 14
   },
   "phillips-cushla-machree": {
     "score-instrument": 2,
@@ -2406,7 +2513,8 @@
     "movement-title": 1,
     "identification": 1,
     "words": 5,
-    "sound": 1
+    "sound": 1,
+    "print-object": 1
   },
   "poldowski-dans-une-musette": {
     "score-instrument": 2,
@@ -2419,7 +2527,8 @@
     "notehead": 9,
     "pedal": 8,
     "other-dynamics": 3,
-    "slur": 2
+    "slur": 2,
+    "print-object": 20
   },
   "puget-adieu-cousine": {
     "score-instrument": 2,
@@ -2434,7 +2543,8 @@
     "sound": 13,
     "measure": 6,
     "other-dynamics": 3,
-    "print": 4
+    "print": 4,
+    "print-object": 10
   },
   "quilter-1-come-away-death": {
     "score-instrument": 2,
@@ -2453,7 +2563,8 @@
     "slur": 4,
     "pedal": 21,
     "wedge": 6,
-    "display-step": 19
+    "display-step": 19,
+    "print-object": 2
   },
   "reichardt-10-ida-aus-ariels-offenbarungen": {
     "score-instrument": 2,
@@ -2464,7 +2575,8 @@
     "movement-title": 1,
     "identification": 1,
     "words": 3,
-    "sound": 1
+    "sound": 1,
+    "print-object": 15
   },
   "rossini-5-l-invito": {
     "score-instrument": 2,
@@ -2481,7 +2593,8 @@
     "sound": 28,
     "extend": 17,
     "sf": 4,
-    "display-step": 20
+    "display-step": 20,
+    "print-object": 4
   },
   "satie-1-elegie": {
     "score-instrument": 2,
@@ -2494,7 +2607,8 @@
     "words": 7,
     "sound": 14,
     "extend": 2,
-    "tie": 2
+    "tie": 2,
+    "print-object": 4
   },
   "schoenberg-1-unterm-schutz-von-dichten-blattergrunden": {
     "score-instrument": 2,
@@ -2523,7 +2637,8 @@
     "movement-title": 1,
     "identification": 1,
     "words": 1,
-    "sound": 7
+    "sound": 7,
+    "print-object": 2
   },
   "schubert-1-mignon-und-der-harfner": {
     "score-instrument": 3,
@@ -2538,7 +2653,8 @@
     "sound": 23,
     "staccato": 20,
     "dashes": 2,
-    "fz": 1
+    "fz": 1,
+    "print-object": 14
   },
   "schubert-5-der-lindenbaum": {
     "score-instrument": 2,
@@ -2555,7 +2671,8 @@
     "sound": 21,
     "extend": 2,
     "fp": 5,
-    "fz": 2
+    "fz": 2,
+    "print-object": 2
   },
   "schumann-1-ich-stand-in-dunklen-traumen": {
     "score-instrument": 2,
@@ -2567,7 +2684,8 @@
     "identification": 1,
     "words": 6,
     "sound": 3,
-    "slur": 2
+    "slur": 2,
+    "print-object": 6
   },
   "schumann-1-im-wunderschonen-monat-mai": {
     "score-instrument": 2,
@@ -2587,7 +2705,8 @@
     "tie": 3,
     "notehead": 11,
     "dashes": 4,
-    "display-step": 1
+    "display-step": 1,
+    "print-object": 1
   },
   "schumann-1-sangers-trost": {
     "score-instrument": 2,
@@ -2600,7 +2719,8 @@
     "words": 5,
     "sound": 5,
     "extend": 11,
-    "cue": 6
+    "cue": 6,
+    "print-object": 4
   },
   "schumann-2-sie-liebten-sich-beide": {
     "score-instrument": 2,
@@ -2613,7 +2733,8 @@
     "mode": 2,
     "words": 8,
     "extend": 3,
-    "sound": 13
+    "sound": 13,
+    "print-object": 12
   },
   "shield-the-maid-of-lodi": {
     "score-instrument": 2,
@@ -2646,7 +2767,8 @@
     "trill-mark": 3,
     "wavy-line": 6,
     "pedal": 2,
-    "sf": 1
+    "sf": 1,
+    "print-object": 23
   },
   "somervell-10-the-lads-in-their-hundreds": {
     "score-instrument": 2,
@@ -2673,7 +2795,8 @@
     "words": 2,
     "sound": 13,
     "sf": 1,
-    "extend": 2
+    "extend": 2,
+    "print-object": 1
   },
   "strauss-1-ruhe-meine-seele": {
     "score-instrument": 2,
@@ -2700,7 +2823,8 @@
     "words": 27,
     "sound": 56,
     "extend": 3,
-    "notehead": 2
+    "notehead": 2,
+    "print-object": 8
   },
   "tegner-betlehems-stjarna": {
     "score-instrument": 2,
@@ -2709,7 +2833,8 @@
     "work": 1,
     "identification": 1,
     "words": 1,
-    "sound": 10
+    "sound": 10,
+    "print-object": 8
   },
   "thys-petit-negre": {
     "score-instrument": 2,
@@ -2774,7 +2899,8 @@
     "bracket": 4,
     "sf": 1,
     "pedal": 26,
-    "harmony": 39
+    "harmony": 39,
+    "print-object": 6
   },
   "wagner-1-der-engel": {
     "score-instrument": 2,
@@ -2800,7 +2926,8 @@
     "words": 9,
     "extend": 11,
     "sound": 11,
-    "pedal": 2
+    "pedal": 2,
+    "print-object": 3
   },
   "webern-1-dies-ist-ein-lied-fur-dich-allein": {
     "score-instrument": 2,
@@ -2815,7 +2942,8 @@
     "extend": 2,
     "pedal": 8,
     "tuplet": 1,
-    "tie": 1
+    "tie": 1,
+    "print-object": 25
   },
   "white-1-when-the-swallows-homeward-fly": {
     "score-instrument": 2,
@@ -2829,7 +2957,8 @@
     "extend": 9,
     "other-dynamics": 3,
     "sound": 11,
-    "notehead": 4
+    "notehead": 4,
+    "print-object": 6
   },
   "white-macushla": {
     "score-instrument": 2,
@@ -2862,7 +2991,8 @@
     "sf": 10,
     "dashes": 6,
     "other-dynamics": 1,
-    "slur": 2
+    "slur": 2,
+    "print-object": 9
   },
   "wood-ethiopia-saluting-the-colours": {
     "score-instrument": 2,
@@ -2894,7 +3024,8 @@
     "dashes": 2,
     "trill-mark": 2,
     "wavy-line": 2,
-    "display-step": 2
+    "display-step": 2,
+    "print-object": 2
   },
   "zumsteeg-1-des-kaufmanns-liebeswerbung": {
     "score-instrument": 2,

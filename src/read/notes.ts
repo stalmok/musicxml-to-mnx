@@ -31,6 +31,7 @@ import { attribute, child, children, requireChild, trimmedText } from '../xml/tr
 import { readDuration } from './divisions.js'
 import { describeLength, describeValue, lengthOf, noteValueOf } from './duration.js'
 import type { ElementReader } from './element.js'
+import { reportHidden } from './unrepresentable.js'
 import { readLyrics } from './lyrics.js'
 import { noteValueBaseOf, requireNoteValueBase } from './noteValues.js'
 import { readIntegerInRange } from './numbers.js'
@@ -65,6 +66,8 @@ export function readNote(
       line: element.line,
     })
   }
+
+  reportHidden(element.element, 'note', warnings, context)
 
   // A rest may carry <display-step>/<display-octave> to fix its height on the
   // staff, read against the clef in force. MNX has a home for this on the rest

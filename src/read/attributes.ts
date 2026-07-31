@@ -15,6 +15,7 @@ import { attribute, requireChild, trimmedText } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
 import { readAttributeInRange, readInteger, readIntegerInRange } from './numbers.js'
 import type { PartState } from './state.js'
+import { reportHidden } from './unrepresentable.js'
 
 // Recognisers rather than bare sets: each one narrows the value it accepts to
 // the model's type, so a validated value reaches the writer without a cast
@@ -127,6 +128,8 @@ function readKey(
   context: WarningContext,
   path: DocumentPath,
 ): Key | undefined {
+  reportHidden(element.element, 'key', warnings, context)
+
   // A key without <fifths> is non-traditional, spelled as individual altered
   // steps, which MNX has no way to state. The notes still sound right,
   // because each carries its own <alter>.
@@ -160,6 +163,8 @@ function readTime(
   context: WarningContext,
   path: DocumentPath,
 ): TimeSignature | undefined {
+  reportHidden(element.element, 'time', warnings, context)
+
   // <senza-misura> writes unmetered music, which MNX has no way to state.
   if (element.child('senza-misura')) {
     warnings.add(
@@ -250,6 +255,8 @@ function readClef(
   context: WarningContext,
   path: DocumentPath,
 ): Clef {
+  reportHidden(element.element, 'clef', warnings, context)
+
   const sign = trimmedText(element.child('sign') ?? requireChild(element.element, 'sign', path))
   if (!isClefSign(sign)) {
     throw new MusicXMLError(`The "${sign}" clef cannot be represented in MNX.`, {

@@ -16,6 +16,7 @@ import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, trimmedText } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
+import { reportHidden } from './unrepresentable.js'
 import { readFermataAt } from './notes.js'
 
 // MusicXML's bar styles, in MNX's spelling. The two describe the same lines;
@@ -222,6 +223,8 @@ function readEnding(
 } {
   const ending = element.child('ending')
   if (!ending) return { endingStart: undefined, endingStop: undefined }
+
+  reportHidden(ending, 'ending', warnings, context)
 
   const type = attribute(ending, 'type')
   if (type === 'start') {

@@ -12,6 +12,34 @@
 // not, because it has event-markings, wedge-type, ottava, barline, ending,
 // arpeggio and fermata waiting for them.
 
+import type { WarningCollector, WarningContext } from '../warnings.js'
+import type { XmlElement } from '../xml/parse.js'
+import { attribute } from '../xml/tree.js'
+
+/**
+ * Report an element the source hides with print-object="no". MNX has no way to
+ * mark an element invisible, so it is drawn regardless; the hiding is a loss
+ * and is reported rather than dropped in silence. Grouped under one
+ * "print-object" code so the loss report counts the hiding, whatever carries
+ * it. Elements with a home for their invisibility, like a part name, honour it
+ * instead and do not call this.
+ */
+export function reportHidden(
+  element: XmlElement,
+  carrier: string,
+  warnings: WarningCollector,
+  context: WarningContext,
+): void {
+  if (attribute(element, 'print-object') !== 'no') return
+  warnings.add(
+    'unsupported:element',
+    `A <${carrier}> hidden with print-object="no" is drawn anyway, because MNX cannot ` +
+      'mark it invisible.',
+    { ...context, line: element.line },
+    'print-object',
+  )
+}
+
 const NO_HOME_IN_MNX: ReadonlySet<string> = new Set([
   // Sustain, sostenuto and una corda. The schema has no pedalling of any kind.
   'pedal',

@@ -135,6 +135,59 @@ describe('a beam', () => {
   })
 })
 
+describe('an element hidden with print-object="no"', () => {
+  // MNX has no way to mark an element invisible, so a hidden one is drawn
+  // regardless. The hiding is a loss, reported under one "print-object" code
+  // whatever carries it, rather than dropped in silence.
+  const hidden = (source: string) =>
+    read(source).warnings.filter((warning) => warning.element === 'print-object')
+
+  test('reports a hidden note', () => {
+    expect(
+      hidden(
+        measure('<note print-object="no"><rest/><duration>4</duration><type>quarter</type></note>'),
+      ),
+    ).toHaveLength(1)
+  })
+
+  test('reports a hidden time signature', () => {
+    expect(
+      hidden(
+        measure(
+          note(''),
+          '<divisions>4</divisions><time print-object="no"><beats>4</beats><beat-type>4</beat-type></time>',
+        ),
+      ),
+    ).toHaveLength(1)
+  })
+
+  test('reports a hidden clef', () => {
+    expect(
+      hidden(
+        measure(
+          note(''),
+          '<divisions>4</divisions><clef print-object="no"><sign>G</sign><line>2</line></clef>',
+        ),
+      ),
+    ).toHaveLength(1)
+  })
+
+  test('reports a hidden ending', () => {
+    expect(
+      hidden(
+        measure(
+          note('') +
+            '<barline location="right"><ending number="1" type="stop" print-object="no"/></barline>',
+        ),
+      ),
+    ).toHaveLength(1)
+  })
+
+  test('says nothing about an element the source draws', () => {
+    expect(hidden(measure(note('')))).toHaveLength(0)
+  })
+})
+
 describe('a direction', () => {
   const direction = (body: string) =>
     measure(
