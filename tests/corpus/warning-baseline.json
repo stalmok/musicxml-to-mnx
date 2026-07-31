@@ -622,7 +622,7 @@
     "extend": 36,
     "wedge": 3,
     "pedal": 4,
-    "tie": 3,
+    "tie": 2,
     "fz": 1,
     "display-step": 19,
     "print-object": 2
@@ -774,7 +774,7 @@
     "stem": 2,
     "cue": 2,
     "notehead": 2,
-    "tie": 10,
+    "tie": 6,
     "print-object": 2
   },
   "chabrier-villanelle-des-petits-canards": {
@@ -855,7 +855,6 @@
     "words": 17,
     "extend": 15,
     "sound": 15,
-    "tie": 1,
     "print-object": 5
   },
   "chopin-1-zyczenie": {
@@ -2061,7 +2060,6 @@
     "extend": 4,
     "other-dynamics": 2,
     "sound": 6,
-    "tie": 3,
     "print-object": 40
   },
   "leoncavallo-mattinata": {
@@ -2186,8 +2184,7 @@
     "words": 34,
     "extend": 43,
     "sf": 1,
-    "sound": 34,
-    "tie": 2
+    "sound": 34
   },
   "marshall-ask-me-no-more": {
     "score-instrument": 2,
@@ -2236,7 +2233,6 @@
     "sound": 49,
     "extend": 58,
     "dashes": 12,
-    "tie": 3,
     "wedge": 3,
     "inverted-mordent": 25,
     "trill-mark": 4,
@@ -2330,7 +2326,6 @@
     "sound": 13,
     "dashes": 8,
     "pedal": 2,
-    "tie": 1,
     "print-object": 3
   },
   "netzel-1-lied": {
@@ -2932,7 +2927,6 @@
     "extend": 2,
     "pedal": 8,
     "tuplet": 1,
-    "tie": 1,
     "print-object": 25
   },
   "white-1-when-the-swallows-homeward-fly": {
@@ -2993,7 +2987,7 @@
     "words": 18,
     "extend": 10,
     "sound": 9,
-    "tie": 4,
+    "tie": 2,
     "other-dynamics": 1,
     "dashes": 2
   },
