@@ -216,6 +216,23 @@ describe('where an octave shift runs', () => {
     expect(warnings).toEqual([])
   })
 
+  // The stop's cursor can sit past the start while the last event it covers
+  // falls before it: one event early in the measure, then a gap the start and
+  // stop both fall in with nothing between them. The end would then precede the
+  // start, which no consumer accepts, so the shift is dropped and reported.
+  test('drops a shift whose stop covers an event before the start', () => {
+    const forward = (by: number) => `<forward><duration>${String(by)}</duration></forward>`
+    // Only event is the quarter at 0. Start at 3/4, stop at 7/8: the last event
+    // before the stop is that quarter at 0, so the end would be 0, before 3/4.
+    const { ottavas, warnings } = read(
+      NOTE + forward(8) + shift('down') + forward(2) + shift('stop'),
+    )
+
+    expect(ottavas[0]).toEqual([])
+    expect(warnings.map((w) => w.element)).toEqual(['octave-shift'])
+    expect(warnings[0]?.message).toContain('end before it starts')
+  })
+
   test('reports a size MNX has no value for', () => {
     const { ottavas, warnings } = read(shift('down', '9') + NOTE)
 

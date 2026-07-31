@@ -374,6 +374,24 @@ export class SpannerResolver {
     pairSpans(
       this.#ottavaEnds,
       (open, stop) => {
+        // The stop's cursor can sit past the start while the last event it
+        // covers falls before it, when the two ends interleave through a
+        // backup or forward. The end is that last event, so the shift would
+        // run backwards, which no consumer accepts. It is dropped and reported
+        // rather than emitted, the same as one the source never closed.
+        if (
+          stop.measure < open.measure ||
+          (stop.measure === open.measure && compareFractions(stop.covers, open.position) < 0)
+        ) {
+          warnings.add(
+            'unclosed:spanner',
+            'An octave shift would end before it starts, its stop covering an event ' +
+              'earlier than its start, and is not carried over.',
+            stop.context,
+            'octave-shift',
+          )
+          return
+        }
         measures[open.measure]?.push({
           position: open.position,
           end: { measure: stop.measure, position: stop.covers },
