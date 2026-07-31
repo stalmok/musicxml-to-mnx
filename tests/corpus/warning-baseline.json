@@ -267,7 +267,6 @@
     "movement-title": 1,
     "identification": 1,
     "words": 4,
-    "segno": 6,
     "sound": 16,
     "sf": 2
   },
@@ -1180,7 +1179,6 @@
     "print": 24,
     "words": 32,
     "sound": 43,
-    "segno": 1,
     "extend": 15,
     "dashes": 16,
     "slide": 4,
@@ -1621,7 +1619,6 @@
     "words": 10,
     "sound": 25,
     "extend": 8,
-    "segno": 2,
     "trill-mark": 5,
     "wavy-line": 8,
     "print": 6,
@@ -2739,7 +2736,6 @@
     "identification": 1,
     "words": 1,
     "measure": 4,
-    "segno": 2,
     "sound": 3
   },
   "smyth-1-the-clown": {
@@ -2838,7 +2834,6 @@
     "work": 1,
     "identification": 1,
     "words": 33,
-    "segno": 2,
     "sound": 20,
     "extend": 17,
     "dashes": 4,

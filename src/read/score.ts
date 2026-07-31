@@ -20,6 +20,7 @@ import type {
   Measure,
   Part,
   Score,
+  Segno,
   Tempo,
   TimeSignature,
 } from '../model/score.js'
@@ -130,6 +131,9 @@ function mergeGlobalMeasures(target: GlobalMeasure[], found: readonly GlobalMeas
       repeatEnd: existing?.repeatEnd ?? measure.repeatEnd,
       ending: existing?.ending ?? measure.ending,
       fermata: existing?.fermata ?? measure.fermata,
+      // A segno is the score's navigation mark, restated in each part like the
+      // barline, so the first part to state one wins.
+      segno: existing?.segno ?? measure.segno,
     }
   })
 }
@@ -286,6 +290,7 @@ function readMeasure(
   let timeSettled = false
   const dynamics: Dynamic[] = []
   const tempos: Tempo[] = []
+  const segnos: Segno[] = []
   let barline: BarlineType | undefined
   let repeatStart = false
   let repeatEnd: RepeatEnd | undefined
@@ -345,6 +350,7 @@ function readMeasure(
         )
         dynamics.push(...reading.dynamics)
         tempos.push(...reading.tempos)
+        segnos.push(...reading.segnos)
         break
       }
 
@@ -425,10 +431,38 @@ function readMeasure(
       // Filled in by the part, once the ending's other end has been met.
       ending: undefined,
       fermata,
+      segno: oneSegno(segnos, warnings, context),
     },
     endingStart,
     endingStop,
   }
+}
+
+/**
+ * The one segno MNX draws on a measure. A measure with two of them at
+ * different points has no faithful conversion, so the first is kept and the
+ * rest reported; two written at the same point are the same mark and lose
+ * nothing.
+ */
+function oneSegno(
+  segnos: readonly Segno[],
+  warnings: WarningCollector,
+  context: WarningContext,
+): Segno | undefined {
+  const first = segnos[0]
+  if (first === undefined) return undefined
+  for (const other of segnos.slice(1)) {
+    if (compareFractions(other.location, first.location) !== 0) {
+      warnings.add(
+        'unrepresentable:element',
+        'A measure carries more than one segno, and MNX draws one per measure. ' +
+          'The first is the one converted.',
+        context,
+        'segno',
+      )
+    }
+  }
+  return first
 }
 
 /**

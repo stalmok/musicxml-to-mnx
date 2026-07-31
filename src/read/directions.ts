@@ -11,7 +11,14 @@ import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
 import { addFractions, compareFractions, fraction } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
-import type { Dynamic, DynamicValue, OttavaAmount, Tempo, WedgeType } from '../model/score.js'
+import type {
+  Dynamic,
+  DynamicValue,
+  OttavaAmount,
+  Segno,
+  Tempo,
+  WedgeType,
+} from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, children, trimmedText } from '../xml/tree.js'
@@ -26,6 +33,7 @@ import { elementLoss } from './unrepresentable.js'
 export interface DirectionReading {
   dynamics: Dynamic[]
   tempos: Tempo[]
+  segnos: Segno[]
 }
 
 // The dynamic marks MNX can state. Others, like sforzando, have no value in
@@ -52,7 +60,7 @@ export function readDirection(
   context: WarningContext,
   path: DocumentPath,
 ): DirectionReading {
-  const reading: DirectionReading = { dynamics: [], tempos: [] }
+  const reading: DirectionReading = { dynamics: [], tempos: [], segnos: [] }
 
   // A direction says which staff it belongs under. A tempo is the score's, so
   // it has no use for one, but a dynamic sits under a particular hand and MNX
@@ -84,6 +92,12 @@ export function readDirection(
           if (hairpin) reading.dynamics.push(hairpin)
           break
         }
+        case 'segno':
+          // A segno belongs to the score's measure, like a tempo, not to the
+          // part it is written in. The optional smufl attribute names a
+          // specific glyph; MNX carries it as the segno's glyph.
+          reading.segnos.push({ location: at, glyph: attribute(found, 'smufl') })
+          break
         default: {
           const loss = elementLoss(found.name)
           warnings.add(

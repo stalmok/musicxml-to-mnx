@@ -199,6 +199,57 @@ describe('tempo', () => {
   })
 })
 
+// A segno is the point a D.S. jumps back to. It sits between the notes like a
+// tempo, and belongs to the score's measure, not the part it is written in.
+describe('segno', () => {
+  test('puts a segno on the score measure at where it is written', () => {
+    const { global, warnings } = read(inMeasure(note('C') + direction('<segno/>') + note('D')))
+
+    // Written after the first quarter, so a quarter into the measure.
+    expect(global?.segno).toEqual({ location: { num: 1, den: 4 }, glyph: undefined })
+    expect(warnings).toEqual([])
+  })
+
+  test('leaves the segno unset where the measure has none', () => {
+    const { global } = read(inMeasure(note('C')))
+
+    expect(global?.segno).toBeUndefined()
+  })
+
+  test('keeps the specific glyph the source names', () => {
+    const { global } = read(inMeasure(direction('<segno smufl="segnoSerpent1"/>') + note('C')))
+
+    expect(global?.segno).toEqual({ location: { num: 0, den: 1 }, glyph: 'segnoSerpent1' })
+  })
+
+  // MNX draws one segno per measure, so a second at another point is reported
+  // and the first kept.
+  test('reports a second segno at a different point in the measure', () => {
+    const { global, warnings } = read(
+      inMeasure(direction('<segno/>') + note('C') + direction('<segno/>') + note('D')),
+    )
+
+    expect(global?.segno).toEqual({ location: { num: 0, den: 1 }, glyph: undefined })
+    expect(warnings.map((w) => w.element)).toEqual(['segno'])
+    expect(warnings[0]?.message).toContain('more than one segno')
+  })
+
+  // Two written at the same point are the same mark, so nothing is lost and
+  // nothing is reported.
+  test('says nothing about two segnos written at the same point', () => {
+    const { warnings } = read(inMeasure(direction('<segno/>') + direction('<segno/>') + note('C')))
+
+    expect(warnings).toEqual([])
+  })
+
+  test('writes a segno the spec schema accepts', () => {
+    const { mnx } = convertMusicXML(inMeasure(direction('<segno/>') + note('C')))
+
+    expect(mnx.global.measures[0]?.segno).toEqual({ location: { fraction: [0, 1] } })
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+})
+
 describe('directions MNX cannot state', () => {
   test('reports a word', () => {
     const { warnings } = read(inMeasure(direction('<words>dolce</words>') + note('C')))

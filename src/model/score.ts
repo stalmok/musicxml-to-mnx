@@ -451,6 +451,16 @@ export interface GlobalMeasure {
   ending: Ending | undefined
   /** A pause written over the barline rather than over a note. */
   fermata: Fermata | undefined
+  /** The segno sign, where the measure carries one. MNX draws one per measure. */
+  segno: Segno | undefined
+}
+
+/** A segno sign, the point a D.S. jumps back to. */
+export interface Segno {
+  /** Where in the measure it is drawn, counting from the start. */
+  location: Fraction
+  /** A specific SMuFL glyph, where the source names one. */
+  glyph: string | undefined
 }
 
 export interface Score {

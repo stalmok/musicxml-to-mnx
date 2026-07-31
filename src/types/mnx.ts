@@ -376,6 +376,12 @@ export interface MNXTempo {
   location?: MNXRhythmicPosition
 }
 
+/** A segno sign on a measure, the point a D.S. jumps back to. */
+export interface MNXSegno {
+  location: MNXRhythmicPosition
+  glyph?: string
+}
+
 export type MNXBarlineType =
   | 'regular'
   | 'dotted'
@@ -421,6 +427,7 @@ export interface MNXGlobalMeasure {
   repeatEnd?: MNXRepeatEnd
   ending?: MNXEnding
   fermata?: MNXFermata
+  segno?: MNXSegno
 }
 
 export interface MNXGlobal {

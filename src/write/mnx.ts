@@ -25,6 +25,7 @@ import type {
   Part,
   Pitch,
   Score,
+  Segno,
   NoteValueQuantity,
   Sequence,
   SequenceItem,
@@ -54,6 +55,7 @@ import type {
   MNXFullMeasureRest,
   MNXMeasureRhythmicPosition,
   MNXRhythmicPosition,
+  MNXSegno,
   MNXTempo,
 } from '../types/mnx.js'
 
@@ -176,6 +178,15 @@ function writeGlobalMeasure(measure: GlobalMeasure, id: string | undefined): MNX
       : {}),
     ...(measure.ending ? { ending: writeEnding(measure.ending) } : {}),
     ...(measure.fermata ? { fermata: writeFermata(measure.fermata) } : {}),
+    ...(measure.segno ? { segno: writeSegno(measure.segno) } : {}),
+  }
+}
+
+function writeSegno(segno: Segno): MNXSegno {
+  return {
+    // MNX requires a segno to say where it sits, even at the measure's start.
+    location: writePosition(segno.location),
+    ...(segno.glyph !== undefined ? { glyph: segno.glyph } : {}),
   }
 }
 

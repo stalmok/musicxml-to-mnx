@@ -45,6 +45,7 @@ const NO_BARLINE = {
   repeatEnd: undefined,
   ending: undefined,
   fermata: undefined,
+  segno: undefined,
 } as const
 
 function scoreOf(
