@@ -238,11 +238,11 @@ describe('a direction', () => {
 })
 
 describe('a rest placed on the staff', () => {
-  // <display-step>/<display-octave> fix a rest's height, following the clef.
-  // MNX has a home (rest.staffPosition), but placing it needs the clef in
-  // force, which the reader does not track yet, so it is reported for now
-  // rather than dropped in silence.
-  test('reports its display position, which is not converted yet', () => {
+  // <display-step>/<display-octave> fix a rest's height, read against the clef
+  // in force. Where the measure states no clef, there is nothing to place the
+  // height against, so it is reported rather than guessed. (Converting it,
+  // where a clef is in force, is covered in rests.test.ts.)
+  test('reports a display position it cannot place without a clef', () => {
     expect(
       lost(
         measure(

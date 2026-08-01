@@ -295,6 +295,11 @@ function readClef(
     )
   }
 
+  // Kept in force on its staff so a later rest placed by <display-step> reads
+  // its height against the right clef. A single-staff part names no staff, so
+  // its one clef is held under staff 1.
+  state.clefs.set(staff ?? 1, { sign, line })
+
   // MusicXML counts staff lines from 1 at the bottom; MNX counts staff steps
   // from 0 at the middle line. On a five-line staff they differ by this.
   return { sign, staffPosition: 2 * line - 6, staff, position, octave }

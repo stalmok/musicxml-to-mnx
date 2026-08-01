@@ -415,9 +415,10 @@ function writeEvent(event: Event, referenced: ReadonlySet<string>): MNXEvent {
     ...(referenced.has(event.id) ? { id: event.id } : {}),
     ...(event.staff !== undefined ? { staff: event.staff } : {}),
     duration: writeNoteValue(event.value),
-    // A rest is marked by the presence of an empty object, not by a flag.
+    // A rest is marked by the presence of the object, not by a flag; its height
+    // rides on it where the source fixed one.
     ...(event.isRest
-      ? { rest: {} }
+      ? { rest: event.staffPosition !== undefined ? { staffPosition: event.staffPosition } : {} }
       : { notes: event.notes.map((note) => writeNote(note, referenced)) }),
     ...(event.slurs.length > 0
       ? {

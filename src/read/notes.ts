@@ -12,6 +12,7 @@ import { compareFractions, fraction, multiplyFractions } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type {
   AccidentalDisplay,
+  ClefSign,
   CurveSide,
   Event,
   Fermata,
@@ -49,6 +50,57 @@ function isStep(value: string): value is Step {
   return STEPS.has(value)
 }
 
+// The diatonic order of a step within its octave, counting from C, since staff
+// height is counted diatonically.
+const STEP_ORDER: Record<Step, number> = { C: 0, D: 1, E: 2, F: 3, G: 4, A: 5, B: 6 }
+
+// The diatonic index of the pitch each clef sign places on its line: G4 for a
+// G clef, F3 for an F clef, C4 for a C clef.
+const CLEF_REFERENCE: Record<ClefSign, number> = {
+  G: 4 * 7 + STEP_ORDER.G,
+  F: 3 * 7 + STEP_ORDER.F,
+  C: 4 * 7 + STEP_ORDER.C,
+}
+
+/** A pitch's diatonic index: its octave times seven, plus the step's order. */
+function diatonicIndex(step: Step, octave: number): number {
+  return octave * 7 + STEP_ORDER[step]
+}
+
+/**
+ * A rest's height on the staff from its <display-step>/<display-octave>, in
+ * steps from the middle line. The clef in force sits its reference pitch on its
+ * own line (2*line - 6 from the middle), and each diatonic step from there is
+ * one more step of height. Undefined, with the loss reported, where the pair is
+ * incomplete or no clef is in force to read it against.
+ */
+function restStaffPosition(
+  restElement: XmlElement,
+  staff: number | undefined,
+  state: PartState,
+  warnings: WarningCollector,
+  context: WarningContext,
+): number | undefined {
+  const stepElement = child(restElement, 'display-step')
+  const octaveElement = child(restElement, 'display-octave')
+  if (!stepElement && !octaveElement) return undefined
+
+  const step = stepElement?.text.trim().toUpperCase() ?? ''
+  const octaveText = octaveElement?.text.trim() ?? ''
+  const clef = state.clefs.get(staff ?? 1)
+  if (!isStep(step) || !/^-?\d+$/.test(octaveText) || clef === undefined) {
+    warnings.add(
+      'unsupported:element',
+      "A rest's staff position, given by <display-step> and <display-octave>, needs " +
+        'both and a clef in force to place, which this measure does not give.',
+      { ...context, line: restElement.line },
+      'display-step',
+    )
+    return undefined
+  }
+  return 2 * clef.line - 6 + (diatonicIndex(step, Number(octaveText)) - CLEF_REFERENCE[clef.sign])
+}
+
 export function readNote(
   element: ElementReader,
   state: PartState,
@@ -71,19 +123,6 @@ export function readNote(
 
   reportHidden(element.element, 'note', warnings, context)
 
-  // A rest may carry <display-step>/<display-octave> to fix its height on the
-  // staff, read against the clef in force. MNX has a home for this on the rest
-  // (staffPosition), but placing it needs the clef, which the reader does not
-  // track yet, so the position is reported rather than dropped in silence.
-  if (restElement && (child(restElement, 'display-step') || child(restElement, 'display-octave'))) {
-    warnings.add(
-      'unsupported:element',
-      "A rest's staff position, given by <display-step> and <display-octave>, is not converted yet.",
-      { ...context, line: restElement.line },
-      'display-step',
-    )
-  }
-
   const notations = element.blocks('notations')
   // <tied> is the visual side of a tie. Most of it repeats <tie>, but let-ring
   // and the drawn side live only on it, so it is read rather than skipped.
@@ -101,6 +140,14 @@ export function readNote(
   const staffElement = element.child('staff')
   const named = staffElement ? readIntegerInRange(staffElement, path, 1, state.staves) : undefined
   const staff = state.staves > 1 ? named : undefined
+
+  // A rest may be pinned to a height with <display-step>/<display-octave>, read
+  // against the clef in force on its staff. MNX states it as rest.staffPosition,
+  // steps from the middle line. Without both, or without a clef to read them
+  // against, the height cannot be placed and is reported rather than guessed.
+  const staffPosition = restElement
+    ? restStaffPosition(restElement, staff, state, warnings, context)
+    : undefined
 
   // A note carrying <chord> sounds with the one before it, so it joins that
   // event rather than starting another. It is settled first because it is
@@ -262,6 +309,19 @@ export function readNote(
     // beam, so a source stating either says nothing this loses.
     element.skip('stem', 'beam')
 
+    // MNX's full-measure rest has no staffPosition, so a display height on a
+    // rest that fills its measure cannot be carried; it is reported rather
+    // than dropped in silence.
+    if (staffPosition !== undefined) {
+      warnings.add(
+        'unsupported:element',
+        'A rest that fills its measure carries a <display-step> height, which ' +
+          "MNX's full-measure rest cannot state.",
+        { ...context, line: restElement?.line ?? element.line },
+        'display-step',
+      )
+    }
+
     builder.setFullMeasure(
       voice,
       { visualDuration: written, fermata: readFermata(notations, warnings, context) },
@@ -300,6 +360,7 @@ export function readNote(
     fermata: readFermata(notations, warnings, context),
     notes,
     isRest: restElement !== undefined,
+    staffPosition,
   }
 
   // A grace note is squeezed in before the beat and takes none of the

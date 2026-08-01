@@ -34,6 +34,7 @@ const WHOLE_C: Event = {
     },
   ],
   isRest: false,
+  staffPosition: undefined,
 }
 
 // Everything a global measure can state beyond a key, a time and a tempo.
@@ -97,6 +98,7 @@ test.each([
         fermata: undefined,
         notes: [],
         isRest: true,
+        staffPosition: undefined,
       }),
     ),
   ],
@@ -122,6 +124,7 @@ test.each([
           },
         ],
         isRest: false,
+        staffPosition: undefined,
       }),
     ),
   ],
@@ -423,6 +426,7 @@ describe('ties and slurs', () => {
       },
     ],
     isRest: false,
+    staffPosition: undefined,
   }
   const start: Event = {
     kind: 'event',
@@ -443,6 +447,7 @@ describe('ties and slurs', () => {
       },
     ],
     isRest: false,
+    staffPosition: undefined,
   }
 
   function joined(): Score {
@@ -766,6 +771,7 @@ describe('events', () => {
       fermata: undefined,
       notes: [],
       isRest: true,
+      staffPosition: undefined,
     }
 
     expect(firstEvent(scoreOf(measureOf(rest)))).toEqual({
@@ -870,6 +876,7 @@ describe('fermatas', () => {
         },
       ],
       isRest: false,
+      staffPosition: undefined,
     }
     const score = scoreOf(measureOf(event))
     expect(schemaErrors(writeMnx(score))).toEqual([])
@@ -918,6 +925,7 @@ describe('event markings', () => {
         },
       ],
       isRest: false,
+      staffPosition: undefined,
     }
   }
 

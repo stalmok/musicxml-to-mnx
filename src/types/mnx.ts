@@ -180,8 +180,14 @@ export interface MNXEvent {
   markings?: MNXEventMarkings
   fermata?: MNXFermata
   notes?: MNXNote[]
-  /** Present, and empty, when the event is a rest. */
-  rest?: Record<string, never>
+  /** Present when the event is a rest. Empty unless the rest states a height. */
+  rest?: MNXRest
+}
+
+/** A rest, optionally pinned to a height on the staff. */
+export interface MNXRest {
+  /** Steps from the middle line, where the source fixed the rest's height. */
+  staffPosition?: number
 }
 
 export interface MNXFullMeasureRest {

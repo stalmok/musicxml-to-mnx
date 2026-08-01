@@ -167,6 +167,12 @@ export interface Event {
   /** Empty for a rest. More than one note makes it a chord. */
   notes: readonly Note[]
   isRest: boolean
+  /**
+   * A rest's height on the staff, in steps from the middle line, where the
+   * source fixed it with <display-step>/<display-octave>. Undefined for a note
+   * and for a rest drawn at its default height.
+   */
+  staffPosition: number | undefined
 }
 
 /**

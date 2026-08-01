@@ -635,7 +635,6 @@
     "wedge": 16,
     "print-object": 3,
     "pedal": 36,
-    "display-step": 8,
     "notehead": 3,
     "tie": 4,
     "slur": 4,
@@ -679,8 +678,7 @@
     "slur": 2,
     "pedal": 16,
     "other-dynamics": 1,
-    "sf": 1,
-    "display-step": 6
+    "sf": 1
   },
   "berlioz-4-absence": {
     "score-instrument": 2,
@@ -698,8 +696,7 @@
     "extend": 38,
     "cue": 1,
     "pedal": 21,
-    "wedge": 2,
-    "display-step": 4
+    "wedge": 2
   },
   "bianchi-lacy-helen": {
     "score-instrument": 2,
@@ -1328,8 +1325,7 @@
     "sound": 55,
     "extend": 21,
     "wedge": 8,
-    "slur": 2,
-    "display-step": 1
+    "slur": 2
   },
   "bridge-2-speak-to-me-my-love": {
     "score-instrument": 2,
@@ -1349,7 +1345,6 @@
     "pedal": 4,
     "tie": 2,
     "fz": 1,
-    "display-step": 19,
     "print-object": 2
   },
   "bridge-adoration-h-57": {
@@ -1378,7 +1373,6 @@
     "words": 7,
     "sound": 31,
     "extend": 19,
-    "display-step": 3,
     "trill-mark": 4,
     "wavy-line": 8,
     "pedal": 4
@@ -2610,11 +2604,10 @@
     "wedge": 2,
     "sfp": 2,
     "print-object": 8,
-    "display-step": 4,
     "sf": 2,
     "pedal": 2
   },
-  "delius-1-il-pleure-dans-mon-cœur": {
+  "delius-1-il-pleure-dans-mon-c\u0153ur": {
     "score-instrument": 2,
     "midi-device": 2,
     "midi-instrument": 2,
@@ -3279,7 +3272,6 @@
     "sound": 14,
     "print-object": 3,
     "wedge": 13,
-    "display-step": 2,
     "sfz": 2
   },
   "ferrari-le-sommeil": {
@@ -3770,7 +3762,6 @@
     "words": 12,
     "sound": 23,
     "extend": 14,
-    "display-step": 2,
     "dashes": 6
   },
   "gounod-serenade-cg-437": {
@@ -4210,7 +4201,6 @@
     "sound": 18,
     "extend": 1,
     "notehead": 20,
-    "display-step": 2,
     "print-object": 5
   },
   "hahn-a-chloris": {
@@ -5655,7 +5645,6 @@
     "slur": 2,
     "tie": 10,
     "staff-details": 21,
-    "display-step": 1,
     "print-object": 6
   },
   "mackenzie-1-the-first-rose": {
@@ -5889,7 +5878,7 @@
     "other-dynamics": 5,
     "cue": 2
   },
-  "massenet-1-chœur-des-pastorale-do-287": {
+  "massenet-1-ch\u0153ur-des-pastorale-do-287": {
     "score-instrument": 2,
     "midi-device": 2,
     "midi-instrument": 2,
@@ -6451,7 +6440,6 @@
     "dashes": 2,
     "trill-mark": 2,
     "wavy-line": 2,
-    "display-step": 2,
     "print-object": 2
   },
   "obradors-6-del-cabello-mas-sutil": {
@@ -6493,8 +6481,7 @@
     "sfz": 4,
     "dashes": 6,
     "slur": 2,
-    "wedge": 1,
-    "display-step": 1
+    "wedge": 1
   },
   "paladilhe-psyche": {
     "score-instrument": 2,
@@ -6511,8 +6498,7 @@
     "rfz": 2,
     "sound": 22,
     "pedal": 24,
-    "wedge": 1,
-    "display-step": 1
+    "wedge": 1
   },
   "paradis-1-an-das-klavier": {
     "score-instrument": 2,
@@ -6973,7 +6959,6 @@
     "slur": 4,
     "pedal": 21,
     "wedge": 6,
-    "display-step": 19,
     "print-object": 2
   },
   "quilter-1-prelude": {
@@ -6989,7 +6974,6 @@
     "print": 4,
     "words": 7,
     "sound": 2,
-    "display-step": 2,
     "wedge": 2
   },
   "quilter-2-o-mistress-mine": {
@@ -7007,8 +6991,7 @@
     "sound": 25,
     "extend": 3,
     "wedge": 2,
-    "pedal": 4,
-    "display-step": 1
+    "pedal": 4
   },
   "quilter-2-the-bracelet": {
     "score-instrument": 2,
@@ -7026,7 +7009,6 @@
     "extend": 9,
     "wedge": 6,
     "notehead": 5,
-    "display-step": 7,
     "slur": 4,
     "pedal": 6,
     "other-dynamics": 2
@@ -7049,7 +7031,6 @@
     "wedge": 2,
     "pedal": 26,
     "slur": 2,
-    "display-step": 1,
     "other-dynamics": 2
   },
   "quilter-3-the-maiden-blush": {
@@ -7067,7 +7048,6 @@
     "sound": 7,
     "extend": 9,
     "wedge": 3,
-    "display-step": 1,
     "slur": 2,
     "play": 2
   },
@@ -7204,7 +7184,6 @@
     "sound": 28,
     "extend": 17,
     "sf": 4,
-    "display-step": 20,
     "print-object": 4
   },
   "satie-1-elegie": {
@@ -7358,7 +7337,6 @@
     "extend": 4,
     "dashes": 13,
     "wedge": 6,
-    "display-step": 4,
     "other-articulation": 1,
     "slur": 2
   },
@@ -7417,7 +7395,6 @@
     "extend": 3,
     "wedge": 5,
     "fp": 1,
-    "display-step": 2,
     "print-object": 1,
     "sf": 1
   },
@@ -7653,7 +7630,6 @@
     "tie": 4,
     "notehead": 11,
     "dashes": 4,
-    "display-step": 1,
     "print-object": 1
   },
   "schumann-1-sangers-trost": {
@@ -8229,7 +8205,6 @@
     "sound": 23,
     "words": 17,
     "wedge": 4,
-    "display-step": 6,
     "notehead": 6
   },
   "verdi-3-in-solitaria-stanza": {
@@ -8267,7 +8242,7 @@
     "harmony": 39,
     "print-object": 6
   },
-  "viardot-bonjour-mon-cœur-vwv-1072": {
+  "viardot-bonjour-mon-c\u0153ur-vwv-1072": {
     "score-instrument": 2,
     "midi-device": 2,
     "midi-instrument": 2,
@@ -8878,7 +8853,6 @@
     "dashes": 2,
     "trill-mark": 2,
     "wavy-line": 2,
-    "display-step": 2,
     "print-object": 2
   },
   "zemlinsky-3-fensterlein-nachts-bist-du-zu": {
@@ -8895,8 +8869,7 @@
     "words": 12,
     "sound": 12,
     "extend": 2,
-    "dashes": 6,
-    "display-step": 1
+    "dashes": 6
   },
   "zumsteeg-1-des-kaufmanns-liebeswerbung": {
     "score-instrument": 2,
