@@ -193,6 +193,8 @@ export interface MNXRest {
 export interface MNXFullMeasureRest {
   visualDuration?: MNXNoteValue
   fermata?: MNXFermata
+  /** Steps from the middle line, where the source fixed the rest's height. */
+  staffPosition?: number
 }
 
 /** Time a voice passes over without sounding. */

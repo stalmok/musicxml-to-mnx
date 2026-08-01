@@ -309,22 +309,15 @@ export function readNote(
     // beam, so a source stating either says nothing this loses.
     element.skip('stem', 'beam')
 
-    // MNX's full-measure rest has no staffPosition, so a display height on a
-    // rest that fills its measure cannot be carried; it is reported rather
-    // than dropped in silence.
-    if (staffPosition !== undefined) {
-      warnings.add(
-        'unsupported:element',
-        'A rest that fills its measure carries a <display-step> height, which ' +
-          "MNX's full-measure rest cannot state.",
-        { ...context, line: restElement?.line ?? element.line },
-        'display-step',
-      )
-    }
-
     builder.setFullMeasure(
       voice,
-      { visualDuration: written, fermata: readFermata(notations, warnings, context) },
+      {
+        visualDuration: written,
+        fermata: readFermata(notations, warnings, context),
+        // MNX's full-measure rest carries a staffPosition too, so a display
+        // height on one is placed there rather than lost.
+        staffPosition,
+      },
       duration,
       staff,
       path,

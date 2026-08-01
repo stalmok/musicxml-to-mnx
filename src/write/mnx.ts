@@ -365,6 +365,7 @@ function writeFullMeasure(rest: FullMeasureRest): MNXFullMeasureRest {
   return {
     ...(rest.visualDuration ? { visualDuration: writeNoteValue(rest.visualDuration) } : {}),
     ...(rest.fermata ? { fermata: writeFermata(rest.fermata) } : {}),
+    ...(rest.staffPosition !== undefined ? { staffPosition: rest.staffPosition } : {}),
   }
 }
 

@@ -251,6 +251,8 @@ export interface FullMeasureRest {
   visualDuration: NoteValue | undefined
   /** A pause held over the rest, which is where most fermatas are written. */
   fermata: Fermata | undefined
+  /** Its height on the staff, in steps from the middle line, where fixed. */
+  staffPosition: number | undefined
 }
 
 export interface Sequence {

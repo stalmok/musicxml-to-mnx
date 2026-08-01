@@ -109,17 +109,31 @@ describe('a rest placed on the staff', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 
-  // A rest that fills its measure becomes MNX's full-measure rest, which has
-  // no staffPosition, so a height on one cannot be carried and is reported.
-  test('reports a display height on a rest that fills its measure', () => {
-    const { warnings } = firstEvent(
+  // A rest that fills its measure becomes MNX's full-measure rest, which
+  // carries a staffPosition of its own, so its display height is placed there.
+  test('places a display height on a rest that fills its measure', () => {
+    const source = inMeasure(
+      '<note><rest measure="yes"><display-step>G</display-step>' +
+        '<display-octave>4</display-octave></rest><duration>4</duration></note>',
+    )
+    const warnings = new WarningCollector()
+    const score = readScore(parseXmlRoot(source), warnings)
+
+    expect(score.parts[0]?.measures[0]?.sequences[0]?.fullMeasure).toMatchObject({
+      staffPosition: -2,
+    })
+    expect(warnings.list()).toEqual([])
+  })
+
+  test('writes a full-measure rest height the spec schema accepts', () => {
+    const { mnx } = convertMusicXML(
       inMeasure(
         '<note><rest measure="yes"><display-step>G</display-step>' +
           '<display-octave>4</display-octave></rest><duration>4</duration></note>',
       ),
     )
 
-    expect(warnings.map((w) => w.element)).toEqual(['display-step'])
-    expect(warnings[0]?.message).toContain('fills its measure')
+    expect(mnx.parts[0]?.measures[0]?.sequences[0]?.fullMeasure).toEqual({ staffPosition: -2 })
+    expect(schemaErrors(mnx)).toEqual([])
   })
 })
