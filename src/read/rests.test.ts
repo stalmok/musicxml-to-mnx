@@ -108,4 +108,18 @@ describe('a rest placed on the staff', () => {
     expect(event).toMatchObject({ rest: { staffPosition: -2 } })
     expect(schemaErrors(mnx)).toEqual([])
   })
+
+  // A rest that fills its measure becomes MNX's full-measure rest, which has
+  // no staffPosition, so a height on one cannot be carried and is reported.
+  test('reports a display height on a rest that fills its measure', () => {
+    const { warnings } = firstEvent(
+      inMeasure(
+        '<note><rest measure="yes"><display-step>G</display-step>' +
+          '<display-octave>4</display-octave></rest><duration>4</duration></note>',
+      ),
+    )
+
+    expect(warnings.map((w) => w.element)).toEqual(['display-step'])
+    expect(warnings[0]?.message).toContain('fills its measure')
+  })
 })
