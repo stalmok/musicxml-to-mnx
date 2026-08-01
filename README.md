@@ -61,6 +61,36 @@ try {
 
 ---
 
+## Warnings
+
+Structurally broken input throws; valid input that cannot be carried across in
+full converts and reports what it dropped. Each entry in `warnings` is a
+`ConversionWarning`:
+
+| Field     | What it holds                                                                                                                                   |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `code`    | A stable, greppable code. Its prefix says which of three kinds it is (see [Design principles](#design-principles)).                             |
+| `message` | Prose written for a person.                                                                                                                     |
+| `element` | The MusicXML element the loss is about, without its angle brackets, where it is about one.                                                      |
+| `context` | Where it happened: `part` (the MusicXML part id), `measure` (the source measure number), and `line` (the source line), each present when known. |
+
+`code` and `element` are fields rather than something to parse out of the
+message, because grouping a report by what was lost is the first thing most
+pipelines do:
+
+```ts
+const byElement = new Map<string, number>()
+for (const w of warnings) {
+  const key = w.element ?? w.code
+  byElement.set(key, (byElement.get(key) ?? 0) + 1)
+}
+```
+
+An empty `warnings` array means the conversion was lossless as far as the
+converter can tell.
+
+---
+
 ## Command line
 
 The package installs a `ossia` command:
@@ -83,8 +113,9 @@ output against the vendored MNX schema.
 
 Notes and rests with their note values and augmentation dots, pitches, chords,
 several voices in a measure, clefs (including a second `<attributes>` block
-mid-measure), key and time signatures, part names, and measure numbering that
-differs from plain 1, 2, 3, so a pickup measure keeps its number.
+mid-measure), key and time signatures, part names and the short name drawn on
+later systems, and measure numbering that differs from plain 1, 2, 3, so a
+pickup measure keeps its number.
 
 Tuplets, including nested ones, and grace notes, which are gathered into
 groups and keep out of the measure's time.
@@ -119,7 +150,8 @@ and which way it faces.
 Barlines, repeat signs, and first and second time endings. MusicXML hangs these
 off one element at the edge of a measure and marks an ending's two ends several
 measures apart; MNX states them on the score's measure, an ending as the number
-of measures it covers.
+of measures it covers. A segno sign is placed on its measure at the point the
+cursor has reached, carrying the specific glyph the source names.
 
 Accidentals: the note whose accidental the source draws is marked, and the
 document declares once that it states accidental display, so a reader takes
@@ -176,7 +208,7 @@ tip.
 
 | Corpus                                                                                                        | Files  | Convert      |
 | ------------------------------------------------------------------------------------------------------------- | ------ | ------------ |
-| [OpenScore Lieder](https://github.com/OpenScore/Lieder) (songs, MuseScore exports)                            | 1,462  | 1,431 (98%)  |
+| [OpenScore Lieder](https://github.com/OpenScore/Lieder) (songs, MuseScore exports)                            | 1,462  | 1,447 (99%)  |
 | [OpenScore String Quartets](https://github.com/OpenScore/StringQuartets) (exported with MuseScore 3)          | 122    | 112 (92%)    |
 | [Unofficial MusicXML Test Suite](https://github.com/cuthbertLab/musicxmlTestSuite) (feature files)            | 150    | 136 (91%)    |
 | [MusicXML example set](https://www.musicxml.com/music-in-musicxml/example-set/) (Finale exports, some UTF-16) | 36     | 32 (89%)     |
@@ -195,7 +227,7 @@ CPDL sample the largest group is hymnals writing two lines over each
 other in a single voice, which the converter refuses rather than guesses
 apart.
 
-Two hundred of the Lieder songs are vendored into the repository and convert
+Six hundred of the Lieder songs are vendored into the repository and convert
 on every test run; the full Lieder corpus gate runs weekly in CI and before
 every release.
 
@@ -251,7 +283,7 @@ suite produces is validated against it.
 pnpm install
 pnpm hooks:install   # once per clone: enables the pre-commit gate
 
-pnpm test            # pnpm test:coverage enforces the ≥95% thresholds
+pnpm test            # pnpm test:coverage enforces the ≥98% thresholds
 pnpm typecheck
 pnpm lint
 pnpm build
