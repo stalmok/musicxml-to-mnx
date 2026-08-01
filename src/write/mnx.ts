@@ -22,6 +22,8 @@ import type {
   Measure,
   Note,
   NoteValue,
+  Fine,
+  Jump,
   Part,
   Pitch,
   Score,
@@ -52,7 +54,9 @@ import type {
   MNXEventMarkings,
   MNXEnding,
   MNXFermata,
+  MNXFine,
   MNXFullMeasureRest,
+  MNXJump,
   MNXMeasureRhythmicPosition,
   MNXRhythmicPosition,
   MNXSegno,
@@ -179,6 +183,8 @@ function writeGlobalMeasure(measure: GlobalMeasure, id: string | undefined): MNX
     ...(measure.ending ? { ending: writeEnding(measure.ending) } : {}),
     ...(measure.fermata ? { fermata: writeFermata(measure.fermata) } : {}),
     ...(measure.segno ? { segno: writeSegno(measure.segno) } : {}),
+    ...(measure.fine ? { fine: writeFine(measure.fine) } : {}),
+    ...(measure.jump ? { jump: writeJump(measure.jump) } : {}),
   }
 }
 
@@ -188,6 +194,14 @@ function writeSegno(segno: Segno): MNXSegno {
     location: writePosition(segno.location),
     ...(segno.glyph !== undefined ? { glyph: segno.glyph } : {}),
   }
+}
+
+function writeFine(fine: Fine): MNXFine {
+  return { location: writePosition(fine.location) }
+}
+
+function writeJump(jump: Jump): MNXJump {
+  return { location: writePosition(jump.location), type: jump.type }
 }
 
 function writeEnding(ending: Ending): MNXEnding {

@@ -453,6 +453,10 @@ export interface GlobalMeasure {
   fermata: Fermata | undefined
   /** The segno sign, where the measure carries one. MNX draws one per measure. */
   segno: Segno | undefined
+  /** A Fine, where a D.S. or D.C. repeat stops. One per measure. */
+  fine: Fine | undefined
+  /** A jump such as D.S., taken once the measure is played. One per measure. */
+  jump: Jump | undefined
 }
 
 /** A segno sign, the point a D.S. jumps back to. */
@@ -461,6 +465,22 @@ export interface Segno {
   location: Fraction
   /** A specific SMuFL glyph, where the source names one. */
   glyph: string | undefined
+}
+
+/** A Fine, where a D.S. or D.C. repeat stops. */
+export interface Fine {
+  /** Where in the measure it is taken, counting from the start. */
+  location: Fraction
+}
+
+/** The kinds of jump MNX states: a dal-segno jump, or a D.S. al Fine. */
+export type JumpType = 'dsalfine' | 'segno'
+
+/** A jump such as D.S., taken once the measure is played. */
+export interface Jump {
+  /** Where in the measure it is taken, counting from the start. */
+  location: Fraction
+  type: JumpType
 }
 
 export interface Score {

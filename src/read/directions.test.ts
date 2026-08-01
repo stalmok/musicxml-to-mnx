@@ -250,6 +250,86 @@ describe('segno', () => {
   })
 })
 
+// The navigation a <sound> carries. A <sound fine> is where a D.S. or D.C.
+// repeat stops; a <sound dalsegno> is the jump back to the segno. Both belong
+// to the score's measure, like a segno, at the point the <sound> is written.
+describe('sound navigation', () => {
+  test('puts a fine on the score measure where the <sound fine> sits', () => {
+    const { global, warnings } = read(inMeasure(note('C') + '<sound fine="yes"/>'))
+
+    // Written after the first quarter, so a quarter into the measure.
+    expect(global?.fine).toEqual({ location: { num: 1, den: 4 } })
+    expect(warnings).toEqual([])
+  })
+
+  test('reads a <sound fine> written inside a direction', () => {
+    const { global, warnings } = read(
+      inMeasure(note('C') + '<direction><sound fine="yes"/></direction>'),
+    )
+
+    expect(global?.fine).toEqual({ location: { num: 1, den: 4 } })
+    expect(warnings).toEqual([])
+  })
+
+  test('leaves the fine unset where the measure has none', () => {
+    const { global } = read(inMeasure(note('C')))
+
+    expect(global?.fine).toBeUndefined()
+  })
+
+  test('puts a jump of type segno on the measure for a <sound dalsegno>', () => {
+    const { global, warnings } = read(inMeasure(note('C') + '<sound dalsegno="segno"/>'))
+
+    expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'segno' })
+    expect(warnings).toEqual([])
+  })
+
+  test('leaves the jump unset where the measure has none', () => {
+    const { global } = read(inMeasure(note('C')))
+
+    expect(global?.jump).toBeUndefined()
+  })
+
+  // MNX states one fine per measure, so a second at another point is reported
+  // and the first kept.
+  test('reports a second fine at a different point in the measure', () => {
+    const { global, warnings } = read(
+      inMeasure('<sound fine="yes"/>' + note('C') + '<sound fine="yes"/>'),
+    )
+
+    expect(global?.fine).toEqual({ location: { num: 0, den: 1 } })
+    expect(warnings.map((w) => w.element)).toEqual(['fine'])
+    expect(warnings[0]?.message).toContain('more than one fine')
+  })
+
+  // A jump carries other playback the output cannot hold; the jump converts
+  // and the rest is still reported.
+  test('reports the playback a <sound dalsegno> carries besides the jump', () => {
+    const { global, warnings } = read(
+      inMeasure(note('C') + '<sound dalsegno="segno" dynamics="54"/>'),
+    )
+
+    expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'segno' })
+    expect(warnings.map((w) => w.message)).toEqual([
+      'The "dynamics" of a <sound> is not converted yet.',
+    ])
+  })
+
+  test('writes a fine the spec schema accepts', () => {
+    const { mnx } = convertMusicXML(inMeasure('<sound fine="yes"/>' + note('C')))
+
+    expect(mnx.global.measures[0]?.fine).toEqual({ location: { fraction: [0, 1] } })
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  test('writes a jump the spec schema accepts', () => {
+    const { mnx } = convertMusicXML(inMeasure('<sound dalsegno="segno"/>' + note('C')))
+
+    expect(mnx.global.measures[0]?.jump).toEqual({ location: { fraction: [0, 1] }, type: 'segno' })
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+})
+
 describe('directions MNX cannot state', () => {
   test('reports a word', () => {
     const { warnings } = read(inMeasure(direction('<words>dolce</words>') + note('C')))

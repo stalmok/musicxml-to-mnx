@@ -382,6 +382,19 @@ export interface MNXSegno {
   glyph?: string
 }
 
+/** A Fine on a measure, where a D.S. or D.C. repeat stops. */
+export interface MNXFine {
+  location: MNXRhythmicPosition
+}
+
+export type MNXJumpType = 'dsalfine' | 'segno'
+
+/** A jump on a measure, such as D.S., taken once the measure is played. */
+export interface MNXJump {
+  location: MNXRhythmicPosition
+  type: MNXJumpType
+}
+
 export type MNXBarlineType =
   | 'regular'
   | 'dotted'
@@ -428,6 +441,8 @@ export interface MNXGlobalMeasure {
   ending?: MNXEnding
   fermata?: MNXFermata
   segno?: MNXSegno
+  fine?: MNXFine
+  jump?: MNXJump
 }
 
 export interface MNXGlobal {

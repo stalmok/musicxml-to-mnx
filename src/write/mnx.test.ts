@@ -46,6 +46,8 @@ const NO_BARLINE = {
   ending: undefined,
   fermata: undefined,
   segno: undefined,
+  fine: undefined,
+  jump: undefined,
 } as const
 
 function scoreOf(

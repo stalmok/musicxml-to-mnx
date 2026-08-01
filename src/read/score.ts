@@ -17,6 +17,8 @@ import type {
   RepeatEnd,
   GlobalMeasure,
   Key,
+  Fine,
+  Jump,
   Measure,
   Part,
   Score,
@@ -34,6 +36,7 @@ import { readDirection, readSound } from './directions.js'
 import { requireDuration } from './divisions.js'
 import { ElementReader } from './element.js'
 import { compareFractions, negate } from '../fraction.js'
+import type { Fraction } from '../fraction.js'
 import { readNote } from './notes.js'
 import { IdGenerator } from './spanners.js'
 import { newPartState } from './state.js'
@@ -134,6 +137,8 @@ function mergeGlobalMeasures(target: GlobalMeasure[], found: readonly GlobalMeas
       // A segno is the score's navigation mark, restated in each part like the
       // barline, so the first part to state one wins.
       segno: existing?.segno ?? measure.segno,
+      fine: existing?.fine ?? measure.fine,
+      jump: existing?.jump ?? measure.jump,
     }
   })
 }
@@ -291,6 +296,8 @@ function readMeasure(
   const dynamics: Dynamic[] = []
   const tempos: Tempo[] = []
   const segnos: Segno[] = []
+  const fines: Fine[] = []
+  const jumps: Jump[] = []
   let barline: BarlineType | undefined
   let repeatStart = false
   let repeatEnd: RepeatEnd | undefined
@@ -351,6 +358,8 @@ function readMeasure(
         dynamics.push(...reading.dynamics)
         tempos.push(...reading.tempos)
         segnos.push(...reading.segnos)
+        fines.push(...reading.fines)
+        jumps.push(...reading.jumps)
         break
       }
 
@@ -372,7 +381,9 @@ function readMeasure(
       case 'sound': {
         const at = builder.position()
         const stated = tempos.some((tempo) => compareFractions(tempo.position, at) === 0)
-        readSound(reader, stated, warnings, context)
+        const reading = readSound(reader, at, stated, warnings, context)
+        if (reading.fine) fines.push(reading.fine)
+        if (reading.jump) jumps.push(reading.jump)
         break
       }
 
@@ -431,7 +442,9 @@ function readMeasure(
       // Filled in by the part, once the ending's other end has been met.
       ending: undefined,
       fermata,
-      segno: oneSegno(segnos, warnings, context),
+      segno: onePerMeasure(segnos, 'segno', warnings, context),
+      fine: onePerMeasure(fines, 'fine', warnings, context),
+      jump: onePerMeasure(jumps, 'jump', warnings, context),
     },
     endingStart,
     endingStop,
@@ -439,26 +452,27 @@ function readMeasure(
 }
 
 /**
- * The one segno MNX draws on a measure. A measure with two of them at
- * different points has no faithful conversion, so the first is kept and the
- * rest reported; two written at the same point are the same mark and lose
- * nothing.
+ * The one navigation mark of its kind MNX states on a measure. A measure with
+ * two of them at different points has no faithful conversion, so the first is
+ * kept and the rest reported; two written at the same point are the same mark
+ * and lose nothing.
  */
-function oneSegno(
-  segnos: readonly Segno[],
+function onePerMeasure<T extends { location: Fraction }>(
+  marks: readonly T[],
+  name: string,
   warnings: WarningCollector,
   context: WarningContext,
-): Segno | undefined {
-  const first = segnos[0]
+): T | undefined {
+  const first = marks[0]
   if (first === undefined) return undefined
-  for (const other of segnos.slice(1)) {
+  for (const other of marks.slice(1)) {
     if (compareFractions(other.location, first.location) !== 0) {
       warnings.add(
         'unrepresentable:element',
-        'A measure carries more than one segno, and MNX draws one per measure. ' +
+        `A measure carries more than one ${name}, and MNX states one per measure. ` +
           'The first is the one converted.',
         context,
-        'segno',
+        name,
       )
     }
   }

@@ -14,6 +14,8 @@ import type { Fraction } from '../fraction.js'
 import type {
   Dynamic,
   DynamicValue,
+  Fine,
+  Jump,
   OttavaAmount,
   Segno,
   Tempo,
@@ -34,6 +36,14 @@ export interface DirectionReading {
   dynamics: Dynamic[]
   tempos: Tempo[]
   segnos: Segno[]
+  fines: Fine[]
+  jumps: Jump[]
+}
+
+/** The navigation a single <sound> element carries a home for. */
+export interface SoundReading {
+  fine: Fine | undefined
+  jump: Jump | undefined
 }
 
 // The dynamic marks MNX can state. Others, like sforzando, have no value in
@@ -60,7 +70,13 @@ export function readDirection(
   context: WarningContext,
   path: DocumentPath,
 ): DirectionReading {
-  const reading: DirectionReading = { dynamics: [], tempos: [], segnos: [] }
+  const reading: DirectionReading = {
+    dynamics: [],
+    tempos: [],
+    segnos: [],
+    fines: [],
+    jumps: [],
+  }
 
   // A direction says which staff it belongs under. A tempo is the score's, so
   // it has no use for one, but a dynamic sits under a particular hand and MNX
@@ -115,7 +131,9 @@ export function readDirection(
   // already had its say about the tempo and a <sound> restating it is seen as
   // the echo it is.
   for (const sound of element.blocks('sound')) {
-    readSound(sound, reading.tempos.length > 0, warnings, context)
+    const soundReading = readSound(sound, at, reading.tempos.length > 0, warnings, context)
+    if (soundReading.fine) reading.fines.push(soundReading.fine)
+    if (soundReading.jump) reading.jumps.push(soundReading.jump)
   }
 
   return reading
@@ -310,22 +328,40 @@ function readWedge(
 }
 
 /**
- * A <sound> is a playback element, and nothing it carries reaches the output.
- * Its tempo is playback rather than notation: MNX's tempo object is always
- * drawn, so emitting one from a <sound> would fabricate a metronome the source
- * never displayed. A <metronome> beside it is the drawn mark, and the <sound
- * tempo> only echoes it for playback, so that echo is passed over without a
- * word. A bare <sound tempo> with no metronome is playback-only and reported
- * like a velocity or a pan position, which MNX also has nowhere for.
+ * A <sound> is mostly a playback element, and most of what it carries reaches
+ * nothing in the output. Its tempo is playback rather than notation: MNX's
+ * tempo object is always drawn, so emitting one from a <sound> would fabricate
+ * a metronome the source never displayed. A <metronome> beside it is the drawn
+ * mark, and the <sound tempo> only echoes it for playback, so that echo is
+ * passed over without a word. A bare <sound tempo> with no metronome is
+ * playback-only and reported like a velocity or a pan position, which MNX also
+ * has nowhere for.
+ *
+ * Two attributes are notation MNX does hold: <sound fine> is a Fine, and
+ * <sound dalsegno> a dal-segno jump. Both go on the score's measure at the
+ * point the <sound> is written, and the rest is reported as before.
  */
 export function readSound(
   sound: ElementReader,
+  position: Fraction,
   tempoAlreadyStated: boolean,
   warnings: WarningCollector,
   context: WarningContext,
-): void {
+): SoundReading {
+  let fine: Fine | undefined
+  let jump: Jump | undefined
   for (const name of Object.keys(sound.element.attributes)) {
     if (name === 'tempo' && tempoAlreadyStated) continue
+    if (name === 'fine') {
+      fine = { location: position }
+      continue
+    }
+    if (name === 'dalsegno') {
+      // The attribute names the segno to jump to; MNX's jump has no target,
+      // and one segno per score is the norm, so the name is not carried.
+      jump = { location: position, type: 'segno' }
+      continue
+    }
     warnings.add(
       'unsupported:element',
       `The "${name}" of a <sound> is not converted yet.`,
@@ -333,6 +369,7 @@ export function readSound(
       'sound',
     )
   }
+  return { fine, jump }
 }
 
 /**
