@@ -315,6 +315,17 @@ describe('sound navigation', () => {
     ])
   })
 
+  // D.S. al Fine can be written as one <sound> carrying both attributes. Each
+  // reaches its own home, and the jump stays a plain "segno" (MusicXML says
+  // the al-Fine only through the Fine, not on this attribute).
+  test('reads a fine and a jump written on the one <sound>', () => {
+    const { global, warnings } = read(inMeasure(note('C') + '<sound fine="yes" dalsegno="segno"/>'))
+
+    expect(global?.fine).toEqual({ location: { num: 1, den: 4 } })
+    expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'segno' })
+    expect(warnings).toEqual([])
+  })
+
   test('writes a fine the spec schema accepts', () => {
     const { mnx } = convertMusicXML(inMeasure('<sound fine="yes"/>' + note('C')))
 
