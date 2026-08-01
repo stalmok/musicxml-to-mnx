@@ -210,18 +210,18 @@ tip.
 | ------------------------------------------------------------------------------------------------------------- | ------ | ------------ |
 | [OpenScore Lieder](https://github.com/OpenScore/Lieder) (songs, MuseScore exports)                            | 1,462  | 1,447 (99%)  |
 | [OpenScore String Quartets](https://github.com/OpenScore/StringQuartets) (exported with MuseScore 3)          | 122    | 112 (92%)    |
-| [Unofficial MusicXML Test Suite](https://github.com/cuthbertLab/musicxmlTestSuite) (feature files)            | 150    | 136 (91%)    |
+| [Unofficial MusicXML Test Suite](https://github.com/cuthbertLab/musicxmlTestSuite) (feature files)            | 150    | 135 (90%)    |
 | [MusicXML example set](https://www.musicxml.com/music-in-musicxml/example-set/) (Finale exports, some UTF-16) | 36     | 32 (89%)     |
-| [PDMX](https://zenodo.org/records/15571083) random sample (MuseScore.com, all genres)                         | 24,000 | 23,065 (96%) |
-| [music21 bundled corpus](https://github.com/cuthbertLab/music21) (hand-encoded, older tools, some UTF-16)     | 654    | 614 (94%)    |
-| [CPDL](https://www.cpdl.org) random sample (choral, mostly Sibelius exports)                                  | 2,000  | 1,834 (92%)  |
+| [PDMX](https://zenodo.org/records/15571083) random sample (MuseScore.com, all genres)                         | 20,000 | 19,214 (96%) |
+| [music21 bundled corpus](https://github.com/cuthbertLab/music21) (hand-encoded, older tools, some UTF-16)     | 654    | 615 (94%)    |
+| [CPDL](https://www.cpdl.org) random sample (choral, mostly Sibelius exports)                                  | 2,000  | 1,838 (92%)  |
 
 The remainder are refusals, each naming its reason: notation MNX cannot
 state (percussion and TAB clefs, microtone alterations, composite meters
 such as 3+2/8), or sources that disagree with themselves (a tuplet opened
 and never closed, a backup reaching before the measure start, a metronome
 stating no beats per minute, a voice resting through the same measure
-twice). In the PDMX sample the two clef limits account for 692 of the 935
+twice). In the PDMX sample the two clef limits account for 580 of the 786
 refusals: MuseScore.com carries a lot of drum and guitar music. In the
 CPDL sample the largest group is hymnals writing two lines over each
 other in a single voice, which the converter refuses rather than guesses
