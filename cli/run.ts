@@ -29,10 +29,13 @@ const OPTIONS = {
   version: { type: 'boolean', short: 'v' },
 } as const
 
-const HELP = `Usage: ossia to-mnx <files...> [options]
+const HELP = `Usage: ossia <files...> [options]
 
 Convert MusicXML (.musicxml, .xml, .mxl) to MNX. Each <basename>.mnx is
 written beside its input, or into the directory given by --out.
+
+An explicit "to-mnx" before the files does the same thing, and keeps
+"to-musicxml" free for the reverse direction.
 
 Options:
   -o, --out <dir>     write the .mnx files into <dir> instead of beside the input
@@ -73,21 +76,18 @@ export async function run(argv: readonly string[], io: CommandIO): Promise<numbe
     return 0
   }
 
-  const [command, ...files] = positionals
-  if (command === undefined) {
+  if (positionals.length === 0) {
     io.log(HELP)
     return 2
   }
-  // The subcommand form keeps `to-musicxml` free for the reverse direction.
-  if (command === 'to-musicxml') {
+  // Conversion to MNX is the default, so the positionals are files unless the
+  // first names a direction. Anything else is taken as a file, and a name that
+  // is not one is reported as the file it failed to read.
+  if (positionals[0] === 'to-musicxml') {
     io.log('The reverse direction (to-musicxml) is not available yet.')
     return 2
   }
-  if (command !== 'to-mnx') {
-    io.log(`Unknown command "${command}". The only command is "to-mnx".`)
-    io.log(HELP)
-    return 2
-  }
+  const files = positionals[0] === 'to-mnx' ? positionals.slice(1) : positionals
   if (files.length === 0) {
     io.log('No input files given.')
     io.log(HELP)

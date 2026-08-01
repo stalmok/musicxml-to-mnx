@@ -43,6 +43,16 @@ describe('converting files', () => {
   test('writes a .mnx beside each input by default', async () => {
     const file = input('song.musicxml', LOSSLESS)
 
+    const code = await run([file], io)
+
+    expect(code).toBe(0)
+    const mnx: unknown = JSON.parse(readFileSync(join(dir, 'song.mnx'), 'utf8'))
+    expect((mnx as { mnx: { version: number } }).mnx.version).toBe(1)
+  })
+
+  test('converts the same way with an explicit to-mnx', async () => {
+    const file = input('song.musicxml', LOSSLESS)
+
     const code = await run(['to-mnx', file], io)
 
     expect(code).toBe(0)
@@ -209,7 +219,7 @@ describe('checking the output against the schema', () => {
 describe('the command line itself', () => {
   test('shows help and succeeds for --help', async () => {
     expect(await run(['--help'], io)).toBe(0)
-    expect(lines[0]).toContain('Usage: ossia to-mnx')
+    expect(lines[0]).toContain('Usage: ossia <files...>')
   })
 
   test('prints a version for --version', async () => {
@@ -222,17 +232,17 @@ describe('the command line itself', () => {
     expect(lines[0]).toContain('not available yet')
   })
 
-  test('rejects an unknown command', async () => {
-    expect(await run(['sideways', 'song.xml'], io)).toBe(2)
-    expect(lines[0]).toContain('Unknown command')
+  test('takes a name that is not a direction as a file', async () => {
+    expect(await run(['sideways'], io)).toBe(1)
+    expect(lines[0]).toContain('sideways')
   })
 
-  test('shows help when no command is given', async () => {
+  test('shows help when nothing is given', async () => {
     expect(await run([], io)).toBe(2)
     expect(lines[0]).toContain('Usage')
   })
 
-  test('refuses to run with a command but no files', async () => {
+  test('refuses to run with to-mnx but no files', async () => {
     expect(await run(['to-mnx'], io)).toBe(2)
     expect(lines[0]).toContain('No input files')
   })

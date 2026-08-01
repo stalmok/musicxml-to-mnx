@@ -96,13 +96,14 @@ converter can tell.
 The package installs a `ossia` command:
 
 ```bash
-ossia to-mnx song.mxl                    # writes song.mnx beside it
-ossia to-mnx scores/*.musicxml -o out/   # into a directory
-ossia to-mnx *.mxl --fail-on-loss        # exit non-zero if anything is lost
-ossia to-mnx song.mxl --validate --report losses.json
+ossia song.mxl                    # writes song.mnx beside it
+ossia scores/*.musicxml -o out/   # into a directory
+ossia *.mxl --fail-on-loss        # exit non-zero if anything is lost
+ossia song.mxl --validate --report losses.json
 ```
 
-It accepts `.musicxml`, `.xml` and `.mxl`. A file it refuses is reported and
+It accepts `.musicxml`, `.xml` and `.mxl`. Conversion to MNX is the default;
+an explicit `ossia to-mnx song.mxl` does the same thing. A file it refuses is reported and
 the rest go on. `--fail-on-loss` is the gate a lossless pipeline runs on;
 `--report` writes every file's warnings as JSON; `--validate` checks each
 output against the vendored MNX schema.
