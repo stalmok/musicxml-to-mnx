@@ -194,6 +194,12 @@ describe('an element hidden with print-object="no"', () => {
     ).toHaveLength(1)
   })
 
+  test('reports a hidden notations block', () => {
+    expect(
+      hidden(measure(note('<notations print-object="no"><fermata/></notations>'))),
+    ).toHaveLength(1)
+  })
+
   test('says nothing about an element the source draws', () => {
     expect(hidden(measure(note('')))).toHaveLength(0)
   })

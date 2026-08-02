@@ -124,6 +124,12 @@ export function readNote(
   reportHidden(element.element, 'note', warnings, context)
 
   const notations = element.blocks('notations')
+  // A <notations> block hidden with print-object="no" still has its slur,
+  // tuplet, fermata and the rest drawn, because MNX cannot mark them
+  // invisible. Report the hiding rather than drop it in silence.
+  for (const block of notations) {
+    reportHidden(block.element, 'notations', warnings, context)
+  }
   // <tied> is the visual side of a tie. Most of it repeats <tie>, but let-ring
   // and the drawn side live only on it, so it is read rather than skipped.
   const tieds = notations.flatMap((block) => block.children('tied'))
