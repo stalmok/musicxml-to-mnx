@@ -78,8 +78,10 @@ const ACCENT_DYNAMICS = new Map<string, AccentDynamic>([
   ['rf', { glyph: 'dynamicRinforzando1', attackValue: undefined, value: undefined }],
   ['rfz', { glyph: 'dynamicRinforzando2', attackValue: undefined, value: undefined }],
   ['sffz', { glyph: 'dynamicSforzatoFF', attackValue: undefined, value: undefined }],
+  // pf (poco forte / piano-forte) has no settled reading of its two letters, so
+  // its glyph alone is carried rather than a fabricated attack and residual.
+  ['pf', { glyph: 'dynamicPF', attackValue: undefined, value: undefined }],
   ['fp', { glyph: 'dynamicFortePiano', attackValue: 'f', value: 'p' }],
-  ['pf', { glyph: 'dynamicPF', attackValue: 'p', value: 'f' }],
   ['sfp', { glyph: 'dynamicSforzandoPiano', attackValue: 'f', value: 'p' }],
   ['sfpp', { glyph: 'dynamicSforzandoPianissimo', attackValue: 'f', value: 'pp' }],
   ['sfzp', { glyph: 'dynamicSforzatoPiano', attackValue: 'f', value: 'p' }],

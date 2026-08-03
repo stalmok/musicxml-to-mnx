@@ -106,6 +106,9 @@ describe('dynamics', () => {
     ['rf', 'dynamicRinforzando1'],
     ['rfz', 'dynamicRinforzando2'],
     ['sffz', 'dynamicSforzatoFF'],
+    // pf (poco forte / piano-forte) has no single settled reading of its two
+    // letters, so its glyph alone is carried, not a fabricated attack.
+    ['pf', 'dynamicPF'],
   ])('reads the single accent %s as its glyph', (mark, glyph) => {
     const { measure, warnings } = read(
       inMeasure(direction(`<dynamics><${mark}/></dynamics>`) + note('C')),
@@ -121,7 +124,6 @@ describe('dynamics', () => {
   // and the residual as the value.
   test.each([
     ['fp', 'f', 'p', 'dynamicFortePiano'],
-    ['pf', 'p', 'f', 'dynamicPF'],
     ['sfp', 'f', 'p', 'dynamicSforzandoPiano'],
     ['sfpp', 'f', 'pp', 'dynamicSforzandoPianissimo'],
     ['sfzp', 'f', 'p', 'dynamicSforzatoPiano'],
