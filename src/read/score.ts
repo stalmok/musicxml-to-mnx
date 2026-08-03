@@ -95,6 +95,7 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
   for (const reading of readings) {
     mergeGlobalMeasures(globalMeasures, reading.globals)
   }
+  upgradeAlFineJumps(globalMeasures)
 
   // The global list is the score's measure list, and every part's measures
   // line up with it by position. A part with fewer of them stops before the
@@ -114,6 +115,22 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
   }
 
   return { globalMeasures, parts: readings.map((reading) => reading.part) }
+}
+
+/**
+ * A dal-segno jump returning to a Fine is a "D.S. al Fine": the player goes
+ * back to the segno and stops at the Fine. MusicXML says the al-Fine only
+ * through the Fine's presence, not on the <sound dalsegno> attribute, so each
+ * jump is read as a plain segno first and upgraded here once the whole score
+ * is known to carry a Fine. MNX's jump-type enum holds "dsalfine" for this.
+ */
+function upgradeAlFineJumps(measures: GlobalMeasure[]): void {
+  if (!measures.some((measure) => measure.fine !== undefined)) return
+  for (const measure of measures) {
+    if (measure.jump?.type === 'segno') {
+      measure.jump = { ...measure.jump, type: 'dsalfine' }
+    }
+  }
 }
 
 // Parts restate the same key and time; the first to declare one wins, so a

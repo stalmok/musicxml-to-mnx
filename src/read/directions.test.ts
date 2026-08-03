@@ -316,14 +316,48 @@ describe('sound navigation', () => {
   })
 
   // D.S. al Fine can be written as one <sound> carrying both attributes. Each
-  // reaches its own home, and the jump stays a plain "segno" (MusicXML says
-  // the al-Fine only through the Fine, not on this attribute).
+  // reaches its own home, and the jump becomes "dsalfine": MusicXML says the
+  // al-Fine only through the Fine's presence, not on the dalsegno attribute.
   test('reads a fine and a jump written on the one <sound>', () => {
     const { global, warnings } = read(inMeasure(note('C') + '<sound fine="yes" dalsegno="segno"/>'))
 
     expect(global?.fine).toEqual({ location: { num: 1, den: 4 } })
-    expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'segno' })
+    expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'dsalfine' })
     expect(warnings).toEqual([])
+  })
+
+  // The al-Fine is the whole score's: a dalsegno jump in one measure and the
+  // Fine it returns to in a later measure still make a D.S. al Fine.
+  test('upgrades a jump to dsalfine when a later measure carries a Fine', () => {
+    const warnings = new WarningCollector()
+    const score = readScore(
+      parseXmlRoot(
+        '<score-partwise><part id="P1">' +
+          '<measure number="1"><attributes><divisions>4</divisions></attributes>' +
+          note('C') +
+          '<sound dalsegno="segno"/></measure>' +
+          '<measure number="2">' +
+          note('C') +
+          '<sound fine="yes"/></measure>' +
+          '</part></score-partwise>',
+      ),
+      warnings,
+    )
+
+    expect(score.globalMeasures[0]?.jump).toEqual({
+      location: { num: 1, den: 4 },
+      type: 'dsalfine',
+    })
+    expect(score.globalMeasures[1]?.fine).toEqual({ location: { num: 1, den: 4 } })
+    expect(warnings.list()).toEqual([])
+  })
+
+  // Without a Fine anywhere in the score, a dalsegno jump is a plain dal-segno,
+  // not a D.S. al Fine.
+  test('leaves a jump a plain segno when the score carries no Fine', () => {
+    const { global } = read(inMeasure(note('C') + '<sound dalsegno="segno"/>'))
+
+    expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'segno' })
   })
 
   test('writes a fine the spec schema accepts', () => {
@@ -337,6 +371,16 @@ describe('sound navigation', () => {
     const { mnx } = convertMusicXML(inMeasure('<sound dalsegno="segno"/>' + note('C')))
 
     expect(mnx.global.measures[0]?.jump).toEqual({ location: { fraction: [0, 1] }, type: 'segno' })
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  test('writes a dsalfine jump the spec schema accepts', () => {
+    const { mnx } = convertMusicXML(inMeasure('<sound fine="yes" dalsegno="segno"/>' + note('C')))
+
+    expect(mnx.global.measures[0]?.jump).toEqual({
+      location: { fraction: [0, 1] },
+      type: 'dsalfine',
+    })
     expect(schemaErrors(mnx)).toEqual([])
   })
 })
