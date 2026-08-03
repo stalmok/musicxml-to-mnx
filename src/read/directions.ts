@@ -65,7 +65,7 @@ const DYNAMIC_VALUES: ReadonlySet<string> = new Set([
 // single accent states neither, and the glyph alone says which mark it is.
 // The glyph names are the precomposed combined marks from SMuFL's dynamics
 // range. Marks past MNX's dynamic-value enum, such as the extreme plain
-// dynamics or an <other-dynamics> text, are not here and stay reported.
+// dynamics, are not here and stay reported.
 interface AccentDynamic {
   glyph: string
   attackValue: DynamicValue | undefined
@@ -434,18 +434,39 @@ function readDynamics(
   context: WarningContext,
 ): Dynamic[] {
   const dynamics: Dynamic[] = []
+
+  // The wording seen so far with no mark yet to qualify. A source writes "più
+  // f" as the text and the mark side by side, so the text is held until the
+  // mark it opens arrives and becomes that mark's prefix. Anything still held
+  // once the marks run out closes the last one instead, as its suffix.
+  let pending: string[] = []
+  const takePending = (): string | undefined => {
+    if (pending.length === 0) return undefined
+    const wording = pending.join(' ')
+    pending = []
+    return wording
+  }
+
   for (const mark of element.children) {
     const accent = ACCENT_DYNAMICS.get(mark.name)
-    if (DYNAMIC_VALUES.has(mark.name)) {
+    if (mark.name === 'other-dynamics') {
+      const wording = trimmedText(mark)
+      if (wording === '') continue
+      reportWordingGlyph(mark, wording, warnings, context)
+      pending.push(wording)
+    } else if (DYNAMIC_VALUES.has(mark.name)) {
+      const prefix = takePending()
       dynamics.push({
         position,
         value: mark.name as DynamicValue,
         wedge: undefined,
         end: undefined,
         staff,
+        ...(prefix !== undefined ? { prefix } : {}),
         ...(orient !== undefined ? { orient } : {}),
       })
     } else if (accent) {
+      const prefix = takePending()
       dynamics.push({
         position,
         value: accent.value,
@@ -453,6 +474,7 @@ function readDynamics(
         end: undefined,
         staff,
         accent: { attackValue: accent.attackValue, glyphs: [accent.glyph] },
+        ...(prefix !== undefined ? { prefix } : {}),
         ...(orient !== undefined ? { orient } : {}),
       })
     } else {
@@ -464,7 +486,45 @@ function readDynamics(
       )
     }
   }
+
+  // Wording left over closes the mark before it. With no mark at all there is
+  // nowhere to put it: MNX states a prefix and a suffix on a dynamic group,
+  // and a group states a level, which wording standing alone does not give.
+  const trailing = takePending()
+  const last = dynamics[dynamics.length - 1]
+  if (trailing !== undefined) {
+    if (last) last.suffix = trailing
+    else
+      warnings.add(
+        'unsupported:element',
+        `A dynamic wording of "${trailing}", with no dynamic mark to qualify, is not ` +
+          'converted yet.',
+        { ...context, line: element.line },
+        'other-dynamics',
+      )
+  }
   return dynamics
+}
+
+/**
+ * Report the glyph a source names for its wording. MNX states glyphs for the
+ * dynamic mark itself, so putting one there would redraw the mark rather than
+ * the words; the wording goes over as text and the glyph is said out loud.
+ */
+function reportWordingGlyph(
+  element: XmlElement,
+  wording: string,
+  warnings: WarningCollector,
+  context: WarningContext,
+): void {
+  if (attribute(element, 'smufl') === undefined) return
+  warnings.add(
+    'unsupported:element',
+    `The glyph named for the dynamic wording "${wording}" is drawn as text instead, because ` +
+      'MNX states a glyph for the dynamic mark, not for its wording.',
+    { ...context, line: element.line },
+    'other-dynamics',
+  )
 }
 
 function readMetronome(

@@ -309,6 +309,10 @@ export interface MNXDynamic {
   attackValue?: MNXDynamicValue
   /** The combined glyph(s) an accent is drawn as, by SMuFL name. */
   glyphs?: string[]
+  /** Text drawn before the mark, such as "più". */
+  prefix?: string
+  /** Text drawn after the mark, such as "sub.". */
+  suffix?: string
   /** Which way a hairpin opens. Present only on a gradual mark. */
   wedgeType?: MNXWedgeType
   /** Where a hairpin stops, which may be in a later measure. */

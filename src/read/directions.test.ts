@@ -163,6 +163,148 @@ describe('dynamics', () => {
     })
     expect(schemaErrors(mnx)).toEqual([])
   })
+
+  // <other-dynamics> is the wording a source wraps a mark in: "più f", "p
+  // dolce". MNX states that wording as the dynamic's prefix and suffix, so the
+  // text goes on the mark it qualifies rather than standing on its own.
+  test('reads text before a mark as its prefix', () => {
+    const { measure, warnings } = read(
+      inMeasure(
+        direction('<dynamics><other-dynamics>più </other-dynamics><f/></dynamics>') + note('C'),
+      ),
+    )
+
+    expect(measure?.dynamics[0]?.prefix).toBe('più')
+    expect(measure?.dynamics[0]?.value).toBe('f')
+    expect(warnings).toEqual([])
+  })
+
+  test('reads text after a mark as its suffix', () => {
+    const { measure, warnings } = read(
+      inMeasure(
+        direction('<dynamics><p/><other-dynamics> dolce</other-dynamics></dynamics>') + note('C'),
+      ),
+    )
+
+    expect(measure?.dynamics[0]?.suffix).toBe('dolce')
+    expect(measure?.dynamics[0]?.value).toBe('p')
+    expect(warnings).toEqual([])
+  })
+
+  test('reads text qualifying an accent as its prefix', () => {
+    const { measure } = read(
+      inMeasure(
+        direction('<dynamics><other-dynamics>poco </other-dynamics><sf/></dynamics>') + note('C'),
+      ),
+    )
+
+    expect(measure?.dynamics[0]?.prefix).toBe('poco')
+    expect(measure?.dynamics[0]?.accent?.glyphs).toEqual(['dynamicSforzando1'])
+  })
+
+  // Text sitting between two marks qualifies the one it comes before: "1st
+  // time f, 2nd pp" reads as f, then ", 2nd" opening pp.
+  test('reads text between two marks as the second one prefix', () => {
+    const { measure } = read(
+      inMeasure(
+        direction(
+          '<dynamics><other-dynamics>1st time </other-dynamics><f/>' +
+            '<other-dynamics>, 2nd </other-dynamics><pp/></dynamics>',
+        ),
+      ),
+    )
+
+    expect(measure?.dynamics[0]).toMatchObject({ value: 'f', prefix: '1st time' })
+    expect(measure?.dynamics[1]).toMatchObject({ value: 'pp', prefix: ', 2nd' })
+    expect(measure?.dynamics[0]?.suffix).toBeUndefined()
+  })
+
+  test('joins several texts standing before one mark', () => {
+    const { measure } = read(
+      inMeasure(
+        direction(
+          '<dynamics><other-dynamics>sempre </other-dynamics>' +
+            '<other-dynamics>più </other-dynamics><p/></dynamics>',
+        ),
+      ),
+    )
+
+    expect(measure?.dynamics[0]?.prefix).toBe('sempre più')
+  })
+
+  test('carries the wording of a mark it both opens and closes', () => {
+    const { measure } = read(
+      inMeasure(
+        direction(
+          '<dynamics><other-dynamics>meno </other-dynamics><f/>' +
+            '<other-dynamics> sempre</other-dynamics></dynamics>',
+        ),
+      ),
+    )
+
+    expect(measure?.dynamics[0]).toMatchObject({ prefix: 'meno', suffix: 'sempre', value: 'f' })
+  })
+
+  // MNX states prefix and suffix on a dynamic group, and a group states a
+  // level. Wording standing alone, with no mark to qualify, has nowhere to go.
+  test('reports text with no mark to qualify', () => {
+    const { measure, warnings } = read(
+      inMeasure(direction('<dynamics><other-dynamics>sff</other-dynamics></dynamics>') + note('C')),
+    )
+
+    expect(measure?.dynamics).toEqual([])
+    expect(warnings.map((w) => w.message)).toContain(
+      'A dynamic wording of "sff", with no dynamic mark to qualify, is not converted yet.',
+    )
+  })
+
+  test('passes over an empty wording without reporting it', () => {
+    const { measure, warnings } = read(
+      inMeasure(direction('<dynamics><other-dynamics> </other-dynamics></dynamics>') + note('C')),
+    )
+
+    expect(measure?.dynamics).toEqual([])
+    expect(warnings).toEqual([])
+  })
+
+  // The glyph a source names for its wording is not the group's glyph: that
+  // one draws the mark itself, and overwriting it would redraw the dynamic.
+  test('reports the glyph named for a wording', () => {
+    const { measure, warnings } = read(
+      inMeasure(
+        direction(
+          '<dynamics><other-dynamics smufl="dynamicSforzando">più </other-dynamics>' +
+            '<f/></dynamics>',
+        ),
+      ),
+    )
+
+    expect(measure?.dynamics[0]?.prefix).toBe('più')
+    expect(warnings.map((w) => w.message)).toContain(
+      'The glyph named for the dynamic wording "più" is drawn as text instead, because MNX ' +
+        'states a glyph for the dynamic mark, not for its wording.',
+    )
+  })
+
+  test('writes the wording of a dynamic onto schema-valid MNX', () => {
+    const { mnx } = convertMusicXML(
+      inMeasure(
+        direction(
+          '<dynamics><other-dynamics>più </other-dynamics><f/>' +
+            '<other-dynamics> sub.</other-dynamics></dynamics>',
+        ) + note('C'),
+      ),
+    )
+
+    expect(mnx.parts[0]?.measures[0]?.dynamics?.[0]).toEqual({
+      position: { fraction: [0, 1] },
+      type: 'immediate',
+      value: 'f',
+      prefix: 'più',
+      suffix: 'sub.',
+    })
+    expect(schemaErrors(mnx)).toEqual([])
+  })
 })
 
 describe('tempo', () => {

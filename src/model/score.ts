@@ -313,6 +313,10 @@ export interface Dynamic {
    * a single accent leaves both the attack and the value unset.
    */
   accent?: { attackValue: DynamicValue | undefined; glyphs: readonly string[] }
+  /** The wording drawn before the mark, as in the "più" of "più f". */
+  prefix?: string
+  /** The wording drawn after the mark, as in the "sub." of "p sub.". */
+  suffix?: string
   /**
    * Where a hairpin stops, as a measure's place in the score and a position
    * within it. Unset where the source never closed it.
