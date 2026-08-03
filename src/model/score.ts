@@ -298,13 +298,21 @@ export type WedgeType = 'increasing' | 'decreasing'
 /**
  * A dynamic mark. An immediate one states a value and sits at a point; a
  * gradual one is a hairpin, which opens one way or the other and runs from
- * here to a point that may be several measures away.
+ * here to a point that may be several measures away; an accent one, such as a
+ * sforzando, is drawn as a single combined glyph.
  */
 export interface Dynamic {
   position: Fraction
   value: DynamicValue | undefined
   /** Set on a hairpin, which is what makes it gradual rather than immediate. */
   wedge: WedgeType | undefined
+  /**
+   * Set on an accent, such as a sforzando. Its glyphs draw the combined mark,
+   * which is what keeps sf, fz and rfz apart. A two-stage accent like fp
+   * states a momentary attack, carried here, and settles to the plain `value`;
+   * a single accent leaves both the attack and the value unset.
+   */
+  accent?: { attackValue: DynamicValue | undefined; glyphs: readonly string[] }
   /**
    * Where a hairpin stops, as a measure's place in the score and a position
    * within it. Unset where the source never closed it.

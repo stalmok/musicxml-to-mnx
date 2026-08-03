@@ -46,8 +46,7 @@ export interface SoundReading {
   jump: Jump | undefined
 }
 
-// The dynamic marks MNX can state. Others, like sforzando, have no value in
-// its vocabulary.
+// The plain dynamic marks MNX states as a value.
 const DYNAMIC_VALUES: ReadonlySet<string> = new Set([
   'ppp',
   'pp',
@@ -58,6 +57,32 @@ const DYNAMIC_VALUES: ReadonlySet<string> = new Set([
   'ff',
   'fff',
   'n',
+])
+
+// The accent dynamics, such as a sforzando, that MNX states as an accent group
+// carrying a combined SMuFL glyph. A two-stage accent (fp is a forte attack
+// held at piano) states its momentary attack and the value it settles to; a
+// single accent states neither, and the glyph alone says which mark it is.
+// The glyph names are the precomposed combined marks from SMuFL's dynamics
+// range. Marks past MNX's dynamic-value enum, such as the extreme plain
+// dynamics or an <other-dynamics> text, are not here and stay reported.
+interface AccentDynamic {
+  glyph: string
+  attackValue: DynamicValue | undefined
+  value: DynamicValue | undefined
+}
+const ACCENT_DYNAMICS = new Map<string, AccentDynamic>([
+  ['sf', { glyph: 'dynamicSforzando1', attackValue: undefined, value: undefined }],
+  ['sfz', { glyph: 'dynamicSforzato', attackValue: undefined, value: undefined }],
+  ['fz', { glyph: 'dynamicForzando', attackValue: undefined, value: undefined }],
+  ['rf', { glyph: 'dynamicRinforzando1', attackValue: undefined, value: undefined }],
+  ['rfz', { glyph: 'dynamicRinforzando2', attackValue: undefined, value: undefined }],
+  ['sffz', { glyph: 'dynamicSforzatoFF', attackValue: undefined, value: undefined }],
+  ['fp', { glyph: 'dynamicFortePiano', attackValue: 'f', value: 'p' }],
+  ['pf', { glyph: 'dynamicPF', attackValue: 'p', value: 'f' }],
+  ['sfp', { glyph: 'dynamicSforzandoPiano', attackValue: 'f', value: 'p' }],
+  ['sfpp', { glyph: 'dynamicSforzandoPianissimo', attackValue: 'f', value: 'pp' }],
+  ['sfzp', { glyph: 'dynamicSforzatoPiano', attackValue: 'f', value: 'p' }],
 ])
 
 export function readDirection(
@@ -408,6 +433,7 @@ function readDynamics(
 ): Dynamic[] {
   const dynamics: Dynamic[] = []
   for (const mark of element.children) {
+    const accent = ACCENT_DYNAMICS.get(mark.name)
     if (DYNAMIC_VALUES.has(mark.name)) {
       dynamics.push({
         position,
@@ -415,6 +441,16 @@ function readDynamics(
         wedge: undefined,
         end: undefined,
         staff,
+        ...(orient !== undefined ? { orient } : {}),
+      })
+    } else if (accent) {
+      dynamics.push({
+        position,
+        value: accent.value,
+        wedge: undefined,
+        end: undefined,
+        staff,
+        accent: { attackValue: accent.attackValue, glyphs: [accent.glyph] },
         ...(orient !== undefined ? { orient } : {}),
       })
     } else {

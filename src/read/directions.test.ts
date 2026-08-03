@@ -85,15 +85,81 @@ describe('dynamics', () => {
     expect(measure?.dynamics[0]?.value).toBe(value)
   })
 
-  // MNX's dynamic values stop at the plain ones. A sforzando or an
-  // "other-dynamics" text has nowhere to go, so it is reported.
+  // The extreme plain dynamics run past MNX's dynamic-value enum, which stops
+  // at fff, so one of those is still reported.
   test('reports a dynamic MNX has no value for', () => {
     const { measure, warnings } = read(
-      inMeasure(direction('<dynamics><sf/></dynamics>') + note('C')),
+      inMeasure(direction('<dynamics><ffff/></dynamics>') + note('C')),
     )
 
     expect(measure?.dynamics).toEqual([])
-    expect(warnings.map((w) => w.message)).toContain('A dynamic of "sf" is not converted yet.')
+    expect(warnings.map((w) => w.message)).toContain('A dynamic of "ffff" is not converted yet.')
+  })
+
+  // The accent dynamics (sforzando and its family) are drawn as one combined
+  // glyph. MNX states them as an accent group carrying the SMuFL glyph, which
+  // is what keeps sf, fz and rfz apart where a bare accent could not.
+  test.each([
+    ['sf', 'dynamicSforzando1'],
+    ['sfz', 'dynamicSforzato'],
+    ['fz', 'dynamicForzando'],
+    ['rf', 'dynamicRinforzando1'],
+    ['rfz', 'dynamicRinforzando2'],
+    ['sffz', 'dynamicSforzatoFF'],
+  ])('reads the single accent %s as its glyph', (mark, glyph) => {
+    const { measure, warnings } = read(
+      inMeasure(direction(`<dynamics><${mark}/></dynamics>`) + note('C')),
+    )
+
+    expect(measure?.dynamics[0]?.value).toBeUndefined()
+    expect(measure?.dynamics[0]?.accent).toEqual({ attackValue: undefined, glyphs: [glyph] })
+    expect(warnings).toEqual([])
+  })
+
+  // A two-stage accent states a momentary attack and the level it settles to:
+  // fp is a forte attack held at piano. MNX carries the attack as attackValue
+  // and the residual as the value.
+  test.each([
+    ['fp', 'f', 'p', 'dynamicFortePiano'],
+    ['pf', 'p', 'f', 'dynamicPF'],
+    ['sfp', 'f', 'p', 'dynamicSforzandoPiano'],
+    ['sfpp', 'f', 'pp', 'dynamicSforzandoPianissimo'],
+    ['sfzp', 'f', 'p', 'dynamicSforzatoPiano'],
+  ])('reads the two-stage accent %s as attack and residual', (mark, attack, residual, glyph) => {
+    const { measure, warnings } = read(
+      inMeasure(direction(`<dynamics><${mark}/></dynamics>`) + note('C')),
+    )
+
+    expect(measure?.dynamics[0]?.value).toBe(residual)
+    expect(measure?.dynamics[0]?.accent).toEqual({ attackValue: attack, glyphs: [glyph] })
+    expect(warnings).toEqual([])
+  })
+
+  test('writes an accent dynamic the spec schema accepts', () => {
+    const { mnx } = convertMusicXML(inMeasure(direction('<dynamics><fp/></dynamics>') + note('C')))
+
+    expect(mnx.global.measures[0]).toBeDefined()
+    const dynamic = mnx.parts[0]?.measures[0]?.dynamics?.[0]
+    expect(dynamic).toEqual({
+      position: { fraction: [0, 1] },
+      type: 'accent',
+      value: 'p',
+      attackValue: 'f',
+      glyphs: ['dynamicFortePiano'],
+    })
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  test('writes a single accent with a glyph and no value', () => {
+    const { mnx } = convertMusicXML(inMeasure(direction('<dynamics><sf/></dynamics>') + note('C')))
+
+    const dynamic = mnx.parts[0]?.measures[0]?.dynamics?.[0]
+    expect(dynamic).toEqual({
+      position: { fraction: [0, 1] },
+      type: 'accent',
+      glyphs: ['dynamicSforzando1'],
+    })
+    expect(schemaErrors(mnx)).toEqual([])
   })
 })
 

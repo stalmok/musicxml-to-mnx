@@ -301,13 +301,17 @@ function writeArpeggios(
 
 /**
  * A dynamic mark. A hairpin is what makes one gradual rather than immediate,
- * and it points at the measure it stops in, which is why measures carry ids.
+ * and it points at the measure it stops in, which is why measures carry ids;
+ * an accent is drawn from its combined glyph, with a two-stage one stating its
+ * attack besides the value it settles to.
  */
 function writeDynamic(dynamic: Dynamic, measureIds: ReadonlyMap<number, string>): MNXDynamic {
   return {
     position: writePosition(dynamic.position),
-    type: dynamic.wedge ? 'gradual' : 'immediate',
+    type: dynamic.wedge ? 'gradual' : dynamic.accent ? 'accent' : 'immediate',
     ...(dynamic.value ? { value: dynamic.value } : {}),
+    ...(dynamic.accent?.attackValue ? { attackValue: dynamic.accent.attackValue } : {}),
+    ...(dynamic.accent ? { glyphs: [...dynamic.accent.glyphs] } : {}),
     ...(dynamic.wedge ? { wedgeType: dynamic.wedge } : {}),
     ...(dynamic.end ? { end: writeSpanEnd(dynamic.end, measureIds) } : {}),
     ...(dynamic.staff !== undefined ? { staff: dynamic.staff } : {}),

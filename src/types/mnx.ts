@@ -305,6 +305,10 @@ export interface MNXDynamic {
   position: MNXRhythmicPosition
   type: 'immediate' | 'gradual' | 'relative' | 'accent'
   value?: MNXDynamicValue
+  /** A two-stage accent's momentary attack, settling to `value`. */
+  attackValue?: MNXDynamicValue
+  /** The combined glyph(s) an accent is drawn as, by SMuFL name. */
+  glyphs?: string[]
   /** Which way a hairpin opens. Present only on a gradual mark. */
   wedgeType?: MNXWedgeType
   /** Where a hairpin stops, which may be in a later measure. */
