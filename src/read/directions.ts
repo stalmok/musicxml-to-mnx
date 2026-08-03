@@ -44,6 +44,11 @@ export interface DirectionReading {
 export interface SoundReading {
   fine: Fine | undefined
   jump: Jump | undefined
+  /**
+   * What the source calls the segno drawn in this direction. Not written: it
+   * names the sign so a jump can be matched to the one it returns to.
+   */
+  segnoName: string | undefined
 }
 
 // The plain dynamic marks MNX states as a value.
@@ -161,6 +166,12 @@ export function readDirection(
     const soundReading = readSound(sound, at, reading.tempos.length > 0, warnings, context)
     if (soundReading.fine) reading.fines.push(soundReading.fine)
     if (soundReading.jump) reading.jumps.push(soundReading.jump)
+    // The <sound> naming the sign sits in the same <direction> as the <segno>
+    // it names, so the name is put on the signs this direction just read.
+    if (soundReading.segnoName !== undefined) {
+      const name = soundReading.segnoName
+      reading.segnos = reading.segnos.map((segno) => ({ ...segno, name }))
+    }
   }
 
   return reading
@@ -377,6 +388,7 @@ export function readSound(
 ): SoundReading {
   let fine: Fine | undefined
   let jump: Jump | undefined
+  let segnoName: string | undefined
   for (const name of Object.keys(sound.element.attributes)) {
     if (name === 'tempo' && tempoAlreadyStated) continue
     if (name === 'fine') {
@@ -384,10 +396,18 @@ export function readSound(
       continue
     }
     if (name === 'dalsegno') {
-      // The attribute names the segno to jump to; MNX's jump has no target,
-      // and one segno per score is the norm, so the name is not carried.
-      jump = { location: position, type: 'segno' }
+      // The attribute names the segno to jump to. MNX's jump has no target, so
+      // the name is not written; it is kept to find the sign the jump returns
+      // to, which is what decides whether a Fine stops it.
+      const target = attribute(sound.element, 'dalsegno')
+      jump = { location: position, type: 'segno', ...(target ? { target } : {}) }
       continue
+    }
+    if (name === 'segno') {
+      // Names the sign drawn beside it. MNX has no label for a segno, so this
+      // is still a loss and still reported; it is read only to tell one sign
+      // from another when matching a jump to the one it goes back to.
+      segnoName = attribute(sound.element, 'segno')
     }
     warnings.add(
       'unsupported:element',
@@ -396,7 +416,7 @@ export function readSound(
       'sound',
     )
   }
-  return { fine, jump }
+  return { fine, jump, segnoName }
 }
 
 /**
@@ -438,22 +458,35 @@ function readDynamics(
   // The wording seen so far with no mark yet to qualify. A source writes "più
   // f" as the text and the mark side by side, so the text is held until the
   // mark it opens arrives and becomes that mark's prefix. Anything still held
-  // once the marks run out closes the last one instead, as its suffix.
-  let pending: string[] = []
-  const takePending = (): string | undefined => {
+  // once the marks run out closes the last one instead, as its suffix. The
+  // line of each piece is held with it, so a report points at the wording
+  // rather than at the block around it.
+  //
+  // Pieces are held as written and trimmed only once joined, so that the
+  // source's own spacing decides where the words run together: "sempre " and
+  // "più " make "sempre più", while "s" and "morz." make "smorz.".
+  let pending: { text: string; line: number }[] = []
+  const takePending = (): { text: string; line: number } | undefined => {
     if (pending.length === 0) return undefined
-    const wording = pending.join(' ')
+    const held = {
+      text: pending
+        .map((piece) => piece.text)
+        .join('')
+        .trim(),
+      line: pending[0]?.line ?? 0,
+    }
     pending = []
-    return wording
+    return held
   }
 
   for (const mark of element.children) {
     const accent = ACCENT_DYNAMICS.get(mark.name)
     if (mark.name === 'other-dynamics') {
-      const wording = trimmedText(mark)
-      if (wording === '') continue
-      reportWordingGlyph(mark, wording, warnings, context)
-      pending.push(wording)
+      // The glyph is reported before the text is weighed: an element naming a
+      // glyph and holding no text still says something the output cannot.
+      reportWordingGlyph(mark, trimmedText(mark), warnings, context)
+      if (trimmedText(mark) === '') continue
+      pending.push({ text: mark.text, line: mark.line })
     } else if (DYNAMIC_VALUES.has(mark.name)) {
       const prefix = takePending()
       dynamics.push({
@@ -462,7 +495,7 @@ function readDynamics(
         wedge: undefined,
         end: undefined,
         staff,
-        ...(prefix !== undefined ? { prefix } : {}),
+        ...(prefix !== undefined ? { prefix: prefix.text } : {}),
         ...(orient !== undefined ? { orient } : {}),
       })
     } else if (accent) {
@@ -474,7 +507,7 @@ function readDynamics(
         end: undefined,
         staff,
         accent: { attackValue: accent.attackValue, glyphs: [accent.glyph] },
-        ...(prefix !== undefined ? { prefix } : {}),
+        ...(prefix !== undefined ? { prefix: prefix.text } : {}),
         ...(orient !== undefined ? { orient } : {}),
       })
     } else {
@@ -484,22 +517,34 @@ function readDynamics(
         { ...context, line: mark.line },
         mark.name,
       )
+      // The wording opened this mark, so it goes with it. Passing it on to
+      // the next mark would draw the words against something the source never
+      // stood them in front of.
+      const orphaned = takePending()
+      if (orphaned)
+        warnings.add(
+          'unsupported:element',
+          `A dynamic wording of "${orphaned.text}" is not converted yet, because the ` +
+            `"${mark.name}" it qualifies is not.`,
+          { ...context, line: orphaned.line },
+          'other-dynamics',
+        )
     }
   }
 
-  // Wording left over closes the mark before it. With no mark at all there is
-  // nowhere to put it: MNX states a prefix and a suffix on a dynamic group,
-  // and a group states a level, which wording standing alone does not give.
+  // Wording left over closes the mark before it. With no mark at all it has
+  // nowhere to go: MNX draws a prefix and a suffix around a dynamic group, and
+  // a group with no mark in it would state a level the source never wrote.
   const trailing = takePending()
   const last = dynamics[dynamics.length - 1]
   if (trailing !== undefined) {
-    if (last) last.suffix = trailing
+    if (last) last.suffix = trailing.text
     else
       warnings.add(
         'unsupported:element',
-        `A dynamic wording of "${trailing}", with no dynamic mark to qualify, is not ` +
+        `A dynamic wording of "${trailing.text}", with no dynamic mark to qualify, is not ` +
           'converted yet.',
-        { ...context, line: element.line },
+        { ...context, line: trailing.line },
         'other-dynamics',
       )
   }
@@ -517,11 +562,15 @@ function reportWordingGlyph(
   warnings: WarningCollector,
   context: WarningContext,
 ): void {
-  if (attribute(element, 'smufl') === undefined) return
+  const glyph = attribute(element, 'smufl')
+  if (glyph === undefined) return
   warnings.add(
     'unsupported:element',
-    `The glyph named for the dynamic wording "${wording}" is drawn as text instead, because ` +
-      'MNX states a glyph for the dynamic mark, not for its wording.',
+    wording === ''
+      ? `A dynamic drawn only as the glyph "${glyph}" is not converted yet, because MNX ` +
+          'states a glyph for the dynamic mark, not for its wording.'
+      : `The glyph named for the dynamic wording "${wording}" is drawn as text instead, ` +
+          'because MNX states a glyph for the dynamic mark, not for its wording.',
     { ...context, line: element.line },
     'other-dynamics',
   )

@@ -171,6 +171,24 @@ function sourceHairpins(root: XmlElement): string[] {
 }
 
 /**
+ * Every <other-dynamics> wording in the source, trimmed the way the reader
+ * trims it, in document order. Whitespace-only ones are left out: they draw
+ * nothing, so there is nothing for the output to carry.
+ */
+function sourceWordings(root: XmlElement): string[] {
+  const found: string[] = []
+  const walk = (element: XmlElement): void => {
+    if (element.name === 'other-dynamics') {
+      const wording = element.text.trim()
+      if (wording !== '') found.push(wording)
+    }
+    for (const child of element.children) walk(child)
+  }
+  walk(root)
+  return found
+}
+
+/**
  * Every id the document defines, and every id it points at. A tie, slur, beam,
  * arpeggio or span end names an event, note or measure by id, and the writer
  * emits an id only where something points at it. A reference with no definition
@@ -379,6 +397,40 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     })
 
     expect(converted).toEqual(sourceHairpins(parseXmlRoot(source)))
+  })
+
+  // The wording a source wraps a dynamic in becomes that mark's prefix or
+  // suffix. Read back out of the source, because the unit tests only exercise
+  // blocks somebody thought to write down, and 851 of these are spread across
+  // the corpus in shapes nobody chose.
+  //
+  // Each wording has to turn up in the output or in a warning. Substring
+  // rather than equality, because several wordings standing before one mark
+  // are joined into a single prefix, and this check should not have an opinion
+  // about how they are joined.
+  test('carries or reports every dynamic wording the source writes', () => {
+    const carried: string[] = []
+    for (const part of mnx.parts) {
+      for (const measure of part.measures) {
+        for (const dynamic of measure.dynamics ?? []) {
+          if (dynamic.prefix !== undefined) carried.push(dynamic.prefix)
+          if (dynamic.suffix !== undefined) carried.push(dynamic.suffix)
+        }
+      }
+    }
+    // The wording a warning names, not the whole sentence around it, so that
+    // an unrelated message mentioning the same letters cannot cover a loss.
+    const reported = warnings.flatMap((warning) =>
+      [...warning.message.matchAll(/"([^"]*)"/g)].map((m) => m[1] ?? ''),
+    )
+
+    const lost = sourceWordings(parseXmlRoot(source)).filter(
+      (wording) => ![...carried, ...reported].some((text) => text.includes(wording)),
+    )
+
+    expect(lost).toEqual([])
+    // A wording carried as an empty string says nothing and draws nothing.
+    expect(carried.filter((text) => text === '')).toEqual([])
   })
 
   // An octave shift runs from its position to its end, both of which are

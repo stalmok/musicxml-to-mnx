@@ -1,8 +1,8 @@
 // The MNX types in src/types/mnx.ts are hand-written against the vendored
 // schema, and the corpus validates everything the writer emits against it. What
 // that does not reach is the surface the types declare but the writer does not
-// yet produce: a tie targetType other than crossVoice, a relative or accent
-// dynamic, the useBeams support flag, the far ends of the note-value scale.
+// yet produce: a tie targetType other than crossVoice, a relative dynamic, the
+// useBeams support flag, the far ends of the note-value scale.
 //
 // These fixtures exercise that surface. Each is typed as an MNXDocument, so
 // TypeScript holds it to the declared shape, and schemaErrors holds the

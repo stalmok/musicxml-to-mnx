@@ -121,16 +121,49 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
  * A dal-segno jump returning to a Fine is a "D.S. al Fine": the player goes
  * back to the segno and stops at the Fine. MusicXML says the al-Fine only
  * through the Fine's presence, not on the <sound dalsegno> attribute, so each
- * jump is read as a plain segno first and upgraded here once the whole score
- * is known to carry a Fine. MNX's jump-type enum holds "dsalfine" for this.
+ * jump is read as a plain segno first and settled here once the whole score is
+ * known. MNX's jump-type enum holds "dsalfine" for this.
+ *
+ * A Fine only stops a jump that returns to a sign standing before it: replay
+ * from a segno written after the Fine never reaches it, and such a jump is a
+ * D.S. al Coda or similar, which MNX's jump-type enum cannot state. Marking
+ * one "dsalfine" would say the piece ends somewhere it does not, so a score
+ * with several signs is matched sign by sign, by the name MusicXML gives them.
  */
 function upgradeAlFineJumps(measures: GlobalMeasure[]): void {
-  if (!measures.some((measure) => measure.fine !== undefined)) return
+  const firstFine = measures.findIndex((measure) => measure.fine !== undefined)
+  if (firstFine === -1) return
+
+  const signs = measures.flatMap((measure, index) =>
+    measure.segno ? [{ index, name: measure.segno.name }] : [],
+  )
+
   for (const measure of measures) {
-    if (measure.jump?.type === 'segno') {
+    if (measure.jump?.type !== 'segno') continue
+    const from = segnoReturnedTo(signs, measure.jump.target)
+    // A Fine at or after the sign is reached on the way back through.
+    if (
+      from !== undefined &&
+      measures.findIndex((m, i) => i >= from && m.fine !== undefined) !== -1
+    )
       measure.jump = { ...measure.jump, type: 'dsalfine' }
-    }
   }
+}
+
+/**
+ * Where a jump goes back to, as a measure index. A score drawing one sign
+ * settles it whatever either is called, since there is nothing to confuse it
+ * with. A score drawing none is taken from its start, which is where a player
+ * with no sign to find would go. Past that the name decides, and a name
+ * matching no sign leaves the jump alone rather than guessing between them.
+ */
+function segnoReturnedTo(
+  signs: readonly { index: number; name: string | undefined }[],
+  target: string | undefined,
+): number | undefined {
+  if (signs.length === 0) return 0
+  if (signs.length === 1) return signs[0]?.index
+  return signs.find((sign) => sign.name === target)?.index
 }
 
 // Parts restate the same key and time; the first to declare one wins, so a

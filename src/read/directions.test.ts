@@ -258,6 +258,56 @@ describe('dynamics', () => {
     )
   })
 
+  // The wording opens the mark that follows it. Where that mark is one the
+  // converter passes over, the words go with it rather than sliding onto the
+  // next mark along, which the source never stood them in front of.
+  test('reports wording qualifying a mark that is not converted', () => {
+    const { measure, warnings } = read(
+      inMeasure(
+        direction('<dynamics><other-dynamics>più </other-dynamics><ffff/><p/></dynamics>') +
+          note('C'),
+      ),
+    )
+
+    expect(measure?.dynamics[0]?.value).toBe('p')
+    expect(measure?.dynamics[0]?.prefix).toBeUndefined()
+    expect(warnings.map((w) => w.message)).toEqual([
+      'A dynamic of "ffff" is not converted yet.',
+      'A dynamic wording of "più" is not converted yet, because the "ffff" it qualifies is not.',
+    ])
+  })
+
+  // An element naming a glyph and holding no text is a mark drawn as that
+  // glyph alone, which is notation, not an empty element to pass over.
+  test('reports a wording drawn only as a glyph', () => {
+    const { measure, warnings } = read(
+      inMeasure(
+        direction(
+          '<dynamics><other-dynamics smufl="dynamicSforzatoFF"></other-dynamics>' + '</dynamics>',
+        ) + note('C'),
+      ),
+    )
+
+    expect(measure?.dynamics).toEqual([])
+    expect(warnings.map((w) => w.message)).toEqual([
+      'A dynamic drawn only as the glyph "dynamicSforzatoFF" is not converted yet, because ' +
+        'MNX states a glyph for the dynamic mark, not for its wording.',
+    ])
+  })
+
+  test('reads which side of the staff an accent is placed', () => {
+    const { measure } = read(
+      inMeasure(
+        '<direction placement="above"><direction-type><dynamics><sfz/></dynamics>' +
+          '</direction-type></direction>' +
+          note('C'),
+      ),
+    )
+
+    expect(measure?.dynamics[0]?.orient).toBe('above')
+    expect(measure?.dynamics[0]?.accent?.glyphs).toEqual(['dynamicSforzato'])
+  })
+
   test('passes over an empty wording without reporting it', () => {
     const { measure, warnings } = read(
       inMeasure(direction('<dynamics><other-dynamics> </other-dynamics></dynamics>') + note('C')),
@@ -490,7 +540,7 @@ describe('sound navigation', () => {
   test('puts a jump of type segno on the measure for a <sound dalsegno>', () => {
     const { global, warnings } = read(inMeasure(note('C') + '<sound dalsegno="segno"/>'))
 
-    expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'segno' })
+    expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'segno', target: 'segno' })
     expect(warnings).toEqual([])
   })
 
@@ -519,7 +569,7 @@ describe('sound navigation', () => {
       inMeasure(note('C') + '<sound dalsegno="segno" dynamics="54"/>'),
     )
 
-    expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'segno' })
+    expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'segno', target: 'segno' })
     expect(warnings.map((w) => w.message)).toEqual([
       'The "dynamics" of a <sound> is not converted yet.',
     ])
@@ -532,7 +582,11 @@ describe('sound navigation', () => {
     const { global, warnings } = read(inMeasure(note('C') + '<sound fine="yes" dalsegno="segno"/>'))
 
     expect(global?.fine).toEqual({ location: { num: 1, den: 4 } })
-    expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'dsalfine' })
+    expect(global?.jump).toEqual({
+      location: { num: 1, den: 4 },
+      type: 'dsalfine',
+      target: 'segno',
+    })
     expect(warnings).toEqual([])
   })
 
@@ -557,6 +611,7 @@ describe('sound navigation', () => {
     expect(score.globalMeasures[0]?.jump).toEqual({
       location: { num: 1, den: 4 },
       type: 'dsalfine',
+      target: 'segno',
     })
     expect(score.globalMeasures[1]?.fine).toEqual({ location: { num: 1, den: 4 } })
     expect(warnings.list()).toEqual([])
@@ -567,7 +622,61 @@ describe('sound navigation', () => {
   test('leaves a jump a plain segno when the score carries no Fine', () => {
     const { global } = read(inMeasure(note('C') + '<sound dalsegno="segno"/>'))
 
-    expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'segno' })
+    expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'segno', target: 'segno' })
+  })
+
+  // A score can carry two segno signs and a jump back to each. The Fine only
+  // stops the jump that returns to a segno before it: replaying from a segno
+  // written after the Fine never reaches it, so that jump is a plain dal-segno.
+  // Naming the sign is how a source keeps the two apart.
+  test('leaves a jump back to a segno written after the Fine a plain segno', () => {
+    const warnings = new WarningCollector()
+    const score = readScore(
+      parseXmlRoot(
+        '<score-partwise><part id="P1">' +
+          '<measure number="1"><attributes><divisions>4</divisions></attributes>' +
+          '<direction><direction-type><segno/></direction-type>' +
+          '<sound segno="first"/></direction>' +
+          note('C') +
+          '</measure>' +
+          `<measure number="2">${note('C')}<sound fine="yes"/></measure>` +
+          '<measure number="3">' +
+          '<direction><direction-type><segno/></direction-type>' +
+          '<sound segno="second"/></direction>' +
+          note('C') +
+          '</measure>' +
+          `<measure number="4">${note('C')}<sound dalsegno="second"/></measure>` +
+          `<measure number="5">${note('C')}<sound dalsegno="first"/></measure>` +
+          '</part></score-partwise>',
+      ),
+      warnings,
+    )
+
+    // Back to the second segno, which stands after the Fine: a plain dal-segno.
+    expect(score.globalMeasures[3]?.jump?.type).toBe('segno')
+    // Back to the first, which stands before it: a D.S. al Fine.
+    expect(score.globalMeasures[4]?.jump?.type).toBe('dsalfine')
+  })
+
+  // With one segno the name settles nothing, so the Fine stops the jump
+  // whatever either is called.
+  test('upgrades a jump against the only segno whatever it is named', () => {
+    const warnings = new WarningCollector()
+    const score = readScore(
+      parseXmlRoot(
+        '<score-partwise><part id="P1">' +
+          '<measure number="1"><attributes><divisions>4</divisions></attributes>' +
+          '<direction><direction-type><segno/></direction-type></direction>' +
+          note('C') +
+          '</measure>' +
+          `<measure number="2">${note('C')}<sound fine="yes"/></measure>` +
+          `<measure number="3">${note('C')}<sound dalsegno="whatever"/></measure>` +
+          '</part></score-partwise>',
+      ),
+      warnings,
+    )
+
+    expect(score.globalMeasures[2]?.jump?.type).toBe('dsalfine')
   })
 
   test('writes a fine the spec schema accepts', () => {

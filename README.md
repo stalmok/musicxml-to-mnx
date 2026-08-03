@@ -129,8 +129,11 @@ Dynamics, hairpins and tempo marks: a dynamic sits on its measure at the point
 the cursor has reached, under the staff it belongs to; a metronome mark becomes
 a tempo on the score, as does the tempo a `<sound>` states where no metronome
 beside it already says the same thing. An `<offset>` moves a mark from where it
-is written to where it belongs, which is usually backwards. Marks outside MNX's
-vocabulary, like a sforzando, are reported.
+is written to where it belongs, which is usually backwards. A sforzando and its
+family become accent dynamics, each carrying the combined glyph it is drawn as,
+and the wording a source wraps a mark in, such as the "più" of "più f", becomes
+the prefix or suffix drawn around it. Marks outside MNX's vocabulary, like a
+dynamic louder than fff, are reported.
 
 A hairpin is matched to its other end across the measures between, and stated
 once as a gradual dynamic pointing at the measure where it stops.

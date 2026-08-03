@@ -485,6 +485,12 @@ export interface Segno {
   location: Fraction
   /** A specific SMuFL glyph, where the source names one. */
   glyph: string | undefined
+  /**
+   * What the source calls this sign, where it names one. MNX has no label for
+   * a segno and none is written; it is held only to tell two signs apart when
+   * working out which one a jump returns to.
+   */
+  name?: string
 }
 
 /** A Fine, where a D.S. or D.C. repeat stops. */
@@ -501,6 +507,12 @@ export interface Jump {
   /** Where in the measure it is taken, counting from the start. */
   location: Fraction
   type: JumpType
+  /**
+   * The name of the segno this jump returns to, where the source gives one.
+   * MNX's jump has no target and none is written; it is held only to find the
+   * sign the jump goes back to, which decides whether a Fine stops it.
+   */
+  target?: string
 }
 
 export interface Score {
