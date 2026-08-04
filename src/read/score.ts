@@ -178,12 +178,50 @@ function mergeGlobalMeasures(
   part: string,
   warnings: WarningCollector,
 ): void {
+  // What each side has in force, not just what it states: a key or time
+  // signature stands until the next one, so a part that says nothing in the
+  // measure where the score changes meter is disagreeing all the same. The
+  // comparison runs only where one side states something, so a disagreement
+  // is reported once where it starts rather than once per measure it spans.
+  let scoreKey: Key | undefined
+  let scoreTime: TimeSignature | undefined
+  let partKey: Key | undefined
+  let partTime: TimeSignature | undefined
   found.forEach((measure, index) => {
     const existing = target[index]
-    reportCrossPartDisagreement(existing, measure, warnings, {
-      part,
-      measure: measure.number ?? index + 1,
-    })
+    scoreKey = existing?.key ?? scoreKey
+    scoreTime = existing?.time ?? scoreTime
+    partKey = measure.key ?? partKey
+    partTime = measure.time ?? partTime
+    const context = { part, measure: measure.number ?? index + 1 }
+    if (
+      (existing?.key ?? measure.key) &&
+      scoreKey &&
+      partKey &&
+      scoreKey.fifths !== partKey.fifths
+    ) {
+      warnings.add(
+        'unrepresentable:cross-part-key',
+        'The parts of this score are in different keys, and MNX states one key for ' +
+          'the score. The first stated is the one converted.',
+        context,
+        'key',
+      )
+    }
+    if (
+      (existing?.time ?? measure.time) &&
+      scoreTime &&
+      partTime &&
+      !sameMeter(scoreTime, partTime)
+    ) {
+      warnings.add(
+        'unrepresentable:cross-part-time',
+        'The parts of this score are in different time signatures, and MNX states one ' +
+          'for the score. The first stated is the one converted.',
+        context,
+        'time',
+      )
+    }
     target[index] = {
       key: existing?.key ?? measure.key,
       time: existing?.time ?? measure.time,
@@ -205,40 +243,10 @@ function mergeGlobalMeasures(
   })
 }
 
-// Transposing instruments write different key signatures per part, and a
-// score can in principle mix meters the same way. MNX states one key and one
-// time signature for the whole score, so a part disagreeing with the parts
-// merged before it cannot be carried. The time comparison ignores how the
-// signature is drawn: 6/8 written as numbers and 6/8 written some other way
-// are the same meter.
-function reportCrossPartDisagreement(
-  existing: GlobalMeasure | undefined,
-  found: GlobalMeasure,
-  warnings: WarningCollector,
-  context: WarningContext,
-): void {
-  if (existing?.key && found.key && existing.key.fifths !== found.key.fifths) {
-    warnings.add(
-      'unrepresentable:cross-part-key',
-      'The parts of this score are in different keys, and MNX states one key for ' +
-        "the score. The first part's is the one converted.",
-      context,
-      'key',
-    )
-  }
-  if (
-    existing?.time &&
-    found.time &&
-    (existing.time.count !== found.time.count || existing.time.unit !== found.time.unit)
-  ) {
-    warnings.add(
-      'unrepresentable:cross-part-time',
-      'The parts of this score are in different time signatures, and MNX states one ' +
-        "for the score. The first part's is the one converted.",
-      context,
-      'time',
-    )
-  }
+// The display is only the glyph the signature is drawn as, so 4/4 as a C and
+// 4/4 as numbers are not a disagreement about the meter itself.
+function sameMeter(a: TimeSignature, b: TimeSignature): boolean {
+  return a.count === b.count && a.unit === b.unit
 }
 
 /**

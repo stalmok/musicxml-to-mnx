@@ -1603,7 +1603,8 @@
     "cue": 1,
     "notehead": 1,
     "clef": 1,
-    "pedal": 4
+    "pedal": 4,
+    "key": 1
   },
   "butterworth-5-the-lads-in-their-hundreds": {
     "score-instrument": 2,
@@ -2066,9 +2067,9 @@
     "work": 1,
     "identification": 1,
     "words": 13,
+    "sound": 3,
     "note": 9,
     "extend": 5,
-    "sound": 3,
     "other-direction": 2,
     "print-object": 4,
     "time": 1
@@ -2485,7 +2486,7 @@
     "print-object": 8,
     "pedal": 2
   },
-  "delius-1-il-pleure-dans-mon-c\u0153ur": {
+  "delius-1-il-pleure-dans-mon-cœur": {
     "score-instrument": 2,
     "midi-device": 2,
     "midi-instrument": 2,
@@ -3395,8 +3396,8 @@
     "extend": 20,
     "dashes": 4,
     "pedal": 84,
-    "notehead": 7,
     "print-object": 7,
+    "notehead": 7,
     "time": 1
   },
   "german-2-the-dew-upon-the-lily": {
@@ -4435,7 +4436,8 @@
     "wavy-line": 6,
     "technical": 5,
     "print-object": 1,
-    "pedal": 6
+    "pedal": 6,
+    "key": 1
   },
   "holmes-ogier-le-danois": {
     "score-instrument": 2,
@@ -4659,7 +4661,7 @@
     "dashes": 8,
     "pedal": 20,
     "technical": 11,
-    "time": 1
+    "time": 2
   },
   "jaell-2-eternel-amour": {
     "score-instrument": 2,
@@ -4707,7 +4709,8 @@
     "dashes": 2,
     "pedal": 16,
     "note": 375,
-    "technical": 55
+    "technical": 55,
+    "time": 2
   },
   "jaell-4-le-bonheur-s-effeuille-et-passe": {
     "score-instrument": 2,
@@ -5613,7 +5616,7 @@
     "measure": 10,
     "cue": 2
   },
-  "massenet-1-ch\u0153ur-des-pastorale-do-287": {
+  "massenet-1-chœur-des-pastorale-do-287": {
     "score-instrument": 2,
     "midi-device": 2,
     "midi-instrument": 2,
@@ -6188,7 +6191,8 @@
     "pedal": 94,
     "dashes": 6,
     "slur": 2,
-    "wedge": 1
+    "wedge": 1,
+    "time": 1
   },
   "paladilhe-psyche": {
     "score-instrument": 2,
@@ -7751,7 +7755,8 @@
     "dashes": 12,
     "print-object": 73,
     "pedal": 84,
-    "slur": 2
+    "slur": 2,
+    "time": 1
   },
   "strauss-4-morgen": {
     "score-instrument": 2,
@@ -7894,7 +7899,7 @@
     "harmony": 39,
     "print-object": 6
   },
-  "viardot-bonjour-mon-c\u0153ur-vwv-1072": {
+  "viardot-bonjour-mon-cœur-vwv-1072": {
     "score-instrument": 2,
     "midi-device": 2,
     "midi-instrument": 2,

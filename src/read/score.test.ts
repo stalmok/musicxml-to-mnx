@@ -1063,6 +1063,58 @@ describe('several parts', () => {
     expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 1 })
   })
 
+  // A time signature stays in force until the next one, so a part that says
+  // nothing in the measure where another part changes meter is disagreeing
+  // just as much as one that states its own.
+  test('reports a part staying in its meter while another changes', () => {
+    const time = (count: string, unit: string) =>
+      `<attributes><time><beats>${count}</beats><beat-type>${unit}</beat-type></time></attributes>`
+    const { score: result, warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${time('3', '4')}${NOTE}</measure>` +
+          `<measure number="2">${time('6', '8')}${NOTE}</measure></part>` +
+          `<part id="P2"><measure number="1">${time('3', '4')}${NOTE}</measure>` +
+          `<measure number="2">${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(result.globalMeasures[1]?.time).toEqual({ count: 6, unit: 8, display: undefined })
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-time'])
+    expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 2 })
+  })
+
+  test('reports a part staying in its key while another changes', () => {
+    const key = (fifths: string) => `<attributes><key><fifths>${fifths}</fifths></key></attributes>`
+    const { warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${key('0')}${NOTE}</measure>` +
+          `<measure number="2">${key('2')}${NOTE}</measure></part>` +
+          `<part id="P2"><measure number="1">${key('0')}${NOTE}</measure>` +
+          `<measure number="2">${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-key'])
+    expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 2 })
+  })
+
+  // The C glyph and the numbers write the same meter, so they are not a
+  // disagreement.
+  test('says nothing where the parts differ only in how the meter is drawn', () => {
+    const { warnings } = read(
+      score(
+        '<part id="P1"><measure number="1">' +
+          '<attributes><time symbol="common"><beats>4</beats><beat-type>4</beat-type></time>' +
+          `</attributes>${NOTE}</measure></part>` +
+          '<part id="P2"><measure number="1">' +
+          '<attributes><time><beats>4</beats><beat-type>4</beat-type></time></attributes>' +
+          `${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
   test('says nothing where the parts restate the same key', () => {
     const { warnings } = read(
       score(
