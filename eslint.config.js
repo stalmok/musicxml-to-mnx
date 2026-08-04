@@ -32,7 +32,7 @@ export default tseslint.config(
         {
           patterns: [
             {
-              group: ['**/write/*', '**/types/mnx*', '../convert.js', '../container.js'],
+              group: ['**/write/**', '**/types/mnx*', '**/convert.js', '**/container.js'],
               message:
                 'The reader produces the neutral score model, so it must not know the MNX output shape, the pipeline, or the packaging layer.',
             },
@@ -50,7 +50,7 @@ export default tseslint.config(
         {
           patterns: [
             {
-              group: ['**/read/*', '**/xml/*', '../convert.js', '../container.js'],
+              group: ['**/read/**', '**/xml/**', '**/convert.js', '**/container.js'],
               message:
                 'The writer consumes the neutral score model, so it must not know MusicXML, the XML layer, the pipeline, or the packaging layer.',
             },
@@ -64,7 +64,7 @@ export default tseslint.config(
     // neither of them, and not on the MNX types either, which is what keeps
     // it a boundary.
     files: ['src/model/**'],
-    ignores: ['src/**/*.test.ts'],
+    ignores: ['src/model/**/*.test.ts'],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -72,12 +72,12 @@ export default tseslint.config(
           patterns: [
             {
               group: [
-                '**/read/*',
-                '**/write/*',
-                '**/types/*',
-                '**/xml/*',
-                '../convert.js',
-                '../container.js',
+                '**/read/**',
+                '**/write/**',
+                '**/types/**',
+                '**/xml/**',
+                '**/convert.js',
+                '**/container.js',
               ],
               message:
                 'The model depends on neither stage, the MNX types, nor the XML layer; that is what keeps it a boundary.',
@@ -91,14 +91,20 @@ export default tseslint.config(
     // Generic leaves: the XML layer knows no music, and the MNX types know
     // only the wire format. Neither may reach back into the pipeline.
     files: ['src/xml/**', 'src/types/**'],
-    ignores: ['src/**/*.test.ts'],
+    ignores: ['src/xml/**/*.test.ts', 'src/types/**/*.test.ts'],
     rules: {
       'no-restricted-imports': [
         'error',
         {
           patterns: [
             {
-              group: ['**/read/*', '**/write/*', '**/model/*', '../convert.js', '../container.js'],
+              group: [
+                '**/read/**',
+                '**/write/**',
+                '**/model/**',
+                '**/convert.js',
+                '**/container.js',
+              ],
               message: 'Leaf modules must not import stage implementations or the model.',
             },
           ],
