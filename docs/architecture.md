@@ -50,7 +50,7 @@ src/
     beams.ts           per-note beam markings into MNX's tree of beams
     barlines.ts        barlines, repeat signs, and first and second endings
     directions.ts      dynamics, hairpins, octave shifts, tempo marks, segno
-                       signs and jumps
+                       signs, Fines and jumps
     lyrics.ts          the words under a note
     duration.ts        note-value arithmetic, no XML in it
     divisions.ts       a <duration>, in the <divisions> in force

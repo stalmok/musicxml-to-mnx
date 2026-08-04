@@ -2,8 +2,7 @@
 //
 // They are stored as `.mxl`, the standard compressed MusicXML container,
 // which is what the corpus publishes and is around twenty times smaller than
-// the XML inside it. Six hundred songs come to around ten megabytes that way,
-// against two hundred uncompressed.
+// the XML inside it.
 //
 // The unpacking is the library's own, so the corpus tests read the bytes the
 // same way a consumer would and exercise that path against real packages.

@@ -54,7 +54,7 @@ jobs:
       - run: pnpm format:check
       # The full suite, including the vendored corpus that the pre-commit
       # hook skips for speed. This is where that corpus is gated on every
-      # push and pull request.
+      # push to main and every pull request.
       - run: pnpm test:coverage
 
       - run: pnpm build
