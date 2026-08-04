@@ -5,8 +5,14 @@ README.
 
 ## Shape
 
-Two stages with a neutral model between them. MusicXML knowledge stops at the
-reader, MNX knowledge starts at the writer, and nothing knows both.
+Two stages with a shared model between them. MusicXML knowledge stops at the
+reader and MNX knowledge starts at the writer. That is an import boundary,
+not a knowledge one: the reader never sees the MNX types and the writer never
+sees the XML layer, but the model leans toward MNX on purpose. Its enums are
+spelled the way MNX spells them so the writer needs no second table, and the
+reader owns the registry of what MNX has nowhere to put
+(`read/unrepresentable.ts`), because a loss report needs the source line and
+measure context that only the reader has in hand.
 
 ```
 MusicXML string or bytes
@@ -22,13 +28,17 @@ about how music is written down. MusicXML encodes time as a cursor that
 elements, and links spanners by a `number` attribute that has to be matched
 up. MNX states the same music directly.
 
-The split also keeps a moving spec cheap: MNX has no stable 1.0, so when it
-changes, only `write/` and `types/mnx.ts` should have to move.
+The split also keeps a moving spec cheap, though not free: MNX has no stable
+1.0, so when it changes, `write/` and `types/mnx.ts` move first, and the
+model's MNX-spelled enums and the reader's unrepresentable registry move with
+them where the change touches what they name.
 
 ## Modules
 
 ```
 src/
+  index.ts             the public API
+  convert.ts           the pipeline: container, then read, then write
   container.ts         string, bytes, or an .mxl package into the XML to parse
   xml/                 element tree with source line numbers, typed accessors
   read/                MusicXML semantics, one file per concern
@@ -38,7 +48,9 @@ src/
     voices.ts          the cursor, and one sequence per voice
     spanners.ts        joining the two ends of a tie or slur, and event ids
     beams.ts           per-note beam markings into MNX's tree of beams
-    directions.ts      dynamics and tempo marks
+    barlines.ts        barlines, repeat signs, and first and second endings
+    directions.ts      dynamics, hairpins, octave shifts, tempo marks, segno
+                       signs and jumps
     lyrics.ts          the words under a note
     duration.ts        note-value arithmetic, no XML in it
     divisions.ts       a <duration>, in the <divisions> in force
@@ -47,7 +59,7 @@ src/
     element.ts         records which children a reader actually read
     unrepresentable.ts what MNX has nowhere to put
     state.ts           what a part carries between its measures
-  model/               the neutral score model
+  model/               the score model both stages share
   write/               the MNX writer
   types/mnx.ts         MNX output types, exported
   fraction.ts          exact rational arithmetic for timing, never floats
@@ -126,8 +138,7 @@ Fatal is all-or-nothing, deliberately. A document that hits something
 unconvertible is refused whole rather than converted in part, because the
 constructs that qualify are the ones that would make a measure fail to add up,
 and a score with a wrong bar in it is worse than no score: a pipeline can see
-that it got nothing, and cannot see that bar 41 is quietly wrong. That costs
-three of the vendored corpus songs, each for a single two-note tremolo.
+that it got nothing, and cannot see that bar 41 is quietly wrong.
 
 ## Dependencies
 
