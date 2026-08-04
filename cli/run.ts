@@ -1,4 +1,4 @@
-// The `mnxml` command: convert MusicXML files to MNX.
+// The `ossia` command: convert MusicXML files to MNX.
 //
 // This lives outside src/ on purpose. The library core is isomorphic and may
 // touch neither Node nor DOM globals, which tsconfig.json enforces over src
