@@ -1027,6 +1027,67 @@ describe('several parts', () => {
     ])
     expect(result.parts).toHaveLength(2)
   })
+
+  // Transposing instruments write different key signatures per part, and MNX
+  // states one key and one time signature for the whole score, so parts that
+  // disagree cannot both be carried.
+  test('reports parts stating different keys in the same measure', () => {
+    const { score: result, warnings } = read(
+      score(
+        '<part id="P1"><measure number="1">' +
+          `<attributes><key><fifths>0</fifths></key></attributes>${NOTE}</measure></part>` +
+          '<part id="P2"><measure number="1">' +
+          `<attributes><key><fifths>2</fifths></key></attributes>${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.key).toEqual({ fifths: 0 })
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-key'])
+    expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 1 })
+  })
+
+  test('reports parts stating different time signatures in the same measure', () => {
+    const { score: result, warnings } = read(
+      score(
+        '<part id="P1"><measure number="1">' +
+          '<attributes><time><beats>6</beats><beat-type>8</beat-type></time></attributes>' +
+          `${NOTE}</measure></part>` +
+          '<part id="P2"><measure number="1">' +
+          '<attributes><time><beats>3</beats><beat-type>4</beat-type></time></attributes>' +
+          `${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.time).toEqual({ count: 6, unit: 8, display: undefined })
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-time'])
+    expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 1 })
+  })
+
+  test('says nothing where the parts restate the same key', () => {
+    const { warnings } = read(
+      score(
+        '<part id="P1"><measure number="1">' +
+          `<attributes><key><fifths>2</fifths></key></attributes>${NOTE}</measure></part>` +
+          '<part id="P2"><measure number="1">' +
+          `<attributes><key><fifths>2</fifths></key></attributes>${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  test('says nothing where only a later part states the key', () => {
+    const { score: result, warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${NOTE}</measure></part>` +
+          '<part id="P2"><measure number="1">' +
+          `<attributes><key><fifths>2</fifths></key></attributes>${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.key).toEqual({ fifths: 2 })
+    expect(warnings).toEqual([])
+  })
 })
 
 // A tempo belongs to the score, but MusicXML has to write it inside a part,

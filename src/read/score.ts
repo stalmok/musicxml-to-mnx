@@ -93,7 +93,7 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
 
   const globalMeasures: GlobalMeasure[] = []
   for (const reading of readings) {
-    mergeGlobalMeasures(globalMeasures, reading.globals)
+    mergeGlobalMeasures(globalMeasures, reading.globals, reading.part.id, warnings)
   }
   upgradeAlFineJumps(globalMeasures)
 
@@ -167,11 +167,23 @@ function segnoReturnedTo(
 }
 
 // Parts restate the same key and time; the first to declare one wins, so a
-// later part repeating it is not treated as a change. The result is as long
-// as the longest part, because that list is the score's measure list.
-function mergeGlobalMeasures(target: GlobalMeasure[], found: readonly GlobalMeasure[]): void {
+// later part repeating it is not treated as a change. A part declaring a
+// different one cannot be carried, because MNX states one key and one time
+// signature for the whole score, so the disagreement is reported. The result
+// is as long as the longest part, because that list is the score's measure
+// list.
+function mergeGlobalMeasures(
+  target: GlobalMeasure[],
+  found: readonly GlobalMeasure[],
+  part: string,
+  warnings: WarningCollector,
+): void {
   found.forEach((measure, index) => {
     const existing = target[index]
+    reportCrossPartDisagreement(existing, measure, warnings, {
+      part,
+      measure: measure.number ?? index + 1,
+    })
     target[index] = {
       key: existing?.key ?? measure.key,
       time: existing?.time ?? measure.time,
@@ -191,6 +203,42 @@ function mergeGlobalMeasures(target: GlobalMeasure[], found: readonly GlobalMeas
       jump: existing?.jump ?? measure.jump,
     }
   })
+}
+
+// Transposing instruments write different key signatures per part, and a
+// score can in principle mix meters the same way. MNX states one key and one
+// time signature for the whole score, so a part disagreeing with the parts
+// merged before it cannot be carried. The time comparison ignores how the
+// signature is drawn: 6/8 written as numbers and 6/8 written some other way
+// are the same meter.
+function reportCrossPartDisagreement(
+  existing: GlobalMeasure | undefined,
+  found: GlobalMeasure,
+  warnings: WarningCollector,
+  context: WarningContext,
+): void {
+  if (existing?.key && found.key && existing.key.fifths !== found.key.fifths) {
+    warnings.add(
+      'unrepresentable:cross-part-key',
+      'The parts of this score are in different keys, and MNX states one key for ' +
+        "the score. The first part's is the one converted.",
+      context,
+      'key',
+    )
+  }
+  if (
+    existing?.time &&
+    found.time &&
+    (existing.time.count !== found.time.count || existing.time.unit !== found.time.unit)
+  ) {
+    warnings.add(
+      'unrepresentable:cross-part-time',
+      'The parts of this score are in different time signatures, and MNX states one ' +
+        "for the score. The first part's is the one converted.",
+      context,
+      'time',
+    )
+  }
 }
 
 /**

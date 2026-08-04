@@ -43,6 +43,10 @@ export type WarningCode =
   // and MNX states one of each for the whole score.
   | 'unrepresentable:per-staff-key'
   | 'unrepresentable:per-staff-time'
+  // The parts of the score state different keys, or different time signatures,
+  // in the same measure, and MNX states one of each for the whole score.
+  | 'unrepresentable:cross-part-key'
+  | 'unrepresentable:cross-part-time'
   // A chord whose notes are on different staves. MNX states the staff on the
   // event, so one chord cannot straddle two of them.
   | 'unrepresentable:chord-staff'
