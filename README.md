@@ -13,9 +13,15 @@ Group's JSON successor format.
 
 ## Install
 
+Not on the npm registry yet; until the first release is published, use a
+clone of this repository. Once published:
+
 ```bash
 npm install ossia   # or: pnpm add ossia
 ```
+
+The library core is isomorphic (browser and Node); the command line needs
+Node 20.19, 22.13, or 24 and later.
 
 ---
 
@@ -106,7 +112,11 @@ It accepts `.musicxml`, `.xml` and `.mxl`. Conversion to MNX is the default;
 an explicit `ossia to-mnx song.mxl` does the same thing. A file it refuses is reported and
 the rest go on. `--fail-on-loss` is the gate a lossless pipeline runs on;
 `--report` writes every file's warnings as JSON; `--validate` checks each
-output against the vendored MNX schema.
+output against the vendored MNX schema; `-h` and `-v` print help and version.
+
+The exit code is the pipeline contract: 0 when every file converted (and,
+under `--fail-on-loss`, losslessly), 1 when a file was refused, failed
+validation, or lost notation the flag gates on, and 2 for a usage error.
 
 ---
 
@@ -155,7 +165,9 @@ Barlines, repeat signs, and first and second time endings. MusicXML hangs these
 off one element at the edge of a measure and marks an ending's two ends several
 measures apart; MNX states them on the score's measure, an ending as the number
 of measures it covers. A segno sign is placed on its measure at the point the
-cursor has reached, carrying the specific glyph the source names.
+cursor has reached, carrying the specific glyph the source names; a Fine and a
+dal segno jump are stated on their measures, the jump as D.S. al Fine where a
+Fine sits on the way back.
 
 Accidentals: the note whose accidental the source draws is marked, and the
 document declares once that it states accidental display, so a reader takes
@@ -202,11 +214,11 @@ grouping the source never wrote.
 
 ## Tested against real scores
 
-Every file below is run through the converter and held to three checks: the
-output validates against the vendored MNX schema, its pitches match the
-source note for note, per measure and voice, and each measure sounds as long
-as the source says. A file either passes all three or is refused with a
-stated reason; none converts to wrong output. Counts are from the corpora as
+Every file below is run through the converter and held to four checks: it
+converts at all, the output validates against the vendored MNX schema, its
+pitches match the source note for note, per measure and voice, and each
+measure sounds as long as the source says. A file either passes all four or
+is refused with a stated reason; none converts to wrong output. Counts are from the corpora as
 of July 2026; the Lieder corpus keeps growing, and the gate meets it at its
 tip.
 
@@ -232,8 +244,8 @@ other in a single voice, which the converter refuses rather than guesses
 apart.
 
 Six hundred of the Lieder songs are vendored into the repository and convert
-on every test run; the full Lieder corpus gate runs weekly in CI and before
-every release.
+on every test run; the full Lieder corpus gate runs weekly in CI and on
+demand, so it can be run before tagging a release.
 
 ---
 
