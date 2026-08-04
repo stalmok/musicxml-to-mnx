@@ -1,6 +1,6 @@
 # The full-corpus gate: every OpenScore Lieder file through the converter,
-# held to the same source-independent checks the vendored fifty get, over the
-# whole corpus rather than a sample. It fetches ~1,500 files and takes minutes,
+# held to the same source-independent checks the vendored corpus gets, over
+# the whole corpus rather than a sample. It fetches ~1,500 files and takes minutes,
 # so it does not run per push. It runs weekly, catching a regression against
 # real music between releases, and on demand, so a maintainer runs it before
 # tagging a release as part of the deliberate release process.

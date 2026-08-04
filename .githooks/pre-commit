@@ -3,9 +3,9 @@
 # coverage thresholds) must all pass before a commit is created. Mirrors the
 # manual workflow in CLAUDE.md so broken code can't slip through.
 #
-# The test step excludes the 200-song vendored corpus, which converts every
+# The test step excludes the vendored corpus, which converts every vendored
 # song on every run and takes minutes; the fast suite still holds coverage
-# above its thresholds. The full corpus runs in CI on every push and pull
+# above its thresholds. The vendored corpus runs in CI on every push and pull
 # request (pnpm test:coverage), and can be run locally the same way or with
 # pnpm test:corpus.
 #

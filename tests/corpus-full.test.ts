@@ -2,7 +2,7 @@
 //
 // Runs every MusicXML file under a directory through the converter and holds
 // the output to the same source-independent checks the vendored corpus test
-// applies to its fifty, over the whole of the OpenScore Lieder corpus rather
+// applies to its songs, over the whole of the OpenScore Lieder corpus rather
 // than a sample. It is not run per commit: it fetches ~1,500 files and takes
 // minutes, so it stays skipped unless OSSIA_CORPUS points at a directory of
 // scores, which the corpus workflow sets after cloning the corpus and a
