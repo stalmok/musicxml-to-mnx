@@ -32,9 +32,9 @@ export default tseslint.config(
         {
           patterns: [
             {
-              group: ['**/write/*', '**/types/mnx*'],
+              group: ['**/write/*', '**/types/mnx*', '../convert.js', '../container.js'],
               message:
-                'The reader produces the neutral score model, so it must not know the MNX output shape.',
+                'The reader produces the neutral score model, so it must not know the MNX output shape, the pipeline, or the packaging layer.',
             },
           ],
         },
@@ -50,9 +50,9 @@ export default tseslint.config(
         {
           patterns: [
             {
-              group: ['**/read/*', '**/xml/*'],
+              group: ['**/read/*', '**/xml/*', '../convert.js', '../container.js'],
               message:
-                'The writer consumes the neutral score model, so it must not know MusicXML or the XML layer.',
+                'The writer consumes the neutral score model, so it must not know MusicXML, the XML layer, the pipeline, or the packaging layer.',
             },
           ],
         },
@@ -61,8 +61,9 @@ export default tseslint.config(
   },
   {
     // The model is the boundary object both stages share: it depends on
-    // neither of them, which is what keeps it a boundary.
-    files: ['src/model/**', 'src/xml/**', 'src/types/**'],
+    // neither of them, and not on the MNX types either, which is what keeps
+    // it a boundary.
+    files: ['src/model/**'],
     ignores: ['src/**/*.test.ts'],
     rules: {
       'no-restricted-imports': [
@@ -70,8 +71,54 @@ export default tseslint.config(
         {
           patterns: [
             {
-              group: ['**/read/*', '**/write/*', '../convert.js'],
-              message: 'Leaf modules must not import stage implementations.',
+              group: [
+                '**/read/*',
+                '**/write/*',
+                '**/types/*',
+                '**/xml/*',
+                '../convert.js',
+                '../container.js',
+              ],
+              message:
+                'The model depends on neither stage, the MNX types, nor the XML layer; that is what keeps it a boundary.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // Generic leaves: the XML layer knows no music, and the MNX types know
+    // only the wire format. Neither may reach back into the pipeline.
+    files: ['src/xml/**', 'src/types/**'],
+    ignores: ['src/**/*.test.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/read/*', '**/write/*', '**/model/*', '../convert.js', '../container.js'],
+              message: 'Leaf modules must not import stage implementations or the model.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // The command is a consumer of the library, not a fourth stage: it goes
+    // through the public API alone, like any other user of the package.
+    files: ['cli/**'],
+    ignores: ['cli/**/*.test.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['../src/**', '!../src/index.js'],
+              message: 'The command uses the library through its public API (src/index.js) only.',
             },
           ],
         },
