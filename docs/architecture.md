@@ -43,6 +43,7 @@ src/
   xml/                 element tree with source line numbers, typed accessors
   read/                MusicXML semantics, one file per concern
     score.ts           the score, its parts, and the walk through a measure
+    part-groups.ts     <part-group> edges into the instrument grouping tree
     attributes.ts      divisions, staves, key, time, clef
     notes.ts           a <note>: pitch, value, ties, slurs, accidentals
     voices.ts          the cursor, and one sequence per voice

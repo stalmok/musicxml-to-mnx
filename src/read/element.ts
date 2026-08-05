@@ -13,7 +13,7 @@
 
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
-import { child, children } from '../xml/tree.js'
+import { attribute, child, children } from '../xml/tree.js'
 import { elementLoss } from './unrepresentable.js'
 
 export class ElementReader {
@@ -94,4 +94,20 @@ export class ElementReader {
       for (const block of blocks) block.reportUnread(warnings, context)
     }
   }
+}
+
+/**
+ * The drawn text of a named child element, or undefined where the source
+ * gives none. An empty element states no name, and one hidden with
+ * print-object="no" is one the source chose not to draw; the MNX homes these
+ * feed are optional, so either is omitted rather than drawn.
+ *
+ * Takes the first child of the name; callers use it for elements MusicXML
+ * allows at most once (<part-name>, <group-name>).
+ */
+export function drawnName(reader: ElementReader, tag: string): string | undefined {
+  const element = reader.child(tag)
+  const text = element?.text.trim()
+  const hidden = element !== undefined && attribute(element, 'print-object') === 'no'
+  return text && !hidden ? text : undefined
 }

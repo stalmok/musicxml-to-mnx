@@ -367,7 +367,7 @@ export interface MNXPartMeasure {
 }
 
 export interface MNXPart {
-  /** Written only when a layout's staff sources point at the part. */
+  /** Written on every part once the document writes layouts. */
   id?: string
   name?: string
   /** The abbreviated name, drawn on systems after the first. */

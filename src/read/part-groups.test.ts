@@ -4,6 +4,7 @@
 // naming the part it draws.
 
 import { describe, expect, test } from 'vitest'
+import { MusicXMLError } from '../errors.js'
 import { convertMusicXML } from '../index.js'
 import { schemaErrors } from '../../tests/support/schema.js'
 
@@ -218,7 +219,120 @@ describe('part groups', () => {
     if (group?.type !== 'group') throw new Error('expected a staff group')
     expect(group.content).toEqual([{ type: 'staff', sources: [{ part: 'P1' }] }])
     expect(warnings).toEqual([
+      expect.objectContaining({
+        code: 'unresolved:part-id',
+        element: 'score-part',
+        context: expect.objectContaining({
+          part: 'P2',
+          line: expect.any(Number) as unknown,
+        }) as unknown,
+      }),
+    ])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // A group around nothing draws nothing, so it is left out; here that
+  // leaves no group at all, and with it goes the layout.
+  test('writes no layout when every group ends up empty', () => {
+    const { mnx, warnings } = convertMusicXML(
+      score(
+        '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
+          '<part-group type="stop" number="1"/>' +
+          '<score-part id="P1"/>',
+        part('P1'),
+      ),
+    )
+
+    expect('layouts' in mnx).toBe(false)
+    expect(mnx.parts.every((p) => !('id' in p))).toBe(true)
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  test('drops a group emptied by pruning but keeps the rest of the layout', () => {
+    const { mnx, warnings } = convertMusicXML(
+      score(
+        '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
+          '<score-part id="P9"/>' +
+          '<part-group type="stop" number="1"/>' +
+          '<part-group type="start" number="1"><group-symbol>brace</group-symbol></part-group>' +
+          '<score-part id="P1"/><score-part id="P2"/>' +
+          '<part-group type="stop" number="1"/>',
+        part('P1') + part('P2'),
+      ),
+    )
+
+    expect(mnx.layouts?.[0]?.content).toEqual([
+      {
+        type: 'group',
+        symbol: 'brace',
+        content: [
+          { type: 'staff', sources: [{ part: 'P1' }] },
+          { type: 'staff', sources: [{ part: 'P2' }] },
+        ],
+      },
+    ])
+    expect(warnings).toEqual([
       expect.objectContaining({ code: 'unresolved:part-id', element: 'score-part' }),
+    ])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  test('nests a group whose only member is another group', () => {
+    const { mnx, warnings } = convertMusicXML(
+      score(
+        '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
+          '<part-group type="start" number="2"><group-symbol>brace</group-symbol></part-group>' +
+          '<score-part id="P1"/><score-part id="P2"/>' +
+          '<part-group type="stop" number="2"/>' +
+          '<part-group type="stop" number="1"/>',
+        part('P1') + part('P2'),
+      ),
+    )
+
+    const outer = mnx.layouts?.[0]?.content[0]
+    if (outer?.type !== 'group') throw new Error('expected a staff group')
+    expect(outer.symbol).toBe('bracket')
+    expect(outer.content).toHaveLength(1)
+    expect(outer.content[0]?.type).toBe('group')
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // A part the list never mentions cannot be grouped, so the layout omits
+  // it; the id is still written, like every part's once a layout exists.
+  test('gives an unlisted part an id even though the layout omits it', () => {
+    const { mnx } = convertMusicXML(
+      score(
+        '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
+          '<score-part id="P1"/><score-part id="P2"/>' +
+          '<part-group type="stop" number="1"/>',
+        part('P1') + part('P2') + part('P3'),
+      ),
+    )
+
+    expect(mnx.parts.map((p) => p.id)).toEqual(['P1', 'P2', 'P3'])
+    const layout = JSON.stringify(mnx.layouts)
+    expect(layout).not.toContain('P3')
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // The gate on writing a layout is a surviving group, not the absence of
+  // failures: a stop nothing opened is reported while the sound group stays.
+  test('keeps the layout when one group survives an orphan stop', () => {
+    const { mnx, warnings } = convertMusicXML(
+      score(
+        '<part-group type="stop" number="7"/>' +
+          '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
+          '<score-part id="P1"/><score-part id="P2"/>' +
+          '<part-group type="stop" number="1"/>',
+        part('P1') + part('P2'),
+      ),
+    )
+
+    expect(mnx.layouts?.[0]?.content).toHaveLength(1)
+    expect(warnings).toEqual([
+      expect.objectContaining({ code: 'unclosed:part-group', element: 'part-group' }),
     ])
     expect(schemaErrors(mnx)).toEqual([])
   })
@@ -245,9 +359,72 @@ describe('part groups', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 
+  // The type attribute is what pairs the two edges, so an edge without one
+  // is structurally broken input, refused rather than guessed at.
+  test('refuses a part-group with no type', () => {
+    const source = score('<part-group number="1"/><score-part id="P1"/>', part('P1'))
+
+    expect(() => convertMusicXML(source)).toThrow(MusicXMLError)
+    expect(() => convertMusicXML(source)).toThrow('missing a "type" attribute')
+  })
+
+  test('refuses a part-group whose type is neither start nor stop', () => {
+    const source = score(
+      '<part-group type="continue" number="1"/><score-part id="P1"/>',
+      part('P1'),
+    )
+
+    expect(() => convertMusicXML(source)).toThrow(MusicXMLError)
+    expect(() => convertMusicXML(source)).toThrow('"start" or "stop"')
+  })
+
+  // A value outside yes/no/Mensurstrich is invalid input, reported the same
+  // way an unrecognized <bar-style> is.
+  test('reports a group-barline value it does not recognize', () => {
+    const { mnx, warnings } = convertMusicXML(
+      score(
+        '<part-group type="start" number="1"><group-barline>maybe</group-barline></part-group>' +
+          '<score-part id="P1"/><score-part id="P2"/>' +
+          '<part-group type="stop" number="1"/>',
+        part('P1') + part('P2'),
+      ),
+    )
+
+    const group = mnx.layouts?.[0]?.content[0]
+    if (group?.type !== 'group') throw new Error('expected a staff group')
+    expect('barlineStyle' in group).toBe(false)
+    expect(warnings).toEqual([
+      expect.objectContaining({ code: 'unsupported:element', element: 'group-barline' }),
+    ])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // A value that is not a symbol MusicXML names is invalid input, not a
+  // symbol MNX lacks, and the two read differently in the loss report.
+  test('reports a group-symbol value it does not recognize as invalid, not as a format limit', () => {
+    const { mnx, warnings } = convertMusicXML(
+      score(
+        '<part-group type="start" number="1"><group-symbol>squiggle</group-symbol></part-group>' +
+          '<score-part id="P1"/><score-part id="P2"/>' +
+          '<part-group type="stop" number="1"/>',
+        part('P1') + part('P2'),
+      ),
+    )
+
+    const group = mnx.layouts?.[0]?.content[0]
+    if (group?.type !== 'group') throw new Error('expected a staff group')
+    expect('symbol' in group).toBe(false)
+    expect(warnings).toEqual([
+      expect.objectContaining({ code: 'unsupported:element', element: 'group-symbol' }),
+    ])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
   // Two groups can cross: the first stops while the second is still open,
-  // which no tree can hold. The crossed group runs to the end of the part
-  // list instead, and the crossing is reported once.
+  // which MusicXML allows (the number attribute exists to tell overlapping
+  // groups apart) but MNX's layout tree cannot hold. The crossed group runs
+  // to the end of the part list instead, and the overlap is reported once,
+  // as a format limit rather than a fault of the source.
   test('reports crossed group edges and runs the crossed group to the end', () => {
     const { mnx, warnings } = convertMusicXML(
       score(
@@ -281,8 +458,9 @@ describe('part groups', () => {
     ])
     expect(warnings).toEqual([
       expect.objectContaining({
-        code: 'unclosed:part-group',
+        code: 'unrepresentable:part-group-overlap',
         message: expect.stringContaining('cross') as unknown,
+        context: expect.objectContaining({ line: expect.any(Number) as unknown }),
       }),
     ])
     expect(schemaErrors(mnx)).toEqual([])

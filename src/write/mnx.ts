@@ -87,7 +87,8 @@ export function writeMnx(score: Score): MNXDocument {
       ),
     },
     ...(layouts ? { layouts } : {}),
-    // A part carries its id only while a layout's staff sources point at it.
+    // Every part carries its id once a layout is written, so the layout's
+    // staff sources have something to point at.
     parts: score.parts.map((part) =>
       writePart(part, survey.referenced, survey.measureIds, layouts !== undefined),
     ),
@@ -112,7 +113,10 @@ function writeGroupingItem(
   if (item.kind === 'part') {
     // Each staff of a multi-staff part is its own staff in the system,
     // naming which staff of the part it draws.
-    const count = staves.get(item.part) ?? 1
+    const count = staves.get(item.part)
+    /* v8 ignore next 2 -- the reader prunes every grouping part the score
+       does not write, so the map covers the whole grouping. */
+    if (count === undefined) throw new Error('A layout staff points at a part with no staves.')
     if (count === 1) return [{ type: 'staff', sources: [{ part: item.part }] }]
     return Array.from({ length: count }, (_, index) => ({
       type: 'staff',
