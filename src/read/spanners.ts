@@ -88,11 +88,15 @@ export interface SpanEnd<T> {
  *
  * Several may carry the same number at once, so each number holds a stack and
  * a stop closes the most recently opened.
+ *
+ * A stop whose covered point falls before its start is reported as a
+ * backwards-stop rather than joined: the joined span would end before it
+ * starts, which no consumer accepts.
  */
 export function pairSpans<T>(
   ends: readonly SpanEnd<T>[],
   join: (payload: T, stop: SpanEnd<T>) => void,
-  report: (reason: 'orphan-stop' | 'unclosed-start', end: SpanEnd<T>) => void,
+  report: (reason: 'orphan-stop' | 'unclosed-start' | 'backwards-stop', end: SpanEnd<T>) => void,
 ): void {
   const open = new Map<string, SpanEnd<T>[]>()
 
@@ -110,6 +114,16 @@ export function pairSpans<T>(
     /* v8 ignore next 2 -- only a start carries a payload, and only a start is
        ever pushed onto the stack this came off. */
     if (started.payload === undefined) throw new Error('A span start with nothing to join.')
+
+    // The stop's cursor sits past the start, or it would not have paired, but
+    // the point it covers can still fall before it, when the two ends
+    // interleave through a backup or forward. A stop never pairs with a start
+    // in a later measure, so only a stop in the start's own measure can cover
+    // a point before it.
+    if (end.measure === started.measure && compareFractions(end.covers, started.position) < 0) {
+      report('backwards-stop', end)
+      continue
+    }
 
     join(started.payload, end)
   }
@@ -305,22 +319,27 @@ export class SpannerResolver {
 
   /** Joins every hairpin in the part, once all of both ends are in. */
   #resolveWedges(warnings: WarningCollector): void {
+    // MNX allows a gradual mark with no end, so of the three failures only
+    // the orphan stop drops anything whole: a hairpin whose stop is missing
+    // or unusable keeps its mark, and what is lost is how far it runs. Today
+    // a hairpin's stop covers the very point where it is written, so no stop
+    // covers a point before its start; the backwards message is here for
+    // when the two diverge, as an octave shift's do.
+    const messages = {
+      'orphan-stop': 'A hairpin stops where none had started, and is not carried over.',
+      'backwards-stop':
+        'A hairpin would end before it starts, its stop covering a point earlier ' +
+        'than its start, so how far it runs is not carried over.',
+      'unclosed-start':
+        'A hairpin starts where nothing ends it, so how far it runs is not carried over.',
+    }
     pairSpans(
       this.#wedgeEnds,
       (dynamic, stop) => {
         dynamic.end = { measure: stop.measure, position: stop.covers }
       },
       (reason, end) => {
-        warnings.add(
-          'unclosed:spanner',
-          reason === 'orphan-stop'
-            ? 'A hairpin stops where none had started, and is not carried over.'
-            : // MNX allows a gradual mark with no end, so the mark is still
-              // written; what is lost is how far it runs.
-              'A hairpin starts where nothing ends it, so how far it runs is not carried over.',
-          end.context,
-          'wedge',
-        )
+        warnings.add('unclosed:spanner', messages[reason], end.context, 'wedge')
       },
     )
     this.#wedgeEnds.length = 0
@@ -374,24 +393,6 @@ export class SpannerResolver {
     pairSpans(
       this.#ottavaEnds,
       (open, stop) => {
-        // The stop's cursor can sit past the start while the last event it
-        // covers falls before it, when the two ends interleave through a
-        // backup or forward. The end is that last event, so the shift would
-        // run backwards, which no consumer accepts. It is dropped and reported
-        // rather than emitted, the same as one the source never closed.
-        if (
-          stop.measure < open.measure ||
-          (stop.measure === open.measure && compareFractions(stop.covers, open.position) < 0)
-        ) {
-          warnings.add(
-            'unclosed:spanner',
-            'An octave shift would end before it starts, its stop covering an event ' +
-              'earlier than its start, and is not carried over.',
-            stop.context,
-            'octave-shift',
-          )
-          return
-        }
         measures[open.measure]?.push({
           position: open.position,
           end: { measure: stop.measure, position: stop.covers },
@@ -405,7 +406,14 @@ export class SpannerResolver {
           'unclosed:spanner',
           reason === 'orphan-stop'
             ? 'An octave shift stops where none had started, and is not carried over.'
-            : 'An octave shift starts where nothing ends it, and MNX states where one ' +
+            : reason === 'backwards-stop'
+              ? // MNX states the end of a shift as the last event it covers,
+                // and the stop's cursor can pass the start while that event
+                // falls before it. Dropped and reported, the same as one the
+                // source never closed.
+                'An octave shift would end before it starts, its stop covering an event ' +
+                'earlier than its start, and is not carried over.'
+              : 'An octave shift starts where nothing ends it, and MNX states where one ' +
                 'stops, so it is not carried over.',
           end.context,
           'octave-shift',

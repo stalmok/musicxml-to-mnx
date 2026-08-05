@@ -4,9 +4,13 @@
 // ends until their partner turns up, which can be several measures later.
 
 import { describe, expect, test } from 'vitest'
+import { fraction } from '../fraction.js'
+import type { Fraction } from '../fraction.js'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
+import { pairSpans } from './spanners.js'
+import type { SpanEnd } from './spanners.js'
 import { convertMusicXML } from '../index.js'
 import { schemaErrors } from '../../tests/support/schema.js'
 import type { Event, Note } from '../model/score.js'
@@ -488,6 +492,61 @@ describe('spanner markings that are not simply a start or a stop', () => {
     expect(warnings.map((w) => w.message)).toContain(
       'A <tie> of type "bogus" is not converted yet.',
     )
+  })
+})
+
+// The stop of a span can cover a point earlier than where it is written, as
+// an octave shift's stop covers the last event before it. The two ends can
+// interleave through a backup or forward so that the stop sits past the start
+// while the point it covers falls before it; joined, the span would end
+// before it starts.
+describe('pairing the two ends of a span', () => {
+  const spanEnd = (
+    kind: 'start' | 'stop',
+    position: Fraction,
+    covers: Fraction,
+  ): SpanEnd<string> => ({
+    kind,
+    number: '1',
+    measure: 0,
+    position,
+    covers,
+    payload: kind === 'start' ? 'span' : undefined,
+    context: {},
+  })
+
+  test('reports a stop covering a point before its start instead of joining it', () => {
+    const joined: string[] = []
+    const reported: string[] = []
+
+    pairSpans(
+      [
+        spanEnd('start', fraction(3, 4), fraction(3, 4)),
+        spanEnd('stop', fraction(7, 8), fraction(0)),
+      ],
+      (payload) => joined.push(payload),
+      (reason) => reported.push(reason),
+    )
+
+    expect(joined).toEqual([])
+    expect(reported).toEqual(['backwards-stop'])
+  })
+
+  test('joins a stop covering the very point where its start sits', () => {
+    const joined: string[] = []
+    const reported: string[] = []
+
+    pairSpans(
+      [
+        spanEnd('start', fraction(3, 4), fraction(3, 4)),
+        spanEnd('stop', fraction(7, 8), fraction(3, 4)),
+      ],
+      (payload) => joined.push(payload),
+      (reason) => reported.push(reason),
+    )
+
+    expect(joined).toEqual(['span'])
+    expect(reported).toEqual([])
   })
 })
 

@@ -1107,6 +1107,26 @@ describe('hairpins', () => {
     expect(warnings).toEqual([])
   })
 
+  // The shape that made an octave shift run backwards: start and stop both
+  // arrive through a forward, past the only event. A hairpin ends where its
+  // stop is written, not at the last event before it, so this pair still runs
+  // forwards and is kept.
+  test('keeps a hairpin whose ends arrive through a forward past the only event', () => {
+    const forward = (by: number) => `<forward><duration>${String(by)}</duration></forward>`
+    const body = NOTE + forward(8) + wedge('crescendo') + forward(2) + wedge('stop')
+    const { dynamics, warnings } = readMeasures(body)
+
+    expect(dynamics[0]?.[0]?.position).toEqual({ num: 3, den: 4 })
+    expect(dynamics[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 7, den: 8 } })
+    expect(warnings).toEqual([])
+
+    const { mnx } = convertMusicXML(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        `<attributes><divisions>4</divisions></attributes>${body}</measure></part></score-partwise>`,
+    )
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
   test('closes a hairpin that ends exactly where the next one begins', () => {
     const { dynamics, warnings } = readMeasures(
       wedge('crescendo') + NOTE + wedge('stop') + wedge('diminuendo') + NOTE + wedge('stop'),
