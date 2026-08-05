@@ -68,6 +68,15 @@ export function multiplyFractions(a: Fraction, b: Fraction): Fraction {
   return fraction((a.num / left) * (b.num / right), (a.den / right) * (b.den / left))
 }
 
+export function divideFractions(a: Fraction, b: Fraction): Fraction {
+  // Cross-reduce: numerator against numerator, denominator against
+  // denominator, because dividing inverts b. Division by zero puts the zero
+  // in the denominator, which fraction() rejects.
+  const nums = greatestCommonDivisor(Math.abs(a.num), Math.abs(b.num))
+  const dens = greatestCommonDivisor(a.den, b.den)
+  return fraction((a.num / nums) * (b.den / dens), (a.den / dens) * (b.num / nums))
+}
+
 export function negate(value: Fraction): Fraction {
   return fraction(-value.num, value.den)
 }

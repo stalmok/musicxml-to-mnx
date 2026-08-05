@@ -3,6 +3,7 @@ import { MusicXMLError } from './errors.js'
 import {
   addFractions,
   compareFractions,
+  divideFractions,
   fraction,
   isZero,
   multiplyFractions,
@@ -60,6 +61,23 @@ describe('arithmetic', () => {
     expect(multiplyFractions(fraction(2, 3), fraction(3, 4))).toEqual({ num: 1, den: 2 })
   })
 
+  test('divides fractions', () => {
+    expect(divideFractions(fraction(1, 2), fraction(3, 4))).toEqual({ num: 2, den: 3 })
+  })
+
+  test('divides zero by any value to zero', () => {
+    expect(divideFractions(fraction(0), fraction(3, 4))).toEqual({ num: 0, den: 1 })
+  })
+
+  test('keeps the sign on the numerator when dividing by a negative value', () => {
+    expect(divideFractions(fraction(1, 2), fraction(-3, 4))).toEqual({ num: -2, den: 3 })
+  })
+
+  test('rejects division by zero', () => {
+    expect(() => divideFractions(fraction(1, 2), fraction(0))).toThrow(MusicXMLError)
+    expect(() => divideFractions(fraction(1, 2), fraction(0))).toThrow('Invalid fraction')
+  })
+
   // The reason this module exists: a triplet eighth is 1/12 of a whole note,
   // and three of them have to come to exactly one quarter.
   test('keeps triplets exact where floats would drift', () => {
@@ -93,6 +111,23 @@ describe('staying within exact arithmetic', () => {
     const a = fraction(1, 3 * 2 ** 25)
 
     expect(subtractFractions(a, a)).toEqual({ num: 0, den: 1 })
+  })
+
+  test('divides a value by itself where the plain cross product would overflow', () => {
+    const a = fraction(2 ** 27, 2 ** 26 + 1)
+
+    // Inverting and multiplying without reducing builds this product.
+    expect(a.num * a.den).toBeGreaterThan(Number.MAX_SAFE_INTEGER)
+    expect(divideFractions(a, a)).toEqual({ num: 1, den: 1 })
+  })
+
+  test('divides without building a product it does not need', () => {
+    const a = fraction(2 ** 27, 3)
+    const b = fraction(2 ** 27, 2 ** 26 + 1)
+
+    // Inverting and multiplying without reducing builds this product.
+    expect(a.num * b.den).toBeGreaterThan(Number.MAX_SAFE_INTEGER)
+    expect(divideFractions(a, b)).toEqual({ num: 2 ** 26 + 1, den: 3 })
   })
 })
 

@@ -14,6 +14,7 @@ import type { DocumentPath } from '../errors.js'
 import {
   addFractions,
   compareFractions,
+  divideFractions,
   fraction,
   multiplyFractions,
   subtractFractions,
@@ -152,7 +153,7 @@ function commonestStaff(staves: readonly (number | undefined)[]): number | undef
 function ratioOf(inner: NoteValueQuantity, outer: NoteValueQuantity): Fraction {
   const written = multiplyFractions(fraction(inner.multiple), lengthOf(inner.value))
   const played = multiplyFractions(fraction(outer.multiple), lengthOf(outer.value))
-  return fraction(played.num * written.den, played.den * written.num)
+  return divideFractions(played, written)
 }
 
 /** How long a tuplet's content is written as, before its ratio scales it. */
@@ -279,7 +280,7 @@ export class MeasureBuilder {
         .reduce(multiplyFractions, fraction(1))
       innermost(builder).push({
         kind: 'space',
-        duration: fraction(gap.num * factor.den, gap.den * factor.num),
+        duration: divideFractions(gap, factor),
       })
       builder.end = this.#cursor
     }
@@ -530,7 +531,7 @@ export class MeasureBuilder {
     const factor = builder.openTuplets
       .map((open) => open.ratio)
       .reduce(multiplyFractions, fraction(1))
-    const unit = noteValueOf(fraction(first.num * factor.den, first.den * factor.num))
+    const unit = noteValueOf(divideFractions(first, factor))
     if (!unit) {
       throw new MusicXMLError(
         `A note of a tremolo lasts ${describeLength(first)}, which no note value can write.`,
