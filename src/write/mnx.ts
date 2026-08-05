@@ -23,6 +23,7 @@ import type {
   Note,
   NoteValue,
   Fine,
+  GroupingItem,
   Jump,
   Part,
   Pitch,
@@ -58,8 +59,11 @@ import type {
   MNXFullMeasureRest,
   MNXJump,
   MNXMeasureRhythmicPosition,
+  MNXLayoutStaff,
   MNXRhythmicPosition,
   MNXSegno,
+  MNXStaffGroup,
+  MNXSystemLayout,
   MNXTempo,
 } from '../types/mnx.js'
 
@@ -68,6 +72,7 @@ const MNX_VERSION = 1
 
 export function writeMnx(score: Score): MNXDocument {
   const survey = surveyScore(score)
+  const layouts = writeLayouts(score)
 
   return {
     mnx: {
@@ -81,8 +86,48 @@ export function writeMnx(score: Score): MNXDocument {
         writeGlobalMeasure(measure, survey.measureIds.get(index)),
       ),
     },
-    parts: score.parts.map((part) => writePart(part, survey.referenced, survey.measureIds)),
+    ...(layouts ? { layouts } : {}),
+    // A part carries its id only while a layout's staff sources point at it.
+    parts: score.parts.map((part) =>
+      writePart(part, survey.referenced, survey.measureIds, layouts !== undefined),
+    ),
   }
+}
+
+/**
+ * The instrument grouping as a layout: one system-layout whose content nests
+ * staff groups around staves. Written only when the source draws groups,
+ * because a layout of bare staves states nothing the part list does not.
+ */
+function writeLayouts(score: Score): MNXSystemLayout[] | undefined {
+  if (score.grouping.length === 0) return undefined
+  const staves = new Map(score.parts.map((part) => [part.id, part.staves]))
+  return [{ content: score.grouping.flatMap((item) => writeGroupingItem(item, staves)) }]
+}
+
+function writeGroupingItem(
+  item: GroupingItem,
+  staves: ReadonlyMap<string, number>,
+): (MNXStaffGroup | MNXLayoutStaff)[] {
+  if (item.kind === 'part') {
+    // Each staff of a multi-staff part is its own staff in the system,
+    // naming which staff of the part it draws.
+    const count = staves.get(item.part) ?? 1
+    if (count === 1) return [{ type: 'staff', sources: [{ part: item.part }] }]
+    return Array.from({ length: count }, (_, index) => ({
+      type: 'staff',
+      sources: [{ part: item.part, staff: index + 1 }],
+    }))
+  }
+  return [
+    {
+      type: 'group',
+      ...(item.symbol !== undefined ? { symbol: item.symbol } : {}),
+      ...(item.label !== undefined ? { label: item.label } : {}),
+      ...(item.barlineStyle !== undefined ? { barlineStyle: item.barlineStyle } : {}),
+      content: item.content.flatMap((inner) => writeGroupingItem(inner, staves)),
+    },
+  ]
 }
 
 /**
@@ -230,8 +275,10 @@ function writePart(
   part: Part,
   referenced: ReadonlySet<string>,
   measureIds: ReadonlyMap<number, string>,
+  withId: boolean,
 ): MNXPart {
   return {
+    ...(withId ? { id: part.id } : {}),
     ...(part.name !== undefined ? { name: part.name } : {}),
     ...(part.shortName !== undefined ? { shortName: part.shortName } : {}),
     // One staff is the default, so saying so adds nothing.

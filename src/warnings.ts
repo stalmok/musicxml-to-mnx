@@ -88,6 +88,9 @@ export type WarningCode =
   // of fifths, which is all MNX can state. The signature is dropped; the
   // notes still sound right, because each carries its own alteration.
   | 'unrepresentable:non-traditional-key'
+  // A part group drawn with a symbol MNX's staff-symbol enum lacks (line,
+  // square). The group is kept with no symbol stated.
+  | 'unrepresentable:group-symbol'
 
   // --- The source disagreeing with itself, or omitting what reading it
   //     needs -------------------------------------------------------------
@@ -108,6 +111,9 @@ export type WarningCode =
   | 'unclosed:spanner'
   // A first or second time bracket with only one of its two ends.
   | 'unclosed:ending'
+  // A part group with only one of its two edges: a stop nothing opened is
+  // dropped, and a start nothing stops runs to the end of the part list.
+  | 'unclosed:part-group'
   // A part holds a different number of measures from the score, so it stops
   // before the score does or runs past the end of it.
   | 'inconsistent:measure-count'

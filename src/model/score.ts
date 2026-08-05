@@ -391,6 +391,23 @@ export interface Part {
   measures: readonly Measure[]
 }
 
+/**
+ * One item of the score's instrument grouping: a group drawn with a bracket
+ * or brace around its members, or a part standing on its own. The grouping is
+ * a tree, in score order.
+ */
+export type GroupingItem = ({ kind: 'group' } & PartGroup) | { kind: 'part'; part: string }
+
+export interface PartGroup {
+  /** Undefined where the source's symbol kind has no MNX spelling. */
+  symbol: 'bracket' | 'brace' | 'noSymbol' | undefined
+  /** The name drawn beside the group, where the source gives one. */
+  label: string | undefined
+  /** How barlines run through the group, where the source says. */
+  barlineStyle: 'unified' | 'individual' | 'mensurstrich' | undefined
+  content: readonly GroupingItem[]
+}
+
 export interface Key {
   fifths: number
 }
@@ -518,4 +535,10 @@ export interface Jump {
 export interface Score {
   globalMeasures: readonly GlobalMeasure[]
   parts: readonly Part[]
+  /**
+   * The instrument grouping the part list draws, empty where it draws none.
+   * Ungrouped parts appear as bare items, so a non-empty grouping holds every
+   * part of the score in order.
+   */
+  grouping: readonly GroupingItem[]
 }

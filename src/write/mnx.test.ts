@@ -60,6 +60,7 @@ function scoreOf(
   return {
     globalMeasures: globals,
     parts: [{ id: 'P1', name: undefined, shortName: undefined, staves: 1, measures: [measure] }],
+    grouping: [],
   }
 }
 

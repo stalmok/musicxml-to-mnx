@@ -18,9 +18,11 @@ import type {
   GlobalMeasure,
   Key,
   Fine,
+  GroupingItem,
   Jump,
   Measure,
   Part,
+  PartGroup,
   Score,
   Segno,
   Tempo,
@@ -28,7 +30,7 @@ import type {
 } from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
-import { attribute, children, requireAttribute } from '../xml/tree.js'
+import { attribute, children, requireAttribute, trimmedText } from '../xml/tree.js'
 import { readAttributes } from './attributes.js'
 import { readBarline, resolveEndings } from './barlines.js'
 import { buildBeams } from './beams.js'
@@ -114,7 +116,35 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
     }
   }
 
-  return { globalMeasures, parts: readings.map((reading) => reading.part) }
+  // A staff pointing at a part the score does not hold would dangle, so the
+  // grouping keeps only parts that were written.
+  const written = new Set(readings.map((reading) => reading.part.id))
+  return {
+    globalMeasures,
+    parts: readings.map((reading) => reading.part),
+    grouping: pruneGrouping(partList.grouping, written, warnings),
+  }
+}
+
+function pruneGrouping(
+  items: readonly GroupingItem[],
+  written: ReadonlySet<string>,
+  warnings: WarningCollector,
+): readonly GroupingItem[] {
+  return items.flatMap((item): GroupingItem[] => {
+    if (item.kind === 'part') {
+      if (written.has(item.part)) return [item]
+      warnings.add(
+        'unresolved:part-id',
+        `The part list names part ${item.part}, but the score never writes it, ` +
+          'so no staff of it is drawn.',
+        { part: item.part },
+        'score-part',
+      )
+      return []
+    }
+    return [{ ...item, content: pruneGrouping(item.content, written, warnings) }]
+  })
 }
 
 /**
@@ -288,6 +318,8 @@ interface PartList {
   names: ReadonlyMap<string, string>
   shortNames: ReadonlyMap<string, string>
   listed: ReadonlySet<string>
+  /** The instrument grouping the list draws, empty where it draws none. */
+  grouping: readonly GroupingItem[]
 }
 
 /**
@@ -306,28 +338,174 @@ function drawnName(reader: ElementReader, tag: string): string | undefined {
   return text && !hidden ? text : undefined
 }
 
+/** A part group whose stop has not arrived yet. */
+interface OpenPartGroup {
+  number: string
+  symbol: PartGroup['symbol']
+  label: string | undefined
+  barlineStyle: PartGroup['barlineStyle']
+  content: GroupingItem[]
+  /** Where the start edge is written, for reporting a stop that never comes. */
+  line: number
+  /** Set once a crossing stop was reported, so the close is not reported twice. */
+  crossed?: boolean
+}
+
 function readPartNames(root: ElementReader, warnings: WarningCollector): PartList {
   const names = new Map<string, string>()
   const shortNames = new Map<string, string>()
   const listed = new Set<string>()
 
+  const top: GroupingItem[] = []
+  const open: OpenPartGroup[] = []
+  let groups = 0
+  // Into the innermost group whose stop has not arrived, like the source's
+  // own nesting: a group's members are whatever the list writes between its
+  // two edges.
+  const place = (item: GroupingItem): void => {
+    ;(open.at(-1)?.content ?? top).push(item)
+  }
+
   for (const list of root.blocks('part-list')) {
-    for (const element of list.children('score-part')) {
-      const scorePart = new ElementReader(element)
-      const id = attribute(element, 'id')
-      if (id !== undefined) listed.add(id)
+    // Both kinds are marked read here; the walk below goes through the raw
+    // children instead, because a group's members are decided by document
+    // order across the two kinds.
+    list.children('score-part')
+    list.children('part-group')
+    for (const element of list.element.children) {
+      if (element.name === 'score-part') {
+        const scorePart = new ElementReader(element)
+        const id = attribute(element, 'id')
+        if (id !== undefined) {
+          listed.add(id)
+          place({ kind: 'part', part: id })
+        }
 
-      const name = drawnName(scorePart, 'part-name')
-      const shortName = drawnName(scorePart, 'part-abbreviation')
-      if (id !== undefined) {
-        if (name) names.set(id, name)
-        if (shortName) shortNames.set(id, shortName)
+        const name = drawnName(scorePart, 'part-name')
+        const shortName = drawnName(scorePart, 'part-abbreviation')
+        if (id !== undefined) {
+          if (name) names.set(id, name)
+          if (shortName) shortNames.set(id, shortName)
+        }
+
+        scorePart.reportUnread(warnings, id !== undefined ? { part: id } : {})
+      } else if (element.name === 'part-group') {
+        // A group can nest inside another, told apart by number, like other
+        // paired markers.
+        const group = new ElementReader(element)
+        const type = attribute(element, 'type')
+        const number = attribute(element, 'number') ?? '1'
+        if (type === 'start') {
+          open.push({
+            number,
+            symbol: groupSymbolOf(group, warnings),
+            label: drawnName(group, 'group-name'),
+            barlineStyle: groupBarlineOf(group),
+            content: [],
+            line: element.line,
+          })
+        } else if (type === 'stop') {
+          if (open.at(-1)?.number === number) {
+            const closed = open.pop()
+            if (closed) {
+              place(closedGroup(closed))
+              groups += 1
+            }
+          } else {
+            const crossed = [...open].reverse().find((entry) => entry.number === number)
+            if (crossed) {
+              // The stop arrives while a group started after this one is
+              // still open, so their edges cross, which no tree can hold.
+              // This group runs to the end of the part list instead.
+              crossed.crossed = true
+              warnings.add(
+                'unclosed:part-group',
+                'The edges of two part groups cross. The one stopping here runs to the ' +
+                  'end of the part list instead.',
+                { line: element.line },
+                'part-group',
+              )
+            } else {
+              warnings.add(
+                'unclosed:part-group',
+                'A part group stops where none had started, and draws nothing.',
+                { line: element.line },
+                'part-group',
+              )
+            }
+          }
+        }
+        group.reportUnread(warnings, {})
       }
-
-      scorePart.reportUnread(warnings, id !== undefined ? { part: id } : {})
     }
   }
-  return { names, shortNames, listed }
+
+  // A group whose stop never arrives runs to the end of the list, which is
+  // what a reader drawing the source would do. Innermost first, so nesting
+  // survives the close.
+  for (let closed = open.pop(); closed; closed = open.pop()) {
+    if (!closed.crossed) {
+      warnings.add(
+        'unclosed:part-group',
+        'A part group starts where nothing stops it, and runs to the end of the part list.',
+        { line: closed.line },
+        'part-group',
+      )
+    }
+    place(closedGroup(closed))
+    groups += 1
+  }
+
+  // A grouping without a single group says nothing a plain part list does
+  // not, so none is kept.
+  return { names, shortNames, listed, grouping: groups > 0 ? top : [] }
+}
+
+/** The group as the model holds it, without the number that paired its edges. */
+function closedGroup(open: OpenPartGroup): GroupingItem {
+  return {
+    kind: 'group',
+    symbol: open.symbol,
+    label: open.label,
+    barlineStyle: open.barlineStyle,
+    content: open.content,
+  }
+}
+
+/**
+ * The symbol a group is drawn with. MusicXML's default is "none", which MNX
+ * spells "noSymbol". A <part-group> holds at most one <group-symbol>, so
+ * taking the first with child() is right.
+ */
+function groupSymbolOf(group: ElementReader, warnings: WarningCollector): PartGroup['symbol'] {
+  const element = group.child('group-symbol')
+  const text = element ? trimmedText(element) : 'none'
+  if (text === 'bracket' || text === 'brace') return text
+  if (text === 'none' || text === '') return 'noSymbol'
+  // line and square: the group is kept, with no symbol stated rather than
+  // one the source did not draw.
+  warnings.add(
+    'unrepresentable:group-symbol',
+    `A part group is drawn with a "${text}" symbol, which MNX cannot state. ` +
+      'The group is kept with no symbol.',
+    { line: element?.line ?? group.element.line },
+    'group-symbol',
+  )
+  return undefined
+}
+
+/**
+ * How barlines run through the group. A <part-group> holds at most one
+ * <group-barline>, so taking the first with child() is right.
+ */
+function groupBarlineOf(group: ElementReader): PartGroup['barlineStyle'] {
+  const element = group.child('group-barline')
+  if (!element) return undefined
+  const text = trimmedText(element)
+  if (text === 'yes') return 'unified'
+  if (text === 'no') return 'individual'
+  if (text === 'Mensurstrich') return 'mensurstrich'
+  return undefined
 }
 
 function readPart(

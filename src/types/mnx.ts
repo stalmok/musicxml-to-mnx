@@ -367,12 +367,45 @@ export interface MNXPartMeasure {
 }
 
 export interface MNXPart {
+  /** Written only when a layout's staff sources point at the part. */
+  id?: string
   name?: string
   /** The abbreviated name, drawn on systems after the first. */
   shortName?: string
   /** How many staves the part is written on. Absent means one. */
   staves?: number
   measures: MNXPartMeasure[]
+}
+
+export type MNXStaffSymbol = 'bracket' | 'brace' | 'noSymbol'
+
+export type MNXStaffGroupBarlineStyle = 'individual' | 'instrument' | 'unified' | 'mensurstrich'
+
+export interface MNXStaffSource {
+  part: string
+  /** Which staff of a multi-staff part, counting from 1. Absent means 1. */
+  staff?: number
+}
+
+export interface MNXLayoutStaff {
+  type: 'staff'
+  sources: MNXStaffSource[]
+  symbol?: MNXStaffSymbol
+}
+
+export interface MNXStaffGroup {
+  type: 'group'
+  content: MNXSystemLayoutContent
+  label?: string
+  symbol?: MNXStaffSymbol
+  barlineStyle?: MNXStaffGroupBarlineStyle
+}
+
+export type MNXSystemLayoutContent = (MNXStaffGroup | MNXLayoutStaff)[]
+
+export interface MNXSystemLayout {
+  id?: string
+  content: MNXSystemLayoutContent
 }
 
 export interface MNXKey {
@@ -473,5 +506,7 @@ export interface MNXSupport {
 export interface MNXDocument {
   mnx: { version: number; support?: MNXSupport }
   global: MNXGlobal
+  /** Written only when the source draws instrument groups. */
+  layouts?: MNXSystemLayout[]
   parts: MNXPart[]
 }
