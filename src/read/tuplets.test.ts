@@ -105,6 +105,52 @@ describe('tuplet display', () => {
     expect(item.showValue).toBe('both')
     expect(schemaErrors(mnx)).toEqual([])
   })
+
+  // Two tuplets may start on the same note, told apart by number, and each
+  // start marker carries its own display attributes.
+  test('gives each of two tuplets starting on the same note its own display', () => {
+    const innerNote = (step: string, markers = ''): string =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+      '<duration>4</duration><type>eighth</type>' +
+      '<time-modification><actual-notes>9</actual-notes><normal-notes>4</normal-notes>' +
+      '</time-modification>' +
+      (markers ? `<notations>${markers}</notations>` : '') +
+      '</note>'
+    const outerNote = (step: string, markers = ''): string =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+      '<duration>12</duration><type>quarter</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+      '</time-modification>' +
+      (markers ? `<notations>${markers}</notations>` : '') +
+      '</note>'
+    const source =
+      '<score-partwise><part id="P1"><measure number="1">' +
+      '<attributes><divisions>18</divisions></attributes>' +
+      innerNote(
+        'C',
+        '<tuplet type="start" number="1" bracket="yes" show-number="both"/>' +
+          '<tuplet type="start" number="2" bracket="no" show-number="none"/>',
+      ) +
+      innerNote('D') +
+      innerNote('E', '<tuplet type="stop" number="2"/>') +
+      outerNote('F') +
+      outerNote('G', '<tuplet type="stop" number="1"/>') +
+      '</measure></part></score-partwise>'
+
+    const { mnx } = convertMusicXML(source)
+    const outer = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
+    if (!outer || !('type' in outer) || outer.type !== 'tuplet')
+      throw new Error('expected a tuplet')
+    const inner = outer.content[0]
+    if (!inner || !('type' in inner) || inner.type !== 'tuplet')
+      throw new Error('expected a tuplet')
+
+    expect(outer.bracket).toBe('yes')
+    expect(outer.showNumber).toBe('both')
+    expect(inner.bracket).toBe('no')
+    expect(inner.showNumber).toBe('noNumber')
+    expect(schemaErrors(mnx)).toEqual([])
+  })
 })
 
 describe('tuplets', () => {

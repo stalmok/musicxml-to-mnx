@@ -218,11 +218,11 @@ export function readNote(
     )
     readArpeggio(notations, voice, builder)
     readTies(element, chordNote, voice, state, warnings, context, tieds)
-    closeTuplets(builder, voice, tupletBrackets(notations), warnings, context, path, element.line)
+    closeTuplets(builder, voice, tupletMarkers(notations), warnings, context, path, element.line)
     return
   }
 
-  const brackets = tupletBrackets(notations)
+  const markers = tupletMarkers(notations)
 
   // A tremolo written across two notes gives each of them the value of the
   // pair while the pair lasts only one of them. The pair is gathered into
@@ -238,15 +238,15 @@ export function readNote(
   // A tuplet is bracketed in the source, and that bracket is what says where
   // one ends and the next begins. Without it there is nothing to group by,
   // and guessing would invent a grouping the source never wrote.
-  if (ratio && brackets.length === 0 && !builder.insideTuplet(voice) && !tremolo) {
+  if (ratio && markers.length === 0 && !builder.insideTuplet(voice) && !tremolo) {
     throw new MusicXMLError(
       'A note carries a tuplet ratio but no <tuplet> bracket marks where the tuplet runs.',
       { path, line: element.line },
     )
   }
 
-  for (const bracket of brackets) {
-    if (bracket === 'start') {
+  for (const marker of markers) {
+    if (attribute(marker, 'type') === 'start') {
       if (!ratio) {
         throw new MusicXMLError('A tuplet starts on a note with no <time-modification>.', {
           path,
@@ -258,7 +258,7 @@ export function readNote(
         voice,
         quantities.inner,
         quantities.outer,
-        tupletDisplayOf(notations),
+        tupletDisplayOf(marker),
         path,
         element.line,
       )
@@ -420,7 +420,7 @@ export function readNote(
   if (tremolo?.type === 'stop') {
     builder.closeTremolo(voice, tremolo.marks, warnings, context, path, element.line)
   }
-  closeTuplets(builder, voice, brackets, warnings, context, path, element.line)
+  closeTuplets(builder, voice, markers, warnings, context, path, element.line)
 }
 
 /**
@@ -457,14 +457,15 @@ function readEventSpanners(
 function closeTuplets(
   builder: MeasureBuilder,
   voice: string | undefined,
-  brackets: readonly string[],
+  markers: readonly XmlElement[],
   warnings: WarningCollector,
   context: WarningContext,
   path: DocumentPath,
   line: number,
 ): void {
-  for (const bracket of brackets) {
-    if (bracket === 'stop') builder.closeTuplet(voice, warnings, context, path, line)
+  for (const marker of markers) {
+    if (attribute(marker, 'type') === 'stop')
+      builder.closeTuplet(voice, warnings, context, path, line)
   }
 }
 
@@ -974,15 +975,14 @@ function multiNoteTremoloOf(
 }
 
 /**
- * The tuplet brackets a note carries, in the order they are written. A note
+ * The <tuplet> markers a note carries, in the order they are written. A note
  * may hold several <notations> blocks, and exporters use that: a tie in one,
- * a tuplet marker in another.
+ * a tuplet marker in another. One block may also hold several markers, as
+ * when two nested tuplets start on the same note, so this reads children()
+ * rather than the first child.
  */
-function tupletBrackets(notations: readonly ElementReader[]): readonly string[] {
-  return notations
-    .flatMap((block) => block.children('tuplet'))
-    .map((tuplet) => attribute(tuplet, 'type'))
-    .filter((type): type is string => type !== undefined)
+function tupletMarkers(notations: readonly ElementReader[]): readonly XmlElement[] {
+  return notations.flatMap((block) => block.children('tuplet'))
 }
 
 // MusicXML's show-number/show-type values in MNX's. "actual" is the played
@@ -994,16 +994,13 @@ const TUPLET_DISPLAY = new Map<string, TupletDisplay>([
 ])
 
 /**
- * What the start `<tuplet>` bracket says about how the tuplet is drawn: whether
+ * What a start `<tuplet>` marker says about how its tuplet is drawn: whether
  * a bracket is shown, and whether its number and note value are. Each has a
- * home on the MNX tuplet; absent leaves the renderer to decide.
+ * home on the MNX tuplet; absent leaves the renderer to decide. Each start
+ * marker states its own tuplet's display, so two tuplets starting on the
+ * same note keep their own settings.
  */
-function tupletDisplayOf(notations: readonly ElementReader[]): TupletDisplaySettings {
-  const start = notations
-    .flatMap((block) => block.children('tuplet'))
-    .find((tuplet) => attribute(tuplet, 'type') === 'start')
-  if (!start) return {}
-
+function tupletDisplayOf(start: XmlElement): TupletDisplaySettings {
   const settings: TupletDisplaySettings = {}
 
   const bracket = attribute(start, 'bracket')
