@@ -45,6 +45,13 @@ export interface TupletDisplaySettings {
   showValue?: TupletDisplay
 }
 
+/** One tuplet start read from a note: how it is drawn, and the ratio its
+ * start marker states of its own, when it states one. */
+export interface TupletStart {
+  display: TupletDisplaySettings
+  stated: { inner: NoteValueQuantity; outer: NoteValueQuantity } | undefined
+}
+
 /** The name a voice goes under when the source does not give it one. */
 const UNNAMED_VOICE = ''
 
@@ -173,6 +180,94 @@ function writtenLengthOf(items: readonly SequenceItem[]): Fraction {
     }
   }
   return total
+}
+
+interface TupletLevel {
+  inner: NoteValueQuantity
+  outer: NoteValueQuantity
+  display: TupletDisplaySettings
+}
+
+/**
+ * The ratio each tuplet level opening on one note states, outermost first.
+ *
+ * A note's <time-modification> is cumulative: inside nested tuplets it states
+ * the combined ratio of every level, not each one's own. Where every share is
+ * known - each start marker states its ratio, or all but one do and the last
+ * takes what remains - the markers are used, provided they multiply out to
+ * what the <time-modification> requires. Otherwise each level is recovered by
+ * division: the outermost open level keeps the cumulative ratio exactly as
+ * the source writes it, and each further level divides out what is already
+ * open. That division cannot split the cumulative ratio between two levels
+ * opening on the same note, which is what the markers are for.
+ *
+ * The notes' durations follow the <time-modification>, so it governs timing.
+ * Markers whose stated ratios do not multiply out to it disagree with the
+ * notes; the division is kept and the disagreement reported.
+ */
+function tupletLevels(
+  openRatios: readonly Fraction[],
+  inner: NoteValueQuantity,
+  outer: NoteValueQuantity,
+  starts: readonly TupletStart[],
+  warnings: WarningCollector,
+  context: WarningContext,
+  line: number,
+): TupletLevel[] {
+  const enclosing = openRatios.reduce(multiplyFractions, fraction(1))
+  const cumulative = ratioOf(inner, outer)
+  // What the levels opening on this note must multiply to, together.
+  const required = divideFractions(cumulative, enclosing)
+
+  const known = starts.flatMap((start) =>
+    start.stated ? [{ ...start.stated, display: start.display }] : [],
+  )
+  if (known.length > 0) {
+    const holes = starts.length - known.length
+    const product = known
+      .map((level) => ratioOf(level.inner, level.outer))
+      .reduce(multiplyFractions, fraction(1))
+
+    if (holes === 0 && compareFractions(product, required) === 0) {
+      return known
+    }
+    if (holes === 1) {
+      const rest = divideFractions(required, product)
+      return starts.map((start) => ({
+        ...(start.stated ?? {
+          inner: { value: inner.value, multiple: rest.den },
+          outer: { value: outer.value, multiple: rest.num },
+        }),
+        display: start.display,
+      }))
+    }
+    warnings.add(
+      'inconsistent:tuplet',
+      "A tuplet's start marker states a ratio that disagrees with the notes' " +
+        '<time-modification>. The ratio the notes state is the one converted.',
+      { ...context, line },
+      'tuplet',
+    )
+  }
+
+  const levels: TupletLevel[] = []
+  let open = enclosing
+  let depth = openRatios.length
+  for (const start of starts) {
+    let level: TupletLevel = { inner, outer, display: start.display }
+    if (depth > 0) {
+      const perLevel = divideFractions(cumulative, open)
+      level = {
+        inner: { value: inner.value, multiple: perLevel.den },
+        outer: { value: outer.value, multiple: perLevel.num },
+        display: start.display,
+      }
+    }
+    levels.push(level)
+    open = multiplyFractions(open, ratioOf(level.inner, level.outer))
+    depth += 1
+  }
+  return levels
 }
 
 /** The list a note added now would land in: the innermost one still open. */
@@ -385,14 +480,18 @@ export class MeasureBuilder {
   }
 
   /**
-   * Starts a tuplet in this voice. Notes added after it go inside, until it
-   * is closed.
+   * Starts the tuplets a note opens in this voice, outermost first. Notes
+   * added after them go inside, until each is closed. `inner` and `outer` are
+   * the note's cumulative <time-modification>; each level's own share is
+   * settled by `tupletLevels`.
    */
-  openTuplet(
+  openTuplets(
     voice: string | undefined,
     inner: NoteValueQuantity,
     outer: NoteValueQuantity,
-    display: TupletDisplaySettings,
+    starts: readonly TupletStart[],
+    warnings: WarningCollector,
+    context: WarningContext,
     path: DocumentPath,
     line: number,
   ): void {
@@ -402,42 +501,37 @@ export class MeasureBuilder {
     if (builder.openTremolo) {
       throw new MusicXMLError('A tuplet starts inside a two-note tremolo.', { path, line })
     }
-    // A note's <time-modification> is cumulative: inside nested tuplets it
-    // states the combined ratio of every level, not this one's own. Recover
-    // the per-level ratio by dividing out the ratio of the tuplets already
-    // open around it, so the emitted bracket and tupletFactor each carry one
-    // level. The outermost tuplet has nothing to divide out, so its ratio is
-    // kept exactly as the source writes it.
-    const enclosing = builder.openTuplets
-      .map((open) => open.ratio)
-      .reduce(multiplyFractions, fraction(1))
-    let level = { inner, outer }
-    if (builder.openTuplets.length > 0) {
-      const cumulative = ratioOf(inner, outer)
-      const perLevel = multiplyFractions(cumulative, fraction(enclosing.den, enclosing.num))
-      level = {
-        inner: { value: inner.value, multiple: perLevel.den },
-        outer: { value: outer.value, multiple: perLevel.num },
-      }
-    }
 
-    const content: SequenceItem[] = []
-    const tuplet: Tuplet = {
-      kind: 'tuplet',
-      inner: level.inner,
-      outer: level.outer,
-      content,
-      ...(display.bracket !== undefined ? { bracket: display.bracket } : {}),
-      ...(display.showNumber !== undefined ? { showNumber: display.showNumber } : {}),
-      ...(display.showValue !== undefined ? { showValue: display.showValue } : {}),
-    }
+    const levels = tupletLevels(
+      builder.openTuplets.map((open) => open.ratio),
+      inner,
+      outer,
+      starts,
+      warnings,
+      context,
+      line,
+    )
 
-    // Time this voice has passed over in silence belongs before the bracket,
-    // not inside it, where the tuplet's ratio would scale it.
+    // Time this voice has passed over in silence belongs before the brackets,
+    // not inside them, where the tuplets' ratios would scale it.
     this.#fillGap(builder)
-    innermost(builder).push(tuplet)
-    builder.open.push({ list: content, opened: 'tuplet' })
-    builder.openTuplets.push({ tuplet, ratio: ratioOf(level.inner, level.outer) })
+    for (const level of levels) {
+      const { display } = level
+      const content: SequenceItem[] = []
+      const tuplet: Tuplet = {
+        kind: 'tuplet',
+        inner: level.inner,
+        outer: level.outer,
+        content,
+        ...(display.bracket !== undefined ? { bracket: display.bracket } : {}),
+        ...(display.showNumber !== undefined ? { showNumber: display.showNumber } : {}),
+        ...(display.showValue !== undefined ? { showValue: display.showValue } : {}),
+      }
+
+      innermost(builder).push(tuplet)
+      builder.open.push({ list: content, opened: 'tuplet' })
+      builder.openTuplets.push({ tuplet, ratio: ratioOf(level.inner, level.outer) })
+    }
   }
 
   /**

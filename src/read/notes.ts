@@ -245,24 +245,28 @@ export function readNote(
     )
   }
 
-  for (const marker of markers) {
-    if (attribute(marker, 'type') === 'start') {
-      if (!ratio) {
-        throw new MusicXMLError('A tuplet starts on a note with no <time-modification>.', {
-          path,
-          line: element.line,
-        })
-      }
-      const quantities = readTupletRatio(ratio, element, path)
-      builder.openTuplet(
-        voice,
-        quantities.inner,
-        quantities.outer,
-        tupletDisplayOf(marker),
+  const starts = markers.filter((marker) => attribute(marker, 'type') === 'start')
+  if (starts.length > 0) {
+    if (!ratio) {
+      throw new MusicXMLError('A tuplet starts on a note with no <time-modification>.', {
         path,
-        element.line,
-      )
+        line: element.line,
+      })
     }
+    const quantities = readTupletRatio(ratio, element, path)
+    builder.openTuplets(
+      voice,
+      quantities.inner,
+      quantities.outer,
+      starts.map((marker) => ({
+        display: tupletDisplayOf(marker),
+        stated: statedTupletRatio(marker, quantities, path),
+      })),
+      warnings,
+      context,
+      path,
+      element.line,
+    )
   }
 
   // Opened after any tuplet starting on the same note: the pair may sit
@@ -1015,6 +1019,50 @@ function tupletDisplayOf(start: XmlElement): TupletDisplaySettings {
   if (value !== undefined) settings.showValue = value
 
   return settings
+}
+
+/**
+ * The ratio a start `<tuplet>` marker states of its own, from its
+ * <tuplet-actual> and <tuplet-normal>, or undefined where it states neither.
+ * A note's <time-modification> is cumulative across nested tuplets, so when
+ * two tuplets start on the same note these are what tell each bracket's share
+ * apart. MusicXML allows at most one <tuplet-actual> and one <tuplet-normal>
+ * in a <tuplet>, so child() is right here. What either leaves out defaults to
+ * the <time-modification>, as the spec has it.
+ */
+function statedTupletRatio(
+  marker: XmlElement,
+  fallback: { inner: NoteValueQuantity; outer: NoteValueQuantity },
+  path: DocumentPath,
+): { inner: NoteValueQuantity; outer: NoteValueQuantity } | undefined {
+  const actual = child(marker, 'tuplet-actual')
+  const normal = child(marker, 'tuplet-normal')
+  if (!actual && !normal) return undefined
+  return {
+    inner: tupletPortion(actual, fallback.inner, path),
+    outer: tupletPortion(normal, fallback.outer, path),
+  }
+}
+
+/**
+ * One side of a marker's stated ratio. MusicXML allows at most one
+ * <tuplet-number> and one <tuplet-type> in each portion, so child() is right;
+ * <tuplet-dot> repeats, one per dot.
+ */
+function tupletPortion(
+  portion: XmlElement | undefined,
+  fallback: NoteValueQuantity,
+  path: DocumentPath,
+): NoteValueQuantity {
+  if (!portion) return fallback
+  const number = child(portion, 'tuplet-number')
+  const type = child(portion, 'tuplet-type')
+  return {
+    multiple: number ? readIntegerInRange(number, path, 1, 1_000) : fallback.multiple,
+    value: type
+      ? { base: requireNoteValueBase(type, path), dots: children(portion, 'tuplet-dot').length }
+      : fallback.value,
+  }
 }
 
 /**

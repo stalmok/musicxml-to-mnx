@@ -153,6 +153,167 @@ describe('tuplet display', () => {
   })
 })
 
+// A start marker may carry <tuplet-actual> and <tuplet-normal>, stating its
+// own tuplet's ratio. A note's <time-modification> is cumulative, so when two
+// tuplets start on the same note it cannot say which level takes which share;
+// the markers can.
+describe('tuplet ratios stated on the start marker', () => {
+  const threeInTwoEighths =
+    '<tuplet-actual><tuplet-number>3</tuplet-number><tuplet-type>eighth</tuplet-type>' +
+    '</tuplet-actual>' +
+    '<tuplet-normal><tuplet-number>2</tuplet-number><tuplet-type>eighth</tuplet-type>' +
+    '</tuplet-normal>'
+
+  const note = (
+    step: string,
+    duration: number,
+    actual: number,
+    normal: number,
+    markers = '',
+  ): string =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    `<duration>${String(duration)}</duration><type>eighth</type>` +
+    `<time-modification><actual-notes>${String(actual)}</actual-notes>` +
+    `<normal-notes>${String(normal)}</normal-notes></time-modification>` +
+    (markers ? `<notations>${markers}</notations>` : '') +
+    '</note>'
+
+  // A triplet of eighths nested inside another triplet of eighths, both
+  // brackets starting on the first note. The innermost notes carry the
+  // cumulative 9:4, and each bracket's own 3:2 comes from its start marker.
+  const doubleStart =
+    '<score-partwise><part id="P1"><measure number="1">' +
+    '<attributes><divisions>9</divisions></attributes>' +
+    note(
+      'C',
+      2,
+      9,
+      4,
+      `<tuplet type="start" number="1">${threeInTwoEighths}</tuplet>` +
+        `<tuplet type="start" number="2">${threeInTwoEighths}</tuplet>`,
+    ) +
+    note('D', 2, 9, 4) +
+    note('E', 2, 9, 4, '<tuplet type="stop" number="2"/>') +
+    note('F', 3, 3, 2, '<tuplet type="stop" number="1"/>') +
+    '</measure></part></score-partwise>'
+
+  test('states each of two tuplets starting on the same note as its own ratio', () => {
+    const { mnx, warnings } = convertMusicXML(doubleStart)
+    const outer = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
+    if (!outer || !('type' in outer) || outer.type !== 'tuplet')
+      throw new Error('expected a tuplet')
+    const inner = outer.content[0]
+    if (!inner || !('type' in inner) || inner.type !== 'tuplet')
+      throw new Error('expected a tuplet')
+
+    expect(outer.inner).toEqual({ duration: { base: 'eighth' }, multiple: 3 })
+    expect(outer.outer).toEqual({ duration: { base: 'eighth' }, multiple: 2 })
+    expect(inner.inner).toEqual({ duration: { base: 'eighth' }, multiple: 3 })
+    expect(inner.outer).toEqual({ duration: { base: 'eighth' }, multiple: 2 })
+    expect(
+      warnings.filter(
+        (w) => w.code === 'inconsistent:tuplet' || w.code === 'inconsistent:duration',
+      ),
+    ).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // One marker is enough: the other level's share is what remains of the
+  // cumulative ratio once the stated one is divided out.
+  test('recovers the unmarked of two tuplets starting together from the marked one', () => {
+    const oneMarked =
+      '<score-partwise><part id="P1"><measure number="1">' +
+      '<attributes><divisions>9</divisions></attributes>' +
+      note(
+        'C',
+        2,
+        9,
+        4,
+        `<tuplet type="start" number="1">${threeInTwoEighths}</tuplet>` +
+          '<tuplet type="start" number="2"/>',
+      ) +
+      note('D', 2, 9, 4) +
+      note('E', 2, 9, 4, '<tuplet type="stop" number="2"/>') +
+      note('F', 3, 3, 2, '<tuplet type="stop" number="1"/>') +
+      '</measure></part></score-partwise>'
+    const { content, warnings } = read(oneMarked)
+    const outer = content?.[0]
+    const inner = outer?.kind === 'tuplet' ? outer.content[0] : undefined
+
+    expect(outer?.kind === 'tuplet' && outer.inner).toEqual({
+      value: { base: 'eighth', dots: 0 },
+      multiple: 3,
+    })
+    expect(inner?.kind === 'tuplet' && inner.inner).toEqual({
+      value: { base: 'eighth', dots: 0 },
+      multiple: 3,
+    })
+    expect(inner?.kind === 'tuplet' && inner.outer).toEqual({
+      value: { base: 'eighth', dots: 0 },
+      multiple: 2,
+    })
+    expect(warnings).toEqual([])
+  })
+
+  // The notes' <time-modification> is what the durations follow, so it
+  // governs timing. A start marker stating a different ratio is reported, and
+  // the ratio the notes state is the one converted.
+  test('keeps the ratio the notes state when the marker disagrees, and reports it', () => {
+    const disagreeing =
+      '<tuplet-actual><tuplet-number>5</tuplet-number><tuplet-type>16th</tuplet-type>' +
+      '</tuplet-actual>' +
+      '<tuplet-normal><tuplet-number>4</tuplet-number><tuplet-type>16th</tuplet-type>' +
+      '</tuplet-normal>'
+    const first =
+      '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+      '<duration>4</duration><type>eighth</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+      '</time-modification>' +
+      `<notations><tuplet type="start">${disagreeing}</tuplet></notations></note>`
+    const { content, warnings } = read(
+      measure(first + tupletNote('D', 4, 'eighth') + tupletNote('E', 4, 'eighth', 'stop')),
+    )
+    const tuplet = content?.[0]
+
+    expect(tuplet?.kind === 'tuplet' && tuplet.inner).toEqual({
+      value: { base: 'eighth', dots: 0 },
+      multiple: 3,
+    })
+    expect(tuplet?.kind === 'tuplet' && tuplet.outer).toEqual({
+      value: { base: 'eighth', dots: 0 },
+      multiple: 2,
+    })
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tuplet'])
+    expect(warnings[0]?.message).toContain('start marker')
+  })
+
+  // <tuplet-actual> and <tuplet-normal> may each be left out, and either may
+  // state only its number. What is left out comes from <time-modification>.
+  test('fills what the marker leaves out from the time-modification', () => {
+    const numbersOnly = '<tuplet-actual><tuplet-number>3</tuplet-number></tuplet-actual>'
+    const first =
+      '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+      '<duration>4</duration><type>eighth</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+      '</time-modification>' +
+      `<notations><tuplet type="start">${numbersOnly}</tuplet></notations></note>`
+    const { content, warnings } = read(
+      measure(first + tupletNote('D', 4, 'eighth') + tupletNote('E', 4, 'eighth', 'stop')),
+    )
+    const tuplet = content?.[0]
+
+    expect(tuplet?.kind === 'tuplet' && tuplet.inner).toEqual({
+      value: { base: 'eighth', dots: 0 },
+      multiple: 3,
+    })
+    expect(tuplet?.kind === 'tuplet' && tuplet.outer).toEqual({
+      value: { base: 'eighth', dots: 0 },
+      multiple: 2,
+    })
+    expect(warnings).toEqual([])
+  })
+})
+
 describe('tuplets', () => {
   test('wraps the notes in one tuplet', () => {
     const { content } = read(measure(TRIPLET))
