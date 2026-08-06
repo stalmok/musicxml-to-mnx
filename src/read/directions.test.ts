@@ -575,6 +575,23 @@ describe('sound navigation', () => {
     ])
   })
 
+  // MNX's jump-type has only "segno" and "dsalfine", so the D.C. and coda
+  // navigation a <sound> carries has nowhere to go in any release.
+  test('reports the D.C. and coda navigation of a <sound>, which MNX cannot state', () => {
+    const { warnings } = read(
+      inMeasure(note('C') + '<sound dacapo="yes"/>' + note('D') + '<sound tocoda="coda"/>'),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:element',
+      'unrepresentable:element',
+    ])
+    expect(warnings.map((w) => w.message)).toEqual([
+      'The "dacapo" of a <sound> cannot be expressed in MNX.',
+      'The "tocoda" of a <sound> cannot be expressed in MNX.',
+    ])
+  })
+
   // D.S. al Fine can be written as one <sound> carrying both attributes. Each
   // reaches its own home, and the jump becomes "dsalfine": MusicXML says the
   // al-Fine only through the Fine's presence, not on the dalsegno attribute.
@@ -708,7 +725,12 @@ describe('directions MNX cannot state', () => {
   test('reports a word', () => {
     const { warnings } = read(inMeasure(direction('<words>dolce</words>') + note('C')))
 
-    expect(warnings.map((w) => w.message)).toContain('A <words> direction is not converted yet.')
+    // MNX's only free text is a dynamic's wording and the lyrics, so a text
+    // direction can never be converted.
+    expect(warnings.map((w) => w.code)).toContain('unrepresentable:element')
+    expect(warnings.map((w) => w.message)).toContain(
+      'A <words> direction cannot be expressed in MNX.',
+    )
   })
 
   test('reports a pedal mark', () => {

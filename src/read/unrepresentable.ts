@@ -43,6 +43,37 @@ export function reportHidden(
 const NO_HOME_IN_MNX: ReadonlySet<string> = new Set([
   // Sustain, sostenuto and una corda. The schema has no pedalling of any kind.
   'pedal',
+  // A text instruction such as "dolce" or "rit.". The schema's only free text
+  // is a dynamic's prefix and suffix, and the lyrics; it has no text
+  // direction.
+  'words',
+  // The dashed line that continues an instruction such as "cresc." The schema
+  // has no such line; its "dashed" is a line style of a slur.
+  'dashes',
+  // The coda sign, and the D.C. and to-coda navigation a <sound> carries as
+  // attributes, which readSound reports through this list by attribute name.
+  // The schema has segno and fine, and its jump-type is only "dsalfine" and
+  // "segno"; nothing names or jumps to a coda.
+  'coda',
+  'dacapo',
+  'tocoda',
+  // The shape a notehead is drawn as, such as a diamond or a cross. The
+  // schema's note states pitch, accidental, staff and ties, and nothing about
+  // how the head is drawn.
+  'notehead',
+  // The mark that a note is a cue. The schema's only small note is a grace.
+  'cue',
+  // The ornament family. The schema's event-markings holds a tremolo and no
+  // other ornament: no trill, turn, mordent, wavy line or ornament accidental.
+  'trill-mark',
+  'turn',
+  'inverted-turn',
+  'mordent',
+  'inverted-mordent',
+  'wavy-line',
+  'accidental-mark',
+  // A slide between two notes. The schema's only note-to-note line is a slur.
+  'slide',
   // The line drawn under a melisma, and the one under a held figured bass.
   // MNX's event-lyric-line is a text and a type, with nowhere for either.
   'extend',
@@ -52,6 +83,16 @@ const NO_HOME_IN_MNX: ReadonlySet<string> = new Set([
   'mode',
   'cancel',
   'key-octave',
+  // The work and movement naming the document. The schema has no header:
+  // scores[].name names a score rendering, not the work.
+  'work',
+  'movement-title',
+  'movement-number',
+  // The free text printed on a page, such as the title or the composer's
+  // name. The schema's layouts state staves and systems, and hold no text.
+  'credit',
+  // Page size, scaling and margins. The schema's layouts state no dimensions.
+  'defaults',
 ])
 
 /**

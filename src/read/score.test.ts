@@ -907,7 +907,9 @@ describe('reporting what is not converted', () => {
       ),
     )
 
-    expect(warnings.map((w) => w.message)).toEqual(['<notehead> is not converted yet.'])
+    // A notehead shape has no home in MNX, so the loss is the format's.
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:element'])
+    expect(warnings.map((w) => w.message)).toEqual(['<notehead> cannot be expressed in MNX.'])
   })
 
   // <notations> holds a mixture, and some of it is converted now. Reporting
@@ -926,7 +928,7 @@ describe('reporting what is not converted', () => {
 
     expect(warnings.map((w) => w.message)).toEqual([
       '<technical> is not converted yet.',
-      '<trill-mark> is not converted yet.',
+      '<trill-mark> cannot be expressed in MNX.',
     ])
   })
 

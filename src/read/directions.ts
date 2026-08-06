@@ -409,9 +409,13 @@ export function readSound(
       // from another when matching a jump to the one it goes back to.
       segnoName = attribute(sound.element, 'segno')
     }
+    // Classified by attribute name: the D.C. and coda navigation has no
+    // jump-type to become in any release, while the rest is playback this
+    // converter may yet find a home for.
+    const loss = elementLoss(name)
     warnings.add(
-      'unsupported:element',
-      `The "${name}" of a <sound> is not converted yet.`,
+      loss.code,
+      `The "${name}" of a <sound> ${loss.ending}`,
       { ...context, line: sound.line },
       'sound',
     )
