@@ -83,6 +83,44 @@ describe('the line closing a measure', () => {
 
     expect(globals[0]?.barline).toBeUndefined()
   })
+
+  // MusicXML allows several <barline> elements per measure, one per edge. Two
+  // at the closing edge stating different styles disagree about the one line
+  // MNX can draw there.
+  test('reports a second closing barline stating a different style', () => {
+    const { globals, warnings } = read(
+      NOTE + right('<bar-style>light-heavy</bar-style>') + right('<bar-style>regular</bar-style>'),
+    )
+
+    expect(globals[0]?.barline).toBe('final')
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:barline'])
+    expect(warnings[0]?.context).toEqual({ part: 'P1', measure: 1, line: expect.any(Number) })
+  })
+
+  test('says nothing where a second closing barline restates the same style', () => {
+    const { globals, warnings } = read(
+      NOTE +
+        right('<bar-style>light-heavy</bar-style>') +
+        right('<bar-style>light-heavy</bar-style>'),
+    )
+
+    expect(globals[0]?.barline).toBe('final')
+    expect(warnings).toEqual([])
+  })
+
+  // A left and a right barline are the measure's two edges, not two claims
+  // about one line.
+  test('says nothing about a styled opening repeat beside a styled closing line', () => {
+    const { globals, warnings } = read(
+      left('<bar-style>heavy-light</bar-style><repeat direction="forward"/>') +
+        NOTE +
+        right('<bar-style>light-heavy</bar-style>'),
+    )
+
+    expect(globals[0]?.barline).toBe('final')
+    expect(globals[0]?.repeatStart).toBe(true)
+    expect(warnings).toEqual([])
+  })
 })
 
 describe('repeat signs', () => {

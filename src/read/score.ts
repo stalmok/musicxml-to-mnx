@@ -231,13 +231,23 @@ function mergeGlobalMeasures(
         'time',
       )
     }
+    // A barline is the whole score's: every part is cut at the same place,
+    // and each usually writes the same thing. Parts writing different ones
+    // disagree about the one line MNX can state, so that is reported.
+    if (existing?.barline && measure.barline && existing.barline !== measure.barline) {
+      warnings.add(
+        'unrepresentable:cross-part-barline',
+        'The parts of this score close this measure with different barlines, and MNX ' +
+          'states one for the score. The first stated is the one converted.',
+        context,
+        'barline',
+      )
+    }
     target[index] = {
       key: existing?.key ?? measure.key,
       time: existing?.time ?? measure.time,
       tempos: mergeTempos(existing?.tempos ?? [], measure.tempos),
       number: existing?.number ?? measure.number,
-      // A barline is the whole score's: every part is cut at the same place,
-      // and each writes the same thing, so the first to state one wins.
       barline: existing?.barline ?? measure.barline,
       repeatStart: (existing?.repeatStart ?? false) || measure.repeatStart,
       repeatEnd: existing?.repeatEnd ?? measure.repeatEnd,
@@ -495,6 +505,18 @@ function readMeasure(
 
       case 'barline': {
         const reading = readBarline(reader, warnings, context)
+        // readBarline only returns a style for the closing edge, so two styles
+        // here are two claims about the same line, not a left and right pair.
+        // A restatement of the same style is not a disagreement.
+        if (barline && reading.barline && reading.barline !== barline) {
+          warnings.add(
+            'inconsistent:barline',
+            'Two barlines close this measure with different styles. The first is the ' +
+              'one converted.',
+            { ...context, line: found.line },
+            'barline',
+          )
+        }
         barline ??= reading.barline
         repeatStart ||= reading.repeatStart
         repeatEnd ??= reading.repeatEnd

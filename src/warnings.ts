@@ -47,6 +47,9 @@ export type WarningCode =
   // in the same measure, and MNX states one of each for the whole score.
   | 'unrepresentable:cross-part-key'
   | 'unrepresentable:cross-part-time'
+  // The parts of the score close the same measure with different barlines,
+  // and MNX states one barline for the whole score's measure.
+  | 'unrepresentable:cross-part-barline'
   // A chord whose notes are on different staves. MNX states the staff on the
   // event, so one chord cannot straddle two of them.
   | 'unrepresentable:chord-staff'
@@ -111,6 +114,9 @@ export type WarningCode =
   // The two ends of a two-note tremolo count different beams. The start's
   // count is the one converted.
   | 'inconsistent:tremolo'
+  // Two barlines close the same measure with different styles. The first is
+  // the one converted.
+  | 'inconsistent:barline'
   // A tie or slur has only one of its two ends, so there is nothing to join
   // it to. Real scores contain these, so it is reported rather than refused.
   | 'unclosed:spanner'

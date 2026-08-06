@@ -1140,6 +1140,41 @@ describe('several parts', () => {
     expect(result.globalMeasures[0]?.key).toEqual({ fifths: 2 })
     expect(warnings).toEqual([])
   })
+
+  // A barline is the whole score's, so parts closing the same measure with
+  // different lines disagree about the one MNX can state.
+  test('reports parts closing the same measure with different barlines', () => {
+    const { score: result, warnings } = read(
+      score(
+        '<part id="P1"><measure number="1">' +
+          `${NOTE}<barline location="right"><bar-style>light-heavy</bar-style></barline>` +
+          '</measure></part>' +
+          '<part id="P2"><measure number="1">' +
+          `${NOTE}<barline location="right"><bar-style>light-light</bar-style></barline>` +
+          '</measure></part>',
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.barline).toBe('final')
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-barline'])
+    expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 1 })
+  })
+
+  test('says nothing where the parts restate the same barline', () => {
+    const { score: result, warnings } = read(
+      score(
+        '<part id="P1"><measure number="1">' +
+          `${NOTE}<barline location="right"><bar-style>light-heavy</bar-style></barline>` +
+          '</measure></part>' +
+          '<part id="P2"><measure number="1">' +
+          `${NOTE}<barline location="right"><bar-style>light-heavy</bar-style></barline>` +
+          '</measure></part>',
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.barline).toBe('final')
+    expect(warnings).toEqual([])
+  })
 })
 
 // A tempo belongs to the score, but MusicXML has to write it inside a part,
