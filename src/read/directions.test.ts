@@ -482,6 +482,44 @@ describe('segno', () => {
     expect(global?.segno).toEqual({ location: { num: 0, den: 1 }, glyph: 'segnoSerpent1' })
   })
 
+  test('keeps the color the source draws the sign in', () => {
+    const { global, warnings } = read(inMeasure(direction('<segno color="#FF0000"/>') + note('C')))
+
+    expect(global?.segno?.color).toBe('#FF0000')
+    expect(warnings).toEqual([])
+  })
+
+  // MusicXML writes an alpha channel first, as #AARRGGBB. An alpha of FF is
+  // fully opaque, which is what a color without one already means.
+  test('converts a fully opaque alpha as the plain color it is', () => {
+    const { global, warnings } = read(
+      inMeasure(direction('<segno color="#FFFF0000"/>') + note('C')),
+    )
+
+    expect(global?.segno?.color).toBe('#FF0000')
+    expect(warnings).toEqual([])
+  })
+
+  // MNX's color has no alpha form, so a translucent color is converted opaque
+  // and the alpha is reported.
+  test('reports an alpha channel and converts the color opaque', () => {
+    const { global, warnings } = read(
+      inMeasure(direction('<segno color="#80FF0000"/>') + note('C')),
+    )
+
+    expect(global?.segno?.color).toBe('#FF0000')
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:color'])
+    expect(warnings[0]?.element).toBe('color')
+  })
+
+  test('reports a color that is not a MusicXML color, converting none', () => {
+    const { global, warnings } = read(inMeasure(direction('<segno color="red"/>') + note('C')))
+
+    expect(global?.segno?.color).toBeUndefined()
+    expect(warnings.map((w) => w.code)).toEqual(['unsupported:element'])
+    expect(warnings[0]?.element).toBe('color')
+  })
+
   // MNX draws one segno per measure, so a second at another point is reported
   // and the first kept.
   test('reports a second segno at a different point in the measure', () => {
@@ -502,10 +540,33 @@ describe('segno', () => {
     expect(warnings).toEqual([])
   })
 
+  // Two at the same point drawn differently are two claims about the one sign
+  // MNX states, not a restatement, so the second is reported like one at
+  // another point.
+  test('reports a second segno at the same point drawn in another color', () => {
+    const { global, warnings } = read(
+      inMeasure(direction('<segno color="#FF0000"/>') + direction('<segno/>') + note('C')),
+    )
+
+    expect(global?.segno?.color).toBe('#FF0000')
+    expect(warnings.map((w) => w.element)).toEqual(['segno'])
+    expect(warnings[0]?.message).toContain('more than one segno')
+  })
+
   test('writes a segno the spec schema accepts', () => {
     const { mnx } = convertMusicXML(inMeasure(direction('<segno/>') + note('C')))
 
     expect(mnx.global.measures[0]?.segno).toEqual({ location: { fraction: [0, 1] } })
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  test('writes a segno with its color the spec schema accepts', () => {
+    const { mnx } = convertMusicXML(inMeasure(direction('<segno color="#FF0000"/>') + note('C')))
+
+    expect(mnx.global.measures[0]?.segno).toEqual({
+      location: { fraction: [0, 1] },
+      color: '#FF0000',
+    })
     expect(schemaErrors(mnx)).toEqual([])
   })
 })

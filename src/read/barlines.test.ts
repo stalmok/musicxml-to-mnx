@@ -7,6 +7,8 @@ import { describe, expect, test } from 'vitest'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
+import { convertMusicXML } from '../index.js'
+import { schemaErrors } from '../../tests/support/schema.js'
 
 const NOTE =
   '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
@@ -269,6 +271,77 @@ describe('first and second time endings', () => {
 
 // MusicXML writes the same <fermata> over a note and over a barline, and MNX
 // reads it the same way in both places.
+// MusicXML also lets the sign a D.S. jumps back to sit on the barline itself
+// rather than between the notes as a direction. It is the same sign, so it
+// goes on the score's measure the same way.
+describe('a segno on the barline', () => {
+  test('puts a segno on the opening barline at the start of the measure', () => {
+    const { globals, warnings } = read(left('<segno/>') + NOTE)
+
+    expect(globals[0]?.segno).toEqual({ location: { num: 0, den: 1 } })
+    expect(warnings).toEqual([])
+  })
+
+  test('puts a segno on the closing barline at the end of the measure', () => {
+    const { globals, warnings } = read(NOTE + right('<segno/>'))
+
+    expect(globals[0]?.segno).toEqual({ location: { num: 1, den: 4 } })
+    expect(warnings).toEqual([])
+  })
+
+  test('keeps the glyph and color the source draws it with', () => {
+    const { globals, warnings } = read(
+      left('<segno smufl="segnoSerpent1" color="#FF0000"/>') + NOTE,
+    )
+
+    expect(globals[0]?.segno).toEqual({
+      location: { num: 0, den: 1 },
+      glyph: 'segnoSerpent1',
+      color: '#FF0000',
+    })
+    expect(warnings).toEqual([])
+  })
+
+  // The segno attribute on <barline> names the sign for playback, the same
+  // way <sound segno> names one written as a direction. The name is never
+  // written; it only matches a jump to the sign it returns to.
+  test('names the sign from the segno attribute on the barline', () => {
+    const { globals, warnings } = read(
+      `<barline location="left" segno="verse"><segno/></barline>` + NOTE,
+    )
+
+    expect(globals[0]?.segno).toEqual({ location: { num: 0, den: 1 }, name: 'verse' })
+    expect(warnings).toEqual([])
+  })
+
+  // A sign on the barline and one written as a direction at another point are
+  // two claims about the one segno MNX states per measure.
+  test('reports a second segno where a direction already drew one', () => {
+    const { globals, warnings } = read(
+      '<direction><direction-type><segno/></direction-type></direction>' + NOTE + right('<segno/>'),
+    )
+
+    expect(globals[0]?.segno).toEqual({ location: { num: 0, den: 1 } })
+    expect(warnings.map((w) => w.element)).toEqual(['segno'])
+    expect(warnings[0]?.message).toContain('more than one segno')
+  })
+
+  test('writes a barline segno the spec schema accepts', () => {
+    const { mnx } = convertMusicXML(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        '<attributes><divisions>4</divisions></attributes>' +
+        `${left('<segno color="#FF0000"/>')}${NOTE}` +
+        '</measure></part></score-partwise>',
+    )
+
+    expect(mnx.global.measures[0]?.segno).toEqual({
+      location: { fraction: [0, 1] },
+      color: '#FF0000',
+    })
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+})
+
 describe('a fermata over the barline', () => {
   test('states it on the score’s measure', () => {
     const { globals, warnings } = read(NOTE + right('<fermata type="upright"/>'))
@@ -288,6 +361,17 @@ describe('what a barline can say that MNX cannot', () => {
     )
 
     expect(globals[0]?.barline).toBeUndefined()
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:barline'])
+  })
+
+  // The one warning accounts for the whole partway barline, so a segno on it
+  // is neither converted nor reported a second time.
+  test('reports a partway barline carrying a segno once, converting none of it', () => {
+    const { globals, warnings } = read(
+      NOTE + '<barline location="middle"><segno/></barline>' + NOTE,
+    )
+
+    expect(globals[0]?.segno).toBeUndefined()
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:barline'])
   })
 

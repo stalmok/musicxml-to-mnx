@@ -429,6 +429,7 @@ export interface MNXTempo {
 export interface MNXSegno {
   location: MNXRhythmicPosition
   glyph?: string
+  color?: string
 }
 
 /** A Fine on a measure, where a D.S. or D.C. repeat stops. */

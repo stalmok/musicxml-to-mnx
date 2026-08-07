@@ -11,10 +11,12 @@
 // starts, as how many measures it runs for. Joining those two up is the same
 // shape of problem as a tie, and is done a part at a time in score.ts.
 
-import type { BarlineType, Ending, Fermata, RepeatEnd } from '../model/score.js'
+import type { Fraction } from '../fraction.js'
+import type { BarlineType, Ending, Fermata, RepeatEnd, Segno } from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, trimmedText } from '../xml/tree.js'
+import { readColor } from './color.js'
 import type { ElementReader } from './element.js'
 import { reportHidden } from './unrepresentable.js'
 import { readFermataAt } from './notes.js'
@@ -45,6 +47,8 @@ export interface BarlineReading {
   /** An ending finishing here, and whether it is drawn with a closing hook. */
   endingStop: { open: boolean } | undefined
   fermata: Fermata | undefined
+  /** A segno drawn on the barline, the same sign a direction can carry. */
+  segno: Segno | undefined
 }
 
 const NOTHING: BarlineReading = {
@@ -54,10 +58,12 @@ const NOTHING: BarlineReading = {
   endingStart: undefined,
   endingStop: undefined,
   fermata: undefined,
+  segno: undefined,
 }
 
 export function readBarline(
   element: ElementReader,
+  position: Fraction,
   warnings: WarningCollector,
   context: WarningContext,
 ): BarlineReading {
@@ -76,7 +82,7 @@ export function readBarline(
     )
     // The one warning accounts for the whole element, so what it holds is not
     // reported a second time.
-    element.skip('bar-style', 'repeat', 'ending', 'fermata')
+    element.skip('bar-style', 'repeat', 'ending', 'fermata', 'segno')
     return NOTHING
   }
 
@@ -92,6 +98,36 @@ export function readBarline(
     fermata: atStart
       ? reportOpeningFermata(element, warnings, context)
       : readFermataAt(element.children('fermata'), warnings, context),
+    segno: readSegno(element, position, warnings, context),
+  }
+}
+
+/**
+ * A segno drawn on the barline rather than between the notes as a direction.
+ * It is the same sign, at the measure edge the barline sits on, so it takes
+ * the cursor's position there: the start of the measure at the opening edge,
+ * the end at the closing one. MusicXML allows at most one <segno> per
+ * <barline>, so child() takes the only one there can be.
+ *
+ * The segno attribute on <barline> names the sign for playback, the same way
+ * <sound segno> names one written as a direction, so it is carried the same
+ * way: never written, only matching a jump to the sign it returns to.
+ */
+function readSegno(
+  element: ElementReader,
+  position: Fraction,
+  warnings: WarningCollector,
+  context: WarningContext,
+): Segno | undefined {
+  const segno = element.child('segno')
+  if (!segno) return undefined
+
+  const name = attribute(element.element, 'segno')
+  return {
+    location: position,
+    glyph: attribute(segno, 'smufl'),
+    color: readColor(segno, warnings, context),
+    ...(name !== undefined ? { name } : {}),
   }
 }
 

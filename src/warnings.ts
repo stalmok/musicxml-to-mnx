@@ -50,6 +50,12 @@ export type WarningCode =
   // The parts of the score close the same measure with different barlines,
   // and MNX states one barline for the whole score's measure.
   | 'unrepresentable:cross-part-barline'
+  // The parts of the score state different segnos on the same measure, and
+  // MNX states one segno for the whole score's measure.
+  | 'unrepresentable:cross-part-segno'
+  // A color with an alpha channel other than fully opaque. MNX's color has no
+  // alpha form, so the color is converted opaque and the alpha is not.
+  | 'unrepresentable:color'
   // A chord whose notes are on different staves. MNX states the staff on the
   // event, so one chord cannot straddle two of them.
   | 'unrepresentable:chord-staff'

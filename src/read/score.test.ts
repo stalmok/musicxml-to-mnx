@@ -1179,6 +1179,35 @@ describe('several parts', () => {
     expect(result.globalMeasures[0]?.barline).toBe('final')
     expect(warnings).toEqual([])
   })
+
+  // A segno is the score's navigation mark, restated in each part the same
+  // way, so parts stating different signs disagree about the one MNX states.
+  test('reports parts stating different segnos on the same measure', () => {
+    const segno = (attrs: string) =>
+      `<direction><direction-type><segno${attrs}/></direction-type></direction>`
+    const { score: result, warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${segno(' color="#FF0000"')}${NOTE}</measure></part>` +
+          `<part id="P2"><measure number="1">${segno('')}${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.segno?.color).toBe('#FF0000')
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-segno'])
+    expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 1 })
+  })
+
+  test('says nothing where the parts restate the same segno', () => {
+    const segno = '<direction><direction-type><segno/></direction-type></direction>'
+    const { warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${segno}${NOTE}</measure></part>` +
+          `<part id="P2"><measure number="1">${segno}${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(warnings).toEqual([])
+  })
 })
 
 // A tempo belongs to the score, but MusicXML has to write it inside a part,

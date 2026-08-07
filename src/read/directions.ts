@@ -24,6 +24,7 @@ import type {
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, children, trimmedText } from '../xml/tree.js'
+import { readColor } from './color.js'
 import { divisionsInForce } from './divisions.js'
 import type { ElementReader } from './element.js'
 import { noteValueBaseOf } from './noteValues.js'
@@ -144,7 +145,11 @@ export function readDirection(
           // A segno belongs to the score's measure, like a tempo, not to the
           // part it is written in. The optional smufl attribute names a
           // specific glyph; MNX carries it as the segno's glyph.
-          reading.segnos.push({ location: at, glyph: attribute(found, 'smufl') })
+          reading.segnos.push({
+            location: at,
+            glyph: attribute(found, 'smufl'),
+            color: readColor(found, warnings, context),
+          })
           break
         default: {
           const loss = elementLoss(found.name)

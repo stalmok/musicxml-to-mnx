@@ -312,6 +312,18 @@ function mergeGlobalMeasures(
         'barline',
       )
     }
+    // A segno is restated in each part the same way a barline is. Parts
+    // stating different signs, at different points or drawn differently,
+    // disagree about the one segno MNX can state, so that is reported.
+    if (existing?.segno && measure.segno && !sameSegno(existing.segno, measure.segno)) {
+      warnings.add(
+        'unrepresentable:cross-part-segno',
+        'The parts of this score state different segnos on this measure, and MNX ' +
+          'states one for the score. The first stated is the one converted.',
+        context,
+        'segno',
+      )
+    }
     target[index] = {
       key: existing?.key ?? measure.key,
       time: existing?.time ?? measure.time,
@@ -335,6 +347,14 @@ function mergeGlobalMeasures(
 // 4/4 as numbers are not a disagreement about the meter itself.
 function sameMeter(a: TimeSignature, b: TimeSignature): boolean {
   return a.count === b.count && a.unit === b.unit
+}
+
+// The written sign: where it sits, its glyph and its color. The name is not
+// compared, because it is never written; it only matches a jump to its sign.
+function sameSegno(a: Segno, b: Segno): boolean {
+  return (
+    compareFractions(a.location, b.location) === 0 && a.glyph === b.glyph && a.color === b.color
+  )
 }
 
 /**
@@ -573,7 +593,7 @@ function readMeasure(
       }
 
       case 'barline': {
-        const reading = readBarline(reader, warnings, context)
+        const reading = readBarline(reader, builder.position(), warnings, context)
         // readBarline only returns a style for the closing edge, so two styles
         // here are two claims about the same line, not a left and right pair.
         // A restatement of the same style is not a disagreement.
@@ -592,6 +612,9 @@ function readMeasure(
         endingStart ??= reading.endingStart
         endingStop ??= reading.endingStop
         fermata ??= reading.fermata
+        // Collected with the segnos the directions read, so a sign stated
+        // twice over is settled in one place for both forms.
+        if (reading.segno) segnos.push(reading.segno)
         break
       }
 
@@ -663,7 +686,7 @@ function readMeasure(
       // Filled in by the part, once the ending's other end has been met.
       ending: undefined,
       fermata,
-      segno: onePerMeasure(segnos, 'segno', warnings, context),
+      segno: onePerMeasure(segnos, 'segno', warnings, context, drawnDifferently),
       fine: onePerMeasure(fines, 'fine', warnings, context),
       jump: onePerMeasure(jumps, 'jump', warnings, context),
     },
@@ -676,18 +699,19 @@ function readMeasure(
  * The one navigation mark of its kind MNX states on a measure. A measure with
  * two of them at different points has no faithful conversion, so the first is
  * kept and the rest reported; two written at the same point are the same mark
- * and lose nothing.
+ * and lose nothing, unless `differs` says they are drawn as different marks.
  */
 function onePerMeasure<T extends { location: Fraction }>(
   marks: readonly T[],
   name: string,
   warnings: WarningCollector,
   context: WarningContext,
+  differs?: (first: T, other: T) => boolean,
 ): T | undefined {
   const first = marks[0]
   if (first === undefined) return undefined
   for (const other of marks.slice(1)) {
-    if (compareFractions(other.location, first.location) !== 0) {
+    if (compareFractions(other.location, first.location) !== 0 || differs?.(first, other)) {
       warnings.add(
         'unrepresentable:element',
         `A measure carries more than one ${name}, and MNX states one per measure. ` +
@@ -698,6 +722,16 @@ function onePerMeasure<T extends { location: Fraction }>(
     }
   }
   return first
+}
+
+/**
+ * Whether two segnos at the same point are different marks rather than the
+ * same mark restated: drawn as different glyphs, or in different colors. The
+ * name is not compared, because it is never written; it only matches a jump
+ * to the sign it returns to.
+ */
+function drawnDifferently(a: Segno, b: Segno): boolean {
+  return a.glyph !== b.glyph || a.color !== b.color
 }
 
 /**

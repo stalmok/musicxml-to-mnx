@@ -243,6 +243,7 @@ function writeSegno(segno: Segno): MNXSegno {
     // MNX requires a segno to say where it sits, even at the measure's start.
     location: writePosition(segno.location),
     ...(segno.glyph !== undefined ? { glyph: segno.glyph } : {}),
+    ...(segno.color !== undefined ? { color: segno.color } : {}),
   }
 }
 

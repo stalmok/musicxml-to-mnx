@@ -502,6 +502,8 @@ export interface Segno {
   location: Fraction
   /** A specific SMuFL glyph, where the source names one. */
   glyph: string | undefined
+  /** The color it is drawn in, in MNX's "#RRGGBB" form, where the source states one. */
+  color: string | undefined
   /**
    * What the source calls this sign, where it names one. MNX has no label for
    * a segno and none is written; it is held only to tell two signs apart when
