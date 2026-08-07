@@ -1,8 +1,10 @@
 import { describe, expect, test } from 'vitest'
 import { MusicXMLError } from '../errors.js'
+import { convertMusicXML } from '../index.js'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
+import { schemaErrors } from '../../tests/support/schema.js'
 
 /** Wraps `body` in the smallest document that can carry it. */
 function score(body: string): string {
@@ -1240,5 +1242,80 @@ describe('parts of different lengths', () => {
     )
 
     expect(warnings).toEqual([])
+  })
+})
+
+// MusicXML's part id is an xs:ID, which allows characters MNX's id pattern
+// (printable ASCII, 1 to 256 characters) does not. Such an id is renamed to a
+// generated one everywhere the score refers to it, and reported.
+describe('part ids MNX cannot state', () => {
+  test('renames a non-ASCII part id in the parts and the layout alike', () => {
+    const { mnx, warnings } = convertMusicXML(
+      score(
+        '<part-list>' +
+          '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
+          '<score-part id="Süß"/><score-part id="P2"/>' +
+          '<part-group type="stop" number="1"/>' +
+          '</part-list>' +
+          `<part id="Süß"><measure number="1">${NOTE}</measure></part>` +
+          `<part id="P2"><measure number="1">${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(mnx.parts.map((p) => p.id)).toEqual(['p1', 'P2'])
+    expect(mnx.layouts).toEqual([
+      {
+        content: [
+          {
+            type: 'group',
+            symbol: 'bracket',
+            content: [
+              { type: 'staff', sources: [{ part: 'p1' }] },
+              { type: 'staff', sources: [{ part: 'P2' }] },
+            ],
+          },
+        ],
+      },
+    ])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:part-id'])
+    expect(warnings[0]?.message).toContain('Süß')
+    expect(warnings[0]?.message).toContain('p1')
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  test('leaves printable ASCII part ids alone', () => {
+    const { mnx, warnings } = convertMusicXML(
+      score(
+        '<part-list>' +
+          '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
+          '<score-part id="P1"/><score-part id="P2"/>' +
+          '<part-group type="stop" number="1"/>' +
+          '</part-list>' +
+          `<part id="P1"><measure number="1">${NOTE}</measure></part>` +
+          `<part id="P2"><measure number="1">${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(mnx.parts.map((p) => p.id)).toEqual(['P1', 'P2'])
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  test('skips over an id another part already holds', () => {
+    const { mnx, warnings } = convertMusicXML(
+      score(
+        '<part-list>' +
+          '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
+          '<score-part id="Süß"/><score-part id="p1"/>' +
+          '<part-group type="stop" number="1"/>' +
+          '</part-list>' +
+          `<part id="Süß"><measure number="1">${NOTE}</measure></part>` +
+          `<part id="p1"><measure number="1">${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(mnx.parts.map((p) => p.id)).toEqual(['p2', 'p1'])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:part-id'])
+    expect(schemaErrors(mnx)).toEqual([])
   })
 })

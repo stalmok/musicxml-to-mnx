@@ -88,7 +88,8 @@ export function writeMnx(score: Score): MNXDocument {
     },
     ...(layouts ? { layouts } : {}),
     // Every part carries its id once a layout is written, so the layout's
-    // staff sources have something to point at.
+    // staff sources have something to point at. The id is written verbatim:
+    // the reader renames any part id MNX's id pattern cannot state.
     parts: score.parts.map((part) =>
       writePart(part, survey.referenced, survey.measureIds, layouts !== undefined),
     ),

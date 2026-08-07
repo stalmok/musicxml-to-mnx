@@ -98,6 +98,10 @@ export type WarningCode =
   // a tree, cannot hold. The group stopping mid-overlap runs to the end of
   // the part list instead.
   | 'unrepresentable:part-group-overlap'
+  // A part id MNX's id cannot state: an MNX id is 1 to 256 printable ASCII
+  // characters, and MusicXML's part id allows more. The part is renamed to a
+  // generated id everywhere the score refers to it.
+  | 'unrepresentable:part-id'
 
   // --- The source disagreeing with itself, or omitting what reading it
   //     needs -------------------------------------------------------------
