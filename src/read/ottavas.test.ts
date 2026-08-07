@@ -240,6 +240,35 @@ describe('where an octave shift runs', () => {
     expect(warnings.map((w) => w.element)).toEqual(['octave-shift'])
   })
 
+  // The source did start the shift; the reader dropped it. Its stop is not an
+  // orphan, so one warning per lost shift, at the start that was dropped.
+  test('warns once for a dropped shift, not again at its stop', () => {
+    const { ottavas, warnings } = read(shift('down', '9') + NOTE + shift('stop'))
+
+    expect(ottavas[0]).toEqual([])
+    expect(warnings.map((w) => w.element)).toEqual(['octave-shift'])
+    expect(warnings[0]?.message).toContain('not carried over')
+  })
+
+  // A dropped start consumes its own stop, the way pairing works everywhere
+  // here: a stop closes the most recently opened start of its number. The
+  // healthy shift around it keeps its own stop.
+  test('a dropped shift consumes its own stop, leaving a healthy one intact', () => {
+    const { ottavas, warnings } = read(
+      shift('down') + NOTE + shift('down', '9') + NOTE + shift('stop') + NOTE + shift('stop'),
+    )
+
+    expect(ottavas[0]).toEqual([
+      {
+        position: { num: 0, den: 1 },
+        end: { measure: 0, position: { num: 1, den: 2 } },
+        value: 1,
+        staff: undefined,
+      },
+    ])
+    expect(warnings.map((w) => w.element)).toEqual(['octave-shift'])
+  })
+
   test('reports one that states no type at all', () => {
     const { warnings } = read(
       '<direction><direction-type><octave-shift/></direction-type></direction>' + NOTE,

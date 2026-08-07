@@ -77,6 +77,13 @@ export interface SpanEnd<T> {
   covers: Fraction
   /** Carried on a start, and handed back when its stop is found. */
   payload: T | undefined
+  /**
+   * A start the reader dropped and already reported. It still takes its place
+   * in pairing, so the stop the source wrote for it is consumed with it, in
+   * silence: reporting that stop as an orphan would say the source never
+   * started the span, when it did.
+   */
+  dropped?: boolean
   context: WarningContext
 }
 
@@ -111,6 +118,8 @@ export function pairSpans<T>(
       report('orphan-stop', end)
       continue
     }
+    // The drop was reported where the start was read; the stop goes with it.
+    if (started.dropped) continue
     /* v8 ignore next 2 -- only a start carries a payload, and only a start is
        ever pushed onto the stack this came off. */
     if (started.payload === undefined) throw new Error('A span start with nothing to join.')
@@ -129,7 +138,9 @@ export function pairSpans<T>(
   }
 
   for (const waiting of open.values()) {
-    for (const start of waiting) report('unclosed-start', start)
+    // A dropped start was reported when it was dropped; whether the source
+    // ever closed it changes nothing about what was lost.
+    for (const start of waiting) if (!start.dropped) report('unclosed-start', start)
   }
 }
 
@@ -303,6 +314,28 @@ export class SpannerResolver {
   }
 
   /**
+   * Notes a hairpin start the reader dropped and already reported, so the stop
+   * the source wrote for it is consumed rather than reported as an orphan.
+   */
+  dropWedgeStart(
+    number: string,
+    measure: number,
+    position: Fraction,
+    context: WarningContext,
+  ): void {
+    this.#wedgeEnds.push({
+      kind: 'start',
+      number,
+      measure,
+      position,
+      covers: position,
+      payload: undefined,
+      dropped: true,
+      context,
+    })
+  }
+
+  /**
    * Pairs every span that waits until the whole part is read, the hairpins and
    * the octave shifts, and reports whatever is still open, the ties and slurs
    * with them. One entry point on purpose: the three share the rule that
@@ -380,6 +413,25 @@ export class SpannerResolver {
       position,
       covers,
       payload: undefined,
+      context,
+    })
+  }
+
+  /** The same as dropWedgeStart, for an octave shift the reader dropped. */
+  dropOttavaStart(
+    number: string,
+    measure: number,
+    position: Fraction,
+    context: WarningContext,
+  ): void {
+    this.#ottavaEnds.push({
+      kind: 'start',
+      number,
+      measure,
+      position,
+      covers: position,
+      payload: undefined,
+      dropped: true,
       context,
     })
   }

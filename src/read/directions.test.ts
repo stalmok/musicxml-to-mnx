@@ -1102,6 +1102,38 @@ describe('hairpins', () => {
     expect(warnings[0]?.message).toContain('not converted yet')
   })
 
+  // The source did start the hairpin; the reader dropped it. Its stop is not
+  // an orphan, so one warning per lost hairpin, at the start that was dropped.
+  // A stop itself is never of unknown type: its type is the word "stop", so an
+  // unknown type can only open a span.
+  test('warns once for a dropped wedge, not again at its stop', () => {
+    const { dynamics, warnings } = readMeasures(wedge('wibble') + NOTE + wedge('stop'))
+
+    expect(dynamics[0]).toEqual([])
+    expect(warnings.map((w) => w.element)).toEqual(['wedge'])
+    expect(warnings[0]?.message).toContain('not carried over')
+  })
+
+  // A dropped start consumes its own stop, the way pairing works everywhere
+  // here: a stop closes the most recently opened start of its number. The
+  // healthy hairpin around it keeps its own stop.
+  test('a dropped wedge consumes its own stop, leaving a healthy hairpin intact', () => {
+    const body =
+      wedge('crescendo') + NOTE + wedge('wibble') + NOTE + wedge('stop') + NOTE + wedge('stop')
+    const { dynamics, warnings } = readMeasures(body)
+
+    expect(dynamics[0]?.map((d) => [d.wedge, d.end])).toEqual([
+      ['increasing', { measure: 0, position: { num: 3, den: 4 } }],
+    ])
+    expect(warnings.map((w) => w.element)).toEqual(['wedge'])
+
+    const { mnx } = convertMusicXML(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        `<attributes><divisions>4</divisions></attributes>${body}</measure></part></score-partwise>`,
+    )
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
   // MusicXML's document order is not time order: a measure holding two voices
   // is written as one pass per voice with a <backup> between them, so a stop
   // belonging to the first voice is written before a start belonging to the

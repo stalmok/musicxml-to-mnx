@@ -288,10 +288,15 @@ function readOctaveShift(
   if ((type !== 'up' && type !== 'down') || !octaves) {
     warnings.add(
       'unsupported:element',
-      `An <octave-shift> of type "${type ?? ''}" and size "${size}" is not converted yet.`,
+      `An <octave-shift> of type "${type ?? ''}" and size "${size}" is not converted yet, ` +
+        'so the whole shift is not carried over.',
       { ...context, line: found.line },
       'octave-shift',
     )
+    // The stop the source wrote for this shift goes with it, unreported: only
+    // "stop" and "continue" are handled above, so an unknown type can only be
+    // meant as a start.
+    state.spanners.dropOttavaStart(number, measure, position, context)
     return
   }
 
@@ -343,10 +348,15 @@ function readWedge(
     if (type !== 'continue') {
       warnings.add(
         'unsupported:element',
-        `A <wedge> of type "${type ?? ''}" is not converted yet.`,
+        `A <wedge> of type "${type ?? ''}" is not converted yet, ` +
+          'so the whole hairpin is not carried over.',
         { ...context, line: found.line },
         'wedge',
       )
+      // The stop the source wrote for this hairpin goes with it, unreported: a
+      // stop states its type as the word "stop", handled above, so an unknown
+      // type can only be meant as a start.
+      state.spanners.dropWedgeStart(number, measure, position, context)
     }
     return undefined
   }
