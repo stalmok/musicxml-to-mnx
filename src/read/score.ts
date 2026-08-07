@@ -300,6 +300,23 @@ function mergeGlobalMeasures(
         'time',
       )
     }
+    // A multi-measure rest is the whole score's, like the barline: parts
+    // usually restate the same span. Parts stating different spans over the
+    // same measure disagree about the one MNX can state, so that is reported.
+    if (
+      existing?.multimeasureRest !== undefined &&
+      measure.multimeasureRest !== undefined &&
+      existing.multimeasureRest !== measure.multimeasureRest
+    ) {
+      warnings.add(
+        'unrepresentable:cross-part-multimeasure-rest',
+        'The parts of this score state multi-measure rests of different spans over ' +
+          'this measure, and MNX states one for the score. The first stated is the ' +
+          'one converted.',
+        context,
+        'multiple-rest',
+      )
+    }
     // A barline is the whole score's: every part is cut at the same place,
     // and each usually writes the same thing. Parts writing different ones
     // disagree about the one line MNX can state, so that is reported.
@@ -339,6 +356,7 @@ function mergeGlobalMeasures(
       segno: existing?.segno ?? measure.segno,
       fine: existing?.fine ?? measure.fine,
       jump: existing?.jump ?? measure.jump,
+      multimeasureRest: existing?.multimeasureRest ?? measure.multimeasureRest,
     }
   })
 }
@@ -527,6 +545,7 @@ function readMeasure(
   const segnos: Segno[] = []
   const fines: Fine[] = []
   const jumps: Jump[] = []
+  const multimeasureRests: number[] = []
   let barline: BarlineType | undefined
   let repeatStart = false
   let repeatEnd: RepeatEnd | undefined
@@ -566,6 +585,7 @@ function readMeasure(
           timeSettled = true
         }
         clefs.push(...reading.clefs)
+        multimeasureRests.push(...reading.multimeasureRests)
         break
       }
 
@@ -689,6 +709,7 @@ function readMeasure(
       segno: onePerMeasure(segnos, 'segno', warnings, context, drawnDifferently),
       fine: onePerMeasure(fines, 'fine', warnings, context),
       jump: onePerMeasure(jumps, 'jump', warnings, context),
+      multimeasureRest: oneMultimeasureRest(multimeasureRests, warnings, context),
     },
     endingStart,
     endingStop,
@@ -732,6 +753,30 @@ function onePerMeasure<T extends { location: Fraction }>(
  */
 function drawnDifferently(a: Segno, b: Segno): boolean {
   return a.glyph !== b.glyph || a.color !== b.color
+}
+
+/**
+ * The one multi-measure rest span MNX can state over a measure. A restated
+ * count, as one written per staff, loses nothing; differing counts cannot all
+ * be carried, so the first is kept and the disagreement reported.
+ */
+function oneMultimeasureRest(
+  counts: readonly number[],
+  warnings: WarningCollector,
+  context: WarningContext,
+): number | undefined {
+  const first = counts[0]
+  if (first === undefined) return undefined
+  if (counts.some((count) => count !== first)) {
+    warnings.add(
+      'unrepresentable:multimeasure-rest',
+      'This measure states multi-measure rests of different spans, and MNX states ' +
+        'one for the score. The first is the one converted.',
+      context,
+      'multiple-rest',
+    )
+  }
+  return first
 }
 
 /**

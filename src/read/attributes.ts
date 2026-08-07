@@ -49,6 +49,13 @@ export interface AttributesReading {
   key: Key | undefined
   time: TimeSignature | undefined
   clefs: Clef[]
+  /**
+   * Every multi-measure rest span this block stated, as a count of measures
+   * starting at this one. A list rather than one value, because a block may
+   * state it once per staff and the measure has to see them all to know
+   * whether they agree.
+   */
+  multimeasureRests: number[]
 }
 
 export function readAttributes(
@@ -119,7 +126,48 @@ export function readAttributes(
     clefs: element
       .blocks('clef')
       .map((found) => readClef(found, state, position, warnings, context, path)),
+    multimeasureRests: element
+      // MusicXML allows one <measure-style> per staff, told apart by a
+      // "number" attribute, so every block is read. Which staff states the
+      // rest does not matter here: MNX states it for the whole score, so the
+      // measure only has to know the counts to see whether they agree.
+      .blocks('measure-style')
+      .flatMap((found) => readMeasureStyle(found, warnings, context, path)),
   }
+}
+
+/**
+ * The one measure-style child converted is <multiple-rest>, a multi-measure
+ * rest spanning this many measures, counting the one carrying it. The other
+ * children (measure-repeat, beat-repeat, slash) are left unread here and
+ * reported by the unread-child sweep.
+ */
+function readMeasureStyle(
+  element: ElementReader,
+  warnings: WarningCollector,
+  context: WarningContext,
+  path: DocumentPath,
+): number[] {
+  // A <measure-style> holds at most one <multiple-rest>: its content is a
+  // choice of one child, so taking the first with child() is right.
+  const rest = element.child('multiple-rest')
+  if (!rest) return []
+
+  // use-symbols="yes" asks for the stacked rest symbols rather than the
+  // single bar. MNX has no way to state the drawing, so the choice is lost.
+  if (attribute(rest, 'use-symbols') === 'yes') {
+    warnings.add(
+      'unrepresentable:multiple-rest-symbols',
+      'A multi-measure rest is drawn with the stacked rest symbols, which MNX cannot ' +
+        'ask for. The rest is converted and drawn the default way.',
+      { ...context, line: rest.line },
+      'multiple-rest',
+    )
+  }
+
+  // MusicXML says a positive integer. The upper bound only rules out a
+  // corrupt file: no score rests for a hundred thousand measures.
+  return [readIntegerInRange(rest, path, 1, 100_000)]
 }
 
 function readKey(

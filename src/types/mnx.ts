@@ -504,10 +504,28 @@ export interface MNXSupport {
   useBeams?: boolean
 }
 
+/** A multi-measure rest, stated on the score rendering that draws it. */
+export interface MNXMultimeasureRest {
+  /** The id of the global measure the rest begins in. */
+  start: string
+  /** How many measures it spans, counting the one it begins in. */
+  duration: number
+  /** Drawn in place of the count, where one is given. */
+  label?: string
+}
+
+/** One rendering of the score. */
+export interface MNXScore {
+  name: string
+  multimeasureRests?: MNXMultimeasureRest[]
+}
+
 export interface MNXDocument {
   mnx: { version: number; support?: MNXSupport }
   global: MNXGlobal
   /** Written only when the source draws instrument groups. */
   layouts?: MNXSystemLayout[]
   parts: MNXPart[]
+  /** Written only when the source draws a multi-measure rest. */
+  scores?: MNXScore[]
 }

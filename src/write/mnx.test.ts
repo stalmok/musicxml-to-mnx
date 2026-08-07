@@ -49,6 +49,7 @@ const NO_BARLINE = {
   segno: undefined,
   fine: undefined,
   jump: undefined,
+  multimeasureRest: undefined,
 } as const
 
 function scoreOf(

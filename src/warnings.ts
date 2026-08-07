@@ -108,6 +108,16 @@ export type WarningCode =
   // characters, and MusicXML's part id allows more. The part is renamed to a
   // generated id everywhere the score refers to it.
   | 'unrepresentable:part-id'
+  // A measure states more than one multi-measure rest span, as staves stating
+  // different counts do, and MNX states one for the score. The first is the
+  // one converted.
+  | 'unrepresentable:multimeasure-rest'
+  // The parts of the score state different multi-measure rest spans over the
+  // same measure, and MNX states one for the score.
+  | 'unrepresentable:cross-part-multimeasure-rest'
+  // A multi-measure rest drawn with the stacked rest symbols rather than the
+  // single bar, which MNX has no way to ask for. It is drawn the default way.
+  | 'unrepresentable:multiple-rest-symbols'
 
   // --- The source disagreeing with itself, or omitting what reading it
   //     needs -------------------------------------------------------------

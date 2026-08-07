@@ -93,7 +93,34 @@ export function writeMnx(score: Score): MNXDocument {
     parts: score.parts.map((part) =>
       writePart(part, survey.referenced, survey.measureIds, layouts !== undefined),
     ),
+    ...writeScores(score, survey.measureIds),
   }
+}
+
+/**
+ * The scores object: one rendering, written only when the source draws a
+ * multi-measure rest, because that is the only thing this converter states on
+ * it. Same principle as layouts: written only when it says something.
+ */
+function writeScores(
+  score: Score,
+  measureIds: ReadonlyMap<number, string>,
+): Pick<MNXDocument, 'scores'> {
+  const rests = score.globalMeasures.flatMap((measure, index) => {
+    if (measure.multimeasureRest === undefined) return []
+    const start = measureIds.get(index)
+    /* v8 ignore next 2 -- surveyScore names every measure a multi-measure
+       rest starts in, which is where this map comes from. */
+    if (start === undefined) throw new Error('A multi-measure rest starts in a measure with no id.')
+    return [{ start, duration: measure.multimeasureRest }]
+  })
+  if (rests.length === 0) return {}
+
+  // MNX requires a score rendering to be named, and the model has no name to
+  // give: the source's work and movement titles are not converted (they are a
+  // separate gap, and keep warning), so a fixed placeholder names the one
+  // rendering written.
+  return { scores: [{ name: 'Score', multimeasureRests: rests }] }
 }
 
 /**
@@ -175,9 +202,13 @@ function surveyScore(score: Score): {
     }
   }
 
-  // A hairpin and an octave shift each point at the measure they stop in, so
-  // those measures need naming. Deterministic, and in score order.
+  // A hairpin and an octave shift each point at the measure they stop in, and
+  // a multi-measure rest at the measure it starts in, so those measures need
+  // naming. Deterministic, and in score order.
   const pointedAt = new Set<number>()
+  score.globalMeasures.forEach((measure, index) => {
+    if (measure.multimeasureRest !== undefined) pointedAt.add(index)
+  })
 
   for (const part of score.parts) {
     for (const measure of part.measures) {

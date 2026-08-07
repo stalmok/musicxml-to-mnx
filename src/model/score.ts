@@ -494,6 +494,11 @@ export interface GlobalMeasure {
   fine: Fine | undefined
   /** A jump such as D.S., taken once the measure is played. One per measure. */
   jump: Jump | undefined
+  /**
+   * A multi-measure rest starting at this measure, as how many measures it
+   * spans, counting this one. The spanned measures stay ordinary measures.
+   */
+  multimeasureRest: number | undefined
 }
 
 /** A segno sign, the point a D.S. jumps back to. */
