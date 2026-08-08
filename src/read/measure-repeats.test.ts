@@ -158,12 +158,63 @@ describe('a measure repeat', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 
+  test('lets a measure stop one sign and start the next', () => {
+    const { mnx, warnings } = convert(
+      part('P1', [
+        { body: NOTE },
+        { attributes: start('1'), body: NOTE },
+        { attributes: stop() + start('2'), body: NOTE },
+        { body: NOTE },
+        { attributes: stop(), body: NOTE },
+      ]),
+    )
+
+    expect(repeats(mnx)).toEqual([undefined, { number: 1 }, { number: 2 }, undefined, undefined])
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  test('starts a new sign over one still running', () => {
+    const { mnx, warnings } = convert(
+      part('P1', [
+        { body: NOTE },
+        { attributes: start('2'), body: NOTE },
+        { body: NOTE },
+        { attributes: start('1'), body: NOTE },
+        { attributes: stop(), body: NOTE },
+      ]),
+    )
+
+    expect(repeats(mnx)).toEqual([
+      undefined,
+      { number: 2 },
+      undefined,
+      { number: 1 },
+      undefined,
+    ])
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
   // The type attribute is required: without it there is no saying whether
   // the sign starts or stops here, so the file is broken.
   test('refuses a measure-repeat with no type', () => {
     expect(() =>
       convert(
         part('P1', [{ attributes: style('<measure-repeat>1</measure-repeat>'), body: NOTE }]),
+      ),
+    ).toThrow(MusicXMLError)
+  })
+
+  test('refuses a measure-repeat with a type it does not know', () => {
+    expect(() =>
+      convert(
+        part('P1', [
+          {
+            attributes: style('<measure-repeat type="continue">1</measure-repeat>'),
+            body: NOTE,
+          },
+        ]),
       ),
     ).toThrow(MusicXMLError)
   })

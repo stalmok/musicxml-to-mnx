@@ -289,13 +289,13 @@ export interface Beam {
   direction: 'left' | 'right' | undefined
 }
 
-/** MNX's plain dynamic marks, from softest to loudest. */
 // The letters an accent dynamic wraps around its value: the s of sfz or the
 // r of rfz before it, the z after it, or explicitly none, which is not the
 // same as unstated.
 export type AccentPrefix = 's' | 'r' | ''
 export type AccentSuffix = 'z' | ''
 
+/** MNX's plain dynamic marks, from softest to loudest. */
 export type DynamicValue =
   | 'pppppp'
   | 'ppppp'
