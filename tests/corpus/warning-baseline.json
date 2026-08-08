@@ -2655,8 +2655,7 @@
     "identification": 1,
     "sound": 6,
     "words": 1,
-    "print": 8,
-    "measure-style": 8
+    "print": 8
   },
   "duchambge-ronde-des-pauvres": {
     "score-instrument": 2,
@@ -3642,7 +3641,6 @@
     "extend": 39,
     "trill-mark": 4,
     "print": 6,
-    "measure-style": 8,
     "wavy-line": 2,
     "tie": 2,
     "stem": 1
