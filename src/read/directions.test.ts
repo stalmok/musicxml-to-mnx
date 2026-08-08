@@ -79,21 +79,48 @@ describe('dynamics', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 
-  test.each(['ppp', 'pp', 'p', 'mp', 'mf', 'f', 'ff', 'fff'])('reads %s', (value) => {
-    const { measure } = read(inMeasure(direction(`<dynamics><${value}/></dynamics>`) + note('C')))
+  test.each([
+    'pppppp',
+    'ppppp',
+    'pppp',
+    'ppp',
+    'pp',
+    'p',
+    'mp',
+    'mf',
+    'f',
+    'ff',
+    'fff',
+    'ffff',
+    'fffff',
+    'ffffff',
+  ])('reads %s', (value) => {
+    const { measure, warnings } = read(
+      inMeasure(direction(`<dynamics><${value}/></dynamics>`) + note('C')),
+    )
 
     expect(measure?.dynamics[0]?.value).toBe(value)
+    expect(warnings).toEqual([])
   })
 
-  // The extreme plain dynamics run past MNX's dynamic-value enum, which stops
-  // at fff, so one of those is still reported.
-  test('reports a dynamic MNX has no value for', () => {
+  test('writes an extreme dynamic the spec schema accepts', () => {
+    const { mnx } = convertMusicXML(
+      inMeasure(direction('<dynamics><pppp/></dynamics>') + note('C')),
+    )
+
+    expect(mnx.parts[0]?.measures[0]?.dynamics?.[0]?.value).toBe('pppp')
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // Every dynamic element MusicXML names now converts, so only an element
+  // from outside the format reaches the report.
+  test('reports a dynamic mark it does not know', () => {
     const { measure, warnings } = read(
-      inMeasure(direction('<dynamics><ffff/></dynamics>') + note('C')),
+      inMeasure(direction('<dynamics><fffffff/></dynamics>') + note('C')),
     )
 
     expect(measure?.dynamics).toEqual([])
-    expect(warnings.map((w) => w.message)).toContain('A dynamic of "ffff" is not converted yet.')
+    expect(warnings.map((w) => w.message)).toContain('A dynamic of "fffffff" is not converted yet.')
   })
 
   // The accent dynamics (sforzando and its family) are drawn as one combined
@@ -264,7 +291,7 @@ describe('dynamics', () => {
   test('reports wording qualifying a mark that is not converted', () => {
     const { measure, warnings } = read(
       inMeasure(
-        direction('<dynamics><other-dynamics>più </other-dynamics><ffff/><p/></dynamics>') +
+        direction('<dynamics><other-dynamics>più </other-dynamics><fffffff/><p/></dynamics>') +
           note('C'),
       ),
     )
@@ -272,8 +299,8 @@ describe('dynamics', () => {
     expect(measure?.dynamics[0]?.value).toBe('p')
     expect(measure?.dynamics[0]?.prefix).toBeUndefined()
     expect(warnings.map((w) => w.message)).toEqual([
-      'A dynamic of "ffff" is not converted yet.',
-      'A dynamic wording of "più" is not converted yet, because the "ffff" it qualifies is not.',
+      'A dynamic of "fffffff" is not converted yet.',
+      'A dynamic wording of "più" is not converted yet, because the "fffffff" it qualifies is not.',
     ])
   })
 

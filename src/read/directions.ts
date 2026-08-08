@@ -54,6 +54,9 @@ export interface SoundReading {
 
 // The plain dynamic marks MNX states as a value.
 const DYNAMIC_VALUES: ReadonlySet<string> = new Set([
+  'pppppp',
+  'ppppp',
+  'pppp',
   'ppp',
   'pp',
   'p',
@@ -62,6 +65,9 @@ const DYNAMIC_VALUES: ReadonlySet<string> = new Set([
   'f',
   'ff',
   'fff',
+  'ffff',
+  'fffff',
+  'ffffff',
   'n',
 ])
 

@@ -290,7 +290,22 @@ export interface Beam {
 }
 
 /** MNX's plain dynamic marks, from softest to loudest. */
-export type DynamicValue = 'ppp' | 'pp' | 'p' | 'mp' | 'mf' | 'f' | 'ff' | 'fff' | 'n'
+export type DynamicValue =
+  | 'pppppp'
+  | 'ppppp'
+  | 'pppp'
+  | 'ppp'
+  | 'pp'
+  | 'p'
+  | 'mp'
+  | 'mf'
+  | 'f'
+  | 'ff'
+  | 'fff'
+  | 'ffff'
+  | 'fffff'
+  | 'ffffff'
+  | 'n'
 
 /** Which way a hairpin opens. */
 export type WedgeType = 'increasing' | 'decreasing'
