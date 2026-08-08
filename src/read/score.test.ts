@@ -1208,6 +1208,169 @@ describe('several parts', () => {
 
     expect(warnings).toEqual([])
   })
+
+  // The number is the label the score writes over the measure, so parts
+  // giving the same measure different labels is the source disagreeing with
+  // itself, not a limit of MNX.
+  test('reports parts numbering the same measure differently', () => {
+    const { score: result, warnings } = read(
+      score(
+        `<part id="P1"><measure number="0">${NOTE}</measure></part>` +
+          `<part id="P2"><measure number="5">${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.number).toBe(0)
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:measure-number'])
+    expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 5 })
+  })
+
+  test('says nothing where the parts restate the same measure number', () => {
+    const { score: result, warnings } = read(
+      score(
+        `<part id="P1"><measure number="0">${NOTE}</measure></part>` +
+          `<part id="P2"><measure number="0">${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.number).toBe(0)
+    expect(warnings).toEqual([])
+  })
+
+  test('reports parts stating different repeat counts for the same measure', () => {
+    const repeated = (times: string) =>
+      `${NOTE}<barline location="right"><repeat direction="backward" times="${times}"/></barline>`
+    const { score: result, warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${repeated('2')}</measure></part>` +
+          `<part id="P2"><measure number="1">${repeated('3')}</measure></part>`,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.repeatEnd).toEqual({ times: 2 })
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-mark'])
+    expect(warnings[0]?.element).toBe('repeat')
+    expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 1 })
+  })
+
+  test('reports parts drawing different endings over the same measure', () => {
+    const bracketed = (numbers: string) =>
+      `<barline location="left"><ending number="${numbers}" type="start"/></barline>${NOTE}` +
+      `<barline location="right"><ending number="${numbers}" type="stop"/></barline>`
+    const { score: result, warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${bracketed('1')}</measure></part>` +
+          `<part id="P2"><measure number="1">${bracketed('2')}</measure></part>`,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.ending).toEqual({ duration: 1, numbers: [1], open: false })
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-mark'])
+    expect(warnings[0]?.element).toBe('ending')
+  })
+
+  test('reports parts holding different fermatas over the same barline', () => {
+    const held = (shape: string) =>
+      `${NOTE}<barline location="right"><fermata>${shape}</fermata></barline>`
+    const { score: result, warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${held('angled')}</measure></part>` +
+          `<part id="P2"><measure number="1">${held('square')}</measure></part>`,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.fermata?.symbol).toBe('angled')
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-mark'])
+    expect(warnings[0]?.element).toBe('fermata')
+  })
+
+  // The name tells one sign from another when a jump is matched to the one it
+  // returns to, so parts naming it differently disagree about the sign
+  // itself. The <sound segno> attribute is itself reported as not converted,
+  // once per part, before the disagreement is.
+  test('reports parts naming the segno differently', () => {
+    const sign = (name: string) =>
+      `<direction><direction-type><segno/></direction-type><sound segno="${name}"/></direction>` +
+      NOTE
+    const { warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${sign('A')}</measure></part>` +
+          `<part id="P2"><measure number="1">${sign('B')}</measure></part>`,
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unsupported:element',
+      'unsupported:element',
+      'unrepresentable:cross-part-segno',
+    ])
+    expect(warnings[2]?.element).toBe('segno')
+  })
+
+  test('says nothing where the parts restate the same named segno', () => {
+    const sign =
+      '<direction><direction-type><segno/></direction-type><sound segno="A"/></direction>' + NOTE
+    const { warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${sign}</measure></part>` +
+          `<part id="P2"><measure number="1">${sign}</measure></part>`,
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['unsupported:element', 'unsupported:element'])
+  })
+
+  test('reports parts placing the fine at different points in the measure', () => {
+    const divisions = '<attributes><divisions>1</divisions></attributes>'
+    const quarter =
+      '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+      '<duration>1</duration><type>quarter</type></note>'
+    const { score: result, warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${divisions}<sound fine="yes"/>${quarter}` +
+          '</measure></part>' +
+          `<part id="P2"><measure number="1">${divisions}${quarter}<sound fine="yes"/>` +
+          '</measure></part>',
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.fine).toEqual({ location: { num: 0, den: 1 } })
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-mark'])
+    expect(warnings[0]?.element).toBe('fine')
+  })
+
+  test('reports parts jumping back to differently named segnos', () => {
+    const { score: result, warnings } = read(
+      score(
+        `<part id="P1"><measure number="1"><sound dalsegno="A"/>${NOTE}</measure></part>` +
+          `<part id="P2"><measure number="1"><sound dalsegno="B"/>${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.jump).toEqual({
+      location: { num: 0, den: 1 },
+      type: 'segno',
+      target: 'A',
+    })
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-mark'])
+    expect(warnings[0]?.element).toBe('jump')
+  })
+
+  test('says nothing where the parts restate the same marks', () => {
+    const marked =
+      '<barline location="left"><ending number="1" type="start"/></barline>' +
+      `<sound dalsegno="A"/>${NOTE}<sound fine="yes"/>` +
+      '<barline location="right"><ending number="1" type="stop"/>' +
+      '<repeat direction="backward" times="2"/><fermata>angled</fermata></barline>'
+    const { warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${marked}</measure></part>` +
+          `<part id="P2"><measure number="1">${marked}</measure></part>`,
+      ),
+    )
+
+    expect(warnings).toEqual([])
+  })
 })
 
 // A tempo belongs to the score, but MusicXML has to write it inside a part,

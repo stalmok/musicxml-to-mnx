@@ -56,6 +56,10 @@ export type WarningCode =
   // A color with an alpha channel other than fully opaque. MNX's color has no
   // alpha form, so the color is converted opaque and the alpha is not.
   | 'unrepresentable:color'
+  // The parts of the score state different repeats, endings, fermatas, fines,
+  // or jumps on the same measure, and MNX states one of each there. The
+  // element field names which mark. Segnos have their own code above.
+  | 'unrepresentable:cross-part-mark'
   // A chord whose notes are on different staves. MNX states the staff on the
   // event, so one chord cannot straddle two of them.
   | 'unrepresentable:chord-staff'
@@ -149,6 +153,9 @@ export type WarningCode =
   // A part holds a different number of measures from the score, so it stops
   // before the score does or runs past the end of it.
   | 'inconsistent:measure-count'
+  // The parts of the score number the same measure differently. The first
+  // stated is the one converted.
+  | 'inconsistent:measure-number'
   // A duration or offset appears before any <divisions> said how long one
   // is. One division per quarter note is assumed; if that is wrong, the
   // written values disagree with the measured ones and say so.

@@ -13,6 +13,7 @@ import type {
   BarlineType,
   Clef,
   Dynamic,
+  Ending,
   Fermata,
   RepeatEnd,
   GlobalMeasure,
@@ -265,6 +266,26 @@ function mergeGlobalMeasures(
   let scoreTime: TimeSignature | undefined
   let partKey: Key | undefined
   let partTime: TimeSignature | undefined
+  // The barline's rule below holds for every mark MNX states once on the
+  // score's measure: parts stating different ones disagree about the one
+  // mark, so that is reported. Each is compared by content where two parts
+  // both state one; a part restating an equal one says nothing new.
+  const reportDifferingMark = <T>(
+    name: string,
+    inScore: T | undefined,
+    inPart: T | undefined,
+    same: (a: T, b: T) => boolean,
+    context: WarningContext,
+  ): void => {
+    if (inScore === undefined || inPart === undefined || same(inScore, inPart)) return
+    warnings.add(
+      'unrepresentable:cross-part-mark',
+      `The parts of this score state different ${name}s on this measure, and MNX ` +
+        'states one there. The first stated is the one converted.',
+      context,
+      name,
+    )
+  }
   found.forEach((measure, index) => {
     const existing = target[index]
     scoreKey = existing?.key ?? scoreKey
@@ -341,6 +362,28 @@ function mergeGlobalMeasures(
         'segno',
       )
     }
+    // The number is the label the score writes over the measure, so parts
+    // labelling the same measure differently is the source disagreeing with
+    // itself. The comparison runs only where both carry one, which is only
+    // where the label differs from the measure's position.
+    if (
+      existing?.number !== undefined &&
+      measure.number !== undefined &&
+      existing.number !== measure.number
+    ) {
+      warnings.add(
+        'inconsistent:measure-number',
+        `This measure is numbered ${String(existing.number)} by an earlier part and ` +
+          `${String(measure.number)} by this one. The first is the one converted.`,
+        context,
+        'measure',
+      )
+    }
+    reportDifferingMark('repeat', existing?.repeatEnd, measure.repeatEnd, sameRepeatEnd, context)
+    reportDifferingMark('ending', existing?.ending, measure.ending, sameEnding, context)
+    reportDifferingMark('fermata', existing?.fermata, measure.fermata, sameFermata, context)
+    reportDifferingMark('fine', existing?.fine, measure.fine, sameFine, context)
+    reportDifferingMark('jump', existing?.jump, measure.jump, sameJump, context)
     target[index] = {
       key: existing?.key ?? measure.key,
       time: existing?.time ?? measure.time,
@@ -367,11 +410,44 @@ function sameMeter(a: TimeSignature, b: TimeSignature): boolean {
   return a.count === b.count && a.unit === b.unit
 }
 
-// The written sign: where it sits, its glyph and its color. The name is not
-// compared, because it is never written; it only matches a jump to its sign.
+// The written sign: where it sits, its glyph and its color. The name is
+// compared too: it is never drawn, but it tells one sign from another when a
+// jump is matched to the one it returns to, so parts naming the sign
+// differently disagree about which sign the measure carries.
 function sameSegno(a: Segno, b: Segno): boolean {
   return (
-    compareFractions(a.location, b.location) === 0 && a.glyph === b.glyph && a.color === b.color
+    compareFractions(a.location, b.location) === 0 &&
+    a.glyph === b.glyph &&
+    a.color === b.color &&
+    a.name === b.name
+  )
+}
+
+// Content equality for the marks compared above, one per shape.
+function sameRepeatEnd(a: RepeatEnd, b: RepeatEnd): boolean {
+  return a.times === b.times
+}
+
+function sameEnding(a: Ending, b: Ending): boolean {
+  return (
+    a.duration === b.duration &&
+    a.open === b.open &&
+    a.numbers.length === b.numbers.length &&
+    a.numbers.every((number, index) => number === b.numbers[index])
+  )
+}
+
+function sameFermata(a: Fermata, b: Fermata): boolean {
+  return a.symbol === b.symbol && a.pointing === b.pointing && a.orient === b.orient
+}
+
+function sameFine(a: Fine, b: Fine): boolean {
+  return compareFractions(a.location, b.location) === 0
+}
+
+function sameJump(a: Jump, b: Jump): boolean {
+  return (
+    compareFractions(a.location, b.location) === 0 && a.type === b.type && a.target === b.target
   )
 }
 
