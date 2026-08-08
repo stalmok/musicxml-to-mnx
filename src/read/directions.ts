@@ -70,8 +70,8 @@ const DYNAMIC_VALUES: ReadonlySet<string> = new Set([
 // held at piano) states its attack as the value and the level it settles to as
 // the residual; a single accent states neither, and the glyph alone says which
 // mark it is. The glyph names are the precomposed combined marks from SMuFL's
-// dynamics range. Marks past MNX's dynamic-value enum, such as the extreme
-// plain dynamics, are not here and stay reported.
+// dynamics range. The extreme plain dynamics (pppp and beyond, ffff and
+// beyond) are plain values, not accents, and are not converted yet.
 interface AccentDynamic {
   glyph: string
   value: DynamicValue | undefined
