@@ -122,6 +122,13 @@ export type WarningCode =
   // A multi-measure rest drawn with the stacked rest symbols rather than the
   // single bar, which MNX has no way to ask for. It is drawn the default way.
   | 'unrepresentable:multiple-rest-symbols'
+  // A measure states more than one measure repeat, as staves stating
+  // different patterns do, and MNX states one for the part's measure. The
+  // first is the one converted.
+  | 'unrepresentable:measure-repeat'
+  // A measure repeat sign drawn with this many slashes, which MNX has no way
+  // to ask for. The repeat is converted and drawn the default way.
+  | 'unrepresentable:measure-repeat-slashes'
 
   // --- The source disagreeing with itself, or omitting what reading it
   //     needs -------------------------------------------------------------

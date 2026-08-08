@@ -375,12 +375,18 @@ export interface MNXOttava {
   orient?: MNXOrientation
 }
 
+/** A simile sign here: repeat the previous `number` measures. */
+export interface MNXMeasureRepeat {
+  number: number
+}
+
 export interface MNXPartMeasure {
   clefs?: MNXPositionedClef[]
   beams?: MNXBeam[]
   dynamics?: MNXDynamic[]
   arpeggios?: MNXArpeggio[]
   nonArpeggios?: MNXNonArpeggio[]
+  measureRepeat?: MNXMeasureRepeat
   ottavas?: MNXOttava[]
   sequences: MNXSequence[]
 }

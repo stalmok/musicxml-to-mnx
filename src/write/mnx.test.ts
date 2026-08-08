@@ -72,6 +72,7 @@ function measureOf(...events: Event[]): Measure {
     dynamics: [],
     arpeggios: [],
     ottavas: [],
+    measureRepeat: undefined,
     sequences: [{ voice: undefined, staff: undefined, content: events, fullMeasure: undefined }],
   }
 }
@@ -147,6 +148,7 @@ test.each([
         dynamics: [],
         arpeggios: [],
         ottavas: [],
+        measureRepeat: undefined,
         sequences: [
           { voice: undefined, staff: undefined, content: [WHOLE_C], fullMeasure: undefined },
         ],
@@ -247,6 +249,7 @@ describe('global measures', () => {
       ...measureOf(WHOLE_C),
       arpeggios: [],
       ottavas: [],
+      measureRepeat: undefined,
       dynamics: [
         {
           position: { num: 0, den: 1 },
@@ -325,6 +328,7 @@ describe('measures', () => {
       dynamics: [],
       arpeggios: [],
       ottavas: [],
+      measureRepeat: undefined,
       sequences: [
         { voice: undefined, staff: undefined, content: [WHOLE_C], fullMeasure: undefined },
       ],
@@ -359,6 +363,7 @@ describe('measures', () => {
       dynamics: [],
       arpeggios: [],
       ottavas: [],
+      measureRepeat: undefined,
       sequences: [
         { voice: undefined, staff: undefined, content: [WHOLE_C], fullMeasure: undefined },
       ],
@@ -389,6 +394,7 @@ describe('measures', () => {
       dynamics: [],
       arpeggios: [],
       ottavas: [],
+      measureRepeat: undefined,
       sequences: [
         { voice: undefined, staff: undefined, content: [WHOLE_C], fullMeasure: undefined },
       ],
@@ -459,6 +465,7 @@ describe('ties and slurs', () => {
       dynamics: [],
       arpeggios: [],
       ottavas: [],
+      measureRepeat: undefined,
       sequences: [
         { voice: undefined, staff: undefined, content: [start, target], fullMeasure: undefined },
       ],
@@ -490,6 +497,7 @@ describe('ties and slurs', () => {
       dynamics: [],
       arpeggios: [],
       ottavas: [],
+      measureRepeat: undefined,
       sequences: [
         { voice: undefined, staff: undefined, content: [crossing, target], fullMeasure: undefined },
       ],
@@ -536,6 +544,7 @@ describe('beams', () => {
       dynamics: [],
       arpeggios: [],
       ottavas: [],
+      measureRepeat: undefined,
       sequences: [
         { voice: undefined, staff: undefined, content: [first, second], fullMeasure: undefined },
       ],
@@ -567,6 +576,7 @@ describe('beams', () => {
       dynamics: [],
       arpeggios: [],
       ottavas: [],
+      measureRepeat: undefined,
       sequences: [
         {
           voice: undefined,
@@ -600,6 +610,7 @@ describe('voices and spaces', () => {
       dynamics: [],
       arpeggios: [],
       ottavas: [],
+      measureRepeat: undefined,
       sequences: [{ voice, staff: undefined, content, fullMeasure: undefined }],
     })
   }
@@ -674,6 +685,7 @@ describe('tuplets and grace groups', () => {
       dynamics: [],
       arpeggios: [],
       ottavas: [],
+      measureRepeat: undefined,
       sequences: [{ voice: undefined, staff: undefined, content: [item], fullMeasure: undefined }],
     })
   }
@@ -732,6 +744,7 @@ describe('full-measure rests', () => {
       dynamics: [],
       arpeggios: [],
       ottavas: [],
+      measureRepeat: undefined,
       sequences: [{ voice: undefined, staff: undefined, content: [], fullMeasure }],
     })
   }

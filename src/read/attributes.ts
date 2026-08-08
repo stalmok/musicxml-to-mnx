@@ -56,7 +56,16 @@ export interface AttributesReading {
    * whether they agree.
    */
   multimeasureRests: number[]
+  /**
+   * Every measure repeat edge this block stated: the pattern length of a
+   * sign starting here, or a stop naming this the first measure without one.
+   * A list for the same reason the rests are.
+   */
+  measureRepeats: MeasureRepeatReading[]
 }
+
+/** A measure repeat sign starting at this measure, or stopping before it. */
+export type MeasureRepeatReading = { measures: number } | 'stop'
 
 export function readAttributes(
   element: ElementReader,
@@ -126,48 +135,96 @@ export function readAttributes(
     clefs: element
       .blocks('clef')
       .map((found) => readClef(found, state, position, warnings, context, path)),
-    multimeasureRests: element
-      // MusicXML allows one <measure-style> per staff, told apart by a
-      // "number" attribute, so every block is read. Which staff states the
-      // rest does not matter here: MNX states it for the whole score, so the
-      // measure only has to know the counts to see whether they agree.
+    // MusicXML allows one <measure-style> per staff, told apart by a
+    // "number" attribute, so every block is read. Which staff states the
+    // rest or repeat does not matter here: the measure only has to see them
+    // all to know whether they agree.
+    ...element
       .blocks('measure-style')
-      .flatMap((found) => readMeasureStyle(found, warnings, context, path)),
+      .map((found) => readMeasureStyle(found, warnings, context, path))
+      .reduce(
+        (all, reading) => ({
+          multimeasureRests: [...all.multimeasureRests, ...reading.multimeasureRests],
+          measureRepeats: [...all.measureRepeats, ...reading.measureRepeats],
+        }),
+        { multimeasureRests: [], measureRepeats: [] } as MeasureStyleReading,
+      ),
   }
 }
 
+interface MeasureStyleReading {
+  multimeasureRests: number[]
+  measureRepeats: MeasureRepeatReading[]
+}
+
 /**
- * The one measure-style child converted is <multiple-rest>, a multi-measure
- * rest spanning this many measures, counting the one carrying it. The other
- * children (measure-repeat, beat-repeat, slash) are left unread here and
- * reported by the unread-child sweep.
+ * The measure-style children converted are <multiple-rest>, a multi-measure
+ * rest spanning this many measures counting the one carrying it, and
+ * <measure-repeat>, the simile sign. The others (beat-repeat, slash) are
+ * left unread here and reported by the unread-child sweep.
  */
 function readMeasureStyle(
   element: ElementReader,
   warnings: WarningCollector,
   context: WarningContext,
   path: DocumentPath,
-): number[] {
-  // A <measure-style> holds at most one <multiple-rest>: its content is a
-  // choice of one child, so taking the first with child() is right.
-  const rest = element.child('multiple-rest')
-  if (!rest) return []
+): MeasureStyleReading {
+  const reading: MeasureStyleReading = { multimeasureRests: [], measureRepeats: [] }
 
-  // use-symbols="yes" asks for the stacked rest symbols rather than the
-  // single bar. MNX has no way to state the drawing, so the choice is lost.
-  if (attribute(rest, 'use-symbols') === 'yes') {
-    warnings.add(
-      'unrepresentable:multiple-rest-symbols',
-      'A multi-measure rest is drawn with the stacked rest symbols, which MNX cannot ' +
-        'ask for. The rest is converted and drawn the default way.',
-      { ...context, line: rest.line },
-      'multiple-rest',
-    )
+  // A <measure-style> holds one choice of child, so taking the first of each
+  // with child() is right.
+  const rest = element.child('multiple-rest')
+  if (rest) {
+    // use-symbols="yes" asks for the stacked rest symbols rather than the
+    // single bar. MNX has no way to state the drawing, so the choice is lost.
+    if (attribute(rest, 'use-symbols') === 'yes') {
+      warnings.add(
+        'unrepresentable:multiple-rest-symbols',
+        'A multi-measure rest is drawn with the stacked rest symbols, which MNX cannot ' +
+          'ask for. The rest is converted and drawn the default way.',
+        { ...context, line: rest.line },
+        'multiple-rest',
+      )
+    }
+
+    // MusicXML says a positive integer. The upper bound only rules out a
+    // corrupt file: no score rests for a hundred thousand measures.
+    reading.multimeasureRests.push(readIntegerInRange(rest, path, 1, 100_000))
   }
 
-  // MusicXML says a positive integer. The upper bound only rules out a
-  // corrupt file: no score rests for a hundred thousand measures.
-  return [readIntegerInRange(rest, path, 1, 100_000)]
+  const repeat = element.child('measure-repeat')
+  if (repeat) {
+    const edge = attribute(repeat, 'type')
+    if (edge !== 'start' && edge !== 'stop') {
+      throw new MusicXMLError('A <measure-repeat> must say whether it starts or stops the sign.', {
+        path,
+        line: repeat.line,
+      })
+    }
+    if (edge === 'stop') {
+      reading.measureRepeats.push('stop')
+    } else {
+      // The slash count changes the glyph, which MNX has no way to ask for.
+      const slashes = attribute(repeat, 'slashes')
+      if (slashes !== undefined && slashes !== '1') {
+        warnings.add(
+          'unrepresentable:measure-repeat-slashes',
+          `A measure repeat sign is drawn with ${slashes} slashes, which MNX cannot ` +
+            'ask for. The repeat is converted and drawn the default way.',
+          { ...context, line: repeat.line },
+          'measure-repeat',
+        )
+      }
+
+      // The content is a positive integer or empty, and a sign saying
+      // nothing is the everyday one-measure sign. The upper bound only
+      // rules out a corrupt file: no pattern repeats a thousand measures.
+      const measures = trimmedText(repeat) === '' ? 1 : readIntegerInRange(repeat, path, 1, 1000)
+      reading.measureRepeats.push({ measures })
+    }
+  }
+
+  return reading
 }
 
 function readKey(

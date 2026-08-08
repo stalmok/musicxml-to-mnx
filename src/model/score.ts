@@ -405,6 +405,12 @@ export interface Measure {
   arpeggios: readonly Arpeggio[]
   /** Filled in once the whole part is read, because a shift spans measures. */
   ottavas: Ottava[]
+  /**
+   * A simile sign starting here: repeat the previous this-many measures.
+   * A sign spanning several measures sits only on the first of them. Filled
+   * in once the whole part is read, because the sign runs measure to measure.
+   */
+  measureRepeat: number | undefined
   sequences: readonly Sequence[]
 }
 

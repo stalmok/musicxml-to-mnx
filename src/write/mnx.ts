@@ -338,6 +338,9 @@ function writeMeasure(
     // MNX keeps the two apart: a rolled chord and one bracketed as struck
     // together are opposite instructions, so they are separate lists.
     ...writeArpeggios(measure.arpeggios),
+    ...(measure.measureRepeat !== undefined
+      ? { measureRepeat: { number: measure.measureRepeat } }
+      : {}),
     ...(measure.ottavas.length > 0
       ? {
           ottavas: measure.ottavas.map((ottava) => ({

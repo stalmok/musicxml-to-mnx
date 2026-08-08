@@ -32,6 +32,7 @@ import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, children, requireAttribute } from '../xml/tree.js'
 import { readAttributes } from './attributes.js'
+import type { MeasureRepeatReading } from './attributes.js'
 import { readBarline, resolveEndings } from './barlines.js'
 import { buildBeams } from './beams.js'
 import { readDirection, readSound } from './directions.js'
@@ -59,6 +60,12 @@ interface MeasureReading {
   /** Held until the part can join it to its other end. */
   endingStart: { numbers: readonly number[] } | undefined
   endingStop: { open: boolean } | undefined
+  /**
+   * The measure repeat edges this measure stated, held until the part can
+   * walk the sign from its start to its stop or the end of the part.
+   */
+  measureRepeatStart: number | undefined
+  measureRepeatStop: boolean
 }
 
 export function readScore(root: XmlElement, warnings: WarningCollector): Score {
@@ -581,6 +588,7 @@ function readPart(
     warnings,
   )
   resolveEndings(readings, warnings, id)
+  resolveMeasureRepeats(readings)
 
   return {
     part: {
@@ -591,6 +599,31 @@ function readPart(
       measures: readings.map((reading) => reading.measure),
     },
     globals: readings.map((reading) => reading.global),
+  }
+}
+
+/**
+ * Walks each measure repeat sign from its start to its stop, or to the end
+ * of the part where the source never closes it, as MusicXML allows. Every
+ * measure under the sign draws it in MusicXML; MNX states it only on the
+ * first measure of each pattern, so a two-measure pattern is marked on
+ * every other measure.
+ */
+function resolveMeasureRepeats(readings: readonly MeasureReading[]): void {
+  let pattern: number | undefined
+  let offset = 0
+  for (const reading of readings) {
+    // A stop is read before a start, so a measure stopping one sign may
+    // start the next.
+    if (reading.measureRepeatStop) pattern = undefined
+    if (reading.measureRepeatStart !== undefined) {
+      pattern = reading.measureRepeatStart
+      offset = 0
+    }
+    if (pattern !== undefined) {
+      if (offset % pattern === 0) reading.measure.measureRepeat = pattern
+      offset += 1
+    }
   }
 }
 
@@ -622,6 +655,7 @@ function readMeasure(
   const fines: Fine[] = []
   const jumps: Jump[] = []
   const multimeasureRests: number[] = []
+  const measureRepeats: MeasureRepeatReading[] = []
   let barline: BarlineType | undefined
   let repeatStart = false
   let repeatEnd: RepeatEnd | undefined
@@ -662,6 +696,7 @@ function readMeasure(
         }
         clefs.push(...reading.clefs)
         multimeasureRests.push(...reading.multimeasureRests)
+        measureRepeats.push(...reading.measureRepeats)
         break
       }
 
@@ -767,6 +802,7 @@ function readMeasure(
       arpeggios: builder.arpeggios(warnings, context),
       // Filled in below, once the whole part has been read.
       ottavas: [],
+      measureRepeat: undefined,
       sequences: builder.sequences(warnings, context),
     },
     // Only worth carrying when it differs from where the measure sits;
@@ -789,7 +825,34 @@ function readMeasure(
     },
     endingStart,
     endingStop,
+    measureRepeatStart: oneMeasureRepeatStart(measureRepeats, warnings, context),
+    measureRepeatStop: measureRepeats.includes('stop'),
   }
+}
+
+/**
+ * The one measure repeat pattern MNX can state over a measure. A restated
+ * length, as one written per staff, loses nothing; differing lengths cannot
+ * all be carried, so the first is kept and the disagreement reported.
+ */
+function oneMeasureRepeatStart(
+  edges: readonly MeasureRepeatReading[],
+  warnings: WarningCollector,
+  context: WarningContext,
+): number | undefined {
+  const starts = edges.filter((edge): edge is { measures: number } => edge !== 'stop')
+  const first = starts[0]
+  if (first === undefined) return undefined
+  if (starts.some((start) => start.measures !== first.measures)) {
+    warnings.add(
+      'unrepresentable:measure-repeat',
+      'This measure starts measure repeats of different patterns, and MNX states ' +
+        'one for the measure. The first is the one converted.',
+      context,
+      'measure-repeat',
+    )
+  }
+  return first.measures
 }
 
 /**

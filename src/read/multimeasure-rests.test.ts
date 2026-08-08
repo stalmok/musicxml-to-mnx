@@ -179,14 +179,14 @@ describe('a multi-measure rest', () => {
     const { mnx, warnings } = convert(
       part('P1', [
         { attributes: style('<slash type="start" use-stems="no"/>'), body: NOTE },
-        { attributes: style('<measure-repeat type="start">1</measure-repeat>'), body: NOTE },
+        { attributes: style('<beat-repeat type="start"/>'), body: NOTE },
       ]),
     )
 
     expect(mnx.scores).toBeUndefined()
     expect(warnings.map((w) => [w.code, w.element])).toEqual([
       ['unsupported:element', 'slash'],
-      ['unsupported:element', 'measure-repeat'],
+      ['unsupported:element', 'beat-repeat'],
     ])
   })
 })
