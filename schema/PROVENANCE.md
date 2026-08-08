@@ -5,9 +5,9 @@
 |                |                                                                                                                                                                                             |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Source         | https://github.com/w3c/mnx, `docs/mnx-schema.json`                                                                                                                                          |
-| Pinned commit  | `e41322cb9794d7e1dd5e25e9f4475a847d114f1b` ("Expanded encoding for dynamics", 2026-06-16)                                                                                                   |
-| Retrieved      | 2026-07-18                                                                                                                                                                                  |
-| SHA-256        | `f2db32f8d8fc450cb087f73e2888482762800a1536a850eadcae0db1a924615e`                                                                                                                          |
+| Pinned commit  | `bd9e611aca10f5571cf8f0c1be49629099584a4b` ("Added measure repeats.", 2026-07-28)                                                                                                           |
+| Retrieved      | 2026-08-07                                                                                                                                                                                  |
+| SHA-256        | `71cce118e2bb4d17d42790db2574e84e2b7ba0f0be020c866f71b8f89b638fb8`                                                                                                                          |
 | Schema dialect | JSON Schema draft 2020-12                                                                                                                                                                   |
 | Licence        | The MNX specification is published by the W3C Music Notation Community Group under the [W3C Community Final Specification Agreement](https://www.w3.org/community/about/agreements/final/). |
 

@@ -115,13 +115,13 @@ describe('dynamics', () => {
     )
 
     expect(measure?.dynamics[0]?.value).toBeUndefined()
-    expect(measure?.dynamics[0]?.accent).toEqual({ attackValue: undefined, glyphs: [glyph] })
+    expect(measure?.dynamics[0]?.accent).toEqual({ residualValue: undefined, glyphs: [glyph] })
     expect(warnings).toEqual([])
   })
 
   // A two-stage accent states a momentary attack and the level it settles to:
-  // fp is a forte attack held at piano. MNX carries the attack as attackValue
-  // and the residual as the value.
+  // fp is a forte attack held at piano. MNX carries the attack as the value
+  // and the level it settles to as residualValue.
   test.each([
     ['fp', 'f', 'p', 'dynamicFortePiano'],
     ['sfp', 'f', 'p', 'dynamicSforzandoPiano'],
@@ -132,8 +132,8 @@ describe('dynamics', () => {
       inMeasure(direction(`<dynamics><${mark}/></dynamics>`) + note('C')),
     )
 
-    expect(measure?.dynamics[0]?.value).toBe(residual)
-    expect(measure?.dynamics[0]?.accent).toEqual({ attackValue: attack, glyphs: [glyph] })
+    expect(measure?.dynamics[0]?.value).toBe(attack)
+    expect(measure?.dynamics[0]?.accent).toEqual({ residualValue: residual, glyphs: [glyph] })
     expect(warnings).toEqual([])
   })
 
@@ -145,8 +145,8 @@ describe('dynamics', () => {
     expect(dynamic).toEqual({
       position: { fraction: [0, 1] },
       type: 'accent',
-      value: 'p',
-      attackValue: 'f',
+      value: 'f',
+      residualValue: 'p',
       glyphs: ['dynamicFortePiano'],
     })
     expect(schemaErrors(mnx)).toEqual([])

@@ -287,7 +287,22 @@ export interface MNXBeam {
   direction?: MNXBeamHookDirection
 }
 
-export type MNXDynamicValue = 'ppp' | 'pp' | 'p' | 'mp' | 'mf' | 'f' | 'ff' | 'fff' | 'n'
+export type MNXDynamicValue =
+  | 'pppppp'
+  | 'ppppp'
+  | 'pppp'
+  | 'ppp'
+  | 'pp'
+  | 'p'
+  | 'mp'
+  | 'mf'
+  | 'f'
+  | 'ff'
+  | 'fff'
+  | 'ffff'
+  | 'fffff'
+  | 'ffffff'
+  | 'n'
 
 export interface MNXRhythmicPosition {
   fraction: [number, number]
@@ -305,8 +320,8 @@ export interface MNXDynamic {
   position: MNXRhythmicPosition
   type: 'immediate' | 'gradual' | 'relative' | 'accent'
   value?: MNXDynamicValue
-  /** A two-stage accent's momentary attack, settling to `value`. */
-  attackValue?: MNXDynamicValue
+  /** The level a two-stage accent settles to after the attack in `value`. */
+  residualValue?: MNXDynamicValue
   /** The combined glyph(s) an accent is drawn as, by SMuFL name. */
   glyphs?: string[]
   /** Text drawn before the mark, such as "più". */

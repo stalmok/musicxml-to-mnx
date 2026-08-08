@@ -309,10 +309,10 @@ export interface Dynamic {
   /**
    * Set on an accent, such as a sforzando. Its glyphs draw the combined mark,
    * which is what keeps sf, fz and rfz apart. A two-stage accent like fp
-   * states a momentary attack, carried here, and settles to the plain `value`;
-   * a single accent leaves both the attack and the value unset.
+   * states its attack as the plain `value` and the level it settles to as the
+   * residual, carried here; a single accent leaves both unset.
    */
-  accent?: { attackValue: DynamicValue | undefined; glyphs: readonly string[] }
+  accent?: { residualValue: DynamicValue | undefined; glyphs: readonly string[] }
   /** The wording drawn before the mark, as in the "più" of "più f". */
   prefix?: string
   /** The wording drawn after the mark, as in the "sub." of "p sub.". */
