@@ -322,6 +322,10 @@ export interface MNXDynamic {
   value?: MNXDynamicValue
   /** The level a two-stage accent settles to after the attack in `value`. */
   residualValue?: MNXDynamicValue
+  /** The letter before an accent's value. Reads as "s" when unstated. */
+  accentPrefix?: 's' | 'r' | ''
+  /** The letter after an accent's value. Reads as "z" when unstated. */
+  accentSuffix?: 'z' | ''
   /** The combined glyph(s) an accent is drawn as, by SMuFL name. */
   glyphs?: string[]
   /** Text drawn before the mark, such as "più". */

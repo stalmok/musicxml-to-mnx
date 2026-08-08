@@ -12,6 +12,8 @@ import type { DocumentPath } from '../errors.js'
 import { addFractions, compareFractions, fraction } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type {
+  AccentPrefix,
+  AccentSuffix,
   Dynamic,
   DynamicValue,
   Fine,
@@ -71,32 +73,82 @@ const DYNAMIC_VALUES: ReadonlySet<string> = new Set([
   'n',
 ])
 
-// The accent dynamics, such as a sforzando, that MNX states as an accent group
-// carrying a combined SMuFL glyph. A two-stage accent (fp is a forte attack
-// held at piano) states its attack as the value and the level it settles to as
-// the residual; a single accent states neither, and the glyph alone says which
-// mark it is. The glyph names are the precomposed combined marks from SMuFL's
-// dynamics range. The extreme plain dynamics (pppp and beyond, ffff and
-// beyond) are plain values, not accents, and are not converted yet.
+// The accent dynamics, such as a sforzando, spelled out the way MNX states
+// them: the value is the level of the attack, the letters around it are the
+// accent's prefix and suffix, and a two-stage accent (fp is a forte attack
+// held at piano) adds the level it settles to as the residual. The glyph
+// names are the precomposed combined marks from SMuFL's dynamics range,
+// carried besides so the mark is drawn as written.
 interface AccentDynamic {
   glyph: string
   value: DynamicValue | undefined
   residualValue: DynamicValue | undefined
+  prefix: AccentPrefix | undefined
+  suffix: AccentSuffix | undefined
 }
 const ACCENT_DYNAMICS = new Map<string, AccentDynamic>([
-  ['sf', { glyph: 'dynamicSforzando1', value: undefined, residualValue: undefined }],
-  ['sfz', { glyph: 'dynamicSforzato', value: undefined, residualValue: undefined }],
-  ['fz', { glyph: 'dynamicForzando', value: undefined, residualValue: undefined }],
-  ['rf', { glyph: 'dynamicRinforzando1', value: undefined, residualValue: undefined }],
-  ['rfz', { glyph: 'dynamicRinforzando2', value: undefined, residualValue: undefined }],
-  ['sffz', { glyph: 'dynamicSforzatoFF', value: undefined, residualValue: undefined }],
-  // pf (poco forte / piano-forte) has no settled reading of its two letters, so
-  // its glyph alone is carried rather than a fabricated attack and residual.
-  ['pf', { glyph: 'dynamicPF', value: undefined, residualValue: undefined }],
-  ['fp', { glyph: 'dynamicFortePiano', value: 'f', residualValue: 'p' }],
-  ['sfp', { glyph: 'dynamicSforzandoPiano', value: 'f', residualValue: 'p' }],
-  ['sfpp', { glyph: 'dynamicSforzandoPianissimo', value: 'f', residualValue: 'pp' }],
-  ['sfzp', { glyph: 'dynamicSforzatoPiano', value: 'f', residualValue: 'p' }],
+  [
+    'sf',
+    { glyph: 'dynamicSforzando1', value: 'f', residualValue: undefined, prefix: 's', suffix: '' },
+  ],
+  [
+    'sfz',
+    { glyph: 'dynamicSforzato', value: 'f', residualValue: undefined, prefix: 's', suffix: 'z' },
+  ],
+  [
+    'fz',
+    { glyph: 'dynamicForzando', value: 'f', residualValue: undefined, prefix: '', suffix: 'z' },
+  ],
+  [
+    'rf',
+    { glyph: 'dynamicRinforzando1', value: 'f', residualValue: undefined, prefix: 'r', suffix: '' },
+  ],
+  [
+    'rfz',
+    {
+      glyph: 'dynamicRinforzando2',
+      value: 'f',
+      residualValue: undefined,
+      prefix: 'r',
+      suffix: 'z',
+    },
+  ],
+  [
+    'sffz',
+    { glyph: 'dynamicSforzatoFF', value: 'ff', residualValue: undefined, prefix: 's', suffix: 'z' },
+  ],
+  // pf (poco forte / piano-forte) has no settled reading of its two letters,
+  // and the accent prefixes MNX names stop at s and r, so its glyph alone is
+  // carried rather than a fabricated spelling.
+  [
+    'pf',
+    {
+      glyph: 'dynamicPF',
+      value: undefined,
+      residualValue: undefined,
+      prefix: undefined,
+      suffix: undefined,
+    },
+  ],
+  ['fp', { glyph: 'dynamicFortePiano', value: 'f', residualValue: 'p', prefix: '', suffix: '' }],
+  [
+    'sfp',
+    { glyph: 'dynamicSforzandoPiano', value: 'f', residualValue: 'p', prefix: 's', suffix: '' },
+  ],
+  [
+    'sfpp',
+    {
+      glyph: 'dynamicSforzandoPianissimo',
+      value: 'f',
+      residualValue: 'pp',
+      prefix: 's',
+      suffix: '',
+    },
+  ],
+  [
+    'sfzp',
+    { glyph: 'dynamicSforzatoPiano', value: 'f', residualValue: 'p', prefix: 's', suffix: 'z' },
+  ],
 ])
 
 export function readDirection(
@@ -531,7 +583,12 @@ function readDynamics(
         wedge: undefined,
         end: undefined,
         staff,
-        accent: { residualValue: accent.residualValue, glyphs: [accent.glyph] },
+        accent: {
+          residualValue: accent.residualValue,
+          prefix: accent.prefix,
+          suffix: accent.suffix,
+          glyphs: [accent.glyph],
+        },
         ...(prefix !== undefined ? { prefix: prefix.text } : {}),
         ...(orient !== undefined ? { orient } : {}),
       })

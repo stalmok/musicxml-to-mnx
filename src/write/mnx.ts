@@ -386,10 +386,12 @@ function writeArpeggios(
 /**
  * A dynamic mark. A hairpin is what makes one gradual rather than immediate,
  * and it points at the measure it stops in, which is why measures carry ids;
- * an accent is drawn from its combined glyph, with a two-stage one stating its
- * attack as the value and the level it settles to as the residual. The wording
- * a source wraps the mark in goes over as the prefix and suffix drawn around
- * it.
+ * an accent is drawn from its combined glyph, with its spelling stated as the
+ * attack value and the letters around it, and a two-stage one adding the
+ * level it settles to as the residual. MNX reads an unstated accent letter as
+ * the "s" and "z" of sfz, so only a letter that differs from those defaults
+ * is written. The wording a source wraps the mark in goes over as the prefix
+ * and suffix drawn around it.
  */
 function writeDynamic(dynamic: Dynamic, measureIds: ReadonlyMap<number, string>): MNXDynamic {
   return {
@@ -397,6 +399,12 @@ function writeDynamic(dynamic: Dynamic, measureIds: ReadonlyMap<number, string>)
     type: dynamic.wedge ? 'gradual' : dynamic.accent ? 'accent' : 'immediate',
     ...(dynamic.value ? { value: dynamic.value } : {}),
     ...(dynamic.accent?.residualValue ? { residualValue: dynamic.accent.residualValue } : {}),
+    ...(dynamic.accent?.prefix !== undefined && dynamic.accent.prefix !== 's'
+      ? { accentPrefix: dynamic.accent.prefix }
+      : {}),
+    ...(dynamic.accent?.suffix !== undefined && dynamic.accent.suffix !== 'z'
+      ? { accentSuffix: dynamic.accent.suffix }
+      : {}),
     ...(dynamic.accent ? { glyphs: [...dynamic.accent.glyphs] } : {}),
     ...(dynamic.prefix !== undefined ? { prefix: dynamic.prefix } : {}),
     ...(dynamic.suffix !== undefined ? { suffix: dynamic.suffix } : {}),

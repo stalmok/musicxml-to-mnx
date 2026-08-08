@@ -290,6 +290,12 @@ export interface Beam {
 }
 
 /** MNX's plain dynamic marks, from softest to loudest. */
+// The letters an accent dynamic wraps around its value: the s of sfz or the
+// r of rfz before it, the z after it, or explicitly none, which is not the
+// same as unstated.
+export type AccentPrefix = 's' | 'r' | ''
+export type AccentSuffix = 'z' | ''
+
 export type DynamicValue =
   | 'pppppp'
   | 'ppppp'
@@ -322,12 +328,19 @@ export interface Dynamic {
   /** Set on a hairpin, which is what makes it gradual rather than immediate. */
   wedge: WedgeType | undefined
   /**
-   * Set on an accent, such as a sforzando. Its glyphs draw the combined mark,
-   * which is what keeps sf, fz and rfz apart. A two-stage accent like fp
-   * states its attack as the plain `value` and the level it settles to as the
-   * residual, carried here; a single accent leaves both unset.
+   * Set on an accent, such as a sforzando. The mark's spelling is the plain
+   * `value` for the attack level with the accent's letters around it as the
+   * prefix and suffix, and a two-stage accent like fp adds the level it
+   * settles to as the residual. Its glyphs draw the combined mark. A mark
+   * with no settled spelling, like pf, leaves everything but the glyphs
+   * unset.
    */
-  accent?: { residualValue: DynamicValue | undefined; glyphs: readonly string[] }
+  accent?: {
+    residualValue: DynamicValue | undefined
+    prefix: AccentPrefix | undefined
+    suffix: AccentSuffix | undefined
+    glyphs: readonly string[]
+  }
   /** The wording drawn before the mark, as in the "più" of "più f". */
   prefix?: string
   /** The wording drawn after the mark, as in the "sub." of "p sub.". */
