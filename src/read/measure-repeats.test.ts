@@ -185,13 +185,7 @@ describe('a measure repeat', () => {
       ]),
     )
 
-    expect(repeats(mnx)).toEqual([
-      undefined,
-      { number: 2 },
-      undefined,
-      { number: 1 },
-      undefined,
-    ])
+    expect(repeats(mnx)).toEqual([undefined, { number: 2 }, undefined, { number: 1 }, undefined])
     expect(warnings).toEqual([])
     expect(schemaErrors(mnx)).toEqual([])
   })
