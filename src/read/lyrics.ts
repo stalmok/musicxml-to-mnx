@@ -11,6 +11,7 @@
 
 import type { Lyric } from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
+import { attribute } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
 
 // MusicXML's syllabic values, in MNX's spelling. A syllable standing on its
@@ -42,7 +43,7 @@ function readVerse(
   warnings: WarningCollector,
   context: WarningContext,
 ): Lyric | undefined {
-  const line = lyric.element.attributes['number'] ?? '1'
+  const line = attribute(lyric.element, 'number') ?? '1'
   const text = joinSyllables(lyric)
 
   // A <lyric> can carry no words at all: one holding only an <extend> is how

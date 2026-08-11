@@ -9,10 +9,12 @@
     "identification": 1,
     "words": 8,
     "sound": 6,
+    "direction": 1,
     "print-object": 11,
     "stem": 1,
     "cue": 6,
-    "notehead": 1
+    "notehead": 1,
+    "slur": 3
   },
   "abbott-think-of-today": {
     "midi-device": 2,
@@ -22,8 +24,11 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 2,
     "words": 11,
     "sound": 1,
+    "direction": 1,
+    "slur": 8,
     "extend": 1,
     "cue": 2
   },
@@ -35,11 +40,14 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 18,
     "words": 4,
     "sound": 1,
+    "direction": 1,
     "extend": 3,
-    "measure": 8,
-    "trill-mark": 6
+    "trill-mark": 6,
+    "slur": 1,
+    "tuplet": 1
   },
   "abrams-the-orphan-s-prayer": {
     "midi-device": 2,
@@ -49,10 +57,13 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 18,
     "words": 7,
     "sound": 12,
+    "direction": 1,
     "extend": 30,
-    "measure": 8,
+    "slur": 1,
+    "dot": 1,
     "stem": 2,
     "notehead": 1
   },
@@ -66,12 +77,13 @@
     "identification": 1,
     "defaults": 1,
     "credit": 5,
+    "measure": 12,
     "system-layout": 7,
     "words": 1,
     "sound": 81,
+    "direction": 1,
     "extend": 39,
     "trill-mark": 1,
-    "measure": 4,
     "staff-layout": 21
   },
   "arne-blow-blow-thou-winter-wind": {
@@ -84,15 +96,18 @@
     "identification": 1,
     "defaults": 1,
     "credit": 7,
+    "measure": 2,
     "system-layout": 14,
     "staff-details": 1,
     "words": 12,
     "sound": 10,
+    "direction": 3,
     "extend": 50,
     "cue": 2,
     "staff-layout": 28,
     "dashes": 2,
-    "wedge": 5
+    "wedge": 5,
+    "slur": 14
   },
   "arne-by-dimpled-brook": {
     "midi-device": 2,
@@ -107,10 +122,11 @@
     "system-layout": 8,
     "words": 8,
     "sound": 6,
+    "direction": 3,
     "extend": 7,
     "wedge": 2,
     "staff-layout": 16,
-    "slur": 2,
+    "slur": 4,
     "print-object": 1
   },
   "arne-celia-s-complaint": {
@@ -123,12 +139,13 @@
     "identification": 1,
     "defaults": 1,
     "credit": 5,
+    "measure": 6,
     "system-layout": 6,
-    "measure": 2,
     "sound": 3,
     "extend": 18,
     "trill-mark": 5,
-    "staff-layout": 12
+    "staff-layout": 12,
+    "slur": 3
   },
   "arne-hush-to-peace": {
     "midi-device": 3,
@@ -142,6 +159,8 @@
     "credit": 6,
     "system-layout": 9,
     "extend": 45,
+    "tuplet": 1,
+    "slur": 4,
     "staff-layout": 18
   },
   "arne-love-relaps-d": {
@@ -154,10 +173,12 @@
     "identification": 1,
     "defaults": 1,
     "credit": 4,
+    "measure": 24,
     "system-layout": 6,
     "words": 3,
     "sound": 1,
-    "measure": 9,
+    "direction": 1,
+    "tuplet": 9,
     "extend": 5,
     "staff-layout": 7
   },
@@ -171,10 +192,13 @@
     "identification": 1,
     "defaults": 1,
     "credit": 6,
+    "measure": 3,
     "system-layout": 7,
     "words": 6,
     "sound": 7,
+    "direction": 2,
     "extend": 52,
+    "slur": 7,
     "staff-details": 5,
     "staff-layout": 14
   },
@@ -188,6 +212,7 @@
     "identification": 1,
     "defaults": 1,
     "credit": 3,
+    "measure": 1,
     "system-layout": 15,
     "sound": 1,
     "words": 4,
@@ -203,6 +228,7 @@
     "identification": 1,
     "defaults": 1,
     "credit": 4,
+    "measure": 3,
     "system-layout": 6,
     "staff-layout": 18,
     "extend": 6
@@ -219,8 +245,11 @@
     "identification": 1,
     "words": 30,
     "sound": 31,
+    "direction": 4,
     "extend": 21,
     "print-object": 1,
+    "tuplet": 6,
+    "slur": 13,
     "pedal": 30
   },
   "bantock-2-the-ghost-road": {
@@ -235,12 +264,17 @@
     "identification": 1,
     "words": 49,
     "sound": 39,
+    "direction": 1,
     "extend": 43,
+    "tuplet": 7,
     "bracket": 2,
     "cue": 4,
+    "slur": 35,
     "notehead": 11,
+    "dot": 14,
     "stem": 13,
     "print-object": 11,
+    "grace": 1,
     "dashes": 4,
     "pedal": 2
   },
@@ -256,8 +290,12 @@
     "identification": 1,
     "words": 23,
     "sound": 19,
+    "direction": 1,
     "extend": 11,
+    "tuplet": 1,
     "cue": 1,
+    "type": 1,
+    "slur": 8,
     "print-object": 5
   },
   "bantock-4-the-celestial-weaver": {
@@ -272,11 +310,14 @@
     "identification": 1,
     "words": 67,
     "sound": 61,
+    "direction": 12,
     "extend": 35,
     "rehearsal": 8,
     "cue": 1,
     "notehead": 1,
+    "slur": 28,
     "pedal": 2,
+    "grace": 2,
     "print-object": 4
   },
   "bantock-5-return-of-spring": {
@@ -291,9 +332,11 @@
     "identification": 1,
     "words": 38,
     "sound": 29,
+    "direction": 8,
     "extend": 30,
     "rehearsal": 7,
-    "print-object": 9
+    "print-object": 9,
+    "slur": 1
   },
   "barnard-farewell-to-erin": {
     "midi-device": 3,
@@ -305,11 +348,13 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 3,
     "staff-details": 1,
     "print-object": 20,
     "words": 2,
     "extend": 5,
     "other-notation": 2,
+    "slur": 1,
     "cue": 7
   },
   "barnard-five-o-clock-in-the-morning": {
@@ -320,10 +365,12 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 14,
     "words": 11,
     "sound": 16,
-    "measure": 6,
+    "direction": 1,
     "cue": 3,
+    "slur": 19,
     "dashes": 20,
     "trill-mark": 3
   },
@@ -335,10 +382,12 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 14,
     "words": 39,
     "sound": 31,
-    "measure": 6,
-    "cue": 9
+    "direction": 1,
+    "cue": 9,
+    "slur": 19
   },
   "barnard-strangers-yet": {
     "midi-device": 2,
@@ -350,7 +399,9 @@
     "identification": 1,
     "words": 5,
     "sound": 8,
-    "extend": 9
+    "direction": 1,
+    "extend": 9,
+    "slur": 10
   },
   "barnard-the-brook": {
     "midi-device": 2,
@@ -364,8 +415,8 @@
     "trill-mark": 8,
     "wavy-line": 16,
     "extend": 4,
-    "measure": 2,
-    "clef": 1
+    "measure": 4,
+    "clef": 2
   },
   "barnby-the-beggar-maid": {
     "midi-device": 2,
@@ -375,9 +426,12 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 2,
     "words": 26,
     "sound": 20,
+    "direction": 3,
     "extend": 4,
+    "slur": 9,
     "print-object": 3,
     "pedal": 26
   },
@@ -389,9 +443,11 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 6,
     "words": 24,
+    "direction": 1,
     "sound": 42,
-    "measure": 2
+    "slur": 9
   },
   "barns-sleep-weary-heart": {
     "midi-device": 2,
@@ -403,7 +459,10 @@
     "identification": 1,
     "words": 19,
     "sound": 27,
+    "direction": 1,
+    "slur": 21,
     "extend": 7,
+    "dot": 1,
     "cue": 2,
     "pedal": 24,
     "dashes": 2
@@ -420,8 +479,10 @@
     "identification": 1,
     "words": 20,
     "sound": 22,
+    "direction": 1,
     "extend": 10,
     "print-object": 10,
+    "slur": 8,
     "pedal": 50
   },
   "beach-1-o-mistress-mine": {
@@ -436,8 +497,11 @@
     "identification": 1,
     "words": 37,
     "sound": 40,
+    "direction": 1,
     "extend": 22,
+    "tuplet": 1,
     "dashes": 8,
+    "slur": 8,
     "cue": 2,
     "pedal": 20,
     "print-object": 1
@@ -454,7 +518,10 @@
     "identification": 1,
     "words": 16,
     "sound": 12,
+    "direction": 1,
     "extend": 17,
+    "tuplet": 21,
+    "slur": 2,
     "dashes": 2,
     "print-object": 188,
     "pedal": 38
@@ -471,8 +538,11 @@
     "identification": 1,
     "words": 33,
     "sound": 22,
+    "direction": 1,
+    "tuplet": 5,
     "extend": 22,
     "print-object": 236,
+    "slur": 7,
     "pedal": 42,
     "notehead": 1,
     "tie": 2
@@ -489,7 +559,10 @@
     "identification": 1,
     "words": 20,
     "sound": 16,
+    "direction": 1,
     "extend": 11,
+    "type": 1,
+    "slur": 7,
     "cue": 3,
     "print-object": 1,
     "pedal": 42
@@ -506,9 +579,12 @@
     "identification": 1,
     "words": 43,
     "sound": 37,
+    "direction": 1,
     "extend": 41,
     "print-object": 35,
+    "slur": 23,
     "cue": 6,
+    "dot": 8,
     "tie": 6
   },
   "beach-3-fairy-lullaby": {
@@ -523,11 +599,12 @@
     "identification": 1,
     "words": 30,
     "sound": 23,
+    "direction": 1,
     "extend": 15,
     "print-object": 36,
+    "slur": 5,
     "cue": 8,
-    "pedal": 6,
-    "slur": 2
+    "pedal": 6
   },
   "beach-3-i-send-my-heart-up-to-thee": {
     "midi-device": 3,
@@ -542,14 +619,17 @@
     "staff-details": 1,
     "words": 35,
     "sound": 22,
+    "direction": 1,
     "stem": 4,
     "notehead": 3,
+    "slur": 20,
     "extend": 23,
-    "measure": 3,
+    "measure": 6,
     "print-object": 67,
+    "tuplet": 11,
     "cue": 7,
-    "pedal": 52,
-    "slur": 2
+    "dot": 2,
+    "pedal": 52
   },
   "beethoven-1-bitten": {
     "midi-device": 2,
@@ -561,9 +641,12 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 8,
     "sound": 9,
-    "print-object": 1
+    "direction": 1,
+    "print-object": 1,
+    "slur": 6
   },
   "beethoven-1-urians-reise-um-die-welt": {
     "midi-device": 2,
@@ -575,8 +658,11 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 2,
-    "sound": 5
+    "sound": 5,
+    "direction": 1,
+    "slur": 4
   },
   "beethoven-2-die-liebe-des-nachsten": {
     "midi-device": 2,
@@ -589,6 +675,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 4,
+    "direction": 1,
     "sound": 16
   },
   "beethoven-2-feuerfarb": {
@@ -601,10 +688,12 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 6,
     "words": 5,
     "sound": 8,
-    "measure": 2,
-    "extend": 15
+    "direction": 2,
+    "extend": 15,
+    "slur": 3
   },
   "beethoven-3-das-liedchen-von-der-ruhe": {
     "midi-device": 2,
@@ -618,7 +707,9 @@
     "identification": 1,
     "words": 1,
     "sound": 14,
-    "extend": 12
+    "direction": 1,
+    "extend": 12,
+    "slur": 3
   },
   "beethoven-3-vom-tode": {
     "midi-device": 2,
@@ -632,6 +723,7 @@
     "identification": 1,
     "words": 4,
     "sound": 12,
+    "direction": 1,
     "other-notation": 1,
     "extend": 2,
     "other-direction": 4
@@ -646,9 +738,12 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 3,
     "sound": 26,
-    "print-object": 4
+    "direction": 1,
+    "print-object": 4,
+    "slur": 3
   },
   "beethoven-5-gottes-macht-und-vorsehung": {
     "midi-device": 2,
@@ -661,7 +756,8 @@
     "movement-title": 1,
     "identification": 1,
     "words": 1,
-    "sound": 11
+    "sound": 11,
+    "direction": 1
   },
   "beethoven-6-busslied": {
     "midi-device": 2,
@@ -673,9 +769,13 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 33,
     "sound": 60,
+    "direction": 4,
+    "tuplet": 1,
     "extend": 2,
+    "slur": 5,
     "print-object": 3,
     "dashes": 2
   },
@@ -695,6 +795,8 @@
     "words": 60,
     "metronome": 1,
     "sound": 52,
+    "direction": 26,
+    "slur": 28,
     "dashes": 21,
     "extend": 1,
     "wedge": 16,
@@ -703,7 +805,7 @@
     "pedal": 36,
     "notehead": 3,
     "tie": 4,
-    "slur": 4
+    "type": 1
   },
   "berlioz-1-villanelle": {
     "midi-device": 2,
@@ -719,6 +821,7 @@
     "credit": 9,
     "system-layout": 20,
     "words": 13,
+    "direction": 7,
     "extend": 18,
     "sound": 9,
     "staff-layout": 40,
@@ -740,14 +843,16 @@
     "credit": 11,
     "system-layout": 27,
     "words": 32,
+    "direction": 10,
     "extend": 62,
     "notehead": 9,
     "stem": 5,
+    "slur": 10,
     "sound": 19,
     "dashes": 8,
+    "tied": 2,
     "staff-layout": 52,
     "tie": 2,
-    "slur": 2,
     "pedal": 16
   },
   "berlioz-4-absence": {
@@ -762,13 +867,17 @@
     "identification": 1,
     "defaults": 1,
     "credit": 8,
+    "measure": 2,
     "system-layout": 14,
     "words": 23,
+    "direction": 11,
     "sound": 48,
     "extend": 38,
+    "tied": 2,
     "cue": 1,
     "staff-layout": 28,
     "pedal": 21,
+    "slur": 15,
     "wedge": 2
   },
   "bianchi-lacy-helen": {
@@ -779,10 +888,13 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 2,
     "words": 7,
     "sound": 4,
+    "direction": 4,
     "extend": 2,
-    "print-object": 116
+    "print-object": 116,
+    "tuplet": 1
   },
   "bishop-home-sweet-home": {
     "midi-device": 3,
@@ -793,9 +905,11 @@
     "work": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 16,
     "words": 22,
     "sound": 19,
-    "measure": 6,
+    "direction": 5,
+    "slur": 5,
     "trill-mark": 9,
     "extend": 3,
     "notehead": 8,
@@ -816,9 +930,11 @@
     "identification": 1,
     "words": 6,
     "sound": 6,
+    "direction": 3,
     "extend": 20,
     "trill-mark": 4,
     "wavy-line": 8,
+    "slur": 9,
     "print-object": 12
   },
   "bizet-1-chanson-d-avril": {
@@ -832,6 +948,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 21,
+    "direction": 3,
     "sound": 26,
     "extend": 18,
     "dashes": 12,
@@ -849,8 +966,11 @@
     "movement-title": 1,
     "identification": 1,
     "words": 6,
+    "direction": 1,
     "sound": 11,
+    "tuplet": 4,
     "extend": 15,
+    "slur": 1,
     "dashes": 4,
     "pedal": 4
   },
@@ -865,10 +985,12 @@
     "movement-title": 1,
     "identification": 1,
     "words": 17,
+    "direction": 3,
     "sound": 51,
     "dashes": 12,
     "extend": 5,
     "harmony": 1,
+    "slur": 79,
     "print-object": 32,
     "pedal": 10
   },
@@ -883,11 +1005,13 @@
     "movement-title": 1,
     "identification": 1,
     "words": 5,
+    "direction": 2,
     "sound": 9,
     "extend": 2,
     "dashes": 4,
     "pedal": 70,
-    "print-object": 32
+    "print-object": 32,
+    "slur": 1
   },
   "bizet-13-absence": {
     "midi-device": 2,
@@ -900,11 +1024,14 @@
     "movement-title": 1,
     "identification": 1,
     "words": 73,
+    "direction": 11,
     "sound": 74,
     "extend": 29,
+    "slur": 18,
     "dashes": 38,
     "cue": 6,
     "pedal": 12,
+    "tuplet": 48,
     "print-object": 3
   },
   "bizet-14-douce-mer": {
@@ -918,9 +1045,11 @@
     "movement-title": 1,
     "identification": 1,
     "words": 17,
+    "direction": 2,
     "sound": 19,
     "extend": 12,
     "dashes": 10,
+    "slur": 6,
     "pedal": 34,
     "print-object": 4
   },
@@ -935,10 +1064,13 @@
     "movement-title": 1,
     "identification": 1,
     "words": 31,
+    "direction": 1,
     "sound": 42,
     "extend": 26,
     "dashes": 16,
-    "pedal": 12
+    "slur": 34,
+    "pedal": 12,
+    "tuplet": 6
   },
   "bizet-16-la-coccinelle": {
     "midi-device": 2,
@@ -950,11 +1082,15 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 48,
+    "direction": 3,
     "sound": 24,
     "extend": 19,
     "dashes": 24,
+    "slur": 52,
     "pedal": 102,
+    "tuplet": 26,
     "print-object": 9
   },
   "bonis-allons-prier": {
@@ -968,6 +1104,8 @@
     "identification": 1,
     "words": 15,
     "sound": 12,
+    "direction": 3,
+    "slur": 9,
     "extend": 2,
     "print-object": 1
   },
@@ -982,14 +1120,17 @@
     "movement-title": 1,
     "identification": 1,
     "words": 55,
+    "direction": 11,
     "sound": 27,
     "extend": 3,
     "notehead": 17,
+    "slur": 20,
     "print-object": 16,
     "staccato": 1,
     "wavy-line": 1,
     "trill-mark": 1,
-    "stem": 16
+    "stem": 16,
+    "type": 15
   },
   "boulanger-1-elle-etait-descendue-au-bas-de-la-prairie": {
     "midi-device": 2,
@@ -1003,14 +1144,17 @@
     "identification": 1,
     "words": 21,
     "sound": 16,
+    "direction": 1,
     "print-object": 26,
     "dashes": 18,
     "extend": 3,
+    "tuplet": 1,
+    "slur": 30,
     "cue": 2,
     "pedal": 4,
+    "grace": 2,
     "stem": 2,
-    "notehead": 4,
-    "slur": 2
+    "notehead": 4
   },
   "boulanger-10-deux-ancolies": {
     "midi-device": 2,
@@ -1024,12 +1168,16 @@
     "identification": 1,
     "words": 29,
     "sound": 19,
+    "direction": 1,
+    "tuplet": 3,
     "extend": 6,
     "dashes": 8,
     "print-object": 255,
+    "clef": 2,
     "pedal": 6,
-    "clef": 1,
-    "bracket": 4
+    "bracket": 4,
+    "grace": 2,
+    "slur": 1
   },
   "boulanger-11-par-ce-que-j-ai-souffert": {
     "midi-device": 2,
@@ -1043,15 +1191,18 @@
     "identification": 1,
     "words": 34,
     "sound": 23,
+    "direction": 1,
     "extend": 16,
+    "slur": 31,
     "stem": 3,
     "cue": 1,
     "notehead": 3,
     "print-object": 18,
     "dashes": 16,
-    "clef": 1,
+    "tuplet": 2,
+    "clef": 2,
+    "type": 2,
     "pedal": 8,
-    "slur": 2,
     "bracket": 2
   },
   "boulanger-12-je-garde-une-medaille-d-elle": {
@@ -1066,9 +1217,12 @@
     "identification": 1,
     "words": 7,
     "sound": 14,
+    "direction": 1,
+    "tuplet": 1,
     "extend": 7,
     "print-object": 5,
     "stem": 1,
+    "type": 1,
     "notehead": 1,
     "octave-shift": 1
   },
@@ -1084,13 +1238,18 @@
     "identification": 1,
     "words": 70,
     "sound": 67,
+    "direction": 4,
     "extend": 33,
+    "tuplet": 14,
+    "slur": 39,
     "print-object": 181,
     "dashes": 34,
     "notehead": 9,
+    "grace": 10,
     "other-notation": 1,
     "pedal": 16,
     "stem": 2,
+    "type": 4,
     "tie": 2,
     "octave-shift": 5
   },
@@ -1104,7 +1263,10 @@
     "identification": 1,
     "words": 9,
     "sound": 13,
+    "direction": 1,
+    "slur": 8,
     "extend": 6,
+    "tuplet": 1,
     "print-object": 16,
     "dashes": 8,
     "pedal": 2
@@ -1119,9 +1281,12 @@
     "identification": 1,
     "words": 36,
     "sound": 44,
+    "direction": 1,
     "extend": 19,
     "bracket": 4,
+    "tuplet": 1,
     "dashes": 16,
+    "slur": 20,
     "pedal": 10,
     "print-object": 4,
     "notehead": 3
@@ -1136,14 +1301,18 @@
     "identification": 1,
     "words": 16,
     "sound": 17,
+    "direction": 2,
     "extend": 10,
+    "slur": 24,
     "bracket": 4,
     "print-object": 53,
     "cue": 5,
+    "grace": 4,
     "stem": 1,
     "notehead": 3,
     "dashes": 2,
-    "pedal": 4
+    "pedal": 4,
+    "tuplet": 3
   },
   "boulton-1-constancy": {
     "midi-device": 2,
@@ -1156,10 +1325,12 @@
     "movement-title": 1,
     "identification": 1,
     "words": 23,
+    "slur": 21,
     "extend": 9,
     "sound": 12,
     "print-object": 46,
-    "pedal": 76
+    "pedal": 76,
+    "dot": 10
   },
   "boulton-11-to-welcome-you": {
     "midi-device": 2,
@@ -1173,7 +1344,10 @@
     "identification": 1,
     "words": 19,
     "sound": 13,
+    "direction": 1,
     "extend": 16,
+    "tuplet": 2,
+    "slur": 3,
     "print-object": 2,
     "dashes": 2
   },
@@ -1187,12 +1361,16 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 37,
     "sound": 24,
+    "direction": 1,
     "dashes": 34,
     "extend": 5,
     "print-object": 27,
-    "pedal": 6
+    "slur": 24,
+    "pedal": 6,
+    "tuplet": 1
   },
   "boulton-2-cradle-song": {
     "midi-device": 2,
@@ -1206,9 +1384,13 @@
     "identification": 1,
     "words": 3,
     "sound": 6,
+    "direction": 1,
+    "slur": 25,
     "extend": 2,
+    "tuplet": 2,
     "print-object": 1,
-    "notehead": 13
+    "notehead": 13,
+    "dot": 1
   },
   "boulton-3-love-s-journey": {
     "midi-device": 2,
@@ -1221,9 +1403,13 @@
     "movement-title": 1,
     "identification": 1,
     "words": 25,
+    "direction": 2,
     "sound": 32,
     "extend": 12,
+    "slur": 6,
     "print-object": 120,
+    "tuplet": 27,
+    "type": 1,
     "dashes": 6,
     "pedal": 76,
     "notehead": 7
@@ -1240,9 +1426,11 @@
     "identification": 1,
     "words": 14,
     "sound": 26,
+    "direction": 1,
     "extend": 28,
     "print-object": 89,
-    "pedal": 78
+    "pedal": 78,
+    "slur": 2
   },
   "boulton-5-in-summer-weather": {
     "midi-device": 2,
@@ -1254,8 +1442,11 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 36,
     "sound": 46,
+    "direction": 1,
+    "slur": 9,
     "extend": 4,
     "pedal": 10
   },
@@ -1269,10 +1460,14 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 25,
+    "direction": 1,
     "sound": 64,
     "print-object": 15,
-    "extend": 3
+    "extend": 3,
+    "slur": 29,
+    "dot": 1
   },
   "brahms-1-denn-es-gehet-dem-menschen-wie-dem-vieh": {
     "midi-device": 2,
@@ -1286,8 +1481,10 @@
     "identification": 1,
     "words": 11,
     "sound": 32,
+    "direction": 4,
     "extend": 9,
-    "clef": 1,
+    "clef": 2,
+    "tuplet": 1,
     "print-object": 5
   },
   "brahms-1-die-kranze": {
@@ -1302,7 +1499,9 @@
     "identification": 1,
     "words": 11,
     "sound": 13,
+    "direction": 3,
     "slur": 4,
+    "tuplet": 21,
     "print-object": 132,
     "pedal": 16
   },
@@ -1316,11 +1515,15 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 3,
     "words": 16,
     "sound": 29,
+    "direction": 1,
+    "slur": 34,
     "extend": 16,
     "staff-details": 1,
     "print-object": 77,
+    "tuplet": 24,
     "technical": 1,
     "notehead": 1,
     "tie": 2
@@ -1337,8 +1540,12 @@
     "identification": 1,
     "words": 18,
     "sound": 35,
+    "direction": 2,
     "extend": 16,
+    "slur": 114,
     "staff-details": 1,
+    "dot": 12,
+    "tuplet": 6,
     "print-object": 19,
     "dashes": 2,
     "pedal": 12,
@@ -1354,9 +1561,12 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 6,
     "sound": 15,
+    "direction": 1,
     "extend": 4,
+    "slur": 19,
     "pedal": 2
   },
   "brahms-2-magyarisch": {
@@ -1371,6 +1581,7 @@
     "identification": 1,
     "words": 4,
     "sound": 9,
+    "direction": 1,
     "extend": 3,
     "print-object": 1
   },
@@ -1386,8 +1597,10 @@
     "identification": 1,
     "words": 6,
     "sound": 14,
+    "direction": 2,
     "extend": 2,
-    "print-object": 168
+    "print-object": 168,
+    "tuplet": 25
   },
   "brahms-4-an-die-nachtigall": {
     "midi-device": 2,
@@ -1401,11 +1614,13 @@
     "identification": 1,
     "words": 3,
     "sound": 10,
+    "direction": 1,
     "extend": 1,
     "print-object": 263,
     "stem": 24,
     "notehead": 24,
-    "other-direction": 24
+    "other-direction": 24,
+    "tuplet": 4
   },
   "brahms-4-wiegenlied": {
     "midi-device": 2,
@@ -1419,11 +1634,14 @@
     "identification": 1,
     "defaults": 1,
     "credit": 5,
+    "measure": 2,
     "system-layout": 4,
     "words": 1,
     "sound": 2,
+    "direction": 1,
     "extend": 9,
-    "staff-layout": 8
+    "staff-layout": 8,
+    "slur": 2
   },
   "bridge-1-day-after-day": {
     "midi-device": 2,
@@ -1440,10 +1658,12 @@
     "system-layout": 19,
     "words": 40,
     "sound": 55,
+    "direction": 20,
     "extend": 21,
+    "tuplet": 3,
     "wedge": 8,
     "staff-layout": 37,
-    "slur": 2
+    "slur": 8
   },
   "bridge-2-speak-to-me-my-love": {
     "midi-device": 2,
@@ -1460,12 +1680,17 @@
     "system-layout": 23,
     "words": 41,
     "sound": 56,
+    "direction": 19,
     "extend": 36,
+    "tuplet": 8,
     "wedge": 3,
     "staff-layout": 43,
     "pedal": 4,
+    "slur": 14,
     "print-object": 2,
-    "tie": 2
+    "tie": 2,
+    "tied": 2,
+    "grace": 1
   },
   "bridge-adoration-h-57": {
     "midi-device": 2,
@@ -1477,8 +1702,12 @@
     "identification": 1,
     "words": 15,
     "sound": 21,
+    "direction": 1,
     "extend": 5,
     "print-object": 7,
+    "slur": 20,
+    "tuplet": 4,
+    "grace": 10,
     "pedal": 2,
     "wedge": 1
   },
@@ -1495,11 +1724,16 @@
     "system-layout": 16,
     "words": 7,
     "sound": 31,
+    "direction": 5,
     "extend": 19,
+    "tuplet": 2,
     "staff-layout": 30,
     "trill-mark": 4,
     "wavy-line": 8,
-    "pedal": 4
+    "slur": 11,
+    "pedal": 4,
+    "dot": 2,
+    "grace": 1
   },
   "bridge-come-to-me-in-my-dreams-h-71": {
     "midi-device": 2,
@@ -1511,11 +1745,15 @@
     "identification": 1,
     "words": 15,
     "sound": 39,
+    "direction": 4,
     "extend": 9,
+    "dot": 5,
     "stem": 1,
     "cue": 1,
     "print-object": 66,
+    "slur": 26,
     "pedal": 34,
+    "tuplet": 7,
     "dashes": 2
   },
   "bridge-fair-daffodils-h-51": {
@@ -1528,9 +1766,12 @@
     "identification": 1,
     "words": 21,
     "sound": 39,
+    "direction": 1,
     "extend": 18,
     "print-object": 21,
     "articulations": 1,
+    "slur": 36,
+    "type": 4,
     "wedge": 1,
     "pedal": 14,
     "notehead": 5,
@@ -1546,9 +1787,13 @@
     "identification": 1,
     "words": 12,
     "sound": 41,
+    "direction": 1,
     "extend": 21,
     "print-object": 9,
+    "type": 3,
     "pedal": 66,
+    "dot": 7,
+    "tuplet": 1,
     "trill-mark": 1,
     "wavy-line": 2
   },
@@ -1560,12 +1805,15 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 6,
     "words": 4,
     "sound": 8,
-    "measure": 2,
+    "direction": 1,
     "extend": 11,
+    "type": 15,
     "cue": 2,
     "print-object": 12,
+    "slur": 2,
     "inverted-mordent": 1,
     "turn": 1,
     "dashes": 2
@@ -1578,9 +1826,10 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 6,
     "extend": 8,
-    "measure": 2,
     "notehead": 1,
+    "slur": 5,
     "sound": 4,
     "words": 33
   },
@@ -1594,13 +1843,16 @@
     "identification": 1,
     "words": 11,
     "sound": 25,
-    "measure": 2,
+    "direction": 2,
+    "measure": 4,
     "inverted-turn": 13,
     "print-object": 10,
     "extend": 8,
     "fermata": 1,
     "trill-mark": 1,
-    "dashes": 4
+    "dashes": 4,
+    "slur": 2,
+    "dot": 1
   },
   "burleigh-1-worth-while": {
     "midi-device": 2,
@@ -1614,9 +1866,13 @@
     "identification": 1,
     "words": 31,
     "sound": 21,
+    "direction": 1,
     "extend": 7,
+    "type": 2,
     "offset": 1,
-    "print-object": 6
+    "print-object": 6,
+    "slur": 2,
+    "grace": 2
   },
   "burleigh-2-the-jungle-flower": {
     "midi-device": 2,
@@ -1629,9 +1885,12 @@
     "movement-title": 1,
     "identification": 1,
     "words": 19,
+    "direction": 1,
     "sound": 22,
     "extend": 16,
     "print-object": 5,
+    "slur": 9,
+    "dot": 2,
     "fermata": 1
   },
   "burleigh-3-kashmiri-song": {
@@ -1646,10 +1905,14 @@
     "identification": 1,
     "words": 37,
     "sound": 27,
+    "direction": 1,
     "extend": 11,
+    "type": 7,
     "offset": 2,
     "tie": 2,
-    "print-object": 8
+    "print-object": 8,
+    "slur": 7,
+    "grace": 2
   },
   "burleigh-4-among-the-fuchsias": {
     "midi-device": 2,
@@ -1663,9 +1926,11 @@
     "identification": 1,
     "words": 24,
     "sound": 30,
+    "direction": 1,
     "extend": 8,
     "print-object": 6,
     "notehead": 1,
+    "slur": 8,
     "pedal": 2
   },
   "burleigh-5-till-i-wake": {
@@ -1679,11 +1944,15 @@
     "movement-title": 1,
     "identification": 1,
     "words": 30,
+    "direction": 1,
     "sound": 30,
     "extend": 23,
+    "type": 10,
+    "slur": 6,
     "tie": 2,
     "print-object": 20,
     "pedal": 18,
+    "dot": 1,
     "trill-mark": 1,
     "notehead": 1,
     "wedge": 2
@@ -1697,9 +1966,13 @@
     "work": 1,
     "identification": 1,
     "words": 51,
+    "direction": 4,
     "sound": 53,
     "extend": 22,
+    "slur": 12,
+    "dot": 2,
     "print-object": 3,
+    "grace": 1,
     "dashes": 2,
     "tie": 2
   },
@@ -1713,7 +1986,9 @@
     "identification": 1,
     "words": 8,
     "sound": 7,
+    "direction": 1,
     "extend": 8,
+    "slur": 17,
     "print-object": 3
   },
   "burleigh-nobody-knows-de-trouble-i-ve-seen": {
@@ -1726,8 +2001,10 @@
     "identification": 1,
     "words": 16,
     "sound": 14,
+    "direction": 1,
+    "slur": 8,
     "tie": 2,
-    "slur": 2,
+    "dot": 6,
     "print-object": 1
   },
   "butterworth-1-bredon-hill": {
@@ -1740,11 +2017,16 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 25,
     "sound": 49,
+    "direction": 4,
     "extend": 18,
     "print-object": 17,
+    "slur": 13,
+    "dot": 12,
     "notehead": 4,
+    "tuplet": 5,
     "pedal": 8
   },
   "butterworth-1-loveliest-of-trees-the-cherry-now": {
@@ -1759,11 +2041,13 @@
     "identification": 1,
     "words": 21,
     "sound": 27,
+    "direction": 4,
     "extend": 8,
     "print-object": 7,
     "dashes": 22,
     "pedal": 6,
-    "slur": 2
+    "slur": 16,
+    "tuplet": 3
   },
   "butterworth-2-oh-fair-enough-are-sky-and-plain": {
     "midi-device": 2,
@@ -1777,8 +2061,10 @@
     "identification": 1,
     "words": 6,
     "sound": 22,
+    "direction": 2,
     "extend": 8,
     "print-object": 3,
+    "slur": 23,
     "pedal": 14
   },
   "butterworth-2-when-i-was-one-and-twenty": {
@@ -1791,9 +2077,12 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 8,
     "sound": 17,
-    "extend": 5
+    "direction": 3,
+    "extend": 5,
+    "slur": 12
   },
   "butterworth-3-look-not-in-my-eyes": {
     "midi-device": 2,
@@ -1805,9 +2094,12 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 16,
     "sound": 14,
+    "direction": 1,
     "extend": 10,
+    "slur": 13,
     "print-object": 3,
     "tie": 4,
     "pedal": 2
@@ -1824,11 +2116,13 @@
     "identification": 1,
     "words": 22,
     "sound": 27,
+    "direction": 1,
     "extend": 5,
     "print-object": 8,
     "cue": 1,
     "notehead": 1,
-    "clef": 1,
+    "clef": 2,
+    "slur": 7,
     "pedal": 4,
     "key": 1
   },
@@ -1842,9 +2136,12 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "sound": 3,
     "words": 5,
-    "extend": 15
+    "direction": 1,
+    "extend": 15,
+    "slur": 16
   },
   "butterworth-6-is-my-team-ploughing": {
     "midi-device": 2,
@@ -1856,9 +2153,12 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 13,
     "sound": 27,
-    "extend": 1
+    "direction": 2,
+    "extend": 1,
+    "slur": 4
   },
   "butterworth-love-blows-as-the-wind-blows": {
     "midi-device": 2,
@@ -1870,12 +2170,18 @@
     "identification": 1,
     "words": 99,
     "sound": 125,
+    "direction": 8,
     "extend": 59,
     "stem": 3,
+    "type": 1,
     "notehead": 3,
     "cue": 1,
     "dashes": 2,
-    "print-object": 87
+    "tuplet": 5,
+    "print-object": 87,
+    "measure": 2,
+    "dot": 6,
+    "slur": 42
   },
   "cellier-oh-woman-sweet-woman": {
     "midi-device": 2,
@@ -1885,9 +2191,11 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 10,
     "words": 24,
     "sound": 8,
-    "measure": 4,
+    "direction": 1,
+    "slur": 19,
     "print-object": 2,
     "extend": 1
   },
@@ -1900,6 +2208,8 @@
     "work": 1,
     "identification": 1,
     "words": 68,
+    "tuplet": 28,
+    "slur": 37,
     "sound": 93,
     "extend": 24,
     "stem": 2,
@@ -1916,9 +2226,12 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 2,
     "words": 6,
     "sound": 66,
-    "extend": 8
+    "direction": 2,
+    "extend": 8,
+    "slur": 7
   },
   "chaminade-alleluia": {
     "midi-device": 2,
@@ -1928,10 +2241,13 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 2,
     "words": 15,
     "sound": 26,
+    "direction": 1,
     "extend": 3,
-    "dashes": 6
+    "dashes": 6,
+    "slur": 17
   },
   "chaminade-amertume": {
     "midi-device": 2,
@@ -1941,10 +2257,13 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 2,
     "words": 19,
+    "direction": 1,
     "sound": 25,
     "extend": 11,
-    "print-object": 2
+    "print-object": 2,
+    "slur": 6
   },
   "chaminade-amoroso": {
     "midi-device": 2,
@@ -1955,6 +2274,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 30,
+    "direction": 6,
     "sound": 35,
     "extend": 18,
     "dashes": 2,
@@ -1969,14 +2289,18 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 2,
     "words": 17,
+    "direction": 4,
     "sound": 34,
     "extend": 24,
+    "tuplet": 5,
     "print-object": 40,
     "dashes": 12,
     "stem": 1,
     "notehead": 1,
     "staccato": 6,
+    "slur": 2,
     "pedal": 2
   },
   "chaminade-au-pays-bleu": {
@@ -1988,9 +2312,13 @@
     "work": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 37,
+    "direction": 1,
     "sound": 43,
+    "tuplet": 19,
     "extend": 15,
+    "slur": 15,
     "print-object": 13,
     "tie": 2
   },
@@ -2005,8 +2333,11 @@
     "identification": 1,
     "words": 35,
     "sound": 25,
+    "direction": 2,
     "extend": 24,
+    "slur": 14,
     "print-object": 29,
+    "tuplet": 6,
     "cue": 1,
     "other-notation": 1,
     "trill-mark": 2,
@@ -2023,6 +2354,7 @@
     "work": 1,
     "identification": 1,
     "words": 35,
+    "direction": 10,
     "sound": 35,
     "extend": 2,
     "print-object": 3,
@@ -2037,9 +2369,11 @@
     "work": 1,
     "movement-title": 1,
     "identification": 1,
+    "direction": 2,
     "words": 17,
     "sound": 40,
-    "extend": 11
+    "extend": 11,
+    "slur": 25
   },
   "chausson-1-nanny": {
     "midi-device": 2,
@@ -2053,9 +2387,12 @@
     "identification": 1,
     "words": 19,
     "sound": 24,
+    "direction": 6,
     "extend": 8,
+    "tuplet": 4,
+    "slur": 56,
     "print-object": 171,
-    "slur": 2
+    "dot": 2
   },
   "chausson-1-serre-chaude": {
     "midi-device": 2,
@@ -2069,7 +2406,11 @@
     "identification": 1,
     "words": 21,
     "sound": 14,
+    "direction": 1,
     "extend": 13,
+    "tuplet": 8,
+    "slur": 5,
+    "dot": 13,
     "notehead": 25,
     "dashes": 2,
     "print-object": 36
@@ -2086,7 +2427,9 @@
     "identification": 1,
     "sound": 13,
     "words": 22,
+    "direction": 3,
     "extend": 1,
+    "slur": 11,
     "print-object": 13,
     "tie": 8,
     "notehead": 1
@@ -2103,7 +2446,9 @@
     "identification": 1,
     "words": 3,
     "sound": 18,
+    "direction": 1,
     "extend": 5,
+    "slur": 17,
     "print-object": 4
   },
   "chausson-3-les-papillons": {
@@ -2118,6 +2463,8 @@
     "identification": 1,
     "words": 16,
     "sound": 20,
+    "direction": 7,
+    "tuplet": 2,
     "extend": 4,
     "pedal": 4,
     "print-object": 70
@@ -2134,7 +2481,9 @@
     "identification": 1,
     "words": 7,
     "sound": 16,
+    "direction": 5,
     "extend": 8,
+    "slur": 14,
     "print-object": 2
   },
   "chausson-5-serenade-italienne": {
@@ -2149,8 +2498,12 @@
     "identification": 1,
     "words": 14,
     "sound": 24,
+    "direction": 2,
     "extend": 10,
-    "print-object": 183
+    "tuplet": 26,
+    "print-object": 183,
+    "slur": 20,
+    "dot": 4
   },
   "chausson-6-hebe": {
     "midi-device": 2,
@@ -2164,7 +2517,10 @@
     "identification": 1,
     "words": 15,
     "sound": 32,
+    "direction": 14,
     "extend": 10,
+    "slur": 38,
+    "dot": 4,
     "print-object": 10,
     "notehead": 6,
     "tie": 6
@@ -2181,8 +2537,11 @@
     "identification": 1,
     "words": 17,
     "sound": 15,
+    "direction": 1,
     "extend": 15,
-    "print-object": 5
+    "tuplet": 2,
+    "print-object": 5,
+    "slur": 10
   },
   "chopin-1-zyczenie": {
     "midi-device": 2,
@@ -2196,12 +2555,16 @@
     "identification": 1,
     "defaults": 1,
     "credit": 5,
+    "measure": 2,
     "system-layout": 4,
     "words": 6,
+    "direction": 1,
+    "note": 11,
     "dashes": 8,
     "sound": 9,
     "extend": 1,
     "print-object": 4,
+    "type": 4,
     "staff-layout": 7,
     "trill-mark": 6,
     "pedal": 54
@@ -2220,6 +2583,7 @@
     "credit": 7,
     "system-layout": 11,
     "words": 5,
+    "direction": 1,
     "extend": 11,
     "sound": 4,
     "wedge": 2,
@@ -2238,10 +2602,13 @@
     "identification": 1,
     "words": 12,
     "sound": 14,
+    "direction": 2,
     "extend": 11,
+    "tuplet": 4,
     "print-object": 12,
+    "slur": 10,
     "pedal": 2,
-    "tuplet": 1
+    "dot": 17
   },
   "coleridge-taylor-2-when-i-am-dead-my-dearest": {
     "midi-device": 2,
@@ -2255,7 +2622,9 @@
     "identification": 1,
     "words": 15,
     "sound": 17,
+    "direction": 1,
     "extend": 16,
+    "slur": 20,
     "print-object": 1
   },
   "coleridge-taylor-3-oh-roses-for-the-flush-of-youth": {
@@ -2270,10 +2639,13 @@
     "identification": 1,
     "words": 17,
     "sound": 13,
+    "direction": 1,
     "print-object": 36,
     "extend": 9,
     "dashes": 14,
-    "pedal": 8
+    "pedal": 8,
+    "slur": 15,
+    "tuplet": 2
   },
   "coleridge-taylor-4-she-sat-and-sang-alway": {
     "midi-device": 2,
@@ -2287,10 +2659,12 @@
     "identification": 1,
     "words": 13,
     "sound": 15,
+    "direction": 1,
     "extend": 13,
     "print-object": 8,
     "dashes": 10,
-    "wedge": 1
+    "wedge": 1,
+    "slur": 17
   },
   "coleridge-taylor-5-unmindful-of-the-roses": {
     "midi-device": 2,
@@ -2304,8 +2678,10 @@
     "identification": 1,
     "words": 20,
     "sound": 12,
+    "direction": 1,
     "dashes": 4,
     "extend": 5,
+    "slur": 19,
     "print-object": 10
   },
   "coleridge-taylor-6-too-late-for-love": {
@@ -2320,10 +2696,13 @@
     "identification": 1,
     "words": 41,
     "sound": 35,
+    "direction": 1,
     "extend": 20,
     "print-object": 24,
+    "slur": 30,
     "wedge": 5,
-    "clef": 1,
+    "clef": 3,
+    "grace": 2,
     "dashes": 2
   },
   "coleridge-taylor-oh-the-summer": {
@@ -2335,9 +2714,11 @@
     "work": 1,
     "identification": 1,
     "words": 31,
+    "direction": 1,
     "sound": 29,
     "extend": 21,
     "other-direction": 1,
+    "slur": 115,
     "print-object": 1
   },
   "coleridge-taylor-viking-song": {
@@ -2349,7 +2730,10 @@
     "work": 1,
     "identification": 1,
     "words": 40,
-    "sound": 19
+    "direction": 1,
+    "sound": 19,
+    "tuplet": 2,
+    "slur": 6
   },
   "corder-o-sun-that-wakenest": {
     "midi-device": 2,
@@ -2361,10 +2745,12 @@
     "identification": 1,
     "words": 13,
     "sound": 3,
+    "direction": 1,
     "note": 9,
     "extend": 5,
     "other-direction": 2,
     "print-object": 4,
+    "tuplet": 1,
     "time": 1
   },
   "cornelius-1-botschaft": {
@@ -2379,7 +2765,9 @@
     "identification": 1,
     "words": 20,
     "sound": 24,
+    "direction": 14,
     "extend": 8,
+    "slur": 1,
     "print-object": 5
   },
   "cornelius-1-in-lust-und-schmerzen": {
@@ -2393,10 +2781,12 @@
     "movement-title": 1,
     "identification": 1,
     "words": 38,
+    "direction": 1,
     "sound": 15,
+    "tuplet": 7,
     "extend": 26,
-    "print-object": 1069,
-    "tuplet": 1
+    "slur": 162,
+    "print-object": 1069
   },
   "cornelius-1-untreu": {
     "midi-device": 2,
@@ -2410,6 +2800,7 @@
     "identification": 1,
     "words": 8,
     "sound": 9,
+    "direction": 1,
     "dashes": 4,
     "pedal": 12,
     "print-object": 7
@@ -2426,9 +2817,11 @@
     "identification": 1,
     "words": 8,
     "sound": 17,
+    "direction": 2,
     "notehead": 5,
-    "slur": 2,
-    "print-object": 2
+    "slur": 15,
+    "print-object": 2,
+    "tuplet": 1
   },
   "cornelius-2-veilchen": {
     "midi-device": 2,
@@ -2442,6 +2835,7 @@
     "identification": 1,
     "sound": 6,
     "words": 3,
+    "direction": 1,
     "pedal": 14,
     "notehead": 1,
     "print-object": 1
@@ -2458,6 +2852,7 @@
     "identification": 1,
     "sound": 3,
     "words": 8,
+    "direction": 1,
     "extend": 19,
     "print-object": 4,
     "notehead": 8,
@@ -2475,6 +2870,7 @@
     "identification": 1,
     "words": 4,
     "sound": 4,
+    "direction": 1,
     "dashes": 2,
     "extend": 1,
     "print-object": 5
@@ -2491,7 +2887,9 @@
     "identification": 1,
     "sound": 8,
     "words": 7,
+    "direction": 1,
     "extend": 6,
+    "type": 2,
     "dashes": 2,
     "wedge": 2
   },
@@ -2505,10 +2903,14 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "sound": 6,
     "words": 10,
+    "direction": 2,
+    "slur": 3,
     "extend": 1,
-    "pedal": 34
+    "pedal": 34,
+    "grace": 3
   },
   "cowen-hail": {
     "midi-device": 2,
@@ -2519,9 +2921,11 @@
     "work": 1,
     "identification": 1,
     "words": 16,
+    "direction": 1,
     "sound": 22,
     "extend": 2,
     "cue": 2,
+    "tuplet": 4,
     "pedal": 2
   },
   "cowen-past-and-future": {
@@ -2535,7 +2939,9 @@
     "staff-details": 1,
     "words": 34,
     "sound": 12,
+    "direction": 1,
     "extend": 4,
+    "slur": 8,
     "dashes": 4
   },
   "cowen-the-better-land": {
@@ -2548,10 +2954,12 @@
     "identification": 1,
     "words": 30,
     "sound": 30,
+    "direction": 6,
     "extend": 21,
     "cue": 2,
-    "clef": 1,
+    "clef": 4,
     "print-object": 2,
+    "slur": 3,
     "pedal": 6,
     "dashes": 4
   },
@@ -2565,10 +2973,13 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 5,
     "words": 9,
+    "direction": 1,
     "sound": 25,
     "extend": 12,
-    "print-object": 4
+    "print-object": 4,
+    "slur": 4
   },
   "davies-2-old-woman": {
     "midi-device": 5,
@@ -2581,9 +2992,13 @@
     "movement-title": 1,
     "identification": 1,
     "words": 18,
+    "direction": 1,
+    "type": 23,
     "sound": 20,
     "extend": 13,
     "print-object": 8,
+    "slur": 2,
+    "clef": 1,
     "pedal": 2
   },
   "davies-3-a-tragedy": {
@@ -2596,7 +3011,9 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 5,
     "words": 6,
+    "direction": 1,
     "sound": 55,
     "extend": 16,
     "print-object": 16
@@ -2611,11 +3028,14 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 5,
     "sound": 21,
     "words": 21,
+    "direction": 3,
     "extend": 12,
     "stem": 6,
-    "notehead": 6
+    "notehead": 6,
+    "slur": 1
   },
   "davies-5-the-fly-and-the-humble-bee": {
     "midi-device": 5,
@@ -2628,9 +3048,13 @@
     "movement-title": 1,
     "identification": 1,
     "words": 32,
+    "direction": 1,
     "sound": 64,
+    "tuplet": 140,
     "print-object": 20,
+    "type": 7,
     "extend": 11,
+    "slur": 5,
     "pedal": 2
   },
   "davies-6-bless-you": {
@@ -2644,10 +3068,13 @@
     "movement-title": 1,
     "identification": 1,
     "words": 23,
+    "direction": 2,
     "sound": 21,
     "extend": 8,
     "print-object": 9,
-    "clef": 1
+    "type": 24,
+    "slur": 2,
+    "clef": 2
   },
   "davies-7-an-old-cradle-song": {
     "midi-device": 5,
@@ -2662,9 +3089,13 @@
     "words": 6,
     "metronome": 2,
     "sound": 11,
+    "direction": 1,
     "extend": 27,
+    "tuplet": 7,
     "print-object": 12,
-    "pedal": 2
+    "pedal": 2,
+    "slur": 2,
+    "clef": 1
   },
   "davies-8-o-my-little-sixpence": {
     "midi-device": 5,
@@ -2677,9 +3108,11 @@
     "movement-title": 1,
     "identification": 1,
     "words": 34,
+    "direction": 5,
     "sound": 51,
     "extend": 15,
-    "print-object": 11
+    "print-object": 11,
+    "slur": 4
   },
   "debussy-1-c-est-l-extase-langoureuse": {
     "midi-device": 2,
@@ -2693,8 +3126,11 @@
     "identification": 1,
     "words": 17,
     "sound": 37,
+    "direction": 3,
+    "slur": 41,
     "extend": 3,
     "dashes": 10,
+    "tuplet": 1,
     "print-object": 4
   },
   "debussy-1-l-ame-evaporee": {
@@ -2709,9 +3145,12 @@
     "identification": 1,
     "words": 15,
     "sound": 19,
+    "direction": 2,
     "extend": 2,
     "print-object": 16,
-    "cue": 2
+    "slur": 17,
+    "cue": 2,
+    "type": 1
   },
   "debussy-1-rondel-le-temps-a-laisse-son-manteau": {
     "midi-device": 2,
@@ -2730,10 +3169,11 @@
     "words": 15,
     "extend": 1,
     "sound": 14,
+    "direction": 5,
     "dashes": 6,
     "staff-layout": 22,
     "print-object": 13,
-    "slur": 2
+    "slur": 9
   },
   "debussy-2-il-pleure-dans-mon-coeur": {
     "midi-device": 2,
@@ -2747,10 +3187,12 @@
     "identification": 1,
     "words": 16,
     "sound": 66,
+    "direction": 6,
     "extend": 7,
     "notehead": 17,
     "slur": 4,
-    "print-object": 10
+    "print-object": 10,
+    "dot": 13
   },
   "debussy-2-la-grotte-aupres-de-cette-grotte-sombre": {
     "midi-device": 2,
@@ -2767,11 +3209,13 @@
     "system-layout": 11,
     "words": 9,
     "sound": 17,
+    "direction": 1,
     "notehead": 4,
     "extend": 1,
+    "tuplet": 2,
     "staff-layout": 22,
+    "slur": 33,
     "print-object": 19,
-    "slur": 4,
     "tie": 2,
     "stem": 1
   },
@@ -2787,6 +3231,9 @@
     "identification": 1,
     "words": 18,
     "sound": 14,
+    "direction": 2,
+    "slur": 10,
+    "tuplet": 3,
     "notehead": 7,
     "dashes": 2,
     "print-object": 2
@@ -2806,8 +3253,11 @@
     "system-layout": 11,
     "words": 16,
     "sound": 19,
+    "direction": 1,
+    "tuplet": 1,
     "staff-layout": 22,
     "notehead": 18,
+    "slur": 4,
     "print-object": 21,
     "dashes": 2
   },
@@ -2823,11 +3273,14 @@
     "credit": 8,
     "system-layout": 19,
     "words": 15,
+    "direction": 1,
     "sound": 22,
     "dashes": 4,
     "extend": 19,
+    "tuplet": 2,
     "wedge": 2,
     "staff-layout": 38,
+    "slur": 3,
     "print-object": 8,
     "pedal": 2
   },
@@ -2843,8 +3296,11 @@
     "identification": 1,
     "words": 11,
     "sound": 33,
+    "direction": 2,
     "dashes": 4,
     "extend": 1,
+    "slur": 6,
+    "dot": 3,
     "notehead": 3,
     "print-object": 5,
     "stem": 1
@@ -2862,7 +3318,9 @@
     "words": 23,
     "sound": 39,
     "extend": 17,
-    "print-object": 1
+    "slur": 3,
+    "print-object": 1,
+    "grace": 1
   },
   "delius-2-le-ciel-est-par-dessus-le-toit": {
     "midi-device": 2,
@@ -2876,8 +3334,12 @@
     "identification": 1,
     "words": 5,
     "sound": 17,
+    "direction": 1,
+    "tuplet": 4,
     "print-object": 3,
-    "extend": 1
+    "extend": 1,
+    "dot": 2,
+    "slur": 4
   },
   "delius-2-so-white-so-soft-so-sweet-is-she": {
     "midi-device": 2,
@@ -2891,7 +3353,10 @@
     "identification": 1,
     "words": 7,
     "sound": 24,
-    "extend": 9
+    "direction": 1,
+    "extend": 9,
+    "dot": 4,
+    "slur": 4
   },
   "delius-3-spring-the-sweet-spring": {
     "midi-device": 2,
@@ -2906,6 +3371,8 @@
     "words": 8,
     "sound": 26,
     "extend": 12,
+    "tuplet": 2,
+    "slur": 3,
     "trill-mark": 2,
     "wavy-line": 4,
     "print-object": 2
@@ -2922,10 +3389,13 @@
     "identification": 1,
     "words": 16,
     "sound": 24,
+    "tuplet": 2,
     "extend": 10,
     "dashes": 10,
+    "clef": 2,
     "pedal": 2,
-    "clef": 1
+    "grace": 2,
+    "slur": 3
   },
   "dickson-destiny": {
     "midi-device": 2,
@@ -2937,9 +3407,12 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 1,
     "sound": 2,
-    "print-object": 3
+    "direction": 1,
+    "print-object": 3,
+    "slur": 1
   },
   "dickson-drifting": {
     "midi-device": 2,
@@ -2955,7 +3428,8 @@
     "words": 17,
     "dashes": 8,
     "extend": 2,
-    "print-object": 13
+    "print-object": 13,
+    "slur": 6
   },
   "dickson-the-brook": {
     "midi-device": 2,
@@ -2965,10 +3439,11 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 14,
     "words": 5,
     "sound": 25,
-    "measure": 6,
-    "clef": 1
+    "direction": 1,
+    "clef": 2
   },
   "dickson-the-land-of-long-ago": {
     "midi-device": 2,
@@ -2980,10 +3455,12 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 26,
     "words": 11,
     "sound": 23,
-    "measure": 12,
+    "direction": 1,
     "extend": 3,
+    "slur": 1,
     "print-object": 4,
     "dashes": 8
   },
@@ -2999,10 +3476,13 @@
     "identification": 1,
     "defaults": 1,
     "credit": 7,
+    "measure": 2,
     "system-layout": 12,
     "words": 32,
     "sound": 41,
+    "direction": 21,
     "extend": 15,
+    "slur": 9,
     "dashes": 16,
     "staff-layout": 22,
     "slide": 4,
@@ -3018,8 +3498,11 @@
     "identification": 1,
     "words": 6,
     "sound": 7,
+    "direction": 3,
     "extend": 9,
-    "turn": 2
+    "turn": 2,
+    "slur": 6,
+    "dot": 52
   },
   "duchambge-le-matelot": {
     "midi-device": 2,
@@ -3031,6 +3514,7 @@
     "identification": 1,
     "words": 1,
     "sound": 7,
+    "direction": 1,
     "turn": 1
   },
   "duchambge-priere-des-laboureurs": {
@@ -3043,7 +3527,9 @@
     "identification": 1,
     "sound": 6,
     "words": 1,
-    "measure-layout": 8
+    "direction": 1,
+    "measure-layout": 8,
+    "dot": 2
   },
   "duchambge-ronde-des-pauvres": {
     "midi-device": 2,
@@ -3053,9 +3539,12 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 2,
     "words": 13,
     "sound": 2,
-    "print-object": 2
+    "direction": 1,
+    "print-object": 2,
+    "dot": 19
   },
   "elgar-1-like-to-the-damask-rose": {
     "midi-device": 2,
@@ -3069,9 +3558,11 @@
     "identification": 1,
     "words": 51,
     "sound": 50,
+    "direction": 1,
     "extend": 28,
     "cue": 15,
     "print-object": 9,
+    "slur": 7,
     "stem": 1,
     "technical": 4,
     "pedal": 4
@@ -3088,10 +3579,14 @@
     "identification": 1,
     "words": 40,
     "sound": 27,
+    "direction": 1,
     "extend": 12,
     "print-object": 3,
     "dashes": 4,
-    "pedal": 14
+    "tuplet": 2,
+    "type": 4,
+    "pedal": 14,
+    "slur": 3
   },
   "elgar-2-queen-mary-s-song": {
     "midi-device": 2,
@@ -3105,11 +3600,14 @@
     "identification": 1,
     "words": 35,
     "sound": 19,
+    "direction": 1,
     "extend": 27,
+    "slur": 11,
     "print-object": 24,
+    "type": 3,
     "notehead": 2,
     "pedal": 42,
-    "slur": 2
+    "grace": 1
   },
   "elgar-2-the-river": {
     "midi-device": 2,
@@ -3123,10 +3621,13 @@
     "identification": 1,
     "words": 104,
     "sound": 70,
+    "direction": 1,
     "print-object": 3,
     "extend": 8,
     "cue": 2,
     "pedal": 10,
+    "grace": 1,
+    "slur": 13,
     "fermata": 1
   },
   "elgar-3-a-song-of-autumn": {
@@ -3139,13 +3640,17 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 53,
     "sound": 33,
+    "direction": 1,
     "extend": 22,
     "cue": 7,
+    "slur": 49,
+    "tuplet": 1,
     "print-object": 1,
     "pedal": 10,
-    "slur": 2
+    "type": 5
   },
   "elgar-4-the-poet-s-life": {
     "midi-device": 2,
@@ -3159,10 +3664,12 @@
     "identification": 1,
     "words": 56,
     "sound": 30,
+    "direction": 1,
     "extend": 41,
     "print-object": 1,
     "cue": 22,
-    "pedal": 62
+    "pedal": 62,
+    "slur": 13
   },
   "elgar-5-through-the-long-days": {
     "midi-device": 2,
@@ -3175,8 +3682,10 @@
     "movement-title": 1,
     "identification": 1,
     "words": 24,
+    "direction": 1,
     "sound": 25,
     "extend": 10,
+    "slur": 2,
     "print-object": 11,
     "pedal": 18
   },
@@ -3192,9 +3701,12 @@
     "identification": 1,
     "words": 16,
     "sound": 20,
+    "direction": 1,
+    "slur": 4,
     "extend": 42,
     "cue": 8,
     "print-object": 10,
+    "type": 34,
     "pedal": 4,
     "notehead": 1
   },
@@ -3208,12 +3720,13 @@
     "identification": 1,
     "words": 33,
     "sound": 30,
+    "direction": 3,
     "extend": 19,
     "print-object": 25,
     "dashes": 10,
     "cue": 4,
+    "slur": 9,
     "pedal": 8,
-    "slur": 2,
     "tie": 4
   },
   "faisst-1-altdeutsches-lied": {
@@ -3231,11 +3744,13 @@
     "system-layout": 6,
     "words": 1,
     "sound": 13,
-    "measure": 4,
+    "direction": 1,
+    "measure": 8,
     "extend": 11,
     "inverted-mordent": 1,
     "wedge": 1,
-    "staff-layout": 11
+    "staff-layout": 11,
+    "slur": 2
   },
   "faisst-1-die-insel-der-vergessenheit": {
     "midi-device": 2,
@@ -3249,10 +3764,12 @@
     "identification": 1,
     "words": 27,
     "sound": 36,
+    "direction": 2,
     "extend": 2,
     "dashes": 8,
+    "slur": 10,
     "print-object": 52,
-    "slur": 2
+    "tuplet": 3
   },
   "faisst-1-stimme-eines-seligen-geistes": {
     "midi-device": 2,
@@ -3266,9 +3783,11 @@
     "identification": 1,
     "words": 6,
     "sound": 13,
+    "direction": 1,
     "extend": 4,
     "print-object": 7,
     "beam": 1,
+    "slur": 9,
     "dashes": 4
   },
   "faisst-1-unsern-getreuen": {
@@ -3281,10 +3800,14 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 3,
     "sound": 16,
+    "direction": 1,
+    "type": 6,
     "print-object": 17,
     "cue": 3,
+    "slur": 2,
     "dashes": 2
   },
   "faisst-2-das-brunnlein": {
@@ -3299,7 +3822,9 @@
     "identification": 1,
     "words": 14,
     "sound": 29,
-    "print-object": 13
+    "direction": 1,
+    "print-object": 13,
+    "slur": 94
   },
   "faisst-2-das-mitleidige-madel": {
     "midi-device": 2,
@@ -3313,10 +3838,13 @@
     "identification": 1,
     "words": 21,
     "sound": 27,
+    "direction": 1,
     "extend": 6,
     "dashes": 6,
     "print-object": 10,
     "other-direction": 1,
+    "slur": 3,
+    "dot": 2,
     "pedal": 2
   },
   "faisst-2-niederlandisches-wiegenlied": {
@@ -3330,6 +3858,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 2,
+    "slur": 1,
     "extend": 3,
     "sound": 7
   },
@@ -3343,11 +3872,15 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 22,
     "sound": 74,
     "print-object": 8,
+    "tuplet": 10,
+    "slur": 9,
     "other-direction": 3,
     "cue": 2,
+    "type": 5,
     "other-notation": 1,
     "tie": 2,
     "dashes": 2,
@@ -3364,13 +3897,17 @@
     "movement-title": 1,
     "identification": 1,
     "words": 17,
+    "direction": 3,
     "sound": 15,
     "extend": 2,
     "dashes": 8,
     "print-object": 35,
     "pedal": 100,
     "bracket": 4,
-    "tie": 2
+    "slur": 4,
+    "tie": 2,
+    "grace": 1,
+    "tuplet": 2
   },
   "faltis-2-zeig-mir-dein-wahres-bild": {
     "midi-device": 2,
@@ -3382,11 +3919,16 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 3,
+    "direction": 1,
     "sound": 3,
     "extend": 6,
     "pedal": 38,
-    "print-object": 14
+    "tuplet": 2,
+    "print-object": 14,
+    "slur": 2,
+    "grace": 2
   },
   "faltis-3-sprich": {
     "midi-device": 2,
@@ -3399,11 +3941,15 @@
     "movement-title": 1,
     "identification": 1,
     "words": 21,
+    "direction": 3,
     "sound": 29,
     "extend": 7,
     "dashes": 6,
+    "tuplet": 6,
     "print-object": 17,
     "pedal": 56,
+    "slur": 4,
+    "grace": 1,
     "tie": 2
   },
   "farrenc-le-berger-fidele": {
@@ -3414,8 +3960,10 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 2,
     "words": 25,
-    "sound": 1
+    "sound": 1,
+    "direction": 1
   },
   "faure-1-larmes": {
     "midi-device": 2,
@@ -3428,13 +3976,17 @@
     "movement-title": 1,
     "identification": 1,
     "words": 7,
+    "direction": 1,
     "sound": 22,
+    "tuplet": 6,
+    "slur": 61,
     "extend": 5,
     "print-object": 35,
-    "slur": 2,
     "pedal": 16,
     "notehead": 26,
+    "dot": 4,
     "dashes": 2,
+    "grace": 1,
     "wedge": 2
   },
   "faure-2-au-cimetiere": {
@@ -3448,9 +4000,12 @@
     "movement-title": 1,
     "identification": 1,
     "words": 15,
+    "direction": 4,
     "extend": 12,
     "sound": 16,
-    "pedal": 38
+    "slur": 1,
+    "pedal": 38,
+    "tuplet": 19
   },
   "faure-2-hymne": {
     "midi-device": 2,
@@ -3464,10 +4019,12 @@
     "identification": 1,
     "words": 16,
     "sound": 19,
+    "direction": 1,
     "extend": 18,
+    "slur": 66,
+    "dot": 5,
     "pedal": 32,
-    "print-object": 16,
-    "slur": 2
+    "print-object": 16
   },
   "faure-3-barcarolle": {
     "midi-device": 2,
@@ -3481,10 +4038,14 @@
     "identification": 1,
     "words": 19,
     "sound": 12,
+    "direction": 1,
     "extend": 28,
+    "tuplet": 3,
     "dashes": 2,
+    "dot": 27,
     "tie": 2,
-    "pedal": 34
+    "pedal": 34,
+    "slur": 43
   },
   "faure-3-spleen": {
     "midi-device": 2,
@@ -3497,8 +4058,10 @@
     "movement-title": 1,
     "identification": 1,
     "words": 7,
+    "direction": 1,
     "extend": 4,
     "sound": 18,
+    "slur": 28,
     "print-object": 36
   },
   "faure-4-a-clymene": {
@@ -3512,11 +4075,13 @@
     "movement-title": 1,
     "identification": 1,
     "words": 15,
+    "direction": 3,
     "extend": 15,
     "sound": 22,
     "notehead": 59,
+    "tuplet": 1,
     "pedal": 108,
-    "slur": 4,
+    "slur": 15,
     "print-object": 86
   },
   "faure-4-la-rose": {
@@ -3530,8 +4095,11 @@
     "movement-title": 1,
     "identification": 1,
     "words": 7,
+    "direction": 1,
     "sound": 29,
     "extend": 7,
+    "tuplet": 5,
+    "slur": 81,
     "print-object": 4,
     "pedal": 76,
     "notehead": 1
@@ -3548,10 +4116,12 @@
     "credit": 5,
     "system-layout": 11,
     "words": 18,
+    "direction": 1,
     "sound": 14,
     "print-object": 3,
     "wedge": 13,
-    "staff-layout": 22
+    "staff-layout": 22,
+    "slur": 19
   },
   "ferrari-le-sommeil": {
     "midi-device": 2,
@@ -3563,11 +4133,16 @@
     "identification": 1,
     "words": 31,
     "sound": 27,
+    "direction": 1,
     "print-object": 19,
+    "tuplet": 5,
     "extend": 2,
     "dashes": 4,
+    "slur": 7,
+    "dot": 2,
     "other-direction": 2,
-    "stem": 1
+    "stem": 1,
+    "type": 1
   },
   "ferrari-lontan-dagli-occhi-lontan-dal-cuore-op-17": {
     "midi-device": 2,
@@ -3579,8 +4154,10 @@
     "identification": 1,
     "words": 6,
     "sound": 8,
+    "direction": 1,
     "extend": 31,
     "other-notation": 4,
+    "slur": 3,
     "print-object": 1,
     "pedal": 26
   },
@@ -3594,12 +4171,16 @@
     "identification": 1,
     "defaults": 1,
     "credit": 10,
+    "measure": 2,
     "system-layout": 27,
     "words": 47,
+    "direction": 27,
     "sound": 73,
     "extend": 40,
+    "tuplet": 7,
     "cue": 7,
     "staff-layout": 51,
+    "slur": 25,
     "print-object": 168,
     "notehead": 1
   },
@@ -3615,6 +4196,8 @@
     "identification": 1,
     "words": 13,
     "sound": 30,
+    "direction": 4,
+    "slur": 13,
     "pedal": 22,
     "print-object": 8
   },
@@ -3630,10 +4213,12 @@
     "identification": 1,
     "words": 10,
     "sound": 34,
+    "direction": 1,
     "print-object": 13,
     "stem": 1,
     "notehead": 1,
     "extend": 38,
+    "slur": 46,
     "pedal": 170,
     "fermata": 1,
     "wedge": 1
@@ -3650,6 +4235,8 @@
     "identification": 1,
     "words": 7,
     "sound": 19,
+    "direction": 3,
+    "slur": 6,
     "pedal": 62
   },
   "franz-12-in-meinem-garten-die-nelken": {
@@ -3662,10 +4249,13 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 7,
     "sound": 12,
+    "direction": 1,
     "extend": 12,
     "dashes": 2,
+    "slur": 28,
     "pedal": 42,
     "notehead": 5,
     "print-object": 5,
@@ -3683,8 +4273,10 @@
     "identification": 1,
     "words": 25,
     "sound": 33,
+    "direction": 13,
     "pedal": 130,
-    "print-object": 9
+    "print-object": 9,
+    "slur": 2
   },
   "franz-3-die-lotosblume": {
     "midi-device": 2,
@@ -3698,9 +4290,11 @@
     "identification": 1,
     "words": 4,
     "sound": 10,
+    "direction": 1,
     "extend": 9,
     "print-object": 39,
-    "pedal": 96
+    "pedal": 96,
+    "slur": 30
   },
   "franz-4-nun-holt-mir-eine-kanne-wein": {
     "midi-device": 2,
@@ -3712,10 +4306,14 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 9,
     "sound": 23,
+    "direction": 3,
     "extend": 4,
+    "tuplet": 14,
     "notehead": 1,
+    "slur": 34,
     "print-object": 13,
     "pedal": 34,
     "tie": 2
@@ -3732,6 +4330,7 @@
     "identification": 1,
     "words": 8,
     "sound": 9,
+    "direction": 2,
     "extend": 4,
     "print-object": 1
   },
@@ -3747,8 +4346,11 @@
     "identification": 1,
     "words": 12,
     "sound": 7,
+    "direction": 2,
+    "tuplet": 1,
     "print-object": 11,
-    "notehead": 2
+    "notehead": 2,
+    "slur": 1
   },
   "gabriel-alone": {
     "midi-device": 2,
@@ -3762,7 +4364,9 @@
     "identification": 1,
     "words": 21,
     "sound": 11,
+    "direction": 1,
     "extend": 1,
+    "slur": 1,
     "dashes": 2
   },
   "gabriel-only": {
@@ -3776,8 +4380,10 @@
     "staff-details": 1,
     "words": 11,
     "sound": 3,
+    "direction": 1,
     "print-object": 22,
     "extend": 6,
+    "slur": 2,
     "cue": 1,
     "stem": 1,
     "notehead": 2
@@ -3794,9 +4400,11 @@
     "identification": 1,
     "words": 13,
     "sound": 6,
-    "measure": 2,
+    "direction": 1,
+    "measure": 4,
     "extend": 6,
-    "print-object": 4
+    "print-object": 4,
+    "slur": 3
   },
   "gabriel-the-skipper-and-his-boy": {
     "midi-device": 2,
@@ -3808,6 +4416,8 @@
     "identification": 1,
     "words": 30,
     "sound": 18,
+    "direction": 2,
+    "slur": 12,
     "print-object": 6
   },
   "gail-le-serment": {
@@ -3819,7 +4429,10 @@
     "work": 1,
     "identification": 1,
     "words": 4,
-    "sound": 6
+    "sound": 6,
+    "direction": 1,
+    "dot": 3,
+    "slur": 1
   },
   "gail-les-langueurs": {
     "midi-device": 3,
@@ -3829,9 +4442,13 @@
     "pan": 3,
     "work": 1,
     "identification": 1,
+    "measure": 3,
     "words": 1,
     "sound": 2,
-    "extend": 3
+    "direction": 1,
+    "extend": 3,
+    "dot": 1,
+    "slur": 6
   },
   "gambarini-behold-behold-and-listen": {
     "midi-device": 2,
@@ -3845,11 +4462,14 @@
     "identification": 1,
     "words": 1,
     "sound": 1,
+    "direction": 1,
     "extend": 3,
     "trill-mark": 13,
+    "tuplet": 5,
     "measure-layout": 2,
     "accidental-mark": 2,
-    "figured-bass": 85
+    "figured-bass": 85,
+    "slur": 2
   },
   "german-1-all-the-world-awakes-today": {
     "midi-device": 2,
@@ -3861,13 +4481,18 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 41,
+    "direction": 6,
     "note": 6,
     "sound": 47,
     "extend": 20,
     "dashes": 4,
+    "tuplet": 3,
     "pedal": 84,
     "print-object": 7,
+    "dot": 2,
+    "slur": 15,
     "notehead": 7,
     "time": 1
   },
@@ -3882,8 +4507,10 @@
     "movement-title": 1,
     "identification": 1,
     "words": 12,
+    "direction": 1,
     "sound": 23,
     "extend": 6,
+    "slur": 4,
     "print-object": 2,
     "pedal": 54
   },
@@ -3897,9 +4524,13 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 27,
+    "direction": 3,
     "sound": 46,
     "extend": 13,
+    "slur": 10,
+    "type": 6,
     "cue": 1,
     "tie": 1,
     "pedal": 36,
@@ -3926,6 +4557,8 @@
     "identification": 1,
     "words": 9,
     "sound": 17,
+    "direction": 1,
+    "slur": 23,
     "pedal": 92,
     "trill-mark": 1
   },
@@ -3939,6 +4572,7 @@
     "identification": 1,
     "words": 8,
     "sound": 4,
+    "direction": 1,
     "trill-mark": 2,
     "wavy-line": 4
   },
@@ -3950,9 +4584,9 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 6,
     "sound": 1,
     "words": 2,
-    "measure": 2,
     "extend": 2
   },
   "gonzaga-dona-adelaide": {
@@ -3963,6 +4597,7 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "slur": 1,
     "sound": 1
   },
   "gonzaga-espanha-e-brasil": {
@@ -3975,7 +4610,8 @@
     "identification": 1,
     "extend": 4,
     "stem": 1,
-    "notehead": 1
+    "notehead": 1,
+    "slur": 2
   },
   "gonzaga-fado-das-tricanas-de-coimbra": {
     "midi-device": 2,
@@ -3987,6 +4623,7 @@
     "identification": 1,
     "words": 7,
     "sound": 1,
+    "direction": 1,
     "extend": 2,
     "print-object": 2,
     "ending": 1,
@@ -4004,6 +4641,7 @@
     "identification": 1,
     "words": 24,
     "sound": 24,
+    "direction": 11,
     "extend": 7,
     "dashes": 8,
     "print-object": 8
@@ -4018,9 +4656,12 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 14,
     "sound": 9,
-    "extend": 4
+    "direction": 1,
+    "extend": 4,
+    "slur": 3
   },
   "gounod-3-aubade": {
     "midi-device": 2,
@@ -4034,9 +4675,11 @@
     "identification": 1,
     "words": 21,
     "sound": 20,
+    "direction": 3,
     "extend": 13,
     "pedal": 94,
-    "print-object": 18
+    "print-object": 18,
+    "dot": 2
   },
   "gounod-4-chant-d-automne": {
     "midi-device": 2,
@@ -4067,6 +4710,8 @@
     "identification": 1,
     "words": 22,
     "sound": 34,
+    "direction": 3,
+    "clef": 3,
     "extend": 18
   },
   "gounod-6-venise": {
@@ -4081,10 +4726,13 @@
     "identification": 1,
     "words": 8,
     "sound": 29,
+    "direction": 1,
+    "clef": 3,
     "extend": 21,
     "print-object": 36,
     "stem": 2,
     "notehead": 2,
+    "dot": 3,
     "dashes": 2
   },
   "gounod-le-soir-cg-441": {
@@ -4100,6 +4748,7 @@
     "system-layout": 19,
     "words": 12,
     "sound": 23,
+    "direction": 2,
     "extend": 14,
     "staff-layout": 33,
     "dashes": 6
@@ -4119,7 +4768,8 @@
     "extend": 44,
     "words": 2,
     "staff-layout": 31,
-    "pedal": 12
+    "pedal": 12,
+    "slur": 22
   },
   "grandval-1-les-clochettes": {
     "midi-device": 3,
@@ -4133,14 +4783,18 @@
     "identification": 1,
     "words": 10,
     "sound": 25,
+    "direction": 1,
     "extend": 8,
     "trill-mark": 5,
     "wavy-line": 8,
+    "dot": 2,
     "print-object": 6,
     "measure-layout": 6,
+    "type": 16,
     "ending": 2,
+    "grace": 35,
+    "slur": 52,
     "turn": 1,
-    "slur": 4,
     "staff-details": 2,
     "note": 12
   },
@@ -4154,8 +4808,10 @@
     "identification": 1,
     "words": 14,
     "sound": 2,
+    "direction": 2,
     "extend": 4,
-    "measure-layout": 6
+    "measure-layout": 6,
+    "slur": 7
   },
   "grandval-l-absence": {
     "midi-device": 2,
@@ -4165,12 +4821,15 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 4,
     "words": 18,
     "sound": 22,
+    "direction": 2,
     "extend": 39,
     "trill-mark": 4,
     "measure-layout": 6,
     "wavy-line": 2,
+    "slur": 1,
     "tie": 2,
     "stem": 1
   },
@@ -4185,7 +4844,7 @@
     "sound": 6,
     "extend": 8,
     "words": 19,
-    "slur": 4,
+    "slur": 18,
     "stem": 1
   },
   "grandval-le-bohemien": {
@@ -4198,11 +4857,13 @@
     "identification": 1,
     "words": 39,
     "sound": 46,
+    "direction": 14,
+    "slur": 51,
     "extend": 23,
+    "tuplet": 96,
     "print-object": 21,
     "trill-mark": 3,
-    "wavy-line": 2,
-    "slur": 2
+    "wavy-line": 2
   },
   "grandval-les-lucioles": {
     "midi-device": 2,
@@ -4214,7 +4875,10 @@
     "identification": 1,
     "words": 35,
     "sound": 12,
-    "extend": 13
+    "direction": 1,
+    "extend": 13,
+    "slur": 19,
+    "clef": 1
   },
   "grandval-sacrifice": {
     "midi-device": 2,
@@ -4226,8 +4890,10 @@
     "identification": 1,
     "words": 28,
     "sound": 25,
+    "direction": 7,
     "print-object": 4,
-    "extend": 16
+    "extend": 16,
+    "slur": 4
   },
   "gray-after-so-long": {
     "midi-device": 2,
@@ -4239,6 +4905,7 @@
     "identification": 1,
     "words": 10,
     "sound": 3,
+    "direction": 1,
     "extend": 16,
     "cue": 8,
     "dashes": 8,
@@ -4254,8 +4921,8 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 10,
     "cue": 11,
-    "measure": 4,
     "sound": 4
   },
   "gray-sleep-on-and-dream-of-me": {
@@ -4266,15 +4933,19 @@
     "pan": 3,
     "work": 1,
     "identification": 1,
+    "measure": 3,
     "staff-details": 1,
     "words": 7,
     "sound": 5,
+    "direction": 1,
     "stem": 3,
     "notehead": 3,
     "extend": 25,
     "cue": 9,
     "dashes": 4,
     "tie": 1,
+    "type": 1,
+    "slur": 7,
     "other-notation": 1
   },
   "gray-then-and-now": {
@@ -4287,8 +4958,10 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 18,
     "sound": 7,
+    "direction": 1,
     "extend": 1,
     "dashes": 12,
     "print-object": 9,
@@ -4304,8 +4977,10 @@
     "identification": 1,
     "words": 1,
     "sound": 3,
+    "direction": 1,
     "print-object": 8,
-    "cue": 8
+    "cue": 8,
+    "tuplet": 4
   },
   "gray-unforgotten": {
     "midi-device": 2,
@@ -4315,8 +4990,10 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 2,
     "words": 1,
     "sound": 9,
+    "direction": 1,
     "extend": 1
   },
   "gray-yes-and-no": {
@@ -4329,11 +5006,13 @@
     "identification": 1,
     "words": 11,
     "sound": 2,
+    "direction": 2,
     "cue": 19,
     "print-object": 19,
     "extend": 4,
     "dashes": 10,
-    "clef": 1
+    "clef": 3,
+    "slur": 24
   },
   "greger-1-auf-den-schwingen-der-nacht": {
     "midi-device": 2,
@@ -4347,8 +5026,11 @@
     "identification": 1,
     "words": 4,
     "sound": 16,
+    "direction": 1,
     "extend": 6,
+    "slur": 19,
     "pedal": 16,
+    "tuplet": 3,
     "print-object": 2,
     "fermata": 2,
     "dashes": 2
@@ -4363,6 +5045,7 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 2,
     "extend": 2,
     "print-object": 14,
@@ -4379,11 +5062,14 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 7,
     "sound": 4,
+    "direction": 1,
     "extend": 3,
     "print-object": 4,
-    "pedal": 6
+    "pedal": 6,
+    "clef": 1
   },
   "greger-2-es-duften-suss-die-linden": {
     "midi-device": 2,
@@ -4397,6 +5083,7 @@
     "identification": 1,
     "words": 3,
     "sound": 12,
+    "direction": 1,
     "print-object": 5,
     "extend": 1,
     "tie": 2,
@@ -4413,8 +5100,10 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 4,
     "sound": 3,
+    "direction": 1,
     "extend": 1,
     "technical": 11,
     "print-object": 1
@@ -4429,10 +5118,13 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 2,
     "sound": 4,
+    "direction": 1,
     "print-object": 1,
     "notehead": 4,
+    "slur": 3,
     "dashes": 2
   },
   "greger-liebeslied": {
@@ -4445,7 +5137,10 @@
     "identification": 1,
     "words": 8,
     "sound": 4,
+    "direction": 2,
     "extend": 3,
+    "lyric": 1,
+    "tuplet": 3,
     "cue": 3,
     "print-object": 90
   },
@@ -4457,10 +5152,12 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 6,
     "words": 43,
     "sound": 66,
+    "direction": 1,
+    "slur": 38,
     "turn": 4,
-    "measure": 2,
     "measure-layout": 2,
     "print-object": 34,
     "inverted-turn": 2
@@ -4476,6 +5173,8 @@
     "staff-details": 1,
     "words": 24,
     "sound": 55,
+    "direction": 1,
+    "slur": 1,
     "dashes": 2,
     "extend": 2,
     "print-object": 13,
@@ -4493,10 +5192,14 @@
     "identification": 1,
     "words": 25,
     "sound": 39,
+    "direction": 6,
+    "tuplet": 4,
     "extend": 11,
     "dashes": 2,
+    "slur": 11,
     "print-object": 4,
-    "pedal": 6
+    "pedal": 6,
+    "grace": 1
   },
   "gurney-2-tears": {
     "midi-device": 2,
@@ -4510,8 +5213,9 @@
     "identification": 1,
     "words": 15,
     "sound": 39,
+    "direction": 3,
+    "slur": 41,
     "extend": 8,
-    "slur": 2,
     "print-object": 2,
     "caesura": 1
   },
@@ -4527,7 +5231,10 @@
     "identification": 1,
     "words": 11,
     "sound": 30,
+    "direction": 4,
     "extend": 9,
+    "slur": 5,
+    "tuplet": 4,
     "tie": 2,
     "dashes": 2
   },
@@ -4543,8 +5250,11 @@
     "identification": 1,
     "words": 12,
     "sound": 23,
+    "direction": 1,
     "extend": 11,
+    "slur": 34,
     "print-object": 2,
+    "tuplet": 2,
     "pedal": 14
   },
   "gurney-5-spring": {
@@ -4559,8 +5269,12 @@
     "identification": 1,
     "words": 8,
     "sound": 33,
+    "direction": 1,
+    "slur": 21,
     "extend": 14,
+    "tuplet": 2,
     "bracket": 2,
+    "dot": 3,
     "print-object": 2,
     "notehead": 4,
     "pedal": 4
@@ -4575,9 +5289,12 @@
     "identification": 1,
     "words": 5,
     "sound": 24,
+    "direction": 1,
     "extend": 6,
+    "slur": 34,
+    "tuplet": 9,
     "print-object": 7,
-    "slur": 2
+    "grace": 1
   },
   "hahn-5-l-heure-exquise": {
     "midi-device": 2,
@@ -4594,6 +5311,8 @@
     "system-layout": 12,
     "words": 14,
     "sound": 18,
+    "direction": 3,
+    "slur": 20,
     "extend": 1,
     "staff-layout": 22,
     "notehead": 20,
@@ -4612,8 +5331,10 @@
     "system-layout": 11,
     "words": 12,
     "sound": 9,
+    "direction": 3,
     "extend": 11,
     "staff-layout": 20,
+    "slur": 5,
     "print-object": 2
   },
   "hardelot-afterwards-love": {
@@ -4625,9 +5346,13 @@
     "work": 1,
     "identification": 1,
     "words": 20,
+    "direction": 1,
     "sound": 18,
+    "slur": 12,
     "extend": 4,
     "pedal": 64,
+    "dot": 9,
+    "grace": 2,
     "print-object": 2
   },
   "hardelot-bouquet-de-violettes": {
@@ -4640,10 +5365,13 @@
     "identification": 1,
     "words": 31,
     "sound": 23,
+    "direction": 2,
     "extend": 9,
+    "slur": 3,
     "cue": 5,
+    "clef": 2,
     "pedal": 90,
-    "clef": 1,
+    "tuplet": 6,
     "dashes": 2
   },
   "hardelot-i-hid-my-love": {
@@ -4655,10 +5383,14 @@
     "work": 1,
     "identification": 1,
     "words": 20,
+    "direction": 1,
     "sound": 18,
+    "slur": 7,
     "extend": 14,
     "dashes": 12,
+    "dot": 2,
     "cue": 9,
+    "tuplet": 2,
     "pedal": 60,
     "print-object": 13
   },
@@ -4671,10 +5403,13 @@
     "work": 1,
     "identification": 1,
     "words": 6,
+    "direction": 1,
     "sound": 21,
     "extend": 11,
     "cue": 2,
+    "slur": 6,
     "pedal": 78,
+    "grace": 1,
     "print-object": 1
   },
   "hardelot-i-know-a-lovely-garden": {
@@ -4687,11 +5422,12 @@
     "identification": 1,
     "words": 5,
     "sound": 12,
+    "direction": 1,
     "extend": 7,
     "print-object": 13,
     "cue": 3,
     "pedal": 58,
-    "slur": 2
+    "slur": 11
   },
   "hardelot-in-1822": {
     "midi-device": 2,
@@ -4703,9 +5439,12 @@
     "identification": 1,
     "words": 36,
     "sound": 34,
+    "direction": 2,
     "extend": 5,
     "cue": 7,
     "pedal": 106,
+    "grace": 3,
+    "slur": 5,
     "dashes": 4
   },
   "hardelot-la-chanson-de-ma-mie": {
@@ -4718,10 +5457,14 @@
     "identification": 1,
     "words": 15,
     "sound": 19,
+    "direction": 1,
     "cue": 38,
     "extend": 32,
+    "type": 11,
+    "slur": 23,
     "print-object": 6,
     "pedal": 54,
+    "dot": 31,
     "dashes": 2
   },
   "haydn-1-despair-hob-xxvia28": {
@@ -4734,13 +5477,19 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 21,
     "sound": 40,
+    "direction": 1,
     "extend": 9,
     "print-object": 10,
     "turn": 5,
     "stem": 24,
-    "notehead": 24
+    "type": 24,
+    "notehead": 24,
+    "slur": 20,
+    "dot": 20,
+    "tuplet": 1
   },
   "haydn-10-recollection-hob-xxvia26": {
     "midi-device": 2,
@@ -4752,12 +5501,14 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 6,
     "words": 3,
     "sound": 38,
+    "direction": 1,
     "extend": 21,
     "cue": 2,
-    "measure": 2,
     "print-object": 8,
+    "slur": 5,
     "tie": 2
   },
   "haydn-2-fidelity-hob-xxvia30": {
@@ -4770,13 +5521,18 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 10,
     "sound": 17,
+    "direction": 1,
     "turn": 8,
     "stem": 40,
+    "type": 40,
     "notehead": 42,
     "print-object": 16,
     "extend": 13,
+    "tuplet": 2,
+    "slur": 4,
     "dashes": 2
   },
   "haydn-3-the-spirit-s-song-hob-xxvia41": {
@@ -4791,8 +5547,10 @@
     "identification": 1,
     "words": 7,
     "sound": 30,
+    "direction": 1,
     "extend": 3,
-    "clef": 1,
+    "clef": 2,
+    "slur": 8,
     "print-object": 4,
     "dashes": 6,
     "trill-mark": 2
@@ -4807,10 +5565,12 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 6,
     "words": 1,
     "sound": 30,
+    "direction": 1,
     "extend": 1,
-    "measure": 2,
+    "slur": 3,
     "pedal": 2
   },
   "haydn-5-sympathy-hob-xxvia33": {
@@ -4823,9 +5583,12 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 4,
     "sound": 25,
+    "direction": 1,
     "extend": 6,
+    "slur": 6,
     "print-object": 6,
     "tie": 2
   },
@@ -4839,13 +5602,15 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 10,
     "words": 3,
     "sound": 13,
-    "measure": 4,
+    "direction": 1,
     "extend": 2,
     "notehead": 5,
     "print-object": 7,
-    "slur": 2,
+    "tuplet": 4,
+    "slur": 10,
     "tie": 2
   },
   "haydn-7-the-mermaid-s-song-hob-xxvia25": {
@@ -4860,8 +5625,11 @@
     "identification": 1,
     "words": 8,
     "sound": 19,
+    "direction": 1,
     "extend": 16,
-    "print-object": 72
+    "tuplet": 42,
+    "print-object": 72,
+    "slur": 8
   },
   "hensel-1-das-heimweh": {
     "midi-device": 2,
@@ -4873,8 +5641,10 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 5,
     "sound": 21,
+    "direction": 1,
     "extend": 8,
     "print-object": 142
   },
@@ -4890,6 +5660,7 @@
     "identification": 1,
     "words": 5,
     "sound": 19,
+    "direction": 2,
     "pedal": 16,
     "print-object": 10
   },
@@ -4905,8 +5676,10 @@
     "identification": 1,
     "words": 4,
     "sound": 7,
+    "direction": 1,
     "extend": 14,
-    "print-object": 1
+    "print-object": 1,
+    "slur": 2
   },
   "hensel-2-italien": {
     "midi-device": 2,
@@ -4920,6 +5693,7 @@
     "identification": 1,
     "words": 27,
     "sound": 27,
+    "direction": 5,
     "dashes": 8
   },
   "hensel-2-verlust": {
@@ -4934,8 +5708,11 @@
     "identification": 1,
     "words": 13,
     "sound": 26,
+    "direction": 1,
     "dashes": 10,
     "extend": 1,
+    "slur": 10,
+    "dot": 4,
     "print-object": 1
   },
   "hensel-3-die-nonne": {
@@ -4950,7 +5727,9 @@
     "identification": 1,
     "words": 5,
     "sound": 7,
-    "print-object": 1
+    "direction": 1,
+    "print-object": 1,
+    "slur": 1
   },
   "hensel-3-suleika-und-hatem": {
     "midi-device": 3,
@@ -4962,10 +5741,13 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 9,
     "words": 17,
     "sound": 6,
+    "direction": 2,
     "extend": 15,
-    "measure": 3
+    "slur": 2,
+    "dot": 8
   },
   "hodges-dreams": {
     "midi-device": 2,
@@ -4975,10 +5757,13 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 38,
     "words": 6,
     "sound": 18,
-    "measure": 18,
+    "direction": 1,
+    "slur": 39,
     "extend": 2,
+    "type": 8,
     "print-object": 52
   },
   "holmes-10-hymne-a-venus": {
@@ -4992,9 +5777,13 @@
     "movement-title": 1,
     "identification": 1,
     "words": 55,
+    "direction": 1,
     "sound": 82,
     "extend": 30,
     "dashes": 46,
+    "tuplet": 11,
+    "dot": 5,
+    "slur": 1,
     "pedal": 32
   },
   "holmes-a-trianon": {
@@ -5007,6 +5796,8 @@
     "identification": 1,
     "words": 30,
     "sound": 41,
+    "direction": 1,
+    "slur": 31,
     "extend": 4,
     "dashes": 22,
     "pedal": 14,
@@ -5023,11 +5814,15 @@
     "identification": 1,
     "words": 52,
     "sound": 98,
+    "direction": 6,
+    "tuplet": 14,
     "extend": 20,
+    "slur": 40,
     "dashes": 18,
     "cue": 2,
     "print-object": 23,
-    "pedal": 202
+    "pedal": 202,
+    "grace": 4
   },
   "holmes-la-chanson-de-jean-prouvaire": {
     "midi-device": 2,
@@ -5039,10 +5834,13 @@
     "identification": 1,
     "words": 8,
     "sound": 52,
+    "direction": 2,
     "extend": 4,
     "cue": 3,
+    "tuplet": 276,
     "print-object": 776,
-    "dashes": 6
+    "dashes": 6,
+    "slur": 1
   },
   "holmes-le-ruban-rose": {
     "midi-device": 2,
@@ -5053,8 +5851,10 @@
     "work": 1,
     "identification": 1,
     "words": 46,
+    "direction": 11,
     "sound": 103,
     "extend": 11,
+    "slur": 41,
     "dashes": 22,
     "trill-mark": 3,
     "wavy-line": 6,
@@ -5072,13 +5872,17 @@
     "work": 1,
     "identification": 1,
     "words": 32,
+    "direction": 8,
     "sound": 120,
     "extend": 33,
+    "tuplet": 22,
     "dashes": 12,
     "pedal": 76,
     "print-object": 17,
+    "slur": 22,
     "tie": 4,
-    "slur": 2
+    "dot": 3,
+    "grace": 1
   },
   "holmes-ton-nom": {
     "midi-device": 2,
@@ -5091,9 +5895,13 @@
     "identification": 1,
     "words": 11,
     "sound": 45,
+    "direction": 2,
     "extend": 8,
+    "tuplet": 6,
     "dashes": 6,
-    "pedal": 24
+    "pedal": 24,
+    "grace": 3,
+    "slur": 16
   },
   "hopekirk-my-lady-of-sleep": {
     "midi-device": 2,
@@ -5105,7 +5913,9 @@
     "identification": 1,
     "words": 9,
     "sound": 28,
-    "extend": 3
+    "direction": 1,
+    "extend": 3,
+    "slur": 6
   },
   "horrocks-cottage-cradle-song": {
     "midi-device": 3,
@@ -5117,7 +5927,9 @@
     "identification": 1,
     "words": 18,
     "sound": 21,
-    "extend": 17
+    "direction": 3,
+    "extend": 17,
+    "slur": 3
   },
   "horrocks-the-bird-and-the-rose": {
     "midi-device": 2,
@@ -5129,11 +5941,13 @@
     "identification": 1,
     "words": 14,
     "sound": 26,
+    "direction": 2,
     "extend": 14,
+    "slur": 13,
     "cue": 1,
     "notehead": 1,
-    "print-object": 16,
-    "slur": 2
+    "tuplet": 2,
+    "print-object": 16
   },
   "horrocks-the-blackbird": {
     "midi-device": 3,
@@ -5143,10 +5957,14 @@
     "pan": 3,
     "work": 1,
     "identification": 1,
+    "measure": 3,
     "words": 37,
     "sound": 60,
+    "direction": 1,
     "extend": 5,
     "print-object": 1,
+    "tuplet": 19,
+    "slur": 22,
     "pedal": 2
   },
   "horrocks-the-cuckoo": {
@@ -5157,12 +5975,15 @@
     "pan": 3,
     "work": 1,
     "identification": 1,
+    "measure": 3,
     "words": 8,
     "sound": 50,
+    "direction": 1,
     "dashes": 12,
     "extend": 2,
     "print-object": 4,
-    "clef": 1,
+    "clef": 2,
+    "slur": 2,
     "pedal": 2
   },
   "ives-108-songs-my-mother-taught-me": {
@@ -5180,8 +6001,10 @@
     "system-layout": 7,
     "words": 9,
     "sound": 12,
+    "direction": 6,
     "extend": 8,
     "cue": 1,
+    "slur": 6,
     "wedge": 5,
     "staff-layout": 14
   },
@@ -5197,7 +6020,10 @@
     "identification": 1,
     "words": 5,
     "sound": 9,
-    "cue": 1
+    "direction": 1,
+    "cue": 1,
+    "slur": 1,
+    "clef": 1
   },
   "jacobs-bond-2-walking-in-her-garden": {
     "midi-device": 2,
@@ -5211,7 +6037,10 @@
     "identification": 1,
     "words": 11,
     "sound": 16,
+    "direction": 1,
+    "tuplet": 7,
     "extend": 12,
+    "slur": 2,
     "dashes": 4,
     "cue": 2,
     "print-object": 4
@@ -5228,8 +6057,10 @@
     "identification": 1,
     "words": 3,
     "sound": 5,
+    "direction": 1,
     "extend": 5,
     "cue": 3,
+    "slur": 13,
     "print-object": 11,
     "notehead": 1,
     "dashes": 2,
@@ -5245,6 +6076,7 @@
     "identification": 1,
     "words": 11,
     "sound": 10,
+    "direction": 2,
     "extend": 18,
     "print-object": 4
   },
@@ -5258,8 +6090,9 @@
     "identification": 1,
     "words": 5,
     "sound": 6,
+    "direction": 1,
     "extend": 1,
-    "slur": 2,
+    "slur": 9,
     "pedal": 2,
     "print-object": 1
   },
@@ -5275,11 +6108,12 @@
     "identification": 1,
     "words": 8,
     "sound": 15,
+    "direction": 1,
+    "slur": 18,
     "pedal": 14,
     "print-object": 36,
     "technical": 12,
     "tie": 2,
-    "slur": 2,
     "notehead": 2
   },
   "jaell-1-quatre-heures-du-matin": {
@@ -5292,11 +6126,14 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 8,
     "sound": 23,
+    "direction": 1,
     "extend": 6,
     "dashes": 6,
     "pedal": 16,
+    "slur": 48,
     "notehead": 6,
     "print-object": 4
   },
@@ -5310,13 +6147,17 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 21,
     "sound": 26,
+    "direction": 5,
     "note": 21,
     "extend": 9,
     "print-object": 99,
     "dashes": 8,
     "pedal": 20,
+    "slur": 14,
+    "tuplet": 10,
     "technical": 11,
     "time": 2
   },
@@ -5330,13 +6171,16 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 11,
     "sound": 20,
+    "direction": 1,
     "print-object": 207,
     "pedal": 2,
+    "slur": 25,
+    "tuplet": 7,
     "dashes": 8,
-    "notehead": 1,
-    "slur": 2
+    "notehead": 1
   },
   "jaell-3-les-papillons": {
     "midi-device": 2,
@@ -5350,10 +6194,12 @@
     "identification": 1,
     "words": 46,
     "sound": 35,
+    "direction": 1,
     "extend": 7,
     "print-object": 5,
     "dashes": 18,
-    "pedal": 10
+    "pedal": 10,
+    "slur": 7
   },
   "jaell-3-les-petits-oiseaux": {
     "midi-device": 2,
@@ -5367,12 +6213,15 @@
     "identification": 1,
     "words": 17,
     "sound": 39,
+    "direction": 2,
     "extend": 11,
     "print-object": 102,
     "dashes": 2,
     "pedal": 16,
+    "slur": 32,
     "note": 375,
     "technical": 55,
+    "tuplet": 7,
     "time": 2
   },
   "jaell-4-le-bonheur-s-effeuille-et-passe": {
@@ -5387,9 +6236,11 @@
     "identification": 1,
     "words": 9,
     "sound": 25,
+    "direction": 1,
     "extend": 5,
     "notehead": 2,
     "print-object": 28,
+    "slur": 9,
     "technical": 6,
     "pedal": 4,
     "dashes": 2
@@ -5406,8 +6257,11 @@
     "identification": 1,
     "words": 13,
     "sound": 66,
+    "direction": 1,
     "extend": 6,
-    "pedal": 12
+    "tuplet": 4,
+    "pedal": 12,
+    "slur": 8
   },
   "joplin-please-say-you-will": {
     "midi-device": 2,
@@ -5430,9 +6284,13 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 3,
     "words": 8,
     "sound": 24,
+    "direction": 1,
     "extend": 2,
+    "type": 20,
+    "slur": 4,
     "print-object": 17
   },
   "kinkel-1-der-spanische-zitherknabe": {
@@ -5447,9 +6305,11 @@
     "identification": 1,
     "words": 15,
     "sound": 26,
+    "direction": 5,
     "print-object": 4,
     "stem": 2,
     "cue": 5,
+    "type": 2,
     "pedal": 16
   },
   "kinkel-2-die-geisterinsel": {
@@ -5462,11 +6322,14 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 3,
     "words": 11,
     "sound": 22,
+    "direction": 4,
     "extend": 10,
     "notehead": 1,
-    "pedal": 6
+    "pedal": 6,
+    "slur": 1
   },
   "kinkel-2-nachtliche-fahrt": {
     "midi-device": 2,
@@ -5478,10 +6341,13 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 7,
     "sound": 9,
+    "direction": 1,
     "print-object": 12,
-    "extend": 8
+    "extend": 8,
+    "slur": 1
   },
   "kinkel-2-rheinsage": {
     "midi-device": 2,
@@ -5493,8 +6359,10 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 5,
     "sound": 6,
+    "direction": 1,
     "print-object": 16,
     "cue": 9,
     "stem": 4,
@@ -5510,8 +6378,11 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 3,
     "words": 12,
     "sound": 21,
+    "direction": 1,
+    "slur": 2,
     "extend": 4,
     "pedal": 4,
     "dashes": 2,
@@ -5527,9 +6398,12 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 16,
     "sound": 4,
-    "extend": 4
+    "direction": 1,
+    "extend": 4,
+    "slur": 1
   },
   "kinkel-4-abendfeier": {
     "midi-device": 2,
@@ -5543,6 +6417,7 @@
     "identification": 1,
     "words": 10,
     "sound": 11,
+    "direction": 1,
     "extend": 15,
     "print-object": 2,
     "cue": 1,
@@ -5557,13 +6432,17 @@
     "work": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 1,
     "sound": 65,
     "words": 83,
+    "direction": 7,
     "print-object": 202,
+    "slur": 76,
     "pedal": 6,
-    "slur": 4,
     "tie": 4,
+    "tuplet": 2,
     "notehead": 2,
+    "dot": 5,
     "trill-mark": 3,
     "accidental-mark": 1,
     "dashes": 2,
@@ -5580,8 +6459,11 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 12,
     "sound": 53,
+    "direction": 1,
+    "type": 7,
     "notehead": 6
   },
   "kralik-1-maiglockchen": {
@@ -5596,6 +6478,7 @@
     "identification": 1,
     "words": 7,
     "sound": 4,
+    "direction": 1,
     "cue": 1,
     "pedal": 2,
     "print-object": 1
@@ -5612,7 +6495,9 @@
     "identification": 1,
     "words": 7,
     "sound": 14,
+    "direction": 1,
     "print-object": 10,
+    "slur": 20,
     "pedal": 12
   },
   "kralik-3-veilchen": {
@@ -5627,6 +6512,7 @@
     "identification": 1,
     "words": 7,
     "sound": 10,
+    "direction": 1,
     "cue": 2,
     "print-object": 7,
     "pedal": 10
@@ -5643,10 +6529,14 @@
     "identification": 1,
     "words": 26,
     "sound": 16,
+    "direction": 1,
     "extend": 1,
     "print-object": 7,
     "cue": 5,
-    "pedal": 10
+    "slur": 9,
+    "pedal": 10,
+    "dot": 2,
+    "tuplet": 9
   },
   "lang-1-in-welschland": {
     "midi-device": 2,
@@ -5658,12 +6548,16 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 18,
     "sound": 39,
+    "direction": 1,
     "extend": 17,
+    "slur": 8,
     "print-object": 12,
     "notehead": 3,
-    "pedal": 20
+    "pedal": 20,
+    "dot": 6
   },
   "lang-1-traumbild": {
     "midi-device": 3,
@@ -5677,6 +6571,8 @@
     "identification": 1,
     "words": 29,
     "sound": 33,
+    "direction": 1,
+    "tuplet": 16,
     "print-object": 546,
     "trill-mark": 2,
     "dashes": 2,
@@ -5696,9 +6592,12 @@
     "identification": 1,
     "words": 55,
     "sound": 43,
+    "direction": 1,
+    "slur": 11,
     "print-object": 2,
     "extend": 15,
     "notehead": 1,
+    "tuplet": 1,
     "pedal": 4
   },
   "lang-2-wenn-du-warst-mein-eigen": {
@@ -5711,10 +6610,13 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 13,
     "sound": 10,
+    "direction": 1,
     "extend": 5,
     "dashes": 2,
+    "slur": 2,
     "print-object": 2,
     "pedal": 2
   },
@@ -5730,7 +6632,9 @@
     "identification": 1,
     "words": 32,
     "sound": 48,
+    "direction": 1,
     "extend": 20,
+    "dot": 41,
     "notehead": 1,
     "pedal": 2
   },
@@ -5746,6 +6650,8 @@
     "identification": 1,
     "words": 2,
     "sound": 13,
+    "direction": 1,
+    "slur": 4,
     "extend": 4,
     "print-object": 4
   },
@@ -5759,7 +6665,9 @@
     "identification": 1,
     "words": 15,
     "sound": 17,
+    "direction": 1,
     "print-object": 4,
+    "slur": 3,
     "pedal": 2
   },
   "lang-auf-der-reise-op-22": {
@@ -5772,8 +6680,10 @@
     "identification": 1,
     "words": 21,
     "sound": 36,
+    "direction": 1,
     "extend": 6,
     "turn": 1,
+    "slur": 5,
     "print-object": 3,
     "pedal": 4
   },
@@ -5789,6 +6699,7 @@
     "identification": 1,
     "words": 1,
     "sound": 29,
+    "direction": 1,
     "pedal": 30,
     "print-object": 1
   },
@@ -5803,7 +6714,8 @@
     "movement-title": 1,
     "identification": 1,
     "words": 1,
-    "sound": 10
+    "sound": 10,
+    "direction": 1
   },
   "le-beau-2-abendlied": {
     "midi-device": 3,
@@ -5817,8 +6729,10 @@
     "identification": 1,
     "words": 6,
     "sound": 23,
+    "direction": 1,
     "print-object": 645,
-    "pedal": 136
+    "pedal": 136,
+    "tuplet": 296
   },
   "le-beau-2-ein-gebet": {
     "midi-device": 2,
@@ -5831,7 +6745,8 @@
     "movement-title": 1,
     "identification": 1,
     "words": 1,
-    "sound": 14
+    "sound": 14,
+    "direction": 1
   },
   "le-beau-3-juchhe": {
     "midi-device": 2,
@@ -5844,7 +6759,9 @@
     "movement-title": 1,
     "identification": 1,
     "words": 2,
-    "sound": 22
+    "sound": 22,
+    "direction": 1,
+    "slur": 5
   },
   "le-beau-4-die-alpenrose": {
     "midi-device": 2,
@@ -5856,8 +6773,10 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 1,
-    "sound": 10
+    "sound": 10,
+    "direction": 1
   },
   "le-beau-5-wiegenlied": {
     "midi-device": 2,
@@ -5871,8 +6790,10 @@
     "identification": 1,
     "words": 5,
     "sound": 8,
+    "direction": 2,
     "dashes": 2,
     "extend": 1,
+    "slur": 21,
     "pedal": 2
   },
   "lehmann-1-the-mother-seal-s-lullaby": {
@@ -5885,13 +6806,16 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 3,
     "staff-details": 1,
     "words": 15,
     "sound": 7,
+    "direction": 1,
     "trill-mark": 1,
     "print-object": 11,
     "cue": 3,
     "extend": 4,
+    "slur": 13,
     "dashes": 4
   },
   "lehmann-1-there-s-a-bird-beneath-your-window": {
@@ -5904,11 +6828,15 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 17,
     "sound": 10,
+    "direction": 4,
     "cue": 5,
     "print-object": 1,
-    "extend": 3
+    "extend": 3,
+    "slur": 1,
+    "grace": 1
   },
   "lehmann-2-along-the-sunny-lane": {
     "midi-device": 2,
@@ -5922,10 +6850,14 @@
     "identification": 1,
     "words": 12,
     "sound": 13,
+    "direction": 1,
     "extend": 6,
+    "type": 8,
     "cue": 4,
+    "slur": 18,
     "pedal": 4,
-    "print-object": 4
+    "print-object": 4,
+    "grace": 1
   },
   "lehmann-2-you-mustn-t-swim-till-you-re-six-weeks-old": {
     "midi-device": 2,
@@ -5939,10 +6871,12 @@
     "identification": 1,
     "words": 17,
     "sound": 9,
-    "slur": 2,
+    "direction": 1,
+    "slur": 6,
     "print-object": 21,
     "cue": 6,
     "extend": 5,
+    "type": 1,
     "notehead": 2,
     "pedal": 2
   },
@@ -5958,10 +6892,13 @@
     "identification": 1,
     "words": 15,
     "sound": 11,
+    "direction": 1,
     "extend": 1,
     "cue": 4,
     "pedal": 2,
+    "type": 8,
     "notehead": 1,
+    "slur": 3,
     "print-object": 3
   },
   "lehmann-4-if-i-were-a-bird-i-would-sing-all-day": {
@@ -5974,11 +6911,15 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 28,
     "sound": 7,
+    "direction": 1,
     "extend": 14,
     "cue": 6,
+    "dot": 5,
     "pedal": 4,
+    "slur": 6,
     "print-object": 7,
     "bracket": 2,
     "stem": 1,
@@ -5994,11 +6935,14 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "sound": 17,
     "extend": 8,
     "cue": 4,
     "words": 20,
     "print-object": 6,
+    "slur": 10,
+    "grace": 7,
     "stem": 4
   },
   "lehmann-bouton-de-rose": {
@@ -6011,7 +6955,9 @@
     "identification": 1,
     "words": 43,
     "sound": 7,
+    "direction": 1,
     "extend": 29,
+    "slur": 20,
     "print-object": 23,
     "cue": 2,
     "pedal": 156
@@ -6024,8 +6970,11 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 2,
     "words": 19,
     "sound": 8,
+    "direction": 1,
+    "slur": 36,
     "extend": 6,
     "print-object": 12,
     "pedal": 2
@@ -6038,10 +6987,14 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 2,
     "words": 10,
     "sound": 6,
+    "direction": 3,
+    "dot": 22,
     "extend": 4,
-    "print-object": 40
+    "print-object": 40,
+    "slur": 9
   },
   "lehmann-when-love-is-kind": {
     "midi-device": 2,
@@ -6053,7 +7006,9 @@
     "identification": 1,
     "words": 16,
     "sound": 18,
-    "extend": 20
+    "direction": 2,
+    "extend": 20,
+    "slur": 6
   },
   "lehmann-wisdom-and-love": {
     "midi-device": 2,
@@ -6065,12 +7020,13 @@
     "identification": 1,
     "words": 18,
     "sound": 11,
+    "direction": 1,
+    "slur": 8,
     "cue": 5,
     "print-object": 14,
     "extend": 4,
     "trill-mark": 1,
-    "dashes": 2,
-    "slur": 2
+    "dashes": 2
   },
   "leoncavallo-mattinata": {
     "midi-device": 2,
@@ -6085,9 +7041,12 @@
     "system-layout": 11,
     "sound": 8,
     "words": 16,
+    "tuplet": 4,
     "extend": 7,
     "dashes": 2,
-    "staff-layout": 20
+    "direction": 6,
+    "staff-layout": 20,
+    "slur": 5
   },
   "liliuokalani-aloha-oe": {
     "midi-device": 4,
@@ -6097,9 +7056,10 @@
     "pan": 4,
     "work": 1,
     "identification": 1,
+    "measure": 20,
     "words": 2,
     "sound": 6,
-    "measure": 8,
+    "direction": 1,
     "extend": 3
   },
   "lindsay-far-away": {
@@ -6110,11 +7070,13 @@
     "pan": 5,
     "work": 1,
     "identification": 1,
+    "measure": 15,
     "words": 8,
     "sound": 42,
-    "measure": 5,
+    "direction": 1,
     "extend": 10,
-    "print-object": 11
+    "print-object": 11,
+    "slur": 4
   },
   "lindsay-good-night-good-night-beloved": {
     "midi-device": 5,
@@ -6124,12 +7086,14 @@
     "pan": 5,
     "work": 1,
     "identification": 1,
+    "measure": 35,
     "words": 26,
     "sound": 38,
+    "direction": 1,
     "extend": 77,
     "print-object": 93,
-    "measure": 15,
-    "coda": 1
+    "coda": 1,
+    "slur": 11
   },
   "liszt-2-pace-non-trovo": {
     "midi-device": 3,
@@ -6143,17 +7107,20 @@
     "identification": 1,
     "defaults": 1,
     "credit": 9,
+    "measure": 3,
     "system-layout": 19,
     "words": 31,
     "sound": 25,
+    "direction": 10,
     "extend": 15,
     "print-object": 6,
     "barline": 6,
     "staff-layout": 34,
     "pedal": 100,
+    "slur": 3,
+    "tuplet": 1,
     "dashes": 8,
     "notehead": 40,
-    "slur": 2,
     "tie": 10,
     "staff-details": 21
   },
@@ -6168,8 +7135,11 @@
     "movement-title": 1,
     "identification": 1,
     "words": 7,
+    "direction": 1,
     "sound": 22,
     "extend": 9,
+    "tuplet": 1,
+    "slur": 24,
     "print-object": 5,
     "pedal": 2
   },
@@ -6184,8 +7154,10 @@
     "movement-title": 1,
     "identification": 1,
     "words": 24,
+    "direction": 2,
     "sound": 37,
-    "extend": 12
+    "extend": 12,
+    "slur": 32
   },
   "mackenzie-3-spring-s-secrets": {
     "midi-device": 2,
@@ -6198,9 +7170,11 @@
     "movement-title": 1,
     "identification": 1,
     "words": 33,
+    "direction": 3,
     "sound": 59,
     "extend": 22,
     "dashes": 6,
+    "slur": 9,
     "print-object": 8,
     "notehead": 3
   },
@@ -6215,10 +7189,12 @@
     "movement-title": 1,
     "identification": 1,
     "words": 42,
+    "direction": 1,
     "sound": 41,
+    "tuplet": 6,
     "extend": 12,
     "print-object": 111,
-    "slur": 2
+    "slur": 35
   },
   "mackenzie-5-april-weather": {
     "midi-device": 2,
@@ -6231,10 +7207,13 @@
     "movement-title": 1,
     "identification": 1,
     "words": 35,
+    "direction": 1,
     "sound": 35,
     "extend": 12,
     "print-object": 14,
-    "pedal": 4
+    "slur": 19,
+    "pedal": 4,
+    "tuplet": 4
   },
   "mackenzie-6-a-may-song": {
     "midi-device": 2,
@@ -6247,9 +7226,11 @@
     "movement-title": 1,
     "identification": 1,
     "words": 26,
+    "direction": 1,
     "sound": 39,
     "extend": 10,
     "print-object": 3,
+    "slur": 15,
     "pedal": 8
   },
   "mackenzie-7-summer-at-last": {
@@ -6263,12 +7244,14 @@
     "movement-title": 1,
     "identification": 1,
     "words": 18,
+    "direction": 1,
     "sound": 42,
     "extend": 29,
     "print-object": 101,
+    "dot": 1,
+    "slur": 64,
     "pedal": 6,
     "notehead": 10,
-    "slur": 4,
     "dashes": 2
   },
   "mackenzie-one-who-never-turned-his-back": {
@@ -6280,10 +7263,12 @@
     "work": 1,
     "identification": 1,
     "words": 13,
+    "direction": 5,
     "sound": 37,
     "extend": 4,
     "print-object": 21,
     "pedal": 8,
+    "slur": 6,
     "fermata": 2
   },
   "mahler-1-nun-will-die-sonn-so-hell-aufgeh-n": {
@@ -6296,11 +7281,14 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 29,
+    "direction": 3,
     "sound": 24,
     "extend": 35,
     "cue": 2,
-    "print-object": 17
+    "print-object": 17,
+    "slur": 44
   },
   "mahler-2-nun-seh-ich-wohl-warum-so-dunkle-flammen": {
     "midi-device": 2,
@@ -6313,9 +7301,12 @@
     "movement-title": 1,
     "identification": 1,
     "words": 30,
+    "direction": 3,
     "sound": 42,
     "print-object": 73,
     "extend": 3,
+    "slur": 43,
+    "tuplet": 1,
     "notehead": 2,
     "pedal": 2
   },
@@ -6330,10 +7321,13 @@
     "movement-title": 1,
     "identification": 1,
     "words": 35,
+    "direction": 5,
     "sound": 28,
     "extend": 21,
+    "slur": 42,
     "print-object": 8,
     "dashes": 2,
+    "dot": 1,
     "tie": 2
   },
   "mahler-4-oft-denk-ich-sie-sind-nur-ausgegangen": {
@@ -6346,10 +7340,14 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 49,
+    "direction": 1,
     "extend": 39,
     "sound": 24,
+    "slur": 21,
     "print-object": 15,
+    "dot": 3,
     "stem": 1,
     "dashes": 4
   },
@@ -6368,8 +7366,10 @@
     "system-layout": 19,
     "words": 34,
     "sound": 34,
+    "direction": 28,
     "extend": 43,
-    "staff-layout": 35
+    "staff-layout": 35,
+    "slur": 23
   },
   "marshall-ask-me-no-more": {
     "midi-device": 2,
@@ -6383,6 +7383,7 @@
     "extend": 12,
     "sound": 24,
     "dashes": 6,
+    "slur": 10,
     "print-object": 23,
     "pedal": 10
   },
@@ -6395,11 +7396,14 @@
     "work": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 25,
     "words": 36,
+    "direction": 1,
     "sound": 54,
     "dashes": 64,
     "extend": 16,
-    "measure": 10,
+    "slur": 2,
+    "type": 1,
     "cue": 2
   },
   "massenet-1-chœur-des-pastorale-do-287": {
@@ -6416,6 +7420,7 @@
     "credit": 13,
     "system-layout": 28,
     "words": 28,
+    "direction": 1,
     "staff-layout": 61,
     "sound": 49,
     "extend": 58,
@@ -6424,7 +7429,10 @@
     "inverted-mordent": 25,
     "trill-mark": 4,
     "wavy-line": 8,
-    "staff-details": 18
+    "dot": 27,
+    "slur": 18,
+    "staff-details": 18,
+    "tuplet": 1
   },
   "massenet-elegie": {
     "midi-device": 2,
@@ -6439,10 +7447,13 @@
     "system-layout": 7,
     "words": 17,
     "sound": 44,
+    "direction": 7,
     "extend": 9,
+    "slur": 39,
     "wedge": 1,
     "staff-layout": 14,
-    "pedal": 4
+    "pedal": 4,
+    "note": 34
   },
   "mayer-1-abendglocken": {
     "midi-device": 2,
@@ -6456,8 +7467,11 @@
     "identification": 1,
     "words": 2,
     "sound": 4,
+    "direction": 1,
     "turn": 2,
+    "tuplet": 29,
     "print-object": 165,
+    "slur": 4,
     "notehead": 1
   },
   "mayer-1-du-bist-wie-eine-blume": {
@@ -6472,9 +7486,12 @@
     "identification": 1,
     "words": 3,
     "sound": 2,
+    "direction": 1,
     "extend": 2,
     "print-object": 150,
     "notehead": 4,
+    "slur": 4,
+    "tuplet": 68,
     "trill-mark": 1
   },
   "mayer-2-das-schlusselloch-im-herzen": {
@@ -6489,6 +7506,9 @@
     "identification": 1,
     "words": 7,
     "sound": 8,
+    "direction": 1,
+    "slur": 6,
+    "tuplet": 13,
     "extend": 1,
     "turn": 6,
     "print-object": 107,
@@ -6507,10 +7527,13 @@
     "identification": 1,
     "words": 1,
     "sound": 4,
+    "direction": 1,
     "other-notation": 1,
     "turn": 1,
     "print-object": 182,
     "extend": 3,
+    "tuplet": 3,
+    "slur": 41,
     "inverted-mordent": 4,
     "trill-mark": 1
   },
@@ -6524,14 +7547,18 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 4,
     "sound": 5,
+    "direction": 1,
+    "tuplet": 24,
     "extend": 8,
     "other-notation": 1,
     "turn": 3,
     "dashes": 4,
     "trill-mark": 3,
     "print-object": 145,
+    "slur": 7,
     "pedal": 2
   },
   "mayer-der-erlkonig": {
@@ -6544,8 +7571,10 @@
     "identification": 1,
     "words": 11,
     "sound": 44,
+    "direction": 2,
     "extend": 2,
     "dashes": 10,
+    "slur": 58,
     "print-object": 122
   },
   "mendelssohn-1-das-fenster-mwv-k-29": {
@@ -6560,8 +7589,10 @@
     "identification": 1,
     "words": 8,
     "sound": 12,
+    "direction": 1,
     "notehead": 3,
     "extend": 2,
+    "slur": 12,
     "print-object": 8,
     "tie": 2,
     "pedal": 2
@@ -6578,7 +7609,9 @@
     "identification": 1,
     "words": 20,
     "sound": 34,
+    "direction": 1,
     "extend": 23,
+    "slur": 20,
     "pedal": 6
   },
   "mendelssohn-2-abschiedslied-der-zugvogel-mwv-j-9": {
@@ -6593,8 +7626,10 @@
     "identification": 1,
     "words": 13,
     "sound": 21,
+    "direction": 1,
     "extend": 16,
-    "print-object": 14
+    "print-object": 14,
+    "slur": 4
   },
   "mendelssohn-3-gruss-mwv-j-8": {
     "midi-device": 3,
@@ -6608,7 +7643,9 @@
     "identification": 1,
     "words": 22,
     "sound": 31,
-    "extend": 2
+    "direction": 1,
+    "extend": 2,
+    "slur": 6
   },
   "mendelssohn-4-herbstlied-mwv-j-11": {
     "midi-device": 3,
@@ -6622,7 +7659,9 @@
     "identification": 1,
     "words": 19,
     "sound": 28,
-    "extend": 16
+    "direction": 2,
+    "extend": 16,
+    "slur": 107
   },
   "mendelssohn-5-volkslied-mwv-j-10": {
     "midi-device": 3,
@@ -6636,8 +7675,10 @@
     "identification": 1,
     "words": 5,
     "sound": 14,
+    "direction": 1,
     "extend": 4,
-    "print-object": 4
+    "print-object": 4,
+    "slur": 11
   },
   "mendelssohn-6-maiglockchen-und-die-blumelein-mwv-j-7": {
     "midi-device": 3,
@@ -6649,8 +7690,10 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 3,
     "words": 25,
     "sound": 28,
+    "direction": 6,
     "extend": 9,
     "print-object": 8,
     "pedal": 10
@@ -6667,6 +7710,7 @@
     "identification": 1,
     "words": 12,
     "sound": 8,
+    "direction": 1,
     "print-object": 8
   },
   "mounsey-bartholomew-2-the-will-o-the-wisp": {
@@ -6681,7 +7725,9 @@
     "identification": 1,
     "words": 10,
     "sound": 18,
+    "direction": 1,
     "dashes": 6,
+    "slur": 35,
     "notehead": 1
   },
   "mounsey-bartholomew-3-i-can-bid-thee-now-farewell": {
@@ -6694,11 +7740,15 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 9,
     "sound": 10,
+    "direction": 1,
     "extend": 6,
     "dashes": 16,
-    "notehead": 8
+    "slur": 21,
+    "notehead": 8,
+    "dot": 12
   },
   "mounsey-bartholomew-4-the-warrior-boy": {
     "midi-device": 2,
@@ -6710,9 +7760,12 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 3,
     "sound": 16,
+    "direction": 1,
     "extend": 2,
+    "slur": 8,
     "dashes": 4,
     "notehead": 6
   },
@@ -6726,10 +7779,12 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 10,
     "words": 9,
     "sound": 1,
-    "measure": 4,
-    "dashes": 8
+    "direction": 3,
+    "dashes": 8,
+    "slur": 10
   },
   "mounsey-bartholomew-6-song-of-the-summer-winds": {
     "midi-device": 2,
@@ -6743,9 +7798,10 @@
     "identification": 1,
     "words": 8,
     "sound": 13,
+    "direction": 2,
     "extend": 4,
     "dashes": 6,
-    "clef": 1
+    "clef": 2
   },
   "mounsey-bartholomew-6a-song-of-the-summer-winds": {
     "midi-device": 4,
@@ -6759,10 +7815,12 @@
     "identification": 1,
     "words": 18,
     "sound": 19,
+    "direction": 1,
     "stem": 10,
     "notehead": 10,
     "extend": 2,
-    "clef": 1,
+    "clef": 2,
+    "slur": 1,
     "dashes": 8
   },
   "munktell-1-serenade": {
@@ -6777,10 +7835,12 @@
     "identification": 1,
     "words": 26,
     "sound": 25,
+    "direction": 1,
     "extend": 19,
     "cue": 2,
     "print-object": 14,
     "pedal": 48,
+    "slur": 7,
     "tie": 2,
     "notehead": 2
   },
@@ -6796,9 +7856,11 @@
     "identification": 1,
     "words": 6,
     "sound": 13,
+    "direction": 1,
     "extend": 8,
     "dashes": 8,
     "pedal": 2,
+    "slur": 5,
     "print-object": 3
   },
   "munktell-2-dans-le-lointain-des-bois": {
@@ -6813,10 +7875,15 @@
     "identification": 1,
     "words": 17,
     "sound": 24,
+    "direction": 1,
     "extend": 8,
     "print-object": 8,
+    "tuplet": 7,
+    "type": 2,
     "notehead": 4,
-    "pedal": 4
+    "slur": 2,
+    "pedal": 4,
+    "dot": 2
   },
   "munktell-3-ce-qu-entendent-les-nuits": {
     "midi-device": 2,
@@ -6830,6 +7897,7 @@
     "identification": 1,
     "words": 37,
     "sound": 37,
+    "direction": 9,
     "extend": 17,
     "rehearsal": 2,
     "dashes": 6,
@@ -6847,9 +7915,11 @@
     "identification": 1,
     "words": 18,
     "sound": 22,
+    "direction": 5,
     "extend": 12,
     "dashes": 8,
     "notehead": 5,
+    "slur": 2,
     "print-object": 3
   },
   "munktell-fjerran-pa-enslig-stig": {
@@ -6862,9 +7932,12 @@
     "identification": 1,
     "words": 12,
     "sound": 20,
+    "direction": 1,
     "extend": 2,
     "print-object": 15,
-    "pedal": 4
+    "tuplet": 3,
+    "pedal": 4,
+    "slur": 1
   },
   "munktell-osterns-natt": {
     "midi-device": 3,
@@ -6876,11 +7949,15 @@
     "identification": 1,
     "words": 41,
     "sound": 46,
+    "direction": 3,
     "extend": 17,
     "dashes": 6,
+    "tuplet": 7,
     "print-object": 54,
     "tie": 2,
-    "pedal": 136
+    "pedal": 136,
+    "slur": 1,
+    "grace": 1
   },
   "netzel-1-lied": {
     "midi-device": 2,
@@ -6895,6 +7972,7 @@
     "sound": 15,
     "words": 5,
     "extend": 4,
+    "slur": 10,
     "print-object": 18
   },
   "netzel-1-rappelle-toi": {
@@ -6907,13 +7985,14 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "sound": 8,
     "words": 7,
     "print-object": 7,
+    "slur": 15,
     "extend": 3,
-    "clef": 1,
+    "clef": 2,
     "pedal": 4,
-    "slur": 2,
     "dashes": 2
   },
   "netzel-2-malgre-moi": {
@@ -6928,6 +8007,7 @@
     "identification": 1,
     "sound": 15,
     "extend": 1,
+    "slur": 20,
     "words": 5,
     "print-object": 11
   },
@@ -6943,8 +8023,10 @@
     "identification": 1,
     "words": 8,
     "sound": 17,
+    "direction": 1,
     "extend": 13,
-    "print-object": 23
+    "print-object": 23,
+    "slur": 8
   },
   "netzel-3-gruss": {
     "midi-device": 2,
@@ -6958,6 +8040,8 @@
     "identification": 1,
     "words": 9,
     "sound": 12,
+    "direction": 1,
+    "slur": 20,
     "extend": 9,
     "cue": 4,
     "print-object": 2
@@ -6974,7 +8058,9 @@
     "identification": 1,
     "words": 4,
     "sound": 16,
+    "direction": 1,
     "extend": 15,
+    "slur": 27,
     "print-object": 11,
     "pedal": 4
   },
@@ -6990,8 +8076,10 @@
     "identification": 1,
     "words": 15,
     "sound": 18,
+    "direction": 1,
     "extend": 10,
-    "print-object": 39
+    "print-object": 39,
+    "slur": 113
   },
   "obradors-1-la-mi-sola-laureola": {
     "midi-device": 2,
@@ -7008,12 +8096,15 @@
     "system-layout": 15,
     "words": 7,
     "sound": 12,
+    "direction": 3,
     "extend": 24,
     "staff-layout": 30,
     "print-object": 114,
     "dashes": 2,
+    "slur": 1,
     "trill-mark": 2,
-    "wavy-line": 2
+    "wavy-line": 2,
+    "tuplet": 3
   },
   "obradors-6-del-cabello-mas-sutil": {
     "midi-device": 2,
@@ -7030,9 +8121,12 @@
     "system-layout": 11,
     "words": 5,
     "sound": 8,
+    "direction": 4,
+    "slur": 40,
     "extend": 7,
     "wedge": 2,
     "staff-layout": 21,
+    "tuplet": 20,
     "print-object": 79,
     "trill-mark": 2,
     "wavy-line": 4,
@@ -7052,12 +8146,14 @@
     "system-layout": 27,
     "words": 35,
     "sound": 76,
+    "direction": 11,
+    "tuplet": 5,
+    "slur": 15,
     "extend": 30,
     "note": 4,
     "staff-layout": 50,
     "pedal": 94,
     "dashes": 6,
-    "slur": 2,
     "wedge": 1,
     "time": 1
   },
@@ -7074,10 +8170,13 @@
     "system-layout": 11,
     "words": 18,
     "sound": 22,
+    "direction": 5,
     "extend": 4,
     "cue": 1,
+    "type": 1,
     "staff-layout": 21,
     "pedal": 24,
+    "slur": 2,
     "wedge": 1
   },
   "paradis-1-an-das-klavier": {
@@ -7092,7 +8191,9 @@
     "identification": 1,
     "words": 3,
     "sound": 7,
-    "extend": 1
+    "direction": 2,
+    "extend": 1,
+    "slur": 1
   },
   "paradis-10-da-eben-seinen-lauf-verbracht": {
     "midi-device": 2,
@@ -7104,7 +8205,7 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
-    "measure": 6,
+    "measure": 14,
     "words": 4,
     "turn": 2,
     "extend": 1
@@ -7119,8 +8220,10 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 1,
     "sound": 1,
+    "direction": 1,
     "extend": 4
   },
   "paradis-12-an-meine-entfernte-lieben": {
@@ -7133,9 +8236,12 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 1,
     "sound": 1,
-    "turn": 3
+    "direction": 1,
+    "turn": 3,
+    "slur": 1
   },
   "paradis-2-sophia-an-siegwart": {
     "midi-device": 2,
@@ -7149,6 +8255,7 @@
     "identification": 1,
     "words": 1,
     "sound": 1,
+    "direction": 1,
     "trill-mark": 1,
     "print-object": 1
   },
@@ -7163,7 +8270,8 @@
     "movement-title": 1,
     "identification": 1,
     "words": 1,
-    "sound": 1
+    "sound": 1,
+    "direction": 1
   },
   "paradis-4-das-gartnerliedchen-aus-dem-siegwart-es-war-einmal-ein-gartner": {
     "midi-device": 2,
@@ -7175,8 +8283,10 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 2,
-    "sound": 1
+    "sound": 1,
+    "direction": 1
   },
   "parratt-1-with-wisdom-goodness-grace": {
     "midi-device": 5,
@@ -7188,10 +8298,13 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 5,
     "words": 39,
     "sound": 131,
+    "direction": 2,
     "print-object": 22,
     "extend": 62,
+    "slur": 6,
     "notehead": 1,
     "play": 1
   },
@@ -7205,11 +8318,14 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 35,
     "words": 114,
+    "direction": 10,
     "sound": 105,
     "extend": 103,
-    "measure": 15,
     "print-object": 10,
+    "dot": 2,
+    "slur": 7,
     "other-direction": 1
   },
   "parratt-11-a-thousand-years-by-sea-and-land": {
@@ -7222,12 +8338,15 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 15,
     "words": 46,
+    "direction": 2,
     "sound": 118,
     "extend": 64,
     "dashes": 24,
-    "measure": 5,
-    "print-object": 4
+    "slur": 14,
+    "print-object": 4,
+    "dot": 1
   },
   "parratt-12-flora-s-queen": {
     "midi-device": 7,
@@ -7240,10 +8359,12 @@
     "movement-title": 1,
     "identification": 1,
     "words": 98,
+    "direction": 4,
     "sound": 238,
     "extend": 72,
     "dashes": 14,
     "rehearsal": 1,
+    "slur": 29,
     "print-object": 3
   },
   "parratt-13-the-triumph-of-victoria": {
@@ -7256,11 +8377,15 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 6,
     "words": 52,
+    "direction": 1,
     "sound": 84,
     "extend": 21,
     "dashes": 12,
-    "print-object": 18
+    "print-object": 18,
+    "dot": 1,
+    "slur": 1
   },
   "parratt-2-out-in-the-windy-west": {
     "midi-device": 8,
@@ -7274,9 +8399,12 @@
     "identification": 1,
     "words": 40,
     "sound": 110,
+    "direction": 6,
     "extend": 156,
+    "slur": 31,
     "metronome": 3,
-    "print-object": 2
+    "print-object": 2,
+    "dot": 4
   },
   "parratt-3-hark-the-world-is-full-of-thy-praise": {
     "midi-device": 5,
@@ -7290,7 +8418,9 @@
     "identification": 1,
     "words": 53,
     "sound": 109,
+    "direction": 5,
     "extend": 61,
+    "slur": 17,
     "print-object": 60
   },
   "parratt-4-for-all-the-wonder-of-thy-regal-day": {
@@ -7305,7 +8435,8 @@
     "identification": 1,
     "words": 34,
     "sound": 66,
-    "measure": 5,
+    "direction": 1,
+    "measure": 10,
     "dashes": 12,
     "print-object": 9,
     "extend": 9
@@ -7320,9 +8451,12 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 17,
     "sound": 14,
+    "direction": 1,
     "extend": 4,
+    "slur": 11,
     "dashes": 4,
     "notehead": 4,
     "print-object": 2
@@ -7339,9 +8473,13 @@
     "identification": 1,
     "words": 31,
     "sound": 19,
+    "direction": 1,
     "extend": 2,
+    "type": 3,
     "print-object": 14,
+    "slur": 9,
     "dashes": 2,
+    "dot": 1,
     "notehead": 1,
     "pedal": 2
   },
@@ -7357,8 +8495,10 @@
     "identification": 1,
     "words": 13,
     "sound": 11,
+    "direction": 1,
     "extend": 6,
-    "print-object": 5
+    "print-object": 5,
+    "slur": 5
   },
   "parry-2-more-fond-than-cushat-dove": {
     "midi-device": 2,
@@ -7370,11 +8510,14 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 14,
     "sound": 13,
+    "direction": 1,
     "extend": 7,
     "print-object": 71,
-    "cue": 1
+    "cue": 1,
+    "slur": 1
   },
   "parry-3-where-shall-the-lover-rest": {
     "midi-device": 2,
@@ -7386,12 +8529,16 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 25,
     "sound": 32,
+    "direction": 1,
     "dashes": 2,
     "extend": 5,
     "cue": 6,
-    "print-object": 23
+    "slur": 31,
+    "print-object": 23,
+    "tuplet": 1
   },
   "parry-a-hymn-for-aviators": {
     "midi-device": 2,
@@ -7403,7 +8550,9 @@
     "identification": 1,
     "words": 26,
     "sound": 24,
+    "direction": 1,
     "extend": 10,
+    "slur": 14,
     "print-object": 3
   },
   "parry-there-rolls-the-deep": {
@@ -7416,8 +8565,10 @@
     "identification": 1,
     "words": 38,
     "sound": 82,
+    "direction": 1,
     "dashes": 10,
     "extend": 36,
+    "slur": 4,
     "print-object": 4
   },
   "phillips-cushla-machree": {
@@ -7430,8 +8581,10 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 9,
     "sound": 5,
+    "direction": 1,
     "extend": 2
   },
   "philp-bye-and-bye": {
@@ -7446,6 +8599,7 @@
     "identification": 1,
     "words": 5,
     "sound": 1,
+    "direction": 1,
     "print-object": 1
   },
   "philp-forgiven": {
@@ -7460,7 +8614,9 @@
     "identification": 1,
     "words": 8,
     "sound": 14,
+    "direction": 1,
     "extend": 6,
+    "slur": 11,
     "notehead": 2,
     "dashes": 6
   },
@@ -7474,10 +8630,12 @@
     "identification": 1,
     "words": 30,
     "sound": 24,
+    "direction": 1,
     "notehead": 9,
+    "slur": 35,
+    "type": 8,
     "print-object": 20,
-    "pedal": 8,
-    "slur": 2
+    "pedal": 8
   },
   "poldowski-l-heure-exquise": {
     "midi-device": 2,
@@ -7489,10 +8647,12 @@
     "identification": 1,
     "words": 39,
     "sound": 9,
+    "direction": 1,
     "extend": 16,
     "print-object": 21,
     "notehead": 4,
-    "pedal": 26
+    "pedal": 26,
+    "slur": 6
   },
   "poldowski-sur-l-herbe": {
     "midi-device": 2,
@@ -7502,11 +8662,17 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 2,
     "words": 36,
     "sound": 36,
+    "direction": 2,
+    "type": 6,
     "notehead": 7,
+    "tuplet": 3,
+    "dot": 1,
     "print-object": 17,
     "tie": 2,
+    "slur": 4,
     "pedal": 2
   },
   "puget-adieu-cousine": {
@@ -7519,9 +8685,11 @@
     "identification": 1,
     "words": 18,
     "sound": 13,
+    "direction": 1,
     "extend": 1,
     "trill-mark": 1,
-    "measure": 6,
+    "slur": 13,
+    "measure": 12,
     "measure-layout": 4,
     "print-object": 10
   },
@@ -7533,11 +8701,13 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 14,
     "words": 20,
     "sound": 28,
+    "direction": 1,
     "dashes": 4,
-    "measure": 6,
     "measure-layout": 6,
+    "slur": 2,
     "print-object": 1,
     "pedal": 16,
     "trill-mark": 7,
@@ -7553,10 +8723,12 @@
     "identification": 1,
     "words": 39,
     "sound": 12,
+    "direction": 2,
     "coda": 1,
     "extend": 3,
     "print-object": 6,
     "measure-layout": 6,
+    "slur": 3,
     "pedal": 16
   },
   "quilter-1-come-away-death": {
@@ -7573,10 +8745,12 @@
     "credit": 9,
     "system-layout": 19,
     "words": 11,
+    "direction": 3,
     "sound": 18,
     "extend": 17,
+    "tuplet": 11,
     "staff-layout": 37,
-    "slur": 4,
+    "slur": 14,
     "pedal": 21,
     "print-object": 8,
     "wedge": 6
@@ -7596,6 +8770,7 @@
     "system-layout": 4,
     "staff-layout": 4,
     "words": 7,
+    "direction": 3,
     "sound": 2,
     "wedge": 2
   },
@@ -7611,8 +8786,10 @@
     "identification": 1,
     "defaults": 1,
     "credit": 7,
+    "measure": 2,
     "system-layout": 11,
     "words": 18,
+    "direction": 13,
     "sound": 25,
     "extend": 3,
     "wedge": 2,
@@ -7633,12 +8810,13 @@
     "credit": 8,
     "system-layout": 16,
     "words": 10,
+    "direction": 2,
     "sound": 14,
     "extend": 9,
     "wedge": 6,
     "staff-layout": 27,
     "notehead": 5,
-    "slur": 4,
+    "slur": 11,
     "pedal": 6
   },
   "quilter-3-blow-blow-thou-winter-wind": {
@@ -7655,13 +8833,15 @@
     "credit": 10,
     "system-layout": 20,
     "words": 37,
+    "direction": 23,
     "sound": 48,
     "extend": 10,
+    "slur": 28,
     "dashes": 4,
     "wedge": 2,
     "staff-layout": 38,
     "pedal": 26,
-    "slur": 2
+    "clef": 1
   },
   "quilter-3-the-maiden-blush": {
     "midi-device": 2,
@@ -7677,11 +8857,12 @@
     "credit": 6,
     "system-layout": 8,
     "words": 9,
+    "direction": 3,
     "sound": 7,
     "extend": 9,
+    "slur": 11,
     "wedge": 3,
     "staff-layout": 16,
-    "slur": 2,
     "play": 2
   },
   "quilter-4-to-daisies": {
@@ -7698,10 +8879,13 @@
     "credit": 7,
     "system-layout": 11,
     "words": 14,
+    "direction": 6,
     "sound": 19,
+    "tuplet": 1,
     "extend": 4,
     "wedge": 4,
-    "staff-layout": 21
+    "staff-layout": 21,
+    "slur": 1
   },
   "reichardt-1-fruhlingslied": {
     "midi-device": 2,
@@ -7715,6 +8899,7 @@
     "identification": 1,
     "words": 3,
     "sound": 2,
+    "direction": 1,
     "print-object": 2,
     "coda": 1,
     "measure-layout": 2
@@ -7731,6 +8916,8 @@
     "identification": 1,
     "words": 3,
     "sound": 1,
+    "direction": 1,
+    "dot": 2,
     "print-object": 15
   },
   "reichardt-11-aus-tiecks-genoveva": {
@@ -7745,6 +8932,7 @@
     "identification": 1,
     "words": 1,
     "sound": 1,
+    "direction": 1,
     "print-object": 4
   },
   "reichardt-12-heymdal-aus-ariels-offenbarungen": {
@@ -7758,7 +8946,8 @@
     "movement-title": 1,
     "identification": 1,
     "words": 1,
-    "sound": 1
+    "sound": 1,
+    "direction": 1
   },
   "reichardt-2-wenn-ich-ihn-nur-habe": {
     "midi-device": 2,
@@ -7773,9 +8962,11 @@
     "staff-details": 1,
     "words": 1,
     "sound": 1,
+    "direction": 1,
     "note": 1,
     "notehead": 1,
     "print-object": 6,
+    "dot": 1,
     "turn": 1
   },
   "reichardt-3-durch-die-bunten-rosenhecken": {
@@ -7789,7 +8980,8 @@
     "movement-title": 1,
     "identification": 1,
     "words": 2,
-    "sound": 1
+    "sound": 1,
+    "direction": 1
   },
   "reichardt-4-wohl-dem-mann": {
     "midi-device": 2,
@@ -7802,7 +8994,8 @@
     "movement-title": 1,
     "identification": 1,
     "words": 1,
-    "sound": 1
+    "sound": 1,
+    "direction": 1
   },
   "rootham-the-ballad-of-kingslea-mere": {
     "midi-device": 2,
@@ -7815,8 +9008,11 @@
     "words": 28,
     "metronome": 1,
     "sound": 19,
+    "direction": 4,
     "extend": 26,
     "print-object": 128,
+    "tuplet": 3,
+    "slur": 17,
     "pedal": 2
   },
   "rossini-5-l-invito": {
@@ -7833,9 +9029,12 @@
     "credit": 9,
     "system-layout": 20,
     "words": 1,
+    "direction": 1,
     "sound": 28,
     "extend": 17,
     "staff-layout": 35,
+    "tuplet": 16,
+    "slur": 5,
     "print-object": 4
   },
   "satie-1-elegie": {
@@ -7850,8 +9049,10 @@
     "identification": 1,
     "words": 7,
     "sound": 14,
+    "direction": 1,
     "extend": 2,
     "print-object": 4,
+    "slur": 6,
     "tie": 2
   },
   "satie-2-danseuse": {
@@ -7866,11 +9067,13 @@
     "identification": 1,
     "defaults": 1,
     "credit": 5,
+    "measure": 2,
     "system-layout": 4,
     "words": 2,
     "sound": 21,
-    "staff-layout": 8,
-    "slur": 2
+    "direction": 1,
+    "slur": 8,
+    "staff-layout": 8
   },
   "satie-chez-le-docteur": {
     "midi-device": 2,
@@ -7882,7 +9085,9 @@
     "identification": 1,
     "words": 1,
     "sound": 4,
-    "print-object": 28
+    "direction": 1,
+    "print-object": 28,
+    "slur": 4
   },
   "satie-je-te-veux": {
     "midi-device": 2,
@@ -7894,10 +9099,14 @@
     "identification": 1,
     "words": 42,
     "sound": 15,
+    "direction": 2,
+    "slur": 15,
     "extend": 48,
     "cue": 5,
     "tie": 1,
+    "type": 1,
     "print-object": 11,
+    "dot": 18,
     "stem": 1,
     "notehead": 1
   },
@@ -7911,7 +9120,9 @@
     "identification": 1,
     "words": 4,
     "sound": 4,
-    "print-object": 6
+    "direction": 1,
+    "print-object": 6,
+    "slur": 5
   },
   "satie-la-diva-de-l-empire": {
     "midi-device": 2,
@@ -7923,7 +9134,9 @@
     "identification": 1,
     "words": 6,
     "sound": 26,
+    "direction": 1,
     "extend": 16,
+    "slur": 44,
     "print-object": 6
   },
   "schoenberg-1-unterm-schutz-von-dichten-blattergrunden": {
@@ -7941,6 +9154,8 @@
     "system-layout": 9,
     "words": 17,
     "sound": 18,
+    "direction": 7,
+    "slur": 8,
     "dashes": 4,
     "wedge": 1,
     "staff-layout": 17,
@@ -7962,11 +9177,14 @@
     "words": 16,
     "metronome": 1,
     "sound": 22,
+    "direction": 17,
     "dashes": 10,
+    "slur": 31,
     "extend": 2,
     "wedge": 9,
     "staff-layout": 19,
-    "print-object": 32
+    "print-object": 32,
+    "tuplet": 1
   },
   "schoenberg-2-hain-in-diesen-paradiesen": {
     "midi-device": 2,
@@ -7984,9 +9202,12 @@
     "words": 12,
     "metronome": 2,
     "sound": 13,
+    "direction": 6,
+    "slur": 3,
     "dashes": 6,
     "staff-layout": 12,
     "print-object": 9,
+    "tuplet": 3,
     "trill-mark": 1,
     "wavy-line": 2,
     "accidental-mark": 1,
@@ -8007,13 +9228,14 @@
     "system-layout": 8,
     "words": 18,
     "sound": 20,
+    "direction": 14,
     "barline": 3,
     "extend": 4,
     "dashes": 13,
+    "slur": 14,
     "wedge": 6,
     "staff-layout": 15,
-    "other-articulation": 1,
-    "slur": 2
+    "other-articulation": 1
   },
   "schoenberg-4-da-meine-lippen-reglos-sind-und-brennen": {
     "midi-device": 2,
@@ -8032,8 +9254,10 @@
     "words": 8,
     "metronome": 2,
     "sound": 18,
+    "direction": 5,
     "glissando": 6,
     "barline": 1,
+    "slur": 11,
     "extend": 4,
     "wedge": 13,
     "staff-layout": 14,
@@ -8051,11 +9275,14 @@
     "identification": 1,
     "defaults": 1,
     "credit": 6,
+    "measure": 2,
     "system-layout": 6,
     "words": 11,
+    "direction": 4,
     "sound": 15,
     "dashes": 4,
     "extend": 1,
+    "slur": 3,
     "glissando": 2,
     "staff-layout": 12,
     "wedge": 3
@@ -8072,10 +9299,14 @@
     "identification": 1,
     "defaults": 1,
     "credit": 6,
+    "measure": 2,
     "system-layout": 6,
     "words": 7,
     "sound": 23,
+    "direction": 3,
+    "tuplet": 3,
     "extend": 3,
+    "slur": 11,
     "wedge": 5,
     "staff-layout": 12,
     "print-object": 1
@@ -8090,6 +9321,7 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 3,
     "sound": 5
   },
@@ -8103,8 +9335,11 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 1,
     "sound": 7,
+    "direction": 1,
+    "slur": 3,
     "print-object": 2
   },
   "schroter-11-das-madchen-am-ufer": {
@@ -8117,8 +9352,11 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 3,
     "sound": 19,
+    "direction": 1,
+    "slur": 2,
     "print-object": 6
   },
   "schroter-12-die-silberquelle": {
@@ -8131,8 +9369,10 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 1,
     "sound": 12,
+    "direction": 1,
     "print-object": 1
   },
   "schroter-13-brautlied": {
@@ -8145,8 +9385,10 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 1,
-    "sound": 1
+    "sound": 1,
+    "direction": 1
   },
   "schroter-14-die-liebe": {
     "midi-device": 2,
@@ -8158,8 +9400,11 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 1,
-    "sound": 1
+    "sound": 1,
+    "direction": 1,
+    "tuplet": 15
   },
   "schroter-15-der-wassermann": {
     "midi-device": 2,
@@ -8171,9 +9416,12 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 1,
     "sound": 6,
-    "inverted-mordent": 2
+    "direction": 1,
+    "inverted-mordent": 2,
+    "slur": 1
   },
   "schubert-1-mignon-und-der-harfner": {
     "midi-device": 3,
@@ -8187,9 +9435,11 @@
     "identification": 1,
     "words": 6,
     "sound": 23,
+    "direction": 1,
     "extend": 18,
     "staccato": 20,
     "print-object": 14,
+    "slur": 12,
     "dashes": 2
   },
   "schubert-5-der-lindenbaum": {
@@ -8207,8 +9457,11 @@
     "system-layout": 20,
     "words": 7,
     "sound": 21,
+    "direction": 1,
     "extend": 2,
     "staff-layout": 34,
+    "tuplet": 5,
+    "slur": 8,
     "print-object": 66
   },
   "schubert-an-die-musik-d-547": {
@@ -8221,8 +9474,10 @@
     "identification": 1,
     "words": 2,
     "sound": 6,
+    "direction": 1,
     "extend": 8,
-    "dashes": 2
+    "dashes": 2,
+    "slur": 1
   },
   "schubert-auf-dem-wasser-zu-singen-d-774": {
     "midi-device": 2,
@@ -8237,6 +9492,7 @@
     "system-layout": 9,
     "words": 4,
     "sound": 9,
+    "direction": 1,
     "extend": 25,
     "staff-layout": 15
   },
@@ -8253,6 +9509,7 @@
     "system-layout": 24,
     "words": 6,
     "sound": 40,
+    "direction": 1,
     "extend": 18,
     "staff-layout": 46,
     "pedal": 2,
@@ -8267,9 +9524,12 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 2,
     "mode": 2,
     "words": 6,
-    "sound": 4
+    "sound": 4,
+    "direction": 1,
+    "slur": 4
   },
   "schubert-der-erlkonig-d-328": {
     "midi-device": 2,
@@ -8283,6 +9543,7 @@
     "credit": 10,
     "system-layout": 29,
     "words": 8,
+    "direction": 4,
     "extend": 7,
     "sound": 38,
     "staff-layout": 56,
@@ -8298,10 +9559,13 @@
     "work": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 3,
     "sound": 7,
+    "direction": 1,
     "extend": 4,
-    "print-object": 104
+    "print-object": 104,
+    "tuplet": 2
   },
   "schumann-1-ich-stand-in-dunklen-traumen": {
     "midi-device": 2,
@@ -8315,6 +9579,7 @@
     "identification": 1,
     "words": 6,
     "sound": 3,
+    "direction": 1,
     "print-object": 6,
     "slur": 2
   },
@@ -8333,9 +9598,10 @@
     "system-layout": 8,
     "words": 3,
     "sound": 4,
+    "direction": 1,
     "staff-layout": 15,
     "pedal": 4,
-    "slur": 4,
+    "slur": 24,
     "tie": 4,
     "notehead": 11,
     "dashes": 4,
@@ -8353,9 +9619,12 @@
     "identification": 1,
     "words": 5,
     "sound": 5,
+    "direction": 1,
     "extend": 11,
     "cue": 6,
-    "print-object": 4
+    "print-object": 4,
+    "slur": 49,
+    "dot": 38
   },
   "schumann-10-hor-ich-das-liedchen-klingen": {
     "midi-device": 2,
@@ -8369,6 +9638,7 @@
     "identification": 1,
     "words": 2,
     "sound": 5,
+    "direction": 1,
     "extend": 2,
     "print-object": 2,
     "notehead": 1,
@@ -8387,6 +9657,7 @@
     "sound": 6,
     "words": 11,
     "dashes": 20,
+    "direction": 1,
     "print-object": 57
   },
   "schumann-2-dein-angesicht": {
@@ -8401,10 +9672,11 @@
     "identification": 1,
     "words": 9,
     "sound": 7,
+    "direction": 3,
     "extend": 5,
+    "slur": 6,
     "print-object": 2,
-    "tie": 2,
-    "slur": 2
+    "tie": 2
   },
   "schumann-2-sie-liebten-sich-beide": {
     "midi-device": 2,
@@ -8419,7 +9691,9 @@
     "mode": 2,
     "words": 8,
     "sound": 13,
+    "direction": 3,
     "extend": 3,
+    "dot": 4,
     "print-object": 12
   },
   "schumann-3-es-leuchtet-meine-liebe": {
@@ -8432,10 +9706,13 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 1,
     "sound": 22,
+    "direction": 1,
     "extend": 4,
-    "print-object": 61
+    "print-object": 61,
+    "slur": 14
   },
   "schumann-3-liebeszauber": {
     "midi-device": 2,
@@ -8449,8 +9726,11 @@
     "identification": 1,
     "words": 11,
     "sound": 14,
+    "direction": 5,
     "print-object": 805,
-    "dashes": 2
+    "tuplet": 3,
+    "dashes": 2,
+    "dot": 1
   },
   "schumann-4-der-mond-kommt-still-gegangen": {
     "midi-device": 2,
@@ -8464,6 +9744,7 @@
     "identification": 1,
     "sound": 5,
     "words": 3,
+    "direction": 1,
     "extend": 2,
     "pedal": 4,
     "print-object": 2
@@ -8480,8 +9761,12 @@
     "identification": 1,
     "words": 11,
     "sound": 19,
+    "direction": 1,
     "dashes": 4,
-    "pedal": 2
+    "tuplet": 4,
+    "slur": 13,
+    "pedal": 2,
+    "dot": 2
   },
   "schumann-5-ich-hab-in-deinem-auge": {
     "midi-device": 2,
@@ -8495,8 +9780,10 @@
     "identification": 1,
     "words": 14,
     "sound": 10,
+    "direction": 6,
     "extend": 4,
     "print-object": 14,
+    "clef": 1,
     "pedal": 2
   },
   "schumann-5-schlusslied-des-narren": {
@@ -8509,11 +9796,14 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 13,
     "sound": 10,
+    "direction": 2,
     "print-object": 12,
     "cue": 4,
-    "dashes": 4
+    "dashes": 4,
+    "slur": 6
   },
   "schumann-6-die-stille-lotosblume": {
     "midi-device": 2,
@@ -8527,6 +9817,8 @@
     "identification": 1,
     "words": 7,
     "sound": 13,
+    "direction": 2,
+    "tuplet": 24,
     "extend": 1,
     "pedal": 4,
     "tie": 2,
@@ -8543,6 +9835,8 @@
     "identification": 1,
     "words": 6,
     "sound": 15,
+    "direction": 2,
+    "lyric": 1,
     "print-object": 1
   },
   "schumann-lorelei": {
@@ -8556,7 +9850,9 @@
     "identification": 1,
     "words": 5,
     "print-object": 77,
+    "tuplet": 6,
     "sound": 45,
+    "direction": 2,
     "pedal": 18,
     "notehead": 14,
     "slur": 2,
@@ -8570,9 +9866,10 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 10,
     "words": 1,
     "sound": 3,
-    "measure": 4
+    "direction": 1
   },
   "smyth-1-the-clown": {
     "midi-device": 2,
@@ -8585,6 +9882,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 24,
+    "direction": 13,
     "sound": 58,
     "print-object": 27,
     "cue": 2,
@@ -8592,11 +9890,15 @@
     "extend": 55,
     "rehearsal": 12,
     "dashes": 24,
+    "type": 2,
     "stem": 2,
     "inverted-mordent": 7,
+    "slur": 12,
+    "dot": 5,
     "trill-mark": 3,
     "wavy-line": 6,
-    "pedal": 2
+    "pedal": 2,
+    "tuplet": 12
   },
   "somervell-1-loveliest-of-trees-the-cherry-now": {
     "midi-device": 2,
@@ -8606,10 +9908,13 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 2,
     "words": 1,
     "sound": 7,
+    "direction": 1,
     "extend": 11,
-    "tie": 2
+    "tie": 2,
+    "slur": 8
   },
   "somervell-10-the-lads-in-their-hundreds": {
     "midi-device": 2,
@@ -8621,10 +9926,14 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 9,
     "sound": 14,
+    "direction": 1,
     "barline": 63,
-    "extend": 4
+    "extend": 4,
+    "slur": 20,
+    "grace": 1
   },
   "somervell-2-when-i-was-one-and-twenty": {
     "midi-device": 2,
@@ -8638,8 +9947,10 @@
     "identification": 1,
     "words": 7,
     "sound": 10,
+    "direction": 1,
     "extend": 1,
     "stem": 1,
+    "slur": 6,
     "notehead": 2
   },
   "somervell-3-there-pass-the-careless-people": {
@@ -8654,8 +9965,10 @@
     "identification": 1,
     "words": 1,
     "sound": 10,
+    "direction": 1,
     "extend": 3,
-    "print-object": 3
+    "print-object": 3,
+    "slur": 4
   },
   "somervell-4-in-summer-time-on-bredon": {
     "midi-device": 2,
@@ -8669,8 +9982,10 @@
     "identification": 1,
     "words": 14,
     "sound": 23,
+    "direction": 1,
     "extend": 12,
     "pedal": 8,
+    "slur": 18,
     "dashes": 4
   },
   "somervell-5-the-street-sounds-to-the-soldiers-tread": {
@@ -8683,10 +9998,15 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 4,
     "sound": 25,
+    "direction": 1,
     "extend": 6,
-    "pedal": 2
+    "pedal": 2,
+    "slur": 10,
+    "dot": 1,
+    "tuplet": 10
   },
   "somervell-6-on-the-idle-hill-of-summer": {
     "midi-device": 2,
@@ -8700,8 +10020,12 @@
     "identification": 1,
     "words": 5,
     "sound": 12,
+    "direction": 1,
     "extend": 1,
-    "pedal": 6
+    "dot": 1,
+    "pedal": 6,
+    "slur": 2,
+    "tuplet": 1
   },
   "stanford-1-as-thro-the-land": {
     "midi-device": 5,
@@ -8715,8 +10039,10 @@
     "identification": 1,
     "words": 12,
     "sound": 31,
+    "direction": 2,
     "extend": 32,
     "print-object": 38,
+    "slur": 20,
     "fermata": 1,
     "pedal": 2
   },
@@ -8730,8 +10056,11 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 2,
     "sound": 13,
+    "direction": 1,
+    "slur": 20,
     "extend": 2,
     "print-object": 1
   },
@@ -8747,9 +10076,11 @@
     "identification": 1,
     "words": 10,
     "sound": 17,
+    "direction": 1,
     "extend": 3,
-    "fermata": 1,
-    "slur": 2
+    "slur": 7,
+    "tuplet": 1,
+    "fermata": 1
   },
   "stanford-2-sweet-and-low": {
     "midi-device": 5,
@@ -8763,8 +10094,11 @@
     "identification": 1,
     "words": 23,
     "sound": 29,
+    "direction": 1,
     "extend": 52,
-    "print-object": 4
+    "slur": 67,
+    "print-object": 4,
+    "dot": 22
   },
   "stanford-3-say-o-say-saith-the-music": {
     "midi-device": 2,
@@ -8778,7 +10112,9 @@
     "identification": 1,
     "words": 10,
     "sound": 19,
+    "direction": 1,
     "extend": 9,
+    "slur": 13,
     "print-object": 2,
     "fermata": 1
   },
@@ -8792,10 +10128,12 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 5,
     "words": 39,
     "sound": 74,
+    "direction": 3,
     "extend": 14,
-    "slur": 4
+    "slur": 24
   },
   "stanford-4-tears-idle-tears": {
     "midi-device": 5,
@@ -8809,11 +10147,13 @@
     "identification": 1,
     "words": 18,
     "sound": 67,
+    "direction": 3,
     "extend": 61,
     "print-object": 37,
+    "slur": 27,
     "notehead": 2,
-    "pedal": 2,
-    "slur": 2
+    "dot": 28,
+    "pedal": 2
   },
   "strauss-1-ruhe-meine-seele": {
     "midi-device": 2,
@@ -8827,7 +10167,9 @@
     "identification": 1,
     "words": 23,
     "sound": 17,
+    "direction": 1,
     "extend": 5,
+    "slur": 6,
     "pedal": 22,
     "dashes": 4
   },
@@ -8843,12 +10185,14 @@
     "identification": 1,
     "words": 21,
     "sound": 28,
+    "direction": 4,
     "extend": 20,
     "note": 2,
     "dashes": 12,
     "print-object": 73,
     "pedal": 84,
-    "slur": 2,
+    "tuplet": 14,
+    "slur": 17,
     "time": 1
   },
   "strauss-4-morgen": {
@@ -8863,7 +10207,9 @@
     "identification": 1,
     "words": 6,
     "sound": 7,
+    "direction": 1,
     "pedal": 72,
+    "slur": 20,
     "print-object": 3
   },
   "sullivan-the-long-day-closes": {
@@ -8875,10 +10221,12 @@
     "work": 1,
     "identification": 1,
     "words": 27,
+    "direction": 1,
     "sound": 56,
     "extend": 3,
     "print-object": 8,
-    "notehead": 2
+    "notehead": 2,
+    "dot": 6
   },
   "sullivan-the-lost-chord": {
     "midi-device": 2,
@@ -8890,6 +10238,7 @@
     "identification": 1,
     "words": 37,
     "sound": 26,
+    "direction": 1,
     "extend": 2,
     "print-object": 8,
     "pedal": 56
@@ -8904,6 +10253,7 @@
     "identification": 1,
     "words": 1,
     "sound": 10,
+    "direction": 1,
     "print-object": 8
   },
   "tegner-walzer": {
@@ -8918,6 +10268,7 @@
     "sound": 23,
     "notehead": 2,
     "extend": 5,
+    "dot": 3,
     "print-object": 1
   },
   "thys-petit-negre": {
@@ -8928,13 +10279,17 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 2,
     "words": 33,
     "sound": 15,
+    "direction": 5,
     "extend": 17,
     "dashes": 4,
     "measure-layout": 8,
     "coda": 3,
+    "type": 2,
     "cue": 5,
+    "slur": 15,
     "notehead": 1
   },
   "tosti-ideale": {
@@ -8948,10 +10303,12 @@
     "defaults": 1,
     "credit": 7,
     "system-layout": 14,
+    "direction": 12,
     "sound": 29,
     "extend": 5,
     "words": 39,
     "dashes": 8,
+    "tuplet": 3,
     "staff-layout": 26,
     "print-object": 320
   },
@@ -8966,11 +10323,14 @@
     "defaults": 1,
     "credit": 9,
     "system-layout": 24,
+    "direction": 7,
     "extend": 10,
     "sound": 23,
     "words": 17,
     "wedge": 4,
     "staff-layout": 44,
+    "slur": 15,
+    "dot": 8,
     "notehead": 6
   },
   "verdi-3-in-solitaria-stanza": {
@@ -8987,6 +10347,8 @@
     "system-layout": 17,
     "words": 16,
     "sound": 12,
+    "direction": 9,
+    "slur": 20,
     "dashes": 13,
     "extend": 3,
     "print-object": 391,
@@ -9007,9 +10369,12 @@
     "defaults": 1,
     "words": 9,
     "sound": 19,
+    "direction": 4,
     "extend": 6,
     "bracket": 4,
+    "dot": 1,
     "pedal": 26,
+    "slur": 3,
     "harmony": 39,
     "print-object": 6
   },
@@ -9023,9 +10388,11 @@
     "identification": 1,
     "words": 16,
     "sound": 15,
+    "direction": 2,
     "extend": 6,
     "print-object": 3,
     "dashes": 6,
+    "slur": 11,
     "pedal": 40
   },
   "viardot-desespoir-vwv-1138": {
@@ -9036,12 +10403,17 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 2,
     "words": 16,
     "sound": 33,
+    "direction": 2,
     "extend": 20,
     "print-object": 12,
+    "slur": 13,
     "notehead": 1,
+    "type": 9,
     "pedal": 66,
+    "tuplet": 6,
     "dashes": 2
   },
   "viardot-lamento-vwv-1139": {
@@ -9054,8 +10426,11 @@
     "identification": 1,
     "words": 12,
     "sound": 14,
+    "direction": 1,
     "extend": 14,
     "print-object": 4,
+    "slur": 21,
+    "dot": 31,
     "dashes": 2,
     "pedal": 40
   },
@@ -9068,10 +10443,15 @@
     "work": 1,
     "identification": 1,
     "words": 24,
+    "direction": 3,
+    "dot": 2,
     "sound": 35,
     "dashes": 6,
     "extend": 2,
+    "tuplet": 50,
+    "slur": 7,
     "print-object": 65,
+    "type": 7,
     "pedal": 8,
     "notehead": 7
   },
@@ -9085,11 +10465,13 @@
     "identification": 1,
     "words": 29,
     "sound": 41,
+    "direction": 6,
+    "slur": 22,
     "extend": 10,
     "print-object": 27,
     "dashes": 12,
     "pedal": 108,
-    "slur": 4,
+    "tuplet": 15,
     "notehead": 1,
     "tie": 2
   },
@@ -9101,13 +10483,15 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 2,
     "words": 8,
     "sound": 7,
+    "direction": 1,
     "extend": 3,
     "print-object": 31,
     "dashes": 2,
-    "pedal": 62,
-    "slur": 2
+    "slur": 35,
+    "pedal": 62
   },
   "wagner-1-der-engel": {
     "midi-device": 2,
@@ -9120,6 +10504,8 @@
     "movement-title": 1,
     "identification": 1,
     "words": 14,
+    "direction": 2,
+    "slur": 21,
     "sound": 21,
     "dashes": 2
   },
@@ -9135,11 +10521,13 @@
     "identification": 1,
     "words": 18,
     "sound": 37,
+    "direction": 3,
     "extend": 2,
     "notehead": 1,
     "dashes": 16,
     "pedal": 38,
     "print-object": 22,
+    "dot": 3,
     "other-notation": 8
   },
   "wagner-3-im-treibhaus": {
@@ -9152,11 +10540,13 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 10,
     "sound": 38,
+    "direction": 1,
+    "slur": 6,
     "print-object": 8,
     "dashes": 2,
-    "slur": 2,
     "play": 1,
     "tie": 4
   },
@@ -9172,8 +10562,10 @@
     "identification": 1,
     "words": 16,
     "sound": 22,
+    "direction": 3,
     "dashes": 12,
     "print-object": 16,
+    "slur": 12,
     "pedal": 6
   },
   "wagner-5-traume": {
@@ -9188,10 +10580,11 @@
     "identification": 1,
     "words": 22,
     "sound": 31,
+    "direction": 4,
     "dashes": 8,
+    "slur": 19,
     "print-object": 11,
-    "pedal": 10,
-    "slur": 2
+    "pedal": 10
   },
   "warlock-1-along-the-stream": {
     "midi-device": 2,
@@ -9206,9 +10599,11 @@
     "words": 17,
     "metronome": 1,
     "sound": 15,
+    "direction": 1,
     "print-object": 40,
+    "tuplet": 7,
     "extend": 5,
-    "slur": 2,
+    "slur": 5,
     "pedal": 4
   },
   "warlock-1-chopcherry": {
@@ -9223,7 +10618,9 @@
     "identification": 1,
     "words": 9,
     "sound": 11,
+    "direction": 1,
     "extend": 11,
+    "slur": 7,
     "print-object": 3,
     "pedal": 2
   },
@@ -9239,6 +10636,9 @@
     "identification": 1,
     "words": 5,
     "sound": 17,
+    "direction": 1,
+    "slur": 4,
+    "dot": 2,
     "print-object": 6,
     "pedal": 4,
     "stem": 1,
@@ -9258,9 +10658,12 @@
     "identification": 1,
     "words": 8,
     "sound": 6,
+    "direction": 2,
     "extend": 9,
     "dashes": 4,
-    "print-object": 1
+    "dot": 2,
+    "print-object": 1,
+    "slur": 1
   },
   "warlock-2-spring": {
     "midi-device": 2,
@@ -9274,7 +10677,10 @@
     "identification": 1,
     "words": 11,
     "sound": 11,
+    "direction": 1,
     "extend": 6,
+    "slur": 12,
+    "dot": 7,
     "dashes": 4,
     "print-object": 1,
     "pedal": 14
@@ -9291,8 +10697,12 @@
     "identification": 1,
     "words": 10,
     "sound": 4,
+    "direction": 1,
+    "tuplet": 14,
     "extend": 6,
     "pedal": 4,
+    "slur": 2,
+    "grace": 1,
     "print-object": 2
   },
   "warlock-3-rutterkin": {
@@ -9307,6 +10717,7 @@
     "identification": 1,
     "words": 10,
     "sound": 6,
+    "direction": 4,
     "extend": 5,
     "stem": 6,
     "cue": 6,
@@ -9326,7 +10737,9 @@
     "movement-title": 1,
     "identification": 1,
     "words": 12,
+    "direction": 1,
     "sound": 21,
+    "slur": 2,
     "extend": 2,
     "print-object": 25,
     "pedal": 8,
@@ -9346,8 +10759,10 @@
     "words": 27,
     "metronome": 1,
     "sound": 48,
+    "direction": 1,
     "extend": 4,
     "dashes": 14,
+    "slur": 3,
     "print-object": 62,
     "pedal": 36,
     "offset": 1,
@@ -9364,10 +10779,12 @@
     "movement-title": 1,
     "identification": 1,
     "words": 9,
+    "direction": 1,
     "sound": 26,
     "pedal": 28,
     "print-object": 29,
     "offset": 1,
+    "slur": 3,
     "wedge": 6
   },
   "webern-2-noch-zwingt-mich-treue": {
@@ -9380,10 +10797,12 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "mode": 2,
     "words": 18,
     "metronome": 5,
     "sound": 55,
+    "direction": 5,
     "dashes": 8,
     "extend": 1,
     "print-object": 26,
@@ -9399,8 +10818,12 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 10,
+    "direction": 2,
     "sound": 20,
+    "tuplet": 7,
+    "slur": 5,
     "extend": 2,
     "pedal": 4,
     "print-object": 10,
@@ -9416,12 +10839,15 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 10,
+    "direction": 2,
     "sound": 17,
     "extend": 1,
     "dashes": 2,
     "pedal": 10,
     "print-object": 23,
+    "slur": 1,
     "wedge": 2,
     "octave-shift": 2
   },
@@ -9436,10 +10862,13 @@
     "movement-title": 1,
     "identification": 1,
     "words": 11,
+    "direction": 1,
     "sound": 16,
+    "tuplet": 4,
     "extend": 1,
     "print-object": 11,
-    "pedal": 12
+    "pedal": 12,
+    "slur": 3
   },
   "white-1-when-the-swallows-homeward-fly": {
     "midi-device": 2,
@@ -9451,11 +10880,14 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 18,
     "sound": 11,
+    "direction": 2,
     "print-object": 6,
     "extend": 9,
-    "notehead": 4
+    "notehead": 4,
+    "slur": 1
   },
   "white-2-a-memory": {
     "midi-device": 2,
@@ -9469,8 +10901,11 @@
     "identification": 1,
     "words": 17,
     "sound": 11,
+    "direction": 2,
     "extend": 8,
     "print-object": 4,
+    "slur": 2,
+    "grace": 2,
     "pedal": 2
   },
   "white-3-let-us-forget": {
@@ -9483,10 +10918,12 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 9,
     "sound": 11,
     "dashes": 2,
-    "extend": 2
+    "extend": 2,
+    "grace": 1
   },
   "white-a-farewell-song": {
     "midi-device": 2,
@@ -9498,7 +10935,11 @@
     "identification": 1,
     "words": 17,
     "sound": 2,
-    "extend": 32
+    "direction": 1,
+    "extend": 32,
+    "dot": 7,
+    "grace": 6,
+    "slur": 1
   },
   "white-a-finland-love-song": {
     "midi-device": 2,
@@ -9510,8 +10951,10 @@
     "identification": 1,
     "words": 1,
     "sound": 2,
+    "direction": 1,
     "extend": 21,
-    "notehead": 5
+    "notehead": 5,
+    "grace": 1
   },
   "white-macushla": {
     "midi-device": 2,
@@ -9523,14 +10966,17 @@
     "identification": 1,
     "defaults": 1,
     "credit": 6,
+    "measure": 2,
     "system-layout": 11,
     "words": 15,
     "sound": 15,
+    "direction": 3,
     "cue": 7,
     "extend": 3,
     "staff-layout": 22,
     "pedal": 32,
     "print-object": 7,
+    "slur": 1,
     "wedge": 5
   },
   "white-to-mary": {
@@ -9541,11 +10987,16 @@
     "pan": 2,
     "work": 1,
     "identification": 1,
+    "measure": 2,
     "words": 13,
     "sound": 8,
+    "direction": 1,
     "extend": 11,
+    "slur": 7,
     "tie": 8,
-    "print-object": 13
+    "print-object": 13,
+    "type": 5,
+    "grace": 4
   },
   "wolf-1-der-freund": {
     "midi-device": 2,
@@ -9559,7 +11010,10 @@
     "identification": 1,
     "words": 10,
     "sound": 28,
+    "direction": 3,
     "extend": 11,
+    "tuplet": 2,
+    "slur": 2,
     "dashes": 4,
     "print-object": 1
   },
@@ -9575,11 +11029,12 @@
     "identification": 1,
     "words": 17,
     "sound": 52,
+    "direction": 10,
     "extend": 9,
     "trill-mark": 10,
     "dashes": 6,
     "print-object": 9,
-    "slur": 2
+    "slur": 24
   },
   "wolf-11-lieber-alles": {
     "midi-device": 2,
@@ -9591,10 +11046,13 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 6,
     "sound": 17,
+    "direction": 3,
     "dashes": 6,
-    "print-object": 9
+    "print-object": 9,
+    "slur": 1
   },
   "wolf-12-heimweh": {
     "midi-device": 2,
@@ -9608,8 +11066,10 @@
     "identification": 1,
     "words": 7,
     "sound": 14,
+    "direction": 1,
     "extend": 3,
     "dashes": 2,
+    "slur": 1,
     "print-object": 2
   },
   "wolf-13-der-scholar": {
@@ -9624,7 +11084,11 @@
     "identification": 1,
     "words": 13,
     "sound": 25,
+    "direction": 4,
+    "tuplet": 3,
+    "slur": 21,
     "print-object": 10,
+    "type": 2,
     "dashes": 6
   },
   "wolf-14-der-verzweifelte-liebhaber": {
@@ -9637,8 +11101,11 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 5,
-    "sound": 20
+    "sound": 20,
+    "direction": 5,
+    "slur": 4
   },
   "wood-ethiopia-saluting-the-colours": {
     "midi-device": 2,
@@ -9650,6 +11117,7 @@
     "identification": 1,
     "words": 18,
     "extend": 10,
+    "slur": 7,
     "sound": 9,
     "tie": 2,
     "dashes": 2
@@ -9669,12 +11137,15 @@
     "system-layout": 15,
     "words": 7,
     "sound": 12,
+    "direction": 3,
     "extend": 24,
     "staff-layout": 30,
     "print-object": 114,
     "dashes": 2,
+    "slur": 1,
     "trill-mark": 2,
-    "wavy-line": 2
+    "wavy-line": 2,
+    "tuplet": 3
   },
   "zemlinsky-3-fensterlein-nachts-bist-du-zu": {
     "midi-device": 2,
@@ -9691,9 +11162,12 @@
     "system-layout": 7,
     "words": 12,
     "sound": 12,
+    "direction": 12,
     "extend": 2,
     "dashes": 6,
-    "staff-layout": 14
+    "staff-layout": 14,
+    "note": 6,
+    "slur": 1
   },
   "zumsteeg-1-des-kaufmanns-liebeswerbung": {
     "midi-device": 2,
@@ -9705,8 +11179,10 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 2,
-    "sound": 1
+    "sound": 1,
+    "direction": 1
   },
   "zumsteeg-1-die-kapelle": {
     "midi-device": 2,
@@ -9720,8 +11196,11 @@
     "identification": 1,
     "words": 6,
     "sound": 10,
+    "direction": 4,
     "print-object": 2,
     "beam": 3,
+    "slur": 4,
+    "dot": 10,
     "pedal": 2
   },
   "zumsteeg-2-der-geburtstag": {
@@ -9747,6 +11226,7 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 1,
     "print-object": 28
   },
@@ -9760,6 +11240,7 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "sound": 4,
     "extend": 10,
     "words": 1
@@ -9774,12 +11255,15 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
+    "measure": 2,
     "words": 9,
     "sound": 3,
+    "direction": 2,
     "dashes": 2,
     "extend": 4,
     "print-object": 51,
     "cue": 2,
-    "stem": 1
+    "stem": 1,
+    "tuplet": 8
   }
 }

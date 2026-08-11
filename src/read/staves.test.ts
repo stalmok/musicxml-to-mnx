@@ -113,7 +113,9 @@ describe('clefs', () => {
       { sign: 'G', staffPosition: -2, staff: 1, position: { num: 0, den: 1 } },
       { sign: 'G', staffPosition: -2, staff: 2, position: { num: 0, den: 1 } },
     ])
-    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:clef'])
+    // The replaced clef is the unrepresentable one; the kept clef's
+    // after-barline drawing position is its own, separate loss.
+    expect(warnings.map((w) => w.code)).toEqual(['unsupported:attribute', 'unrepresentable:clef'])
   })
 
   test('keeps two clefs of one staff apart when their positions differ', () => {

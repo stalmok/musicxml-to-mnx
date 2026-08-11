@@ -887,6 +887,26 @@ describe('reporting what is not converted', () => {
     ])
   })
 
+  // The concrete attribute case that motivated the sweep: a pickup measure's
+  // implicit="yes" says the measure is unnumbered, which nothing reads.
+  test('reports a measure attribute nothing reads', () => {
+    const { warnings } = read(
+      score(
+        '<part id="P1"><measure number="0" implicit="yes">' +
+          `<attributes><divisions>1</divisions></attributes>${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(warnings).toMatchObject([
+      {
+        code: 'unsupported:attribute',
+        message: 'The "implicit" attribute of a <measure> is not converted yet.',
+        element: 'measure',
+        context: { part: 'P1', measure: 1 },
+      },
+    ])
+  })
+
   test('reports unconverted document-level elements', () => {
     const { warnings } = read(
       score(`<identification/><part id="P1"><measure>${NOTE}</measure></part>`),

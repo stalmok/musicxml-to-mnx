@@ -13,8 +13,62 @@
 
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
-import { attribute, child, children } from '../xml/tree.js'
+import { attribute, child, children, readAttributeNames } from '../xml/tree.js'
 import { elementLoss } from './unrepresentable.js'
+
+// Attributes that state where or how something is drawn rather than what it
+// is: positions, curve geometry, fonts, spacing, identity, and the format
+// version. The sweep passes these over without a word, because they are
+// presentation rather than notation, and reporting them would bury every
+// real loss under thousands of coordinates.
+const PRESENTATION_ATTRIBUTES: ReadonlySet<string> = new Set([
+  'default-x',
+  'default-y',
+  'relative-x',
+  'relative-y',
+  'bezier-x',
+  'bezier-y',
+  'bezier-x2',
+  'bezier-y2',
+  'bezier-offset',
+  'bezier-offset2',
+  'font-family',
+  'font-style',
+  'font-size',
+  'font-weight',
+  'width',
+  'id',
+  'version',
+  'xml:space',
+])
+
+/**
+ * Report the notation-bearing attributes nothing read off this element.
+ * Reading one through the tree accessor is what accounts for it, so a path
+ * that skips an attribute reports it without anyone having to remember,
+ * exactly as with children. Categorized as a converter gap by default; an
+ * attribute known to have no MNX home keeps its own targeted warning at the
+ * reader that decides that.
+ */
+export function reportUnreadAttributes(
+  element: XmlElement,
+  warnings: WarningCollector,
+  context: WarningContext,
+): void {
+  const read = readAttributeNames(element)
+  for (const name of Object.keys(element.attributes)) {
+    if (read?.has(name)) continue
+    if (PRESENTATION_ATTRIBUTES.has(name)) continue
+    // Namespace declarations are XML plumbing, not notation.
+    if (name.startsWith('xmlns')) continue
+    warnings.add(
+      'unsupported:attribute',
+      `The "${name}" attribute of a <${element.name}> is not converted yet.`,
+      { ...context, line: element.line },
+      element.name,
+    )
+  }
+}
 
 export class ElementReader {
   readonly element: XmlElement
@@ -22,6 +76,8 @@ export class ElementReader {
   // takes the first of a name, so tracking the name would report none of that
   // name's siblings even though only one was read. The rest are a loss.
   readonly #read = new Set<XmlElement>()
+  // Children accounted for by skip(), whose attributes the account covers.
+  readonly #skipped = new Set<XmlElement>()
   // Readers over child elements that are themselves read into, so one report
   // at the top covers the whole tree this reader walked.
   readonly #blocks = new Map<string, ElementReader[]>()
@@ -71,17 +127,37 @@ export class ElementReader {
   /**
    * Accounts for a child without reading one, for the few places where it is
    * carried over by some other means. Every call needs a comment saying which.
+   * The account covers the child whole, attributes included.
    */
   skip(...names: readonly string[]): void {
     for (const found of this.element.children) {
-      if (names.includes(found.name)) this.#read.add(found)
+      if (names.includes(found.name)) {
+        this.#read.add(found)
+        this.#skipped.add(found)
+      }
     }
   }
 
   /** Everything this reader never looked at, reported as a loss. */
   reportUnread(warnings: WarningCollector, context: WarningContext): void {
+    reportUnreadAttributes(this.element, warnings, context)
+
+    // A block wraps its own reader, which sweeps its attributes below; a
+    // plain-read child has no reader of its own, so its attributes are
+    // swept here. An unread child is reported wholesale, and naming its
+    // attributes on top would report the same loss twice.
+    const wrapped = new Set<XmlElement>()
+    for (const blocks of this.#blocks.values()) {
+      for (const block of blocks) wrapped.add(block.element)
+    }
+
     for (const found of this.element.children) {
-      if (this.#read.has(found)) continue
+      if (this.#read.has(found)) {
+        if (!wrapped.has(found) && !this.#skipped.has(found)) {
+          reportUnreadAttributes(found, warnings, context)
+        }
+        continue
+      }
       const loss = elementLoss(found.name)
       warnings.add(
         loss.code,

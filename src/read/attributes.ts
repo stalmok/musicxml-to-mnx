@@ -247,6 +247,11 @@ function readKey(
 ): Key | undefined {
   reportHidden(element.element, 'key', warnings, context)
 
+  // Which staff the signature belongs to. The blocks are compared by content
+  // and a disagreement warns as per-staff keys, so the number itself adds
+  // nothing; it is read here so the sweep knows it is accounted for.
+  attribute(element.element, 'number')
+
   // A key without <fifths> is non-traditional, spelled as individual altered
   // steps, which MNX has no way to state. The notes still sound right,
   // because each carries its own <alter>.
@@ -281,6 +286,9 @@ function readTime(
   path: DocumentPath,
 ): TimeSignature | undefined {
   reportHidden(element.element, 'time', warnings, context)
+
+  // Which staff the signature belongs to, accounted for the way a key's is.
+  attribute(element.element, 'number')
 
   // <senza-misura> writes unmetered music, which MNX has no way to state.
   if (element.child('senza-misura')) {

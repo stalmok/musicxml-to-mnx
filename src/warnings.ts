@@ -32,6 +32,9 @@ export type WarningCode =
   // --- A gap in this converter ------------------------------------------
   // An element carrying notation this converter does not convert yet.
   | 'unsupported:element'
+  // An attribute carrying notation this converter does not convert yet,
+  // named with the element it sits on.
+  | 'unsupported:attribute'
 
   // --- A limit of MNX ---------------------------------------------------
   // An element MNX has nowhere to put at all.

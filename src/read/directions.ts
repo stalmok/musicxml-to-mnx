@@ -495,6 +495,9 @@ export function readSound(
   let jump: Jump | undefined
   let segnoName: string | undefined
   for (const name of Object.keys(sound.element.attributes)) {
+    // Every attribute is either handled or reported below, so each is
+    // accounted for the moment the loop reaches it.
+    attribute(sound.element, name)
     if (name === 'tempo' && tempoAlreadyStated) continue
     if (name === 'fine') {
       fine = { location: position }

@@ -142,6 +142,8 @@ function reportOpeningFermata(
   context: WarningContext,
 ): undefined {
   for (const found of element.children('fermata')) {
+    // The one warning accounts for the whole mark, its facing included.
+    attribute(found, 'type')
     warnings.add(
       'unrepresentable:barline',
       'A fermata is written at the start of a measure, and MNX states one over the ' +
@@ -261,6 +263,12 @@ function readEnding(
   if (!ending) return { endingStart: undefined, endingStop: undefined }
 
   reportHidden(ending, 'ending', warnings, context)
+
+  // Which times the bracket covers. Only the start's numbers reach MNX: a
+  // stop restates the numbers of the bracket it closes, and an unknown type
+  // is reported as a whole element, so the attribute is accounted for here
+  // once for every branch.
+  attribute(ending, 'number')
 
   const type = attribute(ending, 'type')
   if (type === 'start') {

@@ -510,8 +510,11 @@ function readMarkings(
         for (const found of articulations.children(written)) {
           // MNX keys the marks by name, so a second of the same kind has
           // nowhere to go. The first is the one converted, as it is for a
-          // second fermata.
+          // second fermata. The one warning accounts for the rejected mark
+          // whole, its side and pointing included.
           if (seen.has(kind)) {
+            attribute(found, 'placement')
+            attribute(found, 'type')
             warnings.add(
               'unrepresentable:marking',
               `An event carries more than one <${written}>, and MNX states one of each ` +
@@ -640,6 +643,12 @@ export function readFermataAt(
   if (!first) return undefined
 
   if (found.length > 1) {
+    // The one warning accounts for the extras whole, facing and side
+    // included.
+    for (const extra of found.slice(1)) {
+      attribute(extra, 'type')
+      attribute(extra, 'placement')
+    }
     warnings.add(
       'unrepresentable:fermata',
       'More than one fermata is written at the same place, and MNX states one. ' +
@@ -704,8 +713,10 @@ function readArpeggio(
     }
     // <non-arpeggiate> says the opposite: a bracket meaning the notes are
     // struck together. Its type names which end of the bracket this note is,
-    // which MNX has no use for, since the span already says where it runs.
+    // which MNX has no use for, since the span already says where it runs;
+    // it is read here only so the sweep knows it is accounted for.
     for (const struck of block.children('non-arpeggiate')) {
+      attribute(struck, 'type')
       builder.markArpeggio(voice, attribute(struck, 'number') ?? '1', true, undefined, false)
     }
   }
@@ -986,7 +997,12 @@ function multiNoteTremoloOf(
  * rather than the first child.
  */
 function tupletMarkers(notations: readonly ElementReader[]): readonly XmlElement[] {
-  return notations.flatMap((block) => block.children('tuplet'))
+  const markers = notations.flatMap((block) => block.children('tuplet'))
+  // Pairing is structural: a stop closes the most recently opened tuplet,
+  // because MNX's tuplets nest. The marker's stated number cannot cross that
+  // nesting, so it adds nothing here and is read only for the record.
+  for (const marker of markers) attribute(marker, 'number')
+  return markers
 }
 
 // MusicXML's show-number/show-type values in MNX's. "actual" is the played

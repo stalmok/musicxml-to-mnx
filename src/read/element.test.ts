@@ -6,6 +6,7 @@
 import { describe, expect, test } from 'vitest'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
+import { attribute } from '../xml/tree.js'
 import { ElementReader } from './element.js'
 
 function reader(body: string): ElementReader {
@@ -82,5 +83,67 @@ describe('skip', () => {
     element.skip('tied')
 
     expect(reported(element)).toEqual([])
+  })
+})
+
+// The same record, for attributes: reading one through the tree accessor is
+// what accounts for it, and the sweep names the notation-bearing ones nothing
+// read. Presentation attributes (positions, fonts, identity) say how things
+// are drawn rather than what they are, and are passed over without a word.
+describe('the attribute sweep', () => {
+  test('names an attribute nothing read', () => {
+    const element = new ElementReader(parseXmlRoot('<measure number="1" implicit="yes"/>'))
+    attribute(element.element, 'number')
+
+    expect(reported(element)).toEqual([
+      'The "implicit" attribute of a <measure> is not converted yet.',
+    ])
+  })
+
+  test('says nothing about an attribute something read', () => {
+    const element = new ElementReader(parseXmlRoot('<measure implicit="yes"/>'))
+    attribute(element.element, 'implicit')
+
+    expect(reported(element)).toEqual([])
+  })
+
+  test('passes over presentation attributes without a word', () => {
+    const element = new ElementReader(
+      parseXmlRoot(
+        '<note default-x="12.3" relative-y="-5" font-family="Edwin" font-size="10" id="n1"/>',
+      ),
+    )
+
+    expect(reported(element)).toEqual([])
+  })
+
+  test('sweeps the attributes of a child the reader took', () => {
+    const element = reader('<tie type="start" orientation="over"/>')
+    const tie = element.child('tie')
+    if (tie) attribute(tie, 'type')
+
+    expect(reported(element)).toEqual([
+      'The "orientation" attribute of a <tie> is not converted yet.',
+    ])
+  })
+
+  // An unread child is reported wholesale; naming its attributes on top
+  // would report the same loss twice.
+  test('leaves the attributes of an unread child to its own report', () => {
+    const element = reader('<tie type="start"/>')
+
+    expect(reported(element)).toEqual(['<tie> is not converted yet.'])
+  })
+
+  test('sweeps a nested block along with its parent', () => {
+    const element = reader('<notations><slur number="1" placement="above"/></notations>')
+    for (const block of element.blocks('notations')) {
+      const slur = block.child('slur')
+      if (slur) attribute(slur, 'number')
+    }
+
+    expect(reported(element)).toEqual([
+      'The "placement" attribute of a <slur> is not converted yet.',
+    ])
   })
 })

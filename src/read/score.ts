@@ -38,7 +38,7 @@ import { readBarline, resolveEndings } from './barlines.js'
 import { buildBeams } from './beams.js'
 import { readDirection, readSound } from './directions.js'
 import { requireDuration } from './divisions.js'
-import { drawnName, ElementReader } from './element.js'
+import { drawnName, ElementReader, reportUnreadAttributes } from './element.js'
 import { GroupingBuilder, pruneGrouping } from './part-groups.js'
 import { compareFractions, negate } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
@@ -746,6 +746,10 @@ function readMeasure(
   const context: WarningContext = { part: partId, measure: position }
   const stated = readMeasureLabel(element, warnings, context)
   const measurePath: DocumentPath = [...path, `measure ${String(stated ?? position)}`]
+  // The measure element is walked child by child below rather than through
+  // one reader, so its own attributes are swept here: the label above read
+  // the number, and anything else (implicit, non-controlling) is a loss.
+  reportUnreadAttributes(element, warnings, context)
 
   const clefs: Clef[] = []
   let key: Key | undefined

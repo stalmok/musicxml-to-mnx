@@ -36,8 +36,25 @@ export function requireChild(element: XmlElement, name: string, path: DocumentPa
   return found
 }
 
+// Which attributes have been read off each element. The read is the record,
+// exactly as ElementReader records children: a reader that takes an attribute
+// accounts for it by the act of taking it, and the sweep in read/element.ts
+// reports the notation-bearing ones nothing took.
+const attributesRead = new WeakMap<XmlElement, Set<string>>()
+
 export function attribute(element: XmlElement, name: string): string | undefined {
+  let read = attributesRead.get(element)
+  if (!read) {
+    read = new Set()
+    attributesRead.set(element, read)
+  }
+  read.add(name)
   return element.attributes[name]
+}
+
+/** The attribute names something has read off this element, if any. */
+export function readAttributeNames(element: XmlElement): ReadonlySet<string> | undefined {
+  return attributesRead.get(element)
 }
 
 export function requireAttribute(element: XmlElement, name: string, path: DocumentPath): string {
