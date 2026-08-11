@@ -129,6 +129,10 @@ export type WarningCode =
   // A measure repeat sign drawn with this many slashes, which MNX has no way
   // to ask for. The repeat is converted and drawn the default way.
   | 'unrepresentable:measure-repeat-slashes'
+  // A SMuFL glyph named for a dynamic's wording. A dynamic group's glyphs
+  // draw the mark itself, not the words, so the wording goes over as text
+  // and the glyph choice is lost.
+  | 'unrepresentable:wording-glyph'
 
   // --- The source disagreeing with itself, or omitting what reading it
   //     needs -------------------------------------------------------------

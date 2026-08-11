@@ -183,11 +183,19 @@ export function readDirection(
   const at = offsetPosition(element, position, state, warnings, context)
 
   for (const directionType of element.children('direction-type')) {
+    // The wording is held for the whole <direction-type>: MusicXML allows
+    // the words and the mark they qualify in sibling <dynamics> blocks, and
+    // "cresc." beside a <wedge> is the hairpin's own wording.
+    const wording = new PendingWording()
+    let lastMark: Dynamic | undefined
     for (const found of directionType.children) {
       switch (found.name) {
-        case 'dynamics':
-          reading.dynamics.push(...readDynamics(found, at, staff, orient, warnings, context))
+        case 'dynamics': {
+          const marks = readDynamics(found, at, staff, orient, wording, warnings, context)
+          reading.dynamics.push(...marks)
+          lastMark = marks[marks.length - 1] ?? lastMark
           break
+        }
         case 'metronome':
           reading.tempos.push(...readMetronome(found, at, warnings, context, path))
           break
@@ -196,7 +204,12 @@ export function readDirection(
           break
         case 'wedge': {
           const hairpin = readWedge(found, at, measure, staff, orient, state, warnings, context)
-          if (hairpin) reading.dynamics.push(hairpin)
+          if (hairpin) {
+            const prefix = wording.take()
+            if (prefix !== undefined) hairpin.prefix = prefix.text
+            reading.dynamics.push(hairpin)
+            lastMark = hairpin
+          }
           break
         }
         case 'segno':
@@ -219,6 +232,25 @@ export function readDirection(
           )
         }
       }
+    }
+
+    // Wording left over closes the mark before it. With no mark at all it
+    // stands alone, and MNX requires only a position and a type of a dynamic
+    // group, so the words are carried on a group with no level rather than
+    // qualifying a level the source never wrote.
+    const trailing = wording.take()
+    if (trailing !== undefined) {
+      if (lastMark) lastMark.suffix = trailing.text
+      else
+        reading.dynamics.push({
+          position: at,
+          value: undefined,
+          wedge: undefined,
+          end: undefined,
+          staff,
+          prefix: trailing.text,
+          ...(orient !== undefined ? { orient } : {}),
+        })
     }
   }
 
@@ -522,39 +554,52 @@ function orientOf(element: XmlElement): 'above' | 'below' | undefined {
   return placement === 'above' || placement === 'below' ? placement : undefined
 }
 
+/**
+ * The wording seen so far with no mark yet to qualify. A source writes "più
+ * f" as the text and the mark side by side, sometimes in sibling <dynamics>
+ * blocks or beside the <wedge> the words qualify, so the text is held for
+ * the whole <direction-type> until the mark it opens arrives and becomes
+ * that mark's prefix. Anything still held once the marks run out closes the
+ * last one instead, as its suffix, or is carried standing alone. The line of
+ * each piece is held with it, so a report points at the wording rather than
+ * at the block around it.
+ *
+ * Pieces are held as written and trimmed only once joined, so that the
+ * source's own spacing decides where the words run together: "sempre " and
+ * "più " make "sempre più", while "s" and "morz." make "smorz.".
+ */
+class PendingWording {
+  #pieces: { text: string; line: number }[] = []
+
+  push(text: string, line: number): void {
+    this.#pieces.push({ text, line })
+  }
+
+  take(): { text: string; line: number } | undefined {
+    const first = this.#pieces[0]
+    if (first === undefined) return undefined
+    const held = {
+      text: this.#pieces
+        .map((piece) => piece.text)
+        .join('')
+        .trim(),
+      line: first.line,
+    }
+    this.#pieces = []
+    return held
+  }
+}
+
 function readDynamics(
   element: XmlElement,
   position: Fraction,
   staff: number | undefined,
   orient: 'above' | 'below' | undefined,
+  wording: PendingWording,
   warnings: WarningCollector,
   context: WarningContext,
 ): Dynamic[] {
   const dynamics: Dynamic[] = []
-
-  // The wording seen so far with no mark yet to qualify. A source writes "più
-  // f" as the text and the mark side by side, so the text is held until the
-  // mark it opens arrives and becomes that mark's prefix. Anything still held
-  // once the marks run out closes the last one instead, as its suffix. The
-  // line of each piece is held with it, so a report points at the wording
-  // rather than at the block around it.
-  //
-  // Pieces are held as written and trimmed only once joined, so that the
-  // source's own spacing decides where the words run together: "sempre " and
-  // "più " make "sempre più", while "s" and "morz." make "smorz.".
-  let pending: { text: string; line: number }[] = []
-  const takePending = (): { text: string; line: number } | undefined => {
-    if (pending.length === 0) return undefined
-    const held = {
-      text: pending
-        .map((piece) => piece.text)
-        .join('')
-        .trim(),
-      line: pending[0]?.line ?? 0,
-    }
-    pending = []
-    return held
-  }
 
   for (const mark of element.children) {
     const accent = ACCENT_DYNAMICS.get(mark.name)
@@ -563,9 +608,9 @@ function readDynamics(
       // glyph and holding no text still says something the output cannot.
       reportWordingGlyph(mark, trimmedText(mark), warnings, context)
       if (trimmedText(mark) === '') continue
-      pending.push({ text: mark.text, line: mark.line })
+      wording.push(mark.text, mark.line)
     } else if (DYNAMIC_VALUES.has(mark.name)) {
-      const prefix = takePending()
+      const prefix = wording.take()
       dynamics.push({
         position,
         value: mark.name as DynamicValue,
@@ -576,7 +621,7 @@ function readDynamics(
         ...(orient !== undefined ? { orient } : {}),
       })
     } else if (accent) {
-      const prefix = takePending()
+      const prefix = wording.take()
       dynamics.push({
         position,
         value: accent.value,
@@ -602,7 +647,7 @@ function readDynamics(
       // The wording opened this mark, so it goes with it. Passing it on to
       // the next mark would draw the words against something the source never
       // stood them in front of.
-      const orphaned = takePending()
+      const orphaned = wording.take()
       if (orphaned)
         warnings.add(
           'unsupported:element',
@@ -614,25 +659,9 @@ function readDynamics(
     }
   }
 
-  // Wording left over closes the mark before it. With no mark at all it
-  // stands alone, and MNX requires only a position and a type of a dynamic
-  // group, so the words are carried on a group with no level rather than
-  // qualifying a level the source never wrote.
-  const trailing = takePending()
-  const last = dynamics[dynamics.length - 1]
-  if (trailing !== undefined) {
-    if (last) last.suffix = trailing.text
-    else
-      dynamics.push({
-        position,
-        value: undefined,
-        wedge: undefined,
-        end: undefined,
-        staff,
-        prefix: trailing.text,
-        ...(orient !== undefined ? { orient } : {}),
-      })
-  }
+  // Wording still pending is left in the holder: the mark it qualifies may
+  // sit in a sibling <dynamics> block or be the <wedge> beside this one, and
+  // whatever is left once the <direction-type> runs out is settled there.
   return dynamics
 }
 
@@ -640,6 +669,12 @@ function readDynamics(
  * Report the glyph a source names for its wording. MNX states glyphs for the
  * dynamic mark itself, so putting one there would redraw the mark rather than
  * the words; the wording goes over as text and the glyph is said out loud.
+ *
+ * The two cases are different kinds of loss. A glyph with no text is the
+ * mark itself, and a group with no level can state glyphs, so a later
+ * release may carry it: a converter gap. A glyph named for words that also
+ * convert has no home at all, because the schema nowhere states how the
+ * wording is drawn: a format limit.
  */
 function reportWordingGlyph(
   element: XmlElement,
@@ -649,16 +684,23 @@ function reportWordingGlyph(
 ): void {
   const glyph = attribute(element, 'smufl')
   if (glyph === undefined) return
-  warnings.add(
-    'unsupported:element',
-    wording === ''
-      ? `A dynamic drawn only as the glyph "${glyph}" is not converted yet, because MNX ` +
-          'states a glyph for the dynamic mark, not for its wording.'
-      : `The glyph named for the dynamic wording "${wording}" is drawn as text instead, ` +
-          'because MNX states a glyph for the dynamic mark, not for its wording.',
-    { ...context, line: element.line },
-    'other-dynamics',
-  )
+  if (wording === '') {
+    warnings.add(
+      'unsupported:element',
+      `A dynamic drawn only as the glyph "${glyph}" is not converted yet, because MNX ` +
+        'states a glyph for the dynamic mark, not for its wording.',
+      { ...context, line: element.line },
+      'other-dynamics',
+    )
+  } else {
+    warnings.add(
+      'unrepresentable:wording-glyph',
+      `The glyph named for the dynamic wording "${wording}" is drawn as text instead, ` +
+        'because MNX states a glyph for the dynamic mark, not for its wording.',
+      { ...context, line: element.line },
+      'other-dynamics',
+    )
+  }
 }
 
 function readMetronome(

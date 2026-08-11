@@ -362,6 +362,86 @@ describe('dynamics', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 
+  // The wording beside a wedge in the same <direction-type> qualifies the
+  // hairpin: "cresc." is the crescendo's own wording, and MNX puts a prefix
+  // on a gradual group like on any other.
+  test('carries wording beside a wedge onto the hairpin', () => {
+    const { measure, warnings } = read(
+      inMeasure(
+        '<direction><direction-type>' +
+          '<dynamics><other-dynamics>cresc.</other-dynamics></dynamics>' +
+          '<wedge type="crescendo"/>' +
+          '</direction-type></direction>' +
+          note('C') +
+          '<direction><direction-type><wedge type="stop"/></direction-type></direction>',
+      ),
+    )
+
+    expect(measure?.dynamics).toEqual([
+      {
+        position: { num: 0, den: 1 },
+        wedge: 'increasing',
+        prefix: 'cresc.',
+        end: { measure: 0, position: { num: 1, den: 4 } },
+      },
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  test('carries wording after a wedge as the hairpin suffix', () => {
+    const { measure, warnings } = read(
+      inMeasure(
+        '<direction><direction-type>' +
+          '<wedge type="crescendo"/>' +
+          '<dynamics><other-dynamics> molto</other-dynamics></dynamics>' +
+          '</direction-type></direction>' +
+          note('C') +
+          '<direction><direction-type><wedge type="stop"/></direction-type></direction>',
+      ),
+    )
+
+    expect(measure?.dynamics[0]?.wedge).toBe('increasing')
+    expect(measure?.dynamics[0]?.suffix).toBe('molto')
+    expect(warnings).toEqual([])
+  })
+
+  // MusicXML allows <dynamics> more than once in one <direction-type>, so
+  // the wording and the mark it opens may sit in sibling blocks.
+  test('carries wording onto the mark in a sibling dynamics block', () => {
+    const { measure, warnings } = read(
+      inMeasure(
+        '<direction><direction-type>' +
+          '<dynamics><other-dynamics>più </other-dynamics></dynamics>' +
+          '<dynamics><f/></dynamics>' +
+          '</direction-type></direction>' +
+          note('C'),
+      ),
+    )
+
+    expect(measure?.dynamics).toEqual([{ position: { num: 0, den: 1 }, value: 'f', prefix: 'più' }])
+    expect(warnings).toEqual([])
+  })
+
+  test('writes the hairpin wording onto schema-valid MNX', () => {
+    const { mnx, warnings } = convertMusicXML(
+      inMeasure(
+        '<direction><direction-type>' +
+          '<dynamics><other-dynamics>dim. </other-dynamics></dynamics>' +
+          '<wedge type="diminuendo"/>' +
+          '</direction-type></direction>' +
+          note('C') +
+          '<direction><direction-type><wedge type="stop"/></direction-type></direction>',
+      ),
+    )
+
+    expect(mnx.parts[0]?.measures[0]?.dynamics?.[0]).toMatchObject({
+      type: 'gradual',
+      prefix: 'dim.',
+    })
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
   // The wording opens the mark that follows it. Where that mark is one the
   // converter passes over, the words go with it rather than sliding onto the
   // next mark along, which the source never stood them in front of.
@@ -382,7 +462,9 @@ describe('dynamics', () => {
   })
 
   // An element naming a glyph and holding no text is a mark drawn as that
-  // glyph alone, which is notation, not an empty element to pass over.
+  // glyph alone, which is notation, not an empty element to pass over. A
+  // converter gap rather than a format limit: a group with no level can
+  // state glyphs, so a later release may carry it.
   test('reports a wording drawn only as a glyph', () => {
     const { measure, warnings } = read(
       inMeasure(
@@ -393,6 +475,7 @@ describe('dynamics', () => {
     )
 
     expect(measure?.dynamics).toEqual([])
+    expect(warnings.map((w) => w.code)).toEqual(['unsupported:element'])
     expect(warnings.map((w) => w.message)).toEqual([
       'A dynamic drawn only as the glyph "dynamicSforzatoFF" is not converted yet, because ' +
         'MNX states a glyph for the dynamic mark, not for its wording.',
@@ -423,6 +506,8 @@ describe('dynamics', () => {
 
   // The glyph a source names for its wording is not the group's glyph: that
   // one draws the mark itself, and overwriting it would redraw the dynamic.
+  // A format limit rather than a converter gap: the schema has nowhere to
+  // state how the words are drawn, so no release closes it.
   test('reports the glyph named for a wording', () => {
     const { measure, warnings } = read(
       inMeasure(
@@ -434,6 +519,7 @@ describe('dynamics', () => {
     )
 
     expect(measure?.dynamics[0]?.prefix).toBe('più')
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:wording-glyph'])
     expect(warnings.map((w) => w.message)).toContain(
       'The glyph named for the dynamic wording "più" is drawn as text instead, because MNX ' +
         'states a glyph for the dynamic mark, not for its wording.',
