@@ -142,8 +142,8 @@ beside it already says the same thing. An `<offset>` moves a mark from where it
 is written to where it belongs, which is usually backwards. A sforzando and its
 family become accent dynamics, each carrying the combined glyph it is drawn as,
 and the wording a source wraps a mark in, such as the "più" of "più f", becomes
-the prefix or suffix drawn around it. Marks outside MNX's vocabulary, like a
-dynamic louder than fff, are reported.
+the prefix or suffix drawn around it. The full soft-to-loud range converts,
+down to pppppp and up to ffffff; a mark outside MNX's vocabulary is reported.
 
 A hairpin is matched to its other end across the measures between, and stated
 once as a gradual dynamic pointing at the measure where it stops.
@@ -169,6 +169,16 @@ cursor has reached, carrying the specific glyph the source names; a Fine and a
 dal segno jump are stated on their measures, the jump as D.S. al Fine where a
 Fine sits on the way back.
 
+Measure repeats, the percent sign over a measure that plays what came before.
+MusicXML draws the sign on every measure it covers; MNX marks the first
+measure of each repetition with the length of the pattern, so a two-measure
+pattern is marked on every other measure. A sign drawn with more than one
+slash is reported.
+
+Multi-measure rests: consecutive silent measures drawn as one rest with a
+count are stated on the score, with the measure they start in and how many
+they cover.
+
 Accidentals: the note whose accidental the source draws is marked, and the
 document declares once that it states accidental display, so a reader takes
 the marked notes as the whole of it. Cautionary accidentals keep their
@@ -180,6 +190,11 @@ word, and stem directions.
 Multi-staff parts: a piano part stays one part, with the staff stated on each
 voice and an override on the events of a voice that reaches across to the
 other hand.
+
+Part groups: the brackets and braces that gather parts on the page become
+nested staff groups in the score's layout. Groups whose edges cross are
+reported. A part id that MNX's id pattern cannot state is renamed p1, p2, and
+so on, and reported.
 
 Beams, including secondary beams, hooks, and beams over a grace group.
 MusicXML puts them on the notes, one marking per beam level; MNX states them
@@ -196,11 +211,11 @@ recovered from its duration where none is written, and time a voice passes
 over in silence is stated as a space. A rest filling its measure becomes what
 MNX states it as, rather than being given an invented note value.
 
-Planned for v1: free text directions, which wait on the spec pin moving,
-since this snapshot has nowhere to put them.
+Planned for v1: free text directions, which wait on the spec: the pinned
+snapshot still has nowhere to put them.
 
-Constructs that MNX cannot express at all, such as pedal marks and percent
-repeats, will always surface as warnings rather than silent loss. Out of scope
+Constructs that MNX cannot express at all, such as pedal marks and ornaments,
+will always surface as warnings rather than silent loss. Out of scope
 for v1: percussion, chord symbols, transposing-instrument handling, and
 `score-timewise` documents, which are rejected with a clear error.
 
@@ -313,7 +328,7 @@ measure) and fails if the time ratio approaches quadratic. The generator
 behind those scores is itself tested for lossless, schema-valid output.
 
 See [docs/architecture.md](docs/architecture.md) for how the converter is put
-together and why, and `CLAUDE.md` for the working conventions.
+together and why, and [AGENTS.md](AGENTS.md) for the working conventions.
 
 ---
 
