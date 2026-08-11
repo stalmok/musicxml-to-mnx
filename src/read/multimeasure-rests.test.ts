@@ -115,6 +115,7 @@ describe('a multi-measure rest', () => {
       part('P1', [
         {
           attributes:
+            '<staves>2</staves>' +
             style('<multiple-rest>3</multiple-rest>', ' number="1"') +
             style('<multiple-rest>3</multiple-rest>', ' number="2"'),
           body: REST,

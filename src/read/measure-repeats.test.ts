@@ -190,6 +190,69 @@ describe('a measure repeat', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 
+  // One staff's sign ends while the other staff's runs on. MNX states one
+  // sign for the part, so the continuing staff's remaining measures cannot
+  // keep their marks; the loss is reported where the sign is cut.
+  test('reports a stop ending one staff while the other continues', () => {
+    const { mnx, warnings } = convert(
+      part('P1', [
+        {
+          attributes:
+            '<staves>2</staves>' +
+            '<measure-style number="1"><measure-repeat type="start">1</measure-repeat>' +
+            '</measure-style>' +
+            '<measure-style number="2"><measure-repeat type="start">1</measure-repeat>' +
+            '</measure-style>',
+          body: NOTE,
+        },
+        { body: NOTE },
+        {
+          attributes: '<measure-style number="1"><measure-repeat type="stop"/></measure-style>',
+          body: NOTE,
+        },
+        { body: NOTE },
+        {
+          attributes: '<measure-style number="2"><measure-repeat type="stop"/></measure-style>',
+          body: NOTE,
+        },
+      ]),
+    )
+
+    expect(repeats(mnx)).toEqual([{ number: 1 }, { number: 1 }, undefined, undefined, undefined])
+    expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:measure-repeat'])
+    expect(warnings[0]?.context).toMatchObject({ part: 'P1', measure: 3 })
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // One staff starts a sign while another staff's sign is mid-flight. The
+  // walk restarts for the part, and the running sign's loss is reported.
+  test('reports a staff starting a sign while another staff runs', () => {
+    const { mnx, warnings } = convert(
+      part('P1', [
+        {
+          attributes:
+            '<staves>2</staves>' +
+            '<measure-style number="1"><measure-repeat type="start">1</measure-repeat>' +
+            '</measure-style>',
+          body: NOTE,
+        },
+        { body: NOTE },
+        {
+          attributes:
+            '<measure-style number="2"><measure-repeat type="start">1</measure-repeat>' +
+            '</measure-style>',
+          body: NOTE,
+        },
+        { attributes: stop(), body: NOTE },
+      ]),
+    )
+
+    expect(repeats(mnx)).toEqual([{ number: 1 }, { number: 1 }, { number: 1 }, undefined])
+    expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:measure-repeat'])
+    expect(warnings[0]?.context).toMatchObject({ part: 'P1', measure: 3 })
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
   // The type attribute is required: without it there is no saying whether
   // the sign starts or stops here, so the file is broken.
   test('refuses a measure-repeat with no type', () => {

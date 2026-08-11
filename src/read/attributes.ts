@@ -64,8 +64,14 @@ export interface AttributesReading {
   measureRepeats: MeasureRepeatReading[]
 }
 
-/** A measure repeat sign starting at this measure, or stopping before it. */
-export type MeasureRepeatReading = { measures: number } | 'stop'
+/**
+ * A measure repeat sign starting at this measure, or stopping before it.
+ * Scoped to one staff by its <measure-style>'s "number" attribute, or to
+ * every staff of the part without one.
+ */
+export type MeasureRepeatReading =
+  | { edge: 'start'; measures: number; staff: number | undefined }
+  | { edge: 'stop'; staff: number | undefined }
 
 export function readAttributes(
   element: ElementReader,
@@ -141,7 +147,7 @@ export function readAttributes(
     // all to know whether they agree.
     ...element
       .blocks('measure-style')
-      .map((found) => readMeasureStyle(found, warnings, context, path))
+      .map((found) => readMeasureStyle(found, state, warnings, context, path))
       .reduce(
         (all, reading) => ({
           multimeasureRests: [...all.multimeasureRests, ...reading.multimeasureRests],
@@ -165,11 +171,17 @@ interface MeasureStyleReading {
  */
 function readMeasureStyle(
   element: ElementReader,
+  state: PartState,
   warnings: WarningCollector,
   context: WarningContext,
   path: DocumentPath,
 ): MeasureStyleReading {
   const reading: MeasureStyleReading = { multimeasureRests: [], measureRepeats: [] }
+
+  // The staff this block speaks for, or every staff of the part without a
+  // number. Bounded like a clef's, because a style naming a staff the part
+  // does not have belongs nowhere.
+  const staff = readAttributeInRange(element.element, 'number', path, 1, state.staves)
 
   // A <measure-style> holds one choice of child, so taking the first of each
   // with child() is right.
@@ -202,7 +214,7 @@ function readMeasureStyle(
       })
     }
     if (edge === 'stop') {
-      reading.measureRepeats.push('stop')
+      reading.measureRepeats.push({ edge: 'stop', staff })
     } else {
       // The slash count changes the glyph, which MNX has no way to ask for.
       const slashes = attribute(repeat, 'slashes')
@@ -220,7 +232,7 @@ function readMeasureStyle(
       // nothing is the everyday one-measure sign. The upper bound only
       // rules out a corrupt file: no pattern repeats a thousand measures.
       const measures = trimmedText(repeat) === '' ? 1 : readIntegerInRange(repeat, path, 1, 1000)
-      reading.measureRepeats.push({ measures })
+      reading.measureRepeats.push({ edge: 'start', measures, staff })
     }
   }
 

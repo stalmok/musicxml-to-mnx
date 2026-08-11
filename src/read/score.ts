@@ -64,8 +64,7 @@ interface MeasureReading {
    * The measure repeat edges this measure stated, held until the part can
    * walk the sign from its start to its stop or the end of the part.
    */
-  measureRepeatStart: number | undefined
-  measureRepeatStop: boolean
+  measureRepeats: readonly MeasureRepeatReading[]
 }
 
 export function readScore(root: XmlElement, warnings: WarningCollector): Score {
@@ -588,7 +587,7 @@ function readPart(
     warnings,
   )
   resolveEndings(readings, warnings, id)
-  resolveMeasureRepeats(readings)
+  resolveMeasureRepeats(readings, warnings, id)
 
   return {
     part: {
@@ -608,23 +607,94 @@ function readPart(
  * measure under the sign draws it in MusicXML; MNX states it only on the
  * first measure of each pattern, so a two-measure pattern is marked on
  * every other measure.
+ *
+ * MusicXML scopes each edge to a staff, and MNX states one sign for the
+ * part's measure, so staves that truly disagree cannot all be carried: the
+ * part's sign ends at the first stop and restarts at any start. An edge
+ * that cuts or overrides another staff's running sign is reported.
  */
-function resolveMeasureRepeats(readings: readonly MeasureReading[]): void {
+function resolveMeasureRepeats(
+  readings: readonly MeasureReading[],
+  warnings: WarningCollector,
+  partId: string,
+): void {
+  // The pattern each staff's sign states, keyed by staff, with 0 standing
+  // for an edge written without one, which speaks for every staff.
+  const open = new Map<number, number>()
   let pattern: number | undefined
   let offset = 0
-  for (const reading of readings) {
+  readings.forEach((reading, index) => {
+    const context: WarningContext = { part: partId, measure: index + 1 }
+    const stops = reading.measureRepeats.filter((edge) => edge.edge === 'stop')
+    const starts = reading.measureRepeats.filter(
+      (edge): edge is Extract<MeasureRepeatReading, { edge: 'start' }> => edge.edge === 'start',
+    )
+
     // A stop is read before a start, so a measure stopping one sign may
     // start the next.
-    if (reading.measureRepeatStop) pattern = undefined
-    if (reading.measureRepeatStart !== undefined) {
-      pattern = reading.measureRepeatStart
+    if (stops.length > 0 && open.size > 0) {
+      for (const stop of stops) {
+        if (stop.staff === undefined) open.clear()
+        else open.delete(stop.staff)
+      }
+      if (open.size > 0) {
+        warnings.add(
+          'unrepresentable:measure-repeat',
+          "This measure stops a measure repeat sign for one staff while another staff's " +
+            'sign runs on, and MNX states one sign for the part. The sign ends here for ' +
+            'every staff.',
+          context,
+          'measure-repeat',
+        )
+        open.clear()
+      }
+      pattern = undefined
+    }
+
+    const first = starts[0]
+    if (first !== undefined) {
+      // A restated length, as one written per staff, loses nothing;
+      // differing lengths cannot all be carried, so the first is kept and
+      // the disagreement reported.
+      if (starts.some((start) => start.measures !== first.measures)) {
+        warnings.add(
+          'unrepresentable:measure-repeat',
+          'This measure starts measure repeats of different patterns, and MNX states ' +
+            'one for the measure. The first is the one converted.',
+          context,
+          'measure-repeat',
+        )
+      }
+
+      // A staff's running sign that no start here restates is cut by the
+      // restart, which MusicXML never said happens on that staff.
+      const restatesAll = starts.some((start) => start.staff === undefined)
+      const cut = [...open.keys()].filter(
+        (staff) => !restatesAll && !starts.some((start) => start.staff === staff),
+      )
+      if (cut.length > 0) {
+        warnings.add(
+          'unrepresentable:measure-repeat',
+          "This measure starts a measure repeat sign while another staff's sign is " +
+            'still running, and MNX states one sign for the part. The new sign ' +
+            'replaces the running one.',
+          context,
+          'measure-repeat',
+        )
+        for (const staff of cut) open.delete(staff)
+      }
+
+      if (restatesAll) open.clear()
+      for (const start of starts) open.set(start.staff ?? 0, start.measures)
+      pattern = first.measures
       offset = 0
     }
+
     if (pattern !== undefined) {
       if (offset % pattern === 0) reading.measure.measureRepeat = pattern
       offset += 1
     }
-  }
+  })
 }
 
 function readMeasure(
@@ -825,34 +895,8 @@ function readMeasure(
     },
     endingStart,
     endingStop,
-    measureRepeatStart: oneMeasureRepeatStart(measureRepeats, warnings, context),
-    measureRepeatStop: measureRepeats.includes('stop'),
+    measureRepeats,
   }
-}
-
-/**
- * The one measure repeat pattern MNX can state over a measure. A restated
- * length, as one written per staff, loses nothing; differing lengths cannot
- * all be carried, so the first is kept and the disagreement reported.
- */
-function oneMeasureRepeatStart(
-  edges: readonly MeasureRepeatReading[],
-  warnings: WarningCollector,
-  context: WarningContext,
-): number | undefined {
-  const starts = edges.filter((edge): edge is { measures: number } => edge !== 'stop')
-  const first = starts[0]
-  if (first === undefined) return undefined
-  if (starts.some((start) => start.measures !== first.measures)) {
-    warnings.add(
-      'unrepresentable:measure-repeat',
-      'This measure starts measure repeats of different patterns, and MNX states ' +
-        'one for the measure. The first is the one converted.',
-      context,
-      'measure-repeat',
-    )
-  }
-  return first.measures
 }
 
 /**
