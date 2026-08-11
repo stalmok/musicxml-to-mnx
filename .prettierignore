@@ -3,10 +3,14 @@ dist
 coverage
 pnpm-lock.yaml
 
+# Hidden directories hold local tool state, not source to format. CI config is
+# the one hidden directory that is source.
+.*/
+!.github/
+
 # Local scratchpad and session-tool state (gitignored), not source to format
-.superpowers
-.remember
 plan.md
+CLAUDE.local.md
 
 # Vendored songs, kept byte-for-byte as retrieved (see tests/corpus/PROVENANCE.md)
 tests/corpus/*.mxl
