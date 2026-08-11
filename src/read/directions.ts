@@ -614,21 +614,24 @@ function readDynamics(
     }
   }
 
-  // Wording left over closes the mark before it. With no mark at all it has
-  // nowhere to go: MNX draws a prefix and a suffix around a dynamic group, and
-  // a group with no mark in it would state a level the source never wrote.
+  // Wording left over closes the mark before it. With no mark at all it
+  // stands alone, and MNX requires only a position and a type of a dynamic
+  // group, so the words are carried on a group with no level rather than
+  // qualifying a level the source never wrote.
   const trailing = takePending()
   const last = dynamics[dynamics.length - 1]
   if (trailing !== undefined) {
     if (last) last.suffix = trailing.text
     else
-      warnings.add(
-        'unsupported:element',
-        `A dynamic wording of "${trailing.text}", with no dynamic mark to qualify, is not ` +
-          'converted yet.',
-        { ...context, line: trailing.line },
-        'other-dynamics',
-      )
+      dynamics.push({
+        position,
+        value: undefined,
+        wedge: undefined,
+        end: undefined,
+        staff,
+        prefix: trailing.text,
+        ...(orient !== undefined ? { orient } : {}),
+      })
   }
   return dynamics
 }

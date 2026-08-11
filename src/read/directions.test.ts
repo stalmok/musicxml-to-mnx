@@ -333,17 +333,33 @@ describe('dynamics', () => {
     expect(measure?.dynamics[0]).toMatchObject({ prefix: 'meno', suffix: 'sempre', value: 'f' })
   })
 
-  // MNX states prefix and suffix on a dynamic group, and a group states a
-  // level. Wording standing alone, with no mark to qualify, has nowhere to go.
-  test('reports text with no mark to qualify', () => {
+  // MNX requires only a position and a type of a dynamic group, so wording
+  // standing alone converts as a group with no level: the words are drawn
+  // where the source drew them, and no level the source never wrote is
+  // stated.
+  test('converts wording standing alone as a mark-less group', () => {
     const { measure, warnings } = read(
       inMeasure(direction('<dynamics><other-dynamics>sff</other-dynamics></dynamics>') + note('C')),
     )
 
-    expect(measure?.dynamics).toEqual([])
-    expect(warnings.map((w) => w.message)).toContain(
-      'A dynamic wording of "sff", with no dynamic mark to qualify, is not converted yet.',
+    expect(measure?.dynamics).toEqual([{ position: { num: 0, den: 1 }, prefix: 'sff' }])
+    expect(warnings).toEqual([])
+  })
+
+  test('writes standalone wording onto schema-valid MNX', () => {
+    const { mnx, warnings } = convertMusicXML(
+      inMeasure(
+        direction('<dynamics><other-dynamics>dolce</other-dynamics></dynamics>') + note('C'),
+      ),
     )
+
+    expect(mnx.parts[0]?.measures[0]?.dynamics?.[0]).toEqual({
+      position: { fraction: [0, 1] },
+      type: 'immediate',
+      prefix: 'dolce',
+    })
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // The wording opens the mark that follows it. Where that mark is one the
