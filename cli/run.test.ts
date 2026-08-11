@@ -15,8 +15,8 @@ const LOSSLESS =
   '</attributes><note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration>' +
   '<type>quarter</type></note></measure></part></score-partwise>'
 
-// The same, plus a <print> the converter does not carry, for the lossy paths.
-const LOSSY = LOSSLESS.replace('<note>', '<print/><note>')
+// The same, plus a <harmony> the converter does not carry, for the lossy paths.
+const LOSSY = LOSSLESS.replace('<note>', '<harmony/><note>')
 
 let dir: string
 const lines: string[] = []

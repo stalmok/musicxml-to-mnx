@@ -196,6 +196,11 @@ nested staff groups in the score's layout. Groups whose edges cross are
 reported. A part id that MNX's id pattern cannot state is renamed p1, p2, and
 so on, and reported.
 
+System and page breaks become the score rendering's pages, each holding its
+systems, and each system naming the measure it starts at. The part list's
+instrument setup becomes the score's sounds: each instrument's name and its
+MIDI program.
+
 Beams, including secondary beams, hooks, and beams over a grace group.
 MusicXML puts them on the notes, one marking per beam level; MNX states them
 over the measure as a tree, and that is what gets built.

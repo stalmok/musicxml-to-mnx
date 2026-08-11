@@ -50,6 +50,8 @@ const NO_BARLINE = {
   fine: undefined,
   jump: undefined,
   multimeasureRest: undefined,
+  systemBreak: false,
+  pageBreak: false,
 } as const
 
 function scoreOf(
@@ -62,6 +64,7 @@ function scoreOf(
     globalMeasures: globals,
     parts: [{ id: 'P1', name: undefined, shortName: undefined, staves: 1, measures: [measure] }],
     grouping: [],
+    sounds: new Map(),
   }
 }
 

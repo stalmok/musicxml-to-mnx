@@ -53,6 +53,8 @@ const NO_BARLINE = {
   repeatEnd: undefined,
   ending: undefined,
   fermata: undefined,
+  systemBreak: false,
+  pageBreak: false,
 }
 
 describe('the document element', () => {
@@ -869,17 +871,17 @@ describe('measure numbering', () => {
 describe('reporting what is not converted', () => {
   test('reports an unconverted element with its name, place, and line', () => {
     const { warnings } = read(
-      '<score-partwise>\n<part id="P1">\n<measure number="1">\n<print/>\n' +
+      '<score-partwise>\n<part id="P1">\n<measure number="1">\n<harmony/>\n' +
         `${NOTE}\n</measure>\n</part>\n</score-partwise>`,
     )
 
     expect(warnings).toEqual([
       {
         code: 'unsupported:element',
-        message: '<print> is not converted yet.',
+        message: '<harmony> is not converted yet.',
         // Named as a field, so a report can be grouped by what was lost
         // without parsing the sentence written for a person to read.
-        element: 'print',
+        element: 'harmony',
         context: { part: 'P1', measure: 1, line: 4 },
       },
     ])

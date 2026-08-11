@@ -93,6 +93,28 @@ const NO_HOME_IN_MNX: ReadonlySet<string> = new Set([
   'credit',
   // Page size, scaling and margins. The schema's layouts state no dimensions.
   'defaults',
+  // The spacing a <print> restates mid-score, and the numbering style. The
+  // schema's pages and systems state where a system starts and nothing about
+  // spacing or numbering.
+  'page-layout',
+  'system-layout',
+  'staff-layout',
+  'measure-layout',
+  'measure-numbering',
+  // What the part list states about an instrument beyond its name and MIDI
+  // program: the taxonomy id, the abbreviation, the synthesizer setup and
+  // the playback device. The schema's sound states a name and a midiNumber,
+  // and nothing about how to play it.
+  'instrument-sound',
+  'instrument-abbreviation',
+  'virtual-instrument',
+  'midi-device',
+  'midi-channel',
+  'midi-bank',
+  'midi-unpitched',
+  'volume',
+  'pan',
+  'elevation',
 ])
 
 /**

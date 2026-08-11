@@ -533,6 +533,10 @@ export interface GlobalMeasure {
    * spans, counting this one. The spanned measures stay ordinary measures.
    */
   multimeasureRest: number | undefined
+  /** A new system starts at this measure. */
+  systemBreak: boolean
+  /** A new page starts at this measure, and a new system with it. */
+  pageBreak: boolean
 }
 
 /** A segno sign, the point a D.S. jumps back to. */
@@ -573,6 +577,12 @@ export interface Jump {
   target?: string
 }
 
+/** An instrument the part list sets up: its drawn name and MIDI program. */
+export interface InstrumentSound {
+  name: string | undefined
+  midiNumber: number | undefined
+}
+
 export interface Score {
   globalMeasures: readonly GlobalMeasure[]
   parts: readonly Part[]
@@ -583,4 +593,9 @@ export interface Score {
    * mentions stands outside it.
    */
   grouping: readonly GroupingItem[]
+  /**
+   * The instrument setup the part list states, keyed by the source's
+   * instrument id, empty where it states none.
+   */
+  sounds: ReadonlyMap<string, InstrumentSound>
 }

@@ -57,12 +57,15 @@ import type {
   MNXFermata,
   MNXFine,
   MNXFullMeasureRest,
+  MNXGlobal,
   MNXJump,
   MNXMeasureRhythmicPosition,
   MNXLayoutStaff,
+  MNXPage,
   MNXRhythmicPosition,
   MNXSegno,
   MNXStaffGroup,
+  MNXSystem,
   MNXSystemLayout,
   MNXTempo,
 } from '../types/mnx.js'
@@ -85,6 +88,7 @@ export function writeMnx(score: Score): MNXDocument {
       measures: score.globalMeasures.map((measure, index) =>
         writeGlobalMeasure(measure, survey.measureIds.get(index)),
       ),
+      ...writeSounds(score),
     },
     ...(layouts ? { layouts } : {}),
     // Every part carries its id once a layout is written, so the layout's
@@ -99,28 +103,60 @@ export function writeMnx(score: Score): MNXDocument {
 
 /**
  * The scores object: one rendering, written only when the source draws a
- * multi-measure rest, because that is the only thing this converter states on
- * it. Same principle as layouts: written only when it says something.
+ * multi-measure rest or states a system or page break, because those are the
+ * only things this converter states on it. Same principle as layouts:
+ * written only when it says something.
  */
 function writeScores(
   score: Score,
   measureIds: ReadonlyMap<number, string>,
 ): Pick<MNXDocument, 'scores'> {
+  const measureId = (index: number, of: string): string => {
+    const id = measureIds.get(index)
+    /* v8 ignore next 2 -- surveyScore names every measure a multi-measure
+       rest or a system starts in, which is where this map comes from. */
+    if (id === undefined) throw new Error(`A ${of} starts in a measure with no id.`)
+    return id
+  }
+
   const rests = score.globalMeasures.flatMap((measure, index) => {
     if (measure.multimeasureRest === undefined) return []
-    const start = measureIds.get(index)
-    /* v8 ignore next 2 -- surveyScore names every measure a multi-measure
-       rest starts in, which is where this map comes from. */
-    if (start === undefined) throw new Error('A multi-measure rest starts in a measure with no id.')
-    return [{ start, duration: measure.multimeasureRest }]
+    return [{ start: measureId(index, 'multi-measure rest'), duration: measure.multimeasureRest }]
   })
-  if (rests.length === 0) return {}
+
+  // Any break writes the whole page structure: the first system of the score
+  // is implicit in MusicXML and stated in MNX, so it opens the first page. A
+  // page break starts a system of its own, stated or not.
+  const pages: MNXPage[] = []
+  if (score.globalMeasures.some((measure) => measure.systemBreak || measure.pageBreak)) {
+    let systems: MNXSystem[] = []
+    score.globalMeasures.forEach((measure, index) => {
+      if (measure.pageBreak && systems.length > 0) {
+        pages.push({ systems })
+        systems = []
+      }
+      if (index === 0 || measure.systemBreak || measure.pageBreak) {
+        systems.push({ measure: measureId(index, 'system') })
+      }
+    })
+    pages.push({ systems })
+  }
+
+  if (rests.length === 0 && pages.length === 0) return {}
 
   // MNX requires a score rendering to be named, and the model has no name to
   // give: the source's work and movement titles are not converted (they are a
   // separate gap, and keep warning), so a fixed placeholder names the one
   // rendering written.
-  return { scores: [{ name: 'Score', multimeasureRests: rests }] }
+  return {
+    scores: [
+      {
+        name: 'Score',
+        ...(rests.length > 0 ? { multimeasureRests: rests } : {}),
+        ...(pages.length > 0 ? { pages } : {}),
+      },
+    ],
+  }
 }
 
 /**
@@ -202,12 +238,16 @@ function surveyScore(score: Score): {
     }
   }
 
-  // A hairpin and an octave shift each point at the measure they stop in, and
-  // a multi-measure rest at the measure it starts in, so those measures need
-  // naming. Deterministic, and in score order.
+  // A hairpin and an octave shift each point at the measure they stop in, a
+  // multi-measure rest at the measure it starts in, and a system at the
+  // measure it starts at, so those measures need naming. Deterministic, and
+  // in score order. Any break at all writes the whole page structure, which
+  // states the implicit first system, so measure one is named with it.
   const pointedAt = new Set<number>()
+  const breaks = score.globalMeasures.some((measure) => measure.systemBreak || measure.pageBreak)
   score.globalMeasures.forEach((measure, index) => {
     if (measure.multimeasureRest !== undefined) pointedAt.add(index)
+    if (breaks && (index === 0 || measure.systemBreak || measure.pageBreak)) pointedAt.add(index)
   })
 
   for (const part of score.parts) {
@@ -233,6 +273,25 @@ function surveyScore(score: Score): {
   }
 
   return { referenced, drawsAccidentals, measureIds }
+}
+
+/**
+ * The instrument setup, written only when the part list states one. Keyed by
+ * the source's instrument id, which is what its <midi-instrument> pointed at.
+ */
+function writeSounds(score: Score): Partial<Pick<MNXGlobal, 'sounds'>> {
+  if (score.sounds.size === 0) return {}
+  return {
+    sounds: Object.fromEntries(
+      [...score.sounds].map(([id, sound]) => [
+        id,
+        {
+          ...(sound.midiNumber !== undefined ? { midiNumber: sound.midiNumber } : {}),
+          ...(sound.name !== undefined ? { name: sound.name } : {}),
+        },
+      ]),
+    ),
+  }
 }
 
 function writeGlobalMeasure(measure: GlobalMeasure, id: string | undefined): MNXGlobalMeasure {

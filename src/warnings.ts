@@ -133,6 +133,9 @@ export type WarningCode =
   // draw the mark itself, not the words, so the wording goes over as text
   // and the glyph choice is lost.
   | 'unrepresentable:wording-glyph'
+  // A <print> detail beyond the system and page breaks, such as a page
+  // number or staff spacing, which MNX's pages and systems cannot state.
+  | 'unrepresentable:print-detail'
 
   // --- The source disagreeing with itself, or omitting what reading it
   //     needs -------------------------------------------------------------

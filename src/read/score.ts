@@ -17,6 +17,7 @@ import type {
   Fermata,
   RepeatEnd,
   GlobalMeasure,
+  InstrumentSound,
   Key,
   Fine,
   GroupingItem,
@@ -30,7 +31,7 @@ import type {
 } from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
-import { attribute, children, requireAttribute } from '../xml/tree.js'
+import { attribute, children, requireAttribute, trimmedText } from '../xml/tree.js'
 import { readAttributes } from './attributes.js'
 import type { MeasureRepeatReading } from './attributes.js'
 import { readBarline, resolveEndings } from './barlines.js'
@@ -42,6 +43,8 @@ import { GroupingBuilder, pruneGrouping } from './part-groups.js'
 import { compareFractions, negate } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import { readNote } from './notes.js'
+import { readIntegerInRange } from './numbers.js'
+import { readPrint } from './print.js'
 import { IdGenerator } from './spanners.js'
 import { newPartState } from './state.js'
 import { elementLoss } from './unrepresentable.js'
@@ -131,6 +134,7 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
       globalMeasures,
       parts: readings.map((reading) => reading.part),
       grouping: pruneGrouping(partList.grouping, written, partList.lines, warnings),
+      sounds: partList.sounds,
     },
     partList.lines,
     warnings,
@@ -406,6 +410,11 @@ function mergeGlobalMeasures(
       fine: existing?.fine ?? measure.fine,
       jump: existing?.jump ?? measure.jump,
       multimeasureRest: existing?.multimeasureRest ?? measure.multimeasureRest,
+      // A break is the whole score's, and is usually written into one part
+      // only, so a break any part states is kept. A part not stating one is
+      // not disagreeing; it just leaves the layout to the parts that do.
+      systemBreak: (existing?.systemBreak ?? false) || measure.systemBreak,
+      pageBreak: (existing?.pageBreak ?? false) || measure.pageBreak,
     }
   })
 }
@@ -500,6 +509,8 @@ interface PartList {
   lines: ReadonlyMap<string, number>
   /** The instrument grouping the list draws, empty where it draws none. */
   grouping: readonly GroupingItem[]
+  /** The instrument setup the list states, keyed by instrument id. */
+  sounds: ReadonlyMap<string, InstrumentSound>
 }
 
 /**
@@ -517,6 +528,8 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
   const listed = new Set<string>()
   const lines = new Map<string, number>()
   const grouping = new GroupingBuilder()
+  const sounds = new Map<string, InstrumentSound>()
+  const LIST_PATH: DocumentPath = ['score-partwise', 'part-list']
 
   for (const list of root.blocks('part-list')) {
     // Both kinds are marked read here; the walk below goes through the raw
@@ -541,6 +554,30 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
           if (shortName) shortNames.set(id, shortName)
         }
 
+        // The instrument setup. A <score-instrument> names what plays the
+        // part; the <midi-instrument> pointing at it by id says how to
+        // synthesize it, of which the program is the one detail MNX's sound
+        // can state. What neither reader takes is reported by the sweep.
+        for (const instrument of scorePart.blocks('score-instrument')) {
+          const instrumentId = requireAttribute(instrument.element, 'id', LIST_PATH)
+          const nameElement = instrument.child('instrument-name')
+          const instrumentName = nameElement ? trimmedText(nameElement) : ''
+          sounds.set(instrumentId, {
+            name: instrumentName === '' ? undefined : instrumentName,
+            midiNumber: undefined,
+          })
+        }
+        for (const midi of scorePart.blocks('midi-instrument')) {
+          const instrumentId = requireAttribute(midi.element, 'id', LIST_PATH)
+          const program = midi.child('midi-program')
+          if (program) {
+            const sound = sounds.get(instrumentId) ?? { name: undefined, midiNumber: undefined }
+            // MIDI programs run 1 to 128 the way MusicXML writes them.
+            sound.midiNumber = readIntegerInRange(program, LIST_PATH, 1, 128)
+            sounds.set(instrumentId, sound)
+          }
+        }
+
         scorePart.reportUnread(warnings, id !== undefined ? { part: id } : {})
       } else if (element.name === 'part-group') {
         const group = new ElementReader(element)
@@ -550,7 +587,7 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
     }
   }
 
-  return { names, shortNames, listed, lines, grouping: grouping.finish(warnings) }
+  return { names, shortNames, listed, lines, grouping: grouping.finish(warnings), sounds }
 }
 
 function readPart(
@@ -726,6 +763,8 @@ function readMeasure(
   const jumps: Jump[] = []
   const multimeasureRests: number[] = []
   const measureRepeats: MeasureRepeatReading[] = []
+  let systemBreak = false
+  let pageBreak = false
   let barline: BarlineType | undefined
   let repeatStart = false
   let repeatEnd: RepeatEnd | undefined
@@ -819,6 +858,13 @@ function readMeasure(
         break
       }
 
+      case 'print': {
+        const reading = readPrint(reader, warnings, context)
+        systemBreak ||= reading.systemBreak
+        pageBreak ||= reading.pageBreak
+        break
+      }
+
       // A <sound> is playback, so nothing it carries reaches the output. A
       // <sound tempo> at the same point as a <metronome> the score has already
       // drawn is that mark's playback echo, and is passed over in silence;
@@ -892,6 +938,8 @@ function readMeasure(
       fine: onePerMeasure(fines, 'fine', warnings, context),
       jump: onePerMeasure(jumps, 'jump', warnings, context),
       multimeasureRest: oneMultimeasureRest(multimeasureRests, warnings, context),
+      systemBreak,
+      pageBreak,
     },
     endingStart,
     endingStop,

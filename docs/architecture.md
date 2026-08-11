@@ -51,6 +51,7 @@ src/
     spanners.ts        joining the two ends of a tie or slur, and event ids
     beams.ts           per-note beam markings into MNX's tree of beams
     barlines.ts        barlines, repeat signs, and first and second endings
+    print.ts           <print>'s system and page breaks
     directions.ts      dynamics, hairpins, octave shifts, tempo marks, segno
                        signs, Fines and jumps
     lyrics.ts          the words under a note

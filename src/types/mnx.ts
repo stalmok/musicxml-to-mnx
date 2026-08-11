@@ -522,6 +522,8 @@ export interface MNXGlobalMeasure {
 
 export interface MNXGlobal {
   measures: MNXGlobalMeasure[]
+  /** Written only when the source states an instrument setup. */
+  sounds?: Record<string, MNXSound>
 }
 
 export interface MNXSupport {
@@ -539,10 +541,26 @@ export interface MNXMultimeasureRest {
   label?: string
 }
 
+export interface MNXSystem {
+  /** The id of the global measure the system starts at. */
+  measure: string
+}
+
+export interface MNXPage {
+  systems: MNXSystem[]
+}
+
 /** One rendering of the score. */
 export interface MNXScore {
   name: string
   multimeasureRests?: MNXMultimeasureRest[]
+  pages?: MNXPage[]
+}
+
+/** An instrument that plays some of the score. */
+export interface MNXSound {
+  midiNumber?: number
+  name?: string
 }
 
 export interface MNXDocument {
