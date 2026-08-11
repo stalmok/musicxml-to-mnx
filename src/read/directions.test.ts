@@ -422,6 +422,39 @@ describe('dynamics', () => {
     expect(warnings).toEqual([])
   })
 
+  // The attributes of a <direction-type> child are swept like any other
+  // reader's: a metronome mark drawn in parentheses has no home in MNX's
+  // tempo, and a hairpin starting from nothing none in its group.
+  test('reports a parenthesized metronome mark', () => {
+    const { warnings } = read(
+      inMeasure(
+        direction(
+          '<metronome parentheses="yes"><beat-unit>quarter</beat-unit>' +
+            '<per-minute>120</per-minute></metronome>',
+        ) + note('C'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:attribute'])
+    expect(warnings[0]?.message).toBe(
+      'The "parentheses" attribute of a <metronome> cannot be expressed in MNX.',
+    )
+  })
+
+  test('reports a niente hairpin', () => {
+    const { warnings } = read(
+      inMeasure(
+        '<direction><direction-type><wedge type="crescendo" niente="yes"/>' +
+          '</direction-type></direction>' +
+          note('C') +
+          '<direction><direction-type><wedge type="stop"/></direction-type></direction>',
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['unsupported:attribute'])
+    expect(warnings[0]?.message).toBe('The "niente" attribute of a <wedge> is not converted yet.')
+  })
+
   test('writes the hairpin wording onto schema-valid MNX', () => {
     const { mnx, warnings } = convertMusicXML(
       inMeasure(

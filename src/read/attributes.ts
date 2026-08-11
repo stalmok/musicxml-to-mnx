@@ -65,13 +65,13 @@ export interface AttributesReading {
 }
 
 /**
- * A measure repeat sign starting at this measure, or stopping before it.
- * Scoped to one staff by its <measure-style>'s "number" attribute, or to
- * every staff of the part without one.
+ * A measure repeat sign starting at this measure, or stopping before it,
+ * scoped to one staff. An edge written without a <measure-style> "number"
+ * speaks for every staff of the part, and is read as one edge per staff.
  */
 export type MeasureRepeatReading =
-  | { edge: 'start'; measures: number; staff: number | undefined }
-  | { edge: 'stop'; staff: number | undefined }
+  | { edge: 'start'; measures: number; staff: number }
+  | { edge: 'stop'; staff: number }
 
 export function readAttributes(
   element: ElementReader,
@@ -101,6 +101,7 @@ export function readAttributes(
   // inside a <key>, <time> or <clef> is reported along with the rest of the
   // measure rather than vanishing a level down.
   const keyBlocks = element.blocks('key')
+  reportPartialSignature(keyBlocks, 'key', state, warnings, context, path)
   const keys = keyBlocks
     .map((found) => readKey(found, warnings, context, path))
     .filter((key): key is Key => key !== undefined)
@@ -114,7 +115,9 @@ export function readAttributes(
     )
   }
 
-  const times = element.blocks('time').map((found) => readTime(found, warnings, context, path))
+  const timeBlocks = element.blocks('time')
+  reportPartialSignature(timeBlocks, 'time', state, warnings, context, path)
+  const times = timeBlocks.map((found) => readTime(found, warnings, context, path))
   const metered = times.filter((time): time is TimeSignature => time !== undefined)
   if (
     metered.some((other) => other.count !== metered[0]?.count || other.unit !== metered[0]?.unit)
@@ -164,6 +167,45 @@ interface MeasureStyleReading {
 }
 
 /**
+ * Report a key or time signature stated for some staves and not others. The
+ * blocks are compared by content where each staff writes one, but a numbered
+ * block with no counterpart for the other staves is a per-staff statement
+ * that comparison cannot see, and MNX applies the one signature to the whole
+ * score.
+ */
+function reportPartialSignature(
+  blocks: readonly ElementReader[],
+  name: 'key' | 'time',
+  state: PartState,
+  warnings: WarningCollector,
+  context: WarningContext,
+  path: DocumentPath,
+): void {
+  if (blocks.length === 0) return
+  const numbers = blocks.map((block) =>
+    readAttributeInRange(block.element, 'number', path, 1, state.staves),
+  )
+  if (numbers.every((number) => number === undefined)) return
+
+  const covered = new Set(numbers.flatMap((number) => (number === undefined ? ALL : [number])))
+  for (let staff = 1; staff <= state.staves; staff += 1) {
+    if (!covered.has(ALL) && !covered.has(staff)) {
+      warnings.add(
+        name === 'key' ? 'unrepresentable:per-staff-key' : 'unrepresentable:per-staff-time',
+        `A ${name} signature is stated for one staff and not the others, and MNX ` +
+          'states one for the whole score. The stated one is the one converted.',
+        { ...context, line: blocks[0]?.line ?? 0 },
+        name,
+      )
+      return
+    }
+  }
+}
+
+// A signature block without a number speaks for every staff.
+const ALL = 0
+
+/**
  * The measure-style children converted are <multiple-rest>, a multi-measure
  * rest spanning this many measures counting the one carrying it, and
  * <measure-repeat>, the simile sign. The others (beat-repeat, slash) are
@@ -181,7 +223,9 @@ function readMeasureStyle(
   // The staff this block speaks for, or every staff of the part without a
   // number. Bounded like a clef's, because a style naming a staff the part
   // does not have belongs nowhere.
-  const staff = readAttributeInRange(element.element, 'number', path, 1, state.staves)
+  const named = readAttributeInRange(element.element, 'number', path, 1, state.staves)
+  const staves =
+    named !== undefined ? [named] : Array.from({ length: state.staves }, (_, i) => i + 1)
 
   // A <measure-style> holds one choice of child, so taking the first of each
   // with child() is right.
@@ -214,7 +258,7 @@ function readMeasureStyle(
       })
     }
     if (edge === 'stop') {
-      reading.measureRepeats.push({ edge: 'stop', staff })
+      for (const staff of staves) reading.measureRepeats.push({ edge: 'stop', staff })
     } else {
       // The slash count changes the glyph, which MNX has no way to ask for.
       const slashes = attribute(repeat, 'slashes')
@@ -232,7 +276,7 @@ function readMeasureStyle(
       // nothing is the everyday one-measure sign. The upper bound only
       // rules out a corrupt file: no pattern repeats a thousand measures.
       const measures = trimmedText(repeat) === '' ? 1 : readIntegerInRange(repeat, path, 1, 1000)
-      reading.measureRepeats.push({ edge: 'start', measures, staff })
+      for (const staff of staves) reading.measureRepeats.push({ edge: 'start', measures, staff })
     }
   }
 
@@ -246,11 +290,6 @@ function readKey(
   path: DocumentPath,
 ): Key | undefined {
   reportHidden(element.element, 'key', warnings, context)
-
-  // Which staff the signature belongs to. The blocks are compared by content
-  // and a disagreement warns as per-staff keys, so the number itself adds
-  // nothing; it is read here so the sweep knows it is accounted for.
-  attribute(element.element, 'number')
 
   // A key without <fifths> is non-traditional, spelled as individual altered
   // steps, which MNX has no way to state. The notes still sound right,
@@ -286,9 +325,6 @@ function readTime(
   path: DocumentPath,
 ): TimeSignature | undefined {
   reportHidden(element.element, 'time', warnings, context)
-
-  // Which staff the signature belongs to, accounted for the way a key's is.
-  attribute(element.element, 'number')
 
   // <senza-misura> writes unmetered music, which MNX has no way to state.
   if (element.child('senza-misura')) {

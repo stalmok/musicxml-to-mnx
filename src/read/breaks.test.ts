@@ -119,6 +119,16 @@ describe('system and page breaks', () => {
     expect(warnings.map((warning) => warning.element)).toEqual(['system-layout'])
   })
 
+  // A page break on the first measure starts the structure where it already
+  // starts, so no empty page is written before it.
+  test('starts cleanly on a page break at the first measure', () => {
+    const { mnx, warnings } = convert(part('P1', ['<print new-page="yes"/>', '']))
+
+    expect(mnx.scores?.[0]?.pages).toEqual([{ systems: [{ measure: 'm1' }] }])
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
   test('writes the pages beside a multi-measure rest', () => {
     const { mnx, warnings } = convert(
       part('P1', [

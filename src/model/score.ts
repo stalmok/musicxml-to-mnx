@@ -577,10 +577,9 @@ export interface Jump {
   target?: string
 }
 
-/** An instrument the part list sets up: its drawn name and MIDI program. */
+/** An instrument the part list sets up, as its drawn name. */
 export interface InstrumentSound {
   name: string | undefined
-  midiNumber: number | undefined
 }
 
 export interface Score {

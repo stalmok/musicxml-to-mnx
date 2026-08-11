@@ -101,21 +101,60 @@ const NO_HOME_IN_MNX: ReadonlySet<string> = new Set([
   'staff-layout',
   'measure-layout',
   'measure-numbering',
-  // What the part list states about an instrument beyond its name and MIDI
-  // program: the taxonomy id, the abbreviation, the synthesizer setup and
-  // the playback device. The schema's sound states a name and a midiNumber,
-  // and nothing about how to play it.
+  // What the part list states about an instrument beyond its name: the
+  // taxonomy id, the abbreviation, the synthesizer setup and the playback
+  // device. The schema's sound states a name and a midiNumber, which its
+  // docs define as a MIDI pitch backing a percussion kit, so a
+  // <midi-program> naming a patch has no home either; <midi-unpitched> is
+  // the one with a home there, and stays a converter gap.
   'instrument-sound',
   'instrument-abbreviation',
   'virtual-instrument',
   'midi-device',
   'midi-channel',
   'midi-bank',
-  'midi-unpitched',
+  'midi-program',
   'volume',
   'pan',
   'elevation',
 ])
+
+// Attributes with no schema definition to hold them, keyed as
+// "element attribute". The bar is the same as for elements. Anything else
+// the sweep reports is a converter gap by default; a gray case stays there
+// until it is decided against the schema.
+const NO_HOME_ATTRIBUTES: ReadonlySet<string> = new Set([
+  // The side an augmentation dot is drawn on. The schema's note value is a
+  // base and a count of dots, and nothing about how they are drawn.
+  'dot placement',
+  // A cue-sized note value. The schema has no cue or size concept anywhere.
+  'type size',
+  // A playback velocity. The schema's perform options hold nothing.
+  'note dynamics',
+  // A clef drawn after the barline it changes at. The schema's clef states
+  // its sign and position, and nothing about where it is drawn.
+  'clef after-barline',
+  // A dashed tie. The schema's slur states a lineType; its tie does not.
+  'tied line-type',
+  // A metronome mark drawn in parentheses. The schema's tempo states a bpm
+  // and a value, and nothing about how the mark is drawn.
+  'metronome parentheses',
+])
+
+/**
+ * How to report an attribute the sweep found unread, mirroring elementLoss.
+ */
+export function attributeLoss(
+  element: string,
+  name: string,
+): {
+  code: 'unsupported:attribute' | 'unrepresentable:attribute'
+  ending: string
+} {
+  return NO_HOME_ATTRIBUTES.has(`${element} ${name}`)
+    ? { code: 'unrepresentable:attribute', ending: 'cannot be expressed in MNX.' }
+    : { code: 'unsupported:attribute', ending: 'is not converted yet.' }
+}
 
 /**
  * How to report an element the reader passed over: which code it falls under,

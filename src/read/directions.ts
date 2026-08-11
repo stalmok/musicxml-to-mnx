@@ -28,6 +28,7 @@ import type { XmlElement } from '../xml/parse.js'
 import { attribute, children, trimmedText } from '../xml/tree.js'
 import { readColor } from './color.js'
 import { divisionsInForce } from './divisions.js'
+import { reportUnreadAttributes } from './element.js'
 import type { ElementReader } from './element.js'
 import { noteValueBaseOf } from './noteValues.js'
 import { readIntegerInRange } from './numbers.js'
@@ -189,6 +190,10 @@ export function readDirection(
     const wording = new PendingWording()
     let lastMark: Dynamic | undefined
     for (const found of directionType.children) {
+      // A handled child is walked raw rather than through a reader of its
+      // own, so its attributes are swept here once its reader has taken
+      // what it converts. An unhandled child is reported whole below.
+      const handled = HANDLED_DIRECTION_TYPES.has(found.name)
       switch (found.name) {
         case 'dynamics': {
           const marks = readDynamics(found, at, staff, orient, wording, warnings, context)
@@ -232,6 +237,7 @@ export function readDirection(
           )
         }
       }
+      if (handled) reportUnreadAttributes(found, warnings, context)
     }
 
     // Wording left over closes the mark before it. With no mark at all it
@@ -366,6 +372,9 @@ function readOctaveShift(
 ): void {
   const type = attribute(found, 'type')
   const number = attribute(found, 'number') ?? '1'
+  // Read before the edges split, because a stop or continue restates the
+  // start's size and the shift's octaves come from the start alone.
+  const size = attribute(found, 'size') ?? '8'
 
   if (type === 'stop') {
     // MNX states where a shift ends as the place of the last event it covers.
@@ -378,7 +387,6 @@ function readOctaveShift(
   // "continue" marks a point partway along one, which MNX has no need of.
   if (type === 'continue') return
 
-  const size = attribute(found, 'size') ?? '8'
   const octaves = SHIFT_SIZES.get(size)
   if ((type !== 'up' && type !== 'down') || !octaves) {
     warnings.add(
@@ -552,6 +560,17 @@ function roundedBpm(bpm: number, warnings: WarningCollector, context: WarningCon
 
 // The side a direction is drawn on, from its placement. MusicXML's above and
 // below are the words MNX states, so a known one passes straight through.
+// The <direction-type> children a reader takes something from. Their
+// attributes are swept after the reader has run; anything else is reported
+// as a whole element, its attributes covered by that report.
+const HANDLED_DIRECTION_TYPES: ReadonlySet<string> = new Set([
+  'dynamics',
+  'metronome',
+  'octave-shift',
+  'wedge',
+  'segno',
+])
+
 function orientOf(element: XmlElement): 'above' | 'below' | undefined {
   const placement = attribute(element, 'placement')
   return placement === 'above' || placement === 'below' ? placement : undefined

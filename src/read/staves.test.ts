@@ -114,8 +114,12 @@ describe('clefs', () => {
       { sign: 'G', staffPosition: -2, staff: 2, position: { num: 0, den: 1 } },
     ])
     // The replaced clef is the unrepresentable one; the kept clef's
-    // after-barline drawing position is its own, separate loss.
-    expect(warnings.map((w) => w.code)).toEqual(['unsupported:attribute', 'unrepresentable:clef'])
+    // after-barline drawing position is its own, separate loss, with no
+    // home in MNX's clef.
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:attribute',
+      'unrepresentable:clef',
+    ])
   })
 
   test('keeps two clefs of one staff apart when their positions differ', () => {
@@ -242,6 +246,32 @@ describe('key and time signatures stated per staff', () => {
 
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-key'])
     expect(warnings[0]?.message).toContain('one key')
+  })
+
+  // A lone numbered block is a statement for one staff that the comparison
+  // above cannot see: there is no second block to disagree with, and MNX
+  // applies the one signature to the whole score.
+  test('reports a key stated for one staff and not the other', () => {
+    const { warnings } = read(
+      measures(
+        GRAND_STAFF + note('C', '1'),
+        '<attributes><key number="2"><fifths>3</fifths></key></attributes>' + note('D', '1'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-key'])
+  })
+
+  test('reports a time signature stated for one staff and not the other', () => {
+    const { warnings } = read(
+      measures(
+        GRAND_STAFF + note('C', '1'),
+        '<attributes><time number="2"><beats>2</beats><beat-type>4</beat-type></time></attributes>' +
+          note('D', '1'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-time'])
   })
 
   test('reports time signatures that disagree between staves', () => {

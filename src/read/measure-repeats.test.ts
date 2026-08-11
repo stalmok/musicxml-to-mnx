@@ -190,6 +190,47 @@ describe('a measure repeat', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 
+  // An edge without a number speaks for every staff, so on a one-staff part
+  // it and a numbered edge address the same staff and nothing disagrees.
+  test('matches an unnumbered sign with a numbered stop', () => {
+    const { mnx, warnings } = convert(
+      part('P1', [
+        { attributes: start('1'), body: NOTE },
+        { body: NOTE },
+        {
+          attributes: '<measure-style number="1"><measure-repeat type="stop"/></measure-style>',
+          body: NOTE,
+        },
+      ]),
+    )
+
+    expect(repeats(mnx)).toEqual([{ number: 1 }, { number: 1 }, undefined])
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  test('lets every staff restate a running unnumbered sign', () => {
+    const { mnx, warnings } = convert(
+      part('P1', [
+        { attributes: '<staves>2</staves>' + start('1'), body: NOTE },
+        { body: NOTE },
+        {
+          attributes:
+            '<measure-style number="1"><measure-repeat type="start">1</measure-repeat>' +
+            '</measure-style>' +
+            '<measure-style number="2"><measure-repeat type="start">1</measure-repeat>' +
+            '</measure-style>',
+          body: NOTE,
+        },
+        { attributes: stop(), body: NOTE },
+      ]),
+    )
+
+    expect(repeats(mnx)).toEqual([{ number: 1 }, { number: 1 }, { number: 1 }, undefined])
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
   // One staff's sign ends while the other staff's runs on. MNX states one
   // sign for the part, so the continuing staff's remaining measures cannot
   // keep their marks; the loss is reported where the sign is cut.

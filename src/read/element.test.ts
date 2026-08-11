@@ -135,6 +135,19 @@ describe('the attribute sweep', () => {
     expect(reported(element)).toEqual(['<tie> is not converted yet.'])
   })
 
+  // An attribute with no schema definition to hold it is a format limit,
+  // like an element with no home, and reports as one.
+  test('reports an attribute with no home as a format limit', () => {
+    const element = new ElementReader(parseXmlRoot('<dot placement="above"/>'))
+    const warnings = new WarningCollector()
+    element.reportUnread(warnings, { measure: 1 })
+
+    expect(warnings.list()[0]?.code).toBe('unrepresentable:attribute')
+    expect(warnings.list()[0]?.message).toBe(
+      'The "placement" attribute of a <dot> cannot be expressed in MNX.',
+    )
+  })
+
   test('sweeps a nested block along with its parent', () => {
     const element = reader('<notations><slur number="1" placement="above"/></notations>')
     for (const block of element.blocks('notations')) {

@@ -198,8 +198,8 @@ so on, and reported.
 
 System and page breaks become the score rendering's pages, each holding its
 systems, and each system naming the measure it starts at. The part list's
-instrument setup becomes the score's sounds: each instrument's name and its
-MIDI program.
+instrument names become the score's sounds; the synthesizer setup beside
+them has no MNX home and is reported.
 
 Beams, including secondary beams, hooks, and beams over a grace group.
 MusicXML puts them on the notes, one marking per beam level; MNX states them

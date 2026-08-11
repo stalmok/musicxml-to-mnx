@@ -139,6 +139,9 @@ export type WarningCode =
   // A <print> detail beyond the system and page breaks, such as a page
   // number or staff spacing, which MNX's pages and systems cannot state.
   | 'unrepresentable:print-detail'
+  // An attribute with no schema definition to hold it, such as the side an
+  // augmentation dot is drawn on, named with the element it sits on.
+  | 'unrepresentable:attribute'
 
   // --- The source disagreeing with itself, or omitting what reading it
   //     needs -------------------------------------------------------------

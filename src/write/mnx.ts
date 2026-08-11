@@ -277,7 +277,8 @@ function surveyScore(score: Score): {
 
 /**
  * The instrument setup, written only when the part list states one. Keyed by
- * the source's instrument id, which is what its <midi-instrument> pointed at.
+ * the source's instrument id. The sound's midiNumber is never written: it is
+ * a MIDI pitch backing a percussion kit, which nothing here converts yet.
  */
 function writeSounds(score: Score): Partial<Pick<MNXGlobal, 'sounds'>> {
   if (score.sounds.size === 0) return {}
@@ -285,10 +286,7 @@ function writeSounds(score: Score): Partial<Pick<MNXGlobal, 'sounds'>> {
     sounds: Object.fromEntries(
       [...score.sounds].map(([id, sound]) => [
         id,
-        {
-          ...(sound.midiNumber !== undefined ? { midiNumber: sound.midiNumber } : {}),
-          ...(sound.name !== undefined ? { name: sound.name } : {}),
-        },
+        { ...(sound.name !== undefined ? { name: sound.name } : {}) },
       ]),
     ),
   }

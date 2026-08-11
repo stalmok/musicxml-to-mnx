@@ -43,7 +43,6 @@ import { GroupingBuilder, pruneGrouping } from './part-groups.js'
 import { compareFractions, negate } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import { readNote } from './notes.js'
-import { readIntegerInRange } from './numbers.js'
 import { readPrint } from './print.js'
 import { IdGenerator } from './spanners.js'
 import { newPartState } from './state.js'
@@ -532,11 +531,11 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
   const LIST_PATH: DocumentPath = ['score-partwise', 'part-list']
 
   for (const list of root.blocks('part-list')) {
-    // Both kinds are marked read here; the walk below goes through the raw
-    // children instead, because a group's members are decided by document
-    // order across the two kinds.
-    list.children('score-part')
-    list.children('part-group')
+    // Both kinds are accounted for here and walked below through readers of
+    // their own, which report each whole; the walk goes through the raw
+    // children because a group's members are decided by document order
+    // across the two kinds.
+    list.skip('score-part', 'part-group')
     for (const element of list.element.children) {
       if (element.name === 'score-part') {
         const scorePart = new ElementReader(element)
@@ -555,28 +554,20 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
         }
 
         // The instrument setup. A <score-instrument> names what plays the
-        // part; the <midi-instrument> pointing at it by id says how to
-        // synthesize it, of which the program is the one detail MNX's sound
-        // can state. What neither reader takes is reported by the sweep.
+        // part; what its reader passes over is reported by the sweep. A
+        // <midi-instrument> is opened as a block but nothing is taken from
+        // it: the schema's sound has no home for a synthesizer setup (its
+        // midiNumber is a MIDI pitch backing a percussion kit, not the
+        // patch a <midi-program> names), so each child is reported by name.
         for (const instrument of scorePart.blocks('score-instrument')) {
           const instrumentId = requireAttribute(instrument.element, 'id', LIST_PATH)
           const nameElement = instrument.child('instrument-name')
           const instrumentName = nameElement ? trimmedText(nameElement) : ''
           sounds.set(instrumentId, {
             name: instrumentName === '' ? undefined : instrumentName,
-            midiNumber: undefined,
           })
         }
-        for (const midi of scorePart.blocks('midi-instrument')) {
-          const instrumentId = requireAttribute(midi.element, 'id', LIST_PATH)
-          const program = midi.child('midi-program')
-          if (program) {
-            const sound = sounds.get(instrumentId) ?? { name: undefined, midiNumber: undefined }
-            // MIDI programs run 1 to 128 the way MusicXML writes them.
-            sound.midiNumber = readIntegerInRange(program, LIST_PATH, 1, 128)
-            sounds.set(instrumentId, sound)
-          }
-        }
+        scorePart.blocks('midi-instrument')
 
         scorePart.reportUnread(warnings, id !== undefined ? { part: id } : {})
       } else if (element.name === 'part-group') {
@@ -655,8 +646,9 @@ function resolveMeasureRepeats(
   warnings: WarningCollector,
   partId: string,
 ): void {
-  // The pattern each staff's sign states, keyed by staff, with 0 standing
-  // for an edge written without one, which speaks for every staff.
+  // The pattern each staff's sign states, keyed by staff. An edge written
+  // without a staff was read as one edge per staff, so the keys are always
+  // concrete.
   const open = new Map<number, number>()
   let pattern: number | undefined
   let offset = 0
@@ -670,10 +662,7 @@ function resolveMeasureRepeats(
     // A stop is read before a start, so a measure stopping one sign may
     // start the next.
     if (stops.length > 0 && open.size > 0) {
-      for (const stop of stops) {
-        if (stop.staff === undefined) open.clear()
-        else open.delete(stop.staff)
-      }
+      for (const stop of stops) open.delete(stop.staff)
       if (open.size > 0) {
         warnings.add(
           'unrepresentable:measure-repeat',
@@ -705,10 +694,8 @@ function resolveMeasureRepeats(
 
       // A staff's running sign that no start here restates is cut by the
       // restart, which MusicXML never said happens on that staff.
-      const restatesAll = starts.some((start) => start.staff === undefined)
-      const cut = [...open.keys()].filter(
-        (staff) => !restatesAll && !starts.some((start) => start.staff === staff),
-      )
+      const restated = new Set(starts.map((start) => start.staff))
+      const cut = [...open.keys()].filter((staff) => !restated.has(staff))
       if (cut.length > 0) {
         warnings.add(
           'unrepresentable:measure-repeat',
@@ -721,8 +708,7 @@ function resolveMeasureRepeats(
         for (const staff of cut) open.delete(staff)
       }
 
-      if (restatesAll) open.clear()
-      for (const start of starts) open.set(start.staff ?? 0, start.measures)
+      for (const start of starts) open.set(start.staff, start.measures)
       pattern = first.measures
       offset = 0
     }

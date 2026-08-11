@@ -1,10 +1,10 @@
 // The part list's instrument setup. A <score-instrument> names what plays a
-// part and a <midi-instrument> says how to synthesize it. MNX states both in
-// global.sounds, keyed here by the source's instrument id: the drawn name,
-// and the MIDI program as midiNumber.
+// part, and MNX states it in global.sounds, keyed here by the source's
+// instrument id. A <midi-instrument> is synthesizer setup with no home: the
+// schema's sound states midiNumber as a MIDI pitch, backing a percussion
+// kit, not as the patch a <midi-program> names.
 
 import { describe, expect, test } from 'vitest'
-import { MusicXMLError } from '../errors.js'
 import { convertMusicXML } from '../index.js'
 import { schemaErrors } from '../../tests/support/schema.js'
 
@@ -23,25 +23,30 @@ function convert(scorePartContent: string) {
 }
 
 describe('instrument sounds', () => {
-  test('writes an instrument name and program into the sounds', () => {
+  test('writes the instrument name into the sounds', () => {
     const { mnx, warnings } = convert(
       '<score-instrument id="P1-I1"><instrument-name>Voice</instrument-name>' +
-        '</score-instrument>' +
-        '<midi-instrument id="P1-I1"><midi-program>53</midi-program></midi-instrument>',
+        '</score-instrument>',
     )
 
-    expect(mnx.global.sounds).toEqual({ 'P1-I1': { name: 'Voice', midiNumber: 53 } })
+    expect(mnx.global.sounds).toEqual({ 'P1-I1': { name: 'Voice' } })
     expect(warnings).toEqual([])
     expect(schemaErrors(mnx)).toEqual([])
   })
 
-  test('writes a name alone where no program is stated', () => {
+  // MusicXML allows several instruments in one part, as a drum kit is.
+  test('writes every instrument the part states', () => {
     const { mnx, warnings } = convert(
-      '<score-instrument id="P1-I1"><instrument-name>Oboe</instrument-name>' +
+      '<score-instrument id="P1-I1"><instrument-name>Soprano</instrument-name>' +
+        '</score-instrument>' +
+        '<score-instrument id="P1-I2"><instrument-name>Alto</instrument-name>' +
         '</score-instrument>',
     )
 
-    expect(mnx.global.sounds).toEqual({ 'P1-I1': { name: 'Oboe' } })
+    expect(mnx.global.sounds).toEqual({
+      'P1-I1': { name: 'Soprano' },
+      'P1-I2': { name: 'Alto' },
+    })
     expect(warnings).toEqual([])
     expect(schemaErrors(mnx)).toEqual([])
   })
@@ -53,9 +58,23 @@ describe('instrument sounds', () => {
     expect(warnings).toEqual([])
   })
 
-  // The rest of what a <midi-instrument> carries is playback MNX has no home
-  // for, reported like any other.
-  test('reports the playback details it does not carry', () => {
+  // A <midi-program> names a patch. The schema's sound has only midiNumber,
+  // which its docs define as a MIDI pitch backing a percussion kit, so the
+  // program has no home and is reported, not miswritten as a pitch.
+  test('reports the MIDI program rather than writing it as a pitch', () => {
+    const { mnx, warnings } = convert(
+      '<score-instrument id="P1-I1"><instrument-name>Voice</instrument-name>' +
+        '</score-instrument>' +
+        '<midi-instrument id="P1-I1"><midi-program>53</midi-program></midi-instrument>',
+    )
+
+    expect(mnx.global.sounds).toEqual({ 'P1-I1': { name: 'Voice' } })
+    expect(warnings.map((warning) => warning.element)).toEqual(['midi-program'])
+    expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:element'])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  test('reports each playback detail a midi-instrument carries', () => {
     const { mnx, warnings } = convert(
       '<score-instrument id="P1-I1"><instrument-name>Voice</instrument-name>' +
         '</score-instrument>' +
@@ -63,13 +82,11 @@ describe('instrument sounds', () => {
         '<midi-program>53</midi-program><volume>78</volume></midi-instrument>',
     )
 
-    expect(mnx.global.sounds?.['P1-I1']).toEqual({ name: 'Voice', midiNumber: 53 })
-    expect(warnings.map((warning) => warning.element).sort()).toEqual(['midi-channel', 'volume'])
-  })
-
-  test('refuses a program outside the MIDI range', () => {
-    expect(() =>
-      convert('<midi-instrument id="P1-I1"><midi-program>129</midi-program></midi-instrument>'),
-    ).toThrow(MusicXMLError)
+    expect(mnx.global.sounds?.['P1-I1']).toEqual({ name: 'Voice' })
+    expect(warnings.map((warning) => warning.element).sort()).toEqual([
+      'midi-channel',
+      'midi-program',
+      'volume',
+    ])
   })
 })

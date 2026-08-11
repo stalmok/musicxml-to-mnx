@@ -62,6 +62,21 @@ describe('a note that joins the chord before it', () => {
     expect(lost(chord('<stem>up</stem><beam number="1">begin</beam>'))).toEqual([])
   })
 
+  // Every note of a grace chord restates the group's <grace>; the slash is
+  // carried from the group's first note, so a member's restatement is not a
+  // loss.
+  test('says nothing about the grace slash it restates', () => {
+    const graceChord = measure(
+      '<note><grace slash="yes"/><pitch><step>C</step><octave>4</octave></pitch>' +
+        '<type>eighth</type></note>' +
+        '<note><chord/><grace slash="yes"/><pitch><step>E</step><octave>4</octave></pitch>' +
+        '<type>eighth</type></note>' +
+        note(''),
+    )
+
+    expect(lost(graceChord)).toEqual([])
+  })
+
   test('says nothing about the ratio it repeats, which is the chord it joins', () => {
     expect(
       lost(

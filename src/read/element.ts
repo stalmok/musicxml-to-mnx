@@ -14,7 +14,7 @@
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, child, children, readAttributeNames } from '../xml/tree.js'
-import { elementLoss } from './unrepresentable.js'
+import { attributeLoss, elementLoss } from './unrepresentable.js'
 
 // Attributes that state where or how something is drawn rather than what it
 // is: positions, curve geometry, fonts, spacing, identity, and the format
@@ -37,6 +37,8 @@ const PRESENTATION_ATTRIBUTES: ReadonlySet<string> = new Set([
   'font-size',
   'font-weight',
   'width',
+  // The vertical size of a hairpin's open end, in tenths.
+  'spread',
   'id',
   'version',
   'xml:space',
@@ -61,9 +63,10 @@ export function reportUnreadAttributes(
     if (PRESENTATION_ATTRIBUTES.has(name)) continue
     // Namespace declarations are XML plumbing, not notation.
     if (name.startsWith('xmlns')) continue
+    const loss = attributeLoss(element.name, name)
     warnings.add(
-      'unsupported:attribute',
-      `The "${name}" attribute of a <${element.name}> is not converted yet.`,
+      loss.code,
+      `The "${name}" attribute of a <${element.name}> ${loss.ending}`,
       { ...context, line: element.line },
       element.name,
     )
@@ -94,8 +97,8 @@ export class ElementReader {
     return this.element.line
   }
 
-  // Only children are tracked. Attributes carry no notation of their own, so
-  // a reader wanting one reads it off `element` directly.
+  // Attributes are tracked too, by the tree accessor itself: a reader
+  // wanting one reads it off `element` directly, and the read is the record.
   child(name: string): XmlElement | undefined {
     const found = child(this.element, name)
     if (found) this.#read.add(found)

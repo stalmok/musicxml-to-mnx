@@ -165,8 +165,10 @@ export function readNote(
     }
     // A chord member is drawn with the event it joins, so its stem and its
     // beams are that event's and are read from the note carrying them. The
-    // ratio it repeats is likewise the event's.
+    // ratio it repeats is likewise the event's, and a grace member's slash
+    // is the group's, carried from the note that opened it.
     element.skip('stem', 'beam', 'time-modification')
+    if (graceElement) attribute(graceElement, 'slash')
 
     // MNX states the staff on the event, so every note of a chord is on the
     // event's staff. One naming a different staff is reaching across on its
