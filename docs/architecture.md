@@ -44,7 +44,8 @@ src/
   read/                MusicXML semantics, one file per concern
     score.ts           the score, its parts, and the walk through a measure
     part-groups.ts     <part-group> edges into the instrument grouping tree
-    attributes.ts      divisions, staves, key, time, clef
+    attributes.ts      divisions, staves, key, time, clef, and measure style
+                       (multi-measure rests, measure repeats)
     notes.ts           a <note>: pitch, value, ties, slurs, accidentals
     voices.ts          the cursor, and one sequence per voice
     spanners.ts        joining the two ends of a tie or slur, and event ids
@@ -57,6 +58,7 @@ src/
     divisions.ts       a <duration>, in the <divisions> in force
     noteValues.ts      MusicXML's note-type spellings, in the model's
     numbers.ts         reading a number stricter than Number() does
+    color.ts           MusicXML's #RRGGBB and #AARRGGBB into MNX's color
     element.ts         records which children a reader actually read
     unrepresentable.ts what MNX has nowhere to put
     state.ts           what a part carries between its measures
@@ -165,9 +167,10 @@ knows the difference.
 
 ## Decisions worth remembering
 
-- **The XML layer does not trim text.** Readers wanting a number or a keyword
-  trim it themselves. Lyric text is meaningful down to the space, and once
-  this layer has trimmed it there is no recovering it.
+- **The XML layer does not trim text.** `element.text` is raw; readers wanting
+  a number or a keyword opt in through `trimmedText()`. Lyric text is
+  meaningful down to the space, and once this layer has trimmed it there is no
+  recovering it.
 - **Attribute objects have a null prototype**, because attribute names come
   from the document. A plain object would let one named `constructor` be read
   back as an inherited function where a string was promised.
