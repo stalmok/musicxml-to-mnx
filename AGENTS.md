@@ -32,7 +32,7 @@ Stage boundaries are enforced by `no-restricted-imports` rules in `eslint.config
 
 ## Key decisions
 
-- **Language**: TypeScript. Isomorphic core (browser + Node); a Node-only CLI is a separate export path.
+- **Language**: TypeScript. Isomorphic core (browser + Node); a Node-only CLI is a separate `bin` build.
 - **XML parser**: `@rgrove/parse-xml`, which has zero dependencies, is actively maintained, and is safe by construction against XXE and entity-expansion attacks. This matters: MusicXML files carry a DOCTYPE pointing at an external DTD URL, so a parser that resolved external entities would be a live SSRF vector on untrusted input.
 - **Timing**: exact rational arithmetic (`src/fraction.ts`), never floats. Tuplets produce durations like 1/3 of a beat; float drift would make measure-fill checks flaky.
 - **Errors vs warnings**: structurally broken input throws `MusicXMLError` (with document path and source line); valid-but-unconvertible input produces a warning. Never guess silently.
