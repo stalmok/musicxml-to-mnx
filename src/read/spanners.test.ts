@@ -165,6 +165,47 @@ describe('let-ring and the drawn side', () => {
     expect(notes[0]?.ties[0]?.side).toBe('up')
   })
 
+  // Orientation states the curve itself, placement only where the notation
+  // sits, so where the two disagree the orientation is the side.
+  test('lets the orientation of a tie outweigh its placement', () => {
+    const { notes } = read(
+      measures(
+        DIVISIONS +
+          note(
+            'C',
+            '<tie type="start"/><notations>' +
+              '<tied type="start" orientation="under" placement="above"/></notations>',
+          ) +
+          note('C', tied('stop')),
+      ),
+    )
+
+    expect(notes[0]?.ties[0]?.side).toBe('down')
+  })
+
+  // MNX's tie states one side, on the note it starts from, so a side stated
+  // on the stop is read and dropped rather than reported as an unread
+  // attribute.
+  test('keeps the side the start states when the stop states another', () => {
+    const { notes, warnings } = read(
+      measures(
+        DIVISIONS +
+          note(
+            'C',
+            '<tie type="start"/><notations><tied type="start" orientation="over"/></notations>',
+          ) +
+          note(
+            'C',
+            '<tie type="stop"/><notations>' +
+              '<tied type="stop" orientation="under" placement="below"/></notations>',
+          ),
+      ),
+    )
+
+    expect(notes[0]?.ties[0]?.side).toBe('up')
+    expect(warnings.map((w) => w.code)).not.toContain('unsupported:attribute')
+  })
+
   test('writes let-ring and side onto schema-valid MNX', () => {
     const { mnx } = convertMusicXML(
       measures(
@@ -227,6 +268,87 @@ describe('slurs', () => {
     )
 
     expect(events[0]?.slurs[0]?.side).toBe('down')
+  })
+
+  test('reads the side from the orientation of the slur', () => {
+    const { events } = read(
+      measures(
+        DIVISIONS + note('C', slur('start', '1', ' orientation="over"')) + note('G', slur('stop')),
+      ),
+    )
+
+    expect(events[0]?.slurs[0]?.side).toBe('up')
+  })
+
+  test('lets the orientation of a slur outweigh its placement', () => {
+    const { events } = read(
+      measures(
+        DIVISIONS +
+          note('C', slur('start', '1', ' orientation="under" placement="above"')) +
+          note('G', slur('stop')),
+      ),
+    )
+
+    expect(events[0]?.slurs[0]?.side).toBe('down')
+  })
+
+  // An S-shaped slur bends one way at the start and the other at the end,
+  // which MNX states as side and sideEnd.
+  test('states the side the stop bends to as sideEnd where it differs', () => {
+    const { events } = read(
+      measures(
+        DIVISIONS +
+          note('C', slur('start', '1', ' orientation="over"')) +
+          note('G', slur('stop', '1', ' orientation="under"')),
+      ),
+    )
+
+    expect(events[0]?.slurs[0]?.side).toBe('up')
+    expect(events[0]?.slurs[0]?.sideEnd).toBe('down')
+  })
+
+  test('leaves sideEnd unsaid where the stop restates the side of the start', () => {
+    const { events, warnings } = read(
+      measures(
+        DIVISIONS +
+          note('C', slur('start', '1', ' orientation="over"')) +
+          note('G', slur('stop', '1', ' orientation="over"')),
+      ),
+    )
+
+    expect(events[0]?.slurs[0]).toEqual({ target: events[1]?.id, side: 'up' })
+    expect(warnings.map((w) => w.code)).not.toContain('unsupported:attribute')
+  })
+
+  // A "continue" edge marks a note partway along the slur. MNX states no
+  // side there, so one the source writes is read and dropped rather than
+  // reported as an unread attribute.
+  test('passes over a side stated partway along the slur', () => {
+    const { events, warnings } = read(
+      measures(
+        DIVISIONS +
+          note('C', slur('start')) +
+          note('D', slur('continue', '1', ' orientation="over" placement="above"')) +
+          note('G', slur('stop')),
+      ),
+    )
+
+    expect(events[0]?.slurs[0]?.target).toBe(events[2]?.id)
+    expect(warnings.map((w) => w.code)).not.toContain('unsupported:attribute')
+  })
+
+  test('writes both slur sides onto schema-valid MNX', () => {
+    const { mnx } = convertMusicXML(
+      measures(
+        DIVISIONS +
+          note('C', slur('start', '1', ' orientation="over"')) +
+          note('G', slur('stop', '1', ' placement="below"')),
+      ),
+    )
+
+    expect(JSON.stringify(mnx)).toContain('"side":"up"')
+    expect(JSON.stringify(mnx)).toContain('"sideEnd":"down"')
+    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('reads the line type the slur is drawn with', () => {

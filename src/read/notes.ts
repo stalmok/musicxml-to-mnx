@@ -827,18 +827,17 @@ function readTies(
   if (letRing) note.ties = [...note.ties, { crossVoice: false, lv: true }]
 }
 
-// The side a tie is drawn on, from its start <tied>. MusicXML states it as an
-// orientation (over/under) or a placement (above/below); MNX states it as the
-// slur-side up or down.
+// The side a tie is drawn on, from its <tied> edges. MNX's tie states one
+// side, on the note it starts from, so the start's statement is the tie's:
+// a side stated on a stop is read and dropped, with the read accounting for
+// the attributes.
 function startTiedSide(tieds: readonly XmlElement[]): CurveSide | undefined {
-  const start = tieds.find((tied) => attribute(tied, 'type') === 'start')
-  if (!start) return undefined
-
-  const orientation = attribute(start, 'orientation')
-  const placement = attribute(start, 'placement')
-  if (orientation === 'over' || placement === 'above') return 'up'
-  if (orientation === 'under' || placement === 'below') return 'down'
-  return undefined
+  let side: CurveSide | undefined
+  for (const tied of tieds) {
+    const stated = curveSide(tied)
+    if (side === undefined && attribute(tied, 'type') === 'start') side = stated
+  }
+  return side
 }
 
 /** Slurs are matched by the number the source gives them, across the part. */
@@ -852,10 +851,14 @@ function readSlurs(
   for (const slur of notations.flatMap((block) => block.children('slur'))) {
     const type = attribute(slur, 'type')
     const number = attribute(slur, 'number') ?? '1'
+    // Every edge is read for its side, so the attributes are accounted for
+    // wherever the source writes them. Only the start's and the stop's go
+    // anywhere: a "continue" edge's side has no home in MNX and is dropped.
+    const side = curveSide(slur)
     if (type === 'stop') {
-      state.spanners.stopSlur(event, number, warnings, context)
+      state.spanners.stopSlur(event, number, side, warnings, context)
     } else if (type === 'start') {
-      state.spanners.startSlur(event, number, slurSide(slur), slurLineType(slur), context)
+      state.spanners.startSlur(event, number, side, slurLineType(slur), context)
     } else if (type !== 'continue') {
       // "continue" marks a note partway along a slur. MNX states only where a
       // slur begins and ends, so there is nothing for it to carry, and
@@ -870,9 +873,19 @@ function readSlurs(
   }
 }
 
-function slurSide(slur: XmlElement): CurveSide | undefined {
-  const placement = attribute(slur, 'placement')
-  return placement === 'above' ? 'up' : placement === 'below' ? 'down' : undefined
+// The side a slur or tie is drawn on. MusicXML states it two ways at once:
+// orientation (over/under) is the curve itself, placement (above/below) only
+// where the notation sits, so the orientation wins where they disagree and
+// the placement stands in where the source states no orientation. Both are
+// read off every edge either way.
+function curveSide(element: XmlElement): CurveSide | undefined {
+  const orientation = attribute(element, 'orientation')
+  const placement = attribute(element, 'placement')
+  if (orientation === 'over') return 'up'
+  if (orientation === 'under') return 'down'
+  if (placement === 'above') return 'up'
+  if (placement === 'below') return 'down'
+  return undefined
 }
 
 // MusicXML's line-type values are the same words MNX states, so a known one

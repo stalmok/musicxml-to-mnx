@@ -74,6 +74,8 @@ export interface MNXTie {
 export interface MNXSlur {
   target: string
   side?: MNXCurveSide
+  /** The side at the end of an S-shaped slur that bends the other way. */
+  sideEnd?: MNXCurveSide
   lineType?: MNXLineType
 }
 

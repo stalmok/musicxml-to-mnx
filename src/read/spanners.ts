@@ -257,6 +257,7 @@ export class SpannerResolver {
   stopSlur(
     event: Event,
     number: string,
+    sideEnd: CurveSide | undefined,
     warnings: WarningCollector,
     context: WarningContext,
   ): void {
@@ -276,6 +277,9 @@ export class SpannerResolver {
       {
         target: event.id,
         side: open.side,
+        // MNX's sideEnd is for an S-shaped slur that ends bending the other
+        // way; a stop merely restating the start's side adds nothing.
+        ...(sideEnd !== undefined && sideEnd !== open.side ? { sideEnd } : {}),
         ...(open.lineType !== undefined ? { lineType: open.lineType } : {}),
       },
     ]

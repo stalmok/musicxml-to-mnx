@@ -75,6 +75,8 @@ export interface Lyric {
 export interface Slur {
   target: string
   side: CurveSide | undefined
+  /** The side at the end, where the source states one differing from side. */
+  sideEnd?: CurveSide
   /** The line it is drawn with, where the source states one other than solid. */
   lineType?: LineType
 }

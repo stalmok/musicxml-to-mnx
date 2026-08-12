@@ -520,6 +520,31 @@ describe('ties and slurs', () => {
     expect(written).toMatchObject({ slurs: [{ target: 'ev-target', side: 'up' }] })
   })
 
+  // An S-shaped slur ends bending the other way, which the model carries as
+  // sideEnd; it is written only where the model states it.
+  test('writes the side a slur ends on where it differs from its side', () => {
+    const bending = structuredClone(start)
+    bending.slurs = [{ target: 'ev-target', side: 'up', sideEnd: 'down' }]
+    const score = scoreOf({
+      clefs: [],
+      beams: [],
+      dynamics: [],
+      arpeggios: [],
+      ottavas: [],
+      measureRepeat: undefined,
+      sequences: [
+        { voice: undefined, staff: undefined, content: [bending, target], fullMeasure: undefined },
+      ],
+    })
+    const document = writeMnx(score)
+    const written = document.parts[0]?.measures[0]?.sequences[0]?.content[0]
+
+    expect(written).toMatchObject({
+      slurs: [{ target: 'ev-target', side: 'up', sideEnd: 'down' }],
+    })
+    expect(schemaErrors(document)).toEqual([])
+  })
+
   test('names only what something points at', () => {
     const content = writeMnx(joined()).parts[0]?.measures[0]?.sequences[0]?.content ?? []
     const from = content[0] as MNXEvent
