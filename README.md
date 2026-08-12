@@ -13,15 +13,16 @@ the W3C Music Notation Community Group.
 
 ## Install
 
-The package is not on the npm registry yet. Until the first release, use a
-clone of this repository. After the first release:
+The package is not on the npm registry yet. Until the first release, clone
+this repository and build it (see [Development](#development)). After the
+first release:
 
 ```bash
 npm install ossia   # or: pnpm add ossia
 ```
 
-The library runs in browsers and in Node. The command line needs Node 20.19,
-22.13, or 24 and later.
+The library runs in browsers and in Node. The command line needs Node
+20.19+, 22.13+, or 24+.
 
 ---
 
@@ -40,8 +41,8 @@ for (const w of warnings) {
 }
 ```
 
-The source can be an XML string, the bytes of an XML document, or the bytes
-of a compressed `.mxl` package:
+The source is a `string` or a `Uint8Array` (a Node `Buffer` works). The
+bytes can hold an XML document or a compressed `.mxl` package:
 
 ```ts
 import { readFileSync } from 'node:fs'
@@ -81,7 +82,7 @@ Each entry in `warnings` is a `ConversionWarning`:
 | `context`   | The location: `part` (the MusicXML part id), `measure` (the source measure number), and `line` (the source line). Each field is present when known. |
 
 An empty `warnings` array means the conversion was lossless as far as the
-converter can tell. A pipeline can gate on that.
+converter can tell. A pipeline can test for that.
 
 The prefix of `code` gives the kind of loss:
 
@@ -90,7 +91,8 @@ The prefix of `code` gives the kind of loss:
 - `unrepresentable:` marks a limit of MNX. No release will close it while the
   output format stays as it is. Test for it with `isFormatLimit(code)`.
 - All other prefixes (`inconsistent:`, `missing:`, `unresolved:`, `unclosed:`,
-  `redundant:`) mark a problem in the source file. No release changes these.
+  `redundant:`) mark a problem in the source file. An upgrade does not
+  change these.
 
 After an upgrade, reconvert only the files with converter gaps:
 
@@ -114,9 +116,9 @@ ossia song.mxl --validate --report losses.json
 ```
 
 The command accepts `.musicxml`, `.xml`, and `.mxl` files. Conversion to MNX
-is the default; an explicit `ossia to-mnx song.mxl` does the same thing. When
-the command refuses a file, it reports the reason and continues with the
-other files.
+is the default; an explicit `ossia to-mnx song.mxl` does the same thing.
+When the command cannot convert a file, it reports the reason and continues
+with the other files.
 
 - `--fail-on-loss` exits non-zero when any conversion loses notation.
 - `--report <file>` writes the warnings from every file to `<file>` as JSON.
@@ -168,9 +170,9 @@ The exit code is the pipeline contract:
 - Measure repeats. MNX marks the first measure of each repetition with the
   pattern length. The converter reports a sign with more than one slash.
 - Multi-measure rests, stated with their start measure and their count.
-- Accidentals. The document declares that it states accidental display, and
-  each accidental the source draws is marked. Cautionary accidentals keep
-  their parentheses or brackets.
+- Accidentals. The output declares that accidental display is explicit, and
+  the converter marks each accidental the source draws. Cautionary
+  accidentals keep their parentheses or brackets.
 - Lyrics, verse by verse, with each syllable's place in its word.
 - Stem directions.
 - Multi-staff parts: a piano part stays one part. Each voice states its
@@ -184,13 +186,13 @@ The exit code is the pipeline contract:
   setup has no MNX home, and the converter reports it.
 - Beams, including secondary beams, hooks, and beams over a grace group,
   built as MNX's tree of beams over the measure.
-- Ties and slurs, joined across barlines. The converter reports a tie or slur
-  with only one end, because real scores contain those.
-- Exact timing: durations are exact fractions of `<divisions>`, and
-  `<backup>` and `<forward>` move the cursor. A silent gap in a voice becomes
-  a space. When a note states no note value, the converter recovers it from
-  the duration. A rest that fills its measure is stated the way MNX states
-  it, not given an invented note value.
+- Ties and slurs, joined across barlines. The converter reports a tie or
+  slur with only one end.
+- Exact timing: the converter reads durations as exact fractions of
+  `<divisions>` and follows `<backup>` and `<forward>`. A silent gap in a
+  voice becomes a space. When a note states no note value, the converter
+  recovers it from the duration. A rest that fills its measure keeps no
+  invented note value.
 
 **Planned for v1:** free text directions. The pinned spec snapshot has no
 place for them yet.
@@ -198,15 +200,14 @@ place for them yet.
 **Reported, never converted:** constructs MNX cannot express, such as pedal
 marks and ornaments. These always surface as warnings, never as silent loss.
 
-**Out of scope for v1:** percussion, chord symbols, transposing instruments,
-and `score-timewise` documents. The converter rejects each with a clear
-error.
+**Out of scope for v1:** chord symbols and transposing instruments, which
+convert with an `unsupported:` warning, and percussion and `score-timewise`
+documents, which the converter rejects with a clear error.
 
 **Rejected rather than half-converted:** a tuplet whose extent the source
-does not bracket. MusicXML states a tuplet twice: as a ratio on every note
-and as a bracket around them. Without the bracket, nothing says where one
-tuplet ends and the next begins. A guess would invent a grouping the source
-never wrote.
+does not bracket. MusicXML states a tuplet as a ratio on each note and a
+bracket around them. Without the bracket, the converter cannot know where
+the tuplet ends, so it rejects the file.
 
 ---
 
@@ -220,9 +221,8 @@ The converter runs against every file below, with four checks:
 4. Each measure is as long as the source says.
 
 A file passes all four checks, or the converter refuses it with a stated
-reason. No file converts to wrong output. The counts are from July 2026; the
-Lieder corpus keeps growing, and the weekly gate runs against its latest
-state.
+reason. The counts are from July 2026; the Lieder corpus keeps growing, and
+the weekly gate runs against its latest state.
 
 | Corpus                                                                                                        | Files  | Convert      |
 | ------------------------------------------------------------------------------------------------------------- | ------ | ------------ |
@@ -234,25 +234,24 @@ state.
 | [music21 bundled corpus](https://github.com/cuthbertLab/music21) (hand-encoded, older tools, some UTF-16)     | 654    | 615 (94%)    |
 | [CPDL](https://www.cpdl.org) random sample (choral, mostly Sibelius exports)                                  | 2,000  | 1,838 (92%)  |
 
-The rest are refusals, and each names its reason: notation MNX cannot state
-(percussion and TAB clefs, microtone alterations, composite meters such as
-3+2/8), or sources that disagree with themselves (a tuplet opened and never
-closed, a backup that reaches before the measure start, a metronome with no
-beats per minute, a voice that rests through the same measure twice). In the
-PDMX sample, the two clef limits account for 580 of the 786 refusals, because
+The rest are refusals, and each names its reason. Some files hold notation
+MNX cannot state: percussion and TAB clefs, microtone alterations, and
+composite meters such as 3+2/8. Other files disagree with themselves: a
+tuplet opened and never closed, a backup that reaches before the measure
+start, or a voice that rests through the same measure twice. In the PDMX
+sample, the two clef limits account for 580 of the 786 refusals;
 MuseScore.com carries much drum and guitar music. In the CPDL sample, the
 largest group is hymnals that write two lines over each other in one voice;
-the converter refuses these rather than guesses them apart.
+the converter refuses these rather than guess them apart.
 
-Six hundred of the Lieder songs are vendored into the repository and convert
-on every test run. The full Lieder corpus gate runs weekly in CI and on
-demand.
+The test suite converts 600 vendored Lieder songs on every run, and CI runs
+the full Lieder corpus weekly and on demand.
 
 ---
 
 ## Safe on untrusted input
 
-Every MusicXML file carries a DOCTYPE that points at an external DTD URL. The
+Most MusicXML files carry a DOCTYPE that points at an external DTD URL. The
 XML layer never resolves external entities and never processes DTDs. XXE and
 entity-expansion ("billion laughs") attacks do not apply.
 
@@ -263,8 +262,8 @@ entity-expansion ("billion laughs") attacks do not apply.
 MNX is a moving draft. Each release pins one
 [w3c/mnx](https://github.com/w3c/mnx) commit. The schema is vendored at
 `schema/mnx-schema.json`, with its source commit and checksum recorded in
-[`schema/PROVENANCE.md`](schema/PROVENANCE.md). CI verifies those bytes. The
-test suite validates every conversion against the schema.
+[`schema/PROVENANCE.md`](schema/PROVENANCE.md). The test suite validates
+every conversion against the schema.
 
 ---
 
