@@ -109,7 +109,8 @@ Two tiers, and the distinction is a contract rather than a style.
 
 **Fatal**, a `MusicXMLError` carrying a document path and source line: input
 that is structurally broken, or that cannot be converted faithfully. Rejecting
-is better than guessing.
+is better than guessing. The reader keeps few heuristics; each one is
+documented and reports a warning when it fires.
 
 **Warning**, collected into the result: valid input the output does not carry.
 Every one has a stable code and measure context, so a pipeline can tell a
@@ -165,6 +166,14 @@ offsets and error positions the location reporting needs.
 The vendored MNX schema is the conformance oracle. Output with the shape a
 test expected can still be illegal MNX, and the schema is the only thing that
 knows the difference.
+
+## Performance
+
+Conversion time is guarded by tests. `tests/performance.test.ts` converts
+generated scores at two sizes along each axis: measures, parts, and notes per
+measure. The test fails when the time ratio approaches quadratic. The
+generator behind those scores is itself tested for lossless, schema-valid
+output. `pnpm bench` times each pipeline stage and whole conversions.
 
 ## Decisions worth remembering
 
