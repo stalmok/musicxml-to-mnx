@@ -36,6 +36,7 @@ export function readPrint(
           'cannot state.',
         { ...context, line: element.line },
         'print',
+        name,
       )
     }
   }

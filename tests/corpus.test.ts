@@ -736,10 +736,15 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   test('loses no more than the recorded baseline', () => {
     // Grouped by the element lost, which the warning states as a field. It
     // used to be dug back out of the message with a regular expression, which
-    // made the baseline turn on how a sentence happened to be worded.
+    // made the baseline turn on how a sentence happened to be worded. An
+    // attribute loss is keyed as element@attribute, apart from its element's
+    // own losses, so one cannot regress inside a drop in the other.
     const counts: Record<string, number> = {}
     for (const warning of warnings) {
-      const key = warning.element ?? warning.code
+      const key =
+        warning.attribute !== undefined
+          ? `${warning.element ?? ''}@${warning.attribute}`
+          : (warning.element ?? warning.code)
       counts[key] = (counts[key] ?? 0) + 1
     }
 

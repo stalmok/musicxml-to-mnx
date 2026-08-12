@@ -926,6 +926,7 @@ function beamMarkers(
         `A <beam> fanned as "${fan}" is not converted yet.`,
         { ...context, line: beam.line },
         'beam',
+        'fan',
       )
     }
 

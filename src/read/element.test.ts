@@ -151,6 +151,18 @@ describe('the attribute sweep', () => {
     )
   })
 
+  // The attribute is a field beside the element, for the same reason the
+  // element is one: a report is grouped by what was lost, and an attribute
+  // loss hiding inside its element's bucket could mask a regression.
+  test('names the attribute as a field beside the element', () => {
+    const element = new ElementReader(parseXmlRoot('<measure implicit="yes"/>'))
+    const warnings = new WarningCollector()
+    element.reportUnread(warnings, { measure: 1 })
+
+    expect(warnings.list()[0]?.element).toBe('measure')
+    expect(warnings.list()[0]?.attribute).toBe('implicit')
+  })
+
   test('sweeps a nested block along with its parent', () => {
     const element = reader('<notations><slur number="1" placement="above"/></notations>')
     for (const block of element.blocks('notations')) {

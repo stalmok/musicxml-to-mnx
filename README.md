@@ -73,12 +73,13 @@ Structurally broken input throws; valid input that cannot be carried across in
 full converts and reports what it dropped. Each entry in `warnings` is a
 `ConversionWarning`:
 
-| Field     | What it holds                                                                                                                                   |
-| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `code`    | A stable, greppable code. Its prefix says which of three kinds it is (see [Design principles](#design-principles)).                             |
-| `message` | Prose written for a person.                                                                                                                     |
-| `element` | The MusicXML element the loss is about, without its angle brackets, where it is about one.                                                      |
-| `context` | Where it happened: `part` (the MusicXML part id), `measure` (the source measure number), and `line` (the source line), each present when known. |
+| Field       | What it holds                                                                                                                                   |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `code`      | A stable, greppable code. Its prefix says which of three kinds it is (see [Design principles](#design-principles)).                             |
+| `message`   | Prose written for a person.                                                                                                                     |
+| `element`   | The MusicXML element the loss is about, without its angle brackets, where it is about one.                                                      |
+| `attribute` | The attribute the loss is about, where it is about one, beside the element carrying it.                                                         |
+| `context`   | Where it happened: `part` (the MusicXML part id), `measure` (the source measure number), and `line` (the source line), each present when known. |
 
 `code` and `element` are fields rather than something to parse out of the
 message, because grouping a report by what was lost is the first thing most

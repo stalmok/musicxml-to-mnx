@@ -230,14 +230,25 @@ export interface ConversionWarning {
    * anyone does with it, and the message is prose written for a person.
    */
   readonly element: string | undefined
+  /**
+   * The attribute the loss is about, where it is about one, beside the
+   * element carrying it. A field for the same reason the element is one.
+   */
+  readonly attribute: string | undefined
   readonly context: WarningContext
 }
 
 export class WarningCollector {
   readonly #warnings: ConversionWarning[] = []
 
-  add(code: WarningCode, message: string, context: WarningContext, element?: string): void {
-    this.#warnings.push({ code, message, element, context })
+  add(
+    code: WarningCode,
+    message: string,
+    context: WarningContext,
+    element?: string,
+    attribute?: string,
+  ): void {
+    this.#warnings.push({ code, message, element, attribute, context })
   }
 
   /** A copy, so the report cannot be mutated from outside. */

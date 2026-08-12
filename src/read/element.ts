@@ -69,6 +69,7 @@ export function reportUnreadAttributes(
       `The "${name}" attribute of a <${element.name}> ${loss.ending}`,
       { ...context, line: element.line },
       element.name,
+      name,
     )
   }
 }
