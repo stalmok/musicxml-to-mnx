@@ -417,6 +417,26 @@ describe('crossing tuplet numbers', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 
+  // Nested tuplets may end on the same note, and MusicXML does not constrain
+  // which stop is written first inside <notations>. Whatever the order, the
+  // note's stops close the same tuplets, so nothing crosses.
+  test.each([
+    ['<tuplet type="stop" number="1"/><tuplet type="stop" number="2"/>'],
+    ['<tuplet type="stop" number="2"/><tuplet type="stop" number="1"/>'],
+  ])('says nothing when nested tuplets stop on one note as %s', (stops) => {
+    const nested =
+      '<score-partwise><part id="P1"><measure number="1">' +
+      '<attributes><divisions>9</divisions></attributes>' +
+      note('C', 3, 3, 2, `<tuplet type="start" number="1">${threeInTwoEighths}</tuplet>`) +
+      note('D', 2, 9, 4, `<tuplet type="start" number="2">${threeInTwoEighths}</tuplet>`) +
+      note('E', 2, 9, 4) +
+      note('F', 2, 9, 4, stops) +
+      '</measure></part></score-partwise>'
+    const { warnings } = convertMusicXML(nested)
+
+    expect(warnings).toEqual([])
+  })
+
   // A marker that states no number is tuplet 1, so an unnumbered marker and
   // one numbered 1 name the same tuplet.
   test('matches a stop that states no number to a start numbered 1', () => {

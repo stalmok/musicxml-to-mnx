@@ -571,6 +571,7 @@ export function readSound(
       `The "${name}" of a <sound> ${loss.ending}`,
       { ...context, line: sound.line },
       'sound',
+      name,
     )
   }
   return { fine, jump, segnoName }
@@ -750,6 +751,7 @@ function reportWordingGlyph(
         'states a glyph for the dynamic mark, not for its wording.',
       { ...context, line: element.line },
       'other-dynamics',
+      'smufl',
     )
   } else {
     warnings.add(
@@ -758,6 +760,7 @@ function reportWordingGlyph(
         'because MNX states a glyph for the dynamic mark, not for its wording.',
       { ...context, line: element.line },
       'other-dynamics',
+      'smufl',
     )
   }
 }

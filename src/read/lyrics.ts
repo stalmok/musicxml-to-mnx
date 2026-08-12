@@ -44,16 +44,22 @@ function readVerse(
   warnings: WarningCollector,
   context: WarningContext,
 ): Lyric | undefined {
-  // MNX's event lyric states a text and a type, and nothing about
-  // visibility, so a hidden lyric is drawn and the hiding reported.
-  reportHidden(lyric.element, 'lyric', warnings, context)
   const line = attribute(lyric.element, 'number') ?? '1'
   const text = joinSyllables(lyric)
 
   // A <lyric> can carry no words at all: one holding only an <extend> is how
   // MusicXML continues a melisma under a later note. There is no syllable in
   // it to write, and the <extend> is reported like anything else unread.
-  if (text === undefined) return undefined
+  // Hiding such a lyric hides nothing the output draws, so its print-object
+  // is read with the rest of the element and nothing is said.
+  if (text === undefined) {
+    attribute(lyric.element, 'print-object')
+    return undefined
+  }
+
+  // MNX's event lyric states a text and a type, and nothing about
+  // visibility, so a hidden lyric is drawn and the hiding reported.
+  reportHidden(lyric.element, 'lyric', warnings, context)
 
   const syllabics = lyric.children('syllabic')
   if (syllabics.length > 1) {

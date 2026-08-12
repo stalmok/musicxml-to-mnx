@@ -471,13 +471,30 @@ function closeTuplets(
   path: DocumentPath,
   line: number,
 ): void {
+  // Which stop is written first inside <notations> is not constrained, so
+  // the note's stops are weighed as a batch: each closes the innermost open
+  // tuplet, and only when the numbers the stops state disagree with the
+  // numbers of the tuplets closed, as sets, has the source stated tuplets
+  // that cross, which MNX's nested tuplets cannot.
+  const stated: string[] = []
+  const closed: string[] = []
   for (const marker of markers) {
     if (attribute(marker, 'type') !== 'stop') continue
     // A stop's placement restates the start's, which the tuplet's orient
     // already carries, so it is read only for the record.
     attribute(marker, 'placement')
     // A marker that states no number is tuplet 1, as the spec has it.
-    builder.closeTuplet(voice, attribute(marker, 'number') ?? '1', warnings, context, path, line)
+    stated.push(attribute(marker, 'number') ?? '1')
+    closed.push(builder.closeTuplet(voice, warnings, context, path, line))
+  }
+  if (stated.length > 0 && String([...stated].sort()) !== String([...closed].sort())) {
+    warnings.add(
+      'unrepresentable:tuplet-crossing',
+      "The source's tuplets cross: a stop names a tuplet other than one ending here. " +
+        "MNX's tuplets nest, so each stop is matched to the innermost open tuplet.",
+      { ...context, line },
+      'tuplet',
+    )
   }
 }
 

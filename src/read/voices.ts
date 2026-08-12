@@ -787,19 +787,19 @@ export class MeasureBuilder {
   }
 
   /**
-   * Closes the innermost open tuplet in this voice. `stated` is the number
-   * the stop marker names; a stop naming a tuplet other than the innermost
-   * open one states tuplets that cross, which MNX's nested tuplets cannot,
-   * so the nesting stands and the crossing is reported.
+   * Closes the innermost open tuplet in this voice, handing back the number
+   * its start marker stated so the caller can weigh the note's stops as a
+   * batch: which stop is written first on a note is not constrained, so a
+   * crossing shows only when the note's stated numbers and the closed ones
+   * disagree as sets.
    */
   closeTuplet(
     voice: string | undefined,
-    stated: string,
     warnings: WarningCollector,
     context: WarningContext,
     path: DocumentPath,
     line: number,
-  ): void {
+  ): string {
     const builder = this.#builderFor(voice)
     if (builder.open.length < 2) {
       throw new MusicXMLError('A tuplet is closed where no tuplet is open.', { path, line })
@@ -815,16 +815,6 @@ export class MeasureBuilder {
     /* v8 ignore next 2 -- a tuplet and its ratio are pushed together, so the
        stacks cannot disagree. */
     if (!closed) throw new Error('A tuplet closed with no ratio recorded for it.')
-
-    if (stated !== closed.number) {
-      warnings.add(
-        'unrepresentable:tuplet-crossing',
-        "The source's tuplets cross: a stop names a tuplet other than the last opened. " +
-          "MNX's tuplets nest, so the stop is matched to the innermost open tuplet.",
-        { ...context, line },
-        'tuplet',
-      )
-    }
 
     // Real scores contain brackets whose content does not add up to the
     // stated ratio: a lone quarter under a 3:2 eighth ratio, standing for a
@@ -847,6 +837,8 @@ export class MeasureBuilder {
         'tuplet',
       )
     }
+
+    return closed.number
   }
 
   /**
