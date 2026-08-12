@@ -300,9 +300,22 @@ export class SpannerResolver {
     })
   }
 
-  /** The same, where one stops. */
-  stopWedge(number: string, measure: number, position: Fraction, context: WarningContext): void {
-    this.#wedgeEnds.push({
+  /**
+   * The same, where one stops. Hands back the hairpin this stop closes, as
+   * far as the ends read so far can say, so wording written at the closing
+   * edge can go on it as the hairpin's suffix. Found by replaying the pairing
+   * over what has been read: the pairing that sets where each hairpin ends
+   * still runs once the whole part is in, so a stop whose start is written
+   * later in the document (through a backup) finds nothing here yet still
+   * pairs at the end.
+   */
+  stopWedge(
+    number: string,
+    measure: number,
+    position: Fraction,
+    context: WarningContext,
+  ): Dynamic | undefined {
+    const stop: SpanEnd<Dynamic> = {
       kind: 'stop',
       number,
       measure,
@@ -310,7 +323,19 @@ export class SpannerResolver {
       covers: position,
       payload: undefined,
       context,
-    })
+    }
+    this.#wedgeEnds.push(stop)
+
+    let closed: Dynamic | undefined
+    pairSpans(
+      this.#wedgeEnds,
+      (hairpin, end) => {
+        if (end === stop) closed = hairpin
+      },
+      // A replay reports nothing: the pairing at the end of the part does.
+      () => undefined,
+    )
+    return closed
   }
 
   /**

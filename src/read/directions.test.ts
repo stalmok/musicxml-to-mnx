@@ -405,6 +405,152 @@ describe('dynamics', () => {
     expect(warnings).toEqual([])
   })
 
+  // Wording written beside a hairpin's closing edge trails the mark it
+  // qualifies: "smorz." at the end of a diminuendo is the hairpin's own
+  // wording, so it goes over as the suffix of the hairpin that stops there
+  // rather than standing alone.
+  test('carries wording before a stop wedge as the hairpin suffix', () => {
+    const { measure, warnings } = read(
+      inMeasure(
+        '<direction><direction-type><wedge type="diminuendo"/></direction-type></direction>' +
+          note('C') +
+          '<direction><direction-type>' +
+          '<dynamics><other-dynamics>smorz.</other-dynamics></dynamics>' +
+          '<wedge type="stop"/>' +
+          '</direction-type></direction>',
+      ),
+    )
+
+    expect(measure?.dynamics).toEqual([
+      {
+        position: { num: 0, den: 1 },
+        wedge: 'decreasing',
+        suffix: 'smorz.',
+        end: { measure: 0, position: { num: 1, den: 4 } },
+      },
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  test('carries wording after a stop wedge as the hairpin suffix', () => {
+    const { measure, warnings } = read(
+      inMeasure(
+        '<direction><direction-type><wedge type="crescendo"/></direction-type></direction>' +
+          note('C') +
+          '<direction><direction-type>' +
+          '<wedge type="stop"/>' +
+          '<dynamics><other-dynamics>dolce</other-dynamics></dynamics>' +
+          '</direction-type></direction>',
+      ),
+    )
+
+    expect(measure?.dynamics).toEqual([
+      {
+        position: { num: 0, den: 1 },
+        wedge: 'increasing',
+        suffix: 'dolce',
+        end: { measure: 0, position: { num: 1, den: 4 } },
+      },
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  test('writes the closing wording onto schema-valid MNX', () => {
+    const { mnx, warnings } = convertMusicXML(
+      inMeasure(
+        '<direction><direction-type><wedge type="diminuendo"/></direction-type></direction>' +
+          note('C') +
+          '<direction><direction-type>' +
+          '<dynamics><other-dynamics>smorz.</other-dynamics></dynamics>' +
+          '<wedge type="stop"/>' +
+          '</direction-type></direction>',
+      ),
+    )
+
+    expect(mnx.parts[0]?.measures[0]?.dynamics).toHaveLength(1)
+    expect(mnx.parts[0]?.measures[0]?.dynamics?.[0]).toMatchObject({
+      type: 'gradual',
+      suffix: 'smorz.',
+    })
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // A stop that matches no start closes nothing, so the wording beside it
+  // stands alone as before, and the stray stop is reported as before.
+  test('keeps wording beside a stray stop standing alone', () => {
+    const { measure, warnings } = read(
+      inMeasure(
+        note('C') +
+          '<direction><direction-type>' +
+          '<dynamics><other-dynamics>dim.</other-dynamics></dynamics>' +
+          '<wedge type="stop"/>' +
+          '</direction-type></direction>',
+      ),
+    )
+
+    expect(measure?.dynamics).toEqual([{ position: { num: 1, den: 4 }, prefix: 'dim.' }])
+    expect(warnings.map((w) => w.message)).toEqual([
+      'A hairpin stops where none had started, and is not carried over.',
+    ])
+  })
+
+  // A source can word both edges of one hairpin. The suffix set where it
+  // started stays, and the closing words stand alone rather than overwrite it.
+  test('keeps closing wording standing alone when the hairpin already has a suffix', () => {
+    const { measure, warnings } = read(
+      inMeasure(
+        '<direction><direction-type>' +
+          '<wedge type="crescendo"/>' +
+          '<dynamics><other-dynamics> molto</other-dynamics></dynamics>' +
+          '</direction-type></direction>' +
+          note('C') +
+          '<direction><direction-type>' +
+          '<dynamics><other-dynamics>cresc.</other-dynamics></dynamics>' +
+          '<wedge type="stop"/>' +
+          '</direction-type></direction>',
+      ),
+    )
+
+    expect(measure?.dynamics).toEqual([
+      {
+        position: { num: 0, den: 1 },
+        wedge: 'increasing',
+        suffix: 'molto',
+        end: { measure: 0, position: { num: 1, den: 4 } },
+      },
+      { position: { num: 1, den: 4 }, prefix: 'cresc.' },
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  test('keeps wording after the stop standing alone when the hairpin already has a suffix', () => {
+    const { measure, warnings } = read(
+      inMeasure(
+        '<direction><direction-type>' +
+          '<wedge type="crescendo"/>' +
+          '<dynamics><other-dynamics> molto</other-dynamics></dynamics>' +
+          '</direction-type></direction>' +
+          note('C') +
+          '<direction><direction-type>' +
+          '<wedge type="stop"/>' +
+          '<dynamics><other-dynamics>sempre</other-dynamics></dynamics>' +
+          '</direction-type></direction>',
+      ),
+    )
+
+    expect(measure?.dynamics).toEqual([
+      {
+        position: { num: 0, den: 1 },
+        wedge: 'increasing',
+        suffix: 'molto',
+        end: { measure: 0, position: { num: 1, den: 4 } },
+      },
+      { position: { num: 1, den: 4 }, prefix: 'sempre' },
+    ])
+    expect(warnings).toEqual([])
+  })
+
   // MusicXML allows <dynamics> more than once in one <direction-type>, so
   // the wording and the mark it opens may sit in sibling blocks.
   test('carries wording onto the mark in a sibling dynamics block', () => {

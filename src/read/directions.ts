@@ -208,12 +208,27 @@ export function readDirection(
           readOctaveShift(found, at, lastEvent, measure, staff, orient, state, warnings, context)
           break
         case 'wedge': {
-          const hairpin = readWedge(found, at, measure, staff, orient, state, warnings, context)
-          if (hairpin) {
+          const wedge = readWedge(found, at, measure, staff, orient, state, warnings, context)
+          if (wedge?.edge === 'start') {
             const prefix = wording.take()
-            if (prefix !== undefined) hairpin.prefix = prefix.text
-            reading.dynamics.push(hairpin)
-            lastMark = hairpin
+            if (prefix !== undefined) wedge.hairpin.prefix = prefix.text
+            reading.dynamics.push(wedge.hairpin)
+            lastMark = wedge.hairpin
+          } else if (wedge) {
+            // Wording at a hairpin's closing edge trails the mark, so words
+            // pending when the stop is read become the hairpin's suffix, and
+            // the stopped hairpin is what any wording after the stop closes.
+            // A stop that matched no start leaves the wording where it is,
+            // to stand alone below.
+            const suffix = wording.take()
+            if (suffix !== undefined) {
+              if (wedge.hairpin.suffix === undefined) wedge.hairpin.suffix = suffix.text
+              // The hairpin already carries wording from its starting edge,
+              // and the source wrote both, so the closing words stand alone
+              // rather than overwrite what the start said.
+              else reading.dynamics.push(standaloneWording(suffix.text, at, staff, orient))
+            }
+            lastMark = wedge.hairpin
           }
           break
         }
@@ -240,23 +255,15 @@ export function readDirection(
       if (handled) reportUnreadAttributes(found, warnings, context)
     }
 
-    // Wording left over closes the mark before it. With no mark at all it
-    // stands alone, and MNX requires only a position and a type of a dynamic
-    // group, so the words are carried on a group with no level rather than
-    // qualifying a level the source never wrote.
+    // Wording left over closes the mark before it. With no mark at all, or a
+    // mark whose suffix its own edges already wrote, it stands alone: MNX
+    // requires only a position and a type of a dynamic group, so the words
+    // are carried on a group with no level rather than qualifying a level the
+    // source never wrote.
     const trailing = wording.take()
     if (trailing !== undefined) {
-      if (lastMark) lastMark.suffix = trailing.text
-      else
-        reading.dynamics.push({
-          position: at,
-          value: undefined,
-          wedge: undefined,
-          end: undefined,
-          staff,
-          prefix: trailing.text,
-          ...(orient !== undefined ? { orient } : {}),
-        })
+      if (lastMark && lastMark.suffix === undefined) lastMark.suffix = trailing.text
+      else reading.dynamics.push(standaloneWording(trailing.text, at, staff, orient))
     }
   }
 
@@ -420,11 +427,19 @@ const WEDGE_TYPES = new Map<string, WedgeType>([
   ['diminuendo', 'decreasing'],
 ])
 
+/** Which edge of a hairpin a <wedge> marked, and the hairpin it belongs to. */
+interface WedgeReading {
+  edge: 'start' | 'stop'
+  hairpin: Dynamic
+}
+
 /**
  * A hairpin: a dynamic that grows or fades from here to somewhere later,
  * often several measures away. MusicXML marks both ends and numbers them so
  * they can be matched, exactly as it does a slur, and MNX states the pair
- * once, on the end where it begins.
+ * once, on the end where it begins. A stop hands back the hairpin it closes,
+ * so wording at the closing edge can qualify it; a stop that closes nothing,
+ * or a wedge that converts to nothing, reads as nothing.
  */
 function readWedge(
   found: XmlElement,
@@ -435,13 +450,13 @@ function readWedge(
   state: PartState,
   warnings: WarningCollector,
   context: WarningContext,
-): Dynamic | undefined {
+): WedgeReading | undefined {
   const type = attribute(found, 'type')
   const number = attribute(found, 'number') ?? '1'
 
   if (type === 'stop') {
-    state.spanners.stopWedge(number, measure, position, context)
-    return undefined
+    const closed = state.spanners.stopWedge(number, measure, position, context)
+    return closed ? { edge: 'stop', hairpin: closed } : undefined
   }
 
   const wedge = type === undefined ? undefined : WEDGE_TYPES.get(type)
@@ -475,7 +490,29 @@ function readWedge(
     ...(orient !== undefined ? { orient } : {}),
   }
   state.spanners.startWedge(hairpin, number, measure, position, context)
-  return hairpin
+  return { edge: 'start', hairpin }
+}
+
+/**
+ * Wording with no mark to qualify, carried as a dynamic group of its own:
+ * MNX requires only a position and a type of one, so the words are drawn
+ * where the source drew them and no level the source never wrote is stated.
+ */
+function standaloneWording(
+  text: string,
+  position: Fraction,
+  staff: number | undefined,
+  orient: 'above' | 'below' | undefined,
+): Dynamic {
+  return {
+    position,
+    value: undefined,
+    wedge: undefined,
+    end: undefined,
+    staff,
+    prefix: text,
+    ...(orient !== undefined ? { orient } : {}),
+  }
 }
 
 /**
