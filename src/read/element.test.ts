@@ -91,12 +91,15 @@ describe('skip', () => {
 // read. Presentation attributes (positions, fonts, identity) say how things
 // are drawn rather than what they are, and are passed over without a word.
 describe('the attribute sweep', () => {
+  // implicit="yes" excludes a pickup or courtesy measure from the numbering,
+  // and MNX's measure number is a plain integer override with no way to
+  // state a measure unnumbered.
   test('names an attribute nothing read', () => {
     const element = new ElementReader(parseXmlRoot('<measure number="1" implicit="yes"/>'))
     attribute(element.element, 'number')
 
     expect(reported(element)).toEqual([
-      'The "implicit" attribute of a <measure> is not converted yet.',
+      'The "implicit" attribute of a <measure> cannot be expressed in MNX.',
     ])
   })
 

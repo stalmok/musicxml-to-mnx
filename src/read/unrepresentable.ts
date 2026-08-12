@@ -139,6 +139,10 @@ const NO_HOME_ATTRIBUTES: ReadonlySet<string> = new Set([
   // A metronome mark drawn in parentheses. The schema's tempo states a bpm
   // and a value, and nothing about how the mark is drawn.
   'metronome parentheses',
+  // A pickup or courtesy measure excluded from the numbering. The schema's
+  // measure number is a plain integer override, so a measure can be
+  // renumbered but not stated unnumbered.
+  'measure implicit',
 ])
 
 /**

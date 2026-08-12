@@ -888,7 +888,8 @@ describe('reporting what is not converted', () => {
   })
 
   // The concrete attribute case that motivated the sweep: a pickup measure's
-  // implicit="yes" says the measure is unnumbered, which nothing reads.
+  // implicit="yes" says the measure is unnumbered. MNX's measure number is a
+  // plain integer override, with no way to state a measure unnumbered.
   test('reports a measure attribute nothing reads', () => {
     const { warnings } = read(
       score(
@@ -899,8 +900,8 @@ describe('reporting what is not converted', () => {
 
     expect(warnings).toMatchObject([
       {
-        code: 'unsupported:attribute',
-        message: 'The "implicit" attribute of a <measure> is not converted yet.',
+        code: 'unrepresentable:attribute',
+        message: 'The "implicit" attribute of a <measure> cannot be expressed in MNX.',
         element: 'measure',
         context: { part: 'P1', measure: 1 },
       },

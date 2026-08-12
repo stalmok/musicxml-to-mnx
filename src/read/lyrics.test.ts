@@ -109,6 +109,26 @@ describe('lyrics', () => {
 
     expect(events[0]?.lyrics).toEqual([])
   })
+
+  // MNX's event lyric states a text and a type, and nothing about visibility,
+  // so a hidden lyric is reported the way every hidden element is: under the
+  // "print-object" code, not as an unread attribute.
+  test('reports a lyric hidden with print-object="no", and draws it anyway', () => {
+    const { events, warnings } = read(
+      measure(note('C', '<lyric number="1" print-object="no"><text>Ah</text></lyric>')),
+    )
+
+    expect(events[0]?.lyrics).toEqual([{ line: '1', text: 'Ah', type: undefined }])
+    expect(warnings).toMatchObject([
+      {
+        code: 'unsupported:element',
+        message:
+          'A <lyric> hidden with print-object="no" is drawn anyway, because MNX cannot ' +
+          'mark it invisible.',
+        element: 'print-object',
+      },
+    ])
+  })
 })
 
 describe('stem direction', () => {

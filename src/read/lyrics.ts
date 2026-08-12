@@ -13,6 +13,7 @@ import type { Lyric } from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import { attribute } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
+import { reportHidden } from './unrepresentable.js'
 
 // MusicXML's syllabic values, in MNX's spelling. A syllable standing on its
 // own carries no type in MNX, so "single", and no syllabic at all, map to
@@ -43,6 +44,9 @@ function readVerse(
   warnings: WarningCollector,
   context: WarningContext,
 ): Lyric | undefined {
+  // MNX's event lyric states a text and a type, and nothing about
+  // visibility, so a hidden lyric is drawn and the hiding reported.
+  reportHidden(lyric.element, 'lyric', warnings, context)
   const line = attribute(lyric.element, 'number') ?? '1'
   const text = joinSyllables(lyric)
 
