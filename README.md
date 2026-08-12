@@ -13,10 +13,6 @@ the W3C Music Notation Community Group.
 
 ## Install
 
-The package is not on the npm registry yet. Until the first release, clone
-this repository and build it (see [Development](#development)). After the
-first release:
-
 ```bash
 npm install ossia   # or: pnpm add ossia
 ```
