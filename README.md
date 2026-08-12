@@ -1,27 +1,27 @@
 # ossia
 
 Convert [MusicXML](https://www.w3.org/2021/06/musicxml40/) to
-[MNX](https://w3c-cg.github.io/mnx/docs/), the W3C Music Notation Community
-Group's JSON successor format.
+[MNX](https://w3c-cg.github.io/mnx/docs/), the JSON music notation format of
+the W3C Music Notation Community Group.
 
-> **Pre-1.0.** MNX has no stable 1.0, so output is pinned to a dated spec
-> snapshot and the API may still change. Most of what real song repertoire uses
-> converts today (see [What converts today](#what-converts-today)); anything
-> that does not is reported.
+> **Pre-1.0.** MNX has no stable 1.0 release. The output follows a pinned
+> snapshot of the spec, and the API can change. Most notation in real song
+> repertoire converts (see [What converts](#what-converts)). The converter
+> reports everything it cannot convert.
 
 ---
 
 ## Install
 
-Not on the npm registry yet; until the first release is published, use a
-clone of this repository. Once published:
+The package is not on the npm registry yet. Until the first release, use a
+clone of this repository. After the first release:
 
 ```bash
 npm install ossia   # or: pnpm add ossia
 ```
 
-The library core is isomorphic (browser and Node); the command line needs
-Node 20.19, 22.13, or 24 and later.
+The library runs in browsers and in Node. The command line needs Node 20.19,
+22.13, or 24 and later.
 
 ---
 
@@ -34,15 +34,14 @@ const { mnx, warnings } = convertMusicXML(musicXmlSource)
 
 console.log(JSON.stringify(mnx, null, 2))
 
-// Anything MusicXML expressed that MNX cannot carry, or that this
-// converter does not handle yet, is reported in warnings.
+// Each warning is notation that the output does not carry.
 for (const w of warnings) {
   console.warn(`${w.code}: ${w.message}`, w.context)
 }
 ```
 
-The source is either the XML as a string, or the bytes of a document or a
-compressed `.mxl` package:
+The source can be an XML string, the bytes of an XML document, or the bytes
+of a compressed `.mxl` package:
 
 ```ts
 import { readFileSync } from 'node:fs'
@@ -50,8 +49,8 @@ import { readFileSync } from 'node:fs'
 const { mnx } = convertMusicXML(readFileSync('song.mxl'))
 ```
 
-Structurally broken input throws a `MusicXMLError` carrying the document path
-and the source line:
+Structurally broken input throws a `MusicXMLError` with the document path and
+the source line:
 
 ```ts
 import { MusicXMLError } from 'ossia'
@@ -69,179 +68,161 @@ try {
 
 ## Warnings
 
-Structurally broken input throws; valid input that cannot be carried across in
-full converts and reports what it dropped. Each entry in `warnings` is a
-`ConversionWarning`:
+The converter never drops notation silently. When the output cannot carry
+something the source states, the conversion continues and reports the loss.
+Each entry in `warnings` is a `ConversionWarning`:
 
-| Field       | What it holds                                                                                                                                   |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `code`      | A stable, greppable code. Its prefix says which of three kinds it is (see [Design principles](#design-principles)).                             |
-| `message`   | Prose written for a person.                                                                                                                     |
-| `element`   | The MusicXML element the loss is about, without its angle brackets, where it is about one.                                                      |
-| `attribute` | The attribute the loss is about, where it is about one, beside the element carrying it.                                                         |
-| `context`   | Where it happened: `part` (the MusicXML part id), `measure` (the source measure number), and `line` (the source line), each present when known. |
-
-`code` and `element` are fields rather than something to parse out of the
-message, because grouping a report by what was lost is the first thing most
-pipelines do:
-
-```ts
-const byElement = new Map<string, number>()
-for (const w of warnings) {
-  const key = w.element ?? w.code
-  byElement.set(key, (byElement.get(key) ?? 0) + 1)
-}
-```
+| Field       | Contents                                                                                                                                            |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `code`      | A stable code. The prefix gives the kind of loss (see below).                                                                                       |
+| `message`   | A description written for a person.                                                                                                                 |
+| `element`   | The MusicXML element the loss is about, without angle brackets. Present when the loss is about one element.                                         |
+| `attribute` | The attribute the loss is about, beside its `element`. Present when the loss is about one attribute.                                                |
+| `context`   | The location: `part` (the MusicXML part id), `measure` (the source measure number), and `line` (the source line). Each field is present when known. |
 
 An empty `warnings` array means the conversion was lossless as far as the
-converter can tell.
+converter can tell. A pipeline can gate on that.
+
+The prefix of `code` gives the kind of loss:
+
+- `unsupported:` marks a gap in this converter. A later release can close it.
+  Test for it with `isConverterGap(code)`.
+- `unrepresentable:` marks a limit of MNX. No release will close it while the
+  output format stays as it is. Test for it with `isFormatLimit(code)`.
+- All other prefixes (`inconsistent:`, `missing:`, `unresolved:`, `unclosed:`,
+  `redundant:`) mark a problem in the source file. No release changes these.
+
+After an upgrade, reconvert only the files with converter gaps:
+
+```ts
+import { isConverterGap } from 'ossia'
+
+const worthRetrying = warnings.some((w) => isConverterGap(w.code))
+```
 
 ---
 
 ## Command line
 
-The package installs a `ossia` command:
+The package installs an `ossia` command:
 
 ```bash
 ossia song.mxl                    # writes song.mnx beside it
-ossia scores/*.musicxml -o out/   # into a directory
-ossia *.mxl --fail-on-loss        # exit non-zero if anything is lost
+ossia scores/*.musicxml -o out/   # writes into a directory
+ossia *.mxl --fail-on-loss        # exits non-zero if anything is lost
 ossia song.mxl --validate --report losses.json
 ```
 
-It accepts `.musicxml`, `.xml` and `.mxl`. Conversion to MNX is the default;
-an explicit `ossia to-mnx song.mxl` does the same thing. A file it refuses is reported and
-the rest go on. `--fail-on-loss` is the gate a lossless pipeline runs on;
-`--report` writes every file's warnings as JSON; `--validate` checks each
-output against the vendored MNX schema; `-h` and `-v` print help and version.
+The command accepts `.musicxml`, `.xml`, and `.mxl` files. Conversion to MNX
+is the default; an explicit `ossia to-mnx song.mxl` does the same thing. When
+the command refuses a file, it reports the reason and continues with the
+other files.
 
-The exit code is the pipeline contract: 0 when every file converted (and,
-under `--fail-on-loss`, losslessly), 1 when a file was refused, failed
-validation, or lost notation the flag gates on, and 2 for a usage error.
+- `--fail-on-loss` exits non-zero when any conversion loses notation.
+- `--report <file>` writes the warnings from every file to `<file>` as JSON.
+- `--validate` checks every output against the vendored MNX schema.
+- `-h` and `-v` print help and version.
+
+The exit code is the pipeline contract:
+
+- `0`: every file converted. With `--fail-on-loss`, no file lost notation.
+- `1`: a file did not convert, did not validate, or lost notation under
+  `--fail-on-loss`.
+- `2`: usage error.
 
 ---
 
-## What converts today
+## What converts
 
-Notes and rests with their note values and augmentation dots, pitches, chords,
-several voices in a measure, clefs (including a second `<attributes>` block
-mid-measure), key and time signatures, part names and the short name drawn on
-later systems, and measure numbering that differs from plain 1, 2, 3, so a
-pickup measure keeps its number.
+- Notes, rests, and chords, with pitches, note values, and augmentation dots.
+- Several voices in a measure.
+- Clefs, including a clef change mid-measure. Key and time signatures.
+- Part names, with the short name for later systems.
+- Measure numbers that differ from plain 1, 2, 3, so a pickup measure keeps
+  its number.
+- Tuplets, including nested tuplets.
+- Grace notes, gathered into groups that take no measure time.
+- Tremolos: on one note as a mark that counts its beams, and across two notes
+  as one item that holds the pair, including a pair inside a tuplet.
+- Dynamics, from pppppp to ffffff, placed at the cursor point under their
+  staff. A sforzando and its family become accent dynamics with their
+  combined glyphs. Wording around a mark, such as the "più" of "più f",
+  becomes a prefix or suffix. The converter reports a mark outside the MNX
+  vocabulary.
+- Hairpins, matched end to end across measures and stated once as a gradual
+  dynamic that points at the measure where it stops.
+- Tempo marks: a metronome mark becomes a tempo on the score. A `<sound>`
+  tempo does too, when no metronome beside it states the same thing. An
+  `<offset>` moves a mark to the time it belongs to.
+- Rolled chords, and the bracket that says a chord is struck together. MNX
+  states each once beside the chord, spanning the notes.
+- Octave shifts, matched end to end. Both formats keep the sounding pitch on
+  the notes, so nothing is transposed.
+- Articulations: staccato, tenuto, accent, staccatissimo, spiccato, stress,
+  soft accent, and strong accent with its direction. Breath marks with their
+  glyphs. Fermatas with their shape and direction.
+- Barlines, repeat signs, and first and second endings. MNX states an ending
+  as the count of measures it covers.
+- Segno signs with their glyphs, Fine, and dal segno jumps. A jump becomes
+  D.S. al Fine when a Fine sits on the way back.
+- Measure repeats. MNX marks the first measure of each repetition with the
+  pattern length. The converter reports a sign with more than one slash.
+- Multi-measure rests, stated with their start measure and their count.
+- Accidentals. The document declares that it states accidental display, and
+  each accidental the source draws is marked. Cautionary accidentals keep
+  their parentheses or brackets.
+- Lyrics, verse by verse, with each syllable's place in its word.
+- Stem directions.
+- Multi-staff parts: a piano part stays one part. Each voice states its
+  staff, and a voice that reaches the other staff carries overrides on its
+  events.
+- Part groups: brackets and braces become nested staff groups. The converter
+  reports groups whose edges cross. A part id outside MNX's id pattern is
+  renamed to p1, p2, and so on, and reported.
+- System and page breaks become pages and systems in the score rendering.
+- Instrument names from the part list become the score's sounds. Synthesizer
+  setup has no MNX home, and the converter reports it.
+- Beams, including secondary beams, hooks, and beams over a grace group,
+  built as MNX's tree of beams over the measure.
+- Ties and slurs, joined across barlines. The converter reports a tie or slur
+  with only one end, because real scores contain those.
+- Exact timing: durations are exact fractions of `<divisions>`, and
+  `<backup>` and `<forward>` move the cursor. A silent gap in a voice becomes
+  a space. When a note states no note value, the converter recovers it from
+  the duration. A rest that fills its measure is stated the way MNX states
+  it, not given an invented note value.
 
-Tuplets, including nested ones, and grace notes, which are gathered into
-groups and keep out of the measure's time.
+**Planned for v1:** free text directions. The pinned spec snapshot has no
+place for them yet.
 
-Tremolos: on a single note as a mark on the event, counting its beams, and
-written across two notes as one item holding the pair, including a pair
-inside a tuplet.
+**Reported, never converted:** constructs MNX cannot express, such as pedal
+marks and ornaments. These always surface as warnings, never as silent loss.
 
-Dynamics, hairpins and tempo marks: a dynamic sits on its measure at the point
-the cursor has reached, under the staff it belongs to; a metronome mark becomes
-a tempo on the score, as does the tempo a `<sound>` states where no metronome
-beside it already says the same thing. An `<offset>` moves a mark from where it
-is written to where it belongs, which is usually backwards. A sforzando and its
-family become accent dynamics, each carrying the combined glyph it is drawn as,
-and the wording a source wraps a mark in, such as the "più" of "più f", becomes
-the prefix or suffix drawn around it. The full soft-to-loud range converts,
-down to pppppp and up to ffffff; a mark outside MNX's vocabulary is reported.
+**Out of scope for v1:** percussion, chord symbols, transposing instruments,
+and `score-timewise` documents. The converter rejects each with a clear
+error.
 
-A hairpin is matched to its other end across the measures between, and stated
-once as a gradual dynamic pointing at the measure where it stops.
-
-Rolled chords, and the bracket that says a chord is struck together instead.
-MusicXML marks every note; MNX states it once beside the chord, spanning the
-notes it runs between.
-
-Octave shifts, matched to their other end across the measures between. Both
-formats put the sounding pitch on the notes and use the shift only to say how
-the passage is drawn, so nothing is transposed.
-
-Articulations and fermatas: staccatos, tenutos, accents, staccatissimos,
-spiccatos, stresses, soft accents, and strong accents with the way they point;
-breath marks with the glyph they are drawn with; and a fermata with its shape
-and which way it faces.
-
-Barlines, repeat signs, and first and second time endings. MusicXML hangs these
-off one element at the edge of a measure and marks an ending's two ends several
-measures apart; MNX states them on the score's measure, an ending as the number
-of measures it covers. A segno sign is placed on its measure at the point the
-cursor has reached, carrying the specific glyph the source names; a Fine and a
-dal segno jump are stated on their measures, the jump as D.S. al Fine where a
-Fine sits on the way back.
-
-Measure repeats, the percent sign over a measure that plays what came before.
-MusicXML draws the sign on every measure it covers; MNX marks the first
-measure of each repetition with the length of the pattern, so a two-measure
-pattern is marked on every other measure. A sign drawn with more than one
-slash is reported.
-
-Multi-measure rests: consecutive silent measures drawn as one rest with a
-count are stated on the score, with the measure they start in and how many
-they cover.
-
-Accidentals: the note whose accidental the source draws is marked, and the
-document declares once that it states accidental display, so a reader takes
-the marked notes as the whole of it. Cautionary accidentals keep their
-parentheses or brackets.
-
-Lyrics, verse by verse, keyed to each note with the syllable's place in its
-word, and stem directions.
-
-Multi-staff parts: a piano part stays one part, with the staff stated on each
-voice and an override on the events of a voice that reaches across to the
-other hand.
-
-Part groups: the brackets and braces that gather parts on the page become
-nested staff groups in the score's layout. Groups whose edges cross are
-reported. A part id that MNX's id pattern cannot state is renamed p1, p2, and
-so on, and reported.
-
-System and page breaks become the score rendering's pages, each holding its
-systems, and each system naming the measure it starts at. The part list's
-instrument names become the score's sounds; the synthesizer setup beside
-them has no MNX home and is reported.
-
-Beams, including secondary beams, hooks, and beams over a grace group.
-MusicXML puts them on the notes, one marking per beam level; MNX states them
-over the measure as a tree, and that is what gets built.
-
-Ties and slurs, joined up across barlines. MusicXML marks both ends and leaves
-the connection implied; MNX states it once, on the end where it begins, as a
-reference to the end where it finishes. Anything with only one of its two ends
-is reported rather than guessed at, because real scores contain those.
-
-Timing is followed properly: durations are read in `<divisions>` as exact
-fractions, `<backup>` and `<forward>` move the cursor, a note value is
-recovered from its duration where none is written, and time a voice passes
-over in silence is stated as a space. A rest filling its measure becomes what
-MNX states it as, rather than being given an invented note value.
-
-Planned for v1: free text directions, which wait on the spec: the pinned
-snapshot still has nowhere to put them.
-
-Constructs that MNX cannot express at all, such as pedal marks and ornaments,
-will always surface as warnings rather than silent loss. Out of scope
-for v1: percussion, chord symbols, transposing-instrument handling, and
-`score-timewise` documents, which are rejected with a clear error.
-
-**What is rejected rather than half-converted:** a tuplet whose extent the
-source does not bracket. MusicXML states a tuplet twice, as a ratio on every
-note and as a bracket around them, and without the bracket there is nothing to
-say where one tuplet ends and the next begins. Guessing would invent a
-grouping the source never wrote.
+**Rejected rather than half-converted:** a tuplet whose extent the source
+does not bracket. MusicXML states a tuplet twice: as a ratio on every note
+and as a bracket around them. Without the bracket, nothing says where one
+tuplet ends and the next begins. A guess would invent a grouping the source
+never wrote.
 
 ---
 
 ## Tested against real scores
 
-Every file below is run through the converter and held to four checks: it
-converts at all, the output validates against the vendored MNX schema, its
-pitches match the source note for note, per measure and voice, and each
-measure sounds as long as the source says. A file either passes all four or
-is refused with a stated reason; none converts to wrong output. Counts are from the corpora as
-of July 2026; the Lieder corpus keeps growing, and the gate meets it at its
-tip.
+The converter runs against every file below, with four checks:
+
+1. The file converts.
+2. The output validates against the vendored MNX schema.
+3. The pitches match the source note for note, per measure and voice.
+4. Each measure is as long as the source says.
+
+A file passes all four checks, or the converter refuses it with a stated
+reason. No file converts to wrong output. The counts are from July 2026; the
+Lieder corpus keeps growing, and the weekly gate runs against its latest
+state.
 
 | Corpus                                                                                                        | Files  | Convert      |
 | ------------------------------------------------------------------------------------------------------------- | ------ | ------------ |
@@ -253,64 +234,37 @@ tip.
 | [music21 bundled corpus](https://github.com/cuthbertLab/music21) (hand-encoded, older tools, some UTF-16)     | 654    | 615 (94%)    |
 | [CPDL](https://www.cpdl.org) random sample (choral, mostly Sibelius exports)                                  | 2,000  | 1,838 (92%)  |
 
-The remainder are refusals, each naming its reason: notation MNX cannot
-state (percussion and TAB clefs, microtone alterations, composite meters
-such as 3+2/8), or sources that disagree with themselves (a tuplet opened
-and never closed, a backup reaching before the measure start, a metronome
-stating no beats per minute, a voice resting through the same measure
-twice). In the PDMX sample the two clef limits account for 580 of the 786
-refusals: MuseScore.com carries a lot of drum and guitar music. In the
-CPDL sample the largest group is hymnals writing two lines over each
-other in a single voice, which the converter refuses rather than guesses
-apart.
+The rest are refusals, and each names its reason: notation MNX cannot state
+(percussion and TAB clefs, microtone alterations, composite meters such as
+3+2/8), or sources that disagree with themselves (a tuplet opened and never
+closed, a backup that reaches before the measure start, a metronome with no
+beats per minute, a voice that rests through the same measure twice). In the
+PDMX sample, the two clef limits account for 580 of the 786 refusals, because
+MuseScore.com carries much drum and guitar music. In the CPDL sample, the
+largest group is hymnals that write two lines over each other in one voice;
+the converter refuses these rather than guesses them apart.
 
 Six hundred of the Lieder songs are vendored into the repository and convert
-on every test run; the full Lieder corpus gate runs weekly in CI and on
-demand, so it can be run before tagging a release.
+on every test run. The full Lieder corpus gate runs weekly in CI and on
+demand.
 
 ---
 
-## Design principles
+## Safe on untrusted input
 
-**Never lose notation silently.** Every construct that doesn't survive
-conversion emits a `ConversionWarning` with a stable code and measure context,
-so a pipeline can gate on "zero losses" and know it means something.
-
-The code's prefix says which of three kinds it is. `unsupported:` is a gap in
-this converter that a later release may close, and `isConverterGap(code)` tests
-for it; `unrepresentable:` is a limit of MNX that no release will close, and
-`isFormatLimit(code)` tests for it; anything else (`inconsistent:`, `missing:`,
-`unresolved:`, `unclosed:`, `redundant:`) is the source's own problem, which no
-release changes. Reconverting a file after an upgrade is worth it only for the
-first.
-
-```ts
-import { isConverterGap } from 'ossia'
-
-const worthRetrying = warnings.some((w) => isConverterGap(w.code))
-```
-
-**Strict about broken input.** Malformed structure throws with a document path
-and source line rather than being guessed at. Every heuristic that does exist
-is documented and announces itself through a warning when it fires.
-
-**Exact timing.** Durations are exact rationals, never floats, because tuplets produce
-values like 1/3 of a beat, and float drift makes measure-fill checks unreliable.
-
-**Safe on untrusted input.** MusicXML files carry a DOCTYPE referencing an
-external DTD over HTTP. The XML layer never resolves external entities or
-processes DTDs, so neither XXE nor entity-expansion ("billion laughs") attacks
-apply.
+Every MusicXML file carries a DOCTYPE that points at an external DTD URL. The
+XML layer never resolves external entities and never processes DTDs. XXE and
+entity-expansion ("billion laughs") attacks do not apply.
 
 ---
 
 ## MNX spec pinning
 
-MNX is a moving draft. Each release pins a specific
-[w3c/mnx](https://github.com/w3c/mnx) commit; the schema is vendored at
-`schema/mnx-schema.json` with its source commit and checksum recorded in
-`schema/PROVENANCE.md`, and CI verifies those bytes. Every conversion the test
-suite produces is validated against it.
+MNX is a moving draft. Each release pins one
+[w3c/mnx](https://github.com/w3c/mnx) commit. The schema is vendored at
+`schema/mnx-schema.json`, with its source commit and checksum recorded in
+[`schema/PROVENANCE.md`](schema/PROVENANCE.md). CI verifies those bytes. The
+test suite validates every conversion against the schema.
 
 ---
 
@@ -327,11 +281,6 @@ pnpm build
 
 pnpm bench           # times each pipeline stage and whole conversions
 ```
-
-Conversion time is guarded by tests: `tests/performance.test.ts` converts
-generated scores at two sizes along each axis (measures, parts, notes per
-measure) and fails if the time ratio approaches quadratic. The generator
-behind those scores is itself tested for lossless, schema-valid output.
 
 See [docs/architecture.md](docs/architecture.md) for how the converter is put
 together and why, and [AGENTS.md](AGENTS.md) for the working conventions.
