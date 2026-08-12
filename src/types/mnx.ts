@@ -229,6 +229,8 @@ export interface MNXTuplet {
   showNumber?: MNXTupletDisplaySetting
   /** Whether the tuplet note value is drawn. */
   showValue?: MNXTupletDisplaySetting
+  /** Which side of the notes it is drawn on. */
+  orient?: MNXOrientation
 }
 
 /** Notes squeezed in before the beat, taking none of the measure's time. */

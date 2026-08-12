@@ -136,6 +136,10 @@ export type WarningCode =
   // draw the mark itself, not the words, so the wording goes over as text
   // and the glyph choice is lost.
   | 'unrepresentable:wording-glyph'
+  // Tuplets that cross: a stop marker numbered for a tuplet other than the
+  // last opened, which MNX's nested tuplets cannot state. The stop is matched
+  // to the innermost open tuplet.
+  | 'unrepresentable:tuplet-crossing'
   // A <print> detail beyond the system and page breaks, such as a page
   // number or staff spacing, which MNX's pages and systems cannot state.
   | 'unrepresentable:print-detail'

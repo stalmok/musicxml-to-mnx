@@ -214,6 +214,8 @@ export interface Tuplet {
   showNumber?: TupletDisplay
   /** Whether the tuplet note value is drawn. Absent lets the renderer decide. */
   showValue?: TupletDisplay
+  /** Which side of the notes it is drawn on. Absent lets the renderer decide. */
+  orient?: 'above' | 'below'
 }
 
 /** Notes squeezed in before the beat, taking none of the measure's time. */

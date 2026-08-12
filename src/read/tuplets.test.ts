@@ -93,6 +93,43 @@ describe('tuplet display', () => {
     expect(tuplet?.kind === 'tuplet' && tuplet.bracket).toBeUndefined()
     expect(tuplet?.kind === 'tuplet' && tuplet.showNumber).toBeUndefined()
     expect(tuplet?.kind === 'tuplet' && tuplet.showValue).toBeUndefined()
+    expect(tuplet?.kind === 'tuplet' && tuplet.orient).toBeUndefined()
+  })
+
+  // MusicXML says which side of the notes the bracket is drawn on with
+  // placement; MNX states it as the tuplet's orient.
+  test('carries the placement onto the tuplet as its orient', () => {
+    const placed =
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><type>eighth</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>' +
+      '<notations><tuplet type="start" placement="below"/></notations></note>' +
+      tupletNote('D', 4, 'eighth') +
+      tupletNote('E', 4, 'eighth', 'stop')
+    const { content, warnings } = read(measure(placed))
+    const tuplet = content?.[0]
+
+    expect(tuplet?.kind === 'tuplet' && tuplet.orient).toBe('below')
+    expect(warnings).toEqual([])
+  })
+
+  // A stop marker's placement restates the start's, which the tuplet's
+  // orient already carries, so nothing is lost and nothing is reported.
+  test('writes the orient onto schema-valid MNX, reading the placement the stop restates', () => {
+    const placed =
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><type>eighth</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>' +
+      '<notations><tuplet type="start" placement="above"/></notations></note>' +
+      tupletNote('D', 4, 'eighth') +
+      '<note><pitch><step>E</step><octave>4</octave></pitch><duration>4</duration><type>eighth</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>' +
+      '<notations><tuplet type="stop" placement="above"/></notations></note>'
+    const { mnx, warnings } = convertMusicXML(measure(placed))
+    const item = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
+    if (!item || !('type' in item) || item.type !== 'tuplet') throw new Error('expected a tuplet')
+
+    expect(item.orient).toBe('above')
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('writes the display onto schema-valid MNX', () => {
@@ -128,8 +165,8 @@ describe('tuplet display', () => {
       '<attributes><divisions>18</divisions></attributes>' +
       innerNote(
         'C',
-        '<tuplet type="start" number="1" bracket="yes" show-number="both"/>' +
-          '<tuplet type="start" number="2" bracket="no" show-number="none"/>',
+        '<tuplet type="start" number="1" bracket="yes" show-number="both" placement="above"/>' +
+          '<tuplet type="start" number="2" bracket="no" show-number="none" placement="below"/>',
       ) +
       innerNote('D') +
       innerNote('E', '<tuplet type="stop" number="2"/>') +
@@ -147,8 +184,10 @@ describe('tuplet display', () => {
 
     expect(outer.bracket).toBe('yes')
     expect(outer.showNumber).toBe('both')
+    expect(outer.orient).toBe('above')
     expect(inner.bracket).toBe('no')
     expect(inner.showNumber).toBe('noNumber')
+    expect(inner.orient).toBe('below')
     expect(schemaErrors(mnx)).toEqual([])
   })
 })
@@ -310,6 +349,97 @@ describe('tuplet ratios stated on the start marker', () => {
       value: { base: 'eighth', dots: 0 },
       multiple: 2,
     })
+    expect(warnings).toEqual([])
+  })
+})
+
+// A <tuplet> marker's number can state tuplets that cross: one closes while
+// another, opened later, stays open. MNX's tuplets nest, so a crossing cannot
+// be stated; each stop is matched to the innermost open tuplet, and a stop
+// naming a different one is reported.
+describe('crossing tuplet numbers', () => {
+  const threeInTwoEighths =
+    '<tuplet-actual><tuplet-number>3</tuplet-number><tuplet-type>eighth</tuplet-type>' +
+    '</tuplet-actual>' +
+    '<tuplet-normal><tuplet-number>2</tuplet-number><tuplet-type>eighth</tuplet-type>' +
+    '</tuplet-normal>'
+
+  const note = (
+    step: string,
+    duration: number,
+    actual: number,
+    normal: number,
+    markers = '',
+  ): string =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    `<duration>${String(duration)}</duration><type>eighth</type>` +
+    `<time-modification><actual-notes>${String(actual)}</actual-notes>` +
+    `<normal-notes>${String(normal)}</normal-notes></time-modification>` +
+    (markers ? `<notations>${markers}</notations>` : '') +
+    '</note>'
+
+  // Two tuplets start on one note; the one numbered 1 stops first, while the
+  // one numbered 2, opened later, runs on. Both stops close the innermost
+  // open tuplet instead, and each names a different one, so each reports the
+  // crossing.
+  const crossed =
+    '<score-partwise><part id="P1"><measure number="1">' +
+    '<attributes><divisions>9</divisions></attributes>' +
+    note(
+      'C',
+      2,
+      9,
+      4,
+      `<tuplet type="start" number="1">${threeInTwoEighths}</tuplet>` +
+        `<tuplet type="start" number="2">${threeInTwoEighths}</tuplet>`,
+    ) +
+    note('D', 2, 9, 4) +
+    note('E', 2, 9, 4, '<tuplet type="stop" number="1"/>') +
+    note('F', 3, 3, 2, '<tuplet type="stop" number="2"/>') +
+    '</measure></part></score-partwise>'
+
+  test('reports a stop naming a tuplet that is not the innermost open one', () => {
+    const { mnx, warnings } = convertMusicXML(crossed)
+
+    expect(warnings.map((w) => ({ code: w.code, element: w.element }))).toEqual([
+      { code: 'unrepresentable:tuplet-crossing', element: 'tuplet' },
+      { code: 'unrepresentable:tuplet-crossing', element: 'tuplet' },
+    ])
+    expect(warnings[0]?.message).toContain('cross')
+
+    // The conversion itself stays the nesting: the outer tuplet holds the
+    // inner one, exactly as when the stops match the nesting.
+    const outer = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
+    if (!outer || !('type' in outer) || outer.type !== 'tuplet')
+      throw new Error('expected a tuplet')
+    const inner = outer.content[0]
+    expect(inner && 'type' in inner && inner.type).toBe('tuplet')
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // A marker that states no number is tuplet 1, so an unnumbered marker and
+  // one numbered 1 name the same tuplet.
+  test('matches a stop that states no number to a start numbered 1', () => {
+    const numberedStart =
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><type>eighth</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>' +
+      '<notations><tuplet type="start" number="1"/></notations></note>'
+    const { warnings } = read(
+      measure(numberedStart + tupletNote('D', 4, 'eighth') + tupletNote('E', 4, 'eighth', 'stop')),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  test('matches a numbered stop to a start that states no number', () => {
+    const numberedStop =
+      '<note><pitch><step>E</step><octave>4</octave></pitch><duration>4</duration><type>eighth</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>' +
+      '<notations><tuplet type="stop" number="1"/></notations></note>'
+    const { warnings } = read(
+      measure(tupletNote('C', 4, 'eighth', 'start') + tupletNote('D', 4, 'eighth') + numberedStop),
+    )
+
     expect(warnings).toEqual([])
   })
 })

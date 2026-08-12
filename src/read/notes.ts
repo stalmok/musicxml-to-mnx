@@ -263,6 +263,8 @@ export function readNote(
       starts.map((marker) => ({
         display: tupletDisplayOf(marker),
         stated: statedTupletRatio(marker, quantities, path),
+        // A marker that states no number is tuplet 1, as the spec has it.
+        number: attribute(marker, 'number') ?? '1',
       })),
       warnings,
       context,
@@ -470,8 +472,12 @@ function closeTuplets(
   line: number,
 ): void {
   for (const marker of markers) {
-    if (attribute(marker, 'type') === 'stop')
-      builder.closeTuplet(voice, warnings, context, path, line)
+    if (attribute(marker, 'type') !== 'stop') continue
+    // A stop's placement restates the start's, which the tuplet's orient
+    // already carries, so it is read only for the record.
+    attribute(marker, 'placement')
+    // A marker that states no number is tuplet 1, as the spec has it.
+    builder.closeTuplet(voice, attribute(marker, 'number') ?? '1', warnings, context, path, line)
   }
 }
 
@@ -1014,8 +1020,10 @@ function multiNoteTremoloOf(
 function tupletMarkers(notations: readonly ElementReader[]): readonly XmlElement[] {
   const markers = notations.flatMap((block) => block.children('tuplet'))
   // Pairing is structural: a stop closes the most recently opened tuplet,
-  // because MNX's tuplets nest. The marker's stated number cannot cross that
-  // nesting, so it adds nothing here and is read only for the record.
+  // because MNX's tuplets nest. Each marker's number is read again where it
+  // opens or closes a tuplet, and a stop naming one other than the innermost
+  // open reports the crossing; the read here keeps a marker neither path
+  // takes, such as one on a chord member, accounted.
   for (const marker of markers) attribute(marker, 'number')
   return markers
 }
@@ -1030,16 +1038,20 @@ const TUPLET_DISPLAY = new Map<string, TupletDisplay>([
 
 /**
  * What a start `<tuplet>` marker says about how its tuplet is drawn: whether
- * a bracket is shown, and whether its number and note value are. Each has a
- * home on the MNX tuplet; absent leaves the renderer to decide. Each start
- * marker states its own tuplet's display, so two tuplets starting on the
- * same note keep their own settings.
+ * a bracket is shown, whether its number and note value are, and which side
+ * of the notes it sits on. Each has a home on the MNX tuplet; absent leaves
+ * the renderer to decide. Each start marker states its own tuplet's display,
+ * so two tuplets starting on the same note keep their own settings.
  */
 function tupletDisplayOf(start: XmlElement): TupletDisplaySettings {
   const settings: TupletDisplaySettings = {}
 
   const bracket = attribute(start, 'bracket')
   if (bracket === 'yes' || bracket === 'no') settings.bracket = bracket
+
+  // MusicXML's placement is MNX's orient, both above or below.
+  const placement = attribute(start, 'placement')
+  if (placement === 'above' || placement === 'below') settings.orient = placement
 
   const showNumber = attribute(start, 'show-number')
   const number = showNumber === undefined ? undefined : TUPLET_DISPLAY.get(showNumber)

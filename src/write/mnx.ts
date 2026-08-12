@@ -545,6 +545,7 @@ function writeItem(item: SequenceItem, referenced: ReadonlySet<string>): MNXSequ
         ...(item.bracket !== undefined ? { bracket: item.bracket } : {}),
         ...(item.showNumber !== undefined ? { showNumber: item.showNumber } : {}),
         ...(item.showValue !== undefined ? { showValue: item.showValue } : {}),
+        ...(item.orient !== undefined ? { orient: item.orient } : {}),
       }
 
     case 'grace':

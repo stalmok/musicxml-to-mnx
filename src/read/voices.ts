@@ -43,13 +43,16 @@ export interface TupletDisplaySettings {
   bracket?: 'yes' | 'no'
   showNumber?: TupletDisplay
   showValue?: TupletDisplay
+  orient?: 'above' | 'below'
 }
 
-/** One tuplet start read from a note: how it is drawn, and the ratio its
- * start marker states of its own, when it states one. */
+/** One tuplet start read from a note: how it is drawn, the ratio its start
+ * marker states of its own, when it states one, and the number the marker
+ * gives it, which its stop restates. */
 export interface TupletStart {
   display: TupletDisplaySettings
   stated: { inner: NoteValueQuantity; outer: NoteValueQuantity } | undefined
+  number: string
 }
 
 /** The name a voice goes under when the source does not give it one. */
@@ -81,9 +84,10 @@ interface VoiceBuilder {
   open: { list: SequenceItem[]; opened: 'voice' | 'tuplet' | 'tremolo' }[]
   /**
    * The tuplets currently open, innermost last, each with how much of its
-   * written value a note inside really lasts: 2/3 inside a triplet.
+   * written value a note inside really lasts (2/3 inside a triplet), and the
+   * number its start marker gave it, for its stop to be checked against.
    */
-  openTuplets: { tuplet: Tuplet; ratio: Fraction }[]
+  openTuplets: { tuplet: Tuplet; ratio: Fraction; number: string }[]
   /**
    * The two-note tremolo currently being gathered, when one is. Its item is
    * not in the content yet: it joins once both notes are in and agree.
@@ -186,6 +190,7 @@ interface TupletLevel {
   inner: NoteValueQuantity
   outer: NoteValueQuantity
   display: TupletDisplaySettings
+  number: string
 }
 
 /**
@@ -220,7 +225,7 @@ function tupletLevels(
   const required = divideFractions(cumulative, enclosing)
 
   const known = starts.flatMap((start) =>
-    start.stated ? [{ ...start.stated, display: start.display }] : [],
+    start.stated ? [{ ...start.stated, display: start.display, number: start.number }] : [],
   )
   if (known.length > 0) {
     const holes = starts.length - known.length
@@ -239,6 +244,7 @@ function tupletLevels(
           outer: { value: outer.value, multiple: rest.num },
         }),
         display: start.display,
+        number: start.number,
       }))
     }
     warnings.add(
@@ -254,13 +260,14 @@ function tupletLevels(
   let open = enclosing
   let depth = openRatios.length
   for (const start of starts) {
-    let level: TupletLevel = { inner, outer, display: start.display }
+    let level: TupletLevel = { inner, outer, display: start.display, number: start.number }
     if (depth > 0) {
       const perLevel = divideFractions(cumulative, open)
       level = {
         inner: { value: inner.value, multiple: perLevel.den },
         outer: { value: outer.value, multiple: perLevel.num },
         display: start.display,
+        number: start.number,
       }
     }
     levels.push(level)
@@ -526,11 +533,16 @@ export class MeasureBuilder {
         ...(display.bracket !== undefined ? { bracket: display.bracket } : {}),
         ...(display.showNumber !== undefined ? { showNumber: display.showNumber } : {}),
         ...(display.showValue !== undefined ? { showValue: display.showValue } : {}),
+        ...(display.orient !== undefined ? { orient: display.orient } : {}),
       }
 
       innermost(builder).push(tuplet)
       builder.open.push({ list: content, opened: 'tuplet' })
-      builder.openTuplets.push({ tuplet, ratio: ratioOf(level.inner, level.outer) })
+      builder.openTuplets.push({
+        tuplet,
+        ratio: ratioOf(level.inner, level.outer),
+        number: level.number,
+      })
     }
   }
 
@@ -774,8 +786,15 @@ export class MeasureBuilder {
     return this.#builderFor(voice).open.length > 1
   }
 
+  /**
+   * Closes the innermost open tuplet in this voice. `stated` is the number
+   * the stop marker names; a stop naming a tuplet other than the innermost
+   * open one states tuplets that cross, which MNX's nested tuplets cannot,
+   * so the nesting stands and the crossing is reported.
+   */
   closeTuplet(
     voice: string | undefined,
+    stated: string,
     warnings: WarningCollector,
     context: WarningContext,
     path: DocumentPath,
@@ -797,15 +816,28 @@ export class MeasureBuilder {
        stacks cannot disagree. */
     if (!closed) throw new Error('A tuplet closed with no ratio recorded for it.')
 
+    if (stated !== closed.number) {
+      warnings.add(
+        'unrepresentable:tuplet-crossing',
+        "The source's tuplets cross: a stop names a tuplet other than the last opened. " +
+          "MNX's tuplets nest, so the stop is matched to the innermost open tuplet.",
+        { ...context, line },
+        'tuplet',
+      )
+    }
+
     // Real scores contain brackets whose content does not add up to the
     // stated ratio: a lone quarter under a 3:2 eighth ratio, standing for a
     // triplet quarter. The content is converted as written, and the
     // disagreement is reported, because a consumer cannot tell how much time
     // such a tuplet means to take.
     const { tuplet } = closed
-    const stated = multiplyFractions(fraction(tuplet.inner.multiple), lengthOf(tuplet.inner.value))
+    const statedLength = multiplyFractions(
+      fraction(tuplet.inner.multiple),
+      lengthOf(tuplet.inner.value),
+    )
     const held = writtenLengthOf(tuplet.content)
-    const compared = compareFractions(held, stated)
+    const compared = compareFractions(held, statedLength)
     if (compared !== 0) {
       warnings.add(
         'inconsistent:tuplet',
