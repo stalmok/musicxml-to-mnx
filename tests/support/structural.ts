@@ -247,3 +247,198 @@ export function sourceMeasureLengths(root: XmlElement): number[][] {
   }
   return perPart
 }
+
+/** An event of the converted document, and where in the score it stands. */
+interface PlacedEvent {
+  item: { id?: string; slurs?: { target: string }[] }
+  place: string
+}
+
+/**
+ * Every event of the converted document with the place it begins. Walks each
+ * voice's sequence, since a slur routinely runs between them.
+ */
+function placedEvents(document: MNXDocument): PlacedEvent[] {
+  const placed: PlacedEvent[] = []
+
+  document.parts.forEach((part, partIndex) => {
+    part.measures?.forEach((measure, measureIndex) => {
+      for (const sequence of measure.sequences ?? []) {
+        placeEvents(sequence.content, 0, 1, (item, at) => {
+          placed.push({ item, place: place(partIndex, measureIndex, at) })
+        })
+      }
+    })
+  })
+  return placed
+}
+
+function place(part: number, measure: number, at: number): string {
+  // Cursor arithmetic on one side subtracts its way back to the measure start
+  // and lands a hair below zero, which prints with a sign the other side
+  // never has. Rounded to where the two are read as the same point.
+  const rounded = Math.round(at * 1e9) / 1e9
+  const from = rounded === 0 ? 0 : rounded
+  return `part ${String(part + 1)} measure ${String(measure + 1)} at ${from.toFixed(9)}`
+}
+
+/** The same walk as collectStarts, handing back each event and where it is. */
+function placeEvents(
+  items: readonly MNXSequenceItem[],
+  at: number,
+  scale: number,
+  found: (item: PlacedEvent['item'], at: number) => void,
+): number {
+  for (const item of items) {
+    if ('type' in item && item.type === 'tuplet') {
+      const outer = writtenLength(item.outer.duration) * item.outer.multiple
+      const inner = writtenLength(item.inner.duration) * item.inner.multiple
+      at = placeEvents(item.content, at, (scale * outer) / inner, found)
+      continue
+    }
+    // The notes of a two-note tremolo begin one outer unit apart.
+    if ('type' in item && item.type === 'tremolo') {
+      const unit = writtenLength(item.outer.duration) * scale
+      item.content.forEach((inner, index) => {
+        found(inner, at + index * unit)
+      })
+      at += unit * item.outer.multiple
+      continue
+    }
+    // Grace notes are squeezed in beside the event they ornament and take
+    // none of its time, so every one of a group begins where that event does.
+    if ('type' in item && item.type === 'grace') {
+      for (const inner of item.content) found(inner, at)
+      continue
+    }
+    if ('type' in item && item.type === 'space') {
+      at += (item.duration[0] / item.duration[1]) * scale
+      continue
+    }
+    found(item, at)
+    at += writtenLength(item.duration) * scale
+  }
+  return at
+}
+
+/**
+ * Every slur in the converted document, as the two places it joins. The event
+ * a slur is stated on carries no id of its own unless something points at it,
+ * so each end is named by where it stands rather than by id.
+ */
+export function slurSpans(document: MNXDocument): Set<string> {
+  const placed = placedEvents(document)
+  const byId = new Map<string, string>()
+  for (const { item, place: at } of placed) {
+    if (item.id !== undefined) byId.set(item.id, at)
+  }
+
+  const spans = new Set<string>()
+  for (const { item, place: from } of placed) {
+    for (const slur of item.slurs ?? []) {
+      const to = byId.get(slur.target)
+      if (to !== undefined) spans.add(`${from} -> ${to}`)
+    }
+  }
+  return spans
+}
+
+/**
+ * The slurs the source states beyond doubt, as the two places each joins.
+ *
+ * MusicXML writes a measure one voice at a time, so within a voice the
+ * document's order is the music's. A slur that opens and closes there can be
+ * paired by reading alone, but only where the voice leaves no room for doubt:
+ * its ends of that number must account for each other exactly, and it must
+ * never hold two of them open at once. A voice whose ends do not balance has
+ * slurs running to another voice, and one that nests them leaves which start
+ * a stop closes open to reading. Both are what the converter has to work out,
+ * so both are left out and this can disagree with it rather than assume it.
+ *
+ * A slur written on a chord member is left out too: the converter reports
+ * those as a loss rather than carrying them.
+ */
+export function sourceSlurSpans(root: XmlElement): Set<string> {
+  const spans = new Set<string>()
+
+  root.children
+    .filter((c) => c.name === 'part')
+    .forEach((part, partIndex) => {
+      // Every slur end of the part, gathered per voice and slur number in the
+      // order it was read, so each stream can be judged as a whole.
+      const streams = new Map<string, { kind: string; at: string }[]>()
+      let divisions = 1
+
+      part.children
+        .filter((c) => c.name === 'measure')
+        .forEach((measure, measureIndex) => {
+          let position = 0
+          let voiceInForce = ''
+
+          for (const item of measure.children) {
+            const durationOf = () =>
+              Number(item.children.find((c) => c.name === 'duration')?.text.trim() ?? '0') /
+              (divisions * 4)
+
+            if (item.name === 'attributes') {
+              const stated = item.children.find((c) => c.name === 'divisions')?.text.trim()
+              if (stated) divisions = Number(stated)
+              continue
+            }
+            if (item.name === 'backup') {
+              position -= durationOf()
+              continue
+            }
+            if (item.name === 'forward') {
+              position += durationOf()
+              continue
+            }
+            if (item.name !== 'note') continue
+
+            const isChord = item.children.some((c) => c.name === 'chord')
+            const isGrace = item.children.some((c) => c.name === 'grace')
+            const stated = item.children.find((c) => c.name === 'voice')?.text.trim() ?? ''
+            const voice = stated === '' && isChord ? voiceInForce : stated
+            if (!isChord) voiceInForce = voice
+
+            if (!isChord) {
+              const here = place(partIndex, measureIndex, position)
+              for (const notations of item.children.filter((c) => c.name === 'notations')) {
+                for (const slur of notations.children.filter((c) => c.name === 'slur')) {
+                  const kind = slur.attributes.type ?? ''
+                  if (kind !== 'start' && kind !== 'stop') continue
+                  const key = `${voice}|${slur.attributes.number ?? '1'}`
+                  streams.set(key, [...(streams.get(key) ?? []), { kind, at: here }])
+                }
+              }
+            }
+            if (!isChord && !isGrace) position += durationOf()
+          }
+        })
+
+      for (const ends of streams.values()) {
+        const open: string[] = []
+        const paired: string[] = []
+        let plain = true
+        for (const end of ends) {
+          if (end.kind === 'start') {
+            open.push(end.at)
+            if (open.length > 1) {
+              plain = false
+              break
+            }
+            continue
+          }
+          const from = open.pop()
+          if (from === undefined) {
+            plain = false
+            break
+          }
+          paired.push(`${from} -> ${end.at}`)
+        }
+        if (!plain || open.length > 0) continue
+        for (const span of paired) spans.add(span)
+      }
+    })
+  return spans
+}

@@ -288,6 +288,35 @@ describe('slurs', () => {
     expect(warnings.list()).toEqual([])
   })
 
+  // Exporters number a slur within the voice they write it in, so two voices
+  // sounding at once each hold their own slur numbered 1. Paired as one
+  // stream in time order, the first voice's stop would close the second
+  // voice's start, and the two hands would be sewn together.
+  test('keeps two voices holding one slur number apart', () => {
+    const warnings = new WarningCollector()
+    const score = readScore(
+      parseXmlRoot(
+        measures(
+          DIVISIONS +
+            note('C', slur('start'), '1') +
+            note('D', slur('stop'), '1') +
+            '<backup><duration>8</duration></backup>' +
+            note('E', slur('start'), '2') +
+            note('F', slur('stop'), '2'),
+        ),
+      ),
+      warnings,
+    )
+    const voices = (score.parts[0]?.measures[0]?.sequences ?? []).map((sequence) =>
+      sequence.content.filter((item): item is Event => item.kind === 'event'),
+    )
+    const [upper, lower] = voices as [Event[], Event[]]
+
+    expect(upper[0]?.slurs[0]?.target).toBe(upper[1]?.id)
+    expect(lower[0]?.slurs[0]?.target).toBe(lower[1]?.id)
+    expect(warnings.list()).toEqual([])
+  })
+
   // A grace note takes none of the measure's time, so it begins where the
   // note it ornaments begins. The slur from one to the other therefore has
   // both ends at one point, and the document says which end is which.

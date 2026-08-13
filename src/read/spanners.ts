@@ -50,6 +50,8 @@ interface OpenSlur {
 
 /** One end of a slur, and on a stop what that end states. */
 interface SlurEnd extends SpanEnd<OpenSlur> {
+  /** The voice it is written in, which pairs a voice's own slurs first. */
+  voice?: string | undefined
   stop?: {
     event: Event
     /** The side the slur bends to at its close, for an S-shaped one. */
@@ -307,6 +309,7 @@ export class SpannerResolver {
     number: string,
     side: CurveSide | undefined,
     lineType: LineType | undefined,
+    voice: string | undefined,
     measure: number,
     position: Fraction,
     context: WarningContext,
@@ -316,6 +319,7 @@ export class SpannerResolver {
       number,
       measure,
       position,
+      voice,
       covers: position,
       payload: { event, side, lineType },
       context,
@@ -327,6 +331,7 @@ export class SpannerResolver {
     event: Event,
     number: string,
     sideEnd: CurveSide | undefined,
+    voice: string | undefined,
     measure: number,
     position: Fraction,
     context: WarningContext,
@@ -336,6 +341,7 @@ export class SpannerResolver {
       number,
       measure,
       position,
+      voice,
       covers: position,
       payload: undefined,
       context,
@@ -352,6 +358,12 @@ export class SpannerResolver {
    * has its stop written before its start. Paired as met, that stop closed
    * whichever slur was open from an earlier measure, and every later slur of
    * the same number shifted along with it.
+   *
+   * Each voice pairs its own slurs first. A slur that opens and closes in one
+   * voice is that voice's beyond doubt, and exporters reuse one number in
+   * every voice, so pairing the part as a single stream lets one voice's stop
+   * close another's start. What no voice accounts for is what genuinely runs
+   * between them, and that pairs across the part afterwards.
    */
   #resolveSlurs(warnings: WarningCollector): void {
     // A slur's two ends mark the very points they are written on, so no stop
@@ -362,31 +374,44 @@ export class SpannerResolver {
       'backwards-stop': 'A slur would end before it starts, and is not carried over.',
       'unclosed-start': 'A slur starts where nothing ends it, and is not carried over.',
     }
+    const join = (open: OpenSlur, end: SlurEnd): void => {
+      /* v8 ignore next 2 -- join hands back a stop, and every stop is
+         pushed with the event it is written on. */
+      if (!end.stop) throw new Error('A slur stop with no event.')
+      const sideEnd = end.stop.sideEnd
+      open.event.slurs = [
+        ...open.event.slurs,
+        {
+          target: end.stop.event.id,
+          side: open.side,
+          // MNX's sideEnd is for an S-shaped slur that ends bending the other
+          // way; a stop merely restating the start's side adds nothing.
+          ...(sideEnd !== undefined && sideEnd !== open.side ? { sideEnd } : {}),
+          ...(open.lineType !== undefined ? { lineType: open.lineType } : {}),
+        },
+      ]
+    }
+
+    const byVoice = new Map<string, SlurEnd[]>()
+    for (const end of this.#slurEnds) {
+      const voice = end.voice ?? ''
+      byVoice.set(voice, [...(byVoice.get(voice) ?? []), end])
+    }
+
+    // What one voice cannot account for on its own, kept for the pass across
+    // the part rather than reported: another voice may well close it.
+    const crossing: SlurEnd[] = []
+    for (const ends of byVoice.values()) {
+      // A grace note begins where the note it ornaments begins, so a slur
+      // between the two has both ends at one point.
+      pairSpans<OpenSlur, SlurEnd>(ends, join, (_reason, end) => crossing.push(end), 'as-written')
+    }
     pairSpans<OpenSlur, SlurEnd>(
-      this.#slurEnds,
-      (open, end) => {
-        /* v8 ignore next 2 -- join hands back a stop, and every stop is
-           pushed with the event it is written on. */
-        if (!end.stop) throw new Error('A slur stop with no event.')
-        const sideEnd = end.stop.sideEnd
-        open.event.slurs = [
-          ...open.event.slurs,
-          {
-            target: end.stop.event.id,
-            side: open.side,
-            // MNX's sideEnd is for an S-shaped slur that ends bending the
-            // other way; a stop merely restating the start's side adds
-            // nothing.
-            ...(sideEnd !== undefined && sideEnd !== open.side ? { sideEnd } : {}),
-            ...(open.lineType !== undefined ? { lineType: open.lineType } : {}),
-          },
-        ]
-      },
+      crossing,
+      join,
       (reason, end) => {
         warnings.add('unclosed:spanner', messages[reason], end.context, 'slur')
       },
-      // A grace note begins where the note it ornaments begins, so a slur
-      // between the two has both ends at one point.
       'as-written',
     )
     this.#slurEnds.length = 0

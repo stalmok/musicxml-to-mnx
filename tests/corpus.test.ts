@@ -28,8 +28,10 @@ import {
   collectStarts,
   pitchesOf,
   sounding,
+  slurSpans,
   sourceMeasureLengths,
   sourcePitches,
+  sourceSlurSpans,
 } from './support/structural.js'
 import baseline from './corpus/warning-baseline.json' with { type: 'json' }
 
@@ -729,6 +731,26 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     }
 
     expect(disagreements.slice(0, 5)).toEqual([])
+  })
+
+  // A slur whose two ends sit in one voice is unambiguous in the source: a
+  // measure is written one voice at a time, so within a voice the document's
+  // order is the music's. Every one of those has to come out joining the same
+  // two places. This reads the source on its own, because the pairing is
+  // exactly what the converter has to work out, and a slur pointing at the
+  // wrong note is legal MNX that no other check here can see.
+  test('joins every slur the source states within one voice', () => {
+    // Where a written value disagrees with its duration the converter carries
+    // the written value, so the events sit where the writing puts them and
+    // the source's own durations are no longer the yardstick, exactly as for
+    // the measure lengths above.
+    if (warnings.some((warning) => warning.code === 'inconsistent:duration')) return
+
+    const stated = sourceSlurSpans(parseXmlRoot(source))
+    const converted = slurSpans(mnx)
+    const missing = [...stated].filter((span) => !converted.has(span))
+
+    expect(missing.slice(0, 5)).toEqual([])
   })
 
   // Losses may only shrink. A rise means something stopped being converted

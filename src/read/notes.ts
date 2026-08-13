@@ -895,9 +895,18 @@ function readSlurs(
     // anywhere: a "continue" edge's side has no home in MNX and is dropped.
     const side = curveSide(slur)
     if (type === 'stop') {
-      state.spanners.stopSlur(event, number, side, state.measure, at, context)
+      state.spanners.stopSlur(event, number, side, voice, state.measure, at, context)
     } else if (type === 'start') {
-      state.spanners.startSlur(event, number, side, slurLineType(slur), state.measure, at, context)
+      state.spanners.startSlur(
+        event,
+        number,
+        side,
+        slurLineType(slur),
+        voice,
+        state.measure,
+        at,
+        context,
+      )
     } else if (type !== 'continue') {
       // "continue" marks a note partway along a slur. MNX states only where a
       // slur begins and ends, so there is nothing for it to carry, and
