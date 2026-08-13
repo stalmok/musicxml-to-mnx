@@ -175,6 +175,19 @@ export function pairSpans<T>(
   }
 }
 
+/**
+ * Puts a dynamic in a measure at the point the source drew it, before the
+ * first one written later. The measure's marks are read in document order,
+ * which a <backup> can take back to an earlier point, so this is where the
+ * source has it rather than a sort of the whole measure.
+ */
+function insertAtPosition(dynamics: Dynamic[] | undefined, added: Dynamic): void {
+  if (!dynamics) return
+  const after = dynamics.findIndex((mark) => compareFractions(mark.position, added.position) > 0)
+  if (after < 0) dynamics.push(added)
+  else dynamics.splice(after, 0, added)
+}
+
 function inTimeOrder<T>(ends: readonly SpanEnd<T>[]): SpanEnd<T>[] {
   return ends
     .map((end, index) => ({ end, index }))
@@ -428,8 +441,8 @@ export class SpannerResolver {
       },
     )
 
-    // Wording written at a closing edge goes on the hairpin the pairing gives
-    // that stop. It is drawn on its own where the stop closed nothing, and
+    // Wording written at a closing edge goes on the hairpin the pairing joins
+    // to that stop. It is drawn on its own where the stop closed nothing, and
     // where the hairpin already carries wording from its starting edge: the
     // source wrote both, so the closing words do not overwrite the opening.
     for (const end of this.#wedgeEnds) {
@@ -437,7 +450,7 @@ export class SpannerResolver {
       if (!wording) continue
       const hairpin = closed.get(end)
       if (hairpin && hairpin.suffix === undefined) hairpin.suffix = wording.text
-      else measures[end.measure]?.dynamics.push(wording.standalone)
+      else insertAtPosition(measures[end.measure]?.dynamics, wording.standalone)
     }
     this.#wedgeEnds.length = 0
   }

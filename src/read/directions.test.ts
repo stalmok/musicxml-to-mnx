@@ -495,6 +495,83 @@ describe('dynamics', () => {
     ])
   })
 
+  // The words stand alone only once the pairing has run, which is after the
+  // rest of the measure is read. They belong where the source drew them, so
+  // they go in at their position rather than after everything read later.
+  test('places wording that stands alone at its own position in the measure', () => {
+    const { measure, warnings } = read(
+      inMeasure(
+        '<direction><direction-type>' +
+          '<wedge type="crescendo"/>' +
+          '<dynamics><other-dynamics>molto</other-dynamics></dynamics>' +
+          '</direction-type></direction>' +
+          note('C') +
+          '<direction><direction-type>' +
+          '<dynamics><other-dynamics>cresc.</other-dynamics></dynamics>' +
+          '<wedge type="stop"/>' +
+          '</direction-type></direction>' +
+          note('D') +
+          direction('<dynamics><f/></dynamics>'),
+      ),
+    )
+
+    expect(measure?.dynamics.map((d) => d.position)).toEqual([
+      { num: 0, den: 1 },
+      { num: 1, den: 4 },
+      { num: 1, den: 2 },
+    ])
+    expect(measure?.dynamics[1]?.prefix).toBe('cresc.')
+    expect(warnings).toEqual([])
+  })
+
+  // The words are written at a closing edge, so they stay with that edge even
+  // where it closes nothing. They are not carried on to the next mark, which
+  // the source wrote for itself.
+  test('keeps wording at a stray stop off the mark that follows it', () => {
+    const { measure, warnings } = read(
+      inMeasure(
+        note('C') +
+          '<direction><direction-type>' +
+          '<dynamics><other-dynamics>dim.</other-dynamics></dynamics>' +
+          '<wedge type="stop"/>' +
+          '<dynamics><p/></dynamics>' +
+          '</direction-type></direction>',
+      ),
+    )
+
+    expect(measure?.dynamics).toEqual([
+      { position: { num: 1, den: 4 }, value: 'p' },
+      { position: { num: 1, den: 4 }, prefix: 'dim.' },
+    ])
+    expect(warnings.map((w) => w.message)).toEqual([
+      'A hairpin stops where none had started, and is not carried over.',
+    ])
+  })
+
+  test('writes wording standing alone onto schema-valid MNX', () => {
+    const { mnx, warnings } = convertMusicXML(
+      inMeasure(
+        '<direction placement="above"><direction-type>' +
+          '<wedge type="crescendo"/>' +
+          '<dynamics><other-dynamics>molto</other-dynamics></dynamics>' +
+          '</direction-type></direction>' +
+          note('C') +
+          '<direction placement="above"><direction-type>' +
+          '<dynamics><other-dynamics>cresc.</other-dynamics></dynamics>' +
+          '<wedge type="stop"/>' +
+          '</direction-type></direction>',
+      ),
+    )
+
+    expect(mnx.parts[0]?.measures[0]?.dynamics?.[1]).toMatchObject({
+      type: 'immediate',
+      prefix: 'cresc.',
+      orient: 'above',
+    })
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
   // A source can word both edges of one hairpin. The suffix set where it
   // started stays, and the closing words stand alone rather than overwrite it.
   test('keeps closing wording standing alone when the hairpin already has a suffix', () => {
