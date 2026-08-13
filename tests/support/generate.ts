@@ -3,9 +3,10 @@
 // The point is size on demand: a score with a chosen number of parts,
 // measures, and notes per measure, so the tests can compare conversion time
 // across sizes. The content exercises the paths that dominate real songs:
-// notes with pitches and types, chords, beams, slurs, and lyrics. One test
-// converts a generated score and schema-validates the output, so the
-// generator is known to produce legal input and not merely large input.
+// notes with pitches and types, chords, beams, slurs, lyrics, and a hairpin
+// worded at its closing edge. One test converts a generated score and
+// schema-validates the output, so the generator is known to produce legal
+// input and not merely large input.
 
 export interface GeneratedScore {
   /** How many parts. */
@@ -61,7 +62,27 @@ function measureLines(score: GeneratedScore, measure: number): string[] {
   const type = noteTypes[score.notesPerMeasure]
   const beamed = score.notesPerMeasure > 4
   const perBeat = score.notesPerMeasure / 4
+  // A hairpin over the measure, opened here and closed before the last note.
+  // Both ends wait for the whole part to be read before they are paired, so
+  // this puts the spanner pairing on the measured path.
+  lines.push(
+    '      <direction>',
+    '        <direction-type><wedge type="crescendo" number="1"/></direction-type>',
+    '      </direction>',
+  )
   for (let note = 0; note < score.notesPerMeasure; note++) {
+    // The wording at the closing edge becomes the hairpin's suffix, which the
+    // pairing settles once the part is in, and the stop closes the hairpin.
+    if (note === score.notesPerMeasure - 1) {
+      lines.push(
+        '      <direction>',
+        '        <direction-type>',
+        '          <dynamics><other-dynamics>cresc.</other-dynamics></dynamics>',
+        '          <wedge type="stop" number="1"/>',
+        '        </direction-type>',
+        '      </direction>',
+      )
+    }
     const step = steps[((measure - 1) * score.notesPerMeasure + note) % steps.length] ?? 'C'
     lines.push(
       '      <note>',

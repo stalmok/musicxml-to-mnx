@@ -21,6 +21,13 @@ describe('generated scores', () => {
       // holds exactly notesPerMeasure events, and every fourth one carries
       // two notes.
       const firstMeasure = mnx.parts[0]?.measures?.[0]
+
+      // Each measure carries a hairpin worded at its closing edge, which puts
+      // the pairing of spans and the wording that waits for it on the path the
+      // performance tests measure.
+      expect(firstMeasure?.dynamics).toHaveLength(1)
+      expect(firstMeasure?.dynamics?.[0]).toMatchObject({ type: 'gradual', suffix: 'cresc.' })
+
       const events = firstMeasure?.sequences?.[0]?.content ?? []
       expect(events).toHaveLength(notesPerMeasure)
       events.forEach((event, index) => {

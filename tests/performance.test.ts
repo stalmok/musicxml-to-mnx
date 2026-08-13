@@ -36,7 +36,7 @@ test('time scales linearly with measure count', () => {
   const small = generateScore({ parts: 1, measures: 100, notesPerMeasure: 8 })
   const large = generateScore({ parts: 1, measures: 800, notesPerMeasure: 8 })
 
-  // 8x the measures: observed ~7x; a quadratic pass multiplies that by 8.
+  // 8x the measures: observed ~8x; a quadratic pass multiplies that by 8.
   expect(timeRatio(small, large)).toBeLessThan(24)
 }, 60_000)
 
@@ -44,7 +44,9 @@ test('time scales linearly with part count', () => {
   const small = generateScore({ parts: 1, measures: 100, notesPerMeasure: 8 })
   const large = generateScore({ parts: 8, measures: 100, notesPerMeasure: 8 })
 
-  // 8x the parts: observed ~6x; a quadratic pass multiplies that by 8.
+  // 8x the parts: observed ~9x, since the work per part is what grows and
+  // the one-part score carries the fixed cost of the score around it. Time
+  // per part is flat from 2 parts to 16. A quadratic pass multiplies it by 8.
   expect(timeRatio(small, large)).toBeLessThan(24)
 }, 60_000)
 
@@ -52,14 +54,14 @@ test('time scales linearly with notes per measure', () => {
   const sparse = generateScore({ parts: 1, measures: 100, notesPerMeasure: 4 })
   const dense = generateScore({ parts: 1, measures: 100, notesPerMeasure: 16 })
 
-  // 4x the density: observed ~3.6x; a quadratic pass multiplies that by 4,
+  // 4x the density: observed ~4.2x; a quadratic pass multiplies that by 4,
   // to ~14x, so this bound must stay under it.
   expect(timeRatio(sparse, dense)).toBeLessThan(10)
 }, 60_000)
 
 test('a large score converts in bounded time', () => {
   // Four parts, a thousand measures, 40,000 notes: an order of magnitude
-  // past the longest corpus songs. Observed around 1.5s plain and 6.5s under
+  // past the longest corpus songs. Observed around 1.9s plain and 6.5s under
   // coverage instrumentation on a dev machine; CI runners are slower and run
   // the other test files in parallel. The bound leaves room for all of that
   // but not for a complexity regression, which would take minutes at this
