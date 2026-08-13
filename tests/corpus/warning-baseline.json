@@ -135,7 +135,6 @@
     "extend": 7,
     "wedge": 2,
     "staff-layout": 16,
-    "slur": 2,
     "print-object": 1
   },
   "arne-celia-s-complaint": {
@@ -633,8 +632,7 @@
     "extend": 15,
     "print-object": 36,
     "cue": 8,
-    "pedal": 6,
-    "slur": 2
+    "pedal": 6
   },
   "beach-3-i-send-my-heart-up-to-thee": {
     "midi-device": 3,
@@ -660,8 +658,7 @@
     "sound@dynamics": 21,
     "cue": 7,
     "dot@placement": 2,
-    "pedal": 52,
-    "slur": 2
+    "pedal": 52
   },
   "beethoven-1-bitten": {
     "midi-device": 2,
@@ -851,7 +848,6 @@
     "pedal": 36,
     "notehead": 3,
     "tie": 4,
-    "slur": 4,
     "type@size": 1
   },
   "berlioz-1-villanelle": {
@@ -905,7 +901,6 @@
     "sound@dynamics": 15,
     "staff-layout": 52,
     "tie": 2,
-    "slur": 2,
     "pedal": 16
   },
   "berlioz-4-absence": {
@@ -1226,8 +1221,7 @@
     "cue": 2,
     "pedal": 4,
     "stem": 2,
-    "notehead": 4,
-    "slur": 2
+    "notehead": 4
   },
   "boulanger-10-deux-ancolies": {
     "midi-device": 2,
@@ -1277,7 +1271,6 @@
     "clef": 1,
     "type@size": 2,
     "pedal": 8,
-    "slur": 2,
     "bracket": 2
   },
   "boulanger-12-je-garde-une-medaille-d-elle": {
@@ -1582,7 +1575,6 @@
     "sound@tempo": 3,
     "direction@system": 3,
     "sound@dynamics": 10,
-    "slur": 4,
     "print-object": 132,
     "pedal": 16
   },
@@ -1750,8 +1742,7 @@
     "sound@dynamics": 33,
     "extend": 21,
     "wedge": 8,
-    "staff-layout": 37,
-    "slur": 2
+    "staff-layout": 37
   },
   "bridge-2-speak-to-me-my-love": {
     "midi-device": 2,
@@ -2102,8 +2093,8 @@
     "sound@dynamics": 13,
     "tie": 2,
     "dot@placement": 6,
-    "slur": 2,
-    "print-object": 1
+    "print-object": 1,
+    "slur": 2
   },
   "butterworth-1-bredon-hill": {
     "midi-device": 2,
@@ -2145,8 +2136,7 @@
     "extend": 8,
     "print-object": 7,
     "dashes": 22,
-    "pedal": 6,
-    "slur": 2
+    "pedal": 6
   },
   "butterworth-2-oh-fair-enough-are-sky-and-plain": {
     "midi-device": 2,
@@ -2391,8 +2381,7 @@
     "extend": 18,
     "dashes": 2,
     "sound@tempo": 5,
-    "print-object": 13,
-    "slur": 2
+    "print-object": 13
   },
   "chaminade-amour-d-automne": {
     "midi-device": 2,
@@ -2512,8 +2501,7 @@
     "sound@dynamics": 18,
     "extend": 8,
     "print-object": 171,
-    "dot@placement": 2,
-    "slur": 2
+    "dot@placement": 2
   },
   "chausson-1-serre-chaude": {
     "midi-device": 2,
@@ -2961,7 +2949,6 @@
     "direction@system": 2,
     "sound@dynamics": 15,
     "notehead": 5,
-    "slur": 2,
     "print-object": 2
   },
   "cornelius-2-veilchen": {
@@ -3339,8 +3326,7 @@
     "dashes": 6,
     "staff-layout": 22,
     "sound@dynamics": 13,
-    "print-object": 13,
-    "slur": 2
+    "print-object": 13
   },
   "debussy-2-il-pleure-dans-mon-coeur": {
     "midi-device": 2,
@@ -3359,7 +3345,6 @@
     "sound@dynamics": 60,
     "extend": 7,
     "notehead": 17,
-    "slur": 4,
     "print-object": 10,
     "dot@placement": 13
   },
@@ -3385,7 +3370,6 @@
     "staff-layout": 22,
     "sound@dynamics": 16,
     "print-object": 19,
-    "slur": 4,
     "tie": 2,
     "stem": 1
   },
@@ -3793,8 +3777,7 @@
     "print-object": 24,
     "type@size": 3,
     "notehead": 2,
-    "pedal": 42,
-    "slur": 2
+    "pedal": 42
   },
   "elgar-2-the-river": {
     "midi-device": 2,
@@ -3837,8 +3820,7 @@
     "cue": 7,
     "print-object": 1,
     "pedal": 10,
-    "type@size": 5,
-    "slur": 2
+    "type@size": 5
   },
   "elgar-4-the-poet-s-life": {
     "midi-device": 2,
@@ -3919,7 +3901,6 @@
     "dashes": 10,
     "cue": 4,
     "pedal": 8,
-    "slur": 2,
     "tie": 4
   },
   "faisst-1-altdeutsches-lied": {
@@ -3964,8 +3945,7 @@
     "sound@dynamics": 34,
     "extend": 2,
     "dashes": 8,
-    "print-object": 52,
-    "slur": 2
+    "print-object": 52
   },
   "faisst-1-stimme-eines-seligen-geistes": {
     "midi-device": 2,
@@ -4181,7 +4161,6 @@
     "sound@dynamics": 22,
     "extend": 5,
     "print-object": 35,
-    "slur": 2,
     "pedal": 16,
     "notehead": 26,
     "dot@placement": 4,
@@ -4225,8 +4204,7 @@
     "extend": 18,
     "dot@placement": 5,
     "pedal": 32,
-    "print-object": 16,
-    "slur": 2
+    "print-object": 16
   },
   "faure-3-barcarolle": {
     "midi-device": 2,
@@ -4286,7 +4264,6 @@
     "sound@tempo": 2,
     "notehead": 59,
     "pedal": 108,
-    "slur": 4,
     "print-object": 86
   },
   "faure-4-la-rose": {
@@ -5042,7 +5019,6 @@
     "type@size": 16,
     "ending": 2,
     "turn": 1,
-    "slur": 4,
     "staff-details": 2,
     "note": 12
   },
@@ -5095,7 +5071,6 @@
     "sound@dynamics": 6,
     "extend": 8,
     "words": 19,
-    "slur": 4,
     "stem": 1
   },
   "grandval-le-bohemien": {
@@ -5114,8 +5089,7 @@
     "extend": 23,
     "print-object": 21,
     "trill-mark": 3,
-    "wavy-line": 2,
-    "slur": 2
+    "wavy-line": 2
   },
   "grandval-les-lucioles": {
     "midi-device": 2,
@@ -5493,7 +5467,6 @@
     "direction@system": 3,
     "sound@dynamics": 36,
     "extend": 8,
-    "slur": 2,
     "print-object": 2,
     "caesura": 1
   },
@@ -5571,8 +5544,7 @@
     "direction@system": 1,
     "sound@dynamics": 23,
     "extend": 6,
-    "print-object": 7,
-    "slur": 2
+    "print-object": 7
   },
   "hahn-5-l-heure-exquise": {
     "midi-device": 2,
@@ -5709,8 +5681,7 @@
     "extend": 7,
     "print-object": 13,
     "cue": 3,
-    "pedal": 58,
-    "slur": 2
+    "pedal": 58
   },
   "hardelot-in-1822": {
     "midi-device": 2,
@@ -5904,7 +5875,6 @@
     "sound@dynamics": 12,
     "notehead": 5,
     "print-object": 7,
-    "slur": 2,
     "tie": 2
   },
   "haydn-7-the-mermaid-s-song-hob-xxvia25": {
@@ -6191,8 +6161,7 @@
     "pedal": 76,
     "print-object": 17,
     "tie": 4,
-    "dot@placement": 3,
-    "slur": 2
+    "dot@placement": 3
   },
   "holmes-ton-nom": {
     "midi-device": 2,
@@ -6259,8 +6228,7 @@
     "extend": 14,
     "cue": 1,
     "notehead": 1,
-    "print-object": 16,
-    "slur": 2
+    "print-object": 16
   },
   "horrocks-the-blackbird": {
     "midi-device": 3,
@@ -6414,7 +6382,6 @@
     "direction@system": 1,
     "extend": 1,
     "sound@dynamics": 5,
-    "slur": 2,
     "pedal": 2,
     "print-object": 1
   },
@@ -6437,7 +6404,6 @@
     "print-object": 36,
     "technical": 12,
     "tie": 2,
-    "slur": 2,
     "notehead": 2
   },
   "jaell-1-quatre-heures-du-matin": {
@@ -6505,8 +6471,7 @@
     "pedal": 2,
     "sound@dynamics": 19,
     "dashes": 8,
-    "notehead": 1,
-    "slur": 2
+    "notehead": 1
   },
   "jaell-3-les-papillons": {
     "midi-device": 2,
@@ -6781,7 +6746,6 @@
     "direction@system": 7,
     "print-object": 202,
     "pedal": 6,
-    "slur": 4,
     "tie": 4,
     "notehead": 2,
     "dot@placement": 5,
@@ -7243,7 +7207,6 @@
     "sound@tempo": 1,
     "direction@system": 1,
     "sound@dynamics": 8,
-    "slur": 2,
     "print-object": 21,
     "cue": 6,
     "extend": 5,
@@ -7403,8 +7366,7 @@
     "print-object": 14,
     "extend": 4,
     "trill-mark": 1,
-    "dashes": 2,
-    "slur": 2
+    "dashes": 2
   },
   "leoncavallo-mattinata": {
     "midi-device": 2,
@@ -7508,7 +7470,6 @@
     "pedal": 100,
     "dashes": 8,
     "notehead": 40,
-    "slur": 2,
     "tie": 10,
     "staff-details": 21
   },
@@ -7585,8 +7546,7 @@
     "direction@system": 1,
     "sound@dynamics": 41,
     "extend": 12,
-    "print-object": 111,
-    "slur": 2
+    "print-object": 111
   },
   "mackenzie-5-april-weather": {
     "midi-device": 2,
@@ -7646,7 +7606,6 @@
     "dot@placement": 1,
     "pedal": 6,
     "notehead": 10,
-    "slur": 4,
     "dashes": 2
   },
   "mackenzie-one-who-never-turned-his-back": {
@@ -8418,7 +8377,6 @@
     "clef@after-barline": 1,
     "clef": 1,
     "pedal": 4,
-    "slur": 2,
     "dashes": 2
   },
   "netzel-2-malgre-moi": {
@@ -8584,7 +8542,6 @@
     "staff-layout": 50,
     "pedal": 94,
     "dashes": 6,
-    "slur": 2,
     "wedge": 1,
     "time": 1
   },
@@ -9100,8 +9057,7 @@
     "notehead": 9,
     "type@size": 8,
     "print-object": 20,
-    "pedal": 8,
-    "slur": 2
+    "pedal": 8
   },
   "poldowski-l-heure-exquise": {
     "midi-device": 2,
@@ -9226,7 +9182,6 @@
     "extend": 17,
     "sound@tempo": 3,
     "staff-layout": 37,
-    "slur": 4,
     "pedal": 21,
     "print-object": 8,
     "wedge": 6
@@ -9300,7 +9255,6 @@
     "staff-layout": 27,
     "sound@tempo": 1,
     "notehead": 5,
-    "slur": 4,
     "pedal": 6
   },
   "quilter-3-blow-blow-thou-winter-wind": {
@@ -9327,8 +9281,7 @@
     "wedge": 2,
     "staff-layout": 38,
     "pedal": 26,
-    "clef@after-barline": 1,
-    "slur": 2
+    "clef@after-barline": 1
   },
   "quilter-3-the-maiden-blush": {
     "midi-device": 2,
@@ -9352,7 +9305,6 @@
     "wedge": 3,
     "staff-layout": 16,
     "sound@tempo": 2,
-    "slur": 2,
     "play": 2
   },
   "quilter-4-to-daisies": {
@@ -9575,8 +9527,7 @@
     "sound@tempo": 1,
     "direction@system": 1,
     "sound@dynamics": 20,
-    "staff-layout": 8,
-    "slur": 2
+    "staff-layout": 8
   },
   "satie-chez-le-docteur": {
     "midi-device": 2,
@@ -9747,8 +9698,7 @@
     "wedge": 6,
     "staff-layout": 15,
     "sound@dynamics": 12,
-    "other-articulation": 1,
-    "slur": 2
+    "other-articulation": 1
   },
   "schoenberg-4-da-meine-lippen-reglos-sind-und-brennen": {
     "midi-device": 2,
@@ -10117,8 +10067,7 @@
     "sound@tempo": 1,
     "direction@system": 1,
     "sound@dynamics": 2,
-    "print-object": 6,
-    "slur": 2
+    "print-object": 6
   },
   "schumann-1-im-wunderschonen-monat-mai": {
     "midi-device": 2,
@@ -10140,7 +10089,6 @@
     "sound@dynamics": 3,
     "staff-layout": 15,
     "pedal": 4,
-    "slur": 4,
     "tie": 4,
     "notehead": 11,
     "dashes": 4,
@@ -10221,8 +10169,7 @@
     "extend": 5,
     "sound@dynamics": 4,
     "print-object": 2,
-    "tie": 2,
-    "slur": 2
+    "tie": 2
   },
   "schumann-2-sie-liebten-sich-beide": {
     "midi-device": 2,
@@ -10412,7 +10359,6 @@
     "direction@system": 2,
     "pedal": 18,
     "notehead": 14,
-    "slur": 2,
     "beam@fan": 1
   },
   "shield-the-maid-of-lodi": {
@@ -10647,8 +10593,7 @@
     "direction@system": 1,
     "sound@dynamics": 16,
     "extend": 3,
-    "fermata": 1,
-    "slur": 2
+    "fermata": 1
   },
   "stanford-2-sweet-and-low": {
     "midi-device": 5,
@@ -10706,8 +10651,7 @@
     "direction@system": 3,
     "sound@dynamics": 71,
     "extend": 14,
-    "metronome@parentheses": 1,
-    "slur": 4
+    "metronome@parentheses": 1
   },
   "stanford-4-tears-idle-tears": {
     "midi-device": 5,
@@ -10729,8 +10673,7 @@
     "metronome@parentheses": 1,
     "notehead": 2,
     "dot@placement": 28,
-    "pedal": 2,
-    "slur": 2
+    "pedal": 2
   },
   "strauss-1-ruhe-meine-seele": {
     "midi-device": 2,
@@ -10771,7 +10714,6 @@
     "dashes": 12,
     "print-object": 73,
     "pedal": 84,
-    "slur": 2,
     "time": 1
   },
   "strauss-4-morgen": {
@@ -11072,7 +11014,6 @@
     "print-object": 27,
     "dashes": 12,
     "pedal": 108,
-    "slur": 4,
     "notehead": 1,
     "tie": 2
   },
@@ -11093,8 +11034,7 @@
     "sound@dynamics": 6,
     "print-object": 31,
     "dashes": 2,
-    "pedal": 62,
-    "slur": 2
+    "pedal": 62
   },
   "wagner-1-der-engel": {
     "midi-device": 2,
@@ -11153,7 +11093,6 @@
     "sound@dynamics": 37,
     "print-object": 8,
     "dashes": 2,
-    "slur": 2,
     "play": 1,
     "tie": 4
   },
@@ -11193,8 +11132,7 @@
     "sound@dynamics": 27,
     "dashes": 8,
     "print-object": 11,
-    "pedal": 10,
-    "slur": 2
+    "pedal": 10
   },
   "warlock-1-along-the-stream": {
     "midi-device": 2,
@@ -11215,7 +11153,6 @@
     "print-object": 40,
     "extend": 5,
     "sound@dynamics": 14,
-    "slur": 2,
     "pedal": 4
   },
   "warlock-1-chopcherry": {
@@ -11664,8 +11601,7 @@
     "sound@dynamics": 42,
     "trill-mark": 10,
     "dashes": 6,
-    "print-object": 9,
-    "slur": 2
+    "print-object": 9
   },
   "wolf-11-lieber-alles": {
     "midi-device": 2,

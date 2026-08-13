@@ -452,7 +452,7 @@ function readEventSpanners(
 ): void {
   readArpeggio(notations, voice, builder)
   for (const note of event.notes) readTies(element, note, voice, state, warnings, context, tieds)
-  readSlurs(notations, event, state, warnings, context)
+  readSlurs(notations, event, voice, builder, state, warnings, context)
   builder.addBeamMarkers(
     voice,
     event.id,
@@ -863,15 +863,31 @@ function startTiedSide(tieds: readonly XmlElement[]): CurveSide | undefined {
   return side
 }
 
-/** Slurs are matched by the number the source gives them, across the part. */
+/**
+ * Slurs are matched by the number the source gives them, across the part.
+ *
+ * Each end records where it stands, because the pairing runs once the whole
+ * part is read rather than as the ends are met: a <backup> can write a stop
+ * before the start the music puts first.
+ */
 function readSlurs(
   notations: readonly ElementReader[],
   event: Event,
+  voice: string | undefined,
+  builder: MeasureBuilder,
   state: PartState,
   warnings: WarningCollector,
   context: WarningContext,
 ): void {
-  for (const slur of notations.flatMap((block) => block.children('slur'))) {
+  const slurs = notations.flatMap((block) => block.children('slur'))
+  if (slurs.length === 0) return
+  // The event is in its voice by now, so the cursor has moved past it and its
+  // own start is what the pairing orders it by.
+  const at = builder.lastEventStart(voice)
+  /* v8 ignore next 2 -- a note joins its voice before its notations are read,
+     so there is always a place here to pair from. */
+  if (!at) throw new Error('A slur on an event with no place in the measure.')
+  for (const slur of slurs) {
     const type = attribute(slur, 'type')
     const number = attribute(slur, 'number') ?? '1'
     // Every edge is read for its side, so the attributes are accounted for
@@ -879,9 +895,9 @@ function readSlurs(
     // anywhere: a "continue" edge's side has no home in MNX and is dropped.
     const side = curveSide(slur)
     if (type === 'stop') {
-      state.spanners.stopSlur(event, number, side, warnings, context)
+      state.spanners.stopSlur(event, number, side, state.measure, at, context)
     } else if (type === 'start') {
-      state.spanners.startSlur(event, number, side, slurLineType(slur), context)
+      state.spanners.startSlur(event, number, side, slurLineType(slur), state.measure, at, context)
     } else if (type !== 'continue') {
       // "continue" marks a note partway along a slur. MNX states only where a
       // slur begins and ends, so there is nothing for it to carry, and

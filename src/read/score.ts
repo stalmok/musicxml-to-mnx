@@ -730,6 +730,8 @@ function readMeasure(
 ): MeasureReading {
   const position = index + 1
   const context: WarningContext = { part: partId, measure: position }
+  // Where the spanners paired at the end of the part record their ends.
+  state.measure = index
   const stated = readMeasureLabel(element, warnings, context)
   const measurePath: DocumentPath = [...path, `measure ${String(stated ?? position)}`]
   // The measure element is walked child by child below rather than through

@@ -41,11 +41,20 @@ export interface OpenOttava {
   orient?: 'above' | 'below'
 }
 
+/** A slur that has begun, waiting to learn which event ends it. */
 interface OpenSlur {
   event: Event
   side: CurveSide | undefined
   lineType: LineType | undefined
-  context: WarningContext
+}
+
+/** One end of a slur, and on a stop what that end states. */
+interface SlurEnd extends SpanEnd<OpenSlur> {
+  stop?: {
+    event: Event
+    /** The side the slur bends to at its close, for an S-shaped one. */
+    sideEnd: CurveSide | undefined
+  }
 }
 
 /**
@@ -113,10 +122,20 @@ export interface SpanEnd<T> {
 }
 
 /**
+ * How two ends falling at one point are ordered.
+ *
+ * A direction closes before the next one opens, so its stop goes first. A
+ * slur is written on an event, and a grace note begins where the note it
+ * ornaments begins, so a slur from the one to the other has both ends at one
+ * point. There the document says which end is which.
+ */
+export type SamePoint = 'stop-first' | 'as-written'
+
+/**
  * Joins each span's two ends, in the order the music has them: by measure,
- * then by where in the measure the cursor had reached, with a stop before a
- * start at the same point so one span can finish exactly where the next
- * begins. Ends falling at the same point keep the order they were read in.
+ * then by where in the measure the cursor had reached. Ends falling at the
+ * same point are ordered as `atSamePoint` says, and otherwise keep the order
+ * they were read in.
  *
  * Several may carry the same number at once, so each number holds a stack and
  * a stop closes the most recently opened.
@@ -125,14 +144,15 @@ export interface SpanEnd<T> {
  * backwards-stop rather than joined: the joined span would end before it
  * starts, which no consumer accepts.
  */
-export function pairSpans<T>(
-  ends: readonly SpanEnd<T>[],
-  join: (payload: T, stop: SpanEnd<T>) => void,
-  report: (reason: 'orphan-stop' | 'unclosed-start' | 'backwards-stop', end: SpanEnd<T>) => void,
+export function pairSpans<T, E extends SpanEnd<T>>(
+  ends: readonly E[],
+  join: (payload: T, stop: E) => void,
+  report: (reason: 'orphan-stop' | 'unclosed-start' | 'backwards-stop', end: E) => void,
+  atSamePoint: SamePoint = 'stop-first',
 ): void {
-  const open = new Map<string, SpanEnd<T>[]>()
+  const open = new Map<string, E[]>()
 
-  for (const end of inTimeOrder(ends)) {
+  for (const end of inTimeOrder(ends, atSamePoint)) {
     if (end.kind === 'start') {
       open.set(end.number, [...(open.get(end.number) ?? []), end])
       continue
@@ -182,14 +202,16 @@ function insertAtPosition(dynamics: Dynamic[] | undefined, added: Dynamic): void
   else dynamics.splice(after, 0, added)
 }
 
-function inTimeOrder<T>(ends: readonly SpanEnd<T>[]): SpanEnd<T>[] {
+function inTimeOrder<T, E extends SpanEnd<T>>(ends: readonly E[], atSamePoint: SamePoint): E[] {
   return ends
     .map((end, index) => ({ end, index }))
     .sort((a, b) => {
       if (a.end.measure !== b.end.measure) return a.end.measure - b.end.measure
       const byPosition = compareFractions(a.end.position, b.end.position)
       if (byPosition !== 0) return byPosition
-      if (a.end.kind !== b.end.kind) return a.end.kind === 'stop' ? -1 : 1
+      if (atSamePoint === 'stop-first' && a.end.kind !== b.end.kind) {
+        return a.end.kind === 'stop' ? -1 : 1
+      }
       return a.index - b.index
     })
     .map((entry) => entry.end)
@@ -220,9 +242,8 @@ export class SpannerResolver {
   // single value, the second start would overwrite the first and drop it with
   // no warning.
   readonly #openTies = new Map<string, OpenTie[]>()
-  // Several slurs may carry the same number at once, so each number holds a
-  // stack: a stop closes the most recently opened of them.
-  readonly #openSlurs = new Map<string, OpenSlur[]>()
+  // Both ends of every slur in the part, paired once all of them are in.
+  readonly #slurEnds: SlurEnd[] = []
   // Both ends of every hairpin in the part, paired once all of them are in.
   readonly #wedgeEnds: WedgeEnd[] = []
 
@@ -280,47 +301,95 @@ export class SpannerResolver {
     open.splice(chosen, 1)
   }
 
+  /** Notes the event a slur begins on, to be paired once the part is read. */
   startSlur(
     event: Event,
     number: string,
     side: CurveSide | undefined,
     lineType: LineType | undefined,
+    measure: number,
+    position: Fraction,
     context: WarningContext,
   ): void {
-    const waiting = this.#openSlurs.get(number) ?? []
-    waiting.push({ event, side, lineType, context })
-    this.#openSlurs.set(number, waiting)
+    this.#slurEnds.push({
+      kind: 'start',
+      number,
+      measure,
+      position,
+      covers: position,
+      payload: { event, side, lineType },
+      context,
+    })
   }
 
+  /** The same, for the event a slur ends on. */
   stopSlur(
     event: Event,
     number: string,
     sideEnd: CurveSide | undefined,
-    warnings: WarningCollector,
+    measure: number,
+    position: Fraction,
     context: WarningContext,
   ): void {
-    const open = this.#openSlurs.get(number)?.pop()
-    if (!open) {
-      warnings.add(
-        'unclosed:spanner',
-        'A slur ends where none had started, and is not carried over.',
-        context,
-        'slur',
-      )
-      return
-    }
+    this.#slurEnds.push({
+      kind: 'stop',
+      number,
+      measure,
+      position,
+      covers: position,
+      payload: undefined,
+      context,
+      stop: { event, sideEnd },
+    })
+  }
 
-    open.event.slurs = [
-      ...open.event.slurs,
-      {
-        target: event.id,
-        side: open.side,
-        // MNX's sideEnd is for an S-shaped slur that ends bending the other
-        // way; a stop merely restating the start's side adds nothing.
-        ...(sideEnd !== undefined && sideEnd !== open.side ? { sideEnd } : {}),
-        ...(open.lineType !== undefined ? { lineType: open.lineType } : {}),
+  /**
+   * Joins every slur in the part, once both ends of all of them are in.
+   *
+   * Paired in time order rather than as the ends are met, because a measure
+   * holding two voices is written as one pass per voice with a <backup>
+   * between them. A slur running from the second voice to the first therefore
+   * has its stop written before its start. Paired as met, that stop closed
+   * whichever slur was open from an earlier measure, and every later slur of
+   * the same number shifted along with it.
+   */
+  #resolveSlurs(warnings: WarningCollector): void {
+    // A slur's two ends mark the very points they are written on, so no stop
+    // covers a point before its start; the backwards message is here for the
+    // shape of the report, as an octave shift's is.
+    const messages = {
+      'orphan-stop': 'A slur ends where none had started, and is not carried over.',
+      'backwards-stop': 'A slur would end before it starts, and is not carried over.',
+      'unclosed-start': 'A slur starts where nothing ends it, and is not carried over.',
+    }
+    pairSpans<OpenSlur, SlurEnd>(
+      this.#slurEnds,
+      (open, end) => {
+        /* v8 ignore next 2 -- join hands back a stop, and every stop is
+           pushed with the event it is written on. */
+        if (!end.stop) throw new Error('A slur stop with no event.')
+        const sideEnd = end.stop.sideEnd
+        open.event.slurs = [
+          ...open.event.slurs,
+          {
+            target: end.stop.event.id,
+            side: open.side,
+            // MNX's sideEnd is for an S-shaped slur that ends bending the
+            // other way; a stop merely restating the start's side adds
+            // nothing.
+            ...(sideEnd !== undefined && sideEnd !== open.side ? { sideEnd } : {}),
+            ...(open.lineType !== undefined ? { lineType: open.lineType } : {}),
+          },
+        ]
       },
-    ]
+      (reason, end) => {
+        warnings.add('unclosed:spanner', messages[reason], end.context, 'slur')
+      },
+      // A grace note begins where the note it ornaments begins, so a slur
+      // between the two has both ends at one point.
+      'as-written',
+    )
+    this.#slurEnds.length = 0
   }
 
   /** Notes where a hairpin begins, to be paired once the part is read. */
@@ -404,6 +473,7 @@ export class SpannerResolver {
   finish(measures: readonly Measure[], warnings: WarningCollector): void {
     this.#resolveWedges(measures, warnings)
     this.#resolveOttavas(measures, warnings)
+    this.#resolveSlurs(warnings)
     this.#reportUnclosed(warnings)
   }
 
@@ -424,7 +494,7 @@ export class SpannerResolver {
         'A hairpin starts where nothing ends it, so how far it runs is not carried over.',
     }
     const closed = new Map<SpanEnd<Dynamic>, Dynamic>()
-    pairSpans(
+    pairSpans<Dynamic, WedgeEnd>(
       this.#wedgeEnds,
       (dynamic, stop) => {
         dynamic.end = { measure: stop.measure, position: stop.covers }
@@ -513,7 +583,7 @@ export class SpannerResolver {
    * it stops, so one the source never closed cannot be written at all.
    */
   #resolveOttavas(measures: readonly Measure[], warnings: WarningCollector): void {
-    pairSpans(
+    pairSpans<OpenOttava, SpanEnd<OpenOttava>>(
       this.#ottavaEnds,
       (open, stop) => {
         measures[open.measure]?.ottavas.push({
@@ -561,18 +631,7 @@ export class SpannerResolver {
         )
       }
     }
-    for (const waiting of this.#openSlurs.values()) {
-      for (const open of waiting) {
-        warnings.add(
-          'unclosed:spanner',
-          'A slur starts where nothing ends it, and is not carried over.',
-          open.context,
-          'slur',
-        )
-      }
-    }
     this.#openTies.clear()
-    this.#openSlurs.clear()
   }
 }
 

@@ -408,6 +408,15 @@ export class MeasureBuilder {
     return this.#builderFor(voice ?? this.#lastVoice).placed.at(-1)?.staff
   }
 
+  /**
+   * Where the event just added to a voice begins. An event's notations are
+   * read once the cursor has moved past it, and a slur written there belongs
+   * at the event's own place in the measure.
+   */
+  lastEventStart(voice: string | undefined): Fraction | undefined {
+    return this.#builderFor(voice ?? this.#lastVoice).lastStart
+  }
+
   /** The written value of the event a chord note would join. */
   chordValue(voice: string | undefined): NoteValue | undefined {
     return this.#builderFor(voice ?? this.#lastVoice).lastEvent?.value

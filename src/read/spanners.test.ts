@@ -260,6 +260,60 @@ describe('slurs', () => {
     expect(second.slurs[0]?.target).toBe(fourth.id)
   })
 
+  // A measure holding two voices is written as one pass per voice with a
+  // <backup> between them. A slur that runs from the second voice to the first
+  // therefore has its stop written before its start, although the music has
+  // the start first. The pairing follows the music.
+  test('joins a slur whose stop is written before its start', () => {
+    const warnings = new WarningCollector()
+    const score = readScore(
+      parseXmlRoot(
+        measures(
+          DIVISIONS +
+            note('C', '', '1') +
+            note('D', slur('stop'), '1') +
+            '<backup><duration>8</duration></backup>' +
+            note('G', slur('start'), '2') +
+            note('A', '', '2'),
+        ),
+      ),
+      warnings,
+    )
+    const events = (score.parts[0]?.measures[0]?.sequences ?? []).flatMap((sequence) =>
+      sequence.content.filter((item): item is Event => item.kind === 'event'),
+    )
+    const [, stopsOn, startsOn] = events as [Event, Event, Event, Event]
+
+    expect(startsOn.slurs).toEqual([{ target: stopsOn.id, side: undefined }])
+    expect(warnings.list()).toEqual([])
+  })
+
+  // A grace note takes none of the measure's time, so it begins where the
+  // note it ornaments begins. The slur from one to the other therefore has
+  // both ends at one point, and the document says which end is which.
+  test('joins a slur from a grace note to the note it ornaments', () => {
+    const warnings = new WarningCollector()
+    const score = readScore(
+      parseXmlRoot(
+        measures(
+          DIVISIONS +
+            '<note><grace/><pitch><step>B</step><octave>3</octave></pitch>' +
+            '<type>eighth</type><voice>1</voice>' +
+            '<notations><slur type="start" number="1"/></notations></note>' +
+            note('C', slur('stop')),
+        ),
+      ),
+      warnings,
+    )
+    const content = score.parts[0]?.measures[0]?.sequences[0]?.content ?? []
+    const grace = content.flatMap((item) => (item.kind === 'grace' ? item.content : []))[0]
+    const main = content.filter((item): item is Event => item.kind === 'event')[0]
+
+    expect(grace?.slurs[0]?.target).toBe(main?.id)
+    expect(main?.slurs).toEqual([])
+    expect(warnings.list()).toEqual([])
+  })
+
   test('reads which side of the notes the slur is drawn on', () => {
     const { events } = read(
       measures(
@@ -641,7 +695,7 @@ describe('pairing the two ends of a span', () => {
     const joined: string[] = []
     const reported: string[] = []
 
-    pairSpans(
+    pairSpans<string, SpanEnd<string>>(
       [
         spanEnd('start', fraction(3, 4), fraction(3, 4)),
         spanEnd('stop', fraction(7, 8), fraction(0)),
@@ -658,7 +712,7 @@ describe('pairing the two ends of a span', () => {
     const joined: string[] = []
     const reported: string[] = []
 
-    pairSpans(
+    pairSpans<string, SpanEnd<string>>(
       [
         spanEnd('start', fraction(3, 4), fraction(3, 4)),
         spanEnd('stop', fraction(7, 8), fraction(3, 4)),
