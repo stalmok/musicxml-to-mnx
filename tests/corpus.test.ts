@@ -743,7 +743,8 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     // Where a written value disagrees with its duration the converter carries
     // the written value, so the events sit where the writing puts them and
     // the source's own durations are no longer the yardstick, exactly as for
-    // the measure lengths above.
+    // the measure lengths above. Nine songs are passed over here, and their
+    // slurs are held to account by nothing else.
     if (warnings.some((warning) => warning.code === 'inconsistent:duration')) return
 
     const stated = sourceSlurSpans(parseXmlRoot(source))

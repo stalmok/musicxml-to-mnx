@@ -50,6 +50,8 @@ interface OpenSlur {
 
 /** One end of a slur, and on a stop what that end states. */
 interface SlurEnd extends SpanEnd<OpenSlur> {
+  /** Where the document writes it, which orders two ends at one point. */
+  read: number
   /** The voice it is written in, which pairs a voice's own slurs first. */
   voice?: string | undefined
   stop?: {
@@ -316,6 +318,7 @@ export class SpannerResolver {
   ): void {
     this.#slurEnds.push({
       kind: 'start',
+      read: this.#slurEnds.length,
       number,
       measure,
       position,
@@ -338,6 +341,7 @@ export class SpannerResolver {
   ): void {
     this.#slurEnds.push({
       kind: 'stop',
+      read: this.#slurEnds.length,
       number,
       measure,
       position,
@@ -399,13 +403,17 @@ export class SpannerResolver {
     }
 
     // What one voice cannot account for on its own, kept for the pass across
-    // the part rather than reported: another voice may well close it.
+    // the part rather than reported: another voice may well close it. Put
+    // back in the order the document has, because it comes out of the voices
+    // a voice at a time, and two ends at one point are settled by which the
+    // document writes first.
     const crossing: SlurEnd[] = []
     for (const ends of byVoice.values()) {
       // A grace note begins where the note it ornaments begins, so a slur
       // between the two has both ends at one point.
       pairSpans<OpenSlur, SlurEnd>(ends, join, (_reason, end) => crossing.push(end), 'as-written')
     }
+    crossing.sort((a, b) => a.read - b.read)
     pairSpans<OpenSlur, SlurEnd>(
       crossing,
       join,
