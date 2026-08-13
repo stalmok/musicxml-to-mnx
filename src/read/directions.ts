@@ -32,7 +32,7 @@ import { reportUnreadAttributes } from './element.js'
 import type { ElementReader } from './element.js'
 import { noteValueBaseOf } from './noteValues.js'
 import { readIntegerInRange } from './numbers.js'
-import type { EdgeWording, WedgeStop } from './spanners.js'
+import type { StopWording, WedgeStop } from './spanners.js'
 import type { PartState } from './state.js'
 import { elementLoss } from './unrepresentable.js'
 
@@ -200,7 +200,7 @@ export function readDirection(
           const marks = readDynamics(found, at, staff, orient, wording, warnings, context)
           reading.dynamics.push(...marks)
           const last = marks[marks.length - 1]
-          if (last) lastMark = { mark: last }
+          if (last) lastMark = { kind: 'mark', mark: last }
           break
         }
         case 'metronome':
@@ -215,17 +215,16 @@ export function readDirection(
             const prefix = wording.take()
             if (prefix !== undefined) wedge.hairpin.prefix = prefix.text
             reading.dynamics.push(wedge.hairpin)
-            lastMark = { mark: wedge.hairpin }
+            lastMark = { kind: 'mark', mark: wedge.hairpin }
           } else if (wedge) {
-            // Wording at a hairpin's closing edge trails the mark, so words
-            // pending when the stop is read wait on that edge for the pairing
-            // to say which hairpin it closes, and the edge is what any wording
-            // after the stop closes too.
+            // Wording at a closing edge trails the mark. Words pending at the
+            // stop wait on it until the pairing names the hairpin. Wording
+            // after the stop closes the same stop.
             const suffix = wording.take()
             if (suffix !== undefined) {
-              wedge.stop.wording = edgeWording(suffix.text, at, staff, orient)
+              wedge.stop.wording = stopWording(suffix.text, at, staff, orient)
             }
-            lastMark = { stop: wedge.stop }
+            lastMark = { kind: 'stop', stop: wedge.stop }
           }
           break
         }
@@ -252,14 +251,14 @@ export function readDirection(
       if (handled) reportUnreadAttributes(found, warnings, context)
     }
 
-    // Wording left over closes the mark before it. With no mark at all, or a
-    // mark whose suffix its own edges already wrote, it stands alone: MNX
-    // requires only a position and a type of a dynamic group, so the words
-    // are carried on a group with no level rather than qualifying a level the
-    // source never wrote.
+    // Wording left over closes the mark before it. With no mark to close, it
+    // stands alone: MNX requires only a position and a type of a dynamic
+    // group, so the words are carried on a group with no level rather than
+    // qualifying a level the source never wrote.
     const trailing = wording.take()
-    if (trailing !== undefined && !takesSuffix(lastMark, trailing.text, at, staff, orient)) {
-      reading.dynamics.push(standaloneWording(trailing.text, at, staff, orient))
+    if (trailing !== undefined) {
+      const group = suffixOrStandalone(lastMark, trailing.text, at, staff, orient)
+      if (group) reading.dynamics.push(group)
     }
   }
 
@@ -424,9 +423,9 @@ const WEDGE_TYPES = new Map<string, WedgeType>([
 ])
 
 /**
- * Which edge of a hairpin a <wedge> marked, and what wording written beside
- * it goes on: the hairpin itself at a start, and at a stop the handle holding
- * the closing edge until the pairing names the hairpin it closes.
+ * Which edge of a hairpin a <wedge> marked. Wording written beside a start
+ * goes on the hairpin. Wording beside a stop waits on the stop until the
+ * pairing names the hairpin.
  */
 type WedgeReading = { edge: 'start'; hairpin: Dynamic } | { edge: 'stop'; stop: WedgeStop }
 
@@ -434,8 +433,8 @@ type WedgeReading = { edge: 'start'; hairpin: Dynamic } | { edge: 'stop'; stop: 
  * A hairpin: a dynamic that grows or fades from here to somewhere later,
  * often several measures away. MusicXML marks both ends and numbers them so
  * they can be matched, exactly as it does a slur, and MNX states the pair
- * once, on the end where it begins. A stop hands back the edge itself, which
- * wording written there can qualify; a wedge that converts to nothing reads
+ * once, on the end where it begins. A stop hands back the stop itself, which
+ * wording written there can qualify. A wedge that converts to nothing reads
  * as nothing.
  */
 function readWedge(
@@ -490,50 +489,47 @@ function readWedge(
 }
 
 /**
- * What wording trailing a mark can be put on. A hairpin's closing edge is not
- * a mark yet, so it takes the words through its stop and the pairing hands
- * them on.
+ * What wording trailing a mark can be put on. A hairpin's stop is not a mark
+ * yet, so it holds the words until the pairing names the hairpin.
  */
-interface SuffixTarget {
-  mark?: Dynamic
-  stop?: WedgeStop
-}
+type SuffixTarget = { kind: 'mark'; mark: Dynamic } | { kind: 'stop'; stop: WedgeStop }
 
 /**
- * Puts wording on the mark it trails, as that mark's suffix, and says whether
- * it went. A mark's suffix is free to take: a <direction-type> puts wording on
- * the mark before it once, at the end. A closing edge already worded on the
- * other side of the stop keeps the first wording, and the second is drawn on
- * its own, because the source wrote both.
+ * Puts wording on the mark it trails, as that mark's suffix. Hands back the
+ * group to draw where nothing takes the words.
+ *
+ * The mark cannot have a suffix yet. This runs once for each
+ * <direction-type>, on a mark read in it. A stop already worded on the other
+ * side keeps the first wording, because the source wrote both.
  */
-function takesSuffix(
+function suffixOrStandalone(
   target: SuffixTarget | undefined,
   text: string,
   position: Fraction,
   staff: number | undefined,
   orient: 'above' | 'below' | undefined,
-): boolean {
-  if (target?.mark) {
+): Dynamic | undefined {
+  if (target?.kind === 'mark') {
     target.mark.suffix = text
-    return true
+    return undefined
   }
-  if (target?.stop && target.stop.wording === undefined) {
-    target.stop.wording = edgeWording(text, position, staff, orient)
-    return true
+  if (target?.kind === 'stop' && target.stop.wording === undefined) {
+    target.stop.wording = stopWording(text, position, staff, orient)
+    return undefined
   }
-  return false
+  return standaloneWording(text, position, staff, orient)
 }
 
 /**
  * Wording written at a hairpin's closing edge: the text the hairpin takes as
  * its suffix, and the group it is drawn as where no hairpin takes it.
  */
-function edgeWording(
+function stopWording(
   text: string,
   position: Fraction,
   staff: number | undefined,
   orient: 'above' | 'below' | undefined,
-): EdgeWording {
+): StopWording {
   return { text, standalone: standaloneWording(text, position, staff, orient) }
 }
 

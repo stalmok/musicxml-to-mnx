@@ -48,7 +48,8 @@ src/
                        (multi-measure rests, measure repeats)
     notes.ts           a <note>: pitch, value, ties, slurs, accidentals
     voices.ts          the cursor, and one sequence per voice
-    spanners.ts        joining the two ends of a tie or slur, and event ids
+    spanners.ts        joining the two ends of a tie, slur, hairpin or octave
+                       shift, and event ids
     beams.ts           per-note beam markings into MNX's tree of beams
     barlines.ts        barlines, repeat signs, and first and second endings
     print.ts           <print>'s system and page breaks

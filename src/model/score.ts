@@ -406,9 +406,8 @@ export interface Measure {
   /** Stated over the measure rather than on the notes, as MNX has it. */
   beams: readonly Beam[]
   /**
-   * Added to once the whole part is read: wording written at a hairpin's
-   * closing edge stands alone where the hairpin the pairing gives that stop
-   * cannot take it.
+   * Added to once the whole part is read: wording at a hairpin's closing edge
+   * stands alone if the hairpin cannot take it.
    */
   dynamics: Dynamic[]
   arpeggios: readonly Arpeggio[]

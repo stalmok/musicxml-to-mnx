@@ -16,8 +16,8 @@ import type {
   Dynamic,
   Event,
   LineType,
+  Measure,
   Note,
-  Ottava,
   OttavaAmount,
   Pitch,
 } from '../model/score.js'
@@ -49,34 +49,28 @@ interface OpenSlur {
 }
 
 /**
- * Wording written at a hairpin's closing edge, held until the pairing says
- * which hairpin the stop closes.
+ * Wording written at a hairpin's closing edge. It waits until the pairing
+ * says which hairpin the stop closes.
  */
-export interface EdgeWording {
+export interface StopWording {
   /** The words, to become that hairpin's suffix. */
   text: string
-  /** The group they are drawn as on their own, where no hairpin takes them. */
+  /** The dynamic group drawn where no hairpin takes them. */
   standalone: Dynamic
 }
 
 /**
- * A hairpin's closing edge, handed back before the hairpin it closes is
- * known. Which one that is depends on ends not read yet: a <backup> writes a
- * later voice's start after this stop, and the music has it before.
+ * A hairpin's stop, handed back before the hairpin it closes is known. Which
+ * one that is depends on ends not read yet. A <backup> can write a start
+ * after this stop, although the music puts that start earlier.
  */
 export interface WedgeStop {
-  wording?: EdgeWording
+  wording?: StopWording
 }
 
-/** A hairpin end, and on a stop the wording waiting at that edge. */
+/** A hairpin end, and on a stop the wording waiting at it. */
 interface WedgeEnd extends SpanEnd<Dynamic> {
   stop?: WedgeStop
-}
-
-/** The arrays of a part's measure that are filled once the part is read. */
-export interface PartMeasure {
-  dynamics: Dynamic[]
-  ottavas: Ottava[]
 }
 
 /**
@@ -407,14 +401,14 @@ export class SpannerResolver {
    * stayed unpaired, because each pair step reports its own leftovers rather
    * than leaving them to one flush at the end.
    */
-  finish(measures: readonly PartMeasure[], warnings: WarningCollector): void {
+  finish(measures: readonly Measure[], warnings: WarningCollector): void {
     this.#resolveWedges(measures, warnings)
     this.#resolveOttavas(measures, warnings)
     this.#reportUnclosed(warnings)
   }
 
   /** Joins every hairpin in the part, once all of both ends are in. */
-  #resolveWedges(measures: readonly PartMeasure[], warnings: WarningCollector): void {
+  #resolveWedges(measures: readonly Measure[], warnings: WarningCollector): void {
     // MNX allows a gradual mark with no end, so of the three failures only
     // the orphan stop drops anything whole: a hairpin whose stop is missing
     // or unusable keeps its mark, and what is lost is how far it runs. Today
@@ -518,7 +512,7 @@ export class SpannerResolver {
    * measure it begins in. Unlike a hairpin, MNX requires a shift to say where
    * it stops, so one the source never closed cannot be written at all.
    */
-  #resolveOttavas(measures: readonly PartMeasure[], warnings: WarningCollector): void {
+  #resolveOttavas(measures: readonly Measure[], warnings: WarningCollector): void {
     pairSpans(
       this.#ottavaEnds,
       (open, stop) => {
