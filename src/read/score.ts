@@ -611,7 +611,7 @@ function readPart(
   // music's; whatever is still open once the part ends is reported in the same
   // step, so nothing left open is dropped in silence.
   state.spanners.finish(
-    readings.map((reading) => reading.measure.ottavas),
+    readings.map((reading) => reading.measure),
     warnings,
   )
   resolveEndings(readings, warnings, id)

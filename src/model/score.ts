@@ -405,7 +405,12 @@ export interface Measure {
   clefs: readonly Clef[]
   /** Stated over the measure rather than on the notes, as MNX has it. */
   beams: readonly Beam[]
-  dynamics: readonly Dynamic[]
+  /**
+   * Added to once the whole part is read: wording written at a hairpin's
+   * closing edge stands alone where the hairpin the pairing gives that stop
+   * cannot take it.
+   */
+  dynamics: Dynamic[]
   arpeggios: readonly Arpeggio[]
   /** Filled in once the whole part is read, because a shift spans measures. */
   ottavas: Ottava[]

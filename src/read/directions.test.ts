@@ -551,6 +551,33 @@ describe('dynamics', () => {
     expect(warnings).toEqual([])
   })
 
+  // A source can word both sides of one closing edge. The hairpin takes the
+  // first, since one mark carries one suffix, and the second stands alone.
+  test('keeps the second wording at one closing edge standing alone', () => {
+    const { measure, warnings } = read(
+      inMeasure(
+        '<direction><direction-type><wedge type="crescendo"/></direction-type></direction>' +
+          note('C') +
+          '<direction><direction-type>' +
+          '<dynamics><other-dynamics>dim.</other-dynamics></dynamics>' +
+          '<wedge type="stop"/>' +
+          '<dynamics><other-dynamics>poco</other-dynamics></dynamics>' +
+          '</direction-type></direction>',
+      ),
+    )
+
+    expect(measure?.dynamics).toEqual([
+      {
+        position: { num: 0, den: 1 },
+        wedge: 'increasing',
+        suffix: 'dim.',
+        end: { measure: 0, position: { num: 1, den: 4 } },
+      },
+      { position: { num: 1, den: 4 }, prefix: 'poco' },
+    ])
+    expect(warnings).toEqual([])
+  })
+
   // MusicXML allows <dynamics> more than once in one <direction-type>, so
   // the wording and the mark it opens may sit in sibling blocks.
   test('carries wording onto the mark in a sibling dynamics block', () => {
@@ -1468,6 +1495,38 @@ describe('hairpins', () => {
     )
 
     expect(dynamics[0]?.map((d) => d.wedge)).toEqual(['increasing', 'decreasing'])
+    expect(warnings).toEqual([])
+  })
+
+  // A stop closes the most recently opened hairpin of its number, and which
+  // one that is cannot be known while the measure is still being read: a
+  // <backup> puts the second voice's start after the first voice's stop in the
+  // document, and before it in the music. So the wording written at a closing
+  // edge has to wait for the pairing too, or it qualifies the wrong hairpin.
+  test('carries closing wording onto the hairpin the stop really closes', () => {
+    const voiced = (step: string, voice: number) =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+      `<duration>4</duration><voice>${String(voice)}</voice><type>quarter</type></note>`
+    const { dynamics, warnings } = readMeasures(
+      wedge('crescendo') +
+        voiced('C', 1).repeat(2) +
+        '<direction><direction-type>' +
+        '<dynamics><other-dynamics>smorz.</other-dynamics></dynamics>' +
+        '<wedge type="stop" number="1"/>' +
+        '</direction-type></direction>' +
+        voiced('C', 1).repeat(2) +
+        '<backup><duration>16</duration></backup>' +
+        voiced('E', 2) +
+        wedge('diminuendo') +
+        voiced('E', 2).repeat(2) +
+        wedge('stop') +
+        voiced('E', 2),
+    )
+
+    expect(dynamics[0]?.map((d) => ({ wedge: d.wedge, suffix: d.suffix, end: d.end }))).toEqual([
+      { wedge: 'increasing', suffix: undefined, end: { measure: 0, position: { num: 3, den: 4 } } },
+      { wedge: 'decreasing', suffix: 'smorz.', end: { measure: 0, position: { num: 1, den: 2 } } },
+    ])
     expect(warnings).toEqual([])
   })
 

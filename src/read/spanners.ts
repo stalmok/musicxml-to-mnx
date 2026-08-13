@@ -49,6 +49,37 @@ interface OpenSlur {
 }
 
 /**
+ * Wording written at a hairpin's closing edge, held until the pairing says
+ * which hairpin the stop closes.
+ */
+export interface EdgeWording {
+  /** The words, to become that hairpin's suffix. */
+  text: string
+  /** The group they are drawn as on their own, where no hairpin takes them. */
+  standalone: Dynamic
+}
+
+/**
+ * A hairpin's closing edge, handed back before the hairpin it closes is
+ * known. Which one that is depends on ends not read yet: a <backup> writes a
+ * later voice's start after this stop, and the music has it before.
+ */
+export interface WedgeStop {
+  wording?: EdgeWording
+}
+
+/** A hairpin end, and on a stop the wording waiting at that edge. */
+interface WedgeEnd extends SpanEnd<Dynamic> {
+  stop?: WedgeStop
+}
+
+/** The arrays of a part's measure that are filled once the part is read. */
+export interface PartMeasure {
+  dynamics: Dynamic[]
+  ottavas: Ottava[]
+}
+
+/**
  * One end of something that spans a stretch of music and is written between
  * the notes rather than on one: a hairpin, an octave shift.
  *
@@ -186,7 +217,7 @@ export class SpannerResolver {
   // stack: a stop closes the most recently opened of them.
   readonly #openSlurs = new Map<string, OpenSlur[]>()
   // Both ends of every hairpin in the part, paired once all of them are in.
-  readonly #wedgeEnds: SpanEnd<Dynamic>[] = []
+  readonly #wedgeEnds: WedgeEnd[] = []
 
   startTie(
     note: Note,
@@ -305,21 +336,21 @@ export class SpannerResolver {
   }
 
   /**
-   * The same, where one stops. Hands back the hairpin this stop closes, as
-   * far as the ends read so far can say, so wording written at the closing
-   * edge can go on it as the hairpin's suffix. Found by replaying the pairing
-   * over what has been read: the pairing that sets where each hairpin ends
-   * still runs once the whole part is in, so a stop whose start is written
-   * later in the document (through a backup) finds nothing here yet still
-   * pairs at the end.
+   * The same, where one stops. Hands back a handle for the stop rather than
+   * the hairpin it closes, because which hairpin that is cannot be told until
+   * the whole part is in: a stop closes the most recently opened hairpin of
+   * its number, and a <backup> writes a start the music puts earlier than
+   * this stop after it in the document. Wording written at the closing edge
+   * waits on the handle and is put on the hairpin by the pairing.
    */
   stopWedge(
     number: string,
     measure: number,
     position: Fraction,
     context: WarningContext,
-  ): Dynamic | undefined {
-    const stop: SpanEnd<Dynamic> = {
+  ): WedgeStop {
+    const stop: WedgeStop = {}
+    this.#wedgeEnds.push({
       kind: 'stop',
       number,
       measure,
@@ -327,19 +358,9 @@ export class SpannerResolver {
       covers: position,
       payload: undefined,
       context,
-    }
-    this.#wedgeEnds.push(stop)
-
-    let closed: Dynamic | undefined
-    pairSpans(
-      this.#wedgeEnds,
-      (hairpin, end) => {
-        if (end === stop) closed = hairpin
-      },
-      // A replay reports nothing: the pairing at the end of the part does.
-      () => undefined,
-    )
-    return closed
+      stop,
+    })
+    return stop
   }
 
   /**
@@ -373,14 +394,14 @@ export class SpannerResolver {
    * stayed unpaired, because each pair step reports its own leftovers rather
    * than leaving them to one flush at the end.
    */
-  finish(measures: readonly Ottava[][], warnings: WarningCollector): void {
-    this.#resolveWedges(warnings)
+  finish(measures: readonly PartMeasure[], warnings: WarningCollector): void {
+    this.#resolveWedges(measures, warnings)
     this.#resolveOttavas(measures, warnings)
     this.#reportUnclosed(warnings)
   }
 
   /** Joins every hairpin in the part, once all of both ends are in. */
-  #resolveWedges(warnings: WarningCollector): void {
+  #resolveWedges(measures: readonly PartMeasure[], warnings: WarningCollector): void {
     // MNX allows a gradual mark with no end, so of the three failures only
     // the orphan stop drops anything whole: a hairpin whose stop is missing
     // or unusable keeps its mark, and what is lost is how far it runs. Today
@@ -395,15 +416,29 @@ export class SpannerResolver {
       'unclosed-start':
         'A hairpin starts where nothing ends it, so how far it runs is not carried over.',
     }
+    const closed = new Map<SpanEnd<Dynamic>, Dynamic>()
     pairSpans(
       this.#wedgeEnds,
       (dynamic, stop) => {
         dynamic.end = { measure: stop.measure, position: stop.covers }
+        closed.set(stop, dynamic)
       },
       (reason, end) => {
         warnings.add('unclosed:spanner', messages[reason], end.context, 'wedge')
       },
     )
+
+    // Wording written at a closing edge goes on the hairpin the pairing gives
+    // that stop. It is drawn on its own where the stop closed nothing, and
+    // where the hairpin already carries wording from its starting edge: the
+    // source wrote both, so the closing words do not overwrite the opening.
+    for (const end of this.#wedgeEnds) {
+      const wording = end.stop?.wording
+      if (!wording) continue
+      const hairpin = closed.get(end)
+      if (hairpin && hairpin.suffix === undefined) hairpin.suffix = wording.text
+      else measures[end.measure]?.dynamics.push(wording.standalone)
+    }
     this.#wedgeEnds.length = 0
   }
 
@@ -470,11 +505,11 @@ export class SpannerResolver {
    * measure it begins in. Unlike a hairpin, MNX requires a shift to say where
    * it stops, so one the source never closed cannot be written at all.
    */
-  #resolveOttavas(measures: readonly Ottava[][], warnings: WarningCollector): void {
+  #resolveOttavas(measures: readonly PartMeasure[], warnings: WarningCollector): void {
     pairSpans(
       this.#ottavaEnds,
       (open, stop) => {
-        measures[open.measure]?.push({
+        measures[open.measure]?.ottavas.push({
           position: open.position,
           end: { measure: stop.measure, position: stop.covers },
           value: open.value,
