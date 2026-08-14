@@ -167,18 +167,26 @@ function writeScores(
 
 /**
  * The instrument grouping as a layout: one system-layout whose content nests
- * staff groups around staves. Written only when the source draws groups,
- * because a layout of bare staves states nothing the part list does not.
+ * staff groups around staves. Written when the source draws groups, and also
+ * when any part has more than one staff, because the braced grand staff is
+ * something the part list does not state: parts[i].staves says two staves,
+ * and nothing says they are one braced instrument with connected barlines.
+ * A layout of bare single staves states nothing the part list does not, so
+ * a score with neither gets none.
  *
  * The id is what a score names the layout by, and only a named layout is
  * reachable. One layout is written, so one fixed id names it.
  */
 function writeLayouts(score: Score): MNXSystemLayout[] | undefined {
-  if (score.grouping.length === 0) return undefined
+  const grouping: readonly GroupingItem[] =
+    score.grouping.length > 0
+      ? score.grouping
+      : score.parts.some((part) => part.staves > 1)
+        ? score.parts.map((part) => ({ kind: 'part', part: part.id }))
+        : []
+  if (grouping.length === 0) return undefined
   const parts = new Map(score.parts.map((part) => [part.id, part]))
-  return [
-    { id: LAYOUT_ID, content: score.grouping.flatMap((item) => writeGroupingItem(item, parts)) },
-  ]
+  return [{ id: LAYOUT_ID, content: grouping.flatMap((item) => writeGroupingItem(item, parts)) }]
 }
 
 // Named apart from the measure ids ("m1"), the event ids ("ev1") and the note

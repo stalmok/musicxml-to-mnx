@@ -392,6 +392,47 @@ describe('part groups', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 
+  // A braced grand staff is something the part list does not state:
+  // parts[i].staves says two staves, and nothing says they are one braced
+  // instrument with connected barlines. So a multi-staff part warrants a
+  // layout even where the source draws no groups.
+  test('states the grand staff of a piano the source never groups', () => {
+    const pianoPart =
+      '<part id="P2"><measure number="1">' +
+      '<attributes><staves>2</staves></attributes>' +
+      `${NOTE}</measure></part>`
+    const { mnx, warnings } = convertMusicXML(
+      score(
+        '<score-part id="P1"><part-name>Voice</part-name></score-part>' +
+          '<score-part id="P2"><part-name>Piano</part-name></score-part>',
+        part('P1') + pianoPart,
+      ),
+    )
+
+    expect(mnx.layouts).toEqual([
+      {
+        id: 'layout1',
+        content: [
+          { type: 'staff', labelref: 'name', sources: [{ part: 'P1' }] },
+          {
+            type: 'group',
+            symbol: 'brace',
+            barlineStyle: 'instrument',
+            label: 'Piano',
+            content: [
+              { type: 'staff', sources: [{ part: 'P2', staff: 1 }] },
+              { type: 'staff', sources: [{ part: 'P2', staff: 2 }] },
+            ],
+          },
+        ],
+      },
+    ])
+    expect(mnx.scores?.[0]?.layout).toBe('layout1')
+    expect(mnx.parts.map((p) => p.id)).toEqual(['P1', 'P2'])
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
   // A layout of bare staves states nothing the part list does not, so a
   // score without groups gets none, and its parts stay unnamed by id.
   test('writes no layout and no part ids when the source draws no groups', () => {
