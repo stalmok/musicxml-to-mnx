@@ -145,6 +145,32 @@ describe('repeat signs', () => {
     expect(globals[0]?.repeatEnd?.times).toBe(4)
   })
 
+  // A standard backward repeat is written light-heavy plus the repeat: the
+  // light-heavy is how the closing sign draws, and repeatEnd already says
+  // to draw it. Stating final too asserts a barline the source never
+  // states, and a consumer honouring both draws the thin-thick twice.
+  test('keeps only the repeat where light-heavy is how it draws', () => {
+    const { globals, warnings } = read(
+      NOTE + right('<bar-style>light-heavy</bar-style><repeat direction="backward"/>'),
+    )
+
+    expect(globals[0]?.repeatEnd).toEqual({ times: undefined })
+    expect(globals[0]?.barline).toBeUndefined()
+    expect(warnings).toEqual([])
+  })
+
+  // Any other style beside a closing repeat is the source's own statement,
+  // not how the sign draws, and stays.
+  test('keeps a style that is not how a closing repeat draws', () => {
+    const { globals, warnings } = read(
+      NOTE + right('<bar-style>heavy-heavy</bar-style><repeat direction="backward"/>'),
+    )
+
+    expect(globals[0]?.barline).toBe('heavyHeavy')
+    expect(globals[0]?.repeatEnd).toEqual({ times: undefined })
+    expect(warnings).toEqual([])
+  })
+
   test('reports a repeat in neither direction', () => {
     const { globals, warnings } = read(NOTE + right('<repeat/>'))
 

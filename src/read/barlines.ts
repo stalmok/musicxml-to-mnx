@@ -93,7 +93,14 @@ export function readBarline(
   return {
     ...NOTHING,
     ...repeat,
-    barline: readBarStyle(element, atStart, repeat.repeatStart, warnings, context),
+    barline: readBarStyle(
+      element,
+      atStart,
+      repeat.repeatStart,
+      repeat.repeatEnd !== undefined,
+      warnings,
+      context,
+    ),
     ...readEnding(element, warnings, context),
     fermata: atStart
       ? reportOpeningFermata(element, warnings, context)
@@ -159,6 +166,7 @@ function readBarStyle(
   element: ElementReader,
   atStart: boolean,
   repeatStart: boolean,
+  repeatEnd: boolean,
   warnings: WarningCollector,
   context: WarningContext,
 ): BarlineType | undefined {
@@ -185,6 +193,13 @@ function readBarStyle(
   // repeatStart already says to draw one, so nothing is lost. Every one of
   // the corpus's thirty-seven is of that kind.
   if (atStart && repeatStart) return undefined
+
+  // The same the other way round: a light-heavy at the closing edge is how
+  // a backward repeat draws, and repeatEnd already says to draw it. Stating
+  // final too would assert a barline the source never states, and a
+  // consumer honouring both draws the thin-thick twice. Any other style
+  // beside the repeat is the source's own statement and stays.
+  if (!atStart && repeatEnd && type === 'final') return undefined
 
   if (atStart) {
     warnings.add(
