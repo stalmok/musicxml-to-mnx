@@ -358,16 +358,19 @@ describe('a loss the schema has no home for', () => {
   const codes = (source: string) =>
     read(source).warnings.map((warning) => `${warning.code} ${warning.message}`)
 
-  // The schema's root allows only global, layouts, mnx, parts and scores, and
-  // holds no composer, lyricist, rights or work anywhere.
-  test('reports <identification> as unrepresentable', () => {
+  // <identification> is a converter gap, not a format limit: it holds an
+  // <encoding> whose <supports element="accidental"> and
+  // <supports element="beam"> are the schema's support.useAccidentalDisplay
+  // and support.useBeams. The composer and the rights have no home, but the
+  // element as a whole does, so it is not on the list.
+  test('reports <identification> as a gap, because part of it has a home', () => {
     expect(
       codes(
         '<score-partwise><identification/><part id="P1"><measure number="1">' +
           `<attributes><divisions>4</divisions></attributes>${note('')}</measure>` +
           '</part></score-partwise>',
       ),
-    ).toEqual(['unrepresentable:element <identification> cannot be expressed in MNX.'])
+    ).toEqual(['unsupported:element <identification> is not converted yet.'])
   })
 
   // A cutaway staff drawn at 70 percent is a visible loss, and the schema has

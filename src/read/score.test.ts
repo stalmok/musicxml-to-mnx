@@ -913,7 +913,7 @@ describe('reporting what is not converted', () => {
       score(`<identification/><part id="P1"><measure>${NOTE}</measure></part>`),
     )
 
-    expect(warnings.map((w) => w.message)).toEqual(['<identification> cannot be expressed in MNX.'])
+    expect(warnings.map((w) => w.message)).toEqual(['<identification> is not converted yet.'])
   })
 
   test('reports unconverted attributes', () => {

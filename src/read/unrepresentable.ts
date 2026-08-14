@@ -84,10 +84,6 @@ const NO_HOME_IN_MNX: ReadonlySet<string> = new Set([
   'work',
   'movement-title',
   'movement-number',
-  // Who wrote the music, who holds the rights, and what encoded the file. The
-  // schema's root allows only global, layouts, mnx, parts and scores, and
-  // holds no composer, lyricist, rights or credit anywhere.
-  'identification',
   // How a staff is drawn: its number of lines, its size and a tablature
   // tuning. The schema has no staffLines, staffSize or scale; its staff
   // states a label, sources, a symbol and a type.
