@@ -6,7 +6,13 @@
 // Shared by the vendored corpus test and the full-corpus gate, so both hold
 // the output to the same equivalence.
 
-import type { MNXDocument, MNXNoteValue, MNXSequenceItem } from '../../src/index.js'
+import type {
+  MNXDocument,
+  MNXLayoutStaff,
+  MNXNoteValue,
+  MNXSequenceItem,
+  MNXStaffGroup,
+} from '../../src/index.js'
 import type { XmlElement } from '../../src/xml/parse.js'
 
 // How long a written note value lasts, as a fraction of a whole note. Kept
@@ -441,4 +447,77 @@ export function sourceSlurSpans(root: XmlElement): Set<string> {
       }
     })
   return spans
+}
+
+/**
+ * What a layout suppresses. A layout can state less than the part list does
+ * and stay legal MNX: a staff with no label or labelref suppresses its
+ * part's name, and a multi-staff part written as bare sibling staves loses
+ * its grand staff. The schema requires neither, so this walk checks both:
+ * every drawn part name stays reachable from the layout, and every
+ * multi-staff part the layout draws sits in exactly one braced group made
+ * of its own staves.
+ */
+export function layoutLosses(document: MNXDocument): string[] {
+  const layouts = document.layouts ?? []
+  if (layouts.length === 0) return []
+
+  const staves = new Map<string, number>()
+  const namesDrawn = new Set<string>()
+  for (const part of document.parts) {
+    if (part.id === undefined) continue
+    staves.set(part.id, part.staves ?? 1)
+    if (part.name !== undefined || part.shortName !== undefined) namesDrawn.add(part.id)
+  }
+
+  // A braced group states one part's grand staff when it holds exactly that
+  // part's staves, first to last, and nothing else.
+  const bracesWhole = (group: MNXStaffGroup, part: string): boolean =>
+    group.symbol === 'brace' &&
+    group.content.length === (staves.get(part) ?? 0) &&
+    group.content.every(
+      (item, index) =>
+        item.type === 'staff' &&
+        item.sources.length === 1 &&
+        item.sources[0]?.part === part &&
+        item.sources[0].staff === index + 1,
+    )
+
+  const drawn = new Set<string>()
+  const named = new Set<string>()
+  const braced = new Map<string, number>()
+
+  const walk = (items: readonly (MNXStaffGroup | MNXLayoutStaff)[], labelled: boolean): void => {
+    for (const item of items) {
+      if (item.type === 'group') {
+        const first = item.content[0]
+        const part = first?.type === 'staff' ? first.sources[0]?.part : undefined
+        if (part !== undefined && bracesWhole(item, part)) {
+          braced.set(part, (braced.get(part) ?? 0) + 1)
+        }
+        walk(item.content, labelled || item.label !== undefined)
+        continue
+      }
+      const labels = item.label !== undefined || item.labelref !== undefined
+      for (const source of item.sources) {
+        drawn.add(source.part)
+        if (labelled || labels || source.label !== undefined || source.labelref !== undefined) {
+          named.add(source.part)
+        }
+      }
+    }
+  }
+  for (const layout of layouts) walk(layout.content, false)
+
+  const losses: string[] = []
+  for (const part of [...drawn].sort()) {
+    if (namesDrawn.has(part) && !named.has(part)) {
+      losses.push(`part ${part}: name unreachable from the layout`)
+    }
+    const count = staves.get(part) ?? 1
+    if (count > 1 && (braced.get(part) ?? 0) !== 1) {
+      losses.push(`part ${part}: ${String(count)} staves without one braced group of their own`)
+    }
+  }
+  return losses
 }

@@ -26,6 +26,7 @@ import { schemaErrors } from './support/schema.js'
 import { songs } from './support/corpus.js'
 import {
   collectStarts,
+  layoutLosses,
   pitchesOf,
   sounding,
   slurSpans,
@@ -508,6 +509,13 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     })
 
     expect(stray.slice(0, 5)).toEqual([])
+  })
+
+  // A layout can state less than the part list does and stay legal MNX: a
+  // staff with no label reference suppresses its part's name, and a
+  // multi-staff part written as bare sibling staves loses its grand staff.
+  test('keeps part names and grand staves stated in the layout', () => {
+    expect(layoutLosses(mnx)).toEqual([])
   })
 
   // A staff number that names a staff the part does not have would place
