@@ -920,7 +920,13 @@ function readMeasure(
       time,
       tempos,
       number: stated !== position ? stated : undefined,
-      barline,
+      // A light-heavy beside a backward repeat is how the closing sign
+      // draws, and repeatEnd already says to draw it, so stating final too
+      // would assert a barline the source never states. Settled here rather
+      // than per <barline>, because a source can split the style and the
+      // repeat across two elements at the one edge. Any other style beside
+      // the repeat is the source's own statement and stays.
+      barline: repeatEnd !== undefined && barline === 'final' ? undefined : barline,
       repeatStart,
       repeatEnd,
       // Filled in by the part, once the ending's other end has been met.

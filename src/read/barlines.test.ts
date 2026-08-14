@@ -171,6 +171,31 @@ describe('repeat signs', () => {
     expect(warnings).toEqual([])
   })
 
+  // MusicXML allows one <barline> per edge, but a source can still split
+  // the style and the repeat across two elements at the closing edge. The
+  // two say together what one element says alone, and read the same.
+  test('keeps only the repeat when the style arrives in its own element', () => {
+    const { globals, warnings } = read(
+      NOTE + right('<bar-style>light-heavy</bar-style>') + right('<repeat direction="backward"/>'),
+    )
+
+    expect(globals[0]?.repeatEnd).toEqual({ times: undefined })
+    expect(globals[0]?.barline).toBeUndefined()
+    expect(warnings).toEqual([])
+  })
+
+  // A backward repeat at the opening edge is a statement the format allows
+  // and the music cannot mean. The style there still has nowhere to go, and
+  // still says so.
+  test('still reports an opening-edge style beside a backward repeat', () => {
+    const { globals, warnings } = read(
+      left('<bar-style>light-heavy</bar-style><repeat direction="backward"/>') + NOTE,
+    )
+
+    expect(globals[0]?.barline).toBeUndefined()
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:barline'])
+  })
+
   test('reports a repeat in neither direction', () => {
     const { globals, warnings } = read(NOTE + right('<repeat/>'))
 
@@ -377,7 +402,6 @@ describe('a fermata over the barline', () => {
   })
 })
 
-// Everything below was found by a fresh-context review of the milestone.
 describe('what a barline can say that MNX cannot', () => {
   // MusicXML allows a barline partway through a measure, which is neither the
   // line that opens one nor the line that closes it.

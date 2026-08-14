@@ -817,6 +817,18 @@ describe('grace notes', () => {
     expect(content?.[0]?.kind === 'grace' && content[0].slashed).toBe(true)
   })
 
+  // A bare grace element is an appoggiatura, drawn without a slash, and the
+  // document states that: the schema declares no default for slash, so an
+  // absent one is unspecified rather than false.
+  test('converts a bare grace element to a group stating slash false', () => {
+    const { mnx, warnings } = convertMusicXML(measure(grace('B') + REAL))
+    const item = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
+
+    expect(item).toMatchObject({ type: 'grace', slash: false })
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
   test('marks the group as slashed even when the slash is on a later note', () => {
     const { content } = read(measure(grace('B') + grace('C', ' slash="yes"') + REAL))
 

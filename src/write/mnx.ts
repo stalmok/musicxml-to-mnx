@@ -607,9 +607,7 @@ function writeItem(item: SequenceItem, referenced: ReadonlySet<string>): MNXSequ
       return {
         type: 'grace',
         // Stated both ways: the schema declares no default for slash, so an
-        // absent one is unspecified rather than false, and a renderer
-        // filling the gap with the conventional true redraws every
-        // appoggiatura as an acciaccatura.
+        // absent one is unspecified rather than false.
         slash: item.slashed,
         content: item.content.map((event) => writeEvent(event, referenced)),
       }
