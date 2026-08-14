@@ -1483,6 +1483,7 @@ describe('part ids MNX cannot state', () => {
     expect(mnx.parts.map((p) => p.id)).toEqual(['p1', 'P2'])
     expect(mnx.layouts).toEqual([
       {
+        id: 'layout1',
         content: [
           {
             type: 'group',

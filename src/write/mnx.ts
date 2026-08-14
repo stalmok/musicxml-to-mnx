@@ -97,19 +97,24 @@ export function writeMnx(score: Score): MNXDocument {
     parts: score.parts.map((part) =>
       writePart(part, survey.referenced, survey.measureIds, layouts !== undefined),
     ),
-    ...writeScores(score, survey.measureIds),
+    ...writeScores(score, survey.measureIds, layouts?.[0]?.id),
   }
 }
 
 /**
- * The scores object: one rendering, written only when the source draws a
- * multi-measure rest or states a system or page break, because those are the
- * only things this converter states on it. Same principle as layouts:
- * written only when it says something.
+ * The scores object: one rendering, written when the source draws a
+ * multi-measure rest, states a system or page break, or groups its parts,
+ * because those are the only things this converter states on it. Same
+ * principle as layouts: written only when it says something.
+ *
+ * A score is the only thing that can name a layout, so a document with a
+ * layout needs one whether or not it has anything else to say. Without it the
+ * grouping is written and then unreachable, and the brackets never draw.
  */
 function writeScores(
   score: Score,
   measureIds: ReadonlyMap<number, string>,
+  layout: string | undefined,
 ): Pick<MNXDocument, 'scores'> {
   const measureId = (index: number, of: string): string => {
     const id = measureIds.get(index)
@@ -142,7 +147,7 @@ function writeScores(
     pages.push({ systems })
   }
 
-  if (rests.length === 0 && pages.length === 0) return {}
+  if (rests.length === 0 && pages.length === 0 && layout === undefined) return {}
 
   // MNX requires a score rendering to be named, and the model has no name to
   // give: the source's work and movement titles are not converted (they are a
@@ -152,6 +157,7 @@ function writeScores(
     scores: [
       {
         name: 'Score',
+        ...(layout !== undefined ? { layout } : {}),
         ...(rests.length > 0 ? { multimeasureRests: rests } : {}),
         ...(pages.length > 0 ? { pages } : {}),
       },
@@ -163,12 +169,21 @@ function writeScores(
  * The instrument grouping as a layout: one system-layout whose content nests
  * staff groups around staves. Written only when the source draws groups,
  * because a layout of bare staves states nothing the part list does not.
+ *
+ * The id is what a score names the layout by, and only a named layout is
+ * reachable. One layout is written, so one fixed id names it.
  */
 function writeLayouts(score: Score): MNXSystemLayout[] | undefined {
   if (score.grouping.length === 0) return undefined
   const staves = new Map(score.parts.map((part) => [part.id, part.staves]))
-  return [{ content: score.grouping.flatMap((item) => writeGroupingItem(item, staves)) }]
+  return [
+    { id: LAYOUT_ID, content: score.grouping.flatMap((item) => writeGroupingItem(item, staves)) },
+  ]
 }
+
+// Named apart from the measure ids ("m1") and the event ids ("ev1"), so no
+// two things in a document answer to the same name.
+const LAYOUT_ID = 'layout1'
 
 function writeGroupingItem(
   item: GroupingItem,

@@ -32,6 +32,7 @@ describe('part groups', () => {
 
     expect(mnx.layouts).toEqual([
       {
+        id: 'layout1',
         content: [
           {
             type: 'group',
@@ -47,6 +48,31 @@ describe('part groups', () => {
     expect(mnx.parts.map((p) => p.id)).toEqual(['P1', 'P2'])
     expect(warnings).toEqual([])
     expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // Only a score can name a layout, so a layout no score names is unreachable
+  // and the brackets never draw. Written without one, the grouping converted
+  // into a dead end with nothing to warn about.
+  test('names the layout from a score, so a reader can reach it', () => {
+    const { mnx, warnings } = convertMusicXML(
+      score(
+        '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
+          '<score-part id="P1"/><score-part id="P2"/>' +
+          '<part-group type="stop" number="1"/>',
+        part('P1') + part('P2'),
+      ),
+    )
+
+    expect(mnx.scores).toEqual([{ name: 'Score', layout: 'layout1' }])
+    expect(mnx.layouts?.[0]?.id).toBe('layout1')
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  test('writes no score of its own where the source draws no groups', () => {
+    const { mnx } = convertMusicXML(score('<score-part id="P1"/>', part('P1')))
+
+    expect('scores' in mnx).toBe(false)
   })
 
   test('carries a brace group name and barline run onto the staff group', () => {
