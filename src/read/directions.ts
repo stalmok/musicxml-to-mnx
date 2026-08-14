@@ -34,7 +34,7 @@ import { noteValueBaseOf } from './noteValues.js'
 import { readIntegerInRange } from './numbers.js'
 import type { StopWording, WedgeStop } from './spanners.js'
 import type { PartState } from './state.js'
-import { elementLoss } from './unrepresentable.js'
+import { attributeLoss, elementLoss } from './unrepresentable.js'
 
 /** What one <direction> was found to carry. */
 export interface DirectionReading {
@@ -602,10 +602,10 @@ export function readSound(
       // from another when matching a jump to the one it goes back to.
       segnoName = attribute(sound.element, 'segno')
     }
-    // Classified by attribute name: the D.C. and coda navigation has no
-    // jump-type to become in any release, while the rest is playback this
-    // converter may yet find a home for.
-    const loss = elementLoss(name)
+    // Classified as the attribute it is. Classifying it by element name gave a
+    // <sound dynamics> the verdict of the <dynamics> element, which does have
+    // a home, so a playback velocity read as a converter gap.
+    const loss = attributeLoss('sound', name)
     warnings.add(
       loss.code,
       `The "${name}" of a <sound> ${loss.ending}`,

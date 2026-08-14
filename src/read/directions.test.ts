@@ -1105,7 +1105,23 @@ describe('sound navigation', () => {
 
     expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'segno', target: 'segno' })
     expect(warnings.map((w) => w.message)).toEqual([
-      'The "dynamics" of a <sound> is not converted yet.',
+      'The "dynamics" of a <sound> cannot be expressed in MNX.',
+    ])
+  })
+
+  // A <sound dynamics> is a playback velocity, and the schema's perform
+  // options hold nothing. It used to be classified by the <dynamics> element
+  // of the same name, which does have a home, so the loss read as a gap.
+  test('reports a <sound dynamics> as a velocity MNX cannot state', () => {
+    const { warnings } = read(inMeasure(note('C') + '<sound dynamics="71"/>'))
+
+    expect(warnings).toMatchObject([
+      {
+        code: 'unrepresentable:attribute',
+        message: 'The "dynamics" of a <sound> cannot be expressed in MNX.',
+        element: 'sound',
+        attribute: 'dynamics',
+      },
     ])
   })
 
@@ -1117,8 +1133,8 @@ describe('sound navigation', () => {
     )
 
     expect(warnings.map((w) => w.code)).toEqual([
-      'unrepresentable:element',
-      'unrepresentable:element',
+      'unrepresentable:attribute',
+      'unrepresentable:attribute',
     ])
     expect(warnings.map((w) => w.message)).toEqual([
       'The "dacapo" of a <sound> cannot be expressed in MNX.',
@@ -1505,7 +1521,7 @@ describe('the tempo a <sound> states', () => {
     expect(found).toEqual([])
     expect(warnings.map((w) => w.message)).toEqual([
       soundTempoDropped,
-      'The "dynamics" of a <sound> is not converted yet.',
+      'The "dynamics" of a <sound> cannot be expressed in MNX.',
     ])
   })
 })

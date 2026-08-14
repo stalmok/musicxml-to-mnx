@@ -50,13 +50,9 @@ const NO_HOME_IN_MNX: ReadonlySet<string> = new Set([
   // The dashed line that continues an instruction such as "cresc." The schema
   // has no such line; its "dashed" is a line style of a slur.
   'dashes',
-  // The coda sign, and the D.C. and to-coda navigation a <sound> carries as
-  // attributes, which readSound reports through this list by attribute name.
-  // The schema has segno and fine, and its jump-type is only "dsalfine" and
-  // "segno"; nothing names or jumps to a coda.
+  // The coda sign. The schema has segno and fine, and its jump-type is only
+  // "dsalfine" and "segno"; nothing names or jumps to a coda.
   'coda',
-  'dacapo',
-  'tocoda',
   // The shape a notehead is drawn as, such as a diamond or a cross. The
   // schema's note states pitch, accidental, staff and ties, and nothing about
   // how the head is drawn.
@@ -137,8 +133,19 @@ const NO_HOME_ATTRIBUTES: ReadonlySet<string> = new Set([
   'dot placement',
   // A cue-sized note value. The schema has no cue or size concept anywhere.
   'type size',
-  // A playback velocity. The schema's perform options hold nothing.
+  // A playback velocity, written on a note or on the <sound> beside it. The
+  // schema's perform options hold nothing.
   'note dynamics',
+  'sound dynamics',
+  // The D.C. and to-coda navigation a <sound> carries. The schema's jump-type
+  // is only "dsalfine" and "segno"; nothing names or jumps to a coda.
+  'sound dacapo',
+  'sound tocoda',
+  'sound coda',
+  // Where a playback device places the sound in the stereo field, and how high
+  // above the listener. The schema's sound states a name and a midiNumber.
+  'sound pan',
+  'sound elevation',
   // A clef drawn after the barline it changes at. The schema's clef states
   // its sign and position, and nothing about where it is drawn.
   'clef after-barline',
