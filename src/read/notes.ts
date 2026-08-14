@@ -827,18 +827,9 @@ function readTies(
   const ties = element.children('tie')
   const side = startTiedSide(tieds)
 
-  for (const tie of ties) {
-    const type = attribute(tie, 'type')
-    if (type === 'stop') state.spanners.stopTie(note, voice, warnings, context)
-    else if (type === 'start') state.spanners.startTie(note, voice, side, context)
-    else if (type !== 'let-ring') {
-      warnings.add(
-        'unsupported:element',
-        `A <tie> of type "${type ?? ''}" is not converted yet.`,
-        context,
-        'tie',
-      )
-    }
+  for (const edge of tieEdges(ties, tieds, warnings, context)) {
+    if (edge === 'stop') state.spanners.stopTie(note, voice, warnings, context)
+    else state.spanners.startTie(note, voice, side, context)
   }
 
   // A let-ring (l.v.) tie rings out with no ending note. MusicXML 4.0 states
@@ -848,6 +839,55 @@ function readTies(
     ties.some((tie) => attribute(tie, 'type') === 'let-ring') ||
     tieds.some((tied) => attribute(tied, 'type') === 'let-ring')
   if (letRing) note.ties = [...note.ties, { crossVoice: false, lv: true }]
+}
+
+/**
+ * The tie edges a note carries, in the order they apply: a note in the middle
+ * of a chain ends the tie before it and then starts the next.
+ *
+ * <tie> is the sounded tie and <tied> the drawn one, so a document stating
+ * both is read from <tie>. A note that is not sounded, such as a cue, states
+ * the tie in <tied> alone and is read from that instead.
+ */
+function tieEdges(
+  ties: readonly XmlElement[],
+  tieds: readonly XmlElement[],
+  warnings: WarningCollector,
+  context: WarningContext,
+): ('start' | 'stop')[] {
+  const edges: ('start' | 'stop')[] = []
+  for (const tie of ties) {
+    const type = attribute(tie, 'type')
+    if (type === 'stop') edges.push('stop')
+    else if (type === 'start') edges.push('start')
+    else if (type !== 'let-ring') {
+      warnings.add(
+        'unsupported:element',
+        `A <tie> of type "${type ?? ''}" is not converted yet.`,
+        context,
+        'tie',
+      )
+    }
+  }
+  if (ties.length > 0) return edges
+
+  for (const tied of tieds) {
+    const type = attribute(tied, 'type')
+    // A "continue" is the middle of a chain, which <tie> writes as a stop and
+    // a start on the one note.
+    if (type === 'continue') edges.push('stop', 'start')
+    else if (type === 'stop') edges.push('stop')
+    else if (type === 'start') edges.push('start')
+    else if (type !== 'let-ring') {
+      warnings.add(
+        'unsupported:element',
+        `A <tied> of type "${type ?? ''}" is not converted yet.`,
+        context,
+        'tied',
+      )
+    }
+  }
+  return edges
 }
 
 // The side a tie is drawn on, from its <tied> edges. MNX's tie states one

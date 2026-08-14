@@ -138,6 +138,69 @@ describe('ties', () => {
   })
 })
 
+// <tie> is the sound of a tie and <tied> is the notation, so a note that is
+// not sounded, such as a cue, correctly states the tie in <tied> alone. Read
+// from <tie> only, the whole chain was dropped without a word.
+describe('a tie stated only as <tied>', () => {
+  const tiedOnly = (type: string) => `<notations><tied type="${type}"/></notations>`
+
+  test('points the note where it starts at the note where it ends', () => {
+    const { notes } = read(
+      measures(DIVISIONS + note('C', tiedOnly('start')) + note('C', tiedOnly('stop'))),
+    )
+    const [first, second] = notes
+
+    expect(first?.ties).toEqual([{ target: second?.id, crossVoice: false }])
+    expect(second?.ties).toEqual([])
+  })
+
+  // MusicXML writes the middle of a chain as one "continue", where <tie>
+  // writes a stop and a start.
+  test('follows a chain through a note that continues it', () => {
+    const { notes } = read(
+      measures(
+        DIVISIONS +
+          note('C', tiedOnly('start')) +
+          note('C', tiedOnly('continue')) +
+          note('C', tiedOnly('stop')),
+      ),
+    )
+    const [first, second, third] = notes
+
+    expect(first?.ties).toEqual([{ target: second?.id, crossVoice: false }])
+    expect(second?.ties).toEqual([{ target: third?.id, crossVoice: false }])
+    expect(third?.ties).toEqual([])
+  })
+
+  test('carries the side it is drawn on, as a sounded tie does', () => {
+    const { notes } = read(
+      measures(
+        DIVISIONS +
+          note('C', '<notations><tied type="start" orientation="over"/></notations>') +
+          note('C', tiedOnly('stop')),
+      ),
+    )
+
+    expect(notes[0]?.ties[0]?.side).toBe('up')
+  })
+
+  // Where the source states both, <tie> is what the tie is read from, so the
+  // note is tied once rather than twice.
+  test('does not double a tie the source also states as <tie>', () => {
+    const { notes } = read(measures(DIVISIONS + note('C', tied('start')) + note('C', tied('stop'))))
+
+    expect(notes[0]?.ties).toHaveLength(1)
+  })
+
+  test('reports an edge whose type it cannot read', () => {
+    const { warnings } = read(measures(DIVISIONS + note('C', tiedOnly('sideways'))))
+
+    expect(warnings.map((w) => w.message)).toContain(
+      'A <tied> of type "sideways" is not converted yet.',
+    )
+  })
+})
+
 // <tied> is the visual side of a tie. Most of it repeats <tie>, but let-ring
 // and the drawn side live only there, so the reader must read it rather than
 // skip it.
