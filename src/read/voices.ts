@@ -752,6 +752,20 @@ export class MeasureBuilder {
         continue
       }
 
+      // A struck bracket runs between its bottom and top ends, each written
+      // on its own note. A lone marker with one note under it is half a
+      // bracket: written out, it would span the note to itself.
+      if (first.struck && notes.length === 1) {
+        warnings.add(
+          'unclosed:spanner',
+          'A bracket marking notes as struck together has only one note under it, ' +
+            'and is not carried over.',
+          context,
+          'non-arpeggiate',
+        )
+        continue
+      }
+
       if (marked.some((one) => one.conflicted || one.struck !== first.struck)) {
         warnings.add(
           'unrepresentable:arpeggio',

@@ -1194,7 +1194,8 @@
     "wavy-line": 1,
     "trill-mark": 1,
     "stem": 16,
-    "type@size": 15
+    "type@size": 15,
+    "non-arpeggiate": 1
   },
   "boulanger-1-elle-etait-descendue-au-bas-de-la-prairie": {
     "midi-device": 2,
@@ -1314,6 +1315,7 @@
     "pedal": 16,
     "stem": 2,
     "type@size": 4,
+    "non-arpeggiate": 1,
     "octave-shift": 5
   },
   "boulanger-attente": {
@@ -3865,6 +3867,7 @@
     "cue": 8,
     "print-object": 10,
     "type@size": 34,
+    "non-arpeggiate": 3,
     "pedal": 4,
     "notehead": 1
   },
@@ -4068,7 +4071,8 @@
     "sound@tempo": 1,
     "print-object": 35,
     "pedal": 100,
-    "bracket": 4
+    "bracket": 4,
+    "non-arpeggiate": 1
   },
   "faltis-2-zeig-mir-dein-wahres-bild": {
     "midi-device": 2,
@@ -4302,6 +4306,7 @@
     "print-object": 19,
     "extend": 2,
     "dashes": 4,
+    "non-arpeggiate": 1,
     "dot@placement": 2,
     "other-direction": 2,
     "stem": 1,
@@ -7203,6 +7208,7 @@
     "extend": 1,
     "cue": 4,
     "pedal": 2,
+    "non-arpeggiate": 1,
     "type@size": 8,
     "notehead": 1,
     "print-object": 3
@@ -7595,7 +7601,8 @@
     "sound@tempo": 3,
     "print-object": 21,
     "pedal": 8,
-    "fermata": 2
+    "fermata": 2,
+    "non-arpeggiate": 1
   },
   "mahler-1-nun-will-die-sonn-so-hell-aufgeh-n": {
     "midi-device": 2,
@@ -9585,6 +9592,7 @@
     "dashes": 4,
     "wedge": 1,
     "staff-layout": 17,
+    "non-arpeggiate": 1,
     "other-notation": 1
   },
   "schoenberg-10-das-schone-beet-betracht-ich-mir-im-harren": {
@@ -10458,7 +10466,8 @@
     "sound@dynamics": 22,
     "extend": 12,
     "pedal": 8,
-    "dashes": 4
+    "dashes": 4,
+    "non-arpeggiate": 1
   },
   "somervell-5-the-street-sounds-to-the-soldiers-tread": {
     "midi-device": 2,
@@ -10744,7 +10753,8 @@
     "sound@tempo": 1,
     "direction@system": 1,
     "sound@dynamics": 9,
-    "print-object": 8
+    "print-object": 8,
+    "non-arpeggiate": 1
   },
   "tegner-walzer": {
     "midi-device": 5,
@@ -11393,7 +11403,8 @@
     "sound@dynamics": 16,
     "extend": 1,
     "print-object": 11,
-    "pedal": 12
+    "pedal": 12,
+    "non-arpeggiate": 1
   },
   "white-1-when-the-swallows-homeward-fly": {
     "midi-device": 2,

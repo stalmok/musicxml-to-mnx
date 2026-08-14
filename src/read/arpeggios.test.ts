@@ -157,6 +157,31 @@ describe('a chord bracketed as struck together', () => {
   })
 })
 
+// The bracket runs between its bottom and top ends, each written on its own
+// note. A lone marker with one note under it is half a bracket: written out,
+// it would span the note to itself.
+describe('a struck bracket with only one note under it', () => {
+  test('is dropped, and says so', () => {
+    const { measure, warnings } = read(head('<non-arpeggiate type="top"/>') + head('', 'D'))
+
+    expect(measure?.arpeggios).toEqual([])
+    expect(warnings).toEqual([
+      expect.objectContaining({ code: 'unclosed:spanner', element: 'non-arpeggiate' }),
+    ])
+  })
+
+  // A chord's two ends arrive on one event, so a single chord under both
+  // markers is a whole bracket, not half of one.
+  test('keeps the bracket both of whose ends sit on one chord', () => {
+    const { measure, warnings } = read(
+      head('<non-arpeggiate type="bottom"/>') + member('E', '<non-arpeggiate type="top"/>'),
+    )
+
+    expect(measure?.arpeggios).toHaveLength(1)
+    expect(warnings).toEqual([])
+  })
+})
+
 // A rest cannot be rolled, and a mark on one spans nothing.
 describe('a roll marked on something with no notes', () => {
   test('states nothing, and says so', () => {
