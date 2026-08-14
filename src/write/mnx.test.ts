@@ -728,11 +728,15 @@ describe('tuplets and grace groups', () => {
     })
   })
 
-  test('writes a grace group without a slash it does not have', () => {
+  // The schema states no default for slash, so an absent one is unspecified
+  // rather than false, and a renderer filling the gap with the conventional
+  // true redraws an appoggiatura as an acciaccatura. Both values are stated.
+  test('states the absence of a slash, so nothing redraws one', () => {
     const group = { kind: 'grace', content: [WHOLE_C], slashed: false } as const
 
     expect(writeMnx(itemScore(group)).parts[0]?.measures[0]?.sequences[0]?.content[0]).toEqual({
       type: 'grace',
+      slash: false,
       content: [{ duration: { base: 'whole' }, notes: [{ pitch: { step: 'C', octave: 4 } }] }],
     })
   })
