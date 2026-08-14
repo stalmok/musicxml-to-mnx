@@ -175,9 +175,9 @@ function writeScores(
  */
 function writeLayouts(score: Score): MNXSystemLayout[] | undefined {
   if (score.grouping.length === 0) return undefined
-  const staves = new Map(score.parts.map((part) => [part.id, part.staves]))
+  const parts = new Map(score.parts.map((part) => [part.id, part]))
   return [
-    { id: LAYOUT_ID, content: score.grouping.flatMap((item) => writeGroupingItem(item, staves)) },
+    { id: LAYOUT_ID, content: score.grouping.flatMap((item) => writeGroupingItem(item, parts)) },
   ]
 }
 
@@ -189,17 +189,30 @@ const LAYOUT_ID = 'layout1'
 
 function writeGroupingItem(
   item: GroupingItem,
-  staves: ReadonlyMap<string, number>,
+  parts: ReadonlyMap<string, Part>,
 ): (MNXStaffGroup | MNXLayoutStaff)[] {
   if (item.kind === 'part') {
-    // Each staff of a multi-staff part is its own staff in the system,
-    // naming which staff of the part it draws.
-    const count = staves.get(item.part)
+    const part = parts.get(item.part)
     /* v8 ignore next 2 -- the reader prunes every grouping part the score
        does not write, so the map covers the whole grouping. */
-    if (count === undefined) throw new Error('A layout staff points at a part with no staves.')
-    if (count === 1) return [{ type: 'staff', sources: [{ part: item.part }] }]
-    return Array.from({ length: count }, (_, index) => ({
+    if (part === undefined) throw new Error('A layout staff points at a part the score lacks.')
+    // A renderer that honours a layout resolves labels from it, so each
+    // staff points back at its part's name. labelref rather than label
+    // keeps the name written once, on the part.
+    const labelref =
+      part.name !== undefined ? 'name' : part.shortName !== undefined ? 'shortName' : undefined
+    if (part.staves === 1) {
+      return [
+        {
+          type: 'staff',
+          ...(labelref !== undefined ? { labelref } : {}),
+          sources: [{ part: item.part }],
+        },
+      ]
+    }
+    // Each staff of a multi-staff part is its own staff in the system,
+    // naming which staff of the part it draws.
+    return Array.from({ length: part.staves }, (_, index) => ({
       type: 'staff',
       sources: [{ part: item.part, staff: index + 1 }],
     }))
@@ -210,7 +223,7 @@ function writeGroupingItem(
       ...(item.symbol !== undefined ? { symbol: item.symbol } : {}),
       ...(item.label !== undefined ? { label: item.label } : {}),
       ...(item.barlineStyle !== undefined ? { barlineStyle: item.barlineStyle } : {}),
-      content: item.content.flatMap((inner) => writeGroupingItem(inner, staves)),
+      content: item.content.flatMap((inner) => writeGroupingItem(inner, parts)),
     },
   ]
 }

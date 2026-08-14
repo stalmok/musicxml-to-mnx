@@ -410,15 +410,22 @@ export type MNXStaffSymbol = 'bracket' | 'brace' | 'noSymbol'
 
 export type MNXStaffGroupBarlineStyle = 'individual' | 'instrument' | 'unified' | 'mensurstrich'
 
+/** Which of the part's names a staff draws as its label. */
+export type MNXStaffLabelref = 'name' | 'shortName'
+
 export interface MNXStaffSource {
   part: string
   /** Which staff of a multi-staff part, counting from 1. Absent means 1. */
   staff?: number
+  label?: string
+  labelref?: MNXStaffLabelref
 }
 
 export interface MNXLayoutStaff {
   type: 'staff'
   sources: MNXStaffSource[]
+  label?: string
+  labelref?: MNXStaffLabelref
   symbol?: MNXStaffSymbol
 }
 

@@ -38,8 +38,8 @@ describe('part groups', () => {
             type: 'group',
             symbol: 'bracket',
             content: [
-              { type: 'staff', sources: [{ part: 'P1' }] },
-              { type: 'staff', sources: [{ part: 'P2' }] },
+              { type: 'staff', labelref: 'name', sources: [{ part: 'P1' }] },
+              { type: 'staff', labelref: 'name', sources: [{ part: 'P2' }] },
             ],
           },
         ],
@@ -47,6 +47,48 @@ describe('part groups', () => {
     ])
     expect(mnx.parts.map((p) => p.id)).toEqual(['P1', 'P2'])
     expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // A renderer that honours a layout resolves part names from it, so a staff
+  // that names none draws none. labelref points back at the part, which
+  // keeps the name written once.
+  test('labels a staff from the short name when the part draws no full name', () => {
+    const { mnx, warnings } = convertMusicXML(
+      score(
+        '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
+          '<score-part id="P1"><part-name print-object="no">Voice</part-name>' +
+          '<part-abbreviation>V.</part-abbreviation></score-part>' +
+          '<score-part id="P2"/>' +
+          '<part-group type="stop" number="1"/>',
+        part('P1') + part('P2'),
+      ),
+    )
+
+    const group = mnx.layouts?.[0]?.content[0]
+    if (group?.type !== 'group') throw new Error('expected a staff group')
+    expect(group.content[0]).toEqual({
+      type: 'staff',
+      labelref: 'shortName',
+      sources: [{ part: 'P1' }],
+    })
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  test('writes no label reference for a part that draws no name at all', () => {
+    const { mnx } = convertMusicXML(
+      score(
+        '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
+          '<score-part id="P1"/><score-part id="P2"/>' +
+          '<part-group type="stop" number="1"/>',
+        part('P1') + part('P2'),
+      ),
+    )
+
+    const group = mnx.layouts?.[0]?.content[0]
+    if (group?.type !== 'group') throw new Error('expected a staff group')
+    expect(group.content[0]).toEqual({ type: 'staff', sources: [{ part: 'P1' }] })
     expect(schemaErrors(mnx)).toEqual([])
   })
 
