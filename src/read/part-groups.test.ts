@@ -77,7 +77,7 @@ describe('part groups', () => {
   })
 
   test('writes no label reference for a part that draws no name at all', () => {
-    const { mnx } = convertMusicXML(
+    const { mnx, warnings } = convertMusicXML(
       score(
         '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
           '<score-part id="P1"/><score-part id="P2"/>' +
@@ -89,6 +89,7 @@ describe('part groups', () => {
     const group = mnx.layouts?.[0]?.content[0]
     if (group?.type !== 'group') throw new Error('expected a staff group')
     expect(group.content[0]).toEqual({ type: 'staff', sources: [{ part: 'P1' }] })
+    expect(warnings).toEqual([])
     expect(schemaErrors(mnx)).toEqual([])
   })
 
@@ -109,7 +110,54 @@ describe('part groups', () => {
 
     const group = mnx.layouts?.[0]?.content[0]
     if (group?.type !== 'group') throw new Error('expected a staff group')
-    expect(group.content[0]).toEqual(expect.objectContaining({ label: 'Pno.', symbol: 'brace' }))
+    expect(group.content[0]).toEqual({
+      type: 'group',
+      symbol: 'brace',
+      label: 'Pno.',
+      content: [
+        { type: 'staff', sources: [{ part: 'P1', staff: 1 }] },
+        { type: 'staff', sources: [{ part: 'P1', staff: 2 }] },
+      ],
+    })
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // A part that draws both of its names is labelled by the full one; the
+  // short name stays on the part for a renderer that wants it later.
+  test('prefers the full name over the short name on staff and group alike', () => {
+    const pianoPart =
+      '<part id="P2"><measure number="1">' +
+      '<attributes><staves>2</staves></attributes>' +
+      `${NOTE}</measure></part>`
+    const { mnx, warnings } = convertMusicXML(
+      score(
+        '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
+          '<score-part id="P1"><part-name>Voice</part-name>' +
+          '<part-abbreviation>V.</part-abbreviation></score-part>' +
+          '<part-group type="stop" number="1"/>' +
+          '<score-part id="P2"><part-name>Piano</part-name>' +
+          '<part-abbreviation>Pno.</part-abbreviation></score-part>',
+        part('P1') + pianoPart,
+      ),
+    )
+
+    const group = mnx.layouts?.[0]?.content[0]
+    if (group?.type !== 'group') throw new Error('expected a staff group')
+    expect(group.content[0]).toEqual({
+      type: 'staff',
+      labelref: 'name',
+      sources: [{ part: 'P1' }],
+    })
+    expect(mnx.layouts?.[0]?.content[1]).toEqual({
+      type: 'group',
+      symbol: 'brace',
+      label: 'Piano',
+      content: [
+        { type: 'staff', sources: [{ part: 'P2', staff: 1 }] },
+        { type: 'staff', sources: [{ part: 'P2', staff: 2 }] },
+      ],
+    })
     expect(warnings).toEqual([])
     expect(schemaErrors(mnx)).toEqual([])
   })
