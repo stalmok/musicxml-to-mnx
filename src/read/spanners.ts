@@ -50,10 +50,6 @@ interface OpenSlur {
 
 /** One end of a slur, and on a stop what that end states. */
 interface SlurEnd extends SpanEnd<OpenSlur> {
-  /** Where the document writes it, which orders two ends at one point. */
-  read: number
-  /** The voice it is written in, which pairs a voice's own slurs first. */
-  voice?: string | undefined
   stop?: {
     event: Event
     /** The side the slur bends to at its close, for an S-shaped one. */
@@ -113,6 +109,21 @@ export interface SpanEnd<T> {
    * the stop was written, or it would sort before the start it belongs to.
    */
   covers: Fraction
+  /**
+   * The voice it is written in, where the thing has one. A stop takes the
+   * open start of its own voice before any other, because exporters number a
+   * slur within the voice they write it in and reuse the number in every
+   * voice. A hairpin and an octave shift belong to the staff rather than a
+   * voice and leave this unset, which puts every one of their ends in the
+   * same voice as every other.
+   */
+  voice?: string | undefined
+  /**
+   * Whether the event it sits on is a grace note. A grace note sounds before
+   * the beat, so its end comes first among the ends at one point, whichever
+   * order the document writes them in.
+   */
+  grace?: boolean
   /** Carried on a start, and handed back when its stop is found. */
   payload: T | undefined
   /**
@@ -141,8 +152,14 @@ export type SamePoint = 'stop-first' | 'as-written'
  * same point are ordered as `atSamePoint` says, and otherwise keep the order
  * they were read in.
  *
- * Several may carry the same number at once, so each number holds a stack and
- * a stop closes the most recently opened.
+ * Several may carry the same number at once, so each number holds a stack. A
+ * stop closes the most recently opened start of its own voice, and where its
+ * voice has none open, the most recently opened of any voice. Both halves of
+ * that matter. Without the voice, two voices each holding a slur numbered 1
+ * over the same beats close into each other and the hands are sewn together.
+ * Without the fallback, a voice that opens a slur another voice closes takes
+ * a partner of its own from measures away, and the two ends the music meant
+ * for each other are both reported as unmatched.
  *
  * A stop whose covered point falls before its start is reported as a
  * backwards-stop rather than joined: the joined span would end before it
@@ -162,11 +179,13 @@ export function pairSpans<T, E extends SpanEnd<T>>(
       continue
     }
 
-    const started = open.get(end.number)?.pop()
+    const waiting = open.get(end.number) ?? []
+    const started = lastOpenedIn(waiting, end.voice)
     if (!started) {
       report('orphan-stop', end)
       continue
     }
+    waiting.splice(waiting.indexOf(started), 1)
     // The drop was reported where the start was read; the stop goes with it.
     if (started.dropped) continue
     /* v8 ignore next 2 -- only a start carries a payload, and only a start is
@@ -194,6 +213,43 @@ export function pairSpans<T, E extends SpanEnd<T>>(
 }
 
 /**
+ * Whether a stream of ends, all of one voice and one slur number, accounts
+ * for itself: it opens each slur before closing it and leaves none over. Such
+ * a stream is the voice's own, because a measure is written one voice at a
+ * time, so within a voice the document's order is the music's.
+ */
+function accountsForItself(ends: readonly SlurEnd[]): boolean {
+  let open = 0
+  for (const end of inTimeOrder(ends, 'as-written')) {
+    if (end.kind === 'start') {
+      open += 1
+      // A voice nesting two slurs of one number says nothing about which
+      // stop closes which, so it is not accounting for them either.
+      if (open > 1) return false
+      continue
+    }
+    if (open === 0) return false
+    open -= 1
+  }
+  return open === 0
+}
+
+/**
+ * The start a stop closes: the last one opened in the stop's own voice, or
+ * failing that the last one opened at all.
+ */
+function lastOpenedIn<T, E extends SpanEnd<T>>(
+  waiting: readonly E[],
+  voice: string | undefined,
+): E | undefined {
+  for (let index = waiting.length - 1; index >= 0; index -= 1) {
+    const start = waiting[index]
+    if (start && (start.voice ?? '') === (voice ?? '')) return start
+  }
+  return waiting[waiting.length - 1]
+}
+
+/**
  * Puts a dynamic in a measure at the point the source drew it, before the
  * first one written later. The measure's marks are read in document order,
  * which a <backup> can take back to an earlier point, so this is where the
@@ -213,6 +269,10 @@ function inTimeOrder<T, E extends SpanEnd<T>>(ends: readonly E[], atSamePoint: S
       if (a.end.measure !== b.end.measure) return a.end.measure - b.end.measure
       const byPosition = compareFractions(a.end.position, b.end.position)
       if (byPosition !== 0) return byPosition
+      // A grace note sounds before the beat, so its end comes first whichever
+      // order the document writes the two in. Another voice can write the
+      // other end of the slur ahead of the grace note that opens it.
+      if ((a.end.grace ?? false) !== (b.end.grace ?? false)) return a.end.grace ? -1 : 1
       if (atSamePoint === 'stop-first' && a.end.kind !== b.end.kind) {
         return a.end.kind === 'stop' ? -1 : 1
       }
@@ -314,15 +374,16 @@ export class SpannerResolver {
     voice: string | undefined,
     measure: number,
     position: Fraction,
+    grace: boolean,
     context: WarningContext,
   ): void {
     this.#slurEnds.push({
       kind: 'start',
-      read: this.#slurEnds.length,
       number,
       measure,
       position,
       voice,
+      grace,
       covers: position,
       payload: { event, side, lineType },
       context,
@@ -337,15 +398,16 @@ export class SpannerResolver {
     voice: string | undefined,
     measure: number,
     position: Fraction,
+    grace: boolean,
     context: WarningContext,
   ): void {
     this.#slurEnds.push({
       kind: 'stop',
-      read: this.#slurEnds.length,
       number,
       measure,
       position,
       voice,
+      grace,
       covers: position,
       payload: undefined,
       context,
@@ -363,11 +425,19 @@ export class SpannerResolver {
    * whichever slur was open from an earlier measure, and every later slur of
    * the same number shifted along with it.
    *
-   * Each voice pairs its own slurs first. A slur that opens and closes in one
-   * voice is that voice's beyond doubt, and exporters reuse one number in
-   * every voice, so pairing the part as a single stream lets one voice's stop
-   * close another's start. What no voice accounts for is what genuinely runs
-   * between them, and that pairs across the part afterwards.
+   * A voice keeps its own slurs of one number only where its ends account for
+   * each other: it opens each before closing it and leaves none over. A
+   * measure is written one voice at a time, so such a stream is that voice's
+   * beyond doubt, and exporters reuse one number in every voice.
+   *
+   * Everything else joins one stream for the whole part. A voice that leaves
+   * an end over is a voice whose slur runs into another, and pairing it
+   * through to the end on its own put no bound on how far its partner could
+   * be: one voice took a same-voice stop 178 measures on over the stop in the
+   * next measure, and both ends the music meant for each other were reported
+   * as unmatched. Across the vendored corpus that shape carries 31 slurs the
+   * voice-first pairing lost, and drops the spans of five measures or more
+   * from 124 to 84.
    */
   #resolveSlurs(warnings: WarningCollector): void {
     // A slur's two ends mark the very points they are written on, so no stop
@@ -396,26 +466,38 @@ export class SpannerResolver {
       ]
     }
 
-    const byVoice = new Map<string, SlurEnd[]>()
+    const streams = new Map<string, SlurEnd[]>()
     for (const end of this.#slurEnds) {
-      const voice = end.voice ?? ''
-      byVoice.set(voice, [...(byVoice.get(voice) ?? []), end])
+      // A slur number holds no space, so the last space separates the two and
+      // no pair of voice and number keys another pair's stream.
+      const key = `${end.voice ?? ''} ${end.number}`
+      streams.set(key, [...(streams.get(key) ?? []), end])
     }
 
-    // What one voice cannot account for on its own, kept for the pass across
-    // the part rather than reported: another voice may well close it. Put
-    // back in the order the document has, because it comes out of the voices
-    // a voice at a time, and two ends at one point are settled by which the
-    // document writes first.
-    const crossing: SlurEnd[] = []
-    for (const ends of byVoice.values()) {
-      // A grace note begins where the note it ornaments begins, so a slur
-      // between the two has both ends at one point.
-      pairSpans<OpenSlur, SlurEnd>(ends, join, (_reason, end) => crossing.push(end), 'as-written')
+    // What a stream cannot account for waits for the pass across the part
+    // rather than being reported: another voice may well close it.
+    const spare = new Set<SlurEnd>()
+    const ownEnds: SlurEnd[][] = []
+    for (const ends of streams.values()) {
+      if (accountsForItself(ends)) ownEnds.push(ends)
+      else for (const end of ends) spare.add(end)
     }
-    crossing.sort((a, b) => a.read - b.read)
+    /* v8 ignore next 4 -- a stream that accounts for itself opens each slur
+       before closing it and leaves none over, so it has nothing to hand back;
+       and a slur's ends mark the points they are written on, so no stop of
+       one covers a point before its start either. */
+    const handBack = (_reason: string, end: SlurEnd): void => {
+      spare.add(end)
+    }
+    for (const ends of ownEnds) {
+      pairSpans<OpenSlur, SlurEnd>(ends, join, handBack, 'as-written')
+    }
+
+    // Back in the order the document has, because the streams gave their ends
+    // up a stream at a time. A grace note begins where the note it ornaments
+    // begins, so a slur between the two has both ends at one point.
     pairSpans<OpenSlur, SlurEnd>(
-      crossing,
+      this.#slurEnds.filter((end) => spare.has(end)),
       join,
       (reason, end) => {
         warnings.add('unclosed:spanner', messages[reason], end.context, 'slur')

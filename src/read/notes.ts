@@ -452,7 +452,7 @@ function readEventSpanners(
 ): void {
   readArpeggio(notations, voice, builder)
   for (const note of event.notes) readTies(element, note, voice, state, warnings, context, tieds)
-  readSlurs(notations, event, voice, builder, state, warnings, context)
+  readSlurs(notations, event, voice, builder, state, warnings, context, inGraceGroup)
   builder.addBeamMarkers(
     voice,
     event.id,
@@ -918,6 +918,7 @@ function readSlurs(
   state: PartState,
   warnings: WarningCollector,
   context: WarningContext,
+  grace: boolean,
 ): void {
   const slurs = notations.flatMap((block) => block.children('slur'))
   if (slurs.length === 0) return
@@ -935,7 +936,7 @@ function readSlurs(
     // anywhere: a "continue" edge's side has no home in MNX and is dropped.
     const side = curveSide(slur)
     if (type === 'stop') {
-      state.spanners.stopSlur(event, number, side, voice, state.measure, at, context)
+      state.spanners.stopSlur(event, number, side, voice, state.measure, at, grace, context)
     } else if (type === 'start') {
       state.spanners.startSlur(
         event,
@@ -945,6 +946,7 @@ function readSlurs(
         voice,
         state.measure,
         at,
+        grace,
         context,
       )
     } else if (type !== 'continue') {

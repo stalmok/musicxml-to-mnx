@@ -380,6 +380,69 @@ describe('slurs', () => {
     expect(warnings.list()).toEqual([])
   })
 
+  // A voice keeps its own slurs where its ends account for each other, even
+  // where another voice writes a stray stop nearer than the voice's own.
+  test("keeps a voice's own slur over a nearer stray stop beside it", () => {
+    const warnings = new WarningCollector()
+    const score = readScore(
+      parseXmlRoot(
+        measures(
+          DIVISIONS +
+            note('C', slur('start'), '1') +
+            '<backup><duration>4</duration></backup>' +
+            note('G', '', '2'),
+          note('A', slur('stop'), '2'),
+          note('D', slur('stop'), '1'),
+        ),
+      ),
+      warnings,
+    )
+    const eventsOf = (measure: number, sequence: number) =>
+      (score.parts[0]?.measures[measure]?.sequences[sequence]?.content ?? []).filter(
+        (item): item is Event => item.kind === 'event',
+      )
+
+    expect(eventsOf(0, 0)[0]?.slurs[0]?.target).toBe(eventsOf(2, 0)[0]?.id)
+    expect(warnings.list().map((w) => w.message)).toEqual([
+      'A slur ends where none had started, and is not carried over.',
+    ])
+  })
+
+  // Where a voice's ends do not account for each other, the slur runs into
+  // another voice, and the stop takes the most recent start of any voice:
+  // the nearest partner it can have. Kept to its own voice, this start took
+  // the stop four measures on over the one written beside it, and both ends
+  // the music meant for each other were reported as unmatched.
+  test('joins the near partner in another voice, not the far one in its own', () => {
+    const warnings = new WarningCollector()
+    const score = readScore(
+      parseXmlRoot(
+        measures(
+          DIVISIONS +
+            note('C', slur('start'), '1') +
+            '<backup><duration>4</duration></backup>' +
+            note('G', slur('stop'), '2'),
+          note('D', '', '1'),
+          note('E', slur('start'), '1') + note('F', slur('stop'), '1'),
+          note('A', slur('stop'), '1'),
+        ),
+      ),
+      warnings,
+    )
+    const eventsOf = (measure: number, sequence: number) =>
+      (score.parts[0]?.measures[measure]?.sequences[sequence]?.content ?? []).filter(
+        (item): item is Event => item.kind === 'event',
+      )
+
+    // The start of measure one closes in the voice beside it, and measure
+    // three's slur stays where the source wrote it.
+    expect(eventsOf(0, 0)[0]?.slurs[0]?.target).toBe(eventsOf(0, 1)[0]?.id)
+    expect(eventsOf(2, 0)[0]?.slurs[0]?.target).toBe(eventsOf(2, 0)[1]?.id)
+    expect(warnings.list().map((w) => w.message)).toEqual([
+      'A slur ends where none had started, and is not carried over.',
+    ])
+  })
+
   // A grace note takes none of the measure's time, so it begins where the
   // note it ornaments begins. The slur from one to the other therefore has
   // both ends at one point, and the document says which end is which.
@@ -403,6 +466,36 @@ describe('slurs', () => {
 
     expect(grace?.slurs[0]?.target).toBe(main?.id)
     expect(main?.slurs).toEqual([])
+    expect(warnings.list()).toEqual([])
+  })
+
+  // A grace note sounds before the beat, so its end comes first even where
+  // another voice writes the other end at the same point ahead of it. A
+  // left-hand grace flourish slurred up into the right hand's chord is
+  // written that way round.
+  test('joins a slur from a grace note into another voice at the same point', () => {
+    const warnings = new WarningCollector()
+    const score = readScore(
+      parseXmlRoot(
+        measures(
+          DIVISIONS +
+            note('C', slur('stop'), '1') +
+            '<backup><duration>4</duration></backup>' +
+            '<note><grace/><pitch><step>F</step><octave>2</octave></pitch>' +
+            '<type>eighth</type><voice>2</voice>' +
+            '<notations><slur type="start" number="1"/></notations></note>' +
+            note('G', '', '2'),
+        ),
+      ),
+      warnings,
+    )
+    const content = (score.parts[0]?.measures[0]?.sequences ?? []).flatMap(
+      (sequence) => sequence.content,
+    )
+    const grace = content.flatMap((item) => (item.kind === 'grace' ? item.content : []))[0]
+    const chord = content.filter((item): item is Event => item.kind === 'event')[0]
+
+    expect(grace?.slurs[0]?.target).toBe(chord?.id)
     expect(warnings.list()).toEqual([])
   })
 
