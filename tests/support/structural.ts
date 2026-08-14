@@ -471,9 +471,12 @@ export function layoutLosses(document: MNXDocument): string[] {
   }
 
   // A braced group states one part's grand staff when it holds exactly that
-  // part's staves, first to last, and nothing else.
+  // part's staves, first to last, and nothing else. The barlines must be
+  // stated as connected too: the schema declares no default, so a group
+  // that leaves barlineStyle unsaid leaves the barlines split.
   const bracesWhole = (group: MNXStaffGroup, part: string): boolean =>
     group.symbol === 'brace' &&
+    (group.barlineStyle === 'instrument' || group.barlineStyle === 'unified') &&
     group.content.length === (staves.get(part) ?? 0) &&
     group.content.every(
       (item, index) =>

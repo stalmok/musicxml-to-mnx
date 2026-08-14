@@ -82,6 +82,7 @@ test('a layout that states every name and brace loses nothing', () => {
       {
         type: 'group',
         symbol: 'brace',
+        barlineStyle: 'instrument',
         label: 'Piano',
         content: [
           { type: 'staff', sources: [{ part: 'P2', staff: 1 }] },
@@ -142,9 +143,30 @@ test('a braced group missing one of the staves does not count', () => {
       {
         type: 'group',
         symbol: 'brace',
+        barlineStyle: 'instrument',
         content: [{ type: 'staff', sources: [{ part: 'P1', staff: 1 }] }],
       },
       { type: 'staff', sources: [{ part: 'P1', staff: 2 }] },
+    ],
+    [{ id: 'P1', staves: 2, measures: [] }],
+  )
+
+  expect(layoutLosses(document)).toEqual([
+    'part P1: 2 staves without one braced group of their own',
+  ])
+})
+
+test('a braced group that leaves its barlines unstated does not count', () => {
+  const document = layoutDocument(
+    [
+      {
+        type: 'group',
+        symbol: 'brace',
+        content: [
+          { type: 'staff', sources: [{ part: 'P1', staff: 1 }] },
+          { type: 'staff', sources: [{ part: 'P1', staff: 2 }] },
+        ],
+      },
     ],
     [{ id: 'P1', staves: 2, measures: [] }],
   )

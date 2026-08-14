@@ -113,6 +113,7 @@ describe('part groups', () => {
     expect(group.content[0]).toEqual({
       type: 'group',
       symbol: 'brace',
+      barlineStyle: 'instrument',
       label: 'Pno.',
       content: [
         { type: 'staff', sources: [{ part: 'P1', staff: 1 }] },
@@ -152,6 +153,7 @@ describe('part groups', () => {
     expect(mnx.layouts?.[0]?.content[1]).toEqual({
       type: 'group',
       symbol: 'brace',
+      barlineStyle: 'instrument',
       label: 'Piano',
       content: [
         { type: 'staff', sources: [{ part: 'P2', staff: 1 }] },
@@ -348,6 +350,7 @@ describe('part groups', () => {
       {
         type: 'group',
         symbol: 'brace',
+        barlineStyle: 'instrument',
         content: [
           { type: 'staff', sources: [{ part: 'P1', staff: 1 }] },
           { type: 'staff', sources: [{ part: 'P1', staff: 2 }] },
@@ -378,6 +381,7 @@ describe('part groups', () => {
     expect(mnx.layouts?.[0]?.content[1]).toEqual({
       type: 'group',
       symbol: 'brace',
+      barlineStyle: 'instrument',
       label: 'Piano',
       content: [
         { type: 'staff', sources: [{ part: 'P2', staff: 1 }] },

@@ -212,12 +212,16 @@ function writeGroupingItem(
     }
     // A multi-staff part is one instrument on several staves. MusicXML
     // leaves its grand staff implicit; MNX states it, so the staves go
-    // inside a braced group carrying the part's name. Barlines need no
-    // stating: MNX's default already connects the staves of one part.
+    // inside a braced group carrying the part's name. The barlines are
+    // stated too: the schema declares no default, so an absent barlineStyle
+    // says nothing, and a consumer is free to draw each staff its own
+    // barline. "instrument" is the grand staff's rule, connecting the
+    // staves of one part.
     return [
       {
         type: 'group',
         symbol: 'brace',
+        barlineStyle: 'instrument',
         ...(part.name !== undefined
           ? { label: part.name }
           : part.shortName !== undefined
