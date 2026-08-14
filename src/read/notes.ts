@@ -855,11 +855,12 @@ function tieEdges(
   warnings: WarningCollector,
   context: WarningContext,
 ): ('start' | 'stop')[] {
-  const edges: ('start' | 'stop')[] = []
+  let starts = 0
+  let stops = 0
   for (const tie of ties) {
     const type = attribute(tie, 'type')
-    if (type === 'stop') edges.push('stop')
-    else if (type === 'start') edges.push('start')
+    if (type === 'stop') stops += 1
+    else if (type === 'start') starts += 1
     else if (type !== 'let-ring') {
       warnings.add(
         'unsupported:element',
@@ -869,36 +870,48 @@ function tieEdges(
       )
     }
   }
-  if (ties.length > 0) return edges
 
-  for (const tied of tieds) {
-    const type = attribute(tied, 'type')
-    // A "continue" is the middle of a chain, which <tie> writes as a stop and
-    // a start on the one note.
-    if (type === 'continue') edges.push('stop', 'start')
-    else if (type === 'stop') edges.push('stop')
-    else if (type === 'start') edges.push('start')
-    else if (type !== 'let-ring') {
-      warnings.add(
-        'unsupported:element',
-        `A <tied> of type "${type ?? ''}" is not converted yet.`,
-        context,
-        'tied',
-      )
+  // Read from <tied> only where no <tie> stated an edge. A note whose only
+  // <tie> is a let-ring still states its drawn tie in <tied>.
+  if (starts === 0 && stops === 0) {
+    for (const tied of tieds) {
+      const type = attribute(tied, 'type')
+      // A "continue" is the middle of a chain, which <tie> writes as a stop
+      // and a start on the one note.
+      if (type === 'continue') {
+        starts += 1
+        stops += 1
+      } else if (type === 'stop') stops += 1
+      else if (type === 'start') starts += 1
+      else if (type !== 'let-ring') {
+        warnings.add(
+          'unsupported:element',
+          `A <tied> of type "${type ?? ''}" is not converted yet.`,
+          context,
+          'tied',
+        )
+      }
     }
   }
-  return edges
+
+  // Every stop before every start, whichever order the document writes them
+  // in. A note is the middle of a chain only one way round: it ends the tie
+  // before it and then starts the next. Taken as written, a note stating its
+  // start first closed that very tie and came out tied to itself.
+  return [...Array<'stop'>(stops).fill('stop'), ...Array<'start'>(starts).fill('start')]
 }
 
 // The side a tie is drawn on, from its <tied> edges. MNX's tie states one
 // side, on the note it starts from, so the start's statement is the tie's:
 // a side stated on a stop is read and dropped, with the read accounting for
-// the attributes.
+// the attributes. A "continue" starts the next tie of a chain, so its side is
+// that tie's, exactly as a start's is.
 function startTiedSide(tieds: readonly XmlElement[]): CurveSide | undefined {
   let side: CurveSide | undefined
   for (const tied of tieds) {
     const stated = curveSide(tied)
-    if (side === undefined && attribute(tied, 'type') === 'start') side = stated
+    const type = attribute(tied, 'type')
+    if (side === undefined && (type === 'start' || type === 'continue')) side = stated
   }
   return side
 }

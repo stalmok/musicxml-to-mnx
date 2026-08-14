@@ -192,6 +192,57 @@ describe('a tie stated only as <tied>', () => {
     expect(notes[0]?.ties).toHaveLength(1)
   })
 
+  // <notations> puts no order on its children, so a note in the middle of a
+  // chain can state its start before its stop. Taken as written, that start
+  // was the most recent one open when the stop arrived, so the note came out
+  // tied to itself and the chain stitched past it.
+  test('ends the tie before it and then starts the next, however they are written', () => {
+    const startFirst = '<notations><tied type="start"/><tied type="stop"/></notations>'
+    const { notes, warnings } = read(
+      measures(
+        DIVISIONS +
+          note('C', tiedOnly('start')) +
+          note('C', startFirst) +
+          note('C', tiedOnly('stop')),
+      ),
+    )
+    const [first, second, third] = notes
+
+    expect(first?.ties).toEqual([{ target: second?.id, crossVoice: false }])
+    expect(second?.ties).toEqual([{ target: third?.id, crossVoice: false }])
+    expect(warnings).toEqual([])
+  })
+
+  // A "continue" starts the next tie of the chain, so the side it states is
+  // that tie's, the way a start's is.
+  test('carries the side a continuing edge states', () => {
+    const { notes } = read(
+      measures(
+        DIVISIONS +
+          note('C', tiedOnly('start')) +
+          note('C', '<notations><tied type="continue" orientation="under"/></notations>') +
+          note('C', tiedOnly('stop')),
+      ),
+    )
+
+    expect(notes[1]?.ties[0]?.side).toBe('down')
+  })
+
+  // <tie> is the sound of the tie, and a let-ring rings out with no ending
+  // note, so it states no edge for a chain to be read from. The drawn chain
+  // beside it is still the note's.
+  test('reads the drawn chain beside a <tie> that states only a let-ring', () => {
+    const { notes } = read(
+      measures(
+        DIVISIONS +
+          note('C', `<tie type="let-ring"/>${tiedOnly('start')}`) +
+          note('C', tiedOnly('stop')),
+      ),
+    )
+
+    expect(notes[0]?.ties).toContainEqual({ target: notes[1]?.id, crossVoice: false })
+  })
+
   test('reports an edge whose type it cannot read', () => {
     const { warnings } = read(measures(DIVISIONS + note('C', tiedOnly('sideways'))))
 
