@@ -202,6 +202,32 @@ describe('ties', () => {
     expect(warnings).toEqual([])
   })
 
+  // A chord member of a grace chord sounds before the beat as the whole
+  // chord does, so its tie orders like any grace note's, through the chord
+  // path it is read on.
+  test('joins a tie from a grace chord member into another voice', () => {
+    const graceChord =
+      `<note><grace/><pitch><step>C</step><octave>5</octave></pitch>` +
+      `<type>eighth</type><voice>2</voice></note>` +
+      `<note><grace/><chord/><pitch><step>A</step><octave>4</octave></pitch>` +
+      `<type>eighth</type><voice>2</voice>${tied('start')}</note>`
+    const { notes, warnings } = readAllVoices(
+      measures(
+        DIVISIONS +
+          note('A', tied('stop')) +
+          '<backup><duration>4</duration></backup>' +
+          graceChord +
+          note('E', '', '2'),
+      ),
+    )
+    const started = notes.find((n) => n.ties.length > 0)
+    const stopped = notes.find((n) => n.pitch.step === 'A' && n.ties.length === 0)
+
+    expect(started?.pitch).toEqual({ step: 'A', octave: 4, alter: 0 })
+    expect(started?.ties).toEqual([{ target: stopped?.id, crossVoice: true }])
+    expect(warnings).toEqual([])
+  })
+
   // A grace note sounds before the beat, so its tie into the beat note holds
   // whichever voice writes its end first. The other voice's stop is written
   // ahead of the grace note that starts the tie.

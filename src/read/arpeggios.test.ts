@@ -182,6 +182,25 @@ describe('a struck bracket with only one note under it', () => {
   })
 })
 
+// A roll differs from the bracket: its squiggle is drawn beside whatever
+// carries it, one notehead included, so a lone rolled note keeps its mark.
+describe('a roll marked on a single note', () => {
+  test('is kept, spanning the note itself', () => {
+    const { measure, warnings } = read(head(ROLL))
+
+    expect(measure?.arpeggios).toEqual([
+      {
+        position: { num: 0, den: 1 },
+        span: { start: 'note1', end: 'note1' },
+        direction: 'up',
+        arrow: false,
+        struck: false,
+      },
+    ])
+    expect(warnings).toEqual([])
+  })
+})
+
 // A rest cannot be rolled, and a mark on one spans nothing.
 describe('a roll marked on something with no notes', () => {
   test('states nothing, and says so', () => {

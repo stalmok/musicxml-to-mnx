@@ -460,7 +460,16 @@ export function sourceSlurSpans(root: XmlElement): Set<string> {
  */
 export function layoutLosses(document: MNXDocument): string[] {
   const layouts = document.layouts ?? []
-  if (layouts.length === 0) return []
+
+  // A multi-staff part needs a layout to state its grand staff, so a
+  // document holding one and no layout has already lost the brace. Without
+  // this, the checks below would pass vacuously on a document with no
+  // layouts at all.
+  if (layouts.length === 0) {
+    return document.parts
+      .filter((part) => (part.staves ?? 1) > 1)
+      .map((part, index) => `part ${part.id ?? String(index + 1)}: multi-staff with no layout`)
+  }
 
   const staves = new Map<string, number>()
   const namesDrawn = new Set<string>()

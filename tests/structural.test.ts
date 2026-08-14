@@ -188,8 +188,20 @@ test('a part left out of the layout is not the layout to state', () => {
   expect(layoutLosses(document)).toEqual([])
 })
 
-test('a document without layouts has nothing to check', () => {
+test('a document of single staves needs no layout', () => {
   expect(
     layoutLosses({ mnx: { version: 1 }, global: { measures: [] }, parts: [{ measures: [] }] }),
   ).toEqual([])
+})
+
+// A multi-staff part needs a layout to state its grand staff, so a document
+// holding one and no layout has already lost the brace.
+test('a multi-staff part with no layout at all is a loss', () => {
+  expect(
+    layoutLosses({
+      mnx: { version: 1 },
+      global: { measures: [] },
+      parts: [{ id: 'P1', staves: 2, measures: [] }],
+    }),
+  ).toEqual(['part P1: multi-staff with no layout'])
 })
