@@ -181,8 +181,10 @@ function writeLayouts(score: Score): MNXSystemLayout[] | undefined {
   ]
 }
 
-// Named apart from the measure ids ("m1") and the event ids ("ev1"), so no
-// two things in a document answer to the same name.
+// Named apart from the measure ids ("m1"), the event ids ("ev1") and the note
+// ids ("note1"). A part id passes through from the source, so a source that
+// names a part "layout1" still collides; that exposure is the same one those
+// three already carry and is not this name's to close.
 const LAYOUT_ID = 'layout1'
 
 function writeGroupingItem(

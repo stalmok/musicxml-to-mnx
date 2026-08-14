@@ -557,8 +557,16 @@ export interface MNXPage {
 /** One rendering of the score. */
 export interface MNXScore {
   name: string
+  /**
+   * The id of the layout this rendering draws the staves by. A score is the
+   * only thing that can name a layout, so a layout no score names is
+   * unreachable.
+   */
+  layout?: string
   multimeasureRests?: MNXMultimeasureRest[]
   pages?: MNXPage[]
+  /** Whether to draw the written note values rather than the sounding ones. */
+  useWritten?: boolean
 }
 
 /** An instrument that plays some of the score. */
@@ -573,6 +581,9 @@ export interface MNXDocument {
   /** Written only when the source draws instrument groups. */
   layouts?: MNXSystemLayout[]
   parts: MNXPart[]
-  /** Written only when the source draws a multi-measure rest. */
+  /**
+   * Written only when the source draws instrument groups, draws a
+   * multi-measure rest, or states a system or page break.
+   */
   scores?: MNXScore[]
 }

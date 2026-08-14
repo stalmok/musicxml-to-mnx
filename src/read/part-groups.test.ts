@@ -75,6 +75,29 @@ describe('part groups', () => {
     expect('scores' in mnx).toBe(false)
   })
 
+  // One score carries everything this converter states on a rendering, so a
+  // grouped source that also breaks its systems names the layout on the same
+  // entry as the pages rather than writing a second one.
+  test('names the layout on the score that already carries the pages', () => {
+    const { mnx, warnings } = convertMusicXML(
+      score(
+        '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
+          '<score-part id="P1"/><score-part id="P2"/>' +
+          '<part-group type="stop" number="1"/>',
+        `<part id="P1"><measure number="1">${NOTE}</measure>` +
+          `<measure number="2"><print new-system="yes"/>${NOTE}</measure></part>` +
+          `<part id="P2"><measure number="1">${NOTE}</measure>` +
+          `<measure number="2">${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(mnx.scores).toHaveLength(1)
+    expect(mnx.scores?.[0]?.layout).toBe('layout1')
+    expect(mnx.scores?.[0]?.pages).toHaveLength(1)
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
   test('carries a brace group name and barline run onto the staff group', () => {
     const { mnx, warnings } = convertMusicXML(
       score(

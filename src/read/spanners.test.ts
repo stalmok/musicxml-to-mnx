@@ -494,6 +494,38 @@ describe('slurs', () => {
     ])
   })
 
+  // Where both voices leave an end over, both pair across the part, and each
+  // stop still takes the open start of its own voice. Taking the most recent
+  // start of any voice instead sews the two hands together.
+  test('keeps two voices apart in the pass across the part', () => {
+    const warnings = new WarningCollector()
+    const both = (body: string) =>
+      note('C', body, '1') + '<backup><duration>4</duration></backup>' + note('G', body, '2')
+    const score = readScore(
+      parseXmlRoot(
+        measures(
+          DIVISIONS + both(slur('start')),
+          both(slur('stop')),
+          // A second stop in each voice, which neither voice can account for,
+          // so both streams pair across the part rather than on their own.
+          both(slur('stop')),
+        ),
+      ),
+      warnings,
+    )
+    const eventsOf = (measure: number, sequence: number) =>
+      (score.parts[0]?.measures[measure]?.sequences[sequence]?.content ?? []).filter(
+        (item): item is Event => item.kind === 'event',
+      )
+
+    expect(eventsOf(0, 0)[0]?.slurs[0]?.target).toBe(eventsOf(1, 0)[0]?.id)
+    expect(eventsOf(0, 1)[0]?.slurs[0]?.target).toBe(eventsOf(1, 1)[0]?.id)
+    expect(warnings.list().map((w) => w.message)).toEqual([
+      'A slur ends where none had started, and is not carried over.',
+      'A slur ends where none had started, and is not carried over.',
+    ])
+  })
+
   // A grace note takes none of the measure's time, so it begins where the
   // note it ornaments begins. The slur from one to the other therefore has
   // both ends at one point, and the document says which end is which.
