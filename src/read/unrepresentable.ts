@@ -142,6 +142,19 @@ const NO_HOME_ATTRIBUTES: ReadonlySet<string> = new Set([
   // above the listener. The schema's sound states a name and a midiNumber.
   'sound pan',
   'sound elevation',
+  // The three piano pedals, as playback. The schema has no pedalling of any
+  // kind, which is why <pedal> is on the element list above.
+  'sound damper-pedal',
+  'sound soft-pedal',
+  'sound sostenuto-pedal',
+  // Plucked rather than bowed. The schema's event-markings are accent, bow
+  // direction, breath, soft accent, spiccato, staccatissimo, staccato,
+  // stress, strong accent, tenuto, tremolo and unstress; nothing plucks.
+  'sound pizzicato',
+  // What the source calls the segno drawn beside it, so a jump can name the
+  // sign it goes back to. The schema's segno states a location, a colour and
+  // a glyph, and has no label.
+  'sound segno',
   // A clef drawn after the barline it changes at. The schema's clef states
   // its sign and position, and nothing about where it is drawn.
   'clef after-barline',

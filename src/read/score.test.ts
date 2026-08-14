@@ -1326,8 +1326,8 @@ describe('several parts', () => {
     )
 
     expect(warnings.map((w) => w.code)).toEqual([
-      'unsupported:attribute',
-      'unsupported:attribute',
+      'unrepresentable:attribute',
+      'unrepresentable:attribute',
       'unrepresentable:cross-part-segno',
     ])
     expect(warnings[2]?.element).toBe('segno')
@@ -1343,7 +1343,10 @@ describe('several parts', () => {
       ),
     )
 
-    expect(warnings.map((w) => w.code)).toEqual(['unsupported:attribute', 'unsupported:attribute'])
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:attribute',
+      'unrepresentable:attribute',
+    ])
   })
 
   test('reports parts placing the fine at different points in the measure', () => {

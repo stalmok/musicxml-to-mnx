@@ -562,8 +562,10 @@ function standaloneWording(
  * a metronome the source never displayed. A <metronome> beside it is the drawn
  * mark, and the <sound tempo> only echoes it for playback, so that echo is
  * passed over without a word. A bare <sound tempo> with no metronome is
- * playback-only and reported like a velocity or a pan position, which MNX also
- * has nowhere for.
+ * reported as a converter gap rather than a format limit: the schema does hold
+ * a tempo, and what stops this one being written is the decision above, not the
+ * absence of anywhere to put it. A velocity or a pan position has no such
+ * home, and says so.
  *
  * Two attributes are notation MNX does hold: <sound fine> is a Fine, and
  * <sound dalsegno> a dal-segno jump. Both go on the score's measure at the

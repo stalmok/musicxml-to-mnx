@@ -1125,6 +1125,37 @@ describe('sound navigation', () => {
     ])
   })
 
+  // The rest of the playback the schema has nowhere for: the stereo field and
+  // the height above the listener, the three piano pedals, the plucking, the
+  // coda sign, and the name a segno is called by.
+  test('reports the playback a <sound> carries that MNX cannot state', () => {
+    const carried =
+      'coda="c" pan="0" elevation="0" damper-pedal="yes" soft-pedal="no" ' +
+      'sostenuto-pedal="no" pizzicato="yes" segno="A"'
+    const { warnings } = read(inMeasure(note('C') + `<sound ${carried}/>`))
+
+    expect(warnings.map((w) => w.code)).toEqual(Array<string>(8).fill('unrepresentable:attribute'))
+    expect(warnings.map((w) => w.attribute)).toEqual([
+      'coda',
+      'pan',
+      'elevation',
+      'damper-pedal',
+      'soft-pedal',
+      'sostenuto-pedal',
+      'pizzicato',
+      'segno',
+    ])
+  })
+
+  // The schema does hold a tempo. What stops a <sound tempo> being written is
+  // that MNX always draws one, so it is a converter gap rather than a limit
+  // of the format.
+  test('reports a <sound tempo> as a gap, not as a format limit', () => {
+    const { warnings } = read(inMeasure(note('C') + '<sound tempo="100"/>'))
+
+    expect(warnings.map((w) => w.code)).toEqual(['unsupported:attribute'])
+  })
+
   // MNX's jump-type has only "segno" and "dsalfine", so the D.C. and coda
   // navigation a <sound> carries has nowhere to go in any release.
   test('reports the D.C. and coda navigation of a <sound>, which MNX cannot state', () => {
