@@ -88,6 +88,14 @@ const NO_HOME_IN_MNX: ReadonlySet<string> = new Set([
   'work',
   'movement-title',
   'movement-number',
+  // Who wrote the music, who holds the rights, and what encoded the file. The
+  // schema's root allows only global, layouts, mnx, parts and scores, and
+  // holds no composer, lyricist, rights or credit anywhere.
+  'identification',
+  // How a staff is drawn: its number of lines, its size and a tablature
+  // tuning. The schema has no staffLines, staffSize or scale; its staff
+  // states a label, sources, a symbol and a type.
+  'staff-details',
   // The free text printed on a page, such as the title or the composer's
   // name. The schema's layouts state staves and systems, and hold no text.
   'credit',
@@ -139,6 +147,11 @@ const NO_HOME_ATTRIBUTES: ReadonlySet<string> = new Set([
   // A metronome mark drawn in parentheses. The schema's tempo states a bpm
   // and a value, and nothing about how the mark is drawn.
   'metronome parentheses',
+  // Whether an instruction prints on every system or only the top one of a
+  // page. The schema's only visibility properties are an accidental's, a
+  // clef's octave and a tuplet's number and value; its system holds a layout,
+  // layout changes and a measure.
+  'direction system',
   // A pickup or courtesy measure excluded from the numbering. The schema's
   // measure number is a plain integer override, so a measure can be
   // renumbered but not stated unnumbered.

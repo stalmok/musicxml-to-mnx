@@ -351,6 +351,56 @@ describe('a cursor move', () => {
   })
 })
 
+// A loss the pin has no home for reads "cannot be expressed in MNX"; a loss
+// this converter has not carried over yet reads "is not converted yet". These
+// three read as gaps though the schema has nowhere to hold them.
+describe('a loss the schema has no home for', () => {
+  const codes = (source: string) =>
+    read(source).warnings.map((warning) => `${warning.code} ${warning.message}`)
+
+  // The schema's root allows only global, layouts, mnx, parts and scores, and
+  // holds no composer, lyricist, rights or work anywhere.
+  test('reports <identification> as unrepresentable', () => {
+    expect(
+      codes(
+        '<score-partwise><identification/><part id="P1"><measure number="1">' +
+          `<attributes><divisions>4</divisions></attributes>${note('')}</measure>` +
+          '</part></score-partwise>',
+      ),
+    ).toEqual(['unrepresentable:element <identification> cannot be expressed in MNX.'])
+  })
+
+  // A cutaway staff drawn at 70 percent is a visible loss, and the schema has
+  // no staffLines, staffSize or scale to carry it.
+  test('reports <staff-details> as unrepresentable', () => {
+    expect(
+      codes(
+        measure(
+          note(''),
+          '<divisions>4</divisions><staff-details><staff-size>70</staff-size></staff-details>',
+        ),
+      ),
+    ).toEqual(['unrepresentable:element <staff-details> cannot be expressed in MNX.'])
+  })
+
+  // Whether a direction prints on every system or only the top one of a page.
+  // The schema's only visibility properties are an accidental's, a clef's
+  // octave and a tuplet's number and value.
+  test('reports a <direction> system attribute as unrepresentable', () => {
+    expect(
+      codes(
+        measure(
+          note('') +
+            '<direction system="only-top"><direction-type><dynamics><p/></dynamics>' +
+            '</direction-type></direction>',
+        ),
+      ),
+    ).toEqual([
+      'unrepresentable:attribute The "system" attribute of a <direction> cannot be expressed in MNX.',
+    ])
+  })
+})
+
 // The part list holds a good deal more than the names read out of it, and it
 // used to be skipped wholesale on the strength of the name being read.
 describe('the part list', () => {
