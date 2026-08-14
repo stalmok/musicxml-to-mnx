@@ -470,7 +470,7 @@ export class SpannerResolver {
     for (const end of this.#slurEnds) {
       // A slur number holds no space, so the last space separates the two and
       // no pair of voice and number keys another pair's stream.
-      const key = `${end.voice ?? ''} ${end.number}`
+      const key = `${end.voice ?? ''} ${end.number}`
       streams.set(key, [...(streams.get(key) ?? []), end])
     }
 
