@@ -210,12 +210,25 @@ function writeGroupingItem(
         },
       ]
     }
-    // Each staff of a multi-staff part is its own staff in the system,
-    // naming which staff of the part it draws.
-    return Array.from({ length: part.staves }, (_, index) => ({
-      type: 'staff',
-      sources: [{ part: item.part, staff: index + 1 }],
-    }))
+    // A multi-staff part is one instrument on several staves. MusicXML
+    // leaves its grand staff implicit; MNX states it, so the staves go
+    // inside a braced group carrying the part's name. Barlines need no
+    // stating: MNX's default already connects the staves of one part.
+    return [
+      {
+        type: 'group',
+        symbol: 'brace',
+        ...(part.name !== undefined
+          ? { label: part.name }
+          : part.shortName !== undefined
+            ? { label: part.shortName }
+            : {}),
+        content: Array.from({ length: part.staves }, (_, index) => ({
+          type: 'staff',
+          sources: [{ part: item.part, staff: index + 1 }],
+        })),
+      },
+    ]
   }
   return [
     {

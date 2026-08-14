@@ -92,6 +92,28 @@ describe('part groups', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 
+  test('names the grand-staff group from the short name when no full name draws', () => {
+    const pianoPart =
+      '<part id="P1"><measure number="1">' +
+      '<attributes><staves>2</staves></attributes>' +
+      `${NOTE}</measure></part>`
+    const { mnx, warnings } = convertMusicXML(
+      score(
+        '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
+          '<score-part id="P1"><part-name print-object="no">Piano</part-name>' +
+          '<part-abbreviation>Pno.</part-abbreviation></score-part>' +
+          '<part-group type="stop" number="1"/>',
+        pianoPart,
+      ),
+    )
+
+    const group = mnx.layouts?.[0]?.content[0]
+    if (group?.type !== 'group') throw new Error('expected a staff group')
+    expect(group.content[0]).toEqual(expect.objectContaining({ label: 'Pno.', symbol: 'brace' }))
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
   // Only a score can name a layout, so a layout no score names is unreachable
   // and the brackets never draw. Written without one, the grouping converted
   // into a dead end with nothing to warn about.
@@ -255,9 +277,10 @@ describe('part groups', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 
-  // A layout lists staves, not parts, so a part written on two staves takes
-  // two of them, each naming which staff of the part it draws.
-  test('gives each staff of a two-staff part its own staff in the layout', () => {
+  // A layout lists staves, not parts, and a multi-staff part is still one
+  // instrument. MusicXML leaves the grand staff implicit; MNX states it, so
+  // the part's staves arrive inside a braced group of their own.
+  test('braces the staves of a two-staff part into a group of their own', () => {
     const twoStaffPart =
       '<part id="P1"><measure number="1">' +
       '<attributes><staves>2</staves></attributes>' +
@@ -274,9 +297,45 @@ describe('part groups', () => {
     const group = mnx.layouts?.[0]?.content[0]
     if (group?.type !== 'group') throw new Error('expected a staff group')
     expect(group.content).toEqual([
-      { type: 'staff', sources: [{ part: 'P1', staff: 1 }] },
-      { type: 'staff', sources: [{ part: 'P1', staff: 2 }] },
+      {
+        type: 'group',
+        symbol: 'brace',
+        content: [
+          { type: 'staff', sources: [{ part: 'P1', staff: 1 }] },
+          { type: 'staff', sources: [{ part: 'P1', staff: 2 }] },
+        ],
+      },
     ])
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // The braced group stands in for the part, so it takes the part's name;
+  // a group label is a plain string because MNX gives groups no labelref.
+  test('names the grand-staff group after its part', () => {
+    const pianoPart =
+      '<part id="P2"><measure number="1">' +
+      '<attributes><staves>2</staves></attributes>' +
+      `${NOTE}</measure></part>`
+    const { mnx, warnings } = convertMusicXML(
+      score(
+        '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
+          '<score-part id="P1"><part-name>Voice</part-name></score-part>' +
+          '<part-group type="stop" number="1"/>' +
+          '<score-part id="P2"><part-name>Piano</part-name></score-part>',
+        part('P1') + pianoPart,
+      ),
+    )
+
+    expect(mnx.layouts?.[0]?.content[1]).toEqual({
+      type: 'group',
+      symbol: 'brace',
+      label: 'Piano',
+      content: [
+        { type: 'staff', sources: [{ part: 'P2', staff: 1 }] },
+        { type: 'staff', sources: [{ part: 'P2', staff: 2 }] },
+      ],
+    })
     expect(warnings).toEqual([])
     expect(schemaErrors(mnx)).toEqual([])
   })
