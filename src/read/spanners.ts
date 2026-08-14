@@ -23,13 +23,16 @@ import type {
 } from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 
+/** A tie that has begun, waiting for the note that ends it. */
 interface OpenTie {
   note: Note
-  /** The voice the tie starts in, to tell a tie that crosses voices. */
-  voice: string | undefined
   /** The side the tie is drawn on, where the start states it. */
   side: CurveSide | undefined
-  context: WarningContext
+}
+
+/** One end of a tie, and on a stop the note it is written on. */
+interface TieEnd extends SpanEnd<OpenTie> {
+  stop?: { note: Note }
 }
 
 /** An octave shift that has begun, waiting to learn where it stops. */
@@ -234,6 +237,18 @@ function accountsForItself(ends: readonly SlurEnd[]): boolean {
   return open === 0
 }
 
+/** The most recently opened start that satisfies the rule, if any does. */
+function findLastOpened<T, E extends SpanEnd<T>>(
+  waiting: readonly E[],
+  keeps: (start: E) => boolean,
+): E | undefined {
+  for (let index = waiting.length - 1; index >= 0; index -= 1) {
+    const start = waiting[index]
+    if (start && keeps(start)) return start
+  }
+  return undefined
+}
+
 /**
  * The start a stop closes: the last one opened in the stop's own voice, or
  * failing that the last one opened at all.
@@ -301,68 +316,137 @@ function tieKey(pitch: Pitch): string {
 // opened one, accounts for most of the rest.
 
 export class SpannerResolver {
-  // Two ties of one pitch can be open at once, as when two hands each sustain
-  // it, so each pitch holds a stack rather than a single open tie: keyed by a
-  // single value, the second start would overwrite the first and drop it with
-  // no warning.
-  readonly #openTies = new Map<string, OpenTie[]>()
+  // Both ends of every tie in the part, paired once all of them are in.
+  readonly #tieEnds: TieEnd[] = []
   // Both ends of every slur in the part, paired once all of them are in.
   readonly #slurEnds: SlurEnd[] = []
   // Both ends of every hairpin in the part, paired once all of them are in.
   readonly #wedgeEnds: WedgeEnd[] = []
 
+  /** Notes the note a tie begins on, to be paired once the part is read. */
   startTie(
     note: Note,
     voice: string | undefined,
     side: CurveSide | undefined,
+    measure: number,
+    position: Fraction,
+    grace: boolean,
     context: WarningContext,
   ): void {
-    const key = tieKey(note.pitch)
-    this.#openTies.set(key, [...(this.#openTies.get(key) ?? []), { note, voice, side, context }])
+    this.#tieEnds.push({
+      kind: 'start',
+      number: tieKey(note.pitch),
+      measure,
+      position,
+      voice,
+      grace,
+      covers: position,
+      payload: { note, side },
+      context,
+    })
   }
 
-  /** Joins the tie waiting on this pitch, if one is. */
+  /** The same, for the note a tie ends on. */
   stopTie(
     note: Note,
     voice: string | undefined,
-    warnings: WarningCollector,
+    measure: number,
+    position: Fraction,
+    grace: boolean,
     context: WarningContext,
   ): void {
-    const open = this.#openTies.get(tieKey(note.pitch)) ?? []
-    // Prefer the most recent start in the same voice, so two hands each
-    // sustaining one pitch pair within a hand rather than across. A tie that
-    // finds no same-voice start falls back to the most recent open one, which
-    // is the cross-voice case MNX marks. Voices are compared the way sequences
-    // are bucketed: a note stating no voice and one stating an empty voice are
-    // both the unnamed voice.
-    let chosen = open.length - 1
-    for (let index = open.length - 1; index >= 0; index -= 1) {
-      if ((open[index]?.voice ?? '') === (voice ?? '')) {
-        chosen = index
-        break
+    this.#tieEnds.push({
+      kind: 'stop',
+      number: tieKey(note.pitch),
+      measure,
+      position,
+      voice,
+      grace,
+      covers: position,
+      payload: undefined,
+      context,
+      stop: { note },
+    })
+  }
+
+  /**
+   * Joins every tie in the part, once both ends of all of them are in.
+   *
+   * Paired in time order rather than as the ends are met, for the same
+   * reason the slurs are: a measure holding two voices is written one voice
+   * at a time with a <backup> between them, so a stop belonging to the first
+   * voice is written before the start belonging to the second even though
+   * the music has it the other way round.
+   *
+   * A stop takes the most recent open start of its own voice, so two hands
+   * each sustaining one pitch pair within a hand rather than across. That
+   * pair is the source's own statement, and it holds at any distance: real
+   * scores tie a note to its pitch's next sounding measures away, across
+   * rests, and the corpus carries one such tie.
+   *
+   * A stop with no same-voice start falls back to the most recent open
+   * start of any voice, which is the cross-voice tie MNX marks. That pair
+   * is this reader's inference, so it reaches back one measure at most: a
+   * cross-voice tie joins two notes sounding into each other, and a note
+   * never crosses a barline. A start further back is stale, and pairing
+   * with it would invent a tie the source never states.
+   */
+  #resolveTies(warnings: WarningCollector): void {
+    // Two ties of one pitch can be open at once, as when two hands each
+    // sustain it, so each pitch holds a stack rather than a single open tie.
+    const open = new Map<string, TieEnd[]>()
+
+    for (const end of inTimeOrder(this.#tieEnds, 'as-written')) {
+      if (end.kind === 'start') {
+        open.set(end.number, [...(open.get(end.number) ?? []), end])
+        continue
       }
-    }
-    const started = open[chosen]
-    if (!started) {
-      warnings.add(
-        'unclosed:spanner',
-        'A tie ends on a note where none had started, and is not carried over.',
-        context,
-        'tie',
-      )
-      return
+
+      const waiting = open.get(end.number) ?? []
+      const started =
+        findLastOpened(waiting, (start) => (start.voice ?? '') === (end.voice ?? '')) ??
+        findLastOpened(waiting, (start) => end.measure - start.measure <= 1)
+      if (!started) {
+        warnings.add(
+          'unclosed:spanner',
+          'A tie ends on a note where none had started, and is not carried over.',
+          end.context,
+          'tie',
+        )
+        continue
+      }
+      waiting.splice(waiting.indexOf(started), 1)
+      /* v8 ignore next 2 -- only a start carries a payload, and only a start
+         is ever pushed onto the stack this came off. */
+      if (started.payload === undefined) throw new Error('A tie start with nothing to join.')
+      /* v8 ignore next 2 -- every stop is pushed with the note it is written
+         on. */
+      if (!end.stop) throw new Error('A tie stop with no note.')
+
+      started.payload.note.ties = [
+        ...started.payload.note.ties,
+        {
+          target: end.stop.note.id,
+          // Voices are compared the way sequences are bucketed: a note
+          // stating no voice and one stating an empty voice are both the
+          // unnamed voice.
+          crossVoice: (started.voice ?? '') !== (end.voice ?? ''),
+          ...(started.payload.side !== undefined ? { side: started.payload.side } : {}),
+        },
+      ]
     }
 
-    const crossVoice = (started.voice ?? '') !== (voice ?? '')
-    started.note.ties = [
-      ...started.note.ties,
-      {
-        target: note.id,
-        crossVoice,
-        ...(started.side !== undefined ? { side: started.side } : {}),
-      },
-    ]
-    open.splice(chosen, 1)
+    for (const waiting of open.values()) {
+      for (const start of waiting) {
+        warnings.add(
+          'unclosed:spanner',
+          'A tie starts on a note that nothing ties to, and is not carried over.',
+          start.context,
+          'tie',
+        )
+      }
+    }
+    this.#tieEnds.length = 0
   }
 
   /** Notes the event a slur begins on, to be paired once the part is read. */
@@ -577,19 +661,18 @@ export class SpannerResolver {
   }
 
   /**
-   * Pairs every span that waits until the whole part is read, the hairpins and
-   * the octave shifts, and reports whatever is still open, the ties and slurs
-   * with them. One entry point on purpose: the three share the rule that
-   * nothing left open once the part ends may be dropped in silence, and as
-   * three separate calls a caller could pair the spans yet never report what
-   * stayed unpaired, because each pair step reports its own leftovers rather
-   * than leaving them to one flush at the end.
+   * Pairs every span that waits until the whole part is read: the hairpins,
+   * the octave shifts, the slurs, and the ties. One entry point on purpose:
+   * all four share the rule that nothing left open once the part ends may be
+   * dropped in silence, and as separate calls a caller could pair the spans
+   * yet never report what stayed unpaired, because each pair step reports
+   * its own leftovers rather than leaving them to one flush at the end.
    */
   finish(measures: readonly Measure[], warnings: WarningCollector): void {
     this.#resolveWedges(measures, warnings)
     this.#resolveOttavas(measures, warnings)
     this.#resolveSlurs(warnings)
-    this.#reportUnclosed(warnings)
+    this.#resolveTies(warnings)
   }
 
   /** Joins every hairpin in the part, once all of both ends are in. */
@@ -729,24 +812,6 @@ export class SpannerResolver {
       },
     )
     this.#ottavaEnds.length = 0
-  }
-
-  /**
-   * Reports whatever is still open once the part is read. Real scores do
-   * contain these, so they are worth saying rather than worth refusing.
-   */
-  #reportUnclosed(warnings: WarningCollector): void {
-    for (const waiting of this.#openTies.values()) {
-      for (const open of waiting) {
-        warnings.add(
-          'unclosed:spanner',
-          'A tie starts on a note that nothing ties to, and is not carried over.',
-          open.context,
-          'tie',
-        )
-      }
-    }
-    this.#openTies.clear()
   }
 }
 

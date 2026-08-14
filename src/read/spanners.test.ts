@@ -49,6 +49,22 @@ function read(source: string) {
   return { events, notes: events.flatMap((event) => event.notes), warnings: warnings.list() }
 }
 
+/** Every note of every voice, with grace groups walked into. */
+function readAllVoices(source: string) {
+  const warnings = new WarningCollector()
+  const score = readScore(parseXmlRoot(source), warnings)
+  const events = (score.parts[0]?.measures ?? []).flatMap((measure) =>
+    measure.sequences.flatMap((sequence) =>
+      sequence.content.flatMap((item): Event[] => {
+        if (item.kind === 'event') return [item]
+        if (item.kind === 'grace') return [...item.content]
+        return []
+      }),
+    ),
+  )
+  return { notes: events.flatMap((event) => event.notes), warnings: warnings.list() }
+}
+
 describe('ties', () => {
   test('points the note where the tie starts at the note where it ends', () => {
     const { notes } = read(measures(DIVISIONS + note('C', tied('start')) + note('C', tied('stop'))))
@@ -135,6 +151,76 @@ describe('ties', () => {
     const { warnings } = read(measures(DIVISIONS + note('C', tied('stop'))))
 
     expect(warnings.map((w) => w.code)).toContain('unclosed:spanner')
+  })
+
+  // A measure holding two voices is written one voice at a time with a
+  // <backup> between them, so a stop belonging to the first voice can be
+  // written before the start belonging to the second even though the music
+  // has it the other way round.
+  test('joins a tie whose stop is written before its start', () => {
+    const { notes, warnings } = readAllVoices(
+      measures(
+        DIVISIONS +
+          '<note><rest/><duration>8</duration><type>half</type><voice>1</voice></note>' +
+          note('A', tied('stop')) +
+          '<backup><duration>12</duration></backup>' +
+          `<note><pitch><step>A</step><octave>4</octave></pitch>` +
+          `<duration>8</duration><type>half</type><voice>2</voice>${tied('start')}</note>`,
+      ),
+    )
+    const stopped = notes.find((n) => n.ties.length === 0)
+    const started = notes.find((n) => n.ties.length > 0)
+
+    expect(started?.ties).toEqual([{ target: stopped?.id, crossVoice: true }])
+    expect(warnings).toEqual([])
+  })
+
+  // A tie joins a note to the next sounding of its pitch, and a note never
+  // crosses a barline, so both ends of a real tie sit in one measure or in
+  // adjacent ones. A stop further away than that belongs to nothing, and
+  // pairing it with a stale start would invent a tie the source never wrote.
+  test('reports a far-off stop rather than tying it to a stale start', () => {
+    const { notes, warnings } = readAllVoices(
+      measures(DIVISIONS + note('A', tied('start')), note('G'), note('A', tied('stop'), '2')),
+    )
+
+    expect(notes.every((n) => n.ties.length === 0)).toBe(true)
+    expect(warnings.map((w) => w.code)).toEqual(['unclosed:spanner', 'unclosed:spanner'])
+  })
+
+  // A same-voice stop is the source's own pairing and holds at any
+  // distance. Real scores tie a note to its pitch's next sounding measures
+  // away, across rests, and the corpus carries one such tie.
+  test('keeps a tie its own voice states across an intervening measure', () => {
+    const { notes, warnings } = readAllVoices(
+      measures(DIVISIONS + note('A', tied('start')), note('G'), note('A', tied('stop'))),
+    )
+    const started = notes.find((n) => n.ties.length > 0)
+    const stopped = notes[notes.length - 1]
+
+    expect(started?.ties).toEqual([{ target: stopped?.id, crossVoice: false }])
+    expect(warnings).toEqual([])
+  })
+
+  // A grace note sounds before the beat, so its tie into the beat note holds
+  // whichever voice writes its end first. The other voice's stop is written
+  // ahead of the grace note that starts the tie.
+  test('joins a tie from a grace note into another voice at the same point', () => {
+    const { notes, warnings } = readAllVoices(
+      measures(
+        DIVISIONS +
+          note('A', tied('stop')) +
+          '<backup><duration>4</duration></backup>' +
+          `<note><grace/><pitch><step>A</step><octave>4</octave></pitch>` +
+          `<type>eighth</type><voice>2</voice>${tied('start')}</note>` +
+          note('C', '', '2'),
+      ),
+    )
+    const started = notes.find((n) => n.ties.length > 0)
+    const stopped = notes.find((n) => n.pitch.step === 'A' && n.ties.length === 0)
+
+    expect(started?.ties).toEqual([{ target: stopped?.id, crossVoice: true }])
+    expect(warnings).toEqual([])
   })
 })
 

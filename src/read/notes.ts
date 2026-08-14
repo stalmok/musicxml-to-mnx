@@ -219,7 +219,17 @@ export function readNote(
       element.line,
     )
     readArpeggio(notations, voice, builder)
-    readTies(element, chordNote, voice, state, warnings, context, tieds)
+    readTies(
+      element,
+      chordNote,
+      voice,
+      builder,
+      graceElement !== undefined,
+      state,
+      warnings,
+      context,
+      tieds,
+    )
     closeTuplets(builder, voice, tupletMarkers(notations), warnings, context, path, element.line)
     return
   }
@@ -451,7 +461,9 @@ function readEventSpanners(
   inGraceGroup: boolean,
 ): void {
   readArpeggio(notations, voice, builder)
-  for (const note of event.notes) readTies(element, note, voice, state, warnings, context, tieds)
+  for (const note of event.notes) {
+    readTies(element, note, voice, builder, inGraceGroup, state, warnings, context, tieds)
+  }
   readSlurs(notations, event, voice, builder, state, warnings, context, inGraceGroup)
   builder.addBeamMarkers(
     voice,
@@ -819,6 +831,8 @@ function readTies(
   element: ElementReader,
   note: Note,
   voice: string | undefined,
+  builder: MeasureBuilder,
+  grace: boolean,
   state: PartState,
   warnings: WarningCollector,
   context: WarningContext,
@@ -827,9 +841,16 @@ function readTies(
   const ties = element.children('tie')
   const side = startTiedSide(tieds)
 
+  // The note is in its voice by now, so the cursor has moved past it and its
+  // own start is what the pairing orders it by.
+  const at = builder.lastEventStart(voice)
+  /* v8 ignore next 2 -- a note joins its voice before its ties are read, so
+     there is always a place here to pair from. */
+  if (!at) throw new Error('A tie on a note with no place in the measure.')
+
   for (const edge of tieEdges(ties, tieds, warnings, context)) {
-    if (edge === 'stop') state.spanners.stopTie(note, voice, warnings, context)
-    else state.spanners.startTie(note, voice, side, context)
+    if (edge === 'stop') state.spanners.stopTie(note, voice, state.measure, at, grace, context)
+    else state.spanners.startTie(note, voice, side, state.measure, at, grace, context)
   }
 
   // A let-ring (l.v.) tie rings out with no ending note. MusicXML 4.0 states
