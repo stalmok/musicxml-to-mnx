@@ -605,4 +605,6 @@ export interface Score {
    * instrument id, empty where it states none.
    */
   sounds: ReadonlyMap<string, InstrumentSound>
+  /** The SMuFL font the score is engraved in, where the source names one. */
+  musicFont?: string
 }

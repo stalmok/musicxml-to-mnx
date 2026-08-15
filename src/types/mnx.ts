@@ -403,6 +403,8 @@ export interface MNXPart {
   shortName?: string
   /** How many staves the part is written on. Absent means one. */
   staves?: number
+  /** The SMuFL font the part's notation is engraved in. */
+  smuflFont?: string
   measures: MNXPartMeasure[]
 }
 

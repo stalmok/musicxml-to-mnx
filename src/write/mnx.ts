@@ -96,7 +96,7 @@ export function writeMnx(score: Score): MNXDocument {
     // staff sources have something to point at. The id is written verbatim:
     // the reader renames any part id MNX's id pattern cannot state.
     parts: score.parts.map((part) =>
-      writePart(part, survey.referenced, survey.measureIds, layouts !== undefined),
+      writePart(part, survey.referenced, survey.measureIds, layouts !== undefined, score.musicFont),
     ),
     ...writeScores(score, survey.measureIds, layouts?.[0]?.id),
   }
@@ -441,6 +441,7 @@ function writePart(
   referenced: ReadonlySet<string>,
   measureIds: ReadonlyMap<number, string>,
   withId: boolean,
+  musicFont: string | undefined,
 ): MNXPart {
   return {
     ...(withId ? { id: part.id } : {}),
@@ -448,6 +449,9 @@ function writePart(
     ...(part.shortName !== undefined ? { shortName: part.shortName } : {}),
     // One staff is the default, so saying so adds nothing.
     ...(part.staves > 1 ? { staves: part.staves } : {}),
+    // MusicXML names the notation font once for the score, MNX per part, so
+    // the one font goes on every part.
+    ...(musicFont !== undefined ? { smuflFont: musicFont } : {}),
     measures: part.measures.map((measure) => writeMeasure(measure, referenced, measureIds)),
   }
 }

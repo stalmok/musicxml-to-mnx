@@ -1541,3 +1541,59 @@ describe('part ids MNX cannot state', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 })
+
+// The notation font. <defaults> is page geometry with no home in MNX, but
+// its <music-font> names the SMuFL font the score is engraved in, which is
+// MNX's part.smuflFont.
+describe('the music font', () => {
+  test('carries the font family onto every part', () => {
+    const { mnx, warnings } = convertMusicXML(
+      '<score-partwise><defaults><music-font font-family="Leland"/></defaults>' +
+        '<part-list><score-part id="P1"/><score-part id="P2"/></part-list>' +
+        '<part id="P1"><measure number="1">' +
+        '<attributes><divisions>1</divisions></attributes>' +
+        '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+        '<duration>4</duration><type>whole</type></note></measure></part>' +
+        '<part id="P2"><measure number="1">' +
+        '<attributes><divisions>1</divisions></attributes>' +
+        '<note><pitch><step>D</step><octave>4</octave></pitch>' +
+        '<duration>4</duration><type>whole</type></note></measure></part>' +
+        '</score-partwise>',
+    )
+
+    expect(mnx.parts.map((p) => p.smuflFont)).toEqual(['Leland', 'Leland'])
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  test('keeps the no-home report for the rest of <defaults>', () => {
+    const { mnx, warnings } = convertMusicXML(
+      '<score-partwise><defaults><scaling><millimeters>7</millimeters>' +
+        '<tenths>40</tenths></scaling><music-font font-family="Leland"/></defaults>' +
+        '<part-list><score-part id="P1"/></part-list>' +
+        '<part id="P1"><measure number="1">' +
+        '<attributes><divisions>1</divisions></attributes>' +
+        '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+        '<duration>4</duration><type>whole</type></note></measure></part>' +
+        '</score-partwise>',
+    )
+
+    expect(mnx.parts[0]?.smuflFont).toBe('Leland')
+    expect(warnings).toEqual([
+      expect.objectContaining({ code: 'unrepresentable:element', element: 'defaults' }),
+    ])
+  })
+
+  test('writes no font where the source names none', () => {
+    const { mnx } = convertMusicXML(
+      '<score-partwise><part-list><score-part id="P1"/></part-list>' +
+        '<part id="P1"><measure number="1">' +
+        '<attributes><divisions>1</divisions></attributes>' +
+        '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+        '<duration>4</duration><type>whole</type></note></measure></part>' +
+        '</score-partwise>',
+    )
+
+    expect(mnx.parts.every((p) => !('smuflFont' in p))).toBe(true)
+  })
+})

@@ -94,6 +94,23 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
   // its own. Everything else the document holds is read here or reported.
   reader.skip('part')
 
+  // <defaults> is page geometry with no home in MNX, except its
+  // <music-font>: the family names the SMuFL font the score is engraved in,
+  // which is MNX's part.smuflFont. The family is carried; anything else in
+  // the element keeps the no-home verdict, reported only where it is there
+  // to lose. MusicXML allows one <defaults> and one <music-font> in it.
+  let musicFont: string | undefined
+  for (const defaults of reader.children('defaults')) {
+    for (const font of children(defaults, 'music-font')) {
+      musicFont ??= attribute(font, 'font-family')
+      reportUnreadAttributes(font, warnings, {})
+    }
+    if (defaults.children.some((found) => found.name !== 'music-font')) {
+      const loss = elementLoss('defaults')
+      warnings.add(loss.code, `<defaults> ${loss.ending}`, { line: defaults.line }, 'defaults')
+    }
+  }
+
   const partList = readPartNames(reader, warnings)
   reader.reportUnread(warnings, {})
 
@@ -134,6 +151,7 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
       parts: readings.map((reading) => reading.part),
       grouping: pruneGrouping(partList.grouping, written, partList.lines, warnings),
       sounds: partList.sounds,
+      ...(musicFont !== undefined ? { musicFont } : {}),
     },
     partList.lines,
     warnings,
