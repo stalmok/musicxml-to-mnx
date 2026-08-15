@@ -131,6 +131,54 @@ describe('ties', () => {
     expect(third.ties).toEqual([])
   })
 
+  // A tie can end on the same sounding pitch spelled differently: G sharp
+  // tied to A flat. The tie joins the sound, so the spelling does not part
+  // the two ends.
+  test('ties across an enharmonic respelling of the same sounding pitch', () => {
+    const sharp =
+      '<note><pitch><step>G</step><alter>1</alter><octave>4</octave></pitch>' +
+      `<duration>4</duration><type>quarter</type><voice>1</voice>${tied('start')}</note>`
+    const flat =
+      '<note><pitch><step>A</step><alter>-1</alter><octave>4</octave></pitch>' +
+      `<duration>4</duration><type>quarter</type><voice>1</voice>${tied('stop')}</note>`
+    const { notes, warnings } = read(measures(DIVISIONS + sharp + flat))
+    const [first, second] = notes as [Note, Note]
+
+    expect(first.ties).toEqual([{ target: second.id, crossVoice: false }])
+    expect(warnings).toEqual([])
+  })
+
+  // B sharp 3 and C 4 are one sounding pitch whose spellings sit either side
+  // of the octave boundary.
+  test('ties across the octave boundary a respelling moves over', () => {
+    const bSharp =
+      '<note><pitch><step>B</step><alter>1</alter><octave>3</octave></pitch>' +
+      `<duration>4</duration><type>quarter</type><voice>1</voice>${tied('start')}</note>`
+    const cNatural =
+      '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+      `<duration>4</duration><type>quarter</type><voice>1</voice>${tied('stop')}</note>`
+    const { notes, warnings } = read(measures(DIVISIONS + bSharp + cNatural))
+    const [first, second] = notes as [Note, Note]
+
+    expect(first.ties).toEqual([{ target: second.id, crossVoice: false }])
+    expect(warnings).toEqual([])
+  })
+
+  // One letter two octaves apart is two different sounds, and the corpus
+  // carries such a stray pair as a source error. Both ends keep warning.
+  test('keeps two octaves of one letter apart', () => {
+    const low =
+      '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+      `<duration>4</duration><type>quarter</type><voice>1</voice>${tied('start')}</note>`
+    const high =
+      '<note><pitch><step>C</step><octave>5</octave></pitch>' +
+      `<duration>4</duration><type>quarter</type><voice>1</voice>${tied('stop')}</note>`
+    const { notes, warnings } = read(measures(DIVISIONS + low + high))
+
+    expect(notes.every((n) => n.ties.length === 0)).toBe(true)
+    expect(warnings.map((w) => w.code)).toEqual(['unclosed:spanner', 'unclosed:spanner'])
+  })
+
   test('ties the note of the same pitch, not merely the next one', () => {
     const { notes } = read(
       measures(DIVISIONS + note('C', tied('start')) + note('G') + note('C', tied('stop'))),

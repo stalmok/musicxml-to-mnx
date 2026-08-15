@@ -20,6 +20,7 @@ import type {
   Note,
   OttavaAmount,
   Pitch,
+  Step,
 } from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 
@@ -301,8 +302,15 @@ function inTimeOrder<T, E extends SpanEnd<T>>(ends: readonly E[], atSamePoint: S
 // crossVoice target type, and piano writing is full of them: the seed corpus
 // fails to resolve 30 of 108 ties when the voice is part of the match,
 // against 4 when it is not.
+//
+// Matched on the sounding pitch rather than the written spelling, because a
+// tie can end on a respelling of the same sound: the corpus ties G sharp to
+// A flat, and B sharp crosses the octave boundary to C. A pair that
+// disagrees on the sound stays unmatched and keeps warning.
+const STEP_SEMITONES: Record<Step, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }
+
 function tieKey(pitch: Pitch): string {
-  return `${pitch.step}${String(pitch.octave)}|${String(pitch.alter)}`
+  return String((pitch.octave + 1) * 12 + STEP_SEMITONES[pitch.step] + pitch.alter)
 }
 
 // Slurs are matched on the number the source gives them, across the whole

@@ -1988,7 +1988,6 @@
     "extend": 11,
     "type@size": 7,
     "offset": 2,
-    "tie": 2,
     "print-object": 8
   },
   "burleigh-4-among-the-fuchsias": {
@@ -2028,7 +2027,6 @@
     "sound@dynamics": 30,
     "extend": 23,
     "type@size": 10,
-    "tie": 2,
     "print-object": 20,
     "pedal": 18,
     "dot@placement": 1,
@@ -5466,7 +5464,6 @@
     "direction@system": 4,
     "sound@dynamics": 26,
     "extend": 9,
-    "tie": 2,
     "dashes": 2
   },
   "gurney-4-sleep": {
@@ -8312,7 +8309,6 @@
     "extend": 17,
     "dashes": 6,
     "print-object": 54,
-    "tie": 2,
     "pedal": 136
   },
   "netzel-1-lied": {
@@ -9479,8 +9475,7 @@
     "direction@system": 1,
     "sound@dynamics": 13,
     "extend": 2,
-    "print-object": 4,
-    "tie": 2
+    "print-object": 4
   },
   "satie-2-danseuse": {
     "midi-device": 2,
