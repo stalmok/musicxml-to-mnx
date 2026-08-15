@@ -327,10 +327,10 @@ describe('part groups', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 
-  // A layout lists staves, not parts, and a multi-staff part is still one
-  // instrument. MusicXML leaves the grand staff implicit; MNX states it, so
-  // the part's staves arrive inside a braced group of their own.
-  test('braces the staves of a two-staff part into a group of their own', () => {
+  // A brace group holding exactly one multi-staff part restates the grand
+  // staff the part gets on its own, and nested, a renderer draws two braces
+  // side by side. The two statements fold into one group.
+  test('folds a brace group around one multi-staff part into its grand staff', () => {
     const twoStaffPart =
       '<part id="P1"><measure number="1">' +
       '<attributes><staves>2</staves></attributes>' +
@@ -344,13 +344,44 @@ describe('part groups', () => {
       ),
     )
 
-    const group = mnx.layouts?.[0]?.content[0]
-    if (group?.type !== 'group') throw new Error('expected a staff group')
-    expect(group.content).toEqual([
+    expect(mnx.layouts?.[0]?.content).toEqual([
       {
         type: 'group',
         symbol: 'brace',
         barlineStyle: 'instrument',
+        content: [
+          { type: 'staff', sources: [{ part: 'P1', staff: 1 }] },
+          { type: 'staff', sources: [{ part: 'P1', staff: 2 }] },
+        ],
+      },
+    ])
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // What the source's group states wins over what the part implies; the
+  // part fills in only what the group leaves unsaid.
+  test("keeps the folded group to the source's own label and barline run", () => {
+    const twoStaffPart =
+      '<part id="P1"><measure number="1">' +
+      '<attributes><staves>2</staves></attributes>' +
+      `${NOTE}</measure></part>`
+    const { mnx, warnings } = convertMusicXML(
+      score(
+        '<part-group type="start" number="1"><group-symbol>brace</group-symbol>' +
+          '<group-name>Duo</group-name><group-barline>no</group-barline></part-group>' +
+          '<score-part id="P1"><part-name>Piano</part-name></score-part>' +
+          '<part-group type="stop" number="1"/>',
+        twoStaffPart,
+      ),
+    )
+
+    expect(mnx.layouts?.[0]?.content).toEqual([
+      {
+        type: 'group',
+        symbol: 'brace',
+        barlineStyle: 'individual',
+        label: 'Duo',
         content: [
           { type: 'staff', sources: [{ part: 'P1', staff: 1 }] },
           { type: 'staff', sources: [{ part: 'P1', staff: 2 }] },

@@ -243,6 +243,26 @@ function writeGroupingItem(
       },
     ]
   }
+  // A brace group holding exactly one multi-staff part restates the grand
+  // staff the part gets on its own, and nested, a renderer draws two braces
+  // side by side. The two fold into one group: the source's label and
+  // barline run where it states them, the part's where it does not.
+  if (item.symbol === 'brace' && item.content.length === 1) {
+    const only = item.content[0]
+    if (only?.kind === 'part' && (parts.get(only.part)?.staves ?? 1) > 1) {
+      const grandStaff = writeGroupingItem(only, parts)[0]
+      /* v8 ignore next -- a multi-staff part item always writes one group. */
+      if (grandStaff?.type !== 'group') throw new Error('A grand staff wrote no group.')
+      return [
+        {
+          ...grandStaff,
+          ...(item.label !== undefined ? { label: item.label } : {}),
+          ...(item.barlineStyle !== undefined ? { barlineStyle: item.barlineStyle } : {}),
+        },
+      ]
+    }
+  }
+
   return [
     {
       type: 'group',
