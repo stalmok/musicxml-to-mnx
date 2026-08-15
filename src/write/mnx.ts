@@ -81,8 +81,17 @@ export function writeMnx(score: Score): MNXDocument {
     mnx: {
       version: MNX_VERSION,
       // Declared once the document draws any accidental explicitly, so a
-      // reader takes the marked notes as the whole of it.
-      ...(survey.drawsAccidentals ? { support: { useAccidentalDisplay: true } } : {}),
+      // reader takes the marked notes as the whole of it; and once it
+      // writes any beam, so a reader uses the beams written rather than
+      // beaming by rule.
+      ...(survey.drawsAccidentals || survey.writesBeams
+        ? {
+            support: {
+              ...(survey.drawsAccidentals ? { useAccidentalDisplay: true } : {}),
+              ...(survey.writesBeams ? { useBeams: true } : {}),
+            },
+          }
+        : {}),
     },
     global: {
       measures: score.globalMeasures.map((measure, index) =>
@@ -284,6 +293,7 @@ function writeGroupingItem(
 function surveyScore(score: Score): {
   referenced: ReadonlySet<string>
   drawsAccidentals: boolean
+  writesBeams: boolean
   measureIds: ReadonlyMap<number, string>
   lyricLines: ReadonlySet<string>
 } {
@@ -291,6 +301,7 @@ function surveyScore(score: Score): {
   // everything else would be noise, so only the targets are named.
   const referenced = new Set<string>()
   let drawsAccidentals = false
+  let writesBeams = false
   const lyricLines = new Set<string>()
 
   const walk = (items: readonly SequenceItem[]): void => {
@@ -312,6 +323,7 @@ function surveyScore(score: Score): {
   // in turn.
   const fromBeams = (beams: readonly Beam[]): void => {
     for (const beam of beams) {
+      writesBeams = true
       for (const id of beam.events) referenced.add(id)
       fromBeams(beam.beams)
     }
@@ -351,7 +363,7 @@ function surveyScore(score: Score): {
     measureIds.set(index, `m${String(index + 1)}`)
   }
 
-  return { referenced, drawsAccidentals, measureIds, lyricLines }
+  return { referenced, drawsAccidentals, writesBeams, measureIds, lyricLines }
 }
 
 /**

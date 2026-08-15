@@ -910,10 +910,13 @@ describe('reporting what is not converted', () => {
 
   test('reports unconverted document-level elements', () => {
     const { warnings } = read(
-      score(`<identification/><part id="P1"><measure>${NOTE}</measure></part>`),
+      score(
+        `<work><work-title>Helen</work-title></work>` +
+          `<part id="P1"><measure>${NOTE}</measure></part>`,
+      ),
     )
 
-    expect(warnings.map((w) => w.message)).toEqual(['<identification> is not converted yet.'])
+    expect(warnings.map((w) => w.message)).toEqual(['<work> cannot be expressed in MNX.'])
   })
 
   test('reports unconverted attributes', () => {

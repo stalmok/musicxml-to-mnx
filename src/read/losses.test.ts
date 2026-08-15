@@ -358,19 +358,41 @@ describe('a loss the schema has no home for', () => {
   const codes = (source: string) =>
     read(source).warnings.map((warning) => `${warning.code} ${warning.message}`)
 
-  // <identification> is a converter gap, not a format limit: it holds an
-  // <encoding> whose <supports element="accidental"> and
-  // <supports element="beam"> are the schema's support.useAccidentalDisplay
-  // and support.useBeams. The composer and the rights have no home, but the
-  // element as a whole does, so it is not on the list.
-  test('reports <identification> as a gap, because part of it has a home', () => {
+  // <identification>'s one part with a home is <encoding><supports>: the
+  // accidental and beam declarations are the schema's support flags, which
+  // the writer states from what it actually wrote. Those are consumed as
+  // accounted; the composer, the rights and everything else have no home.
+  const identified = (body: string) =>
+    `<score-partwise><identification>${body}</identification>` +
+    '<part id="P1"><measure number="1">' +
+    `<attributes><divisions>4</divisions></attributes>${note('')}</measure>` +
+    '</part></score-partwise>'
+
+  test('says nothing about an <identification> stating only the supports', () => {
     expect(
       codes(
-        '<score-partwise><identification/><part id="P1"><measure number="1">' +
-          `<attributes><divisions>4</divisions></attributes>${note('')}</measure>` +
-          '</part></score-partwise>',
+        identified(
+          '<encoding><supports element="accidental" type="yes"/>' +
+            '<supports element="beam" type="yes"/></encoding>',
+        ),
       ),
-    ).toEqual(['unsupported:element <identification> is not converted yet.'])
+    ).toEqual([])
+  })
+
+  test('says nothing about an empty <identification>', () => {
+    expect(codes(identified(''))).toEqual([])
+  })
+
+  test('reports the rest of <identification> as unrepresentable', () => {
+    expect(codes(identified('<creator type="composer">Someone</creator>'))).toEqual([
+      'unrepresentable:element <identification> cannot be expressed in MNX.',
+    ])
+  })
+
+  test('counts a supports declaration it cannot restate as the rest', () => {
+    expect(
+      codes(identified('<encoding><supports element="print" type="yes"/></encoding>')),
+    ).toEqual(['unrepresentable:element <identification> cannot be expressed in MNX.'])
   })
 
   // A boxed rehearsal mark. The schema's measure-global holds no label or

@@ -111,6 +111,34 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
     }
   }
 
+  // <identification> holds the composer, the rights and the encoding notes,
+  // and the schema has no header for any of them. The one part with a home
+  // is <encoding><supports>: its accidental and beam declarations are the
+  // schema's support flags, which the writer states from what it actually
+  // wrote, so those are consumed as accounted. The rest is reported where
+  // there is a rest.
+  for (const identification of reader.children('identification')) {
+    const rest = identification.children.some(
+      (found) =>
+        found.name !== 'encoding' ||
+        found.children.some(
+          (inner) =>
+            inner.name !== 'supports' ||
+            (inner.attributes['element'] !== 'accidental' &&
+              inner.attributes['element'] !== 'beam'),
+        ),
+    )
+    if (rest) {
+      const loss = elementLoss('identification')
+      warnings.add(
+        loss.code,
+        `<identification> ${loss.ending}`,
+        { line: identification.line },
+        'identification',
+      )
+    }
+  }
+
   const partList = readPartNames(reader, warnings)
   reader.reportUnread(warnings, {})
 

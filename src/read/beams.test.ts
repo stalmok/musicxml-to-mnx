@@ -9,6 +9,7 @@ import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
 import { buildBeams } from './beams.js'
+import { writeMnx } from '../write/mnx.js'
 import type { BeamedEvent } from './beams.js'
 
 /**
@@ -254,5 +255,42 @@ describe('beaming grace notes', () => {
       ['ev1', 'ev4'],
       ['ev2', 'ev3'],
     ])
+  })
+})
+
+// Whether the document states its beams is a fact about the whole of it,
+// like the accidentals: read off the finished score, so a consumer knows to
+// use the beams written rather than beam by rule.
+describe('the document declaring it states beams', () => {
+  const eighth = (step: string, marker: string) =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>2</duration>` +
+    `<type>eighth</type><beam number="1">${marker}</beam></note>`
+
+  function convert(body: string) {
+    const warnings = new WarningCollector()
+    const score = readScore(
+      parseXmlRoot(
+        '<score-partwise><part id="P1"><measure number="1">' +
+          '<attributes><divisions>4</divisions></attributes>' +
+          `${body}</measure></part></score-partwise>`,
+      ),
+      warnings,
+    )
+    return writeMnx(score)
+  }
+
+  test('says so once any measure carries a beam', () => {
+    const written = convert(eighth('C', 'begin') + eighth('D', 'end'))
+
+    expect(written.mnx.support).toEqual({ useBeams: true })
+  })
+
+  test('does not claim it where nothing is beamed', () => {
+    const written = convert(
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+        '<type>quarter</type></note>',
+    )
+
+    expect(written.mnx.support).toBeUndefined()
   })
 })
