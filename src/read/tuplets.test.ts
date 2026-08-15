@@ -86,6 +86,62 @@ describe('tuplet display', () => {
     expect(tuplet?.kind === 'tuplet' && tuplet.showValue).toBe('both')
   })
 
+  // The standard way to number only the first tuplet of a run: the source
+  // wraps each later <tuplet> in <notations print-object="no">. Hiding the
+  // whole notation is the tuplet drawn with no bracket, no number and no
+  // value, which the display settings state.
+  test('states a hidden tuplet notation as drawn with nothing', () => {
+    const hidden =
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><type>eighth</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>' +
+      '<notations print-object="no"><tuplet type="start"/></notations></note>' +
+      tupletNote('D', 4, 'eighth') +
+      tupletNote('E', 4, 'eighth', 'stop')
+    const { content, warnings } = read(measure(hidden))
+    const tuplet = content?.[0]
+
+    expect(tuplet?.kind === 'tuplet' && tuplet.bracket).toBe('no')
+    expect(tuplet?.kind === 'tuplet' && tuplet.showNumber).toBe('noNumber')
+    expect(tuplet?.kind === 'tuplet' && tuplet.showValue).toBe('noNumber')
+    expect(warnings).toEqual([])
+  })
+
+  // print-object="no" hides the whole block, so a display attribute stated
+  // inside it is hidden with the rest.
+  test('hides the number past a marker stating it shown', () => {
+    const hidden =
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><type>eighth</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>' +
+      '<notations print-object="no"><tuplet type="start" bracket="yes" show-number="both"/>' +
+      '</notations></note>' +
+      tupletNote('D', 4, 'eighth') +
+      tupletNote('E', 4, 'eighth', 'stop')
+    const { content, warnings } = read(measure(hidden))
+    const tuplet = content?.[0]
+
+    expect(tuplet?.kind === 'tuplet' && tuplet.bracket).toBe('no')
+    expect(tuplet?.kind === 'tuplet' && tuplet.showNumber).toBe('noNumber')
+    expect(warnings).toEqual([])
+  })
+
+  // A hidden block holding anything besides tuplet markers still has no
+  // home, and the report now names what the block holds.
+  test('still reports a hidden block holding more than tuplets', () => {
+    const hidden =
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><type>eighth</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>' +
+      '<notations print-object="no"><tuplet type="start"/>' +
+      '<articulations><staccato/></articulations></notations></note>' +
+      tupletNote('D', 4, 'eighth') +
+      tupletNote('E', 4, 'eighth', 'stop')
+    const { content, warnings } = read(measure(hidden))
+    const tuplet = content?.[0]
+
+    expect(tuplet?.kind === 'tuplet' && tuplet.bracket).toBeUndefined()
+    expect(warnings.map((w) => w.element)).toEqual(['print-object'])
+    expect(warnings[0]?.message).toContain('The block holds <tuplet>.')
+  })
+
   test('leaves the display unset when the source states none', () => {
     const { content } = read(measure(TRIPLET))
     const tuplet = content?.[0]

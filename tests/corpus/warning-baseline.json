@@ -548,8 +548,8 @@
     "sound@dynamics": 11,
     "extend": 17,
     "dashes": 2,
-    "print-object": 188,
-    "pedal": 38
+    "pedal": 38,
+    "print-object": 2
   },
   "beach-2-ah-love-but-a-day": {
     "midi-device": 2,
@@ -567,7 +567,7 @@
     "direction@system": 1,
     "sound@dynamics": 21,
     "extend": 22,
-    "print-object": 236,
+    "print-object": 6,
     "pedal": 42,
     "notehead": 1
   },
@@ -842,7 +842,7 @@
     "extend": 1,
     "wedge": 16,
     "staff-layout": 44,
-    "print-object": 46,
+    "print-object": 3,
     "pedal": 36,
     "notehead": 3,
     "type@size": 1
@@ -940,7 +940,7 @@
     "sound@tempo": 4,
     "direction@system": 4,
     "extend": 2,
-    "print-object": 116
+    "print-object": 6
   },
   "bishop-home-sweet-home": {
     "midi-device": 3,
@@ -983,8 +983,7 @@
     "extend": 20,
     "trill-mark": 4,
     "wavy-line": 8,
-    "sound@dynamics": 3,
-    "print-object": 12
+    "sound@dynamics": 3
   },
   "bizet-1-chanson-d-avril": {
     "midi-device": 2,
@@ -1237,7 +1236,7 @@
     "sound@dynamics": 18,
     "extend": 6,
     "dashes": 8,
-    "print-object": 255,
+    "print-object": 33,
     "clef@after-barline": 1,
     "pedal": 6,
     "clef": 1,
@@ -1308,7 +1307,7 @@
     "direction@system": 4,
     "sound@dynamics": 63,
     "extend": 33,
-    "print-object": 181,
+    "print-object": 29,
     "dashes": 34,
     "notehead": 9,
     "other-notation": 1,
@@ -1371,7 +1370,7 @@
     "sound@dynamics": 15,
     "extend": 10,
     "bracket": 4,
-    "print-object": 53,
+    "print-object": 51,
     "cue": 5,
     "stem": 1,
     "notehead": 3,
@@ -1472,9 +1471,9 @@
     "direction@system": 2,
     "sound@dynamics": 31,
     "extend": 12,
-    "print-object": 120,
     "sound@tempo": 1,
     "type@size": 1,
+    "print-object": 6,
     "dashes": 6,
     "pedal": 76,
     "notehead": 7
@@ -1572,8 +1571,8 @@
     "sound@tempo": 3,
     "direction@system": 3,
     "sound@dynamics": 10,
-    "print-object": 132,
-    "pedal": 16
+    "pedal": 16,
+    "print-object": 12
   },
   "brahms-1-gestillte-sehnsucht": {
     "midi-device": 3,
@@ -1593,7 +1592,7 @@
     "extend": 16,
     "staff-details": 1,
     "sound@dynamics": 28,
-    "print-object": 77,
+    "print-object": 67,
     "technical": 1,
     "notehead": 1
   },
@@ -1615,7 +1614,7 @@
     "staff-details": 1,
     "sound@dynamics": 33,
     "dot@placement": 12,
-    "print-object": 19,
+    "print-object": 9,
     "dashes": 2,
     "pedal": 12,
     "stem": 8
@@ -1673,7 +1672,7 @@
     "direction@system": 2,
     "extend": 2,
     "sound@dynamics": 12,
-    "print-object": 168
+    "print-object": 36
   },
   "brahms-4-an-die-nachtigall": {
     "midi-device": 2,
@@ -1691,7 +1690,7 @@
     "direction@system": 1,
     "extend": 1,
     "sound@dynamics": 9,
-    "print-object": 263,
+    "print-object": 57,
     "stem": 24,
     "notehead": 24,
     "other-direction": 24
@@ -1822,7 +1821,7 @@
     "dot@placement": 5,
     "stem": 1,
     "cue": 1,
-    "print-object": 66,
+    "print-object": 20,
     "pedal": 34,
     "dashes": 2
   },
@@ -1885,11 +1884,11 @@
     "extend": 11,
     "type@size": 15,
     "cue": 2,
-    "print-object": 12,
     "sound@dynamics": 7,
     "inverted-mordent": 1,
     "turn": 1,
-    "dashes": 2
+    "dashes": 2,
+    "print-object": 10
   },
   "browne-the-reply-of-the-messenger-bird": {
     "midi-device": 2,
@@ -2263,7 +2262,7 @@
     "notehead": 3,
     "cue": 1,
     "dashes": 2,
-    "print-object": 87,
+    "print-object": 11,
     "measure@implicit": 2,
     "dot@placement": 6
   },
@@ -2428,12 +2427,12 @@
     "metronome@parentheses": 1,
     "sound@dynamics": 24,
     "extend": 24,
-    "print-object": 29,
     "cue": 1,
     "other-notation": 1,
     "trill-mark": 2,
     "wavy-line": 4,
     "accidental-mark": 1,
+    "print-object": 1,
     "bracket": 2
   },
   "chaminade-aupres-de-ma-mie": {
@@ -2487,7 +2486,7 @@
     "direction@system": 6,
     "sound@dynamics": 18,
     "extend": 8,
-    "print-object": 171,
+    "print-object": 15,
     "dot@placement": 2
   },
   "chausson-1-serre-chaude": {
@@ -2508,8 +2507,7 @@
     "sound@dynamics": 13,
     "dot@placement": 13,
     "notehead": 25,
-    "dashes": 2,
-    "print-object": 36
+    "dashes": 2
   },
   "chausson-2-le-charme": {
     "midi-device": 2,
@@ -2527,7 +2525,7 @@
     "sound@tempo": 3,
     "direction@system": 3,
     "extend": 1,
-    "print-object": 13,
+    "print-object": 11,
     "notehead": 1
   },
   "chausson-2-serre-d-ennui": {
@@ -2601,7 +2599,7 @@
     "direction@system": 2,
     "sound@dynamics": 22,
     "extend": 10,
-    "print-object": 183,
+    "print-object": 43,
     "dot@placement": 4
   },
   "chausson-6-hebe": {
@@ -2709,7 +2707,7 @@
     "direction@system": 2,
     "sound@dynamics": 12,
     "extend": 11,
-    "print-object": 12,
+    "print-object": 3,
     "pedal": 2,
     "dot@placement": 17,
     "tuplet": 1
@@ -2747,7 +2745,7 @@
     "sound@tempo": 1,
     "direction@system": 1,
     "sound@dynamics": 12,
-    "print-object": 36,
+    "print-object": 28,
     "extend": 9,
     "dashes": 14,
     "pedal": 8
@@ -2860,7 +2858,7 @@
     "extend": 5,
     "sound@dynamics": 2,
     "other-direction": 2,
-    "print-object": 4,
+    "print-object": 3,
     "time": 1
   },
   "cornelius-1-botschaft": {
@@ -2896,7 +2894,7 @@
     "direction@system": 1,
     "sound@dynamics": 15,
     "extend": 26,
-    "print-object": 1069,
+    "print-object": 284,
     "tuplet": 1
   },
   "cornelius-1-untreu": {
@@ -2933,8 +2931,7 @@
     "sound@tempo": 2,
     "direction@system": 2,
     "sound@dynamics": 15,
-    "notehead": 5,
-    "print-object": 2
+    "notehead": 5
   },
   "cornelius-2-veilchen": {
     "midi-device": 2,
@@ -3183,10 +3180,10 @@
     "metronome@parentheses": 2,
     "direction@system": 1,
     "sound@dynamics": 64,
-    "print-object": 20,
     "type@size": 7,
     "extend": 11,
-    "pedal": 2
+    "pedal": 2,
+    "print-object": 10
   },
   "davies-6-bless-you": {
     "midi-device": 5,
@@ -3312,7 +3309,7 @@
     "dashes": 6,
     "staff-layout": 22,
     "sound@dynamics": 13,
-    "print-object": 13
+    "print-object": 9
   },
   "debussy-2-il-pleure-dans-mon-coeur": {
     "midi-device": 2,
@@ -3930,7 +3927,7 @@
     "sound@dynamics": 34,
     "extend": 2,
     "dashes": 8,
-    "print-object": 52
+    "print-object": 16
   },
   "faisst-1-stimme-eines-seligen-geistes": {
     "midi-device": 2,
@@ -4067,7 +4064,7 @@
     "extend": 2,
     "dashes": 8,
     "sound@tempo": 1,
-    "print-object": 35,
+    "print-object": 33,
     "pedal": 100,
     "bracket": 4,
     "non-arpeggiate": 1
@@ -4090,7 +4087,7 @@
     "sound@dynamics": 3,
     "extend": 6,
     "pedal": 38,
-    "print-object": 14
+    "print-object": 8
   },
   "faltis-3-sprich": {
     "midi-device": 2,
@@ -4110,7 +4107,7 @@
     "extend": 7,
     "dashes": 6,
     "sound@tempo": 2,
-    "print-object": 17,
+    "print-object": 7,
     "pedal": 56
   },
   "farrenc-le-berger-fidele": {
@@ -4224,8 +4221,7 @@
     "metronome@parentheses": 1,
     "direction@system": 1,
     "extend": 4,
-    "sound@dynamics": 18,
-    "print-object": 36
+    "sound@dynamics": 18
   },
   "faure-4-a-clymene": {
     "midi-device": 2,
@@ -4349,7 +4345,6 @@
     "extend": 40,
     "cue": 7,
     "staff-layout": 51,
-    "print-object": 168,
     "notehead": 1
   },
   "franz-1-ihr-auge": {
@@ -4524,7 +4519,7 @@
     "sound@tempo": 2,
     "direction@system": 2,
     "sound@dynamics": 5,
-    "print-object": 11,
+    "print-object": 9,
     "notehead": 2
   },
   "gabriel-alone": {
@@ -4673,7 +4668,7 @@
     "sound@tempo": 3,
     "dashes": 4,
     "pedal": 84,
-    "print-object": 7,
+    "print-object": 3,
     "dot@placement": 2,
     "notehead": 7,
     "time": 1
@@ -5067,7 +5062,7 @@
     "direction@system": 14,
     "sound@dynamics": 32,
     "extend": 23,
-    "print-object": 21,
+    "print-object": 5,
     "trill-mark": 3,
     "wavy-line": 2
   },
@@ -5250,7 +5245,6 @@
     "sound@dynamics": 15,
     "extend": 6,
     "pedal": 16,
-    "print-object": 2,
     "fermata": 2,
     "dashes": 2
   },
@@ -5366,7 +5360,7 @@
     "sound@tempo": 1,
     "direction@system": 2,
     "extend": 3,
-    "print-object": 91,
+    "print-object": 13,
     "cue": 3,
     "sound@dynamics": 3
   },
@@ -5716,7 +5710,7 @@
     "sound@tempo": 1,
     "direction@system": 1,
     "extend": 9,
-    "print-object": 10,
+    "print-object": 2,
     "sound@dynamics": 39,
     "turn": 5,
     "stem": 24,
@@ -5764,7 +5758,6 @@
     "stem": 40,
     "type@size": 40,
     "notehead": 42,
-    "print-object": 16,
     "extend": 13,
     "sound@dynamics": 16,
     "dashes": 2
@@ -5867,7 +5860,7 @@
     "direction@system": 1,
     "extend": 16,
     "sound@dynamics": 18,
-    "print-object": 72
+    "print-object": 6
   },
   "hensel-1-das-heimweh": {
     "midi-device": 2,
@@ -5885,8 +5878,7 @@
     "sound@tempo": 1,
     "direction@system": 1,
     "sound@dynamics": 20,
-    "extend": 8,
-    "print-object": 142
+    "extend": 8
   },
   "hensel-1-nach-suden": {
     "midi-device": 2,
@@ -6090,8 +6082,8 @@
     "sound@dynamics": 50,
     "extend": 4,
     "cue": 3,
-    "print-object": 776,
-    "dashes": 6
+    "dashes": 6,
+    "print-object": 14
   },
   "holmes-le-ruban-rose": {
     "midi-device": 2,
@@ -6420,7 +6412,7 @@
     "note": 21,
     "sound@dynamics": 22,
     "extend": 9,
-    "print-object": 99,
+    "print-object": 73,
     "dashes": 8,
     "pedal": 20,
     "technical": 11,
@@ -6441,9 +6433,9 @@
     "words": 11,
     "sound@tempo": 1,
     "direction@system": 1,
-    "print-object": 207,
     "pedal": 2,
     "sound@dynamics": 19,
+    "print-object": 91,
     "dashes": 8,
     "notehead": 1
   },
@@ -6482,7 +6474,7 @@
     "sound@tempo": 2,
     "direction@system": 2,
     "extend": 11,
-    "print-object": 102,
+    "print-object": 92,
     "dashes": 2,
     "sound@dynamics": 37,
     "pedal": 16,
@@ -6661,8 +6653,7 @@
     "sound@dynamics": 20,
     "extend": 4,
     "pedal": 4,
-    "dashes": 2,
-    "print-object": 92
+    "dashes": 2
   },
   "kinkel-3-gondellied": {
     "midi-device": 2,
@@ -6718,7 +6709,7 @@
     "words": 83,
     "sound@tempo": 7,
     "direction@system": 7,
-    "print-object": 202,
+    "print-object": 64,
     "pedal": 6,
     "notehead": 2,
     "dot@placement": 5,
@@ -6841,8 +6832,8 @@
     "direction@system": 1,
     "extend": 17,
     "sound@dynamics": 38,
-    "print-object": 12,
     "notehead": 3,
+    "print-object": 10,
     "pedal": 20,
     "dot@placement": 6
   },
@@ -6861,10 +6852,10 @@
     "sound@tempo": 1,
     "direction@system": 1,
     "sound@dynamics": 32,
-    "print-object": 546,
     "trill-mark": 2,
     "dashes": 2,
     "extend": 7,
+    "print-object": 11,
     "stem": 1,
     "pedal": 2
   },
@@ -7030,7 +7021,7 @@
     "sound@tempo": 1,
     "direction@system": 1,
     "sound@dynamics": 22,
-    "print-object": 645,
+    "print-object": 69,
     "pedal": 136
   },
   "le-beau-2-ein-gebet": {
@@ -7519,7 +7510,7 @@
     "direction@system": 1,
     "sound@dynamics": 41,
     "extend": 12,
-    "print-object": 111
+    "print-object": 9
   },
   "mackenzie-5-april-weather": {
     "midi-device": 2,
@@ -7537,7 +7528,7 @@
     "direction@system": 1,
     "sound@dynamics": 35,
     "extend": 12,
-    "print-object": 14,
+    "print-object": 2,
     "pedal": 4
   },
   "mackenzie-6-a-may-song": {
@@ -7596,7 +7587,7 @@
     "sound@dynamics": 34,
     "extend": 4,
     "sound@tempo": 3,
-    "print-object": 21,
+    "print-object": 13,
     "pedal": 8,
     "fermata": 2,
     "non-arpeggiate": 1
@@ -7803,7 +7794,7 @@
     "direction@system": 1,
     "turn": 2,
     "sound@dynamics": 3,
-    "print-object": 165,
+    "print-object": 1,
     "notehead": 1
   },
   "mayer-1-du-bist-wie-eine-blume": {
@@ -7822,7 +7813,7 @@
     "direction@system": 1,
     "sound@dynamics": 1,
     "extend": 2,
-    "print-object": 150,
+    "print-object": 8,
     "notehead": 4,
     "trill-mark": 1
   },
@@ -7843,7 +7834,7 @@
     "extend": 1,
     "turn": 6,
     "sound@dynamics": 7,
-    "print-object": 107,
+    "print-object": 33,
     "notehead": 10,
     "trill-mark": 1
   },
@@ -7864,7 +7855,7 @@
     "sound@dynamics": 3,
     "other-notation": 1,
     "turn": 1,
-    "print-object": 182,
+    "print-object": 10,
     "extend": 3,
     "inverted-mordent": 4,
     "trill-mark": 1
@@ -7890,7 +7881,7 @@
     "turn": 3,
     "dashes": 4,
     "trill-mark": 3,
-    "print-object": 145,
+    "print-object": 10,
     "pedal": 2
   },
   "mayer-der-erlkonig": {
@@ -7908,7 +7899,7 @@
     "sound@dynamics": 42,
     "extend": 2,
     "dashes": 10,
-    "print-object": 122
+    "print-object": 22
   },
   "mendelssohn-1-das-fenster-mwv-k-29": {
     "midi-device": 2,
@@ -8308,7 +8299,7 @@
     "sound@dynamics": 43,
     "extend": 17,
     "dashes": 6,
-    "print-object": 54,
+    "print-object": 48,
     "pedal": 136
   },
   "netzel-1-lied": {
@@ -8417,7 +8408,7 @@
     "direction@system": 1,
     "sound@dynamics": 15,
     "extend": 15,
-    "print-object": 11,
+    "print-object": 9,
     "pedal": 4,
     "slur": 2
   },
@@ -8459,7 +8450,7 @@
     "extend": 24,
     "staff-layout": 30,
     "sound@dynamics": 8,
-    "print-object": 114,
+    "print-object": 2,
     "dashes": 2,
     "trill-mark": 2,
     "wavy-line": 2
@@ -8485,7 +8476,7 @@
     "wedge": 2,
     "staff-layout": 21,
     "sound@dynamics": 2,
-    "print-object": 79,
+    "print-object": 17,
     "trill-mark": 2,
     "wavy-line": 4,
     "pedal": 1,
@@ -9065,7 +9056,7 @@
     "type@size": 6,
     "notehead": 7,
     "dot@placement": 1,
-    "print-object": 17,
+    "print-object": 1,
     "pedal": 2
   },
   "puget-adieu-cousine": {
@@ -9153,7 +9144,7 @@
     "sound@tempo": 3,
     "staff-layout": 37,
     "pedal": 21,
-    "print-object": 8,
+    "print-object": 2,
     "wedge": 6
   },
   "quilter-1-prelude": {
@@ -9434,7 +9425,7 @@
     "direction@system": 4,
     "sound@dynamics": 16,
     "extend": 26,
-    "print-object": 128,
+    "print-object": 26,
     "pedal": 2
   },
   "rossini-5-l-invito": {
@@ -9614,7 +9605,7 @@
     "wedge": 9,
     "staff-layout": 19,
     "sound@dynamics": 9,
-    "print-object": 32
+    "print-object": 8
   },
   "schoenberg-2-hain-in-diesen-paradiesen": {
     "midi-device": 2,
@@ -9638,7 +9629,6 @@
     "sound@dynamics": 11,
     "dashes": 6,
     "staff-layout": 12,
-    "print-object": 9,
     "trill-mark": 1,
     "wavy-line": 2,
     "accidental-mark": 1,
@@ -9906,7 +9896,7 @@
     "sound@dynamics": 20,
     "extend": 2,
     "staff-layout": 34,
-    "print-object": 66
+    "print-object": 2
   },
   "schubert-an-die-musik-d-547": {
     "midi-device": 2,
@@ -10000,7 +9990,6 @@
     "sound@tempo": 5,
     "staff-layout": 56,
     "sound@dynamics": 33,
-    "print-object": 804,
     "wedge": 3
   },
   "schubert-die-forelle-op-32-d550d": {
@@ -10018,8 +10007,7 @@
     "sound@tempo": 1,
     "direction@system": 1,
     "extend": 4,
-    "sound@dynamics": 6,
-    "print-object": 104
+    "sound@dynamics": 6
   },
   "schumann-1-ich-stand-in-dunklen-traumen": {
     "midi-device": 2,
@@ -10192,7 +10180,7 @@
     "sound@tempo": 5,
     "direction@system": 5,
     "sound@dynamics": 9,
-    "print-object": 805,
+    "print-object": 43,
     "dashes": 2,
     "dot@placement": 1
   },
@@ -10358,7 +10346,7 @@
     "metronome@parentheses": 1,
     "direction@system": 13,
     "sound@dynamics": 58,
-    "print-object": 27,
+    "print-object": 23,
     "cue": 2,
     "notehead": 9,
     "extend": 55,
@@ -10678,7 +10666,7 @@
     "sound@dynamics": 24,
     "note": 2,
     "dashes": 12,
-    "print-object": 73,
+    "print-object": 71,
     "pedal": 84,
     "time": 1
   },
@@ -10811,8 +10799,7 @@
     "words": 39,
     "sound@tempo": 7,
     "dashes": 8,
-    "staff-layout": 26,
-    "print-object": 320
+    "staff-layout": 26
   },
   "tosti-sogno": {
     "midi-device": 2,
@@ -10856,7 +10843,7 @@
     "direction@system": 9,
     "dashes": 13,
     "extend": 3,
-    "print-object": 391,
+    "print-object": 1,
     "sound@dynamics": 6,
     "stem": 2,
     "wedge": 1,
@@ -10960,7 +10947,7 @@
     "sound@tempo": 2,
     "dashes": 6,
     "extend": 2,
-    "print-object": 65,
+    "print-object": 11,
     "type@size": 7,
     "pedal": 8,
     "notehead": 7
@@ -11079,7 +11066,7 @@
     "direction@system": 3,
     "sound@dynamics": 19,
     "dashes": 12,
-    "print-object": 16,
+    "print-object": 14,
     "pedal": 6
   },
   "wagner-5-traume": {
@@ -11117,7 +11104,7 @@
     "metronome@parentheses": 1,
     "sound@tempo": 1,
     "direction@system": 1,
-    "print-object": 40,
+    "print-object": 34,
     "extend": 5,
     "sound@dynamics": 14,
     "pedal": 4
@@ -11333,7 +11320,7 @@
     "dashes": 8,
     "sound@dynamics": 50,
     "extend": 1,
-    "print-object": 26,
+    "print-object": 20,
     "pedal": 8
   },
   "webern-3-an-bachesranft": {
@@ -11678,7 +11665,7 @@
     "extend": 24,
     "staff-layout": 30,
     "sound@dynamics": 8,
-    "print-object": 114,
+    "print-object": 2,
     "dashes": 2,
     "trill-mark": 2,
     "wavy-line": 2
@@ -11753,8 +11740,7 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
-    "words": 1,
-    "print-object": 22
+    "words": 1
   },
   "zumsteeg-3-in-das-stambuch-einer-freundin": {
     "midi-device": 2,
@@ -11768,8 +11754,7 @@
     "movement-title": 1,
     "identification": 1,
     "measure@implicit": 2,
-    "words": 1,
-    "print-object": 28
+    "words": 1
   },
   "zumsteeg-4-romanze": {
     "midi-device": 2,
@@ -11804,7 +11789,7 @@
     "direction@system": 2,
     "dashes": 2,
     "extend": 4,
-    "print-object": 51,
+    "print-object": 7,
     "cue": 2,
     "stem": 1,
     "sound@dynamics": 1

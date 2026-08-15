@@ -125,10 +125,23 @@ export function readNote(
 
   const notations = element.blocks('notations')
   // A <notations> block hidden with print-object="no" still has its slur,
-  // tuplet, fermata and the rest drawn, because MNX cannot mark them
-  // invisible. Report the hiding rather than drop it in silence.
+  // fermata and the rest drawn, because MNX cannot mark them invisible.
+  // Report the hiding rather than drop it in silence, naming what the block
+  // holds. The one exception is a block holding only <tuplet> markers: a
+  // hidden tuplet notation is the tuplet drawn with no bracket, no number
+  // and no value, and MNX's display settings state all three, so the hiding
+  // converts instead. That is the standard way a source numbers only the
+  // first tuplet of a run.
+  const hiddenTuplets = new Set<XmlElement>()
   for (const block of notations) {
-    reportHidden(block.element, 'notations', warnings, context)
+    const tupletsOnly =
+      block.element.children.length > 0 &&
+      block.element.children.every((child) => child.name === 'tuplet')
+    if (tupletsOnly && attribute(block.element, 'print-object') === 'no') {
+      for (const marker of block.element.children) hiddenTuplets.add(marker)
+      continue
+    }
+    reportHidden(block.element, 'notations', warnings, context, block.element.children[0]?.name)
   }
   // <tied> is the visual side of a tie. Most of it repeats <tie>, but let-ring
   // and the drawn side live only on it, so it is read rather than skipped.
@@ -271,7 +284,7 @@ export function readNote(
       quantities.inner,
       quantities.outer,
       starts.map((marker) => ({
-        display: tupletDisplayOf(marker),
+        display: tupletDisplayOf(marker, hiddenTuplets.has(marker)),
         stated: statedTupletRatio(marker, quantities, path),
         // A marker that states no number is tuplet 1, as the spec has it.
         number: attribute(marker, 'number') ?? '1',
@@ -1162,7 +1175,7 @@ const TUPLET_DISPLAY = new Map<string, TupletDisplay>([
  * the renderer to decide. Each start marker states its own tuplet's display,
  * so two tuplets starting on the same note keep their own settings.
  */
-function tupletDisplayOf(start: XmlElement): TupletDisplaySettings {
+function tupletDisplayOf(start: XmlElement, hidden: boolean): TupletDisplaySettings {
   const settings: TupletDisplaySettings = {}
 
   const bracket = attribute(start, 'bracket')
@@ -1179,6 +1192,14 @@ function tupletDisplayOf(start: XmlElement): TupletDisplaySettings {
   const showType = attribute(start, 'show-type')
   const value = showType === undefined ? undefined : TUPLET_DISPLAY.get(showType)
   if (value !== undefined) settings.showValue = value
+
+  // A marker inside a hidden <notations> block draws nothing at all, so the
+  // hiding outweighs any display attribute stated within it.
+  if (hidden) {
+    settings.bracket = 'no'
+    settings.showNumber = 'noNumber'
+    settings.showValue = 'noNumber'
+  }
 
   return settings
 }

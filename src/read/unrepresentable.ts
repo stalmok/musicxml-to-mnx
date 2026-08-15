@@ -29,12 +29,16 @@ export function reportHidden(
   carrier: string,
   warnings: WarningCollector,
   context: WarningContext,
+  holds?: string,
 ): void {
   if (attribute(element, 'print-object') !== 'no') return
   warnings.add(
     'unsupported:element',
     `A <${carrier}> hidden with print-object="no" is drawn anyway, because MNX cannot ` +
-      'mark it invisible.',
+      'mark it invisible.' +
+      // Named so a consumer can tell what kind of notation the hiding
+      // covers without reading the source.
+      (holds !== undefined ? ` The block holds <${holds}>.` : ''),
     { ...context, line: element.line },
     'print-object',
   )
