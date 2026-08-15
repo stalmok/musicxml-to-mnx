@@ -373,6 +373,33 @@ describe('a loss the schema has no home for', () => {
     ).toEqual(['unsupported:element <identification> is not converted yet.'])
   })
 
+  // A boxed rehearsal mark. The schema's measure-global holds no label or
+  // mark, and nothing else can carry one.
+  test('reports <rehearsal> as unrepresentable', () => {
+    expect(
+      codes(
+        measure(
+          note('') +
+            '<direction><direction-type><rehearsal>1</rehearsal></direction-type></direction>',
+        ),
+      ),
+    ).toEqual(['unrepresentable:element A <rehearsal> direction cannot be expressed in MNX.'])
+  })
+
+  // The horizontal bracket line over a passage: the same construct as
+  // <dashes> with a different line end, and the schema has no such line.
+  test('reports <bracket> as unrepresentable', () => {
+    expect(
+      codes(
+        measure(
+          note('') +
+            '<direction><direction-type><bracket type="start" line-end="down"/>' +
+            '</direction-type></direction>',
+        ),
+      ),
+    ).toEqual(['unrepresentable:element A <bracket> direction cannot be expressed in MNX.'])
+  })
+
   // A cutaway staff drawn at 70 percent is a visible loss, and the schema has
   // no staffLines, staffSize or scale to carry it.
   test('reports <staff-details> as unrepresentable', () => {

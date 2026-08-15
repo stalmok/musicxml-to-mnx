@@ -50,6 +50,13 @@ const NO_HOME_IN_MNX: ReadonlySet<string> = new Set([
   // The dashed line that continues an instruction such as "cresc." The schema
   // has no such line; its "dashed" is a line style of a slur.
   'dashes',
+  // The horizontal bracket line over a passage: the same construct as
+  // <dashes> with a different line end, and the schema has no such line
+  // either. Its only brackets are a staff symbol and a tuplet's.
+  'bracket',
+  // The boxed rehearsal mark. The schema's measure holds no label or mark,
+  // and nothing else can carry one.
+  'rehearsal',
   // The coda sign. The schema has segno and fine, and its jump-type is only
   // "dsalfine" and "segno"; nothing names or jumps to a coda.
   'coda',
