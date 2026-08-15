@@ -183,8 +183,9 @@ function readBarStyle(
   //
   // Except that a heavy-light there is how a repeat start is drawn, and MNX's
   // repeatStart already says to draw one, so nothing is lost. Every one of
-  // the corpus's thirty-seven is of that kind.
-  if (atStart && repeatStart) return undefined
+  // the corpus's thirty-seven is of that kind. Any other style beside the
+  // repeat is the source's own statement and falls to the report below.
+  if (atStart && repeatStart && type === 'heavyLight') return undefined
 
   if (atStart) {
     warnings.add(

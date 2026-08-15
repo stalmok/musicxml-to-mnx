@@ -126,6 +126,19 @@ describe('the line closing a measure', () => {
 })
 
 describe('repeat signs', () => {
+  // A heavy-light at the opening edge is how a repeat start draws, and is
+  // not restated. Any other style there is the source's own statement, with
+  // nowhere to go, and says so like any opening style.
+  test('reports an opening style a repeat start does not draw', () => {
+    const { globals, warnings } = read(
+      left('<bar-style>dotted</bar-style><repeat direction="forward"/>') + NOTE,
+    )
+
+    expect(globals[0]?.repeatStart).toBe(true)
+    expect(globals[0]?.barline).toBeUndefined()
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:barline'])
+  })
+
   test('opens a repeat on the measure whose left edge carries one', () => {
     const { globals, warnings } = read(left('<repeat direction="forward"/>') + NOTE)
 
