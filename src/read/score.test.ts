@@ -1040,6 +1040,17 @@ describe('the global measure list', () => {
 
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:measure-label'])
   })
+
+  // MNX numbers a measure with a whole number of zero or more, so a negative
+  // label has nowhere to go, like a lettered one.
+  test('reports a negative measure label rather than writing it', () => {
+    const { score: result, warnings } = read(
+      score(`<part id="P1"><measure number="-1">${NOTE}</measure></part>`),
+    )
+
+    expect(result.globalMeasures[0]?.number).toBeUndefined()
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:measure-label'])
+  })
 })
 
 describe('several parts', () => {

@@ -1101,11 +1101,11 @@ function readMeasureLabel(
   if (written === undefined) return undefined
 
   const value = Number(written)
-  if (!/^-?\d+$/.test(written) || !Number.isSafeInteger(value)) {
+  if (!/^\d+$/.test(written) || !Number.isSafeInteger(value)) {
     warnings.add(
       'unrepresentable:measure-label',
-      `The measure label "${written}" is not a number, and MNX numbers a measure ` +
-        'with an integer, so it is not carried over.',
+      `The measure label "${written}" is not a whole number of zero or more, which is ` +
+        'how MNX numbers a measure, so it is not carried over.',
       { ...context, line: element.line },
       'measure',
     )

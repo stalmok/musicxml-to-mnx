@@ -903,6 +903,21 @@ describe('tempo', () => {
     expect(warnings.map((w) => w.code)).toContain('unrepresentable:tempo')
   })
 
+  // MNX's bpm is a whole number above zero, and a fraction below one half
+  // rounds to zero, so there is no whole number to carry.
+  test('reports a per-minute that rounds to nothing', () => {
+    const { global, warnings } = read(
+      inMeasure(
+        direction(
+          '<metronome><beat-unit>quarter</beat-unit><per-minute>0.4</per-minute></metronome>',
+        ) + note('C'),
+      ),
+    )
+
+    expect(global?.tempos).toEqual([])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tempo'])
+  })
+
   // An empty <per-minute> prints the beat-unit glyph alone, with the number
   // supplied as adjacent text. It is valid, and refusing the whole file over
   // it would be wrong; MNX has no numeric tempo to carry, so it is dropped.
