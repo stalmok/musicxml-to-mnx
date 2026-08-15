@@ -4995,7 +4995,7 @@
     "type@size": 16,
     "ending": 2,
     "turn": 1,
-    "staff-details": 2,
+    "staff-details": 4,
     "note": 12
   },
   "grandval-chanson-de-barberine": {
@@ -9369,7 +9369,7 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
-    "staff-details": 1,
+    "staff-details": 2,
     "words": 1,
     "sound@tempo": 1,
     "direction@system": 1,

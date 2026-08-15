@@ -413,6 +413,49 @@ describe('a loss the schema has no home for', () => {
     ).toEqual(['unrepresentable:element <staff-details> cannot be expressed in MNX.'])
   })
 
+  // Hiding a staff is score structure, and a layout omitting the staff can
+  // state it, so the hiding is a converter gap rather than a format limit.
+  test('reports hiding a staff as a gap, apart from the appearance', () => {
+    expect(
+      codes(
+        measure(
+          note(''),
+          '<divisions>4</divisions>' +
+            '<staff-details print-object="no" print-spacing="yes" number="1"/>',
+        ),
+      ),
+    ).toEqual([
+      'unsupported:element Hiding a staff with <staff-details print-object="no"> is not ' +
+        'converted yet.',
+    ])
+  })
+
+  // A hidden staff whose details also restyle it is two losses at once, and
+  // each keeps its own verdict.
+  test('reports a hidden restyled staff as both losses', () => {
+    expect(
+      codes(
+        measure(
+          note(''),
+          '<divisions>4</divisions><staff-details print-object="no">' +
+            '<staff-lines>3</staff-lines></staff-details>',
+        ),
+      ),
+    ).toEqual([
+      'unsupported:element Hiding a staff with <staff-details print-object="no"> is not ' +
+        'converted yet.',
+      'unrepresentable:element <staff-details> cannot be expressed in MNX.',
+    ])
+  })
+
+  // An empty <staff-details> that names a staff states nothing about it, so
+  // there is nothing to lose.
+  test('says nothing about an empty <staff-details>', () => {
+    expect(codes(measure(note(''), '<divisions>4</divisions><staff-details number="2"/>'))).toEqual(
+      [],
+    )
+  })
+
   // Whether a direction prints on every system or only the top one of a page.
   // The schema's only visibility properties are an accidental's, a clef's
   // octave and a tuplet's number and value.

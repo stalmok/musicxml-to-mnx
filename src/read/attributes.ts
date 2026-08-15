@@ -15,6 +15,7 @@ import { attribute, requireChild, trimmedText } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
 import { readAttributeInRange, readInteger, readIntegerInRange } from './numbers.js'
 import type { PartState } from './state.js'
+import { elementLoss } from './unrepresentable.js'
 import { reportHidden } from './unrepresentable.js'
 
 // Recognisers rather than bare sets: each one narrows the value it accepts to
@@ -92,6 +93,36 @@ export function readAttributes(
   const stavesElement = element.child('staves')
   if (stavesElement) {
     state.staves = readIntegerInRange(stavesElement, path, 1, 16)
+  }
+
+  // <staff-details> carries two different statements with two different
+  // verdicts. Hiding a staff with print-object="no" is score structure with
+  // a home in MNX's layouts, not built yet, so it reports as a gap; its
+  // print-spacing rides on the hiding. How the staff is drawn, its line
+  // count, its size or a tuning, has no home and keeps saying so. The
+  // number attribute names the staff either statement is about, and an
+  // element stating nothing loses nothing. MusicXML allows one
+  // <staff-details> per staff, which is why every one is read.
+  for (const details of element.children('staff-details')) {
+    attribute(details, 'number')
+    if (attribute(details, 'print-object') === 'no') {
+      attribute(details, 'print-spacing')
+      warnings.add(
+        'unsupported:element',
+        'Hiding a staff with <staff-details print-object="no"> is not converted yet.',
+        { ...context, line: details.line },
+        'staff-details',
+      )
+    }
+    if (details.children.length > 0) {
+      const loss = elementLoss('staff-details')
+      warnings.add(
+        loss.code,
+        `<staff-details> ${loss.ending}`,
+        { ...context, line: details.line },
+        'staff-details',
+      )
+    }
   }
 
   // MusicXML allows one key and one time signature per staff. MNX states them
