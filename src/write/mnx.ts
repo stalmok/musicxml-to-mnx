@@ -88,6 +88,7 @@ export function writeMnx(score: Score): MNXDocument {
       measures: score.globalMeasures.map((measure, index) =>
         writeGlobalMeasure(measure, survey.measureIds.get(index)),
       ),
+      ...writeLyricLines(survey.lyricLines),
       ...writeSounds(score),
     },
     ...(layouts ? { layouts } : {}),
@@ -264,11 +265,13 @@ function surveyScore(score: Score): {
   referenced: ReadonlySet<string>
   drawsAccidentals: boolean
   measureIds: ReadonlyMap<number, string>
+  lyricLines: ReadonlySet<string>
 } {
   // Ids exist so that a tie or slur can point at something. Writing them on
   // everything else would be noise, so only the targets are named.
   const referenced = new Set<string>()
   let drawsAccidentals = false
+  const lyricLines = new Set<string>()
 
   const walk = (items: readonly SequenceItem[]): void => {
     for (const item of items) {
@@ -278,6 +281,7 @@ function surveyScore(score: Score): {
       }
       if (item.kind !== 'event') continue
       for (const slur of item.slurs) referenced.add(slur.target)
+      for (const lyric of item.lyrics) lyricLines.add(lyric.line)
       for (const note of item.notes) {
         for (const tie of note.ties) if (tie.target !== undefined) referenced.add(tie.target)
         if (note.accidentalDisplay?.show) drawsAccidentals = true
@@ -327,7 +331,19 @@ function surveyScore(score: Score): {
     measureIds.set(index, `m${String(index + 1)}`)
   }
 
-  return { referenced, drawsAccidentals, measureIds }
+  return { referenced, drawsAccidentals, measureIds, lyricLines }
+}
+
+/**
+ * The verse lines in order, written only when there is more than one: the
+ * order of a single line says nothing. The source numbers its verses, so
+ * the numbering orders them; left to first appearance, a later-numbered
+ * verse whose first syllable comes early would stack in the wrong place.
+ */
+function writeLyricLines(lines: ReadonlySet<string>): Partial<Pick<MNXGlobal, 'lyrics'>> {
+  if (lines.size < 2) return {}
+  const lineOrder = [...lines].sort((a, b) => a.localeCompare(b, 'en', { numeric: true }))
+  return { lyrics: { lineOrder } }
 }
 
 /**

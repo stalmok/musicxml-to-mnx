@@ -7,6 +7,8 @@ import { describe, expect, test } from 'vitest'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
+import { convertMusicXML } from '../index.js'
+import { schemaErrors } from '../../tests/support/schema.js'
 import type { Event } from '../model/score.js'
 
 function note(step: string, body = ''): string {
@@ -216,5 +218,35 @@ describe('a verse written as several pieces', () => {
 
     expect(events[0]?.lyrics).toEqual([])
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:element'])
+  })
+})
+
+// The source states which verse is which; the document states their order,
+// so a consumer need not infer it from where each verse first appears.
+describe('the order of the verse lines', () => {
+  test('states the lines in verse order, not appearance order', () => {
+    const { mnx, warnings } = convertMusicXML(
+      measure(
+        note('C', lyric('la', 'single', '2')) +
+          note('D', lyric('one', 'single', '1') + lyric('two', 'single', '2')) +
+          note('E', lyric('ten', 'single', '10')),
+      ),
+    )
+
+    expect(mnx.global.lyrics).toEqual({ lineOrder: ['1', '2', '10'] })
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  test('states no order for a single verse, which has none to state', () => {
+    const { mnx } = convertMusicXML(measure(note('C', lyric('la'))))
+
+    expect('lyrics' in mnx.global).toBe(false)
+  })
+
+  test('states no order where nothing sings', () => {
+    const { mnx } = convertMusicXML(measure(note('C')))
+
+    expect('lyrics' in mnx.global).toBe(false)
   })
 })

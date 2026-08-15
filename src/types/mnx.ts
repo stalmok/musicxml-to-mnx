@@ -531,8 +531,15 @@ export interface MNXGlobalMeasure {
   jump?: MNXJump
 }
 
+export interface MNXLyricsGlobal {
+  /** The verse lines in the order they stack under the notes. */
+  lineOrder?: string[]
+}
+
 export interface MNXGlobal {
   measures: MNXGlobalMeasure[]
+  /** Written only when the document sings more than one verse line. */
+  lyrics?: MNXLyricsGlobal
   /** Written only when the source states an instrument setup. */
   sounds?: Record<string, MNXSound>
 }
