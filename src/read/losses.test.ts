@@ -215,6 +215,11 @@ describe('an element hidden with print-object="no"', () => {
     ).toHaveLength(1)
   })
 
+  // An empty block hides nothing, so there is nothing to lose.
+  test('says nothing about an empty hidden notations block', () => {
+    expect(hidden(measure(note('<notations print-object="no"/>')))).toHaveLength(0)
+  })
+
   test('says nothing about an element the source draws', () => {
     expect(hidden(measure(note('')))).toHaveLength(0)
   })
@@ -389,9 +394,40 @@ describe('a loss the schema has no home for', () => {
     ])
   })
 
+  test('counts an encoding note beside the supports as the rest', () => {
+    expect(
+      codes(
+        identified(
+          '<encoding><software>MuseScore</software>' +
+            '<supports element="beam" type="yes"/></encoding>',
+        ),
+      ),
+    ).toEqual(['unrepresentable:element <identification> cannot be expressed in MNX.'])
+  })
+
   test('counts a supports declaration it cannot restate as the rest', () => {
     expect(
       codes(identified('<encoding><supports element="print" type="yes"/></encoding>')),
+    ).toEqual(['unrepresentable:element <identification> cannot be expressed in MNX.'])
+  })
+
+  // The writer derives its support flags from what it wrote, so a whole
+  // "yes" is the one declaration it restates. A "no", or one narrowed to an
+  // attribute, is a statement it cannot make, and counts as the rest.
+  test('counts a supports declaration of "no" as the rest', () => {
+    expect(codes(identified('<encoding><supports element="beam" type="no"/></encoding>'))).toEqual([
+      'unrepresentable:element <identification> cannot be expressed in MNX.',
+    ])
+  })
+
+  test('counts a supports declaration narrowed to an attribute as the rest', () => {
+    expect(
+      codes(
+        identified(
+          '<encoding><supports element="accidental" attribute="cautionary" type="yes"/>' +
+            '</encoding>',
+        ),
+      ),
     ).toEqual(['unrepresentable:element <identification> cannot be expressed in MNX.'])
   })
 

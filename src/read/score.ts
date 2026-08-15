@@ -113,10 +113,11 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
 
   // <identification> holds the composer, the rights and the encoding notes,
   // and the schema has no header for any of them. The one part with a home
-  // is <encoding><supports>: its accidental and beam declarations are the
-  // schema's support flags, which the writer states from what it actually
-  // wrote, so those are consumed as accounted. The rest is reported where
-  // there is a rest.
+  // is <encoding><supports>: a whole "yes" for accidentals or beams is the
+  // schema's support flag, which the writer states from what it actually
+  // wrote, so those are consumed as accounted. A "no", or a declaration
+  // narrowed to one attribute, is a statement the writer cannot make, and
+  // counts as the rest, which is reported where there is one.
   for (const identification of reader.children('identification')) {
     const rest = identification.children.some(
       (found) =>
@@ -125,7 +126,9 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
           (inner) =>
             inner.name !== 'supports' ||
             (inner.attributes['element'] !== 'accidental' &&
-              inner.attributes['element'] !== 'beam'),
+              inner.attributes['element'] !== 'beam') ||
+            inner.attributes['type'] !== 'yes' ||
+            inner.attributes['attribute'] !== undefined,
         ),
     )
     if (rest) {

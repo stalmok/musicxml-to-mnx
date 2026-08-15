@@ -10,6 +10,7 @@ import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
 import { buildBeams } from './beams.js'
 import { writeMnx } from '../write/mnx.js'
+import { schemaErrors } from '../../tests/support/schema.js'
 import type { BeamedEvent } from './beams.js'
 
 /**
@@ -283,6 +284,17 @@ describe('the document declaring it states beams', () => {
     const written = convert(eighth('C', 'begin') + eighth('D', 'end'))
 
     expect(written.mnx.support).toEqual({ useBeams: true })
+  })
+
+  test('declares both supports where the document draws both', () => {
+    const written = convert(
+      eighth('C', 'begin') +
+        '<note><pitch><step>F</step><octave>4</octave></pitch><duration>2</duration>' +
+        '<type>eighth</type><accidental>sharp</accidental><beam number="1">end</beam></note>',
+    )
+
+    expect(written.mnx.support).toEqual({ useAccidentalDisplay: true, useBeams: true })
+    expect(schemaErrors(written)).toEqual([])
   })
 
   test('does not claim it where nothing is beamed', () => {

@@ -134,6 +134,11 @@ export function readNote(
   // first tuplet of a run.
   const hiddenTuplets = new Set<XmlElement>()
   for (const block of notations) {
+    // An empty block hides nothing, so there is nothing to lose.
+    if (block.element.children.length === 0) {
+      attribute(block.element, 'print-object')
+      continue
+    }
     const tupletsOnly =
       block.element.children.length > 0 &&
       block.element.children.every((child) => child.name === 'tuplet')

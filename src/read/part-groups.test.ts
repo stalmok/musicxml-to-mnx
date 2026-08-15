@@ -164,6 +164,62 @@ describe('part groups', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 
+  // The fold is for the grand staff a multi-staff part restates; a brace
+  // group around a single-staff part states a grouping of its own and
+  // stays a group around its one staff.
+  test('keeps a brace group around one single-staff part as a group', () => {
+    const { mnx, warnings } = convertMusicXML(
+      score(
+        '<part-group type="start" number="1"><group-symbol>brace</group-symbol></part-group>' +
+          '<score-part id="P1"><part-name>Voice</part-name></score-part>' +
+          '<part-group type="stop" number="1"/>',
+        part('P1'),
+      ),
+    )
+
+    expect(mnx.layouts?.[0]?.content).toEqual([
+      {
+        type: 'group',
+        symbol: 'brace',
+        content: [{ type: 'staff', labelref: 'name', sources: [{ part: 'P1' }] }],
+      },
+    ])
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // Where the group states no label of its own, the folded group keeps the
+  // part's name, as the grand staff on its own would.
+  test('names the folded group after its part when the group is nameless', () => {
+    const pianoPart =
+      '<part id="P1"><measure number="1">' +
+      '<attributes><staves>2</staves></attributes>' +
+      `${NOTE}</measure></part>`
+    const { mnx, warnings } = convertMusicXML(
+      score(
+        '<part-group type="start" number="1"><group-symbol>brace</group-symbol></part-group>' +
+          '<score-part id="P1"><part-name>Piano</part-name></score-part>' +
+          '<part-group type="stop" number="1"/>',
+        pianoPart,
+      ),
+    )
+
+    expect(mnx.layouts?.[0]?.content).toEqual([
+      {
+        type: 'group',
+        symbol: 'brace',
+        barlineStyle: 'instrument',
+        label: 'Piano',
+        content: [
+          { type: 'staff', sources: [{ part: 'P1', staff: 1 }] },
+          { type: 'staff', sources: [{ part: 'P1', staff: 2 }] },
+        ],
+      },
+    ])
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
   // Only a score can name a layout, so a layout no score names is unreachable
   // and the brackets never draw. Written without one, the grouping converted
   // into a dead end with nothing to warn about.

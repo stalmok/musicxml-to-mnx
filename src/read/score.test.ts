@@ -1600,3 +1600,34 @@ describe('the music font', () => {
     expect(mnx.parts.every((p) => !('smuflFont' in p))).toBe(true)
   })
 })
+
+// The music font's edges: an element naming no family states nothing, and
+// an attribute beyond the family is reported like any other unread one.
+describe('the music font, at its edges', () => {
+  const withDefaults = (defaults: string) =>
+    `<score-partwise><defaults>${defaults}</defaults>` +
+    '<part-list><score-part id="P1"/></part-list>' +
+    '<part id="P1"><measure number="1">' +
+    '<attributes><divisions>1</divisions></attributes>' +
+    '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+    '<duration>4</duration><type>whole</type></note></measure></part>' +
+    '</score-partwise>'
+
+  test('writes no font from an element naming no family', () => {
+    const { mnx, warnings } = convertMusicXML(withDefaults('<music-font/>'))
+
+    expect(mnx.parts.every((p) => !('smuflFont' in p))).toBe(true)
+    expect(warnings).toEqual([])
+  })
+
+  // Font size and style are presentation, which the attribute sweep passes
+  // over without a word wherever they appear.
+  test('passes over the font attributes beside the family', () => {
+    const { mnx, warnings } = convertMusicXML(
+      withDefaults('<music-font font-family="Leland" font-size="20.5"/>'),
+    )
+
+    expect(mnx.parts[0]?.smuflFont).toBe('Leland')
+    expect(warnings).toEqual([])
+  })
+})
