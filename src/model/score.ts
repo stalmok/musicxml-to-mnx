@@ -607,4 +607,15 @@ export interface Score {
   sounds: ReadonlyMap<string, InstrumentSound>
   /** The SMuFL font the score is engraved in, where the source names one. */
   musicFont?: string
+  /**
+   * True where the source declared that the beams it writes are the whole of
+   * them, which holds even where it writes none: a score can beam nothing on
+   * purpose. Absent where the source declared nothing.
+   */
+  declaresBeams?: boolean
+  /**
+   * True where the source declared that the accidentals it draws are the
+   * whole of them, on the same terms as the beams.
+   */
+  declaresAccidentals?: boolean
 }

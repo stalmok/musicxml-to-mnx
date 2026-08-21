@@ -77,18 +77,22 @@ export function writeMnx(score: Score): MNXDocument {
   const survey = surveyScore(score)
   const layouts = writeLayouts(score)
 
+  // What the source declared, where it declared anything: the accidentals it
+  // draws, or the beams it writes, are the whole of them, so a reader marks
+  // no others and beams by no rule of its own. The declaration holds for a
+  // score that beams nothing on purpose, which is why it is not read off the
+  // output. A source that declared nothing is taken at what it wrote.
+  const useAccidentalDisplay = score.declaresAccidentals ?? survey.drawsAccidentals
+  const useBeams = score.declaresBeams ?? survey.writesBeams
+
   return {
     mnx: {
       version: MNX_VERSION,
-      // Declared once the document draws any accidental explicitly, so a
-      // reader takes the marked notes as the whole of it; and once it
-      // writes any beam, so a reader uses the beams written rather than
-      // beaming by rule.
-      ...(survey.drawsAccidentals || survey.writesBeams
+      ...(useAccidentalDisplay || useBeams
         ? {
             support: {
-              ...(survey.drawsAccidentals ? { useAccidentalDisplay: true } : {}),
-              ...(survey.writesBeams ? { useBeams: true } : {}),
+              ...(useAccidentalDisplay ? { useAccidentalDisplay: true } : {}),
+              ...(useBeams ? { useBeams: true } : {}),
             },
           }
         : {}),

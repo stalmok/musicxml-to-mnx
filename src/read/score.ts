@@ -114,23 +114,31 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
   // <identification> holds the composer, the rights and the encoding notes,
   // and the schema has no header for any of them. The one part with a home
   // is <encoding><supports>: a whole "yes" for accidentals or beams is the
-  // schema's support flag, which the writer states from what it actually
-  // wrote, so those are consumed as accounted. A "no", or a declaration
-  // narrowed to one attribute, is a statement the writer cannot make, and
-  // counts as the rest, which is reported where there is one.
+  // schema's support flag, and it is carried, so those are consumed as
+  // accounted. A "no", or a declaration narrowed to one attribute, is a
+  // statement the writer cannot make, and counts as the rest, which is
+  // reported where there is one. MusicXML allows one <encoding> and any
+  // number of <supports> in it.
+  let declaresBeams = false
+  let declaresAccidentals = false
   for (const identification of reader.children('identification')) {
-    const rest = identification.children.some(
-      (found) =>
-        found.name !== 'encoding' ||
-        found.children.some(
-          (inner) =>
-            inner.name !== 'supports' ||
-            (inner.attributes['element'] !== 'accidental' &&
-              inner.attributes['element'] !== 'beam') ||
-            inner.attributes['type'] !== 'yes' ||
-            inner.attributes['attribute'] !== undefined,
-        ),
-    )
+    let rest = false
+    for (const found of identification.children) {
+      if (found.name !== 'encoding') {
+        rest = true
+        continue
+      }
+      for (const inner of found.children) {
+        const whole =
+          inner.name === 'supports' &&
+          inner.attributes['type'] === 'yes' &&
+          inner.attributes['attribute'] === undefined
+        const element = inner.attributes['element']
+        if (whole && element === 'beam') declaresBeams = true
+        else if (whole && element === 'accidental') declaresAccidentals = true
+        else rest = true
+      }
+    }
     if (rest) {
       const loss = elementLoss('identification')
       warnings.add(
@@ -183,6 +191,8 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
       grouping: pruneGrouping(partList.grouping, written, partList.lines, warnings),
       sounds: partList.sounds,
       ...(musicFont !== undefined ? { musicFont } : {}),
+      ...(declaresBeams ? { declaresBeams } : {}),
+      ...(declaresAccidentals ? { declaresAccidentals } : {}),
     },
     partList.lines,
     warnings,

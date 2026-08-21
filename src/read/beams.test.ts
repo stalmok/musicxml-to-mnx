@@ -259,9 +259,9 @@ describe('beaming grace notes', () => {
   })
 })
 
-// Whether the document states its beams is a fact about the whole of it,
-// like the accidentals: read off the finished score, so a consumer knows to
-// use the beams written rather than beam by rule.
+// Where the source says nothing about its own beams, whether the document
+// states them is read off the finished score, like the accidentals, so a
+// consumer knows to use the beams written rather than beam by rule.
 describe('the document declaring it states beams', () => {
   const eighth = (step: string, marker: string) =>
     `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>2</duration>` +
@@ -304,5 +304,68 @@ describe('the document declaring it states beams', () => {
     )
 
     expect(written.mnx.support).toBeUndefined()
+  })
+})
+
+// The source states in <encoding><supports> whether the beams in the file are
+// the whole of them, and that is a different fact from whether the file holds
+// a beam: a score that beams nothing on purpose declares the support and
+// carries no beam. The declaration is what the support block restates.
+describe('the source declaring it states beams', () => {
+  const quarter =
+    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+    '<type>quarter</type></note>'
+
+  function convert(supports: string, body: string) {
+    const warnings = new WarningCollector()
+    const score = readScore(
+      parseXmlRoot(
+        `<score-partwise><identification><encoding>${supports}</encoding></identification>` +
+          '<part id="P1"><measure number="1">' +
+          '<attributes><divisions>4</divisions></attributes>' +
+          `${body}</measure></part></score-partwise>`,
+      ),
+      warnings,
+    )
+    return writeMnx(score)
+  }
+
+  test('states the support where the source declares it and beams nothing', () => {
+    const written = convert('<supports element="beam" type="yes"/>', quarter)
+
+    expect(written.mnx.support).toEqual({ useBeams: true })
+    expect(schemaErrors(written)).toEqual([])
+  })
+
+  test('states the accidental support the source declares with no accidental drawn', () => {
+    const written = convert('<supports element="accidental" type="yes"/>', quarter)
+
+    expect(written.mnx.support).toEqual({ useAccidentalDisplay: true })
+  })
+
+  // A "no", and a declaration narrowed to one attribute, are statements MNX's
+  // support block cannot make, so the document falls back to what it wrote.
+  test('leaves the support to what was written for a declaration of "no"', () => {
+    const written = convert('<supports element="beam" type="no"/>', quarter)
+
+    expect(written.mnx.support).toBeUndefined()
+  })
+
+  test('leaves the support to what was written for a declaration on an attribute', () => {
+    const written = convert(
+      '<supports element="accidental" attribute="cautionary" type="yes"/>',
+      quarter,
+    )
+
+    expect(written.mnx.support).toBeUndefined()
+  })
+
+  test('states both supports where the source declares both', () => {
+    const written = convert(
+      '<supports element="accidental" type="yes"/><supports element="beam" type="yes"/>',
+      quarter,
+    )
+
+    expect(written.mnx.support).toEqual({ useAccidentalDisplay: true, useBeams: true })
   })
 })

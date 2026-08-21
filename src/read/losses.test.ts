@@ -365,8 +365,8 @@ describe('a loss the schema has no home for', () => {
 
   // <identification>'s one part with a home is <encoding><supports>: the
   // accidental and beam declarations are the schema's support flags, which
-  // the writer states from what it actually wrote. Those are consumed as
-  // accounted; the composer, the rights and everything else have no home.
+  // the writer restates. Those are consumed as accounted; the composer, the
+  // rights and everything else have no home.
   const identified = (body: string) =>
     `<score-partwise><identification>${body}</identification>` +
     '<part id="P1"><measure number="1">' +
@@ -411,9 +411,9 @@ describe('a loss the schema has no home for', () => {
     ).toEqual(['unrepresentable:element <identification> cannot be expressed in MNX.'])
   })
 
-  // The writer derives its support flags from what it wrote, so a whole
-  // "yes" is the one declaration it restates. A "no", or one narrowed to an
-  // attribute, is a statement it cannot make, and counts as the rest.
+  // A whole "yes" is the one declaration the support flags restate. A "no",
+  // or one narrowed to an attribute, is a statement they cannot make, and
+  // counts as the rest.
   test('counts a supports declaration of "no" as the rest', () => {
     expect(codes(identified('<encoding><supports element="beam" type="no"/></encoding>'))).toEqual([
       'unrepresentable:element <identification> cannot be expressed in MNX.',

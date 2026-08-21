@@ -105,8 +105,7 @@ const NO_HOME_IN_MNX: ReadonlySet<string> = new Set([
   // The composer, the rights and the encoding notes. The schema has no
   // header for any of them. The supports declarations inside its <encoding>
   // are read apart before this verdict applies: their accidental and beam
-  // halves are the schema's support flags, stated by the writer from what
-  // it actually wrote.
+  // halves are the schema's support flags, which the writer restates.
   'identification',
   // Page size, scaling and margins. The schema's layouts state no dimensions.
   'defaults',
