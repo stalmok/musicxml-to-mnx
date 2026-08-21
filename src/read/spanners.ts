@@ -238,6 +238,140 @@ function accountsForItself(ends: readonly SlurEnd[]): boolean {
   return open === 0
 }
 
+/**
+ * Whether a voice's ends of one slur number, within one measure, leave an
+ * end over: an unclosed start, an orphan stop, or one of each. A measure is
+ * written one voice at a time, so this is the same reading as
+ * accountsForItself, narrowed to what happens inside a single measure.
+ */
+function measureResidue(ends: readonly SlurEnd[]): 'unclosed' | 'orphan' | 'both' | 'none' {
+  let open = 0
+  let orphaned = false
+  for (const end of inTimeOrder(ends, 'as-written')) {
+    if (end.kind === 'start') {
+      open += 1
+      continue
+    }
+    if (open === 0) orphaned = true
+    else open -= 1
+  }
+  if (orphaned && open > 0) return 'both'
+  if (orphaned) return 'orphan'
+  if (open > 0) return 'unclosed'
+  return 'none'
+}
+
+/**
+ * The pairs a stream that accounts for itself joins. Safe only where
+ * accountsForItself is true: nesting never goes past one deep, so each start
+ * closes on the very next stop.
+ */
+function ownPairs(ends: readonly SlurEnd[]): { start: SlurEnd; stop: SlurEnd }[] {
+  const pairs: { start: SlurEnd; stop: SlurEnd }[] = []
+  let open: SlurEnd | undefined
+  for (const end of inTimeOrder(ends, 'as-written')) {
+    if (end.kind === 'start') {
+      open = end
+      continue
+    }
+    /* v8 ignore next -- accountsForItself already guarantees every stop
+       closes an open start. */
+    if (open) pairs.push({ start: open, stop: end })
+    open = undefined
+  }
+  return pairs
+}
+
+/**
+ * The voice-and-number streams that must not be treated as a voice's own,
+ * even where accountsForItself says they balance, because the pair it would
+ * join is one a different voice's residue confirms from both sides: an
+ * unclosed start of the same number in another voice, in the same measure as
+ * this pair's start or the one right after, and separately an orphan stop of
+ * the same number in another voice, in the same measure as this pair's stop
+ * or the one right before. That is the source stating a slur crossing voices
+ * right there, on both the measure this pair opens in and the measure it
+ * closes in, which a coincidence touches at most one side of.
+ *
+ * A stream a whole-part count finds balanced can still be one of these: two
+ * separate cross-voice slurs reusing its number can leave it with exactly
+ * one start and one stop of its own, which is no more the same slur than two
+ * unrelated notes are the same note for sharing a pitch. Such a stream's
+ * balance beyond the measure is coincidence, not a slur anyone wrote, so it
+ * goes to the pass across the part with every other stream that cannot
+ * account for itself.
+ *
+ * Confirmed from both sides rather than one: a voice's own slur runs past a
+ * stray, unrelated end in another voice often enough that one-sided evidence
+ * throws it to the pass across the part too, and there the nearer stray
+ * wins over the farther partner the voice actually states. Requiring both
+ * sides keeps that voice's own reading, because a stray end at only one
+ * boundary of the pair does not also explain the other.
+ */
+function crossesVoicesInAMeasure(ends: readonly SlurEnd[]): ReadonlySet<string> {
+  const byNumber = new Map<string, SlurEnd[]>()
+  for (const end of ends) {
+    byNumber.set(end.number, [...(byNumber.get(end.number) ?? []), end])
+  }
+
+  const crossing = new Set<string>()
+  for (const [number, numberEnds] of byNumber) {
+    const byVoice = new Map<string, SlurEnd[]>()
+    for (const end of numberEnds) {
+      const voice = end.voice ?? ''
+      byVoice.set(voice, [...(byVoice.get(voice) ?? []), end])
+    }
+
+    // Every other voice's residue for this number, at the measure it falls
+    // in, so a pair's own boundaries can be checked against it directly.
+    const residueAt = new Map<string, Map<number, 'unclosed' | 'orphan' | 'both'>>()
+    for (const [voice, voiceEnds] of byVoice) {
+      const byMeasure = new Map<number, SlurEnd[]>()
+      for (const end of voiceEnds) {
+        byMeasure.set(end.measure, [...(byMeasure.get(end.measure) ?? []), end])
+      }
+      const perMeasure = new Map<number, 'unclosed' | 'orphan' | 'both'>()
+      for (const [measure, atMeasure] of byMeasure) {
+        const residue = measureResidue(atMeasure)
+        if (residue !== 'none') perMeasure.set(measure, residue)
+      }
+      residueAt.set(voice, perMeasure)
+    }
+
+    const nearbyResidue = (
+      exceptVoice: string,
+      measures: readonly number[],
+      kinds: readonly ('unclosed' | 'orphan' | 'both')[],
+    ): boolean =>
+      [...residueAt.entries()].some(
+        ([voice, perMeasure]) =>
+          voice !== exceptVoice &&
+          measures.some((measure) => {
+            const found = perMeasure.get(measure)
+            return found !== undefined && kinds.includes(found)
+          }),
+      )
+
+    for (const [voice, voiceEnds] of byVoice) {
+      if (!accountsForItself(voiceEnds)) continue
+      for (const pair of ownPairs(voiceEnds)) {
+        const confirmedAtStart = nearbyResidue(
+          voice,
+          [pair.start.measure, pair.start.measure + 1],
+          ['orphan', 'both'],
+        )
+        const confirmedAtStop = nearbyResidue(
+          voice,
+          [pair.stop.measure, pair.stop.measure - 1],
+          ['unclosed', 'both'],
+        )
+        if (confirmedAtStart && confirmedAtStop) crossing.add(`${voice} ${number}`)
+      }
+    }
+  }
+  return crossing
+}
+
 /** The most recently opened start that satisfies the rule, if any does. */
 function findLastOpened<T, E extends SpanEnd<T>>(
   waiting: readonly E[],
@@ -518,9 +652,11 @@ export class SpannerResolver {
    * the same number shifted along with it.
    *
    * A voice keeps its own slurs of one number only where its ends account for
-   * each other: it opens each before closing it and leaves none over. A
-   * measure is written one voice at a time, so such a stream is that voice's
-   * beyond doubt, and exporters reuse one number in every voice.
+   * each other: it opens each before closing it and leaves none over, and no
+   * other voice leaves a complementary end of that number over in the same
+   * measure (see crossesVoicesInAMeasure). A measure is written one voice at
+   * a time, so such a stream is that voice's beyond doubt, and exporters
+   * reuse one number in every voice.
    *
    * Everything else joins one stream for the whole part. A voice that leaves
    * an end over is a voice whose slur runs into another, and pairing it
@@ -567,11 +703,14 @@ export class SpannerResolver {
     }
 
     // What a stream cannot account for waits for the pass across the part
-    // rather than being reported: another voice may well close it.
+    // rather than being reported: another voice may well close it. So does a
+    // stream that only balances by coincidence, where another voice states
+    // the same number crossing into it within one measure.
+    const crossing = crossesVoicesInAMeasure(this.#slurEnds)
     const spare = new Set<SlurEnd>()
     const ownEnds: SlurEnd[][] = []
-    for (const ends of streams.values()) {
-      if (accountsForItself(ends)) ownEnds.push(ends)
+    for (const [key, ends] of streams) {
+      if (accountsForItself(ends) && !crossing.has(key)) ownEnds.push(ends)
       else for (const end of ends) spare.add(end)
     }
     /* v8 ignore next 4 -- a stream that accounts for itself opens each slur

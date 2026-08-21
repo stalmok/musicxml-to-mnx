@@ -349,6 +349,132 @@ export function slurSpans(document: MNXDocument): Set<string> {
   return spans
 }
 
+interface SourceSlurEnd {
+  kind: string
+  at: string
+  measure: number
+  voice: string
+  number: string
+}
+
+/**
+ * Whether a voice's ends of one slur number, within one measure, leave an
+ * end over: an unclosed start, an orphan stop, or one of each.
+ */
+function measureResidue(ends: readonly SourceSlurEnd[]): 'unclosed' | 'orphan' | 'both' | 'none' {
+  let open = 0
+  let orphaned = false
+  for (const end of ends) {
+    if (end.kind === 'start') {
+      open += 1
+      continue
+    }
+    if (open === 0) orphaned = true
+    else open -= 1
+  }
+  if (orphaned && open > 0) return 'both'
+  if (orphaned) return 'orphan'
+  if (open > 0) return 'unclosed'
+  return 'none'
+}
+
+/** The pairs a voice's own, balanced ends of one number join, read alone. */
+function ownPairs(ends: readonly SourceSlurEnd[]): { start: SourceSlurEnd; stop: SourceSlurEnd }[] {
+  const pairs: { start: SourceSlurEnd; stop: SourceSlurEnd }[] = []
+  let open: SourceSlurEnd | undefined
+  for (const end of ends) {
+    if (end.kind === 'start') {
+      open = end
+      continue
+    }
+    if (open) pairs.push({ start: open, stop: end })
+    open = undefined
+  }
+  return pairs
+}
+
+/**
+ * The voice-and-number streams that must be left out even though they
+ * balance and never nest, because the pair they would join is one another
+ * voice's residue confirms from both sides: an unclosed start of the same
+ * number in another voice, at the same measure as this pair's start or the
+ * one right after, and separately an orphan stop of the same number in
+ * another voice, at the same measure as this pair's stop or the one right
+ * before. That is the source stating a slur crossing voices right there, on
+ * both the measure the pair opens in and the measure it closes in, which a
+ * coincidence touches at most one side of: two separate cross-voice slurs
+ * reusing this voice's number can leave it with exactly one start and one
+ * stop of its own, which reading alone cannot tell apart from a slur it
+ * actually states.
+ *
+ * Confirmed from both sides rather than one, because a voice's own slur runs
+ * past a stray, unrelated end in another voice often enough that one-sided
+ * evidence would leave out slurs the voice plainly does state on its own.
+ */
+function crossesVoicesInAMeasure(ends: readonly SourceSlurEnd[]): ReadonlySet<string> {
+  const byNumber = new Map<string, SourceSlurEnd[]>()
+  for (const end of ends) {
+    byNumber.set(end.number, [...(byNumber.get(end.number) ?? []), end])
+  }
+
+  const crossing = new Set<string>()
+  for (const [number, numberEnds] of byNumber) {
+    const byVoice = new Map<string, SourceSlurEnd[]>()
+    for (const end of numberEnds) {
+      byVoice.set(end.voice, [...(byVoice.get(end.voice) ?? []), end])
+    }
+
+    const residueAt = new Map<string, Map<number, 'unclosed' | 'orphan' | 'both'>>()
+    for (const [voice, voiceEnds] of byVoice) {
+      const byMeasure = new Map<number, SourceSlurEnd[]>()
+      for (const end of voiceEnds) {
+        byMeasure.set(end.measure, [...(byMeasure.get(end.measure) ?? []), end])
+      }
+      const perMeasure = new Map<number, 'unclosed' | 'orphan' | 'both'>()
+      for (const [measure, atMeasure] of byMeasure) {
+        const residue = measureResidue(atMeasure)
+        if (residue !== 'none') perMeasure.set(measure, residue)
+      }
+      residueAt.set(voice, perMeasure)
+    }
+
+    const nearbyResidue = (
+      exceptVoice: string,
+      measures: readonly number[],
+      kinds: readonly ('unclosed' | 'orphan' | 'both')[],
+    ): boolean =>
+      [...residueAt.entries()].some(
+        ([voice, perMeasure]) =>
+          voice !== exceptVoice &&
+          measures.some((measure) => {
+            const found = perMeasure.get(measure)
+            return found !== undefined && kinds.includes(found)
+          }),
+      )
+
+    for (const [voice, voiceEnds] of byVoice) {
+      const own = ownPairs(voiceEnds)
+      // Read alone, a voice's ends account for each other only where the
+      // pairing is unambiguous: see the doc comment on sourceSlurSpans.
+      if (own.length * 2 !== voiceEnds.length) continue
+      for (const pair of own) {
+        const confirmedAtStart = nearbyResidue(
+          voice,
+          [pair.start.measure, pair.start.measure + 1],
+          ['orphan', 'both'],
+        )
+        const confirmedAtStop = nearbyResidue(
+          voice,
+          [pair.stop.measure, pair.stop.measure - 1],
+          ['unclosed', 'both'],
+        )
+        if (confirmedAtStart && confirmedAtStop) crossing.add(`${voice}|${number}`)
+      }
+    }
+  }
+  return crossing
+}
+
 /**
  * The slurs the source states beyond doubt, as the two places each joins.
  *
@@ -372,7 +498,7 @@ export function sourceSlurSpans(root: XmlElement): Set<string> {
     .forEach((part, partIndex) => {
       // Every slur end of the part, gathered per voice and slur number in the
       // order it was read, so each stream can be judged as a whole.
-      const streams = new Map<string, { kind: string; at: string }[]>()
+      const streams = new Map<string, SourceSlurEnd[]>()
       let divisions = 1
 
       part.children
@@ -413,8 +539,12 @@ export function sourceSlurSpans(root: XmlElement): Set<string> {
                 for (const slur of notations.children.filter((c) => c.name === 'slur')) {
                   const kind = slur.attributes.type ?? ''
                   if (kind !== 'start' && kind !== 'stop') continue
-                  const key = `${voice}|${slur.attributes.number ?? '1'}`
-                  streams.set(key, [...(streams.get(key) ?? []), { kind, at: here }])
+                  const number = slur.attributes.number ?? '1'
+                  const key = `${voice}|${number}`
+                  streams.set(key, [
+                    ...(streams.get(key) ?? []),
+                    { kind, at: here, measure: measureIndex, voice, number },
+                  ])
                 }
               }
             }
@@ -422,7 +552,13 @@ export function sourceSlurSpans(root: XmlElement): Set<string> {
           }
         })
 
-      for (const ends of streams.values()) {
+      // A stream can balance by coincidence: see crossesVoicesInAMeasure.
+      // Such a stream is left out below, the same as one that never balances
+      // at all.
+      const crossing = crossesVoicesInAMeasure([...streams.values()].flat())
+
+      for (const [key, ends] of streams) {
+        if (crossing.has(key)) continue
         const open: string[] = []
         const paired: string[] = []
         let plain = true

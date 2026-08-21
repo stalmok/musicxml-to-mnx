@@ -686,6 +686,48 @@ describe('slurs', () => {
     ])
   })
 
+  // A voice's own stream can balance by coincidence rather than by writing
+  // one slur through. Here voice 1's number 2 holds one start and one stop,
+  // so counting alone says it accounts for itself, but the start really
+  // slurs into voice 2 in the same measure, and the stop really continues a
+  // slur voice 2 starts two measures later. Pairing the voice's own two ends
+  // invents an 18-measure span nobody wrote and drops both real slurs; here
+  // it would invent a 3-measure span instead, which is enough to prove it.
+  test('does not pair two ends of one number that only balance by coincidence', () => {
+    const warnings = new WarningCollector()
+    const score = readScore(
+      parseXmlRoot(
+        measures(
+          DIVISIONS +
+            note('B', slur('start', '1') + slur('start', '2'), '1') +
+            note('C', slur('stop', '1'), '1') +
+            '<backup><duration>8</duration></backup>' +
+            note('D', slur('start', '1'), '2') +
+            note('E', slur('stop', '2') + slur('stop', '1'), '2'),
+          note('F', slur('start', '2'), '2'),
+          note('G', slur('stop', '2'), '1'),
+        ),
+      ),
+      warnings,
+    )
+    const eventsOf = (measure: number, sequence: number) =>
+      (score.parts[0]?.measures[measure]?.sequences[sequence]?.content ?? []).filter(
+        (item): item is Event => item.kind === 'event',
+      )
+    const [b4, c5] = eventsOf(0, 0) as [Event, Event]
+    const [d4, e4] = eventsOf(0, 1) as [Event, Event]
+    const [f4] = eventsOf(1, 0) as [Event]
+    const [g4] = eventsOf(2, 0) as [Event]
+
+    // Number 1 is each voice's own, unaffected: B4 -> C5 and D4 -> E4.
+    expect(b4.slurs.map((s) => s.target)).toEqual([c5.id, e4.id])
+    expect(d4.slurs.map((s) => s.target)).toEqual([e4.id])
+    // Number 2 is the two real cross-voice slurs: B4 -> E4 in the one
+    // measure they share, and F4 -> G4 two measures later.
+    expect(f4.slurs.map((s) => s.target)).toEqual([g4.id])
+    expect(warnings.list()).toEqual([])
+  })
+
   // A grace note takes none of the measure's time, so it begins where the
   // note it ornaments begins. The slur from one to the other therefore has
   // both ends at one point, and the document says which end is which.
