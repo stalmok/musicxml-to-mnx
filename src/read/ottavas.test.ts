@@ -404,3 +404,68 @@ describe('where an octave shift runs', () => {
     expect(warnings.map((w) => w.element)).toEqual(['octave-shift'])
   })
 })
+
+// Grace notes take none of the measure's time, so they share the place of the
+// note they ornament. MNX reads a place with no grace index as before all of
+// them, and counts back from the ornamented note: that note is 0 and the
+// rightmost grace note is 1. A shift ending on a note whose grace notes it
+// covers must say 0, or they fall outside it.
+describe('an octave shift ending where grace notes sit', () => {
+  const GRACE =
+    '<note><grace/><pitch><step>D</step><octave>5</octave></pitch><type>eighth</type></note>'
+
+  test('ends on the ornamented note, taking in the grace notes before it', () => {
+    const { ottavas, warnings } = read(shift('down') + NOTE + GRACE + NOTE + shift('stop'))
+
+    expect(ottavas[0]?.[0]?.end).toEqual({
+      measure: 0,
+      position: { num: 1, den: 4 },
+      graceIndex: 0,
+    })
+    expect(warnings).toEqual([])
+  })
+
+  // Nothing follows the grace notes, so the last event the shift covers is
+  // the rightmost of them rather than a note they ornament.
+  test('ends on the last grace note where no note follows it', () => {
+    const { ottavas, warnings } = read(
+      shift('down') + NOTE + GRACE + '<forward><duration>4</duration></forward>' + shift('stop'),
+    )
+
+    expect(ottavas[0]?.[0]?.end).toEqual({
+      measure: 0,
+      position: { num: 1, den: 4 },
+      graceIndex: 1,
+    })
+    expect(warnings).toEqual([])
+  })
+
+  // The stop falls between the grace notes and the note they ornament, so the
+  // shift covers neither and ends on the note before them.
+  test('says nothing where the grace notes fall outside it', () => {
+    const { ottavas, warnings } = read(shift('down') + NOTE + GRACE + shift('stop') + NOTE)
+
+    expect(ottavas[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 0, den: 1 } })
+    expect(warnings).toEqual([])
+  })
+
+  test('writes the grace index onto schema-valid MNX', () => {
+    const { mnx, warnings } = convertMusicXML(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        '<attributes><divisions>4</divisions></attributes>' +
+        shift('down') +
+        NOTE +
+        GRACE +
+        NOTE +
+        shift('stop') +
+        '</measure></part></score-partwise>',
+    )
+
+    expect(mnx.parts[0]?.measures[0]?.ottavas?.[0]?.end).toEqual({
+      measure: 'm1',
+      position: { fraction: [1, 4], graceIndex: 0 },
+    })
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+})

@@ -310,6 +310,12 @@ export type MNXDynamicValue =
 
 export interface MNXRhythmicPosition {
   fraction: [number, number]
+  /**
+   * Which grace note at this point is meant, counting back from the note they
+   * ornament: that note is 0 and the rightmost grace note is 1. Left off where
+   * the point has no grace notes, which reads as before all of them.
+   */
+  graceIndex?: number
 }
 
 export type MNXWedgeType = 'increasing' | 'decreasing'

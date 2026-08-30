@@ -55,6 +55,17 @@ export interface TupletStart {
   number: string
 }
 
+/**
+ * The event a span ends on: where it begins in the measure, and, where grace
+ * notes sit there, which one of them it is. The index counts back from the
+ * note the grace notes ornament, which is 0, so the rightmost grace note is
+ * 1. Unset where nothing at that place is a grace note.
+ */
+export interface CoveredEvent {
+  start: Fraction
+  graceIndex?: number
+}
+
 /** The name a voice goes under when the source does not give it one. */
 const UNNAMED_VOICE = ''
 
@@ -293,12 +304,12 @@ export class MeasureBuilder {
   readonly #voices = new Map<string, VoiceBuilder>()
   readonly #arpeggios: MarkedArpeggio[] = []
   /**
-   * Where each event of the measure begins, whatever voice it is in, and the
-   * staff it was placed on. An event states no staff where the part has only
-   * one, and where a multi-staff part leaves it off, which MusicXML reads as
-   * the first staff.
+   * Where each event of the measure begins, whatever voice it is in, the
+   * staff it was placed on, and whether it is a grace note. An event states
+   * no staff where the part has only one, and where a multi-staff part leaves
+   * it off, which MusicXML reads as the first staff.
    */
-  readonly #eventStarts: { start: Fraction; staff: number | undefined }[] = []
+  readonly #eventStarts: { start: Fraction; staff: number | undefined; grace: boolean }[] = []
   #cursor: Fraction = fraction(0)
   /** The voice of the most recent event, which a chord member joins. */
   #lastVoice: string | undefined
@@ -364,7 +375,7 @@ export class MeasureBuilder {
     builder.lastEvent = event
     builder.lastDuration = duration
     builder.lastStart = this.#cursor
-    this.#eventStarts.push({ start: this.#cursor, staff })
+    this.#eventStarts.push({ start: this.#cursor, staff, grace: false })
     builder.openTremolo?.durations.push(duration)
     builder.end = addFractions(this.#cursor, duration)
     this.#cursor = builder.end
@@ -405,14 +416,25 @@ export class MeasureBuilder {
    * being what it covers. An event that names no staff is the first staff,
    * which is how MusicXML reads a note that leaves it off.
    */
-  lastEventBefore(position: Fraction, staff?: number): Fraction | undefined {
+  lastEventBefore(position: Fraction, staff?: number): CoveredEvent | undefined {
     let latest: Fraction | undefined
     for (const event of this.#eventStarts) {
       if (staff !== undefined && (event.staff ?? 1) !== staff) continue
       if (compareFractions(event.start, position) >= 0) continue
       if (!latest || compareFractions(event.start, latest) > 0) latest = event.start
     }
-    return latest
+    if (!latest) return undefined
+
+    const here = this.#eventStarts.filter(
+      (event) =>
+        (staff === undefined || (event.staff ?? 1) === staff) &&
+        compareFractions(event.start, latest) === 0,
+    )
+    // Grace notes share the place of the note they ornament, so the last
+    // event here is that note where the source wrote one and the rightmost
+    // grace note where it did not.
+    if (!here.some((event) => event.grace)) return { start: latest }
+    return { start: latest, graceIndex: here.some((event) => !event.grace) ? 0 : 1 }
   }
 
   /** The staff the event a chord note would join was placed on. */
@@ -897,7 +919,7 @@ export class MeasureBuilder {
     // has nothing to agree with.
     builder.lastDuration = undefined
     builder.lastStart = this.#cursor
-    this.#eventStarts.push({ start: this.#cursor, staff })
+    this.#eventStarts.push({ start: this.#cursor, staff, grace: true })
     // Recorded like any other event, so the voice's staff counts it and a
     // grace note reaching across to the other staff says so.
     builder.placed.push({ event, staff })

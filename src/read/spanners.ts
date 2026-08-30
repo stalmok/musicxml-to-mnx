@@ -22,6 +22,7 @@ import type {
   Pitch,
   Step,
 } from '../model/score.js'
+import type { CoveredEvent } from './voices.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 
 /** A tie that has begun, waiting for the note that ends it. */
@@ -113,6 +114,13 @@ export interface SpanEnd<T> {
    * the stop was written, or it would sort before the start it belongs to.
    */
   covers: Fraction
+  /**
+   * Which grace note at that place it marks, where grace notes sit there.
+   * Counted back from the note they ornament, as MNX counts: that note is 0
+   * and the rightmost grace note is 1. Unset where the place has no grace
+   * notes, which reads as before all of them.
+   */
+  coversGraceIndex?: number
   /**
    * The voice it is written in, where the thing has one. A stop takes the
    * open start of its own voice before any other, because exporters number a
@@ -928,11 +936,14 @@ export class SpannerResolver {
    */
   settleOttavaCovers(
     measure: number,
-    lastEventBefore: (position: Fraction, staff?: number) => Fraction | undefined,
+    lastEventBefore: (position: Fraction, staff?: number) => CoveredEvent | undefined,
   ): void {
     for (const end of this.#ottavaEnds) {
       if (end.kind !== 'stop' || end.measure !== measure) continue
-      end.covers = lastEventBefore(end.covers, end.staff) ?? end.covers
+      const covered = lastEventBefore(end.covers, end.staff)
+      if (!covered) continue
+      end.covers = covered.start
+      if (covered.graceIndex !== undefined) end.coversGraceIndex = covered.graceIndex
     }
   }
 
@@ -966,7 +977,11 @@ export class SpannerResolver {
       (open, stop) => {
         measures[open.measure]?.ottavas.push({
           position: open.position,
-          end: { measure: stop.measure, position: stop.covers },
+          end: {
+            measure: stop.measure,
+            position: stop.covers,
+            ...(stop.coversGraceIndex !== undefined ? { graceIndex: stop.coversGraceIndex } : {}),
+          },
           value: open.value,
           staff: open.staff,
           ...(open.orient !== undefined ? { orient: open.orient } : {}),

@@ -392,8 +392,14 @@ export type OttavaAmount = 1 | 2 | 3 | -1 | -2 | -3
 
 export interface Ottava {
   position: Fraction
-  /** Where it stops, as a measure's place in the score and a point in it. */
-  end: { measure: number; position: Fraction }
+  /**
+   * Where it stops, as a measure's place in the score and a point in it.
+   * Grace notes take none of the measure's time, so a point they sit at needs
+   * a grace index to say which of them the shift ends on: the note they
+   * ornament is 0 and the rightmost grace note is 1. Unset where the point
+   * has no grace notes, which reads as before all of them.
+   */
+  end: { measure: number; position: Fraction; graceIndex?: number }
   value: OttavaAmount
   /** Which staff it applies to, where the part has more than one. */
   staff: number | undefined

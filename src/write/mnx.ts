@@ -587,7 +587,7 @@ function writeDynamic(dynamic: Dynamic, measureIds: ReadonlyMap<number, string>)
 }
 
 function writeSpanEnd(
-  end: { measure: number; position: Fraction },
+  end: { measure: number; position: Fraction; graceIndex?: number },
   measureIds: ReadonlyMap<number, string>,
 ): MNXMeasureRhythmicPosition {
   const measure = measureIds.get(end.measure)
@@ -595,7 +595,13 @@ function writeSpanEnd(
      which is where this map comes from. */
   if (measure === undefined) throw new Error('A span ends in a measure with no id.')
 
-  return { measure, position: writePosition(end.position) }
+  return {
+    measure,
+    position: {
+      ...writePosition(end.position),
+      ...(end.graceIndex !== undefined ? { graceIndex: end.graceIndex } : {}),
+    },
+  }
 }
 
 function writeBeam(beam: Beam): MNXBeam {
