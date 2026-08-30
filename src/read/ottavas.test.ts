@@ -235,6 +235,21 @@ describe('where an octave shift runs', () => {
     expect(warnings).toEqual([])
   })
 
+  // An <offset> moves where a mark is drawn, not which events it covers. It
+  // is routinely negative, pulling a stop written after a note back on to it,
+  // and the shift still ends on that note.
+  test.each([
+    ['-4', 'pulled back on to the note it ends on'],
+    ['4', 'pushed past the note it ends on'],
+  ])('covers the same events with a stop %s divisions away, %s', (offset) => {
+    const { ottavas, warnings } = read(
+      shift('down') + NOTE + NOTE + shift('stop', '8', `<offset>${offset}</offset>`),
+    )
+
+    expect(ottavas[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 1, den: 4 } })
+    expect(warnings).toEqual([])
+  })
+
   // A shift whose stop has no event before it in its measure has nothing
   // nearer to point at than the stop's own place.
   test('falls back to where the stop is written where nothing precedes it', () => {

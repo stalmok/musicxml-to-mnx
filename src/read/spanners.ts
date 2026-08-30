@@ -885,16 +885,22 @@ export class SpannerResolver {
     })
   }
 
-  stopOttava(number: string, measure: number, position: Fraction, context: WarningContext): void {
+  stopOttava(
+    number: string,
+    measure: number,
+    position: Fraction,
+    cursor: Fraction,
+    context: WarningContext,
+  ): void {
     this.#ottavaEnds.push({
       kind: 'stop',
       number,
       measure,
       position,
-      // Which event this covers waits on settleOttavaCovers below. Until then
-      // the stop's own place stands, which is where it stays when the measure
-      // holds no event before it.
-      covers: position,
+      // Where the cursor stood when the stop was written. settleOttavaCovers
+      // below reads the covered event from it once the measure is whole, and
+      // it stands as written where the measure holds no event before it.
+      covers: cursor,
       payload: undefined,
       context,
     })
@@ -906,6 +912,9 @@ export class SpannerResolver {
    * last event it covers, and MusicXML writes the stop after that event. A
    * <backup> can put the covered event later in the document than the stop,
    * so the answer is not there while the measure is still being read.
+   *
+   * Each stop arrives holding the cursor it was written at, and leaves holding
+   * the event that cursor had just passed.
    */
   settleOttavaCovers(
     measure: number,
@@ -913,7 +922,7 @@ export class SpannerResolver {
   ): void {
     for (const end of this.#ottavaEnds) {
       if (end.kind !== 'stop' || end.measure !== measure) continue
-      end.covers = lastEventBefore(end.position) ?? end.position
+      end.covers = lastEventBefore(end.covers) ?? end.covers
     }
   }
 

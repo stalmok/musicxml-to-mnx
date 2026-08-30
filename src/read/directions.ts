@@ -206,7 +206,7 @@ export function readDirection(
           reading.tempos.push(...readMetronome(found, at, warnings, context, path))
           break
         case 'octave-shift':
-          readOctaveShift(found, at, measure, staff, orient, state, warnings, context)
+          readOctaveShift(found, at, position, measure, staff, orient, state, warnings, context)
           break
         case 'wedge': {
           const wedge = readWedge(found, at, measure, staff, orient, state, warnings, context)
@@ -363,6 +363,7 @@ const SHIFT_SIZES = new Map<string, 1 | 2 | 3>([
 function readOctaveShift(
   found: XmlElement,
   position: Fraction,
+  cursor: Fraction,
   measure: number,
   staff: number | undefined,
   orient: 'above' | 'below' | undefined,
@@ -378,8 +379,10 @@ function readOctaveShift(
 
   if (type === 'stop') {
     // Which event the shift ends on is settled once the measure is whole,
-    // because a <backup> can write that event after this stop.
-    state.spanners.stopOttava(number, measure, position, context)
+    // because a <backup> can write that event after this stop. It is read
+    // from where the cursor stood, not from where an <offset> draws the stop:
+    // an offset moves the sign on the page, not the music it covers.
+    state.spanners.stopOttava(number, measure, position, cursor, context)
     return
   }
   // "continue" marks a point partway along one, which MNX has no need of.
