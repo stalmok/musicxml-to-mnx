@@ -351,9 +351,12 @@ export interface Dynamic {
   suffix?: string
   /**
    * Where a hairpin stops, as a measure's place in the score and a position
-   * within it. Unset where the source never closed it.
+   * within it. Grace notes take none of the measure's time, so a point they
+   * sit at needs a grace index to say which of them the hairpin ends on: the
+   * note they ornament is 0 and the rightmost grace note is 1. Unset where
+   * the source never closed the hairpin.
    */
-  end: { measure: number; position: Fraction } | undefined
+  end: { measure: number; position: Fraction; graceIndex?: number } | undefined
   /** Which staff it belongs under, where the part has more than one. */
   staff: number | undefined
   /** Which side of the staff it is drawn on, where the source states it. */

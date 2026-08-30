@@ -437,6 +437,27 @@ export class MeasureBuilder {
     return { start: latest, graceIndex: here.some((event) => !event.grace) ? 0 : 1 }
   }
 
+  /**
+   * Whether the event just read is a grace note standing where the cursor is.
+   * A hairpin's stop written after grace notes is drawn over them, and MNX
+   * reads the place they share as before all of them unless a grace index
+   * says otherwise. Read in document order, unlike an octave shift's end,
+   * because the answer is which side of the grace notes the stop was written.
+   *
+   * A staff narrows it to that staff's own events, as an octave shift's end
+   * does, so grace notes under the other hand do not answer for this one.
+   */
+  endsOnGraceNote(staff?: number): boolean {
+    for (let index = this.#eventStarts.length - 1; index >= 0; index -= 1) {
+      const event = this.#eventStarts[index]
+      /* v8 ignore next -- the index walks the array's own length. */
+      if (!event) continue
+      if (staff !== undefined && (event.staff ?? 1) !== staff) continue
+      return event.grace && compareFractions(event.start, this.#cursor) === 0
+    }
+    return false
+  }
+
   /** The staff the event a chord note would join was placed on. */
   staffOfChord(voice: string | undefined): number | undefined {
     return this.#builderFor(voice ?? this.#lastVoice).placed.at(-1)?.staff

@@ -156,6 +156,7 @@ const ACCENT_DYNAMICS = new Map<string, AccentDynamic>([
 export function readDirection(
   element: ElementReader,
   position: Fraction,
+  endsOnGraceNote: (staff?: number) => boolean,
   measure: number,
   state: PartState,
   warnings: WarningCollector,
@@ -183,6 +184,12 @@ export function readDirection(
 
   const at = offsetPosition(element, position, state, warnings, context)
 
+  // Whether grace notes stand where this direction does and were written
+  // before it. A hairpin stopping there is drawn over them, so its end names
+  // the rightmost of them rather than the place they all share. An <offset>
+  // moves the direction off the cursor, and off the grace notes with it.
+  const afterGrace = compareFractions(at, position) === 0 && endsOnGraceNote(staff)
+
   for (const directionType of element.children('direction-type')) {
     // The wording is held for the whole <direction-type>: MusicXML allows
     // the words and the mark they qualify in sibling <dynamics> blocks, and
@@ -209,7 +216,17 @@ export function readDirection(
           readOctaveShift(found, at, position, measure, staff, orient, state, warnings, context)
           break
         case 'wedge': {
-          const wedge = readWedge(found, at, measure, staff, orient, state, warnings, context)
+          const wedge = readWedge(
+            found,
+            at,
+            afterGrace,
+            measure,
+            staff,
+            orient,
+            state,
+            warnings,
+            context,
+          )
           if (wedge?.edge === 'start') {
             const prefix = wording.take()
             if (prefix !== undefined) wedge.hairpin.prefix = prefix.text
@@ -439,6 +456,7 @@ type WedgeReading = { edge: 'start'; hairpin: Dynamic } | { edge: 'stop'; stop: 
 function readWedge(
   found: XmlElement,
   position: Fraction,
+  afterGrace: boolean,
   measure: number,
   staff: number | undefined,
   orient: 'above' | 'below' | undefined,
@@ -450,7 +468,18 @@ function readWedge(
   const number = attribute(found, 'number') ?? '1'
 
   if (type === 'stop') {
-    return { edge: 'stop', stop: state.spanners.stopWedge(number, measure, position, context) }
+    // Grace notes written before the stop are drawn under the hairpin, so it
+    // ends on the rightmost of them, which MNX counts as 1.
+    return {
+      edge: 'stop',
+      stop: state.spanners.stopWedge(
+        number,
+        measure,
+        position,
+        afterGrace ? 1 : undefined,
+        context,
+      ),
+    }
   }
 
   const wedge = type === undefined ? undefined : WEDGE_TYPES.get(type)

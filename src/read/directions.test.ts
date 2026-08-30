@@ -1908,4 +1908,81 @@ describe('hairpins', () => {
 
     expect(dynamics[0]?.[0]?.staff).toBe(2)
   })
+
+  // Grace notes take none of the measure's time, so a stop written after them
+  // stands where they do. MNX reads a place with no grace index as before all
+  // of them, and counts back from the note they ornament: that note is 0 and
+  // the rightmost grace note is 1. A hairpin drawn over grace notes must say
+  // so, or they fall outside it.
+  describe('ending where grace notes sit', () => {
+    const GRACE =
+      '<note><grace/><pitch><step>D</step><octave>5</octave></pitch><type>eighth</type></note>'
+
+    test('ends on the last grace note where the stop is written after them', () => {
+      const { dynamics, warnings } = readMeasures(
+        wedge('crescendo') + NOTE + GRACE + GRACE + wedge('stop') + NOTE,
+      )
+
+      expect(dynamics[0]?.[0]?.end).toEqual({
+        measure: 0,
+        position: { num: 1, den: 4 },
+        graceIndex: 1,
+      })
+      expect(warnings).toEqual([])
+    })
+
+    test('says nothing where the stop is written before them', () => {
+      const { dynamics, warnings } = readMeasures(
+        wedge('crescendo') + NOTE + wedge('stop') + GRACE + NOTE,
+      )
+
+      expect(dynamics[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 1, den: 4 } })
+      expect(warnings).toEqual([])
+    })
+
+    // An <offset> moves the stop away from the cursor, so the grace notes
+    // standing at the cursor are no longer where the hairpin ends.
+    test('says nothing where an offset moves the stop off the grace notes', () => {
+      const { dynamics, warnings } = readMeasures(
+        wedge('crescendo') +
+          NOTE +
+          GRACE +
+          '<direction><direction-type><wedge type="stop" number="1"/></direction-type>' +
+          '<offset>4</offset></direction>' +
+          NOTE,
+      )
+
+      expect(dynamics[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 1, den: 2 } })
+      expect(warnings).toEqual([])
+    })
+
+    // The stop names the other staff, so the grace notes are not under it.
+    test('says nothing where the grace notes are on another staff', () => {
+      const { dynamics, warnings } = readMeasures(
+        '<attributes><staves>2</staves></attributes>' +
+          '<direction><direction-type><wedge type="crescendo" number="1"/></direction-type>' +
+          '<staff>2</staff></direction>' +
+          NOTE.replace('<pitch>', '<staff>2</staff><pitch>') +
+          GRACE.replace('<pitch>', '<staff>1</staff><pitch>') +
+          '<direction><direction-type><wedge type="stop" number="1"/></direction-type>' +
+          '<staff>2</staff></direction>',
+      )
+
+      expect(dynamics[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 1, den: 4 } })
+      expect(warnings).toEqual([])
+    })
+
+    test('writes the grace index onto schema-valid MNX', () => {
+      const { mnx, warnings } = convertMusicXML(
+        inMeasure(wedge('crescendo') + NOTE + GRACE + wedge('stop') + NOTE),
+      )
+
+      expect(mnx.parts[0]?.measures[0]?.dynamics?.[0]?.end).toEqual({
+        measure: 'm1',
+        position: { fraction: [1, 4], graceIndex: 1 },
+      })
+      expect(warnings).toEqual([])
+      expect(schemaErrors(mnx)).toEqual([])
+    })
+  })
 })

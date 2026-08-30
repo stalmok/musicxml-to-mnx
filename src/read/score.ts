@@ -868,6 +868,7 @@ function readMeasure(
         const reading = readDirection(
           reader,
           builder.position(),
+          (staff) => builder.endsOnGraceNote(staff),
           index,
           state,
           warnings,

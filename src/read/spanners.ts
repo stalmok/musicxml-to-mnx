@@ -785,6 +785,7 @@ export class SpannerResolver {
     number: string,
     measure: number,
     position: Fraction,
+    graceIndex: number | undefined,
     context: WarningContext,
   ): WedgeStop {
     const stop: WedgeStop = {}
@@ -794,6 +795,7 @@ export class SpannerResolver {
       measure,
       position,
       covers: position,
+      ...(graceIndex !== undefined ? { coversGraceIndex: graceIndex } : {}),
       payload: undefined,
       context,
       stop,
@@ -858,7 +860,11 @@ export class SpannerResolver {
     pairSpans<Dynamic, WedgeEnd>(
       this.#wedgeEnds,
       (dynamic, stop) => {
-        dynamic.end = { measure: stop.measure, position: stop.covers }
+        dynamic.end = {
+          measure: stop.measure,
+          position: stop.covers,
+          ...(stop.coversGraceIndex !== undefined ? { graceIndex: stop.coversGraceIndex } : {}),
+        }
         closed.set(stop, dynamic)
       },
       (reason, end) => {
