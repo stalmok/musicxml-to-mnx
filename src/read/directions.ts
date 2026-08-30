@@ -186,9 +186,11 @@ export function readDirection(
 
   // How many grace notes stand at the cursor and were written before this
   // direction. A span stopping there is drawn over them, so its end names the
-  // last of them rather than the place they all share. An <offset> moves a
-  // hairpin off the cursor, and off the grace notes with it; an octave shift
-  // reads its end from the cursor whatever the offset says.
+  // last of them rather than the place they all share. An octave shift reads
+  // its end from the cursor whatever an <offset> says, so it counts them
+  // either way. A hairpin is drawn where the offset puts it, and grace notes
+  // are counted only where that is the cursor: the source says nothing about
+  // which grace note an offset lands beside, so none is named.
   const graceAtCursor = graceNotesAt(position, staff)
   const overGrace = compareFractions(at, position) === 0 ? graceAtCursor : 0
 
