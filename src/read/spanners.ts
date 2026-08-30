@@ -885,22 +885,36 @@ export class SpannerResolver {
     })
   }
 
-  stopOttava(
-    number: string,
-    measure: number,
-    position: Fraction,
-    covers: Fraction,
-    context: WarningContext,
-  ): void {
+  stopOttava(number: string, measure: number, position: Fraction, context: WarningContext): void {
     this.#ottavaEnds.push({
       kind: 'stop',
       number,
       measure,
       position,
-      covers,
+      // Which event this covers waits on settleOttavaCovers below. Until then
+      // the stop's own place stands, which is where it stays when the measure
+      // holds no event before it.
+      covers: position,
       payload: undefined,
       context,
     })
+  }
+
+  /**
+   * States which event each octave-shift stop of a measure covers, once the
+   * whole measure is read. MNX states the end of a shift as the place of the
+   * last event it covers, and MusicXML writes the stop after that event. A
+   * <backup> can put the covered event later in the document than the stop,
+   * so the answer is not there while the measure is still being read.
+   */
+  settleOttavaCovers(
+    measure: number,
+    lastEventBefore: (position: Fraction) => Fraction | undefined,
+  ): void {
+    for (const end of this.#ottavaEnds) {
+      if (end.kind !== 'stop' || end.measure !== measure) continue
+      end.covers = lastEventBefore(end.position) ?? end.position
+    }
   }
 
   /** The same as dropWedgeStart, for an octave shift the reader dropped. */

@@ -156,7 +156,6 @@ const ACCENT_DYNAMICS = new Map<string, AccentDynamic>([
 export function readDirection(
   element: ElementReader,
   position: Fraction,
-  lastEvent: Fraction | undefined,
   measure: number,
   state: PartState,
   warnings: WarningCollector,
@@ -207,7 +206,7 @@ export function readDirection(
           reading.tempos.push(...readMetronome(found, at, warnings, context, path))
           break
         case 'octave-shift':
-          readOctaveShift(found, at, lastEvent, measure, staff, orient, state, warnings, context)
+          readOctaveShift(found, at, measure, staff, orient, state, warnings, context)
           break
         case 'wedge': {
           const wedge = readWedge(found, at, measure, staff, orient, state, warnings, context)
@@ -364,7 +363,6 @@ const SHIFT_SIZES = new Map<string, 1 | 2 | 3>([
 function readOctaveShift(
   found: XmlElement,
   position: Fraction,
-  lastEvent: Fraction | undefined,
   measure: number,
   staff: number | undefined,
   orient: 'above' | 'below' | undefined,
@@ -379,11 +377,9 @@ function readOctaveShift(
   const size = attribute(found, 'size') ?? '8'
 
   if (type === 'stop') {
-    // MNX states where a shift ends as the place of the last event it covers.
-    // MusicXML writes the stop after that event, so the cursor has already
-    // moved past it; where nothing precedes the stop in this measure, the
-    // stop's own place is the closest thing to it.
-    state.spanners.stopOttava(number, measure, position, lastEvent ?? position, context)
+    // Which event the shift ends on is settled once the measure is whole,
+    // because a <backup> can write that event after this stop.
+    state.spanners.stopOttava(number, measure, position, context)
     return
   }
   // "continue" marks a point partway along one, which MNX has no need of.

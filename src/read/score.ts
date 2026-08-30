@@ -868,7 +868,6 @@ function readMeasure(
         const reading = readDirection(
           reader,
           builder.position(),
-          builder.lastEventBefore(builder.position()),
           index,
           state,
           warnings,
@@ -956,6 +955,10 @@ function readMeasure(
   }
 
   builder.checkAllClosed(measurePath, element.line)
+
+  // Every event of the measure is in now, so an octave shift's stop can be
+  // told which one it covers, whatever order the source wrote them in.
+  state.spanners.settleOttavaCovers(index, (at) => builder.lastEventBefore(at))
 
   // Beams are stated over the measure in MNX rather than on the notes, and
   // each voice is beamed on its own.

@@ -202,6 +202,39 @@ describe('where an octave shift runs', () => {
     expect(warnings).toEqual([])
   })
 
+  // The event a shift covers can be written after the stop, past a backup: the
+  // stop closes the upper voice's line, and the shift's own note is written
+  // below it. Which event the stop covers is settled once the measure is whole,
+  // so a note written later still counts.
+  test('covers an event written after the stop', () => {
+    const voiceOne =
+      '<note><voice>1</voice><pitch><step>G</step><octave>2</octave></pitch>' +
+      '<duration>8</duration><type>half</type></note>'
+    const voiceTwo = (duration: number, rest: boolean) =>
+      `<note><voice>2</voice>${rest ? '<rest/>' : '<pitch><step>D</step><octave>1</octave></pitch>'}` +
+      `<duration>${String(duration)}</duration><type>quarter</type></note>`
+    const { ottavas, warnings } = read(
+      voiceOne +
+        shift('stop') +
+        '<backup><duration>8</duration></backup>' +
+        voiceTwo(4, true) +
+        shift('down') +
+        voiceTwo(4, false),
+    )
+
+    expect(ottavas[0]).toEqual([
+      {
+        // The shift covers one event, the quarter a quarter into the measure,
+        // so it begins and ends there.
+        position: { num: 1, den: 4 },
+        end: { measure: 0, position: { num: 1, den: 4 } },
+        value: 1,
+        staff: undefined,
+      },
+    ])
+    expect(warnings).toEqual([])
+  })
+
   // A shift whose stop has no event before it in its measure has nothing
   // nearer to point at than the stop's own place.
   test('falls back to where the stop is written where nothing precedes it', () => {
