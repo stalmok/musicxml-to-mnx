@@ -250,6 +250,57 @@ describe('where an octave shift runs', () => {
     expect(warnings).toEqual([])
   })
 
+  // A shift belongs to one staff, so it ends on an event of that staff. The
+  // other hand is written after it through a backup, and its notes lie under
+  // the same beats without being what the shift covers.
+  test('ends on its own staff, not on the other hand written after it', () => {
+    const onStaff = (staff: number, step: string, duration: number, type: string) =>
+      `<note><voice>${String(staff)}</voice>` +
+      `<pitch><step>${step}</step><octave>4</octave></pitch>` +
+      `<duration>${String(duration)}</duration><type>${type}</type>` +
+      `<staff>${String(staff)}</staff></note>`
+    const { ottavas, warnings } = read(
+      '<attributes><divisions>4</divisions><staves>2</staves></attributes>' +
+        shift('down', '8', '<staff>1</staff>') +
+        onStaff(1, 'C', 4, 'quarter') +
+        onStaff(1, 'D', 4, 'quarter') +
+        shift('stop', '8', '<staff>1</staff>') +
+        '<backup><duration>8</duration></backup>' +
+        onStaff(2, 'E', 2, 'eighth') +
+        onStaff(2, 'F', 2, 'eighth') +
+        onStaff(2, 'G', 2, 'eighth') +
+        onStaff(2, 'A', 2, 'eighth'),
+    )
+
+    // The staff 1 quarter a quarter in, not the staff 2 eighth at three
+    // eighths, which is nearer the stop but on the other hand.
+    expect(ottavas[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 1, den: 4 } })
+    expect(warnings).toEqual([])
+  })
+
+  // Where the stop does not say which staff it is on, MusicXML means the
+  // first, but a source that states the staff on the start and leaves it off
+  // the stop means the start's. Neither reading is safe to assume, so the
+  // last event before the stop stands, whatever staff it sits on.
+  test('reads a stop that names no staff against every staff', () => {
+    const onStaff = (staff: number, step: string) =>
+      `<note><voice>${String(staff)}</voice>` +
+      `<pitch><step>${step}</step><octave>4</octave></pitch>` +
+      `<duration>2</duration><type>eighth</type><staff>${String(staff)}</staff></note>`
+    const { ottavas } = read(
+      '<attributes><divisions>4</divisions><staves>2</staves></attributes>' +
+        shift('down', '8', '<staff>1</staff>') +
+        `<note><voice>1</voice><pitch><step>C</step><octave>4</octave></pitch>` +
+        `<duration>4</duration><type>quarter</type><staff>1</staff></note>` +
+        shift('stop') +
+        '<backup><duration>4</duration></backup>' +
+        onStaff(2, 'E') +
+        onStaff(2, 'F'),
+    )
+
+    expect(ottavas[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 1, den: 8 } })
+  })
+
   // A shift whose stop has no event before it in its measure has nothing
   // nearer to point at than the stop's own place.
   test('falls back to where the stop is written where nothing precedes it', () => {

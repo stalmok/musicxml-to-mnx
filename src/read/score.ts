@@ -958,7 +958,7 @@ function readMeasure(
 
   // Every event of the measure is in now, so an octave shift's stop can be
   // told which one it covers, whatever order the source wrote them in.
-  state.spanners.settleOttavaCovers(index, (at) => builder.lastEventBefore(at))
+  state.spanners.settleOttavaCovers(index, (at, staff) => builder.lastEventBefore(at, staff))
 
   // Beams are stated over the measure in MNX rather than on the notes, and
   // each voice is beamed on its own.

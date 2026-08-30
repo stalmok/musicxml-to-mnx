@@ -292,8 +292,13 @@ function innermost(builder: VoiceBuilder): SequenceItem[] {
 export class MeasureBuilder {
   readonly #voices = new Map<string, VoiceBuilder>()
   readonly #arpeggios: MarkedArpeggio[] = []
-  /** Where each event of the measure begins, whatever voice it is in. */
-  readonly #eventStarts: Fraction[] = []
+  /**
+   * Where each event of the measure begins, whatever voice it is in, and the
+   * staff it was placed on. An event states no staff where the part has only
+   * one, and where a multi-staff part leaves it off, which MusicXML reads as
+   * the first staff.
+   */
+  readonly #eventStarts: { start: Fraction; staff: number | undefined }[] = []
   #cursor: Fraction = fraction(0)
   /** The voice of the most recent event, which a chord member joins. */
   #lastVoice: string | undefined
@@ -359,7 +364,7 @@ export class MeasureBuilder {
     builder.lastEvent = event
     builder.lastDuration = duration
     builder.lastStart = this.#cursor
-    this.#eventStarts.push(this.#cursor)
+    this.#eventStarts.push({ start: this.#cursor, staff })
     builder.openTremolo?.durations.push(duration)
     builder.end = addFractions(this.#cursor, duration)
     this.#cursor = builder.end
@@ -394,12 +399,18 @@ export class MeasureBuilder {
    * writes the stop after that event, with the cursor already past it. Asked
    * once the measure is whole, so every event of it is counted whatever
    * order the source wrote them in.
+   *
+   * A staff narrows it to that staff's own events, because a shift belongs to
+   * one staff and the other hand's notes lie under the same beats without
+   * being what it covers. An event that names no staff is the first staff,
+   * which is how MusicXML reads a note that leaves it off.
    */
-  lastEventBefore(position: Fraction): Fraction | undefined {
+  lastEventBefore(position: Fraction, staff?: number): Fraction | undefined {
     let latest: Fraction | undefined
-    for (const start of this.#eventStarts) {
-      if (compareFractions(start, position) >= 0) continue
-      if (!latest || compareFractions(start, latest) > 0) latest = start
+    for (const event of this.#eventStarts) {
+      if (staff !== undefined && (event.staff ?? 1) !== staff) continue
+      if (compareFractions(event.start, position) >= 0) continue
+      if (!latest || compareFractions(event.start, latest) > 0) latest = event.start
     }
     return latest
   }
@@ -886,7 +897,7 @@ export class MeasureBuilder {
     // has nothing to agree with.
     builder.lastDuration = undefined
     builder.lastStart = this.#cursor
-    this.#eventStarts.push(this.#cursor)
+    this.#eventStarts.push({ start: this.#cursor, staff })
     // Recorded like any other event, so the voice's staff counts it and a
     // grace note reaching across to the other staff says so.
     builder.placed.push({ event, staff })

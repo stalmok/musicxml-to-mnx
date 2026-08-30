@@ -123,6 +123,14 @@ export interface SpanEnd<T> {
    */
   voice?: string | undefined
   /**
+   * The staff the source states on it, where it states one. An octave shift's
+   * stop uses it to read its end from its own staff's events. Left unset
+   * where the source says nothing, which is not read as the first staff: a
+   * source that names the staff on the start and leaves it off the stop means
+   * the start's, and neither reading is safe to assume.
+   */
+  staff?: number | undefined
+  /**
    * Whether the event it sits on is a grace note. A grace note sounds before
    * the beat, so its end comes first among the ends at one point, whichever
    * order the document writes them in.
@@ -890,6 +898,7 @@ export class SpannerResolver {
     measure: number,
     position: Fraction,
     cursor: Fraction,
+    staff: number | undefined,
     context: WarningContext,
   ): void {
     this.#ottavaEnds.push({
@@ -897,6 +906,7 @@ export class SpannerResolver {
       number,
       measure,
       position,
+      staff,
       // Where the cursor stood when the stop was written. settleOttavaCovers
       // below reads the covered event from it once the measure is whole, and
       // it stands as written where the measure holds no event before it.
@@ -914,15 +924,15 @@ export class SpannerResolver {
    * so the answer is not there while the measure is still being read.
    *
    * Each stop arrives holding the cursor it was written at, and leaves holding
-   * the event that cursor had just passed.
+   * the event that cursor had just passed, on the staff the stop names.
    */
   settleOttavaCovers(
     measure: number,
-    lastEventBefore: (position: Fraction) => Fraction | undefined,
+    lastEventBefore: (position: Fraction, staff?: number) => Fraction | undefined,
   ): void {
     for (const end of this.#ottavaEnds) {
       if (end.kind !== 'stop' || end.measure !== measure) continue
-      end.covers = lastEventBefore(end.covers) ?? end.covers
+      end.covers = lastEventBefore(end.covers, end.staff) ?? end.covers
     }
   }
 

@@ -382,7 +382,7 @@ function readOctaveShift(
     // because a <backup> can write that event after this stop. It is read
     // from where the cursor stood, not from where an <offset> draws the stop:
     // an offset moves the sign on the page, not the music it covers.
-    state.spanners.stopOttava(number, measure, position, cursor, context)
+    state.spanners.stopOttava(number, measure, position, cursor, staff, context)
     return
   }
   // "continue" marks a point partway along one, which MNX has no need of.
