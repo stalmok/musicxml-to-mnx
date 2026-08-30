@@ -615,25 +615,6 @@ export function readSound(
   return { fine, jump, segnoName }
 }
 
-/**
- * MNX states beats per minute as a whole number, so a source that writes a
- * fraction of one has to be rounded, which moves the tempo by a little. Said
- * out loud rather than swallowed.
- */
-function roundedBpm(bpm: number, warnings: WarningCollector, context: WarningContext): number {
-  const rounded = Math.round(bpm)
-  if (rounded !== bpm) {
-    warnings.add(
-      'unrepresentable:tempo',
-      `A tempo of ${String(bpm)} beats per minute is written as ${String(rounded)}, because ` +
-        'MNX states beats per minute as a whole number.',
-      context,
-      'metronome',
-    )
-  }
-  return rounded
-}
-
 // The side a direction is drawn on, from its placement. MusicXML's above and
 // below are the words MNX states, so a known one passes straight through.
 // The <direction-type> children a reader takes something from. Their
@@ -853,11 +834,10 @@ function readMetronome(
 
   // MusicXML's per-minute is a string, so it can be a descriptive word such as
   // "fast" rather than a number. MNX states a tempo as a positive number of
-  // beats per minute, so a non-numeric one is a reported drop, not a refusal.
-  // Below one half as much as at zero: MNX's bpm is a whole number above
-  // zero, and what rounds to zero cannot be stated.
+  // beats per minute, so a non-numeric one, and zero itself, are reported
+  // drops rather than refusals.
   const bpm = Number(written)
-  if (!Number.isFinite(bpm) || Math.round(bpm) < 1) {
+  if (!Number.isFinite(bpm) || bpm <= 0) {
     warnings.add(
       'unrepresentable:tempo',
       `A <metronome> states its tempo as "${written}", which cannot be expressed in MNX, ` +
@@ -868,7 +848,7 @@ function readMetronome(
     return []
   }
 
-  // A beat unit can be dotted; MNX's bpm is a whole number.
+  // A beat unit can be dotted.
   const dots = children(element, 'beat-unit-dot').length
-  return [{ position, value: { base, dots }, bpm: roundedBpm(bpm, warnings, context) }]
+  return [{ position, value: { base, dots }, bpm }]
 }

@@ -903,13 +903,12 @@ describe('tempo', () => {
     expect(warnings.map((w) => w.code)).toContain('unrepresentable:tempo')
   })
 
-  // MNX's bpm is a whole number above zero, and a fraction below one half
-  // rounds to zero, so there is no whole number to carry.
-  test('reports a per-minute that rounds to nothing', () => {
+  // MNX's bpm is a number above zero, so zero itself has nothing to carry.
+  test.each(['0', '-60'])('reports a per-minute of %s, which is not above zero', (written) => {
     const { global, warnings } = read(
       inMeasure(
         direction(
-          '<metronome><beat-unit>quarter</beat-unit><per-minute>0.4</per-minute></metronome>',
+          `<metronome><beat-unit>quarter</beat-unit><per-minute>${written}</per-minute></metronome>`,
         ) + note('C'),
       ),
     )
@@ -934,8 +933,10 @@ describe('tempo', () => {
     expect(warnings.map((w) => w.code)).toContain('unrepresentable:tempo')
   })
 
-  test('rounds a fractional per-minute to whole beats', () => {
-    const { global } = read(
+  // MNX states beats per minute as a number, so a source that writes a
+  // fraction of one is carried as it stands.
+  test('carries a fractional per-minute as it is written', () => {
+    const { global, warnings } = read(
       inMeasure(
         direction(
           '<metronome><beat-unit>half</beat-unit><per-minute>63.5</per-minute></metronome>',
@@ -943,7 +944,35 @@ describe('tempo', () => {
       ),
     )
 
-    expect(global?.tempos[0]?.bpm).toBe(64)
+    expect(global?.tempos[0]?.bpm).toBe(63.5)
+    expect(warnings).toEqual([])
+  })
+
+  test('writes a fractional tempo onto schema-valid MNX', () => {
+    const { mnx } = convertMusicXML(
+      inMeasure(
+        direction(
+          '<metronome><beat-unit>quarter</beat-unit><per-minute>76.5</per-minute></metronome>',
+        ) + note('C'),
+      ),
+    )
+
+    expect(JSON.stringify(mnx)).toContain('"bpm":76.5')
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // A fraction below one half once rounded to zero and was dropped for it.
+  test('carries a per-minute below one half', () => {
+    const { global, warnings } = read(
+      inMeasure(
+        direction(
+          '<metronome><beat-unit>quarter</beat-unit><per-minute>0.4</per-minute></metronome>',
+        ) + note('C'),
+      ),
+    )
+
+    expect(global?.tempos[0]?.bpm).toBe(0.4)
+    expect(warnings).toEqual([])
   })
 })
 
