@@ -278,6 +278,27 @@ describe('where an octave shift runs', () => {
     expect(warnings).toEqual([])
   })
 
+  // A note that names no staff is on the first one, so a shift stopping on
+  // staff 1 ends on it.
+  test('ends on a note that names no staff, which is the first staff', () => {
+    const bare = (step: string) =>
+      `<note><voice>1</voice><pitch><step>${step}</step><octave>4</octave></pitch>` +
+      `<duration>4</duration><type>quarter</type></note>`
+    const { ottavas, warnings } = read(
+      '<attributes><divisions>4</divisions><staves>2</staves></attributes>' +
+        shift('down', '8', '<staff>1</staff>') +
+        bare('C') +
+        bare('D') +
+        shift('stop', '8', '<staff>1</staff>') +
+        '<backup><duration>8</duration></backup>' +
+        `<note><voice>2</voice><pitch><step>E</step><octave>3</octave></pitch>` +
+        `<duration>8</duration><type>half</type><staff>2</staff></note>`,
+    )
+
+    expect(ottavas[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 1, den: 4 } })
+    expect(warnings).toEqual([])
+  })
+
   // Where the stop does not say which staff it is on, MusicXML means the
   // first, but a source that states the staff on the start and leaves it off
   // the stop means the start's. Neither reading is safe to assume, so the
