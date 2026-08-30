@@ -236,6 +236,10 @@ function reportPartialSignature(
 // A signature block without a number speaks for every staff.
 const ALL = 0
 
+// The longest pattern MNX states for a measure repeat. MusicXML sets no
+// upper bound, so a longer one has nowhere to go.
+const LONGEST_MNX_REPEAT = 4
+
 /**
  * The measure-style children converted are <multiple-rest>, a multi-measure
  * rest spanning this many measures counting the one carrying it, and
@@ -291,6 +295,24 @@ function readMeasureStyle(
     if (edge === 'stop') {
       for (const staff of staves) reading.measureRepeats.push({ edge: 'stop', staff })
     } else {
+      // The content is a positive integer or empty, and a sign saying
+      // nothing is the everyday one-measure sign. The upper bound only
+      // rules out a corrupt file: no pattern repeats a thousand measures.
+      const measures = trimmedText(repeat) === '' ? 1 : readIntegerInRange(repeat, path, 1, 1000)
+
+      if (measures > LONGEST_MNX_REPEAT) {
+        warnings.add(
+          'unrepresentable:measure-repeat',
+          `A measure repeat sign repeats ${String(measures)} measures, and MNX states a ` +
+            'pattern of at most four. The sign is not carried over.',
+          { ...context, line: repeat.line },
+          'measure-repeat',
+        )
+        // The source drew a new sign here, so whatever ran before it stopped.
+        for (const staff of staves) reading.measureRepeats.push({ edge: 'stop', staff })
+        return reading
+      }
+
       // The slash count changes the glyph, which MNX has no way to ask for.
       const slashes = attribute(repeat, 'slashes')
       if (slashes !== undefined && slashes !== '1') {
@@ -303,10 +325,6 @@ function readMeasureStyle(
         )
       }
 
-      // The content is a positive integer or empty, and a sign saying
-      // nothing is the everyday one-measure sign. The upper bound only
-      // rules out a corrupt file: no pattern repeats a thousand measures.
-      const measures = trimmedText(repeat) === '' ? 1 : readIntegerInRange(repeat, path, 1, 1000)
       for (const staff of staves) reading.measureRepeats.push({ edge: 'start', measures, staff })
     }
   }

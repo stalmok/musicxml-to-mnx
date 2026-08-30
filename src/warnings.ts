@@ -129,7 +129,8 @@ export type WarningCode =
   | 'unrepresentable:multiple-rest-symbols'
   // A measure states more than one measure repeat, as staves stating
   // different patterns do, and MNX states one for the part's measure. The
-  // first is the one converted.
+  // first is the one converted. Also a pattern longer than the four measures
+  // MNX states, which is dropped.
   | 'unrepresentable:measure-repeat'
   // A measure repeat sign drawn with this many slashes, which MNX has no way
   // to ask for. The repeat is converted and drawn the default way.

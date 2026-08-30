@@ -363,4 +363,43 @@ describe('a measure repeat', () => {
     expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:measure-repeat'])
     expect(schemaErrors(mnx)).toEqual([])
   })
+
+  // MusicXML sets no upper bound on the pattern; MNX states one of four
+  // measures at most.
+  test('carries a four-measure pattern, the longest MNX states', () => {
+    const { mnx, warnings } = convert(
+      part('P1', [{ attributes: start('4'), body: NOTE }, { body: NOTE }]),
+    )
+
+    expect(repeats(mnx)).toEqual([{ number: 4 }, undefined])
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  test('drops a pattern longer than four measures, and says so', () => {
+    const { mnx, warnings } = convert(
+      part('P1', [{ body: NOTE }, { attributes: start('5'), body: NOTE }, { body: NOTE }]),
+    )
+
+    expect(repeats(mnx)).toEqual([undefined, undefined, undefined])
+    expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:measure-repeat'])
+    expect(warnings[0]?.context).toMatchObject({ part: 'P1', measure: 2 })
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // The dropped sign still ends whatever was running: the source drew a new
+  // sign here, so the old one certainly stopped.
+  test('ends a running sign at a pattern it cannot carry', () => {
+    const { mnx, warnings } = convert(
+      part('P1', [
+        { attributes: start('1'), body: NOTE },
+        { attributes: start('8'), body: NOTE },
+        { body: NOTE },
+      ]),
+    )
+
+    expect(repeats(mnx)).toEqual([{ number: 1 }, undefined, undefined])
+    expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:measure-repeat'])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
 })
