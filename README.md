@@ -150,8 +150,10 @@ The exit code is the pipeline contract:
 - Hairpins, matched end to end across measures and stated once as a gradual
   dynamic that points at the measure where it stops.
 - Tempo marks: a metronome mark becomes a tempo on the score. A `<sound>`
-  tempo does too, when no metronome beside it states the same thing. An
-  `<offset>` moves a mark to the time it belongs to.
+  tempo is playback rather than a drawn mark, so it is reported rather than
+  converted; where a metronome beside it states the same thing, it is the
+  echo of that mark and passes without a word. An `<offset>` moves a mark to
+  the time it belongs to.
 - Rolled chords, and the bracket that says a chord is struck together. MNX
   states each once beside the chord, spanning the notes.
 - Octave shifts, matched end to end. Both formats keep the sounding pitch on
