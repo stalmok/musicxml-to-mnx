@@ -903,6 +903,45 @@ describe('tempo', () => {
     expect(warnings.map((w) => w.code)).toContain('unrepresentable:tempo')
   })
 
+  // MusicXML's per-minute is a string, and JavaScript reads several of its
+  // spellings as numbers that the source never meant: "0x10" is a word, not
+  // sixteen beats per minute. Only a plain decimal number is a tempo.
+  test.each(['0x10', '0b101', '0o17', '1_000', 'Infinity', '1e3'])(
+    'reports a per-minute of %s, which is not written as a decimal number',
+    (written) => {
+      const { global, warnings } = read(
+        inMeasure(
+          direction(
+            `<metronome><beat-unit>quarter</beat-unit><per-minute>${written}</per-minute></metronome>`,
+          ) + note('C'),
+        ),
+      )
+
+      expect(global?.tempos).toEqual([])
+      expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tempo'])
+    },
+  )
+
+  // The spellings a source does mean as a number, which stay carried.
+  test.each([
+    ['80', 80],
+    ['+80', 80],
+    ['.5', 0.5],
+    ['76.5', 76.5],
+    ['0.4', 0.4],
+  ])('carries a per-minute of %s', (written, expected) => {
+    const { global, warnings } = read(
+      inMeasure(
+        direction(
+          `<metronome><beat-unit>quarter</beat-unit><per-minute>${written}</per-minute></metronome>`,
+        ) + note('C'),
+      ),
+    )
+
+    expect(global?.tempos[0]?.bpm).toBe(expected)
+    expect(warnings).toEqual([])
+  })
+
   // MNX's bpm is a number above zero, so zero itself has nothing to carry.
   test.each(['0', '-60'])('reports a per-minute of %s, which is not above zero', (written) => {
     const { global, warnings } = read(

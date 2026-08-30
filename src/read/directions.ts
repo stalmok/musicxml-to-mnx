@@ -787,6 +787,9 @@ function reportWordingGlyph(
   }
 }
 
+/** A number as a score writes one: digits, an optional sign, no exponent. */
+const DECIMAL_NUMBER = /^[+-]?(\d+(\.\d*)?|\.\d+)$/
+
 function readMetronome(
   element: XmlElement,
   position: Fraction,
@@ -839,7 +842,12 @@ function readMetronome(
   // "fast" rather than a number. MNX states a tempo as a positive number of
   // beats per minute, so a non-numeric one, and zero itself, are reported
   // drops rather than refusals.
-  const bpm = Number(written)
+  //
+  // Read as a plain decimal number, which is what a score states a tempo in.
+  // Number() would take spellings the source cannot mean as a tempo and hand
+  // back a number for them: "0x10" would be sixteen beats per minute and
+  // "0b101" five, when both are words this converter has no reading for.
+  const bpm = DECIMAL_NUMBER.test(written) ? Number(written) : Number.NaN
   if (!Number.isFinite(bpm) || bpm <= 0) {
     warnings.add(
       'unrepresentable:tempo',
