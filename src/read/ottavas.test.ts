@@ -441,9 +441,36 @@ describe('an octave shift ending where grace notes sit', () => {
   })
 
   // The stop falls between the grace notes and the note they ornament, so the
-  // shift covers neither and ends on the note before them.
-  test('says nothing where the grace notes fall outside it', () => {
+  // bracket is drawn over the grace notes and stops before that note.
+  test('ends on the grace notes its stop is written after', () => {
     const { ottavas, warnings } = read(shift('down') + NOTE + GRACE + shift('stop') + NOTE)
+
+    expect(ottavas[0]?.[0]?.end).toEqual({
+      measure: 0,
+      position: { num: 1, den: 4 },
+      graceIndex: 1,
+    })
+    expect(warnings).toEqual([])
+  })
+
+  // Two grace notes with the stop between them: the bracket covers the first
+  // and stops before the second, which counting back from the note they
+  // ornament makes 2.
+  test('ends on the grace note its stop is written after, not the last of the group', () => {
+    const { ottavas, warnings } = read(shift('down') + NOTE + GRACE + shift('stop') + GRACE + NOTE)
+
+    expect(ottavas[0]?.[0]?.end).toEqual({
+      measure: 0,
+      position: { num: 1, den: 4 },
+      graceIndex: 2,
+    })
+    expect(warnings).toEqual([])
+  })
+
+  // The stop is written before the grace notes, so they stand outside the
+  // bracket and the shift ends on the note before them.
+  test('says nothing where the stop is written before the grace notes', () => {
+    const { ottavas, warnings } = read(shift('down') + NOTE + shift('stop') + GRACE + NOTE)
 
     expect(ottavas[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 0, den: 1 } })
     expect(warnings).toEqual([])

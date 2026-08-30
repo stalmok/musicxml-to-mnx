@@ -438,24 +438,23 @@ export class MeasureBuilder {
   }
 
   /**
-   * Whether the event just read is a grace note standing where the cursor is.
-   * A hairpin's stop written after grace notes is drawn over them, and MNX
-   * reads the place they share as before all of them unless a grace index
-   * says otherwise. Read in document order, unlike an octave shift's end,
-   * because the answer is which side of the grace notes the stop was written.
+   * How many grace notes stand at a point, on a staff or across them all.
+   * Asked twice about a span's stop: at the cursor while the measure is being
+   * read, which counts the grace notes written before the stop, and again
+   * once the measure is whole, which counts them all. MNX numbers a grace
+   * note back from the note it ornaments, so the two counts together say
+   * which one the stop was written after.
    *
    * A staff narrows it to that staff's own events, as an octave shift's end
    * does, so grace notes under the other hand do not answer for this one.
    */
-  endsOnGraceNote(staff?: number): boolean {
-    for (let index = this.#eventStarts.length - 1; index >= 0; index -= 1) {
-      const event = this.#eventStarts[index]
-      /* v8 ignore next -- the index walks the array's own length. */
-      if (!event) continue
-      if (staff !== undefined && (event.staff ?? 1) !== staff) continue
-      return event.grace && compareFractions(event.start, this.#cursor) === 0
-    }
-    return false
+  graceNotesAt(position: Fraction, staff?: number): number {
+    return this.#eventStarts.filter(
+      (event) =>
+        event.grace &&
+        (staff === undefined || (event.staff ?? 1) === staff) &&
+        compareFractions(event.start, position) === 0,
+    ).length
   }
 
   /** The staff the event a chord note would join was placed on. */

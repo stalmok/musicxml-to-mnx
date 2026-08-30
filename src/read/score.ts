@@ -869,7 +869,7 @@ function readMeasure(
         const reading = readDirection(
           reader,
           builder.position(),
-          (staff) => builder.endsOnGraceNote(staff),
+          (at, staff) => builder.graceNotesAt(at, staff),
           index,
           state,
           warnings,
@@ -958,9 +958,14 @@ function readMeasure(
 
   builder.checkAllClosed(measurePath, element.line)
 
-  // Every event of the measure is in now, so an octave shift's stop can be
-  // told which one it covers, whatever order the source wrote them in.
-  state.spanners.settleOttavaCovers(index, (at, staff) => builder.lastEventBefore(at, staff))
+  // Every event of the measure is in now, so a hairpin's and an octave
+  // shift's stop can each be told which one it covers, whatever order the
+  // source wrote them in.
+  state.spanners.settleSpanCovers(
+    index,
+    (at, staff) => builder.lastEventBefore(at, staff),
+    (at, staff) => builder.graceNotesAt(at, staff),
+  )
 
   // Beams are stated over the measure in MNX rather than on the notes, and
   // each voice is beamed on its own.

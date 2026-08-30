@@ -156,7 +156,7 @@ const ACCENT_DYNAMICS = new Map<string, AccentDynamic>([
 export function readDirection(
   element: ElementReader,
   position: Fraction,
-  endsOnGraceNote: (staff?: number) => boolean,
+  graceNotesAt: (position: Fraction, staff?: number) => number,
   measure: number,
   state: PartState,
   warnings: WarningCollector,
@@ -184,11 +184,13 @@ export function readDirection(
 
   const at = offsetPosition(element, position, state, warnings, context)
 
-  // Whether grace notes stand where this direction does and were written
-  // before it. A hairpin stopping there is drawn over them, so its end names
-  // the rightmost of them rather than the place they all share. An <offset>
-  // moves the direction off the cursor, and off the grace notes with it.
-  const afterGrace = compareFractions(at, position) === 0 && endsOnGraceNote(staff)
+  // How many grace notes stand at the cursor and were written before this
+  // direction. A span stopping there is drawn over them, so its end names the
+  // last of them rather than the place they all share. An <offset> moves a
+  // hairpin off the cursor, and off the grace notes with it; an octave shift
+  // reads its end from the cursor whatever the offset says.
+  const graceAtCursor = graceNotesAt(position, staff)
+  const overGrace = compareFractions(at, position) === 0 ? graceAtCursor : 0
 
   for (const directionType of element.children('direction-type')) {
     // The wording is held for the whole <direction-type>: MusicXML allows
@@ -213,13 +215,24 @@ export function readDirection(
           reading.tempos.push(...readMetronome(found, at, warnings, context, path))
           break
         case 'octave-shift':
-          readOctaveShift(found, at, position, measure, staff, orient, state, warnings, context)
+          readOctaveShift(
+            found,
+            at,
+            position,
+            graceAtCursor,
+            measure,
+            staff,
+            orient,
+            state,
+            warnings,
+            context,
+          )
           break
         case 'wedge': {
           const wedge = readWedge(
             found,
             at,
-            afterGrace,
+            overGrace,
             measure,
             staff,
             orient,
@@ -381,6 +394,7 @@ function readOctaveShift(
   found: XmlElement,
   position: Fraction,
   cursor: Fraction,
+  graceAtCursor: number,
   measure: number,
   staff: number | undefined,
   orient: 'above' | 'below' | undefined,
@@ -399,7 +413,7 @@ function readOctaveShift(
     // because a <backup> can write that event after this stop. It is read
     // from where the cursor stood, not from where an <offset> draws the stop:
     // an offset moves the sign on the page, not the music it covers.
-    state.spanners.stopOttava(number, measure, position, cursor, staff, context)
+    state.spanners.stopOttava(number, measure, position, cursor, graceAtCursor, staff, context)
     return
   }
   // "continue" marks a point partway along one, which MNX has no need of.
@@ -456,7 +470,7 @@ type WedgeReading = { edge: 'start'; hairpin: Dynamic } | { edge: 'stop'; stop: 
 function readWedge(
   found: XmlElement,
   position: Fraction,
-  afterGrace: boolean,
+  overGrace: number,
   measure: number,
   staff: number | undefined,
   orient: 'above' | 'below' | undefined,
@@ -468,17 +482,12 @@ function readWedge(
   const number = attribute(found, 'number') ?? '1'
 
   if (type === 'stop') {
-    // Grace notes written before the stop are drawn under the hairpin, so it
-    // ends on the rightmost of them, which MNX counts as 1.
+    // Grace notes written before the stop are drawn under the hairpin. Which
+    // of them it ends on is settled once the measure is whole, because the
+    // ones read after it decide how MNX numbers the ones read before it.
     return {
       edge: 'stop',
-      stop: state.spanners.stopWedge(
-        number,
-        measure,
-        position,
-        afterGrace ? 1 : undefined,
-        context,
-      ),
+      stop: state.spanners.stopWedge(number, measure, position, overGrace, staff, context),
     }
   }
 

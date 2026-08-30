@@ -122,6 +122,12 @@ export interface SpanEnd<T> {
    */
   coversGraceIndex?: number
   /**
+   * How many grace notes stood where a stop was written, at the point it was
+   * written. The grace notes read after it belong on the far side of it, so
+   * the index above cannot be settled until the measure is whole.
+   */
+  graceWritten?: number
+  /**
    * The voice it is written in, where the thing has one. A stop takes the
    * open start of its own voice before any other, because exporters number a
    * slur within the voice they write it in and reuse the number in every
@@ -785,7 +791,8 @@ export class SpannerResolver {
     number: string,
     measure: number,
     position: Fraction,
-    graceIndex: number | undefined,
+    graceWritten: number,
+    staff: number | undefined,
     context: WarningContext,
   ): WedgeStop {
     const stop: WedgeStop = {}
@@ -795,7 +802,8 @@ export class SpannerResolver {
       measure,
       position,
       covers: position,
-      ...(graceIndex !== undefined ? { coversGraceIndex: graceIndex } : {}),
+      graceWritten,
+      ...(staff !== undefined ? { staff } : {}),
       payload: undefined,
       context,
       stop,
@@ -912,6 +920,7 @@ export class SpannerResolver {
     measure: number,
     position: Fraction,
     cursor: Fraction,
+    graceWritten: number,
     staff: number | undefined,
     context: WarningContext,
   ): void {
@@ -921,31 +930,52 @@ export class SpannerResolver {
       measure,
       position,
       staff,
-      // Where the cursor stood when the stop was written. settleOttavaCovers
+      // Where the cursor stood when the stop was written. settleSpanCovers
       // below reads the covered event from it once the measure is whole, and
       // it stands as written where the measure holds no event before it.
       covers: cursor,
+      graceWritten,
       payload: undefined,
       context,
     })
   }
 
   /**
-   * States which event each octave-shift stop of a measure covers, once the
-   * whole measure is read. MNX states the end of a shift as the place of the
-   * last event it covers, and MusicXML writes the stop after that event. A
-   * <backup> can put the covered event later in the document than the stop,
-   * so the answer is not there while the measure is still being read.
+   * States which event each hairpin and octave-shift stop of a measure covers,
+   * once the whole measure is read. Neither can be settled while the measure
+   * is still being read: a <backup> can put an octave shift's covered event
+   * later in the document than its stop, and grace notes read after a stop
+   * change how MNX numbers the ones read before it.
    *
-   * Each stop arrives holding the cursor it was written at, and leaves holding
-   * the event that cursor had just passed, on the staff the stop names.
+   * A stop written after grace notes is drawn over them, so it ends on the
+   * last one written before it. MNX numbers a grace note back from the note
+   * it ornaments, counting from the right, so that one is the total standing
+   * there less the ones the stop was written after, plus one.
+   *
+   * A stop with no grace notes before it keeps the place it was written for a
+   * hairpin, and for an octave shift moves back to the last event the cursor
+   * had passed, on the staff the stop names.
    */
-  settleOttavaCovers(
+  settleSpanCovers(
     measure: number,
     lastEventBefore: (position: Fraction, staff?: number) => CoveredEvent | undefined,
+    graceNotesAt: (position: Fraction, staff?: number) => number,
   ): void {
+    const overGraceNotes = (end: SpanEnd<unknown>): boolean => {
+      if (!end.graceWritten) return false
+      end.coversGraceIndex = graceNotesAt(end.covers, end.staff) - end.graceWritten + 1
+      return true
+    }
+
+    for (const end of this.#wedgeEnds) {
+      if (end.kind !== 'stop' || end.measure !== measure) continue
+      overGraceNotes(end)
+    }
+
+    // Only an octave shift moves back off the point its stop was written at.
     for (const end of this.#ottavaEnds) {
       if (end.kind !== 'stop' || end.measure !== measure) continue
+      if (overGraceNotes(end)) continue
       const covered = lastEventBefore(end.covers, end.staff)
       if (!covered) continue
       end.covers = covered.start

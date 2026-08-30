@@ -1931,6 +1931,46 @@ describe('hairpins', () => {
       expect(warnings).toEqual([])
     })
 
+    // The stop stands between two grace notes, so the hairpin is drawn over
+    // the first and stops before the second. Counting back from the note they
+    // ornament makes the first 2.
+    test('ends on the grace note the stop was written after, not the last of the group', () => {
+      const { dynamics, warnings } = readMeasures(
+        wedge('crescendo') + NOTE + GRACE + wedge('stop') + GRACE + NOTE,
+      )
+
+      expect(dynamics[0]?.[0]?.end).toEqual({
+        measure: 0,
+        position: { num: 1, den: 4 },
+        graceIndex: 2,
+      })
+      expect(warnings).toEqual([])
+    })
+
+    // A <backup> writes the other voice after the grace notes, so the event
+    // read last is not the one the stop stands on. The grace notes are still
+    // where the stop is, and still written before it.
+    test('counts the grace notes where another voice is written after them', () => {
+      const voiced = (step: string, voice: string) =>
+        `<note><voice>${voice}</voice><pitch><step>${step}</step><octave>4</octave></pitch>` +
+        '<duration>4</duration><type>quarter</type></note>'
+      const { dynamics, warnings } = readMeasures(
+        wedge('crescendo') +
+          voiced('C', '1') +
+          GRACE.replace('<pitch>', '<voice>1</voice><pitch>') +
+          '<backup><duration>4</duration></backup>' +
+          voiced('G', '2') +
+          wedge('stop'),
+      )
+
+      expect(dynamics[0]?.[0]?.end).toEqual({
+        measure: 0,
+        position: { num: 1, den: 4 },
+        graceIndex: 1,
+      })
+      expect(warnings).toEqual([])
+    })
+
     test('says nothing where the stop is written before them', () => {
       const { dynamics, warnings } = readMeasures(
         wedge('crescendo') + NOTE + wedge('stop') + GRACE + NOTE,
