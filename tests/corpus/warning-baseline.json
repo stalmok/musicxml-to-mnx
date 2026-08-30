@@ -1288,8 +1288,7 @@
     "print-object": 5,
     "stem": 1,
     "type@size": 1,
-    "notehead": 1,
-    "octave-shift": 1
+    "notehead": 1
   },
   "boulanger-13-demain-fera-un-an": {
     "midi-device": 2,
@@ -1314,8 +1313,7 @@
     "pedal": 16,
     "stem": 2,
     "type@size": 4,
-    "non-arpeggiate": 1,
-    "octave-shift": 5
+    "non-arpeggiate": 1
   },
   "boulanger-attente": {
     "midi-device": 2,
