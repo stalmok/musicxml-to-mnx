@@ -300,6 +300,11 @@ function readMeasureStyle(
       // rules out a corrupt file: no pattern repeats a thousand measures.
       const measures = trimmedText(repeat) === '' ? 1 : readIntegerInRange(repeat, path, 1, 1000)
 
+      // The slash count changes the glyph, which MNX has no way to ask for.
+      // Read before the pattern is judged, so a sign dropped whole takes the
+      // slashes with it rather than leaving them to be reported alone.
+      const slashes = attribute(repeat, 'slashes')
+
       if (measures > LONGEST_MNX_REPEAT) {
         warnings.add(
           'unrepresentable:measure-repeat',
@@ -308,13 +313,12 @@ function readMeasureStyle(
           { ...context, line: repeat.line },
           'measure-repeat',
         )
-        // The source drew a new sign here, so whatever ran before it stopped.
+        // The source drew a new sign on these staves, so whatever they were
+        // drawing stopped. Staves the sign does not name are left running.
         for (const staff of staves) reading.measureRepeats.push({ edge: 'stop', staff })
         return reading
       }
 
-      // The slash count changes the glyph, which MNX has no way to ask for.
-      const slashes = attribute(repeat, 'slashes')
       if (slashes !== undefined && slashes !== '1') {
         warnings.add(
           'unrepresentable:measure-repeat-slashes',

@@ -402,4 +402,74 @@ describe('a measure repeat', () => {
     expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:measure-repeat'])
     expect(schemaErrors(mnx)).toEqual([])
   })
+
+  // The dropped sign is the other staff's, so it ends nothing: staff one
+  // never wrote a stop and its sign runs to the end of the part.
+  test('leaves another staff running when the dropped sign is not its own', () => {
+    const { mnx, warnings } = convert(
+      part('P1', [
+        {
+          attributes:
+            '<staves>2</staves>' +
+            '<measure-style number="1"><measure-repeat type="start">1</measure-repeat>' +
+            '</measure-style>',
+          body: NOTE,
+        },
+        {
+          attributes:
+            '<measure-style number="2"><measure-repeat type="start">8</measure-repeat>' +
+            '</measure-style>',
+          body: NOTE,
+        },
+        { body: NOTE },
+      ]),
+    )
+
+    expect(repeats(mnx)).toEqual([{ number: 1 }, { number: 1 }, { number: 1 }])
+    expect(warnings.map((warning) => warning.message)).toEqual([
+      'A measure repeat sign repeats 8 measures, and MNX states a pattern of at most four. ' +
+        'The sign is not carried over.',
+    ])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // A stop for a staff that drew no sign closes nothing, so the other
+  // staff's sign is not cut and nothing is reported.
+  test('says nothing of a stop for a staff with no sign running', () => {
+    const { mnx, warnings } = convert(
+      part('P1', [
+        {
+          attributes:
+            '<staves>2</staves>' +
+            '<measure-style number="1"><measure-repeat type="start">1</measure-repeat>' +
+            '</measure-style>',
+          body: NOTE,
+        },
+        {
+          attributes: '<measure-style number="2"><measure-repeat type="stop"/></measure-style>',
+          body: NOTE,
+        },
+        { body: NOTE },
+      ]),
+    )
+
+    expect(repeats(mnx)).toEqual([{ number: 1 }, { number: 1 }, { number: 1 }])
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // The sign is dropped whole, so the slash count is part of what goes with
+  // it rather than a loss of its own.
+  test('says nothing of the slashes on a sign it drops', () => {
+    const { mnx, warnings } = convert(
+      part('P1', [
+        { body: NOTE },
+        { attributes: start('8', ' slashes="3"'), body: NOTE },
+        { body: NOTE },
+      ]),
+    )
+
+    expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:measure-repeat'])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
 })

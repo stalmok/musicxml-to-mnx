@@ -719,9 +719,10 @@ function resolveMeasureRepeats(
     )
 
     // A stop is read before a start, so a measure stopping one sign may
-    // start the next.
-    if (stops.length > 0 && open.size > 0) {
-      for (const stop of stops) open.delete(stop.staff)
+    // start the next. A stop for a staff drawing no sign closes nothing, and
+    // leaves the staves that are drawing one alone.
+    const closed = stops.filter((stop) => open.delete(stop.staff)).length
+    if (closed > 0) {
       if (open.size > 0) {
         warnings.add(
           'unrepresentable:measure-repeat',
