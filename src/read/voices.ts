@@ -391,8 +391,9 @@ export class MeasureBuilder {
   /**
    * Where the last event before this point begins. MNX states the end of an
    * octave shift as the place of the last event it covers, while MusicXML
-   * writes the stop after that event, so the cursor has already moved past
-   * it by the time the stop is read.
+   * writes the stop after that event, with the cursor already past it. Asked
+   * once the measure is whole, so every event of it is counted whatever
+   * order the source wrote them in.
    */
   lastEventBefore(position: Fraction): Fraction | undefined {
     let latest: Fraction | undefined

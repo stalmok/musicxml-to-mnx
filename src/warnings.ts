@@ -68,8 +68,10 @@ export type WarningCode =
   | 'unrepresentable:chord-staff'
   // A stem that neither points up nor down. MNX states only those two.
   | 'unrepresentable:stem-direction'
-  // A tempo written as one note value equalling another. MNX states a tempo
-  // as a note value and a count of them per minute, which has no room for it.
+  // A tempo MNX has no value for: one written as one note value equalling
+  // another, one with no beats-per-minute number, and one whose number is
+  // not above zero. MNX states a tempo as a note value and a positive count
+  // of them per minute.
   | 'unrepresentable:tempo'
   // A verse whose elided syllables each say how they join their word. MNX
   // states one lyric type for the whole event.
