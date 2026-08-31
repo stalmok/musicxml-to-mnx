@@ -15,22 +15,16 @@ import { attribute, requireChild, trimmedText } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
 import { readAttributeInRange, readInteger, readIntegerInRange } from './numbers.js'
 import type { PartState } from './state.js'
+import { recogniser } from './tables.js'
 import { elementLoss } from './unrepresentable.js'
 import { reportHidden } from './unrepresentable.js'
 
 // Recognisers rather than bare sets: each one narrows the value it accepts to
 // the model's type, so a validated value reaches the writer without a cast
-// and an unvalidated one cannot.
-const CLEF_SIGNS: ReadonlySet<string> = new Set(['C', 'F', 'G'])
-const TIME_UNITS: ReadonlySet<number> = new Set([1, 2, 4, 8, 16, 32, 64, 128])
-
-function isClefSign(value: string): value is ClefSign {
-  return CLEF_SIGNS.has(value)
-}
-
-function isTimeUnit(value: number): value is TimeUnit {
-  return TIME_UNITS.has(value)
-}
+// and an unvalidated one cannot. Each list and the model's own union are held
+// to each other in both directions.
+const isClefSign = recogniser<ClefSign>()(['C', 'F', 'G'])
+const isTimeUnit = recogniser<TimeUnit>()([1, 2, 4, 8, 16, 32, 64, 128])
 
 // The line a clef sits on when it doesn't say, per MusicXML's defaults. A
 // record keyed by the sign type, not a Map, so every sign is required to have

@@ -34,6 +34,7 @@ import { noteValueBaseOf } from './noteValues.js'
 import { readIntegerInRange } from './numbers.js'
 import type { StopWording, WedgeStop } from './spanners.js'
 import type { PartState } from './state.js'
+import { recogniser } from './tables.js'
 import { attributeLoss, elementLoss } from './unrepresentable.js'
 
 /** What one <direction> was found to carry. */
@@ -56,8 +57,10 @@ export interface SoundReading {
   segnoName: string | undefined
 }
 
-// The plain dynamic marks MNX states as a value.
-const DYNAMIC_VALUES: ReadonlySet<string> = new Set([
+// The plain dynamic marks MNX states as a value. A recogniser rather than a
+// bare set, so this list and the model's own union are held to each other and
+// the mark it accepts reaches the writer without a cast.
+const isDynamicValue = recogniser<DynamicValue>()([
   'pppppp',
   'ppppp',
   'pppp',
@@ -372,12 +375,15 @@ function pastTheEnd(position: Fraction, state: PartState): boolean {
   return compareFractions(position, fraction(state.time.count, state.time.unit)) > 0
 }
 
-// How far MusicXML's octave-shift sizes move the music, in octaves. The
-// numbers are the ones written on the page: 8va is one octave, 15ma two.
-const SHIFT_SIZES = new Map<string, 1 | 2 | 3>([
-  ['8', 1],
-  ['15', 2],
-  ['22', 3],
+// How far MusicXML's octave-shift sizes move the music, in octaves, each way
+// the shift can go. The numbers are the ones written on the page: 8va is one
+// octave, 15ma two. MNX states the other direction as a negative amount, so
+// both are written out here, keyed by the type MusicXML wrote, rather than
+// negated at the call site where the result would leave the model's union.
+const SHIFT_SIZES = new Map<string, Record<'up' | 'down', OttavaAmount>>([
+  ['8', { down: 1, up: -1 }],
+  ['15', { down: 2, up: -2 }],
+  ['22', { down: 3, up: -3 }],
 ])
 
 /**
@@ -421,8 +427,8 @@ function readOctaveShift(
   // "continue" marks a point partway along one, which MNX has no need of.
   if (type === 'continue') return
 
-  const octaves = SHIFT_SIZES.get(size)
-  if ((type !== 'up' && type !== 'down') || !octaves) {
+  const shift = SHIFT_SIZES.get(size)
+  if ((type !== 'up' && type !== 'down') || !shift) {
     warnings.add(
       'unsupported:element',
       `An <octave-shift> of type "${type ?? ''}" and size "${size}" is not converted yet, ` +
@@ -437,7 +443,7 @@ function readOctaveShift(
     return
   }
 
-  const value = type === 'down' ? octaves : (-octaves as OttavaAmount)
+  const value = shift[type]
   state.spanners.startOttava(
     { measure, position, value, staff, ...(orient !== undefined ? { orient } : {}) },
     number,
@@ -731,11 +737,11 @@ function readDynamics(
       reportWordingGlyph(mark, trimmedText(mark), warnings, context)
       if (trimmedText(mark) === '') continue
       wording.push(mark.text, mark.line)
-    } else if (DYNAMIC_VALUES.has(mark.name)) {
+    } else if (isDynamicValue(mark.name)) {
       const prefix = wording.take()
       dynamics.push({
         position,
-        value: mark.name as DynamicValue,
+        value: mark.name,
         wedge: undefined,
         end: undefined,
         staff,

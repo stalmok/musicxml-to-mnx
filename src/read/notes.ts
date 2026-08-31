@@ -39,16 +39,14 @@ import { readLyrics } from './lyrics.js'
 import { noteValueBaseOf, requireNoteValueBase } from './noteValues.js'
 import { readIntegerInRange } from './numbers.js'
 import type { PartState } from './state.js'
+import { recogniser } from './tables.js'
 import { MeasureBuilder } from './voices.js'
 import type { TupletDisplaySettings } from './voices.js'
 
 // A recogniser rather than a bare set: it narrows the value it accepts to the
-// model's type, so a validated value reaches the writer without a cast.
-const STEPS: ReadonlySet<string> = new Set(['A', 'B', 'C', 'D', 'E', 'F', 'G'])
-
-function isStep(value: string): value is Step {
-  return STEPS.has(value)
-}
+// model's type, so a validated value reaches the writer without a cast, and
+// the list and the model's Step are held to each other in both directions.
+const isStep = recogniser<Step>()(['A', 'B', 'C', 'D', 'E', 'F', 'G'])
 
 // The diatonic order of a step within its octave, counting from C, since staff
 // height is counted diatonically.
@@ -1032,11 +1030,11 @@ function curveSide(element: XmlElement): CurveSide | undefined {
 
 // MusicXML's line-type values are the same words MNX states, so a known one
 // passes straight through; anything else leaves the slur drawn solid.
-const LINE_TYPES: ReadonlySet<string> = new Set(['dashed', 'dotted', 'solid', 'wavy'])
+const isLineType = recogniser<LineType>()(['dashed', 'dotted', 'solid', 'wavy'])
 
 function slurLineType(slur: XmlElement): LineType | undefined {
   const lineType = attribute(slur, 'line-type')
-  return lineType !== undefined && LINE_TYPES.has(lineType) ? (lineType as LineType) : undefined
+  return lineType !== undefined && isLineType(lineType) ? lineType : undefined
 }
 
 /**
