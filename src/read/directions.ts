@@ -25,10 +25,9 @@ import type {
 } from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
-import { attribute, children, trimmedText } from '../xml/tree.js'
+import { attribute, trimmedText } from '../xml/tree.js'
 import { readColor } from './color.js'
 import { divisionsInForce } from './divisions.js'
-import { reportUnreadAttributes } from './element.js'
 import type { ElementReader } from './element.js'
 import { noteValueBaseOf } from './noteValues.js'
 import { readIntegerInRange } from './numbers.js'
@@ -197,17 +196,24 @@ export function readDirection(
   const graceAtCursor = graceNotesAt(position, staff)
   const overGrace = compareFractions(at, position) === 0 ? graceAtCursor : 0
 
-  for (const directionType of element.children('direction-type')) {
+  for (const directionType of element.blocks('direction-type')) {
     // The wording is held for the whole <direction-type>: MusicXML allows
     // the words and the mark they qualify in sibling <dynamics> blocks, and
     // "cresc." beside a <wedge> is the hairpin's own wording.
     const wording = new PendingWording()
     let lastMark: SuffixTarget | undefined
-    for (const found of directionType.children) {
-      // A handled child is walked raw rather than through a reader of its
-      // own, so its attributes are swept here once its reader has taken
-      // what it converts. An unhandled child is reported whole below.
-      const handled = HANDLED_DIRECTION_TYPES.has(found.name)
+    for (const found of directionType.element.children) {
+      // Every child is accounted for here, so that the sweep at the top says
+      // what became of it. A <metronome> holds children of its own, so it is
+      // read through a reader of its own and the sweep reports whatever that
+      // reader passed over. The other handled types are read plainly: <wedge>,
+      // <octave-shift> and <segno> are empty elements, and readDynamics
+      // reports every child of a <dynamics> it does not know. An unhandled
+      // type is reported whole below, so it is accounted for rather than read.
+      if (found.name === 'metronome') directionType.block(found)
+      else if (HANDLED_DIRECTION_TYPES.has(found.name)) directionType.children(found.name)
+      else directionType.skip(found.name)
+
       switch (found.name) {
         case 'dynamics': {
           const marks = readDynamics(found, at, staff, orient, wording, warnings, context)
@@ -217,7 +223,9 @@ export function readDirection(
           break
         }
         case 'metronome':
-          reading.tempos.push(...readMetronome(found, at, warnings, context, path))
+          reading.tempos.push(
+            ...readMetronome(directionType.block(found), at, warnings, context, path),
+          )
           break
         case 'octave-shift':
           readOctaveShift(
@@ -282,7 +290,6 @@ export function readDirection(
           )
         }
       }
-      if (handled) reportUnreadAttributes(found, warnings, context)
     }
 
     // Wording left over closes the mark before it. With no mark to close, it
@@ -837,14 +844,18 @@ function reportWordingGlyph(
 const DECIMAL_NUMBER = /^[+-]?(\d+(\.\d*)?|\.\d+)$/
 
 function readMetronome(
-  element: XmlElement,
+  reader: ElementReader,
   position: Fraction,
   warnings: WarningCollector,
   context: WarningContext,
   path: DocumentPath,
 ): Tempo[] {
-  const perMinute = children(element, 'per-minute')[0]
-  const beatUnit = children(element, 'beat-unit')[0]
+  const element = reader.element
+  // MusicXML allows several <beat-unit> children: a second one states the
+  // tempo as one note value equalling another. Both are read, so the sweep
+  // does not report a child this reader did weigh.
+  const perMinute = reader.children('per-minute')[0]
+  const beatUnit = reader.children('beat-unit')[0]
 
   // MusicXML can also state a metronome as one note value equalling another,
   // a metrical modulation. MNX states a tempo as a note value and a count of
@@ -906,6 +917,6 @@ function readMetronome(
   }
 
   // A beat unit can be dotted.
-  const dots = children(element, 'beat-unit-dot').length
+  const dots = reader.children('beat-unit-dot').length
   return [{ position, value: { base, dots }, bpm }]
 }

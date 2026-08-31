@@ -72,7 +72,23 @@ describe('blocks', () => {
     const first = element.blocks('notations')
     const second = element.blocks('notations')
 
-    expect(second).toBe(first)
+    expect(second[0]).toBe(first[0])
+    expect(reported(element)).toEqual(['<fermata> is not converted yet.'])
+  })
+
+  test('hands back the same reader for a child asked for both ways', () => {
+    const element = reader('<notations><fermata/></notations>')
+    const listed = element.blocks('notations')
+
+    expect(element.block(element.element.children[0]!)).toBe(listed[0])
+  })
+
+  // A block is asked for by identity where a level walks its children in
+  // document order, so a second one of a name has to get its own reader.
+  test('reports what each of two blocks of one name passed over', () => {
+    const element = reader('<notations><slur/></notations><notations><fermata/></notations>')
+    for (const found of element.element.children) element.block(found).children('slur')
+
     expect(reported(element)).toEqual(['<fermata> is not converted yet.'])
   })
 })

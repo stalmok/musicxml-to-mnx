@@ -858,6 +858,37 @@ describe('tempo', () => {
     expect(global?.tempos[0]?.value).toEqual({ base: 'quarter', dots: 1 })
   })
 
+  // A direction type is read through a reader of its own, so a child its
+  // reader passed over is reported rather than left out of the report.
+  test('reports a metronome child nothing reads', () => {
+    const { warnings } = read(
+      inMeasure(
+        direction(
+          '<metronome><beat-unit>quarter</beat-unit><per-minute>60</per-minute>' +
+            '<metronome-arrows/></metronome>',
+        ) + note('C'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.message)).toContain('<metronome-arrows> is not converted yet.')
+  })
+
+  // The source states "quarter tied to eighth = 60"; the output states
+  // "quarter = 60", so the beat unit it was tied to has to be reported.
+  test('reports a beat unit tied to a second one', () => {
+    const { warnings } = read(
+      inMeasure(
+        direction(
+          '<metronome><beat-unit>quarter</beat-unit>' +
+            '<beat-unit-tied><beat-unit>eighth</beat-unit></beat-unit-tied>' +
+            '<per-minute>60</per-minute></metronome>',
+        ) + note('C'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.message)).toContain('<beat-unit-tied> is not converted yet.')
+  })
+
   test('reports a metronome stated as one note value equalling another', () => {
     const { warnings } = read(
       inMeasure(

@@ -83,8 +83,9 @@ export class ElementReader {
   // Children accounted for by skip(), whose attributes the account covers.
   readonly #skipped = new Set<XmlElement>()
   // Readers over child elements that are themselves read into, so one report
-  // at the top covers the whole tree this reader walked.
-  readonly #blocks = new Map<string, ElementReader[]>()
+  // at the top covers the whole tree this reader walked. Held by identity,
+  // for the same reason the read children are.
+  readonly #blocks = new Map<XmlElement, ElementReader>()
 
   constructor(element: XmlElement) {
     this.element = element
@@ -117,14 +118,21 @@ export class ElementReader {
    * their own. Their unread children are reported along with this one's.
    */
   blocks(name: string): readonly ElementReader[] {
-    const existing = this.#blocks.get(name)
+    return children(this.element, name).map((found) => this.block(found))
+  }
+
+  /**
+   * A reader over one child, for a level that walks its children in document
+   * order and reads some of them as blocks. The same child asked for twice
+   * gives the same reader, so what the first call read stays accounted for.
+   */
+  block(found: XmlElement): ElementReader {
+    const existing = this.#blocks.get(found)
     if (existing) return existing
 
-    const made = children(this.element, name).map((found) => {
-      this.#read.add(found)
-      return new ElementReader(found)
-    })
-    this.#blocks.set(name, made)
+    this.#read.add(found)
+    const made = new ElementReader(found)
+    this.#blocks.set(found, made)
     return made
   }
 
@@ -150,14 +158,9 @@ export class ElementReader {
     // plain-read child has no reader of its own, so its attributes are
     // swept here. An unread child is reported wholesale, and naming its
     // attributes on top would report the same loss twice.
-    const wrapped = new Set<XmlElement>()
-    for (const blocks of this.#blocks.values()) {
-      for (const block of blocks) wrapped.add(block.element)
-    }
-
     for (const found of this.element.children) {
       if (this.#read.has(found)) {
-        if (!wrapped.has(found) && !this.#skipped.has(found)) {
+        if (!this.#blocks.has(found) && !this.#skipped.has(found)) {
           reportUnreadAttributes(found, warnings, context)
         }
         continue
@@ -170,9 +173,7 @@ export class ElementReader {
         found.name,
       )
     }
-    for (const blocks of this.#blocks.values()) {
-      for (const block of blocks) block.reportUnread(warnings, context)
-    }
+    for (const block of this.#blocks.values()) block.reportUnread(warnings, context)
   }
 }
 
