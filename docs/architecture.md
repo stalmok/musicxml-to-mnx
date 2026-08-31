@@ -131,6 +131,15 @@ there has to be no definition in it that could hold the element. The registry
 is `read/unrepresentable.ts`, and calling something permanent when it is
 merely unfinished is the worse error of the two.
 
+That fact is checked rather than remembered. The schema is the oracle for the
+output, and nothing held to it what the converter believes about MNX before it
+writes anything: the registry above, the MNX types, and the id pattern the
+reader renames parts by are each a copy of something in the schema.
+`tests/schema-conformance.test.ts` compares all three with it, and each entry
+in the registry states the fact it rests on. Both ways of being wrong are
+otherwise silent: a field the types lack is never emitted and the output stays
+legal, and a stale registry entry goes on calling a loss permanent forever.
+
 Which of the two a reader is claiming is not left to the reader's memory
 either. `read/element.ts` wraps an element and records which children were
 actually read, and whatever is left over at the end is reported. The reason is

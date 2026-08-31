@@ -38,7 +38,18 @@ chore:
 
 1. Download the new `docs/mnx-schema.json` and update this file's commit,
    date, and checksum, then regenerate `SHA256SUMS`.
-2. Update `src/types/mnx.ts` to match any shape changes.
-3. Regenerate fixture goldens and review every diff, because a changed golden is a
+2. Run `pnpm exec vitest run tests/schema-conformance.test.ts`. It holds the
+   three places that state something about MNX by hand to this file: the types
+   in `src/types/mnx.ts`, the registry of what MNX cannot hold in
+   `src/read/unrepresentable.ts`, and the id pattern in `src/read/score.ts`.
+   Every failure is a decision to make, and the test says which.
+3. Update `src/types/mnx.ts` to match any shape change the test reported. A
+   field the schema gained and the types lack is never emitted, and the output
+   stays legal, so nothing else catches it.
+4. Move any entry the test reported out of `src/read/unrepresentable.ts` and
+   into whatever now carries it. An element MNX has since gained a home for is
+   a gap in this converter, not a limit of the format, and reporting it as
+   permanent is the worse of the two errors.
+5. Regenerate fixture goldens and review every diff, because a changed golden is a
    changed wire format, not a formality.
-4. Re-run the corpus gate and record any movement in the warning baseline.
+6. Re-run the corpus gate and record any movement in the warning baseline.
