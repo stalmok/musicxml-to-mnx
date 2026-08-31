@@ -201,7 +201,11 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
 
 // MNX's id, from the schema's $defs/id: 1 to 256 printable ASCII characters.
 // MusicXML's part id is an xs:ID, which allows more, such as accented letters.
-const MNX_ID_PATTERN = /^[\x21-\x7E]{1,256}$/
+//
+// Copied rather than read: the schema and ajv are dev-only, and converting a
+// score must not depend on either. Exported so the conformance test can hold
+// this copy to $defs/id.pattern, which is what keeps the copy honest.
+export const MNX_ID_PATTERN = /^[\x21-\x7E]{1,256}$/
 
 /**
  * Renames every part id MNX's id cannot state, in the parts and in the
