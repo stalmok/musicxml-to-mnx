@@ -74,12 +74,15 @@ function readMnxTypes(): Map<string, Map<string, { optional: boolean; union: str
       // Undefined is how an optional property reads; the union is about the
       // values it can hold.
       const stated = parts.filter((part) => (part.flags & ts.TypeFlags.Undefined) === 0)
-      const literals = stated.filter((part) => part.isStringLiteral())
+      // Numbers as well as text: an octave shift's amount and a time
+      // signature's unit are both enumerated by the schema as numbers, and
+      // reading only text left the pair of them compared against nothing.
+      const literals = stated.filter((part) => part.isStringLiteral() || part.isNumberLiteral())
       properties.set(property.getName(), {
         optional: (property.flags & ts.SymbolFlags.Optional) !== 0,
         union:
           literals.length === stated.length && literals.length > 0
-            ? literals.map((l) => l.value).sort()
+            ? literals.map((literal) => String(literal.value)).sort()
             : null,
       })
     }
@@ -190,13 +193,17 @@ function schemaProperties(definition: SchemaNode): string[] {
   )
 }
 
-/** The values a property may hold, where the schema enumerates them. */
+/**
+ * The values a property may hold, where the schema enumerates them. Read as
+ * text whether the schema states them as text or as numbers, which is how the
+ * two sides are compared.
+ */
 function schemaUnion(definition: SchemaNode, property: string): string[] | null {
   const resolved = resolveRef(definition.properties?.[property])
   if (resolved?.enum !== undefined) {
-    return resolved.enum.filter((value) => typeof value === 'string').sort()
+    return resolved.enum.map((value) => String(value)).sort()
   }
-  if (typeof resolved?.const === 'string') return [resolved.const]
+  if (resolved?.const !== undefined) return [String(resolved.const)]
   return null
 }
 
