@@ -50,7 +50,8 @@ chore:
    enums in `src/model/score.ts` against the types, so it has nothing to report
    until step 3 has moved the types. Carry each value the model states too into
    the model, or record the difference as deliberate, which is what the test
-   asks for.
+   asks for. A whole enum MNX has gained is reported the same way: pair it with
+   a model enum, or state why the model does not restate it.
 5. Move any entry the test reported out of `src/read/unrepresentable.ts` and
    into whatever now carries it. An element MNX has since gained a home for is
    a gap in this converter, not a limit of the format, and reporting it as

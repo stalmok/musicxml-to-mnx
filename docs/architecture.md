@@ -145,7 +145,10 @@ reader renames parts by are each a copy of something in the schema.
 `tests/schema-conformance.test.ts` compares all three with it, and each entry
 in the registry states the fact it rests on. The model's MNX-spelled enums are
 a fourth copy, of the types rather than of the schema, and the same test
-compares them with the types, so they reach the schema through them. Both ways
+compares them with the types, so they reach the schema through them. That
+comparison is accounted for from both ends: every enum the model states is
+paired with an MNX one or says why it is not one, and every enum MNX states is
+reached by a pairing or says why the model does not restate it. Both ways
 of being wrong are otherwise silent: a field the types lack is never emitted
 and the output stays legal, and a stale registry entry goes on calling a loss
 permanent forever.

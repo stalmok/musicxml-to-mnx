@@ -442,10 +442,20 @@ describe('the registry of what MNX cannot hold, against the schema', () => {
 // value the converter can never produce, and every document it writes stays
 // legal, so no test fails and the loss report says nothing, because the loss
 // is at the output end and the report is driven by the input.
+//
+// Both inventories are accounted for in full. Every enum the model states is
+// paired with an MNX one or says why it is not one, and every enum MNX states
+// is reached by a pairing or says why the model does not restate it. Without
+// the second half, an MNX vocabulary the converter never produces is not a
+// decision anyone wrote down; it just sits there reading as an oversight.
 
 /** The model's own tag for a sequence item, which MNX states as a type. */
 const SEQUENCE_ITEM_TAG =
   'The model tags a sequence item with kind, and the writer states MNX type from it. The two do not always spell it alike: the model says multiNoteTremolo where MNX says tremolo.'
+
+/** The same, for what a system's layout is built from. */
+const GROUPING_ITEM_TAG =
+  'The model tags a grouping item with kind, and the writer states MNX type from it. The model says part, where MNX says the staff that part is drawn on.'
 
 /** The reason most of the narrowings below share. */
 const UNSTATED_IS_UNDEFINED =
@@ -548,8 +558,8 @@ const NARROWER: Readonly<Record<string, { missing: readonly string[]; why: strin
  * twice. The unions this reaches that nothing else does are the ones written
  * out where they are used.
  */
-function readModelUnions(): Map<string, string[]> {
-  const file = fileURLToPath(new URL('../src/model/score.ts', import.meta.url))
+function readUnions(path: string): Map<string, string[]> {
+  const file = fileURLToPath(new URL(path, import.meta.url))
   const program = ts.createProgram([file], {
     strict: true,
     noEmit: true,
@@ -557,7 +567,7 @@ function readModelUnions(): Map<string, string[]> {
   })
   const checker = program.getTypeChecker()
   const source = program.getSourceFile(file)
-  if (source === undefined) throw new Error('src/model/score.ts did not compile.')
+  if (source === undefined) throw new Error(`${path} did not compile.`)
 
   /** The values a type states, or nothing where it states something else. */
   const valuesOf = (type: ts.Type): string[] | undefined => {
@@ -601,41 +611,27 @@ function readModelUnions(): Map<string, string[]> {
   return found
 }
 
-/** Every union of literal values the MNX types state as a named alias. */
-function readMnxUnions(): Map<string, string[]> {
-  const file = fileURLToPath(new URL('../src/types/mnx.ts', import.meta.url))
-  const program = ts.createProgram([file], {
-    strict: true,
-    noEmit: true,
-    target: ts.ScriptTarget.ES2022,
-  })
-  const checker = program.getTypeChecker()
-  const source = program.getSourceFile(file)
-  if (source === undefined) throw new Error('src/types/mnx.ts did not compile.')
+const modelUnions = readUnions('../src/model/score.ts')
+const mnxUnions = readUnions('../src/types/mnx.ts')
 
-  const found = new Map<string, string[]>()
-  ts.forEachChild(source, (node) => {
-    if (!ts.isTypeAliasDeclaration(node)) return
-    const symbol = checker.getSymbolAtLocation(node.name)
-    if (symbol === undefined) return
-    const type = checker.getDeclaredTypeOfSymbol(symbol)
-    const parts = type.isUnion() ? type.types : [type]
-    const literals = parts.filter((part) => part.isStringLiteral() || part.isNumberLiteral())
-    // A union of interfaces, such as MNXSequenceItem, states no values.
-    if (literals.length !== parts.length) return
-    found.set(node.name.text, literals.map((literal) => String(literal.value)).sort())
-  })
-  return found
-}
-
-const modelUnions = readModelUnions()
-const mnxUnions = readMnxUnions()
-
-/** The values an MNX type states, whether it is an alias or an inline union. */
-function mnxSpelling(name: string): string[] | undefined {
-  const dot = name.indexOf('.')
-  if (dot === -1) return mnxUnions.get(name)
-  return mnxTypes.get(name.slice(0, dot))?.get(name.slice(dot + 1))?.union ?? undefined
+/**
+ * An MNX enum the model does not restate, with the reason. Every entry is a
+ * vocabulary the converter never chooses from: either the writer settles the
+ * value itself, or nothing in MusicXML says which member to pick. An entry
+ * here is a decision; an unpaired enum not here is unaccounted for, and fails.
+ */
+const NOT_RESTATED: Readonly<Record<string, string>> = {
+  MNXTieTargetType: `The model states a tie's crossVoice as a boolean, and the writer spells the one member it can produce from that. A tie into an arpeggio or across a jump is not read.`,
+  MNXFermataDuration: `MusicXML's <fermata> states a shape and a side, and says nothing about how long the pause holds, so there is nothing to read.`,
+  MNXStaffLabelref:
+    "The writer picks which of a part's names its staff draws, from the names the part has. No source value decides it.",
+  'MNXDynamic.type': `The writer states it from the shape of the model's dynamic: a hairpin is gradual, an accent is accent, anything else immediate. Relative dynamics are not converted.`,
+  'MNXSpace.type': SEQUENCE_ITEM_TAG,
+  'MNXTuplet.type': SEQUENCE_ITEM_TAG,
+  'MNXGraceGroup.type': SEQUENCE_ITEM_TAG,
+  'MNXMultiNoteTremolo.type': SEQUENCE_ITEM_TAG,
+  'MNXLayoutStaff.type': GROUPING_ITEM_TAG,
+  'MNXStaffGroup.type': GROUPING_ITEM_TAG,
 }
 
 describe("the model's enums against the MNX ones they are spelled from", () => {
@@ -644,6 +640,17 @@ describe("the model's enums against the MNX ones they are spelled from", () => {
       [...modelUnions.keys()].filter(
         (name) => !(name in MNX_SPELLING) && !(name in NOT_AN_MNX_ENUM),
       ),
+    ).toEqual([])
+  })
+
+  test('every enum MNX states is reached by a pairing, or says why not', () => {
+    // The other half of the same accounting. An MNX vocabulary no pairing
+    // reaches is output the converter never produces, which nothing else
+    // reports: the schema gate only sees what is emitted, and the loss report
+    // is driven by the input.
+    const paired = new Set(Object.values(MNX_SPELLING))
+    expect(
+      [...mnxUnions.keys()].filter((name) => !paired.has(name) && !(name in NOT_RESTATED)),
     ).toEqual([])
   })
 
@@ -656,13 +663,21 @@ describe("the model's enums against the MNX ones they are spelled from", () => {
     expect(paired.filter((name) => !modelUnions.has(name))).toEqual([])
   })
 
+  test('every reason names an enum MNX still states and no pairing reaches', () => {
+    const paired = new Set(Object.values(MNX_SPELLING))
+    expect(Object.keys(NOT_RESTATED).filter((name) => !mnxUnions.has(name))).toEqual([])
+    // A reason kept beside a pairing states one decision twice, and the two
+    // would go on to disagree.
+    expect(Object.keys(NOT_RESTATED).filter((name) => paired.has(name))).toEqual([])
+  })
+
   test('every stated difference belongs to a pairing', () => {
     expect(Object.keys(NARROWER).filter((name) => !(name in MNX_SPELLING))).toEqual([])
   })
 
   test.each(Object.entries(MNX_SPELLING))('%s states the same values as %s', (model, mnx) => {
     const stated = modelUnions.get(model) ?? []
-    const spelled = mnxSpelling(mnx)
+    const spelled = mnxUnions.get(mnx)
     expect(spelled, `the MNX types state no ${mnx}`).toBeDefined()
     const deliberate = NARROWER[model]?.missing ?? []
 
