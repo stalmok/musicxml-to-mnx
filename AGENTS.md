@@ -28,7 +28,7 @@ MusicXML → xml/ (strict parse) → read/ → model/ (neutral IR) → write/ �
 - `model/`: the neutral score IR. **Internal, never exported.** It exists to decouple the two stages, not to be a notation framework; keep it conversion-scoped.
 - `write/`: walks the model and emits MNX. Thin by design.
 
-Stage boundaries are enforced by `no-restricted-imports` rules in `eslint.config.js`. A crossing is an architecture change: amend `docs/architecture.md` first.
+Stage boundaries are enforced by dependency-cruiser rules in `.dependency-cruiser.js` (`pnpm deps:check`). A crossing is an architecture change: amend `docs/architecture.md` first.
 
 ## Key decisions
 
@@ -38,7 +38,7 @@ Stage boundaries are enforced by `no-restricted-imports` rules in `eslint.config
 - **Errors vs warnings**: structurally broken input throws `MusicXMLError` (with document path and source line); valid-but-unconvertible input produces a warning. Never guess silently.
 - **Package manager**: pnpm (committed lockfile).
 - **Supply chain**: exact-pinned deps, dependency install scripts blocked, 24h new-release cooldown, all configured in `pnpm-workspace.yaml`. CI actions pinned to commit SHAs.
-- **Linting**: ESLint (flat config) + typescript-eslint, non-type-checked. Prettier owns formatting.
+- **Linting**: ESLint (flat config) + typescript-eslint, non-type-checked. Prettier owns formatting. dependency-cruiser owns the import graph.
 
 ## MNX output
 

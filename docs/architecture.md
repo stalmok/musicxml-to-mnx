@@ -88,9 +88,16 @@ each file answers one question. `score.ts` holds the walk and nothing that can
 be lifted off it, because the walk is the part that has to stay in document
 order.
 
-Stage boundaries are enforced by `no-restricted-imports` rules in
-`eslint.config.js`, not left to discipline. A crossing is an architecture
-change: amend this document first.
+Stage boundaries are enforced by dependency-cruiser rules in
+`.dependency-cruiser.js` (`pnpm deps:check`), not left to discipline. A
+crossing is an architecture change: amend this document first.
+
+That file is the only other place the boundaries are written down, which is
+why they are rules rather than prose in a second document. It states each one
+against resolved module paths, so `import type` across a stage line counts the
+same as a value import, and it adds the checks a per-file linter cannot make:
+no cycles, no file unreachable from an entry point, no core module in the
+isomorphic library, no dev-only dependency in what ships.
 
 ## The model
 
