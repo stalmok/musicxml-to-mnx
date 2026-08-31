@@ -55,7 +55,8 @@ export interface MNXLyricLine {
 
 /** The lyric under an event, its verses keyed by line. */
 export interface MNXLyrics {
-  lines: Record<string, MNXLyricLine>
+  /** Optional, as the schema has it, though the writer always states it. */
+  lines?: Record<string, MNXLyricLine>
 }
 
 /** How a tie's target relates to the note it starts from. Absent means the
@@ -107,6 +108,12 @@ export interface MNXNoteValue {
 /** Which side of the notes a mark is drawn on. */
 export type MNXOrientation = 'above' | 'below' | 'auto'
 
+/**
+ * The same, for a mark that can also sit between two staves of one part, as a
+ * piano dynamic written between the hands does.
+ */
+export type MNXMultiStaffOrientation = MNXOrientation | 'between'
+
 /** A mark written on an event, such as a staccato dot or an accent. */
 export interface MNXMarking {
   orient?: MNXOrientation
@@ -140,7 +147,7 @@ export interface MNXEventMarkings {
 export interface MNXSingleNoteTremolo {
   /** How many beams the tremolo is drawn with. */
   marks: number
-  orient?: 'above' | 'below'
+  orient?: MNXOrientation
 }
 
 export type MNXFermataSymbol =
@@ -349,7 +356,7 @@ export interface MNXDynamic {
   /** Which staff of the part it sits under, where it has more than one. */
   staff?: number
   /** Which side of the staff it is drawn on. */
-  orient?: MNXOrientation
+  orient?: MNXMultiStaffOrientation
 }
 
 /** The ids of the two notes a mark runs between. */

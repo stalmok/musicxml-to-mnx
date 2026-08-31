@@ -572,7 +572,7 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
                 continue
               }
               if ('lyrics' in item && item.lyrics) {
-                for (const [line, verse] of Object.entries(item.lyrics.lines)) {
+                for (const [line, verse] of Object.entries(item.lyrics.lines ?? {})) {
                   const list = byLine.get(line) ?? []
                   list.push(verse.text)
                   byLine.set(line, list)
