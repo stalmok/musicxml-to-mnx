@@ -46,7 +46,7 @@ import type { TupletDisplaySettings } from './voices.js'
 // A recogniser rather than a bare set: it narrows the value it accepts to the
 // model's type, so a validated value reaches the writer without a cast, and
 // the list and the model's Step are held to each other in both directions.
-const isStep = recogniser<Step>()(['A', 'B', 'C', 'D', 'E', 'F', 'G'])
+const isStep = recogniser<Step>({ A: true, B: true, C: true, D: true, E: true, F: true, G: true })
 
 // The diatonic order of a step within its octave, counting from C, since staff
 // height is counted diatonically.
@@ -1030,7 +1030,7 @@ function curveSide(element: XmlElement): CurveSide | undefined {
 
 // MusicXML's line-type values are the same words MNX states, so a known one
 // passes straight through; anything else leaves the slur drawn solid.
-const isLineType = recogniser<LineType>()(['dashed', 'dotted', 'solid', 'wavy'])
+const isLineType = recogniser<LineType>({ dashed: true, dotted: true, solid: true, wavy: true })
 
 function slurLineType(slur: XmlElement): LineType | undefined {
   const lineType = attribute(slur, 'line-type')

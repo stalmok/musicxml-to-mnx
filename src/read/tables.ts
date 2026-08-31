@@ -22,6 +22,9 @@ export function entriesOf<Key extends string, Value>(
   return Object.keys(record).map((key) => [key as Key, record[key as Key]] as const)
 }
 
+/** How a source spells a vocabulary: as text, or as a number. */
+type Spelled<Union> = Union extends string ? string : number
+
 /**
  * A predicate for the whole of a model union, from the words that spell it.
  *
@@ -30,22 +33,19 @@ export function entriesOf<Key extends string, Value>(
  * nothing connects a set's contents to a union, so the two drift apart in
  * both directions, and the call site casts whatever the set accepted.
  *
- * A word the union lacks fails the constraint on the list. A member the union
- * has and the list lacks leaves the call an argument short, and the argument
- * it asks for is the member missing. The predicate narrows to the union, so
- * the call site needs no cast.
- *
- * Called in two steps because TypeScript infers every type argument or none:
- * the union is stated, the words are inferred.
+ * The words are given as a table keyed by the union, which is the one shape
+ * the compiler checks both ways: it demands a key for every member and
+ * refuses a key that is not one. The predicate narrows to the union, so the
+ * call site needs no cast.
  */
-export function recogniser<Union extends string | number>() {
-  return <const Words extends readonly Union[]>(
-    words: Words,
-    ..._unlisted: [Exclude<Union, Words[number]>] extends [never]
-      ? []
-      : [missingFromTheList: Exclude<Union, Words[number]>]
-  ) => {
-    const known: ReadonlySet<unknown> = new Set<Union>(words)
-    return <Value extends string | number>(value: Value): value is Value & Union => known.has(value)
-  }
+export function recogniser<Union extends string | number>(
+  words: Readonly<Record<Union, true>>,
+): (value: Spelled<Union>) => value is Union & Spelled<Union> {
+  // hasOwn reads a number as the string key an object holds it under, which
+  // is what a numeric vocabulary such as a time signature's unit needs.
+  //
+  // The narrowed type meets Spelled because tsc weighs the predicate before
+  // it knows the union. Every member of a union of text is text, so for each
+  // union this is called with the intersection is the union itself.
+  return (value: Spelled<Union>): value is Union & Spelled<Union> => Object.hasOwn(words, value)
 }

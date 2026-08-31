@@ -23,8 +23,17 @@ import { reportHidden } from './unrepresentable.js'
 // the model's type, so a validated value reaches the writer without a cast
 // and an unvalidated one cannot. Each list and the model's own union are held
 // to each other in both directions.
-const isClefSign = recogniser<ClefSign>()(['C', 'F', 'G'])
-const isTimeUnit = recogniser<TimeUnit>()([1, 2, 4, 8, 16, 32, 64, 128])
+const isClefSign = recogniser<ClefSign>({ C: true, F: true, G: true })
+const isTimeUnit = recogniser<TimeUnit>({
+  1: true,
+  2: true,
+  4: true,
+  8: true,
+  16: true,
+  32: true,
+  64: true,
+  128: true,
+})
 
 // The line a clef sits on when it doesn't say, per MusicXML's defaults. A
 // record keyed by the sign type, not a Map, so every sign is required to have

@@ -60,23 +60,23 @@ export interface SoundReading {
 // The plain dynamic marks MNX states as a value. A recogniser rather than a
 // bare set, so this list and the model's own union are held to each other and
 // the mark it accepts reaches the writer without a cast.
-const isDynamicValue = recogniser<DynamicValue>()([
-  'pppppp',
-  'ppppp',
-  'pppp',
-  'ppp',
-  'pp',
-  'p',
-  'mp',
-  'mf',
-  'f',
-  'ff',
-  'fff',
-  'ffff',
-  'fffff',
-  'ffffff',
-  'n',
-])
+const isDynamicValue = recogniser<DynamicValue>({
+  pppppp: true,
+  ppppp: true,
+  pppp: true,
+  ppp: true,
+  pp: true,
+  p: true,
+  mp: true,
+  mf: true,
+  f: true,
+  ff: true,
+  fff: true,
+  ffff: true,
+  fffff: true,
+  ffffff: true,
+  n: true,
+})
 
 // The accent dynamics, such as a sforzando, spelled out the way MNX states
 // them: the value is the level of the attack, the letters around it are the
