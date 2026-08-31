@@ -44,7 +44,10 @@ export function reportHidden(
   )
 }
 
-const NO_HOME_IN_MNX: ReadonlySet<string> = new Set([
+// Exported so the conformance test can hold each entry to the schema fact its
+// comment states. Every entry here is a claim about the vendored schema, and a
+// claim nothing checks goes stale the first time the pin moves.
+export const NO_HOME_IN_MNX: ReadonlySet<string> = new Set([
   // Sustain, sostenuto and una corda. The schema has no pedalling of any kind.
   'pedal',
   // A text instruction such as "dolce" or "rit.". The schema's only free text
@@ -139,7 +142,7 @@ const NO_HOME_IN_MNX: ReadonlySet<string> = new Set([
 // "element attribute". The bar is the same as for elements. Anything else
 // the sweep reports is a converter gap by default; a gray case stays there
 // until it is decided against the schema.
-const NO_HOME_ATTRIBUTES: ReadonlySet<string> = new Set([
+export const NO_HOME_ATTRIBUTES: ReadonlySet<string> = new Set([
   // The side an augmentation dot is drawn on. The schema's note value is a
   // base and a count of dots, and nothing about how they are drawn.
   'dot placement',

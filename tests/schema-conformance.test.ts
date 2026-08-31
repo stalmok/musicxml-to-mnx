@@ -24,6 +24,7 @@ import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
 import { describe, expect, test } from 'vitest'
 import { MNX_ID_PATTERN } from '../src/read/score.js'
+import { NO_HOME_ATTRIBUTES, NO_HOME_IN_MNX } from '../src/read/unrepresentable.js'
 import { resolveRef, schemaDefs } from './support/schema.js'
 import type { SchemaNode } from './support/schema.js'
 
@@ -287,3 +288,132 @@ function kebab(name: string): string {
     .replace(/(?<!^)(?=[A-Z])/g, '-')
     .toLowerCase()
 }
+
+// --- The registry of what MNX cannot hold, against the schema ---------------
+
+/**
+ * Every name the schema uses, normalised, against the definitions that use it.
+ * A MusicXML name is hyphenated and an MNX one is camelCase, so dropping
+ * everything but letters and digits lets key-octave meet keyOctave.
+ */
+function schemaNames(): Map<string, Set<string>> {
+  const found = new Map<string, Set<string>>()
+  const note = (name: string, where: string): void => {
+    const key = name.toLowerCase().replace(/[^a-z0-9]/g, '')
+    const places = found.get(key) ?? new Set<string>()
+    places.add(where)
+    found.set(key, places)
+  }
+  for (const [definition, node] of Object.entries(schemaDefs)) {
+    note(definition, definition)
+    for (const property of Object.keys(node.properties ?? {})) note(property, definition)
+    for (const value of node.enum ?? []) {
+      if (typeof value === 'string') note(value, definition)
+    }
+  }
+  return found
+}
+
+const names = schemaNames()
+
+/** Where the schema uses a name, ignoring case and hyphens. */
+function usedBy(name: string): string[] {
+  return [...(names.get(name.toLowerCase().replace(/[^a-z0-9]/g, '')) ?? [])].sort()
+}
+
+/**
+ * The definitions allowed to carry an element name that the schema does use.
+ * An entry here says the name collides but the meaning does not, so it stays
+ * on the no-home list. Anything else on that list must be a name the schema
+ * does not use at all.
+ */
+const ELEMENT_COLLISIONS: Readonly<Record<string, readonly string[]>> = {
+  // MusicXML's <bracket> is a line drawn over a passage. The schema's brackets
+  // are a staff symbol and the one a tuplet is drawn with, and neither spans a
+  // passage.
+  bracket: ['staff-symbol', 'tuplet'],
+  // MusicXML's <system-layout> is page spacing. MNX's system-layout is the
+  // arrangement of staves in a system. The names meet; the meanings do not.
+  'system-layout': ['system-layout'],
+}
+
+/**
+ * Where each attribute on the no-home list would live if it had a home, so the
+ * fact is that this definition has no such property. The few whose comment
+ * makes a claim about the whole schema instead are listed after it.
+ */
+const ATTRIBUTE_HOMES: Readonly<Record<string, string>> = {
+  'dot placement': 'note-value',
+  'note dynamics': 'perform-options',
+  'sound dynamics': 'sound',
+  'sound pan': 'sound',
+  'sound elevation': 'sound',
+  'sound pizzicato': 'event-markings',
+  'sound segno': 'segno',
+  'clef after-barline': 'clef',
+  'tied line-type': 'tie',
+  'metronome parentheses': 'tempo',
+  'direction system': 'system',
+  'measure implicit': 'measure-global',
+}
+
+/** Attributes whose comment claims the schema has no such concept anywhere. */
+const ATTRIBUTES_NOWHERE: Readonly<Record<string, readonly string[]>> = {
+  // No cue and no size concept anywhere.
+  'type size': ['size', 'cue'],
+  // The same fact the <pedal> element rests on.
+  'sound damper-pedal': ['pedal'],
+  'sound soft-pedal': ['pedal'],
+  'sound sostenuto-pedal': ['pedal'],
+}
+
+/** Attributes whose home would be a wider jump-type, not a property. */
+const ATTRIBUTES_NEEDING_A_JUMP = ['sound dacapo', 'sound tocoda', 'sound coda']
+
+describe('the registry of what MNX cannot hold, against the schema', () => {
+  test.each([...NO_HOME_IN_MNX])('the schema has nowhere for <%s>', (element) => {
+    // The bar the registry sets itself: no definition in the schema could hold
+    // it. A name the schema has gained is a converter gap, not a format limit,
+    // and calling it permanent is the worse of the two errors.
+    expect(usedBy(element)).toEqual([...(ELEMENT_COLLISIONS[element] ?? [])].sort())
+  })
+
+  test('every collision exception names an element still on the list', () => {
+    expect(Object.keys(ELEMENT_COLLISIONS).filter((one) => !NO_HOME_IN_MNX.has(one))).toEqual([])
+  })
+
+  test('every attribute on the list states which fact it rests on', () => {
+    const stated = new Set([
+      ...Object.keys(ATTRIBUTE_HOMES),
+      ...Object.keys(ATTRIBUTES_NOWHERE),
+      ...ATTRIBUTES_NEEDING_A_JUMP,
+    ])
+    expect([...NO_HOME_ATTRIBUTES].filter((one) => !stated.has(one))).toEqual([])
+    expect([...stated].filter((one) => !NO_HOME_ATTRIBUTES.has(one))).toEqual([])
+  })
+
+  test.each(Object.entries(ATTRIBUTE_HOMES))(
+    'the definition that would hold %s has no such property',
+    (entry, definition) => {
+      const attribute = entry.slice(entry.indexOf(' ') + 1)
+      const wanted = attribute.toLowerCase().replace(/[^a-z0-9]/g, '')
+      const held = Object.keys(schemaDefs[definition]?.properties ?? {}).map((one) =>
+        one.toLowerCase().replace(/[^a-z0-9]/g, ''),
+      )
+      expect(held).not.toContain(wanted)
+    },
+  )
+
+  test.each(Object.entries(ATTRIBUTES_NOWHERE))(
+    'the schema has no concept behind %s',
+    (_entry, concepts) => {
+      expect(concepts.flatMap((concept) => usedBy(concept))).toEqual([])
+    },
+  )
+
+  test.each(ATTRIBUTES_NEEDING_A_JUMP)('%s would need a jump type the schema lacks', () => {
+    // MNX jumps to a segno or plays to a Fine, and names nothing else, so a
+    // da capo, a to-coda and a coda have nowhere to go.
+    expect(schemaDefs['jump-type']?.enum).toEqual(['dsalfine', 'segno'])
+  })
+})
