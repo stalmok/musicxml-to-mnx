@@ -59,12 +59,17 @@ describe('which way an octave shift goes', () => {
     expect(ottavas[0]?.[0]?.value).toBe(-1)
   })
 
+  // Every size is read in both directions, because the reader states the
+  // value for each pairing rather than negating one of them.
   test.each([
-    ['8', 1],
-    ['15', 2],
-    ['22', 3],
-  ])('reads a size of %s as %i octaves', (size, octaves) => {
-    const { ottavas } = read(shift('down', size) + NOTE + shift('stop'))
+    ['down', '8', 1],
+    ['down', '15', 2],
+    ['down', '22', 3],
+    ['up', '8', -1],
+    ['up', '15', -2],
+    ['up', '22', -3],
+  ])('reads a shift "%s" of size %s as %i octaves', (type, size, octaves) => {
+    const { ottavas } = read(shift(type, size) + NOTE + shift('stop'))
 
     expect(ottavas[0]?.[0]?.value).toBe(octaves)
   })
