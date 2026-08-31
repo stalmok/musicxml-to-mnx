@@ -65,6 +65,14 @@ export default {
       from: { path: '^cli/', pathNot: '\\.test\\.ts$' },
       to: { path: '^src/', pathNot: '^src/index\\.ts$' },
     },
+    {
+      name: 'library-does-not-import-the-command',
+      comment:
+        'The command depends on the library, so the library must not depend back on it. cli/ is a Node program and is not in the published bundle.',
+      severity: 'error',
+      from: { path: '^src/' },
+      to: { path: '^cli/' },
+    },
 
     // === The isomorphic core ===
     //
@@ -115,7 +123,6 @@ export default {
           '\\.(test|bench)\\.ts$',
           '^cli/main\\.ts$', // the command's entry point
           '^src/index\\.ts$', // the package's entry point
-          '^tests/support/', // fixtures and helpers, loaded by tests only
           '\\.d\\.ts$',
           '(^|/)\\.[^/]+\\.(js|cjs|mjs|ts)$', // dot-configuration, this file included
           '(^|/)[^/]+\\.config\\.(js|cjs|mjs|ts)$',
