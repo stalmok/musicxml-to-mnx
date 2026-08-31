@@ -17,12 +17,24 @@ export default {
     // MusicXML knowledge stops at the reader and MNX knowledge starts at the
     // writer. Both stages meet at the model, and neither knows the pipeline
     // that drives them.
+    //
+    // A unit test beside its source is held to the same line as the source.
+    // These rules used to exempt every *.test.ts, inherited whole from the
+    // ESLint config they replaced, and the only two files using the exemption
+    // were asserting on converted MNX from inside the reader's folder. Those
+    // assertions are end to end and live in tests/support-block.test.ts now,
+    // where they go through the public API. A test that needs both stages is
+    // an end-to-end test and belongs in tests/.
+    //
+    // The two rules further down about what ships keep the exemption, because
+    // a test genuinely differs there: it imports vitest, a devDependency, and
+    // reads fixtures through Node core modules. Neither is shipped.
     {
       name: 'reader-knows-no-mnx',
       comment:
         'The reader produces the neutral score model, so it must not know the MNX output shape, the pipeline, or the packaging layer.',
       severity: 'error',
-      from: { path: '^src/read/', pathNot: '\\.test\\.ts$' },
+      from: { path: '^src/read/' },
       to: { path: '^src/(write/|types/|convert\\.ts$|container\\.ts$)' },
     },
     {
@@ -30,7 +42,7 @@ export default {
       comment:
         'The writer consumes the neutral score model, so it must not know MusicXML, the XML layer, the pipeline, or the packaging layer.',
       severity: 'error',
-      from: { path: '^src/write/', pathNot: '\\.test\\.ts$' },
+      from: { path: '^src/write/' },
       to: { path: '^src/(read/|xml/|convert\\.ts$|container\\.ts$)' },
     },
     {
@@ -38,7 +50,7 @@ export default {
       comment:
         'The model depends on neither stage, the MNX types, nor the XML layer; that is what keeps it a boundary.',
       severity: 'error',
-      from: { path: '^src/model/', pathNot: '\\.test\\.ts$' },
+      from: { path: '^src/model/' },
       to: { path: '^src/(read/|write/|types/|xml/|convert\\.ts$|container\\.ts$)' },
     },
     {
@@ -46,7 +58,7 @@ export default {
       comment:
         'The XML layer knows no music and the MNX types know only the wire format. Neither may import a stage or the model.',
       severity: 'error',
-      from: { path: '^src/(xml|types)/', pathNot: '\\.test\\.ts$' },
+      from: { path: '^src/(xml|types)/' },
       to: { path: '^src/(read/|write/|model/|convert\\.ts$|container\\.ts$)' },
     },
     {
@@ -62,7 +74,7 @@ export default {
       comment:
         'The command is a consumer of the library, not a fourth stage: it goes through src/index.ts alone, like any other user of the package.',
       severity: 'error',
-      from: { path: '^cli/', pathNot: '\\.test\\.ts$' },
+      from: { path: '^cli/' },
       to: { path: '^src/', pathNot: '^src/index\\.ts$' },
     },
     {

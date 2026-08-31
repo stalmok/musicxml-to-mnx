@@ -1,14 +1,13 @@
 // MusicXML draws an accidental only where it writes an <accidental> element;
 // a note with an alter but none is covered by the key or a note before it.
 // MNX states this the same way round, marking the notes whose accidental
-// shows, and the document says once, in its support block, that it does so.
+// shows. What the document then declares once, in its support block, is a
+// fact about the whole conversion and is tested in tests/support-block.test.ts.
 
 import { describe, expect, test } from 'vitest'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
-import { writeMnx } from '../write/mnx.js'
-import { schemaErrors } from '../../tests/support/schema.js'
 import type { Note } from '../model/score.js'
 
 function note(step: string, alter: string, body: string): string {
@@ -97,46 +96,6 @@ describe('a forced accidental', () => {
     const { notes } = read(score(note('F', '1', '<accidental>sharp</accidental>')))
 
     expect(notes[0]?.accidentalDisplay?.force).toBeUndefined()
-  })
-
-  test('writes force onto schema-valid MNX', () => {
-    const { notes: _n, score: model } = read(
-      score(note('F', '1', '<accidental cautionary="yes">sharp</accidental>')),
-    )
-    const mnx = writeMnx(model)
-
-    expect(JSON.stringify(mnx)).toContain('"force":true')
-    expect(schemaErrors(mnx)).toEqual([])
-  })
-})
-
-// Whether the document draws its accidentals is a fact about the whole of it,
-// so it is read off the finished score rather than accumulated while it is
-// built. That keeps it a property of what was converted rather than of the
-// order the reader happened to visit things in.
-describe('the document declaring it states accidentals', () => {
-  test('says so once any note draws an accidental', () => {
-    const { score: result } = read(score(note('G', '1', '<accidental>sharp</accidental>')))
-
-    expect(writeMnx(result).mnx.support).toEqual({ useAccidentalDisplay: true })
-  })
-
-  test('does not claim it where the source never draws one', () => {
-    const { score: result } = read(score(note('C', '', '')))
-
-    expect(writeMnx(result).mnx.support).toBeUndefined()
-  })
-
-  test('finds one drawn inside a tuplet or a grace group', () => {
-    const { score: result } = read(
-      score(
-        '<note><grace/><pitch><step>G</step><octave>4</octave></pitch><type>eighth</type>' +
-          '<accidental>sharp</accidental></note>' +
-          note('C', '', ''),
-      ),
-    )
-
-    expect(writeMnx(result).mnx.support).toEqual({ useAccidentalDisplay: true })
   })
 })
 
