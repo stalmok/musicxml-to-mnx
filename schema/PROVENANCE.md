@@ -42,10 +42,14 @@ chore:
    three places that state something about MNX by hand to this file: the types
    in `src/types/mnx.ts`, the registry of what MNX cannot hold in
    `src/read/unrepresentable.ts`, and the id pattern in `src/read/score.ts`.
-   Every failure is a decision to make, and the test says which.
+   It also compares the model's MNX-spelled enums in `src/model/score.ts` with
+   the MNX types they copy. Every failure is a decision to make, and the test
+   says which.
 3. Update `src/types/mnx.ts` to match any shape change the test reported. A
    field the schema gained and the types lack is never emitted, and the output
-   stays legal, so nothing else catches it.
+   stays legal, so nothing else catches it. Where the change is to a value the
+   model states too, carry it into `src/model/score.ts` or record the
+   difference as deliberate, which is what the test asks for.
 4. Move any entry the test reported out of `src/read/unrepresentable.ts` and
    into whatever now carries it. An element MNX has since gained a home for is
    a gap in this converter, not a limit of the format, and reporting it as

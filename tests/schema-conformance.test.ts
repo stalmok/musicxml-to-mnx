@@ -3,12 +3,13 @@
 //
 // The schema is the oracle for the output, and tests/support/schema.ts checks
 // every emitted document against it. That reaches nothing the converter
-// believes about MNX before it emits anything, and three places state such
+// believes about MNX before it emits anything, and four places state such
 // beliefs by hand:
 //
 //   src/types/mnx.ts             these are MNX's fields and enums
 //   src/read/unrepresentable.ts  these elements have nowhere to go in MNX
 //   src/read/score.ts            an MNX id looks like this
+//   src/model/score.ts           the model's enums, spelled the way MNX does
 //
 // Both ways of being wrong are silent. A field the types lack cannot be
 // emitted, and the output stays legal because the field is optional, so no
@@ -415,5 +416,139 @@ describe('the registry of what MNX cannot hold, against the schema', () => {
     // MNX jumps to a segno or plays to a Fine, and names nothing else, so a
     // da capo, a to-coda and a coda have nowhere to go.
     expect(schemaDefs['jump-type']?.enum).toEqual(['dsalfine', 'segno'])
+  })
+})
+
+// --- The model's enums against the MNX ones they are spelled from -----------
+//
+// The model is MNX-spelled on purpose (docs/architecture.md): its enums use
+// MNX's words so the writer needs no second table. That makes each of them a
+// copy, and this is what compares the two.
+//
+// One direction is already checked: the writer assigns a model value into an
+// MNX field, so a model enum gaining a member MNX lacks does not compile. The
+// other direction reaches nothing. MNX gaining a member the model lacks is a
+// value the converter can never produce, and every document it writes stays
+// legal, so no test fails and the loss report says nothing, because the loss
+// is at the output end and the report is driven by the input.
+
+/**
+ * Each model enum, against the MNX type it is spelled from. An MNX type
+ * stated inline on an interface is named Interface.property.
+ */
+const MNX_SPELLING: Readonly<Record<string, string>> = {
+  Step: 'MNXStep',
+  NoteValueBase: 'MNXNoteValueBase',
+  ClefSign: 'MNXClefSign',
+  CurveSide: 'MNXCurveSide',
+  LineType: 'MNXLineType',
+  FermataSymbol: 'MNXFermataSymbol',
+  TupletDisplay: 'MNXTupletDisplaySetting',
+  AccentPrefix: 'MNXDynamic.accentPrefix',
+  AccentSuffix: 'MNXDynamic.accentSuffix',
+  DynamicValue: 'MNXDynamicValue',
+  WedgeType: 'MNXWedgeType',
+  OttavaAmount: 'MNXOttavaAmount',
+  TimeUnit: 'MNXTimeSignatureUnit',
+  BarlineType: 'MNXBarlineType',
+  JumpType: 'MNXJumpType',
+}
+
+/** A model enum MNX states as something other than a value, with what it is. */
+const NOT_AN_MNX_ENUM: Readonly<Record<string, string>> = {
+  MarkingKind: 'MNX gives each mark a property of its own on event markings.',
+}
+
+/**
+ * Where the model deliberately states fewer values than MNX, and why. An
+ * entry is a decision; a difference not here is drift, and fails.
+ */
+const NARROWER: Readonly<Record<string, { missing: readonly string[]; why: string }>> = {
+  NoteValueBase: {
+    missing: ['2048th', '4096th', 'duplexMaxima'],
+    why: 'No MusicXML <type> spells any of the three, so the reader cannot produce one.',
+  },
+}
+
+/**
+ * Every exported union of literal values in a file, by name. Read through the
+ * compiler for the same reason the interfaces above are: a union states its
+ * members through named aliases, and they have to be resolved to compare.
+ */
+function readUnions(): Map<string, Map<string, string[]>> {
+  const files = ['../src/model/score.ts', '../src/types/mnx.ts'].map((path) =>
+    fileURLToPath(new URL(path, import.meta.url)),
+  )
+  const program = ts.createProgram(files, {
+    strict: true,
+    noEmit: true,
+    target: ts.ScriptTarget.ES2022,
+  })
+  const checker = program.getTypeChecker()
+
+  const found = new Map<string, Map<string, string[]>>()
+  for (const file of files) {
+    const source = program.getSourceFile(file)
+    if (source === undefined) throw new Error(`${file} did not compile.`)
+    const unions = new Map<string, string[]>()
+    ts.forEachChild(source, (node) => {
+      if (!ts.isTypeAliasDeclaration(node)) return
+      const symbol = checker.getSymbolAtLocation(node.name)
+      if (symbol === undefined) return
+      const type = checker.getDeclaredTypeOfSymbol(symbol)
+      const parts = type.isUnion() ? type.types : [type]
+      const literals = parts.filter((part) => part.isStringLiteral() || part.isNumberLiteral())
+      // A union of interfaces, such as SequenceItem, states no values.
+      if (literals.length !== parts.length) return
+      unions.set(node.name.text, literals.map((literal) => String(literal.value)).sort())
+    })
+    found.set(file.endsWith('score.ts') ? 'model' : 'mnx', unions)
+  }
+  return found
+}
+
+const unions = readUnions()
+const modelUnions = unions.get('model') ?? new Map<string, string[]>()
+
+/** The values an MNX type states, whether it is an alias or an inline union. */
+function mnxSpelling(name: string): string[] | undefined {
+  const dot = name.indexOf('.')
+  if (dot === -1) return unions.get('mnx')?.get(name)
+  return mnxTypes.get(name.slice(0, dot))?.get(name.slice(dot + 1))?.union ?? undefined
+}
+
+describe("the model's enums against the MNX ones they are spelled from", () => {
+  test('every enum the model states is paired with an MNX one, or says why not', () => {
+    expect(
+      [...modelUnions.keys()].filter(
+        (name) => !(name in MNX_SPELLING) && !(name in NOT_AN_MNX_ENUM),
+      ),
+    ).toEqual([])
+  })
+
+  test('every pairing names an enum the model still states', () => {
+    const paired = [...Object.keys(MNX_SPELLING), ...Object.keys(NOT_AN_MNX_ENUM)]
+    expect(paired.filter((name) => !modelUnions.has(name))).toEqual([])
+  })
+
+  test.each(Object.entries(MNX_SPELLING))('%s states the same values as %s', (model, mnx) => {
+    const stated = modelUnions.get(model) ?? []
+    const spelled = mnxSpelling(mnx)
+    expect(spelled, `the MNX types state no ${mnx}`).toBeDefined()
+    const deliberate = NARROWER[model]?.missing ?? []
+
+    // Values MNX states and the model does not. Nothing else reports one: it
+    // is output the converter can never produce, and what it does produce
+    // stays legal.
+    expect(
+      (spelled ?? []).filter((one) => !stated.includes(one) && !deliberate.includes(one)),
+    ).toEqual([])
+    // Values the model states and MNX does not. The writer catches these where
+    // it assigns one into the other; this names the enum rather than the field.
+    expect(stated.filter((one) => !(spelled ?? []).includes(one))).toEqual([])
+    // A stated difference MNX has dropped, or that the model has since gained.
+    expect(
+      deliberate.filter((one) => !(spelled ?? []).includes(one) || stated.includes(one)),
+    ).toEqual([])
   })
 })
