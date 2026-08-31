@@ -19,6 +19,9 @@ pnpm typecheck
 echo "pre-commit → pnpm lint"
 pnpm lint
 
+echo "pre-commit → pnpm deps:check"
+pnpm deps:check
+
 echo "pre-commit → pnpm format:check"
 pnpm format:check
 

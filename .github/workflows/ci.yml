@@ -51,6 +51,9 @@ jobs:
 
       - run: pnpm typecheck
       - run: pnpm lint
+      # The import graph: stage boundaries, cycles, dead files, and a
+      # dev-only dependency reaching the shipped library.
+      - run: pnpm deps:check
       - run: pnpm format:check
       # The full suite, including the vendored corpus that the pre-commit
       # hook skips for speed. This is where that corpus is gated on every
