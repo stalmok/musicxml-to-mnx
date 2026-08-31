@@ -8,24 +8,26 @@
 import { compareFractions, fraction, multiplyFractions } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type { NoteValue, NoteValueBase } from '../model/score.js'
+import { entriesOf } from './tables.js'
 
-// Every note value, as a fraction of a whole note.
-const BASE_VALUES: readonly (readonly [NoteValueBase, Fraction])[] = [
-  ['maxima', fraction(8)],
-  ['longa', fraction(4)],
-  ['breve', fraction(2)],
-  ['whole', fraction(1)],
-  ['half', fraction(1, 2)],
-  ['quarter', fraction(1, 4)],
-  ['eighth', fraction(1, 8)],
-  ['16th', fraction(1, 16)],
-  ['32nd', fraction(1, 32)],
-  ['64th', fraction(1, 64)],
-  ['128th', fraction(1, 128)],
-  ['256th', fraction(1, 256)],
-  ['512th', fraction(1, 512)],
-  ['1024th', fraction(1, 1024)],
-]
+// Every note value, as a fraction of a whole note. Keyed by the model's own
+// value, so a value the model gains and this table lacks does not compile.
+const BASE_VALUES: Record<NoteValueBase, Fraction> = {
+  maxima: fraction(8),
+  longa: fraction(4),
+  breve: fraction(2),
+  whole: fraction(1),
+  half: fraction(1, 2),
+  quarter: fraction(1, 4),
+  eighth: fraction(1, 8),
+  '16th': fraction(1, 16),
+  '32nd': fraction(1, 32),
+  '64th': fraction(1, 64),
+  '128th': fraction(1, 128),
+  '256th': fraction(1, 256),
+  '512th': fraction(1, 512),
+  '1024th': fraction(1, 1024),
+}
 
 // Beyond three, dots stop appearing in real music.
 const MAX_DOTS = 3
@@ -37,10 +39,10 @@ const MAX_DOTS = 3
  * a rhythm the source never wrote.
  */
 export function lengthOf(value: NoteValue): Fraction {
-  const base = BASE_VALUES.find(([name]) => name === value.base)
-  /* v8 ignore next -- the base is one of the values in the table by type. */
-  if (!base) throw new Error(`Unknown note value base: ${value.base}`)
-  return multiplyFractions(base[1], fraction(2 ** (value.dots + 1) - 1, 2 ** value.dots))
+  return multiplyFractions(
+    BASE_VALUES[value.base],
+    fraction(2 ** (value.dots + 1) - 1, 2 ** value.dots),
+  )
 }
 
 /** How a note value reads in a sentence, for example "a double-dotted half". */
@@ -64,7 +66,7 @@ export function describeLength(duration: Fraction): string {
 export function noteValueOf(duration: Fraction): NoteValue | undefined {
   if (compareFractions(duration, fraction(0)) <= 0) return undefined
 
-  for (const [base, value] of BASE_VALUES) {
+  for (const [base, value] of entriesOf(BASE_VALUES)) {
     for (let dots = 0; dots <= MAX_DOTS; dots++) {
       // Each dot adds half of what came before, so n dots multiply the value
       // by (2^(n+1) - 1) / 2^n.

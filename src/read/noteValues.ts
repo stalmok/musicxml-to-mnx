@@ -10,23 +10,33 @@ import type { DocumentPath } from '../errors.js'
 import type { NoteValueBase } from '../model/score.js'
 import type { XmlElement } from '../xml/parse.js'
 import { trimmedText } from '../xml/tree.js'
+import { entriesOf } from './tables.js'
 
-const NOTE_VALUE_BASES = new Map<string, NoteValueBase>([
-  ['maxima', 'maxima'],
-  ['long', 'longa'],
-  ['breve', 'breve'],
-  ['whole', 'whole'],
-  ['half', 'half'],
-  ['quarter', 'quarter'],
-  ['eighth', 'eighth'],
-  ['16th', '16th'],
-  ['32nd', '32nd'],
-  ['64th', '64th'],
-  ['128th', '128th'],
-  ['256th', '256th'],
-  ['512th', '512th'],
-  ['1024th', '1024th'],
-])
+// MusicXML's word for every note value the model states. Keyed by the model's
+// own value, so a value the model gains and this table lacks does not compile,
+// which is the direction that matters: a value with no spelling here is one
+// the reader would never read.
+const MUSICXML_SPELLINGS: Record<NoteValueBase, string> = {
+  maxima: 'maxima',
+  longa: 'long',
+  breve: 'breve',
+  whole: 'whole',
+  half: 'half',
+  quarter: 'quarter',
+  eighth: 'eighth',
+  '16th': '16th',
+  '32nd': '32nd',
+  '64th': '64th',
+  '128th': '128th',
+  '256th': '256th',
+  '512th': '512th',
+  '1024th': '1024th',
+}
+
+// The same table the way it is read: MusicXML's word to the model's value.
+const NOTE_VALUE_BASES = new Map<string, NoteValueBase>(
+  entriesOf(MUSICXML_SPELLINGS).map(([base, spelling]) => [spelling, base]),
+)
 
 /** The note value an element's text names, or nothing when it names none. */
 export function noteValueBaseOf(element: XmlElement): NoteValueBase | undefined {
