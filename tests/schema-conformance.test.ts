@@ -3,13 +3,17 @@
 //
 // The schema is the oracle for the output, and tests/support/schema.ts checks
 // every emitted document against it. That reaches nothing the converter
-// believes about MNX before it emits anything, and four places state such
+// believes about MNX before it emits anything, and three places state such
 // beliefs by hand:
 //
 //   src/types/mnx.ts             these are MNX's fields and enums
 //   src/read/unrepresentable.ts  these elements have nowhere to go in MNX
 //   src/read/score.ts            an MNX id looks like this
-//   src/model/score.ts           the model's enums, spelled the way MNX does
+//
+// A fourth, the model's enums in src/model/score.ts, is a copy of the types
+// rather than of the schema, because the model is spelled the way MNX spells
+// things. It is compared with the types at the end of this file, and reaches
+// the schema through them.
 //
 // Both ways of being wrong are silent. A field the types lack cannot be
 // emitted, and the output stays legal because the field is optional, so no
@@ -439,9 +443,18 @@ describe('the registry of what MNX cannot hold, against the schema', () => {
 // legal, so no test fails and the loss report says nothing, because the loss
 // is at the output end and the report is driven by the input.
 
+/** The model's own tag for a sequence item, which MNX states as a type. */
+const SEQUENCE_ITEM_TAG =
+  'The model tags a sequence item with kind, and the writer states MNX type from it. The two do not always spell it alike: the model says multiNoteTremolo where MNX says tremolo.'
+
+/** The reason most of the narrowings below share. */
+const UNSTATED_IS_UNDEFINED =
+  'MNX names a value auto for what the source did not state; the model leaves it undefined, so the writer omits the field and a renderer decides.'
+
 /**
- * Each model enum, against the MNX type it is spelled from. An MNX type
- * stated inline on an interface is named Interface.property.
+ * Each model enum, against the MNX type it is spelled from. Either side may
+ * be written inline on an interface rather than named, and is Interface.property
+ * where it is.
  */
 const MNX_SPELLING: Readonly<Record<string, string>> = {
   Step: 'MNXStep',
@@ -459,68 +472,169 @@ const MNX_SPELLING: Readonly<Record<string, string>> = {
   TimeUnit: 'MNXTimeSignatureUnit',
   BarlineType: 'MNXBarlineType',
   JumpType: 'MNXJumpType',
+  'AccidentalDisplay.enclosure': 'MNXAccidentalEnclosureSymbol',
+  'Event.stemDirection': 'MNXEvent.stemDirection',
+  'PartGroup.symbol': 'MNXStaffSymbol',
+  'PartGroup.barlineStyle': 'MNXStaffGroupBarlineStyle',
+  'TimeSignature.display': 'MNXTime.display',
+  'Lyric.type': 'MNXLyricLineType',
+  'Marking.orient': 'MNXOrientation',
+  'Marking.pointing': 'MNXStrongAccent.pointing',
+  'Fermata.orient': 'MNXOrientation',
+  'Fermata.pointing': 'MNXFermata.pointing',
+  'Tuplet.orient': 'MNXOrientation',
+  'Tuplet.bracket': 'MNXTuplet.bracket',
+  'Dynamic.orient': 'MNXMultiStaffOrientation',
+  'Ottava.orient': 'MNXOrientation',
+  'Arpeggio.direction': 'MNXArpeggio.direction',
+  'Beam.direction': 'MNXBeamHookDirection',
 }
 
 /** A model enum MNX states as something other than a value, with what it is. */
 const NOT_AN_MNX_ENUM: Readonly<Record<string, string>> = {
   MarkingKind: 'MNX gives each mark a property of its own on event markings.',
+  'Event.kind': SEQUENCE_ITEM_TAG,
+  'Space.kind': SEQUENCE_ITEM_TAG,
+  'Tuplet.kind': SEQUENCE_ITEM_TAG,
+  'GraceGroup.kind': SEQUENCE_ITEM_TAG,
+  'MultiNoteTremolo.kind': SEQUENCE_ITEM_TAG,
 }
 
 /**
  * Where the model deliberately states fewer values than MNX, and why. An
  * entry is a decision; a difference not here is drift, and fails.
+ *
+ * Most of them are the same decision: MNX names a value "auto" for a thing
+ * the source did not state, and the model leaves it undefined instead, so the
+ * writer omits the field and a renderer decides.
  */
 const NARROWER: Readonly<Record<string, { missing: readonly string[]; why: string }>> = {
   NoteValueBase: {
     missing: ['2048th', '4096th', 'duplexMaxima'],
     why: 'No MusicXML <type> spells any of the three, so the reader cannot produce one.',
   },
+  'Lyric.type': {
+    missing: ['whole'],
+    why: 'A syllable that is a whole word states no type at all.',
+  },
+  'Marking.orient': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
+  'Fermata.orient': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
+  'Tuplet.orient': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
+  'Ottava.orient': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
+  'Marking.pointing': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
+  'Fermata.pointing': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
+  'Tuplet.bracket': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
+  'Arpeggio.direction': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
+  'Beam.direction': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
+  'Dynamic.orient': {
+    missing: ['auto', 'between'],
+    why: `${UNSTATED_IS_UNDEFINED} A dynamic written between two staves of one part is not read.`,
+  },
+  'PartGroup.barlineStyle': {
+    missing: ['instrument'],
+    why: "MusicXML's <group-barline> says yes, no or Mensurstrich, and none of them means one line per instrument.",
+  },
 }
 
 /**
- * Every exported union of literal values in a file, by name. Read through the
- * compiler for the same reason the interfaces above are: a union states its
- * members through named aliases, and they have to be resolved to compare.
+ * Every union of literal values a file states, by name, whether it is written
+ * as a named alias or inline on an interface property. An inline one is named
+ * Interface.property. Read through the compiler for the same reason the
+ * interfaces above are: a union states its members through named aliases, and
+ * they have to be resolved to compare.
+ *
+ * A property whose type is a named alias is left out, because the alias is
+ * already here under its own name and listing both would state one decision
+ * twice. The unions this reaches that nothing else does are the ones written
+ * out where they are used.
  */
-function readUnions(): Map<string, Map<string, string[]>> {
-  const files = ['../src/model/score.ts', '../src/types/mnx.ts'].map((path) =>
-    fileURLToPath(new URL(path, import.meta.url)),
-  )
-  const program = ts.createProgram(files, {
+function readModelUnions(): Map<string, string[]> {
+  const file = fileURLToPath(new URL('../src/model/score.ts', import.meta.url))
+  const program = ts.createProgram([file], {
     strict: true,
     noEmit: true,
     target: ts.ScriptTarget.ES2022,
   })
   const checker = program.getTypeChecker()
+  const source = program.getSourceFile(file)
+  if (source === undefined) throw new Error('src/model/score.ts did not compile.')
 
-  const found = new Map<string, Map<string, string[]>>()
-  for (const file of files) {
-    const source = program.getSourceFile(file)
-    if (source === undefined) throw new Error(`${file} did not compile.`)
-    const unions = new Map<string, string[]>()
-    ts.forEachChild(source, (node) => {
-      if (!ts.isTypeAliasDeclaration(node)) return
+  /** The values a type states, or nothing where it states something else. */
+  const valuesOf = (type: ts.Type): string[] | undefined => {
+    const parts = type.isUnion() ? type.types : [type]
+    // Undefined is how the model writes a value it may not have; the union is
+    // about the values it can hold.
+    const stated = parts.filter((part) => (part.flags & ts.TypeFlags.Undefined) === 0)
+    const literals = stated.filter((part) => part.isStringLiteral() || part.isNumberLiteral())
+    // A union of interfaces, such as SequenceItem, states no values, and a
+    // union mixing literals with anything else is not a vocabulary.
+    if (literals.length !== stated.length || literals.length === 0) return undefined
+    return literals.map((literal) => String(literal.value)).sort()
+  }
+
+  /** A type written out of literals here, rather than named elsewhere. */
+  const isWrittenInline = (node: ts.TypeNode | undefined): boolean => {
+    if (node === undefined) return false
+    const parts = ts.isUnionTypeNode(node) ? node.types : [node]
+    const stated = parts.filter((part) => part.kind !== ts.SyntaxKind.UndefinedKeyword)
+    return stated.length > 0 && stated.every((part) => ts.isLiteralTypeNode(part))
+  }
+
+  const found = new Map<string, string[]>()
+  ts.forEachChild(source, (node) => {
+    if (ts.isTypeAliasDeclaration(node)) {
       const symbol = checker.getSymbolAtLocation(node.name)
       if (symbol === undefined) return
-      const type = checker.getDeclaredTypeOfSymbol(symbol)
-      const parts = type.isUnion() ? type.types : [type]
-      const literals = parts.filter((part) => part.isStringLiteral() || part.isNumberLiteral())
-      // A union of interfaces, such as SequenceItem, states no values.
-      if (literals.length !== parts.length) return
-      unions.set(node.name.text, literals.map((literal) => String(literal.value)).sort())
-    })
-    found.set(file.endsWith('score.ts') ? 'model' : 'mnx', unions)
-  }
+      const values = valuesOf(checker.getDeclaredTypeOfSymbol(symbol))
+      if (values) found.set(node.name.text, values)
+      return
+    }
+    if (!ts.isInterfaceDeclaration(node)) return
+    for (const member of node.members) {
+      if (!ts.isPropertySignature(member) || !isWrittenInline(member.type)) continue
+      const symbol = checker.getSymbolAtLocation(member.name)
+      if (symbol === undefined) continue
+      const values = valuesOf(checker.getTypeOfSymbolAtLocation(symbol, node))
+      if (values) found.set(`${node.name.text}.${member.name.getText()}`, values)
+    }
+  })
   return found
 }
 
-const unions = readUnions()
-const modelUnions = unions.get('model') ?? new Map<string, string[]>()
+/** Every union of literal values the MNX types state as a named alias. */
+function readMnxUnions(): Map<string, string[]> {
+  const file = fileURLToPath(new URL('../src/types/mnx.ts', import.meta.url))
+  const program = ts.createProgram([file], {
+    strict: true,
+    noEmit: true,
+    target: ts.ScriptTarget.ES2022,
+  })
+  const checker = program.getTypeChecker()
+  const source = program.getSourceFile(file)
+  if (source === undefined) throw new Error('src/types/mnx.ts did not compile.')
+
+  const found = new Map<string, string[]>()
+  ts.forEachChild(source, (node) => {
+    if (!ts.isTypeAliasDeclaration(node)) return
+    const symbol = checker.getSymbolAtLocation(node.name)
+    if (symbol === undefined) return
+    const type = checker.getDeclaredTypeOfSymbol(symbol)
+    const parts = type.isUnion() ? type.types : [type]
+    const literals = parts.filter((part) => part.isStringLiteral() || part.isNumberLiteral())
+    // A union of interfaces, such as MNXSequenceItem, states no values.
+    if (literals.length !== parts.length) return
+    found.set(node.name.text, literals.map((literal) => String(literal.value)).sort())
+  })
+  return found
+}
+
+const modelUnions = readModelUnions()
+const mnxUnions = readMnxUnions()
 
 /** The values an MNX type states, whether it is an alias or an inline union. */
 function mnxSpelling(name: string): string[] | undefined {
   const dot = name.indexOf('.')
-  if (dot === -1) return unions.get('mnx')?.get(name)
+  if (dot === -1) return mnxUnions.get(name)
   return mnxTypes.get(name.slice(0, dot))?.get(name.slice(dot + 1))?.union ?? undefined
 }
 
@@ -534,8 +648,16 @@ describe("the model's enums against the MNX ones they are spelled from", () => {
   })
 
   test('every pairing names an enum the model still states', () => {
-    const paired = [...Object.keys(MNX_SPELLING), ...Object.keys(NOT_AN_MNX_ENUM)]
+    const paired = [
+      ...Object.keys(MNX_SPELLING),
+      ...Object.keys(NOT_AN_MNX_ENUM),
+      ...Object.keys(NARROWER),
+    ]
     expect(paired.filter((name) => !modelUnions.has(name))).toEqual([])
+  })
+
+  test('every stated difference belongs to a pairing', () => {
+    expect(Object.keys(NARROWER).filter((name) => !(name in MNX_SPELLING))).toEqual([])
   })
 
   test.each(Object.entries(MNX_SPELLING))('%s states the same values as %s', (model, mnx) => {

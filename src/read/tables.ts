@@ -15,6 +15,10 @@
  * Sound for a record written as an annotated object literal, which is how
  * these tables are written: excess property checking means its keys can only
  * be members of the union it is keyed by.
+ *
+ * The entries come in the order the table states them, except that a key a
+ * number could be read as comes first, in rising order, which is how the
+ * language enumerates an object. No vocabulary here is spelled with those.
  */
 export function entriesOf<Key extends string, Value>(
   record: Readonly<Record<Key, Value>>,
@@ -37,6 +41,10 @@ type Spelled<Union> = Union extends string ? string : number
  * the compiler checks both ways: it demands a key for every member and
  * refuses a key that is not one. The predicate narrows to the union, so the
  * call site needs no cast.
+ *
+ * One word cannot be spelled this way: __proto__ sets an object's prototype
+ * rather than holding a key, so a vocabulary containing it would reject it.
+ * Neither format spells anything that way.
  */
 export function recogniser<Union extends string | number>(
   words: Readonly<Record<Union, true>>,
