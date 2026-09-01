@@ -232,7 +232,7 @@ function withLyrics(body: string): XmlElement {
 
 test('two lyrics on one line saying different things is a loss', () => {
   expect(differingLyricLines(withLyrics(verse('FIRST') + verse('SECOND')))).toEqual([
-    'part P1 measure 3 line 1: "FIRST" against "SECOND"',
+    'part P1 measure 3 line 1: "FIRST/" against "SECOND/"',
   ])
 })
 
@@ -242,4 +242,40 @@ test('two lyrics on one line saying the same thing lose nothing', () => {
 
 test('two lyrics on different lines are two verses, not a loss', () => {
   expect(differingLyricLines(withLyrics(verse('one') + verse('two', '2')))).toEqual([])
+})
+
+// The syllabic says how the syllable joins its word, and MNX states one for
+// the event, so two that agree on the words and not on the syllabic still
+// lose one of the two. The reader reports that; the check has to see it.
+test('two lyrics on one line differing only in the syllabic is a loss', () => {
+  const syllable = (spelling: string) =>
+    `<lyric number="1"><syllabic>${spelling}</syllabic><text>sing</text></lyric>`
+
+  expect(differingLyricLines(withLyrics(syllable('begin') + syllable('end')))).toEqual([
+    'part P1 measure 3 line 1: "sing/begin" against "sing/end"',
+  ])
+})
+
+// A syllable standing on its own is written either way, and both say the
+// same thing.
+test('a syllabic of single and no syllabic at all say the same thing', () => {
+  const single = '<lyric number="1"><syllabic>single</syllabic><text>la</text></lyric>'
+
+  expect(differingLyricLines(withLyrics(single + verse('la')))).toEqual([])
+})
+
+// An empty <text> is a syllable that draws nothing, and the converter keeps
+// the first of the two, so the words are gone if the empty one is first.
+test('an empty syllable beside a written one is a loss', () => {
+  expect(
+    differingLyricLines(withLyrics('<lyric number="1"><text></text></lyric>' + verse('word'))),
+  ).toEqual(['part P1 measure 3 line 1: "/" against "word/"'])
+})
+
+// A lyric with no <text> at all is a melisma marker rather than a verse, and
+// the reader passes over it, so it states nothing to disagree with.
+test('a lyric with no text at all states no verse to lose', () => {
+  expect(
+    differingLyricLines(withLyrics('<lyric number="1"><extend/></lyric>' + verse('word'))),
+  ).toEqual([])
 })

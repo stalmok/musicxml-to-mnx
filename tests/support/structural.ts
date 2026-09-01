@@ -671,14 +671,18 @@ export function layoutLosses(document: MNXDocument): string[] {
 }
 
 /**
- * Every place the source states one lyric line twice on one note with two
- * different texts. MNX states one lyric per line per event, so only one of
- * the two reaches the output.
+ * Every place the source states one lyric line twice on one note and the two
+ * say different things. MNX states one lyric per line per event, so only one
+ * of the two reaches the output.
  *
  * A note occasionally carries <lyric number="1"> twice saying the same thing,
  * which loses nothing. Reading the two without comparing them is what let a
  * real loss through: the check kept the last, exactly as the writer did, so
  * the two sides agreed about music the source did not write.
+ *
+ * Compared on the words and on the syllabic, which are the whole of what MNX
+ * states for a verse on an event, so this and the reader call the same pairs
+ * a loss.
  */
 export function differingLyricLines(root: XmlElement): string[] {
   const found: string[] = []
@@ -688,21 +692,26 @@ export function differingLyricLines(root: XmlElement): string[] {
         const perLine = new Map<string, string>()
         for (const lyric of note.children.filter((c) => c.name === 'lyric')) {
           const line = lyric.attributes.number ?? '1'
-          // Every <text>, joined the way the reader joins them, so that a
-          // verse elided across two <text>s is compared whole.
-          const text = lyric.children
-            .filter((c) => c.name === 'text' || c.name === 'elision')
-            .map((c) => c.text)
-            .join('')
-          if (text === '') continue
+          const pieces = lyric.children.filter((c) => c.name === 'text' || c.name === 'elision')
+          // A lyric with no <text> at all states no verse: one holding only an
+          // <extend> continues a melisma under a later note, and there is no
+          // syllable in it to lose. An empty <text> is a syllable that draws
+          // nothing, which is a verse and can be the one dropped.
+          if (!pieces.some((c) => c.name === 'text')) continue
+          // Every piece, joined the way the reader joins them, so a verse
+          // elided across two <text>s is compared whole. A syllabic of
+          // "single" and none at all both mean a syllable standing alone.
+          const written = pieces.map((c) => c.text).join('')
+          const spelling = lyric.children.find((c) => c.name === 'syllabic')?.text.trim() ?? ''
+          const verse = `${written}/${spelling === 'single' ? '' : spelling}`
           const seen = perLine.get(line)
-          if (seen !== undefined && seen !== text) {
+          if (seen !== undefined && seen !== verse) {
             found.push(
               `part ${part.attributes.id ?? ''} measure ${measure.attributes.number ?? ''} ` +
-                `line ${line}: "${seen}" against "${text}"`,
+                `line ${line}: "${seen}" against "${verse}"`,
             )
           }
-          perLine.set(line, text)
+          perLine.set(line, verse)
         }
       }
     }

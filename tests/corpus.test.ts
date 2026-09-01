@@ -73,12 +73,13 @@ test('refuses only the songs it is known to refuse', () => {
  * number on its own staff. Read straight from the XML, so it disagrees with
  * the converter when the converter is wrong.
  *
- * The staff belongs in the pairing because the corpus has both hands holding
- * a hairpin numbered 1 at once, in six songs. On the number alone, a stop on
- * one hand closes the other hand's hairpin: in brahms-1-gestillte-sehnsucht
- * the left hand's crescendo, opened partway through measure 7, was closed by
- * the right hand's stop half a beat later, and the right hand's diminuendo
- * ran on to the left hand's stop a measure further.
+ * The staff belongs in the pairing because 17 songs of the corpus hold both
+ * hands' hairpins numbered 1 at once. On the number alone, a stop on one hand
+ * closes the other hand's hairpin: in brahms-1-gestillte-sehnsucht the left
+ * hand's crescendo, opened partway through measure 7, was closed by the right
+ * hand's stop half a beat later, and the right hand's diminuendo ran on to
+ * the left hand's stop a measure further. Pairing on the staff as well moves
+ * the end of 20 hairpins, across 9 of the songs.
  */
 function sourceHairpins(root: XmlElement): string[] {
   const paired: string[] = []
@@ -547,14 +548,25 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
         }
       }
 
+      // Walked rather than scanned one level deep: an event inside a tuplet
+      // or a grace group states its staff the same way, and a note of a
+      // chord that reaches across to the other hand states its own.
+      const walk = (items: readonly MNXSequenceItem[], where: string): void => {
+        for (const item of items) {
+          if ('content' in item && Array.isArray(item.content)) walk(item.content, where)
+          if ('staff' in item) check(item.staff, `${where} event`)
+          if ('notes' in item) {
+            for (const note of item.notes ?? []) check(note.staff, `${where} note`)
+          }
+        }
+      }
+
       part.measures.forEach((measure, index) => {
         for (const clef of measure.clefs ?? [])
           check(clef.staff, `measure ${String(index + 1)} clef`)
         for (const sequence of measure.sequences) {
           check(sequence.staff, `measure ${String(index + 1)} sequence`)
-          for (const item of sequence.content) {
-            if ('staff' in item) check(item.staff, `measure ${String(index + 1)} event`)
-          }
+          walk(sequence.content, `measure ${String(index + 1)}`)
         }
       })
     })
@@ -612,9 +624,8 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
           // line on an event. A source occasionally writes the same
           // <lyric number="1"> twice on one note; counting both would fault
           // the converter for collapsing a duplicate that carries nothing new.
-          // Two that carry different things are a real loss, and the check
-          // below is what says so: this one alone would keep the same text
-          // the converter keeps and see nothing.
+          // Which of the two is kept here does not matter while they agree,
+          // and where they differ the check below is what reports it.
           const perLine = new Map<string, string>()
           for (const lyric of note.children.filter((c) => c.name === 'lyric')) {
             // Every <text>, joined by whatever the source put between them.

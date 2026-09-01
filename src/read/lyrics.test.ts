@@ -264,6 +264,16 @@ describe('one line stated twice on a note', () => {
     expect(warnings[0]?.message).toContain('SECOND')
   })
 
+  test('writes the first onto schema-valid MNX', () => {
+    const { mnx } = convertMusicXML(measure(note('C', lyric('FIRST') + lyric('SECOND'))))
+    const event = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
+
+    expect(event && 'lyrics' in event ? event.lyrics?.lines : undefined).toEqual({
+      '1': { text: 'FIRST' },
+    })
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
   test('carries one and says nothing where the two say the same thing', () => {
     const { events, warnings } = read(measure(note('C', lyric('same') + lyric('same'))))
 

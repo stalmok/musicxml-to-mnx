@@ -132,16 +132,18 @@ export interface SpanEnd<T> {
    * open start of its own voice before any other, because exporters number a
    * slur within the voice they write it in and reuse the number in every
    * voice. A hairpin and an octave shift belong to the staff rather than a
-   * voice and leave this unset, which puts every one of their ends in the
-   * same voice as every other.
+   * voice and leave this unset; the staff below is what separates their ends.
    */
   voice?: string | undefined
   /**
-   * The staff the source states on it, where it states one. An octave shift's
-   * stop uses it to read its end from its own staff's events. Left unset
-   * where the source says nothing, which is not read as the first staff: a
-   * source that names the staff on the start and leaves it off the stop means
-   * the start's, and neither reading is safe to assume.
+   * The staff the source states on it, where it states one. A stop takes the
+   * open start of its own staff before any other, the way a slur's stop takes
+   * its own voice: an exporter that numbers each hand from 1 has both hands
+   * holding a hairpin numbered 1 at once. An octave shift's stop also uses it
+   * to read its end from its own staff's events. Left unset where the source
+   * says nothing, which is not read as the first staff: a source that names
+   * the staff on the start and leaves it off the stop means the start's, and
+   * neither reading is safe to assume.
    */
   staff?: number | undefined
   /**
@@ -179,13 +181,15 @@ export type SamePoint = 'stop-first' | 'as-written'
  * they were read in.
  *
  * Several may carry the same number at once, so each number holds a stack. A
- * stop closes the most recently opened start of its own voice, and where its
- * voice has none open, the most recently opened of any voice. Both halves of
- * that matter. Without the voice, two voices each holding a slur numbered 1
- * over the same beats close into each other and the hands are sewn together.
- * Without the fallback, a voice that opens a slur another voice closes takes
- * a partner of its own from measures away, and the two ends the music meant
- * for each other are both reported as unmatched.
+ * stop closes the most recently opened start written where it was, meaning
+ * the same voice and the same staff, and where that has none open, the most
+ * recently opened of any. Both halves matter. Without the first, two voices
+ * each holding a slur numbered 1 over the same beats close into each other
+ * and the hands are sewn together, and two hands each holding a hairpin
+ * numbered 1 do the same. Without the fallback, a voice that opens a slur
+ * another voice closes takes a partner of its own from measures away, and
+ * the two ends the music meant for each other are both reported as
+ * unmatched. lastOpenedIn below states which half applies to what.
  *
  * A stop whose covered point falls before its start is reported as a
  * backwards-stop rather than joined: the joined span would end before it
@@ -811,7 +815,7 @@ export class SpannerResolver {
       position,
       covers: position,
       graceWritten,
-      ...(staff !== undefined ? { staff } : {}),
+      staff,
       payload: undefined,
       context,
       stop,
