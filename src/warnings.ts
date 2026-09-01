@@ -157,6 +157,9 @@ export type WarningCode =
   // list, so its name and any other list detail are unavailable; or the list
   // names a part the score never writes, so no staff of it is drawn.
   | 'unresolved:part-id'
+  // An attribute whose value is not one MusicXML defines for it, so what the
+  // source meant by it cannot be read. The attribute is not converted.
+  | 'unresolved:attribute-value'
   // A note's written value and its measured duration disagree, outside a
   // tuplet where they are meant to. The written value is the one converted.
   | 'inconsistent:duration'

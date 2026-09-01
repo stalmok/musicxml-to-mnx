@@ -1203,6 +1203,33 @@ describe('sound navigation', () => {
     expect(global?.fine).toBeUndefined()
   })
 
+  // MusicXML writes the fine as "yes", or as the number of divisions the final
+  // note sounds for. The number is playback, and the Fine it marks is the
+  // notation, so the mark converts and the number is passed over.
+  test('puts a fine on the measure for a <sound fine> written as a duration', () => {
+    const { global, warnings } = read(inMeasure(note('C') + '<sound fine="8"/>'))
+
+    expect(global?.fine).toEqual({ location: { num: 1, den: 4 } })
+    expect(warnings).toEqual([])
+  })
+
+  // Anything else is a value MusicXML does not define for the attribute.
+  // Reading a Fine out of it would mark the piece as ending where the source
+  // did not say it does, so it is reported and no Fine is written.
+  test('reports a <sound fine> whose value is neither "yes" nor a duration', () => {
+    const { global, warnings } = read(inMeasure(note('C') + '<sound fine="no"/>'))
+
+    expect(global?.fine).toBeUndefined()
+    expect(warnings).toMatchObject([
+      {
+        code: 'unresolved:attribute-value',
+        message: 'The "fine" of a <sound> is "no", which is neither "yes" nor a duration.',
+        element: 'sound',
+        attribute: 'fine',
+      },
+    ])
+  })
+
   test('puts a jump of type segno on the measure for a <sound dalsegno>', () => {
     const { global, warnings } = read(inMeasure(note('C') + '<sound dalsegno="segno"/>'))
 

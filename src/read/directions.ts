@@ -629,6 +629,10 @@ function standaloneWording(
  * <sound dalsegno> a dal-segno jump. Both go on the score's measure at the
  * point the <sound> is written, and the rest is reported as before.
  */
+// How long the final note of a movement sounds, in divisions. MusicXML types
+// it as a decimal, so a fraction of a division is written with a point.
+const FINAL_NOTE_DURATION = /^\d+(\.\d+)?$/
+
 export function readSound(
   sound: ElementReader,
   position: Fraction,
@@ -645,7 +649,24 @@ export function readSound(
     attribute(sound.element, name)
     if (name === 'tempo' && tempoAlreadyStated) continue
     if (name === 'fine') {
-      fine = { location: position }
+      // MusicXML writes the fine as "yes", or as the divisions the final note
+      // sounds for. The number is playback and the Fine it marks is the
+      // notation, so both mark the Fine and the number is passed over. The
+      // presence of the attribute is not the mark on its own: a value the
+      // format does not define says nothing about where the piece ends, and
+      // writing a Fine from it would end the piece where the source did not.
+      const written = attribute(sound.element, 'fine') ?? ''
+      if (written === 'yes' || FINAL_NOTE_DURATION.test(written)) {
+        fine = { location: position }
+        continue
+      }
+      warnings.add(
+        'unresolved:attribute-value',
+        `The "fine" of a <sound> is "${written}", which is neither "yes" nor a duration.`,
+        { ...context, line: sound.line },
+        'sound',
+        'fine',
+      )
       continue
     }
     if (name === 'dalsegno') {
