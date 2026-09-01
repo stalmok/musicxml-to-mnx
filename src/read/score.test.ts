@@ -1455,6 +1455,39 @@ describe('a tempo stated by more than one part', () => {
     expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 1 })
   })
 
+  // One part writing two marks at one point is the same disagreement with
+  // nobody else involved, so the report says so rather than naming parts.
+  test('reports one part stating two different tempos at the same point', () => {
+    const slower = metronome.replace('96', '60')
+    const { score: result, warnings } = read(
+      score(`<part id="P1"><measure number="1">${metronome}${slower}${NOTE}</measure></part>`),
+    )
+
+    expect(result.globalMeasures[0]?.tempos.map((t) => t.bpm)).toEqual([96])
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tempo'])
+    expect(warnings[0]?.message).toBe(
+      'This part states two different tempos at the same point in this measure. ' +
+        'The first is the one converted.',
+    )
+  })
+
+  // Each mark dropped is a loss of its own, so each is reported, the way a
+  // third part disagreeing about any other mark is.
+  test('reports every part that disagrees, not just the first', () => {
+    const slower = metronome.replace('96', '60')
+    const slowest = metronome.replace('96', '40')
+    const { score: result, warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${metronome}${NOTE}</measure></part>` +
+          `<part id="P2"><measure number="1">${slower}${NOTE}</measure></part>` +
+          `<part id="P3"><measure number="1">${slowest}${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.tempos.map((t) => t.bpm)).toEqual([96])
+    expect(warnings.map((w) => w.context.part)).toEqual(['P2', 'P3'])
+  })
+
   // Different points in the measure is a tempo change, not a disagreement, so
   // both are kept and nothing is reported.
   test('keeps tempos the parts state at different points in the measure', () => {

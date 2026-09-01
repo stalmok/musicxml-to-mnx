@@ -553,14 +553,22 @@ function mergeTempos(
   const merged = [...existing]
   for (const tempo of found) {
     if (merged.some((other) => sameTempo(other, tempo))) continue
-    const atSamePoint = merged.find(
-      (other) => compareFractions(other.position, tempo.position) === 0,
-    )
-    if (atSamePoint) {
+    const at = merged.findIndex((other) => compareFractions(other.position, tempo.position) === 0)
+    if (at >= 0) {
+      // Every part is merged into the same list, so a mark already there is
+      // an earlier part's where it came from the list this part was merged
+      // into, and this part's own where it came from this part's marks. Both
+      // are a disagreement about one beat; only the wording differs, and the
+      // report is no use if it sends a reader looking for a second part that
+      // is not there.
+      const acrossParts = at < existing.length
       warnings.add(
         'inconsistent:tempo',
-        'The parts of this score state different tempos at the same point in this ' +
-          'measure. The first stated is the one converted.',
+        acrossParts
+          ? 'The parts of this score state different tempos at the same point in this ' +
+              'measure. The first stated is the one converted.'
+          : 'This part states two different tempos at the same point in this measure. ' +
+              'The first is the one converted.',
         context,
         'metronome',
       )

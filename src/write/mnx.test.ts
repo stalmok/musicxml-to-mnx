@@ -7,6 +7,7 @@ import { schemaErrors } from '../../tests/support/schema.js'
 import type {
   Ending,
   Event,
+  Markings,
   FullMeasureRest,
   Measure,
   Score,
@@ -1061,5 +1062,61 @@ describe('event markings', () => {
     const score = scoreOf(measureOf(eventWith({})))
     expect(schemaErrors(writeMnx(score))).toEqual([])
     expect(firstEvent(score)).not.toHaveProperty('markings')
+  })
+
+  // The writer names each mark in a line of its own, and a kind the model
+  // gains with no line there would be dropped where nothing can see it:
+  // markings holds only optional properties, so an event that lost one still
+  // validates against the schema. Required<Markings> is what fails first: the
+  // compiler refuses this object until it holds every kind the model does.
+  test('writes every kind the model can hold', () => {
+    const everyKind = {
+      accent: { orient: undefined },
+      staccato: { orient: undefined },
+      staccatissimo: { orient: undefined },
+      tenuto: { orient: undefined },
+      spiccato: { orient: undefined },
+      stress: { orient: undefined },
+      unstress: { orient: undefined },
+      softAccent: { orient: undefined },
+      strongAccent: { orient: undefined, pointing: undefined },
+      breath: { orient: undefined, symbol: undefined },
+      tremolo: { orient: undefined, marks: 3 },
+    } satisfies Required<Markings>
+
+    expect(Object.keys(markingsOf(everyKind) ?? {}).sort()).toEqual(Object.keys(everyKind).sort())
+  })
+})
+
+// MNX keys an event's lyrics by verse line and holds one of each, and so does
+// the model, so the writer transcribes them and cannot drop a line.
+describe('event lyrics', () => {
+  function singing(lyrics: Event['lyrics']): Event {
+    return { ...WHOLE_C, id: 'ev1', lyrics }
+  }
+
+  test('writes each verse line under the number the source gave it', () => {
+    const score = scoreOf(
+      measureOf(
+        singing(
+          new Map([
+            ['1', { text: 'Are', type: undefined }],
+            ['2', { text: 'Am', type: 'start' as const }],
+          ]),
+        ),
+      ),
+    )
+
+    expect(schemaErrors(writeMnx(score))).toEqual([])
+    expect(firstEvent(score)?.lyrics).toEqual({
+      lines: { '1': { text: 'Are' }, '2': { text: 'Am', type: 'start' } },
+    })
+  })
+
+  test('leaves the key out altogether for an event that sings nothing', () => {
+    const score = scoreOf(measureOf(singing(new Map())))
+
+    expect(schemaErrors(writeMnx(score))).toEqual([])
+    expect(firstEvent(score)).not.toHaveProperty('lyrics')
   })
 })

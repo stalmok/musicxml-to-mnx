@@ -39,7 +39,7 @@ import { readLyrics } from './lyrics.js'
 import { noteValueBaseOf, requireNoteValueBase } from './noteValues.js'
 import { readIntegerInRange } from './numbers.js'
 import type { PartState } from './state.js'
-import { recogniser } from './tables.js'
+import { entriesOf, recogniser } from './tables.js'
 import { MeasureBuilder } from './voices.js'
 import type { TupletDisplaySettings } from './voices.js'
 
@@ -523,20 +523,23 @@ function closeTuplets(
 // allows there, from a caesura to a falloff, has no home in event-markings and
 // stays unread, which is what reports it. A tremolo is not one of them: it is
 // written among the ornaments, and read below with the beam count it needs.
-const ARTICULATIONS = new Map<string, Exclude<MarkingKind, 'tremolo'>>([
-  ['accent', 'accent'],
-  ['staccato', 'staccato'],
-  ['staccatissimo', 'staccatissimo'],
-  ['tenuto', 'tenuto'],
-  ['spiccato', 'spiccato'],
-  ['stress', 'stress'],
-  ['unstress', 'unstress'],
-  ['soft-accent', 'softAccent'],
-  ['strong-accent', 'strongAccent'],
+// Keyed by the mark rather than by the element, so the compiler demands an
+// entry for every kind the model holds: a kind added there with no spelling
+// here would simply never be read.
+const ARTICULATIONS: Record<Exclude<MarkingKind, 'tremolo'>, string> = {
+  accent: 'accent',
+  staccato: 'staccato',
+  staccatissimo: 'staccatissimo',
+  tenuto: 'tenuto',
+  spiccato: 'spiccato',
+  stress: 'stress',
+  unstress: 'unstress',
+  softAccent: 'soft-accent',
+  strongAccent: 'strong-accent',
   // MusicXML files a breath mark among the articulations; MNX states it
   // beside them, under its own name.
-  ['breath-mark', 'breath'],
-])
+  breath: 'breath-mark',
+}
 
 /**
  * The marks written on this event. Read in a fixed order rather than the
@@ -552,7 +555,7 @@ function readMarkings(
 
   for (const block of notations) {
     for (const articulations of block.blocks('articulations')) {
-      for (const [written, kind] of ARTICULATIONS) {
+      for (const [kind, written] of entriesOf(ARTICULATIONS)) {
         for (const found of articulations.children(written)) {
           // MNX keys the marks by name, and so does the model, so a second of
           // the same kind has nowhere to go. The first is the one converted,
