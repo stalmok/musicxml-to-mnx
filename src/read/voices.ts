@@ -129,12 +129,17 @@ interface MarkedArpeggio {
   event: Event
   position: Fraction
   /**
-   * What the source numbers it. Two chords sounding together under the same
-   * number are one arpeggio rolled across both, which is how a pianist's two
-   * hands are rolled as one gesture; different numbers are two separate
-   * rolls. Eleven of the corpus's are the cross-staff kind.
+   * What the source numbers it, where it numbers it at all. Two chords
+   * sounding together under the same number are one arpeggio rolled across
+   * both, which is how a pianist's two hands are rolled as one gesture;
+   * different numbers are two separate rolls. Eleven of the corpus's are the
+   * cross-staff kind. A marker stating no number joins nothing outside its
+   * own voice: the number is what makes the claim, and reading a default as
+   * one ran a roll across both hands that neither voice asked for.
    */
-  number: string
+  number: string | undefined
+  /** The voice the marked chord belongs to, which holds an unnumbered mark. */
+  voice: string
   struck: boolean
   /** True where the same chord was marked the other way as well. */
   conflicted: boolean
@@ -744,12 +749,13 @@ export class MeasureBuilder {
    */
   markArpeggio(
     voice: string | undefined,
-    number: string,
+    number: string | undefined,
     struck: boolean,
     direction: 'up' | 'down' | undefined,
     arrow: boolean,
   ): void {
-    const builder = this.#builderFor(voice ?? this.#lastVoice)
+    const named = voice ?? this.#lastVoice ?? UNNAMED_VOICE
+    const builder = this.#builderFor(named)
     const event = builder.lastEvent
     const position = builder.lastStart
     /* v8 ignore next 2 -- a note joins its voice before its notations are
@@ -769,7 +775,16 @@ export class MeasureBuilder {
       return
     }
 
-    this.#arpeggios.push({ event, position, number, struck, conflicted: false, direction, arrow })
+    this.#arpeggios.push({
+      event,
+      position,
+      number,
+      voice: named,
+      struck,
+      conflicted: false,
+      direction,
+      arrow,
+    })
   }
 
   /**
@@ -779,12 +794,17 @@ export class MeasureBuilder {
    * across however many chords carry them, so they are gathered before the
    * span is worked out. The span names the first-played note first, which for
    * a roll going downwards is the highest.
+   *
+   * A mark stating no number is gathered by its voice instead, so it joins
+   * the rest of its own chord and nothing beyond it.
    */
   arpeggios(warnings: WarningCollector, context: WarningContext): Arpeggio[] {
     const groups = new Map<string, MarkedArpeggio[]>()
     for (const marked of this.#arpeggios) {
-      const key = `${String(marked.position.num)}/${String(marked.position.den)}|${marked.number}`
-      groups.set(key, [...(groups.get(key) ?? []), marked])
+      const at = `${String(marked.position.num)}/${String(marked.position.den)}`
+      const joins =
+        marked.number === undefined ? `voice ${marked.voice}` : `number ${marked.number}`
+      groups.set(`${at}|${joins}`, [...(groups.get(`${at}|${joins}`) ?? []), marked])
     }
 
     const arpeggios: Arpeggio[] = []

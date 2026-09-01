@@ -114,6 +114,26 @@ describe('a rolled chord', () => {
     expect(measure?.arpeggios).toHaveLength(2)
   })
 
+  // A marker stating no number says nothing about another voice's chord.
+  // Reading two of them as one roll ran a single gesture across both hands of
+  // a grand staff, which neither voice asked for.
+  test('keeps two chords in different voices apart where neither states a number', () => {
+    const { measure, warnings } = read(
+      '<note><pitch><step>C</step><octave>3</octave></pitch><duration>4</duration>' +
+        `<type>quarter</type><voice>2</voice><notations>${ROLL}</notations></note>` +
+        '<backup><duration>4</duration></backup>' +
+        '<note><pitch><step>E</step><octave>5</octave></pitch><duration>4</duration>' +
+        `<type>quarter</type><voice>1</voice><notations>${ROLL}</notations></note>`,
+    )
+
+    expect(measure?.arpeggios).toHaveLength(2)
+    expect(measure?.arpeggios.map((a) => a.span)).toEqual([
+      { start: 'note1', end: 'note1' },
+      { start: 'note2', end: 'note2' },
+    ])
+    expect(warnings).toEqual([])
+  })
+
   test('sits at the place in the measure the chord does', () => {
     const { measure } = read(head() + head(ROLL) + member('E', ROLL))
 

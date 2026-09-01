@@ -752,9 +752,12 @@ function readArpeggio(
       // MusicXML states a direction only when an arrowhead is drawn, and
       // rolls from the lowest note up when it states none.
       const direction = upOrDown(attribute(rolled, 'direction'))
+      // The number is what joins one chord's mark to another's, so an absent
+      // one is passed on absent rather than defaulted: a default made every
+      // unnumbered mark in the measure claim the same roll.
       builder.markArpeggio(
         voice,
-        attribute(rolled, 'number') ?? '1',
+        attribute(rolled, 'number'),
         false,
         direction,
         direction !== undefined,
@@ -766,7 +769,7 @@ function readArpeggio(
     // it is read here only so the sweep knows it is accounted for.
     for (const struck of block.children('non-arpeggiate')) {
       attribute(struck, 'type')
-      builder.markArpeggio(voice, attribute(struck, 'number') ?? '1', true, undefined, false)
+      builder.markArpeggio(voice, attribute(struck, 'number'), true, undefined, false)
     }
   }
 }
