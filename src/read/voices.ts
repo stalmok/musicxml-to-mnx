@@ -133,13 +133,11 @@ interface MarkedArpeggio {
    * sounding together under the same number are one arpeggio rolled across
    * both, which is how a pianist's two hands are rolled as one gesture;
    * different numbers are two separate rolls. Eleven of the corpus's are the
-   * cross-staff kind. A marker stating no number joins nothing outside its
-   * own voice: the number is what makes the claim, and reading a default as
-   * one ran a roll across both hands that neither voice asked for.
+   * cross-staff kind. A marker stating no number joins nothing beyond its own
+   * chord: the number is what makes the claim, and reading a default as one
+   * ran a roll across both hands that neither voice asked for.
    */
   number: string | undefined
-  /** The voice the marked chord belongs to, which holds an unnumbered mark. */
-  voice: string
   struck: boolean
   /** True where the same chord was marked the other way as well. */
   conflicted: boolean
@@ -754,8 +752,7 @@ export class MeasureBuilder {
     direction: 'up' | 'down' | undefined,
     arrow: boolean,
   ): void {
-    const named = voice ?? this.#lastVoice ?? UNNAMED_VOICE
-    const builder = this.#builderFor(named)
+    const builder = this.#builderFor(voice ?? this.#lastVoice)
     const event = builder.lastEvent
     const position = builder.lastStart
     /* v8 ignore next 2 -- a note joins its voice before its notations are
@@ -763,11 +760,19 @@ export class MeasureBuilder {
     if (!event || !position) throw new Error('A chord is marked as rolled with no chord to roll.')
 
     // Every note of a chord carries the mark, so the first one to arrive sets
-    // it up and the rest join what it already covers.
+    // it up and the rest join what it already covers. Marks on one chord are
+    // that chord's own roll however the source numbers them: sources number
+    // one note and leave the next bare, and taking those apart drew the roll
+    // twice. Only two stated numbers that differ are two rolls.
     const existing = this.#arpeggios.find(
-      (found) => found.event === event && found.number === number,
+      (found) =>
+        found.event === event &&
+        (found.number === undefined || number === undefined || found.number === number),
     )
     if (existing) {
+      // A stated number claims a join with another chord's mark, so it stands
+      // where the mark it joins stated none.
+      existing.number ??= number
       existing.direction ??= direction
       existing.arrow ||= arrow
       // Rolled and struck together are opposite instructions.
@@ -775,16 +780,7 @@ export class MeasureBuilder {
       return
     }
 
-    this.#arpeggios.push({
-      event,
-      position,
-      number,
-      voice: named,
-      struck,
-      conflicted: false,
-      direction,
-      arrow,
-    })
+    this.#arpeggios.push({ event, position, number, struck, conflicted: false, direction, arrow })
   }
 
   /**
@@ -795,16 +791,19 @@ export class MeasureBuilder {
    * span is worked out. The span names the first-played note first, which for
    * a roll going downwards is the highest.
    *
-   * A mark stating no number is gathered by its voice instead, so it joins
-   * the rest of its own chord and nothing beyond it.
+   * A mark stating no number is gathered by the event it sits on instead, so
+   * it joins the rest of its own chord and nothing beyond it. By the event
+   * rather than by where it sits: a grace chord takes no time, so it begins
+   * where the chord it decorates does, and the two are still two chords.
    */
   arpeggios(warnings: WarningCollector, context: WarningContext): Arpeggio[] {
     const groups = new Map<string, MarkedArpeggio[]>()
     for (const marked of this.#arpeggios) {
-      const at = `${String(marked.position.num)}/${String(marked.position.den)}`
-      const joins =
-        marked.number === undefined ? `voice ${marked.voice}` : `number ${marked.number}`
-      groups.set(`${at}|${joins}`, [...(groups.get(`${at}|${joins}`) ?? []), marked])
+      const key =
+        marked.number === undefined
+          ? `event ${marked.event.id}`
+          : `${String(marked.position.num)}/${String(marked.position.den)}|number ${marked.number}`
+      groups.set(key, [...(groups.get(key) ?? []), marked])
     }
 
     const arpeggios: Arpeggio[] = []

@@ -242,4 +242,45 @@ describe('a chord marked both ways at once', () => {
     expect(measure?.arpeggios).toHaveLength(1)
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:arpeggio'])
   })
+
+  // Sources number one note of a chord and leave the next bare. Both marks
+  // are still the one roll drawn beside that chord, so they are read as one:
+  // taken apart, they drew the same roll twice and the contradiction between
+  // them went unreported.
+  test('keeps the first where one mark is numbered and the other is bare', () => {
+    const { measure, warnings } = read(
+      head('<non-arpeggiate number="1" type="bottom"/>') + member('E', ROLL),
+    )
+
+    expect(measure?.arpeggios).toHaveLength(1)
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:arpeggio'])
+  })
+})
+
+// A number joins a mark to another chord's; two marks on one chord are that
+// chord's own roll however the source numbers them.
+describe('one chord marked twice', () => {
+  test('states one roll where one mark is numbered and the other is bare', () => {
+    const { measure, warnings } = read(head('<arpeggiate number="1"/>') + member('E', ROLL))
+
+    expect(measure?.arpeggios).toHaveLength(1)
+    expect(measure?.arpeggios[0]?.span).toEqual({ start: 'note1', end: 'note2' })
+    expect(warnings).toEqual([])
+  })
+
+  // A grace chord takes no time, so it begins where the chord it decorates
+  // does. They are still two chords, and each is rolled on its own.
+  test('keeps a grace chord and the chord it decorates apart', () => {
+    const grace =
+      '<note><grace/><pitch><step>G</step><octave>4</octave></pitch>' +
+      `<type>eighth</type><notations>${ROLL}</notations></note>`
+    const { measure, warnings } = read(grace + head(ROLL) + member('E', ROLL))
+
+    expect(measure?.arpeggios).toHaveLength(2)
+    expect(measure?.arpeggios.map((a) => a.span)).toEqual([
+      { start: 'note1', end: 'note1' },
+      { start: 'note2', end: 'note3' },
+    ])
+    expect(warnings).toEqual([])
+  })
 })
