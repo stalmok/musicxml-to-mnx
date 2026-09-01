@@ -62,11 +62,14 @@ export interface Tie {
 }
 
 /**
- * A syllable of a lyric under an event, on a given verse line. The type says
- * how the syllable joins the word, and is left off where it stands alone.
+ * A syllable of a lyric under an event. The type says how the syllable joins
+ * the word, and is left off where it stands alone. The verse line it is sung
+ * on is the key it is held under rather than a field, because an event sings
+ * each line at most once: MNX keys an event's lyrics by line, so a second
+ * syllable on one line has nowhere to go, and holding them in a list let the
+ * writer overwrite the first without a word.
  */
 export interface Lyric {
-  line: string
   text: string
   type: 'start' | 'middle' | 'end' | undefined
 }
@@ -167,7 +170,8 @@ export interface Event {
   staff: number | undefined
   value: NoteValue
   slurs: readonly Slur[]
-  lyrics: readonly Lyric[]
+  /** What the event sings, by the verse line the source numbers it. */
+  lyrics: ReadonlyMap<string, Lyric>
   stemDirection: 'up' | 'down' | undefined
   markings: readonly Marking[]
   fermata: Fermata | undefined

@@ -25,31 +25,32 @@ const LYRIC_TYPES = new Map<string, 'start' | 'middle' | 'end' | undefined>([
   ['end', 'end'],
 ])
 
-/** The syllables under a note, one per verse. */
+/** The syllables under a note, by the verse line each is sung on. */
 export function readLyrics(
   element: ElementReader,
   warnings: WarningCollector,
   context: WarningContext,
-): Lyric[] {
-  const lyrics: Lyric[] = []
+): Map<string, Lyric> {
+  const lyrics = new Map<string, Lyric>()
   for (const lyric of element.blocks('lyric')) {
     const verse = readVerse(lyric, warnings, context)
     if (!verse) continue
 
     // MNX keys an event's lyrics by line, so two on one line are one lyric
-    // there whatever the source wrote. A note stating the same verse twice
-    // says the same thing twice and loses nothing by being read once. Two
-    // that differ are two things where MNX holds one: the first is the one
-    // converted, and the second is reported.
-    const stated = lyrics.find((one) => one.line === verse.line)
+    // there whatever the source wrote, and the model is keyed the same way so
+    // that the second cannot quietly replace the first. A note stating the
+    // same verse twice says the same thing twice and loses nothing by being
+    // read once. Two that differ are two things where MNX holds one: the
+    // first is the one converted, and the second is reported.
+    const stated = lyrics.get(verse.line)
     if (!stated) {
-      lyrics.push(verse)
+      lyrics.set(verse.line, verse.lyric)
       continue
     }
-    if (stated.text === verse.text && stated.type === verse.type) continue
+    if (stated.text === verse.lyric.text && stated.type === verse.lyric.type) continue
     warnings.add(
       'unrepresentable:lyric-line',
-      `A note sings line ${verse.line} twice, as "${stated.text}" and as "${verse.text}", ` +
+      `A note sings line ${verse.line} twice, as "${stated.text}" and as "${verse.lyric.text}", ` +
         'and MNX states one lyric per line on an event. The first is the one converted.',
       { ...context, line: lyric.line },
       'lyric',
@@ -58,11 +59,17 @@ export function readLyrics(
   return lyrics
 }
 
+/** A verse as written: the line it is sung on, and what is sung there. */
+interface Verse {
+  line: string
+  lyric: Lyric
+}
+
 function readVerse(
   lyric: ElementReader,
   warnings: WarningCollector,
   context: WarningContext,
-): Lyric | undefined {
+): Verse | undefined {
   const line = attribute(lyric.element, 'number') ?? '1'
   const text = joinSyllables(lyric)
 
@@ -97,7 +104,7 @@ function readVerse(
 
   const first = syllabics[0]
   // No <syllabic> means the syllable stands on its own, as "single" does.
-  if (!first) return { line, text, type: undefined }
+  if (!first) return { line, lyric: { text, type: undefined } }
 
   const spelling = first.text.trim()
   if (!LYRIC_TYPES.has(spelling)) {
@@ -108,7 +115,7 @@ function readVerse(
       'syllabic',
     )
   }
-  return { line, text, type: LYRIC_TYPES.get(spelling) }
+  return { line, lyric: { text, type: LYRIC_TYPES.get(spelling) } }
 }
 
 /**

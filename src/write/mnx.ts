@@ -316,7 +316,7 @@ function surveyScore(score: Score): {
       }
       if (item.kind !== 'event') continue
       for (const slur of item.slurs) referenced.add(slur.target)
-      for (const lyric of item.lyrics) lyricLines.add(lyric.line)
+      for (const line of item.lyrics.keys()) lyricLines.add(line)
       for (const note of item.notes) {
         for (const tie of note.ties) if (tie.target !== undefined) referenced.add(tie.target)
         if (note.accidentalDisplay?.show) drawsAccidentals = true
@@ -714,7 +714,7 @@ function writeEvent(event: Event, referenced: ReadonlySet<string>): MNXEvent {
     ...(event.stemDirection ? { stemDirection: event.stemDirection } : {}),
     ...(event.markings.length > 0 ? { markings: writeMarkings(event.markings) } : {}),
     ...(event.fermata ? { fermata: writeFermata(event.fermata) } : {}),
-    ...(event.lyrics.length > 0 ? { lyrics: writeLyrics(event.lyrics) } : {}),
+    ...(event.lyrics.size > 0 ? { lyrics: writeLyrics(event.lyrics) } : {}),
   }
 }
 
@@ -760,10 +760,12 @@ function writeFermata(fermata: Fermata): MNXFermata {
   }
 }
 
-function writeLyrics(lyrics: readonly Lyric[]): MNXLyrics {
+// The model is keyed by line exactly as MNX is, so nothing here can replace a
+// line already written.
+function writeLyrics(lyrics: ReadonlyMap<string, Lyric>): MNXLyrics {
   const lines: Record<string, MNXLyricLine> = {}
-  for (const lyric of lyrics) {
-    lines[lyric.line] = {
+  for (const [line, lyric] of lyrics) {
+    lines[line] = {
       text: lyric.text,
       ...(lyric.type ? { type: lyric.type } : {}),
     }

@@ -43,7 +43,7 @@ describe('lyrics', () => {
   test('states the syllable on the event, keyed by verse', () => {
     const { events } = read(measure(note('C', lyric('Are'))))
 
-    expect(events[0]?.lyrics).toEqual([{ line: '1', text: 'Are', type: undefined }])
+    expect(events[0]?.lyrics).toEqual(new Map([['1', { text: 'Are', type: undefined }]]))
   })
 
   test('reads a word split across notes as a start, middle and end', () => {
@@ -51,20 +51,20 @@ describe('lyrics', () => {
       measure(note('C', lyric('Brun', 'begin')) + note('D', lyric('nen', 'end'))),
     )
 
-    expect(events[0]?.lyrics[0]?.type).toBe('start')
-    expect(events[1]?.lyrics[0]?.type).toBe('end')
+    expect(events[0]?.lyrics.get('1')?.type).toBe('start')
+    expect(events[1]?.lyrics.get('1')?.type).toBe('end')
   })
 
   test('reads a middle syllable', () => {
     const { events } = read(measure(note('C', lyric('ll', 'middle'))))
 
-    expect(events[0]?.lyrics[0]?.type).toBe('middle')
+    expect(events[0]?.lyrics.get('1')?.type).toBe('middle')
   })
 
   test('leaves the type off a syllable that stands on its own', () => {
     const { events } = read(measure(note('C', lyric('vor', 'single'))))
 
-    expect(events[0]?.lyrics[0]?.type).toBeUndefined()
+    expect(events[0]?.lyrics.get('1')?.type).toBeUndefined()
   })
 
   test('keeps the verses apart by their number', () => {
@@ -72,22 +72,24 @@ describe('lyrics', () => {
       measure(note('C', lyric('Are', 'single', '1') + lyric('Am', 'single', '2'))),
     )
 
-    expect(events[0]?.lyrics).toEqual([
-      { line: '1', text: 'Are', type: undefined },
-      { line: '2', text: 'Am', type: undefined },
-    ])
+    expect(events[0]?.lyrics).toEqual(
+      new Map([
+        ['1', { text: 'Are', type: undefined }],
+        ['2', { text: 'Am', type: undefined }],
+      ]),
+    )
   })
 
   test('reads a lyric with no syllabic as standing on its own', () => {
     const { events } = read(measure(note('C', '<lyric number="1"><text>Ah</text></lyric>')))
 
-    expect(events[0]?.lyrics).toEqual([{ line: '1', text: 'Ah', type: undefined }])
+    expect(events[0]?.lyrics).toEqual(new Map([['1', { text: 'Ah', type: undefined }]]))
   })
 
   test('keeps the text exactly, spaces and all', () => {
     const { events } = read(measure(note('C', '<lyric number="1"><text>o </text></lyric>')))
 
-    expect(events[0]?.lyrics[0]?.text).toBe('o ')
+    expect(events[0]?.lyrics.get('1')?.text).toBe('o ')
   })
 
   test('reports a syllabic it does not know rather than dropping the type', () => {
@@ -103,13 +105,13 @@ describe('lyrics', () => {
   test('takes a lyric with no verse number as the first verse', () => {
     const { events } = read(measure(note('C', '<lyric><text>Ah</text></lyric>')))
 
-    expect(events[0]?.lyrics[0]?.line).toBe('1')
+    expect([...(events[0]?.lyrics.keys() ?? [])]).toEqual(['1'])
   })
 
   test('gives a note no lyrics when it carries none', () => {
     const { events } = read(measure(note('C')))
 
-    expect(events[0]?.lyrics).toEqual([])
+    expect(events[0]?.lyrics.size).toBe(0)
   })
 
   // MNX's event lyric states a text and a type, and nothing about visibility,
@@ -120,7 +122,7 @@ describe('lyrics', () => {
       measure(note('C', '<lyric number="1" print-object="no"><text>Ah</text></lyric>')),
     )
 
-    expect(events[0]?.lyrics).toEqual([{ line: '1', text: 'Ah', type: undefined }])
+    expect(events[0]?.lyrics).toEqual(new Map([['1', { text: 'Ah', type: undefined }]]))
     expect(warnings).toMatchObject([
       {
         code: 'unsupported:element',
@@ -177,7 +179,7 @@ describe('a verse written as several pieces', () => {
       ),
     )
 
-    expect(events[0]?.lyrics).toEqual([{ line: '1', text: 'le aux', type: 'end' }])
+    expect(events[0]?.lyrics).toEqual(new Map([['1', { text: 'le aux', type: 'end' }]]))
     expect(warnings).toEqual([])
   })
 
@@ -193,7 +195,7 @@ describe('a verse written as several pieces', () => {
       ),
     )
 
-    expect(events[0]?.lyrics.map((l) => l.text)).toEqual(['_ rait'])
+    expect(events[0]?.lyrics.get('1')?.text).toBe('_ rait')
   })
 
   test('reports the syllabics it cannot state, keeping the first', () => {
@@ -207,7 +209,7 @@ describe('a verse written as several pieces', () => {
       ),
     )
 
-    expect(events[0]?.lyrics).toEqual([{ line: '1', text: 'to-day', type: 'start' }])
+    expect(events[0]?.lyrics).toEqual(new Map([['1', { text: 'to-day', type: 'start' }]]))
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:lyric-syllabic'])
   })
 
@@ -216,7 +218,7 @@ describe('a verse written as several pieces', () => {
   test('states no verse for a lyric that is only a melisma line', () => {
     const { events, warnings } = read(measure(note('C', '<lyric number="1"><extend/></lyric>')))
 
-    expect(events[0]?.lyrics).toEqual([])
+    expect(events[0]?.lyrics.size).toBe(0)
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:element'])
   })
 })
@@ -259,7 +261,7 @@ describe('one line stated twice on a note', () => {
   test('carries the first and reports the second where they differ', () => {
     const { events, warnings } = read(measure(note('C', lyric('FIRST') + lyric('SECOND'))))
 
-    expect(events[0]?.lyrics).toEqual([{ line: '1', text: 'FIRST', type: undefined }])
+    expect(events[0]?.lyrics).toEqual(new Map([['1', { text: 'FIRST', type: undefined }]]))
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:lyric-line'])
     expect(warnings[0]?.message).toContain('SECOND')
   })
@@ -277,7 +279,7 @@ describe('one line stated twice on a note', () => {
   test('carries one and says nothing where the two say the same thing', () => {
     const { events, warnings } = read(measure(note('C', lyric('same') + lyric('same'))))
 
-    expect(events[0]?.lyrics).toEqual([{ line: '1', text: 'same', type: undefined }])
+    expect(events[0]?.lyrics).toEqual(new Map([['1', { text: 'same', type: undefined }]]))
     expect(warnings).toEqual([])
   })
 
