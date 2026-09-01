@@ -104,8 +104,10 @@ describe('a chord member naming a staff', () => {
     expect(lost(chord('1', '1'))).toEqual([])
   })
 
-  test('reports it when it reaches across to the other staff', () => {
-    expect(lost(chord('1', '2'))).toEqual(['note'])
+  // MNX states the staff on the note as well, so a chord straddling the two
+  // hands is carried whole and there is nothing to report.
+  test('says nothing when it reaches across to the other staff', () => {
+    expect(lost(chord('1', '2'))).toEqual([])
   })
 })
 

@@ -98,6 +98,11 @@ export interface MNXNote {
   pitch: MNXPitch
   ties?: MNXTie[]
   accidentalDisplay?: MNXAccidentalDisplay
+  /**
+   * Present only where this note sits on a staff other than the event's, as a
+   * note of a chord that straddles the two hands of a piano part does.
+   */
+  staff?: number
 }
 
 export interface MNXNoteValue {

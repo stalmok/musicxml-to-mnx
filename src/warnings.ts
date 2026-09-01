@@ -63,9 +63,6 @@ export type WarningCode =
   // or jumps on the same measure, and MNX states one of each there. The
   // element field names which mark. Segnos have their own code above.
   | 'unrepresentable:cross-part-mark'
-  // A chord whose notes are on different staves. MNX states the staff on the
-  // event, so one chord cannot straddle two of them.
-  | 'unrepresentable:chord-staff'
   // A stem that neither points up nor down. MNX states only those two.
   | 'unrepresentable:stem-direction'
   // A tempo MNX has no value for: one written as one note value equalling

@@ -186,20 +186,13 @@ export function readNote(
     element.skip('stem', 'beam', 'time-modification')
     if (graceElement) attribute(graceElement, 'slash')
 
-    // MNX states the staff on the event, so every note of a chord is on the
-    // event's staff. One naming a different staff is reaching across on its
-    // own, which is the one thing here that cannot be carried.
-    if (staff !== undefined && staff !== builder.staffOfChord(voice)) {
-      warnings.add(
-        'unrepresentable:chord-staff',
-        'A <note> in a chord is on a different staff from the chord, and MNX states ' +
-          'the staff for the whole chord.',
-        { ...context, line: element.line },
-        'staff',
-      )
-    }
+    // MNX states the staff on the event and, where a note of a chord reaches
+    // across to the other hand, on that note. A chord straddling the two
+    // staves is ordinary piano writing, so only the note that differs from
+    // the event's staff states one of its own.
+    const reaches = staff !== undefined && staff !== builder.staffOfChord(voice) ? staff : undefined
 
-    const chordNote = readNoteAt(element, pitchElement, state, path)
+    const chordNote = readNoteAt(element, pitchElement, state, path, reaches)
 
     // Sibelius writes some chord members with a duration that disagrees with
     // the value every note of the chord is written as (a dotted half whose
@@ -379,7 +372,10 @@ export function readNote(
   }
 
   const value = written ?? measuredValue(element, duration, state, path)
-  const notes: Note[] = pitchElement ? [readNoteAt(element, pitchElement, state, path)] : []
+  // The event states this note's staff, so the note says nothing of its own.
+  const notes: Note[] = pitchElement
+    ? [readNoteAt(element, pitchElement, state, path, undefined)]
+    : []
 
   const event: Event = {
     kind: 'event',
@@ -807,12 +803,14 @@ function readNoteAt(
   pitchElement: XmlElement,
   state: PartState,
   path: DocumentPath,
+  staff: number | undefined,
 ): Note {
   return {
     id: state.ids.nextNote(),
     pitch: readPitch(pitchElement, path),
     ties: [],
     accidentalDisplay: readAccidentalDisplay(element),
+    staff,
   }
 }
 

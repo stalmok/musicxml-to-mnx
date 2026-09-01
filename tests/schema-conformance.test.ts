@@ -130,8 +130,8 @@ const GLOBAL_ATTRIBUTES = ['id', '_c', '_x']
  */
 const NOT_MODELLED: Readonly<Record<string, { properties: readonly string[]; why: string }>> = {
   MNXNote: {
-    properties: ['perform', 'staff', 'written'],
-    why: 'Playback, the per-note staff a cross-staff chord needs, and a written pitch differing from the sounding one.',
+    properties: ['perform', 'written'],
+    why: 'Playback, and a written pitch differing from the sounding one.',
   },
   MNXEvent: {
     properties: ['kitNotes', 'orient', 'type'],

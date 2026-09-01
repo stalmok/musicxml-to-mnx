@@ -782,6 +782,7 @@ function writeNote(note: Note, referenced: ReadonlySet<string>): MNXNote {
   return {
     ...(referenced.has(note.id) ? { id: note.id } : {}),
     pitch: writePitch(note.pitch),
+    ...(note.staff !== undefined ? { staff: note.staff } : {}),
     ...(note.ties.length > 0
       ? {
           ties: note.ties.map((tie) => ({

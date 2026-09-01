@@ -98,6 +98,11 @@ export interface Note {
   pitch: Pitch
   ties: readonly Tie[]
   accidentalDisplay: AccidentalDisplay | undefined
+  /**
+   * Set only where this note sits on a staff other than the event's, which is
+   * a chord straddling the two hands of a piano part.
+   */
+  staff: number | undefined
 }
 
 /**

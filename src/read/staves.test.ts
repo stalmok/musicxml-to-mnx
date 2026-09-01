@@ -7,6 +7,8 @@ import { describe, expect, test } from 'vitest'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
+import { convertMusicXML } from '../index.js'
+import { schemaErrors } from '../../tests/support/schema.js'
 
 function note(step: string, staff: string, voice = '1'): string {
   return (
@@ -347,6 +349,48 @@ describe('a staff number the part does not have', () => {
     )
 
     expect(part?.staves).toBe(1)
+    expect(warnings).toEqual([])
+  })
+})
+
+// A chord straddling the two hands is ordinary piano writing: the notes are
+// struck together and drawn on both staves. MNX states the staff on the event
+// and, where a note of it reaches across, on that note.
+describe('a chord that straddles the two staves', () => {
+  const chorded = (step: string, staff: string) =>
+    `<note><chord/><pitch><step>${step}</step><octave>3</octave></pitch>` +
+    `<duration>4</duration><type>quarter</type><voice>1</voice><staff>${staff}</staff></note>`
+
+  test('carries the staff of the note that reaches across', () => {
+    const { part, warnings } = read(measures(GRAND_STAFF + note('C', '1') + chorded('C', '2')))
+    const event = part?.measures[0]?.sequences[0]?.content[0]
+
+    expect(event?.kind === 'event' ? event.notes.map((n) => n.staff) : []).toEqual([undefined, 2])
+    expect(warnings).toEqual([])
+  })
+
+  test('writes the reaching note staff onto schema-valid MNX', () => {
+    const { mnx, warnings } = convertMusicXML(
+      measures(GRAND_STAFF + note('C', '1') + chorded('C', '2')),
+    )
+    const event = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
+
+    expect(event && 'notes' in event ? event.notes?.map((n) => n.staff) : []).toEqual([
+      undefined,
+      2,
+    ])
+    expect(schemaErrors(mnx)).toEqual([])
+    expect(warnings).toEqual([])
+  })
+
+  test('says nothing on the notes of a chord that stays on one staff', () => {
+    const { part, warnings } = read(measures(GRAND_STAFF + note('C', '1') + chorded('E', '1')))
+    const event = part?.measures[0]?.sequences[0]?.content[0]
+
+    expect(event?.kind === 'event' ? event.notes.map((n) => n.staff) : []).toEqual([
+      undefined,
+      undefined,
+    ])
     expect(warnings).toEqual([])
   })
 })
