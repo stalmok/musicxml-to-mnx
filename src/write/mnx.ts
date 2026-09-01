@@ -14,6 +14,7 @@ import type {
   Dynamic,
   Lyric,
   Marking,
+  Markings,
   Ending,
   Event,
   Fermata,
@@ -53,6 +54,7 @@ import type {
   MNXAccidentalDisplay,
   MNXDynamic,
   MNXEventMarkings,
+  MNXMarking,
   MNXEnding,
   MNXFermata,
   MNXFine,
@@ -712,43 +714,60 @@ function writeEvent(event: Event, referenced: ReadonlySet<string>): MNXEvent {
         }
       : {}),
     ...(event.stemDirection ? { stemDirection: event.stemDirection } : {}),
-    ...(event.markings.length > 0 ? { markings: writeMarkings(event.markings) } : {}),
+    ...(hasMarking(event.markings) ? { markings: writeMarkings(event.markings) } : {}),
     ...(event.fermata ? { fermata: writeFermata(event.fermata) } : {}),
     ...(event.lyrics.size > 0 ? { lyrics: writeLyrics(event.lyrics) } : {}),
   }
 }
 
+/** True where the event carries any mark at all. */
+function hasMarking(markings: Markings): boolean {
+  return Object.values(markings).some((marking) => marking !== undefined)
+}
+
+/** Which side a mark sits on, as MNX states it: left off where unstated. */
+function writeMarking(marking: Marking): MNXMarking {
+  return marking.orient ? { orient: marking.orient } : {}
+}
+
 /**
  * The marks on an event, as MNX keys them: by name, so a note carries at most
- * one of each. Two of them hold more than which side they sit on, and both
- * are written out rather than folded into the others, because MNX allows no
- * property on a mark beyond the ones it names for that mark.
+ * one of each. The model is keyed the same way, so this is a transcription
+ * rather than a merge, and nothing here can replace a mark already written.
+ * Three of them hold more than which side they sit on, and each is written out
+ * rather than folded into the others, because MNX allows no property on a mark
+ * beyond the ones it names for that mark.
  */
-function writeMarkings(markings: readonly Marking[]): MNXEventMarkings {
+function writeMarkings(markings: Markings): MNXEventMarkings {
+  const { strongAccent, breath, tremolo } = markings
   const written: MNXEventMarkings = {}
 
-  for (const marking of markings) {
-    const orient = marking.orient ? { orient: marking.orient } : {}
-    switch (marking.kind) {
-      case 'strongAccent':
-        written.strongAccent = {
-          ...orient,
-          ...(marking.pointing ? { pointing: marking.pointing } : {}),
-        }
-        break
-      case 'breath':
-        written.breath = { ...orient, ...(marking.symbol ? { symbol: marking.symbol } : {}) }
-        break
-      case 'tremolo':
-        /* v8 ignore next -- the reader states a beam count on every tremolo
-           marking, so the writer states it rather than defaulting it here. */
-        if (marking.marks === undefined) throw new Error('A tremolo marking carries no beam count.')
-        written.tremolo = { ...orient, marks: marking.marks }
-        break
-      default:
-        written[marking.kind] = orient
+  // The eight that state nothing beyond which side they sit on.
+  if (markings.accent) written.accent = writeMarking(markings.accent)
+  if (markings.staccato) written.staccato = writeMarking(markings.staccato)
+  if (markings.staccatissimo) written.staccatissimo = writeMarking(markings.staccatissimo)
+  if (markings.tenuto) written.tenuto = writeMarking(markings.tenuto)
+  if (markings.spiccato) written.spiccato = writeMarking(markings.spiccato)
+  if (markings.stress) written.stress = writeMarking(markings.stress)
+  if (markings.unstress) written.unstress = writeMarking(markings.unstress)
+  if (markings.softAccent) written.softAccent = writeMarking(markings.softAccent)
+
+  if (strongAccent) {
+    written.strongAccent = {
+      ...writeMarking(strongAccent),
+      ...(strongAccent.pointing ? { pointing: strongAccent.pointing } : {}),
     }
   }
+  if (breath) {
+    written.breath = {
+      ...writeMarking(breath),
+      ...(breath.symbol ? { symbol: breath.symbol } : {}),
+    }
+  }
+  // MNX states no tremolo without a beam count, and the model states none
+  // either, so there is nothing to check for here.
+  if (tremolo) written.tremolo = { ...writeMarking(tremolo), marks: tremolo.marks }
+
   return written
 }
 

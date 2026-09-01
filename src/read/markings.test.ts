@@ -43,15 +43,15 @@ describe('articulations', () => {
       ),
     )
 
-    expect(events[0]?.markings.map((m) => m.kind)).toEqual([
+    expect(Object.keys(events[0]?.markings ?? {}).sort()).toEqual([
       'accent',
-      'staccato',
-      'staccatissimo',
-      'tenuto',
-      'spiccato',
-      'stress',
-      'unstress',
       'softAccent',
+      'spiccato',
+      'staccatissimo',
+      'staccato',
+      'stress',
+      'tenuto',
+      'unstress',
     ])
     expect(warnings).toEqual([])
   })
@@ -59,19 +59,19 @@ describe('articulations', () => {
   test('keeps which side of the notes a mark is drawn on', () => {
     const { events } = read(note(articulations('<accent placement="above"/>')))
 
-    expect(events[0]?.markings[0]?.orient).toBe('above')
+    expect(events[0]?.markings.accent?.orient).toBe('above')
   })
 
   test('leaves the side unset where the source does not say', () => {
     const { events } = read(note(articulations('<accent/>')))
 
-    expect(events[0]?.markings[0]?.orient).toBeUndefined()
+    expect(events[0]?.markings.accent?.orient).toBeUndefined()
   })
 
   test('keeps which way a strong accent points', () => {
     const { events } = read(note(articulations('<strong-accent type="down"/>')))
 
-    expect(events[0]?.markings[0]).toMatchObject({ kind: 'strongAccent', pointing: 'down' })
+    expect(events[0]?.markings.strongAccent).toEqual({ orient: undefined, pointing: 'down' })
   })
 
   // MusicXML's strong-accent type says which way the wedge points, and allows
@@ -79,7 +79,7 @@ describe('articulations', () => {
   test('states no pointing for a strong accent that does not say which way', () => {
     const { events } = read(note(articulations('<strong-accent/>')))
 
-    expect(events[0]?.markings[0]).toMatchObject({ kind: 'strongAccent', pointing: undefined })
+    expect(events[0]?.markings.strongAccent).toEqual({ orient: undefined, pointing: undefined })
   })
 
   // MusicXML files a breath mark among the articulations, and names its glyph
@@ -87,13 +87,13 @@ describe('articulations', () => {
   test('reads a breath mark and the glyph it is drawn with', () => {
     const { events } = read(note(articulations('<breath-mark>comma</breath-mark>')))
 
-    expect(events[0]?.markings[0]).toMatchObject({ kind: 'breath', symbol: 'comma' })
+    expect(events[0]?.markings.breath).toEqual({ orient: undefined, symbol: 'comma' })
   })
 
   test('states no glyph for a breath mark that names none', () => {
     const { events } = read(note(articulations('<breath-mark/>')))
 
-    expect(events[0]?.markings[0]?.symbol).toBeUndefined()
+    expect(events[0]?.markings.breath?.symbol).toBeUndefined()
   })
 
   // Every one of these is a real articulation MNX has no place for.
@@ -102,7 +102,7 @@ describe('articulations', () => {
       note(articulations('<caesura/><detached-legato/><doit/><falloff/>')),
     )
 
-    expect(events[0]?.markings).toEqual([])
+    expect(events[0]?.markings).toEqual({})
     expect(warnings.map((w) => w.element)).toEqual([
       'caesura',
       'detached-legato',
@@ -117,7 +117,7 @@ describe('articulations', () => {
       note(`${articulations('<accent/>')}</notations><notations>${articulations('<staccato/>')}`),
     )
 
-    expect(events[0]?.markings.map((m) => m.kind).sort()).toEqual(['accent', 'staccato'])
+    expect(Object.keys(events[0]?.markings ?? {}).sort()).toEqual(['accent', 'staccato'])
   })
 
   test('reads them on a grace note too', () => {
@@ -136,7 +136,7 @@ describe('articulations', () => {
 
     const group = score.parts[0]?.measures[0]?.sequences[0]?.content[0]
     expect(group?.kind).toBe('grace')
-    expect(group?.kind === 'grace' ? group.content[0]?.markings.map((m) => m.kind) : []).toEqual([
+    expect(group?.kind === 'grace' ? Object.keys(group.content[0]?.markings ?? {}) : []).toEqual([
       'staccato',
     ])
     expect(warnings.list()).toEqual([])
@@ -215,7 +215,7 @@ describe('two marks of one kind', () => {
       note(articulations('<accent placement="above"/><accent placement="below"/>')),
     )
 
-    expect(events[0]?.markings.map((m) => m.orient)).toEqual(['above'])
+    expect(events[0]?.markings.accent?.orient).toBe('above')
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:marking'])
   })
 })

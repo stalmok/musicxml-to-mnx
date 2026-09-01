@@ -108,36 +108,51 @@ export interface Note {
   staff: number | undefined
 }
 
-/**
- * The marks written on an event: how it is attacked, and how long it is held.
- * MNX states them as a set keyed by name, so a note carries at most one of
- * each, and the kinds are spelled the way MNX spells them so the writer needs
- * no second table.
- */
-export type MarkingKind =
-  | 'accent'
-  | 'staccato'
-  | 'staccatissimo'
-  | 'tenuto'
-  | 'spiccato'
-  | 'stress'
-  | 'unstress'
-  | 'softAccent'
-  | 'strongAccent'
-  | 'breath'
-  | 'tremolo'
-
+/** A mark that states nothing beyond which side of the notes it is drawn on. */
 export interface Marking {
-  kind: MarkingKind
   /** Which side of the notes it is drawn on, where the source says. */
   orient: 'above' | 'below' | undefined
-  /** Which way a strong accent points, where the source says. */
-  pointing: 'up' | 'down' | undefined
-  /** The symbol a breath mark is drawn with, where the source names one. */
-  symbol: string | undefined
-  /** How many beams a single-note tremolo is drawn with. */
-  marks: number | undefined
 }
+
+/** A strong accent, which states which way its wedge points. */
+export interface StrongAccentMarking extends Marking {
+  pointing: 'up' | 'down' | undefined
+}
+
+/** A breath mark, which names the glyph it is drawn with. */
+export interface BreathMarking extends Marking {
+  symbol: string | undefined
+}
+
+/** A tremolo on one note, drawn as beams across its stem. */
+export interface TremoloMarking extends Marking {
+  /** How many beams it is drawn with. MNX states no tremolo without one. */
+  marks: number
+}
+
+/**
+ * The marks written on an event: how it is attacked, and how long it is held.
+ * Keyed by kind, the way MNX keys them, so an event carries at most one of
+ * each and the writer's assignment cannot replace a mark already written. The
+ * reader resolves a source writing two of one kind, where it still has the
+ * measure to report it against. The kinds are spelled the way MNX spells them
+ * so the writer needs no second table.
+ */
+export interface Markings {
+  accent?: Marking
+  staccato?: Marking
+  staccatissimo?: Marking
+  tenuto?: Marking
+  spiccato?: Marking
+  stress?: Marking
+  unstress?: Marking
+  softAccent?: Marking
+  strongAccent?: StrongAccentMarking
+  breath?: BreathMarking
+  tremolo?: TremoloMarking
+}
+
+export type MarkingKind = keyof Markings
 
 /**
  * A pause held over an event. MusicXML names the shape as the element's text
@@ -173,7 +188,7 @@ export interface Event {
   /** What the event sings, by the verse line the source numbers it. */
   lyrics: ReadonlyMap<string, Lyric>
   stemDirection: 'up' | 'down' | undefined
-  markings: readonly Marking[]
+  markings: Markings
   fermata: Fermata | undefined
   /** Empty for a rest. More than one note makes it a chord. */
   notes: readonly Note[]

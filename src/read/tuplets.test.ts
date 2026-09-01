@@ -788,9 +788,9 @@ describe('tuplets', () => {
     const { content, warnings } = read(measure(tremolo))
 
     expect(content?.[0]?.kind === 'event' && content[0].value).toEqual({ base: 'half', dots: 0 })
-    expect(content?.[0]?.kind === 'event' && content[0].markings).toEqual([
-      { kind: 'tremolo', orient: undefined, pointing: undefined, symbol: undefined, marks: 3 },
-    ])
+    expect(content?.[0]?.kind === 'event' && content[0].markings).toEqual({
+      tremolo: { orient: undefined, marks: 3 },
+    })
     expect(warnings).toEqual([])
   })
 
@@ -1049,7 +1049,7 @@ describe('two-note tremolos', () => {
       '<notations><ornaments><tremolo type="unmeasured"/></ornaments></notations></note>'
     const { content, warnings } = read(measure(unmeasured))
 
-    expect(content?.[0]?.kind === 'event' && content[0].markings).toEqual([])
+    expect(content?.[0]?.kind === 'event' && content[0].markings).toEqual({})
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:element'])
     expect(warnings[0]?.message).toContain('unmeasured')
   })
@@ -1117,9 +1117,10 @@ describe('two-note tremolos', () => {
       '<type>half</type><notations><ornaments><tremolo/></ornaments></notations></note>'
     const { content, warnings } = read(measure(bare))
 
-    expect(
-      content?.[0]?.kind === 'event' && content[0].markings.map((m) => [m.kind, m.marks]),
-    ).toEqual([['tremolo', 3]])
+    expect(content?.[0]?.kind === 'event' && content[0].markings.tremolo).toEqual({
+      orient: undefined,
+      marks: 3,
+    })
     expect(warnings).toEqual([])
   })
 
@@ -1131,7 +1132,7 @@ describe('two-note tremolos', () => {
       '<notations><ornaments><tremolo type="single">0</tremolo></ornaments></notations></note>'
     const { content, warnings } = read(measure(unmeasured))
 
-    expect(content?.[0]?.kind === 'event' && content[0].markings).toEqual([])
+    expect(content?.[0]?.kind === 'event' && content[0].markings).toEqual({})
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:element'])
   })
 
@@ -1143,7 +1144,7 @@ describe('two-note tremolos', () => {
       '<tremolo type="single">2</tremolo></ornaments></notations></note>'
     const { content, warnings } = read(measure(doubled))
 
-    expect(content?.[0]?.kind === 'event' && content[0].markings.map((m) => m.marks)).toEqual([3])
+    expect(content?.[0]?.kind === 'event' && content[0].markings.tremolo?.marks).toBe(3)
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:marking'])
   })
 })

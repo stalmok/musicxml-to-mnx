@@ -23,7 +23,7 @@ const WHOLE_C: Event = {
   slurs: [],
   lyrics: new Map(),
   stemDirection: undefined,
-  markings: [],
+  markings: {},
   fermata: undefined,
   notes: [
     {
@@ -101,7 +101,7 @@ test.each([
         slurs: [],
         lyrics: new Map(),
         stemDirection: undefined,
-        markings: [],
+        markings: {},
         fermata: undefined,
         notes: [],
         isRest: true,
@@ -120,7 +120,7 @@ test.each([
         slurs: [],
         lyrics: new Map(),
         stemDirection: undefined,
-        markings: [],
+        markings: {},
         fermata: undefined,
         notes: [
           {
@@ -428,7 +428,7 @@ describe('ties and slurs', () => {
     slurs: [],
     lyrics: new Map(),
     stemDirection: undefined,
-    markings: [],
+    markings: {},
     fermata: undefined,
     notes: [
       {
@@ -450,7 +450,7 @@ describe('ties and slurs', () => {
     slurs: [{ target: 'ev-target', side: 'up' }],
     lyrics: new Map(),
     stemDirection: undefined,
-    markings: [],
+    markings: {},
     fermata: undefined,
     notes: [
       {
@@ -827,7 +827,7 @@ describe('events', () => {
       slurs: [],
       lyrics: new Map(),
       stemDirection: undefined,
-      markings: [],
+      markings: {},
       fermata: undefined,
       notes: [],
       isRest: true,
@@ -926,7 +926,7 @@ describe('fermatas', () => {
       slurs: [],
       lyrics: new Map(),
       stemDirection: undefined,
-      markings: [],
+      markings: {},
       fermata,
       notes: [
         {
@@ -999,96 +999,67 @@ describe('event markings', () => {
   }
 
   test('writes a strong accent with both where it points and which side', () => {
-    expect(
-      markingsOf([
-        {
-          kind: 'strongAccent',
-          orient: 'above',
-          pointing: 'up',
-          symbol: undefined,
-          marks: undefined,
-        },
-      ]),
-    ).toEqual({ strongAccent: { orient: 'above', pointing: 'up' } })
+    expect(markingsOf({ strongAccent: { orient: 'above', pointing: 'up' } })).toEqual({
+      strongAccent: { orient: 'above', pointing: 'up' },
+    })
   })
 
   test('writes a breath mark with both its glyph and which side', () => {
-    expect(
-      markingsOf([
-        { kind: 'breath', orient: 'below', pointing: undefined, symbol: 'comma', marks: undefined },
-      ]),
-    ).toEqual({ breath: { orient: 'below', symbol: 'comma' } })
+    expect(markingsOf({ breath: { orient: 'below', symbol: 'comma' } })).toEqual({
+      breath: { orient: 'below', symbol: 'comma' },
+    })
   })
 
   test('leaves out a pointing a strong accent does not state', () => {
-    expect(
-      markingsOf([
-        {
-          kind: 'strongAccent',
-          orient: undefined,
-          pointing: undefined,
-          symbol: undefined,
-          marks: undefined,
-        },
-      ]),
-    ).toEqual({ strongAccent: {} })
+    expect(markingsOf({ strongAccent: { orient: undefined, pointing: undefined } })).toEqual({
+      strongAccent: {},
+    })
   })
 
   test('leaves out a glyph a breath mark does not name', () => {
-    expect(
-      markingsOf([
-        {
-          kind: 'breath',
-          orient: undefined,
-          pointing: undefined,
-          symbol: undefined,
-          marks: undefined,
-        },
-      ]),
-    ).toEqual({ breath: {} })
+    expect(markingsOf({ breath: { orient: undefined, symbol: undefined } })).toEqual({ breath: {} })
   })
 
   test('writes a plain mark as an empty object, which is how MNX states it', () => {
+    expect(markingsOf({ staccato: { orient: undefined } })).toEqual({ staccato: {} })
+  })
+
+  test('writes every plain mark under the name MNX gives it', () => {
+    const side = { orient: 'above' } as const
     expect(
-      markingsOf([
-        {
-          kind: 'staccato',
-          orient: undefined,
-          pointing: undefined,
-          symbol: undefined,
-          marks: undefined,
-        },
-      ]),
-    ).toEqual({ staccato: {} })
+      markingsOf({
+        accent: side,
+        staccato: side,
+        staccatissimo: side,
+        tenuto: side,
+        spiccato: side,
+        stress: side,
+        unstress: side,
+        softAccent: side,
+      }),
+    ).toEqual({
+      accent: side,
+      staccato: side,
+      staccatissimo: side,
+      tenuto: side,
+      spiccato: side,
+      stress: side,
+      unstress: side,
+      softAccent: side,
+    })
   })
 
   test('writes a tremolo with how many beams it is drawn with', () => {
-    expect(
-      markingsOf([
-        { kind: 'tremolo', orient: 'above', pointing: undefined, symbol: undefined, marks: 2 },
-      ]),
-    ).toEqual({ tremolo: { orient: 'above', marks: 2 } })
+    expect(markingsOf({ tremolo: { orient: 'above', marks: 2 } })).toEqual({
+      tremolo: { orient: 'above', marks: 2 },
+    })
   })
 
-  // Two of the same kind cannot both be stated, because MNX keys them by name.
-  test('keeps one of each kind', () => {
-    expect(
-      markingsOf([
-        {
-          kind: 'tenuto',
-          orient: 'above',
-          pointing: undefined,
-          symbol: undefined,
-          marks: undefined,
-        },
-        {
-          kind: 'tenuto',
-          orient: 'below',
-          pointing: undefined,
-          symbol: undefined,
-          marks: undefined,
-        },
-      ]),
-    ).toEqual({ tenuto: { orient: 'below' } })
+  // The model keys the marks the way MNX does, so an event cannot reach the
+  // writer carrying two of one kind and there is nothing here to resolve.
+  test('writes no markings at all for an event carrying none', () => {
+    const score = scoreOf(measureOf(eventWith({})))
+    expect(schemaErrors(writeMnx(score))).toEqual([])
+    expect(firstEvent(score)).not.toHaveProperty('markings')
   })
 })

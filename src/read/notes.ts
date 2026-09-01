@@ -18,8 +18,8 @@ import type {
   Fermata,
   FermataSymbol,
   LineType,
-  Marking,
   MarkingKind,
+  Markings,
   Note,
   NoteValue,
   NoteValueQuantity,
@@ -524,8 +524,9 @@ function closeTuplets(
 
 // MusicXML's <articulations> children, in MNX's spelling. Everything else it
 // allows there, from a caesura to a falloff, has no home in event-markings and
-// stays unread, which is what reports it.
-const ARTICULATIONS = new Map<string, MarkingKind>([
+// stays unread, which is what reports it. A tremolo is not one of them: it is
+// written among the ornaments, and read below with the beam count it needs.
+const ARTICULATIONS = new Map<string, Exclude<MarkingKind, 'tremolo'>>([
   ['accent', 'accent'],
   ['staccato', 'staccato'],
   ['staccatissimo', 'staccatissimo'],
@@ -549,19 +550,18 @@ function readMarkings(
   notations: readonly ElementReader[],
   warnings: WarningCollector,
   context: WarningContext,
-): Marking[] {
-  const markings: Marking[] = []
-  const seen = new Set<MarkingKind>()
+): Markings {
+  const markings: Markings = {}
 
   for (const block of notations) {
     for (const articulations of block.blocks('articulations')) {
       for (const [written, kind] of ARTICULATIONS) {
         for (const found of articulations.children(written)) {
-          // MNX keys the marks by name, so a second of the same kind has
-          // nowhere to go. The first is the one converted, as it is for a
-          // second fermata. The one warning accounts for the rejected mark
-          // whole, its side and pointing included.
-          if (seen.has(kind)) {
+          // MNX keys the marks by name, and so does the model, so a second of
+          // the same kind has nowhere to go. The first is the one converted,
+          // as it is for a second fermata. The one warning accounts for the
+          // rejected mark whole, its side and pointing included.
+          if (markings[kind] !== undefined) {
             attribute(found, 'placement')
             attribute(found, 'type')
             warnings.add(
@@ -573,17 +573,17 @@ function readMarkings(
             )
             continue
           }
-          seen.add(kind)
 
-          markings.push({
-            kind,
-            orient: placementOf(found),
+          const orient = placementOf(found)
+          if (kind === 'strongAccent') {
             // Which way the wedge of a strong accent points.
-            pointing: kind === 'strongAccent' ? upOrDown(attribute(found, 'type')) : undefined,
+            markings.strongAccent = { orient, pointing: upOrDown(attribute(found, 'type')) }
+          } else if (kind === 'breath') {
             // A breath mark names its glyph as its text: a comma, a tick.
-            symbol: kind === 'breath' ? trimmedText(found) || undefined : undefined,
-            marks: undefined,
-          })
+            markings.breath = { orient, symbol: trimmedText(found) || undefined }
+          } else {
+            markings[kind] = { orient }
+          }
         }
       }
     }
@@ -623,7 +623,7 @@ function readMarkings(
           )
           continue
         }
-        if (seen.has('tremolo')) {
+        if (markings.tremolo !== undefined) {
           warnings.add(
             'unrepresentable:marking',
             'An event carries more than one <tremolo>, and MNX states one of each ' +
@@ -633,15 +633,8 @@ function readMarkings(
           )
           continue
         }
-        seen.add('tremolo')
 
-        markings.push({
-          kind: 'tremolo',
-          orient: placementOf(found),
-          pointing: undefined,
-          symbol: undefined,
-          marks,
-        })
+        markings.tremolo = { orient: placementOf(found), marks }
       }
     }
   }
