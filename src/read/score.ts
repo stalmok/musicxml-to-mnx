@@ -459,9 +459,13 @@ function mergeGlobalMeasures(
     target[index] = {
       key: existing?.key ?? measure.key,
       time: existing?.time ?? measure.time,
-      tempos: mergeTempos(existing?.tempos ?? [], measure.tempos),
+      tempos: mergeTempos(existing?.tempos ?? [], measure.tempos, warnings, context),
       number: existing?.number ?? measure.number,
       barline: existing?.barline ?? measure.barline,
+      // The three marks a part states as a plain yes follow a different rule
+      // from the objects around them: a mark any part states is kept, and a
+      // part not stating one is not disagreeing. A boolean cannot tell "no"
+      // from "nothing said", so there is no disagreement to report.
       repeatStart: (existing?.repeatStart ?? false) || measure.repeatStart,
       repeatEnd: existing?.repeatEnd ?? measure.repeatEnd,
       ending: existing?.ending ?? measure.ending,
@@ -472,9 +476,8 @@ function mergeGlobalMeasures(
       fine: existing?.fine ?? measure.fine,
       jump: existing?.jump ?? measure.jump,
       multimeasureRest: existing?.multimeasureRest ?? measure.multimeasureRest,
-      // A break is the whole score's, and is usually written into one part
-      // only, so a break any part states is kept. A part not stating one is
-      // not disagreeing; it just leaves the layout to the parts that do.
+      // A break is one of those three, and is usually written into one part
+      // only: the part not stating it leaves the layout to the parts that do.
       systemBreak: (existing?.systemBreak ?? false) || measure.systemBreak,
       pageBreak: (existing?.pageBreak ?? false) || measure.pageBreak,
     }
@@ -534,11 +537,36 @@ function sameJump(a: Jump, b: Jump): boolean {
  * part. Taking them all would state one tempo several times over, which a
  * renderer would draw several times over; taking only the first part's would
  * lose a mark that only a later part states. So each is kept once.
+ *
+ * Two tempos at one point are the exception. MNX holds a list, so both would
+ * be written and both drawn over the same beat, and a player would have to
+ * pick one. That is the parts disagreeing about what the score does, so the
+ * first is kept and the disagreement reported, as for every other mark the
+ * parts share.
  */
-function mergeTempos(existing: readonly Tempo[], found: readonly Tempo[]): Tempo[] {
+function mergeTempos(
+  existing: readonly Tempo[],
+  found: readonly Tempo[],
+  warnings: WarningCollector,
+  context: WarningContext,
+): Tempo[] {
   const merged = [...existing]
   for (const tempo of found) {
-    if (!merged.some((other) => sameTempo(other, tempo))) merged.push(tempo)
+    if (merged.some((other) => sameTempo(other, tempo))) continue
+    const atSamePoint = merged.find(
+      (other) => compareFractions(other.position, tempo.position) === 0,
+    )
+    if (atSamePoint) {
+      warnings.add(
+        'inconsistent:tempo',
+        'The parts of this score state different tempos at the same point in this ' +
+          'measure. The first stated is the one converted.',
+        context,
+        'metronome',
+      )
+      continue
+    }
+    merged.push(tempo)
   }
   return merged
 }

@@ -3156,6 +3156,7 @@
     "measure@implicit": 5,
     "sound@dynamics": 19,
     "words": 21,
+    "metronome": 1,
     "metronome@parentheses": 2,
     "direction@system": 3,
     "extend": 12,

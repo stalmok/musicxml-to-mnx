@@ -172,6 +172,11 @@ export type WarningCode =
   // Two barlines close the same measure with different styles. The first is
   // the one converted.
   | 'inconsistent:barline'
+  // The parts of the score state different tempos at the same point in a
+  // measure. MNX holds a list of them, so this is the parts disagreeing
+  // rather than a limit of the format: both would be drawn over one beat.
+  // The first stated is the one converted.
+  | 'inconsistent:tempo'
   // A tie or slur has only one of its two ends, so there is nothing to join
   // it to. Real scores contain these, so it is reported rather than refused.
   | 'unclosed:spanner'

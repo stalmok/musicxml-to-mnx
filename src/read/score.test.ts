@@ -1436,16 +1436,38 @@ describe('a tempo stated by more than one part', () => {
     ])
   })
 
-  test('keeps both where the parts state different tempos', () => {
+  // Two tempos at one point contradict each other: a renderer would draw both
+  // over the same beat, and a player would have to pick one. The parts
+  // disagree about what the score does, so the first is kept and the
+  // disagreement is reported, as it is for every other mark they share.
+  test('reports parts stating different tempos at the same point', () => {
     const slower = metronome.replace('96', '60')
-    const { score: result } = read(
+    const { score: result, warnings } = read(
       score(
         `<part id="P1"><measure number="1">${metronome}${NOTE}</measure></part>` +
           `<part id="P2"><measure number="1">${slower}${NOTE}</measure></part>`,
       ),
     )
 
+    expect(result.globalMeasures[0]?.tempos.map((t) => t.bpm)).toEqual([96])
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tempo'])
+    expect(warnings[0]?.element).toBe('metronome')
+    expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 1 })
+  })
+
+  // Different points in the measure is a tempo change, not a disagreement, so
+  // both are kept and nothing is reported.
+  test('keeps tempos the parts state at different points in the measure', () => {
+    const slower = metronome.replace('96', '60')
+    const { score: result, warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${metronome}${NOTE}</measure></part>` +
+          `<part id="P2"><measure number="1">${NOTE}${slower}</measure></part>`,
+      ),
+    )
+
     expect(result.globalMeasures[0]?.tempos.map((t) => t.bpm)).toEqual([96, 60])
+    expect(warnings).toEqual([])
   })
 })
 
