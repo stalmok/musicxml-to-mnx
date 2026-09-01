@@ -26,6 +26,7 @@ import { schemaErrors } from './support/schema.js'
 import { songs } from './support/corpus.js'
 import {
   collectStarts,
+  differingLyricLines,
   layoutLosses,
   pitchesOf,
   sounding,
@@ -607,11 +608,13 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
         const byVoiceLine = new Map<string, string[]>()
         for (const note of measure.children.filter((c) => c.name === 'note')) {
           const voice = note.children.find((c) => c.name === 'voice')?.text.trim() ?? ''
-          // One text per line per note, the last where a note redundantly
-          // repeats a line, because MNX states one lyric per line on an event
-          // and the writer keeps the last. A source occasionally writes the
-          // same <lyric number="1"> twice on one note; counting both would fault
+          // One text per line per note, because MNX states one lyric per
+          // line on an event. A source occasionally writes the same
+          // <lyric number="1"> twice on one note; counting both would fault
           // the converter for collapsing a duplicate that carries nothing new.
+          // Two that carry different things are a real loss, and the check
+          // below is what says so: this one alone would keep the same text
+          // the converter keeps and see nothing.
           const perLine = new Map<string, string>()
           for (const lyric of note.children.filter((c) => c.name === 'lyric')) {
             // Every <text>, joined by whatever the source put between them.
@@ -639,6 +642,14 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     }
 
     expect(fromMnx.sort()).toEqual(fromSource.sort())
+  })
+
+  // The check above compares one text per line per note, so a note stating
+  // one line twice with two different texts would pass it while half of what
+  // it says is dropped. No vendored song does that today; one that started to
+  // would be a loss to look at rather than to keep quiet about.
+  test('states no lyric line twice on one note with different words', () => {
+    expect(differingLyricLines(parseXmlRoot(source))).toEqual([])
   })
 
   // MusicXML draws an accidental exactly where it writes an <accidental>, so

@@ -6,7 +6,13 @@ import { expect, test } from 'vitest'
 import { convertMusicXML } from '../src/index.js'
 import type { MNXDocument } from '../src/index.js'
 import { parseXmlRoot } from '../src/xml/parse.js'
-import { layoutLosses, pitchesOf, sourcePitches } from './support/structural.js'
+import type { XmlElement } from '../src/xml/parse.js'
+import {
+  differingLyricLines,
+  layoutLosses,
+  pitchesOf,
+  sourcePitches,
+} from './support/structural.js'
 
 // Sibelius states no <voice> on chord members. The chord member belongs to
 // the voice of the note it is chorded with, not to a voice of its own.
@@ -204,4 +210,36 @@ test('a multi-staff part with no layout at all is a loss', () => {
       parts: [{ id: 'P1', staves: 2, measures: [] }],
     }),
   ).toEqual(['part P1: multi-staff with no layout'])
+})
+
+// A note carrying <lyric number="1"> twice states one line twice, and MNX
+// states one lyric per line per event. The corpus check kept the last of the
+// two, which agreed with the converter dropping the first, so a real loss
+// would have passed. Comparing the texts is what makes the check say
+// anything: two saying the same thing lose nothing, two differing lose one.
+function verse(text: string, number = '1'): string {
+  return `<lyric number="${number}"><text>${text}</text></lyric>`
+}
+
+function withLyrics(body: string): XmlElement {
+  return parseXmlRoot(
+    '<score-partwise><part id="P1"><measure number="3">' +
+      '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+      `<duration>1</duration><type>quarter</type>${body}</note>` +
+      '</measure></part></score-partwise>',
+  )
+}
+
+test('two lyrics on one line saying different things is a loss', () => {
+  expect(differingLyricLines(withLyrics(verse('FIRST') + verse('SECOND')))).toEqual([
+    'part P1 measure 3 line 1: "FIRST" against "SECOND"',
+  ])
+})
+
+test('two lyrics on one line saying the same thing lose nothing', () => {
+  expect(differingLyricLines(withLyrics(verse('same') + verse('same')))).toEqual([])
+})
+
+test('two lyrics on different lines are two verses, not a loss', () => {
+  expect(differingLyricLines(withLyrics(verse('one') + verse('two', '2')))).toEqual([])
 })

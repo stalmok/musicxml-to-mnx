@@ -34,7 +34,26 @@ export function readLyrics(
   const lyrics: Lyric[] = []
   for (const lyric of element.blocks('lyric')) {
     const verse = readVerse(lyric, warnings, context)
-    if (verse) lyrics.push(verse)
+    if (!verse) continue
+
+    // MNX keys an event's lyrics by line, so two on one line are one lyric
+    // there whatever the source wrote. A note stating the same verse twice
+    // says the same thing twice and loses nothing by being read once. Two
+    // that differ are two things where MNX holds one: the first is the one
+    // converted, and the second is reported.
+    const stated = lyrics.find((one) => one.line === verse.line)
+    if (!stated) {
+      lyrics.push(verse)
+      continue
+    }
+    if (stated.text === verse.text && stated.type === verse.type) continue
+    warnings.add(
+      'unrepresentable:lyric-line',
+      `A note sings line ${verse.line} twice, as "${stated.text}" and as "${verse.text}", ` +
+        'and MNX states one lyric per line on an event. The first is the one converted.',
+      { ...context, line: lyric.line },
+      'lyric',
+    )
   }
   return lyrics
 }

@@ -250,3 +250,32 @@ describe('the order of the verse lines', () => {
     expect('lyrics' in mnx.global).toBe(false)
   })
 })
+
+// MNX keys an event's lyrics by line, so two on one line collapse to one.
+// A source does write the same <lyric number="1"> twice on one note, and
+// where the two say the same thing nothing is lost. Where they differ, one
+// of them is dropped and the drop has to be reported.
+describe('one line stated twice on a note', () => {
+  test('carries the first and reports the second where they differ', () => {
+    const { events, warnings } = read(measure(note('C', lyric('FIRST') + lyric('SECOND'))))
+
+    expect(events[0]?.lyrics).toEqual([{ line: '1', text: 'FIRST', type: undefined }])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:lyric-line'])
+    expect(warnings[0]?.message).toContain('SECOND')
+  })
+
+  test('carries one and says nothing where the two say the same thing', () => {
+    const { events, warnings } = read(measure(note('C', lyric('same') + lyric('same'))))
+
+    expect(events[0]?.lyrics).toEqual([{ line: '1', text: 'same', type: undefined }])
+    expect(warnings).toEqual([])
+  })
+
+  // The two texts agree, so the words are whole, but the syllabic says how
+  // the syllable joins its word and only one of the two reaches the output.
+  test('reports two that agree on the words and not on the syllabic', () => {
+    const { warnings } = read(measure(note('C', lyric('sing', 'begin') + lyric('sing', 'end'))))
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:lyric-line'])
+  })
+})

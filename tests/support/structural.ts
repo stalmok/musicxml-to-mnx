@@ -669,3 +669,43 @@ export function layoutLosses(document: MNXDocument): string[] {
   }
   return losses
 }
+
+/**
+ * Every place the source states one lyric line twice on one note with two
+ * different texts. MNX states one lyric per line per event, so only one of
+ * the two reaches the output.
+ *
+ * A note occasionally carries <lyric number="1"> twice saying the same thing,
+ * which loses nothing. Reading the two without comparing them is what let a
+ * real loss through: the check kept the last, exactly as the writer did, so
+ * the two sides agreed about music the source did not write.
+ */
+export function differingLyricLines(root: XmlElement): string[] {
+  const found: string[] = []
+  for (const part of root.children.filter((c) => c.name === 'part')) {
+    for (const measure of part.children.filter((c) => c.name === 'measure')) {
+      for (const note of measure.children.filter((c) => c.name === 'note')) {
+        const perLine = new Map<string, string>()
+        for (const lyric of note.children.filter((c) => c.name === 'lyric')) {
+          const line = lyric.attributes.number ?? '1'
+          // Every <text>, joined the way the reader joins them, so that a
+          // verse elided across two <text>s is compared whole.
+          const text = lyric.children
+            .filter((c) => c.name === 'text' || c.name === 'elision')
+            .map((c) => c.text)
+            .join('')
+          if (text === '') continue
+          const seen = perLine.get(line)
+          if (seen !== undefined && seen !== text) {
+            found.push(
+              `part ${part.attributes.id ?? ''} measure ${measure.attributes.number ?? ''} ` +
+                `line ${line}: "${seen}" against "${text}"`,
+            )
+          }
+          perLine.set(line, text)
+        }
+      }
+    }
+  }
+  return found
+}
