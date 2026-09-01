@@ -206,7 +206,7 @@ export function pairSpans<T, E extends SpanEnd<T>>(
     }
 
     const waiting = open.get(end.number) ?? []
-    const started = lastOpenedIn(waiting, end.voice)
+    const started = lastOpenedIn(waiting, end)
     if (!started) {
       report('orphan-stop', end)
       continue
@@ -407,18 +407,24 @@ function findLastOpened<T, E extends SpanEnd<T>>(
 }
 
 /**
- * The start a stop closes: the last one opened in the stop's own voice, or
+ * The start a stop closes: the last one opened where the stop was written, or
  * failing that the last one opened at all.
+ *
+ * "Where" is the voice for a tie or a slur, and the staff for a hairpin or an
+ * octave shift, each of which states the one the other leaves unset. An
+ * exporter that numbers each hand from 1 has both hands holding a hairpin
+ * numbered 1 at once, and on the number alone each closes on the other hand's
+ * stop. The fallback keeps a source that names the staff on one end and not
+ * the other pairing as it did, since neither reading of the silent end is
+ * safe to assume.
  */
-function lastOpenedIn<T, E extends SpanEnd<T>>(
-  waiting: readonly E[],
-  voice: string | undefined,
-): E | undefined {
-  for (let index = waiting.length - 1; index >= 0; index -= 1) {
-    const start = waiting[index]
-    if (start && (start.voice ?? '') === (voice ?? '')) return start
-  }
-  return waiting[waiting.length - 1]
+function lastOpenedIn<T, E extends SpanEnd<T>>(waiting: readonly E[], end: E): E | undefined {
+  return (
+    findLastOpened(
+      waiting,
+      (start) => (start.voice ?? '') === (end.voice ?? '') && start.staff === end.staff,
+    ) ?? waiting[waiting.length - 1]
+  )
 }
 
 /**
@@ -774,6 +780,8 @@ export class SpannerResolver {
       measure,
       position,
       covers: position,
+      // The staff is the hairpin's own, so the two cannot disagree about it.
+      staff: dynamic.staff,
       payload: dynamic,
       context,
     })
@@ -819,6 +827,7 @@ export class SpannerResolver {
     number: string,
     measure: number,
     position: Fraction,
+    staff: number | undefined,
     context: WarningContext,
   ): void {
     this.#wedgeEnds.push({
@@ -827,6 +836,7 @@ export class SpannerResolver {
       measure,
       position,
       covers: position,
+      staff,
       payload: undefined,
       dropped: true,
       context,
@@ -910,6 +920,8 @@ export class SpannerResolver {
       measure,
       position,
       covers: position,
+      // The staff is the shift's own, so the two cannot disagree about it.
+      staff: open.staff,
       payload: open,
       context,
     })
@@ -988,6 +1000,7 @@ export class SpannerResolver {
     number: string,
     measure: number,
     position: Fraction,
+    staff: number | undefined,
     context: WarningContext,
   ): void {
     this.#ottavaEnds.push({
@@ -996,6 +1009,7 @@ export class SpannerResolver {
       measure,
       position,
       covers: position,
+      staff,
       payload: undefined,
       dropped: true,
       context,

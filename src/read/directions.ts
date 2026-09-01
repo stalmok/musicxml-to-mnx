@@ -446,7 +446,7 @@ function readOctaveShift(
     // The stop the source wrote for this shift goes with it, unreported: only
     // "stop" and "continue" are handled above, so an unknown type can only be
     // meant as a start.
-    state.spanners.dropOttavaStart(number, measure, position, context)
+    state.spanners.dropOttavaStart(number, measure, position, staff, context)
     return
   }
 
@@ -521,7 +521,7 @@ function readWedge(
       // The stop the source wrote for this hairpin goes with it, unreported: a
       // stop states its type as the word "stop", handled above, so an unknown
       // type can only be meant as a start.
-      state.spanners.dropWedgeStart(number, measure, position, context)
+      state.spanners.dropWedgeStart(number, measure, position, staff, context)
     }
     return undefined
   }

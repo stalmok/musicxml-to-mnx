@@ -69,8 +69,15 @@ test('refuses only the songs it is known to refuse', () => {
  * Every hairpin in the source, paired the way the music has them rather than
  * the way the document writes them: by measure, then by where in the measure
  * the cursor had reached, with a stop closing the most recently opened of its
- * number. Read straight from the XML, so it disagrees with the converter when
- * the converter is wrong.
+ * number on its own staff. Read straight from the XML, so it disagrees with
+ * the converter when the converter is wrong.
+ *
+ * The staff belongs in the pairing because the corpus has both hands holding
+ * a hairpin numbered 1 at once, in six songs. On the number alone, a stop on
+ * one hand closes the other hand's hairpin: in brahms-1-gestillte-sehnsucht
+ * the left hand's crescendo, opened partway through measure 7, was closed by
+ * the right hand's stop half a beat later, and the right hand's diminuendo
+ * ran on to the left hand's stop a measure further.
  */
 function sourceHairpins(root: XmlElement): string[] {
   const paired: string[] = []
@@ -82,6 +89,7 @@ function sourceHairpins(root: XmlElement): string[] {
         kind: 'start' | 'stop'
         wedge: string
         number: string
+        staff: string
         measure: number
         position: number
         order: number
@@ -130,6 +138,7 @@ function sourceHairpins(root: XmlElement): string[] {
                 kind: type === 'stop' ? 'stop' : 'start',
                 wedge: type === 'crescendo' ? 'increasing' : 'decreasing',
                 number: wedge.attributes.number ?? '1',
+                staff: item.children.find((c) => c.name === 'staff')?.text.trim() ?? '',
                 measure: measureIndex,
                 position: (position + offset) / (divisions * 4),
                 order: ends.length,
@@ -154,8 +163,12 @@ function sourceHairpins(root: XmlElement): string[] {
           open.set(end.number, [...(open.get(end.number) ?? []), end])
           continue
         }
+        // The last one opened on the stop's own staff, or failing that the
+        // last one opened at all, since a source that names the staff on one
+        // end and not the other means the end that names it.
         const waiting = open.get(end.number) ?? []
-        const started = waiting.pop()
+        const sameStaff = waiting.map((one) => one.staff).lastIndexOf(end.staff)
+        const started = waiting.splice(sameStaff < 0 ? waiting.length - 1 : sameStaff, 1)[0]
         open.set(end.number, waiting)
         if (started) closed.set(started.order, end)
       }

@@ -1736,6 +1736,72 @@ describe('hairpins', () => {
     expect(warnings).toEqual([])
   })
 
+  // Both hands hold a hairpin numbered 1 at once, which is what an exporter
+  // that numbers each hand from 1 writes. On the number alone each is joined
+  // to the other hand's stop, and both get the wrong extent.
+  const staffWedge = (type: string, staff: string) =>
+    `<direction><direction-type><wedge type="${type}" number="1"/></direction-type>` +
+    `<staff>${staff}</staff></direction>`
+
+  const bothHands = [1, 2]
+    .map(
+      (staff) =>
+        (staff === 2 ? '<backup><duration>16</duration></backup>' : '') +
+        '<note><pitch><step>C</step><octave>4</octave></pitch><duration>16</duration>' +
+        `<type>whole</type><voice>${String(staff)}</voice><staff>${String(staff)}</staff></note>`,
+    )
+    .join('')
+
+  function readTwoStaves(...bodies: string[]) {
+    const warnings = new WarningCollector()
+    const measures = bodies
+      .map(
+        (body, index) =>
+          `<measure number="${String(index + 1)}">` +
+          (index === 0
+            ? '<attributes><divisions>4</divisions><staves>2</staves></attributes>'
+            : '') +
+          `${body}${bothHands}</measure>`,
+      )
+      .join('')
+    const score = readScore(
+      parseXmlRoot(`<score-partwise><part id="P1">${measures}</part></score-partwise>`),
+      warnings,
+    )
+    return {
+      dynamics: (score.parts[0]?.measures ?? []).map((m) => m.dynamics),
+      warnings: warnings.list(),
+    }
+  }
+
+  test('pairs a hairpin with the stop on its own staff', () => {
+    const { dynamics, warnings } = readTwoStaves(
+      staffWedge('crescendo', '1'),
+      staffWedge('diminuendo', '2'),
+      staffWedge('stop', '1'),
+      staffWedge('stop', '2'),
+    )
+
+    expect(dynamics[0]?.[0]).toMatchObject({ wedge: 'increasing', staff: 1, end: { measure: 2 } })
+    expect(dynamics[1]?.[0]).toMatchObject({ wedge: 'decreasing', staff: 2, end: { measure: 3 } })
+    expect(warnings).toEqual([])
+  })
+
+  // A hairpin the reader dropped still takes its place in the pairing, so the
+  // stop the source wrote for it is consumed with it. It has to take that
+  // place on its own staff: otherwise the other hand's stop closes on it, and
+  // the hairpin that hand really opened is ended by the wrong stop.
+  test('pairs a stop with the dropped start on its own staff', () => {
+    const { dynamics, warnings } = readTwoStaves(
+      staffWedge('sideways', '1') + staffWedge('crescendo', '2'),
+      staffWedge('stop', '1'),
+      staffWedge('stop', '2'),
+    )
+
+    expect(dynamics[0]?.[0]).toMatchObject({ wedge: 'increasing', staff: 2, end: { measure: 2 } })
+    expect(warnings.map((w) => w.code)).toEqual(['unsupported:element'])
+  })
+
   // A stop closes the most recently opened hairpin of its number, and which
   // one that is cannot be known while the measure is still being read: a
   // <backup> puts the second voice's start after the first voice's stop in the

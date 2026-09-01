@@ -283,6 +283,30 @@ describe('where an octave shift runs', () => {
     expect(warnings).toEqual([])
   })
 
+  // Both hands hold a shift numbered 1 at once, which is what an exporter
+  // that numbers each hand from 1 writes. On the number alone each closes on
+  // the other hand's stop, and both get the wrong extent.
+  test('pairs a shift with the stop on its own staff', () => {
+    const hands =
+      '<note><voice>1</voice><pitch><step>C</step><octave>4</octave></pitch>' +
+      '<duration>16</duration><type>whole</type><staff>1</staff></note>' +
+      '<backup><duration>16</duration></backup>' +
+      '<note><voice>2</voice><pitch><step>C</step><octave>3</octave></pitch>' +
+      '<duration>16</duration><type>whole</type><staff>2</staff></note>'
+    const { ottavas, warnings } = read(
+      '<attributes><staves>2</staves></attributes>' +
+        shift('down', '8', '<staff>1</staff>') +
+        hands,
+      shift('up', '8', '<staff>2</staff>') + hands,
+      hands + shift('stop', '8', '<staff>1</staff>'),
+      hands + shift('stop', '8', '<staff>2</staff>'),
+    )
+
+    expect(ottavas[0]?.[0]).toMatchObject({ value: 1, staff: 1, end: { measure: 2 } })
+    expect(ottavas[1]?.[0]).toMatchObject({ value: -1, staff: 2, end: { measure: 3 } })
+    expect(warnings).toEqual([])
+  })
+
   // A note that names no staff is on the first one, so a shift stopping on
   // staff 1 ends on it.
   test('ends on a note that names no staff, which is the first staff', () => {
