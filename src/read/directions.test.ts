@@ -873,10 +873,12 @@ describe('tempo', () => {
     expect(warnings.map((w) => w.message)).toContain('<metronome-arrows> is not converted yet.')
   })
 
-  // The source states "quarter tied to eighth = 60"; the output states
-  // "quarter = 60", so the beat unit it was tied to has to be reported.
-  test('reports a beat unit tied to a second one', () => {
-    const { warnings } = read(
+  // The source states "quarter tied to eighth = 60", which is a beat unit MNX
+  // has no way to state. Reading the first beat unit alone would put
+  // "quarter = 60" in the output, a third away from the tempo the source
+  // wrote, so the whole mark is dropped and reported instead.
+  test('drops a beat unit tied to a second one, and reports it once', () => {
+    const { global, warnings } = read(
       inMeasure(
         direction(
           '<metronome><beat-unit>quarter</beat-unit>' +
@@ -886,7 +888,23 @@ describe('tempo', () => {
       ),
     )
 
-    expect(warnings.map((w) => w.message)).toContain('<beat-unit-tied> is not converted yet.')
+    expect(global?.tempos).toEqual([])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tempo'])
+  })
+
+  // The mark is dropped whole, so its parts go with it. Reporting the dot as
+  // well would report one loss twice, the second time as a converter gap.
+  test('reports a dropped metronome once, not once for each part of it', () => {
+    const { warnings } = read(
+      inMeasure(
+        direction(
+          '<metronome><beat-unit>quarter</beat-unit><beat-unit-dot/>' +
+            '<per-minute></per-minute><metronome-arrows/></metronome>',
+        ) + note('C'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tempo'])
   })
 
   test('reports a metronome stated as one note value equalling another', () => {

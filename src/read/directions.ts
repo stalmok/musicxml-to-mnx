@@ -203,19 +203,17 @@ export function readDirection(
     const wording = new PendingWording()
     let lastMark: SuffixTarget | undefined
     for (const found of directionType.element.children) {
-      // Every child is accounted for here, so that the sweep at the top says
-      // what became of it. A <metronome> holds children of its own, so it is
-      // read through a reader of its own and the sweep reports whatever that
-      // reader passed over. The other handled types are read plainly: <wedge>,
-      // <octave-shift> and <segno> are empty elements, and readDynamics
-      // reports every child of a <dynamics> it does not know. An unhandled
-      // type is reported whole below, so it is accounted for rather than read.
-      if (found.name === 'metronome') directionType.block(found)
-      else if (HANDLED_DIRECTION_TYPES.has(found.name)) directionType.children(found.name)
-      else directionType.skip(found.name)
-
+      // Each arm accounts for the child it handles, so that the sweep at the
+      // top says what became of every one of them. A type read plainly has
+      // its attributes swept with the other read children; a <metronome> is
+      // read through a reader of its own, so the sweep reports the children
+      // that reader passed over; an unhandled type is reported whole below,
+      // which accounts for it in place of reading it.
       switch (found.name) {
         case 'dynamics': {
+          // Read plainly: readDynamics reports every child of a <dynamics>
+          // it does not know, so the sweep has nothing left to say.
+          directionType.children('dynamics')
           const marks = readDynamics(found, at, staff, orient, wording, warnings, context)
           reading.dynamics.push(...marks)
           const last = marks[marks.length - 1]
@@ -228,6 +226,8 @@ export function readDirection(
           )
           break
         case 'octave-shift':
+          // Read plainly, being an empty element.
+          directionType.children('octave-shift')
           readOctaveShift(
             found,
             at,
@@ -242,6 +242,8 @@ export function readDirection(
           )
           break
         case 'wedge': {
+          // Read plainly, being an empty element.
+          directionType.children('wedge')
           const wedge = readWedge(
             found,
             at,
@@ -271,6 +273,8 @@ export function readDirection(
           break
         }
         case 'segno':
+          // Read plainly, being an empty element.
+          directionType.children('segno')
           // A segno belongs to the score's measure, like a tempo, not to the
           // part it is written in. The optional smufl attribute names a
           // specific glyph; MNX carries it as the segno's glyph.
@@ -281,6 +285,8 @@ export function readDirection(
           })
           break
         default: {
+          // Accounted for by the warning below, which names the whole of it.
+          directionType.skip(found.name)
           const loss = elementLoss(found.name)
           warnings.add(
             loss.code,
@@ -676,14 +682,6 @@ export function readSound(
 // The <direction-type> children a reader takes something from. Their
 // attributes are swept after the reader has run; anything else is reported
 // as a whole element, its attributes covered by that report.
-const HANDLED_DIRECTION_TYPES: ReadonlySet<string> = new Set([
-  'dynamics',
-  'metronome',
-  'octave-shift',
-  'wedge',
-  'segno',
-])
-
 function orientOf(element: XmlElement): 'above' | 'below' | undefined {
   const placement = attribute(element, 'placement')
   return placement === 'above' || placement === 'below' ? placement : undefined
@@ -853,9 +851,24 @@ function readMetronome(
   const element = reader.element
   // MusicXML allows several <beat-unit> children: a second one states the
   // tempo as one note value equalling another. Both are read, so the sweep
-  // does not report a child this reader did weigh.
+  // does not report a child this reader did weigh. Every part of the mark is
+  // read here rather than where it is used, because a mark that is dropped is
+  // dropped whole, and a part of it left unread would be reported a second
+  // time, as a converter gap, by the sweep.
   const perMinute = reader.children('per-minute')[0]
   const beatUnit = reader.children('beat-unit')[0]
+  const tied = reader.children('beat-unit-tied')
+  // A beat unit can be dotted.
+  const dots = reader.children('beat-unit-dot').length
+
+  // The mark converts to nothing, and the warning already names the whole of
+  // it, so the parts that state it go with it rather than being reported one
+  // by one. <metronome-arrows> is among them here, and only here: on a mark
+  // that does convert, the arrows are a loss of their own.
+  const dropWholeMark = (): Tempo[] => {
+    reader.skip('metronome-note', 'metronome-relation', 'metronome-arrows')
+    return []
+  }
 
   // MusicXML can also state a metronome as one note value equalling another,
   // a metrical modulation. MNX states a tempo as a note value and a count of
@@ -869,7 +882,7 @@ function readMetronome(
       { ...context, line: element.line },
       'metronome',
     )
-    return []
+    return dropWholeMark()
   }
 
   const base = noteValueBaseOf(beatUnit)
@@ -878,6 +891,21 @@ function readMetronome(
       `A metronome's beat unit "${trimmedText(beatUnit)}" is not a note value.`,
       { path, line: beatUnit.line },
     )
+  }
+
+  // A beat unit tied to another states a compound beat, such as a quarter
+  // tied to an eighth. MNX states a tempo's beat as one note value with dots,
+  // which cannot spell every tie, and reading the first unit alone would put
+  // a tempo in the output a third away from the one the source wrote.
+  if (tied.length > 0) {
+    warnings.add(
+      'unrepresentable:tempo',
+      'A <metronome> whose beat unit is tied to another cannot be expressed in MNX, ' +
+        'which states a tempo as one note value and a count of them per minute.',
+      { ...context, line: element.line },
+      'metronome',
+    )
+    return dropWholeMark()
   }
 
   // An empty <per-minute> is valid: it prints the beat-unit glyph alone, with
@@ -892,7 +920,7 @@ function readMetronome(
       { ...context, line: perMinute.line },
       'metronome',
     )
-    return []
+    return dropWholeMark()
   }
 
   // MusicXML's per-minute is a string, so it can be a descriptive word such as
@@ -913,10 +941,8 @@ function readMetronome(
       { ...context, line: perMinute.line },
       'metronome',
     )
-    return []
+    return dropWholeMark()
   }
 
-  // A beat unit can be dotted.
-  const dots = reader.children('beat-unit-dot').length
   return [{ position, value: { base, dots }, bpm }]
 }

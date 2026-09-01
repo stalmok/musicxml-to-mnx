@@ -138,8 +138,9 @@ export class ElementReader {
 
   /**
    * Accounts for a child without reading one, for the few places where it is
-   * carried over by some other means. Every call needs a comment saying which.
-   * The account covers the child whole, attributes included.
+   * settled elsewhere: carried over by some other means, or reported by hand
+   * where it stands. Every call needs a comment saying which. The account
+   * covers the child whole, attributes included.
    */
   skip(...names: readonly string[]): void {
     for (const found of this.element.children) {
