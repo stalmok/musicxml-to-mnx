@@ -406,7 +406,6 @@ export function readNote(
       state,
       warnings,
       context,
-      path,
       tieds,
       true,
     )
@@ -440,7 +439,6 @@ export function readNote(
     state,
     warnings,
     context,
-    path,
     tieds,
     false,
   )
@@ -468,7 +466,6 @@ function readEventSpanners(
   state: PartState,
   warnings: WarningCollector,
   context: WarningContext,
-  path: DocumentPath,
   tieds: readonly XmlElement[],
   inGraceGroup: boolean,
 ): void {
@@ -480,7 +477,7 @@ function readEventSpanners(
   builder.addBeamMarkers(
     voice,
     event.id,
-    beamMarkers(element, warnings, context, path),
+    beamMarkers(element, warnings, context),
     beamCountForValue(event.value.base),
     inGraceGroup,
   )
@@ -1040,7 +1037,6 @@ function beamMarkers(
   element: ElementReader,
   warnings: WarningCollector,
   context: WarningContext,
-  path: DocumentPath,
 ): ReadonlyMap<number, string> {
   const markers = new Map<number, string>()
   for (const beam of element.children('beam')) {
@@ -1066,12 +1062,21 @@ function beamMarkers(
       continue
     }
 
+    // A level outside the eight a stem can carry says nothing a beam can be
+    // drawn from, and the measure adds up without it: how a note is beamed is
+    // drawing, not duration. So the marker is dropped and reported, as a
+    // fanned beam above is, rather than the document being refused over it.
     const level = Number(stated)
     if (!/^\d+$/.test(stated) || level < 1 || level > 8) {
-      throw new MusicXMLError(`A <beam> is at level "${stated}", which is not a beam level.`, {
-        path,
-        line: beam.line,
-      })
+      warnings.add(
+        'unresolved:attribute-value',
+        `The "number" of a <beam> is "${stated}", which is not one of the eight beam ` +
+          'levels, so the beam is not drawn.',
+        { ...context, line: beam.line },
+        'beam',
+        'number',
+      )
+      continue
     }
     markers.set(level, trimmedText(beam))
   }

@@ -825,15 +825,15 @@ describe('tuplets', () => {
 
 describe('beam levels', () => {
   const beamed = (level: string) =>
-    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>6</duration>' +
     `<type>eighth</type><beam number="${level}">begin</beam></note>`
 
   test('reads a beam that states no level as the first one', () => {
     const { content } = read(
       measure(
-        '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+        '<note><pitch><step>C</step><octave>4</octave></pitch><duration>6</duration>' +
           '<type>eighth</type><beam>begin</beam></note>' +
-          '<note><pitch><step>D</step><octave>4</octave></pitch><duration>4</duration>' +
+          '<note><pitch><step>D</step><octave>4</octave></pitch><duration>6</duration>' +
           '<type>eighth</type><beam>end</beam></note>',
       ),
     )
@@ -841,8 +841,37 @@ describe('beam levels', () => {
     expect(content).toHaveLength(2)
   })
 
-  test.each(['0', '99', 'first'])('rejects "%s" as a beam level', (level) => {
-    expect(readFailure(measure(beamed(level))).message).toContain('not a beam level')
+  // How a note is beamed is drawing rather than duration: the measure adds up
+  // whether or not the beam is drawn. A level outside the eight a stem can
+  // carry is reported and the beam left undrawn, the way a fanned beam on the
+  // same element is, rather than the whole document being refused over it.
+  test.each(['0', '99', 'first'])('reports "%s" as a beam level, and converts', (level) => {
+    const { content, warnings } = read(measure(beamed(level)))
+
+    expect(content).toHaveLength(1)
+    expect(warnings).toMatchObject([
+      {
+        code: 'unresolved:attribute-value',
+        element: 'beam',
+        attribute: 'number',
+      },
+    ])
+    expect(warnings[0]?.message).toContain(`is "${level}"`)
+  })
+
+  // The beams the note does state at a level that exists are still drawn.
+  test('keeps the beams beside one at a level that does not exist', () => {
+    const note = (step: string, beams: string) =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>3</duration>` +
+      `<type>16th</type>${beams}</note>`
+    const { warnings } = read(
+      measure(
+        note('C', '<beam number="1">begin</beam><beam number="9">begin</beam>') +
+          note('D', '<beam number="1">end</beam><beam number="9">end</beam>'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.attribute)).toEqual(['number', 'number'])
   })
 })
 
