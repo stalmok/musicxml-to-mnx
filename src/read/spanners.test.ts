@@ -1411,6 +1411,24 @@ describe('the order the ends of a span are read in', () => {
     return { joined, reported }
   }
 
+  // Two ends alike in every way the comparator weighs are separated by the
+  // order the document writes them in, and by nothing else. Two spans of one
+  // number opening at one point stack, so which of them a later stop closes
+  // is that order's to decide.
+  test('keeps two starts at one point in the order the document writes them', () => {
+    const { joined, reported } = pair([
+      end('start', 1, fraction(0), 'first'),
+      end('start', 1, fraction(0), 'second'),
+      end('stop', 1, fraction(1, 4)),
+      end('stop', 1, fraction(1, 2)),
+    ])
+
+    // A stop closes the most recently opened span, so the second one written
+    // is the one the earlier stop closes.
+    expect(joined).toEqual(['second', 'first'])
+    expect(reported).toEqual([])
+  })
+
   // The measure comes first, before anything inside it. The ends are handed
   // over out of order here, which the reader itself does not do: the rule is
   // the comparator's, so nothing about the order they arrive in should

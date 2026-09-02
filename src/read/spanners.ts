@@ -469,23 +469,28 @@ function insertAtPosition(dynamics: Dynamic[] | undefined, added: Dynamic): void
   else dynamics.splice(after, 0, added)
 }
 
+/**
+ * The ends in the order they are paired: by measure, then by point in it,
+ * then by the rules below.
+ *
+ * Two ends this calls equal keep the order the document wrote them in, which
+ * is what decides which start a stop closes when several of one number open
+ * at one point. That rests on Array.prototype.sort being stable, which it is
+ * required to be. It used to rest on the ends being decorated with their
+ * position in the array and compared by it, which said the same thing twice.
+ */
 function inTimeOrder<T, E extends SpanEnd<T>>(ends: readonly E[], atSamePoint: SamePoint): E[] {
-  return ends
-    .map((end, index) => ({ end, index }))
-    .sort((a, b) => {
-      if (a.end.measure !== b.end.measure) return a.end.measure - b.end.measure
-      const byPosition = compareFractions(a.end.position, b.end.position)
-      if (byPosition !== 0) return byPosition
-      // A grace note sounds before the beat, so its end comes first whichever
-      // order the document writes the two in. Another voice can write the
-      // other end of the slur ahead of the grace note that opens it.
-      if ((a.end.grace ?? false) !== (b.end.grace ?? false)) return a.end.grace ? -1 : 1
-      if (atSamePoint === 'stop-first' && a.end.kind !== b.end.kind) {
-        return a.end.kind === 'stop' ? -1 : 1
-      }
-      return a.index - b.index
-    })
-    .map((entry) => entry.end)
+  return [...ends].sort((a, b) => {
+    if (a.measure !== b.measure) return a.measure - b.measure
+    const byPosition = compareFractions(a.position, b.position)
+    if (byPosition !== 0) return byPosition
+    // A grace note sounds before the beat, so its end comes first whichever
+    // order the document writes the two in. Another voice can write the
+    // other end of the slur ahead of the grace note that opens it.
+    if ((a.grace ?? false) !== (b.grace ?? false)) return a.grace ? -1 : 1
+    if (atSamePoint === 'stop-first' && a.kind !== b.kind) return a.kind === 'stop' ? -1 : 1
+    return 0
+  })
 }
 
 // Ties are matched on pitch across the part, not within a voice. A tie
