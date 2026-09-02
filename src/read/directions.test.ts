@@ -432,6 +432,30 @@ describe('dynamics', () => {
     expect(warnings).toEqual([])
   })
 
+  // Wording whose stop closed no hairpin stands on its own, at the point the
+  // source drew it. The marks of a measure are read in document order, which
+  // a <backup> takes back to an earlier point, so one drawn later can belong
+  // before the marks already read.
+  test('puts wording standing alone before a mark drawn later in the measure', () => {
+    const { measure } = read(
+      inMeasure(
+        note('C') +
+          direction('<dynamics><f/></dynamics>') +
+          note('D') +
+          '<backup><duration>8</duration></backup>' +
+          '<direction><direction-type>' +
+          '<wedge type="stop"/>' +
+          '<dynamics><other-dynamics>morendo</other-dynamics></dynamics>' +
+          '</direction-type></direction>',
+      ),
+    )
+
+    expect(measure?.dynamics.map((d) => [d.position, d.prefix ?? d.value])).toEqual([
+      [{ num: 0, den: 1 }, 'morendo'],
+      [{ num: 1, den: 4 }, 'f'],
+    ])
+  })
+
   test('carries wording after a stop wedge as the hairpin suffix', () => {
     const { measure, warnings } = read(
       inMeasure(

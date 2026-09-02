@@ -240,6 +240,22 @@ describe('where an octave shift runs', () => {
     expect(warnings).toEqual([])
   })
 
+  // Which event a stop covers is settled once its own measure is whole, and
+  // only then: settled again against a later measure, the shift would end on
+  // an event it never reached.
+  test('keeps the event its stop covers when later measures follow', () => {
+    const { ottavas, warnings } = read(
+      shift('down') + NOTE,
+      NOTE + NOTE + shift('stop') + NOTE,
+      NOTE + NOTE,
+    )
+
+    // The stop is written a half into its measure, so it covers the note a
+    // quarter in, and the two notes of the measure after it change nothing.
+    expect(ottavas[0]?.[0]?.end).toEqual({ measure: 1, position: { num: 1, den: 4 } })
+    expect(warnings).toEqual([])
+  })
+
   // An <offset> moves where a mark is drawn, not which events it covers. It
   // is routinely negative, pulling a stop written after a note back on to it,
   // and the shift still ends on that note.

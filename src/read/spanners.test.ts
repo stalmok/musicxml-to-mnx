@@ -236,6 +236,26 @@ describe('ties', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unclosed:spanner', 'unclosed:spanner'])
   })
 
+  // The one-measure reach is measured between the two ends, not from the
+  // start of the part, so a tie crossing voices holds as well in the fourth
+  // measure as in the first.
+  test('joins a tie crossing voices late in the part', () => {
+    const { notes, warnings } = readAllVoices(
+      measures(
+        DIVISIONS + note('G'),
+        note('G'),
+        note('G'),
+        note('A', tied('start')) +
+          '<backup><duration>4</duration></backup>' +
+          note('A', tied('stop'), '2'),
+      ),
+    )
+    const started = notes.find((n) => n.ties.length > 0)
+
+    expect(started?.ties).toEqual([{ target: notes[notes.length - 1]?.id, crossVoice: true }])
+    expect(warnings).toEqual([])
+  })
+
   // A same-voice stop is the source's own pairing and holds at any
   // distance. Real scores tie a note to its pitch's next sounding measures
   // away, across rests, and the corpus carries one such tie.

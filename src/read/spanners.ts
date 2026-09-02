@@ -991,14 +991,19 @@ export class SpannerResolver {
       return true
     }
 
-    for (const end of this.#wedgeEnds) {
-      if (end.kind !== 'stop' || end.measure !== measure) continue
+    // The sweep settles the stops of the measure just read, against that
+    // measure's own events. A stop of any other measure is settled by the
+    // sweep of its own, and settling it again here would move it to an event
+    // of a measure it never reached.
+    const stoppingHere = <E extends SpanEnd<unknown>>(ends: readonly E[]): E[] =>
+      ends.filter((end) => end.kind === 'stop' && end.measure === measure)
+
+    for (const end of stoppingHere(this.#wedgeEnds)) {
       overGraceNotes(end)
     }
 
     // Only an octave shift moves back off the point its stop was written at.
-    for (const end of this.#ottavaEnds) {
-      if (end.kind !== 'stop' || end.measure !== measure) continue
+    for (const end of stoppingHere(this.#ottavaEnds)) {
       if (overGraceNotes(end)) continue
       const covered = lastEventBefore(end.covers, end.staff)
       if (!covered) continue
