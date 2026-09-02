@@ -835,6 +835,7 @@ function readArpeggio(
         false,
         direction,
         direction !== undefined,
+        rolled.line,
       )
     }
     // <non-arpeggiate> says the opposite: a bracket meaning the notes are
@@ -843,7 +844,15 @@ function readArpeggio(
     // it is read here only so the sweep knows it is accounted for.
     for (const struck of block.children('non-arpeggiate')) {
       attribute(struck, 'type')
-      builder.markArpeggio(voice, note, attribute(struck, 'number'), true, undefined, false)
+      builder.markArpeggio(
+        voice,
+        note,
+        attribute(struck, 'number'),
+        true,
+        undefined,
+        false,
+        struck.line,
+      )
     }
   }
 }
@@ -939,9 +948,12 @@ function readTies(
      there is always a place here to pair from. */
   if (!at) throw new Error('A tie on a note with no place in the measure.')
 
+  // A tie is reported once the part is whole, when the <note> it was written
+  // on is gone, so its line is recorded with the edge.
+  const where = { ...context, line: element.element.line }
   for (const edge of tieEdges(ties, tieds, warnings, context)) {
-    if (edge === 'stop') state.spanners.stopTie(note, voice, state.measure, at, grace, context)
-    else state.spanners.startTie(note, voice, side, state.measure, at, grace, context)
+    if (edge === 'stop') state.spanners.stopTie(note, voice, state.measure, at, grace, where)
+    else state.spanners.startTie(note, voice, side, state.measure, at, grace, where)
   }
 
   // A let-ring (l.v.) tie rings out with no ending note. MusicXML 4.0 states
@@ -1060,8 +1072,11 @@ function readSlurs(
     // wherever the source writes them. Only the start's and the stop's go
     // anywhere: a "continue" edge's side has no home in MNX and is dropped.
     const side = curveSide(slur)
+    // Reported once the part is whole, when the <slur> is gone, so its line
+    // is recorded with the edge.
+    const where = { ...context, line: slur.line }
     if (type === 'stop') {
-      state.spanners.stopSlur(event, number, side, voice, state.measure, at, grace, context)
+      state.spanners.stopSlur(event, number, side, voice, state.measure, at, grace, where)
     } else if (type === 'start') {
       state.spanners.startSlur(
         event,
@@ -1072,7 +1087,7 @@ function readSlurs(
         state.measure,
         at,
         grace,
-        context,
+        where,
       )
     } else if (type !== 'continue') {
       // "continue" marks a note partway along a slur. MNX states only where a

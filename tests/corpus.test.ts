@@ -249,9 +249,45 @@ function idReferences(document: unknown): { defined: Set<string>; referenced: Se
   return { defined, referenced }
 }
 
+// A warning is only worth having if a reader can find what it is about. Every
+// one names the line the element was written on, except where the mark has
+// already been read into the model and the element it came from is gone: the
+// four below are settled once the parts are merged, from model objects, and
+// name the measure and stop there.
+//
+// The set is exact rather than a floor. A new report that names no line fails
+// this, and so does one of these growing a line, which is the shrink worth
+// hearing about.
+const REPORTED_WITHOUT_A_LINE: ReadonlySet<string> = new Set([
+  'unrepresentable:cross-part-key',
+  'unrepresentable:cross-part-time',
+  'inconsistent:tempo',
+  'unrepresentable:clef',
+])
+
 describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   test('produces MNX the spec schema accepts', () => {
     expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // Nothing else compares a warning's position: every assertion in the suite
+  // compares the message and the code, so a report could name the wrong line,
+  // or no line, in every file the reader has and the suite would stay green.
+  test('names where in the source every loss came from', () => {
+    const lines = source.split('\n').length
+    const measures = mnx.global.measures.length
+    const wrong = warnings
+      .filter((warning) => {
+        const { line, measure } = warning.context
+        if (line === undefined) return !REPORTED_WITHOUT_A_LINE.has(warning.code)
+        if (!Number.isInteger(line) || line < 1 || line > lines) return true
+        // A warning naming no measure comes from the document's head, before
+        // any part begins. One that names a measure names a real one.
+        return measure !== undefined && (measure < 1 || measure > measures)
+      })
+      .map((warning) => `${warning.code} / ${warning.element ?? ''}`)
+
+    expect([...new Set(wrong)]).toEqual([])
   })
 
   // MNX reads an absent key and one set to undefined as different things, and

@@ -168,6 +168,12 @@ interface MarkedArpeggio {
    */
   number: string | undefined
   struck: boolean
+  /**
+   * The line the mark was written on. A roll is reported once the measure is
+   * whole, when the element it came from is gone, so the line comes along
+   * with the mark rather than being looked up again.
+   */
+  line: number
   /** True where the same chord was marked the other way as well. */
   conflicted: boolean
   /** True where the same chord was rolled in both directions at once. */
@@ -898,6 +904,8 @@ export class MeasureBuilder {
     struck: boolean,
     direction: 'up' | 'down' | undefined,
     arrow: boolean,
+    /** The line the mark is written on, for the report that comes later. */
+    line: number,
   ): void {
     const builder = this.#builderFor(voice ?? this.#lastVoice)
     const event = builder.lastEvent
@@ -940,6 +948,7 @@ export class MeasureBuilder {
       position,
       number,
       struck,
+      line,
       conflicted: false,
       crossed: false,
       direction,
@@ -973,7 +982,7 @@ export class MeasureBuilder {
           'unrepresentable:arpeggio',
           'A chord is marked both as rolled and as struck together, which are opposite ' +
             'instructions. The first is the one converted.',
-          context,
+          { ...context, line: first.line },
           'arpeggiate',
         )
         continue
@@ -1015,7 +1024,7 @@ export class MeasureBuilder {
           'unsupported:element',
           'A rest is marked as rolled, and a roll runs between notes, so it is not ' +
             'carried over.',
-          context,
+          { ...context, line: first.line },
           'arpeggiate',
         )
         continue
@@ -1029,7 +1038,7 @@ export class MeasureBuilder {
           'unclosed:spanner',
           'A bracket marking notes as struck together has only one note under it, ' +
             'and is not carried over.',
-          context,
+          { ...context, line: first.line },
           'non-arpeggiate',
         )
         continue
@@ -1040,7 +1049,7 @@ export class MeasureBuilder {
           'inconsistent:arpeggio',
           'A chord is rolled upwards by one mark and downwards by another. The first ' +
             'is the one converted.',
-          context,
+          { ...context, line: first.line },
           'arpeggiate',
         )
       }

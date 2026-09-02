@@ -51,10 +51,14 @@ export interface BarlineReading {
   barline: BarlineType | undefined
   repeatStart: boolean
   repeatEnd: RepeatEnd | undefined
-  /** An ending beginning here, with the numbers written over it. */
-  endingStart: { numbers: readonly number[] } | undefined
+  /**
+   * An ending beginning here, with the numbers written over it and the line
+   * the <ending> was written on. A bracket is reported once the part is
+   * whole, when the element is gone, so its line comes along with it.
+   */
+  endingStart: { numbers: readonly number[]; line: number } | undefined
   /** An ending finishing here, and whether it is drawn with a closing hook. */
-  endingStop: { open: boolean } | undefined
+  endingStop: { open: boolean; line: number } | undefined
   fermata: Fermata | undefined
   /** A segno drawn on the barline, the same sign a direction can carry. */
   segno: Segno | undefined
@@ -266,8 +270,8 @@ function readEnding(
   warnings: WarningCollector,
   context: WarningContext,
 ): {
-  endingStart: { numbers: readonly number[] } | undefined
-  endingStop: { open: boolean } | undefined
+  endingStart: { numbers: readonly number[]; line: number } | undefined
+  endingStop: { open: boolean; line: number } | undefined
 } {
   const ending = element.child('ending')
   if (!ending) return { endingStart: undefined, endingStop: undefined }
@@ -283,14 +287,17 @@ function readEnding(
   const type = attribute(ending, 'type')
   if (type === 'start') {
     return {
-      endingStart: { numbers: endingNumbers(ending, warnings, context) },
+      endingStart: { numbers: endingNumbers(ending, warnings, context), line: ending.line },
       endingStop: undefined,
     }
   }
   // "stop" closes the bracket with a hook; "discontinue" leaves it open,
   // which is how a final ending that runs to the end of the piece is drawn.
   if (type === 'stop' || type === 'discontinue') {
-    return { endingStart: undefined, endingStop: { open: type === 'discontinue' } }
+    return {
+      endingStart: undefined,
+      endingStop: { open: type === 'discontinue', line: ending.line },
+    }
   }
 
   warnings.add(
@@ -339,13 +346,13 @@ function endingNumbers(
 export function resolveEndings(
   measures: readonly {
     global: { ending: Ending | undefined }
-    endingStart: { numbers: readonly number[] } | undefined
-    endingStop: { open: boolean } | undefined
+    endingStart: { numbers: readonly number[]; line: number } | undefined
+    endingStop: { open: boolean; line: number } | undefined
   }[],
   warnings: WarningCollector,
   partId: string,
 ): void {
-  let open: { at: number; numbers: readonly number[] } | undefined
+  let open: { at: number; numbers: readonly number[]; line: number } | undefined
 
   measures.forEach((measure, index) => {
     if (measure.endingStart) {
@@ -353,11 +360,15 @@ export function resolveEndings(
         warnings.add(
           'unclosed:ending',
           'An ending starts where one is already open, and the first is not carried over.',
-          { part: partId, measure: open.at + 1 },
+          { part: partId, measure: open.at + 1, line: open.line },
           'ending',
         )
       }
-      open = { at: index, numbers: measure.endingStart.numbers }
+      open = {
+        at: index,
+        numbers: measure.endingStart.numbers,
+        line: measure.endingStart.line,
+      }
     }
 
     if (!measure.endingStop) return
@@ -365,7 +376,7 @@ export function resolveEndings(
       warnings.add(
         'unclosed:ending',
         'An ending stops where none had started, and is not carried over.',
-        { part: partId, measure: index + 1 },
+        { part: partId, measure: index + 1, line: measure.endingStop.line },
         'ending',
       )
       return
@@ -389,7 +400,7 @@ export function resolveEndings(
     warnings.add(
       'unclosed:ending',
       'An ending starts where nothing ends it, and is not carried over.',
-      { part: partId, measure: open.at + 1 },
+      { part: partId, measure: open.at + 1, line: open.line },
       'ending',
     )
   }

@@ -59,9 +59,12 @@ interface PartReading {
 interface MeasureReading {
   measure: Measure
   global: GlobalMeasure
-  /** Held until the part can join it to its other end. */
-  endingStart: { numbers: readonly number[] } | undefined
-  endingStop: { open: boolean } | undefined
+  /**
+   * Held until the part can join it to its other end, with the line the
+   * <ending> was written on, so the report names it.
+   */
+  endingStart: { numbers: readonly number[]; line: number } | undefined
+  endingStop: { open: boolean; line: number } | undefined
   /**
    * The measure repeat edges this measure stated, held until the part can
    * walk the sign from its start to its stop or the end of the part.
@@ -860,8 +863,8 @@ function readMeasure(
   let barline: BarlineType | undefined
   let repeatStart = false
   let repeatEnd: RepeatEnd | undefined
-  let endingStart: { numbers: readonly number[] } | undefined
-  let endingStop: { open: boolean } | undefined
+  let endingStart: { numbers: readonly number[]; line: number } | undefined
+  let endingStop: { open: boolean; line: number } | undefined
   let fermata: Fermata | undefined
 
   const builder = new MeasureBuilder()

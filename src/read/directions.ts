@@ -428,13 +428,16 @@ function readOctaveShift(
   // Read before the edges split, because a stop or continue restates the
   // start's size and the shift's octaves come from the start alone.
   const size = attribute(found, 'size') ?? '8'
+  // Recorded with the edge for the same reason a hairpin's is: the shift is
+  // reported once the part is whole, when the element is gone.
+  const where = { ...context, line: found.line }
 
   if (type === 'stop') {
     // Which event the shift ends on is settled once the measure is whole,
     // because a <backup> can write that event after this stop. It is read
     // from where the cursor stood, not from where an <offset> draws the stop:
     // an offset moves the sign on the page, not the music it covers.
-    state.spanners.stopOttava(number, measure, position, cursor, graceAtCursor, staff, context)
+    state.spanners.stopOttava(number, measure, position, cursor, graceAtCursor, staff, where)
     return
   }
   // "continue" marks a point partway along one, which MNX has no need of.
@@ -446,13 +449,13 @@ function readOctaveShift(
       'unsupported:element',
       `An <octave-shift> of type "${type ?? ''}" and size "${size}" is not converted yet, ` +
         'so the whole shift is not carried over.',
-      { ...context, line: found.line },
+      where,
       'octave-shift',
     )
     // The stop the source wrote for this shift goes with it, unreported: only
     // "stop" and "continue" are handled above, so an unknown type can only be
     // meant as a start.
-    state.spanners.dropOttavaStart(number, measure, position, staff, context)
+    state.spanners.dropOttavaStart(number, measure, position, staff, where)
     return
   }
 
@@ -462,7 +465,7 @@ function readOctaveShift(
     number,
     measure,
     position,
-    context,
+    where,
   )
 }
 
@@ -507,6 +510,10 @@ function readWedge(
 ): WedgeReading | undefined {
   const type = attribute(found, 'type')
   const number = attribute(found, 'number') ?? '1'
+  // A hairpin is reported long after this, when the part is whole and the
+  // pairing finds an edge with nothing to join it to. The <wedge> itself is
+  // gone by then, so its line is recorded with the edge.
+  const where = { ...context, line: found.line }
 
   if (type === 'stop') {
     // Grace notes written before the stop are drawn under the hairpin. Which
@@ -514,7 +521,7 @@ function readWedge(
     // ones read after it decide how MNX numbers the ones read before it.
     return {
       edge: 'stop',
-      stop: state.spanners.stopWedge(number, measure, position, overGrace, staff, context),
+      stop: state.spanners.stopWedge(number, measure, position, overGrace, staff, where),
     }
   }
 
@@ -527,13 +534,13 @@ function readWedge(
         'unsupported:element',
         `A <wedge> of type "${type ?? ''}" is not converted yet, ` +
           'so the whole hairpin is not carried over.',
-        { ...context, line: found.line },
+        where,
         'wedge',
       )
       // The stop the source wrote for this hairpin goes with it, unreported: a
       // stop states its type as the word "stop", handled above, so an unknown
       // type can only be meant as a start.
-      state.spanners.dropWedgeStart(number, measure, position, staff, context)
+      state.spanners.dropWedgeStart(number, measure, position, staff, where)
     }
     return undefined
   }
@@ -548,7 +555,7 @@ function readWedge(
     staff,
     ...(orient !== undefined ? { orient } : {}),
   }
-  state.spanners.startWedge(hairpin, number, measure, position, context)
+  state.spanners.startWedge(hairpin, number, measure, position, where)
   return { edge: 'start', hairpin }
 }
 

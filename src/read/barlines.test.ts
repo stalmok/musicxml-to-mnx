@@ -306,11 +306,17 @@ describe('first and second time endings', () => {
     expect(globals[0]?.ending?.open).toBe(true)
   })
 
+  // A bracket is joined to its other end once the part is whole, so these
+  // three are reported long after the <ending> is gone. Each names the
+  // measure the loss is in and the line the bracket's edge was written on,
+  // which is the only thing that sends a reader to it. No vendored song
+  // carries a broken bracket, so nothing else states it.
   test('reports an ending that stops where none had started', () => {
     const { globals, warnings } = read(NOTE + right('<ending number="1" type="stop"/>'))
 
     expect(globals[0]?.ending).toBeUndefined()
     expect(warnings.map((w) => w.code)).toEqual(['unclosed:ending'])
+    expect(warnings[0]?.context).toEqual({ part: 'P1', measure: 1, line: 1 })
   })
 
   test('reports an ending that nothing ends', () => {
@@ -318,6 +324,7 @@ describe('first and second time endings', () => {
 
     expect(warnings.map((w) => w.code)).toEqual(['unclosed:ending'])
     expect(warnings[0]?.message).toContain('nothing ends it')
+    expect(warnings[0]?.context).toEqual({ part: 'P1', measure: 1, line: 1 })
   })
 
   test('reports an ending that starts while one is already open', () => {
@@ -327,6 +334,9 @@ describe('first and second time endings', () => {
     )
 
     expect(warnings.map((w) => w.code)).toEqual(['unclosed:ending'])
+    // Named as the measure the abandoned bracket opened in, not the one whose
+    // second bracket displaced it.
+    expect(warnings[0]?.context).toEqual({ part: 'P1', measure: 1, line: 1 })
     // The second one still resolves; only the abandoned first is lost.
     expect(globals[1]?.ending?.numbers).toEqual([2])
   })
