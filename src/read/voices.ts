@@ -98,7 +98,7 @@ interface VoiceBuilder {
    * written value a note inside really lasts (2/3 inside a triplet), and the
    * number its start marker gave it, for its stop to be checked against.
    */
-  openTuplets: { tuplet: Tuplet; ratio: Fraction; number: string }[]
+  openTuplets: { tuplet: Tuplet; ratio: Fraction; number: string; derived: boolean }[]
   /**
    * The two-note tremolo currently being gathered, when one is. Its item is
    * not in the content yet: it joins once both notes are in and agree.
@@ -179,6 +179,33 @@ function ratioOf(inner: NoteValueQuantity, outer: NoteValueQuantity): Fraction {
   const written = multiplyFractions(fraction(inner.multiple), lengthOf(inner.value))
   const played = multiplyFractions(fraction(outer.multiple), lengthOf(outer.value))
   return divideFractions(played, written)
+}
+
+/**
+ * Scales a tuplet's multiples to what it turned out to hold, keeping the ratio
+ * between them. Used for a ratio read from the bracket's first note: three
+ * eighths that play in the time of two open as 3:2 for that note, and stay
+ * 3:2 once the bracket holds three of them; a bracket over two eighths that
+ * play as written opens as 1:1 and becomes 2:2, which is the same bracket
+ * drawn over what it really holds.
+ *
+ * Left alone where the content is not a whole number of the value counted, as
+ * a bracket over a quarter and an eighth counted in quarters is not. The
+ * caller reports the disagreement between content and ratio, which is what
+ * that is.
+ */
+function scaleToContent(tuplet: Tuplet, held: Fraction): void {
+  const counted = divideFractions(held, lengthOf(tuplet.inner.value))
+  if (counted.den !== 1 || counted.num < 1) return
+
+  const played = multiplyFractions(
+    fraction(counted.num, tuplet.inner.multiple),
+    fraction(tuplet.outer.multiple),
+  )
+  if (played.den !== 1 || played.num < 1 || played.num > 1_000 || counted.num > 1_000) return
+
+  tuplet.inner = { value: tuplet.inner.value, multiple: counted.num }
+  tuplet.outer = { value: tuplet.outer.value, multiple: played.num }
 }
 
 /** How long a tuplet's content is written as, before its ratio scales it. */
@@ -567,6 +594,12 @@ export class MeasureBuilder {
     context: WarningContext,
     path: DocumentPath,
     line: number,
+    /**
+     * True where the ratio was read from the note rather than stated by a
+     * <time-modification>. Such a ratio speaks for that one note, so the
+     * multiples are scaled to what the bracket holds once it closes.
+     */
+    derived = false,
   ): void {
     const builder = this.#builderFor(voice)
     // A tremolo holds exactly its two notes, so no bracket may open inside
@@ -608,6 +641,7 @@ export class MeasureBuilder {
         tuplet,
         ratio: ratioOf(level.inner, level.outer),
         number: level.number,
+        derived,
       })
     }
   }
@@ -912,17 +946,23 @@ export class MeasureBuilder {
        stacks cannot disagree. */
     if (!closed) throw new Error('A tuplet closed with no ratio recorded for it.')
 
+    const { tuplet } = closed
+    const held = writtenLengthOf(tuplet.content)
+    // A ratio read from the bracket's first note speaks for that note alone.
+    // What the bracket holds is known only here, so the multiples are scaled
+    // to it now: two eighths that play as written are two in the time of two,
+    // not one in the time of one.
+    if (closed.derived) scaleToContent(tuplet, held)
+
     // Real scores contain brackets whose content does not add up to the
     // stated ratio: a lone quarter under a 3:2 eighth ratio, standing for a
     // triplet quarter. The content is converted as written, and the
     // disagreement is reported, because a consumer cannot tell how much time
     // such a tuplet means to take.
-    const { tuplet } = closed
     const statedLength = multiplyFractions(
       fraction(tuplet.inner.multiple),
       lengthOf(tuplet.inner.value),
     )
-    const held = writtenLengthOf(tuplet.content)
     const compared = compareFractions(held, statedLength)
     if (compared !== 0) {
       warnings.add(

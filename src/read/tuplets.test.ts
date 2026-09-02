@@ -794,10 +794,9 @@ describe('tuplets', () => {
     expect(warnings).toEqual([])
   })
 
-  test('rejects a tuplet opening on a note that states no ratio', () => {
+  test('rejects a tuplet opening on a note that says nothing about its length', () => {
     const noRatio =
-      '<note><rest/><duration>4</duration><type>eighth</type>' +
-      '<notations><tuplet type="start"/></notations></note>'
+      '<note><rest/><duration>4</duration>' + '<notations><tuplet type="start"/></notations></note>'
 
     expect(readFailure(measure(noRatio)).message).toContain('no <time-modification>')
   })
@@ -820,6 +819,74 @@ describe('tuplets', () => {
       '<notations><tuplet type="start"/></notations></note>'
 
     expect(readFailure(measure(oddType)).message).toContain('Unknown note type "triangle"')
+  })
+})
+
+// Real engravers write a bracket with no ratio beside it: ten songs of the
+// Lieder corpus carry one, and the whole file used to be refused over it. The
+// note itself says what the ratio is, as how long it lasts against how it is
+// written, so that is what is converted.
+describe('a bracket the source states no ratio for', () => {
+  /** A note of `units` divisions written as an eighth, bracketed or not. */
+  const bare = (step: string, units: number, bracket = '') =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    `<duration>${String(units)}</duration><type>eighth</type>` +
+    (bracket ? `<notations><tuplet type="${bracket}"/></notations>` : '') +
+    '</note>'
+
+  // Two eighths lasting an eighth each: a bracket that changes no duration,
+  // which is drawn over what it holds and states two in the time of two.
+  test('states a bracket over notes that play as written', () => {
+    const { content, warnings } = read(measure(bare('C', 6, 'start') + bare('D', 6, 'stop')))
+    const tuplet = content?.[0]
+
+    expect(tuplet?.kind === 'tuplet' && tuplet.inner).toEqual({
+      value: { base: 'eighth', dots: 0 },
+      multiple: 2,
+    })
+    expect(tuplet?.kind === 'tuplet' && tuplet.outer).toEqual({
+      value: { base: 'eighth', dots: 0 },
+      multiple: 2,
+    })
+    expect(tuplet?.kind === 'tuplet' && tuplet.content).toHaveLength(2)
+    expect(warnings.map((w) => w.code)).toEqual(['missing:time-modification'])
+  })
+
+  // Three eighths in the time of two, written by an exporter that left the
+  // <time-modification> out. The durations say 3:2, so the tuplet does.
+  test('reads the ratio of a triplet whose ratio was left out', () => {
+    const { content, warnings } = read(
+      measure(bare('C', 4, 'start') + bare('D', 4) + bare('E', 4, 'stop')),
+    )
+    const tuplet = content?.[0]
+
+    expect(tuplet?.kind === 'tuplet' && tuplet.inner).toEqual({
+      value: { base: 'eighth', dots: 0 },
+      multiple: 3,
+    })
+    expect(tuplet?.kind === 'tuplet' && tuplet.outer).toEqual({
+      value: { base: 'eighth', dots: 0 },
+      multiple: 2,
+    })
+    expect(warnings.map((w) => w.code)).toEqual(['missing:time-modification'])
+    expect(warnings[0]?.message).toContain('lasts 2/3 of what it is written as')
+  })
+
+  test('writes MNX the spec schema accepts for one', () => {
+    const { mnx } = convertMusicXML(measure(bare('C', 4, 'start') + bare('D', 4, 'stop')))
+
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // Nothing says how one ratio would divide between two brackets, so the
+  // document is still refused rather than the division invented.
+  test('rejects two brackets opening together with no ratio', () => {
+    const doubled =
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+      '<type>eighth</type><notations><tuplet type="start" number="1"/>' +
+      '<tuplet type="start" number="2"/></notations></note>'
+
+    expect(readFailure(measure(doubled)).message).toContain('More than one tuplet starts')
   })
 })
 

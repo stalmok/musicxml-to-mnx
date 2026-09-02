@@ -196,6 +196,10 @@ export type WarningCode =
   // is. One division per quarter note is assumed; if that is wrong, the
   // written values disagree with the measured ones and say so.
   | 'missing:divisions'
+  // A <tuplet> bracket starts on a note with no <time-modification> beside
+  // it, so the source states no ratio for it. The ratio is read from how long
+  // the note lasts against how it is written.
+  | 'missing:time-modification'
   // A note omits its <voice> while others in the same measure name theirs.
   // The unnamed notes are kept as a separate line, which may not be the one
   // the source intended.

@@ -8,7 +8,7 @@
 
 import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
-import { compareFractions, fraction, multiplyFractions } from '../fraction.js'
+import { compareFractions, divideFractions, fraction, multiplyFractions } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type {
   AccidentalDisplay,
@@ -268,27 +268,60 @@ export function readNote(
 
   const starts = markers.filter((marker) => attribute(marker, 'type') === 'start')
   if (starts.length > 0) {
-    if (!ratio) {
-      throw new MusicXMLError('A tuplet starts on a note with no <time-modification>.', {
-        path,
-        line: element.line,
-      })
+    // A bracket with no ratio beside it is written by real engravers, and the
+    // note itself says what the ratio is: how long it lasts against how it is
+    // written. Ten songs of the Lieder corpus carry one, some as a plain
+    // bracket over notes that play as written, some as a triplet whose
+    // <time-modification> the exporter left out.
+    const derived = ratio ? undefined : impliedTupletRatio(written, duration)
+    if (!ratio && !derived) {
+      throw new MusicXMLError(
+        'A tuplet starts on a note with no <time-modification>, and the note does not ' +
+          'say how long it lasts against how it is written.',
+        { path, line: element.line },
+      )
     }
-    const quantities = readTupletRatio(ratio, element, path)
+
+    const quantities = ratio ? readTupletRatio(ratio, element, path) : derived
+    /* v8 ignore next -- one of the two is set, or the throw above ran. */
+    if (!quantities) throw new Error('A tuplet opened with no ratio.')
+    const opening = starts.map((marker) => ({
+      display: tupletDisplayOf(marker, hiddenTuplets.has(marker)),
+      stated: statedTupletRatio(marker, quantities, path),
+      // A marker that states no number is tuplet 1, as the spec has it.
+      number: attribute(marker, 'number') ?? '1',
+    }))
+
+    // The note states one ratio for however many brackets open on it. Where
+    // several do, only the markers can say how it divides between them, and
+    // <time-modification> is not there to be weighed against them.
+    if (derived && opening.some((start) => !start.stated) && opening.length > 1) {
+      throw new MusicXMLError(
+        'More than one tuplet starts on a note with no <time-modification>, and the ' +
+          'markers do not state how the ratio divides between them.',
+        { path, line: element.line },
+      )
+    }
+    if (derived) {
+      warnings.add(
+        'missing:time-modification',
+        `A tuplet starts with no <time-modification>. The note lasts ${describeRatio(derived)} ` +
+          'of what it is written as, so that is the ratio converted.',
+        { ...context, line: element.line },
+        'tuplet',
+      )
+    }
+
     builder.openTuplets(
       voice,
       quantities.inner,
       quantities.outer,
-      starts.map((marker) => ({
-        display: tupletDisplayOf(marker, hiddenTuplets.has(marker)),
-        stated: statedTupletRatio(marker, quantities, path),
-        // A marker that states no number is tuplet 1, as the spec has it.
-        number: attribute(marker, 'number') ?? '1',
-      })),
+      opening,
       warnings,
       context,
       path,
       element.line,
+      derived !== undefined,
     )
   }
 
@@ -1251,6 +1284,43 @@ function tupletPortion(
       ? { base: requireNoteValueBase(type, path), dots: children(portion, 'tuplet-dot').length }
       : fallback.value,
   }
+}
+
+/**
+ * The ratio of a bracket the source states no <time-modification> for, read
+ * from the note the bracket starts on: how long the note lasts against how it
+ * is written. A note written as an eighth and lasting two thirds of one is
+ * three in the time of two; one lasting exactly an eighth is one in the time
+ * of one, which is a bracket that changes no duration.
+ *
+ * Cumulative, as a <time-modification> is: it states every open level's ratio
+ * together, and the builder divides out the levels already open.
+ *
+ * The multiples stand for this one note. What the whole bracket holds is not
+ * known until it closes, and the builder scales them to it there.
+ *
+ * Nothing is read where the note does not say both how it is written and how
+ * long it lasts, or where the ratio needs numbers larger than MusicXML would
+ * write in a <time-modification>: there is no reading to be had, and the
+ * caller refuses the document rather than inventing one.
+ */
+function impliedTupletRatio(
+  written: NoteValue | undefined,
+  duration: Fraction | undefined,
+): { inner: NoteValueQuantity; outer: NoteValueQuantity } | undefined {
+  if (!written || !duration || duration.num <= 0) return undefined
+
+  const ratio = divideFractions(lengthOf(written), duration)
+  if (ratio.num > 1_000 || ratio.den > 1_000) return undefined
+  return {
+    inner: { value: written, multiple: ratio.num },
+    outer: { value: written, multiple: ratio.den },
+  }
+}
+
+/** The derived ratio as a fraction, for the report that names it. */
+function describeRatio(quantities: { inner: NoteValueQuantity; outer: NoteValueQuantity }): string {
+  return `${String(quantities.outer.multiple)}/${String(quantities.inner.multiple)}`
 }
 
 /**
