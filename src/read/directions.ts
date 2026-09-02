@@ -33,7 +33,7 @@ import { noteValueBaseOf } from './noteValues.js'
 import { readIntegerInRange } from './numbers.js'
 import type { StopWording, WedgeStop } from './spanners.js'
 import type { PartState } from './state.js'
-import { recogniser } from './tables.js'
+import { entriesOf, recogniser } from './tables.js'
 import { attributeLoss, elementLoss } from './unrepresentable.js'
 
 /** What one <direction> was found to carry. */
@@ -467,11 +467,17 @@ function readOctaveShift(
 }
 
 // MusicXML's wedge types, in MNX's. A hairpin opening to the right gets
-// louder; one closing gets softer.
-const WEDGE_TYPES = new Map<string, WedgeType>([
-  ['crescendo', 'increasing'],
-  ['diminuendo', 'decreasing'],
-])
+// louder; one closing gets softer. Keyed by the model's own word, so a hairpin
+// shape the model gains and this table lacks does not compile.
+const MUSICXML_WEDGES: Record<WedgeType, string> = {
+  increasing: 'crescendo',
+  decreasing: 'diminuendo',
+}
+
+// The same table the way it is read: MusicXML's word to the model's.
+const WEDGE_TYPES = new Map<string, WedgeType>(
+  entriesOf(MUSICXML_WEDGES).map(([shape, spelling]) => [spelling, shape]),
+)
 
 /**
  * Which edge of a hairpin a <wedge> marked. Wording written beside a start

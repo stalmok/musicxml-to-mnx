@@ -23,20 +23,30 @@ export interface BeamedEvent {
   beamCount: number
 }
 
-const BEAM_COUNTS: ReadonlyMap<NoteValueBase, number> = new Map([
-  ['eighth', 1],
-  ['16th', 2],
-  ['32nd', 3],
-  ['64th', 4],
-  ['128th', 5],
-  ['256th', 6],
-  ['512th', 7],
-  ['1024th', 8],
-])
+// How many beams each note value is drawn with. A Record rather than a Map,
+// so a value the model gains and this table lacks does not compile: read
+// through a lookup that defaults to zero, such a value would quietly report a
+// note as beamed with nothing.
+const BEAM_COUNTS: Record<NoteValueBase, number> = {
+  maxima: 0,
+  longa: 0,
+  breve: 0,
+  whole: 0,
+  half: 0,
+  quarter: 0,
+  eighth: 1,
+  '16th': 2,
+  '32nd': 3,
+  '64th': 4,
+  '128th': 5,
+  '256th': 6,
+  '512th': 7,
+  '1024th': 8,
+}
 
 /** How many beams a note of this value carries. Zero for a quarter or longer. */
 export function beamCountForValue(base: NoteValueBase): number {
-  return BEAM_COUNTS.get(base) ?? 0
+  return BEAM_COUNTS[base]
 }
 
 const HOOK_DIRECTIONS = new Map<string, 'left' | 'right'>([

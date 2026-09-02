@@ -676,16 +676,23 @@ function readMarkings(
 
 // MusicXML's fermata shapes, in MNX's spelling. The two agree apart from the
 // hyphens. An empty <fermata> states no shape, which MNX reads as its default.
-const FERMATA_SYMBOLS = new Map<string, FermataSymbol>([
-  ['normal', 'normal'],
-  ['angled', 'angled'],
-  ['square', 'square'],
-  ['double-angled', 'doubleAngled'],
-  ['double-square', 'doubleSquare'],
-  ['double-dot', 'doubleDot'],
-  ['half-curve', 'halfCurve'],
-  ['curlew', 'curlew'],
-])
+// Keyed by the model's own shape, so a shape the model gains and this table
+// lacks does not compile.
+const MUSICXML_FERMATA_SHAPES: Record<FermataSymbol, string> = {
+  normal: 'normal',
+  angled: 'angled',
+  square: 'square',
+  doubleAngled: 'double-angled',
+  doubleSquare: 'double-square',
+  doubleDot: 'double-dot',
+  halfCurve: 'half-curve',
+  curlew: 'curlew',
+}
+
+// The same table the way it is read: MusicXML's word to the model's shape.
+const FERMATA_SYMBOLS = new Map<string, FermataSymbol>(
+  entriesOf(MUSICXML_FERMATA_SHAPES).map(([shape, spelling]) => [spelling, shape]),
+)
 
 /**
  * The pause held over this event. MusicXML allows a <notations> to carry
@@ -1200,11 +1207,19 @@ function tupletMarkers(notations: readonly ElementReader[]): readonly XmlElement
 
 // MusicXML's show-number/show-type values in MNX's. "actual" is the played
 // count, which MNX calls the inner one.
-const TUPLET_DISPLAY = new Map<string, TupletDisplay>([
-  ['both', 'both'],
-  ['actual', 'inner'],
-  ['none', 'noNumber'],
-])
+// What MusicXML's show-number and show-type say, in MNX's spelling. Keyed by
+// the model's own word, so a setting the model gains and this table lacks does
+// not compile.
+const MUSICXML_TUPLET_DISPLAY: Record<TupletDisplay, string> = {
+  both: 'both',
+  inner: 'actual',
+  noNumber: 'none',
+}
+
+// The same table the way it is read: MusicXML's word to the model's.
+const TUPLET_DISPLAY = new Map<string, TupletDisplay>(
+  entriesOf(MUSICXML_TUPLET_DISPLAY).map(([setting, spelling]) => [spelling, setting]),
+)
 
 /**
  * What a start `<tuplet>` marker says about how its tuplet is drawn: whether

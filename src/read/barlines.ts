@@ -18,24 +18,33 @@ import type { XmlElement } from '../xml/parse.js'
 import { attribute, trimmedText } from '../xml/tree.js'
 import { readColor } from './color.js'
 import type { ElementReader } from './element.js'
+import { entriesOf } from './tables.js'
 import { reportHidden } from './unrepresentable.js'
 import { readFermataAt } from './notes.js'
 
 // MusicXML's bar styles, in MNX's spelling. The two describe the same lines;
 // only the names differ, MusicXML naming the two strokes and MNX the result.
-const BAR_STYLES = new Map<string, BarlineType>([
-  ['regular', 'regular'],
-  ['dotted', 'dotted'],
-  ['dashed', 'dashed'],
-  ['heavy', 'heavy'],
-  ['light-light', 'double'],
-  ['light-heavy', 'final'],
-  ['heavy-light', 'heavyLight'],
-  ['heavy-heavy', 'heavyHeavy'],
-  ['tick', 'tick'],
-  ['short', 'short'],
-  ['none', 'noBarline'],
-])
+// Keyed by the model's own line, so a line the model gains and this table
+// lacks does not compile: a line with no spelling here is one no source could
+// ever be read as drawing.
+const MUSICXML_SPELLINGS: Record<BarlineType, string> = {
+  regular: 'regular',
+  dotted: 'dotted',
+  dashed: 'dashed',
+  heavy: 'heavy',
+  double: 'light-light',
+  final: 'light-heavy',
+  heavyLight: 'heavy-light',
+  heavyHeavy: 'heavy-heavy',
+  tick: 'tick',
+  short: 'short',
+  noBarline: 'none',
+}
+
+// The same table the way it is read: MusicXML's word to the model's line.
+const BAR_STYLES = new Map<string, BarlineType>(
+  entriesOf(MUSICXML_SPELLINGS).map(([line, spelling]) => [spelling, line]),
+)
 
 /** What one <barline> was found to carry. */
 export interface BarlineReading {
