@@ -953,6 +953,76 @@ describe('a bracket the source states no ratio for', () => {
     ])
   })
 
+  // The counts a bracket states are worked out by halving the value it opened
+  // with until both sides count whole. The three edges of that search are the
+  // smallest count, the deepest halving, and the largest count.
+  describe('the counts a bracket is scaled to', () => {
+    const at = (divisions: number, body: string) =>
+      read(
+        '<score-partwise><part id="P1"><measure number="1">' +
+          `<attributes><divisions>${String(divisions)}</divisions></attributes>` +
+          `${body}</measure></part></score-partwise>`,
+      )
+    const note = (step: string, duration: number, type: string, markers = '') =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+      `<duration>${String(duration)}</duration><type>${type}</type>` +
+      (markers ? `<notations>${markers}</notations>` : '') +
+      '</note>'
+
+    // One quarter played in the time of two is a count of one, which is a
+    // count MusicXML writes: a bracket over a single note stretched to twice
+    // its length. Counted from two upwards, the same bracket would be drawn
+    // as two eighths in the time of four.
+    test('states a count of one as one', () => {
+      const { content } = at(
+        12,
+        note('C', 24, 'quarter', '<tuplet type="start"/><tuplet type="stop"/>'),
+      )
+      const tuplet = content?.[0]
+
+      expect(tuplet?.kind === 'tuplet' && [tuplet.inner, tuplet.outer]).toEqual([
+        { value: { base: 'quarter', dots: 0 }, multiple: 1 },
+        { value: { base: 'quarter', dots: 0 }, multiple: 2 },
+      ])
+    })
+
+    // A quarter and a 1024th together count whole in 1024ths and in nothing
+    // longer, which is eight halvings down from the quarter the bracket
+    // opened with: the last halving the search makes.
+    test('reaches a value eight halvings down from the one it opened with', () => {
+      const { content } = at(
+        256,
+        note('C', 128, 'quarter', '<tuplet type="start"/>') +
+          note('D', 1, '1024th', '<tuplet type="stop"/>'),
+      )
+      const tuplet = content?.[0]
+
+      expect(tuplet?.kind === 'tuplet' && [tuplet.inner, tuplet.outer]).toEqual([
+        { value: { base: '1024th', dots: 0 }, multiple: 257 },
+        { value: { base: '1024th', dots: 0 }, multiple: 129 },
+      ])
+    })
+
+    // A count past a thousand is not one MusicXML would write, so the bracket
+    // is left with the ratio its first note gave it and the disagreement
+    // between that and its content is reported.
+    test('leaves a bracket alone where the count runs past a thousand', () => {
+      const { content, warnings } = at(
+        256,
+        note('C', 128, 'quarter', '<tuplet type="start"/>') +
+          note('D', 512, 'whole') +
+          note('E', 1, '1024th', '<tuplet type="stop"/>'),
+      )
+      const tuplet = content?.[0]
+
+      expect(tuplet?.kind === 'tuplet' && [tuplet.inner, tuplet.outer]).toEqual([
+        { value: { base: 'quarter', dots: 0 }, multiple: 2 },
+        { value: { base: 'quarter', dots: 0 }, multiple: 1 },
+      ])
+      expect(warnings.map((w) => w.code)).toContain('inconsistent:tuplet')
+    })
+  })
+
   // A note whose length works out as a ratio no tuplet is written with is a
   // broken duration, not a bracket to be read.
   test('rejects a first note whose length is no ratio a tuplet would state', () => {

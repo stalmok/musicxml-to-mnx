@@ -232,8 +232,10 @@ function ratioOf(inner: NoteValueQuantity, outer: NoteValueQuantity): Fraction {
  */
 function scaleToContent(tuplet: Tuplet, held: Fraction, sounded: Fraction): void {
   let length = lengthOf(tuplet.inner.value)
-  // Eight halvings reach a 1024th from a maxima, which is every value there
-  // is; a ninth would have nothing to name it.
+  // Eight halvings reach a 1024th from a quarter, which is as far down as a
+  // bracket is drawn. A bracket opening on a longer value and holding a
+  // 1024th would want more, and is left alone instead, which the caller
+  // reports as the disagreement between content and ratio that it is.
   for (let halved = 0; halved <= 8; halved += 1) {
     const value = noteValueOf(length)
     if (value) {
