@@ -1248,11 +1248,12 @@ describe('the order the ends of a span are read in', () => {
     return { joined, reported }
   }
 
-  // The measure comes first, before anything inside it. Written the other way
-  // round, a start in an earlier measure sorts after a stop in a later one and
-  // the two never meet.
-  test('reads an earlier measure before a later one', () => {
-    expect(pair([end('start', 1, fraction(0)), end('stop', 3, fraction(0))])).toEqual({
+  // The measure comes first, before anything inside it. The ends are handed
+  // over out of order here, which the reader itself does not do: the rule is
+  // the comparator's, so nothing about the order they arrive in should
+  // decide which start a stop closes.
+  test('reads an earlier measure before a later one, whatever order they arrive in', () => {
+    expect(pair([end('stop', 3, fraction(0)), end('start', 1, fraction(0))])).toEqual({
       joined: ['span'],
       reported: [],
     })
@@ -1289,6 +1290,25 @@ describe('the order the ends of a span are read in', () => {
     expect(
       pair([end('start', 0, fraction(1, 2)), end('stop', 0, fraction(1, 2))], 'as-written'),
     ).toEqual({ joined: ['span'], reported: [] })
+  })
+
+  // Reading a stop before a start is a rule about the two kinds. Two stops at
+  // one point are not parted by it, so they close in the order they were
+  // written: the first closes the last start opened, as any stop does.
+  test('keeps two stops at one point in the order they were written', () => {
+    const joined: string[] = []
+    pairSpans<string, SpanEnd<string>>(
+      [
+        end('start', 0, fraction(0), 'first'),
+        end('start', 0, fraction(1, 4), 'second'),
+        { ...end('stop', 0, fraction(1, 2)), covers: fraction(1, 2) },
+        { ...end('stop', 0, fraction(1, 2)), covers: fraction(3, 8) },
+      ],
+      (payload, stop) => joined.push(`${payload} covering ${String(stop.covers.den)}`),
+      () => undefined,
+    )
+
+    expect(joined).toEqual(['second covering 2', 'first covering 8'])
   })
 
   // Two ends a rule cannot part keep the order the document wrote them in, so
