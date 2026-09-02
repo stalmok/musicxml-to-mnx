@@ -282,10 +282,22 @@ describe('the measure cursor', () => {
     expect(content).toHaveLength(2)
   })
 
-  test('rejects a backup past the start of the measure', () => {
-    expect(
-      readFailure(measure(note('C', 1) + '<backup><duration>16</duration></backup>')).message,
-    ).toContain('before the start of the measure')
+  // Exporters return to the start of a measure a voice has not filled by
+  // backing up the whole measure's length, whatever that voice wrote. Taking
+  // the cursor to the start is what such a source means, and the document
+  // used to be refused over it.
+  test('takes a backup past the start of the measure to the start', () => {
+    const { measure: result, warnings } = read(
+      measure(note('C', 1, '1') + '<backup><duration>16</duration></backup>' + note('G', 2, '2')),
+    )
+
+    // Voice 2 begins at the measure start, so it holds its note and no space
+    // before it.
+    const second = result?.sequences[1]?.content
+    expect(second?.[0]?.kind).toBe('event')
+    expect(second).toHaveLength(1)
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:backup'])
+    expect(warnings[0]?.element).toBe('backup')
   })
 
   test.each(['backup', 'forward'])('rejects a <%s> that states no duration', (name) => {

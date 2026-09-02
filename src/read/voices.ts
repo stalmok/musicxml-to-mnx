@@ -349,14 +349,28 @@ export class MeasureBuilder {
     return this.#cursor
   }
 
-  /** Moves the cursor, as <backup> and <forward> do. */
-  shift(by: Fraction, path: DocumentPath, line: number): void {
+  /**
+   * Moves the cursor, as <backup> and <forward> do.
+   *
+   * A <backup> reaching past the start of the measure is how exporters return
+   * to the start of a measure a voice has not filled: the source backs up by
+   * the whole measure's length whatever that voice wrote. The cursor goes to
+   * the start, which is what such a source means, and the disagreement
+   * between the two numbers is reported. Refusing the document over it lost
+   * three songs of the Lieder corpus.
+   */
+  shift(by: Fraction, warnings: WarningCollector, context: WarningContext, line: number): void {
     const moved = addFractions(this.#cursor, by)
     if (compareFractions(moved, fraction(0)) < 0) {
-      throw new MusicXMLError('A <backup> reaches back before the start of the measure.', {
-        path,
-        line,
-      })
+      warnings.add(
+        'inconsistent:backup',
+        'A <backup> reaches back further than the measure has run. The cursor is taken ' +
+          'to the start of the measure.',
+        { ...context, line },
+        'backup',
+      )
+      this.#cursor = fraction(0)
+      return
     }
     this.#cursor = moved
   }

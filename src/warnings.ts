@@ -169,6 +169,10 @@ export type WarningCode =
   // The two ends of a two-note tremolo count different beams. The start's
   // count is the one converted.
   | 'inconsistent:tremolo'
+  // A <backup> reaches back further than the measure has run, so the two
+  // numbers disagree about how long the measure is. The cursor is taken to
+  // the start of the measure.
+  | 'inconsistent:backup'
   // Two barlines close the same measure with different styles. The first is
   // the one converted.
   | 'inconsistent:barline'

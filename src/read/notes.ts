@@ -389,7 +389,7 @@ export function readNote(
       path,
       element.line,
     )
-    if (duration) builder.shift(duration, path, element.line)
+    if (duration) builder.shift(duration, warnings, context, element.line)
     return
   }
 
@@ -456,7 +456,7 @@ export function readNote(
       { ...context, line: element.line },
       'rest',
     )
-    if (duration) builder.shift(duration, path, element.line)
+    if (duration) builder.shift(duration, warnings, context, element.line)
     return
   }
 
