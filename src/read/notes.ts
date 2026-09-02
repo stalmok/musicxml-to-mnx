@@ -239,7 +239,27 @@ export function readNote(
       context,
       tieds,
     )
-    closeTuplets(builder, voice, tupletMarkers(notations), warnings, context, path, element.line)
+    // A bracket opens around a whole event, and the event a chord member
+    // joins is already placed by the time the member is read, so a start
+    // written here would draw the bracket after the chord it belongs to.
+    // The number is recorded so the stop that matches it is dropped too,
+    // rather than closing the bracket around it. A stop written on a chord
+    // member needs none of this: the chord is the last event inside the
+    // bracket, so closing on it is where the bracket ends.
+    const chordMarkers = tupletMarkers(notations)
+    for (const marker of chordMarkers) {
+      if (attribute(marker, 'type') !== 'start') continue
+      warnings.add(
+        'unsupported:element',
+        'A <tuplet> starts on a chord member, where the bracket would begin after the ' +
+          'chord it belongs to. The tuplet is not converted.',
+        { ...context, line: element.line },
+        'tuplet',
+      )
+      // A marker that states no number is tuplet 1, as the spec has it.
+      builder.dropTuplet(voice, attribute(marker, 'number') ?? '1')
+    }
+    closeTuplets(builder, voice, chordMarkers, warnings, context, path, element.line)
     return
   }
 
@@ -538,7 +558,12 @@ function closeTuplets(
     // already carries, so it is read only for the record.
     attribute(marker, 'placement')
     // A marker that states no number is tuplet 1, as the spec has it.
-    stated.push(attribute(marker, 'number') ?? '1')
+    const number = attribute(marker, 'number') ?? '1'
+    // The start this stop matches was dropped where it could not be drawn,
+    // and reported there. There is no bracket of its own to close, and
+    // closing here would end the bracket around it instead.
+    if (builder.closesDroppedTuplet(voice, number)) continue
+    stated.push(number)
     closed.push(builder.closeTuplet(voice, warnings, context, path, line))
   }
   if (stated.length > 0 && String([...stated].sort()) !== String([...closed].sort())) {

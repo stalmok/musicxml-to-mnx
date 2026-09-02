@@ -1004,6 +1004,78 @@ describe('beam levels', () => {
   })
 })
 
+// A bracket opens around a whole event, and a chord member is read after the
+// event it joins is already placed, so a start marker written on one names a
+// tuplet this converter cannot draw. It is reported rather than dropped, and
+// the stop that matches it is dropped with it.
+describe('a tuplet marker on a chord member', () => {
+  const chordMember = (markers: string) =>
+    '<note><chord/><pitch><step>F</step><octave>4</octave></pitch>' +
+    '<duration>4</duration><type>eighth</type>' +
+    '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+    '</time-modification>' +
+    `<notations>${markers}</notations></note>`
+
+  test('reports a start written on a chord member', () => {
+    const { content, warnings } = read(
+      measure(
+        tupletNote('C', 4, 'eighth', 'start') +
+          tupletNote('D', 4, 'eighth') +
+          chordMember('<tuplet type="start" number="2"/>') +
+          tupletNote('E', 4, 'eighth', 'stop'),
+      ),
+    )
+
+    expect(warnings.map((w) => ({ code: w.code, element: w.element }))).toEqual([
+      { code: 'unsupported:element', element: 'tuplet' },
+    ])
+    expect(warnings[0]?.message).toContain('chord member')
+    // The bracket the source did draw is untouched, and holds all three events.
+    expect(content?.map((item) => item.kind)).toEqual(['tuplet'])
+    expect(content?.[0]?.kind === 'tuplet' && content[0].content).toHaveLength(3)
+  })
+
+  test('drops the stop that matches a start dropped on a chord member', () => {
+    const stops = '<tuplet type="stop" number="2"/><tuplet type="stop" number="1"/>'
+    const stopsBoth =
+      '<note><pitch><step>E</step><octave>4</octave></pitch><duration>4</duration>' +
+      '<type>eighth</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+      '</time-modification>' +
+      `<notations>${stops}</notations></note>`
+    const { content, warnings } = read(
+      measure(
+        tupletNote('C', 4, 'eighth', 'start') +
+          tupletNote('D', 4, 'eighth') +
+          chordMember('<tuplet type="start" number="2"/>') +
+          stopsBoth,
+      ),
+    )
+
+    // Only the dropped start is reported: the stop closes nothing, so no
+    // crossing is claimed and the outer bracket still closes on this note.
+    expect(warnings.map((w) => w.code)).toEqual(['unsupported:element'])
+    expect(content?.map((item) => item.kind)).toEqual(['tuplet'])
+  })
+
+  // A stop on a chord member closes correctly, because the chord it joins is
+  // the last event inside the bracket. Only a start has nowhere to go.
+  test('closes the bracket on a stop written on a chord member', () => {
+    const { content, warnings } = read(
+      measure(
+        tupletNote('C', 4, 'eighth', 'start') +
+          tupletNote('D', 4, 'eighth') +
+          tupletNote('E', 4, 'eighth') +
+          chordMember('<tuplet type="stop"/>'),
+      ),
+    )
+
+    expect(warnings).toEqual([])
+    expect(content?.map((item) => item.kind)).toEqual(['tuplet'])
+    expect(content?.[0]?.kind === 'tuplet' && content[0].content).toHaveLength(3)
+  })
+})
+
 describe('grace notes', () => {
   const grace = (step: string, extra = '') =>
     `<note><grace${extra}/><pitch><step>${step}</step><octave>5</octave></pitch>` +

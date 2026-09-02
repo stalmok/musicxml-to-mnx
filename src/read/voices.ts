@@ -111,6 +111,12 @@ interface VoiceBuilder {
     openEnd: Fraction
   }[]
   /**
+   * The numbers of tuplets whose start marker was read but never opened,
+   * because it was written where no bracket can begin. The stop matching one
+   * is dropped with it, rather than closing the bracket around it.
+   */
+  droppedTuplets: string[]
+  /**
    * The two-note tremolo currently being gathered, when one is. Its item is
    * not in the content yet: it joins once both notes are in and agree.
    */
@@ -1011,6 +1017,28 @@ export class MeasureBuilder {
   }
 
   /**
+   * Records a tuplet this voice never opened, by the number its start marker
+   * stated, so the stop that matches it can be dropped with it.
+   */
+  dropTuplet(voice: string | undefined, number: string): void {
+    this.#builderFor(voice).droppedTuplets.push(number)
+  }
+
+  /**
+   * Whether this stop closes a tuplet whose start was dropped. The record is
+   * consumed, so a second stop stating the same number closes an open bracket
+   * as any other stop does.
+   */
+  closesDroppedTuplet(voice: string | undefined, number: string): boolean {
+    const dropped = this.#builderFor(voice).droppedTuplets
+    const at = dropped.lastIndexOf(number)
+    if (at < 0) return false
+
+    dropped.splice(at, 1)
+    return true
+  }
+
+  /**
    * Closes the innermost open tuplet in this voice, handing back the number
    * its start marker stated so the caller can weigh the note's stops as a
    * batch: which stop is written first on a note is not constrained, so a
@@ -1176,6 +1204,7 @@ export class MeasureBuilder {
       placed: [],
       open: [{ list: content, opened: 'voice' }],
       openTuplets: [],
+      droppedTuplets: [],
       openTremolo: undefined,
       content,
       end: fraction(0),
