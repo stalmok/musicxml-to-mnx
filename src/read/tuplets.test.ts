@@ -1054,6 +1054,49 @@ describe('a bracket the source states no ratio for', () => {
     expect(readFailure(measure(odd)).message).toContain('no <time-modification>')
   })
 
+  // Thirty-two either side is the largest count a derived ratio may reach.
+  // Both edges are stated and so is one past each, because a bound asserted
+  // at one end only could move by one with nothing noticing.
+  describe('the largest ratio a note may imply', () => {
+    const bracketed = (divisions: number, type: string, duration: number) =>
+      '<score-partwise><part id="P1"><measure number="1">' +
+      `<attributes><divisions>${String(divisions)}</divisions></attributes>` +
+      `<note><pitch><step>C</step><octave>4</octave></pitch><duration>${String(duration)}</duration>` +
+      `<type>${type}</type>` +
+      '<notations><tuplet type="start"/><tuplet type="stop"/></notations></note>' +
+      '</measure></part></score-partwise>'
+
+    // A whole note lasting a thirty-second is thirty-two in the time of one.
+    test('reads a note implying thirty-two in the time of one', () => {
+      const { content } = read(bracketed(8, 'whole', 1))
+
+      expect(content?.[0]?.kind === 'tuplet' && content[0].inner.multiple).toBe(32)
+    })
+
+    test('refuses a note implying thirty-three in the time of one', () => {
+      expect(readFailure(bracketed(33, 'whole', 4)).message).toContain('no <time-modification>')
+    })
+
+    // A thirty-second lasting a whole is one in the time of thirty-two.
+    test('reads a note implying one in the time of thirty-two', () => {
+      const { content } = read(bracketed(8, '32nd', 32))
+
+      expect(content?.[0]?.kind === 'tuplet' && content[0].outer.multiple).toBe(32)
+    })
+
+    test('refuses a note implying one in the time of thirty-three', () => {
+      expect(readFailure(bracketed(8, '32nd', 33)).message).toContain('no <time-modification>')
+    })
+
+    // A note lasting no time implies no ratio: there is nothing to divide its
+    // written value by. The guard is stated at zero rather than below it,
+    // because a duration is never negative and zero is the case that reaches
+    // it.
+    test('refuses a note that lasts no time at all', () => {
+      expect(readFailure(bracketed(8, 'whole', 0)).message).toContain('no <time-modification>')
+    })
+  })
+
   test('writes MNX the spec schema accepts for one', () => {
     const { mnx } = convertMusicXML(measure(bare('C', 4, 'start') + bare('D', 4, 'stop')))
 
