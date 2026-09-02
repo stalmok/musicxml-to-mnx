@@ -231,6 +231,18 @@ describe('a roll marked on something with no notes', () => {
     expect(measure?.arpeggios).toEqual([])
     expect(warnings.map((w) => w.element)).toEqual(['arpeggiate'])
   })
+
+  // The marks on one rest are still that rest's one roll, so the loss is
+  // stated once and there is no note to gather under it.
+  test('says it once however many marks the rest carries', () => {
+    const { measure, warnings } = read(
+      '<note><rest/><duration>4</duration><type>quarter</type>' +
+        `<notations>${ROLL}${ROLL}</notations></note>`,
+    )
+
+    expect(measure?.arpeggios).toEqual([])
+    expect(warnings.map((w) => w.element)).toEqual(['arpeggiate'])
+  })
 })
 
 // Rolled and struck together are opposite instructions, and MNX keeps them in
@@ -271,6 +283,40 @@ describe('a chord marked both ways under different numbers', () => {
     expect(measure?.arpeggios).toHaveLength(1)
     expect(measure?.arpeggios[0]?.struck).toBe(false)
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:arpeggio'])
+  })
+})
+
+// A pianist rolls the lower half of a chord and the upper half separately,
+// and the source says so by numbering the two halves differently. Each roll
+// spans the notes that carried its own mark; both used to span the whole
+// chord, so a renderer drew each roll over every note.
+describe('a chord divided into two numbered rolls', () => {
+  test('spans each roll over the notes that carried its mark', () => {
+    const { measure, warnings } = read(
+      head('<arpeggiate number="1"/>') +
+        member('E', '<arpeggiate number="1"/>') +
+        member('G', '<arpeggiate number="2"/>') +
+        member('B', '<arpeggiate number="2"/>'),
+    )
+
+    expect(measure?.arpeggios.map((a) => a.span)).toEqual([
+      { start: 'note1', end: 'note2' },
+      { start: 'note3', end: 'note4' },
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  // The halves keep their own directions, since they are two rolls.
+  test('keeps the direction each half states', () => {
+    const { measure } = read(
+      head('<arpeggiate number="1" direction="up"/>') +
+        member('E', '<arpeggiate number="1" direction="up"/>') +
+        member('G', '<arpeggiate number="2" direction="down"/>') +
+        member('B', '<arpeggiate number="2" direction="down"/>'),
+    )
+
+    expect(measure?.arpeggios.map((a) => a.direction)).toEqual(['up', 'down'])
+    expect(measure?.arpeggios[1]?.span).toEqual({ start: 'note4', end: 'note3' })
   })
 })
 

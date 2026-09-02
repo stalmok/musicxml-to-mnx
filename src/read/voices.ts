@@ -144,6 +144,12 @@ interface VoiceBuilder {
 /** A chord marked as rolled or struck, held until its notes are all in. */
 interface MarkedArpeggio {
   event: Event
+  /**
+   * The notes that carried this mark. They are what the roll spans where the
+   * chord is divided between two numbered rolls; anywhere else the chord it
+   * sits on is what the roll spans, because that is what is drawn.
+   */
+  notes: Note[]
   position: Fraction
   /**
    * What the source numbers it, where it numbers it at all. Two chords
@@ -836,6 +842,8 @@ export class MeasureBuilder {
    */
   markArpeggio(
     voice: string | undefined,
+    /** The note the mark was written on, or nothing where a rest carried it. */
+    note: Note | undefined,
     number: string | undefined,
     struck: boolean,
     direction: 'up' | 'down' | undefined,
@@ -859,6 +867,7 @@ export class MeasureBuilder {
         (found.number === undefined || number === undefined || found.number === number),
     )
     if (existing) {
+      if (note) existing.notes.push(note)
       // A stated number claims a join with another chord's mark, so it stands
       // where the mark it joins stated none.
       existing.number ??= number
@@ -877,6 +886,7 @@ export class MeasureBuilder {
 
     this.#arpeggios.push({
       event,
+      notes: note ? [note] : [],
       position,
       number,
       struck,
@@ -921,6 +931,18 @@ export class MeasureBuilder {
       kept.push(marked)
     }
 
+    // A chord whose notes are numbered two different ways is two rolls, each
+    // over the notes that carried its own mark: a pianist rolls the lower
+    // half and the upper half apart. Marked once, the chord is what the roll
+    // spans, because the roll is drawn beside the whole chord and sources
+    // mark one note of it and leave the rest bare.
+    const seen = new Set<Event>()
+    const divided = new Set<Event>()
+    for (const one of kept) {
+      if (seen.has(one.event)) divided.add(one.event)
+      seen.add(one.event)
+    }
+
     const groups = new Map<string, MarkedArpeggio[]>()
     for (const marked of kept) {
       const key =
@@ -931,12 +953,12 @@ export class MeasureBuilder {
     }
 
     const arpeggios: Arpeggio[] = []
-    for (const marked of groups.values()) {
-      const first = marked[0]
+    for (const group of groups.values()) {
+      const first = group[0]
       /* v8 ignore next -- a group exists because something was put in it. */
       if (!first) continue
 
-      const notes = marked.flatMap((one) => one.event.notes)
+      const notes = group.flatMap((one) => (divided.has(one.event) ? one.notes : one.event.notes))
       if (notes.length === 0) {
         // A rest cannot be rolled, and the mark spans nothing.
         warnings.add(
@@ -963,7 +985,7 @@ export class MeasureBuilder {
         continue
       }
 
-      if (marked.some((one) => one.crossed)) {
+      if (group.some((one) => one.crossed)) {
         warnings.add(
           'inconsistent:arpeggio',
           'A chord is rolled upwards by one mark and downwards by another. The first ' +
@@ -973,7 +995,7 @@ export class MeasureBuilder {
         )
       }
 
-      if (marked.some((one) => one.conflicted || one.struck !== first.struck)) {
+      if (group.some((one) => one.conflicted || one.struck !== first.struck)) {
         warnings.add(
           'unrepresentable:arpeggio',
           'A chord is marked both as rolled and as struck together, which are opposite ' +

@@ -227,7 +227,7 @@ export function readNote(
       path,
       element.line,
     )
-    readArpeggio(notations, voice, builder)
+    readArpeggio(notations, voice, builder, chordNote)
     readTies(
       element,
       chordNote,
@@ -522,7 +522,9 @@ function readEventSpanners(
   tieds: readonly XmlElement[],
   inGraceGroup: boolean,
 ): void {
-  readArpeggio(notations, voice, builder)
+  // The event's own note is the one these notations sit on: a chord member's
+  // are read where the member is, against the note it added.
+  readArpeggio(notations, voice, builder, event.notes[0])
   for (const note of event.notes) {
     readTies(element, note, voice, builder, inGraceGroup, state, warnings, context, tieds)
   }
@@ -804,6 +806,8 @@ function readArpeggio(
   notations: readonly ElementReader[],
   voice: string | undefined,
   builder: MeasureBuilder,
+  /** The note carrying these notations, or nothing where a rest carries them. */
+  note: Note | undefined,
 ): void {
   for (const block of notations) {
     for (const rolled of block.children('arpeggiate')) {
@@ -815,6 +819,7 @@ function readArpeggio(
       // unnumbered mark in the measure claim the same roll.
       builder.markArpeggio(
         voice,
+        note,
         attribute(rolled, 'number'),
         false,
         direction,
@@ -827,7 +832,7 @@ function readArpeggio(
     // it is read here only so the sweep knows it is accounted for.
     for (const struck of block.children('non-arpeggiate')) {
       attribute(struck, 'type')
-      builder.markArpeggio(voice, attribute(struck, 'number'), true, undefined, false)
+      builder.markArpeggio(voice, note, attribute(struck, 'number'), true, undefined, false)
     }
   }
 }
