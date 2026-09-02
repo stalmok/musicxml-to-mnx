@@ -698,10 +698,14 @@ export function differingLyricLines(root: XmlElement): string[] {
           // syllable in it to lose. An empty <text> is a syllable that draws
           // nothing, which is a verse and can be the one dropped.
           if (!pieces.some((c) => c.name === 'text')) continue
-          // Every piece, joined the way the reader joins them, so a verse
-          // elided across two <text>s is compared whole. A syllabic of
-          // "single" and none at all both mean a syllable standing alone.
-          const written = pieces.map((c) => c.text).join('')
+          // Every piece, joined and trimmed the way the reader joins them,
+          // so a verse elided across two <text>s is compared whole. A
+          // syllabic of "single" and none at all both mean a syllable
+          // standing alone.
+          const written = pieces
+            .map((c) => c.text)
+            .join('')
+            .trim()
           const spelling = lyric.children.find((c) => c.name === 'syllabic')?.text.trim() ?? ''
           const verse = `${written}/${spelling === 'single' ? '' : spelling}`
           const seen = perLine.get(line)

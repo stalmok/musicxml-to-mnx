@@ -642,10 +642,13 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
             // Two syllables sung on one note are written as two <text>s, and
             // taking the first was this check making the same mistake the
             // converter used to: it would pass while half the word was lost.
+            // Trimmed at the two ends, the way the reader joins them: the
+            // whitespace around a syllable is layout and nobody sings it.
             const text = lyric.children
               .filter((c) => c.name === 'text' || c.name === 'elision')
               .map((c) => c.text)
               .join('')
+              .trim()
             if (text === '') continue
             perLine.set(String(lyric.attributes.number ?? '1'), text)
           }

@@ -1,8 +1,10 @@
 // Reading the words under a note.
 //
 // A note carries one <lyric> per verse it sings, and MNX keys the verses by
-// the number the source gives them. The text is meaningful down to the space,
-// so it is never trimmed.
+// the number the source gives them. Whatever the source puts between the
+// pieces of a syllable is meaningful down to the space, so the join is never
+// trimmed in the middle; the whitespace around the whole syllable is layout,
+// which a pretty-printed file writes and nobody sings.
 //
 // A verse is not always one <text>. Where two syllables are sung on one note,
 // which French sets constantly, MusicXML writes each as its own <text> with
@@ -74,12 +76,18 @@ function readVerse(
   const text = joinSyllables(lyric)
 
   // A <lyric> can carry no words at all: one holding only an <extend> is how
-  // MusicXML continues a melisma under a later note. There is no syllable in
-  // it to write, and the <extend> is reported like anything else unread.
+  // MusicXML continues a melisma under a later note, and a <text> holding one
+  // space draws nothing either. There is no syllable in either to write, and
+  // the <extend> is reported like anything else unread.
   // Hiding such a lyric hides nothing the output draws, so its print-object
   // is read with the rest of the element and nothing is said.
   if (text === undefined) {
     attribute(lyric.element, 'print-object')
+    // A <syllabic> over no words says how a syllable that is not there joins
+    // its neighbour. Nothing is lost by passing over it, so it is read rather
+    // than reported. An <extend> is a melisma line, which is a real loss, and
+    // is left to report itself.
+    lyric.children('syllabic')
     return undefined
   }
 
@@ -125,6 +133,11 @@ function readVerse(
  * state, and inventing one would put a character into the words that nobody
  * sang. Some exporters write the pieces with no <elision> at all, and the
  * corpus contains fourteen of those.
+ *
+ * The joined syllable is trimmed at its two ends. A pretty-printer writes an
+ * element's text on its own indented line, and 664 syllables in the vendored
+ * corpus carry a trailing space; neither is sung. A syllable that is nothing
+ * but whitespace draws nothing, so it states no words at all.
  */
 function joinSyllables(lyric: ElementReader): string | undefined {
   const texts = lyric.children('text')
@@ -135,5 +148,6 @@ function joinSyllables(lyric: ElementReader): string | undefined {
   for (const part of lyric.element.children) {
     if (part.name === 'text' || part.name === 'elision') joined += part.text
   }
-  return joined
+  const sung = joined.trim()
+  return sung === '' ? undefined : sung
 }

@@ -86,10 +86,32 @@ describe('lyrics', () => {
     expect(events[0]?.lyrics).toEqual(new Map([['1', { text: 'Ah', type: undefined }]]))
   })
 
-  test('keeps the text exactly, spaces and all', () => {
+  test('drops the whitespace around a syllable, which nobody sings', () => {
     const { events } = read(measure(note('C', '<lyric number="1"><text>o </text></lyric>')))
 
-    expect(events[0]?.lyrics.get('1')?.text).toBe('o ')
+    expect(events[0]?.lyrics.get('1')?.text).toBe('o')
+  })
+
+  // Two syllables sung on one note are written as two <text>s, and the space
+  // between them is the source saying they are two words. Trimming the ends
+  // of the join must not reach it.
+  test('keeps the space the source put between two syllables', () => {
+    const { events } = read(
+      measure(note('C', '<lyric number="1"><text>y</text><text>  </text><text>a</text></lyric>')),
+    )
+
+    expect(events[0]?.lyrics.get('1')?.text).toBe('y  a')
+  })
+
+  // A syllabic of "end" over a space is how a source closes a melisma with
+  // nothing drawn. There is no syllable in it, so there is no verse.
+  test('reads a syllable of nothing but whitespace as stating no words', () => {
+    const { events, warnings } = read(
+      measure(note('C', '<lyric number="1"><syllabic>end</syllabic><text> </text></lyric>')),
+    )
+
+    expect(events[0]?.lyrics.size).toBe(0)
+    expect(warnings).toEqual([])
   })
 
   test('reports a syllabic it does not know rather than dropping the type', () => {
