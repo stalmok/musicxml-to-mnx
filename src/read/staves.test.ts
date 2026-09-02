@@ -124,6 +124,25 @@ describe('clefs', () => {
     ])
   })
 
+  // Restating the same clef at the same point loses nothing: the two say the
+  // same thing, so the second is dropped without a word. Reporting it called
+  // a lossless conversion a permanent limit of the format.
+  test('says nothing where a staff restates the clef it already has', () => {
+    const { part, warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions>' +
+          '<clef><sign>G</sign><line>2</line></clef>' +
+          '<clef><sign>G</sign><line>2</line></clef></attributes>' +
+          note('C', '1'),
+      ),
+    )
+
+    expect(part?.measures[0]?.clefs).toEqual([
+      { sign: 'G', staffPosition: -2, staff: undefined, position: { num: 0, den: 1 } },
+    ])
+    expect(warnings).toEqual([])
+  })
+
   test('keeps two clefs of one staff apart when their positions differ', () => {
     const { part, warnings } = read(
       measures(

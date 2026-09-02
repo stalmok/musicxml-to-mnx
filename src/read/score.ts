@@ -1129,13 +1129,17 @@ function dedupeClefs(
   context: WarningContext,
 ): Clef[] {
   return clefs.filter((clef, index) => {
-    const replaced = clefs.some(
+    const replacing = clefs.find(
       (later, at) =>
         at > index &&
         later.staff === clef.staff &&
         compareFractions(later.position, clef.position) === 0,
     )
-    if (replaced) {
+    // Exporters restate the clef a staff already has, which says the same
+    // thing twice and loses nothing by being said once. Only a clef the next
+    // one really replaces is a loss, and reporting the other called a
+    // lossless conversion a permanent limit of the format.
+    if (replacing && !sameClef(replacing, clef)) {
       warnings.add(
         'unrepresentable:clef',
         'Two clefs are written at the same point on the same staff, and MNX draws ' +
@@ -1144,8 +1148,13 @@ function dedupeClefs(
         'clef',
       )
     }
-    return !replaced
+    return replacing === undefined
   })
+}
+
+/** The drawn sign: where it sits on the staff, and how it is transposed. */
+function sameClef(a: Clef, b: Clef): boolean {
+  return a.sign === b.sign && a.staffPosition === b.staffPosition && a.octave === b.octave
 }
 
 /**
