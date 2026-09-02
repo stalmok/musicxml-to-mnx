@@ -226,6 +226,21 @@ describe('a voice that reaches across to the other staff', () => {
     expect(staves).toEqual([undefined, undefined, 2])
   })
 
+  // A voice split evenly between the two hands belongs to the staff it was on
+  // first, which is where the source began writing it. Either answer states
+  // the same music, since every event that differs from the voice's staff
+  // says so, but one of them has to be settled or the choice drifts.
+  test('gives an even split to the staff the voice began on', () => {
+    const { part } = read(measures(GRAND_STAFF + note('C', '2') + note('D', '1')))
+    const sequence = part?.measures[0]?.sequences[0]
+
+    expect(sequence?.staff).toBe(2)
+    expect(sequence?.content.map((item) => (item.kind === 'event' ? item.staff : null))).toEqual([
+      undefined,
+      1,
+    ])
+  })
+
   test('takes the voice to be on the staff it spends most of its time', () => {
     const { part } = read(measures(GRAND_STAFF + note('C', '1') + note('D', '2') + note('E', '2')))
     const sequence = part?.measures[0]?.sequences[0]
