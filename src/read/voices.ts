@@ -117,6 +117,12 @@ interface VoiceBuilder {
    */
   droppedTuplets: string[]
   /**
+   * What the most recent event's own note said about tuplets, as the type and
+   * number of each marker it carried. A chord member repeating one of these
+   * is drawing the chord's bracket, not naming a bracket of its own.
+   */
+  eventTupletMarkers: readonly string[]
+  /**
    * The two-note tremolo currently being gathered, when one is. Its item is
    * not in the content yet: it joins once both notes are in and agree.
    */
@@ -455,8 +461,8 @@ export class MeasureBuilder {
     if (compareFractions(subtractFractions(this.#cursor, builder.end), fraction(0)) < 0) {
       throw new MusicXMLError(
         this.#clampedBackup
-          ? 'A <note> overlaps the one before it in the same voice, after a <backup> that ' +
-              'reached back further than the measure had run and was taken to its start.'
+          ? 'A <note> overlaps the one before it in the same voice, after a <backup> in ' +
+              'this measure was taken back to its start.'
           : 'A <note> overlaps the one before it in the same voice.',
         { path, line },
       )
@@ -743,6 +749,17 @@ export class MeasureBuilder {
       .map((open) => open.ratio)
       .reduce(multiplyFractions, fraction(1))
     return builder.openTremolo ? multiplyFractions(factor, fraction(1, 2)) : factor
+  }
+
+  /**
+   * What is open around a note in this voice scaling its written value, for a
+   * report to name. The tremolo is the nearer of the two where both are open,
+   * since no bracket opens inside one.
+   */
+  scaledBy(voice: string | undefined): 'tuplet' | 'tremolo' | undefined {
+    const builder = this.#builderFor(voice)
+    if (builder.openTremolo) return 'tremolo'
+    return builder.openTuplets.length > 0 ? 'tuplet' : undefined
   }
 
   /**
@@ -1063,6 +1080,29 @@ export class MeasureBuilder {
   }
 
   /**
+   * The voice the chord being built belongs to. A chord member may leave
+   * <voice> off, and Sibelius does, so it belongs to the event it joins
+   * rather than to the unnamed voice.
+   */
+  voiceOfChord(voice: string | undefined): string | undefined {
+    return voice ?? this.#lastVoice
+  }
+
+  /** Holds what the event's own note said about tuplets, for its chord. */
+  noteTupletMarkers(voice: string | undefined, markers: readonly string[]): void {
+    this.#builderFor(voice).eventTupletMarkers = markers
+  }
+
+  /**
+   * Whether a chord member's marker restates one the chord's own note
+   * carried. Every note of a chord is written with the bracket around the
+   * chord, and that bracket is one bracket.
+   */
+  restatesTupletMarker(voice: string | undefined, marker: string): boolean {
+    return this.#builderFor(voice).eventTupletMarkers.includes(marker)
+  }
+
+  /**
    * Records a tuplet this voice never opened, by the number its start marker
    * stated, so the stop that matches it can be dropped with it.
    */
@@ -1071,16 +1111,23 @@ export class MeasureBuilder {
   }
 
   /**
-   * Whether this stop closes a tuplet whose start was dropped. The record is
-   * consumed, so a second stop stating the same number closes an open bracket
-   * as any other stop does.
+   * Whether this stop closes a tuplet whose start was dropped. A bracket of
+   * that number standing open is what the stop closes instead: the source
+   * numbers every tuplet 1 unless it nests them, so a dropped start and an
+   * open bracket share a number as a matter of course, and taking the stop
+   * from the open bracket would leave it open to the end of the measure.
+   *
+   * The record is consumed, so a second stop stating the number closes an
+   * open bracket as any other stop does.
    */
   closesDroppedTuplet(voice: string | undefined, number: string): boolean {
-    const dropped = this.#builderFor(voice).droppedTuplets
-    const at = dropped.lastIndexOf(number)
+    const builder = this.#builderFor(voice)
+    if (builder.openTuplets.some((open) => open.number === number)) return false
+
+    const at = builder.droppedTuplets.lastIndexOf(number)
     if (at < 0) return false
 
-    dropped.splice(at, 1)
+    builder.droppedTuplets.splice(at, 1)
     return true
   }
 
@@ -1251,6 +1298,7 @@ export class MeasureBuilder {
       open: [{ list: content, opened: 'voice' }],
       openTuplets: [],
       droppedTuplets: [],
+      eventTupletMarkers: [],
       openTremolo: undefined,
       content,
       end: fraction(0),

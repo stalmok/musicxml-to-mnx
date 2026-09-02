@@ -7,6 +7,8 @@ import { describe, expect, test } from 'vitest'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
+import { convertMusicXML } from '../index.js'
+import { schemaErrors } from '../../tests/support/schema.js'
 
 function read(body: string) {
   const warnings = new WarningCollector()
@@ -304,6 +306,42 @@ describe('a chord divided into two numbered rolls', () => {
       { start: 'note3', end: 'note4' },
     ])
     expect(warnings).toEqual([])
+  })
+
+  // Two rolls at one point, over notes of one event, is a shape the output
+  // did not hold before, so it is validated rather than only compared.
+  test('writes both halves onto schema-valid MNX', () => {
+    const { mnx, warnings } = convertMusicXML(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        '<attributes><divisions>4</divisions></attributes>' +
+        head('<arpeggiate number="1"/>') +
+        member('E', '<arpeggiate number="1"/>') +
+        member('G', '<arpeggiate number="2"/>') +
+        member('B', '<arpeggiate number="2"/>') +
+        '</measure></part></score-partwise>',
+    )
+
+    expect(mnx.parts[0]?.measures[0]?.arpeggios).toHaveLength(2)
+    expect(schemaErrors(mnx)).toEqual([])
+    expect(warnings).toEqual([])
+  })
+
+  // Where one half holds a single note, the roll spans that note to itself:
+  // the source numbered one note of the chord and left its neighbour bare,
+  // and the bare mark joins the first roll it can. Written down because it is
+  // a guess, not because it is the only reading.
+  test('spans a half of one note to itself', () => {
+    const { measure } = read(
+      head('<arpeggiate number="1"/>') +
+        member('E', ROLL) +
+        member('G', '<arpeggiate number="2"/>') +
+        member('B', ROLL),
+    )
+
+    expect(measure?.arpeggios.map((a) => a.span)).toEqual([
+      { start: 'note1', end: 'note4' },
+      { start: 'note3', end: 'note3' },
+    ])
   })
 
   // The halves keep their own directions, since they are two rolls.

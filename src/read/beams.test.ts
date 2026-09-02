@@ -227,10 +227,14 @@ describe('a beam marker at a level that does not exist', () => {
     )
 
     // The outer beam runs over all three; the inner one stops where the last
-    // marker it kept left it.
+    // marker it kept left it, which is what the report is about.
     expect(beams.map((beam) => beam.events)).toEqual([['ev1', 'ev2', 'ev3']])
     expect(beams[0]?.beams.map((beam) => beam.events)).toEqual([['ev1', 'ev2']])
-    expect(warnings[0]?.message).toContain('drawn without it')
+    expect(warnings.map((w) => w.message)).toEqual([
+      'The "number" of a <beam> is "9", which is not one of the eight beam levels. ' +
+        'The marker is dropped, and the beams beside it are drawn as if it had never ' +
+        'been written.',
+    ])
   })
 })
 

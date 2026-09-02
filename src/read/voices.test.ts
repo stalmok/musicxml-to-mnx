@@ -334,11 +334,12 @@ describe('the measure cursor', () => {
 
   // Where no backup was clamped, the note is the whole of the story.
   test('names the note alone where no backup was clamped', () => {
-    expect(
-      readFailure(
-        measure(note('C', 2, '1') + '<backup><duration>4</duration></backup>' + note('E', 1, '1')),
-      ).message,
-    ).not.toContain('<backup>')
+    const message = readFailure(
+      measure(note('C', 2, '1') + '<backup><duration>4</duration></backup>' + note('E', 1, '1')),
+    ).message
+
+    expect(message).toContain('A <note> overlaps the one before it in the same voice.')
+    expect(message).not.toContain('<backup>')
   })
 })
 
@@ -400,6 +401,10 @@ describe('a rest filling a measure that already holds something', () => {
       '</time-modification>' +
       '<notations><ornaments><tremolo type="start">3</tremolo></ornaments></notations></note>'
 
-    expect(readFailure(measure(rest)).message).toContain('tremolo')
+    // Named in full: a tremolo left open at the end of the measure refuses
+    // too, and that message also holds the word "tremolo".
+    expect(readFailure(measure(rest)).message).toContain(
+      'A rest that fills the measure is inside a two-note tremolo.',
+    )
   })
 })

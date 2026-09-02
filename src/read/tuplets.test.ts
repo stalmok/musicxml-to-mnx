@@ -968,8 +968,29 @@ describe('a note inside a tuplet lasting the wrong time', () => {
     const reported = warnings.filter((w) => w.code === 'inconsistent:duration')
 
     expect(reported).toHaveLength(1)
-    expect(reported[0]?.message).toContain('written as an eighth')
-    expect(reported[0]?.message).toContain('1/12 of a whole note')
+    expect(reported[0]?.message).toBe(
+      'A <note> is written as an eighth, which the tuplet around it makes 1/12 of a ' +
+        'whole note, but it lasts an eighth. The written value is the one converted.',
+    )
+  })
+
+  // Each note of a two-note tremolo is written with the value of the pair and
+  // lasts half of it, so a tremolo scales a written value as a tuplet does.
+  // The report used to call it a tuplet, in a document holding none.
+  test('names the tremolo where a tremolo is what scales the note', () => {
+    // Each note is written as a half, so the pair wants a quarter each; both
+    // last a dotted quarter instead, which is the source disagreeing with
+    // itself while the tremolo is what scales them.
+    const long = (step: string, type: string) =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+      '<duration>18</duration><type>half</type>' +
+      '<time-modification><actual-notes>2</actual-notes><normal-notes>1</normal-notes>' +
+      '</time-modification>' +
+      `<notations><ornaments><tremolo type="${type}">3</tremolo></ornaments></notations></note>`
+    const { warnings } = read(measure(long('C', 'start') + long('E', 'stop')))
+    const reported = warnings.filter((w) => w.code === 'inconsistent:duration')
+
+    expect(reported[0]?.message).toContain('which the tremolo around it makes')
   })
 
   // Outside a tuplet nothing scales the written value, and the report says
@@ -1053,6 +1074,49 @@ describe('a tuplet marker on a chord member', () => {
     '</time-modification>' +
     `<notations>${markers}</notations></note>`
 
+  // A bracket around a chord is drawn by writing the same marker on every
+  // note of it, which Sibelius and MuseScore both do. Read again on each
+  // member, the stop closed a bracket nothing had opened and refused the
+  // document; four songs of the wider corpora were refused for it.
+  test('passes over a marker that restates the one the chord itself carries', () => {
+    const { content, warnings } = read(
+      measure(
+        tupletNote('C', 4, 'eighth', 'start') +
+          chordMember('<tuplet type="start"/>') +
+          tupletNote('D', 4, 'eighth') +
+          tupletNote('E', 4, 'eighth', 'stop') +
+          chordMember('<tuplet type="stop"/>'),
+      ),
+    )
+
+    expect(warnings).toEqual([])
+    expect(content?.map((item) => item.kind)).toEqual(['tuplet'])
+    expect(content?.[0]?.kind === 'tuplet' && content[0].content).toHaveLength(3)
+  })
+
+  // Sibelius leaves <voice> off a chord member, so the marker is weighed
+  // against the chord it joins rather than against the unnamed voice.
+  test('passes over a restatement on a member that states no voice', () => {
+    const voiced = (step: string, markers = ''): string =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>4</duration>` +
+      '<type>eighth</type><voice>1</voice>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+      '</time-modification>' +
+      (markers ? `<notations>${markers}</notations>` : '') +
+      '</note>'
+    const { content, warnings } = read(
+      measure(
+        voiced('C', '<tuplet type="start"/>') +
+          voiced('D') +
+          voiced('E', '<tuplet type="stop"/>') +
+          chordMember('<tuplet type="stop"/>'),
+      ),
+    )
+
+    expect(warnings).toEqual([])
+    expect(content?.map((item) => item.kind)).toEqual(['tuplet'])
+  })
+
   test('reports a start written on a chord member', () => {
     const { content, warnings } = read(
       measure(
@@ -1093,6 +1157,47 @@ describe('a tuplet marker on a chord member', () => {
     // crossing is claimed and the outer bracket still closes on this note.
     expect(warnings.map((w) => w.code)).toEqual(['unsupported:element'])
     expect(content?.map((item) => item.kind)).toEqual(['tuplet'])
+  })
+
+  // A mis-tracked stop is what would nest the brackets wrongly, so the output
+  // is validated rather than only compared.
+  test('writes the bracket that is left onto schema-valid MNX', () => {
+    const stops = '<tuplet type="stop" number="2"/><tuplet type="stop" number="1"/>'
+    const { mnx, warnings } = convertMusicXML(
+      measure(
+        tupletNote('C', 4, 'eighth', 'start') +
+          tupletNote('D', 4, 'eighth') +
+          chordMember('<tuplet type="start" number="2"/>') +
+          '<note><pitch><step>E</step><octave>4</octave></pitch><duration>4</duration>' +
+          '<type>eighth</type>' +
+          '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+          `</time-modification><notations>${stops}</notations></note>`,
+      ),
+    )
+    const outer = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
+
+    expect(outer && 'type' in outer && outer.type).toBe('tuplet')
+    expect(warnings.map((w) => w.code)).toEqual(['unsupported:element'])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // A source that never nests tuplets numbers every one of them 1, so a
+  // dropped start and the bracket around it share a number as a matter of
+  // course. The bracket's own stop closes the bracket; taking it for the
+  // dropped start left the bracket open and refused the whole document.
+  test('leaves the open bracket its own stop where both are numbered alike', () => {
+    const { content, warnings } = read(
+      measure(
+        tupletNote('C', 4, 'eighth', 'start') +
+          tupletNote('D', 4, 'eighth') +
+          chordMember('<tuplet type="start"/>') +
+          tupletNote('E', 4, 'eighth', 'stop'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['unsupported:element'])
+    expect(content?.map((item) => item.kind)).toEqual(['tuplet'])
+    expect(content?.[0]?.kind === 'tuplet' && content[0].content).toHaveLength(3)
   })
 
   // A stop on a chord member closes correctly, because the chord it joins is

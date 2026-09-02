@@ -239,31 +239,41 @@ export function readNote(
       context,
       tieds,
     )
-    // A bracket opens around a whole event, and the event a chord member
-    // joins is already placed by the time the member is read, so a start
-    // written here would draw the bracket after the chord it belongs to.
-    // The number is recorded so the stop that matches it is dropped too,
-    // rather than closing the bracket around it. A stop written on a chord
-    // member needs none of this: the chord is the last event inside the
-    // bracket, so closing on it is where the bracket ends.
-    const chordMarkers = tupletMarkers(notations)
+    // A bracket runs around a whole chord, and exporters draw it by writing
+    // the same marker on every note of that chord. Such a marker restates the
+    // one the chord's own note carried, and the bracket it names is already
+    // open or already closed, so it is passed over rather than read again:
+    // read again, the stop closed a second bracket that nothing opened and
+    // refused the document. Sibelius leaves <voice> off a chord member, so
+    // the chord's voice is the one asked, not the member's.
+    const chordVoice = builder.voiceOfChord(voice)
+    const chordMarkers = tupletMarkers(notations).filter(
+      (marker) => !builder.restatesTupletMarker(chordVoice, tupletMarkerKey(marker)),
+    )
     for (const marker of chordMarkers) {
       if (attribute(marker, 'type') !== 'start') continue
+      // A bracket the chord's own note did not open cannot open here either:
+      // the event a chord member joins is already placed by the time the
+      // member is read, so the bracket would begin after the chord it
+      // belongs to. The number is recorded so the stop that matches it is
+      // dropped too, rather than closing the bracket around it.
       warnings.add(
         'unsupported:element',
         'A <tuplet> starts on a chord member, where the bracket would begin after the ' +
-          'chord it belongs to. The tuplet is not converted.',
+          'chord it belongs to, so it is not converted yet.',
         { ...context, line: element.line },
         'tuplet',
       )
-      // A marker that states no number is tuplet 1, as the spec has it.
-      builder.dropTuplet(voice, attribute(marker, 'number') ?? '1')
+      builder.dropTuplet(chordVoice, attribute(marker, 'number') ?? '1')
     }
-    closeTuplets(builder, voice, chordMarkers, warnings, context, path, element.line)
+    closeTuplets(builder, chordVoice, chordMarkers, warnings, context, path, element.line)
     return
   }
 
   const markers = tupletMarkers(notations)
+  // Held so the notes of a chord that follow can tell a marker restating this
+  // one from a marker of its own.
+  builder.noteTupletMarkers(voice, markers.map(tupletMarkerKey))
 
   // A tremolo written across two notes gives each of them the value of the
   // pair while the pair lasts only one of them. The pair is gathered into
@@ -419,6 +429,7 @@ export function readNote(
       written,
       duration,
       builder.tupletFactor(voice),
+      builder.scaledBy(voice),
       warnings,
       context,
     )
@@ -1140,18 +1151,18 @@ function beamMarkers(
     // drawing, not duration. So the marker is dropped and reported, as a
     // fanned beam above is, rather than the document being refused over it.
     //
-    // The marker said where a beam begins or ends, so dropping it moves the
-    // edge of whatever run it belonged to: a run whose end is dropped closes
-    // at the last marker before it and is drawn short. The report says so,
-    // because a reader told only that one beam is missing would not look at
-    // the beams beside it.
+    // The marker said where a beam begins or ends, so the beams around it are
+    // drawn as if it had never been written: a run whose end was written here
+    // closes at the last marker it kept, and comes out short. The report says
+    // so, because a reader told only that one level is missing would not look
+    // at the beams beside it.
     const level = Number(stated)
     if (!/^\d+$/.test(stated) || level < 1 || level > 8) {
       warnings.add(
         'unresolved:attribute-value',
         `The "number" of a <beam> is "${stated}", which is not one of the eight beam ` +
-          'levels, so the beam is not drawn and any beam this marker would have begun ' +
-          'or ended is drawn without it.',
+          'levels. The marker is dropped, and the beams beside it are drawn as if it ' +
+          'had never been written.',
         { ...context, line: beam.line },
         'beam',
         'number',
@@ -1231,6 +1242,16 @@ function multiNoteTremoloOf(
  * when two nested tuplets start on the same note, so this reads children()
  * rather than the first child.
  */
+/**
+ * What a `<tuplet>` marker says, as the pair of its type and its number, for
+ * telling a chord member's restatement of the chord's own marker from one it
+ * states of itself. A marker that states no number is tuplet 1, as the spec
+ * has it.
+ */
+function tupletMarkerKey(marker: XmlElement): string {
+  return `${attribute(marker, 'type') ?? ''} ${attribute(marker, 'number') ?? '1'}`
+}
+
 function tupletMarkers(notations: readonly ElementReader[]): readonly XmlElement[] {
   const markers = notations.flatMap((block) => block.children('tuplet'))
   // Pairing is structural: a stop closes the most recently opened tuplet,
@@ -1474,6 +1495,8 @@ function reportDurationMismatch(
   written: NoteValue,
   duration: Fraction,
   tupletFactor: Fraction,
+  /** What is open around the note scaling it, where anything is. */
+  scaledBy: 'tuplet' | 'tremolo' | undefined,
   warnings: WarningCollector,
   context: WarningContext,
 ): void {
@@ -1481,16 +1504,15 @@ function reportDurationMismatch(
   if (compareFractions(wanted, duration) === 0) return
 
   // The ratio is what the written value is weighed against, so inside a
-  // tuplet the message names the length the ratio wants. Naming the written
-  // value alone read as "written as an eighth but lasts an eighth", the same
-  // length twice, which reads as a fault in the converter rather than in the
-  // source.
-  const scaled = compareFractions(tupletFactor, fraction(1)) !== 0
+  // tuplet or a tremolo the message names the length that ratio wants, and
+  // which of the two states it. Naming the written value alone read as
+  // "written as an eighth but lasts an eighth", the same length twice, which
+  // reads as a fault in the converter rather than in the source.
   warnings.add(
     'inconsistent:duration',
-    scaled
-      ? `A <note> is written as ${describeValue(written)}, which the tuplet around it ` +
-          `makes ${describeLength(wanted)}, but it lasts ${describeLength(duration)}. ` +
+    scaledBy
+      ? `A <note> is written as ${describeValue(written)}, which the ${scaledBy} around ` +
+          `it makes ${describeLength(wanted)}, but it lasts ${describeLength(duration)}. ` +
           'The written value is the one converted.'
       : `A <note> is written as ${describeValue(written)} but lasts ` +
           `${describeLength(duration)}. The written value is the one converted.`,

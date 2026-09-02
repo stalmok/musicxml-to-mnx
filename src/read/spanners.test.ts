@@ -1194,6 +1194,114 @@ describe('pairing the two ends of a span', () => {
     expect(joined).toEqual(['span'])
     expect(reported).toEqual([])
   })
+
+  // The point a stop covers falls before its start only where the two are in
+  // one measure. A stop in a later measure covering the first beat of it is
+  // an ordinary span across a barline, which is most of them.
+  test('joins a stop in a later measure covering a point before its start', () => {
+    const joined: string[] = []
+    const reported: string[] = []
+    const start = { ...spanEnd('start', fraction(3, 4), fraction(3, 4)), measure: 0 }
+    const stop = { ...spanEnd('stop', fraction(0), fraction(0)), measure: 1 }
+
+    pairSpans<string, SpanEnd<string>>(
+      [start, stop],
+      (payload) => joined.push(payload),
+      (reason) => reported.push(reason),
+    )
+
+    expect(joined).toEqual(['span'])
+    expect(reported).toEqual([])
+  })
+})
+
+// Which end is read first decides which start a stop closes, so the order the
+// ends are put in is part of what the pairing means. Each rule below is one
+// the comparator states, and each is stated here as the outcome it produces.
+describe('the order the ends of a span are read in', () => {
+  const end = (
+    kind: 'start' | 'stop',
+    measure: number,
+    position: Fraction,
+    payload = 'span',
+    grace?: boolean,
+  ): SpanEnd<string> => ({
+    kind,
+    number: '1',
+    measure,
+    position,
+    covers: position,
+    payload: kind === 'start' ? payload : undefined,
+    context: {},
+    ...(grace === undefined ? {} : { grace }),
+  })
+
+  function pair(ends: readonly SpanEnd<string>[], atSamePoint?: 'stop-first' | 'as-written') {
+    const joined: string[] = []
+    const reported: string[] = []
+    pairSpans<string, SpanEnd<string>>(
+      ends,
+      (payload) => joined.push(payload),
+      (reason) => reported.push(reason),
+      atSamePoint,
+    )
+    return { joined, reported }
+  }
+
+  // The measure comes first, before anything inside it. Written the other way
+  // round, a start in an earlier measure sorts after a stop in a later one and
+  // the two never meet.
+  test('reads an earlier measure before a later one', () => {
+    expect(pair([end('start', 1, fraction(0)), end('stop', 3, fraction(0))])).toEqual({
+      joined: ['span'],
+      reported: [],
+    })
+  })
+
+  // A grace note sounds before the beat, so its end comes first however the
+  // document writes the two. Either order of writing, since another voice can
+  // write the beat note's end ahead of the grace note that opens it.
+  test.each([
+    ['the grace end written first', true],
+    ['the grace end written second', false],
+  ])('reads a grace end before a beat end at the same point, with %s', (_what, graceFirst) => {
+    const grace = end('start', 0, fraction(1, 4), 'span', true)
+    const beat = end('stop', 0, fraction(1, 4), 'span', false)
+
+    expect(pair(graceFirst ? [grace, beat] : [beat, grace], 'as-written')).toEqual({
+      joined: ['span'],
+      reported: [],
+    })
+  })
+
+  // Under stop-first a stop at the same point as a start closes what was open
+  // before it rather than that start: an octave shift's stop covers the last
+  // event before it, which is the event the next shift starts on.
+  test('reads a stop before a start at the same point where the caller asks for it', () => {
+    expect(pair([end('start', 0, fraction(1, 2)), end('stop', 0, fraction(1, 2))])).toEqual({
+      joined: [],
+      reported: ['orphan-stop', 'unclosed-start'],
+    })
+  })
+
+  // Asked for the document's own order instead, the same two ends pair.
+  test('reads them as written where the caller asks for that', () => {
+    expect(
+      pair([end('start', 0, fraction(1, 2)), end('stop', 0, fraction(1, 2))], 'as-written'),
+    ).toEqual({ joined: ['span'], reported: [] })
+  })
+
+  // Two ends a rule cannot part keep the order the document wrote them in, so
+  // a stop closes the later of two starts written at one point.
+  test('keeps two ends of one kind at one point in the order they were written', () => {
+    expect(
+      pair([
+        end('start', 0, fraction(0), 'first'),
+        end('start', 0, fraction(0), 'second'),
+        end('stop', 0, fraction(1, 2)),
+      ]),
+    ).toEqual({ joined: ['second'], reported: ['unclosed-start'] })
+  })
 })
 
 describe('ids', () => {
