@@ -319,6 +319,27 @@ describe('the measure cursor', () => {
       ).message,
     ).toContain('overlaps')
   })
+
+  // A backup reaching past the measure start is taken to the start, and a
+  // voice continuing there overlaps what it already wrote. The backup is the
+  // cause, and the refusal used to name the note alone.
+  test('names the clamped backup where the overlap follows one', () => {
+    const message = readFailure(
+      measure(note('C', 2, '1') + '<backup><duration>16</duration></backup>' + note('E', 1, '1')),
+    ).message
+
+    expect(message).toContain('overlaps')
+    expect(message).toContain('<backup>')
+  })
+
+  // Where no backup was clamped, the note is the whole of the story.
+  test('names the note alone where no backup was clamped', () => {
+    expect(
+      readFailure(
+        measure(note('C', 2, '1') + '<backup><duration>4</duration></backup>' + note('E', 1, '1')),
+      ).message,
+    ).not.toContain('<backup>')
+  })
 })
 
 // MNX states a rest that fills the measure on the sequence rather than as an
@@ -356,5 +377,29 @@ describe('a rest filling a measure that already holds something', () => {
     }
 
     expect(thrown).toContain('more than one rest that fills the measure')
+  })
+
+  // A bracket around such a rest is a third mistake again: the rest is stated
+  // on the sequence, where a tuplet cannot reach it. The refusal used to
+  // describe notes that are not there.
+  test('names the bracket around it, not notes it does not hold', () => {
+    const rest =
+      '<note><rest measure="yes"/><duration>16</duration><type>whole</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+      '</time-modification><notations><tuplet type="start"/></notations></note>'
+
+    expect(readFailure(measure(rest)).message).toContain('<tuplet>')
+  })
+
+  // A tremolo gathers the two notes it holds, and a rest stated on the
+  // sequence is not one of them.
+  test('names a tremolo open around it', () => {
+    const rest =
+      '<note><rest measure="yes"/><duration>16</duration><type>whole</type>' +
+      '<time-modification><actual-notes>2</actual-notes><normal-notes>1</normal-notes>' +
+      '</time-modification>' +
+      '<notations><ornaments><tremolo type="start">3</tremolo></ornaments></notations></note>'
+
+    expect(readFailure(measure(rest)).message).toContain('tremolo')
   })
 })

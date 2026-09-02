@@ -383,6 +383,12 @@ export class MeasureBuilder {
   #cursor: Fraction = fraction(0)
   /** The voice of the most recent event, which a chord member joins. */
   #lastVoice: string | undefined
+  /**
+   * Whether a <backup> in this measure was taken to the measure start rather
+   * than where it reached. A voice writing on after one overlaps what it
+   * already wrote, and the backup is the cause, so the refusal names it.
+   */
+  #clampedBackup = false
 
   /** Where the cursor has reached, from the start of the measure. */
   position(): Fraction {
@@ -410,6 +416,7 @@ export class MeasureBuilder {
         'backup',
       )
       this.#cursor = fraction(0)
+      this.#clampedBackup = true
       return
     }
     this.#cursor = moved
@@ -446,10 +453,13 @@ export class MeasureBuilder {
     // heuristic splitting the overlapping run into its own sequence, with the
     // corpus checks taught the same reading. Refused until that is decided.
     if (compareFractions(subtractFractions(this.#cursor, builder.end), fraction(0)) < 0) {
-      throw new MusicXMLError('A <note> overlaps the one before it in the same voice.', {
-        path,
-        line,
-      })
+      throw new MusicXMLError(
+        this.#clampedBackup
+          ? 'A <note> overlaps the one before it in the same voice, after a <backup> that ' +
+              'reached back further than the measure had run and was taken to its start.'
+          : 'A <note> overlaps the one before it in the same voice.',
+        { path, line },
+      )
     }
     this.#fillGap(builder)
 
@@ -617,6 +627,20 @@ export class MeasureBuilder {
         path,
         line,
       })
+    }
+    // MNX states such a rest on the sequence, where a bracket cannot reach
+    // it, so a tuplet or a tremolo open around it is its own refusal. It is
+    // weighed first because the open bracket is already in the content, which
+    // otherwise refuses it as notes that are not there.
+    const opened = builder.open.at(-1)
+    if (opened && opened.opened !== 'voice') {
+      throw new MusicXMLError(
+        `A rest that fills the measure is inside ${
+          opened.opened === 'tuplet' ? 'a <tuplet>' : 'a two-note tremolo'
+        }. MNX states such a rest on the sequence rather than as an event, so nothing ` +
+          'can hold it.',
+        { path, line },
+      )
     }
     if (builder.content.length > 0) {
       throw new MusicXMLError('A voice has both a rest that fills the measure and notes in it.', {
