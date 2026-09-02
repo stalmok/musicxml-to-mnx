@@ -192,9 +192,13 @@ describe('fermatas', () => {
     expect(warnings.map((w) => w.element)).toEqual(['fermata'])
   })
 
-  // MusicXML allows one per staff of a part; MNX states one per event.
+  // MusicXML allows one per staff of a part; MNX states one per event. The
+  // one warning accounts for the rejected mark whole, so the facing and the
+  // side it states are read with it rather than reported a second time.
   test('reports an event carrying more than one, keeping the first', () => {
-    const { events, warnings } = read(note('<fermata type="upright"/><fermata type="inverted"/>'))
+    const { events, warnings } = read(
+      note('<fermata type="upright"/><fermata type="inverted" placement="below"/>'),
+    )
 
     expect(events[0]?.fermata?.pointing).toBe('up')
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:fermata'])
@@ -216,6 +220,21 @@ describe('two marks of one kind', () => {
     )
 
     expect(events[0]?.markings.accent?.orient).toBe('above')
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:marking'])
+  })
+
+  // The one warning accounts for the rejected mark whole, its side and the
+  // way it points included, so neither is reported a second time.
+  test('says nothing more about the side and the facing of the mark it rejects', () => {
+    const { warnings } = read(
+      note(
+        articulations(
+          '<strong-accent type="up" placement="above"/>' +
+            '<strong-accent type="down" placement="below"/>',
+        ),
+      ),
+    )
+
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:marking'])
   })
 })

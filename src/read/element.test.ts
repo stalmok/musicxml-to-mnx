@@ -190,4 +190,26 @@ describe('the attribute sweep', () => {
       'The "placement" attribute of a <slur> is not converted yet.',
     ])
   })
+
+  // A namespace declaration is XML plumbing rather than notation, so it is
+  // passed over. The test is worth having because the sweep reports every
+  // other attribute it does not recognise, this one included if it looked
+  // anywhere but at the start of the name.
+  test('passes over a namespace declaration', () => {
+    const element = new ElementReader(
+      parseXmlRoot('<score-partwise xmlns:xlink="http://www.w3.org/1999/xlink"/>'),
+    )
+    const warnings = new WarningCollector()
+    element.reportUnread(warnings, { measure: 1 })
+
+    expect(warnings.list()).toEqual([])
+  })
+
+  test('reports an attribute whose name only ends with xmlns', () => {
+    const element = new ElementReader(parseXmlRoot('<measure data-xmlns="yes"/>'))
+    const warnings = new WarningCollector()
+    element.reportUnread(warnings, { measure: 1 })
+
+    expect(warnings.list().map((w) => w.attribute)).toEqual(['data-xmlns'])
+  })
 })

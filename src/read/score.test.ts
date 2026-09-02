@@ -1891,4 +1891,16 @@ describe('the music font, at its edges', () => {
     expect(mnx.parts[0]?.smuflFont).toBe('Leland')
     expect(warnings).toEqual([])
   })
+
+  // The family is the only thing read off the element, so anything else it
+  // states that is not presentation is a loss, and the sweep over the element
+  // is what reports it.
+  test('reports an attribute of the music font that is neither read nor presentation', () => {
+    const { mnx, warnings } = convertMusicXML(
+      withDefaults('<music-font font-family="Leland" xml:lang="en"/>'),
+    )
+
+    expect(mnx.parts[0]?.smuflFont).toBe('Leland')
+    expect(warnings.map((w) => w.attribute)).toEqual(['xml:lang'])
+  })
 })

@@ -710,6 +710,25 @@ describe('part groups', () => {
 
   // A value outside yes/no/Mensurstrich is invalid input, reported the same
   // way an unrecognized <bar-style> is.
+  // Everything in a <part-group> that is not the symbol, the name or the
+  // barline has no home in an MNX staff group, and the sweep over the element
+  // is what says so. <group-time>, which draws one time signature across the
+  // group's staves, is one of those.
+  test('reports what a part group states beside its symbol, name and barline', () => {
+    const { warnings } = convertMusicXML(
+      score(
+        '<part-group type="start" number="1"><group-symbol>bracket</group-symbol>' +
+          '<group-time/></part-group>' +
+          '<score-part id="P1"><part-name>Soprano</part-name></score-part>' +
+          '<score-part id="P2"><part-name>Alto</part-name></score-part>' +
+          '<part-group type="stop" number="1"/>',
+        part('P1') + part('P2'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.element)).toEqual(['group-time'])
+  })
+
   test('reports a group-barline value it does not recognize', () => {
     const { mnx, warnings } = convertMusicXML(
       score(
