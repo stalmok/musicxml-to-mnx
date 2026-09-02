@@ -948,8 +948,10 @@ function readTies(
      there is always a place here to pair from. */
   if (!at) throw new Error('A tie on a note with no place in the measure.')
 
-  // A tie is reported once the part is whole, when the <note> it was written
-  // on is gone, so its line is recorded with the edge.
+  // A tie is reported once the part is whole, when the elements it was
+  // written on are gone, so a line is recorded with the edge. The <note>'s,
+  // because an edge comes from <tie>, from <tied>, or from both, and the note
+  // they sit on is the one thing that names all three.
   const where = { ...context, line: element.element.line }
   for (const edge of tieEdges(ties, tieds, warnings, context)) {
     if (edge === 'stop') state.spanners.stopTie(note, voice, state.measure, at, grace, where)
@@ -989,7 +991,7 @@ function tieEdges(
       warnings.add(
         'unsupported:element',
         `A <tie> of type "${type ?? ''}" is not converted yet.`,
-        context,
+        { ...context, line: tie.line },
         'tie',
       )
     }
@@ -1011,7 +1013,7 @@ function tieEdges(
         warnings.add(
           'unsupported:element',
           `A <tied> of type "${type ?? ''}" is not converted yet.`,
-          context,
+          { ...context, line: tied.line },
           'tied',
         )
       }
@@ -1096,7 +1098,7 @@ function readSlurs(
       warnings.add(
         'unsupported:element',
         `A <slur> of type "${type ?? ''}" is not converted yet.`,
-        context,
+        where,
         'slur',
       )
     }

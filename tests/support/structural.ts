@@ -695,8 +695,7 @@ export function differingLyricLines(root: XmlElement): string[] {
           const pieces = lyric.children.filter((c) => c.name === 'text' || c.name === 'elision')
           // A lyric with no <text> at all states no verse: one holding only an
           // <extend> continues a melisma under a later note, and there is no
-          // syllable in it to lose. An empty <text> is a syllable that draws
-          // nothing, which is a verse and can be the one dropped.
+          // syllable in it to lose.
           if (!pieces.some((c) => c.name === 'text')) continue
           // Every piece, joined and trimmed the way the reader joins them,
           // so a verse elided across two <text>s is compared whole. A
@@ -706,6 +705,11 @@ export function differingLyricLines(root: XmlElement): string[] {
             .map((c) => c.text)
             .join('')
             .trim()
+          // A syllable that is nothing but whitespace draws nothing, so the
+          // reader states no verse for it. Compared as one, it would read as
+          // a line's second verse disagreeing with its first, and fault the
+          // converter for a loss that is not one.
+          if (written === '') continue
           const spelling = lyric.children.find((c) => c.name === 'syllabic')?.text.trim() ?? ''
           const verse = `${written}/${spelling === 'single' ? '' : spelling}`
           const seen = perLine.get(line)

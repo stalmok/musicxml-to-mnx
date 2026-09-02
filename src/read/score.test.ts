@@ -18,6 +18,11 @@ function measure(body: string): string {
 
 const NOTE = '<note><pitch><step>C</step><octave>4</octave></pitch><type>whole</type></note>'
 
+/** A note that takes time, for a mark whose point in the measure is the subject. */
+const QUARTER =
+  '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+  '<duration>4</duration><type>quarter</type></note>'
+
 function read(source: string) {
   const warnings = new WarningCollector()
   const result = readScore(parseXmlRoot(source), warnings)
@@ -1425,13 +1430,16 @@ describe('two parts disagreeing on one field of a mark', () => {
   // A segno's position in the measure, not the sign itself.
   test('reports a segno drawn at different points in the measure', () => {
     const segno = '<direction><direction-type><segno/></direction-type></direction>'
-    const { warnings } = read(
+    const { score: result, warnings } = read(
       score(
-        `<part id="P1"><measure number="1">${segno}${NOTE}</measure></part>` +
-          `<part id="P2"><measure number="1">${NOTE}${segno}</measure></part>`,
+        '<part id="P1"><measure number="1">' +
+          `<attributes><divisions>4</divisions></attributes>${segno}${QUARTER}</measure></part>` +
+          '<part id="P2"><measure number="1">' +
+          `<attributes><divisions>4</divisions></attributes>${QUARTER}${segno}</measure></part>`,
       ),
     )
 
+    expect(result.globalMeasures[0]?.segno?.location).toEqual({ num: 0, den: 1 })
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-segno'])
   })
 
@@ -1554,26 +1562,28 @@ describe('two parts disagreeing on one field of a mark', () => {
   test('reports parts stating time signatures with the same unit and different counts', () => {
     const timed = (count: string) =>
       `<attributes><time><beats>${count}</beats><beat-type>4</beat-type></time></attributes>`
-    const { warnings } = read(
+    const { score: result, warnings } = read(
       score(
         `<part id="P1"><measure number="1">${timed('3')}${NOTE}</measure></part>` +
           `<part id="P2"><measure number="1">${timed('4')}${NOTE}</measure></part>`,
       ),
     )
 
+    expect(result.globalMeasures[0]?.time).toMatchObject({ count: 3, unit: 4 })
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-time'])
   })
 
   test('reports parts stating time signatures with the same count and different units', () => {
     const timed = (unit: string) =>
       `<attributes><time><beats>4</beats><beat-type>${unit}</beat-type></time></attributes>`
-    const { warnings } = read(
+    const { score: result, warnings } = read(
       score(
         `<part id="P1"><measure number="1">${timed('4')}${NOTE}</measure></part>` +
           `<part id="P2"><measure number="1">${timed('2')}${NOTE}</measure></part>`,
       ),
     )
 
+    expect(result.globalMeasures[0]?.time).toMatchObject({ count: 4, unit: 4 })
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-time'])
   })
 })

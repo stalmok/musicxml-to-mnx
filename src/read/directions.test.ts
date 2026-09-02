@@ -1666,10 +1666,11 @@ describe('an offset moving a direction', () => {
   })
 
   // MusicXML allows a fractional offset. Rounding one would put the mark
-  // somewhere the source did not. "2.5" is not digits; twenty digits is
-  // digits that cannot be read back exactly, and each half of the guard
-  // rejects one of them.
-  test.each(['2.5', '99999999999999999999'])(
+  // somewhere the source did not. "2.5" fails both halves of the guard, so it
+  // said nothing about either: "2.0" is a safe integer the regex refuses, and
+  // twenty digits is digits the regex accepts that cannot be read back
+  // exactly.
+  test.each(['2.5', '2.0', '99999999999999999999'])(
     'leaves the mark where it was where the offset is "%s"',
     (written) => {
       const { positions, warnings } = at(quarter + dynamic(`<offset>${written}</offset>`))
@@ -1699,6 +1700,16 @@ describe('an offset moving a direction', () => {
       warnings: warnings.list(),
     }
   }
+
+  // The start of the measure is inside it, not before it. The guard is
+  // stated there as well as below it, or its edge could move by one with
+  // nothing noticing.
+  test('applies an offset that reaches exactly the start of the bar', () => {
+    const { positions, warnings } = inTime(quarter + dynamic('<offset>-4</offset>'))
+
+    expect(positions).toEqual([{ num: 0, den: 1 }])
+    expect(warnings).toEqual([])
+  })
 
   test('applies an offset that stays inside the bar', () => {
     const { positions, warnings } = inTime(quarter + dynamic('<offset>2</offset>'))

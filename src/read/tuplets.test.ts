@@ -1074,7 +1074,10 @@ describe('a bracket the source states no ratio for', () => {
     })
 
     test('refuses a note implying thirty-three in the time of one', () => {
-      expect(readFailure(bracketed(33, 'whole', 4)).message).toContain('no <time-modification>')
+      expect(readFailure(bracketed(33, 'whole', 4)).message).toContain(
+        'A tuplet starts on a note with no <time-modification>, and the note does not say ' +
+          'how long it lasts against how it is written.',
+      )
     })
 
     // A thirty-second lasting a whole is one in the time of thirty-two.
@@ -1085,7 +1088,10 @@ describe('a bracket the source states no ratio for', () => {
     })
 
     test('refuses a note implying one in the time of thirty-three', () => {
-      expect(readFailure(bracketed(8, '32nd', 33)).message).toContain('no <time-modification>')
+      expect(readFailure(bracketed(8, '32nd', 33)).message).toContain(
+        'A tuplet starts on a note with no <time-modification>, and the note does not say ' +
+          'how long it lasts against how it is written.',
+      )
     })
 
     // A note lasting no time implies no ratio: there is nothing to divide its
@@ -1093,7 +1099,10 @@ describe('a bracket the source states no ratio for', () => {
     // because a duration is never negative and zero is the case that reaches
     // it.
     test('refuses a note that lasts no time at all', () => {
-      expect(readFailure(bracketed(8, 'whole', 0)).message).toContain('no <time-modification>')
+      expect(readFailure(bracketed(8, 'whole', 0)).message).toContain(
+        'A tuplet starts on a note with no <time-modification>, and the note does not say ' +
+          'how long it lasts against how it is written.',
+      )
     })
   })
 
@@ -1320,6 +1329,31 @@ describe('a tuplet marker on a chord member', () => {
     // crossing is claimed and the outer bracket still closes on this note.
     expect(warnings.map((w) => w.code)).toEqual(['unsupported:element'])
     expect(content?.map((item) => item.kind)).toEqual(['tuplet'])
+  })
+
+  // The record of a dropped start is consumed by the stop that matches it, so
+  // a second stop stating the same number is a stop with nothing to close.
+  // Nothing said so: the record could have gone on swallowing every stop of
+  // that number to the end of the measure.
+  test('swallows only the first stop matching a start dropped on a chord member', () => {
+    const twice =
+      '<note><pitch><step>E</step><octave>4</octave></pitch><duration>4</duration>' +
+      '<type>eighth</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+      '</time-modification>' +
+      '<notations><tuplet type="stop" number="2"/><tuplet type="stop" number="2"/>' +
+      '<tuplet type="stop" number="1"/></notations></note>'
+
+    expect(
+      readFailure(
+        measure(
+          tupletNote('C', 4, 'eighth', 'start') +
+            tupletNote('D', 4, 'eighth') +
+            chordMember('<tuplet type="start" number="2"/>') +
+            twice,
+        ),
+      ).message,
+    ).toContain('A tuplet is closed where no tuplet is open.')
   })
 
   // A mis-tracked stop is what would nest the brackets wrongly, so the output

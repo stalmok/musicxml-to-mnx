@@ -14,6 +14,10 @@ const NOTE =
   '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
   '<type>quarter</type></note>'
 
+// Each measure is written on its own line, so a warning naming a line names
+// which measure's element it came from. Written as one line, every element in
+// the document sat on line 1 and an assertion on the line said only that
+// there was one.
 function read(...bodies: string[]) {
   const warnings = new WarningCollector()
   const measures = bodies
@@ -23,9 +27,9 @@ function read(...bodies: string[]) {
         (index === 0 ? '<attributes><divisions>4</divisions></attributes>' : '') +
         `${body}</measure>`,
     )
-    .join('')
+    .join('\n')
   const score = readScore(
-    parseXmlRoot(`<score-partwise><part id="P1">${measures}</part></score-partwise>`),
+    parseXmlRoot(`<score-partwise><part id="P1">\n${measures}\n</part></score-partwise>`),
     warnings,
   )
   return { globals: score.globalMeasures, warnings: warnings.list() }
@@ -316,7 +320,7 @@ describe('first and second time endings', () => {
 
     expect(globals[0]?.ending).toBeUndefined()
     expect(warnings.map((w) => w.code)).toEqual(['unclosed:ending'])
-    expect(warnings[0]?.context).toEqual({ part: 'P1', measure: 1, line: 1 })
+    expect(warnings[0]?.context).toEqual({ part: 'P1', measure: 1, line: 2 })
   })
 
   test('reports an ending that nothing ends', () => {
@@ -324,7 +328,7 @@ describe('first and second time endings', () => {
 
     expect(warnings.map((w) => w.code)).toEqual(['unclosed:ending'])
     expect(warnings[0]?.message).toContain('nothing ends it')
-    expect(warnings[0]?.context).toEqual({ part: 'P1', measure: 1, line: 1 })
+    expect(warnings[0]?.context).toEqual({ part: 'P1', measure: 1, line: 2 })
   })
 
   test('reports an ending that starts while one is already open', () => {
@@ -334,16 +338,18 @@ describe('first and second time endings', () => {
     )
 
     expect(warnings.map((w) => w.code)).toEqual(['unclosed:ending'])
-    // Named as the measure the abandoned bracket opened in, not the one whose
-    // second bracket displaced it.
-    expect(warnings[0]?.context).toEqual({ part: 'P1', measure: 1, line: 1 })
+    // Named as the measure the abandoned bracket opened in, and the line it
+    // was written on, not the ones of the bracket that displaced it: the
+    // second measure is line 3.
+    expect(warnings[0]?.context).toEqual({ part: 'P1', measure: 1, line: 2 })
     // The second one still resolves; only the abandoned first is lost.
     expect(globals[1]?.ending?.numbers).toEqual([2])
   })
 
-  // "first" is not digits; twenty digits is digits that cannot be read back
-  // exactly. Each half of the guard rejects one of them.
-  test.each(['first', '99999999999999999999'])(
+  // "first" fails both halves. "+1" is a safe integer the regex refuses, and
+  // twenty digits is digits that cannot be read back exactly, so each half
+  // rejects a case the other accepts.
+  test.each(['first', '+1', '99999999999999999999'])(
     'reports a number of "%s", which is not a list of numbers',
     (numbers) => {
       const { globals, warnings } = read(
@@ -499,10 +505,11 @@ describe('what a barline can say that MNX cannot', () => {
 
   // Both formats allow any whole number of repeats, so an odd count is worth
   // reporting rather than refusing a whole score over.
-  // "lots" is digits the regex refuses; twenty digits is a string the regex
-  // accepts and that cannot be read back exactly. Each half of the guard
-  // rejects one of them, and nothing said so while every case failed both.
-  test.each(['1', '0', 'lots', '99999999999999999999'])(
+  // "lots" fails both halves of the guard, which is why it said nothing about
+  // either. "+2" is a safe integer the regex refuses, and twenty digits is a
+  // string the regex accepts that cannot be read back exactly, so each half
+  // now rejects a case the other accepts.
+  test.each(['1', '0', 'lots', '+2', '99999999999999999999'])(
     'reports a repeat played "%s" times, keeping the repeat',
     (times) => {
       const { globals, warnings } = read(

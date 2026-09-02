@@ -708,8 +708,6 @@ describe('part groups', () => {
     expect(() => convertMusicXML(source)).toThrow('"start" or "stop"')
   })
 
-  // A value outside yes/no/Mensurstrich is invalid input, reported the same
-  // way an unrecognized <bar-style> is.
   // Everything in a <part-group> that is not the symbol, the name or the
   // barline has no home in an MNX staff group, and the sweep over the element
   // is what says so. <group-time>, which draws one time signature across the
@@ -729,6 +727,8 @@ describe('part groups', () => {
     expect(warnings.map((w) => w.element)).toEqual(['group-time'])
   })
 
+  // A value outside yes/no/Mensurstrich is invalid input, reported the same
+  // way an unrecognized <bar-style> is.
   test('reports a group-barline value it does not recognize', () => {
     const { mnx, warnings } = convertMusicXML(
       score(

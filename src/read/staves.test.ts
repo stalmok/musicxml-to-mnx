@@ -143,6 +143,24 @@ describe('clefs', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:clef'])
   })
 
+  // Nor does where it sits alone: a G clef on the second line and an F clef
+  // on the second line are drawn in the same place and read a tenth apart.
+  test('keeps only the last of two clefs drawn in one place under different signs', () => {
+    const { part, warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions>' +
+          '<clef><sign>G</sign><line>2</line></clef>' +
+          '<clef><sign>F</sign><line>2</line></clef></attributes>' +
+          note('C', '1'),
+      ),
+    )
+
+    expect(part?.measures[0]?.clefs).toEqual([
+      { sign: 'F', staffPosition: -2, staff: undefined, position: { num: 0, den: 1 } },
+    ])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:clef'])
+  })
+
   // Nor does where it sits: a treble clef and a treble clef sounding an
   // octave down are drawn in the same place and read an octave apart.
   test('keeps only the last of two clefs alike but for their octave', () => {

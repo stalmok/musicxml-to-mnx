@@ -289,6 +289,17 @@ describe('a beam marker at a level that does not exist', () => {
     expect(warnings).toEqual([])
   })
 
+  test('reports a marker below the first level', () => {
+    const { beams, warnings } = read(
+      sixteenth('C', '<beam number="1">begin</beam><beam number="0">begin</beam>') +
+        sixteenth('D', '<beam number="1">end</beam>'),
+    )
+
+    expect(beams.map((beam) => beam.events)).toEqual([['ev1', 'ev2']])
+    expect(warnings.map((w) => w.element)).toEqual(['beam'])
+    expect(warnings[0]?.message).toContain('not one of the eight beam levels')
+  })
+
   test('keeps a marker at the first level', () => {
     const { beams, warnings } = read(
       sixteenth('C', '<beam number="1">begin</beam>') +

@@ -221,13 +221,17 @@ function verse(text: string, number = '1'): string {
   return `<lyric number="${number}"><text>${text}</text></lyric>`
 }
 
-function withLyrics(body: string): XmlElement {
-  return parseXmlRoot(
+function sourceOf(body: string): string {
+  return (
     '<score-partwise><part id="P1"><measure number="3">' +
-      '<note><pitch><step>C</step><octave>4</octave></pitch>' +
-      `<duration>1</duration><type>quarter</type>${body}</note>` +
-      '</measure></part></score-partwise>',
+    '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+    `<duration>1</duration><type>quarter</type>${body}</note>` +
+    '</measure></part></score-partwise>'
   )
+}
+
+function withLyrics(body: string): XmlElement {
+  return parseXmlRoot(sourceOf(body))
 }
 
 test('two lyrics on one line saying different things is a loss', () => {
@@ -242,6 +246,20 @@ test('two lyrics on one line saying the same thing lose nothing', () => {
 
 test('two lyrics on different lines are two verses, not a loss', () => {
   expect(differingLyricLines(withLyrics(verse('one') + verse('two', '2')))).toEqual([])
+})
+
+// A syllable that is nothing but whitespace draws nothing, so the reader
+// states no verse for it. Compared as one, it would read as a line's second
+// verse disagreeing with its first, and fault the converter for a loss the
+// converter does not make: it converts the line once and says nothing.
+test('a whitespace syllable beside a real one is not a disagreement', () => {
+  const source = withLyrics(verse('La') + verse(' '))
+
+  expect(differingLyricLines(source)).toEqual([])
+  // The source states no <divisions>, which is its own report and not this
+  // one's subject, so only what the lyrics cost is compared.
+  const { warnings } = convertMusicXML(sourceOf(verse('La') + verse(' ')))
+  expect(warnings.filter((warning) => warning.element !== 'divisions')).toEqual([])
 })
 
 // The syllabic says how the syllable joins its word, and MNX states one for
@@ -264,12 +282,17 @@ test('a syllabic of single and no syllabic at all say the same thing', () => {
   expect(differingLyricLines(withLyrics(single + verse('la')))).toEqual([])
 })
 
-// An empty <text> is a syllable that draws nothing, and the converter keeps
-// the first of the two, so the words are gone if the empty one is first.
-test('an empty syllable beside a written one is a loss', () => {
-  expect(
-    differingLyricLines(withLyrics('<lyric number="1"><text></text></lyric>' + verse('word'))),
-  ).toEqual(['part P1 measure 3 line 1: "/" against "word/"'])
+// An empty <text> draws nothing, so the reader states no verse for it and
+// the words of the lyric beside it are the line's. Counted as a verse, it
+// would read as a disagreement and fault the converter for a loss it does
+// not make.
+test('an empty syllable beside a written one is not a loss', () => {
+  const body = '<lyric number="1"><text></text></lyric>' + verse('word')
+
+  expect(differingLyricLines(withLyrics(body))).toEqual([])
+  const { mnx } = convertMusicXML(sourceOf(body))
+  const event = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
+  expect(event).toMatchObject({ lyrics: { lines: { 1: { text: 'word' } } } })
 })
 
 // A lyric with no <text> at all is a melisma marker rather than a verse, and

@@ -50,6 +50,42 @@ const attempted = songs().map((song) => {
 
 const converted = attempted.filter((song) => song.rejected === undefined)
 
+// A warning is only worth having if a reader can find what it is about. Every
+// one names the line the element was written on, except where the mark has
+// already been read into the model and the element it came from is gone: the
+// four below work on model objects and name the measure and stop there.
+// Three are settled once the parts are merged; the clef is settled inside one
+// part, and is the one of the four that could carry a line, by holding it on
+// the model's clef the way an ending's edge now holds one.
+//
+// The list is held both ways, by the per-song check below and by the whole-
+// corpus one beside it: a report that names no line and is not listed fails,
+// and so does an entry the corpus no longer reaches, which is the shrink
+// worth hearing about. Other reports in score.ts are lineless for the same
+// reason and are deliberately not listed, because no vendored song reaches
+// them; one that starts to will fail here, and be added with its reason or
+// given a line.
+const REPORTED_WITHOUT_A_LINE: ReadonlySet<string> = new Set([
+  'unrepresentable:cross-part-key',
+  'unrepresentable:cross-part-time',
+  'inconsistent:tempo',
+  'unrepresentable:clef',
+])
+
+// The other half of the rule above. The per-song check lets a code stay in
+// the list after it stops being reached, or after it grows a line; this says
+// the list is exactly what the corpus reports without one.
+test('reports no line only for the losses recorded as having none', () => {
+  const found = new Set<string>()
+  for (const song of converted) {
+    for (const warning of song.warnings) {
+      if (warning.context.line === undefined) found.add(warning.code)
+    }
+  }
+
+  expect([...found].sort()).toEqual([...REPORTED_WITHOUT_A_LINE].sort())
+})
+
 test('the whole corpus is present', () => {
   expect(attempted.length).toBe(Object.keys(baseline).length)
   expect(attempted.length).toBeGreaterThan(150)
@@ -249,30 +285,16 @@ function idReferences(document: unknown): { defined: Set<string>; referenced: Se
   return { defined, referenced }
 }
 
-// A warning is only worth having if a reader can find what it is about. Every
-// one names the line the element was written on, except where the mark has
-// already been read into the model and the element it came from is gone: the
-// four below are settled once the parts are merged, from model objects, and
-// name the measure and stop there.
-//
-// The set is exact rather than a floor. A new report that names no line fails
-// this, and so does one of these growing a line, which is the shrink worth
-// hearing about.
-const REPORTED_WITHOUT_A_LINE: ReadonlySet<string> = new Set([
-  'unrepresentable:cross-part-key',
-  'unrepresentable:cross-part-time',
-  'inconsistent:tempo',
-  'unrepresentable:clef',
-])
-
 describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   test('produces MNX the spec schema accepts', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 
   // Nothing else compares a warning's position: every assertion in the suite
-  // compares the message and the code, so a report could name the wrong line,
-  // or no line, in every file the reader has and the suite would stay green.
+  // compares the message and the code, so a report could name no line in
+  // every file the reader has and the suite would stay green. The line is
+  // held to the document's length rather than to the element it names, so
+  // this catches a report with no line and not one with the wrong line.
   test('names where in the source every loss came from', () => {
     const lines = source.split('\n').length
     const measures = mnx.global.measures.length

@@ -106,9 +106,9 @@ describe('a rest placed on the staff', () => {
   // plain rest, so it is reported rather than passed over: the source meant
   // to put it somewhere, and where is what cannot be worked out.
   test.each([
-    ['<display-step>G</display-step>', 'a step and no octave'],
-    ['<display-octave>4</display-octave>', 'an octave and no step'],
-  ])('reports a rest stating %s', (half) => {
+    ['a step and no octave', '<display-step>G</display-step>'],
+    ['an octave and no step', '<display-octave>4</display-octave>'],
+  ])('reports a rest stating %s', (_what, half) => {
     const { item, warnings } = firstEvent(
       inMeasure(`<note><rest>${half}</rest><duration>4</duration><type>quarter</type></note>`),
     )

@@ -1059,7 +1059,7 @@ export class MeasureBuilder {
           'unrepresentable:arpeggio',
           'A chord is marked both as rolled and as struck together, which are opposite ' +
             'instructions. The first is the one converted.',
-          context,
+          { ...context, line: first.line },
           'arpeggiate',
         )
       }
