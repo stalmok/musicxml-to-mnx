@@ -952,6 +952,43 @@ describe('a bracket the source states no ratio for', () => {
   })
 })
 
+// A note inside a tuplet is weighed against its written value scaled by the
+// ratio around it. The report named the written value alone, so a note in a
+// triplet came out as "written as an eighth but lasts an eighth": the same
+// length twice, reading as a fault here rather than in the source.
+describe('a note inside a tuplet lasting the wrong time', () => {
+  test('names the length the ratio wants, not the written one twice', () => {
+    const { warnings } = read(
+      measure(
+        tupletNote('C', 6, 'eighth', 'start') +
+          tupletNote('D', 4, 'eighth') +
+          tupletNote('E', 4, 'eighth', 'stop'),
+      ),
+    )
+    const reported = warnings.filter((w) => w.code === 'inconsistent:duration')
+
+    expect(reported).toHaveLength(1)
+    expect(reported[0]?.message).toContain('written as an eighth')
+    expect(reported[0]?.message).toContain('1/12 of a whole note')
+  })
+
+  // Outside a tuplet nothing scales the written value, and the report says
+  // the two lengths plainly.
+  test('says the written value and the length plainly outside a tuplet', () => {
+    const { warnings } = read(
+      measure(
+        '<note><pitch><step>C</step><octave>4</octave></pitch><duration>12</duration>' +
+          '<type>eighth</type></note>',
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:duration'])
+    expect(warnings[0]?.message).toBe(
+      'A <note> is written as an eighth but lasts a quarter. The written value is the one converted.',
+    )
+  })
+})
+
 describe('beam levels', () => {
   const beamed = (level: string) =>
     '<note><pitch><step>C</step><octave>4</octave></pitch><duration>6</duration>' +

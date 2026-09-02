@@ -1477,12 +1477,23 @@ function reportDurationMismatch(
   warnings: WarningCollector,
   context: WarningContext,
 ): void {
-  if (compareFractions(multiplyFractions(lengthOf(written), tupletFactor), duration) === 0) return
+  const wanted = multiplyFractions(lengthOf(written), tupletFactor)
+  if (compareFractions(wanted, duration) === 0) return
 
+  // The ratio is what the written value is weighed against, so inside a
+  // tuplet the message names the length the ratio wants. Naming the written
+  // value alone read as "written as an eighth but lasts an eighth", the same
+  // length twice, which reads as a fault in the converter rather than in the
+  // source.
+  const scaled = compareFractions(tupletFactor, fraction(1)) !== 0
   warnings.add(
     'inconsistent:duration',
-    `A <note> is written as ${describeValue(written)} but lasts ` +
-      `${describeLength(duration)}. The written value is the one converted.`,
+    scaled
+      ? `A <note> is written as ${describeValue(written)}, which the tuplet around it ` +
+          `makes ${describeLength(wanted)}, but it lasts ${describeLength(duration)}. ` +
+          'The written value is the one converted.'
+      : `A <note> is written as ${describeValue(written)} but lasts ` +
+          `${describeLength(duration)}. The written value is the one converted.`,
     { ...context, line: element.line },
     'note',
   )
