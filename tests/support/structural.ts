@@ -718,3 +718,24 @@ export function differingLyricLines(root: XmlElement): string[] {
   }
   return found
 }
+
+/**
+ * Every key of the document that is present and set to undefined, named by
+ * the path it sits at.
+ *
+ * MNX reads an absent key and one set to undefined as different things: an
+ * absent bracket leaves the renderer to decide, where a stated one does not.
+ * The writer builds optional keys conditionally, and neither the compiler nor
+ * a comparison catches a condition that lets one through set to undefined:
+ * toEqual passes over such a key and JSON.stringify drops it, so the emitted
+ * text is the same and the document a consumer reads is not.
+ */
+export function undefinedKeys(value: unknown, path = 'mnx'): string[] {
+  if (Array.isArray(value)) {
+    return value.flatMap((item, index) => undefinedKeys(item, `${path}[${String(index)}]`))
+  }
+  if (value === null || typeof value !== 'object') return []
+  return Object.entries(value).flatMap(([key, held]) =>
+    held === undefined ? [`${path}.${key}`] : undefinedKeys(held, `${path}.${key}`),
+  )
+}

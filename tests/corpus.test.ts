@@ -34,6 +34,7 @@ import {
   sourceMeasureLengths,
   sourcePitches,
   sourceSlurSpans,
+  undefinedKeys,
 } from './support/structural.js'
 import baseline from './corpus/warning-baseline.json' with { type: 'json' }
 
@@ -251,6 +252,15 @@ function idReferences(document: unknown): { defined: Set<string>; referenced: Se
 describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   test('produces MNX the spec schema accepts', () => {
     expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // MNX reads an absent key and one set to undefined as different things, and
+  // the writer builds every optional key conditionally. Nothing else here
+  // tells the two apart: the schema passes over such a key, a comparison
+  // passes over it, and JSON.stringify drops it, so the emitted text is the
+  // same and the document a consumer reads is not.
+  test('states no key as undefined', () => {
+    expect(undefinedKeys(mnx)).toEqual([])
   })
 
   // The writer names an event, note or measure only where something points at

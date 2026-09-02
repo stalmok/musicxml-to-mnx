@@ -11,6 +11,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { convertMusicXML } from '../src/index.js'
 import { schemaErrors } from './support/schema.js'
+import { undefinedKeys } from './support/structural.js'
 
 const fixturesRoot = fileURLToPath(new URL('./fixtures', import.meta.url))
 
@@ -58,6 +59,15 @@ describe.each(fixtures)('$name', ({ musicXmlPath, goldenPath }) => {
     const { mnx } = convertMusicXML(source)
 
     expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // An absent key and one set to undefined read as different things in MNX,
+  // and nothing else here tells them apart: the golden comparison passes over
+  // such a key, and so does the schema.
+  test('states no key as undefined', () => {
+    const { mnx } = convertMusicXML(source)
+
+    expect(undefinedKeys(mnx)).toEqual([])
   })
 
   test('converts without losing anything', () => {
@@ -143,6 +153,9 @@ describe('conversion output the schema has to accept', () => {
   test.each(Object.entries(cases))('%s', (_name, body) => {
     const source = `<score-partwise><part id="P1"><measure number="1">${body}</measure></part></score-partwise>`
 
-    expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
+    const { mnx } = convertMusicXML(source)
+
+    expect(schemaErrors(mnx)).toEqual([])
+    expect(undefinedKeys(mnx)).toEqual([])
   })
 })

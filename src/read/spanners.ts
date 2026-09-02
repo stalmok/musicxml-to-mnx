@@ -18,6 +18,7 @@ import type {
   LineType,
   Measure,
   Note,
+  Ottava,
   OttavaAmount,
   Pitch,
   Step,
@@ -890,11 +891,13 @@ export class SpannerResolver {
     pairSpans<Dynamic, WedgeEnd>(
       this.#wedgeEnds,
       (dynamic, stop) => {
-        dynamic.end = {
-          measure: stop.measure,
-          position: stop.covers,
-          ...(stop.coversGraceIndex !== undefined ? { graceIndex: stop.coversGraceIndex } : {}),
-        }
+        // The grace note the hairpin ends on is stated where the stop covers
+        // one, and the key left off where it does not: MNX reads an absent
+        // key as the beat itself. Assigned rather than spread in, so that the
+        // compiler holds the difference between the two.
+        const end: NonNullable<Dynamic['end']> = { measure: stop.measure, position: stop.covers }
+        if (stop.coversGraceIndex !== undefined) end.graceIndex = stop.coversGraceIndex
+        dynamic.end = end
         closed.set(stop, dynamic)
       },
       (reason, end) => {
@@ -1042,17 +1045,17 @@ export class SpannerResolver {
     pairSpans<OpenOttava, SpanEnd<OpenOttava>>(
       this.#ottavaEnds,
       (open, stop) => {
-        measures[open.measure]?.ottavas.push({
+        // Assigned rather than spread in, for the reason the hairpin's end is.
+        const end: Ottava['end'] = { measure: stop.measure, position: stop.covers }
+        if (stop.coversGraceIndex !== undefined) end.graceIndex = stop.coversGraceIndex
+        const ottava: Ottava = {
           position: open.position,
-          end: {
-            measure: stop.measure,
-            position: stop.covers,
-            ...(stop.coversGraceIndex !== undefined ? { graceIndex: stop.coversGraceIndex } : {}),
-          },
+          end,
           value: open.value,
           staff: open.staff,
-          ...(open.orient !== undefined ? { orient: open.orient } : {}),
-        })
+        }
+        if (open.orient !== undefined) ottava.orient = open.orient
+        measures[open.measure]?.ottavas.push(ottava)
       },
       (reason, end) => {
         warnings.add(

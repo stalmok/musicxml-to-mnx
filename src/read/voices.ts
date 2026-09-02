@@ -714,16 +714,22 @@ export class MeasureBuilder {
     for (const [index, level] of levels.entries()) {
       const { display } = level
       const content: SequenceItem[] = []
+      // A setting the source states is set; one it does not is left off the
+      // tuplet, rather than set to undefined, because MNX reads an absent
+      // key as the renderer's choice. Written as assignments rather than as
+      // conditional spreads so that the compiler holds the difference: a
+      // spread of { bracket: undefined } into a tuplet type-checks, and each
+      // of these four did.
       const tuplet: Tuplet = {
         kind: 'tuplet',
         inner: level.inner,
         outer: level.outer,
         content,
-        ...(display.bracket !== undefined ? { bracket: display.bracket } : {}),
-        ...(display.showNumber !== undefined ? { showNumber: display.showNumber } : {}),
-        ...(display.showValue !== undefined ? { showValue: display.showValue } : {}),
-        ...(display.orient !== undefined ? { orient: display.orient } : {}),
       }
+      if (display.bracket !== undefined) tuplet.bracket = display.bracket
+      if (display.showNumber !== undefined) tuplet.showNumber = display.showNumber
+      if (display.showValue !== undefined) tuplet.showValue = display.showValue
+      if (display.orient !== undefined) tuplet.orient = display.orient
 
       innermost(builder).push(tuplet)
       builder.open.push({ list: content, opened: 'tuplet' })
