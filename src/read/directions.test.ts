@@ -1648,6 +1648,58 @@ describe('an offset moving a direction', () => {
     expect(warnings.map((w) => w.element)).toEqual(['offset'])
     expect(warnings[0]?.message).toContain('not a whole number')
   })
+
+  // The other end of the bar is only knowable once a time signature is in
+  // force. Without one, an offset running forward is applied whatever it
+  // says, because there is nothing to say it has left the measure.
+  function inTime(body: string) {
+    const warnings = new WarningCollector()
+    const score = readScore(
+      parseXmlRoot(
+        '<score-partwise><part id="P1"><measure number="1">' +
+          '<attributes><divisions>4</divisions>' +
+          '<time><beats>2</beats><beat-type>4</beat-type></time></attributes>' +
+          `${body}</measure></part></score-partwise>`,
+      ),
+      warnings,
+    )
+    return {
+      positions: (score.parts[0]?.measures[0]?.dynamics ?? []).map((d) => d.position),
+      warnings: warnings.list(),
+    }
+  }
+
+  test('applies an offset that stays inside the bar', () => {
+    const { positions, warnings } = inTime(quarter + dynamic('<offset>2</offset>'))
+
+    expect(positions).toEqual([{ num: 3, den: 8 }])
+    expect(warnings).toEqual([])
+  })
+
+  // The barline itself is the last position in the measure, not past it.
+  test('applies an offset that reaches exactly the end of the bar', () => {
+    const { positions, warnings } = inTime(quarter + dynamic('<offset>4</offset>'))
+
+    expect(positions).toEqual([{ num: 1, den: 2 }])
+    expect(warnings).toEqual([])
+  })
+
+  test('leaves the mark where it was where the offset carries it past the bar', () => {
+    const { positions, warnings } = inTime(quarter + dynamic('<offset>8</offset>'))
+
+    expect(positions).toEqual([{ num: 1, den: 4 }])
+    expect(warnings.map((w) => w.element)).toEqual(['offset'])
+    expect(warnings[0]?.message).toContain('outside its measure')
+  })
+
+  // Before any time signature there is no end to have passed, so the same
+  // offset is applied rather than refused.
+  test('applies an offset past two beats where no time signature is in force', () => {
+    const { positions, warnings } = at(quarter + dynamic('<offset>8</offset>'))
+
+    expect(positions).toEqual([{ num: 3, den: 4 }])
+    expect(warnings).toEqual([])
+  })
 })
 
 // <sound> is a playback element. A tempo it states is playback, not notation:
