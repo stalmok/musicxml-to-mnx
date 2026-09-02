@@ -195,6 +195,45 @@ describe('beams the measure does not finish', () => {
   })
 })
 
+// A level outside the eight a stem can carry cannot be drawn, so the marker
+// is dropped. The marker still said something about the beam at its level,
+// and the beam beside it is drawn as if it had never been written: a run
+// whose end is dropped closes at the last marker before it.
+describe('a beam marker at a level that does not exist', () => {
+  function sixteenth(step: string, beams: string): string {
+    return (
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>1</duration>` +
+      `<type>16th</type>${beams}</note>`
+    )
+  }
+
+  function read(body: string) {
+    const warnings = new WarningCollector()
+    const score = readScore(
+      parseXmlRoot(
+        '<score-partwise><part id="P1"><measure number="1">' +
+          `<attributes><divisions>4</divisions></attributes>${body}</measure></part></score-partwise>`,
+      ),
+      warnings,
+    )
+    return { beams: score.parts[0]?.measures[0]?.beams ?? [], warnings: warnings.list() }
+  }
+
+  test('draws the run short where the dropped marker ended it', () => {
+    const { beams, warnings } = read(
+      sixteenth('C', '<beam number="1">begin</beam><beam number="2">begin</beam>') +
+        sixteenth('D', '<beam number="1">continue</beam><beam number="2">continue</beam>') +
+        sixteenth('E', '<beam number="1">end</beam><beam number="9">end</beam>'),
+    )
+
+    // The outer beam runs over all three; the inner one stops where the last
+    // marker it kept left it.
+    expect(beams.map((beam) => beam.events)).toEqual([['ev1', 'ev2', 'ev3']])
+    expect(beams[0]?.beams.map((beam) => beam.events)).toEqual([['ev1', 'ev2']])
+    expect(warnings[0]?.message).toContain('drawn without it')
+  })
+})
+
 // Grace notes beam among themselves. Their markers are read as their own run,
 // because a grace group sitting between two beamed notes would otherwise open
 // a beam in the middle of theirs and leave the outer one with nothing to

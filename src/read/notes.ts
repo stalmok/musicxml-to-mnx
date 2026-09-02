@@ -1139,12 +1139,19 @@ function beamMarkers(
     // drawn from, and the measure adds up without it: how a note is beamed is
     // drawing, not duration. So the marker is dropped and reported, as a
     // fanned beam above is, rather than the document being refused over it.
+    //
+    // The marker said where a beam begins or ends, so dropping it moves the
+    // edge of whatever run it belonged to: a run whose end is dropped closes
+    // at the last marker before it and is drawn short. The report says so,
+    // because a reader told only that one beam is missing would not look at
+    // the beams beside it.
     const level = Number(stated)
     if (!/^\d+$/.test(stated) || level < 1 || level > 8) {
       warnings.add(
         'unresolved:attribute-value',
         `The "number" of a <beam> is "${stated}", which is not one of the eight beam ` +
-          'levels, so the beam is not drawn.',
+          'levels, so the beam is not drawn and any beam this marker would have begun ' +
+          'or ended is drawn without it.',
         { ...context, line: beam.line },
         'beam',
         'number',
