@@ -94,11 +94,27 @@ describe('a rest placed on the staff', () => {
   })
 
   test('leaves a plain rest without a position', () => {
-    const { item } = firstEvent(
+    const { item, warnings } = firstEvent(
       inMeasure('<note><rest/><duration>4</duration><type>quarter</type></note>'),
     )
 
     expect(item).toMatchObject({ isRest: true, staffPosition: undefined })
+    expect(warnings).toEqual([])
+  })
+
+  // A height needs both halves to place. A rest stating one of them is not a
+  // plain rest, so it is reported rather than passed over: the source meant
+  // to put it somewhere, and where is what cannot be worked out.
+  test.each([
+    ['<display-step>G</display-step>', 'a step and no octave'],
+    ['<display-octave>4</display-octave>', 'an octave and no step'],
+  ])('reports a rest stating %s', (half) => {
+    const { item, warnings } = firstEvent(
+      inMeasure(`<note><rest>${half}</rest><duration>4</duration><type>quarter</type></note>`),
+    )
+
+    expect(item).toMatchObject({ isRest: true, staffPosition: undefined })
+    expect(warnings.map((w) => w.element)).toEqual(['display-step'])
   })
 
   test('writes a rest position the spec schema accepts', () => {

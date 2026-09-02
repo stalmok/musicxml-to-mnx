@@ -350,6 +350,27 @@ describe('tuplet ratios stated on the start marker', () => {
     expect(warnings).toEqual([])
   })
 
+  // A marker stating one side of its ratio and not the other still states
+  // something: the side it gives is read, and the other falls back to what
+  // the notes say. Nothing said so while every marker stated both sides or
+  // neither.
+  test('reads the one side of a ratio a marker states', () => {
+    const halfMarked =
+      '<tuplet-actual><tuplet-number>5</tuplet-number><tuplet-type>16th</tuplet-type>' +
+      '</tuplet-actual>'
+    const first =
+      '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+      '<duration>4</duration><type>eighth</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+      '</time-modification>' +
+      `<notations><tuplet type="start">${halfMarked}</tuplet></notations></note>`
+    const { warnings } = read(
+      measure(first + tupletNote('D', 4, 'eighth') + tupletNote('E', 4, 'eighth', 'stop')),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tuplet'])
+  })
+
   // The notes' <time-modification> is what the durations follow, so it
   // governs timing. A start marker stating a different ratio is reported, and
   // the ratio the notes state is the one converted.

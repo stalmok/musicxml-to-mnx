@@ -297,16 +297,21 @@ describe('first and second time endings', () => {
     expect(globals[1]?.ending?.numbers).toEqual([2])
   })
 
-  test('reports a number that is not a list of numbers', () => {
-    const { globals, warnings } = read(
-      left('<ending number="first" type="start"/>') +
-        NOTE +
-        right('<ending number="first" type="stop"/>'),
-    )
+  // "first" is not digits; twenty digits is digits that cannot be read back
+  // exactly. Each half of the guard rejects one of them.
+  test.each(['first', '99999999999999999999'])(
+    'reports a number of "%s", which is not a list of numbers',
+    (numbers) => {
+      const { globals, warnings } = read(
+        left(`<ending number="${numbers}" type="start"/>`) +
+          NOTE +
+          right(`<ending number="${numbers}" type="stop"/>`),
+      )
 
-    expect(globals[0]?.ending?.numbers).toEqual([])
-    expect(warnings.map((w) => w.element)).toEqual(['ending'])
-  })
+      expect(globals[0]?.ending?.numbers).toEqual([])
+      expect(warnings.map((w) => w.element)).toEqual(['ending'])
+    },
+  )
 
   // MusicXML lets an ending state no number at all, and writes the stop with
   // an empty one.
@@ -450,7 +455,10 @@ describe('what a barline can say that MNX cannot', () => {
 
   // Both formats allow any whole number of repeats, so an odd count is worth
   // reporting rather than refusing a whole score over.
-  test.each(['1', '0', 'lots'])(
+  // "lots" is digits the regex refuses; twenty digits is a string the regex
+  // accepts and that cannot be read back exactly. Each half of the guard
+  // rejects one of them, and nothing said so while every case failed both.
+  test.each(['1', '0', 'lots', '99999999999999999999'])(
     'reports a repeat played "%s" times, keeping the repeat',
     (times) => {
       const { globals, warnings } = read(

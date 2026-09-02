@@ -1650,14 +1650,19 @@ describe('an offset moving a direction', () => {
   })
 
   // MusicXML allows a fractional offset. Rounding one would put the mark
-  // somewhere the source did not.
-  test('leaves the mark where it was where the offset is not a whole number', () => {
-    const { positions, warnings } = at(quarter + dynamic('<offset>2.5</offset>'))
+  // somewhere the source did not. "2.5" is not digits; twenty digits is
+  // digits that cannot be read back exactly, and each half of the guard
+  // rejects one of them.
+  test.each(['2.5', '99999999999999999999'])(
+    'leaves the mark where it was where the offset is "%s"',
+    (written) => {
+      const { positions, warnings } = at(quarter + dynamic(`<offset>${written}</offset>`))
 
-    expect(positions).toEqual([{ num: 1, den: 4 }])
-    expect(warnings.map((w) => w.element)).toEqual(['offset'])
-    expect(warnings[0]?.message).toContain('not a whole number')
-  })
+      expect(positions).toEqual([{ num: 1, den: 4 }])
+      expect(warnings.map((w) => w.element)).toEqual(['offset'])
+      expect(warnings[0]?.message).toContain('not a whole number')
+    },
+  )
 
   // The other end of the bar is only knowable once a time signature is in
   // force. Without one, an offset running forward is applied whatever it
