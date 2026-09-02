@@ -257,6 +257,38 @@ describe('a chord marked both ways at once', () => {
   })
 })
 
+// Numbering the two marks differently used to put them in separate groups,
+// where neither could see the other: the output carried a roll and a bracket
+// over the same notes, contradicting each other with nothing said.
+describe('a chord marked both ways under different numbers', () => {
+  test('keeps the first and says the other is lost', () => {
+    const { measure, warnings } = read(
+      head('<arpeggiate number="1"/>') +
+        member('E', '<non-arpeggiate number="2" type="bottom"/>') +
+        member('G', '<non-arpeggiate number="2" type="top"/>'),
+    )
+
+    expect(measure?.arpeggios).toHaveLength(1)
+    expect(measure?.arpeggios[0]?.struck).toBe(false)
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:arpeggio'])
+  })
+})
+
+// One roll cannot go both ways. The mark that loses used to be dropped with
+// nothing said, once the two were read as one roll.
+describe('a chord rolled both ways at once', () => {
+  test('keeps the first direction and reports the other', () => {
+    const { measure, warnings } = read(
+      head('<arpeggiate direction="up"/>') +
+        member('E', '<arpeggiate number="1" direction="down"/>'),
+    )
+
+    expect(measure?.arpeggios).toHaveLength(1)
+    expect(measure?.arpeggios[0]?.direction).toBe('up')
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:arpeggio'])
+  })
+})
+
 // A number joins a mark to another chord's; two marks on one chord are that
 // chord's own roll however the source numbers them.
 describe('one chord marked twice', () => {

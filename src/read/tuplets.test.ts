@@ -872,6 +872,68 @@ describe('a bracket the source states no ratio for', () => {
     expect(warnings[0]?.message).toContain('lasts 2/3 of what it is written as')
   })
 
+  // The bracket states what it holds against the time it takes, so a bracket
+  // over two different values is counted in one that divides them both. Read
+  // from its first note alone, this stated a half note of space where the
+  // source has a quarter, and the measure came out a quarter longer.
+  test('counts a bracket over two different values in one that fits both', () => {
+    const quarter =
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>8</duration>' +
+      '<type>quarter</type><notations><tuplet type="start"/></notations></note>'
+    const eighth =
+      '<note><pitch><step>D</step><octave>4</octave></pitch><duration>4</duration>' +
+      '<type>eighth</type><notations><tuplet type="stop"/></notations></note>'
+    const { content } = read(measure(quarter + eighth))
+    const tuplet = content?.[0]
+
+    // Three eighths written, two eighths of space: the quarter and the eighth
+    // together take one quarter of the measure, which is what they last.
+    expect(tuplet?.kind === 'tuplet' && tuplet.inner).toEqual({
+      value: { base: 'eighth', dots: 0 },
+      multiple: 3,
+    })
+    expect(tuplet?.kind === 'tuplet' && tuplet.outer).toEqual({
+      value: { base: 'eighth', dots: 0 },
+      multiple: 2,
+    })
+  })
+
+  // A marker stating its own ratio has said what the bracket is; only the
+  // <time-modification> beside the note is missing. Scaling that to the
+  // content would redraw the number the source put over the bracket.
+  test('keeps a ratio the start marker states of its own', () => {
+    const stating =
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+      '<type>eighth</type><notations><tuplet type="start">' +
+      '<tuplet-actual><tuplet-number>3</tuplet-number><tuplet-type>eighth</tuplet-type>' +
+      '</tuplet-actual>' +
+      '<tuplet-normal><tuplet-number>2</tuplet-number><tuplet-type>eighth</tuplet-type>' +
+      '</tuplet-normal></tuplet></notations></note>'
+    const { content, warnings } = read(
+      measure(stating + bare('D', 4) + bare('E', 4) + bare('F', 4, 'stop')),
+    )
+    const tuplet = content?.[0]
+
+    expect(tuplet?.kind === 'tuplet' && tuplet.inner.multiple).toBe(3)
+    expect(tuplet?.kind === 'tuplet' && tuplet.outer.multiple).toBe(2)
+    // Four eighths under a bracket that says three: the source's own
+    // disagreement, which is reported rather than scaled away.
+    expect(warnings.map((w) => w.code)).toEqual([
+      'missing:time-modification',
+      'inconsistent:tuplet',
+    ])
+  })
+
+  // A note whose length works out as a ratio no tuplet is written with is a
+  // broken duration, not a bracket to be read.
+  test('rejects a first note whose length is no ratio a tuplet would state', () => {
+    const odd =
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>5</duration>' +
+      '<type>whole</type><notations><tuplet type="start"/></notations></note>'
+
+    expect(readFailure(measure(odd)).message).toContain('no <time-modification>')
+  })
+
   test('writes MNX the spec schema accepts for one', () => {
     const { mnx } = convertMusicXML(measure(bare('C', 4, 'start') + bare('D', 4, 'stop')))
 

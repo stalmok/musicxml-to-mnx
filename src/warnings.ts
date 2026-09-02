@@ -181,6 +181,9 @@ export type WarningCode =
   // rather than a limit of the format: both would be drawn over one beat.
   // The first stated is the one converted.
   | 'inconsistent:tempo'
+  // A chord is rolled upwards by one mark and downwards by another. The first
+  // is the one converted.
+  | 'inconsistent:arpeggio'
   // A tie or slur has only one of its two ends, so there is nothing to join
   // it to. Real scores contain these, so it is reported rather than refused.
   | 'unclosed:spanner'

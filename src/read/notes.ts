@@ -1301,6 +1301,12 @@ function tupletPortion(
   }
 }
 
+// The largest count either side of a derived ratio may reach. Real tuplets
+// run to a few notes in the time of a few; a bracket whose first note works
+// out as thirty-one in the time of seventeen is a broken duration, not a
+// tuplet.
+const MOST_A_TUPLET_COUNTS = 32
+
 /**
  * The ratio of a bracket the source states no <time-modification> for, read
  * from the note the bracket starts on: how long the note lasts against how it
@@ -1326,7 +1332,10 @@ function impliedTupletRatio(
   if (!written || !duration || duration.num <= 0) return undefined
 
   const ratio = divideFractions(lengthOf(written), duration)
-  if (ratio.num > 1_000 || ratio.den > 1_000) return undefined
+  // A tuplet nobody would write is not a reading of the bracket; it is the
+  // note's duration disagreeing with its written value, which the caller
+  // refuses over rather than dressing up as a ratio the source meant.
+  if (ratio.num > MOST_A_TUPLET_COUNTS || ratio.den > MOST_A_TUPLET_COUNTS) return undefined
   return {
     inner: { value: written, multiple: ratio.num },
     outer: { value: written, multiple: ratio.den },

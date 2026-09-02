@@ -98,7 +98,18 @@ interface VoiceBuilder {
    * written value a note inside really lasts (2/3 inside a triplet), and the
    * number its start marker gave it, for its stop to be checked against.
    */
-  openTuplets: { tuplet: Tuplet; ratio: Fraction; number: string; derived: boolean }[]
+  openTuplets: {
+    tuplet: Tuplet
+    ratio: Fraction
+    number: string
+    /**
+     * True where the ratio was read from the bracket's first note rather than
+     * stated, so the bracket states what it holds once it closes.
+     */
+    derived: boolean
+    /** Where this voice's content ran to when the bracket opened. */
+    openEnd: Fraction
+  }[]
   /**
    * The two-note tremolo currently being gathered, when one is. Its item is
    * not in the content yet: it joins once both notes are in and agree.
@@ -141,6 +152,8 @@ interface MarkedArpeggio {
   struck: boolean
   /** True where the same chord was marked the other way as well. */
   conflicted: boolean
+  /** True where the same chord was rolled in both directions at once. */
+  crossed: boolean
   direction: 'up' | 'down' | undefined
   arrow: boolean
 }
@@ -182,30 +195,45 @@ function ratioOf(inner: NoteValueQuantity, outer: NoteValueQuantity): Fraction {
 }
 
 /**
- * Scales a tuplet's multiples to what it turned out to hold, keeping the ratio
- * between them. Used for a ratio read from the bracket's first note: three
- * eighths that play in the time of two open as 3:2 for that note, and stay
- * 3:2 once the bracket holds three of them; a bracket over two eighths that
- * play as written opens as 1:1 and becomes 2:2, which is the same bracket
- * drawn over what it really holds.
+ * States a tuplet as what it turned out to hold against the time it turned
+ * out to take: three eighths written where two were played is three in the
+ * time of two, and two eighths that played as written are two in the time of
+ * two, which is a bracket drawn over what it holds and changing nothing.
  *
- * Left alone where the content is not a whole number of the value counted, as
- * a bracket over a quarter and an eighth counted in quarters is not. The
- * caller reports the disagreement between content and ratio, which is what
- * that is.
+ * Used for a bracket the source states no ratio for. The ratio it opens with
+ * comes from its first note, which is all there is to go on while its content
+ * is still being read; here the whole bracket is known, so the whole bracket
+ * is what it states. A first note the rest of the bracket does not follow
+ * would otherwise state a time the notes inside do not take.
+ *
+ * Both sides are counted in one value, the largest that divides them both,
+ * starting from the value the bracket opened with and halving. A bracket over
+ * a quarter and an eighth is three eighths, not one and a half quarters.
+ * Left alone where no value counts them both, which the caller reports as the
+ * disagreement between content and ratio that it is.
  */
-function scaleToContent(tuplet: Tuplet, held: Fraction): void {
-  const counted = divideFractions(held, lengthOf(tuplet.inner.value))
-  if (counted.den !== 1 || counted.num < 1) return
+function scaleToContent(tuplet: Tuplet, held: Fraction, sounded: Fraction): void {
+  let length = lengthOf(tuplet.inner.value)
+  // Eight halvings reach a 1024th from a maxima, which is every value there
+  // is; a ninth would have nothing to name it.
+  for (let halved = 0; halved <= 8; halved += 1) {
+    const value = noteValueOf(length)
+    if (value) {
+      const written = divideFractions(held, length)
+      const played = divideFractions(sounded, length)
+      if (countsWhole(written) && countsWhole(played)) {
+        tuplet.inner = { value, multiple: written.num }
+        tuplet.outer = { value, multiple: played.num }
+        return
+      }
+    }
+    length = multiplyFractions(length, fraction(1, 2))
+  }
+}
 
-  const played = multiplyFractions(
-    fraction(counted.num, tuplet.inner.multiple),
-    fraction(tuplet.outer.multiple),
-  )
-  if (played.den !== 1 || played.num < 1 || played.num > 1_000 || counted.num > 1_000) return
-
-  tuplet.inner = { value: tuplet.inner.value, multiple: counted.num }
-  tuplet.outer = { value: tuplet.outer.value, multiple: played.num }
+/** A count of note values MusicXML would write as a tuplet's actual or normal. */
+function countsWhole(count: Fraction): boolean {
+  return count.den === 1 && count.num >= 1 && count.num <= 1_000
 }
 
 /** How long a tuplet's content is written as, before its ratio scales it. */
@@ -635,7 +663,11 @@ export class MeasureBuilder {
     // Time this voice has passed over in silence belongs before the brackets,
     // not inside them, where the tuplets' ratios would scale it.
     this.#fillGap(builder)
-    for (const level of levels) {
+    // Where this voice has reached, before anything the brackets hold. A
+    // bracket that states no ratio compares it with where the voice reaches
+    // when it closes, to state the time it took.
+    const openEnd = builder.end
+    for (const [index, level] of levels.entries()) {
       const { display } = level
       const content: SequenceItem[] = []
       const tuplet: Tuplet = {
@@ -655,7 +687,10 @@ export class MeasureBuilder {
         tuplet,
         ratio: ratioOf(level.inner, level.outer),
         number: level.number,
-        derived,
+        // A level whose own marker stated its ratio states it already, and
+        // rescaling that to the content would overwrite what the source drew.
+        derived: derived && starts[index]?.stated === undefined,
+        openEnd,
       })
     }
   }
@@ -821,6 +856,12 @@ export class MeasureBuilder {
       // A stated number claims a join with another chord's mark, so it stands
       // where the mark it joins stated none.
       existing.number ??= number
+      // One roll cannot go both ways, so a second direction is a loss rather
+      // than a detail: the first stands and the other is reported.
+      existing.crossed ||=
+        existing.direction !== undefined &&
+        direction !== undefined &&
+        existing.direction !== direction
       existing.direction ??= direction
       existing.arrow ||= arrow
       // Rolled and struck together are opposite instructions.
@@ -828,7 +869,16 @@ export class MeasureBuilder {
       return
     }
 
-    this.#arpeggios.push({ event, position, number, struck, conflicted: false, direction, arrow })
+    this.#arpeggios.push({
+      event,
+      position,
+      number,
+      struck,
+      conflicted: false,
+      crossed: false,
+      direction,
+      arrow,
+    })
   }
 
   /**
@@ -845,8 +895,28 @@ export class MeasureBuilder {
    * where the chord it decorates does, and the two are still two chords.
    */
   arpeggios(warnings: WarningCollector, context: WarningContext): Arpeggio[] {
-    const groups = new Map<string, MarkedArpeggio[]>()
+    // Marks on one chord are weighed together first, whatever they are
+    // numbered. Numbering them differently otherwise put them in groups that
+    // could not see each other, and a chord marked rolled by one and struck
+    // by the other came out as both, drawn over the same notes.
+    const kept: MarkedArpeggio[] = []
     for (const marked of this.#arpeggios) {
+      const first = kept.find((one) => one.event === marked.event)
+      if (first && first.struck !== marked.struck) {
+        warnings.add(
+          'unrepresentable:arpeggio',
+          'A chord is marked both as rolled and as struck together, which are opposite ' +
+            'instructions. The first is the one converted.',
+          context,
+          'arpeggiate',
+        )
+        continue
+      }
+      kept.push(marked)
+    }
+
+    const groups = new Map<string, MarkedArpeggio[]>()
+    for (const marked of kept) {
       const key =
         marked.number === undefined
           ? `event ${marked.event.id}`
@@ -885,6 +955,16 @@ export class MeasureBuilder {
           'non-arpeggiate',
         )
         continue
+      }
+
+      if (marked.some((one) => one.crossed)) {
+        warnings.add(
+          'inconsistent:arpeggio',
+          'A chord is rolled upwards by one mark and downwards by another. The first ' +
+            'is the one converted.',
+          context,
+          'arpeggiate',
+        )
       }
 
       if (marked.some((one) => one.conflicted || one.struck !== first.struck)) {
@@ -963,10 +1043,11 @@ export class MeasureBuilder {
     const { tuplet } = closed
     const held = writtenLengthOf(tuplet.content)
     // A ratio read from the bracket's first note speaks for that note alone.
-    // What the bracket holds is known only here, so the multiples are scaled
-    // to it now: two eighths that play as written are two in the time of two,
-    // not one in the time of one.
-    if (closed.derived) scaleToContent(tuplet, held)
+    // The whole bracket is known only here, so it is stated here: what it
+    // holds, against the time this voice spent inside it.
+    if (closed.derived) {
+      scaleToContent(tuplet, held, subtractFractions(builder.end, closed.openEnd))
+    }
 
     // Real scores contain brackets whose content does not add up to the
     // stated ratio: a lone quarter under a 3:2 eighth ratio, standing for a
