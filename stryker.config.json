@@ -8,13 +8,8 @@
   "checkers": ["typescript"],
   "tsconfigFile": "tsconfig.stryker.json",
   "coverageAnalysis": "perTest",
-  "mutate": [
-    "src/fraction.ts",
-    "src/read/duration.ts",
-    "src/read/divisions.ts",
-    "src/read/voices.ts",
-    "src/read/spanners.ts"
-  ],
+  "mutate_comment": "The reader, which is where every real defect so far has been found, plus the exact-fraction arithmetic every part of it counts with.",
+  "mutate": ["src/read/**/*.ts", "!src/read/**/*.test.ts", "src/fraction.ts"],
   "mutator": {
     "excludedMutations": ["StringLiteral", "Regex"]
   },
