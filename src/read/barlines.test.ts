@@ -152,6 +152,29 @@ describe('repeat signs', () => {
     expect(globals[0]?.repeatEnd).toEqual({ times: undefined })
   })
 
+  // Nothing said that a barline which is not a repeat start does not open
+  // one, so the reader could have opened a repeat on every measure and the
+  // suite would have stayed green. Each of the three ways of not opening one
+  // is stated here.
+  test('opens no repeat on a measure carrying no barline at all', () => {
+    const { globals } = read(NOTE)
+
+    expect(globals[0]?.repeatStart).toBe(false)
+  })
+
+  test('opens no repeat on a measure closing one', () => {
+    const { globals } = read(NOTE + right('<repeat direction="backward"/>'))
+
+    expect(globals[0]?.repeatStart).toBe(false)
+  })
+
+  test('opens no repeat on a barline whose repeat direction is not one of the two', () => {
+    const { globals, warnings } = read(left('<repeat direction="sideways"/>') + NOTE)
+
+    expect(globals[0]?.repeatStart).toBe(false)
+    expect(warnings.map((w) => w.element)).toEqual(['repeat'])
+  })
+
   test('keeps how many times the passage is played', () => {
     const { globals } = read(NOTE + right('<repeat direction="backward" times="4"/>'))
 
@@ -225,6 +248,17 @@ describe('repeat signs', () => {
 
     expect(globals[0]?.repeatStart).toBe(true)
     expect(warnings).toEqual([])
+  })
+
+  // The style is passed over only because the repeat start redraws it. With
+  // no repeat beside it, a heavy-light at the opening edge is the source's
+  // own statement, with nowhere to go, and says so like any opening style.
+  test('reports a heavy-light opening edge with no repeat start beside it', () => {
+    const { globals, warnings } = read(left('<bar-style>heavy-light</bar-style>') + NOTE)
+
+    expect(globals[0]?.repeatStart).toBe(false)
+    expect(globals[0]?.barline).toBeUndefined()
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:barline'])
   })
 })
 
