@@ -815,3 +815,39 @@ describe('part groups', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 })
+
+// Two groups open under one number, which the format leaves to the reader to
+// sort out. A stop then names a number two open groups carry, and the one it
+// crosses is the innermost of them: the outer one is still standing when the
+// stop arrives, so it is not what the stop was closing.
+//
+// Which of the two is picked shows in what is reported. A crossed group runs
+// to the end of the part list on purpose, so it is not reported as one nobody
+// closed; the group left over is. Each part-list entry is written on its own
+// line, so the line the report names says which group it is about.
+describe('a stop naming a number two open groups carry', () => {
+  const CROSSED = [
+    '<score-partwise version="4.0"><part-list>',
+    '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>',
+    '<score-part id="P1"/>',
+    '<part-group type="start" number="1"><group-symbol>brace</group-symbol></part-group>',
+    '<score-part id="P2"/>',
+    '<part-group type="start" number="2"/>',
+    '<score-part id="P3"/>',
+    '<part-group type="stop" number="1"/>',
+    '<part-group type="stop" number="2"/>',
+    `</part-list>${part('P1')}${part('P2')}${part('P3')}</score-partwise>`,
+  ].join('\n')
+
+  test('crosses the innermost of the two, leaving the outer one unclosed', () => {
+    const { mnx, warnings } = convertMusicXML(CROSSED)
+
+    expect(warnings.map((warning) => [warning.code, warning.context.line])).toEqual([
+      ['unrepresentable:part-group-overlap', 8],
+      // The bracket on line 2, not the brace on line 4: the brace is the one
+      // the stop crossed, and a crossed group is not reported as unclosed.
+      ['unclosed:part-group', 2],
+    ])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+})

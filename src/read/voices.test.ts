@@ -407,4 +407,26 @@ describe('a rest filling a measure that already holds something', () => {
       'A rest that fills the measure is inside a two-note tremolo.',
     )
   })
+
+  // With two brackets open, the innermost is the one that cannot hold the
+  // rest, and the one the refusal names. Every fixture above opens one, so
+  // nothing said which of several is picked.
+  test('names the innermost of two brackets open around it', () => {
+    const tuplet =
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+      '<type>quarter</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+      '</time-modification><notations><tuplet type="start"/></notations></note>'
+    const tremolo =
+      '<note><pitch><step>D</step><octave>4</octave></pitch><duration>2</duration>' +
+      '<type>quarter</type>' +
+      '<time-modification><actual-notes>2</actual-notes><normal-notes>1</normal-notes>' +
+      '</time-modification>' +
+      '<notations><ornaments><tremolo type="start">3</tremolo></ornaments></notations></note>'
+    const rest = '<note><rest measure="yes"/><duration>16</duration><type>whole</type></note>'
+
+    expect(readFailure(measure(tuplet + tremolo + rest)).message).toContain(
+      'A rest that fills the measure is inside a two-note tremolo.',
+    )
+  })
 })
