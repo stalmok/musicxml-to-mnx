@@ -1182,6 +1182,16 @@ describe('segno', () => {
     expect(warnings[0]?.message).toContain('more than one segno')
   })
 
+  test('reports a second segno at the same point drawn as another glyph', () => {
+    const { global, warnings } = read(
+      inMeasure(direction('<segno smufl="segnoSerpent1"/>') + direction('<segno/>') + note('C')),
+    )
+
+    expect(global?.segno?.glyph).toBe('segnoSerpent1')
+    expect(warnings.map((w) => w.element)).toEqual(['segno'])
+    expect(warnings[0]?.message).toContain('more than one segno')
+  })
+
   test('writes a segno the spec schema accepts', () => {
     const { mnx } = convertMusicXML(inMeasure(direction('<segno/>') + note('C')))
 

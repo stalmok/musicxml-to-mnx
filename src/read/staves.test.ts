@@ -124,6 +124,42 @@ describe('clefs', () => {
     ])
   })
 
+  // The sign alone does not say which clef it is. A G clef on the first line
+  // is a French violin clef and a G clef on the second is a treble; the two
+  // put every note a step apart.
+  test('keeps only the last of two clefs of one sign drawn on different lines', () => {
+    const { part, warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions>' +
+          '<clef><sign>G</sign><line>2</line></clef>' +
+          '<clef><sign>G</sign><line>1</line></clef></attributes>' +
+          note('C', '1'),
+      ),
+    )
+
+    expect(part?.measures[0]?.clefs).toEqual([
+      { sign: 'G', staffPosition: -4, staff: undefined, position: { num: 0, den: 1 } },
+    ])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:clef'])
+  })
+
+  // Nor does where it sits: a treble clef and a treble clef sounding an
+  // octave down are drawn in the same place and read an octave apart.
+  test('keeps only the last of two clefs alike but for their octave', () => {
+    const { part, warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions>' +
+          '<clef><sign>G</sign><line>2</line></clef>' +
+          '<clef><sign>G</sign><line>2</line><clef-octave-change>-1</clef-octave-change></clef>' +
+          '</attributes>' +
+          note('C', '1'),
+      ),
+    )
+
+    expect(part?.measures[0]?.clefs[0]?.octave).toBe(-1)
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:clef'])
+  })
+
   // Restating the same clef at the same point loses nothing: the two say the
   // same thing, so the second is dropped without a word. Reporting it called
   // a lossless conversion a permanent limit of the format.

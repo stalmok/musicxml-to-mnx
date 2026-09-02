@@ -1416,6 +1416,168 @@ describe('several parts', () => {
   })
 })
 
+// Each predicate that decides whether two parts state the same mark compares
+// several fields at once. The tests above differ in one field each, which
+// leaves the rest saying nothing: two parts disagreeing on an ending's hook
+// or a jump's kind would fold into one and nobody would hear about it. Each
+// test here differs in exactly one field the tests above leave alone.
+describe('two parts disagreeing on one field of a mark', () => {
+  // A segno's position in the measure, not the sign itself.
+  test('reports a segno drawn at different points in the measure', () => {
+    const segno = '<direction><direction-type><segno/></direction-type></direction>'
+    const { warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${segno}${NOTE}</measure></part>` +
+          `<part id="P2"><measure number="1">${NOTE}${segno}</measure></part>`,
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-segno'])
+  })
+
+  test('reports a segno drawn as different glyphs', () => {
+    const segno = (glyph: string) =>
+      `<direction><direction-type><segno${glyph}/></direction-type></direction>`
+    const { score: result, warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${segno(' smufl="segnoSerpent1"')}${NOTE}` +
+          '</measure></part>' +
+          `<part id="P2"><measure number="1">${segno('')}${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.segno?.glyph).toBe('segnoSerpent1')
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-segno'])
+  })
+
+  // A bracket that closes with a hook and one that runs on are two different
+  // endings, whatever numbers they carry.
+  test('reports an ending closed in one part and left open in the other', () => {
+    const bracketed = (close: string) =>
+      '<barline location="left"><ending number="1" type="start"/></barline>' +
+      `${NOTE}<barline location="right"><ending number="1" type="${close}"/></barline>`
+    const { score: result, warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${bracketed('stop')}</measure></part>` +
+          `<part id="P2"><measure number="1">${bracketed('discontinue')}</measure></part>`,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.ending?.open).toBe(false)
+    expect(warnings.map((w) => w.element)).toEqual(['ending'])
+  })
+
+  test('reports an ending covering different numbers of times', () => {
+    const bracketed = (numbers: string) =>
+      `<barline location="left"><ending number="${numbers}" type="start"/></barline>` +
+      `${NOTE}<barline location="right"><ending number="${numbers}" type="stop"/></barline>`
+    const { score: result, warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${bracketed('1')}</measure></part>` +
+          `<part id="P2"><measure number="1">${bracketed('1,2')}</measure></part>`,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.ending?.numbers).toEqual([1])
+    expect(warnings.map((w) => w.element)).toEqual(['ending'])
+  })
+
+  // One part brackets a single measure and the other brackets two, so the
+  // same numbers cover a different stretch of music.
+  test('reports an ending spanning different numbers of measures', () => {
+    const start = '<barline location="left"><ending number="1" type="start"/></barline>'
+    const stop = '<barline location="right"><ending number="1" type="stop"/></barline>'
+    const { score: result, warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${start}${NOTE}${stop}</measure>` +
+          `<measure number="2">${NOTE}</measure></part>` +
+          `<part id="P2"><measure number="1">${start}${NOTE}</measure>` +
+          `<measure number="2">${NOTE}${stop}</measure></part>`,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.ending?.duration).toBe(1)
+    expect(warnings.map((w) => w.element)).toEqual(['ending'])
+  })
+
+  test('reports a fermata facing different ways', () => {
+    const held = (facing: string) =>
+      `${NOTE}<barline location="right"><fermata type="${facing}">normal</fermata></barline>`
+    const { score: result, warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${held('upright')}</measure></part>` +
+          `<part id="P2"><measure number="1">${held('inverted')}</measure></part>`,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.fermata?.pointing).toBe('up')
+    expect(warnings.map((w) => w.element)).toEqual(['fermata'])
+  })
+
+  test('reports a fermata drawn on different sides of the notes', () => {
+    const held = (side: string) =>
+      `${NOTE}<barline location="right"><fermata placement="${side}">normal</fermata></barline>`
+    const { score: result, warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${held('above')}</measure></part>` +
+          `<part id="P2"><measure number="1">${held('below')}</measure></part>`,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.fermata?.orient).toBe('above')
+    expect(warnings.map((w) => w.element)).toEqual(['fermata'])
+  })
+
+  // A jump's kind is not compared here, and cannot be: <sound dalsegno> is
+  // the only jump the reader takes from a source, so every jump is a plain
+  // segno at this point. The dal-segno-al-Fine kind is settled in a later
+  // pass, once the whole score is known, which is after the parts are merged.
+  test('reports a jump taken at different points in the measure', () => {
+    const divisions = '<attributes><divisions>1</divisions></attributes>'
+    const quarter =
+      '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+      '<duration>1</duration><type>quarter</type></note>'
+    const { warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${divisions}<sound dalsegno="A"/>${quarter}` +
+          '</measure></part>' +
+          `<part id="P2"><measure number="1">${divisions}${quarter}<sound dalsegno="A"/>` +
+          '</measure></part>',
+      ),
+    )
+
+    expect(warnings.map((w) => w.element)).toEqual(['jump'])
+  })
+
+  // The meter itself: 3/4 against 4/4 differs in the count, 4/4 against 4/2
+  // in the unit. Only both together say the same meter.
+  test('reports parts stating time signatures with the same unit and different counts', () => {
+    const timed = (count: string) =>
+      `<attributes><time><beats>${count}</beats><beat-type>4</beat-type></time></attributes>`
+    const { warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${timed('3')}${NOTE}</measure></part>` +
+          `<part id="P2"><measure number="1">${timed('4')}${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-time'])
+  })
+
+  test('reports parts stating time signatures with the same count and different units', () => {
+    const timed = (unit: string) =>
+      `<attributes><time><beats>4</beats><beat-type>${unit}</beat-type></time></attributes>`
+    const { warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${timed('4')}${NOTE}</measure></part>` +
+          `<part id="P2"><measure number="1">${timed('2')}${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-time'])
+  })
+})
+
 // A tempo belongs to the score, but MusicXML has to write it inside a part,
 // and exporters routinely write the same mark into every one of them.
 describe('a tempo stated by more than one part', () => {
@@ -1486,6 +1648,39 @@ describe('a tempo stated by more than one part', () => {
 
     expect(result.globalMeasures[0]?.tempos.map((t) => t.bpm)).toEqual([96])
     expect(warnings.map((w) => w.context.part)).toEqual(['P2', 'P3'])
+  })
+
+  // The same number of beats per minute counted in a different beat is a
+  // different speed: quarter = 96 is twice half = 96.
+  test('reports parts counting the same rate in different beats', () => {
+    const inHalves = metronome.replace('quarter', 'half')
+    const { score: result, warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${metronome}${NOTE}</measure></part>` +
+          `<part id="P2"><measure number="1">${inHalves}${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.tempos.map((t) => t.value.base)).toEqual(['quarter'])
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tempo'])
+  })
+
+  // A dotted beat is half as long again, so the same rate over one is a
+  // different speed too.
+  test('reports parts counting the same rate over a dotted and a plain beat', () => {
+    const dotted = metronome.replace(
+      '<beat-unit>quarter</beat-unit>',
+      '<beat-unit>quarter</beat-unit><beat-unit-dot/>',
+    )
+    const { score: result, warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${metronome}${NOTE}</measure></part>` +
+          `<part id="P2"><measure number="1">${dotted}${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.tempos.map((t) => t.value.dots)).toEqual([0])
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tempo'])
   })
 
   // Different points in the measure is a tempo change, not a disagreement, so
