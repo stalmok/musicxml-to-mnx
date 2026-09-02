@@ -54,7 +54,7 @@ interface OpenSlur {
 }
 
 /** One end of a slur, and on a stop what that end states. */
-interface SlurEnd extends SpanEnd<OpenSlur> {
+export interface SlurEnd extends SpanEnd<OpenSlur> {
   stop?: {
     event: Event
     /** The side the slur bends to at its close, for an S-shaped one. */
@@ -247,8 +247,13 @@ export function pairSpans<T, E extends SpanEnd<T>>(
  * for itself: it opens each slur before closing it and leaves none over. Such
  * a stream is the voice's own, because a measure is written one voice at a
  * time, so within a voice the document's order is the music's.
+ *
+ * Exported for the test that pins its answers. Reading it through a score
+ * cannot: a stream this calls not its own goes to the pass across the part,
+ * which hands back what it cannot pair and prefers a stop's own voice, so it
+ * mostly reaches the same joins by a longer road.
  */
-function accountsForItself(ends: readonly SlurEnd[]): boolean {
+export function accountsForItself(ends: readonly SlurEnd[]): boolean {
   let open = 0
   for (const end of inTimeOrder(ends, 'as-written')) {
     if (end.kind === 'start') {
@@ -269,8 +274,11 @@ function accountsForItself(ends: readonly SlurEnd[]): boolean {
  * end over: an unclosed start, an orphan stop, or one of each. A measure is
  * written one voice at a time, so this is the same reading as
  * accountsForItself, narrowed to what happens inside a single measure.
+ *
+ * Exported for the test that pins its four answers, for the reason
+ * accountsForItself is.
  */
-function measureResidue(ends: readonly SlurEnd[]): 'unclosed' | 'orphan' | 'both' | 'none' {
+export function measureResidue(ends: readonly SlurEnd[]): 'unclosed' | 'orphan' | 'both' | 'none' {
   let open = 0
   let orphaned = false
   for (const end of inTimeOrder(ends, 'as-written')) {

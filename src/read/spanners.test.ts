@@ -9,8 +9,8 @@ import type { Fraction } from '../fraction.js'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
-import { pairSpans } from './spanners.js'
-import type { SpanEnd } from './spanners.js'
+import { accountsForItself, measureResidue, pairSpans } from './spanners.js'
+import type { SlurEnd, SpanEnd } from './spanners.js'
 import { convertMusicXML } from '../index.js'
 import { schemaErrors } from '../../tests/support/schema.js'
 import type { Event, Note } from '../model/score.js'
@@ -728,6 +728,80 @@ describe('slurs', () => {
     expect(warnings.list()).toEqual([])
   })
 
+  // A voice's own ends left over in a measure say nothing about whether its
+  // slurs cross into another voice: a slur spanning two measures always
+  // leaves a start over in the one and a stop over in the other, so a voice
+  // reading its own residue would call every such slur a crossing and hand it
+  // to the pass across the part, where a stray end beside it wins.
+  test('weighs another voice against a pair, not the voice the pair is in', () => {
+    const warnings = new WarningCollector()
+    const score = readScore(
+      parseXmlRoot(
+        measures(
+          // Voice 1 opens the slur; voice 2 leaves a stray stop beside it.
+          DIVISIONS +
+            note('C', slur('start'), '1') +
+            '<backup><duration>4</duration></backup>' +
+            note('G', slur('stop'), '2'),
+          // Voice 1 closes it and opens another in the same measure, which is
+          // what leaves it an end over at both edges.
+          note('D', slur('stop'), '1') + note('E', slur('start'), '1'),
+          note('F', slur('stop'), '1'),
+        ),
+      ),
+      warnings,
+    )
+    const eventsOf = (measure: number, sequence: number) =>
+      (score.parts[0]?.measures[measure]?.sequences[sequence]?.content ?? []).filter(
+        (item): item is Event => item.kind === 'event',
+      )
+
+    // C closes on D, the stop its own voice wrote, not on the stray stop in
+    // the voice beside it.
+    expect(eventsOf(0, 0)[0]?.slurs[0]?.target).toBe(eventsOf(1, 0)[0]?.id)
+    expect(eventsOf(1, 0)[1]?.slurs[0]?.target).toBe(eventsOf(2, 0)[0]?.id)
+    expect(warnings.list().map((w) => w.message)).toEqual([
+      'A slur ends where none had started, and is not carried over.',
+    ])
+  })
+
+  // The measure a crossing is confirmed at, on the start's side, is the
+  // pair's own measure or the one after it: a slur running into another voice
+  // is closed there or in the measure that follows. Looking backwards instead
+  // finds nothing, and the pair is read as the voice's own.
+  test('confirms a crossing at the start from the measure after it', () => {
+    const warnings = new WarningCollector()
+    const score = readScore(
+      parseXmlRoot(
+        measures(
+          DIVISIONS + note('C', '', '1'),
+          note('D', slur('start'), '1'),
+          // Voice 2 writes a stop where voice 1's slur has not reached yet,
+          // and opens one of its own after it: an end left over on each side,
+          // in the measure after voice 1's start.
+          note('A', slur('stop'), '2') +
+            note('B', slur('start'), '2') +
+            '<backup><duration>8</duration></backup>' +
+            '<note><rest/><duration>4</duration><type>quarter</type><voice>1</voice></note>' +
+            note('E', slur('stop'), '1'),
+        ),
+      ),
+      warnings,
+    )
+    const eventsOf = (measure: number, sequence: number) =>
+      (score.parts[0]?.measures[measure]?.sequences[sequence]?.content ?? []).filter(
+        (item): item is Event => item.kind === 'event',
+      )
+
+    // D's slur takes the nearer stop in the voice beside it, and the start
+    // voice 2 leaves open closes on voice 1's stop: two slurs crossing the
+    // two voices, with nothing left over. Read as voice 1's own, the two
+    // stray ends beside it would both be reported instead.
+    expect(eventsOf(1, 0)[0]?.slurs[0]?.target).toBe(eventsOf(2, 0)[0]?.id)
+    expect(eventsOf(2, 0)[1]?.slurs[0]?.target).toBe(eventsOf(2, 1)[1]?.id)
+    expect(warnings.list()).toEqual([])
+  })
+
   // A grace note takes none of the measure's time, so it begins where the
   // note it ornaments begins. The slur from one to the other therefore has
   // both ends at one point, and the document says which end is which.
@@ -1212,6 +1286,55 @@ describe('pairing the two ends of a span', () => {
 
     expect(joined).toEqual(['span'])
     expect(reported).toEqual([])
+  })
+})
+
+// Whether a voice's slurs of one number are that voice's own, and what a
+// measure of them leaves over, decide whether the voice keeps its own pairing
+// or joins the pass across the part. Read through a score the two answers
+// mostly wash out: the pass hands back what it cannot pair and prefers a
+// stop's own voice, so a misread stream reaches the same joins by a longer
+// road. They are asked here directly, so each answer is stated once.
+describe('whether a voice accounts for its own slurs', () => {
+  const slurEnd = (kind: 'start' | 'stop', index: number): SlurEnd => ({
+    kind,
+    number: '1',
+    measure: 0,
+    position: fraction(index, 4),
+    covers: fraction(index, 4),
+    payload: undefined,
+    context: {},
+  })
+
+  const stream = (...kinds: readonly ('start' | 'stop')[]) =>
+    kinds.map((kind, index) => slurEnd(kind, index))
+
+  test.each([
+    ['one slur opened and closed', ['start', 'stop'], true],
+    ['two slurs one after the other', ['start', 'stop', 'start', 'stop'], true],
+    ['nothing at all', [], true],
+    ['a slur left open', ['start'], false],
+    ['a stop with nothing open', ['stop'], false],
+    ['a stop before the start', ['stop', 'start'], false],
+    // Two slurs of one number open at once say nothing about which stop
+    // closes which, so the voice is not accounting for them either.
+    ['two slurs of one number open at once', ['start', 'start', 'stop', 'stop'], false],
+  ] as const)('reads %s as %s', (_what, kinds, own) => {
+    expect(accountsForItself(stream(...kinds))).toBe(own)
+  })
+
+  // What one measure of one voice leaves over, which another voice's pair is
+  // weighed against: a start over on one side, a stop over on the other.
+  test.each([
+    ['nothing over', ['start', 'stop'], 'none'],
+    ['a start over', ['start'], 'unclosed'],
+    ['a stop over', ['stop'], 'orphan'],
+    ['one of each', ['stop', 'start'], 'both'],
+    ['two starts over', ['start', 'start'], 'unclosed'],
+    ['two stops over', ['stop', 'stop'], 'orphan'],
+    ['a slur closed and a stop over', ['start', 'stop', 'stop'], 'orphan'],
+  ] as const)('leaves %s', (_what, kinds, residue) => {
+    expect(measureResidue(stream(...kinds))).toBe(residue)
   })
 })
 
