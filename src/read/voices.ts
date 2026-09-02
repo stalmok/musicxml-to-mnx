@@ -685,7 +685,7 @@ export class MeasureBuilder {
      * <time-modification>. Such a ratio speaks for that one note, so the
      * multiples are scaled to what the bracket holds once it closes.
      */
-    derived = false,
+    derived: boolean,
   ): void {
     const builder = this.#builderFor(voice)
     // A tremolo holds exactly its two notes, so no bracket may open inside
@@ -869,7 +869,8 @@ export class MeasureBuilder {
     id: string,
     markers: ReadonlyMap<number, string>,
     beamCount: number,
-    inGraceGroup = false,
+    /** Whether the event is a grace note, whose beams run within its group. */
+    inGraceGroup: boolean,
   ): void {
     if (markers.size === 0) return
     const builder = this.#builderFor(voice)

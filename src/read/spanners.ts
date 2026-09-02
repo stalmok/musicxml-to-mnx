@@ -54,9 +54,25 @@ interface OpenSlur {
   lineType: LineType | undefined
 }
 
-/** One end of a slur, and on a stop what that end states. */
-export interface SlurEnd extends SpanEnd<OpenSlur> {
-  stop?: {
+/**
+ * One end of a slur: a start carries the slur it opens, and a stop names the
+ * event it is written on. Two shapes rather than one, because the pairing a
+ * voice does for itself reads the slur straight off its own start, and the
+ * split is what states there is one to read. No reader drops a slur start the
+ * way it drops a hairpin's, so a start with nothing to join cannot be built.
+ */
+export type SlurEnd = SlurStart | SlurStop
+
+interface SlurStart extends SpanEnd<OpenSlur> {
+  kind: 'start'
+  payload: OpenSlur
+  stop?: undefined
+}
+
+interface SlurStop extends SpanEnd<OpenSlur> {
+  kind: 'stop'
+  payload: undefined
+  stop: {
     event: Event
     /** The side the slur bends to at its close, for an S-shaped one. */
     sideEnd: CurveSide | undefined
@@ -301,9 +317,9 @@ export function measureResidue(ends: readonly SlurEnd[]): 'unclosed' | 'orphan' 
  * accountsForItself is true: nesting never goes past one deep, so each start
  * closes on the very next stop.
  */
-function ownPairs(ends: readonly SlurEnd[]): { start: SlurEnd; stop: SlurEnd }[] {
-  const pairs: { start: SlurEnd; stop: SlurEnd }[] = []
-  let open: SlurEnd | undefined
+function ownPairs(ends: readonly SlurEnd[]): { start: SlurStart; stop: SlurStop }[] {
+  const pairs: { start: SlurStart; stop: SlurStop }[] = []
+  let open: SlurStart | undefined
   for (const end of inTimeOrder(ends, 'as-written')) {
     if (end.kind === 'start') {
       open = end
@@ -754,15 +770,11 @@ export class SpannerResolver {
       if (accountsForItself(ends) && !crossing.has(key)) ownEnds.push(ends)
       else for (const end of ends) spare.add(end)
     }
-    /* v8 ignore next 4 -- a stream that accounts for itself opens each slur
-       before closing it and leaves none over, so it has nothing to hand back;
-       and a slur's ends mark the points they are written on, so no stop of
-       one covers a point before its start either. */
-    const handBack = (_reason: string, end: SlurEnd): void => {
-      spare.add(end)
-    }
+    // A stream that accounts for itself opens each slur before closing it and
+    // leaves none over, so ownPairs reads its pairs straight off it. There is
+    // nothing left over for the pass across the part, and nothing to report.
     for (const ends of ownEnds) {
-      pairSpans<OpenSlur, SlurEnd>(ends, join, handBack, 'as-written')
+      for (const pair of ownPairs(ends)) join(pair.start.payload, pair.stop)
     }
 
     // Back in the order the document has, because the streams gave their ends

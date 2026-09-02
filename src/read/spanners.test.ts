@@ -1316,15 +1316,35 @@ describe('pairing the two ends of a span', () => {
 // stop's own voice, so a misread stream reaches the same joins by a longer
 // road. They are asked here directly, so each answer is stated once.
 describe('whether a voice accounts for its own slurs', () => {
-  const slurEnd = (kind: 'start' | 'stop', index: number): SlurEnd => ({
-    kind,
-    number: '1',
-    measure: 0,
-    position: fraction(index, 4),
-    covers: fraction(index, 4),
-    payload: undefined,
-    context: {},
-  })
+  // A start carries the slur it opens and a stop names the event it ends on.
+  // Neither answer below reads either one, so one bare event stands for both.
+  const event: Event = {
+    kind: 'event',
+    id: 'ev',
+    staff: undefined,
+    value: { base: 'quarter', dots: 0 },
+    slurs: [],
+    lyrics: new Map(),
+    stemDirection: undefined,
+    markings: {},
+    fermata: undefined,
+    notes: [],
+    isRest: false,
+    staffPosition: undefined,
+  }
+
+  const slurEnd = (kind: 'start' | 'stop', index: number): SlurEnd => {
+    const place = {
+      number: '1',
+      measure: 0,
+      position: fraction(index, 4),
+      covers: fraction(index, 4),
+      context: {},
+    }
+    return kind === 'start'
+      ? { ...place, kind, payload: { event, side: undefined, lineType: undefined } }
+      : { ...place, kind, payload: undefined, stop: { event, sideEnd: undefined } }
+  }
 
   const stream = (...kinds: readonly ('start' | 'stop')[]) =>
     kinds.map((kind, index) => slurEnd(kind, index))
