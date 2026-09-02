@@ -294,6 +294,70 @@ describe('a measure repeat', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 
+  // Once a stop for one staff has ended the sign for the whole part, the
+  // staff that was still running is no longer running either. A later start
+  // has nothing to cut, so it says nothing.
+  test('leaves no staff running after a stop ends the sign for the part', () => {
+    const { mnx, warnings } = convert(
+      part('P1', [
+        {
+          attributes:
+            '<staves>2</staves>' +
+            '<measure-style number="1"><measure-repeat type="start">1</measure-repeat>' +
+            '</measure-style>' +
+            '<measure-style number="2"><measure-repeat type="start">1</measure-repeat>' +
+            '</measure-style>',
+          body: NOTE,
+        },
+        {
+          attributes: '<measure-style number="1"><measure-repeat type="stop"/></measure-style>',
+          body: NOTE,
+        },
+        {
+          attributes:
+            '<measure-style number="1"><measure-repeat type="start">1</measure-repeat>' +
+            '</measure-style>',
+          body: NOTE,
+        },
+      ]),
+    )
+
+    expect(repeats(mnx)).toEqual([{ number: 1 }, undefined, { number: 1 }])
+    expect(warnings.map((warning) => warning.context.measure)).toEqual([2])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // The staff whose sign a restart cut is no longer running either, so a
+  // stop written for it later closes nothing and says nothing.
+  test('leaves no staff running after a restart cuts its sign', () => {
+    const { mnx, warnings } = convert(
+      part('P1', [
+        {
+          attributes:
+            '<staves>2</staves>' +
+            '<measure-style number="1"><measure-repeat type="start">1</measure-repeat>' +
+            '</measure-style>' +
+            '<measure-style number="2"><measure-repeat type="start">1</measure-repeat>' +
+            '</measure-style>',
+          body: NOTE,
+        },
+        {
+          attributes:
+            '<measure-style number="1"><measure-repeat type="start">1</measure-repeat>' +
+            '</measure-style>',
+          body: NOTE,
+        },
+        {
+          attributes: '<measure-style number="2"><measure-repeat type="stop"/></measure-style>',
+          body: NOTE,
+        },
+      ]),
+    )
+
+    expect(warnings.map((warning) => warning.context.measure)).toEqual([2])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
   // The type attribute is required: without it there is no saying whether
   // the sign starts or stops here, so the file is broken.
   test('refuses a measure-repeat with no type', () => {

@@ -30,6 +30,20 @@ function event(id: string, levels: string, beamCount?: number): BeamedEvent {
 }
 
 describe('a single beam', () => {
+  // An event carrying no marker at this level is not in the run, and closes
+  // it. Nothing said so: the beam could have run straight through the event
+  // and joined what came after it to what came before.
+  test('closes a run at an event carrying no marker at that level', () => {
+    const beams = buildBeams([
+      event('ev1', '1:begin'),
+      event('ev2', '1:continue'),
+      event('ev3', ''),
+      event('ev4', '1:end'),
+    ])
+
+    expect(beams).toEqual([{ events: ['ev1', 'ev2'], beams: [], direction: undefined }])
+  })
+
   test('gathers the events it runs over', () => {
     const beams = buildBeams([
       event('ev1', '1:begin'),
@@ -261,6 +275,18 @@ describe('a beam marker at a level that does not exist', () => {
     )
 
     expect(warnings.list()).toEqual([])
+  })
+
+  // MusicXML's beam number defaults to 1, so a <beam> stating none is a
+  // first-level marker. Every fixture elsewhere numbers its beams, so nothing
+  // said that an unnumbered one beams anything at all.
+  test('reads a beam stating no number as the first level', () => {
+    const { beams, warnings } = read(
+      sixteenth('C', '<beam>begin</beam>') + sixteenth('D', '<beam>end</beam>'),
+    )
+
+    expect(beams.map((beam) => beam.events)).toEqual([['ev1', 'ev2']])
+    expect(warnings).toEqual([])
   })
 
   test('keeps a marker at the first level', () => {

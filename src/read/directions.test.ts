@@ -1281,6 +1281,22 @@ describe('sound navigation', () => {
     expect(global?.jump).toBeUndefined()
   })
 
+  // A <sound> is written either on its own or inside a <direction>, which is
+  // where an exporter puts it beside the words that draw the instruction.
+  // Nothing stated that the second reaches the measure: every fixture wrote
+  // the <sound> on its own, and the two go by different paths.
+  test('takes the jump from a <sound dalsegno> written inside a <direction>', () => {
+    const { global } = read(
+      inMeasure(
+        note('C') +
+          '<direction><direction-type><segno/></direction-type>' +
+          '<sound dalsegno="segno"/></direction>',
+      ),
+    )
+
+    expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'segno', target: 'segno' })
+  })
+
   // MNX states one fine per measure, so a second at another point is reported
   // and the first kept.
   test('reports a second fine at a different point in the measure', () => {
