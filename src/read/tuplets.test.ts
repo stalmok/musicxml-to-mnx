@@ -1295,6 +1295,18 @@ describe('grace notes', () => {
     expect(content?.[0]?.kind === 'grace' && content[0].slashed).toBe(true)
   })
 
+  // Time the voice passed over in silence belongs before the group, not
+  // after it: a grace note is squeezed in before the note it ornaments, so
+  // stating the silence afterwards strands the group where the voice last
+  // sounded rather than beside the note it decorates.
+  test('states time passed over before the group, not after it', () => {
+    const { content } = read(
+      measure('<forward><duration>12</duration></forward>' + grace('B') + REAL),
+    )
+
+    expect(content?.map((item) => item.kind)).toEqual(['space', 'grace', 'event'])
+  })
+
   test('still takes no time from the measure', () => {
     const { content } = read(measure(grace('B') + REAL + REAL))
 
@@ -1334,6 +1346,22 @@ describe('two-note tremolos', () => {
     expect(content?.[0]?.kind === 'multiNoteTremolo' && content[0].marks).toBe(3)
   })
 
+  // Time the voice passed over in silence belongs before the tremolo. Stated
+  // inside it, the pair would hold a space as well as its two notes, which is
+  // no longer a pair.
+  test('states time passed over before the pair, not inside it', () => {
+    const { content, warnings } = read(
+      measure(
+        '<forward><duration>12</duration></forward>' +
+          tremoloNote('C', 'start') +
+          tremoloNote('E', 'stop'),
+      ),
+    )
+
+    expect(content?.map((item) => item.kind)).toEqual(['space', 'multiNoteTremolo'])
+    expect(warnings).toEqual([])
+  })
+
   test('keeps the notes of a chord together under the tremolo', () => {
     const chord =
       '<note><chord/><pitch><step>G</step><octave>4</octave></pitch>' +
@@ -1354,9 +1382,40 @@ describe('two-note tremolos', () => {
     )
   })
 
+  // Named in full: a tuplet left open at the end of the measure refuses with
+  // a message these words also fit, and a tremolo pushes a list of its own,
+  // so a tremolo left open would be refused as a tuplet where this check no
+  // longer ran.
   test('rejects a tremolo that is opened and never closed', () => {
     expect(readFailure(measure(tremoloNote('C', 'start'))).message).toContain(
-      'opened and never closed',
+      'A tremolo is opened and never closed.',
+    )
+  })
+
+  // A tremolo holds its two notes and nothing else. A rest passed over
+  // between them is a space in the tremolo, which is neither of the two
+  // notes and leaves the pair no longer a pair.
+  test('rejects a pair with time passed over between them', () => {
+    expect(
+      readFailure(
+        measure(
+          tremoloNote('C', 'start') +
+            '<forward><duration>12</duration></forward>' +
+            tremoloNote('E', 'stop'),
+        ),
+      ).message,
+    ).toContain('holds something other than two notes')
+  })
+
+  // A grace note takes none of the measure's time, so a pair opening on one
+  // holds a grace group and a single note rather than two notes.
+  test('rejects a pair opening on a grace note', () => {
+    const graceStart =
+      '<note><grace/><pitch><step>C</step><octave>4</octave></pitch><type>half</type>' +
+      '<notations><ornaments><tremolo type="start">3</tremolo></ornaments></notations></note>'
+
+    expect(readFailure(measure(graceStart + tremoloNote('E', 'stop'))).message).toContain(
+      'holds something other than two notes',
     )
   })
 

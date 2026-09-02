@@ -428,3 +428,59 @@ describe('a chord that straddles the two staves', () => {
     expect(warnings).toEqual([])
   })
 })
+
+// Sibelius leaves <voice> off a chord member, and the member belongs to the
+// voice of the event it joins. Read as the unnamed voice, the member has no
+// chord to weigh itself against: it states a staff of its own where it shares
+// the event's, and a roll on it has no chord to roll.
+describe('a chord member that states no voice', () => {
+  const member = (step: string, staff: string, extra = '') =>
+    `<note><chord/><pitch><step>${step}</step><octave>4</octave></pitch><duration>4</duration>` +
+    `<type>quarter</type><staff>${staff}</staff>${extra}</note>`
+
+  test('says nothing of its staff where it shares the one the chord is on', () => {
+    const { part } = read(measures(GRAND_STAFF + note('C', '1', '1') + member('E', '1')))
+    const event = part?.measures[0]?.sequences[0]?.content[0]
+
+    expect(event?.kind === 'event' && event.notes.map((n) => n.staff)).toEqual([
+      undefined,
+      undefined,
+    ])
+  })
+
+  test('states its own staff where it reaches across to the other hand', () => {
+    const { part } = read(measures(GRAND_STAFF + note('C', '1', '1') + member('E', '2')))
+    const event = part?.measures[0]?.sequences[0]?.content[0]
+
+    expect(event?.kind === 'event' && event.notes.map((n) => n.staff)).toEqual([undefined, 2])
+  })
+
+  // The same for a grace chord: the member joins the grace note before it,
+  // which is the event the voice last added.
+  test('joins the grace chord before it', () => {
+    const grace = (step: string, chord: boolean, voice: string) =>
+      `<note>${chord ? '<chord/>' : ''}<grace/>` +
+      `<pitch><step>${step}</step><octave>5</octave></pitch><type>eighth</type>` +
+      `${voice ? `<voice>${voice}</voice>` : ''}<staff>1</staff></note>`
+    const { part, warnings } = read(
+      measures(GRAND_STAFF + grace('B', false, '1') + grace('D', true, '') + note('C', '1', '1')),
+    )
+    const group = part?.measures[0]?.sequences[0]?.content[0]
+
+    expect(group?.kind === 'grace' && group.content[0]?.notes).toHaveLength(2)
+    expect(warnings).toEqual([])
+  })
+
+  test('rolls the chord it joins', () => {
+    const { part, warnings } = read(
+      measures(
+        GRAND_STAFF +
+          note('C', '1', '1') +
+          member('E', '1', '<notations><arpeggiate/></notations>'),
+      ),
+    )
+
+    expect(part?.measures[0]?.arpeggios).toHaveLength(1)
+    expect(warnings).toEqual([])
+  })
+})
