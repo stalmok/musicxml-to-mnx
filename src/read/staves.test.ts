@@ -390,6 +390,21 @@ describe('key and time signatures stated per staff', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-key'])
   })
 
+  // A block with no number speaks for every staff, so a numbered block beside
+  // it leaves no staff unstated.
+  test('says nothing where a key with no number stands beside a numbered one', () => {
+    const { warnings } = read(
+      measures(
+        GRAND_STAFF + note('C', '1'),
+        '<attributes><key><fifths>3</fifths></key>' +
+          '<key number="1"><fifths>3</fifths></key></attributes>' +
+          note('D', '1'),
+      ),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
   // Stated for the first staff rather than the second, so the staff left out
   // is the last one the loop reaches. The pair says the loop covers every
   // staff, not just the ones before the last.
@@ -422,6 +437,21 @@ describe('key and time signatures stated per staff', () => {
         '<attributes><divisions>4</divisions><staves>2</staves>' +
           '<time number="1"><beats>4</beats><beat-type>4</beat-type></time>' +
           '<time number="2"><beats>3</beats><beat-type>4</beat-type></time></attributes>' +
+          note('C', '1'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-time'])
+  })
+
+  // The counts agree and the units do not, so the pair says the comparison
+  // reads both halves of a time signature, not the count alone.
+  test('reports staves that agree on the count and not on the unit', () => {
+    const { warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions><staves>2</staves>' +
+          '<time number="1"><beats>4</beats><beat-type>4</beat-type></time>' +
+          '<time number="2"><beats>4</beats><beat-type>8</beat-type></time></attributes>' +
           note('C', '1'),
       ),
     )

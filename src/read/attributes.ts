@@ -219,8 +219,10 @@ function reportPartialSignature(
   const numbers = blocks.map((block) =>
     readAttributeInRange(block.element, 'number', path, 1, state.staves),
   )
-  if (numbers.every((number) => number === undefined)) return
 
+  // Every staff the blocks between them state. A block with no number states
+  // them all, so a part whose blocks are all unnumbered covers every staff
+  // and warns about none.
   const covered = new Set(numbers.flatMap((number) => (number === undefined ? ALL : [number])))
   for (let staff = 1; staff <= state.staves; staff += 1) {
     if (!covered.has(ALL) && !covered.has(staff)) {

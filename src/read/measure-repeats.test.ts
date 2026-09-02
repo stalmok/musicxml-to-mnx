@@ -158,6 +158,22 @@ describe('a measure repeat', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 
+  // One slash is the everyday sign, so the count states nothing the default
+  // drawing does not already give.
+  test('says nothing of a sign drawn with one slash', () => {
+    const { mnx, warnings } = convert(
+      part('P1', [
+        { body: NOTE },
+        { attributes: start('1', ' slashes="1"'), body: NOTE },
+        { attributes: stop(), body: NOTE },
+      ]),
+    )
+
+    expect(repeats(mnx)).toEqual([undefined, { number: 1 }, undefined])
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
   test('lets a measure stop one sign and start the next', () => {
     const { mnx, warnings } = convert(
       part('P1', [
