@@ -1,0 +1,16 @@
+{
+  // The type check the mutation runner applies to each mutant, so it can tell
+  // "this mutation cannot compile" from "this mutation compiles and no test
+  // noticed". Only the second is a gap in the tests.
+  //
+  // It is the library config with the unused-code rules turned off. Those two
+  // are style rules, not type errors, and a mutant that removes a block leaves
+  // the locals it fed unused: under the library config that reads as a compile
+  // error and the real question, whether a test would have caught the removal,
+  // never gets asked.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  }
+}

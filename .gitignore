@@ -7,3 +7,7 @@ coverage/
 # Assistant-session state, never published.
 .remember/
 .superpowers/
+
+# Mutation testing run state and report (local only).
+.stryker-tmp/
+reports/

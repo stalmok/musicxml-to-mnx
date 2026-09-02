@@ -18,3 +18,6 @@ tests/corpus/*.mxl
 # Vendored spec artefacts: keep upstream bytes pristine (integrity pinned in
 # the neighbouring PROVENANCE.md)
 schema/*.json
+
+# Generated mutation report
+reports
