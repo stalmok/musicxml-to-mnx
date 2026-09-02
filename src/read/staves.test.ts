@@ -225,6 +225,44 @@ describe('clefs', () => {
     expect(part?.measures[0]?.clefs[0]?.octave).toBeUndefined()
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:clef-octave'])
   })
+
+  // Three octaves either way is the last transposition MNX states, so both
+  // edges are stated and so is just outside each.
+  const transposed = (change: string) =>
+    '<attributes><divisions>4</divisions>' +
+    `<clef><sign>G</sign><line>2</line><clef-octave-change>${change}</clef-octave-change></clef>` +
+    '</attributes>' +
+    note('C', '1')
+
+  test.each(['3', '-3'])('carries a clef transposed by %s octaves', (change) => {
+    const { part, warnings } = read(measures(transposed(change)))
+
+    expect(part?.measures[0]?.clefs[0]?.octave).toBe(Number(change))
+    expect(warnings).toEqual([])
+  })
+
+  test('reports a clef transposed by four octaves upward', () => {
+    const { part, warnings } = read(measures(transposed('4')))
+
+    expect(part?.measures[0]?.clefs[0]?.octave).toBeUndefined()
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:clef-octave'])
+  })
+
+  // A clef's "number" names the staff it belongs to, which is only worth
+  // stating where the part has more than one. A one-staff part stating it
+  // says nothing the part does not already say.
+  test('states no staff on a clef of a one-staff part, number or no number', () => {
+    const { part, warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions>' +
+          '<clef number="1"><sign>G</sign><line>2</line></clef></attributes>' +
+          note('C', '1'),
+      ),
+    )
+
+    expect(part?.measures[0]?.clefs[0]?.staff).toBeUndefined()
+    expect(warnings).toEqual([])
+  })
 })
 
 describe('which staff a voice is on', () => {
@@ -328,6 +366,20 @@ describe('key and time signatures stated per staff', () => {
       measures(
         GRAND_STAFF + note('C', '1'),
         '<attributes><key number="2"><fifths>3</fifths></key></attributes>' + note('D', '1'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-key'])
+  })
+
+  // Stated for the first staff rather than the second, so the staff left out
+  // is the last one the loop reaches. The pair says the loop covers every
+  // staff, not just the ones before the last.
+  test('reports a key stated for the first staff and not the second', () => {
+    const { warnings } = read(
+      measures(
+        GRAND_STAFF + note('C', '1'),
+        '<attributes><key number="1"><fifths>3</fifths></key></attributes>' + note('D', '1'),
       ),
     )
 

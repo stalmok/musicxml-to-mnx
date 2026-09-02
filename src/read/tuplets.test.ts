@@ -1669,6 +1669,28 @@ describe('two-note tremolos', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:element'])
   })
 
+  // MNX counts a tremolo's beams from one to eight. Both edges are stated,
+  // and just outside each, because a range asserted at one end only could
+  // have the other move by one with nothing noticing.
+  const tremoloOf = (marks: string) =>
+    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>24</duration>' +
+    '<type>half</type>' +
+    `<notations><ornaments><tremolo type="single">${marks}</tremolo></ornaments></notations></note>`
+
+  test.each(['1', '8'])('draws a tremolo counting %s beams', (marks) => {
+    const { content, warnings } = read(measure(tremoloOf(marks)))
+
+    expect(content?.[0]?.kind === 'event' && content[0].markings.tremolo?.marks).toBe(Number(marks))
+    expect(warnings).toEqual([])
+  })
+
+  test('reports a tremolo counting more beams than MNX draws', () => {
+    const { content, warnings } = read(measure(tremoloOf('9')))
+
+    expect(content?.[0]?.kind === 'event' && content[0].markings).toEqual({})
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:element'])
+  })
+
   test('keeps the first of two single-note tremolos', () => {
     const doubled =
       '<note><pitch><step>C</step><octave>4</octave></pitch><duration>24</duration>' +

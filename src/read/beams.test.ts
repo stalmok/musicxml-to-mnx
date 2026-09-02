@@ -236,6 +236,42 @@ describe('a beam marker at a level that does not exist', () => {
         'been written.',
     ])
   })
+
+  // The eighth level is the last one MNX draws, and the first is the first.
+  // Both edges are stated, because a range asserted at one end only could
+  // have the other move by one and nothing would notice.
+  test('keeps a marker at the eighth level, which is the last one there is', () => {
+    const deep = (step: string, marker: string) => {
+      const levels = [1, 2, 3, 4, 5, 6, 7, 8]
+        .map((level) => `<beam number="${String(level)}">${marker}</beam>`)
+        .join('')
+      return (
+        `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>1</duration>` +
+        `<type>1024th</type>${levels}</note>`
+      )
+    }
+    const warnings = new WarningCollector()
+    readScore(
+      parseXmlRoot(
+        '<score-partwise><part id="P1"><measure number="1">' +
+          '<attributes><divisions>256</divisions></attributes>' +
+          `${deep('C', 'begin')}${deep('D', 'end')}</measure></part></score-partwise>`,
+      ),
+      warnings,
+    )
+
+    expect(warnings.list()).toEqual([])
+  })
+
+  test('keeps a marker at the first level', () => {
+    const { beams, warnings } = read(
+      sixteenth('C', '<beam number="1">begin</beam>') +
+        sixteenth('D', '<beam number="1">end</beam>'),
+    )
+
+    expect(beams.map((beam) => beam.events)).toEqual([['ev1', 'ev2']])
+    expect(warnings).toEqual([])
+  })
 })
 
 // Grace notes beam among themselves. Their markers are read as their own run,
