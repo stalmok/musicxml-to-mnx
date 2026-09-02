@@ -217,9 +217,11 @@ describe('an element hidden with print-object="no"', () => {
     ).toHaveLength(1)
   })
 
-  // An empty block hides nothing, so there is nothing to lose.
+  // An empty block hides nothing, so there is nothing to lose. The attribute
+  // is read rather than left for the sweep, which would otherwise report it
+  // as an unconverted loss it is not.
   test('says nothing about an empty hidden notations block', () => {
-    expect(hidden(measure(note('<notations print-object="no"/>')))).toHaveLength(0)
+    expect(read(measure(note('<notations print-object="no"/>'))).warnings).toEqual([])
   })
 
   test('says nothing about an element the source draws', () => {

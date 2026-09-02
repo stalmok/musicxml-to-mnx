@@ -440,8 +440,9 @@ describe('what a barline can say that MNX cannot', () => {
 
   // A fermata at the opening edge is held over the barline closing the measure
   // before, and moving it there would be a guess about what the source meant.
+  // The one warning accounts for the whole mark, the way it faces included.
   test('reports a fermata written at the start of a measure', () => {
-    const { globals, warnings } = read(left('<fermata/>') + NOTE)
+    const { globals, warnings } = read(left('<fermata type="upright"/>') + NOTE)
 
     expect(globals[0]?.fermata).toBeUndefined()
     expect(warnings.map((w) => w.element)).toEqual(['fermata'])

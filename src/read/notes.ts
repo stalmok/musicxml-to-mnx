@@ -1253,14 +1253,11 @@ function tupletMarkerKey(marker: XmlElement): string {
 }
 
 function tupletMarkers(notations: readonly ElementReader[]): readonly XmlElement[] {
-  const markers = notations.flatMap((block) => block.children('tuplet'))
-  // Pairing is structural: a stop closes the most recently opened tuplet,
-  // because MNX's tuplets nest. Each marker's number is read again where it
-  // opens or closes a tuplet, and a stop naming one other than the innermost
-  // open reports the crossing; the read here keeps a marker neither path
-  // takes, such as one on a chord member, accounted.
-  for (const marker of markers) attribute(marker, 'number')
-  return markers
+  // Every marker is keyed by tupletMarkerKey, on the chord path and on the
+  // ordinary one, and the key reads both the type and the number. So each is
+  // accounted for whether or not it goes on to open or close a bracket, and
+  // there is nothing left here to read.
+  return notations.flatMap((block) => block.children('tuplet'))
 }
 
 // MusicXML's show-number/show-type values in MNX's. "actual" is the played

@@ -1615,6 +1615,12 @@ describe('a tempo stated by more than one part', () => {
     expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tempo'])
     expect(warnings[0]?.element).toBe('metronome')
     expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 1 })
+    // Named as a disagreement between parts, not within one: a report that
+    // sends a reader looking for a second part that is not there is no use.
+    expect(warnings[0]?.message).toBe(
+      'The parts of this score state different tempos at the same point in this measure. ' +
+        'The first stated is the one converted.',
+    )
   })
 
   // One part writing two marks at one point is the same disagreement with

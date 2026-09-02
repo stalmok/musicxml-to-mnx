@@ -155,6 +155,17 @@ describe('lyrics', () => {
       },
     ])
   })
+
+  // Hiding a lyric that draws no words hides nothing, so there is nothing to
+  // report about the hiding. The <extend> is the melisma line, which is a
+  // real loss and reports itself.
+  test('says nothing about hiding a lyric that draws no words', () => {
+    const { warnings } = read(
+      measure(note('C', '<lyric number="1" print-object="no"><extend/></lyric>')),
+    )
+
+    expect(warnings.map((w) => w.element)).toEqual(['extend'])
+  })
 })
 
 describe('stem direction', () => {
