@@ -66,6 +66,36 @@ describe('a rolled chord', () => {
     expect(measure?.arpeggios[0]?.span).toEqual({ start: 'note1', end: 'note3' })
   })
 
+  // The span runs between the lowest note and the highest, which is where
+  // the roll is drawn from and to, not between the first note written and
+  // the last. Sources write a chord's notes bottom up, so only one written
+  // the other way round shows the difference.
+  test('spans the lowest note to the highest, whatever order they are written', () => {
+    const descending = (step: string, octave: number, chord: boolean) =>
+      `<note>${chord ? '<chord/>' : ''}<pitch><step>${step}</step>` +
+      `<octave>${String(octave)}</octave></pitch><duration>4</duration><type>quarter</type>` +
+      `<notations>${ROLL}</notations></note>`
+    const { measure } = read(
+      descending('G', 4, false) + descending('E', 4, true) + descending('C', 4, true),
+    )
+
+    // note1 is G, note3 is C: the span runs from the lowest up.
+    expect(measure?.arpeggios[0]?.span).toEqual({ start: 'note3', end: 'note1' })
+  })
+
+  // Which note is higher is a matter of where it sits on the staff, so the
+  // octave counts seven steps. A chord crossing the octave boundary is what
+  // tells that apart from counting the octave as anything else.
+  test('orders a chord that crosses the octave boundary', () => {
+    const at = (step: string, octave: number, chord: boolean) =>
+      `<note>${chord ? '<chord/>' : ''}<pitch><step>${step}</step>` +
+      `<octave>${String(octave)}</octave></pitch><duration>4</duration><type>quarter</type>` +
+      `<notations>${ROLL}</notations></note>`
+    const { measure } = read(at('B', 4, false) + at('C', 5, true))
+
+    expect(measure?.arpeggios[0]?.span).toEqual({ start: 'note1', end: 'note2' })
+  })
+
   // A roll going downwards is played highest first, and MNX names the
   // first-played note first, so the span runs the other way.
   test('runs the span the other way where the roll goes downwards', () => {
@@ -355,6 +385,86 @@ describe('a chord divided into two numbered rolls', () => {
 
     expect(measure?.arpeggios.map((a) => a.direction)).toEqual(['up', 'down'])
     expect(measure?.arpeggios[1]?.span).toEqual({ start: 'note4', end: 'note3' })
+  })
+})
+
+// A chord's marks are weighed against each other, and only two directions
+// that disagree are a roll going both ways. Any other pairing is one roll,
+// drawn the one way, with the arrowhead either mark asks for.
+describe('a chord whose marks agree', () => {
+  test.each([
+    ['one states the direction and the other states none', 'direction="up"', ''],
+    ['the first states none and the second states it', '', 'direction="up"'],
+    ['both state the same direction', 'direction="up"', 'direction="up"'],
+  ])('states one roll where %s', (_what, first, second) => {
+    const { measure, warnings } = read(
+      head(`<arpeggiate ${first}/>`) + member('E', `<arpeggiate ${second}/>`),
+    )
+
+    expect(measure?.arpeggios).toHaveLength(1)
+    expect(measure?.arpeggios[0]?.direction).toBe('up')
+    // MusicXML states a direction only where an arrowhead is drawn, so a mark
+    // stating one draws the head however the mark beside it is written.
+    expect(measure?.arpeggios[0]?.arrow).toBe(true)
+    expect(warnings).toEqual([])
+  })
+})
+
+// Two chords sounding together under one number are one roll across both, so
+// what either of them says about it is said about the roll: a contradiction
+// on one chord is a contradiction in the roll, not something the chord beside
+// it can outvote.
+describe('a roll across two chords where one of them disagrees with itself', () => {
+  const inVoice = (voice: string, step: string, octave: number, marks: string) =>
+    `<note><pitch><step>${step}</step><octave>${String(octave)}</octave></pitch>` +
+    `<duration>4</duration><type>quarter</type><voice>${voice}</voice>` +
+    `<notations>${marks}</notations></note>`
+
+  test('reports a chord rolled both ways beside one that is not', () => {
+    const { measure, warnings } = read(
+      inVoice('2', 'C', 3, '<arpeggiate number="1" direction="up"/>') +
+        inVoice('2', 'E', 3, '<arpeggiate number="1" direction="down"/>').replace(
+          '<note>',
+          '<note><chord/>',
+        ) +
+        '<backup><duration>4</duration></backup>' +
+        inVoice('1', 'G', 5, '<arpeggiate number="1"/>'),
+    )
+
+    expect(measure?.arpeggios).toHaveLength(1)
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:arpeggio'])
+  })
+
+  test('reports a chord struck together joined to one that is rolled', () => {
+    const { measure, warnings } = read(
+      inVoice('2', 'C', 3, '<non-arpeggiate number="1" type="bottom"/>') +
+        inVoice('2', 'E', 3, '<non-arpeggiate number="1" type="top"/>').replace(
+          '<note>',
+          '<note><chord/>',
+        ) +
+        '<backup><duration>4</duration></backup>' +
+        inVoice('1', 'G', 5, '<arpeggiate number="1"/>'),
+    )
+
+    expect(measure?.arpeggios).toHaveLength(1)
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:arpeggio'])
+  })
+})
+
+// Marks are weighed against the marks of their own chord. Weighed against
+// whatever chord came first in the measure, a rolled chord and a struck one
+// standing side by side each read as the other's contradiction.
+describe('two chords marked in opposite ways', () => {
+  test('keeps a rolled chord and a struck one in one measure', () => {
+    const { measure, warnings } = read(
+      head(ROLL) +
+        member('E', ROLL) +
+        head('<non-arpeggiate type="bottom"/>', 'D') +
+        member('F', '<non-arpeggiate type="top"/>'),
+    )
+
+    expect(measure?.arpeggios.map((a) => a.struck)).toEqual([false, true])
+    expect(warnings).toEqual([])
   })
 })
 

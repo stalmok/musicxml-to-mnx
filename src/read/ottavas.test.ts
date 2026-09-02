@@ -521,6 +521,93 @@ describe('an octave shift ending where grace notes sit', () => {
     expect(warnings).toEqual([])
   })
 
+  // A shift belongs to one staff, and the grace notes of the other hand sit
+  // at the same point without being what it covers. Counted together, the
+  // shift ends on a grace note the other hand wrote.
+  test('counts the grace notes of its own staff, not the other hand', () => {
+    const graceOn = (staff: number, step: string) =>
+      `<note><grace/><pitch><step>${step}</step><octave>5</octave></pitch>` +
+      `<type>eighth</type><voice>${String(staff)}</voice><staff>${String(staff)}</staff></note>`
+    const noteOn = (staff: number, step: string) =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>4</duration>` +
+      `<type>quarter</type><voice>${String(staff)}</voice><staff>${String(staff)}</staff></note>`
+    const { ottavas, warnings } = read(
+      '<attributes><divisions>4</divisions><staves>2</staves></attributes>' +
+        shift('down', '8', '<staff>1</staff>') +
+        noteOn(1, 'C') +
+        graceOn(1, 'D') +
+        shift('stop', '8', '<staff>1</staff>') +
+        noteOn(1, 'E') +
+        '<backup><duration>8</duration></backup>' +
+        noteOn(2, 'G') +
+        graceOn(2, 'A') +
+        graceOn(2, 'B') +
+        noteOn(2, 'F'),
+    )
+
+    // One grace note stands on staff 1 at that point, so the shift ends on it
+    // and the two under the other hand are not counted.
+    expect(ottavas[0]?.[0]?.end).toEqual({
+      measure: 0,
+      position: { num: 1, den: 4 },
+      graceIndex: 1,
+    })
+    expect(warnings).toEqual([])
+  })
+
+  // Where the shift ends on a grace note, whether a note stands at that point
+  // too decides whether the shift ends on the note or on the grace notes
+  // before it. The other hand's note lies under the same beat without being
+  // one the shift covers.
+  test('asks its own staff whether a note stands where it ends', () => {
+    const onStaff = (staff: number, step: string) =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>4</duration>` +
+      `<type>quarter</type><voice>${String(staff)}</voice><staff>${String(staff)}</staff></note>`
+    const graceOn = (staff: number, step: string) =>
+      `<note><grace/><pitch><step>${step}</step><octave>5</octave></pitch>` +
+      `<type>eighth</type><voice>${String(staff)}</voice><staff>${String(staff)}</staff></note>`
+    const { ottavas, warnings } = read(
+      '<attributes><divisions>4</divisions><staves>2</staves></attributes>' +
+        shift('down', '8', '<staff>1</staff>') +
+        onStaff(1, 'C') +
+        graceOn(1, 'D') +
+        '<forward><duration>4</duration></forward>' +
+        shift('stop', '8', '<staff>1</staff>') +
+        '<backup><duration>8</duration></backup>' +
+        onStaff(2, 'G') +
+        onStaff(2, 'A'),
+    )
+
+    // Nothing follows the grace note on staff 1, so the shift ends on the
+    // grace note itself, which counting back from the beat is 1.
+    expect(ottavas[0]?.[0]?.end).toEqual({
+      measure: 0,
+      position: { num: 1, den: 4 },
+      graceIndex: 1,
+    })
+    expect(warnings).toEqual([])
+  })
+
+  // A note that names no staff is on the first staff, which is how MusicXML
+  // reads one written without a <staff>, so a shift on staff 1 covers it.
+  test('counts a grace note that names no staff as the first staff', () => {
+    const { ottavas, warnings } = read(
+      '<attributes><divisions>4</divisions><staves>2</staves></attributes>' +
+        shift('down', '8', '<staff>1</staff>') +
+        NOTE +
+        GRACE +
+        shift('stop', '8', '<staff>1</staff>') +
+        NOTE,
+    )
+
+    expect(ottavas[0]?.[0]?.end).toEqual({
+      measure: 0,
+      position: { num: 1, den: 4 },
+      graceIndex: 1,
+    })
+    expect(warnings).toEqual([])
+  })
+
   test('writes the grace index onto schema-valid MNX', () => {
     const { mnx, warnings } = convertMusicXML(
       '<score-partwise><part id="P1"><measure number="1">' +
