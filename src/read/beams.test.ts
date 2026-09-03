@@ -203,6 +203,26 @@ describe('beams the measure does not finish', () => {
     expect(buildBeams([event('ev1', '1:end')])).toEqual([])
   })
 
+  // A continue with no beginning is not a beam either, and it must not open
+  // one: the end after it would then join two notes the source never beamed.
+  test('ignores a continue with no beginning, so the end after it joins nothing', () => {
+    expect(buildBeams([event('ev1', '1:continue'), event('ev2', '1:end')])).toEqual([])
+  })
+
+  // An end closes its run there and then. Left open, it would swallow the
+  // markers after it: a continue with no beginning of its own would extend
+  // the beam that had already ended.
+  test('closes at its end, so a later continue does not extend it', () => {
+    const beams = buildBeams([
+      event('ev1', '1:begin'),
+      event('ev2', '1:end'),
+      event('ev3', '1:continue'),
+      event('ev4', '1:end'),
+    ])
+
+    expect(beams).toEqual([{ events: ['ev1', 'ev2'], beams: [], direction: undefined }])
+  })
+
   test('drops a beam left with only one event under it', () => {
     // A beam over a single note is not a beam, it is a flag.
     expect(buildBeams([event('ev1', '1:begin'), event('ev2', '')])).toEqual([])
