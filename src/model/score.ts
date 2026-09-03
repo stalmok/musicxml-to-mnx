@@ -5,8 +5,23 @@
 // Internal by design: it is not exported from the package, and it is scoped
 // to conversion. It is not a general notation model, and should not grow into
 // one.
+//
+// `readonly` here says a field is settled: nothing assigns it after the
+// object is made. A field left mutable is one something still fills in, and
+// its comment names what does. Most of those are the passes that run once a
+// whole part is read, because what they resolve is written between the notes
+// and the document's order is not the music's. So a reader of a type can see
+// which of its fields are still open, and the writer sees a model in which
+// none of them are.
 
 import type { Fraction } from '../fraction.js'
+
+/**
+ * A model shape while it is still being made: the same fields with the
+ * readonly taken off. A builder holds one of these and hands over the
+ * finished type, which it is assignable to, so nothing needs a cast.
+ */
+export type Draft<T> = { -readonly [K in keyof T]: T[K] }
 
 export type Step = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G'
 
@@ -29,15 +44,15 @@ export type NoteValueBase =
 export type ClefSign = 'C' | 'F' | 'G'
 
 export interface Pitch {
-  step: Step
-  octave: number
+  readonly step: Step
+  readonly octave: number
   /** Semitone alteration; 0 for an unaltered pitch. */
-  alter: number
+  readonly alter: number
 }
 
 export interface NoteValue {
-  base: NoteValueBase
-  dots: number
+  readonly base: NoteValueBase
+  readonly dots: number
 }
 
 /** Which way a curve bends away from the notes it joins. */
@@ -52,13 +67,13 @@ export type LineType = 'dashed' | 'dotted' | 'solid' | 'wavy'
  */
 export interface Tie {
   /** The note the tie ends on. Absent for a let-ring tie, which rings out. */
-  target?: string
+  readonly target?: string
   /** True where the tie ends in a different voice from the one it starts in. */
-  crossVoice: boolean
+  readonly crossVoice: boolean
   /** True for a let-ring (l.v.) tie, which has no ending note. */
-  lv?: boolean
+  readonly lv?: boolean
   /** Which side the tie is drawn on, where the source states it. */
-  side?: CurveSide
+  readonly side?: CurveSide
 }
 
 /**
@@ -70,18 +85,18 @@ export interface Tie {
  * writer overwrite the first without a word.
  */
 export interface Lyric {
-  text: string
-  type: 'start' | 'middle' | 'end' | undefined
+  readonly text: string
+  readonly type: 'start' | 'middle' | 'end' | undefined
 }
 
 /** A slur joining this event to a later one. */
 export interface Slur {
-  target: string
-  side: CurveSide | undefined
+  readonly target: string
+  readonly side: CurveSide | undefined
   /** The side at the end, where the source states one differing from side. */
-  sideEnd?: CurveSide
+  readonly sideEnd?: CurveSide
   /** The line it is drawn with, where the source states one other than solid. */
-  lineType?: LineType
+  readonly lineType?: LineType
 }
 
 /**
@@ -89,29 +104,33 @@ export interface Slur {
  * the notes whose accidental the source actually draws.
  */
 export interface AccidentalDisplay {
-  show: boolean
-  enclosure: 'parentheses' | 'brackets' | undefined
+  readonly show: boolean
+  readonly enclosure: 'parentheses' | 'brackets' | undefined
   /** True where the accidental is forced, as a cautionary or editorial one is. */
-  force?: boolean
+  readonly force?: boolean
 }
 
 export interface Note {
   /** Unique in the document. Written out only where something refers to it. */
-  id: string
-  pitch: Pitch
-  ties: readonly Tie[]
-  accidentalDisplay: AccidentalDisplay | undefined
+  readonly id: string
+  readonly pitch: Pitch
+  /**
+   * Added to as the note is read, and again by the spanner resolver, which
+   * is where the two ends of a tie across measures meet.
+   */
+  ties: Tie[]
+  readonly accidentalDisplay: AccidentalDisplay | undefined
   /**
    * Set only where this note sits on a staff other than the event's, which is
    * a chord straddling the two hands of a piano part.
    */
-  staff: number | undefined
+  readonly staff: number | undefined
 }
 
 /** A mark that states nothing beyond which side of the notes it is drawn on. */
 export interface Marking {
   /** Which side of the notes it is drawn on, where the source says. */
-  orient: 'above' | 'below' | undefined
+  readonly orient: 'above' | 'below' | undefined
 }
 
 /** A strong accent, which states which way its wedge points. */
@@ -139,17 +158,17 @@ export interface TremoloMarking extends Marking {
  * so the writer needs no second table.
  */
 export interface Markings {
-  accent?: Marking
-  staccato?: Marking
-  staccatissimo?: Marking
-  tenuto?: Marking
-  spiccato?: Marking
-  stress?: Marking
-  unstress?: Marking
-  softAccent?: Marking
-  strongAccent?: StrongAccentMarking
-  breath?: BreathMarking
-  tremolo?: TremoloMarking
+  readonly accent?: Marking
+  readonly staccato?: Marking
+  readonly staccatissimo?: Marking
+  readonly tenuto?: Marking
+  readonly spiccato?: Marking
+  readonly stress?: Marking
+  readonly unstress?: Marking
+  readonly softAccent?: Marking
+  readonly strongAccent?: StrongAccentMarking
+  readonly breath?: BreathMarking
+  readonly tremolo?: TremoloMarking
 }
 
 export type MarkingKind = keyof Markings
@@ -170,35 +189,42 @@ export type FermataSymbol =
   | 'curlew'
 
 export interface Fermata {
-  symbol: FermataSymbol | undefined
+  readonly symbol: FermataSymbol | undefined
   /** Which way it faces, where the source says. */
-  pointing: 'up' | 'down' | undefined
+  readonly pointing: 'up' | 'down' | undefined
   /** Which side of the notes it is drawn on, where the source says. */
-  orient: 'above' | 'below' | undefined
+  readonly orient: 'above' | 'below' | undefined
 }
 
 export interface Event {
-  kind: 'event'
+  readonly kind: 'event'
   /** Unique in the document. Written out only where something refers to it. */
-  id: string
-  /** Set only where this event sits on a staff other than its voice's. */
+  readonly id: string
+  /**
+   * Set only where this event sits on a staff other than its voice's, which
+   * is settled once the measure is whole and the voice's own staff is known.
+   */
   staff: number | undefined
-  value: NoteValue
-  slurs: readonly Slur[]
+  readonly value: NoteValue
+  /** Filled in by the spanner resolver, because a slur pairs across measures. */
+  slurs: Slur[]
   /** What the event sings, by the verse line the source numbers it. */
-  lyrics: ReadonlyMap<string, Lyric>
-  stemDirection: 'up' | 'down' | undefined
-  markings: Markings
-  fermata: Fermata | undefined
-  /** Empty for a rest. More than one note makes it a chord. */
-  notes: readonly Note[]
-  isRest: boolean
+  readonly lyrics: ReadonlyMap<string, Lyric>
+  readonly stemDirection: 'up' | 'down' | undefined
+  readonly markings: Markings
+  readonly fermata: Fermata | undefined
+  /**
+   * Empty for a rest. More than one note makes it a chord, and each of those
+   * joins as the measure walk reaches it.
+   */
+  notes: Note[]
+  readonly isRest: boolean
   /**
    * A rest's height on the staff, in steps from the middle line, where the
    * source fixed it with <display-step>/<display-octave>. Undefined for a note
    * and for a rest drawn at its default height.
    */
-  staffPosition: number | undefined
+  readonly staffPosition: number | undefined
 }
 
 /**
@@ -207,14 +233,14 @@ export interface Event {
  * runs without interruption from wherever it starts.
  */
 export interface Space {
-  kind: 'space'
-  duration: Fraction
+  readonly kind: 'space'
+  readonly duration: Fraction
 }
 
 /** A count of note values, as in "three eighths". */
 export interface NoteValueQuantity {
-  value: NoteValue
-  multiple: number
+  readonly value: NoteValue
+  readonly multiple: number
 }
 
 /** Whether a tuplet's number or note value is drawn, and in what form. */
@@ -226,27 +252,29 @@ export type TupletDisplay = 'noNumber' | 'inner' | 'both'
  * actually occupy.
  */
 export interface Tuplet {
-  kind: 'tuplet'
+  readonly kind: 'tuplet'
   /** What is played, for example three eighths. */
-  inner: NoteValueQuantity
+  readonly inner: NoteValueQuantity
   /** The space they are played in, for example two eighths. */
-  outer: NoteValueQuantity
-  content: readonly SequenceItem[]
+  readonly outer: NoteValueQuantity
+  readonly content: readonly SequenceItem[]
   /** Whether the bracket is drawn. Absent lets the renderer decide. */
-  bracket?: 'yes' | 'no'
+  readonly bracket?: 'yes' | 'no'
   /** Whether the tuplet number is drawn. Absent lets the renderer decide. */
-  showNumber?: TupletDisplay
+  readonly showNumber?: TupletDisplay
   /** Whether the tuplet note value is drawn. Absent lets the renderer decide. */
-  showValue?: TupletDisplay
+  readonly showValue?: TupletDisplay
   /** Which side of the notes it is drawn on. Absent lets the renderer decide. */
-  orient?: 'above' | 'below'
+  readonly orient?: 'above' | 'below'
 }
 
 /** Notes squeezed in before the beat, taking none of the measure's time. */
 export interface GraceGroup {
-  kind: 'grace'
-  content: readonly Event[]
-  /** True when the group is drawn with a slash through it. */
+  readonly kind: 'grace'
+  /** Grace notes join the group as the measure walk reaches them. */
+  content: Event[]
+  /** True when the group is drawn with a slash through it, which the last
+   * note to join can be the one to say. */
   slashed: boolean
 }
 
@@ -256,15 +284,15 @@ export interface GraceGroup {
  * occupy that value once.
  */
 export interface MultiNoteTremolo {
-  kind: 'multiNoteTremolo'
+  readonly kind: 'multiNoteTremolo'
   /** How many beams join the pair. */
-  marks: number
+  readonly marks: number
   /**
    * The time the tremolo occupies: one unit per event, so a pair of written
    * halves occupies two quarters.
    */
-  outer: NoteValueQuantity
-  content: readonly Event[]
+  readonly outer: NoteValueQuantity
+  readonly content: readonly Event[]
 }
 
 export type SequenceItem = Event | Space | Tuplet | GraceGroup | MultiNoteTremolo
@@ -276,35 +304,35 @@ export type SequenceItem = Event | Space | Tuplet | GraceGroup | MultiNoteTremol
  */
 export interface FullMeasureRest {
   /** The value actually drawn, when the source says which one. */
-  visualDuration: NoteValue | undefined
+  readonly visualDuration: NoteValue | undefined
   /** A pause held over the rest, which is where most fermatas are written. */
-  fermata: Fermata | undefined
+  readonly fermata: Fermata | undefined
   /** Its height on the staff, in steps from the middle line, where fixed. */
-  staffPosition: number | undefined
+  readonly staffPosition: number | undefined
 }
 
 export interface Sequence {
   /** The voice as the source named it, when a measure holds more than one. */
-  voice: string | undefined
+  readonly voice: string | undefined
   /** The staff this voice sits on, where the part has more than one. */
-  staff: number | undefined
-  content: readonly SequenceItem[]
-  fullMeasure: FullMeasureRest | undefined
+  readonly staff: number | undefined
+  readonly content: readonly SequenceItem[]
+  readonly fullMeasure: FullMeasureRest | undefined
 }
 
 export interface Clef {
-  sign: ClefSign
+  readonly sign: ClefSign
   /** Staff steps from the middle line; negative is below it. */
-  staffPosition: number
+  readonly staffPosition: number
   /** Which staff of the part, where it has more than one. */
-  staff: number | undefined
+  readonly staff: number | undefined
   /** Where in the measure it is drawn: zero unless the clef changes partway. */
-  position: Fraction
+  readonly position: Fraction
   /**
    * Octaves the clef is transposed for drawing, as a treble-8 clef sits an
    * octave below a plain treble. Undefined where the clef is untransposed.
    */
-  octave: number | undefined
+  readonly octave: number | undefined
 }
 
 /**
@@ -312,9 +340,9 @@ export interface Clef {
  * beam of one event is a hook, and says which way it points.
  */
 export interface Beam {
-  events: readonly string[]
-  beams: readonly Beam[]
-  direction: 'left' | 'right' | undefined
+  readonly events: readonly string[]
+  readonly beams: readonly Beam[]
+  readonly direction: 'left' | 'right' | undefined
 }
 
 // The letters an accent dynamic wraps around its value: the s of sfz or the
@@ -351,10 +379,10 @@ export type WedgeType = 'increasing' | 'decreasing'
  * sforzando, is drawn as a single combined glyph.
  */
 export interface Dynamic {
-  position: Fraction
-  value: DynamicValue | undefined
+  readonly position: Fraction
+  readonly value: DynamicValue | undefined
   /** Set on a hairpin, which is what makes it gradual rather than immediate. */
-  wedge: WedgeType | undefined
+  readonly wedge: WedgeType | undefined
   /**
    * Set on an accent, such as a sforzando. The mark's spelling is the plain
    * `value` for the attack level with the accent's letters around it as the
@@ -363,28 +391,33 @@ export interface Dynamic {
    * with no settled spelling, like pf, leaves everything but the glyphs
    * unset.
    */
-  accent?: {
+  readonly accent?: {
     residualValue: DynamicValue | undefined
     prefix: AccentPrefix | undefined
     suffix: AccentSuffix | undefined
     glyphs: readonly string[]
   }
-  /** The wording drawn before the mark, as in the "più" of "più f". */
+  /** The wording drawn before the mark, as in the "più" of "più f", which is
+   * read before the mark it belongs to. */
   prefix?: string
-  /** The wording drawn after the mark, as in the "sub." of "p sub.". */
+  /**
+   * The wording drawn after the mark, as in the "sub." of "p sub.". Wording
+   * written at a hairpin's closing edge is added by the spanner resolver,
+   * which is where the two ends meet.
+   */
   suffix?: string
   /**
    * Where a hairpin stops, as a measure's place in the score and a position
    * within it. Grace notes take none of the measure's time, so a point they
    * sit at needs a grace index to say which of them the hairpin ends on: the
    * note they ornament is 0 and the rightmost grace note is 1. Unset where
-   * the source never closed the hairpin.
+   * the source never closed the hairpin. Filled in by the spanner resolver.
    */
   end: { measure: number; position: Fraction; graceIndex?: number } | undefined
   /** Which staff it belongs under, where the part has more than one. */
-  staff: number | undefined
+  readonly staff: number | undefined
   /** Which side of the staff it is drawn on, where the source states it. */
-  orient?: 'above' | 'below'
+  readonly orient?: 'above' | 'below'
 }
 
 /**
@@ -393,18 +426,18 @@ export interface Dynamic {
  * line beside them rather than as a mark on any one of them.
  */
 export interface Arpeggio {
-  position: Fraction
+  readonly position: Fraction
   /**
    * The ids of the notes it runs between. MNX names the first-played note
    * first, so a roll going downwards runs from the highest to the lowest.
    */
-  span: { start: string; end: string }
+  readonly span: { start: string; end: string }
   /** Which way it is rolled. MusicXML's default is upwards. */
-  direction: 'up' | 'down'
+  readonly direction: 'up' | 'down'
   /** Whether an arrowhead is drawn, which is what a stated direction means. */
-  arrow: boolean
+  readonly arrow: boolean
   /** A bracket saying the notes are struck together, rather than a roll. */
-  struck: boolean
+  readonly struck: boolean
 }
 
 /**
@@ -418,7 +451,7 @@ export interface Arpeggio {
 export type OttavaAmount = 1 | 2 | 3 | -1 | -2 | -3
 
 export interface Ottava {
-  position: Fraction
+  readonly position: Fraction
   /**
    * Where it stops, as a measure's place in the score and a point in it.
    * Grace notes take none of the measure's time, so a point they sit at needs
@@ -426,44 +459,44 @@ export interface Ottava {
    * ornament is 0 and the rightmost grace note is 1. Unset where the point
    * has no grace notes, which reads as before all of them.
    */
-  end: { measure: number; position: Fraction; graceIndex?: number }
-  value: OttavaAmount
+  readonly end: { measure: number; position: Fraction; graceIndex?: number }
+  readonly value: OttavaAmount
   /** Which staff it applies to, where the part has more than one. */
-  staff: number | undefined
+  readonly staff: number | undefined
   /** Which side of the staff it is drawn on, where the source states it. */
-  orient?: 'above' | 'below'
+  readonly orient?: 'above' | 'below'
 }
 
 export interface Measure {
-  clefs: readonly Clef[]
+  readonly clefs: readonly Clef[]
   /** Stated over the measure rather than on the notes, as MNX has it. */
-  beams: readonly Beam[]
+  readonly beams: readonly Beam[]
   /**
    * Added to once the whole part is read: wording at a hairpin's closing edge
    * stands alone if the hairpin cannot take it.
    */
-  dynamics: Dynamic[]
-  arpeggios: readonly Arpeggio[]
+  readonly dynamics: Dynamic[]
+  readonly arpeggios: readonly Arpeggio[]
   /** Filled in once the whole part is read, because a shift spans measures. */
-  ottavas: Ottava[]
+  readonly ottavas: Ottava[]
   /**
    * A simile sign starting here: repeat the previous this-many measures.
    * A sign spanning several measures sits only on the first of them. Filled
    * in once the whole part is read, because the sign runs measure to measure.
    */
   measureRepeat: number | undefined
-  sequences: readonly Sequence[]
+  readonly sequences: readonly Sequence[]
 }
 
 export interface Part {
-  id: string
-  name: string | undefined
+  readonly id: string
+  readonly name: string | undefined
   /** The abbreviated name drawn on systems after the first. Undefined where
    * the source gives none, gives an empty one, or hides it. */
-  shortName: string | undefined
+  readonly shortName: string | undefined
   /** How many staves the part is written on. One unless the source says. */
-  staves: number
-  measures: readonly Measure[]
+  readonly staves: number
+  readonly measures: readonly Measure[]
 }
 
 /**
@@ -475,16 +508,16 @@ export type GroupingItem = ({ kind: 'group' } & PartGroup) | { kind: 'part'; par
 
 export interface PartGroup {
   /** Undefined where the source's symbol kind has no MNX spelling. */
-  symbol: 'bracket' | 'brace' | 'noSymbol' | undefined
+  readonly symbol: 'bracket' | 'brace' | 'noSymbol' | undefined
   /** The name drawn beside the group, where the source gives one. */
-  label: string | undefined
+  readonly label: string | undefined
   /** How barlines run through the group, where the source says. */
-  barlineStyle: 'unified' | 'individual' | 'mensurstrich' | undefined
-  content: readonly GroupingItem[]
+  readonly barlineStyle: 'unified' | 'individual' | 'mensurstrich' | undefined
+  readonly content: readonly GroupingItem[]
 }
 
 export interface Key {
-  fifths: number
+  readonly fifths: number
 }
 
 /**
@@ -495,13 +528,13 @@ export interface Key {
 export type TimeUnit = 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128
 
 export interface TimeSignature {
-  count: number
-  unit: TimeUnit
+  readonly count: number
+  readonly unit: TimeUnit
   /**
    * The C or cut-C glyph the signature is drawn with, in place of its numbers.
    * Undefined where it is drawn as numbers.
    */
-  display: 'common' | 'cut' | undefined
+  readonly display: 'common' | 'cut' | undefined
 }
 
 /**
@@ -512,9 +545,9 @@ export interface TimeSignature {
  */
 /** A tempo mark: this many of the given note value per minute. */
 export interface Tempo {
-  position: Fraction
-  value: NoteValue
-  bpm: number
+  readonly position: Fraction
+  readonly value: NoteValue
+  readonly bpm: number
 }
 
 /** The line closing a measure, as MNX names the result rather than the strokes. */
@@ -533,7 +566,7 @@ export type BarlineType =
 
 /** A repeat sign closing a measure, and how many times the passage is played. */
 export interface RepeatEnd {
-  times: number | undefined
+  readonly times: number | undefined
 }
 
 /**
@@ -543,63 +576,71 @@ export interface RepeatEnd {
  */
 export interface Ending {
   /** Measures covered, counted inclusively, so one measure is a duration of 1. */
-  duration: number
+  readonly duration: number
   /** The times it covers, as written over the bracket. */
-  numbers: readonly number[]
+  readonly numbers: readonly number[]
   /** True where the bracket has no closing hook, as a final ending has none. */
-  open: boolean
+  readonly open: boolean
 }
 
 export interface GlobalMeasure {
-  key: Key | undefined
-  time: TimeSignature | undefined
-  tempos: readonly Tempo[]
+  readonly key: Key | undefined
+  readonly time: TimeSignature | undefined
+  readonly tempos: readonly Tempo[]
   /** Only when the score numbers the measure differently from its position. */
-  number: number | undefined
+  readonly number: number | undefined
   /** The line that closes the measure, where the source draws other than a plain one. */
-  barline: BarlineType | undefined
-  repeatStart: boolean
-  repeatEnd: RepeatEnd | undefined
+  readonly barline: BarlineType | undefined
+  readonly repeatStart: boolean
+  readonly repeatEnd: RepeatEnd | undefined
+  /**
+   * Filled in once the whole part is read, because the bracket is written as
+   * a start in one measure and a stop in another.
+   */
   ending: Ending | undefined
   /** A pause written over the barline rather than over a note. */
-  fermata: Fermata | undefined
+  readonly fermata: Fermata | undefined
   /** The segno sign, where the measure carries one. MNX draws one per measure. */
-  segno: Segno | undefined
+  readonly segno: Segno | undefined
   /** A Fine, where a D.S. or D.C. repeat stops. One per measure. */
-  fine: Fine | undefined
-  /** A jump such as D.S., taken once the measure is played. One per measure. */
+  readonly fine: Fine | undefined
+  /**
+   * A jump such as D.S., taken once the measure is played. One per measure.
+   * A D.S. is read as al fine once every part is merged, because the Fine it
+   * jumps to can be drawn by another part.
+   */
   jump: Jump | undefined
   /**
    * A multi-measure rest starting at this measure, as how many measures it
    * spans, counting this one. The spanned measures stay ordinary measures.
    */
-  multimeasureRest: number | undefined
+  readonly multimeasureRest: number | undefined
   /** A new system starts at this measure. */
-  systemBreak: boolean
+  readonly systemBreak: boolean
   /** A new page starts at this measure, and a new system with it. */
-  pageBreak: boolean
+  readonly pageBreak: boolean
 }
 
 /** A segno sign, the point a D.S. jumps back to. */
 export interface Segno {
   /** Where in the measure it is drawn, counting from the start. */
-  location: Fraction
+  readonly location: Fraction
   /** A specific SMuFL glyph, where the source names one. */
-  glyph: string | undefined
+  readonly glyph: string | undefined
   /** The color it is drawn in, in MNX's "#RRGGBB" form, where the source states one. */
-  color: string | undefined
+  readonly color: string | undefined
   /**
    * What the source calls this sign, where it names one. MNX has no label for
    * a segno and none is written; it is held only to tell two signs apart when
    * working out which one a jump returns to.
    */
-  name?: string
+  readonly name?: string
 }
 
 /** A Fine, where a D.S. or D.C. repeat stops. */
 export interface Fine {
   /** Where in the measure it is taken, counting from the start. */
-  location: Fraction
+  readonly location: Fraction
 }
 
 /** The kinds of jump MNX states: a dal-segno jump, or a D.S. al Fine. */
@@ -608,47 +649,47 @@ export type JumpType = 'dsalfine' | 'segno'
 /** A jump such as D.S., taken once the measure is played. */
 export interface Jump {
   /** Where in the measure it is taken, counting from the start. */
-  location: Fraction
-  type: JumpType
+  readonly location: Fraction
+  readonly type: JumpType
   /**
    * The name of the segno this jump returns to, where the source gives one.
    * MNX's jump has no target and none is written; it is held only to find the
    * sign the jump goes back to, which decides whether a Fine stops it.
    */
-  target?: string
+  readonly target?: string
 }
 
 /** An instrument the part list sets up, as its drawn name. */
 export interface InstrumentSound {
-  name: string | undefined
+  readonly name: string | undefined
 }
 
 export interface Score {
-  globalMeasures: readonly GlobalMeasure[]
-  parts: readonly Part[]
+  readonly globalMeasures: readonly GlobalMeasure[]
+  readonly parts: readonly Part[]
   /**
    * The instrument grouping the part list draws, empty where it draws none.
    * Ungrouped parts appear as bare items, so a non-empty grouping holds, in
    * order, every listed part the score writes; a part the list never
    * mentions stands outside it.
    */
-  grouping: readonly GroupingItem[]
+  readonly grouping: readonly GroupingItem[]
   /**
    * The instrument setup the part list states, keyed by the source's
    * instrument id, empty where it states none.
    */
-  sounds: ReadonlyMap<string, InstrumentSound>
+  readonly sounds: ReadonlyMap<string, InstrumentSound>
   /** The SMuFL font the score is engraved in, where the source names one. */
-  musicFont?: string
+  readonly musicFont?: string
   /**
    * True where the source declared that the beams it writes are the whole of
    * them, which holds even where it writes none: a score can beam nothing on
    * purpose. Absent where the source declared nothing.
    */
-  declaresBeams?: boolean
+  readonly declaresBeams?: boolean
   /**
    * True where the source declared that the accidentals it draws are the
    * whole of them, on the same terms as the beams.
    */
-  declaresAccidentals?: boolean
+  readonly declaresAccidentals?: boolean
 }

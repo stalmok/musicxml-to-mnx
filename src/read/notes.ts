@@ -14,6 +14,7 @@ import type {
   AccidentalDisplay,
   ClefSign,
   CurveSide,
+  Draft,
   Event,
   Fermata,
   FermataSymbol,
@@ -622,7 +623,9 @@ function readMarkings(
   warnings: WarningCollector,
   context: WarningContext,
 ): Markings {
-  const markings: Markings = {}
+  // Held as a draft: each notation the note carries sets its own key as it
+  // is read, and the event takes the finished set.
+  const markings: Draft<Markings> = {}
 
   for (const block of notations) {
     for (const articulations of block.blocks('articulations')) {

@@ -8,6 +8,7 @@ import { fraction } from '../fraction.js'
 import type {
   Ending,
   Event,
+  GraceGroup,
   Markings,
   FullMeasureRest,
   Measure,
@@ -737,7 +738,7 @@ describe('tuplets and grace groups', () => {
   // The schema states no default for slash, so an absent one is unspecified
   // rather than false. Both values are stated.
   test('states the absence of a slash', () => {
-    const group = { kind: 'grace', content: [WHOLE_C], slashed: false } as const
+    const group: GraceGroup = { kind: 'grace', content: [WHOLE_C], slashed: false }
 
     expect(writeMnx(itemScore(group)).parts[0]?.measures[0]?.sequences[0]?.content[0]).toEqual({
       type: 'grace',
@@ -747,7 +748,7 @@ describe('tuplets and grace groups', () => {
   })
 
   test('writes the slash when the group is drawn with one', () => {
-    const group = { kind: 'grace', content: [WHOLE_C], slashed: true } as const
+    const group: GraceGroup = { kind: 'grace', content: [WHOLE_C], slashed: true }
     const written = writeMnx(itemScore(group))
 
     expect(written.parts[0]?.measures[0]?.sequences[0]?.content[0]).toHaveProperty('slash', true)
@@ -766,7 +767,7 @@ describe('tuplets and grace groups', () => {
   test.each([
     ['a tuplet', triplet],
     ['a nested tuplet', nestedTuplet],
-    ['a grace group', { kind: 'grace', content: [WHOLE_C], slashed: true } as const],
+    ['a grace group', { kind: 'grace', content: [WHOLE_C], slashed: true } satisfies GraceGroup],
     ['a two-note tremolo', tremolo],
   ])('writes MNX the spec schema accepts for %s', (_name, item) => {
     expect(schemaErrors(writeMnx(itemScore(item)))).toEqual([])

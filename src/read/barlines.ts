@@ -12,7 +12,7 @@
 // shape of problem as a tie, and is done a part at a time in score.ts.
 
 import type { Fraction } from '../fraction.js'
-import type { BarlineType, Ending, Fermata, RepeatEnd, Segno } from '../model/score.js'
+import type { BarlineType, Fermata, GlobalMeasure, RepeatEnd, Segno } from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, trimmedText } from '../xml/tree.js'
@@ -345,7 +345,7 @@ function endingNumbers(
  */
 export function resolveEndings(
   measures: readonly {
-    global: { ending: Ending | undefined }
+    global: Pick<GlobalMeasure, 'ending'>
     endingStart: { numbers: readonly number[]; line: number } | undefined
     endingStop: { open: boolean; line: number } | undefined
   }[],

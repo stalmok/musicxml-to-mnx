@@ -13,6 +13,7 @@ import { compareFractions } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type {
   CurveSide,
+  Draft,
   Dynamic,
   Event,
   LineType,
@@ -1074,7 +1075,7 @@ export class SpannerResolver {
         // Assigned rather than spread in, for the reason the hairpin's end is.
         const end: Ottava['end'] = { measure: stop.measure, position: stop.covers }
         if (stop.coversGraceIndex !== undefined) end.graceIndex = stop.coversGraceIndex
-        const ottava: Ottava = {
+        const ottava: Draft<Ottava> = {
           position: open.position,
           end,
           value: open.value,

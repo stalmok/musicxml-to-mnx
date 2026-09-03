@@ -25,6 +25,7 @@ import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { BeamedEvent } from './beams.js'
 import type {
   Arpeggio,
+  Draft,
   Event,
   FullMeasureRest,
   GraceGroup,
@@ -77,7 +78,9 @@ const UNNAMED_VOICE = ''
 interface OpenTuplet {
   opened: 'tuplet'
   list: SequenceItem[]
-  tuplet: Tuplet
+  /** Still a draft: a bracket stating no ratio of its own states one when it
+   * closes, against what it turned out to hold. */
+  tuplet: Draft<Tuplet>
   ratio: Fraction
   number: string
   /**
@@ -247,7 +250,7 @@ function ratioOf(inner: NoteValueQuantity, outer: NoteValueQuantity): Fraction {
  * Left alone where no value counts them both, which the caller reports as the
  * disagreement between content and ratio that it is.
  */
-function scaleToContent(tuplet: Tuplet, held: Fraction, sounded: Fraction): void {
+function scaleToContent(tuplet: Draft<Tuplet>, held: Fraction, sounded: Fraction): void {
   let length = lengthOf(tuplet.inner.value)
   // Eight halvings reach a 1024th from a quarter, which is as far down as a
   // bracket is drawn. A bracket opening on a longer value and holding a
@@ -749,7 +752,7 @@ export class MeasureBuilder {
       // conditional spreads so that the compiler holds the difference: a
       // spread of { bracket: undefined } into a tuplet type-checks, and each
       // of these four did.
-      const tuplet: Tuplet = {
+      const tuplet: Draft<Tuplet> = {
         kind: 'tuplet',
         inner: level.inner,
         outer: level.outer,
