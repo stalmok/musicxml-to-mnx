@@ -62,6 +62,14 @@ export default {
       to: { path: '^src/(read/|write/|model/|convert\\.ts$|container\\.ts$)' },
     },
     {
+      name: 'stages-reach-no-barrel',
+      comment:
+        'The barrel re-exports the MNX types and the pipeline, so a stage reaching it crosses the same boundary by another door. A unit test beside its source may reach it: a test that asserts on converted MNX has to convert through the public API, which is what holds the output to the schema.',
+      severity: 'error',
+      from: { path: '^src/(read|write|model|xml|types)/', pathNot: '\\.test\\.ts$' },
+      to: { path: '^src/index\\.ts$' },
+    },
+    {
       name: 'model-is-not-public-api',
       comment:
         'The model is internal: it decouples the two stages and is never exported, so the public API must not name it.',
