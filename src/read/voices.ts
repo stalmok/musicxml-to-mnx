@@ -148,17 +148,13 @@ interface VoiceBuilder {
   /**
    * The most recent event, which a chord note joins. Held directly rather
    * than looked up, because it can sit inside a tuplet or a grace group that
-   * has since closed.
+   * has since closed. `duration` is how long it lasts, for chord notes to
+   * agree with, and is unset on a grace note, which takes no time. `start` is
+   * where it begins, held because a chord note is read after the cursor has
+   * moved past the event it joins, and an arpeggio over the chord belongs at
+   * the event's own place in the measure.
    */
-  lastEvent: Event | undefined
-  /** How long that event lasts, for chord notes to agree with. */
-  lastDuration: Fraction | undefined
-  /**
-   * Where that event begins. Held because a chord note is read after the
-   * cursor has already moved past the event it joins, and an arpeggio over
-   * the chord belongs at the event's own place in the measure.
-   */
-  lastStart: Fraction | undefined
+  last: { event: Event; duration: Fraction | undefined; start: Fraction } | undefined
   fullMeasure: FullMeasureRest | undefined
 }
 
@@ -512,9 +508,7 @@ export class MeasureBuilder {
     innermost(builder).push(event)
     builder.placed.push({ event, staff })
     this.#lastVoice = voice ?? UNNAMED_VOICE
-    builder.lastEvent = event
-    builder.lastDuration = duration
-    builder.lastStart = this.#cursor
+    builder.last = { event, duration, start: this.#cursor }
     this.#eventStarts.push({ start: this.#cursor, staff, grace: false })
     openTremolo(builder)?.durations.push(duration)
     builder.end = addFractions(this.#cursor, duration)
@@ -605,17 +599,17 @@ export class MeasureBuilder {
    * at the event's own place in the measure.
    */
   lastEventStart(voice: string | undefined): Fraction | undefined {
-    return this.#builderFor(voice ?? this.#lastVoice).lastStart
+    return this.#builderFor(voice ?? this.#lastVoice).last?.start
   }
 
   /** The written value of the event a chord note would join. */
   chordValue(voice: string | undefined): NoteValue | undefined {
-    return this.#builderFor(voice ?? this.#lastVoice).lastEvent?.value
+    return this.#builderFor(voice ?? this.#lastVoice).last?.event.value
   }
 
   /** How long the event a chord note would join lasts. */
   chordDuration(voice: string | undefined): Fraction | undefined {
-    return this.#builderFor(voice ?? this.#lastVoice).lastDuration
+    return this.#builderFor(voice ?? this.#lastVoice).last?.duration
   }
 
   /**
@@ -630,7 +624,7 @@ export class MeasureBuilder {
     line: number,
   ): void {
     const builder = this.#builderFor(voice ?? this.#lastVoice)
-    const previous = builder.lastEvent
+    const previous = builder.last
     if (!previous) {
       throw new MusicXMLError('A <note> is marked as a chord with no note for it to join.', {
         path,
@@ -640,7 +634,7 @@ export class MeasureBuilder {
 
     // Every note of a chord belongs to one event, so they have to agree on
     // how long that event lasts.
-    const chordDuration = builder.lastDuration
+    const chordDuration = previous.duration
     if (duration && chordDuration && compareFractions(duration, chordDuration) !== 0) {
       throw new MusicXMLError('A <note> in a chord lasts a different time from the chord.', {
         path,
@@ -648,7 +642,7 @@ export class MeasureBuilder {
       })
     }
 
-    previous.notes = [...previous.notes, note]
+    previous.event.notes = [...previous.event.notes, note]
   }
 
   /**
@@ -928,11 +922,11 @@ export class MeasureBuilder {
     line: number,
   ): void {
     const builder = this.#builderFor(voice ?? this.#lastVoice)
-    const event = builder.lastEvent
-    const position = builder.lastStart
+    const last = builder.last
     /* v8 ignore next 2 -- a note joins its voice before its notations are
        read, so there is always an event here to mark. */
-    if (!event || !position) throw new Error('A chord is marked as rolled with no chord to roll.')
+    if (!last) throw new Error('A chord is marked as rolled with no chord to roll.')
+    const { event, start: position } = last
 
     // Every note of a chord carries the mark, so the first one to arrive sets
     // it up and the rest join what it already covers. Marks on one chord are
@@ -1243,12 +1237,10 @@ export class MeasureBuilder {
     const list = innermost(builder)
     const previous = list.at(-1)
 
-    builder.lastEvent = event
     this.#lastVoice = voice ?? UNNAMED_VOICE
     // Grace notes have no duration of their own, so a chord note joining one
     // has nothing to agree with.
-    builder.lastDuration = undefined
-    builder.lastStart = this.#cursor
+    builder.last = { event, duration: undefined, start: this.#cursor }
     this.#eventStarts.push({ start: this.#cursor, staff, grace: true })
     // Recorded like any other event, so the voice's staff counts it and a
     // grace note reaching across to the other staff says so.
@@ -1334,9 +1326,7 @@ export class MeasureBuilder {
       eventTupletMarkers: [],
       content: [],
       end: fraction(0),
-      lastEvent: undefined,
-      lastDuration: undefined,
-      lastStart: undefined,
+      last: undefined,
       fullMeasure: undefined,
     }
     this.#voices.set(key, created)
