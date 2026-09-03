@@ -102,6 +102,7 @@ function readMnxTypes(): Map<string, Map<string, { optional: boolean; union: str
  */
 const DEFINITION_OF: Readonly<Record<string, string | undefined>> = {
   MNXDocument: 'root',
+  MNXFormat: 'mnx',
   MNXDynamic: 'dynamic-group',
   MNXGlobalMeasure: 'measure-global',
   MNXGraceGroup: 'grace',
@@ -134,8 +135,8 @@ const NOT_MODELLED: Readonly<Record<string, { properties: readonly string[]; why
     why: 'Playback, and a written pitch differing from the sounding one.',
   },
   MNXEvent: {
-    properties: ['kitNotes', 'orient', 'type'],
-    why: 'Percussion kit notes, the side an event is drawn on, and the "event" discriminant the writer omits.',
+    properties: ['kitNotes', 'orient'],
+    why: 'Percussion kit notes, and the side an event is drawn on.',
   },
   MNXSlur: {
     properties: ['endNote', 'startNote'],
@@ -626,6 +627,7 @@ const NOT_RESTATED: Readonly<Record<string, string>> = {
   MNXStaffLabelref:
     "The writer picks which of a part's names its staff draws, from the names the part has. No source value decides it.",
   'MNXDynamic.type': `The writer states it from the shape of the model's dynamic: a hairpin is gradual, an accent is accent, anything else immediate. Relative dynamics are not converted.`,
+  'MNXEvent.type': SEQUENCE_ITEM_TAG,
   'MNXSpace.type': SEQUENCE_ITEM_TAG,
   'MNXTuplet.type': SEQUENCE_ITEM_TAG,
   'MNXGraceGroup.type': SEQUENCE_ITEM_TAG,

@@ -4,6 +4,8 @@
 // suite validates every emitted document against it.
 //
 // Only what we currently produce is modelled here; the format is much larger.
+// That caveat is stated again on MNXDocument, because a file comment does not
+// reach the emitted declarations a consumer reads.
 //
 // Every name is MNX-prefixed, including the plain ones. These are exported
 // wholesale from the package, and `Step`, `ClefSign` and `NoteValueBase` are
@@ -183,6 +185,13 @@ export interface MNXFermata {
 }
 
 export interface MNXEvent {
+  /**
+   * What kind of sequence item this is. Every other kind states one, so a
+   * consumer can switch on it to tell them apart; this converter leaves it
+   * off, because an item with no kind is an event and writing it says nothing
+   * a reader does not already have.
+   */
+  type?: 'event'
   /** Present only where something refers to this event. */
   id?: string
   /** Present only where this event sits on a staff other than its voice's. */
@@ -609,8 +618,23 @@ export interface MNXSound {
   name?: string
 }
 
+/**
+ * What the document says about itself: which version of MNX it is written in,
+ * and what a renderer may take the document to have settled already.
+ */
+export interface MNXFormat {
+  version: number
+  support?: MNXSupport
+}
+
+/**
+ * An MNX document, as far as this converter emits it. The format is much
+ * larger: only what the converter currently produces is modelled here, so a
+ * document from another tool can carry properties these types do not name.
+ * The vendored schema (schema/mnx-schema.json) is the authority.
+ */
 export interface MNXDocument {
-  mnx: { version: number; support?: MNXSupport }
+  mnx: MNXFormat
   global: MNXGlobal
   /** Written only when the source draws instrument groups. */
   layouts?: MNXSystemLayout[]

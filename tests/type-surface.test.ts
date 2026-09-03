@@ -14,7 +14,9 @@ import { schemaErrors } from './support/schema.js'
 import type {
   MNXDocument,
   MNXDynamic,
+  MNXEvent,
   MNXNoteValueBase,
+  MNXSequenceItem,
   MNXSupport,
   MNXTie,
   MNXTieTargetType,
@@ -29,6 +31,7 @@ function documentWith(parts: {
   ties?: MNXTie[]
   dynamics?: MNXDynamic[]
   noteBase?: MNXNoteValueBase
+  eventType?: MNXEvent['type']
 }): MNXDocument {
   return {
     mnx: { version: 1, ...(parts.support ? { support: parts.support } : {}) },
@@ -42,6 +45,7 @@ function documentWith(parts: {
               {
                 content: [
                   {
+                    ...(parts.eventType ? { type: parts.eventType } : {}),
                     duration: { base: parts.noteBase ?? 'quarter' },
                     notes: [
                       {
@@ -81,6 +85,40 @@ describe('the type surface the writer does not yet emit is still legal MNX', () 
       ).toEqual([])
     },
   )
+
+  // Every other sequence item states its kind and an event may. The writer
+  // leaves it off, so a document stating it is legal MNX the types have to
+  // accept for a consumer to switch on the kind at all.
+  test('the event discriminant', () => {
+    expect(schemaErrors(documentWith({ eventType: 'event' }))).toEqual([])
+  })
+
+  // Walking a sequence is the first thing a consumer does with a document,
+  // and telling the items apart means switching on the kind. This compiles
+  // only while every item states one and an event's is its own value, so a
+  // regression there fails the typecheck rather than waiting on a consumer.
+  // An event's kind is optional, so the one it leaves off is the default arm
+  // rather than a case of its own.
+  test('a sequence item can be told apart by its kind', () => {
+    const kindOf = (item: MNXSequenceItem): string => {
+      switch (item.type) {
+        case 'space':
+          return `space of ${String(item.duration[0])}/${String(item.duration[1])}`
+        case 'tuplet':
+        case 'grace':
+        case 'tremolo':
+          return `${item.type} of ${String(item.content.length)}`
+        default:
+          return `event of ${item.duration.base}`
+      }
+    }
+
+    const sequence = documentWith({}).parts[0]?.measures[0]?.sequences[0]
+
+    expect(sequence?.content.map(kindOf)).toEqual(['event of quarter'])
+    expect(kindOf({ type: 'space', duration: [1, 4] })).toBe('space of 1/4')
+    expect(kindOf({ type: 'event', duration: { base: 'half' } })).toBe('event of half')
+  })
 
   test('the useBeams support flag', () => {
     expect(schemaErrors(documentWith({ support: { useBeams: true } }))).toEqual([])
