@@ -19,6 +19,13 @@ describe('fraction', () => {
     expect(fraction(3)).toEqual({ num: 3, den: 1 })
   })
 
+  // The brand that stops a hand-built fraction type-checking is a declared
+  // symbol key, never a value. A real one would reach the writer's output and
+  // every deep comparison in the suite.
+  test('carries the two numbers and nothing else at runtime', () => {
+    expect(Reflect.ownKeys(fraction(6, 8))).toEqual(['num', 'den'])
+  })
+
   test('keeps the sign on the numerator', () => {
     expect(fraction(1, -2)).toEqual({ num: -1, den: 2 })
   })

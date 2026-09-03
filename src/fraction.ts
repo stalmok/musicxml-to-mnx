@@ -11,9 +11,18 @@
 
 import { MusicXMLError } from './errors.js'
 
+declare const normalised: unique symbol
+
 export interface Fraction {
-  num: number
-  den: number
+  readonly num: number
+  readonly den: number
+  /**
+   * Type-only, and never present at runtime. A Fraction is in lowest terms
+   * with the sign on the numerator, which is what lets two equal values be
+   * compared field by field, and only this module normalises. The brand is
+   * how the compiler says so: a hand-built { num: 2, den: 4 } is not one.
+   */
+  readonly [normalised]: true
 }
 
 function greatestCommonDivisor(a: number, b: number): number {
@@ -29,6 +38,10 @@ function greatestCommonDivisor(a: number, b: number): number {
  * Builds a normalised fraction: lowest terms, with the sign on the numerator.
  * All arithmetic goes through here, so two equal values always have equal
  * parts and can be compared field by field.
+ *
+ * The two casts are the only places the brand is claimed, and this is where
+ * the claim is earned: the value returned is in lowest terms, and a zero or
+ * unsafe denominator has already been refused.
  */
 export function fraction(num: number, den = 1): Fraction {
   if (den === 0 || !Number.isSafeInteger(num) || !Number.isSafeInteger(den)) {
@@ -39,7 +52,9 @@ export function fraction(num: number, den = 1): Fraction {
     den = -den
   }
   const divisor = greatestCommonDivisor(Math.abs(num), den)
-  return divisor > 1 ? { num: num / divisor, den: den / divisor } : { num, den }
+  return divisor > 1
+    ? ({ num: num / divisor, den: den / divisor } as Fraction)
+    : ({ num, den } as Fraction)
 }
 
 // Each of these reduces before it multiplies. Doing it the other way round

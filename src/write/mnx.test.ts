@@ -4,6 +4,7 @@
 
 import { describe, expect, test } from 'vitest'
 import { schemaErrors } from '../../tests/support/schema.js'
+import { fraction } from '../fraction.js'
 import type {
   Ending,
   Event,
@@ -146,7 +147,7 @@ test.each([
             sign: 'F',
             staffPosition: 2,
             staff: undefined,
-            position: { num: 0, den: 1 },
+            position: fraction(0, 1),
             octave: undefined,
           },
         ],
@@ -225,7 +226,7 @@ describe('global measures', () => {
       {
         key: undefined,
         time: undefined,
-        tempos: [{ position: { num: 0, den: 1 }, value: { base: 'quarter', dots: 0 }, bpm: 100 }],
+        tempos: [{ position: fraction(0, 1), value: { base: 'quarter', dots: 0 }, bpm: 100 }],
         ...NO_BARLINE,
         number: undefined,
       },
@@ -241,7 +242,7 @@ describe('global measures', () => {
       {
         key: undefined,
         time: undefined,
-        tempos: [{ position: { num: 1, den: 2 }, value: { base: 'half', dots: 0 }, bpm: 60 }],
+        tempos: [{ position: fraction(1, 2), value: { base: 'half', dots: 0 }, bpm: 60 }],
         ...NO_BARLINE,
         number: undefined,
       },
@@ -258,7 +259,7 @@ describe('global measures', () => {
       measureRepeat: undefined,
       dynamics: [
         {
-          position: { num: 0, den: 1 },
+          position: fraction(0, 1),
           value: 'f' as const,
           wedge: undefined,
           end: undefined,
@@ -326,7 +327,7 @@ describe('measures', () => {
           sign: 'F',
           staffPosition: 2,
           staff: undefined,
-          position: { num: 0, den: 1 },
+          position: fraction(0, 1),
           octave: undefined,
         },
       ],
@@ -354,14 +355,14 @@ describe('measures', () => {
           sign: 'G',
           staffPosition: -2,
           staff: undefined,
-          position: { num: 0, den: 1 },
+          position: fraction(0, 1),
           octave: undefined,
         },
         {
           sign: 'F',
           staffPosition: 2,
           staff: undefined,
-          position: { num: 1, den: 2 },
+          position: fraction(1, 2),
           octave: undefined,
         },
       ],
@@ -392,7 +393,7 @@ describe('measures', () => {
           sign: 'G',
           staffPosition: -2,
           staff: undefined,
-          position: { num: 0, den: 1 },
+          position: fraction(0, 1),
           octave: -1,
         },
       ],
@@ -634,7 +635,7 @@ describe('beams', () => {
 })
 
 describe('voices and spaces', () => {
-  const gap = { kind: 'space', duration: { num: 1, den: 4 } } as const
+  const gap = { kind: 'space', duration: fraction(1, 4) } as const
 
   function voicedScore(voice: string | undefined, content: SequenceItem[]): Score {
     return scoreOf({
