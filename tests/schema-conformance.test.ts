@@ -42,6 +42,28 @@ describe('the id pattern the reader renames parts by', () => {
   })
 })
 
+describe('the instrument id a sound is keyed by', () => {
+  // The reader renames a part id MNX cannot state. The other string a source
+  // supplies to the same space is the <score-instrument> id, which the writer
+  // passes straight into global.sounds as a key, unchecked. Three facts make
+  // that safe, and each is the schema's. When one stops holding, the
+  // instrument id needs the renaming the part id gets.
+
+  test('the schema puts no shape on a sounds key', () => {
+    // Any instrument id is a legal key, including one with accented letters,
+    // which MNX's id cannot state.
+    expect(Object.keys(schemaDefs['sounds-global']?.patternProperties ?? {})).toEqual(['^.*$'])
+  })
+
+  test('a percussion kit is the only thing that names a sound', () => {
+    expect(usedBy('sound')).toEqual(['kit-component', 'sound'])
+  })
+
+  test('the types model no kit, so nothing the writer emits names a sound', () => {
+    expect([...mnxTypes.keys()].filter((name) => name.startsWith('MNXKit'))).toEqual([])
+  })
+})
+
 // --- The MNX types against the schema ---------------------------------------
 
 /**

@@ -12,6 +12,7 @@ export interface SchemaNode {
   $ref?: string
   allOf?: readonly SchemaNode[]
   properties?: Record<string, SchemaNode>
+  patternProperties?: Record<string, SchemaNode>
   required?: readonly string[]
   enum?: readonly (string | number)[]
   const?: string | number
