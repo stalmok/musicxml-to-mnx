@@ -232,6 +232,31 @@ function writeLayouts(score: Score): MNXSystemLayout[] | undefined {
 // such a part, holding GENERATED_ID_PATTERN to what is written here.
 const LAYOUT_ID = 'layout1'
 
+/**
+ * The braced group a multi-staff part draws. MusicXML leaves the grand staff
+ * implicit; MNX states it, so the staves go inside a braced group carrying
+ * the part's name. The barlines are stated too: the schema declares no
+ * default, so an absent barlineStyle says nothing, and a consumer is free to
+ * draw each staff its own barline. "instrument" is the grand staff's rule,
+ * connecting the staves of one part.
+ */
+function writeGrandStaff(part: Part, id: string): MNXStaffGroup {
+  return {
+    type: 'group',
+    symbol: 'brace',
+    barlineStyle: 'instrument',
+    ...(part.name !== undefined
+      ? { label: part.name }
+      : part.shortName !== undefined
+        ? { label: part.shortName }
+        : {}),
+    content: Array.from({ length: part.staves }, (_, index) => ({
+      type: 'staff',
+      sources: [{ part: id, staff: index + 1 }],
+    })),
+  }
+}
+
 function writeGroupingItem(
   item: GroupingItem,
   parts: ReadonlyMap<string, Part>,
@@ -241,41 +266,18 @@ function writeGroupingItem(
     /* v8 ignore next 2 -- the reader prunes every grouping part the score
        does not write, so the map covers the whole grouping. */
     if (part === undefined) throw new Error('A layout staff points at a part the score lacks.')
+    if (part.staves > 1) return [writeGrandStaff(part, item.part)]
+
     // A renderer that honours a layout resolves labels from it, so each
     // staff points back at its part's name. labelref rather than label
     // keeps the name written once, on the part.
     const labelref =
       part.name !== undefined ? 'name' : part.shortName !== undefined ? 'shortName' : undefined
-    if (part.staves === 1) {
-      return [
-        {
-          type: 'staff',
-          ...(labelref !== undefined ? { labelref } : {}),
-          sources: [{ part: item.part }],
-        },
-      ]
-    }
-    // A multi-staff part is one instrument on several staves. MusicXML
-    // leaves its grand staff implicit; MNX states it, so the staves go
-    // inside a braced group carrying the part's name. The barlines are
-    // stated too: the schema declares no default, so an absent barlineStyle
-    // says nothing, and a consumer is free to draw each staff its own
-    // barline. "instrument" is the grand staff's rule, connecting the
-    // staves of one part.
     return [
       {
-        type: 'group',
-        symbol: 'brace',
-        barlineStyle: 'instrument',
-        ...(part.name !== undefined
-          ? { label: part.name }
-          : part.shortName !== undefined
-            ? { label: part.shortName }
-            : {}),
-        content: Array.from({ length: part.staves }, (_, index) => ({
-          type: 'staff',
-          sources: [{ part: item.part, staff: index + 1 }],
-        })),
+        type: 'staff',
+        ...(labelref !== undefined ? { labelref } : {}),
+        sources: [{ part: item.part }],
       },
     ]
   }
@@ -283,15 +285,13 @@ function writeGroupingItem(
   // staff the part gets on its own, and nested, a renderer draws two braces
   // side by side. The two fold into one group: the source's label and
   // barline run where it states them, the part's where it does not.
-  if (item.symbol === 'brace' && item.content.length === 1) {
-    const only = item.content[0]
-    if (only?.kind === 'part' && (parts.get(only.part)?.staves ?? 1) > 1) {
-      const grandStaff = writeGroupingItem(only, parts)[0]
-      /* v8 ignore next -- a multi-staff part item always writes one group. */
-      if (grandStaff?.type !== 'group') throw new Error('A grand staff wrote no group.')
+  const only = item.content.length === 1 ? item.content[0] : undefined
+  if (item.symbol === 'brace' && only?.kind === 'part') {
+    const part = parts.get(only.part)
+    if (part !== undefined && part.staves > 1) {
       return [
         {
-          ...grandStaff,
+          ...writeGrandStaff(part, only.part),
           ...(item.label !== undefined ? { label: item.label } : {}),
           ...(item.barlineStyle !== undefined ? { barlineStyle: item.barlineStyle } : {}),
         },
