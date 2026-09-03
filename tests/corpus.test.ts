@@ -669,6 +669,11 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
       })
     })
 
+    // Sorted, unlike the hairpin comparison above, which holds the order
+    // too. A shift's string carries the point it starts at as well as its
+    // measure, so two shifts of one part are already told apart by it, and
+    // the converted list is in the order the pairing closed them rather than
+    // the order the source writes their starts.
     expect(converted.sort()).toEqual(sourceOttavaSpans(parseXmlRoot(source)).sort())
   })
 
@@ -900,6 +905,11 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
             // put each <text> on its own line. Nobody sings either. A no-break
             // space is not layout and stays, which is what the comparison
             // below is here to catch.
+            //
+            // The pattern is written out again rather than imported from the
+            // reader, and this run is what compares the two: an edit to one
+            // and not the other fails here. Sharing the constant would make
+            // that edit silent, which is the opposite of what a check is for.
             const text = lyric.children
               .filter((c) => c.name === 'text' || c.name === 'elision')
               .map((c) => c.text)
