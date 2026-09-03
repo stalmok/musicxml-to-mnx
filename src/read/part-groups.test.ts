@@ -468,6 +468,44 @@ describe('part groups', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 
+  // The fold is for a group holding that part alone. A second member makes
+  // the group a grouping of its own, so it stays one and keeps both members.
+  test('keeps a brace group holding a multi-staff part and another part', () => {
+    const twoStaffPart =
+      '<part id="P1"><measure number="1">' +
+      '<attributes><staves>2</staves></attributes>' +
+      `${NOTE}</measure></part>`
+    const { mnx, warnings } = convertMusicXML(
+      score(
+        '<part-group type="start" number="1"><group-symbol>brace</group-symbol></part-group>' +
+          '<score-part id="P1"/><score-part id="P2"/>' +
+          '<part-group type="stop" number="1"/>',
+        twoStaffPart + part('P2'),
+      ),
+    )
+
+    expect(mnx.layouts?.[0]?.content).toEqual([
+      {
+        type: 'group',
+        symbol: 'brace',
+        content: [
+          {
+            type: 'group',
+            symbol: 'brace',
+            barlineStyle: 'instrument',
+            content: [
+              { type: 'staff', sources: [{ part: 'P1', staff: 1 }] },
+              { type: 'staff', sources: [{ part: 'P1', staff: 2 }] },
+            ],
+          },
+          { type: 'staff', sources: [{ part: 'P2' }] },
+        ],
+      },
+    ])
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
   // What the source's group states wins over what the part implies; the
   // part fills in only what the group leaves unsaid.
   test("keeps the folded group to the source's own label and barline run", () => {

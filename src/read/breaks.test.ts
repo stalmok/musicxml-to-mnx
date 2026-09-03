@@ -49,6 +49,9 @@ describe('system and page breaks', () => {
     ])
     expect(mnx.global.measures[0]?.id).toBe('m1')
     expect(mnx.global.measures[1]?.id).toBe('m2')
+    // A measure is named only where something points at it. The third starts
+    // no system, so nothing does.
+    expect(mnx.global.measures[2]?.id).toBeUndefined()
     expect(warnings).toEqual([])
     expect(schemaErrors(mnx)).toEqual([])
   })

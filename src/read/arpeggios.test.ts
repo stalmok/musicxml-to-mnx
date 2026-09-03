@@ -118,6 +118,26 @@ describe('a rolled chord', () => {
     expect(arrowed?.arpeggios[0]?.arrow).toBe(true)
   })
 
+  // The written side of the same fact: an arrowhead is the presence of the
+  // key, and its absence is the ordinary drawing, so nothing is written where
+  // the source states no direction.
+  test('writes the arrowhead only where the source states a direction', () => {
+    const convert = (body: string) =>
+      convertMusicXML(
+        '<score-partwise><part id="P1"><measure number="1">' +
+          `<attributes><divisions>4</divisions></attributes>${body}</measure></part>` +
+          '</score-partwise>',
+      )
+    const plain = convert(head(ROLL) + member('E', ROLL))
+    const arrowed = convert(
+      head('<arpeggiate direction="up"/>') + member('E', '<arpeggiate direction="up"/>'),
+    )
+
+    expect(plain.mnx.parts[0]?.measures[0]?.arpeggios?.[0]?.arrow).toBeUndefined()
+    expect(arrowed.mnx.parts[0]?.measures[0]?.arpeggios?.[0]?.arrow).toBe(true)
+    expect(schemaErrors(arrowed.mnx)).toEqual([])
+  })
+
   // Two chords sounding together under one number are one roll across both,
   // which is how a pianist's two hands are rolled as one gesture.
   test('joins two chords that share a number into one roll', () => {
@@ -354,6 +374,27 @@ describe('a chord divided into two numbered rolls', () => {
     expect(mnx.parts[0]?.measures[0]?.arpeggios).toHaveLength(2)
     expect(schemaErrors(mnx)).toEqual([])
     expect(warnings).toEqual([])
+  })
+
+  // A roll names the two notes it runs between, so the notes it names carry
+  // an id. Ids are written only where something points at one, and the schema
+  // cannot tell a name that reaches a note from one that reaches nothing.
+  test('names the notes each roll runs between', () => {
+    const { mnx } = convertMusicXML(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        '<attributes><divisions>4</divisions></attributes>' +
+        head('<arpeggiate number="1"/>') +
+        member('E', '<arpeggiate number="1"/>') +
+        member('G', '<arpeggiate number="2"/>') +
+        member('B', '<arpeggiate number="2"/>') +
+        '</measure></part></score-partwise>',
+    )
+    const measure = mnx.parts[0]?.measures[0]
+    const event = measure?.sequences[0]?.content[0]
+    const ids = event && 'notes' in event ? (event.notes ?? []).map((one) => one.id) : []
+
+    expect(ids).toEqual(['note1', 'note2', 'note3', 'note4'])
+    expect(measure?.arpeggios?.flatMap((one) => [one.span.start, one.span.end])).toEqual(ids)
   })
 
   // Where one half holds a single note, the roll spans that note to itself:
