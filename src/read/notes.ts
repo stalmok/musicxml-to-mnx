@@ -1253,13 +1253,6 @@ function multiNoteTremoloOf(
 }
 
 /**
- * The <tuplet> markers a note carries, in the order they are written. A note
- * may hold several <notations> blocks, and exporters use that: a tie in one,
- * a tuplet marker in another. One block may also hold several markers, as
- * when two nested tuplets start on the same note, so this reads children()
- * rather than the first child.
- */
-/**
  * What a `<tuplet>` marker says, as the pair of its type and its number, for
  * telling a chord member's restatement of the chord's own marker from one it
  * states of itself. A marker that states no number is tuplet 1, as the spec
@@ -1269,6 +1262,13 @@ function tupletMarkerKey(marker: XmlElement): string {
   return `${attribute(marker, 'type') ?? ''} ${attribute(marker, 'number') ?? '1'}`
 }
 
+/**
+ * The <tuplet> markers a note carries, in the order they are written. A note
+ * may hold several <notations> blocks, and exporters use that: a tie in one,
+ * a tuplet marker in another. One block may also hold several markers, as
+ * when two nested tuplets start on the same note, so this reads children()
+ * rather than the first child.
+ */
 function tupletMarkers(notations: readonly ElementReader[]): readonly XmlElement[] {
   // Every marker is keyed by tupletMarkerKey, on the chord path and on the
   // ordinary one, and the key reads both the type and the number. So each is
