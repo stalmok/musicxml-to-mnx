@@ -153,3 +153,48 @@ describe('a rest placed on the staff', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 })
+
+// MNX states a rest that fills a measure on the sequence, not as an event in
+// it, so the voice's sequence is where that rest is written. A sequence whose
+// content is empty is therefore the rest itself, not one left over: the
+// vendored corpus writes 11,082 of them, and dropping any would drop a rest.
+describe('a voice holding only a rest that fills its measure', () => {
+  test('writes the rest on a sequence with no content', () => {
+    const { mnx, warnings } = convertMusicXML(
+      inMeasure('<note><rest measure="yes"/><duration>4</duration><voice>1</voice></note>'),
+    )
+
+    expect(mnx.parts[0]?.measures[0]?.sequences).toEqual([
+      { voice: '1', content: [], fullMeasure: {} },
+    ])
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // The resting voice sits beside a sounding one, which is where leaving the
+  // sequence out would be visible: the measure would say the voice is not
+  // there rather than that it rests through.
+  test('keeps the resting voice beside a sounding one', () => {
+    const { mnx, warnings } = convertMusicXML(
+      inMeasure(
+        '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+          '<type>quarter</type><voice>1</voice></note>' +
+          '<backup><duration>4</duration></backup>' +
+          '<note><rest measure="yes"/><duration>4</duration><voice>2</voice></note>',
+      ),
+    )
+
+    expect(
+      mnx.parts[0]?.measures[0]?.sequences.map((sequence) => [
+        sequence.voice,
+        sequence.content.length,
+        sequence.fullMeasure !== undefined,
+      ]),
+    ).toEqual([
+      ['1', 1, false],
+      ['2', 0, true],
+    ])
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+})
