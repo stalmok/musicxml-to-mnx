@@ -8,8 +8,14 @@
   "checkers": ["typescript"],
   "tsconfigFile": "tsconfig.stryker.json",
   "coverageAnalysis": "perTest",
-  "mutate_comment": "The reader, which is where every real defect so far has been found, plus the exact-fraction arithmetic every part of it counts with.",
-  "mutate": ["src/read/**/*.ts", "!src/read/**/*.test.ts", "src/fraction.ts"],
+  "mutate_comment": "The reader, which is where every real defect so far has been found, the writer that turns the model into a document, and the exact-fraction arithmetic both count with.",
+  "mutate": [
+    "src/read/**/*.ts",
+    "!src/read/**/*.test.ts",
+    "src/write/**/*.ts",
+    "!src/write/**/*.test.ts",
+    "src/fraction.ts"
+  ],
   "mutator": {
     "excludedMutations": ["StringLiteral", "Regex"]
   },
