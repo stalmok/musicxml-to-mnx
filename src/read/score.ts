@@ -780,6 +780,9 @@ function readPart(
  * MusicXML's tempo attribute counts. A mark of a dotted quarter at 72 and a
  * <sound tempo> of 108 are one statement; one of 110 is another, and saying
  * so is what keeps a second playback tempo at one point from vanishing.
+ *
+ * The report reads in document order, so each is reported at the place the
+ * <sound> kept as it was read rather than here at the end.
  */
 function reportSoundTempos(
   partId: string,
@@ -796,7 +799,8 @@ function reportSoundTempos(
       )
       if (echoed) continue
       const loss = attributeLoss('sound', 'tempo')
-      warnings.add(
+      warnings.addAt(
+        sound.place,
         loss.code,
         `The "tempo" of a <sound> ${loss.ending}`,
         { part: partId, measure: index + 1, line: sound.line },

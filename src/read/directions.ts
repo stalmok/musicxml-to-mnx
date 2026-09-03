@@ -23,7 +23,7 @@ import type {
   Tempo,
   WedgeType,
 } from '../model/score.js'
-import type { WarningCollector, WarningContext } from '../warnings.js'
+import type { WarningCollector, WarningContext, WarningPlace } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, trimmedText } from '../xml/tree.js'
 import { readColor } from './color.js'
@@ -75,6 +75,12 @@ export interface SoundTempo {
    */
   bpm: number | undefined
   line: number
+  /**
+   * The place kept in the report for the decision. The verdict is settled
+   * once every part is read, and reporting it there would put it after every
+   * loss read since; this holds its spot where the <sound> is written.
+   */
+  place: WarningPlace
 }
 
 // The plain dynamic marks MNX states as a value. A recogniser rather than a
@@ -693,6 +699,7 @@ export function readSound(
         position,
         bpm: Number.isFinite(written) && written > 0 ? written : undefined,
         line: sound.line,
+        place: warnings.reserve(),
       }
       continue
     }

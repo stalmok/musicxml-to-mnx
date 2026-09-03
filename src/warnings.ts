@@ -263,8 +263,15 @@ export interface ConversionWarning {
   readonly context: WarningContext
 }
 
+/**
+ * A place kept in the report, taken where an element is read and reported
+ * through once the decision about it can be made. See reserve.
+ */
+export type WarningPlace = number
+
 export class WarningCollector {
-  readonly #warnings: ConversionWarning[] = []
+  readonly #warnings: { place: WarningPlace; warning: ConversionWarning }[] = []
+  #next = 0
 
   add(
     code: WarningCode,
@@ -273,11 +280,39 @@ export class WarningCollector {
     element?: string,
     attribute?: string,
   ): void {
-    this.#warnings.push({ code, message, element, attribute, context })
+    this.addAt(this.reserve(), code, message, context, element, attribute)
   }
 
-  /** A copy, so the report cannot be mutated from outside. */
+  /**
+   * Keeps this point in the report for a decision that cannot be made yet.
+   * Whether a loss it is about is a loss at all can depend on what a later
+   * part writes, and the report reads in document order, so reporting it
+   * where the decision is made would put it after everything read since.
+   * Take a place where the element is, report through it later, and the
+   * report still reads in the order the source does.
+   */
+  reserve(): WarningPlace {
+    return this.#next++
+  }
+
+  /** Reports at a place taken earlier. Otherwise the same as add. */
+  addAt(
+    place: WarningPlace,
+    code: WarningCode,
+    message: string,
+    context: WarningContext,
+    element?: string,
+    attribute?: string,
+  ): void {
+    this.#warnings.push({ place, warning: { code, message, element, attribute, context } })
+  }
+
+  /**
+   * A copy, so the report cannot be mutated from outside, in document order.
+   * The sort is stable, so two reported through one place keep the order they
+   * were added in.
+   */
   list(): readonly ConversionWarning[] {
-    return [...this.#warnings]
+    return [...this.#warnings].sort((a, b) => a.place - b.place).map((entry) => entry.warning)
   }
 }

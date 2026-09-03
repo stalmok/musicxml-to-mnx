@@ -1825,8 +1825,9 @@ describe('the tempo a <sound> states', () => {
     expect(warnings.map((w) => w.message)).toContain(soundTempoDropped)
   })
 
-  // The tempo is reported once the measure has drawn every metronome mark it
-  // draws, so it comes after the playback reported as the <sound> is read.
+  // The verdict on the tempo waits until every part is read, and the report
+  // reads in document order, so it is reported at the place the <sound> kept:
+  // beside the playback the same element carries, in the order written.
   test('reports the other playback it carries besides a dropped tempo', () => {
     const { tempos: found, warnings } = tempos(
       '<direction><sound tempo="100" dynamics="71"/></direction>' + quarter,
@@ -1834,8 +1835,21 @@ describe('the tempo a <sound> states', () => {
 
     expect(found).toEqual([])
     expect(warnings.map((w) => w.message)).toEqual([
-      'The "dynamics" of a <sound> cannot be expressed in MNX.',
       soundTempoDropped,
+      'The "dynamics" of a <sound> cannot be expressed in MNX.',
+    ])
+  })
+
+  // Deciding it needs the whole score, and the losses read after it must not
+  // therefore come before it in the report.
+  test('reports one before the losses read after it', () => {
+    const { warnings } = tempos(
+      '<direction><sound tempo="100"/></direction>' + quarter + '<sound dynamics="71"/>',
+    )
+
+    expect(warnings.map((w) => w.message)).toEqual([
+      soundTempoDropped,
+      'The "dynamics" of a <sound> cannot be expressed in MNX.',
     ])
   })
 

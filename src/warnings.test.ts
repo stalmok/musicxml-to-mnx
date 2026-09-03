@@ -88,3 +88,63 @@ describe('WarningCollector', () => {
     expect(warnings.list()).toHaveLength(1)
   })
 })
+
+// A decision the reader cannot make until every part is read still belongs in
+// the report where the element it is about was written. A place kept there is
+// how the report stays in document order.
+describe('a place kept for a decision made later', () => {
+  test('reports through a place where it was taken, not where it was added', () => {
+    const warnings = new WarningCollector()
+
+    warnings.add('unsupported:element', 'first', {})
+    const place = warnings.reserve()
+    warnings.add('unsupported:element', 'third', {})
+    warnings.addAt(place, 'unsupported:element', 'second', {})
+
+    expect(warnings.list().map((w) => w.message)).toEqual(['first', 'second', 'third'])
+  })
+
+  test('keeps two reported through one place in the order they were added', () => {
+    const warnings = new WarningCollector()
+
+    const place = warnings.reserve()
+    warnings.add('unsupported:element', 'last', {})
+    warnings.addAt(place, 'unsupported:element', 'first', {})
+    warnings.addAt(place, 'unsupported:element', 'second', {})
+
+    expect(warnings.list().map((w) => w.message)).toEqual(['first', 'second', 'last'])
+  })
+
+  test('leaves a place nothing was reported through out of the report', () => {
+    const warnings = new WarningCollector()
+
+    warnings.reserve()
+    warnings.add('unsupported:element', 'only', {})
+
+    expect(warnings.list().map((w) => w.message)).toEqual(['only'])
+  })
+
+  test('records the same fields a warning reported in place carries', () => {
+    const warnings = new WarningCollector()
+
+    const place = warnings.reserve()
+    warnings.addAt(
+      place,
+      'unsupported:attribute',
+      'The "tempo" of a <sound> is not converted yet.',
+      { part: 'P1', measure: 2, line: 9 },
+      'sound',
+      'tempo',
+    )
+
+    expect(warnings.list()).toEqual([
+      {
+        code: 'unsupported:attribute',
+        message: 'The "tempo" of a <sound> is not converted yet.',
+        element: 'sound',
+        attribute: 'tempo',
+        context: { part: 'P1', measure: 2, line: 9 },
+      },
+    ])
+  })
+})
