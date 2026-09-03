@@ -270,9 +270,9 @@ function renameInvalidPartIds(
     warnings.add(
       'unrepresentable:part-id',
       MNX_ID_PATTERN.test(part.id)
-        ? `The part id "${part.id}" is one the converter gives an event, note, measure ` +
-            `or layout, and MNX states them all the same way, so the part is renamed ` +
-            `${generated}.`
+        ? `The part id "${part.id}" is shaped like one the converter gives an event, ` +
+            `note, measure or layout, and MNX states them all the same way, so the ` +
+            `part is renamed ${generated}.`
         : `The part id "${part.id}" does not fit MNX's id, which is 1 to 256 printable ` +
             `ASCII characters, so the part is renamed ${generated}.`,
       { part: part.id, ...(line !== undefined ? { line } : {}) },

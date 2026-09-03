@@ -1746,7 +1746,6 @@ describe('parts of different lengths', () => {
   })
 })
 
-// MusicXML's part id is an xs:ID, which allows characters MNX's id pattern
 // A part carrying every kind of id the converter generates: two staves for a
 // layout, a slur for event ids, a tie for note ids, and a system break for
 // measure ids.
@@ -1773,9 +1772,12 @@ const GENERATED_IDS_MEASURES =
   '<staff>2</staff></note>' +
   '</measure>'
 
-// (printable ASCII, 1 to 256 characters) does not. Such an id is renamed to a
-// generated one everywhere the score refers to it, and reported.
-describe('part ids MNX cannot state', () => {
+// MusicXML's part id is an xs:ID, which allows characters MNX's id pattern
+// (printable ASCII, 1 to 256 characters) does not. An id shaped like one the
+// converter generates cannot be carried either: MNX states every id the same
+// way, so the part and the event would be one id. Either is renamed to a
+// generated id everywhere the score refers to it, and reported.
+describe('a part id the output cannot carry as it stands', () => {
   test('renames a non-ASCII part id in the parts and the layout alike', () => {
     const { mnx, warnings } = convertMusicXML(
       score(
@@ -1846,9 +1848,27 @@ describe('part ids MNX cannot state', () => {
       expect(mnx.parts.map((part) => part.id)).toEqual(['p1'])
       expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:part-id'])
       expect(warnings[0]?.message).toContain(id)
+      // The two reasons a part is renamed read differently, so the report
+      // says which one this is.
+      expect(warnings[0]?.message).toContain('the converter gives')
       expect(schemaErrors(mnx)).toEqual([])
     },
   )
+
+  // The other half of the same rule: an ordinary source id is left alone, so
+  // the shapes the converter reserves stay the only ones renamed.
+  test.each(['x1', 'P1', 'measure1', 'event2'])('leaves the part id "%s" alone', (id) => {
+    const { mnx, warnings } = convertMusicXML(
+      score(
+        `<part-list><score-part id="${id}"/></part-list>` +
+          `<part id="${id}">${GENERATED_IDS_MEASURES}</part>`,
+      ),
+    )
+
+    expect(mnx.parts.map((part) => part.id)).toEqual([id])
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
 
   // The reader states the shape of the generated ids to keep a part id off
   // them, and two of the four are generated in the writer, which the reader
@@ -1880,6 +1900,7 @@ describe('part ids MNX cannot state', () => {
       layout.id === undefined ? [] : [layout.id],
     )
 
+    expect(schemaErrors(mnx)).toEqual([])
     expect(events.length).toBeGreaterThan(0)
     expect(notes.length).toBeGreaterThan(0)
     expect(measures.length).toBeGreaterThan(0)
