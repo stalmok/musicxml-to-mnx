@@ -226,6 +226,129 @@ function sourceHairpins(root: XmlElement): string[] {
 }
 
 /**
+ * Every octave shift in the source, paired the way the music has them: the
+ * same walk sourceHairpins does, over <octave-shift> instead of <wedge>. Both
+ * spanners pair through one stack in the converter, so the crossed pairing the
+ * hairpin oracle caught was live here with nothing able to see it.
+ *
+ * Each is reported as the octaves MNX states, the measure and point it starts
+ * at, and the measure it ends in. MNX requires a shift to say where it stops,
+ * so one the source never closes is written nowhere and is left out here too.
+ */
+function sourceOttavaSpans(root: XmlElement): string[] {
+  // The octaves MNX states for each MusicXML size and direction. Written out
+  // here rather than read from the converter, which is the point of an oracle:
+  // MusicXML's type is which way the notes were moved to draw them, and MNX's
+  // value is how far the drawn pitch sits below the sounded one, so 8va is a
+  // shift "down" and a value of 1.
+  const octaves = new Map<string, Record<string, number>>([
+    ['8', { down: 1, up: -1 }],
+    ['15', { down: 2, up: -2 }],
+    ['22', { down: 3, up: -3 }],
+  ])
+
+  const spans: string[] = []
+
+  root.children
+    .filter((c) => c.name === 'part')
+    .forEach((part, partIndex) => {
+      interface End {
+        kind: 'start' | 'stop'
+        // Absent on a start of a type or size the converter drops, and on
+        // every stop. A dropped start still takes its stop out of the stack.
+        value: number | undefined
+        number: string
+        staff: string
+        measure: number
+        position: number
+        order: number
+      }
+      const ends: End[] = []
+      let divisions = 1
+
+      part.children
+        .filter((c) => c.name === 'measure')
+        .forEach((measure, measureIndex) => {
+          let position = 0
+
+          for (const item of measure.children) {
+            const durationOf = () =>
+              Number(item.children.find((c) => c.name === 'duration')?.text.trim() ?? '0')
+
+            if (item.name === 'attributes') {
+              const stated = item.children.find((c) => c.name === 'divisions')?.text.trim()
+              if (stated) divisions = Number(stated)
+            } else if (item.name === 'backup') {
+              position -= durationOf()
+            } else if (item.name === 'forward') {
+              position += durationOf()
+            } else if (item.name === 'note') {
+              const held =
+                item.children.some((c) => c.name === 'chord') ||
+                item.children.some((c) => c.name === 'grace')
+              if (!held) position += durationOf()
+            } else if (item.name === 'direction') {
+              const shift = item.children
+                .filter((c) => c.name === 'direction-type')
+                .flatMap((c) => c.children)
+                .find((c) => c.name === 'octave-shift')
+              if (!shift) continue
+
+              const type = shift.attributes.type ?? ''
+              // A "continue" marks a point partway along a shift, which is
+              // neither end of one.
+              if (type === 'continue') continue
+
+              // The converter moves a direction by its offset, so this must too.
+              const offset = Number(
+                item.children.find((c) => c.name === 'offset')?.text.trim() ?? '0',
+              )
+              const size = shift.attributes.size ?? '8'
+              ends.push({
+                kind: type === 'stop' ? 'stop' : 'start',
+                value: octaves.get(size)?.[type],
+                number: shift.attributes.number ?? '1',
+                staff: item.children.find((c) => c.name === 'staff')?.text.trim() ?? '',
+                measure: measureIndex,
+                position: (position + offset) / (divisions * 4),
+                order: ends.length,
+              })
+            }
+          }
+        })
+
+      const inTime = [...ends].sort(
+        (a, b) =>
+          a.measure - b.measure ||
+          a.position - b.position ||
+          (a.kind === b.kind ? a.order - b.order : a.kind === 'stop' ? -1 : 1),
+      )
+
+      const open = new Map<string, End[]>()
+      for (const end of inTime) {
+        if (end.kind === 'start') {
+          open.set(end.number, [...(open.get(end.number) ?? []), end])
+          continue
+        }
+        // The last one opened on the stop's own staff, or failing that the
+        // last one opened at all, exactly as a hairpin pairs.
+        const waiting = open.get(end.number) ?? []
+        const sameStaff = waiting.map((one) => one.staff).lastIndexOf(end.staff)
+        const started = waiting.splice(sameStaff < 0 ? waiting.length - 1 : sameStaff, 1)[0]
+        open.set(end.number, waiting)
+        if (!started || started.value === undefined) continue
+        spans.push(
+          `part ${String(partIndex + 1)} ${String(started.value)} ` +
+            `m${String(started.measure + 1)}@${started.position.toFixed(9)} -> ` +
+            `m${String(end.measure + 1)}`,
+        )
+      }
+    })
+
+  return spans
+}
+
+/**
  * Every <other-dynamics> wording in the source, trimmed the way the reader
  * trims it, in document order. Whitespace-only ones are left out: they draw
  * nothing, so there is nothing for the output to carry.
@@ -519,6 +642,36 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     expect(carried.filter((text) => text === '')).toEqual([])
   })
 
+  // The pairing itself, against the source rather than against itself. The
+  // check below sees only that a shift runs forwards to a measure that exists,
+  // which a shift paired with the wrong end does too: pairing on the staff
+  // moved the extent of shifts in two of the corpus's songs, and nothing here
+  // could tell. The hairpin oracle caught exactly that for hairpins, and both
+  // spanners pair through one stack.
+  test('pairs every octave shift the way the source does', () => {
+    const named = new Map<string, number>()
+    mnx.global.measures.forEach((measure, index) => {
+      if (measure.id !== undefined) named.set(measure.id, index)
+    })
+
+    const converted: string[] = []
+    mnx.parts.forEach((part, partIndex) => {
+      part.measures.forEach((measure, index) => {
+        for (const ottava of measure.ottavas ?? []) {
+          const endsIn = named.get(ottava.end.measure)
+          const from = ottava.position.fraction[0] / ottava.position.fraction[1]
+          converted.push(
+            `part ${String(partIndex + 1)} ${String(ottava.value)} ` +
+              `m${String(index + 1)}@${from.toFixed(9)} -> ` +
+              `m${endsIn === undefined ? '?' : String(endsIn + 1)}`,
+          )
+        }
+      })
+    })
+
+    expect(converted.sort()).toEqual(sourceOttavaSpans(parseXmlRoot(source)).sort())
+  })
+
   // An octave shift runs from its position to its end, both of which are
   // places in the score. The schema can check neither that the end names a
   // measure that exists nor that it comes after the start, and a shift that
@@ -585,6 +738,47 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
             stray.push(
               `part ${String(partIndex + 1)} measure ${String(index + 1)}: ` +
                 `starts at ${String(from)}, where no event does`,
+            )
+          }
+        }
+      })
+    })
+
+    expect(stray.slice(0, 5)).toEqual([])
+  })
+
+  // The other end, held to the same rule. A shift's end is the last event it
+  // covers, and the reader moves it back off the point the stop was written
+  // at to reach one. An end between events would name a place nothing begins,
+  // which the schema reads as legal and a renderer would draw over nothing.
+  test('ends every octave shift on an event', () => {
+    // Skipped for the reason the start check is: where a note's written value
+    // disagrees with its duration, the events are placed by their written
+    // values and a shift can end between them with nothing wrong.
+    if (warnings.some((warning) => warning.code === 'inconsistent:duration')) return
+
+    const named = new Map<string, number>()
+    mnx.global.measures.forEach((measure, index) => {
+      if (measure.id !== undefined) named.set(measure.id, index)
+    })
+
+    const stray: string[] = []
+    mnx.parts.forEach((part, partIndex) => {
+      part.measures.forEach((measure, index) => {
+        for (const ottava of measure.ottavas ?? []) {
+          const endsIn = named.get(ottava.end.measure)
+          if (endsIn === undefined) continue
+          const closing = part.measures[endsIn]
+          if (!closing) continue
+
+          const places = new Set<string>()
+          for (const sequence of closing.sequences) collectStarts(sequence.content, 0, 1, places)
+
+          const to = ottava.end.position.fraction[0] / ottava.end.position.fraction[1]
+          if (!places.has(to.toFixed(9))) {
+            stray.push(
+              `part ${String(partIndex + 1)} measure ${String(index + 1)}: ` +
+                `ends at ${String(to)} of measure ${String(endsIn + 1)}, where no event does`,
             )
           }
         }
