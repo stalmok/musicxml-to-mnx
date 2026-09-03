@@ -46,7 +46,7 @@ import { readNote } from './notes.js'
 import { readPrint } from './print.js'
 import { IdGenerator } from './spanners.js'
 import { newPartState } from './state.js'
-import { elementLoss } from './unrepresentable.js'
+import { attributeLoss, elementLoss } from './unrepresentable.js'
 import type { PartState } from './state.js'
 import { MeasureBuilder } from './voices.js'
 
@@ -873,6 +873,9 @@ function readMeasure(
   let timeSettled = false
   const dynamics: Dynamic[] = []
   const tempos: Tempo[] = []
+  // Every <sound tempo> of the measure, waiting on the metronome marks to say
+  // whether each one echoes a mark or stands alone.
+  const soundTempos: { position: Fraction; line: number }[] = []
   const segnos: Segno[] = []
   const fines: Fine[] = []
   const jumps: Jump[] = []
@@ -944,6 +947,7 @@ function readMeasure(
         segnos.push(...reading.segnos)
         fines.push(...reading.fines)
         jumps.push(...reading.jumps)
+        soundTempos.push(...reading.soundTempos)
         break
       }
 
@@ -981,15 +985,16 @@ function readMeasure(
       }
 
       // A <sound> is playback, so nothing it carries reaches the output. A
-      // <sound tempo> at the same point as a <metronome> the score has already
-      // drawn is that mark's playback echo, and is passed over in silence;
-      // a bare one is reported like any other playback the output cannot hold.
+      // <sound tempo> at the same point as a <metronome> the score draws is
+      // that mark's playback echo, and is passed over in silence; a bare one
+      // is reported like any other playback the output cannot hold. Which it
+      // is waits for the end of the measure, because the mark can be written
+      // after the <sound> that echoes it.
       case 'sound': {
-        const at = builder.position()
-        const stated = tempos.some((tempo) => compareFractions(tempo.position, at) === 0)
-        const reading = readSound(reader, at, stated, warnings, context)
+        const reading = readSound(reader, builder.position(), warnings, context)
         if (reading.fine) fines.push(reading.fine)
         if (reading.jump) jumps.push(reading.jump)
+        if (reading.tempoAt) soundTempos.push({ position: reading.tempoAt, line: found.line })
         break
       }
 
@@ -1017,6 +1022,22 @@ function readMeasure(
     }
 
     reader.reportUnread(warnings, context)
+  }
+
+  // The measure has drawn every metronome mark it draws now, so a <sound
+  // tempo> beside one is that mark's playback echo and the rest are losses.
+  // Decided here rather than as each <sound> is read, because a source that
+  // writes the <sound> first would have had every echo reported as a loss.
+  for (const sound of soundTempos) {
+    if (tempos.some((tempo) => compareFractions(tempo.position, sound.position) === 0)) continue
+    const loss = attributeLoss('sound', 'tempo')
+    warnings.add(
+      loss.code,
+      `The "tempo" of a <sound> ${loss.ending}`,
+      { ...context, line: sound.line },
+      'sound',
+      'tempo',
+    )
   }
 
   builder.checkAllClosed(measurePath, element.line)

@@ -1825,6 +1825,8 @@ describe('the tempo a <sound> states', () => {
     expect(warnings.map((w) => w.message)).toContain(soundTempoDropped)
   })
 
+  // The tempo is reported once the measure has drawn every metronome mark it
+  // draws, so it comes after the playback reported as the <sound> is read.
   test('reports the other playback it carries besides a dropped tempo', () => {
     const { tempos: found, warnings } = tempos(
       '<direction><sound tempo="100" dynamics="71"/></direction>' + quarter,
@@ -1832,9 +1834,53 @@ describe('the tempo a <sound> states', () => {
 
     expect(found).toEqual([])
     expect(warnings.map((w) => w.message)).toEqual([
-      soundTempoDropped,
       'The "dynamics" of a <sound> cannot be expressed in MNX.',
+      soundTempoDropped,
     ])
+  })
+
+  // A source is free to write the playback echo before the mark it echoes.
+  // Deciding as each <sound> was read called every such echo a loss.
+  test('passes over one written before the <metronome> it echoes', () => {
+    const { tempos: found, warnings } = tempos(
+      '<direction><sound tempo="120"/></direction>' +
+        '<direction><direction-type><metronome><beat-unit>half</beat-unit>' +
+        '<per-minute>60</per-minute></metronome></direction-type></direction>' +
+        quarter,
+    )
+
+    expect(found).toEqual([
+      { position: { num: 0, den: 1 }, value: { base: 'half', dots: 0 }, bpm: 60 },
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  // Written straight into the measure rather than inside a <direction>, which
+  // reaches the reader by another path.
+  test('passes over a bare one written before the <metronome> it echoes', () => {
+    const { tempos: found, warnings } = tempos(
+      '<sound tempo="120"/>' +
+        '<direction><direction-type><metronome><beat-unit>half</beat-unit>' +
+        '<per-minute>60</per-minute></metronome></direction-type></direction>' +
+        quarter,
+    )
+
+    expect(found).toHaveLength(1)
+    expect(warnings).toEqual([])
+  })
+
+  // The mark is drawn a beat later, so the two are not the same statement and
+  // the echo has nothing to echo.
+  test('reports one whose <metronome> is at another point in the measure', () => {
+    const { warnings } = tempos(
+      '<sound tempo="120"/>' +
+        quarter +
+        '<direction><direction-type><metronome><beat-unit>half</beat-unit>' +
+        '<per-minute>60</per-minute></metronome></direction-type></direction>' +
+        quarter,
+    )
+
+    expect(warnings.map((w) => w.message)).toEqual([soundTempoDropped])
   })
 })
 

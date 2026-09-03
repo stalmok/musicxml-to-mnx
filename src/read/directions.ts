@@ -43,6 +43,8 @@ export interface DirectionReading {
   segnos: Segno[]
   fines: Fine[]
   jumps: Jump[]
+  /** Where each <sound tempo> in the direction is written, and on what line. */
+  soundTempos: { position: Fraction; line: number }[]
 }
 
 /** The navigation a single <sound> element carries a home for. */
@@ -54,6 +56,13 @@ export interface SoundReading {
    * names the sign so a jump can be matched to the one it returns to.
    */
   segnoName: string | undefined
+  /**
+   * Where a <sound tempo> is written, when the element states one. Whether it
+   * is a loss depends on whether the measure draws a metronome mark at the
+   * same point, and the mark can be written after the <sound>, so the caller
+   * decides once the whole measure is read.
+   */
+  tempoAt: Fraction | undefined
 }
 
 // The plain dynamic marks MNX states as a value. A recogniser rather than a
@@ -171,6 +180,7 @@ export function readDirection(
     segnos: [],
     fines: [],
     jumps: [],
+    soundTempos: [],
   }
 
   // A direction says which staff it belongs under. A tempo is the score's, so
@@ -310,12 +320,16 @@ export function readDirection(
   }
 
   // Read after the direction types, so that a <metronome> beside it has
-  // already had its say about the tempo and a <sound> restating it is seen as
-  // the echo it is.
+  // already had its say about the tempo. Whether a <sound tempo> echoes a
+  // mark waits for the end of the measure, because the mark can be drawn by a
+  // later <direction> at the same point.
   for (const sound of element.blocks('sound')) {
-    const soundReading = readSound(sound, at, reading.tempos.length > 0, warnings, context)
+    const soundReading = readSound(sound, at, warnings, context)
     if (soundReading.fine) reading.fines.push(soundReading.fine)
     if (soundReading.jump) reading.jumps.push(soundReading.jump)
+    if (soundReading.tempoAt) {
+      reading.soundTempos.push({ position: soundReading.tempoAt, line: sound.line })
+    }
     // The <sound> naming the sign sits in the same <direction> as the <segno>
     // it names, so the name is put on the signs this direction just read.
     if (soundReading.segnoName !== undefined) {
@@ -635,8 +649,10 @@ function standaloneWording(
  * passed over without a word. A bare <sound tempo> with no metronome is
  * reported as a converter gap rather than a format limit: the schema does hold
  * a tempo, and what stops this one being written is the decision above, not the
- * absence of anywhere to put it. A velocity or a pan position has no such
- * home, and says so.
+ * absence of anywhere to put it. Which of the two it is comes back as tempoAt
+ * for the caller to settle, because the metronome can be written after the
+ * <sound> it belongs to. A velocity or a pan position has no such home, and
+ * says so.
  *
  * Two attributes are notation MNX does hold: <sound fine> is a Fine, and
  * <sound dalsegno> a dal-segno jump. Both go on the score's measure at the
@@ -650,18 +666,21 @@ const FINAL_NOTE_DURATION = /^\+?(\d+(\.\d*)?|\.\d+)$/
 export function readSound(
   sound: ElementReader,
   position: Fraction,
-  tempoAlreadyStated: boolean,
   warnings: WarningCollector,
   context: WarningContext,
 ): SoundReading {
   let fine: Fine | undefined
   let jump: Jump | undefined
   let segnoName: string | undefined
+  let tempoAt: Fraction | undefined
   for (const name of Object.keys(sound.element.attributes)) {
     // Every attribute is either handled or reported below, so each is
     // accounted for the moment the loop reaches it.
     attribute(sound.element, name)
-    if (name === 'tempo' && tempoAlreadyStated) continue
+    if (name === 'tempo') {
+      tempoAt = position
+      continue
+    }
     if (name === 'fine') {
       // MusicXML writes the fine as "yes", or as the divisions the final note
       // sounds for. The number is playback and the Fine it marks is the
@@ -709,7 +728,7 @@ export function readSound(
       name,
     )
   }
-  return { fine, jump, segnoName }
+  return { fine, jump, segnoName, tempoAt }
 }
 
 // The side a direction is drawn on, from its placement. MusicXML's above and
