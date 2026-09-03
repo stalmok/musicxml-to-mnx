@@ -2,9 +2,10 @@
 //
 // A note carries one <lyric> per verse it sings, and MNX keys the verses by
 // the number the source gives them. Whatever the source puts between the
-// pieces of a syllable is meaningful down to the space, so the join is never
-// trimmed in the middle; the whitespace around the whole syllable is layout,
-// which a pretty-printed file writes and nobody sings.
+// pieces of a syllable is the separator it chose, down to the space, so the
+// join keeps it; only the layout is dropped, and layout is the whitespace
+// around the whole syllable and any line break inside it. Both are what a
+// pretty-printed file writes, and nobody sings either.
 //
 // A verse is not always one <text>. Where two syllables are sung on one note,
 // which French sets constantly, MusicXML writes each as its own <text> with
@@ -134,10 +135,11 @@ function readVerse(
  * sang. Some exporters write the pieces with no <elision> at all, and the
  * corpus contains fourteen of those.
  *
- * The joined syllable is trimmed at its two ends. A pretty-printer writes an
- * element's text on its own indented line, and 664 syllables in the vendored
- * corpus carry a trailing space; neither is sung. A syllable that is nothing
- * but whitespace draws nothing, so it states no words at all.
+ * The joined syllable is trimmed at its two ends, and any line break the
+ * layout put inside it is dropped. A pretty-printer writes an element's text
+ * on its own indented line, and 664 syllables in the vendored corpus carry a
+ * trailing space; neither is sung. A syllable that is nothing but whitespace
+ * draws nothing, so it states no words at all.
  */
 function joinSyllables(lyric: ElementReader): string | undefined {
   const texts = lyric.children('text')
@@ -148,6 +150,16 @@ function joinSyllables(lyric: ElementReader): string | undefined {
   for (const part of lyric.element.children) {
     if (part.name === 'text' || part.name === 'elision') joined += part.text
   }
-  const sung = joined.trim()
+  const sung = joined.replace(LAYOUT_BREAK, '').trim()
   return sung === '' ? undefined : sung
 }
+
+// A run of ASCII whitespace holding a line break, which is how a pretty-
+// printer lays a <text> out and never anything sung. Dropped rather than
+// collapsed to a space: hensel-1-sehnsucht writes one verse both ways, and
+// the one without the break runs its pieces straight together.
+//
+// A no-break space is deliberately not in the class. It is the source drawing
+// an indent, which that same file does before both its verses, and taking it
+// with the break would join "y" and "a" as "ya".
+const LAYOUT_BREAK = /[ \t\r\n]*[\r\n][ \t\r\n]*/g

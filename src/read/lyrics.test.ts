@@ -231,6 +231,44 @@ describe('a verse written as several pieces', () => {
     expect(events[0]?.lyrics.get('1')?.text).toBe('_ rait')
   })
 
+  // A pretty-printer writes each <text> on its own indented line, so the
+  // pieces arrive with the line break inside them. Nobody sings a line break,
+  // and hensel-1-sehnsucht writes the same verse both ways: "2." and
+  // "\u00a0\u00a0Horch!" run together, while "1." carries the break.
+  test('drops a line break the source only wrote to lay the pieces out', () => {
+    const { events } = read(
+      measure(
+        note(
+          'C',
+          '<lyric number="1"><syllabic>single</syllabic><text>1.\n</text>' +
+            '<text>\u00a0\u00a0Fern\n</text><text></text></lyric>',
+        ),
+      ),
+    )
+
+    expect(events[0]?.lyrics.get('1')?.text).toBe('1.\u00a0\u00a0Fern')
+  })
+
+  // A no-break space is never layout: it is the source drawing an indent, and
+  // trimming each piece would take it and join "y" and "a" as "ya".
+  test('keeps a no-break space the line break was written around', () => {
+    const { events } = read(
+      measure(note('C', '<lyric number="1"><text>y\n</text><text>\u00a0\u00a0a</text></lyric>')),
+    )
+
+    expect(events[0]?.lyrics.get('1')?.text).toBe('y\u00a0\u00a0a')
+  })
+
+  // The rule turns on the line break, so a plain space between two pieces is
+  // still the separator the source chose.
+  test('keeps a space between the pieces where no line break was written', () => {
+    const { events } = read(
+      measure(note('C', '<lyric number="1"><text>le </text><text>aux</text></lyric>')),
+    )
+
+    expect(events[0]?.lyrics.get('1')?.text).toBe('le aux')
+  })
+
   test('reports the syllabics it cannot state, keeping the first', () => {
     const { events, warnings } = read(
       measure(
