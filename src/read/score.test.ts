@@ -3,7 +3,7 @@ import { MusicXMLError } from '../errors.js'
 import { convertMusicXML } from '../index.js'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
-import { readScore } from './score.js'
+import { GENERATED_ID_PATTERN, readScore } from './score.js'
 import { schemaErrors } from '../../tests/support/schema.js'
 
 /** Wraps `body` in the smallest document that can carry it. */
@@ -1747,6 +1747,32 @@ describe('parts of different lengths', () => {
 })
 
 // MusicXML's part id is an xs:ID, which allows characters MNX's id pattern
+// A part carrying every kind of id the converter generates: two staves for a
+// layout, a slur for event ids, a tie for note ids, and a system break for
+// measure ids.
+const GENERATED_IDS_MEASURES =
+  '<measure number="1">' +
+  '<attributes><divisions>4</divisions><staves>2</staves></attributes>' +
+  '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+  '<type>quarter</type><voice>1</voice><staff>1</staff><tie type="start"/>' +
+  '<notations><tied type="start"/><slur type="start" number="1"/></notations></note>' +
+  '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+  '<type>quarter</type><voice>1</voice><staff>1</staff><tie type="stop"/>' +
+  '<notations><tied type="stop"/><slur type="stop" number="1"/></notations></note>' +
+  '<note><rest/><duration>8</duration><type>half</type><voice>1</voice>' +
+  '<staff>1</staff></note>' +
+  '<backup><duration>16</duration></backup>' +
+  '<note><rest/><duration>16</duration><type>whole</type><voice>2</voice>' +
+  '<staff>2</staff></note>' +
+  '</measure>' +
+  '<measure number="2"><print new-system="yes"/>' +
+  '<note><rest/><duration>16</duration><type>whole</type><voice>1</voice>' +
+  '<staff>1</staff></note>' +
+  '<backup><duration>16</duration></backup>' +
+  '<note><rest/><duration>16</duration><type>whole</type><voice>2</voice>' +
+  '<staff>2</staff></note>' +
+  '</measure>'
+
 // (printable ASCII, 1 to 256 characters) does not. Such an id is renamed to a
 // generated one everywhere the score refers to it, and reported.
 describe('part ids MNX cannot state', () => {
@@ -1801,6 +1827,66 @@ describe('part ids MNX cannot state', () => {
     expect(mnx.parts.map((p) => p.id)).toEqual(['P1', 'P2'])
     expect(warnings).toEqual([])
     expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // A part id that reads like an id the converter generates names two things
+  // at once: MNX states every id the same way, so nothing in the document
+  // tells the part from the event, and a consumer resolving a slur target by
+  // id can reach the part instead.
+  test.each(['ev2', 'note1', 'm1', 'layout1'])(
+    'renames the part id "%s", which the converter gives something else',
+    (id) => {
+      const { mnx, warnings } = convertMusicXML(
+        score(
+          `<part-list><score-part id="${id}"/></part-list>` +
+            `<part id="${id}">${GENERATED_IDS_MEASURES}</part>`,
+        ),
+      )
+
+      expect(mnx.parts.map((part) => part.id)).toEqual(['p1'])
+      expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:part-id'])
+      expect(warnings[0]?.message).toContain(id)
+      expect(schemaErrors(mnx)).toEqual([])
+    },
+  )
+
+  // The reader states the shape of the generated ids to keep a part id off
+  // them, and two of the four are generated in the writer, which the reader
+  // may not import. This holds the reader's copy to what a conversion really
+  // writes.
+  test('states the shape of every id the converter generates', () => {
+    const { mnx } = convertMusicXML(
+      score(
+        '<part-list><score-part id="P1"/></part-list>' +
+          `<part id="P1">${GENERATED_IDS_MEASURES}</part>`,
+      ),
+    )
+
+    const events: string[] = []
+    const notes: string[] = []
+    for (const measure of mnx.parts[0]?.measures ?? []) {
+      for (const sequence of measure.sequences) {
+        for (const item of sequence.content) {
+          if (!('notes' in item)) continue
+          if (item.id !== undefined) events.push(item.id)
+          for (const note of item.notes ?? []) if (note.id !== undefined) notes.push(note.id)
+        }
+      }
+    }
+    const measures = mnx.global.measures.flatMap((measure) =>
+      measure.id === undefined ? [] : [measure.id],
+    )
+    const layouts = (mnx.layouts ?? []).flatMap((layout) =>
+      layout.id === undefined ? [] : [layout.id],
+    )
+
+    expect(events.length).toBeGreaterThan(0)
+    expect(notes.length).toBeGreaterThan(0)
+    expect(measures.length).toBeGreaterThan(0)
+    expect(layouts.length).toBeGreaterThan(0)
+    for (const id of [...events, ...notes, ...measures, ...layouts]) {
+      expect(GENERATED_ID_PATTERN.test(id)).toBe(true)
+    }
   })
 
   test('skips over an id another part already holds', () => {

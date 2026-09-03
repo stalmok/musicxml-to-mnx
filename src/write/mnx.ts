@@ -206,9 +206,9 @@ function writeLayouts(score: Score): MNXSystemLayout[] | undefined {
 }
 
 // Named apart from the measure ids ("m1"), the event ids ("ev1") and the note
-// ids ("note1"). A part id passes through from the source, so a source that
-// names a part "layout1" still collides; that exposure is the same one those
-// three already carry and is not this name's to close.
+// ids ("note1"). A part id passes through from the source, so a source naming
+// a part any of the four would name two things at once; the reader renames
+// such a part, holding GENERATED_ID_PATTERN to what is written here.
 const LAYOUT_ID = 'layout1'
 
 function writeGroupingItem(

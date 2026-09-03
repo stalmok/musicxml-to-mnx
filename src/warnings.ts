@@ -115,8 +115,10 @@ export type WarningCode =
   // the part list instead.
   | 'unrepresentable:part-group-overlap'
   // A part id MNX's id cannot state: an MNX id is 1 to 256 printable ASCII
-  // characters, and MusicXML's part id allows more. The part is renamed to a
-  // generated id everywhere the score refers to it.
+  // characters, and MusicXML's part id allows more. Also a part id the
+  // converter gives an event, note, measure or layout, which MNX states the
+  // same way, so the two would be one id. The part is renamed to a generated
+  // id everywhere the score refers to it.
   | 'unrepresentable:part-id'
   // A measure states more than one multi-measure rest span, as staves stating
   // different counts do, and MNX states one for the score. The first is the
