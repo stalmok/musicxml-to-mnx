@@ -37,7 +37,9 @@ import type { MeasureRepeatReading } from './attributes.js'
 import { readBarline, resolveEndings } from './barlines.js'
 import { buildBeams } from './beams.js'
 import { readDirection, readSound } from './directions.js'
+import type { SoundTempo } from './directions.js'
 import { requireDuration } from './divisions.js'
+import { lengthOf } from './duration.js'
 import { drawnName, ElementReader, reportUnreadAttributes } from './element.js'
 import { GroupingBuilder, pruneGrouping } from './part-groups.js'
 import { compareFractions, negate } from '../fraction.js'
@@ -54,6 +56,8 @@ interface PartReading {
   part: Part
   /** What this part declared for each of its measures, by position. */
   globals: readonly GlobalMeasure[]
+  /** The <sound tempo> statements of each of its measures, by position. */
+  soundTempos: readonly (readonly SoundTempo[])[]
 }
 
 interface MeasureReading {
@@ -70,6 +74,11 @@ interface MeasureReading {
    * walk the sign from its start to its stop or the end of the part.
    */
   measureRepeats: readonly MeasureRepeatReading[]
+  /**
+   * The <sound tempo> statements this measure made, held until every part has
+   * been read and the marks the score draws are known.
+   */
+  soundTempos: readonly SoundTempo[]
 }
 
 export function readScore(root: XmlElement, warnings: WarningCollector): Score {
@@ -166,6 +175,10 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
     mergeGlobalMeasures(globalMeasures, reading.globals, reading.part.id, warnings)
   }
   upgradeAlFineJumps(globalMeasures)
+
+  for (const reading of readings) {
+    reportSoundTempos(reading.part.id, reading.soundTempos, globalMeasures, warnings)
+  }
 
   // The global list is the score's measure list, and every part's measures
   // line up with it by position. A part with fewer of them stops before the
@@ -748,7 +761,60 @@ function readPart(
       measures: readings.map((reading) => reading.measure),
     },
     globals: readings.map((reading) => reading.global),
+    soundTempos: readings.map((reading) => reading.soundTempos),
   }
+}
+
+/**
+ * Reports every <sound tempo> the part states that no drawn metronome mark
+ * echoes. A <sound tempo> is playback: where a mark at the same point states
+ * the same tempo, the two say one thing and the mark is the one drawn, so the
+ * echo is passed over. Anything else is a playback tempo of its own, which
+ * MNX has no way to state without drawing a mark the source never drew.
+ *
+ * Decided here, once every part has been read, because the mark can be
+ * written after the <sound> that echoes it and can be drawn by another part.
+ * Deciding it as each <sound> was read reported both as losses they are not.
+ *
+ * The two tempos are compared as quarter notes per minute, which is what
+ * MusicXML's tempo attribute counts. A mark of a dotted quarter at 72 and a
+ * <sound tempo> of 108 are one statement; one of 110 is another, and saying
+ * so is what keeps a second playback tempo at one point from vanishing.
+ */
+function reportSoundTempos(
+  partId: string,
+  soundTempos: readonly (readonly SoundTempo[])[],
+  globalMeasures: readonly GlobalMeasure[],
+  warnings: WarningCollector,
+): void {
+  soundTempos.forEach((measureTempos, index) => {
+    for (const sound of measureTempos) {
+      const echoed = (globalMeasures[index]?.tempos ?? []).some(
+        (tempo) =>
+          compareFractions(tempo.position, sound.position) === 0 &&
+          quarterNotesPerMinute(tempo) === sound.bpm,
+      )
+      if (echoed) continue
+      const loss = attributeLoss('sound', 'tempo')
+      warnings.add(
+        loss.code,
+        `The "tempo" of a <sound> ${loss.ending}`,
+        { part: partId, measure: index + 1, line: sound.line },
+        'sound',
+        'tempo',
+      )
+    }
+  })
+}
+
+/**
+ * A drawn mark's tempo counted in quarter notes, the unit a <sound tempo>
+ * states. The beat is a fraction of a whole note, so four of them make a
+ * quarter: a dotted quarter is 3/8, and 3/8 * 4 is the 1.5 quarters it lasts.
+ */
+function quarterNotesPerMinute(tempo: Tempo): number {
+  const beat = lengthOf(tempo.value)
+  return (tempo.bpm * beat.num * 4) / beat.den
 }
 
 /**
@@ -873,9 +939,9 @@ function readMeasure(
   let timeSettled = false
   const dynamics: Dynamic[] = []
   const tempos: Tempo[] = []
-  // Every <sound tempo> of the measure, waiting on the metronome marks to say
+  // Every <sound tempo> of the measure, waiting on the score's marks to say
   // whether each one echoes a mark or stands alone.
-  const soundTempos: { position: Fraction; line: number }[] = []
+  const soundTempos: SoundTempo[] = []
   const segnos: Segno[] = []
   const fines: Fine[] = []
   const jumps: Jump[] = []
@@ -994,7 +1060,7 @@ function readMeasure(
         const reading = readSound(reader, builder.position(), warnings, context)
         if (reading.fine) fines.push(reading.fine)
         if (reading.jump) jumps.push(reading.jump)
-        if (reading.tempoAt) soundTempos.push({ position: reading.tempoAt, line: found.line })
+        if (reading.tempo) soundTempos.push(reading.tempo)
         break
       }
 
@@ -1022,22 +1088,6 @@ function readMeasure(
     }
 
     reader.reportUnread(warnings, context)
-  }
-
-  // The measure has drawn every metronome mark it draws now, so a <sound
-  // tempo> beside one is that mark's playback echo and the rest are losses.
-  // Decided here rather than as each <sound> is read, because a source that
-  // writes the <sound> first would have had every echo reported as a loss.
-  for (const sound of soundTempos) {
-    if (tempos.some((tempo) => compareFractions(tempo.position, sound.position) === 0)) continue
-    const loss = attributeLoss('sound', 'tempo')
-    warnings.add(
-      loss.code,
-      `The "tempo" of a <sound> ${loss.ending}`,
-      { ...context, line: sound.line },
-      'sound',
-      'tempo',
-    )
   }
 
   builder.checkAllClosed(measurePath, element.line)
@@ -1095,6 +1145,7 @@ function readMeasure(
     endingStart,
     endingStop,
     measureRepeats,
+    soundTempos,
   }
 }
 

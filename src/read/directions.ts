@@ -43,8 +43,8 @@ export interface DirectionReading {
   segnos: Segno[]
   fines: Fine[]
   jumps: Jump[]
-  /** Where each <sound tempo> in the direction is written, and on what line. */
-  soundTempos: { position: Fraction; line: number }[]
+  /** Each <sound tempo> the direction states. */
+  soundTempos: SoundTempo[]
 }
 
 /** The navigation a single <sound> element carries a home for. */
@@ -57,12 +57,24 @@ export interface SoundReading {
    */
   segnoName: string | undefined
   /**
-   * Where a <sound tempo> is written, when the element states one. Whether it
-   * is a loss depends on whether the measure draws a metronome mark at the
-   * same point, and the mark can be written after the <sound>, so the caller
-   * decides once the whole measure is read.
+   * The <sound tempo> the element states, where it states one. Whether it is
+   * a loss depends on the metronome marks the score draws at the same point,
+   * which any part can draw and can be written after the <sound>, so the
+   * caller decides once the whole score is read.
    */
-  tempoAt: Fraction | undefined
+  tempo: SoundTempo | undefined
+}
+
+/** A <sound tempo> waiting on the score to say whether it echoes a mark. */
+export interface SoundTempo {
+  position: Fraction
+  /**
+   * Quarter notes per minute, which is what MusicXML's tempo attribute
+   * counts. Absent where the attribute states no number, which no mark can
+   * then be the echo of.
+   */
+  bpm: number | undefined
+  line: number
 }
 
 // The plain dynamic marks MNX states as a value. A recogniser rather than a
@@ -321,15 +333,13 @@ export function readDirection(
 
   // Read after the direction types, so that a <metronome> beside it has
   // already had its say about the tempo. Whether a <sound tempo> echoes a
-  // mark waits for the end of the measure, because the mark can be drawn by a
-  // later <direction> at the same point.
+  // mark waits for the end of the score, because the mark can be drawn by a
+  // later <direction> at the same point, or by another part.
   for (const sound of element.blocks('sound')) {
     const soundReading = readSound(sound, at, warnings, context)
     if (soundReading.fine) reading.fines.push(soundReading.fine)
     if (soundReading.jump) reading.jumps.push(soundReading.jump)
-    if (soundReading.tempoAt) {
-      reading.soundTempos.push({ position: soundReading.tempoAt, line: sound.line })
-    }
+    if (soundReading.tempo) reading.soundTempos.push(soundReading.tempo)
     // The <sound> naming the sign sits in the same <direction> as the <segno>
     // it names, so the name is put on the signs this direction just read.
     if (soundReading.segnoName !== undefined) {
@@ -649,10 +659,10 @@ function standaloneWording(
  * passed over without a word. A bare <sound tempo> with no metronome is
  * reported as a converter gap rather than a format limit: the schema does hold
  * a tempo, and what stops this one being written is the decision above, not the
- * absence of anywhere to put it. Which of the two it is comes back as tempoAt
- * for the caller to settle, because the metronome can be written after the
- * <sound> it belongs to. A velocity or a pan position has no such home, and
- * says so.
+ * absence of anywhere to put it. Which of the two it is comes back as the
+ * tempo for the caller to settle, because the mark it echoes can be written
+ * after the <sound> and can be drawn by another part. A velocity or a pan
+ * position has no such home, and says so.
  *
  * Two attributes are notation MNX does hold: <sound fine> is a Fine, and
  * <sound dalsegno> a dal-segno jump. Both go on the score's measure at the
@@ -672,13 +682,18 @@ export function readSound(
   let fine: Fine | undefined
   let jump: Jump | undefined
   let segnoName: string | undefined
-  let tempoAt: Fraction | undefined
+  let tempo: SoundTempo | undefined
   for (const name of Object.keys(sound.element.attributes)) {
     // Every attribute is either handled or reported below, so each is
     // accounted for the moment the loop reaches it.
     attribute(sound.element, name)
     if (name === 'tempo') {
-      tempoAt = position
+      const written = Number(attribute(sound.element, 'tempo'))
+      tempo = {
+        position,
+        bpm: Number.isFinite(written) && written > 0 ? written : undefined,
+        line: sound.line,
+      }
       continue
     }
     if (name === 'fine') {
@@ -728,7 +743,7 @@ export function readSound(
       name,
     )
   }
-  return { fine, jump, segnoName, tempoAt }
+  return { fine, jump, segnoName, tempo }
 }
 
 // The side a direction is drawn on, from its placement. MusicXML's above and

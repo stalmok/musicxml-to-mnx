@@ -865,7 +865,7 @@
     "metronome@parentheses": 1,
     "direction@system": 7,
     "extend": 18,
-    "sound@tempo": 4,
+    "sound@tempo": 5,
     "staff-layout": 40,
     "sound@dynamics": 5,
     "print-object": 517,
@@ -919,7 +919,7 @@
     "direction@system": 11,
     "sound@dynamics": 37,
     "extend": 38,
-    "sound@tempo": 11,
+    "sound@tempo": 10,
     "tied@line-type": 2,
     "cue": 1,
     "staff-layout": 28,
@@ -2464,7 +2464,8 @@
     "direction@system": 2,
     "words": 17,
     "sound@dynamics": 39,
-    "extend": 11
+    "extend": 11,
+    "sound@tempo": 1
   },
   "chausson-1-nanny": {
     "midi-device": 2,
@@ -2662,7 +2663,8 @@
     "type@size": 4,
     "staff-layout": 7,
     "trill-mark": 6,
-    "pedal": 54
+    "pedal": 54,
+    "sound@tempo": 1
   },
   "chopin-2-wiosna": {
     "midi-device": 2,
@@ -4141,7 +4143,8 @@
     "notehead": 26,
     "dot@placement": 4,
     "dashes": 2,
-    "wedge": 2
+    "wedge": 2,
+    "sound@tempo": 1
   },
   "faure-2-au-cimetiere": {
     "midi-device": 2,
@@ -4258,7 +4261,8 @@
     "extend": 7,
     "print-object": 4,
     "pedal": 76,
-    "notehead": 1
+    "notehead": 1,
+    "sound@tempo": 1
   },
   "faure-vocalise-etude": {
     "midi-device": 2,
@@ -4336,7 +4340,7 @@
     "words": 47,
     "metronome@parentheses": 3,
     "direction@system": 27,
-    "sound@tempo": 29,
+    "sound@tempo": 26,
     "sound@dynamics": 44,
     "extend": 40,
     "cue": 7,
@@ -6116,7 +6120,7 @@
     "words": 32,
     "metronome@parentheses": 1,
     "direction@system": 8,
-    "sound@tempo": 6,
+    "sound@tempo": 7,
     "sound@dynamics": 113,
     "extend": 33,
     "dashes": 12,
@@ -6141,7 +6145,8 @@
     "sound@dynamics": 44,
     "extend": 8,
     "dashes": 6,
-    "pedal": 24
+    "pedal": 24,
+    "sound@tempo": 1
   },
   "hopekirk-my-lady-of-sleep": {
     "midi-device": 2,
@@ -9133,7 +9138,7 @@
     "direction@system": 3,
     "sound@dynamics": 15,
     "extend": 17,
-    "sound@tempo": 3,
+    "sound@tempo": 2,
     "staff-layout": 37,
     "pedal": 21,
     "print-object": 2,
@@ -9178,7 +9183,7 @@
     "words": 18,
     "metronome@parentheses": 1,
     "direction@system": 13,
-    "sound@tempo": 11,
+    "sound@tempo": 10,
     "sound@dynamics": 14,
     "extend": 3,
     "wedge": 2,
@@ -9206,7 +9211,6 @@
     "extend": 9,
     "wedge": 6,
     "staff-layout": 27,
-    "sound@tempo": 1,
     "notehead": 5,
     "pedal": 6
   },
@@ -9228,7 +9232,7 @@
     "metronome@parentheses": 1,
     "direction@system": 23,
     "sound@dynamics": 29,
-    "sound@tempo": 19,
+    "sound@tempo": 18,
     "extend": 10,
     "dashes": 4,
     "wedge": 2,
@@ -9257,7 +9261,7 @@
     "extend": 9,
     "wedge": 3,
     "staff-layout": 16,
-    "sound@tempo": 2,
+    "sound@tempo": 1,
     "play": 2
   },
   "quilter-4-to-daisies": {
@@ -9278,7 +9282,7 @@
     "metronome@parentheses": 1,
     "direction@system": 6,
     "sound@dynamics": 10,
-    "sound@tempo": 9,
+    "sound@tempo": 8,
     "extend": 4,
     "wedge": 4,
     "staff-layout": 21
@@ -9979,7 +9983,7 @@
     "metronome@parentheses": 1,
     "direction@system": 4,
     "extend": 7,
-    "sound@tempo": 5,
+    "sound@tempo": 4,
     "staff-layout": 56,
     "sound@dynamics": 33,
     "wedge": 3
@@ -10495,7 +10499,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 12,
-    "sound@tempo": 2,
+    "sound@tempo": 1,
     "direction@system": 2,
     "sound@dynamics": 29,
     "extend": 32,
@@ -10553,7 +10557,6 @@
     "movement-title": 1,
     "identification": 1,
     "words": 23,
-    "sound@tempo": 1,
     "direction@system": 1,
     "sound@dynamics": 28,
     "extend": 52,
@@ -10593,7 +10596,7 @@
     "identification": 1,
     "measure@implicit": 5,
     "words": 39,
-    "sound@tempo": 3,
+    "sound@tempo": 2,
     "direction@system": 3,
     "sound@dynamics": 71,
     "extend": 14,
@@ -10611,7 +10614,7 @@
     "movement-title": 1,
     "identification": 1,
     "words": 18,
-    "sound@tempo": 3,
+    "sound@tempo": 2,
     "direction@system": 3,
     "sound@dynamics": 64,
     "extend": 61,

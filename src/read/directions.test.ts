@@ -1805,7 +1805,7 @@ describe('the tempo a <sound> states', () => {
     const { tempos: found, warnings } = tempos(
       '<direction><direction-type><metronome><beat-unit>quarter</beat-unit>' +
         '<per-minute>120</per-minute></metronome></direction-type></direction>' +
-        '<sound tempo="90"/>' +
+        '<sound tempo="120"/>' +
         quarter,
     )
 
@@ -1837,6 +1837,69 @@ describe('the tempo a <sound> states', () => {
       'The "dynamics" of a <sound> cannot be expressed in MNX.',
       soundTempoDropped,
     ])
+  })
+
+  // Two statements at one point, not one written twice: the mark draws 120
+  // and the <sound> plays 90. Passing the second over would drop a playback
+  // tempo the source states.
+  test('reports one stating a tempo the mark beside it does not', () => {
+    const { warnings } = tempos(
+      '<direction><direction-type><metronome><beat-unit>quarter</beat-unit>' +
+        '<per-minute>120</per-minute></metronome></direction-type></direction>' +
+        '<sound tempo="90"/>' +
+        quarter,
+    )
+
+    expect(warnings.map((w) => w.message)).toEqual([soundTempoDropped])
+  })
+
+  // MusicXML counts a <sound tempo> in quarter notes whatever the mark's
+  // beat, so a dotted quarter at 72 and a tempo of 108 are one statement.
+  test('passes over one counting a dotted beat in quarter notes', () => {
+    const { warnings } = tempos(
+      '<direction><direction-type><metronome><beat-unit>quarter</beat-unit>' +
+        '<beat-unit-dot/><per-minute>72</per-minute></metronome></direction-type>' +
+        '<sound tempo="108"/></direction>' +
+        quarter,
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  test('reports one whose number is not a tempo at all', () => {
+    const { warnings } = tempos(
+      '<direction><direction-type><metronome><beat-unit>quarter</beat-unit>' +
+        '<per-minute>120</per-minute></metronome></direction-type>' +
+        '<sound tempo="fast"/></direction>' +
+        quarter,
+    )
+
+    expect(warnings.map((w) => w.message)).toEqual([soundTempoDropped])
+  })
+
+  // A mark is the score's, drawn once, and every part carries the playback
+  // echo of it. Reading part by part reported every part after the one that
+  // draws it.
+  test('passes over one echoing a mark another part draws', () => {
+    const warnings = new WarningCollector()
+    const measure = (body: string) =>
+      `<measure number="1"><attributes><divisions>4</divisions></attributes>${body}</measure>`
+    readScore(
+      parseXmlRoot(
+        '<score-partwise><part-list><score-part id="P1"/><score-part id="P2"/></part-list>' +
+          `<part id="P1">${measure(
+            '<direction><direction-type><metronome><beat-unit>quarter</beat-unit>' +
+              '<per-minute>63</per-minute></metronome></direction-type>' +
+              '<sound tempo="63"/></direction>' +
+              quarter,
+          )}</part>` +
+          `<part id="P2">${measure('<sound tempo="63"/>' + quarter)}</part>` +
+          '</score-partwise>',
+      ),
+      warnings,
+    )
+
+    expect(warnings.list()).toEqual([])
   })
 
   // A source is free to write the playback echo before the mark it echoes.
