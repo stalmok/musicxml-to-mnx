@@ -40,6 +40,7 @@ export function readMusicXML(source: string | Uint8Array): string {
     throw new MusicXMLError(
       `The MusicXML document is ${String(source.length)} bytes, over the ` +
         `${String(SCORE_LIMIT)}-byte limit.`,
+      { path: [] },
     )
   }
   return typeof source === 'string' ? source : decode(source)
@@ -83,13 +84,14 @@ function scoreInside(archive: Uint8Array): string {
       named !== undefined
         ? `The .mxl package names "${named}" as its score, but does not contain it.`
         : 'The .mxl package has no META-INF/container.xml naming its score.',
+      { path: [] },
     )
   }
 
   const score = extract(archive, (name) => name === scoreName)[scoreName]
   /* v8 ignore next -- the name came from this same archive's listing, so the
      second pass always finds it. */
-  if (!score) throw new MusicXMLError('The .mxl package could not be unzipped.')
+  if (!score) throw new MusicXMLError('The .mxl package could not be unzipped.', { path: [] })
   return decode(score)
 }
 
@@ -110,6 +112,7 @@ function extract(
           throw new MusicXMLError(
             `An entry in the .mxl package decompresses to ${String(file.originalSize)} bytes, ` +
               `over the ${String(SCORE_LIMIT)}-byte limit.`,
+            { path: [] },
           )
         }
         return true
@@ -117,7 +120,7 @@ function extract(
     })
   } catch (cause) {
     if (cause instanceof MusicXMLError) throw cause
-    throw new MusicXMLError('The .mxl package could not be unzipped.', { cause })
+    throw new MusicXMLError('The .mxl package could not be unzipped.', { path: [], cause })
   }
 }
 
@@ -162,7 +165,9 @@ function decode(bytes: Uint8Array): string {
 /** UTF-16 bytes as text, past their byte-order mark. */
 function decodeUtf16(bytes: Uint8Array, littleEndian: boolean): string {
   if (bytes.length % 2 !== 0) {
-    throw new MusicXMLError('The document is UTF-16 but ends in the middle of a character.')
+    throw new MusicXMLError('The document is UTF-16 but ends in the middle of a character.', {
+      path: [],
+    })
   }
 
   const units = new Uint16Array((bytes.length - 2) / 2)

@@ -38,7 +38,7 @@ export function parseXmlRoot(source: string): XmlElement {
     /* v8 ignore next 3 -- the parser rejects a rootless document before
        returning, so this only guards against that contract changing. */
     if (!root) {
-      throw new MusicXMLError('The document has no root element.')
+      throw new MusicXMLError('The document has no root element.', { path: [] })
     }
     return convertElement(root, lineStarts(source))
   } catch (cause) {
@@ -93,6 +93,7 @@ function parseFailure(cause: unknown): MusicXMLError {
     .replace(/\s*\(line \d+, column \d+\)\s*$/, '')
   const line = (cause as { line?: unknown }).line
   return new MusicXMLError(summary, {
+    path: [],
     cause,
     ...(typeof line === 'number' ? { line } : {}),
   })

@@ -97,7 +97,7 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
     } else {
       message = `Expected a <score-partwise> document, found <${root.name}>.`
     }
-    throw new MusicXMLError(message, { line: root.line })
+    throw new MusicXMLError(message, { path: [], line: root.line })
   }
 
   const path: DocumentPath = ['score-partwise']

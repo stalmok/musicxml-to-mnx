@@ -45,7 +45,7 @@ function greatestCommonDivisor(a: number, b: number): number {
  */
 export function fraction(num: number, den = 1): Fraction {
   if (den === 0 || !Number.isSafeInteger(num) || !Number.isSafeInteger(den)) {
-    throw new MusicXMLError(`Invalid fraction: ${String(num)}/${String(den)}`)
+    throw new MusicXMLError(`Invalid fraction: ${String(num)}/${String(den)}`, { path: [] })
   }
   if (den < 0) {
     num = -num
@@ -100,6 +100,7 @@ function requireExactNumerators(
   throw new MusicXMLError(
     `Cannot ${operation} ${String(a.num)}/${String(a.den)} and ` +
       `${String(b.num)}/${String(b.den)} exactly.`,
+    { path: [] },
   )
 }
 
@@ -143,6 +144,7 @@ export function compareFractions(a: Fraction, b: Fraction): number {
     throw new MusicXMLError(
       `Cannot compare ${String(a.num)}/${String(a.den)} with ` +
         `${String(b.num)}/${String(b.den)} exactly.`,
+      { path: [] },
     )
   }
 

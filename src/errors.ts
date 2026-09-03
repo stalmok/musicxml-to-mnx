@@ -13,7 +13,12 @@ export function formatPath(path: DocumentPath): string {
 }
 
 export interface ErrorLocation {
-  path?: DocumentPath
+  /**
+   * Required, so that a refusal cannot be thrown without saying where it was
+   * found. Empty is the answer for a document-level failure, and stating it
+   * is what makes that a decision rather than an omission.
+   */
+  path: DocumentPath
   line?: number
   /** The lower-level failure this one wraps, kept for debugging. */
   cause?: unknown
@@ -31,11 +36,10 @@ export class MusicXMLError extends Error {
   readonly path: DocumentPath
   readonly line: number | undefined
 
-  constructor(message: string, location: ErrorLocation = {}) {
-    const path = location.path ?? []
-    super(message + formatLocation(path, location.line), { cause: location.cause })
+  constructor(message: string, location: ErrorLocation) {
+    super(message + formatLocation(location.path, location.line), { cause: location.cause })
     this.name = 'MusicXMLError'
-    this.path = path
+    this.path = location.path
     this.line = location.line
   }
 }

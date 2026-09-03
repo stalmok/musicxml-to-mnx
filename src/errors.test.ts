@@ -22,7 +22,7 @@ describe('MusicXMLError', () => {
   })
 
   test('reports the line alone when there is no path', () => {
-    const error = new MusicXMLError('Malformed XML', { line: 7 })
+    const error = new MusicXMLError('Malformed XML', { path: [], line: 7 })
 
     expect(error.message).toBe('Malformed XML (line 7)')
   })
@@ -33,8 +33,8 @@ describe('MusicXMLError', () => {
     expect(error.message).toBe('Unsupported document (at score-timewise)')
   })
 
-  test('leaves the message bare when there is no location at all', () => {
-    expect(new MusicXMLError('Empty document').message).toBe('Empty document')
+  test('leaves the message bare when the path is empty and there is no line', () => {
+    expect(new MusicXMLError('Empty document', { path: [] }).message).toBe('Empty document')
   })
 
   test('exposes the location for programmatic handling', () => {
@@ -45,7 +45,7 @@ describe('MusicXMLError', () => {
   })
 
   test('is a catchable Error subclass with its own name', () => {
-    const error = new MusicXMLError('Bad note')
+    const error = new MusicXMLError('Bad note', { path: [] })
 
     expect(error).toBeInstanceOf(Error)
     expect(error.name).toBe('MusicXMLError')
