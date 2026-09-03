@@ -75,6 +75,28 @@ import type {
 /** The MNX version this converter emits. */
 const MNX_VERSION = 1
 
+/**
+ * The ids measures go under. MNX writes a measure's id on the measure
+ * itself, in the global block, and everything else points at it, so asking
+ * for one is what makes it written: a rest, a system, a hairpin or an octave
+ * shift names the measure it reaches, and the global block then writes the
+ * ids that were named. Nothing can point at a measure left unnamed.
+ */
+class MeasureNames {
+  readonly #named = new Set<number>()
+
+  /** The id of the measure at this index, which is written out for it. */
+  of(index: number): string {
+    this.#named.add(index)
+    return `m${String(index + 1)}`
+  }
+
+  /** The id to write on this measure, where anything named it. */
+  written(index: number): string | undefined {
+    return this.#named.has(index) ? this.of(index) : undefined
+  }
+}
+
 export function writeMnx(score: Score): MNXDocument {
   const survey = surveyScore(score)
   const layouts = writeLayouts(score)
@@ -86,6 +108,20 @@ export function writeMnx(score: Score): MNXDocument {
   // output. A source that declared nothing is taken at what it wrote.
   const useAccidentalDisplay = score.declaresAccidentals ?? survey.drawsAccidentals
   const useBeams = score.declaresBeams ?? survey.writesBeams
+
+  // Written before the global block, because what they point at is what
+  // decides which measures the global block names.
+  const names = new MeasureNames()
+  // Every part carries its id once a layout is written, so the layout's
+  // staff sources have something to point at. The id is written verbatim:
+  // the reader renames any part id MNX's id pattern cannot state.
+  const parts = score.parts.map((part) =>
+    writePart(part, survey.referenced, names, layouts !== undefined, score.musicFont),
+  )
+  const scores = writeScores(score, names, layouts?.[0]?.id)
+  const measures = score.globalMeasures.map((measure, index) =>
+    writeGlobalMeasure(measure, names.written(index)),
+  )
 
   return {
     mnx: {
@@ -100,20 +136,13 @@ export function writeMnx(score: Score): MNXDocument {
         : {}),
     },
     global: {
-      measures: score.globalMeasures.map((measure, index) =>
-        writeGlobalMeasure(measure, survey.measureIds.get(index)),
-      ),
+      measures,
       ...writeLyricLines(survey.lyricLines),
       ...writeSounds(score),
     },
     ...(layouts ? { layouts } : {}),
-    // Every part carries its id once a layout is written, so the layout's
-    // staff sources have something to point at. The id is written verbatim:
-    // the reader renames any part id MNX's id pattern cannot state.
-    parts: score.parts.map((part) =>
-      writePart(part, survey.referenced, survey.measureIds, layouts !== undefined, score.musicFont),
-    ),
-    ...writeScores(score, survey.measureIds, layouts?.[0]?.id),
+    parts,
+    ...scores,
   }
 }
 
@@ -129,20 +158,12 @@ export function writeMnx(score: Score): MNXDocument {
  */
 function writeScores(
   score: Score,
-  measureIds: ReadonlyMap<number, string>,
+  names: MeasureNames,
   layout: string | undefined,
 ): Pick<MNXDocument, 'scores'> {
-  const measureId = (index: number, of: string): string => {
-    const id = measureIds.get(index)
-    /* v8 ignore next 2 -- surveyScore names every measure a multi-measure
-       rest or a system starts in, which is where this map comes from. */
-    if (id === undefined) throw new Error(`A ${of} starts in a measure with no id.`)
-    return id
-  }
-
   const rests = score.globalMeasures.flatMap((measure, index) => {
     if (measure.multimeasureRest === undefined) return []
-    return [{ start: measureId(index, 'multi-measure rest'), duration: measure.multimeasureRest }]
+    return [{ start: names.of(index), duration: measure.multimeasureRest }]
   })
 
   // Any break writes the whole page structure: the first system of the score
@@ -157,7 +178,7 @@ function writeScores(
         systems = []
       }
       if (index === 0 || measure.systemBreak || measure.pageBreak) {
-        systems.push({ measure: measureId(index, 'system') })
+        systems.push({ measure: names.of(index) })
       }
     })
     pages.push({ systems })
@@ -300,7 +321,6 @@ function surveyScore(score: Score): {
   referenced: ReadonlySet<string>
   drawsAccidentals: boolean
   writesBeams: boolean
-  measureIds: ReadonlyMap<number, string>
   lyricLines: ReadonlySet<string>
 } {
   // Ids exist so that a tie or slur can point at something. Writing them on
@@ -335,26 +355,10 @@ function surveyScore(score: Score): {
     }
   }
 
-  // A hairpin and an octave shift each point at the measure they stop in, a
-  // multi-measure rest at the measure it starts in, and a system at the
-  // measure it starts at, so those measures need naming. Deterministic, and
-  // in score order. Any break at all writes the whole page structure, which
-  // states the implicit first system, so measure one is named with it.
-  const pointedAt = new Set<number>()
-  const breaks = score.globalMeasures.some((measure) => measure.systemBreak || measure.pageBreak)
-  score.globalMeasures.forEach((measure, index) => {
-    if (measure.multimeasureRest !== undefined) pointedAt.add(index)
-    if (breaks && (index === 0 || measure.systemBreak || measure.pageBreak)) pointedAt.add(index)
-  })
-
   for (const part of score.parts) {
     for (const measure of part.measures) {
       fromBeams(measure.beams)
       for (const sequence of measure.sequences) walk(sequence.content)
-      for (const dynamic of measure.dynamics) {
-        if (dynamic.end) pointedAt.add(dynamic.end.measure)
-      }
-      for (const ottava of measure.ottavas) pointedAt.add(ottava.end.measure)
       // An arpeggio names the two notes it runs between, so those notes have
       // to be named in turn.
       for (const arpeggio of measure.arpeggios) {
@@ -364,12 +368,7 @@ function surveyScore(score: Score): {
     }
   }
 
-  const measureIds = new Map<number, string>()
-  for (const index of [...pointedAt].sort((a, b) => a - b)) {
-    measureIds.set(index, `m${String(index + 1)}`)
-  }
-
-  return { referenced, drawsAccidentals, writesBeams, measureIds, lyricLines }
+  return { referenced, drawsAccidentals, writesBeams, lyricLines }
 }
 
 /**
@@ -477,7 +476,7 @@ function writePosition(position: Fraction): MNXRhythmicPosition {
 function writePart(
   part: Part,
   referenced: ReadonlySet<string>,
-  measureIds: ReadonlyMap<number, string>,
+  names: MeasureNames,
   withId: boolean,
   musicFont: string | undefined,
 ): MNXPart {
@@ -490,20 +489,20 @@ function writePart(
     // MusicXML names the notation font once for the score, MNX per part, so
     // the one font goes on every part.
     ...(musicFont !== undefined ? { smuflFont: musicFont } : {}),
-    measures: part.measures.map((measure) => writeMeasure(measure, referenced, measureIds)),
+    measures: part.measures.map((measure) => writeMeasure(measure, referenced, names)),
   }
 }
 
 function writeMeasure(
   measure: Measure,
   referenced: ReadonlySet<string>,
-  measureIds: ReadonlyMap<number, string>,
+  names: MeasureNames,
 ): MNXPartMeasure {
   return {
     ...(measure.clefs.length > 0 ? { clefs: measure.clefs.map(writeClef) } : {}),
     ...(measure.beams.length > 0 ? { beams: measure.beams.map(writeBeam) } : {}),
     ...(measure.dynamics.length > 0
-      ? { dynamics: measure.dynamics.map((dynamic) => writeDynamic(dynamic, measureIds)) }
+      ? { dynamics: measure.dynamics.map((dynamic) => writeDynamic(dynamic, names)) }
       : {}),
     // MNX keeps the two apart: a rolled chord and one bracketed as struck
     // together are opposite instructions, so they are separate lists.
@@ -515,7 +514,7 @@ function writeMeasure(
       ? {
           ottavas: measure.ottavas.map((ottava) => ({
             position: writePosition(ottava.position),
-            end: writeSpanEnd(ottava.end, measureIds),
+            end: writeSpanEnd(ottava.end, names),
             value: ottava.value,
             ...(ottava.staff !== undefined ? { staff: ottava.staff } : {}),
             ...(ottava.orient !== undefined ? { orient: ottava.orient } : {}),
@@ -566,7 +565,7 @@ function writeArpeggios(
  * is written. The wording a source wraps the mark in goes over as the prefix
  * and suffix drawn around it.
  */
-function writeDynamic(dynamic: Dynamic, measureIds: ReadonlyMap<number, string>): MNXDynamic {
+function writeDynamic(dynamic: Dynamic, names: MeasureNames): MNXDynamic {
   return {
     position: writePosition(dynamic.position),
     type: dynamic.wedge ? 'gradual' : dynamic.accent ? 'accent' : 'immediate',
@@ -582,7 +581,7 @@ function writeDynamic(dynamic: Dynamic, measureIds: ReadonlyMap<number, string>)
     ...(dynamic.prefix !== undefined ? { prefix: dynamic.prefix } : {}),
     ...(dynamic.suffix !== undefined ? { suffix: dynamic.suffix } : {}),
     ...(dynamic.wedge ? { wedgeType: dynamic.wedge } : {}),
-    ...(dynamic.end ? { end: writeSpanEnd(dynamic.end, measureIds) } : {}),
+    ...(dynamic.end ? { end: writeSpanEnd(dynamic.end, names) } : {}),
     ...(dynamic.staff !== undefined ? { staff: dynamic.staff } : {}),
     ...(dynamic.orient ? { orient: dynamic.orient } : {}),
   }
@@ -590,12 +589,9 @@ function writeDynamic(dynamic: Dynamic, measureIds: ReadonlyMap<number, string>)
 
 function writeSpanEnd(
   end: { measure: number; position: Fraction; graceIndex?: number },
-  measureIds: ReadonlyMap<number, string>,
+  names: MeasureNames,
 ): MNXMeasureRhythmicPosition {
-  const measure = measureIds.get(end.measure)
-  /* v8 ignore next -- surveyScore names every measure a span ends in,
-     which is where this map comes from. */
-  if (measure === undefined) throw new Error('A span ends in a measure with no id.')
+  const measure = names.of(end.measure)
 
   return {
     measure,
