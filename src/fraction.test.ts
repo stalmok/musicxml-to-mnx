@@ -121,6 +121,18 @@ describe('staying within exact arithmetic', () => {
     expect(divideFractions(a, a)).toEqual({ num: 1, den: 1 })
   })
 
+  // Two numerators that each run past the safe integer range and all but
+  // cancel. Checking only the sum leaves a small wrong answer looking exact:
+  // this pair gives 2/15 where the exact difference is 1/15.
+  test('refuses rather than guess where a numerator cannot be scaled exactly', () => {
+    const a = fraction(3002399751580331, 3)
+    const b = fraction(5003999585967218, 5)
+
+    expect(() => subtractFractions(a, b)).toThrow(MusicXMLError)
+    expect(() => subtractFractions(a, b)).toThrow('Cannot subtract')
+    expect(() => addFractions(a, b)).toThrow('Cannot add')
+  })
+
   test('divides without building a product it does not need', () => {
     const a = fraction(2 ** 27, 3)
     const b = fraction(2 ** 27, 2 ** 26 + 1)

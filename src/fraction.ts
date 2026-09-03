@@ -51,14 +51,41 @@ export function addFractions(a: Fraction, b: Fraction): Fraction {
   const common = greatestCommonDivisor(a.den, b.den)
   const aScale = b.den / common
   const bScale = a.den / common
-  return fraction(a.num * aScale + b.num * bScale, a.den * aScale)
+  const left = a.num * aScale
+  const right = b.num * bScale
+  requireExactNumerators(left, right, a, b, 'add')
+  return fraction(left + right, a.den * aScale)
 }
 
 export function subtractFractions(a: Fraction, b: Fraction): Fraction {
   const common = greatestCommonDivisor(a.den, b.den)
   const aScale = b.den / common
   const bScale = a.den / common
-  return fraction(a.num * aScale - b.num * bScale, a.den * aScale)
+  const left = a.num * aScale
+  const right = b.num * bScale
+  requireExactNumerators(left, right, a, b, 'subtract')
+  return fraction(left - right, a.den * aScale)
+}
+
+/**
+ * Refuses a pair whose scaled numerators cannot be held exactly. Checked
+ * before the two are combined, not after: two that each run past the safe
+ * integer range can all but cancel, leaving a small result that fraction()
+ * takes for an exact one. compareFractions checks its two sides for the same
+ * reason.
+ */
+function requireExactNumerators(
+  left: number,
+  right: number,
+  a: Fraction,
+  b: Fraction,
+  operation: 'add' | 'subtract',
+): void {
+  if (Number.isSafeInteger(left) && Number.isSafeInteger(right)) return
+  throw new MusicXMLError(
+    `Cannot ${operation} ${String(a.num)}/${String(a.den)} and ` +
+      `${String(b.num)}/${String(b.den)} exactly.`,
+  )
 }
 
 export function multiplyFractions(a: Fraction, b: Fraction): Fraction {
