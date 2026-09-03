@@ -264,17 +264,20 @@ export function isConverterGap(code: WarningCode): code is ConverterGap {
  * so no release changes them.
  */
 export function isSourceProblem(code: WarningCode): code is SourceProblem {
-  const prefix = code.slice(0, code.indexOf(':'))
-  return SOURCE_PROBLEM_PREFIXES.has(prefix)
+  return Object.hasOwn(SOURCE_PROBLEM_PREFIXES, code.slice(0, code.indexOf(':')))
 }
 
-const SOURCE_PROBLEM_PREFIXES: ReadonlySet<string> = new Set<SourceProblemPrefix>([
-  'inconsistent',
-  'missing',
-  'unresolved',
-  'unclosed',
-  'redundant',
-])
+// Keyed by the union rather than listed, so a prefix the union gains and this
+// table lacks does not compile. A list of the same five would let the two
+// drift: categoryOf would call the new prefix a source problem while
+// isSourceProblem, which consumers hold, called it none.
+const SOURCE_PROBLEM_PREFIXES: Record<SourceProblemPrefix, true> = {
+  inconsistent: true,
+  missing: true,
+  unresolved: true,
+  unclosed: true,
+  redundant: true,
+}
 
 /**
  * Which of the three kinds a code names. Every code names one, and the
