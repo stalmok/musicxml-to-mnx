@@ -59,3 +59,6 @@ chore:
 6. Regenerate fixture goldens and review every diff, because a changed golden is a
    changed wire format, not a formality.
 7. Re-run the corpus gate and record any movement in the warning baseline.
+8. State the type changes in the release notes. The package exports every type
+   in `src/types/mnx.ts`, so a shape the schema changed is a breaking change
+   for anyone who names it.

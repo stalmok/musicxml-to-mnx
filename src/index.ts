@@ -4,7 +4,7 @@
 // boundary between the reader and the writer, not API.
 
 export { convertMusicXML } from './convert.js'
-export type { ConversionResult } from './convert.js'
+export type { ConversionOptions, ConversionResult } from './convert.js'
 
 export { MusicXMLError } from './errors.js'
 export type { DocumentPath } from './errors.js'

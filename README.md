@@ -46,6 +46,14 @@ import { readFileSync } from 'node:fs'
 const { mnx } = convertMusicXML(readFileSync('song.mxl'))
 ```
 
+MNX asks a score rendering to be named, and MusicXML has no name for one: a
+work's title names the work, not a rendering of it. Give the name yourself
+where the output states a rendering. The default is "Score".
+
+```ts
+const { mnx } = convertMusicXML(source, { scoreName: 'Erlkönig' })
+```
+
 If the input has a broken structure, the converter throws a `MusicXMLError`.
 The error gives the document path and the source line:
 
@@ -60,6 +68,11 @@ try {
   }
 }
 ```
+
+The whole document is converted at once. There is no streaming and no partial
+result: the source, the parsed tree, the internal model and the output all
+live at the same time. This is not a limit for a song; it is one for a large
+orchestral score.
 
 ---
 
@@ -275,6 +288,10 @@ MNX is a draft that changes. Each release pins one
 at `schema/mnx-schema.json`. [`schema/PROVENANCE.md`](schema/PROVENANCE.md)
 records its source commit and its checksum. The test suite validates each
 conversion against the schema.
+
+The package exports the whole MNX output vocabulary as types, so anything in
+an `MNXDocument` can be named. Those types state the pinned schema. Moving the
+pin can therefore change them, and a release that moves it says so.
 
 ---
 

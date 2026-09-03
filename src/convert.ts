@@ -6,7 +6,11 @@ import type { MNXDocument } from './types/mnx.js'
 import { WarningCollector } from './warnings.js'
 import type { ConversionWarning } from './warnings.js'
 import { writeMnx } from './write/mnx.js'
+import type { WriterOptions } from './write/mnx.js'
 import { parseXmlRoot } from './xml/parse.js'
+
+/** What a caller can say about the conversion. */
+export type ConversionOptions = WriterOptions
 
 export interface ConversionResult {
   /** The converted document. */
@@ -28,9 +32,12 @@ export interface ConversionResult {
  * @throws {MusicXMLError} if the source is not well-formed, or encodes
  * something that cannot be converted faithfully.
  */
-export function convertMusicXML(source: string | Uint8Array): ConversionResult {
+export function convertMusicXML(
+  source: string | Uint8Array,
+  options: ConversionOptions = {},
+): ConversionResult {
   const warnings = new WarningCollector()
   const score = readScore(parseXmlRoot(readMusicXML(source)), warnings)
 
-  return { mnx: writeMnx(score), warnings: warnings.list() }
+  return { mnx: writeMnx(score, options), warnings: warnings.list() }
 }

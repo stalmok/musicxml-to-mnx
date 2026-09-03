@@ -75,6 +75,19 @@ import type {
 /** The MNX version this converter emits. */
 const MNX_VERSION = 1
 
+/** What the one score rendering is called where the caller names none. */
+const DEFAULT_SCORE_NAME = 'Score'
+
+/** What a caller can say about the document written. */
+export interface WriterOptions {
+  /**
+   * The name of the score rendering the output writes. MNX requires one to be
+   * named, and MusicXML has nothing that answers it: a work's title names the
+   * work, not a rendering of it. Defaults to "Score".
+   */
+  scoreName?: string
+}
+
 /**
  * The ids measures go under. MNX writes a measure's id on the measure
  * itself, in the global block, and everything else points at it, so asking
@@ -97,7 +110,7 @@ class MeasureNames {
   }
 }
 
-export function writeMnx(score: Score): MNXDocument {
+export function writeMnx(score: Score, options: WriterOptions = {}): MNXDocument {
   const survey = surveyScore(score)
   const layouts = writeLayouts(score)
 
@@ -118,7 +131,12 @@ export function writeMnx(score: Score): MNXDocument {
   const parts = score.parts.map((part) =>
     writePart(part, survey.referenced, names, layouts !== undefined, score.musicFont),
   )
-  const scores = writeScores(score, names, layouts?.[0]?.id)
+  const scores = writeScores(
+    score,
+    names,
+    layouts?.[0]?.id,
+    options.scoreName ?? DEFAULT_SCORE_NAME,
+  )
   const measures = score.globalMeasures.map((measure, index) =>
     writeGlobalMeasure(measure, names.written(index)),
   )
@@ -160,6 +178,7 @@ function writeScores(
   score: Score,
   names: MeasureNames,
   layout: string | undefined,
+  name: string,
 ): Pick<MNXDocument, 'scores'> {
   const rests = score.globalMeasures.flatMap((measure, index) => {
     if (measure.multimeasureRest === undefined) return []
@@ -186,14 +205,15 @@ function writeScores(
 
   if (rests.length === 0 && pages.length === 0 && layout === undefined) return {}
 
-  // MNX requires a score rendering to be named, and the model has no name to
+  // MNX requires a score rendering to be named. The model has no name to
   // give: the source's work and movement titles are not converted (they are a
-  // separate gap, and keep warning), so a fixed placeholder names the one
-  // rendering written.
+  // separate gap, and keep warning), and a work's title names the work rather
+  // than a rendering of it. So the caller's name is used, and a placeholder
+  // where the caller states none.
   return {
     scores: [
       {
-        name: 'Score',
+        name,
         ...(layout !== undefined ? { layout } : {}),
         ...(rests.length > 0 ? { multimeasureRests: rests } : {}),
         ...(pages.length > 0 ? { pages } : {}),
