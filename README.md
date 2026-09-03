@@ -180,9 +180,10 @@ The exit code is the contract for a pipeline:
   staff. A voice that reaches the other staff carries overrides on its
   events.
 - Part groups. Brackets and braces become nested staff groups. The converter
-  reports groups with edges that cross. If a part id does not agree with the
-  MNX id pattern, the converter renames the part to p1, p2, and so on. It
-  reports each rename.
+  reports groups with edges that cross. The converter renames a part id that
+  does not fit the MNX id pattern. It also renames an id shaped like one that
+  the converter gives an event, note, measure, or layout. The new id is p1,
+  p2, and so on, and the converter reports each rename.
 - System breaks and page breaks. They become pages and systems in the score
   rendering.
 - Instrument names from the part list. They become the sounds of the score.
@@ -192,9 +193,11 @@ The exit code is the contract for a pipeline:
 - Ties and slurs, joined across barlines. The converter reports a tie or a
   slur with only one end.
 - Exact timing. The converter reads durations as exact fractions of
-  `<divisions>`, and it follows `<backup>` and `<forward>`. A silent gap in a
-  voice becomes a space. If a note states no note value, the converter
-  calculates the value from the duration. A rest that fills its measure keeps
+  `<divisions>`, and it follows `<backup>` and `<forward>`. If a `<backup>`
+  reaches before the measure start, the cursor goes to the measure start and
+  the converter reports the disagreement. A silent gap in a voice becomes a
+  space. If a note states no note value, the converter calculates the value
+  from the duration. A rest that fills its measure keeps
   no invented note value.
 
 **Planned for v1:** free text directions. The pinned snapshot of the spec has
@@ -243,11 +246,12 @@ The other files are refusals, and each refusal names its reason. Some files
 hold notation that MNX cannot state: percussion clefs and TAB clefs,
 microtone alterations, and composite meters such as 3+2/8. Other files
 disagree with themselves. Examples are a tuplet that opens and never closes,
-and a backup that reaches before the measure start. Another example is a
-voice that rests through the same measure two times. In the PDMX sample, the two clef limits
-cause 580 of the 786 refusals, because MuseScore.com holds much drum music
-and guitar music. In the CPDL sample, the largest group is hymnals that write
-two lines over each other in one voice. The converter refuses these files and
+and a note that overlaps the note before it in the same voice. Another
+example is a voice that rests through the same measure two times. In the
+PDMX sample, the two clef limits cause 580 of the 786 refusals, because
+MuseScore.com holds much drum music and guitar music. In the CPDL sample,
+the largest group is hymnals that write two lines over each other in one
+voice. The converter refuses these files and
 does not guess the lines apart.
 
 The test suite converts 600 vendored Lieder songs on each run. CI runs the
