@@ -47,7 +47,10 @@ src/
     attributes.ts      reads divisions, staves, key, time, clef, and measure
                        style (multi-measure rests, measure repeats)
     notes.ts           reads a <note>: pitch, value, ties, slurs, accidentals
-    voices.ts          moves the cursor and makes one sequence for each voice
+    voices.ts          moves the cursor and makes one sequence for each voice,
+                       and holds what is open around a note: the tuplet and
+                       tremolo brackets, the grace group, the rolled chords,
+                       and what each event said about its beams
     spanners.ts        joins the two ends of a tie, slur, hairpin, or octave
                        shift, and makes event ids
     beams.ts           makes the MNX tree of beams from per-note beam marks
@@ -89,6 +92,13 @@ bundle, and it carries the shebang that the library must not have.
 The reader has the most structure, and it is split so that each file answers
 one question. `score.ts` holds the walk and nothing that can move off it,
 because the walk must stay in document order.
+
+`notes.ts` and `voices.ts` are one thing in two files. `notes.ts` reads a
+`<note>` and calls the `MeasureBuilder` in `voices.ts` in the order the
+element gives: the note joins its voice, then its notations are read against
+the event it made. That order is the contract between them, and it is why a
+chord note finds an event to join and a tuplet marker finds a bracket to
+close.
 
 Rules in `.dependency-cruiser.js` enforce the stage boundaries
 (`pnpm deps:check`). They are not left to discipline. A crossing is an
