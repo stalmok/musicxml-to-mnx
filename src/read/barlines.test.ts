@@ -266,6 +266,38 @@ describe('repeat signs', () => {
   })
 })
 
+describe('a mark on the opening edge of a measure', () => {
+  // MNX states a fermata over the barline that closes a measure, so one
+  // written at the opening edge would have to move to the measure before.
+  test('reports a fermata written at the start of a measure', () => {
+    const { globals, warnings } = read(
+      NOTE,
+      left('<fermata type="upright">normal</fermata>') + NOTE,
+    )
+
+    expect(globals[1]?.fermata).toBeUndefined()
+    expect(warnings.map((one) => ({ code: one.code, element: one.element }))).toEqual([
+      { code: 'unrepresentable:barline', element: 'fermata' },
+    ])
+    expect(warnings[0]?.message).toBe(
+      'A fermata is written at the start of a measure, and MNX states one over the ' +
+        'barline that closes a measure.',
+    )
+  })
+})
+
+describe('a repeat sign', () => {
+  // MusicXML's repeat runs forward or backward. Anything else names no sign
+  // this converter draws, and the report says which word was written.
+  test('reports a repeat in a direction it does not know, and names it', () => {
+    const { warnings } = read(NOTE + right('<repeat direction="sideways"/>'))
+
+    expect(warnings.map((one) => one.message)).toEqual([
+      'A <repeat> in direction "sideways" is not converted yet.',
+    ])
+  })
+})
+
 describe('first and second time endings', () => {
   test('states one on the measure it starts, as the measures it covers', () => {
     const { globals, warnings } = read(
@@ -285,6 +317,17 @@ describe('first and second time endings', () => {
     )
 
     expect(globals[0]?.ending?.duration).toBe(1)
+  })
+
+  // The count is measured from the measure the bracket opened on, not from
+  // the start of the score.
+  test('counts an ending that opens and closes past the first measure', () => {
+    const { globals } = read(
+      NOTE,
+      left('<ending number="1" type="start"/>') + NOTE + right('<ending number="1" type="stop"/>'),
+    )
+
+    expect(globals[1]?.ending?.duration).toBe(1)
   })
 
   // MusicXML writes the times as a comma-separated list.

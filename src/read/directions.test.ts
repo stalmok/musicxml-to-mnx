@@ -1043,6 +1043,12 @@ describe('tempo', () => {
 
     expect(global?.tempos).toEqual([])
     expect(warnings.map((w) => w.code)).toContain('unrepresentable:tempo')
+    // Reported as the missing number it is, rather than as a tempo written
+    // in a word the converter cannot read.
+    expect(warnings[0]?.message).toBe(
+      'A <metronome> with no beats-per-minute number cannot be expressed in MNX, ' +
+        'which states a tempo as beats per minute.',
+    )
   })
 
   // MNX states beats per minute as a number, so a source that writes a

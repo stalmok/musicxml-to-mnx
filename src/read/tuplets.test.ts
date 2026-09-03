@@ -1363,6 +1363,27 @@ describe('a tuplet marker on a chord member', () => {
     expect(content?.[0]?.kind === 'tuplet' && content[0].content).toHaveLength(3)
   })
 
+  // The record of a dropped start outlives the brackets around it, so a stop
+  // naming it is swallowed even after every bracket has closed. Read as an
+  // ordinary stop it would close a bracket nothing had opened.
+  test('swallows the stop of a dropped start after every bracket has closed', () => {
+    const after =
+      '<note><pitch><step>G</step><octave>4</octave></pitch><duration>12</duration>' +
+      '<type>quarter</type><notations><tuplet type="stop" number="2"/></notations></note>'
+    const { content, warnings } = read(
+      measure(
+        numbered('C', 'start', '1') +
+          chordMember('<tuplet type="start" number="2"/>') +
+          tupletNote('D', 4, 'eighth') +
+          numbered('E', 'stop', '1') +
+          after,
+      ),
+    )
+
+    expect(content?.map((item) => item.kind)).toEqual(['tuplet', 'event'])
+    expect(warnings.map((one) => one.code)).toEqual(['unsupported:element'])
+  })
+
   test('drops the stop that matches a start dropped on a chord member', () => {
     const stops = '<tuplet type="stop" number="2"/><tuplet type="stop" number="1"/>'
     const stopsBoth =
