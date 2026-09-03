@@ -1122,6 +1122,19 @@ describe('a bracket the source states no ratio for', () => {
 
     expect(readFailure(measure(doubled)).message).toContain('More than one tuplet starts')
   })
+
+  // One marker stating its own ratio does not say what the other bracket's
+  // share is, so the note is refused as soon as any of them leaves it open.
+  test('rejects two brackets where only one states its own ratio', () => {
+    const half =
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+      '<type>eighth</type><notations>' +
+      '<tuplet type="start" number="1"><tuplet-actual><tuplet-number>3</tuplet-number>' +
+      '<tuplet-type>eighth</tuplet-type></tuplet-actual></tuplet>' +
+      '<tuplet type="start" number="2"/></notations></note>'
+
+    expect(readFailure(measure(half)).message).toContain('More than one tuplet starts')
+  })
 })
 
 // A note inside a tuplet is weighed against its written value scaled by the
@@ -1287,6 +1300,48 @@ describe('a tuplet marker on a chord member', () => {
 
     expect(warnings).toEqual([])
     expect(content?.map((item) => item.kind)).toEqual(['tuplet'])
+  })
+
+  // A marker is weighed by its type and its number together. A member stating
+  // a different number states a bracket of its own, whatever the chord's
+  // marker is.
+  const numbered = (step: string, type: string, number: string) =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    '<duration>4</duration><type>eighth</type>' +
+    '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+    '</time-modification>' +
+    `<notations><tuplet type="${type}" number="${number}"/></notations></note>`
+
+  test('reports a start whose number differs from the marker the chord carries', () => {
+    const { warnings } = read(
+      measure(
+        numbered('C', 'start', '1') +
+          chordMember('<tuplet type="start" number="2"/>') +
+          tupletNote('D', 4, 'eighth') +
+          numbered('E', 'stop', '1'),
+      ),
+    )
+
+    expect(warnings.map((one) => ({ code: one.code, element: one.element }))).toEqual([
+      { code: 'unsupported:element', element: 'tuplet' },
+    ])
+  })
+
+  // The other half of the same key: the same number and the other type is a
+  // marker of the member's own too.
+  test('reports a start where the marker the chord carries of that number is a stop', () => {
+    const { warnings } = read(
+      measure(
+        numbered('C', 'start', '1') +
+          tupletNote('D', 4, 'eighth') +
+          numbered('E', 'stop', '1') +
+          chordMember('<tuplet type="start" number="1"/>'),
+      ),
+    )
+
+    expect(warnings.map((one) => ({ code: one.code, element: one.element }))).toEqual([
+      { code: 'unsupported:element', element: 'tuplet' },
+    ])
   })
 
   test('reports a start written on a chord member', () => {

@@ -522,6 +522,28 @@ describe('let-ring and the drawn side', () => {
     expect(warnings.map((w) => w.code)).not.toContain('unsupported:attribute')
   })
 
+  // A note in the middle of a chain states both edges. The side belongs to the
+  // tie the note starts, so the stop's is read and dropped even though it is
+  // written first.
+  test('takes the side from the start where the note also ends a tie', () => {
+    const { notes, warnings } = read(
+      measures(
+        DIVISIONS +
+          note('C', '<tie type="start"/><notations><tied type="start"/></notations>') +
+          note(
+            'C',
+            '<tie type="stop"/><tie type="start"/><notations>' +
+              '<tied type="stop" orientation="under"/>' +
+              '<tied type="start" orientation="over"/></notations>',
+          ) +
+          note('C', '<tie type="stop"/><notations><tied type="stop"/></notations>'),
+      ),
+    )
+
+    expect(notes[1]?.ties[0]?.side).toBe('up')
+    expect(warnings).toEqual([])
+  })
+
   test('writes let-ring and side onto schema-valid MNX', () => {
     const { mnx } = convertMusicXML(
       measures(
@@ -1042,6 +1064,20 @@ describe('slurs', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 
+  // The other endpoint, for the same reason: a slur beginning on the rest is
+  // stated on the event it begins from, and the sequence-level rest is not one.
+  test('starts a slur on a measure-filling rest, which stays an event to carry it', () => {
+    const fullRest =
+      '<note><rest measure="yes"/><duration>4</duration><type>quarter</type><voice>1</voice>' +
+      '<notations><slur type="start" number="1"/></notations></note>'
+    const { events, warnings } = read(measures(DIVISIONS + fullRest, note('G', slur('stop'))))
+    const [rest, second] = events
+
+    expect(rest?.isRest).toBe(true)
+    expect(rest?.slurs[0]?.target).toBe(second?.id)
+    expect(warnings).toEqual([])
+  })
+
   // A slur only passing over the rest carries no endpoint, so it needs no event
   // to target. The rest keeps the sequence-level full-measure form.
   test('keeps the full-measure form when a slur only passes over the rest', () => {
@@ -1479,6 +1515,30 @@ describe('the order the ends of a span are read in', () => {
       joined: ['span'],
       reported: [],
     })
+  })
+
+  // The same rule read through the reader, which is where the flag is set. A
+  // note joining the chord before it is not a grace note, whatever the chord
+  // is: its tie is a beat end, so a grace end at the same point in another
+  // voice is read first and closes nothing.
+  test('reads a grace end before the end a chord member carries', () => {
+    const { warnings } = readAllVoices(
+      measures(
+        DIVISIONS +
+          note('E') +
+          '<note><chord/><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+          `<type>quarter</type><voice>1</voice>${tied('start')}</note>` +
+          '<backup><duration>4</duration></backup>' +
+          '<note><grace/><pitch><step>C</step><octave>4</octave></pitch><type>eighth</type>' +
+          `<voice>2</voice>${tied('stop')}</note>` +
+          note('G', '', '2'),
+      ),
+    )
+
+    expect(warnings.map((one) => one.message)).toEqual([
+      'A tie ends on a note where none had started, and is not carried over.',
+      'A tie starts on a note that nothing ties to, and is not carried over.',
+    ])
   })
 
   // Under stop-first a stop at the same point as a start closes what was open

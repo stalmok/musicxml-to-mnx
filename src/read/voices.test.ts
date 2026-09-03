@@ -166,6 +166,22 @@ describe('chords', () => {
     expect(warnings.map((w) => w.code)).toEqual(['inconsistent:duration'])
   })
 
+  // The written values agree on the note but not on its dots, which is a
+  // disagreement like any other: the member is not the value the chord is
+  // written as, so its duration is the one weighed against the chord's.
+  test('rejects a chord member written with the same note but fewer dots', () => {
+    expect(
+      readFailure(
+        measure(
+          '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+            '<duration>12</duration><voice>1</voice><type>half</type><dot/></note>' +
+            '<note><chord/><pitch><step>E</step><octave>4</octave></pitch>' +
+            '<duration>8</duration><voice>1</voice><type>half</type></note>',
+        ),
+      ).message,
+    ).toContain('lasts a different time from the chord')
+  })
+
   test('rejects a chord member whose duration and written value both disagree', () => {
     expect(
       readFailure(
