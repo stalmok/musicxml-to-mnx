@@ -143,6 +143,19 @@ describe('a beam', () => {
     ).toEqual(['beam'])
   })
 
+  // MusicXML's default. It draws the beam the ordinary way, so there is
+  // nothing to report and nothing to carry.
+  test('says nothing about a beam fanned as "none", which draws the plain beam', () => {
+    expect(
+      lost(
+        measure(
+          note('<beam number="1" fan="none">begin</beam>') +
+            note('<beam number="1">end</beam>', 'D'),
+        ),
+      ),
+    ).toEqual([])
+  })
+
   test('says nothing about a plain beam, which is carried over', () => {
     expect(
       lost(
