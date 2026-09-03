@@ -299,6 +299,31 @@ describe('where an octave shift runs', () => {
     expect(warnings).toEqual([])
   })
 
+  // A named staff that holds nothing here. MNX writes a whole-measure rest as
+  // the measure's own rather than as an event, so a staff carrying only one
+  // has no event for the stop to land on, and poldowski-l-heure-exquise stops
+  // two shifts exactly there. Leaving the stop where it was written ended
+  // them on the bar line, where nothing begins.
+  test('ends on the other staff where its own holds no event', () => {
+    const { ottavas, warnings } = read(
+      '<attributes><divisions>4</divisions><staves>2</staves></attributes>' +
+        shift('down', '8', '<staff>2</staff>') +
+        '<note><voice>1</voice><pitch><step>C</step><octave>4</octave></pitch>' +
+        '<duration>4</duration><type>quarter</type><staff>1</staff></note>' +
+        '<note><voice>1</voice><pitch><step>D</step><octave>4</octave></pitch>' +
+        '<duration>4</duration><type>quarter</type><staff>1</staff></note>' +
+        '<backup><duration>8</duration></backup>' +
+        '<note><rest measure="yes"/><voice>5</voice><duration>8</duration>' +
+        '<staff>2</staff></note>' +
+        shift('stop', '8', '<staff>2</staff>'),
+    )
+
+    // The staff 1 quarter a quarter in, which is the last event the stop
+    // passed, rather than the half note the measure runs to.
+    expect(ottavas[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 1, den: 4 } })
+    expect(warnings).toEqual([])
+  })
+
   // Both hands hold a shift numbered 1 at once, which is what an exporter
   // that numbers each hand from 1 writes. On the number alone each closes on
   // the other hand's stop, and both get the wrong extent.

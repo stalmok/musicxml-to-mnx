@@ -1023,9 +1023,18 @@ export class SpannerResolver {
     }
 
     // Only an octave shift moves back off the point its stop was written at.
+    //
+    // Failing an event on the staff the stop names, the last on any staff.
+    // A source can name a staff that holds nothing here: poldowski-l-heure-
+    // exquise stops two shifts on staff 2 over a measure whose staff 2 is one
+    // whole-measure rest, and MNX writes such a rest as the measure's own
+    // rather than as an event. Leaving the stop where it was written ended
+    // those shifts on the bar line, which is a place no event begins. The
+    // fallback is the one the pairing already makes for the same reason: a
+    // source naming the staff on one end only means the end that names it.
     for (const end of stoppingHere(this.#ottavaEnds)) {
       if (overGraceNotes(end)) continue
-      const covered = lastEventBefore(end.covers, end.staff)
+      const covered = lastEventBefore(end.covers, end.staff) ?? lastEventBefore(end.covers)
       if (!covered) continue
       end.covers = covered.start
       if (covered.graceIndex !== undefined) end.coversGraceIndex = covered.graceIndex
