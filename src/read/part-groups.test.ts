@@ -18,6 +18,17 @@ function score(partList: string, parts: string): string {
   return `<score-partwise version="4.0"><part-list>${partList}</part-list>${parts}</score-partwise>`
 }
 
+/** The error a structurally broken document is refused with. */
+function failure(source: string): MusicXMLError {
+  try {
+    convertMusicXML(source)
+  } catch (error) {
+    if (error instanceof MusicXMLError) return error
+    throw error
+  }
+  throw new Error('The document was expected to be refused.')
+}
+
 describe('part groups', () => {
   test('turns a bracket group over two parts into a layout staff group', () => {
     const { mnx, warnings } = convertMusicXML(
@@ -738,6 +749,9 @@ describe('part groups', () => {
 
     expect(() => convertMusicXML(source)).toThrow(MusicXMLError)
     expect(() => convertMusicXML(source)).toThrow('missing a "type" attribute')
+    // The refusal says where in the document it was found, which is the only
+    // thing pointing a reader at the entry to fix.
+    expect(failure(source).path).toEqual(['score-partwise', 'part-list', 'part-group'])
   })
 
   test('refuses a part-group whose type is neither start nor stop', () => {
@@ -748,6 +762,17 @@ describe('part groups', () => {
 
     expect(() => convertMusicXML(source)).toThrow(MusicXMLError)
     expect(() => convertMusicXML(source)).toThrow('"start" or "stop"')
+    expect(failure(source).path).toEqual(['score-partwise', 'part-list', 'part-group'])
+  })
+
+  // The part list holds score parts and part groups. Anything else is not an
+  // edge of a group: it is read by nothing and reported as a whole.
+  test('reports a part-list child that is neither a score part nor a group', () => {
+    const { warnings } = convertMusicXML(score('<score-part id="P1"/><part-order/>', part('P1')))
+
+    expect(warnings.map((one) => ({ code: one.code, element: one.element }))).toEqual([
+      { code: 'unsupported:element', element: 'part-order' },
+    ])
   })
 
   // Everything in a <part-group> that is not the symbol, the name or the

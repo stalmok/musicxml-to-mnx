@@ -145,6 +145,18 @@ describe('a multi-measure rest', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 
+  // A part playing through the passage states no count, which is not a
+  // disagreement about the count: only two parts stating different ones are.
+  test('does not report a part that states no count at all', () => {
+    const { mnx, warnings } = convert(
+      part('P1', RESTING),
+      part('P2', [{ body: NOTE }, { body: NOTE }, { body: NOTE }, { body: NOTE }]),
+    )
+
+    expect(mnx.scores?.[0]?.multimeasureRests?.[0]?.duration).toBe(3)
+    expect(warnings).toEqual([])
+  })
+
   // The choice between the single thick bar and the stacked church-rest
   // symbols. MNX has no way to state it, so the rest is drawn the default way.
   test('reports a rest drawn with symbols, and converts it anyway', () => {

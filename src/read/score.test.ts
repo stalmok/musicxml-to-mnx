@@ -1270,6 +1270,20 @@ describe('several parts', () => {
     expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 5 })
   })
 
+  // A part labelling the measure by its position states no label at all, so
+  // there is nothing for it to disagree with.
+  test('says nothing where one part labels the measure by its position', () => {
+    const { score: result, warnings } = read(
+      score(
+        `<part id="P1"><measure number="0">${NOTE}</measure></part>` +
+          `<part id="P2"><measure number="1">${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.number).toBe(0)
+    expect(warnings).toEqual([])
+  })
+
   test('says nothing where the parts restate the same measure number', () => {
     const { score: result, warnings } = read(
       score(
@@ -1490,6 +1504,24 @@ describe('two parts disagreeing on one field of a mark', () => {
     expect(warnings.map((w) => w.element)).toEqual(['ending'])
   })
 
+  // Two brackets over the same count of times, agreeing on the first and not
+  // on the rest. Every number is compared, not just the one that happens to
+  // match.
+  test('reports an ending whose later numbers differ', () => {
+    const bracketed = (numbers: string) =>
+      `<barline location="left"><ending number="${numbers}" type="start"/></barline>` +
+      `${NOTE}<barline location="right"><ending number="${numbers}" type="stop"/></barline>`
+    const { score: result, warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${bracketed('1,2')}</measure></part>` +
+          `<part id="P2"><measure number="1">${bracketed('1,3')}</measure></part>`,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.ending?.numbers).toEqual([1, 2])
+    expect(warnings.map((one) => one.element)).toEqual(['ending'])
+  })
+
   // One part brackets a single measure and the other brackets two, so the
   // same numbers cover a different stretch of music.
   test('reports an ending spanning different numbers of measures', () => {
@@ -1596,7 +1628,7 @@ describe('a tempo stated by more than one part', () => {
     '<per-minute>96</per-minute></metronome></direction-type></direction>'
 
   test('states it once, however many parts wrote it', () => {
-    const { score: result } = read(
+    const { score: result, warnings } = read(
       score(
         `<part id="P1"><measure number="1">${metronome}${NOTE}</measure></part>` +
           `<part id="P2"><measure number="1">${metronome}${NOTE}</measure></part>`,
@@ -1606,6 +1638,26 @@ describe('a tempo stated by more than one part', () => {
     expect(result.globalMeasures[0]?.tempos).toEqual([
       { position: { num: 0, den: 1 }, value: { base: 'quarter', dots: 0 }, bpm: 96 },
     ])
+    // The second part restates the mark rather than contradicting it, so
+    // nothing is reported: a mark kept once is not a mark dropped.
+    expect(warnings).toEqual([])
+  })
+
+  // The same mark at two points is a tempo change, and the parts agree about
+  // both. Neither is a restatement of the other, so both are kept.
+  test('keeps the same mark the parts state at two points in the measure', () => {
+    const { score: result, warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${metronome}${NOTE}</measure></part>` +
+          `<part id="P2"><measure number="1">${NOTE}${metronome}</measure></part>`,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.tempos.map((one) => one.position)).toEqual([
+      { num: 0, den: 1 },
+      { num: 1, den: 1 },
+    ])
+    expect(warnings).toEqual([])
   })
 
   // Two tempos at one point contradict each other: a renderer would draw both

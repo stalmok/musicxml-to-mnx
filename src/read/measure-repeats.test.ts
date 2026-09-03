@@ -310,6 +310,37 @@ describe('a measure repeat', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 
+  // A start restating one staff's running sign while the other staff's runs
+  // on cuts the staff that was not restated. The report names the restart,
+  // not a stop: nothing stopped here.
+  test('reports a restart that cuts the staff it does not restate', () => {
+    const { warnings } = convert(
+      part('P1', [
+        {
+          attributes:
+            '<staves>2</staves>' +
+            '<measure-style number="1"><measure-repeat type="start">1</measure-repeat>' +
+            '</measure-style>' +
+            '<measure-style number="2"><measure-repeat type="start">1</measure-repeat>' +
+            '</measure-style>',
+          body: NOTE,
+        },
+        {
+          attributes:
+            '<measure-style number="1"><measure-repeat type="start">1</measure-repeat>' +
+            '</measure-style>',
+          body: NOTE,
+        },
+      ]),
+    )
+
+    expect(warnings.map((warning) => warning.message)).toEqual([
+      "This measure starts a measure repeat sign while another staff's sign is still " +
+        'running, and MNX states one sign for the part. The new sign replaces the ' +
+        'running one.',
+    ])
+  })
+
   // Once a stop for one staff has ended the sign for the whole part, the
   // staff that was still running is no longer running either. A later start
   // has nothing to cut, so it says nothing.

@@ -149,6 +149,14 @@ describe('the source declaring it states beams', () => {
     expect(mnx.mnx.support).toBeUndefined()
   })
 
+  // The declaration is <supports> and nothing else. Another element of
+  // <encoding> carrying the same attributes states nothing about beams.
+  test('reads no declaration from an element that is not <supports>', () => {
+    const mnx = convert(quarter, '<supported element="beam" type="yes"/>')
+
+    expect(mnx.mnx.support).toBeUndefined()
+  })
+
   test('states both supports where the source declares both', () => {
     const mnx = convert(
       quarter,

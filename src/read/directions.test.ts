@@ -1774,6 +1774,9 @@ describe('the tempo a <sound> states', () => {
 
     expect(found).toEqual([])
     expect(warnings.map((w) => w.message)).toContain(soundTempoDropped)
+    // The report is written once the part is whole, so the measure it names
+    // comes from the walk rather than from the element.
+    expect(warnings.find((one) => one.message === soundTempoDropped)?.context.measure).toBe(1)
   })
 
   test('drops one written straight into the measure', () => {

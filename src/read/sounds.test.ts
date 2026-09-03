@@ -51,6 +51,19 @@ describe('instrument sounds', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 
+  // An empty <instrument-name> names nothing, and MNX's sound has an optional
+  // name, so the sound is written without one rather than with an empty
+  // string.
+  test('writes the sound with no name where the name is empty', () => {
+    const { mnx, warnings } = convert(
+      '<score-instrument id="P1-I1"><instrument-name/></score-instrument>',
+    )
+
+    expect(mnx.global.sounds).toEqual({ 'P1-I1': {} })
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
   test('writes no sounds where the list states no instruments', () => {
     const { mnx, warnings } = convert('')
 
