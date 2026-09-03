@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'vitest'
-import { isConverterGap, isFormatLimit, WarningCollector } from './warnings.js'
+import {
+  categoryOf,
+  isConverterGap,
+  isFormatLimit,
+  isSourceProblem,
+  WarningCollector,
+} from './warnings.js'
 
 // The two prefixes are the report's whole point: a gap here may close in a
 // later release, a limit of MNX will not, and a pipeline choosing what to
@@ -34,6 +40,38 @@ describe('isConverterGap', () => {
   test('is false for the source disagreeing with itself', () => {
     expect(isConverterGap('unclosed:spanner')).toBe(false)
     expect(isConverterGap('missing:divisions')).toBe(false)
+  })
+})
+
+// The third kind, listed by its own prefixes rather than left as whatever the
+// other two are not. That is what makes the split total: categoryOf will not
+// compile if a new prefix belongs to none of the three.
+describe('isSourceProblem', () => {
+  test('is true for the source disagreeing with itself', () => {
+    expect(isSourceProblem('inconsistent:duration')).toBe(true)
+    expect(isSourceProblem('unclosed:spanner')).toBe(true)
+    expect(isSourceProblem('missing:divisions')).toBe(true)
+    expect(isSourceProblem('unresolved:part-id')).toBe(true)
+    expect(isSourceProblem('redundant:rest')).toBe(true)
+  })
+
+  test('is false for a limit of MNX and for a gap in this converter', () => {
+    expect(isSourceProblem('unrepresentable:element')).toBe(false)
+    expect(isSourceProblem('unsupported:element')).toBe(false)
+  })
+
+  // The prefix is the whole word before the colon, so a longer name starting
+  // with one of the five is not one of them.
+  test('is false for a code whose prefix only starts with one of the five', () => {
+    expect(isSourceProblem('unresolvedxx:whatever' as 'unresolved:part-id')).toBe(false)
+  })
+})
+
+describe('categoryOf', () => {
+  test('names the kind each prefix belongs to', () => {
+    expect(categoryOf('unrepresentable:fermata')).toBe('format-limit')
+    expect(categoryOf('unsupported:attribute')).toBe('converter-gap')
+    expect(categoryOf('inconsistent:tempo')).toBe('source-problem')
   })
 })
 

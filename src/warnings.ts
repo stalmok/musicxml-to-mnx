@@ -23,11 +23,17 @@
 //                                          says, so these turn on the file,
 //                                          not on the converter.
 //
-// isFormatLimit and isConverterGap decide the first two in code; a prefix in
-// neither is a source problem.
+// isFormatLimit, isConverterGap and isSourceProblem decide the three in code,
+// and categoryOf holds them to covering every code between them.
 
-// Stable, machine-readable codes. Consumers match on these, so a code's
-// meaning must never change once released; add a new one instead.
+// Stable, machine-readable codes. A code's meaning must never change once
+// released; add a new one instead.
+//
+// The code is not the whole identity of a loss. 'unsupported:element' and
+// 'unsupported:attribute' are catch-alls covering most of this converter's
+// gaps, and what was lost is in the element and attribute fields beside them.
+// So a pipeline gating on "no new losses" keys on the code, element and
+// attribute together, not on the code alone.
 export type WarningCode =
   // --- A gap in this converter ------------------------------------------
   // An element carrying notation this converter does not convert yet.
@@ -217,23 +223,76 @@ export type WarningCode =
   // Both are silence, so the measure rest stands and the extra is dropped.
   | 'redundant:rest'
 
+/** A loss no release of this converter can close. See isFormatLimit. */
+export type FormatLimit = Extract<WarningCode, `unrepresentable:${string}`>
+
+/** A loss a later release of this converter may close. See isConverterGap. */
+export type ConverterGap = Extract<WarningCode, `unsupported:${string}`>
+
+// The prefixes the source's own problems are written with. Listed rather
+// than left as "whatever the other two are not", so that a new prefix is
+// classified deliberately instead of falling in here.
+type SourceProblemPrefix = 'inconsistent' | 'missing' | 'unresolved' | 'unclosed' | 'redundant'
+
+/** The source's own problem, which no release changes. See isSourceProblem. */
+export type SourceProblem = Extract<WarningCode, `${SourceProblemPrefix}:${string}`>
+
+/** The three kinds a warning falls into, as named at the top of this file. */
+export type WarningCategory = 'format-limit' | 'converter-gap' | 'source-problem'
+
 /**
  * True for a loss no release of this converter can close, short of MNX itself
  * gaining somewhere to put it. The prefix is the contract; this saves every
  * consumer writing the same string test.
  */
-export function isFormatLimit(code: WarningCode): boolean {
+export function isFormatLimit(code: WarningCode): code is FormatLimit {
   return code.startsWith('unrepresentable:')
 }
 
 /**
  * True for a loss a later release of this converter may close: MNX can hold
  * it, but this converter does not carry it over yet. The mirror of
- * isFormatLimit; a code that is neither is the source's own problem, which no
- * release changes.
+ * isFormatLimit.
  */
-export function isConverterGap(code: WarningCode): boolean {
+export function isConverterGap(code: WarningCode): code is ConverterGap {
   return code.startsWith('unsupported:')
+}
+
+/**
+ * True for the source disagreeing with itself, or omitting or leaving open
+ * what reading it needs. These turn on the file rather than on the converter,
+ * so no release changes them.
+ */
+export function isSourceProblem(code: WarningCode): code is SourceProblem {
+  const prefix = code.slice(0, code.indexOf(':'))
+  return SOURCE_PROBLEM_PREFIXES.has(prefix)
+}
+
+const SOURCE_PROBLEM_PREFIXES: ReadonlySet<string> = new Set<SourceProblemPrefix>([
+  'inconsistent',
+  'missing',
+  'unresolved',
+  'unclosed',
+  'redundant',
+])
+
+/**
+ * Which of the three kinds a code names. Every code names one, and the
+ * compiler holds the three to covering the union: a new prefix in none of
+ * them fails at the call below rather than reading as a source problem
+ * because it is in neither of the other two.
+ */
+export function categoryOf(code: WarningCode): WarningCategory {
+  if (isFormatLimit(code)) return 'format-limit'
+  if (isConverterGap(code)) return 'converter-gap'
+  return nameSourceProblem(code)
+}
+
+// Takes what the two categories above leave. That parameter type is the
+// total-split check: a code carrying a fourth prefix is not a SourceProblem,
+// and does not compile here.
+function nameSourceProblem(_code: SourceProblem): WarningCategory {
+  return 'source-problem'
 }
 
 export interface WarningContext {

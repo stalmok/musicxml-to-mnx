@@ -9,8 +9,16 @@ export type { ConversionResult } from './convert.js'
 export { MusicXMLError } from './errors.js'
 export type { DocumentPath } from './errors.js'
 
-export { isConverterGap, isFormatLimit } from './warnings.js'
-export type { ConversionWarning, WarningCode, WarningContext } from './warnings.js'
+export { categoryOf, isConverterGap, isFormatLimit, isSourceProblem } from './warnings.js'
+export type {
+  ConversionWarning,
+  ConverterGap,
+  FormatLimit,
+  SourceProblem,
+  WarningCategory,
+  WarningCode,
+  WarningContext,
+} from './warnings.js'
 
 // The whole output vocabulary, not a selection: a consumer holding an
 // MNXDocument needs to be able to name any node inside it, both to write
