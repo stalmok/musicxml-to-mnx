@@ -24,6 +24,15 @@ import { reportHidden } from './unrepresentable.js'
 // and an unvalidated one cannot. Each list and the model's own union are held
 // to each other in both directions.
 const isClefSign = recogniser<ClefSign>({ C: true, F: true, G: true })
+
+// The signs MusicXML states beyond the three MNX does. They head a staff MNX
+// has no clef for, so nothing is written for one, but the staff still has
+// heights on it: a rest or an unpitched note placed by <display-step> reads
+// against the clef in force. Each is held as the treble clef at the line it
+// sits on, which is how a percussion staff is written and read: the drumset
+// positions, bass drum on the bottom space and snare on the third, are the
+// treble-clef positions of the steps the source writes.
+const UNSTATED_CLEF_SIGNS: ReadonlySet<string> = new Set(['percussion', 'TAB', 'jianpu', 'none'])
 const isTimeUnit = recogniser<TimeUnit>({
   1: true,
   2: true,
@@ -177,7 +186,8 @@ export function readAttributes(
     time: metered[0],
     clefs: element
       .blocks('clef')
-      .map((found) => readClef(found, state, position, warnings, context, path)),
+      .map((found) => readClef(found, state, position, warnings, context, path))
+      .filter((clef) => clef !== undefined),
     // MusicXML allows one <measure-style> per staff, told apart by a
     // "number" attribute, so every block is read. Which staff states the
     // rest or repeat does not matter here: the measure only has to see them
@@ -473,11 +483,12 @@ function readClef(
   warnings: WarningCollector,
   context: WarningContext,
   path: DocumentPath,
-): Clef {
+): Clef | undefined {
   reportHidden(element.element, 'clef', warnings, context)
 
   const sign = trimmedText(element.child('sign') ?? requireChild(element.element, 'sign', path))
-  if (!isClefSign(sign)) {
+  const stated = isClefSign(sign)
+  if (!stated && !UNSTATED_CLEF_SIGNS.has(sign)) {
     throw new MusicXMLError(`The "${sign}" clef cannot be represented in MNX.`, {
       path,
       line: element.line,
@@ -485,7 +496,26 @@ function readClef(
   }
 
   const lineElement = element.child('line')
-  const line = lineElement ? readIntegerInRange(lineElement, path, 1, 5) : DEFAULT_CLEF_LINES[sign]
+  const line = lineElement
+    ? readIntegerInRange(lineElement, path, 1, 5)
+    : DEFAULT_CLEF_LINES[stated ? sign : 'G']
+
+  if (!stated) {
+    warnings.add(
+      'unrepresentable:clef-sign',
+      `A "${sign}" clef heads a staff, and MNX states the C, F and G clefs only. The staff ` +
+        'is converted without a clef.',
+      { ...context, line: element.line },
+      'clef',
+    )
+    // Held in force so that whatever the staff places by <display-step> is
+    // still placed, at the height a treble clef of this line gives it.
+    state.clefs.set(readAttributeInRange(element.element, 'number', path, 1, state.staves) ?? 1, {
+      sign: 'G',
+      line,
+    })
+    return undefined
+  }
 
   // A clef says which staff it belongs to. Read and bounded whatever the part
   // has, because a clef naming a staff the part does not have would place it

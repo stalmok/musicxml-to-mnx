@@ -260,10 +260,12 @@ describe('measure attributes', () => {
     ])
   })
 
-  test('rejects a clef MNX has no sign for', () => {
+  // A percussion, TAB, jianpu or "none" clef is reported and the part
+  // converted without it. A sign neither format states is a broken document.
+  test('rejects a clef whose sign MusicXML does not state', () => {
     expect(
-      readFailure(measure('<attributes><clef><sign>percussion</sign></clef></attributes>')).message,
-    ).toContain('"percussion" clef cannot be represented')
+      readFailure(measure('<attributes><clef><sign>treble</sign></clef></attributes>')).message,
+    ).toContain('"treble" clef cannot be represented')
   })
 
   test('rejects a clef that states no sign', () => {

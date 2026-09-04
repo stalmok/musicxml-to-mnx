@@ -283,6 +283,79 @@ describe('clefs', () => {
   })
 })
 
+// MNX states three clef signs, C, F and G. A percussion, TAB, jianpu or
+// "none" clef has no home there, and the part it heads is otherwise ordinary
+// music, so the sign is reported and the rest of the part converted.
+describe('a clef whose sign MNX does not state', () => {
+  const withSign = (sign: string, line = '') =>
+    measures(
+      `<attributes><divisions>4</divisions><clef><sign>${sign}</sign>${line}</clef></attributes>` +
+        note('C', '1'),
+    )
+
+  test.each(['percussion', 'TAB', 'jianpu', 'none'])(
+    'reports a %s clef and converts the part',
+    (sign) => {
+      const { part, warnings } = read(withSign(sign))
+
+      expect(part?.measures[0]?.clefs).toEqual([])
+      expect(part?.measures[0]?.sequences[0]?.content).toHaveLength(1)
+      expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:clef-sign'])
+      expect(warnings[0]?.element).toBe('clef')
+    },
+  )
+
+  test('names the sign it could not state', () => {
+    const { warnings } = read(withSign('percussion'))
+
+    expect(warnings[0]?.message).toContain('percussion')
+  })
+
+  test('refuses a sign MusicXML does not state either', () => {
+    expect(() => read(withSign('treble'))).toThrow(/"treble"/)
+  })
+
+  // Nothing is written for the clef, but the staff still has heights on it: a
+  // rest placed by <display-step> reads against the clef in force. A sign MNX
+  // cannot state is held as the treble clef at the line it sits on, which is
+  // how percussion parts are written and read.
+  test('places a rest by display-step as a treble clef of that line does', () => {
+    const placed = (clef: string) =>
+      read(
+        measures(
+          `<attributes><divisions>4</divisions>${clef}</attributes>` +
+            '<note><rest><display-step>C</display-step><display-octave>5</display-octave></rest>' +
+            '<duration>4</duration><type>quarter</type></note>',
+        ),
+      ).part?.measures[0]?.sequences[0]?.content[0]
+
+    expect(placed('<clef><sign>percussion</sign><line>2</line></clef>')).toEqual(
+      placed('<clef><sign>G</sign><line>2</line></clef>'),
+    )
+  })
+
+  test("takes the treble clef's own line where the sign states none", () => {
+    const { part } = read(
+      measures(
+        '<attributes><divisions>4</divisions><clef><sign>percussion</sign></clef></attributes>' +
+          '<note><rest><display-step>C</display-step><display-octave>5</display-octave></rest>' +
+          '<duration>4</duration><type>quarter</type></note>',
+      ),
+    )
+    const { part: treble } = read(
+      measures(
+        '<attributes><divisions>4</divisions><clef><sign>G</sign><line>2</line></clef></attributes>' +
+          '<note><rest><display-step>C</display-step><display-octave>5</display-octave></rest>' +
+          '<duration>4</duration><type>quarter</type></note>',
+      ),
+    )
+
+    expect(part?.measures[0]?.sequences[0]?.content[0]).toEqual(
+      treble?.measures[0]?.sequences[0]?.content[0],
+    )
+  })
+})
+
 describe('which staff a voice is on', () => {
   test('states it on the voice', () => {
     const { part } = read(

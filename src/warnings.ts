@@ -109,6 +109,9 @@ export type WarningCode =
   // A clef transposed by more than three octaves, which MNX's ottava amount
   // cannot state. The clef is converted at pitch, without the transposition.
   | 'unrepresentable:clef-octave'
+  // A percussion, TAB, jianpu or "none" clef, which MNX's three clef signs
+  // cannot state. The staff is converted without a clef.
+  | 'unrepresentable:clef-sign'
   // A key signature written as individual altered steps rather than a count
   // of fifths, which is all MNX can state. The signature is dropped; the
   // notes still sound right, because each carries its own alteration.
