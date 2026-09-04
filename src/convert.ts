@@ -1,6 +1,7 @@
 // The conversion pipeline, end to end.
 
 import { readMusicXML } from './container.js'
+import { MusicXMLError } from './errors.js'
 import { readScore } from './read/score.js'
 import type { MNXDocument } from './types/mnx.js'
 import { WarningCollector } from './warnings.js'
@@ -10,7 +11,15 @@ import type { WriterOptions } from './write/mnx.js'
 import { parseXmlRoot } from './xml/parse.js'
 
 /** What a caller can say about the conversion. */
-export type ConversionOptions = WriterOptions
+export interface ConversionOptions extends WriterOptions {
+  /**
+   * What to call the source in any refusal it produces. A source is text or
+   * bytes, so the converter cannot know it came from a file; a caller
+   * converting more than one names them here rather than adding the name to
+   * the message afterwards.
+   */
+  documentName?: string
+}
 
 export interface ConversionResult {
   /** The converted document. */
@@ -37,7 +46,16 @@ export function convertMusicXML(
   options: ConversionOptions = {},
 ): ConversionResult {
   const warnings = new WarningCollector()
-  const score = readScore(parseXmlRoot(readMusicXML(source)), warnings)
+  const name = options.documentName
+  try {
+    const score = readScore(parseXmlRoot(readMusicXML(source)), warnings)
 
-  return { mnx: writeMnx(score, options), warnings: warnings.list() }
+    return { mnx: writeMnx(score, options), warnings: warnings.list() }
+  } catch (error) {
+    // Named here because this is the only place that knows the name: the
+    // container, the parser and the reader all throw, and none of them is
+    // told what the source was called.
+    if (name === undefined || !(error instanceof MusicXMLError)) throw error
+    throw error.inDocument(name)
+  }
 }

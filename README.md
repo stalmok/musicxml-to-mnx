@@ -69,6 +69,19 @@ try {
 }
 ```
 
+A source is text or bytes, so the converter cannot know which file it came
+from. Name it if you convert more than one, and the error says which:
+
+```ts
+convertMusicXML(source, { documentName: 'Erlkönig.mxl' })
+// MusicXMLError: Unknown pitch step "H".
+//   (in Erlkönig.mxl, at score-partwise > part P1 > measure 1, line 5)
+```
+
+`e.detail` gives the same message without the location, which is what to
+compare if you group refusals: the location moves whenever a file is
+re-exported.
+
 The whole document is converted at once. There is no streaming and no partial
 result: the source is parsed into a whole tree, the tree read into a whole
 model, and the model written as a whole document. This is not a limit for a

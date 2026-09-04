@@ -18,7 +18,7 @@
 // that says the wrong thing about the music.
 
 import { describe, expect, test } from 'vitest'
-import { convertMusicXML } from '../src/index.js'
+import { MusicXMLError, convertMusicXML } from '../src/index.js'
 import type { MNXBeam, MNXSequenceItem } from '../src/index.js'
 import { parseXmlRoot } from '../src/xml/parse.js'
 import type { XmlElement } from '../src/xml/parse.js'
@@ -38,13 +38,22 @@ import {
 } from './support/structural.js'
 import baseline from './corpus/warning-baseline.json' with { type: 'json' }
 
+/**
+ * What a refusal says, without the location, which moves whenever a file is
+ * re-exported. Anything else escaping is not a refusal and is reported whole.
+ */
+function refusalText(error: unknown): string {
+  if (error instanceof MusicXMLError) return error.detail
+  return error instanceof Error ? error.message : String(error)
+}
+
 // Converted once each, up front. Every check below reads the same result,
 // rather than converting the same song six times over.
 const attempted = songs().map((song) => {
   try {
     return { ...song, ...convertMusicXML(song.source), rejected: undefined }
   } catch (error) {
-    return { ...song, rejected: error instanceof Error ? error.message : String(error) }
+    return { ...song, rejected: refusalText(error) }
   }
 })
 
@@ -97,8 +106,7 @@ test('the whole corpus is present', () => {
 test('refuses only the songs it is known to refuse', () => {
   const refused = attempted
     .filter((song) => song.rejected !== undefined)
-    // Without the location, which moves whenever a file is re-exported.
-    .map((song) => `${song.name}: ${(song.rejected ?? '').split(' (at ')[0] ?? ''}`)
+    .map((song) => `${song.name}: ${song.rejected ?? ''}`)
 
   expect(refused.sort()).toEqual([])
 })

@@ -37,11 +37,61 @@ describe('MusicXMLError', () => {
     expect(new MusicXMLError('Empty document', { path: [] }).message).toBe('Empty document')
   })
 
+  test('names the document it was found in when one is given', () => {
+    const error = new MusicXMLError('Missing <divisions>', {
+      path: ['part P1', 'measure 1'],
+      line: 42,
+      document: 'song.mxl',
+    })
+
+    expect(error.message).toBe('Missing <divisions> (in song.mxl, at part P1 > measure 1, line 42)')
+    expect(error.document).toBe('song.mxl')
+  })
+
+  test('names the document alone when there is no path and no line', () => {
+    const error = new MusicXMLError('Empty document', { path: [], document: 'song.mxl' })
+
+    expect(error.message).toBe('Empty document (in song.mxl)')
+  })
+
   test('exposes the location for programmatic handling', () => {
     const error = new MusicXMLError('Bad note', { path: ['measure 2'], line: 9 })
 
     expect(error.path).toEqual(['measure 2'])
     expect(error.line).toBe(9)
+    expect(error.document).toBeUndefined()
+  })
+
+  test('keeps the message without the location, for grouping refusals', () => {
+    const error = new MusicXMLError('Bad note', { path: ['measure 2'], line: 9 })
+
+    expect(error.detail).toBe('Bad note')
+  })
+
+  describe('inDocument', () => {
+    test('restates the same refusal against a document', () => {
+      const cause = new Error('underlying')
+      const named = new MusicXMLError('Bad note', {
+        path: ['measure 2'],
+        line: 9,
+        cause,
+      }).inDocument('song.mxl')
+
+      expect(named.message).toBe('Bad note (in song.mxl, at measure 2, line 9)')
+      expect(named.detail).toBe('Bad note')
+      expect(named.path).toEqual(['measure 2'])
+      expect(named.line).toBe(9)
+      expect(named.cause).toBe(cause)
+    })
+
+    test('replaces a document already named', () => {
+      const named = new MusicXMLError('Bad note', {
+        path: [],
+        document: 'first.mxl',
+      }).inDocument('second.mxl')
+
+      expect(named.message).toBe('Bad note (in second.mxl)')
+    })
   })
 
   test('is a catchable Error subclass with its own name', () => {

@@ -66,7 +66,7 @@ function assess(file: string): Outcome {
     if (error instanceof MusicXMLError) {
       // Grouped without the location, which moves whenever a file is
       // re-exported.
-      return { kind: 'refused', reason: error.message.split(' (at ')[0] ?? error.message }
+      return { kind: 'refused', reason: error.detail }
     }
     const detail = error instanceof Error ? error.message : String(error)
     return { kind: 'failed', failure: { file, kind: 'crash', detail } }
