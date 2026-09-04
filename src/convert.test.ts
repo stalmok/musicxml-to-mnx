@@ -72,10 +72,28 @@ describe('the document name', () => {
     )
   })
 
-  test('says nothing about the document in a conversion that succeeds', () => {
-    const { mnx, warnings } = convertMusicXML(SOURCE, { documentName: 'song.mxl' })
+  test('converts to exactly what it would without a name', () => {
+    const named = convertMusicXML(SOURCE, { documentName: 'song.mxl' })
 
-    expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
+    expect(named.mnx).toEqual(convertMusicXML(SOURCE).mnx)
+    expect(named.warnings).toEqual([])
+    expect(schemaErrors(named.mnx)).toEqual([])
+  })
+
+  // The refusal is restated to carry the name, so its stack would otherwise
+  // point at the restating rather than at the reader that refused.
+  test('keeps the stack of the reader that refused, not of the naming', () => {
+    let thrown
+    try {
+      convertMusicXML('<score-timewise/>', { documentName: 'song.mxl' })
+    } catch (error) {
+      thrown = error
+    }
+    const frames = ((thrown as MusicXMLError).stack ?? '')
+      .split('\n')
+      .filter((line) => line.trim().startsWith('at '))
+
+    expect(frames[0]).toContain('read/score')
+    expect(frames[0]).not.toContain('errors.ts')
   })
 })

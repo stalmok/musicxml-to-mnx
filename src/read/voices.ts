@@ -1065,11 +1065,18 @@ export class MeasureBuilder {
 
       const notes = group.flatMap((one) => (divided.has(one.event) ? one.notes : one.event.notes))
       if (notes.length === 0) {
-        // A rest cannot be rolled, and the mark spans nothing.
+        // MNX states a roll as the two notes it runs between, and there are
+        // none to name. A chord struck on a percussion kit has notes, but no
+        // pitches to order them by, so the roll on one is a gap rather than a
+        // rest carrying a mark that means nothing.
+        const struckOnKit = group.some((one) => one.event.kitNotes.length > 0)
         warnings.add(
           'unsupported:element',
-          'A rest is marked as rolled, and a roll runs between notes, so it is not ' +
-            'carried over.',
+          struckOnKit
+            ? 'A chord struck on a percussion kit is marked as rolled, which is not ' +
+                'converted yet, so the mark is not carried over.'
+            : 'A rest is marked as rolled, and a roll runs between notes, so it is not ' +
+                'carried over.',
           { ...context, line: first.line },
           'arpeggiate',
         )

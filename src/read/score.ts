@@ -24,6 +24,7 @@ import type {
   Jump,
   Measure,
   Part,
+  ResolvedSound,
   Score,
   Segno,
   Tempo,
@@ -31,7 +32,7 @@ import type {
 } from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
-import { attribute, children, requireAttribute, trimmedText } from '../xml/tree.js'
+import { attribute, child, children, requireAttribute, trimmedText } from '../xml/tree.js'
 import { readAttributes } from './attributes.js'
 import type { MeasureRepeatReading } from './attributes.js'
 import { readBarline, resolveEndings } from './barlines.js'
@@ -45,7 +46,6 @@ import { GroupingBuilder, pruneGrouping } from './part-groups.js'
 import { compareFractions, negate } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import { readNote } from './notes.js'
-import { readIntegerInRange } from './numbers.js'
 import { readPrint } from './print.js'
 import { IdGenerator } from './spanners.js'
 import { newPartState } from './state.js'
@@ -645,8 +645,14 @@ interface PartList {
   lines: ReadonlyMap<string, number>
   /** The instrument grouping the list draws, empty where it draws none. */
   grouping: readonly GroupingItem[]
-  /** The instrument setup the list states, keyed by instrument id. */
+  /** The instrument setup the list states, keyed by what the score holds it under. */
   sounds: ReadonlyMap<string, InstrumentSound>
+  /**
+   * What a note's <instrument> resolves to: the key the score holds the sound
+   * under, and the name to draw. Keyed by the source's own instrument id,
+   * which is what a note names and which MNX may not be able to state.
+   */
+  soundsByInstrument: ReadonlyMap<string, ResolvedSound>
 }
 
 /**
@@ -665,6 +671,11 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
   const lines = new Map<string, number>()
   const grouping = new GroupingBuilder()
   const sounds = new Map<string, InstrumentSound>()
+  const soundsByInstrument = new Map<string, ResolvedSound>()
+  // Generated keys for instrument ids MNX cannot state, running sound1,
+  // sound2, ... and skipping any key already taken, so a rename cannot
+  // collide with an id the source wrote.
+  let renamed = 0
   const LIST_PATH: DocumentPath = ['score-partwise', 'part-list']
 
   for (const list of root.blocks('part-list')) {
@@ -691,33 +702,59 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
         }
 
         // The instrument setup. A <score-instrument> names what plays the
-        // part; what its reader passes over is reported by the sweep. From a
-        // <midi-instrument> only <midi-unpitched> is taken: the schema's
-        // sound has no home for the rest of a synthesizer setup, its
-        // midiNumber being the MIDI pitch backing a percussion kit rather
-        // than the patch a <midi-program> names, so the others are reported
-        // by name.
-        //
-        // A part may set up several instruments, one per kit component, so
-        // every block of each is read.
-        const midiPitches = new Map<string, number>()
-        for (const midi of scorePart.blocks('midi-instrument')) {
-          const pitchElement = midi.child('midi-unpitched')
-          if (!pitchElement) continue
-          // MusicXML numbers these from 1 and MIDI from 0.
-          midiPitches.set(
-            requireAttribute(midi.element, 'id', LIST_PATH),
-            readIntegerInRange(pitchElement, LIST_PATH, 1, 128) - 1,
-          )
-        }
+        // part; what its reader passes over is reported by the sweep. A part
+        // may set up several, one per kit component, so every block is read.
+        const named = new Map<string, string | undefined>()
         for (const instrument of scorePart.blocks('score-instrument')) {
           const instrumentId = requireAttribute(instrument.element, 'id', LIST_PATH)
           const nameElement = instrument.child('instrument-name')
           const instrumentName = nameElement ? trimmedText(nameElement) : ''
-          sounds.set(instrumentId, {
-            name: instrumentName === '' ? undefined : instrumentName,
+          named.set(instrumentId, instrumentName === '' ? undefined : instrumentName)
+        }
+
+        // From a <midi-instrument> only <midi-unpitched> is taken: the
+        // schema's sound has no home for the rest of a synthesizer setup, its
+        // midiNumber being the MIDI pitch backing a percussion kit rather
+        // than the patch a <midi-program> names, so the others are reported
+        // by name. A block naming no <score-instrument> sets up nothing a
+        // note can name, so it is left unread and reported whole.
+        //
+        // Read without refusing anything: a block naming no instrument, or a
+        // pitch outside what MIDI counts, is a playback detail of a document
+        // that is otherwise ordinary music. Whatever is not taken here is left
+        // unread and reported by the sweep.
+        const midiPitches = new Map<string, number>()
+        for (const midi of scorePart.blocks('midi-instrument')) {
+          const midiId = attribute(midi.element, 'id')
+          if (midiId === undefined || !named.has(midiId)) continue
+          const stated = child(midi.element, 'midi-unpitched')?.text.trim() ?? ''
+          // MusicXML numbers these from 1 and MIDI from 0.
+          const pitch = /^\d+$/.test(stated) ? Number(stated) - 1 : undefined
+          if (pitch === undefined || pitch < 0 || pitch > 127) continue
+          midi.child('midi-unpitched')
+          midiPitches.set(midiId, pitch)
+        }
+
+        for (const [instrumentId, instrumentName] of named) {
+          let key = instrumentId
+          if (!MNX_ID_PATTERN.test(key)) {
+            do {
+              renamed += 1
+              key = `sound${String(renamed)}`
+            } while (named.has(key))
+            warnings.add(
+              'unrepresentable:instrument-id',
+              `The instrument id "${instrumentId}" does not fit MNX's id, which is 1 to 256 ` +
+                `printable ASCII characters, so the instrument is renamed ${key}.`,
+              { ...(id !== undefined ? { part: id } : {}), line: element.line },
+              'score-instrument',
+            )
+          }
+          sounds.set(key, {
+            name: instrumentName,
             midiNumber: midiPitches.get(instrumentId),
           })
+          soundsByInstrument.set(instrumentId, { key, name: instrumentName })
         }
 
         scorePart.reportUnread(warnings, id !== undefined ? { part: id } : {})
@@ -729,7 +766,15 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
     }
   }
 
-  return { names, shortNames, listed, lines, grouping: grouping.finish(warnings), sounds }
+  return {
+    names,
+    shortNames,
+    listed,
+    lines,
+    grouping: grouping.finish(warnings),
+    sounds,
+    soundsByInstrument,
+  }
 }
 
 function readPart(
@@ -753,7 +798,7 @@ function readPart(
     )
   }
 
-  const state = newPartState(ids, partList.sounds)
+  const state = newPartState(ids, partList.soundsByInstrument)
   const readings = children(element, 'measure').map((measureElement, index) =>
     readMeasure(measureElement, index, id, state, warnings, partPath),
   )

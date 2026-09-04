@@ -1,7 +1,7 @@
 // What the readers of one part share: the running state a measure cannot be
 // read without.
 
-import type { ClefSign, InstrumentSound, KitComponent } from '../model/score.js'
+import type { ClefSign, KitComponent, ResolvedSound } from '../model/score.js'
 import { IdGenerator, SpannerResolver } from './spanners.js'
 
 /** The clef in force on a staff: its sign and the line it sits on. */
@@ -49,10 +49,10 @@ export interface PartState {
   /** Per part: a tie or slur may span measures, but not parts. */
   spanners: SpannerResolver
   /**
-   * The instrument setup the part list states, keyed as a note's <instrument>
-   * names it. What a kit component takes its name and its sound from.
+   * What a note's <instrument> resolves to, keyed as the note names it. A kit
+   * component takes its name and its sound from this.
    */
-  sounds: ReadonlyMap<string, InstrumentSound>
+  sounds: ReadonlyMap<string, ResolvedSound>
   /**
    * The percussion components this part strikes, in the order its notes first
    * strike them, keyed by what its kit notes name. MusicXML states a
@@ -70,7 +70,7 @@ export interface PartState {
 
 export function newPartState(
   ids: IdGenerator,
-  sounds: ReadonlyMap<string, InstrumentSound> = new Map(),
+  sounds: ReadonlyMap<string, ResolvedSound> = new Map(),
 ): PartState {
   return {
     divisions: undefined,

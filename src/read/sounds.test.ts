@@ -1,8 +1,9 @@
 // The part list's instrument setup. A <score-instrument> names what plays a
-// part, and MNX states it in global.sounds, keyed here by the source's
-// instrument id. A <midi-instrument> is synthesizer setup with no home: the
-// schema's sound states midiNumber as a MIDI pitch, backing a percussion
-// kit, not as the patch a <midi-program> names.
+// part, and MNX states it in global.sounds, keyed by the source's instrument
+// id where MNX can state it. The rest of a <midi-instrument> has no home: the
+// schema's sound states midiNumber as a MIDI pitch, backing a percussion kit,
+// not as the patch a <midi-program> names. <midi-unpitched> is that pitch and
+// is converted; percussion.test.ts holds it to account.
 
 import { describe, expect, test } from 'vitest'
 import { convertMusicXML } from '../index.js'

@@ -317,41 +317,36 @@ describe('a clef whose sign MNX does not state', () => {
 
   // Nothing is written for the clef, but the staff still has heights on it: a
   // rest placed by <display-step> reads against the clef in force. A sign MNX
-  // cannot state is held as the treble clef at the line it sits on, which is
-  // how percussion parts are written and read.
-  test('places a rest by display-step as a treble clef of that line does', () => {
-    const placed = (clef: string) =>
-      read(
-        measures(
-          `<attributes><divisions>4</divisions>${clef}</attributes>` +
-            '<note><rest><display-step>C</display-step><display-octave>5</display-octave></rest>' +
-            '<duration>4</duration><type>quarter</type></note>',
-        ),
-      ).part?.measures[0]?.sequences[0]?.content[0]
+  // cannot state is held as the plain treble clef, which is how percussion
+  // parts are written and read.
+  const placed = (clef: string) =>
+    read(
+      measures(
+        `<attributes><divisions>4</divisions>${clef}</attributes>` +
+          '<note><rest><display-step>C</display-step><display-octave>5</display-octave></rest>' +
+          '<duration>4</duration><type>quarter</type></note>',
+      ),
+    ).part?.measures[0]?.sequences[0]?.content[0]
 
+  test('places a rest by display-step as the treble clef does', () => {
     expect(placed('<clef><sign>percussion</sign><line>2</line></clef>')).toEqual(
       placed('<clef><sign>G</sign><line>2</line></clef>'),
     )
   })
 
-  test("takes the treble clef's own line where the sign states none", () => {
-    const { part } = read(
-      measures(
-        '<attributes><divisions>4</divisions><clef><sign>percussion</sign></clef></attributes>' +
-          '<note><rest><display-step>C</display-step><display-octave>5</display-octave></rest>' +
-          '<duration>4</duration><type>quarter</type></note>',
-      ),
+  // The <line> of such a clef is where its glyph is drawn, not a reference
+  // pitch: the percussion glyph is two bars, which name no note. Read as a G
+  // clef's line, a percussion clef on line 3 would displace every drum in the
+  // part by two steps.
+  test.each(['1', '3', '5'])('places a rest the same way with the glyph on line %s', (line) => {
+    expect(placed(`<clef><sign>percussion</sign><line>${line}</line></clef>`)).toEqual(
+      placed('<clef><sign>percussion</sign><line>2</line></clef>'),
     )
-    const { part: treble } = read(
-      measures(
-        '<attributes><divisions>4</divisions><clef><sign>G</sign><line>2</line></clef></attributes>' +
-          '<note><rest><display-step>C</display-step><display-octave>5</display-octave></rest>' +
-          '<duration>4</duration><type>quarter</type></note>',
-      ),
-    )
+  })
 
-    expect(part?.measures[0]?.sequences[0]?.content[0]).toEqual(
-      treble?.measures[0]?.sequences[0]?.content[0],
+  test('places a rest the same way where the sign states no line', () => {
+    expect(placed('<clef><sign>percussion</sign></clef>')).toEqual(
+      placed('<clef><sign>G</sign><line>2</line></clef>'),
     )
   })
 })

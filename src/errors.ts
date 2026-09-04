@@ -62,11 +62,15 @@ export class MusicXMLError extends Error {
 
   /** The same refusal, restated against the document it was found in. */
   inDocument(document: string): MusicXMLError {
-    return new MusicXMLError(this.detail, {
+    const named = new MusicXMLError(this.detail, {
       path: this.path,
       ...(this.line === undefined ? {} : { line: this.line }),
       document,
       cause: this.cause,
     })
+    // The restated error is thrown from here, so its own stack would point at
+    // this method rather than at the reader that refused the document.
+    if (this.stack !== undefined) named.stack = this.stack
+    return named
   }
 }

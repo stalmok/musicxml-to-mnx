@@ -389,11 +389,12 @@ describe('first and second time endings', () => {
     expect(globals[1]?.ending?.numbers).toEqual([2])
   })
 
-  // "first" fails both halves. "+1" is a safe integer the regex refuses, and
-  // twenty digits is digits that cannot be read back exactly, so each half
-  // rejects a case the other accepts.
-  test.each(['first', '+1', '99999999999999999999'])(
-    'reports a number of "%s", which is not a list of numbers',
+  // "first" fails the shape. "+1" is a safe integer the regex refuses, and
+  // twenty digits is digits that cannot be read back exactly, so each check
+  // rejects a case the others accept. Both formats count the times from 1, so
+  // "0" states no time, and a list holding one states none either.
+  test.each(['first', '+1', '99999999999999999999', '0', '1, 2, 0'])(
+    'reports a number of "%s", which is not a list of times counted from 1',
     (numbers) => {
       const { globals, warnings } = read(
         left(`<ending number="${numbers}" type="start"/>`) +

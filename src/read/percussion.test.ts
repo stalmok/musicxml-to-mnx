@@ -43,8 +43,9 @@ function read(body: string, instruments = '') {
   const warnings = new WarningCollector()
   const score = readScore(parseXmlRoot(source(body, instruments)), warnings)
   // Every one of these is written under a percussion clef, which MNX cannot
-  // state and which is reported once per part. What each test is about is
-  // whatever else it reports.
+  // state and which is reported once for each <clef> element. staves.test.ts
+  // holds that report to account; what each test here is about is whatever
+  // else the reading says.
   const reported = warnings.list().filter((one) => one.code !== 'unrepresentable:clef-sign')
   return { score, part: score.parts[0], warnings: reported }
 }
@@ -104,6 +105,38 @@ describe('an unpitched note', () => {
 // Older exporters write no <score-instrument> and no <instrument> on a note.
 // The height on the staff is then all a reader has, and it is what the page
 // gives a player too.
+// A component is an instrument written at a height. A source that names one
+// instrument for the whole drumset tells its drums apart by height alone, and
+// keying by the instrument would draw every one of them on the same line.
+describe('one instrument written at several heights', () => {
+  const ONE_INSTRUMENT =
+    '<score-instrument id="P1-I1"><instrument-name>Drumset</instrument-name></score-instrument>'
+
+  test('strikes a component of its own at each height', () => {
+    const { part, warnings } = read(
+      struck('F', '4', 'P1-I1') + struck('C', '5', 'P1-I1') + struck('G', '5', 'P1-I1'),
+      ONE_INSTRUMENT,
+    )
+
+    expect([...(part?.kit.values() ?? [])]).toEqual([
+      { name: 'Drumset', staffPosition: -3, sound: 'P1-I1' },
+      { name: 'Drumset', staffPosition: 1, sound: 'P1-I1' },
+      { name: 'Drumset', staffPosition: 5, sound: 'P1-I1' },
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  test('does not tie a note on one drum to a note on another', () => {
+    const { warnings } = read(
+      struck('F', '4', 'P1-I1', '<tie type="start"/>') +
+        struck('C', '5', 'P1-I1', '<tie type="stop"/>'),
+      ONE_INSTRUMENT,
+    )
+
+    expect(warnings.map((w) => w.code).sort()).toEqual(['unclosed:spanner', 'unclosed:spanner'])
+  })
+})
+
 describe('an unpitched note naming no instrument', () => {
   test('strikes a component keyed by the height it is written at', () => {
     const { part, warnings } = read(struck('C', '5') + struck('G', '5') + struck('C', '5'))
@@ -157,6 +190,26 @@ describe('a note struck on more than one instrument at once', () => {
       { name: 'Acoustic Snare', staffPosition: 1, sound: 'P1-I39' },
     ])
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:element'])
+  })
+})
+
+// The roll runs between two notes, and MNX names them; a kit note has no pitch
+// to order it by. The mark is reported rather than carried, and what it says
+// has to name what was actually written.
+describe('a rolled chord struck on a kit', () => {
+  test('reports the roll against the chord, not against a rest', () => {
+    const { warnings } = read(
+      struck('C', '5', 'P1-I39', '<notations><arpeggiate/></notations>') +
+        '<note><chord/><unpitched><display-step>G</display-step>' +
+        '<display-octave>5</display-octave></unpitched><duration>1</duration>' +
+        '<type>quarter</type><instrument id="P1-I43"/>' +
+        '<notations><arpeggiate/></notations></note>',
+      DRUM_KIT,
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['unsupported:element'])
+    expect(warnings[0]?.message).toContain('struck on a percussion kit')
+    expect(warnings[0]?.message).not.toContain('rest')
   })
 })
 
@@ -305,6 +358,84 @@ describe('the MNX a percussion part converts to', () => {
       undefined,
       2,
     ])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // A playback detail of a document that is otherwise ordinary music must not
+  // refuse it. What is not taken is left unread and reported by the sweep.
+  test.each([
+    ['a pitch outside what MIDI counts', '<midi-unpitched>0</midi-unpitched>'],
+    ['a pitch past the top of the range', '<midi-unpitched>129</midi-unpitched>'],
+    ['a pitch that is not a number', '<midi-unpitched>snare</midi-unpitched>'],
+  ])('converts the score and reports %s', (_name, unpitched) => {
+    const { mnx, warnings } = convertMusicXML(
+      source(
+        struck('C', '5', 'P1-I39'),
+        '<score-instrument id="P1-I39"><instrument-name>Snare</instrument-name>' +
+          `</score-instrument><midi-instrument id="P1-I39">${unpitched}</midi-instrument>`,
+      ),
+    )
+
+    expect(mnx.global.sounds).toEqual({ 'P1-I39': { name: 'Snare' } })
+    expect(warnings.map((w) => w.element)).toContain('midi-unpitched')
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  test('reports a midi-instrument that names no score-instrument, rather than dropping it', () => {
+    const { warnings } = convertMusicXML(
+      source(
+        struck('C', '5'),
+        '<midi-instrument id="P1-I39"><midi-unpitched>39</midi-unpitched></midi-instrument>',
+      ),
+    )
+
+    expect(warnings.map((w) => w.element)).toContain('midi-unpitched')
+  })
+
+  // MNX states an id as 1 to 256 printable ASCII characters, and a MusicXML
+  // instrument id is an xs:ID, which allows more than that. A component has to
+  // be able to name what plays it, so the instrument is renamed.
+  test('renames an instrument id MNX cannot state, and keeps the link to it', () => {
+    const { mnx, warnings } = convertMusicXML(
+      source(
+        struck('C', '5', 'Pä-I1'),
+        '<score-instrument id="Pä-I1"><instrument-name>Snare</instrument-name></score-instrument>',
+      ),
+    )
+
+    expect(mnx.global.sounds).toEqual({ sound1: { name: 'Snare' } })
+    expect(mnx.parts[0]?.kit).toEqual({
+      kit1: { name: 'Snare', sound: 'sound1', staffPosition: 1 },
+    })
+    expect(warnings.map((w) => w.code)).toContain('unrepresentable:instrument-id')
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  test('skips over a name another instrument already holds', () => {
+    const { mnx, warnings } = convertMusicXML(
+      source(
+        struck('C', '5', 'Pä-I1') + struck('G', '5', 'sound1'),
+        '<score-instrument id="Pä-I1"><instrument-name>Snare</instrument-name></score-instrument>' +
+          '<score-instrument id="sound1"><instrument-name>Hat</instrument-name></score-instrument>',
+      ),
+    )
+
+    expect(Object.keys(mnx.global.sounds ?? {}).sort()).toEqual(['sound1', 'sound2'])
+    expect(warnings.map((w) => w.code)).toContain('unrepresentable:instrument-id')
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  test('renames an instrument of a part the list gives no id', () => {
+    const { mnx, warnings } = convertMusicXML(
+      '<score-partwise><part-list><score-part>' +
+        '<score-instrument id="Pä-I1"><instrument-name>Snare</instrument-name></score-instrument>' +
+        '</score-part></part-list>' +
+        `<part id="P1"><measure number="1">${PERCUSSION_CLEF}${struck('C', '5', 'Pä-I1')}` +
+        '</measure></part></score-partwise>',
+    )
+
+    expect(mnx.global.sounds).toEqual({ sound1: { name: 'Snare' } })
+    expect(warnings.map((w) => w.code)).toContain('unrepresentable:instrument-id')
     expect(schemaErrors(mnx)).toEqual([])
   })
 

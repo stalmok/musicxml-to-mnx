@@ -157,9 +157,14 @@ function kitComponent(
 
   const position = displayStaffPosition(unpitchedElement, staff, state)
   const named = instruments[0] ? attribute(instruments[0], 'id') : undefined
-  // Without an instrument to name it by, two notes strike the same component
-  // exactly when they are written at the same height.
-  const source = named ?? `@${String(position ?? UNPLACED_KIT_COMPONENT)}`
+  // A component is an instrument written at a height, not an instrument. MNX
+  // places a component once and every note struck on it sits there, so two
+  // notes strike the same one when they agree on both. Keying by the
+  // instrument alone collapsed a part that names one instrument for the whole
+  // drumset onto a single line; keying by the height alone merged two drums a
+  // source tells apart by instrument. Where a source names no instrument, the
+  // height is all it gives and all a reader of the page has.
+  const source = `${named ?? ''}@${String(position ?? UNPLACED_KIT_COMPONENT)}`
 
   const existing = state.kitKeys.get(source)
   if (existing !== undefined) return existing
@@ -173,7 +178,11 @@ function kitComponent(
       'unpitched',
     )
   }
-  if (named !== undefined && !state.sounds.has(named)) {
+  // The part list holds the name and the sound; the id a note writes is not
+  // always one MNX can state, so what the score holds the sound under is what
+  // the component names.
+  const resolved = named !== undefined ? state.sounds.get(named) : undefined
+  if (named !== undefined && resolved === undefined) {
     warnings.add(
       'unresolved:instrument-id',
       `The part list has no <score-instrument> with id ${named}.`,
@@ -182,13 +191,12 @@ function kitComponent(
     )
   }
 
-  const sound = named !== undefined && state.sounds.has(named) ? named : undefined
   const key = state.ids.nextKitComponent()
   state.kitKeys.set(source, key)
   state.kit.set(key, {
-    name: sound !== undefined ? state.sounds.get(sound)?.name : undefined,
+    name: resolved?.name,
     staffPosition: position ?? UNPLACED_KIT_COMPONENT,
-    sound,
+    sound: resolved?.key,
   })
   return key
 }

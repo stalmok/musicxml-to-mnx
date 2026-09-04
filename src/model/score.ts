@@ -725,6 +725,15 @@ export interface Jump {
   readonly target?: string
 }
 
+/**
+ * What a note's instrument resolves to: the key the score holds its sound
+ * under, and the name to draw beside the component it strikes.
+ */
+export interface ResolvedSound {
+  readonly key: string
+  readonly name: string | undefined
+}
+
 /** An instrument the part list sets up, as its drawn name and what sounds it. */
 export interface InstrumentSound {
   readonly name: string | undefined

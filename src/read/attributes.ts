@@ -28,10 +28,15 @@ const isClefSign = recogniser<ClefSign>({ C: true, F: true, G: true })
 // The signs MusicXML states beyond the three MNX does. They head a staff MNX
 // has no clef for, so nothing is written for one, but the staff still has
 // heights on it: a rest or an unpitched note placed by <display-step> reads
-// against the clef in force. Each is held as the treble clef at the line it
-// sits on, which is how a percussion staff is written and read: the drumset
-// positions, bass drum on the bottom space and snare on the third, are the
-// treble-clef positions of the steps the source writes.
+// against the clef in force. Each is held as the plain treble clef, which is
+// how a percussion staff is written and read: the drumset positions, bass
+// drum on the bottom space and snare on the third, are the treble-clef
+// positions of the steps the source writes.
+//
+// The <line> such a clef states is where its glyph is drawn, not a reference
+// pitch: the percussion glyph is two bars, which name no note. So it is not
+// read as a G clef's line would be, and a percussion clef drawn on line 3
+// places its notes exactly where one drawn on line 2 does.
 const UNSTATED_CLEF_SIGNS: ReadonlySet<string> = new Set(['percussion', 'TAB', 'jianpu', 'none'])
 const isTimeUnit = recogniser<TimeUnit>({
   1: true,
@@ -496,9 +501,6 @@ function readClef(
   }
 
   const lineElement = element.child('line')
-  const line = lineElement
-    ? readIntegerInRange(lineElement, path, 1, 5)
-    : DEFAULT_CLEF_LINES[stated ? sign : 'G']
 
   if (!stated) {
     warnings.add(
@@ -509,13 +511,15 @@ function readClef(
       'clef',
     )
     // Held in force so that whatever the staff places by <display-step> is
-    // still placed, at the height a treble clef of this line gives it.
+    // still placed, at the height the treble clef gives it.
     state.clefs.set(readAttributeInRange(element.element, 'number', path, 1, state.staves) ?? 1, {
       sign: 'G',
-      line,
+      line: DEFAULT_CLEF_LINES.G,
     })
     return undefined
   }
+
+  const line = lineElement ? readIntegerInRange(lineElement, path, 1, 5) : DEFAULT_CLEF_LINES[sign]
 
   // A clef says which staff it belongs to. Read and bounded whatever the part
   // has, because a clef naming a staff the part does not have would place it

@@ -1812,11 +1812,13 @@ describe('parts of different lengths', () => {
 })
 
 // A part carrying every kind of id the converter generates: two staves for a
-// layout, a slur for event ids, a tie for note ids, and a system break for
-// measure ids.
+// layout, a slur for event ids, a tie for note ids, a system break for measure
+// ids, and a struck kit for component ids.
 const GENERATED_IDS_MEASURES =
   '<measure number="1">' +
-  '<attributes><divisions>4</divisions><staves>2</staves></attributes>' +
+  '<attributes><divisions>4</divisions><staves>2</staves>' +
+  '<clef number="1"><sign>G</sign></clef><clef number="2"><sign>F</sign></clef>' +
+  '</attributes>' +
   '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
   '<type>quarter</type><voice>1</voice><staff>1</staff><tie type="start"/>' +
   '<notations><tied type="start"/><slur type="start" number="1"/></notations></note>' +
@@ -1830,7 +1832,10 @@ const GENERATED_IDS_MEASURES =
   '<staff>2</staff></note>' +
   '</measure>' +
   '<measure number="2"><print new-system="yes"/>' +
-  '<note><rest/><duration>16</duration><type>whole</type><voice>1</voice>' +
+  '<note><rest/><duration>8</duration><type>half</type><voice>1</voice>' +
+  '<staff>1</staff></note>' +
+  '<note><unpitched><display-step>C</display-step><display-octave>5</display-octave>' +
+  '</unpitched><duration>8</duration><type>half</type><voice>1</voice>' +
   '<staff>1</staff></note>' +
   '<backup><duration>16</duration></backup>' +
   '<note><rest/><duration>16</duration><type>whole</type><voice>2</voice>' +
@@ -1952,12 +1957,15 @@ describe('a part id the output cannot carry as it stands', () => {
     for (const measure of mnx.parts[0]?.measures ?? []) {
       for (const sequence of measure.sequences) {
         for (const item of sequence.content) {
-          if (!('notes' in item)) continue
+          if (!('notes' in item) && !('kitNotes' in item)) continue
           if (item.id !== undefined) events.push(item.id)
-          for (const note of item.notes ?? []) if (note.id !== undefined) notes.push(note.id)
+          for (const note of ('notes' in item ? item.notes : undefined) ?? []) {
+            if (note.id !== undefined) notes.push(note.id)
+          }
         }
       }
     }
+    const components = Object.keys(mnx.parts[0]?.kit ?? {})
     const measures = mnx.global.measures.flatMap((measure) =>
       measure.id === undefined ? [] : [measure.id],
     )
@@ -1970,7 +1978,8 @@ describe('a part id the output cannot carry as it stands', () => {
     expect(notes.length).toBeGreaterThan(0)
     expect(measures.length).toBeGreaterThan(0)
     expect(layouts.length).toBeGreaterThan(0)
-    for (const id of [...events, ...notes, ...measures, ...layouts]) {
+    expect(components.length).toBeGreaterThan(0)
+    for (const id of [...events, ...notes, ...measures, ...layouts, ...components]) {
       expect(GENERATED_ID_PATTERN.test(id)).toBe(true)
     }
   })

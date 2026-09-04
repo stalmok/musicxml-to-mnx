@@ -324,10 +324,13 @@ function endingNumbers(
   for (const part of written.split(',')) {
     const trimmed = part.trim()
     if (trimmed === '') continue
-    if (!/^\d+$/.test(trimmed) || !Number.isSafeInteger(Number(trimmed))) {
+    // Both formats count the times from 1, so a zero states no time. A list
+    // holding one is not a list either format can state, and which times the
+    // bracket really covers is not something to guess at.
+    if (!/^\d+$/.test(trimmed) || !Number.isSafeInteger(Number(trimmed)) || Number(trimmed) < 1) {
       warnings.add(
         'unsupported:element',
-        `An <ending> is numbered "${written}", which is not a list of numbers.`,
+        `An <ending> is numbered "${written}", which is not a list of times counted from 1.`,
         { ...context, line: ending.line },
         'ending',
       )

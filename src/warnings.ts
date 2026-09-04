@@ -129,6 +129,9 @@ export type WarningCode =
   // same way, so the two would be one id. The part is renamed to a generated
   // id everywhere the score refers to it.
   | 'unrepresentable:part-id'
+  // An instrument id MNX's id shape cannot state. The instrument is renamed,
+  // so a kit component can still say what plays it.
+  | 'unrepresentable:instrument-id'
   // A measure states more than one multi-measure rest span, as staves stating
   // different counts do, and MNX states one for the score. The first is the
   // one converted.

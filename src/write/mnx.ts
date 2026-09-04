@@ -755,17 +755,19 @@ function writeEvent(event: Event, referenced: ReadonlySet<string>): MNXEvent {
     ...(event.staff !== undefined ? { staff: event.staff } : {}),
     duration: writeNoteValue(event.value),
     // A rest is marked by the presence of the object, not by a flag; its height
-    // rides on it where the source fixed one. An event is one of the three:
-    // a rest, notes, or notes struck on the part's kit.
+    // rides on it where the source fixed one. An event is a rest or it sounds,
+    // never both, and what it sounds is pitches, kit components, or both at
+    // once, which is a chord struck across a pitched staff and a kit.
     ...(event.isRest
       ? { rest: event.staffPosition !== undefined ? { staffPosition: event.staffPosition } : {} }
-      : {}),
-    ...(event.notes.length > 0
-      ? { notes: event.notes.map((note) => writeNote(note, referenced)) }
-      : {}),
-    ...(event.kitNotes.length > 0
-      ? { kitNotes: event.kitNotes.map((note) => writeKitNote(note, referenced)) }
-      : {}),
+      : {
+          ...(event.kitNotes.length === 0 || event.notes.length > 0
+            ? { notes: event.notes.map((note) => writeNote(note, referenced)) }
+            : {}),
+          ...(event.kitNotes.length > 0
+            ? { kitNotes: event.kitNotes.map((note) => writeKitNote(note, referenced)) }
+            : {}),
+        }),
     ...(event.slurs.length > 0
       ? {
           slurs: event.slurs.map((slur) => ({
