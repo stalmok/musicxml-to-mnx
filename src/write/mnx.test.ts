@@ -14,6 +14,7 @@ import type {
   Measure,
   Score,
   SequenceItem,
+  Tuplet,
 } from '../model/score.js'
 import type { MNXEvent } from '../types/mnx.js'
 import { writeMnx } from './mnx.js'
@@ -679,16 +680,16 @@ describe('voices and spaces', () => {
 describe('tuplets and grace groups', () => {
   const eighths = (multiple: number) => ({ value: { base: 'eighth', dots: 0 } as const, multiple })
 
-  const triplet = {
+  const triplet: Tuplet = {
     kind: 'tuplet',
     inner: eighths(3),
     outer: eighths(2),
     content: [WHOLE_C, WHOLE_C, WHOLE_C],
-  } as const
+  }
 
   // A triplet 16th group nested inside the triplet, each level stated as its
   // own ratio.
-  const nestedTuplet = {
+  const nestedTuplet: Tuplet = {
     kind: 'tuplet',
     inner: eighths(3),
     outer: eighths(2),
@@ -702,7 +703,7 @@ describe('tuplets and grace groups', () => {
       },
       WHOLE_C,
     ],
-  } as const
+  }
 
   // A tremolo written across two notes: each is written at its full value
   // while the pair together occupies the space one of them would.

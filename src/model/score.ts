@@ -6,13 +6,18 @@
 // to conversion. It is not a general notation model, and should not grow into
 // one.
 //
-// `readonly` here says a field is settled: nothing assigns it after the
-// object is made. A field left mutable is one something still fills in, and
-// its comment names what does. Most of those are the passes that run once a
-// whole part is read, because what they resolve is written between the notes
-// and the document's order is not the music's. So a reader of a type can see
-// which of its fields are still open, and the writer sees a model in which
-// none of them are.
+// Two axes say what is still open, and each is read on its own.
+//
+// A `readonly` property is one nothing assigns after the object is made; a
+// mutable one is something a later pass replaces. A `readonly T[]` is a list
+// nothing adds to; a plain `T[]` is one something still pushes into. So
+// `readonly ties: readonly Tie[]` is settled, `ties: readonly Tie[]` is
+// replaced whole, and `readonly dynamics: Dynamic[]` is added to in place.
+//
+// Every field that is open either way says in its comment what fills it. Most
+// are the passes that run once a whole part is read, because what they
+// resolve is written between the notes and the document's order is not the
+// music's.
 
 import type { Fraction } from '../fraction.js'
 
@@ -118,7 +123,7 @@ export interface Note {
    * Added to as the note is read, and again by the spanner resolver, which
    * is where the two ends of a tie across measures meet.
    */
-  ties: Tie[]
+  ties: readonly Tie[]
   readonly accidentalDisplay: AccidentalDisplay | undefined
   /**
    * Set only where this note sits on a staff other than the event's, which is
@@ -135,18 +140,18 @@ export interface Marking {
 
 /** A strong accent, which states which way its wedge points. */
 export interface StrongAccentMarking extends Marking {
-  pointing: 'up' | 'down' | undefined
+  readonly pointing: 'up' | 'down' | undefined
 }
 
 /** A breath mark, which names the glyph it is drawn with. */
 export interface BreathMarking extends Marking {
-  symbol: string | undefined
+  readonly symbol: string | undefined
 }
 
 /** A tremolo on one note, drawn as beams across its stem. */
 export interface TremoloMarking extends Marking {
   /** How many beams it is drawn with. MNX states no tremolo without one. */
-  marks: number
+  readonly marks: number
 }
 
 /**
@@ -207,7 +212,7 @@ export interface Event {
   staff: number | undefined
   readonly value: NoteValue
   /** Filled in by the spanner resolver, because a slur pairs across measures. */
-  slurs: Slur[]
+  slurs: readonly Slur[]
   /** What the event sings, by the verse line the source numbers it. */
   readonly lyrics: ReadonlyMap<string, Lyric>
   readonly stemDirection: 'up' | 'down' | undefined
@@ -217,7 +222,7 @@ export interface Event {
    * Empty for a rest. More than one note makes it a chord, and each of those
    * joins as the measure walk reaches it.
    */
-  notes: Note[]
+  notes: readonly Note[]
   readonly isRest: boolean
   /**
    * A rest's height on the staff, in steps from the middle line, where the
@@ -253,11 +258,16 @@ export type TupletDisplay = 'noNumber' | 'inner' | 'both'
  */
 export interface Tuplet {
   readonly kind: 'tuplet'
-  /** What is played, for example three eighths. */
-  readonly inner: NoteValueQuantity
+  /**
+   * What is played, for example three eighths. A bracket that states no ratio
+   * of its own opens with the one its first note implies, and states what it
+   * turned out to hold when it closes, so both counts are restated there.
+   */
+  inner: NoteValueQuantity
   /** The space they are played in, for example two eighths. */
-  readonly outer: NoteValueQuantity
-  readonly content: readonly SequenceItem[]
+  outer: NoteValueQuantity
+  /** Added to as the bracket's notes are read, until it closes. */
+  readonly content: SequenceItem[]
   /** Whether the bracket is drawn. Absent lets the renderer decide. */
   readonly bracket?: 'yes' | 'no'
   /** Whether the tuplet number is drawn. Absent lets the renderer decide. */
@@ -272,7 +282,7 @@ export interface Tuplet {
 export interface GraceGroup {
   readonly kind: 'grace'
   /** Grace notes join the group as the measure walk reaches them. */
-  content: Event[]
+  content: readonly Event[]
   /** True when the group is drawn with a slash through it, which the last
    * note to join can be the one to say. */
   slashed: boolean
@@ -373,6 +383,20 @@ export type DynamicValue =
 export type WedgeType = 'increasing' | 'decreasing'
 
 /**
+ * Where a span stops, which is what a hairpin's or an octave shift's end
+ * states: a measure's place in the score and a point in it. Grace notes take
+ * none of the measure's time, so a point they sit at needs a grace index to
+ * say which of them the span ends on: the note they ornament is 0 and the
+ * rightmost grace note is 1. Unset where the point has no grace notes, which
+ * reads as before all of them.
+ */
+export interface SpanStop {
+  readonly measure: number
+  readonly position: Fraction
+  readonly graceIndex?: number
+}
+
+/**
  * A dynamic mark. An immediate one states a value and sits at a point; a
  * gradual one is a hairpin, which opens one way or the other and runs from
  * here to a point that may be several measures away; an accent one, such as a
@@ -392,28 +416,26 @@ export interface Dynamic {
    * unset.
    */
   readonly accent?: {
-    residualValue: DynamicValue | undefined
-    prefix: AccentPrefix | undefined
-    suffix: AccentSuffix | undefined
-    glyphs: readonly string[]
+    readonly residualValue: DynamicValue | undefined
+    readonly prefix: AccentPrefix | undefined
+    readonly suffix: AccentSuffix | undefined
+    readonly glyphs: readonly string[]
   }
   /** The wording drawn before the mark, as in the "più" of "più f", which is
    * read before the mark it belongs to. */
   prefix?: string
   /**
-   * The wording drawn after the mark, as in the "sub." of "p sub.". Wording
-   * written at a hairpin's closing edge is added by the spanner resolver,
-   * which is where the two ends meet.
+   * The wording drawn after the mark, as in the "sub." of "p sub.", which the
+   * direction reader adds once it reaches the words. Wording written at a
+   * hairpin's closing edge is added by the spanner resolver instead, which is
+   * where the two ends meet.
    */
   suffix?: string
   /**
-   * Where a hairpin stops, as a measure's place in the score and a position
-   * within it. Grace notes take none of the measure's time, so a point they
-   * sit at needs a grace index to say which of them the hairpin ends on: the
-   * note they ornament is 0 and the rightmost grace note is 1. Unset where
-   * the source never closed the hairpin. Filled in by the spanner resolver.
+   * Where the hairpin stops. Filled in by the spanner resolver; unset where
+   * the source never closed the hairpin.
    */
-  end: { measure: number; position: Fraction; graceIndex?: number } | undefined
+  end: SpanStop | undefined
   /** Which staff it belongs under, where the part has more than one. */
   readonly staff: number | undefined
   /** Which side of the staff it is drawn on, where the source states it. */
@@ -431,7 +453,7 @@ export interface Arpeggio {
    * The ids of the notes it runs between. MNX names the first-played note
    * first, so a roll going downwards runs from the highest to the lowest.
    */
-  readonly span: { start: string; end: string }
+  readonly span: { readonly start: string; readonly end: string }
   /** Which way it is rolled. MusicXML's default is upwards. */
   readonly direction: 'up' | 'down'
   /** Whether an arrowhead is drawn, which is what a stated direction means. */
@@ -452,14 +474,8 @@ export type OttavaAmount = 1 | 2 | 3 | -1 | -2 | -3
 
 export interface Ottava {
   readonly position: Fraction
-  /**
-   * Where it stops, as a measure's place in the score and a point in it.
-   * Grace notes take none of the measure's time, so a point they sit at needs
-   * a grace index to say which of them the shift ends on: the note they
-   * ornament is 0 and the rightmost grace note is 1. Unset where the point
-   * has no grace notes, which reads as before all of them.
-   */
-  readonly end: { measure: number; position: Fraction; graceIndex?: number }
+  /** Where the shift stops. */
+  readonly end: SpanStop
   readonly value: OttavaAmount
   /** Which staff it applies to, where the part has more than one. */
   readonly staff: number | undefined
@@ -504,7 +520,9 @@ export interface Part {
  * or brace around its members, or a part standing on its own. The grouping is
  * a tree, in score order.
  */
-export type GroupingItem = ({ kind: 'group' } & PartGroup) | { kind: 'part'; part: string }
+export type GroupingItem =
+  | ({ readonly kind: 'group' } & PartGroup)
+  | { readonly kind: 'part'; readonly part: string }
 
 export interface PartGroup {
   /** Undefined where the source's symbol kind has no MNX spelling. */

@@ -22,6 +22,7 @@ import type {
   Ottava,
   OttavaAmount,
   Pitch,
+  SpanStop,
   Step,
 } from '../model/score.js'
 import type { CoveredEvent } from './voices.js'
@@ -913,7 +914,7 @@ export class SpannerResolver {
         // one, and the key left off where it does not: MNX reads an absent
         // key as the beat itself. Assigned rather than spread in, so that the
         // compiler holds the difference between the two.
-        const end: NonNullable<Dynamic['end']> = { measure: stop.measure, position: stop.covers }
+        const end: Draft<SpanStop> = { measure: stop.measure, position: stop.covers }
         if (stop.coversGraceIndex !== undefined) end.graceIndex = stop.coversGraceIndex
         dynamic.end = end
         closed.set(stop, dynamic)
@@ -1073,7 +1074,7 @@ export class SpannerResolver {
       this.#ottavaEnds,
       (open, stop) => {
         // Assigned rather than spread in, for the reason the hairpin's end is.
-        const end: Ottava['end'] = { measure: stop.measure, position: stop.covers }
+        const end: Draft<SpanStop> = { measure: stop.measure, position: stop.covers }
         if (stop.coversGraceIndex !== undefined) end.graceIndex = stop.coversGraceIndex
         const ottava: Draft<Ottava> = {
           position: open.position,

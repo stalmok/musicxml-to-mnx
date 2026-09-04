@@ -94,11 +94,14 @@ one question. `score.ts` holds the walk and nothing that can move off it,
 because the walk must stay in document order.
 
 `notes.ts` and `voices.ts` are one thing in two files. `notes.ts` reads a
-`<note>` and calls the `MeasureBuilder` in `voices.ts` in the order the
-element gives: the note joins its voice, then its notations are read against
-the event it made. That order is the contract between them, and it is why a
-chord note finds an event to join and a tuplet marker finds a bracket to
-close.
+`<note>` and calls the `MeasureBuilder` in `voices.ts` in an order that is the
+contract between them. What opens a bracket is read first, because the notes
+inside land in it: a tuplet start, then a tremolo start, which is why a pair
+inside a tuplet nests the way it is written. The note then joins its voice.
+What points at the event it made is read after: its ties, its slurs, its beam
+markers, and the bracket stops, which is why a tuplet stop finds a bracket to
+close. A chord note takes a third path, joining the event that is already
+there rather than making one.
 
 Rules in `.dependency-cruiser.js` enforce the stage boundaries
 (`pnpm deps:check`). They are not left to discipline. A crossing is an

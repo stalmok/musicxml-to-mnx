@@ -70,9 +70,9 @@ try {
 ```
 
 The whole document is converted at once. There is no streaming and no partial
-result: the source, the parsed tree, the internal model and the output all
-live at the same time. This is not a limit for a song; it is one for a large
-orchestral score.
+result: the source is parsed into a whole tree, the tree read into a whole
+model, and the model written as a whole document. This is not a limit for a
+song; it is one for a large orchestral score.
 
 ---
 

@@ -290,7 +290,7 @@ export function readNote(
   // A tuplet is bracketed in the source, and that bracket is what says where
   // one ends and the next begins. Without it there is nothing to group by,
   // and guessing would invent a grouping the source never wrote.
-  if (ratio && markers.length === 0 && !builder.insideTuplet(voice) && !tremolo) {
+  if (ratio && markers.length === 0 && !builder.insideBracket(voice) && !tremolo) {
     throw new MusicXMLError(
       'A note carries a tuplet ratio but no <tuplet> bracket marks where the tuplet runs.',
       { path, line: element.line },
