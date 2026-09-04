@@ -212,8 +212,19 @@ The exit code is the contract for a pipeline:
   p2, and so on, and the converter reports each rename.
 - System breaks and page breaks. They become pages and systems in the score
   rendering.
-- Instrument names from the part list. They become the sounds of the score.
-  Synthesizer setup has no place in MNX, therefore the converter reports it.
+- Instrument names from the part list. They become the sounds of the score,
+  each with the MIDI pitch that plays it where the part list gives one. The
+  rest of the synthesizer setup has no place in MNX, therefore the converter
+  reports it. The converter renames an instrument id that does not fit the MNX
+  id pattern, and reports each rename.
+- Percussion. An unpitched note becomes a note struck on the part's kit. The
+  kit states each instrument one time, with its name, the sound that plays it,
+  and its place on the staff. Two notes strike the same instrument when they
+  name the same instrument and sit at the same height. MNX states the C, F and
+  G clefs only, therefore the converter reports a percussion, TAB, jianpu or
+  "none" clef and writes the staff without a clef. It reads the heights on
+  such a staff as the treble clef gives them, which is how percussion is
+  written and read.
 - Beams, including secondary beams, hooks, and beams over a grace group. The
   converter builds them as the MNX tree of beams over the measure.
 - Ties and slurs, joined across barlines. The converter reports a tie or a
@@ -234,8 +245,8 @@ pedal marks and ornaments. The converter always reports these as warnings.
 It never drops them silently.
 
 **Out of scope for v1:** chord symbols and transposing instruments, which
-convert with an `unsupported:` warning. Percussion documents and
-`score-timewise` documents get a clear error, and the converter rejects them.
+convert with an `unsupported:` warning. A `score-timewise` document gets a
+clear error, and the converter rejects it.
 
 **Rejected, not half-converted:** a tuplet whose extent the source does not
 bracket. MusicXML states a tuplet as a ratio on each note and a bracket
@@ -255,29 +266,28 @@ The converter runs against each file below. There are four checks:
 4. Each measure has the length that the source states.
 
 A file agrees with all four checks. If it does not, the converter refuses the
-file and gives the reason. The counts are from July 2026. The Lieder corpus
-continues to grow, and the weekly gate runs against its latest state.
+file and gives the reason. The counts are from September 2026, except the
+String Quartets row, which is from July 2026. The Lieder corpus continues to
+grow, and the weekly gate runs against its latest state.
 
 | Corpus                                                                                                        | Files  | Convert      |
 | ------------------------------------------------------------------------------------------------------------- | ------ | ------------ |
-| [OpenScore Lieder](https://github.com/OpenScore/Lieder) (songs, MuseScore exports)                            | 1,462  | 1,447 (99%)  |
+| [OpenScore Lieder](https://github.com/OpenScore/Lieder) (songs, MuseScore exports)                            | 1,462  | 1,459 (99%)  |
 | [OpenScore String Quartets](https://github.com/OpenScore/StringQuartets) (exported with MuseScore 3)          | 122    | 112 (92%)    |
-| [Unofficial MusicXML Test Suite](https://github.com/cuthbertLab/musicxmlTestSuite) (feature files)            | 150    | 135 (90%)    |
-| [MusicXML example set](https://www.musicxml.com/music-in-musicxml/example-set/) (Finale exports, some UTF-16) | 36     | 32 (89%)     |
-| [PDMX](https://zenodo.org/records/15571083) random sample (MuseScore.com, all genres)                         | 20,000 | 19,214 (96%) |
-| [music21 bundled corpus](https://github.com/cuthbertLab/music21) (hand-encoded, older tools, some UTF-16)     | 654    | 615 (94%)    |
-| [CPDL](https://www.cpdl.org) random sample (choral, mostly Sibelius exports)                                  | 2,000  | 1,838 (92%)  |
+| [Unofficial MusicXML Test Suite](https://github.com/cuthbertLab/musicxmlTestSuite) (feature files)            | 150    | 141 (94%)    |
+| [MusicXML example set](https://www.musicxml.com/music-in-musicxml/example-set/) (Finale exports, some UTF-16) | 36     | 34 (94%)     |
+| [PDMX](https://zenodo.org/records/15571083) random sample (MuseScore.com, all genres)                         | 20,000 | 19,859 (99%) |
+| [music21 bundled corpus](https://github.com/cuthbertLab/music21) (hand-encoded, older tools, some UTF-16)     | 654    | 617 (94%)    |
+| [CPDL](https://www.cpdl.org) random sample (choral, mostly Sibelius exports)                                  | 2,000  | 1,842 (92%)  |
 
 The other files are refusals, and each refusal names its reason. Some files
-hold notation that MNX cannot state: percussion clefs and TAB clefs,
-microtone alterations, and composite meters such as 3+2/8. Other files
-disagree with themselves. Examples are a tuplet that opens and never closes,
-and a note that overlaps the note before it in the same voice. Another
-example is a voice that rests through the same measure two times. In the
-PDMX sample, the two clef limits cause 580 of the 786 refusals, because
-MuseScore.com holds much drum music and guitar music. In the CPDL sample,
-the largest group is hymnals that write two lines over each other in one
-voice. The converter refuses these files and
+hold notation that MNX cannot state: microtone alterations, and composite
+meters such as 3+2/8. Other files disagree with themselves. Examples are a
+tuplet that opens and never closes, and a note that overlaps the note before
+it in the same voice. Another example is a voice that rests through the same
+measure two times. In the PDMX sample, the overlapping-note group is the
+largest. In the CPDL sample, the largest group is hymnals that write two
+lines over each other in one voice. The converter refuses these files and
 does not guess the lines apart.
 
 The test suite converts 600 vendored Lieder songs on each run. CI runs the

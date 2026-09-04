@@ -84,6 +84,22 @@ describe('MusicXMLError', () => {
       expect(named.cause).toBe(cause)
     })
 
+    test('carries the stack of the refusal it restates', () => {
+      const original = new MusicXMLError('Bad note', { path: ['measure 2'] })
+
+      expect(original.inDocument('song.mxl').stack).toBe(original.stack)
+    })
+
+    // Every engine this runs on gives an Error a stack, so this says what
+    // happens on one that does not rather than describing anything seen: the
+    // restated refusal keeps the stack it was built with.
+    test('restates a refusal with no stack', () => {
+      const original = new MusicXMLError('Bad note', { path: [] })
+      delete (original as { stack?: string }).stack
+
+      expect(original.inDocument('song.mxl').stack).toContain('Bad note (in song.mxl)')
+    })
+
     test('replaces a document already named', () => {
       const named = new MusicXMLError('Bad note', {
         path: [],
