@@ -98,15 +98,22 @@ export interface WriterOptions {
 class MeasureNames {
   readonly #named = new Set<number>()
 
-  /** The id of the measure at this index, which is written out for it. */
-  of(index: number): string {
-    this.#named.add(index)
+  /** What a measure at this index goes under, named or not. */
+  #id(index: number): string {
     return `m${String(index + 1)}`
   }
 
-  /** The id to write on this measure, where anything named it. */
+  /** The id of the measure at this index, which is written out for it. */
+  of(index: number): string {
+    this.#named.add(index)
+    return this.#id(index)
+  }
+
+  /** The id to write on this measure, where anything named it. Reads the
+   * record rather than adding to it, so writing the global block early would
+   * write no ids rather than quietly write the wrong ones. */
   written(index: number): string | undefined {
-    return this.#named.has(index) ? this.of(index) : undefined
+    return this.#named.has(index) ? this.#id(index) : undefined
   }
 }
 
