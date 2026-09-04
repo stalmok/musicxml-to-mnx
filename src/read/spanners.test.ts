@@ -1390,6 +1390,7 @@ describe('whether a voice accounts for its own slurs', () => {
     markings: {},
     fermata: undefined,
     notes: [],
+    kitNotes: [],
     isRest: false,
     staffPosition: undefined,
   }

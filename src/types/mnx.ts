@@ -203,8 +203,24 @@ export interface MNXEvent {
   markings?: MNXEventMarkings
   fermata?: MNXFermata
   notes?: MNXNote[]
+  /** The notes of the event struck on a percussion kit. */
+  kitNotes?: MNXKitNote[]
   /** Present when the event is a rest. Empty unless the rest states a height. */
   rest?: MNXRest
+}
+
+/** A note struck on one component of a percussion kit. */
+export interface MNXKitNote {
+  /** Present only where something refers to this note. */
+  id?: string
+  /** The component struck, as its key in the part's kit. */
+  kitComponent: string
+  ties?: MNXTie[]
+  /**
+   * Present only where this note sits on a staff other than the event's, as a
+   * note of a chord that straddles two staves does.
+   */
+  staff?: number
 }
 
 /** A rest, optionally pinned to a height on the staff. */
@@ -432,7 +448,21 @@ export interface MNXPart {
   staves?: number
   /** The SMuFL font the part's notation is engraved in. */
   smuflFont?: string
+  /**
+   * The percussion instruments the part is struck on, keyed by the id its kit
+   * notes name. Written only for a part that strikes any.
+   */
+  kit?: Record<string, MNXKitComponent>
   measures: MNXPartMeasure[]
+}
+
+/** One instrument of a percussion kit: what it is, and where it is written. */
+export interface MNXKitComponent {
+  name?: string
+  /** The sound that plays it, as its key in the global block's sounds. */
+  sound?: string
+  /** Steps from the middle line; negative is below it. */
+  staffPosition: number
 }
 
 export type MNXStaffSymbol = 'bracket' | 'brace' | 'noSymbol'

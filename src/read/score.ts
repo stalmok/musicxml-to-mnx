@@ -45,6 +45,7 @@ import { GroupingBuilder, pruneGrouping } from './part-groups.js'
 import { compareFractions, negate } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import { readNote } from './notes.js'
+import { readIntegerInRange } from './numbers.js'
 import { readPrint } from './print.js'
 import { IdGenerator } from './spanners.js'
 import { newPartState } from './state.js'
@@ -225,17 +226,18 @@ export const MNX_ID_PATTERN = /^[\x21-\x7E]{1,256}$/
 
 /**
  * The ids the converter generates for the things a part id sits beside in an
- * MNX document: events (ev1, ev2, ...) and notes (note1, note2, ...) here in
- * the reader, and measures (m1, m2, ...) and the one layout (layout1) in the
- * writer. MNX gives all of them one id shape, so nothing in the document or
- * its schema tells a part named "ev2" from the event named "ev2", and a
- * consumer resolving a slur target by id can reach the part instead.
+ * MNX document: events (ev1, ev2, ...), notes (note1, note2, ...) and kit
+ * components (kit1, kit2, ...) here in the reader, and measures (m1, m2, ...)
+ * and the one layout (layout1) in the writer. MNX gives all of them one id
+ * shape, so nothing in the document or its schema tells a part named "ev2"
+ * from the event named "ev2", and a consumer resolving a slur target by id
+ * can reach the part instead.
  *
  * Stated here rather than shared with the writer, which the reader may not
- * import. A test converts a score carrying all four and holds each generated
- * id to this pattern.
+ * import. A test converts a score carrying all of them and holds each
+ * generated id to this pattern.
  */
-export const GENERATED_ID_PATTERN = /^(?:ev|note|m)\d+$|^layout1$/
+export const GENERATED_ID_PATTERN = /^(?:ev|note|m|kit)\d+$|^layout1$/
 
 /**
  * Renames every part id MNX cannot state or the converter generates for
@@ -689,20 +691,34 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
         }
 
         // The instrument setup. A <score-instrument> names what plays the
-        // part; what its reader passes over is reported by the sweep. A
-        // <midi-instrument> is opened as a block but nothing is taken from
-        // it: the schema's sound has no home for a synthesizer setup (its
-        // midiNumber is a MIDI pitch backing a percussion kit, not the
-        // patch a <midi-program> names), so each child is reported by name.
+        // part; what its reader passes over is reported by the sweep. From a
+        // <midi-instrument> only <midi-unpitched> is taken: the schema's
+        // sound has no home for the rest of a synthesizer setup, its
+        // midiNumber being the MIDI pitch backing a percussion kit rather
+        // than the patch a <midi-program> names, so the others are reported
+        // by name.
+        //
+        // A part may set up several instruments, one per kit component, so
+        // every block of each is read.
+        const midiPitches = new Map<string, number>()
+        for (const midi of scorePart.blocks('midi-instrument')) {
+          const pitchElement = midi.child('midi-unpitched')
+          if (!pitchElement) continue
+          // MusicXML numbers these from 1 and MIDI from 0.
+          midiPitches.set(
+            requireAttribute(midi.element, 'id', LIST_PATH),
+            readIntegerInRange(pitchElement, LIST_PATH, 1, 128) - 1,
+          )
+        }
         for (const instrument of scorePart.blocks('score-instrument')) {
           const instrumentId = requireAttribute(instrument.element, 'id', LIST_PATH)
           const nameElement = instrument.child('instrument-name')
           const instrumentName = nameElement ? trimmedText(nameElement) : ''
           sounds.set(instrumentId, {
             name: instrumentName === '' ? undefined : instrumentName,
+            midiNumber: midiPitches.get(instrumentId),
           })
         }
-        scorePart.blocks('midi-instrument')
 
         scorePart.reportUnread(warnings, id !== undefined ? { part: id } : {})
       } else if (element.name === 'part-group') {
@@ -737,7 +753,7 @@ function readPart(
     )
   }
 
-  const state = newPartState(ids)
+  const state = newPartState(ids, partList.sounds)
   const readings = children(element, 'measure').map((measureElement, index) =>
     readMeasure(measureElement, index, id, state, warnings, partPath),
   )
@@ -758,6 +774,7 @@ function readPart(
       name: partList.names.get(id),
       shortName: partList.shortNames.get(id),
       staves: state.staves,
+      kit: state.kit,
       measures: readings.map((reading) => reading.measure),
     },
     globals: readings.map((reading) => reading.global),

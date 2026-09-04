@@ -18,26 +18,26 @@ import type {
   Event,
   LineType,
   Measure,
-  Note,
   Ottava,
   OttavaAmount,
   Pitch,
   SpanStop,
   Step,
+  TieTarget,
 } from '../model/score.js'
 import type { CoveredEvent } from './voices.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 
 /** A tie that has begun, waiting for the note that ends it. */
 interface OpenTie {
-  note: Note
+  note: TieTarget
   /** The side the tie is drawn on, where the start states it. */
   side: CurveSide | undefined
 }
 
 /** One end of a tie, and on a stop the note it is written on. */
 interface TieEnd extends SpanEnd<OpenTie> {
-  stop?: { note: Note }
+  stop?: { note: TieTarget }
 }
 
 /** An octave shift that has begun, waiting to learn where it stops. */
@@ -507,7 +507,7 @@ function inTimeOrder<T, E extends SpanEnd<T>>(ends: readonly E[], atSamePoint: S
 // disagrees on the sound stays unmatched and keeps warning.
 const STEP_SEMITONES: Record<Step, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }
 
-function tieKey(pitch: Pitch): string {
+export function tieKey(pitch: Pitch): string {
   return String((pitch.octave + 1) * 12 + STEP_SEMITONES[pitch.step] + pitch.alter)
 }
 
@@ -529,9 +529,16 @@ export class SpannerResolver {
   // Both ends of every hairpin in the part, paired once all of them are in.
   readonly #wedgeEnds: WedgeEnd[] = []
 
-  /** Notes the note a tie begins on, to be paired once the part is read. */
+  /**
+   * Notes the note a tie begins on, to be paired once the part is read.
+   *
+   * A tie joins two notes of the same sound, and `pairedBy` is what says two
+   * are the same: a pitch for a pitched note, and the kit component struck
+   * for a note with no pitch to compare.
+   */
   startTie(
-    note: Note,
+    note: TieTarget,
+    pairedBy: string,
     voice: string | undefined,
     side: CurveSide | undefined,
     measure: number,
@@ -541,7 +548,7 @@ export class SpannerResolver {
   ): void {
     this.#tieEnds.push({
       kind: 'start',
-      number: tieKey(note.pitch),
+      number: pairedBy,
       measure,
       position,
       voice,
@@ -554,7 +561,8 @@ export class SpannerResolver {
 
   /** The same, for the note a tie ends on. */
   stopTie(
-    note: Note,
+    note: TieTarget,
+    pairedBy: string,
     voice: string | undefined,
     measure: number,
     position: Fraction,
@@ -563,7 +571,7 @@ export class SpannerResolver {
   ): void {
     this.#tieEnds.push({
       kind: 'stop',
-      number: tieKey(note.pitch),
+      number: pairedBy,
       measure,
       position,
       voice,
@@ -1115,6 +1123,7 @@ export class SpannerResolver {
 export class IdGenerator {
   #events = 0
   #notes = 0
+  #kitComponents = 0
 
   nextEvent(): string {
     this.#events += 1
@@ -1124,5 +1133,10 @@ export class IdGenerator {
   nextNote(): string {
     this.#notes += 1
     return `note${String(this.#notes)}`
+  }
+
+  nextKitComponent(): string {
+    this.#kitComponents += 1
+    return `kit${String(this.#kitComponents)}`
   }
 }

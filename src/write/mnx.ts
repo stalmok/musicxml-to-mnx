@@ -13,6 +13,8 @@ import type {
   Clef,
   Dynamic,
   Lyric,
+  KitComponent,
+  KitNote,
   Marking,
   Markings,
   Ending,
@@ -34,6 +36,7 @@ import type {
   Sequence,
   SequenceItem,
   Tempo,
+  Tie,
 } from '../model/score.js'
 import type {
   MNXDocument,
@@ -54,6 +57,8 @@ import type {
   MNXAccidentalDisplay,
   MNXDynamic,
   MNXEventMarkings,
+  MNXKitComponent,
+  MNXKitNote,
   MNXMarking,
   MNXEnding,
   MNXFermata,
@@ -70,6 +75,7 @@ import type {
   MNXSystem,
   MNXSystemLayout,
   MNXTempo,
+  MNXTie,
 } from '../types/mnx.js'
 
 /** The MNX version this converter emits. */
@@ -370,6 +376,11 @@ function surveyScore(score: Score): {
         for (const tie of note.ties) if (tie.target !== undefined) referenced.add(tie.target)
         if (note.accidentalDisplay?.show) drawsAccidentals = true
       }
+      // A kit note is tied the same way, and the note a tie names has to be
+      // named in turn whether it carries a pitch or a kit component.
+      for (const note of item.kitNotes) {
+        for (const tie of note.ties) if (tie.target !== undefined) referenced.add(tie.target)
+      }
     }
   }
   // A beam names the events it runs over, so those events have to be named
@@ -412,8 +423,8 @@ function writeLyricLines(lines: ReadonlySet<string>): Partial<Pick<MNXGlobal, 'l
 
 /**
  * The instrument setup, written only when the part list states one. Keyed by
- * the source's instrument id. The sound's midiNumber is never written: it is
- * a MIDI pitch backing a percussion kit, which nothing here converts yet.
+ * the source's instrument id, which is what a kit component names to say what
+ * plays it.
  */
 function writeSounds(score: Score): Partial<Pick<MNXGlobal, 'sounds'>> {
   if (score.sounds.size === 0) return {}
@@ -421,7 +432,10 @@ function writeSounds(score: Score): Partial<Pick<MNXGlobal, 'sounds'>> {
     sounds: Object.fromEntries(
       [...score.sounds].map(([id, sound]) => [
         id,
-        { ...(sound.name !== undefined ? { name: sound.name } : {}) },
+        {
+          ...(sound.name !== undefined ? { name: sound.name } : {}),
+          ...(sound.midiNumber !== undefined ? { midiNumber: sound.midiNumber } : {}),
+        },
       ]),
     ),
   }
@@ -516,8 +530,27 @@ function writePart(
     // MusicXML names the notation font once for the score, MNX per part, so
     // the one font goes on every part.
     ...(musicFont !== undefined ? { smuflFont: musicFont } : {}),
+    ...(part.kit.size > 0 ? { kit: writeKit(part.kit) } : {}),
     measures: part.measures.map((measure) => writeMeasure(measure, referenced, names)),
   }
+}
+
+/**
+ * The percussion instruments a part is struck on, keyed by what its kit notes
+ * name. MusicXML states where a component sits on every note struck on it and
+ * MNX states it once here, which is why the reader gathers them.
+ */
+function writeKit(kit: ReadonlyMap<string, KitComponent>): Record<string, MNXKitComponent> {
+  return Object.fromEntries(
+    [...kit].map(([id, component]) => [
+      id,
+      {
+        ...(component.name !== undefined ? { name: component.name } : {}),
+        ...(component.sound !== undefined ? { sound: component.sound } : {}),
+        staffPosition: component.staffPosition,
+      },
+    ]),
+  )
 }
 
 function writeMeasure(
@@ -722,10 +755,17 @@ function writeEvent(event: Event, referenced: ReadonlySet<string>): MNXEvent {
     ...(event.staff !== undefined ? { staff: event.staff } : {}),
     duration: writeNoteValue(event.value),
     // A rest is marked by the presence of the object, not by a flag; its height
-    // rides on it where the source fixed one.
+    // rides on it where the source fixed one. An event is one of the three:
+    // a rest, notes, or notes struck on the part's kit.
     ...(event.isRest
       ? { rest: event.staffPosition !== undefined ? { staffPosition: event.staffPosition } : {} }
-      : { notes: event.notes.map((note) => writeNote(note, referenced)) }),
+      : {}),
+    ...(event.notes.length > 0
+      ? { notes: event.notes.map((note) => writeNote(note, referenced)) }
+      : {}),
+    ...(event.kitNotes.length > 0
+      ? { kitNotes: event.kitNotes.map((note) => writeKitNote(note, referenced)) }
+      : {}),
     ...(event.slurs.length > 0
       ? {
           slurs: event.slurs.map((slur) => ({
@@ -822,28 +862,38 @@ function writeNoteValue(value: NoteValue): MNXNoteValue {
   }
 }
 
+/** A note struck on a kit component, which names it in place of a pitch. */
+function writeKitNote(note: KitNote, referenced: ReadonlySet<string>): MNXKitNote {
+  return {
+    ...(referenced.has(note.id) ? { id: note.id } : {}),
+    kitComponent: note.component,
+    ...(note.staff !== undefined ? { staff: note.staff } : {}),
+    ...(note.ties.length > 0 ? { ties: writeTies(note.ties) } : {}),
+  }
+}
+
 function writeNote(note: Note, referenced: ReadonlySet<string>): MNXNote {
   return {
     ...(referenced.has(note.id) ? { id: note.id } : {}),
     pitch: writePitch(note.pitch),
     ...(note.staff !== undefined ? { staff: note.staff } : {}),
-    ...(note.ties.length > 0
-      ? {
-          ties: note.ties.map((tie) => ({
-            // A let-ring tie has no target: it rings out with no ending note.
-            ...(tie.target !== undefined ? { target: tie.target } : {}),
-            // Left unsaid for the ordinary tie, whose target is the same
-            // voice's next note.
-            ...(tie.crossVoice ? { targetType: 'crossVoice' as const } : {}),
-            ...(tie.lv ? { lv: true } : {}),
-            ...(tie.side ? { side: tie.side } : {}),
-          })),
-        }
-      : {}),
+    ...(note.ties.length > 0 ? { ties: writeTies(note.ties) } : {}),
     ...(note.accidentalDisplay
       ? { accidentalDisplay: writeAccidental(note.accidentalDisplay) }
       : {}),
   }
+}
+
+function writeTies(ties: readonly Tie[]): MNXTie[] {
+  return ties.map((tie) => ({
+    // A let-ring tie has no target: it rings out with no ending note.
+    ...(tie.target !== undefined ? { target: tie.target } : {}),
+    // Left unsaid for the ordinary tie, whose target is the same voice's next
+    // note.
+    ...(tie.crossVoice ? { targetType: 'crossVoice' as const } : {}),
+    ...(tie.lv ? { lv: true } : {}),
+    ...(tie.side ? { side: tie.side } : {}),
+  }))
 }
 
 function writeAccidental(display: AccidentalDisplay): MNXAccidentalDisplay {

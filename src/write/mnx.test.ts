@@ -38,6 +38,7 @@ const WHOLE_C: Event = {
       staff: undefined,
     },
   ],
+  kitNotes: [],
   isRest: false,
   staffPosition: undefined,
 }
@@ -67,7 +68,16 @@ function scoreOf(
 ): Score {
   return {
     globalMeasures: globals,
-    parts: [{ id: 'P1', name: undefined, shortName: undefined, staves: 1, measures: [measure] }],
+    parts: [
+      {
+        id: 'P1',
+        name: undefined,
+        shortName: undefined,
+        staves: 1,
+        kit: new Map(),
+        measures: [measure],
+      },
+    ],
     grouping: [],
     sounds: new Map(),
   }
@@ -108,6 +118,7 @@ test.each([
         markings: {},
         fermata: undefined,
         notes: [],
+        kitNotes: [],
         isRest: true,
         staffPosition: undefined,
       }),
@@ -135,6 +146,7 @@ test.each([
             staff: undefined,
           },
         ],
+        kitNotes: [],
         isRest: false,
         staffPosition: undefined,
       }),
@@ -285,6 +297,7 @@ describe('parts', () => {
           name: 'Flute',
           shortName: undefined,
           staves: 1,
+          kit: new Map(),
           measures: score.parts[0]?.measures ?? [],
         },
       ],
@@ -307,6 +320,7 @@ describe('parts', () => {
           name: 'Flute',
           shortName: 'Fl.',
           staves: 1,
+          kit: new Map(),
           measures: score.parts[0]?.measures ?? [],
         },
       ],
@@ -443,6 +457,7 @@ describe('ties and slurs', () => {
         staff: undefined,
       },
     ],
+    kitNotes: [],
     isRest: false,
     staffPosition: undefined,
   }
@@ -465,6 +480,7 @@ describe('ties and slurs', () => {
         staff: undefined,
       },
     ],
+    kitNotes: [],
     isRest: false,
     staffPosition: undefined,
   }
@@ -834,6 +850,7 @@ describe('events', () => {
       markings: {},
       fermata: undefined,
       notes: [],
+      kitNotes: [],
       isRest: true,
       staffPosition: undefined,
     }
@@ -941,6 +958,7 @@ describe('fermatas', () => {
           staff: undefined,
         },
       ],
+      kitNotes: [],
       isRest: false,
       staffPosition: undefined,
     }
@@ -991,6 +1009,7 @@ describe('event markings', () => {
           staff: undefined,
         },
       ],
+      kitNotes: [],
       isRest: false,
       staffPosition: undefined,
     }

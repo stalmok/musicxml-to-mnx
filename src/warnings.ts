@@ -168,6 +168,9 @@ export type WarningCode =
   // list, so its name and any other list detail are unavailable; or the list
   // names a part the score never writes, so no staff of it is drawn.
   | 'unresolved:part-id'
+  // A note naming an instrument the part list does not set up. The kit
+  // component it strikes is kept, without a name or a sound.
+  | 'unresolved:instrument-id'
   // An attribute whose value is not one MusicXML defines for it, so what the
   // source meant by it cannot be read. The attribute is not converted.
   | 'unresolved:attribute-value'
@@ -222,6 +225,10 @@ export type WarningCode =
   // The unnamed notes are kept as a separate line, which may not be the one
   // the source intended.
   | 'missing:voice'
+  // An unpitched note with no <display-step> and <display-octave> to place it
+  // by, or no clef in force to read them against. MNX states where every kit
+  // component sits, so it is written on the middle line.
+  | 'missing:display-step'
   // A rest written over a rest that already fills the same voice's measure.
   // Both are silence, so the measure rest stands and the extra is dropped.
   | 'redundant:rest'

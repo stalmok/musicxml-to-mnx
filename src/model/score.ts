@@ -115,19 +115,57 @@ export interface AccidentalDisplay {
   readonly force?: boolean
 }
 
-export interface Note {
+/**
+ * What a tie is written on. A pitched note and a note struck on a percussion
+ * kit both carry ties, and the resolver that pairs the two ends works on
+ * either; what a tie pairs by differs, so the reader states that separately.
+ */
+export interface TieTarget {
   /** Unique in the document. Written out only where something refers to it. */
   readonly id: string
-  readonly pitch: Pitch
   /**
    * Added to as the note is read, and again by the spanner resolver, which
    * is where the two ends of a tie across measures meet.
    */
   ties: readonly Tie[]
+}
+
+export interface Note extends TieTarget {
+  readonly pitch: Pitch
   readonly accidentalDisplay: AccidentalDisplay | undefined
   /**
    * Set only where this note sits on a staff other than the event's, which is
    * a chord straddling the two hands of a piano part.
+   */
+  readonly staff: number | undefined
+}
+
+/**
+ * One instrument of a percussion kit: what it is called, where its notes are
+ * written on the staff, and what plays it.
+ *
+ * MusicXML states the staff height on every unpitched note and MNX states it
+ * once on the component, so the reader gathers the components a part strikes
+ * as it reads its notes.
+ */
+export interface KitComponent {
+  readonly name: string | undefined
+  /** Staff steps from the middle line; negative is below it. */
+  readonly staffPosition: number
+  /**
+   * The instrument setup that plays it, as the key it is held under in the
+   * score's sounds. Undefined where the part list states no instrument.
+   */
+  readonly sound: string | undefined
+}
+
+/** A note struck on one component of a percussion kit. */
+export interface KitNote extends TieTarget {
+  /** The component struck, as the key it is held under in the part's kit. */
+  readonly component: string
+  /**
+   * Set only where this note sits on a staff other than the event's, which is
+   * a chord straddling two staves of one part.
    */
   readonly staff: number | undefined
 }
@@ -223,6 +261,11 @@ export interface Event {
    * joins as the measure walk reaches it.
    */
   notes: readonly Note[]
+  /**
+   * Empty unless the event is struck on a percussion kit. More than one makes
+   * it a chord, as a hi-hat struck with a snare is.
+   */
+  kitNotes: readonly KitNote[]
   readonly isRest: boolean
   /**
    * A rest's height on the staff, in steps from the middle line, where the
@@ -512,6 +555,11 @@ export interface Part {
   readonly shortName: string | undefined
   /** How many staves the part is written on. One unless the source says. */
   readonly staves: number
+  /**
+   * The percussion instruments the part is struck on, keyed by what its kit
+   * notes name. Empty for a part that strikes none.
+   */
+  readonly kit: ReadonlyMap<string, KitComponent>
   readonly measures: readonly Measure[]
 }
 
@@ -677,9 +725,15 @@ export interface Jump {
   readonly target?: string
 }
 
-/** An instrument the part list sets up, as its drawn name. */
+/** An instrument the part list sets up, as its drawn name and what sounds it. */
 export interface InstrumentSound {
   readonly name: string | undefined
+  /**
+   * The MIDI pitch that sounds it, where the part list states one. MNX's
+   * sound states a midiNumber, which its docs define as the pitch backing a
+   * percussion kit, so this is MusicXML's <midi-unpitched> and nothing else.
+   */
+  readonly midiNumber: number | undefined
 }
 
 export interface Score {

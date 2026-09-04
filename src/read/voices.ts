@@ -29,6 +29,7 @@ import type {
   Event,
   FullMeasureRest,
   GraceGroup,
+  KitNote,
   Note,
   NoteValue,
   NoteValueQuantity,
@@ -630,6 +631,29 @@ export class MeasureBuilder {
     path: DocumentPath,
     line: number,
   ): void {
+    const event = this.#chordEvent(voice, duration, path, line)
+    event.notes = [...event.notes, note]
+  }
+
+  /** The same, for a note struck on a percussion kit. */
+  addChordKitNote(
+    voice: string | undefined,
+    note: KitNote,
+    duration: Fraction | undefined,
+    path: DocumentPath,
+    line: number,
+  ): void {
+    const event = this.#chordEvent(voice, duration, path, line)
+    event.kitNotes = [...event.kitNotes, note]
+  }
+
+  /** The event a chord member joins, held to lasting as long as the chord. */
+  #chordEvent(
+    voice: string | undefined,
+    duration: Fraction | undefined,
+    path: DocumentPath,
+    line: number,
+  ): Event {
     const builder = this.#builderFor(voice ?? this.#lastVoice)
     const previous = builder.last
     if (!previous) {
@@ -649,7 +673,7 @@ export class MeasureBuilder {
       })
     }
 
-    previous.event.notes = [...previous.event.notes, note]
+    return previous.event
   }
 
   /**

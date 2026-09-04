@@ -620,12 +620,23 @@ describe('notes', () => {
           '<note><rest/><pitch><step>C</step><octave>4</octave></pitch><type>whole</type></note>',
         ),
       ).message,
-    ).toContain('both a rest and a pitch')
+    ).toContain('more than one of <pitch>, <unpitched> and <rest>')
   })
 
-  test('rejects a note that is neither a rest nor a pitch', () => {
+  test('rejects a note that is both a pitch and unpitched', () => {
+    expect(
+      readFailure(
+        measure(
+          '<note><pitch><step>C</step><octave>4</octave></pitch><unpitched/>' +
+            '<type>whole</type></note>',
+        ),
+      ).message,
+    ).toContain('more than one of <pitch>, <unpitched> and <rest>')
+  })
+
+  test('rejects a note that sounds nothing at all', () => {
     expect(readFailure(measure('<note><type>whole</type></note>')).message).toContain(
-      'neither <pitch> nor <rest>',
+      'none of <pitch>, <unpitched> and <rest>',
     )
   })
 

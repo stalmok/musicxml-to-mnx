@@ -18,6 +18,7 @@ import type {
   Event,
   Fermata,
   FermataSymbol,
+  KitNote,
   LineType,
   MarkingKind,
   Markings,
@@ -26,6 +27,7 @@ import type {
   NoteValueQuantity,
   Pitch,
   Step,
+  TieTarget,
   TupletDisplay,
 } from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
@@ -41,6 +43,7 @@ import { noteValueBaseOf, requireNoteValueBase } from './noteValues.js'
 import { readIntegerInRange } from './numbers.js'
 import type { PartState } from './state.js'
 import { entriesOf, recogniser } from './tables.js'
+import { tieKey } from './spanners.js'
 import { MeasureBuilder } from './voices.js'
 import type { TupletDisplaySettings } from './voices.js'
 
@@ -67,12 +70,31 @@ function diatonicIndex(step: Step, octave: number): number {
 }
 
 /**
- * A rest's height on the staff from its <display-step>/<display-octave>, in
- * steps from the middle line. The clef in force sits its reference pitch on its
- * own line (2*line - 6 from the middle), and each diatonic step from there is
- * one more step of height. Undefined, with the loss reported, where the pair is
- * incomplete or no clef is in force to read it against.
+ * The height a <display-step>/<display-octave> pair states, in steps from the
+ * middle line. The clef in force sits its reference pitch on its own line
+ * (2*line - 6 from the middle), and each diatonic step from there is one more
+ * step of height. Undefined where the pair is incomplete or no clef is in
+ * force to read it against; what to do about that is the caller's, because a
+ * rest without a height is drawn at its default one and an unpitched note
+ * without one has nowhere to sit.
  */
+function displayStaffPosition(
+  element: XmlElement,
+  staff: number | undefined,
+  state: PartState,
+): number | undefined {
+  const stepElement = child(element, 'display-step')
+  const octaveElement = child(element, 'display-octave')
+
+  const step = stepElement?.text.trim().toUpperCase() ?? ''
+  const octaveText = octaveElement?.text.trim() ?? ''
+  const clef = state.clefs.get(staff ?? 1)
+  if (!isStep(step) || !/^-?\d+$/.test(octaveText) || clef === undefined) return undefined
+
+  return 2 * clef.line - 6 + (diatonicIndex(step, Number(octaveText)) - CLEF_REFERENCE[clef.sign])
+}
+
+/** A rest's height, with the loss reported where the source states one it cannot place. */
 function restStaffPosition(
   restElement: XmlElement,
   staff: number | undefined,
@@ -80,14 +102,13 @@ function restStaffPosition(
   warnings: WarningCollector,
   context: WarningContext,
 ): number | undefined {
-  const stepElement = child(restElement, 'display-step')
-  const octaveElement = child(restElement, 'display-octave')
-  if (!stepElement && !octaveElement) return undefined
+  // A rest stating neither is drawn at its default height, which is not a loss.
+  if (!child(restElement, 'display-step') && !child(restElement, 'display-octave')) {
+    return undefined
+  }
 
-  const step = stepElement?.text.trim().toUpperCase() ?? ''
-  const octaveText = octaveElement?.text.trim() ?? ''
-  const clef = state.clefs.get(staff ?? 1)
-  if (!isStep(step) || !/^-?\d+$/.test(octaveText) || clef === undefined) {
+  const position = displayStaffPosition(restElement, staff, state)
+  if (position === undefined) {
     warnings.add(
       'unsupported:element',
       "A rest's staff position, given by <display-step> and <display-octave>, needs " +
@@ -95,9 +116,81 @@ function restStaffPosition(
       { ...context, line: restElement.line },
       'display-step',
     )
-    return undefined
   }
-  return 2 * clef.line - 6 + (diatonicIndex(step, Number(octaveText)) - CLEF_REFERENCE[clef.sign])
+  return position
+}
+
+// Where a kit component sits when the source does not say: the middle line,
+// which is the one height every staff has.
+const UNPLACED_KIT_COMPONENT = 0
+
+/**
+ * The kit component an unpitched note strikes, added to the part's kit the
+ * first time a note strikes it.
+ *
+ * MNX names a component once, on the part, and MusicXML tells one from
+ * another by the <instrument> each note names. A source naming none has only
+ * the height the note is written at, which is what a reader of the page has
+ * too, so that is what stands in for the instrument.
+ */
+function kitComponent(
+  element: ElementReader,
+  unpitchedElement: XmlElement,
+  staff: number | undefined,
+  state: PartState,
+  warnings: WarningCollector,
+  context: WarningContext,
+): string {
+  // MusicXML lets a note name more than one instrument, for a note played on
+  // several at once. MNX strikes one component per kit note, so the first is
+  // the one converted.
+  const instruments = element.children('instrument')
+  if (instruments.length > 1) {
+    warnings.add(
+      'unrepresentable:element',
+      `A note is struck on ${String(instruments.length)} instruments at once, and MNX ` +
+        'states one for each note of a kit. The first is the one converted.',
+      { ...context, line: element.line },
+      'instrument',
+    )
+  }
+
+  const position = displayStaffPosition(unpitchedElement, staff, state)
+  const named = instruments[0] ? attribute(instruments[0], 'id') : undefined
+  // Without an instrument to name it by, two notes strike the same component
+  // exactly when they are written at the same height.
+  const source = named ?? `@${String(position ?? UNPLACED_KIT_COMPONENT)}`
+
+  const existing = state.kitKeys.get(source)
+  if (existing !== undefined) return existing
+
+  if (position === undefined) {
+    warnings.add(
+      'missing:display-step',
+      'An unpitched note gives no <display-step> and <display-octave> to place it by, or ' +
+        'no clef is in force to read them against. It is written on the middle line.',
+      { ...context, line: element.line },
+      'unpitched',
+    )
+  }
+  if (named !== undefined && !state.sounds.has(named)) {
+    warnings.add(
+      'unresolved:instrument-id',
+      `The part list has no <score-instrument> with id ${named}.`,
+      { ...context, line: element.line },
+      'instrument',
+    )
+  }
+
+  const sound = named !== undefined && state.sounds.has(named) ? named : undefined
+  const key = state.ids.nextKitComponent()
+  state.kitKeys.set(source, key)
+  state.kit.set(key, {
+    name: sound !== undefined ? state.sounds.get(sound)?.name : undefined,
+    staffPosition: position ?? UNPLACED_KIT_COMPONENT,
+    sound,
+  })
+  return key
 }
 
 export function readNote(
@@ -110,11 +203,20 @@ export function readNote(
 ): void {
   const restElement = element.child('rest')
   const pitchElement = element.child('pitch')
-  if (restElement && pitchElement) {
-    throw new MusicXMLError('A <note> is both a rest and a pitch.', { path, line: element.line })
+  // A note struck on a percussion kit: no pitch, and a height on the staff
+  // instead. What it strikes is a component of the part's kit.
+  const unpitchedElement = element.child('unpitched')
+  const sounded = [restElement, pitchElement, unpitchedElement].filter(
+    (found) => found !== undefined,
+  )
+  if (sounded.length > 1) {
+    throw new MusicXMLError('A <note> states more than one of <pitch>, <unpitched> and <rest>.', {
+      path,
+      line: element.line,
+    })
   }
-  if (!restElement && !pitchElement) {
-    throw new MusicXMLError('A <note> has neither <pitch> nor <rest>.', {
+  if (sounded.length === 0) {
+    throw new MusicXMLError('A <note> states none of <pitch>, <unpitched> and <rest>.', {
       path,
       line: element.line,
     })
@@ -177,7 +279,7 @@ export function readNote(
   // not an event of its own: it opens no tuplet, and the ratio it repeats
   // belongs to the event it joins.
   if (element.child('chord')) {
-    if (!pitchElement) {
+    if (restElement) {
       throw new MusicXMLError('A rest cannot be part of a chord.', { path, line: element.line })
     }
     // A chord member is drawn with the event it joins, so its stem and its
@@ -193,7 +295,19 @@ export function readNote(
     // the event's staff states one of its own.
     const reaches = staff !== undefined && staff !== builder.staffOfChord(voice) ? staff : undefined
 
-    const chordNote = readNoteAt(element, pitchElement, state, path, reaches)
+    // A chord member is a pitch or an unpitched note: a rest was refused just
+    // above, and a note sounding none of the three never reached here.
+    const chordNote = pitchElement
+      ? readNoteAt(element, pitchElement, state, path, reaches)
+      : readKitNoteAt(
+          element,
+          requireChild(element.element, 'unpitched', path),
+          staff,
+          reaches,
+          state,
+          warnings,
+          context,
+        )
 
     // Sibelius writes some chord members with a duration that disagrees with
     // the value every note of the chord is written as (a dotted half whose
@@ -221,17 +335,21 @@ export function readNote(
         'note',
       )
     }
-    builder.addChordNote(
-      voice,
-      chordNote,
-      writtenMatches ? undefined : duration,
-      path,
-      element.line,
-    )
-    readArpeggio(notations, voice, builder, chordNote)
+    const chordDurationOrNone = writtenMatches ? undefined : duration
+    if ('pitch' in chordNote) {
+      builder.addChordNote(voice, chordNote, chordDurationOrNone, path, element.line)
+      // A roll is drawn across the notes of a chord, so it is the pitched
+      // members that say how far it reaches. A kit note has no pitch to order
+      // it by, and the chord it sits on is what the roll spans anyway.
+      readArpeggio(notations, voice, builder, chordNote)
+    } else {
+      builder.addChordKitNote(voice, chordNote, chordDurationOrNone, path, element.line)
+      readArpeggio(notations, voice, builder, undefined)
+    }
     readTies(
       element,
       chordNote,
+      tiePairing(chordNote),
       voice,
       builder,
       graceElement !== undefined,
@@ -441,6 +559,9 @@ export function readNote(
   const notes: Note[] = pitchElement
     ? [readNoteAt(element, pitchElement, state, path, undefined)]
     : []
+  const kitNotes: KitNote[] = unpitchedElement
+    ? [readKitNoteAt(element, unpitchedElement, staff, undefined, state, warnings, context)]
+    : []
 
   const event: Event = {
     kind: 'event',
@@ -453,6 +574,7 @@ export function readNote(
     markings: readMarkings(notations, warnings, context),
     fermata: readFermata(notations, warnings, context),
     notes,
+    kitNotes,
     isRest: restElement !== undefined,
     staffPosition,
   }
@@ -537,8 +659,19 @@ function readEventSpanners(
   // The event's own note is the one these notations sit on: a chord member's
   // are read where the member is, against the note it added.
   readArpeggio(notations, voice, builder, event.notes[0])
-  for (const note of event.notes) {
-    readTies(element, note, voice, builder, inGraceGroup, state, warnings, context, tieds)
+  for (const note of [...event.notes, ...event.kitNotes]) {
+    readTies(
+      element,
+      note,
+      tiePairing(note),
+      voice,
+      builder,
+      inGraceGroup,
+      state,
+      warnings,
+      context,
+      tieds,
+    )
   }
   readSlurs(notations, event, voice, builder, state, warnings, context, inGraceGroup)
   builder.addBeamMarkers(
@@ -903,6 +1036,32 @@ function readNoteAt(
   }
 }
 
+/** The same, for a note struck on a component of the part's percussion kit. */
+function readKitNoteAt(
+  element: ElementReader,
+  unpitchedElement: XmlElement,
+  onStaff: number | undefined,
+  staff: number | undefined,
+  state: PartState,
+  warnings: WarningCollector,
+  context: WarningContext,
+): KitNote {
+  return {
+    id: state.ids.nextNote(),
+    component: kitComponent(element, unpitchedElement, onStaff, state, warnings, context),
+    ties: [],
+    staff,
+  }
+}
+
+/**
+ * What a tie on this note pairs by: the pitch of a pitched note, and the kit
+ * component struck for a note with no pitch to compare.
+ */
+function tiePairing(note: Note | KitNote): string {
+  return 'pitch' in note ? tieKey(note.pitch) : note.component
+}
+
 /**
  * How a note's accidental is drawn, or nothing where the source draws none.
  * MusicXML draws an accidental exactly where it writes an <accidental>, so its
@@ -932,7 +1091,8 @@ function readAccidentalDisplay(element: ElementReader): AccidentalDisplay | unde
  */
 function readTies(
   element: ElementReader,
-  note: Note,
+  note: TieTarget,
+  pairedBy: string,
   voice: string | undefined,
   builder: MeasureBuilder,
   grace: boolean,
@@ -957,8 +1117,11 @@ function readTies(
   // they sit on is the one thing that names all three.
   const where = { ...context, line: element.element.line }
   for (const edge of tieEdges(ties, tieds, warnings, context)) {
-    if (edge === 'stop') state.spanners.stopTie(note, voice, state.measure, at, grace, where)
-    else state.spanners.startTie(note, voice, side, state.measure, at, grace, where)
+    if (edge === 'stop') {
+      state.spanners.stopTie(note, pairedBy, voice, state.measure, at, grace, where)
+    } else {
+      state.spanners.startTie(note, pairedBy, voice, side, state.measure, at, grace, where)
+    }
   }
 
   // A let-ring (l.v.) tie rings out with no ending note. MusicXML 4.0 states

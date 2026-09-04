@@ -59,8 +59,8 @@ describe('the instrument id a sound is keyed by', () => {
     expect(usedBy('sound')).toEqual(['kit-component', 'sound'])
   })
 
-  test('the types model no kit, so nothing the writer emits names a sound', () => {
-    expect([...mnxTypes.keys()].filter((name) => name.startsWith('MNXKit'))).toEqual([])
+  test('a kit component is what the types name a sound from', () => {
+    expect(mnxTypes.get('MNXKitComponent')?.has('sound')).toBe(true)
   })
 })
 
@@ -157,8 +157,8 @@ const NOT_MODELLED: Readonly<Record<string, { properties: readonly string[]; why
     why: 'Playback, and a written pitch differing from the sounding one.',
   },
   MNXEvent: {
-    properties: ['kitNotes', 'orient'],
-    why: 'Percussion kit notes, and the side an event is drawn on.',
+    properties: ['orient'],
+    why: 'The side an event is drawn on.',
   },
   MNXSlur: {
     properties: ['endNote', 'startNote'],
@@ -192,8 +192,12 @@ const NOT_MODELLED: Readonly<Record<string, { properties: readonly string[]; why
     why: 'How a simile sign is drawn and counted.',
   },
   MNXPart: {
-    properties: ['kit', 'transposition'],
-    why: 'A percussion kit, and the interval a transposing instrument sounds at.',
+    properties: ['transposition'],
+    why: 'The interval a transposing instrument sounds at.',
+  },
+  MNXKitNote: {
+    properties: ['perform'],
+    why: 'How a kit note is played back, which the schema states nothing about yet.',
   },
   MNXStaffSource: {
     properties: ['stem', 'voice'],

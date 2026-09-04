@@ -120,12 +120,12 @@ export const NO_HOME_IN_MNX: ReadonlySet<string> = new Set([
   'staff-layout',
   'measure-layout',
   'measure-numbering',
-  // What the part list states about an instrument beyond its name: the
-  // taxonomy id, the abbreviation, the synthesizer setup and the playback
-  // device. The schema's sound states a name and a midiNumber, which its
-  // docs define as a MIDI pitch backing a percussion kit, so a
-  // <midi-program> naming a patch has no home either; <midi-unpitched> is
-  // the one with a home there, and stays a converter gap.
+  // What the part list states about an instrument beyond its name and the
+  // MIDI pitch that sounds it: the taxonomy id, the abbreviation, the
+  // synthesizer setup and the playback device. The schema's sound states a
+  // name and a midiNumber, which its docs define as a MIDI pitch backing a
+  // percussion kit, so a <midi-program> naming a patch has no home there.
+  // <midi-unpitched> is the one that does, and is converted.
   'instrument-sound',
   'instrument-abbreviation',
   'virtual-instrument',
