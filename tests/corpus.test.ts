@@ -40,24 +40,40 @@ import baseline from './corpus/warning-baseline.json' with { type: 'json' }
 
 /**
  * What a refusal says, without the location, which moves whenever a file is
- * re-exported. Anything else escaping is not a refusal and is reported whole.
+ * re-exported.
  */
-function refusalText(error: unknown): string {
-  if (error instanceof MusicXMLError) return error.detail
-  return error instanceof Error ? error.message : String(error)
+function refusalText(error: MusicXMLError): string {
+  return error.detail
 }
 
-// Converted once each, up front. Every check below reads the same result,
-// rather than converting the same song six times over.
+/**
+ * Converted once each, up front. Every check below reads the same result,
+ * rather than converting the same song six times over.
+ *
+ * A MusicXMLError is a refusal the converter chose; anything else is a crash,
+ * and the two are held apart because a crash recorded as a refusal reads as a
+ * song the converter decided against. A run once reported one refusal more
+ * than the tree refuses, on a machine short of memory, and an allocation
+ * failure inside a conversion would have looked exactly like that.
+ */
 const attempted = songs().map((song) => {
   try {
-    return { ...song, ...convertMusicXML(song.source), rejected: undefined }
+    return { ...song, ...convertMusicXML(song.source), rejected: undefined, crashed: undefined }
   } catch (error) {
-    return { ...song, rejected: refusalText(error) }
+    if (error instanceof MusicXMLError) {
+      return { ...song, rejected: refusalText(error), crashed: undefined }
+    }
+    return {
+      ...song,
+      rejected: undefined,
+      crashed: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+    }
   }
 })
 
-const converted = attempted.filter((song) => song.rejected === undefined)
+const converted = attempted.filter(
+  (song) => song.rejected === undefined && song.crashed === undefined,
+)
 
 // A warning is only worth having if a reader can find what it is about. Every
 // one names the line the element was written on, except where the mark has
@@ -103,6 +119,17 @@ test('the whole corpus is present', () => {
 // A song is refused only where converting it would mean handing back music
 // the source did not write. Which songs those are is pinned here, so that one
 // starting or ceasing to convert is a change somebody chose.
+// A crash is not a refusal. Nothing in the corpus may throw anything but a
+// MusicXMLError, and one that does names itself here rather than joining the
+// refusals, where it would read as a song the converter decided against.
+test('converts every song without crashing', () => {
+  const crashed = attempted
+    .filter((song) => song.crashed !== undefined)
+    .map((song) => `${song.name}: ${song.crashed ?? ''}`)
+
+  expect(crashed).toEqual([])
+})
+
 test('refuses only the songs it is known to refuse', () => {
   const refused = attempted
     .filter((song) => song.rejected !== undefined)
