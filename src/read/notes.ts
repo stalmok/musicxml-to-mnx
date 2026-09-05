@@ -616,7 +616,7 @@ export function readNote(
       voice,
       event,
       attribute(graceElement, 'slash') === 'yes',
-      readGraceType(graceElement, warnings, context),
+      graceSideToKeep(element, graceElement, voice, builder, warnings, context),
       staff,
     )
     readEventSpanners(
@@ -790,6 +790,46 @@ const GRACE_TIME_ATTRIBUTES: Record<GraceType, string> = {
   stealPrevious: 'steal-time-previous',
   stealFollowing: 'steal-time-following',
   makeTime: 'make-time',
+}
+
+/**
+ * The side to add a grace note with, once the beam over it has had its say.
+ *
+ * A run of grace notes is cut where the side changes, and each group beams
+ * within itself, so a beam drawn across the cut would be left with one note
+ * at each end and dropped. The beam is what the engraver drew, and the side
+ * is playback, so a note beamed to the one before it stays in the open group
+ * and the side it states is reported instead.
+ */
+function graceSideToKeep(
+  element: ElementReader,
+  grace: XmlElement,
+  voice: string | undefined,
+  builder: MeasureBuilder,
+  warnings: WarningCollector,
+  context: WarningContext,
+): GraceType | undefined {
+  const side = readGraceType(grace, warnings, context)
+  const open = builder.openGraceType(voice)
+  if (side === undefined || open === undefined || open === side) return side
+  // The <beam> children are read directly, so that a marker this never keeps
+  // is still read and reported where the note's beams are.
+  const joined = element.element.children.some(
+    (child) =>
+      child.name === 'beam' &&
+      (attribute(child, 'number') ?? '1') === '1' &&
+      ['continue', 'end'].includes(child.text.trim()),
+  )
+  if (!joined) return side
+  warnings.add(
+    'unrepresentable:grace-time',
+    `A grace note states it takes its time from another side than the grace notes it ` +
+      'is beamed to. MNX states one side for each group of grace notes, and splitting ' +
+      'the group would break the beam, so the side already stated is the one converted.',
+    { ...context, line: grace.line },
+    'grace',
+  )
+  return undefined
 }
 
 /**

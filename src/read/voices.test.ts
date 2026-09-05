@@ -240,9 +240,9 @@ describe('grace notes', () => {
 // MusicXML says how much time a grace note steals and from which side; MNX
 // states the side on the group and no amount.
 describe('where a grace group takes its time from', () => {
-  const graceNote = (attributes: string, step = 'D') =>
+  const graceNote = (attributes: string, step = 'D', beam = '') =>
     `<note><grace ${attributes}/><pitch><step>${step}</step><octave>4</octave></pitch>` +
-    '<type>eighth</type><voice>1</voice></note>'
+    `<type>eighth</type><voice>1</voice>${beam}</note>`
 
   const groupOf = (result: ReturnType<typeof read>['measure']) => {
     const item = result?.sequences[0]?.content[0]
@@ -298,6 +298,42 @@ describe('where a grace group takes its time from', () => {
       ['stealPrevious', 1],
       ['stealFollowing', 2],
     ])
+  })
+
+  // Each group beams within itself, so cutting the run under a beam would
+  // leave one note at each end and drop the beam. The beam is what the
+  // engraver drew; the side is playback.
+  test('keeps a beam drawn across the change of side, and reports the side', () => {
+    const { measure: result, warnings } = read(
+      measure(
+        graceNote('steal-time-previous="20"', 'D', '<beam number="1">begin</beam>') +
+          graceNote('steal-time-following="20"', 'E', '<beam number="1">end</beam>') +
+          note('C', 1),
+      ),
+    )
+
+    const groups = result?.sequences[0]?.content.filter((item) => item.kind === 'grace')
+    expect(groups?.map((group) => [group.graceType, group.content.length])).toEqual([
+      ['stealPrevious', 2],
+    ])
+    expect(warnings.map((w) => w.message)).toEqual([
+      expect.stringContaining('states steal-time-previous="20"'),
+      expect.stringContaining('states steal-time-following="20"'),
+      expect.stringContaining('beamed to'),
+    ])
+  })
+
+  test('cuts the run where the beam does not reach across it', () => {
+    const { measure: result } = read(
+      measure(
+        graceNote('steal-time-previous="20"', 'D', '<beam number="1">begin</beam>') +
+          graceNote('steal-time-following="20"', 'E', '<beam number="1">begin</beam>') +
+          note('C', 1),
+      ),
+    )
+
+    const groups = result?.sequences[0]?.content.filter((item) => item.kind === 'grace')
+    expect(groups?.map((group) => group.graceType)).toEqual(['stealPrevious', 'stealFollowing'])
   })
 
   test('takes the side from a later member where the group states none', () => {

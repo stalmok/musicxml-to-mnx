@@ -238,8 +238,10 @@ The exit code is the contract for a pipeline:
   the source draws one. The converter states which side the group takes its
   time from. Where the source names two different sides in one run, the
   converter cuts the run between them, because MNX states one side for each
-  group. A grace note that names no side joins the group that is open. MNX
-  states no amount of time taken, therefore the converter reports the amount.
+  group. It does not cut a run under a beam, because each group beams within
+  itself; it reports the side instead. A grace note that names no side joins
+  the group that is open. MNX states no amount of time taken, therefore the
+  converter reports the amount.
 - Ties and slurs, joined across barlines. The converter reports a tie or a
   slur with only one end.
 - Exact timing. The converter reads durations as exact fractions of
