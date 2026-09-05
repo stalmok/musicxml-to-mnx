@@ -256,9 +256,9 @@ no place for them.
 pedal marks and ornaments. The converter always reports these as warnings.
 It never drops them silently.
 
-**Out of scope for v1:** chord symbols and transposing instruments, which
-convert with an `unsupported:` warning. A `score-timewise` document gets a
-clear error, and the converter rejects it.
+**Out of scope for v1:** chord symbols, which convert with an `unsupported:`
+warning. A `score-timewise` document gets a clear error, and the converter
+rejects it.
 
 **Rejected, not half-converted:** a tuplet whose extent the source does not
 bracket. MusicXML states a tuplet as a ratio on each note and a bracket
