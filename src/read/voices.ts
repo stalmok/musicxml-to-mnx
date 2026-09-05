@@ -663,6 +663,13 @@ export class MeasureBuilder {
       })
     }
 
+    // The event a note joins has to be a note itself. A rest sounds nothing,
+    // so a note written onto one has no chord to be part of, the same way a
+    // rest written into a chord has none.
+    if (previous.event.isRest) {
+      throw new MusicXMLError('A rest cannot be part of a chord.', { path, line })
+    }
+
     // Every note of a chord belongs to one event, so they have to agree on
     // how long that event lasts.
     const chordDuration = previous.duration

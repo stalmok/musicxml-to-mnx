@@ -140,6 +140,19 @@ describe('chords', () => {
     ).toContain('rest cannot be part of a chord')
   })
 
+  // A note joining a rest is the same contradiction the other way round: the
+  // event it joins sounds nothing, so the note has no chord to be part of.
+  test('rejects a note marked as part of a chord on a rest', () => {
+    expect(
+      readFailure(
+        measure(
+          '<note><rest/><duration>4</duration><voice>1</voice></note>' +
+            note('E', 1, '1', '<chord/>'),
+        ),
+      ).message,
+    ).toContain('rest cannot be part of a chord')
+  })
+
   test('rejects chord notes that disagree about how long they last', () => {
     expect(readFailure(measure(note('C', 1) + note('E', 2, '1', '<chord/>'))).message).toContain(
       'lasts',
