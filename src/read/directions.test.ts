@@ -39,6 +39,24 @@ function read(source: string) {
   }
 }
 
+// A <backup> can carry the cursor before the measure starts, and a <forward>
+// bring it back. A direction written out there sits at the measure start,
+// which is the earliest place there is.
+describe('a direction written before the measure starts', () => {
+  test('sits at the measure start', () => {
+    const { measure } = read(
+      inMeasure(
+        '<backup><duration>16</duration></backup>' +
+          direction('<dynamics><f/></dynamics>') +
+          '<forward><duration>16</duration></forward>' +
+          note('C'),
+      ),
+    )
+
+    expect(measure?.dynamics).toEqual([{ position: { num: 0, den: 1 }, value: 'f' }])
+  })
+})
+
 describe('dynamics', () => {
   test('places a dynamic on the measure at the cursor', () => {
     const { measure } = read(inMeasure(direction('<dynamics><f/></dynamics>') + note('C')))

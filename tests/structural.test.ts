@@ -11,6 +11,7 @@ import {
   differingLyricLines,
   layoutLosses,
   pitchesOf,
+  sourceMeasureLengths,
   sourcePitches,
 } from './support/structural.js'
 
@@ -62,6 +63,51 @@ test('a chord member without a voice counts toward its base note voice', () => {
   // compares.
   const { mnx } = convertMusicXML(source)
   expect(pitchesOf(mnx)).toEqual(inSource)
+})
+
+// A <backup> can reach further back than the measure has run. Nothing sounds
+// before a measure starts, so a note written out there is written at the
+// start, and a <forward> that brings the cursor back cancels the reach.
+function backupMeasure(body: string): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.0">
+  <part id="P1">
+    <measure number="1">
+      <attributes><divisions>1</divisions></attributes>
+      ${body}
+    </measure>
+  </part>
+</score-partwise>
+`
+}
+
+const QUARTER =
+  '<note><pitch><step>C</step><octave>5</octave></pitch>' +
+  '<duration>1</duration><voice>1</voice><type>quarter</type></note>'
+
+test('a backup past the measure start that a forward cancels measures from the start', () => {
+  const source = backupMeasure(
+    '<backup><duration>4</duration></backup><forward><duration>4</duration></forward>' + QUARTER,
+  )
+
+  expect(sourceMeasureLengths(parseXmlRoot(source))).toEqual([[0.25]])
+
+  const { mnx } = convertMusicXML(source)
+  expect(mnx.parts[0]?.measures[0]?.sequences[0]?.content).toHaveLength(1)
+})
+
+test('a note written before the measure starts counts from the start', () => {
+  const source = backupMeasure(
+    QUARTER +
+      '<backup><duration>4</duration></backup>' +
+      QUARTER.replace('<voice>1</voice>', '<voice>2</voice>'),
+  )
+
+  expect(sourceMeasureLengths(parseXmlRoot(source))).toEqual([[0.25]])
+
+  // The second voice starts at the measure start, so it holds its note alone.
+  const { mnx } = convertMusicXML(source)
+  expect(mnx.parts[0]?.measures[0]?.sequences[1]?.content).toHaveLength(1)
 })
 
 // The layout checks. A layout can state less than the part list does and

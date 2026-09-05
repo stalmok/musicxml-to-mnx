@@ -329,6 +329,23 @@ describe('the measure cursor', () => {
     expect(warnings[0]?.element).toBe('backup')
   })
 
+  // A source reaches back past the measure start and forwards the same
+  // distance to return. Nothing is written outside the measure, so the two
+  // cancel and the notes written after them stand where the source drew them.
+  test('lets a forward cancel a backup that reached past the start', () => {
+    const { measure: result, warnings } = read(
+      measure(
+        '<backup><duration>16</duration></backup>' +
+          '<forward><duration>16</duration></forward>' +
+          note('C', 1, '1'),
+      ),
+    )
+    const content = result?.sequences[0]?.content
+
+    expect(content?.map((item) => item.kind)).toEqual(['event'])
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:backup'])
+  })
+
   test.each(['backup', 'forward'])('rejects a <%s> that states no duration', (name) => {
     expect(readFailure(measure(note('C', 1) + `<${name}/>`)).message).toContain('states no')
   })

@@ -440,9 +440,14 @@ export class MeasureBuilder {
    */
   #clampedBackup = false
 
-  /** Where the cursor has reached, from the start of the measure. */
+  /**
+   * Where the cursor has reached, from the start of the measure. A <backup>
+   * that carried it before the start reads as the start, since nothing sounds
+   * before a measure begins; the cursor itself is left where the source put
+   * it, because a <forward> can still bring it back.
+   */
   position(): Fraction {
-    return this.#cursor
+    return compareFractions(this.#cursor, fraction(0)) < 0 ? fraction(0) : this.#cursor
   }
 
   /**
@@ -450,26 +455,39 @@ export class MeasureBuilder {
    *
    * A <backup> reaching past the start of the measure is how exporters return
    * to the start of a measure a voice has not filled: the source backs up by
-   * the whole measure's length whatever that voice wrote. The cursor goes to
-   * the start, which is what such a source means, and the disagreement
-   * between the two numbers is reported. Refusing the document over it lost
-   * three songs of the Lieder corpus.
+   * the whole measure's length whatever that voice wrote. Refusing the
+   * document over it lost three songs of the Lieder corpus, so the reach is
+   * reported and whatever is written out there is written at the start.
+   *
+   * The cursor itself is left where the source put it, because a <forward>
+   * can bring it back: sources write the pair to reach a point they draw at
+   * the measure start, and taking the cursor to the start on the <backup>
+   * alone made the <forward> carry everything after it that much later.
    */
   shift(by: Fraction, warnings: WarningCollector, context: WarningContext, line: number): void {
-    const moved = addFractions(this.#cursor, by)
-    if (compareFractions(moved, fraction(0)) < 0) {
+    this.#cursor = addFractions(this.#cursor, by)
+    if (compareFractions(this.#cursor, fraction(0)) < 0) {
       warnings.add(
         'inconsistent:backup',
-        'A <backup> reaches back further than the measure has run. The cursor is taken ' +
-          'to the start of the measure.',
+        'A <backup> reaches back further than the measure has run. Anything written ' +
+          'before the measure starts is written at its start.',
         { ...context, line },
         'backup',
       )
-      this.#cursor = fraction(0)
-      this.#clampedBackup = true
-      return
     }
-    this.#cursor = moved
+  }
+
+  /**
+   * The cursor where something is about to be written, and where it then
+   * stays: writing at the measure start settles what a <backup> reaching
+   * past it meant, and no later <forward> can take that back.
+   */
+  #writeAt(): Fraction {
+    if (compareFractions(this.#cursor, fraction(0)) < 0) {
+      this.#clampedBackup = true
+      this.#cursor = fraction(0)
+    }
+    return this.#cursor
   }
 
   /**
@@ -496,6 +514,8 @@ export class MeasureBuilder {
         line,
       })
     }
+
+    this.#writeAt()
 
     // A known dialect trips this deliberately: closed-score hymnals write two
     // lines in one voice, laid over each other with <backup> and told apart
@@ -724,6 +744,8 @@ export class MeasureBuilder {
         line,
       })
     }
+
+    this.#writeAt()
 
     // The rest is the whole of this voice in this measure, so the staff it
     // names is the staff the sequence sits on.
@@ -1274,6 +1296,7 @@ export class MeasureBuilder {
    */
   addGraceNote(voice: string | undefined, event: Event, slashed: boolean, staff?: number): void {
     const builder = this.#builderFor(voice)
+    this.#writeAt()
     // A grace note is squeezed in before the note it ornaments, so time the
     // voice has passed over in silence is passed over before the group rather
     // than after it. Filling the gap here keeps the group beside its note

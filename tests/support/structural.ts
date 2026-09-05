@@ -216,6 +216,11 @@ export function sourcePitches(root: XmlElement): string[] {
  * occurs, because <divisions> can change in the middle of a measure. Only a
  * note extends the measured length: a <forward> past the last note skips
  * time nothing is written in, which the converter rightly leaves silent.
+ *
+ * A <backup> may reach back further than the measure has run. The cursor
+ * follows it out there, because a <forward> can bring it back, but a note
+ * written before the measure starts is written at the start, which is what
+ * the converter does with it.
  */
 export function sourceMeasureLengths(root: XmlElement): number[][] {
   const perPart: number[][] = []
@@ -243,6 +248,7 @@ export function sourceMeasureLengths(root: XmlElement): number[][] {
         } else if (item.name === 'note') {
           const isChord = item.children.some((c) => c.name === 'chord')
           const isGrace = item.children.some((c) => c.name === 'grace')
+          position = Math.max(0, position)
           if (!isChord && !isGrace) position += durationOf()
           furthest = Math.max(furthest, position)
         }
