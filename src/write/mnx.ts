@@ -740,6 +740,7 @@ function writeItem(item: SequenceItem, referenced: ReadonlySet<string>): MNXSequ
         // Stated both ways: the schema declares no default for slash, so an
         // absent one is unspecified rather than false.
         slash: item.slashed,
+        ...(item.graceType !== undefined ? { graceType: item.graceType } : {}),
         content: item.content.map((event) => writeEvent(event, referenced)),
       }
 

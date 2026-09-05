@@ -170,8 +170,8 @@ const NOT_MODELLED: Readonly<Record<string, { properties: readonly string[]; why
     why: 'A tuplet drawn on a staff other than the one its voice sits on.',
   },
   MNXGraceGroup: {
-    properties: ['color', 'graceType'],
-    why: 'Whether a grace group steals time, and the colour it is drawn in.',
+    properties: ['color'],
+    why: 'The colour a grace group is drawn in.',
   },
   MNXMultiNoteTremolo: {
     properties: ['individualDuration'],
@@ -508,6 +508,7 @@ const MNX_SPELLING: Readonly<Record<string, string>> = {
   'PartGroup.barlineStyle': 'MNXStaffGroupBarlineStyle',
   'TimeSignature.display': 'MNXTime.display',
   'Lyric.type': 'MNXLyricLineType',
+  GraceType: 'MNXGraceType',
   'Marking.orient': 'MNXOrientation',
   'StrongAccentMarking.pointing': 'MNXStrongAccent.pointing',
   'BowDirectionMarking.direction': 'MNXBowDirection.direction',

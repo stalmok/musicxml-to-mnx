@@ -277,10 +277,14 @@ export interface MNXTuplet {
 }
 
 /** Notes squeezed in before the beat, taking none of the measure's time. */
+/** Where a grace group takes its time from. */
+export type MNXGraceType = 'makeTime' | 'stealFollowing' | 'stealPrevious'
+
 export interface MNXGraceGroup {
   type: 'grace'
   content: MNXEvent[]
   slash?: boolean
+  graceType?: MNXGraceType
 }
 
 /** A tremolo written across two notes, played as a rapid alternation. */

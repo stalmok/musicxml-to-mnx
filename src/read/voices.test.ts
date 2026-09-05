@@ -236,6 +236,93 @@ describe('grace notes', () => {
   })
 })
 
+// MusicXML says how much time a grace note steals and from which side; MNX
+// states the side on the group and no amount.
+describe('where a grace group takes its time from', () => {
+  const graceNote = (attributes: string, step = 'D') =>
+    `<note><grace ${attributes}/><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    '<type>eighth</type><voice>1</voice></note>'
+
+  const groupOf = (result: ReturnType<typeof read>['measure']) => {
+    const item = result?.sequences[0]?.content[0]
+    return item?.kind === 'grace' ? item : undefined
+  }
+
+  test.each([
+    ['steal-time-previous="20"', 'stealPrevious'],
+    ['steal-time-following="33"', 'stealFollowing'],
+    ['make-time="4"', 'makeTime'],
+  ])('reads %s as %s', (attributes, expected) => {
+    const { measure: result, warnings } = read(measure(graceNote(attributes) + note('C', 1)))
+
+    expect(groupOf(result)?.graceType).toBe(expected)
+    // The side carries over; the amount does not, and says so.
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:grace-time'])
+  })
+
+  test('states none where the source says nothing', () => {
+    const { measure: result, warnings } = read(measure(graceNote('') + note('C', 1)))
+
+    expect(groupOf(result)?.graceType).toBeUndefined()
+    expect(warnings).toEqual([])
+  })
+
+  test('reports a note naming both sides, keeping the first', () => {
+    const { measure: result, warnings } = read(
+      measure(graceNote('steal-time-previous="20" steal-time-following="20"') + note('C', 1)),
+    )
+
+    expect(groupOf(result)?.graceType).toBe('stealPrevious')
+    expect(warnings.map((w) => w.message)).toEqual([
+      expect.stringContaining('states steal-time-previous="20"'),
+      expect.stringContaining('names steal-time-following as well as another side'),
+    ])
+  })
+
+  // An after-grace and the grace notes leading into the next note are both
+  // written as a run of <grace> between the two, and only the side each takes
+  // its time from tells them apart.
+  test('cuts the run where the side changes', () => {
+    const { measure: result } = read(
+      measure(
+        graceNote('steal-time-previous="20"') +
+          graceNote('steal-time-following="20"', 'E') +
+          graceNote('', 'F') +
+          note('C', 1),
+      ),
+    )
+
+    const groups = result?.sequences[0]?.content.filter((item) => item.kind === 'grace')
+    expect(groups?.map((group) => [group.graceType, group.content.length])).toEqual([
+      ['stealPrevious', 1],
+      ['stealFollowing', 2],
+    ])
+  })
+
+  test('takes the side from a later member where the group states none', () => {
+    const { measure: result } = read(
+      measure(graceNote('') + graceNote('make-time="4"', 'E') + note('C', 1)),
+    )
+
+    expect(groupOf(result)?.graceType).toBe('makeTime')
+    expect(groupOf(result)?.content).toHaveLength(2)
+  })
+
+  test('reads the side from the note that opens a chord, not its members', () => {
+    const { measure: result, warnings } = read(
+      measure(
+        graceNote('steal-time-following="20"') +
+          '<note><chord/><grace steal-time-previous="99"/><pitch><step>F</step>' +
+          '<octave>4</octave></pitch><type>eighth</type><voice>1</voice></note>' +
+          note('C', 1),
+      ),
+    )
+
+    expect(groupOf(result)?.graceType).toBe('stealFollowing')
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:grace-time'])
+  })
+})
+
 describe('rests filling the measure', () => {
   const measureRest = (quarters: number, voice = '1') =>
     `<note><rest measure="yes"/><duration>${String(quarters * 4)}</duration>` +

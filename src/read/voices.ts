@@ -29,6 +29,7 @@ import type {
   Event,
   FullMeasureRest,
   GraceGroup,
+  GraceType,
   KitNote,
   Note,
   NoteValue,
@@ -1324,7 +1325,13 @@ export class MeasureBuilder {
    * Adds a grace note, which takes none of the measure's time. Consecutive
    * grace notes gather into one group, as they are played and drawn.
    */
-  addGraceNote(voice: string | undefined, event: Event, slashed: boolean, staff?: number): void {
+  addGraceNote(
+    voice: string | undefined,
+    event: Event,
+    slashed: boolean,
+    graceType: GraceType | undefined,
+    staff?: number,
+  ): void {
     const builder = this.#builderFor(voice)
     this.#writeAt()
     // A grace note is squeezed in before the note it ornaments, so time the
@@ -1345,13 +1352,26 @@ export class MeasureBuilder {
     // grace note reaching across to the other staff says so.
     builder.placed.push({ event, staff })
 
-    if (previous?.kind === 'grace') {
+    // Grace notes running together are one group, unless they take their time
+    // from different sides. MusicXML tells an after-grace from the graces
+    // leading into the next note by that alone: both are written as a run of
+    // <grace> notes between the two, and only steal-time-previous says the
+    // first belongs to the note before. MNX states one side per group, so the
+    // run is cut where the side changes. A note naming no side joins whatever
+    // is open.
+    if (
+      previous?.kind === 'grace' &&
+      (graceType === undefined ||
+        previous.graceType === undefined ||
+        previous.graceType === graceType)
+    ) {
       previous.content = [...previous.content, event]
       if (slashed) previous.slashed = true
+      previous.graceType ??= graceType
       return
     }
 
-    const group: GraceGroup = { kind: 'grace', content: [event], slashed }
+    const group: GraceGroup = { kind: 'grace', content: [event], slashed, graceType }
     list.push(group)
     // Each group beams within itself, so each starts a run of its own.
     builder.graceBeamed.push([])

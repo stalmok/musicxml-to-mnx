@@ -18,6 +18,7 @@ import type {
   Event,
   Fermata,
   FermataSymbol,
+  GraceType,
   KitNote,
   LineType,
   MarkingKind,
@@ -294,9 +295,8 @@ export function readNote(
     // A chord member is drawn with the event it joins, so its stem and its
     // beams are that event's and are read from the note carrying them. The
     // ratio it repeats is likewise the event's, and a grace member's slash
-    // is the group's, carried from the note that opened it.
-    element.skip('stem', 'beam', 'time-modification')
-    if (graceElement) attribute(graceElement, 'slash')
+    // and stolen time are the group's, carried from the note that opened it.
+    element.skip('stem', 'beam', 'time-modification', 'grace')
 
     // MNX states the staff on the event and, where a note of a chord reaches
     // across to the other hand, on that note. A chord straddling the two
@@ -592,7 +592,13 @@ export function readNote(
   // measure's time, which is why it carries no <duration>. It joins a group
   // rather than standing in the cursor's path.
   if (graceElement) {
-    builder.addGraceNote(voice, event, attribute(graceElement, 'slash') === 'yes', staff)
+    builder.addGraceNote(
+      voice,
+      event,
+      attribute(graceElement, 'slash') === 'yes',
+      readGraceType(graceElement, warnings, context),
+      staff,
+    )
     readEventSpanners(
       element,
       notations,
@@ -753,6 +759,56 @@ const ARTICULATIONS: Record<Exclude<MarkingKind, 'tremolo' | 'bowDirection'>, st
   // MusicXML files a breath mark among the articulations; MNX states it
   // beside them, under its own name.
   breath: 'breath-mark',
+}
+
+// MusicXML says where a grace note's time comes from with one attribute per
+// side, each naming an amount: a percentage of the note beside it, or, for
+// make-time, a length in divisions. MNX names the side and states no amount.
+// Keyed by the side, so a side the model gains with no attribute here is
+// never read.
+const GRACE_TIME_ATTRIBUTES: Record<GraceType, string> = {
+  stealPrevious: 'steal-time-previous',
+  stealFollowing: 'steal-time-following',
+  makeTime: 'make-time',
+}
+
+/**
+ * Where a grace note takes its time from. MNX states the side on the group
+ * and no amount, so the amount the source names is reported rather than
+ * carried. A note naming more than one side keeps one and reports the rest,
+ * because MNX states one. The sides are read in a fixed order rather than the
+ * source's, because attributes carry none.
+ */
+function readGraceType(
+  grace: XmlElement,
+  warnings: WarningCollector,
+  context: WarningContext,
+): GraceType | undefined {
+  let kind: GraceType | undefined
+  for (const [type, written] of entriesOf(GRACE_TIME_ATTRIBUTES)) {
+    const amount = attribute(grace, written)
+    if (amount === undefined) continue
+    if (kind !== undefined) {
+      warnings.add(
+        'unrepresentable:grace-time',
+        `A grace note names ${written} as well as another side to take its time from. ` +
+          'MNX states one side, and only one is converted.',
+        { ...context, line: grace.line },
+        'grace',
+      )
+      continue
+    }
+    kind = type
+    warnings.add(
+      'unrepresentable:grace-time',
+      `A grace note states ${written}="${amount}", and MNX states which side a grace ` +
+        'group takes its time from without an amount. The side is converted and the ' +
+        'amount is not.',
+      { ...context, line: grace.line },
+      'grace',
+    )
+  }
+  return kind
 }
 
 // MusicXML's bow marks, keyed by the way the bow travels, which is what MNX

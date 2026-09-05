@@ -763,7 +763,12 @@ describe('tuplets and grace groups', () => {
   // The schema states no default for slash, so an absent one is unspecified
   // rather than false. Both values are stated.
   test('states the absence of a slash', () => {
-    const group: GraceGroup = { kind: 'grace', content: [WHOLE_C], slashed: false }
+    const group: GraceGroup = {
+      kind: 'grace',
+      content: [WHOLE_C],
+      slashed: false,
+      graceType: undefined,
+    }
 
     expect(writeMnx(itemScore(group)).parts[0]?.measures[0]?.sequences[0]?.content[0]).toEqual({
       type: 'grace',
@@ -773,10 +778,31 @@ describe('tuplets and grace groups', () => {
   })
 
   test('writes the slash when the group is drawn with one', () => {
-    const group: GraceGroup = { kind: 'grace', content: [WHOLE_C], slashed: true }
+    const group: GraceGroup = {
+      kind: 'grace',
+      content: [WHOLE_C],
+      slashed: true,
+      graceType: undefined,
+    }
     const written = writeMnx(itemScore(group))
 
     expect(written.parts[0]?.measures[0]?.sequences[0]?.content[0]).toHaveProperty('slash', true)
+  })
+
+  test('writes where the group takes its time from, where the source says', () => {
+    const group: GraceGroup = {
+      kind: 'grace',
+      content: [WHOLE_C],
+      slashed: false,
+      graceType: 'stealPrevious',
+    }
+    const written = writeMnx(itemScore(group))
+
+    expect(written.parts[0]?.measures[0]?.sequences[0]?.content[0]).toHaveProperty(
+      'graceType',
+      'stealPrevious',
+    )
+    expect(schemaErrors(written)).toEqual([])
   })
 
   test('writes a two-note tremolo as the pair and the space it fills', () => {
@@ -792,7 +818,15 @@ describe('tuplets and grace groups', () => {
   test.each([
     ['a tuplet', triplet],
     ['a nested tuplet', nestedTuplet],
-    ['a grace group', { kind: 'grace', content: [WHOLE_C], slashed: true } satisfies GraceGroup],
+    [
+      'a grace group',
+      {
+        kind: 'grace',
+        content: [WHOLE_C],
+        slashed: true,
+        graceType: 'makeTime',
+      } satisfies GraceGroup,
+    ],
     ['a two-note tremolo', tremolo],
   ])('writes MNX the spec schema accepts for %s', (_name, item) => {
     expect(schemaErrors(writeMnx(itemScore(item)))).toEqual([])

@@ -155,6 +155,11 @@ export type WarningCode =
   // A measure repeat sign drawn with this many slashes, which MNX has no way
   // to ask for. The repeat is converted and drawn the default way.
   | 'unrepresentable:measure-repeat-slashes'
+  // How much time a grace note takes from the note beside it. MNX states
+  // which side the time comes from and no amount, so the side is converted
+  // and the amount is not. Also a note naming both sides, where MNX states
+  // one.
+  | 'unrepresentable:grace-time'
   // A SMuFL glyph named for a dynamic's wording. A dynamic group's glyphs
   // draw the mark itself, not the words, so the wording goes over as text
   // and the glyph choice is lost.
