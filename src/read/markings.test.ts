@@ -165,11 +165,17 @@ describe('bow direction', () => {
   })
 
   // MNX states one direction, so a note bowed both ways has said two things.
-  test('reports a note carrying both bow marks, keeping the first', () => {
-    const { events, warnings } = read(note(technical('<up-bow/><down-bow placement="above"/>')))
+  // The two elements share the one key, so document order is what decides.
+  test.each([
+    ['<up-bow/><down-bow placement="above"/>', 'up', 'down-bow'],
+    ['<down-bow/><up-bow placement="above"/>', 'down', 'up-bow'],
+  ])('reports a note carrying both bow marks, keeping the first', (inner, kept, reported) => {
+    const { events, warnings } = read(note(technical(inner)))
 
-    expect(events[0]?.markings.bowDirection?.direction).toBe('up')
-    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:marking'])
+    expect(events[0]?.markings.bowDirection?.direction).toBe(kept)
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([
+      ['unrepresentable:marking', reported],
+    ])
   })
 
   // The rest of <technical> is playing instruction the converter does not

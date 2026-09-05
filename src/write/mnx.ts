@@ -737,9 +737,11 @@ function writeItem(item: SequenceItem, referenced: ReadonlySet<string>): MNXSequ
     case 'grace':
       return {
         type: 'grace',
-        // Stated both ways: the schema declares no default for slash, so an
-        // absent one is unspecified rather than false.
+        // Stated both ways, because MNX reads an absent slash as a slash.
         slash: item.slashed,
+        // Left out where the source says nothing. MNX then reads the group as
+        // taking its time from the note before, which is its default for an
+        // unstated one, and MusicXML states no default of its own to carry.
         ...(item.graceType !== undefined ? { graceType: item.graceType } : {}),
         content: item.content.map((event) => writeEvent(event, referenced)),
       }

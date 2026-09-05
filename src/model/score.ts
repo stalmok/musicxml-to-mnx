@@ -327,14 +327,18 @@ export interface Tuplet {
   readonly orient?: 'above' | 'below'
 }
 
-/** Notes squeezed in before the beat, taking none of the measure's time. */
 /**
  * Where a grace group takes its time from. MusicXML states an amount on each
  * grace note; MNX states a kind on the group, so which attribute the source
- * wrote is what carries over and how much it steals does not.
+ * wrote is what carries over and how much it takes does not.
  */
 export type GraceType = 'makeTime' | 'stealFollowing' | 'stealPrevious'
 
+/**
+ * Notes drawn small beside the note they ornament, taking none of the
+ * measure's time. Most lead into the note that follows; one taking its time
+ * from the note before is drawn after that note instead.
+ */
 export interface GraceGroup {
   readonly kind: 'grace'
   /** Grace notes join the group as the measure walk reaches them. */

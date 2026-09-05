@@ -209,7 +209,8 @@ describe('chords', () => {
   })
 })
 
-// A grace note is squeezed in before the beat and takes no time of its own.
+// A grace note is drawn small beside the note it ornaments and takes no time
+// of its own.
 // What matters here is that it stays out of the cursor's path; what it
 // converts to is covered in tuplets.test.ts.
 describe('grace notes', () => {

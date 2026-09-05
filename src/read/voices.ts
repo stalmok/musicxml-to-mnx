@@ -1323,7 +1323,8 @@ export class MeasureBuilder {
 
   /**
    * Adds a grace note, which takes none of the measure's time. Consecutive
-   * grace notes gather into one group, as they are played and drawn.
+   * grace notes gather into one group, as they are played and drawn, unless
+   * they take their time from different sides.
    */
   addGraceNote(
     voice: string | undefined,

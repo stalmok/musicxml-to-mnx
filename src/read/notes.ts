@@ -17,6 +17,7 @@ import type {
   Draft,
   Event,
   Fermata,
+  BowDirectionMarking,
   FermataSymbol,
   GraceType,
   KitNote,
@@ -588,9 +589,9 @@ export function readNote(
     staffPosition,
   }
 
-  // A grace note is squeezed in before the beat and takes none of the
-  // measure's time, which is why it carries no <duration>. It joins a group
-  // rather than standing in the cursor's path.
+  // A grace note is drawn small beside the note it ornaments and takes none
+  // of the measure's time, which is why it carries no <duration>. It joins a
+  // group rather than standing in the cursor's path.
   if (graceElement) {
     builder.addGraceNote(
       voice,
@@ -812,12 +813,17 @@ function readGraceType(
 }
 
 // MusicXML's bow marks, keyed by the way the bow travels, which is what MNX
-// states. A source writing both on one note has said two things, and is
-// reported where it is read.
-const BOW_DIRECTIONS: Record<'up' | 'down', string> = {
+// states. Keyed by the model's own direction, so a direction the model gains
+// with no element here does not compile.
+const BOW_DIRECTIONS: Record<BowDirectionMarking['direction'], string> = {
   up: 'up-bow',
   down: 'down-bow',
 }
+
+// The same table the way it is read: MusicXML's element to the direction.
+const BOW_DIRECTION_OF = new Map<string, BowDirectionMarking['direction']>(
+  entriesOf(BOW_DIRECTIONS).map(([direction, written]) => [written, direction]),
+)
 
 /**
  * The marks written on this event. Read in a fixed order rather than the
@@ -872,21 +878,26 @@ function readMarkings(
     // articulations; MNX states them beside the rest of the marks. The other
     // playing instructions there stay unread, which is what reports them.
     for (const technical of block.blocks('technical')) {
-      for (const [direction, written] of entriesOf(BOW_DIRECTIONS)) {
-        for (const found of technical.children(written)) {
-          if (markings.bowDirection !== undefined) {
-            attribute(found, 'placement')
-            warnings.add(
-              'unrepresentable:marking',
-              'An event carries more than one bow mark, and MNX states one direction. ' +
-                'The first is the one converted.',
-              { ...context, line: found.line },
-              written,
-            )
-            continue
-          }
-          markings.bowDirection = { orient: placementOf(found), direction }
+      // Two elements share the one MNX key, unlike the articulations above,
+      // so which the source wrote first is what says which mark is kept.
+      // Both names are asked for up front, which is what accounts for them,
+      // and the block's own children give the order they were written in.
+      for (const written of Object.values(BOW_DIRECTIONS)) technical.children(written)
+      for (const found of technical.element.children) {
+        const direction = BOW_DIRECTION_OF.get(found.name)
+        if (direction === undefined) continue
+        if (markings.bowDirection !== undefined) {
+          attribute(found, 'placement')
+          warnings.add(
+            'unrepresentable:marking',
+            'An event carries more than one bow mark, and MNX states one direction. ' +
+              'The first is the one converted.',
+            { ...context, line: found.line },
+            found.name,
+          )
+          continue
         }
+        markings.bowDirection = { orient: placementOf(found), direction }
       }
     }
 

@@ -236,9 +236,10 @@ The exit code is the contract for a pipeline:
   converter builds them as the MNX tree of beams over the measure.
 - Grace notes. Consecutive grace notes become one group, with the slash where
   the source draws one. The converter states which side the group takes its
-  time from, and it cuts the run where that side changes, which is how
-  MusicXML writes an after-grace. MNX states no amount of time taken,
-  therefore the converter reports the amount.
+  time from. Where the source names two different sides in one run, the
+  converter cuts the run between them, because MNX states one side for each
+  group. A grace note that names no side joins the group that is open. MNX
+  states no amount of time taken, therefore the converter reports the amount.
 - Ties and slurs, joined across barlines. The converter reports a tie or a
   slur with only one end.
 - Exact timing. The converter reads durations as exact fractions of

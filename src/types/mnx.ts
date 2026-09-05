@@ -276,10 +276,11 @@ export interface MNXTuplet {
   orient?: MNXOrientation
 }
 
-/** Notes squeezed in before the beat, taking none of the measure's time. */
 /** Where a grace group takes its time from. */
 export type MNXGraceType = 'makeTime' | 'stealFollowing' | 'stealPrevious'
 
+/** Notes drawn small beside the note they ornament, taking none of the
+ * measure's time. */
 export interface MNXGraceGroup {
   type: 'grace'
   content: MNXEvent[]
