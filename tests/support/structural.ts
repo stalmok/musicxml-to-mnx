@@ -158,16 +158,80 @@ export function pitchesOf(document: MNXDocument): string[] {
   return lines
 }
 
+/** The steps in order, and the semitone each of them sits at. */
+const STEP_ORDER = ['C', 'D', 'E', 'F', 'G', 'A', 'B']
+const STEP_SEMITONES = [0, 2, 4, 5, 7, 9, 11]
+
+/**
+ * What a part's <transpose> says, in MusicXML's own direction: the staff
+ * steps and half steps from the pitch the player reads to the pitch the
+ * instrument sounds. Undefined for a part at concert pitch.
+ */
+interface SourceTranspose {
+  steps: number
+  semitones: number
+}
+
+/**
+ * The first <transpose> an <attributes> states, where it states one. A part
+ * changes instrument by writing one partway through a measure, so this is
+ * asked as the measure is walked rather than once for the whole of it.
+ */
+function statedTranspose(attributes: XmlElement): SourceTranspose | undefined {
+  for (const transpose of attributes.children.filter((c) => c.name === 'transpose')) {
+    const number = (name: string) => {
+      const text = transpose.children.find((c) => c.name === name)?.text.trim() ?? ''
+      return text === '' ? 0 : Number(text)
+    }
+    const octaves = number('octave-change')
+    return {
+      steps: number('diatonic') + 7 * octaves,
+      semitones: number('chromatic') + 12 * octaves,
+    }
+  }
+  return undefined
+}
+
+/**
+ * The pitch a written note sounds on a transposing instrument. Worked out
+ * from the source's own numbers rather than through the converter: the staff
+ * steps settle the letter, and the half steps settle the alteration, so a
+ * written E-flat on a B-flat clarinet sounds a D-flat and not a C-sharp.
+ */
+function sounded(
+  pitch: { step: string; octave: number; alter: number },
+  transpose: SourceTranspose | undefined,
+): { step: string; octave: number; alter: number } {
+  if (!transpose) return pitch
+  const index = STEP_ORDER.indexOf(pitch.step)
+  const steps = pitch.octave * 7 + index + transpose.steps
+  const octave = Math.floor(steps / 7)
+  const stepIndex = ((steps % 7) + 7) % 7
+  const semitones =
+    pitch.octave * 12 + (STEP_SEMITONES[index] ?? 0) + pitch.alter + transpose.semitones
+
+  return {
+    step: STEP_ORDER[stepIndex] ?? 'C',
+    octave,
+    alter: semitones - (octave * 12 + (STEP_SEMITONES[stepIndex] ?? 0)),
+  }
+}
+
 /**
  * Every pitch in the source, one line per part and measure, read straight
  * from the XML. Deliberately not routed through the converter's reader: the
  * point is to disagree with it when it is wrong.
+ *
+ * A transposing part is written at the pitch its player reads, and MNX states
+ * the pitch the instrument sounds, so the source's own <transpose> is applied
+ * here as well.
  */
 export function sourcePitches(root: XmlElement): string[] {
   const lines: string[] = []
   root.children
     .filter((c) => c.name === 'part')
     .forEach((part, partIndex) => {
+      let transpose: SourceTranspose | undefined
       part.children
         .filter((c) => c.name === 'measure')
         .forEach((measure, measureIndex) => {
@@ -177,7 +241,12 @@ export function sourcePitches(root: XmlElement): string[] {
           // so a chord note without one inherits the voice in force.
           const byVoice = new Map<string, string[]>()
           let voiceInForce = ''
-          for (const note of measure.children.filter((c) => c.name === 'note')) {
+          for (const note of measure.children) {
+            if (note.name === 'attributes') {
+              transpose = statedTranspose(note) ?? transpose
+              continue
+            }
+            if (note.name !== 'note') continue
             const isChord = note.children.some((c) => c.name === 'chord')
             const stated = note.children.find((c) => c.name === 'voice')?.text.trim() ?? ''
             const voice = stated === '' && isChord ? voiceInForce : stated
@@ -188,11 +257,16 @@ export function sourcePitches(root: XmlElement): string[] {
               pitch.children.find((c) => c.name === name)?.text.trim() ?? ''
             const list = byVoice.get(voice) ?? []
             list.push(
-              pitchKey({
-                step: text('step'),
-                octave: Number(text('octave')),
-                alter: text('alter') === '' ? 0 : Number(text('alter')),
-              }),
+              pitchKey(
+                sounded(
+                  {
+                    step: text('step'),
+                    octave: Number(text('octave')),
+                    alter: text('alter') === '' ? 0 : Number(text('alter')),
+                  },
+                  transpose,
+                ),
+              ),
             )
             byVoice.set(voice, list)
           }

@@ -119,6 +119,74 @@ test('a note written before the measure starts counts from the start', () => {
   expect(schemaErrors(mnx)).toEqual([])
 })
 
+// A transposing part is written at the pitch its player reads. MNX states the
+// pitch the instrument sounds, so the source-side reader applies the source's
+// own <transpose> before comparing.
+test('a transposing part is compared at the pitch it sounds', () => {
+  const source = `<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.0">
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>1</divisions>
+        <key><fifths>2</fifths></key>
+        <transpose><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>
+      </attributes>
+      <note>
+        <pitch><step>C</step><octave>5</octave></pitch>
+        <duration>1</duration><voice>1</voice><type>quarter</type>
+      </note>
+      <note>
+        <pitch><step>E</step><alter>-1</alter><octave>5</octave></pitch>
+        <duration>1</duration><voice>1</voice><type>quarter</type>
+      </note>
+    </measure>
+  </part>
+</score-partwise>
+`
+  const inSource = sourcePitches(parseXmlRoot(source))
+
+  // A written C sounds a B-flat, and a written E-flat a D-flat.
+  expect(inSource).toEqual(['part 1 measure 1: B4(-1) D5(-1)'])
+
+  const { mnx } = convertMusicXML(source)
+  expect(pitchesOf(mnx)).toEqual(inSource)
+  expect(schemaErrors(mnx)).toEqual([])
+})
+
+// A part changes instrument partway through a measure, which real scores
+// write as "muta in A" or "To Piccolo". Both sides read the notes before the
+// change at the instrument that was playing them.
+test('a transposition stated partway through a measure applies from there', () => {
+  const source = `<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.0">
+  <part id="P1">
+    <measure number="1">
+      <attributes><divisions>1</divisions></attributes>
+      <note>
+        <pitch><step>C</step><octave>5</octave></pitch>
+        <duration>1</duration><voice>1</voice><type>quarter</type>
+      </note>
+      <attributes>
+        <transpose><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>
+      </attributes>
+      <note>
+        <pitch><step>C</step><octave>5</octave></pitch>
+        <duration>1</duration><voice>1</voice><type>quarter</type>
+      </note>
+    </measure>
+  </part>
+</score-partwise>
+`
+  const inSource = sourcePitches(parseXmlRoot(source))
+
+  // The first note is still at concert pitch; the second sounds a B-flat.
+  expect(inSource).toEqual(['part 1 measure 1: C5 B4(-1)'])
+
+  const { mnx } = convertMusicXML(source)
+  expect(pitchesOf(mnx)).toEqual(inSource)
+})
+
 // The layout checks. A layout can state less than the part list does and
 // stay legal MNX: a staff with no label reference suppresses its part's
 // name, and a multi-staff part left as bare sibling staves loses its grand

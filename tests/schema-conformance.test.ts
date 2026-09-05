@@ -131,6 +131,7 @@ const DEFINITION_OF: Readonly<Record<string, string | undefined>> = {
   MNXLayoutStaff: 'staff',
   MNXLyricLine: 'event-lyric-line',
   MNXSingleNoteTremolo: 'tremolo-single',
+  MNXPartTransposition: 'part-transposition',
   // A shared base for the marking types rather than a definition of its own.
   // The schema spells each mark out (accent, staccato, ...), and every one of
   // them is a bare orient, which MNXEventMarkings' properties already reach.
@@ -187,10 +188,6 @@ const NOT_MODELLED: Readonly<Record<string, { properties: readonly string[]; why
   MNXMeasureRepeat: {
     properties: ['counter', 'displayNumber', 'staffPosition'],
     why: 'How a simile sign is drawn and counted.',
-  },
-  MNXPart: {
-    properties: ['transposition'],
-    why: 'The interval a transposing instrument sounds at.',
   },
   MNXKitNote: {
     properties: ['perform'],

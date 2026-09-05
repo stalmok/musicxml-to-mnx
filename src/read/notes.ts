@@ -42,6 +42,7 @@ import { readLyrics } from './lyrics.js'
 import { noteValueBaseOf, requireNoteValueBase } from './noteValues.js'
 import { readIntegerInRange } from './numbers.js'
 import type { PartState } from './state.js'
+import { soundingPitch } from './transposition.js'
 import { entriesOf, recogniser } from './tables.js'
 import { tieKey } from './spanners.js'
 import { MeasureBuilder } from './voices.js'
@@ -1035,9 +1036,14 @@ function readNoteAt(
   path: DocumentPath,
   staff: number | undefined,
 ): Note {
+  // MusicXML writes the pitch the player reads, MNX the pitch the instrument
+  // sounds. They differ only for a transposing part, which states the
+  // interval between them.
+  const written = readPitch(pitchElement, path)
+
   return {
     id: state.ids.nextNote(),
-    pitch: readPitch(pitchElement, path),
+    pitch: state.transposition ? soundingPitch(written, state.transposition) : written,
     ties: [],
     accidentalDisplay: readAccidentalDisplay(element),
     staff,

@@ -1,7 +1,7 @@
 // What the readers of one part share: the running state a measure cannot be
 // read without.
 
-import type { ClefSign, KitComponent, ResolvedSound } from '../model/score.js'
+import type { ClefSign, KitComponent, ResolvedSound, Transposition } from '../model/score.js'
 import { IdGenerator, SpannerResolver } from './spanners.js'
 
 /** The clef in force on a staff: its sign and the line it sits on. */
@@ -66,6 +66,19 @@ export interface PartState {
    * written at.
    */
   kitKeys: Map<string, string>
+  /**
+   * The instrument transposition in force, from the part's <transpose>. Every
+   * pitch is carried by it to what the instrument sounds, and the key
+   * signature to the key the music sounds in. Undefined until the part states
+   * one, which is concert pitch.
+   */
+  transposition: Transposition | undefined
+  /**
+   * The first transposition the part stated, which is the one written out.
+   * MNX states one per part, so a part that changes instrument partway keeps
+   * this one and reports the change.
+   */
+  statedTransposition: Transposition | undefined
 }
 
 export function newPartState(
@@ -84,5 +97,7 @@ export function newPartState(
     sounds,
     kit: new Map(),
     kitKeys: new Map(),
+    transposition: undefined,
+    statedTransposition: undefined,
   }
 }

@@ -51,6 +51,10 @@ export type WarningCode =
   // The staves of a part are in different keys, or different time signatures,
   // and MNX states one of each for the whole score.
   | 'unrepresentable:per-staff-key'
+  // A part whose staves are transposed by different intervals, or which
+  // changes instrument partway. MNX states one transposition for the part.
+  | 'unrepresentable:per-staff-transposition'
+  | 'unrepresentable:transposition-change'
   | 'unrepresentable:per-staff-time'
   // The parts of the score state different keys, or different time signatures,
   // in the same measure, and MNX states one of each for the whole score.

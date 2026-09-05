@@ -455,7 +455,24 @@ export interface MNXPart {
    * notes name. Written only for a part that strikes any.
    */
   kit?: Record<string, MNXKitComponent>
+  /** The instrument's transposition, for a part that reads at another pitch. */
+  transposition?: MNXPartTransposition
   measures: MNXPartMeasure[]
+}
+
+/** How a transposing instrument's written pitches stand to what it sounds. */
+export interface MNXPartTransposition {
+  interval: MNXInterval
+  /** The number of fifths at which a transposed key signature flips. */
+  keyFifthsFlipAt?: number
+  /** Whether the instrument is drawn at written pitch in a concert score. */
+  prefersWrittenPitches?: boolean
+}
+
+/** An interval between two pitches, on the staff and in half steps. */
+export interface MNXInterval {
+  halfSteps: number
+  staffDistance: number
 }
 
 /** One instrument of a percussion kit: what it is, and where it is written. */

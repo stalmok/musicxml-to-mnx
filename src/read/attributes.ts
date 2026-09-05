@@ -8,7 +8,7 @@
 import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
 import type { Fraction } from '../fraction.js'
-import type { Clef, ClefSign, Key, TimeSignature, TimeUnit } from '../model/score.js'
+import type { Clef, ClefSign, Key, TimeSignature, TimeUnit, Transposition } from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, requireChild, trimmedText } from '../xml/tree.js'
@@ -16,6 +16,7 @@ import type { ElementReader } from './element.js'
 import { readAttributeInRange, readInteger, readIntegerInRange } from './numbers.js'
 import type { PartState } from './state.js'
 import { recogniser } from './tables.js'
+import { concertFifths } from './transposition.js'
 import { elementLoss } from './unrepresentable.js'
 import { reportHidden } from './unrepresentable.js'
 
@@ -156,6 +157,10 @@ export function readAttributes(
     }
   }
 
+  // Read before the key, because a transposing part writes the key it reads
+  // and MNX states the key the music sounds in.
+  readTransposition(element, state, warnings, context, path)
+
   // MusicXML allows one key and one time signature per staff. MNX states them
   // for the whole score, so staves that disagree cannot both be carried.
   //
@@ -198,10 +203,18 @@ export function readAttributes(
   // unmetered from here on, whatever was in force before.
   if (times.length > 0) state.time = metered[0]
 
+  // MNX states the key the music sounds in. A transposing part writes the key
+  // its player reads, which stands a fixed number of fifths from it.
+  const written = keys[0]
+  const key =
+    written && state.transposition
+      ? { ...written, fifths: concertFifths(written.fifths, state.transposition) }
+      : written
+
   return {
     keyStated: keyBlocks.length > 0,
     timeStated: times.length > 0,
-    key: keys[0],
+    key,
     time: metered[0],
     clefs: element
       .blocks('clef')
@@ -493,6 +506,83 @@ function readTimeDisplay(
     'time',
   )
   return undefined
+}
+
+/**
+ * The part's instrument transposition, from <transpose>. MusicXML states the
+ * interval from the written pitch to the sounding one and MNX states it the
+ * other way round, so both numbers are negated.
+ *
+ * MusicXML writes one <transpose> per staff, told apart by a "number"
+ * attribute, and MNX states one for the part. A part whose staves disagree,
+ * or which changes instrument partway, keeps the first and reports the rest;
+ * the pitches themselves follow whatever is in force, because a pitch stated
+ * at the wrong instrument is a wrong note rather than a lost detail.
+ */
+function readTransposition(
+  element: ElementReader,
+  state: PartState,
+  warnings: WarningCollector,
+  context: WarningContext,
+  path: DocumentPath,
+): void {
+  const stated = element.blocks('transpose').map((found) => {
+    // <chromatic> is the only one MusicXML requires; the others default to no
+    // change. <double> sounds a further octave away, which MNX's one interval
+    // cannot hold beside the transposition itself, so it is reported.
+    const diatonicElement = found.child('diatonic')
+    const octaveElement = found.child('octave-change')
+    const octaves = octaveElement ? readInteger(octaveElement, path) : 0
+    const diatonic = diatonicElement ? readInteger(diatonicElement, path) : 0
+    const chromaticElement =
+      found.child('chromatic') ?? requireChild(found.element, 'chromatic', path)
+    const chromatic = readInteger(chromaticElement, path)
+
+    return {
+      staffDistance: opposite(diatonic + 7 * octaves),
+      halfSteps: opposite(chromatic + 12 * octaves),
+    }
+  })
+
+  const first = stated[0]
+  if (!first) return
+
+  if (stated.some((other) => !sameTransposition(other, first))) {
+    warnings.add(
+      'unrepresentable:per-staff-transposition',
+      'The staves of this part are transposed by different intervals, and MNX states one ' +
+        'for the part. The first is the one converted.',
+      { ...context, line: element.line },
+      'transpose',
+    )
+  }
+
+  state.transposition = first
+  if (state.statedTransposition === undefined) {
+    state.statedTransposition = first
+    return
+  }
+  if (!sameTransposition(state.statedTransposition, first)) {
+    warnings.add(
+      'unrepresentable:transposition-change',
+      'A part changes instrument partway, and MNX states one transposition for the part. ' +
+        'The first is the one written out; the notes sound as each instrument plays them.',
+      { ...context, line: element.line },
+      'transpose',
+    )
+  }
+}
+
+/**
+ * The same distance the other way. Zero is written without a sign, because a
+ * part at concert pitch states no direction to be the opposite of.
+ */
+function opposite(distance: number): number {
+  return distance === 0 ? 0 : -distance
+}
+
+function sameTransposition(one: Transposition, other: Transposition): boolean {
+  return one.staffDistance === other.staffDistance && one.halfSteps === other.halfSteps
 }
 
 function readClef(

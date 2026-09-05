@@ -827,6 +827,7 @@ function readPart(
       shortName: partList.shortNames.get(id),
       staves: state.staves,
       kit: state.kit,
+      transposition: state.statedTransposition,
       measures: readings.map((reading) => reading.measure),
     },
     globals: readings.map((reading) => reading.global),

@@ -212,6 +212,12 @@ The exit code is the contract for a pipeline:
   p2, and so on, and the converter reports each rename.
 - System breaks and page breaks. They become pages and systems in the score
   rendering.
+- Transposing instruments. MusicXML writes the pitch the player reads; MNX
+  writes the pitch the instrument sounds. The converter carries every pitch of
+  a part with a `<transpose>` to what it sounds, states the key the music
+  sounds in, and gives the part the interval back to the written pitch. MNX
+  states one transposition for each part, therefore the converter reports a
+  part whose staves disagree or which changes instrument partway.
 - Instrument names from the part list. They become the sounds of the score,
   each with the MIDI pitch that plays it where the part list gives one. The
   rest of the synthesizer setup has no place in MNX, therefore the converter

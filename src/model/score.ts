@@ -552,6 +552,19 @@ export interface Measure {
   readonly sequences: readonly Sequence[]
 }
 
+/**
+ * A part's instrument transposition, as MNX states it: the interval that
+ * turns a sounding pitch into the written one. A B-flat clarinet, written a
+ * major second above what it sounds, is `{ staffDistance: 1, halfSteps: 2 }`.
+ * MusicXML's <transpose> states the same interval the other way round.
+ */
+export interface Transposition {
+  /** Staff steps from the sounding pitch to the written one. */
+  readonly staffDistance: number
+  /** Half steps from the sounding pitch to the written one. */
+  readonly halfSteps: number
+}
+
 export interface Part {
   readonly id: string
   readonly name: string | undefined
@@ -565,6 +578,12 @@ export interface Part {
    * notes name. Empty for a part that strikes none.
    */
   readonly kit: ReadonlyMap<string, KitComponent>
+  /**
+   * The instrument's transposition, where the part is written for one that
+   * reads at a pitch other than it sounds. Undefined for a part at concert
+   * pitch, which is what an absent <transpose> means.
+   */
+  readonly transposition: Transposition | undefined
   readonly measures: readonly Measure[]
 }
 

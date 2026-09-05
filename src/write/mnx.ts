@@ -530,6 +530,16 @@ function writePart(
     // MusicXML names the notation font once for the score, MNX per part, so
     // the one font goes on every part.
     ...(musicFont !== undefined ? { smuflFont: musicFont } : {}),
+    ...(part.transposition
+      ? {
+          transposition: {
+            interval: {
+              halfSteps: part.transposition.halfSteps,
+              staffDistance: part.transposition.staffDistance,
+            },
+          },
+        }
+      : {}),
     ...(part.kit.size > 0 ? { kit: writeKit(part.kit) } : {}),
     measures: part.measures.map((measure) => writeMeasure(measure, referenced, names)),
   }
