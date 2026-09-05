@@ -25,19 +25,33 @@ import { reportHidden } from './unrepresentable.js'
 // to each other in both directions.
 const isClefSign = recogniser<ClefSign>({ C: true, F: true, G: true })
 
-// The signs MusicXML states beyond the three MNX does. They head a staff MNX
-// has no clef for, so nothing is written for one, but the staff still has
-// heights on it: a rest or an unpitched note placed by <display-step> reads
-// against the clef in force. Each is held as the plain treble clef, which is
-// how a percussion staff is written and read: the drumset positions, bass
-// drum on the bottom space and snare on the third, are the treble-clef
+// The signs MusicXML states beyond the three MNX does. The staff each heads
+// has heights on it: a rest or an unpitched note placed by <display-step>
+// reads against the clef in force. Each is held as the plain treble clef,
+// which is how a percussion staff is written and read: the drumset positions,
+// bass drum on the bottom space and snare on the third, are the treble-clef
 // positions of the steps the source writes.
 //
 // The <line> such a clef states is where its glyph is drawn, not a reference
 // pitch: the percussion glyph is two bars, which name no note. So it is not
 // read as a G clef's line would be, and a percussion clef drawn on line 3
 // places its notes exactly where one drawn on line 2 does.
+//
+// A percussion clef is written out through the glyph below. The other three
+// are not: a TAB staff's lines are strings and its notes are pitched, jianpu
+// is numbers rather than a staff, and "none" asks for no clef at all. None of
+// the three is the treble staff this reads them as, so nothing is written for
+// one and the sign is reported.
 const UNSTATED_CLEF_SIGNS: ReadonlySet<string> = new Set(['percussion', 'TAB', 'jianpu', 'none'])
+
+// The percussion clef, drawn as the two bars SMuFL names
+// unpitchedPercussionClef1. MNX signs the C, F and G clefs only, and its clef
+// carries a glyph to draw in place of the sign's own; a staff headed this way
+// holds kit notes, each placed by its own staff position, so the sign the
+// glyph covers places nothing. Written as the treble clef the reader already
+// reads the staff's heights against, which keeps the clef and those heights
+// saying the same thing.
+const PERCUSSION_GLYPH = 'unpitchedPercussionClef1'
 const isTimeUnit = recogniser<TimeUnit>({
   1: true,
   2: true,
@@ -503,6 +517,36 @@ function readClef(
   const lineElement = element.child('line')
 
   if (!stated) {
+    // Held in force so that whatever the staff places by <display-step> is
+    // still placed, at the height the treble clef gives it.
+    const named = readAttributeInRange(element.element, 'number', path, 1, state.staves)
+    state.clefs.set(named ?? 1, { sign: 'G', line: DEFAULT_CLEF_LINES.G })
+
+    if (sign === 'percussion') {
+      // The <line> a percussion clef states is where its glyph is drawn, and
+      // the glyph names no note, so a staff whose clef is drawn anywhere but
+      // the second line reads its heights exactly as this one does. Saying so
+      // is the one thing the conversion leaves behind.
+      const drawnOn = lineElement ? readIntegerInRange(lineElement, path, 1, 5) : 2
+      if (drawnOn !== 2) {
+        warnings.add(
+          'unrepresentable:clef-line',
+          `A percussion clef is drawn on line ${String(drawnOn)}, and it is converted on the ` +
+            'second line, where the staff reads its heights from.',
+          { ...context, line: element.line },
+          'clef',
+        )
+      }
+      return {
+        sign: 'G',
+        staffPosition: 2 * DEFAULT_CLEF_LINES.G - 6,
+        staff: state.staves > 1 ? named : undefined,
+        position,
+        octave: undefined,
+        glyph: PERCUSSION_GLYPH,
+      }
+    }
+
     warnings.add(
       'unrepresentable:clef-sign',
       `A "${sign}" clef heads a staff, and MNX states the C, F and G clefs only. The staff ` +
@@ -510,12 +554,6 @@ function readClef(
       { ...context, line: element.line },
       'clef',
     )
-    // Held in force so that whatever the staff places by <display-step> is
-    // still placed, at the height the treble clef gives it.
-    state.clefs.set(readAttributeInRange(element.element, 'number', path, 1, state.staves) ?? 1, {
-      sign: 'G',
-      line: DEFAULT_CLEF_LINES.G,
-    })
     return undefined
   }
 
@@ -555,5 +593,5 @@ function readClef(
 
   // MusicXML counts staff lines from 1 at the bottom; MNX counts staff steps
   // from 0 at the middle line. On a five-line staff they differ by this.
-  return { sign, staffPosition: 2 * line - 6, staff, position, octave }
+  return { sign, staffPosition: 2 * line - 6, staff, position, octave, glyph: undefined }
 }

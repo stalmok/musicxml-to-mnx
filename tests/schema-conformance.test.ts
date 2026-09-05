@@ -178,10 +178,7 @@ const NOT_MODELLED: Readonly<Record<string, { properties: readonly string[]; why
     why: 'The value each note of the pair is played at, as against the value they are written with.',
   },
   MNXSequence: { properties: ['orient'], why: 'The side a whole voice is drawn on.' },
-  MNXClef: {
-    properties: ['color', 'glyph'],
-    why: 'A specific glyph, and the colour it is drawn in.',
-  },
+  MNXClef: { properties: ['color'], why: 'The colour a clef is drawn in.' },
   MNXDynamic: {
     properties: ['relativeValue', 'staffEnd', 'visuallyContinues', 'voice'],
     why: 'Relative dynamics, a hairpin ending on another staff, a continued hairpin, and the voice a mark belongs to.',

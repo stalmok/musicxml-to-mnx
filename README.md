@@ -220,19 +220,20 @@ The exit code is the contract for a pipeline:
 - Percussion. An unpitched note becomes a note struck on the part's kit. The
   kit states each instrument one time, with its name, the sound that plays it,
   and its place on the staff. Two notes strike the same instrument when they
-  name the same instrument and sit at the same height. MNX states the C, F and
-  G clefs only, therefore the converter reports a percussion, TAB, jianpu or
-  "none" clef and writes the staff without a clef. It reads the heights on
-  such a staff as the treble clef gives them, which is how percussion is
-  written and read.
+  name the same instrument and sit at the same height. The converter reads the
+  heights on such a staff as the treble clef gives them, which is how
+  percussion is written and read. MNX states the C, F and G clefs only, so it
+  writes a percussion clef as the treble clef with the SMuFL glyph MNX's clef
+  carries for a drawn sign. It reports a TAB, jianpu or "none" clef and writes
+  the staff without a clef.
 - Beams, including secondary beams, hooks, and beams over a grace group. The
   converter builds them as the MNX tree of beams over the measure.
 - Ties and slurs, joined across barlines. The converter reports a tie or a
   slur with only one end.
 - Exact timing. The converter reads durations as exact fractions of
   `<divisions>`, and it follows `<backup>` and `<forward>`. If a `<backup>`
-  reaches before the measure start, the cursor goes to the measure start and
-  the converter reports the disagreement. A silent gap in a voice becomes a
+  reaches before the measure start, the converter reports the disagreement and
+  writes at the measure start whatever the source writes out there. A silent gap in a voice becomes a
   space. If a note states no note value, the converter calculates the value
   from the duration. A rest that fills its measure keeps
   no invented note value.

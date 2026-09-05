@@ -386,6 +386,11 @@ export interface Clef {
    * octave below a plain treble. Undefined where the clef is untransposed.
    */
   readonly octave: number | undefined
+  /**
+   * The SMuFL glyph drawn in place of the sign's own, where the source draws
+   * a clef MNX has no sign for. Undefined where the sign draws itself.
+   */
+  readonly glyph: string | undefined
 }
 
 /**

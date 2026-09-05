@@ -42,12 +42,7 @@ function source(body: string, instruments = ''): string {
 function read(body: string, instruments = '') {
   const warnings = new WarningCollector()
   const score = readScore(parseXmlRoot(source(body, instruments)), warnings)
-  // Every one of these is written under a percussion clef, which MNX cannot
-  // state and which is reported once for each <clef> element. staves.test.ts
-  // holds that report to account; what each test here is about is whatever
-  // else the reading says.
-  const reported = warnings.list().filter((one) => one.code !== 'unrepresentable:clef-sign')
-  return { score, part: score.parts[0], warnings: reported }
+  return { score, part: score.parts[0], warnings: warnings.list() }
 }
 
 /** The kit notes of the part's first event, and the components they strike. */
@@ -198,7 +193,7 @@ describe('a note naming an instrument set up by another part', () => {
       ),
       warnings,
     )
-    const reported = warnings.list().filter((one) => one.code !== 'unrepresentable:clef-sign')
+    const reported = warnings.list()
 
     expect([...(score.parts[1]?.kit.values() ?? [])]).toEqual([
       { name: undefined, staffPosition: 1, sound: undefined },
@@ -312,8 +307,16 @@ describe('the MNX a percussion part converts to', () => {
       'P1-I39': { name: 'Acoustic Snare', midiNumber: 38 },
       'P1-I43': { name: 'Closed Hi-Hat', midiNumber: 42 },
     })
-    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:clef-sign'])
+    expect(warnings).toEqual([])
     expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  test('heads the staff with the percussion clef', () => {
+    const { mnx } = convertMusicXML(source(struck('C', '5', 'P1-I39'), DRUM_KIT))
+
+    expect(mnx.parts[0]?.measures[0]?.clefs).toEqual([
+      { clef: { sign: 'G', staffPosition: -2, glyph: 'unpitchedPercussionClef1' } },
+    ])
   })
 
   test('writes no notes array on an event that only strikes the kit', () => {
