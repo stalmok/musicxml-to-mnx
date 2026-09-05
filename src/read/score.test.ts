@@ -998,7 +998,7 @@ describe('reporting what is not converted', () => {
     // rather than as an unread block.
     expect(warnings.map((w) => w.message)).toEqual([
       '<trill-mark> cannot be expressed in MNX.',
-      '<harmonic> is not converted yet.',
+      '<harmonic> cannot be expressed in MNX.',
       'A tie starts on a note that nothing ties to, and is not carried over.',
     ])
   })

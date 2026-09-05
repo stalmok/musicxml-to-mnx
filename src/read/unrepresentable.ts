@@ -84,6 +84,41 @@ export const NO_HOME_IN_MNX: ReadonlySet<string> = new Set([
   'accidental-mark',
   // A slide between two notes. The schema's only note-to-note line is a slur.
   'slide',
+  // How a note is played on the instrument, beyond which way the bow travels.
+  // The schema's event-markings are accent, bow direction, breath, soft
+  // accent, spiccato, staccatissimo, staccato, stress, strong accent, tenuto,
+  // tremolo and unstress, and nothing anywhere else holds a fingering, a
+  // string, a fret, a mute or a way of plucking. Up-bow and down-bow are the
+  // two <technical> children that do have a home, and are converted.
+  'harmonic',
+  'open-string',
+  'thumb-position',
+  'fingering',
+  'pluck',
+  'double-tongue',
+  'triple-tongue',
+  'stopped',
+  'snap-pizzicato',
+  'fret',
+  'string',
+  'hammer-on',
+  'pull-off',
+  'bend',
+  'tap',
+  'heel',
+  'toe',
+  'fingernails',
+  'hole',
+  'arrow',
+  'handbell',
+  'brass-bend',
+  'flip',
+  'smear',
+  'open',
+  'half-muted',
+  'harmon-mute',
+  'golpe',
+  'other-technical',
   // The line drawn under a melisma, and the one under a held figured bass.
   // MNX's event-lyric-line is a text and a type, with nowhere for either.
   'extend',

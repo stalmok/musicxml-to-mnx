@@ -367,6 +367,16 @@ const ELEMENT_COLLISIONS: Readonly<Record<string, readonly string[]>> = {
   // MusicXML's <system-layout> is page spacing. MNX's system-layout is the
   // arrangement of staves in a system. The names meet; the meanings do not.
   'system-layout': ['system-layout'],
+  // MusicXML's <string> is the string a note is played on. The schema's
+  // string is the JSON text type every other definition is built from.
+  string: ['string'],
+  // MusicXML's <arrow> is an arrow drawn on a note to show how it is played.
+  // The schema's arrow says whether a rolled chord is drawn with an
+  // arrowhead.
+  arrow: ['arpeggio'],
+  // MusicXML's <open> is an open string, or an open valve or hole. The
+  // schema's open says whether a repeat ending is left unclosed.
+  open: ['ending'],
 }
 
 /**
