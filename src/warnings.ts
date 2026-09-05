@@ -190,6 +190,10 @@ export type WarningCode =
   // A note's written value and its measured duration disagree, outside a
   // tuplet where they are meant to. The written value is the one converted.
   | 'inconsistent:duration'
+  // A note of a grace chord names a different side to take its time from
+  // than the chord it joins. MNX states one side for the group, and the
+  // side the chord already states is the one converted.
+  | 'inconsistent:grace-time'
   // A tuplet whose written content does not add up to its stated ratio. The
   // content is converted as written.
   | 'inconsistent:tuplet'

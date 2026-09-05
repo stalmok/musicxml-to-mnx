@@ -295,9 +295,28 @@ export function readNote(
     }
     // A chord member is drawn with the event it joins, so its stem and its
     // beams are that event's and are read from the note carrying them. The
-    // ratio it repeats is likewise the event's, and a grace member's slash
-    // and stolen time are the group's, carried from the note that opened it.
-    element.skip('stem', 'beam', 'time-modification', 'grace')
+    // ratio it repeats is likewise the event's.
+    element.skip('stem', 'beam', 'time-modification')
+    // A grace member's slash and the side it takes its time from are the
+    // group's, carried from the note that opened it. Both are read here so
+    // the sweep does not report a member for restating them; everything else
+    // on the <grace> is left to the sweep. A member naming a side the chord
+    // does not take is the source disagreeing with itself about one group.
+    if (graceElement) {
+      attribute(graceElement, 'slash')
+      const open = builder.openGraceType(voice)
+      for (const [side, written] of entriesOf(GRACE_TIME_ATTRIBUTES)) {
+        if (attribute(graceElement, written) === undefined) continue
+        if (open === undefined || open === side) continue
+        warnings.add(
+          'inconsistent:grace-time',
+          `A note of a grace chord names ${written}, and the chord it joins takes its ` +
+            'time from another side. The side the chord states is the one converted.',
+          { ...context, line: graceElement.line },
+          'grace',
+        )
+      }
+    }
 
     // MNX states the staff on the event and, where a note of a chord reaches
     // across to the other hand, on that note. A chord straddling the two

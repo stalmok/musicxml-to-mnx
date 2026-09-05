@@ -644,6 +644,16 @@ export class MeasureBuilder {
     ).length
   }
 
+  /**
+   * Where the grace group a chord note is joining takes its time from, or
+   * nothing where the group says nothing. The group is the last thing added,
+   * so this is what a member of it has to agree with.
+   */
+  openGraceType(voice: string | undefined): GraceType | undefined {
+    const last = innermost(this.#builderFor(voice ?? this.#lastVoice)).at(-1)
+    return last?.kind === 'grace' ? last.graceType : undefined
+  }
+
   /** The staff the event a chord note would join was placed on. */
   staffOfChord(voice: string | undefined): number | undefined {
     return this.#builderFor(voice ?? this.#lastVoice).placed.at(-1)?.staff

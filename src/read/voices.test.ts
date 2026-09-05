@@ -309,18 +309,49 @@ describe('where a grace group takes its time from', () => {
     expect(groupOf(result)?.content).toHaveLength(2)
   })
 
+  const chordMember = (attributes: string) =>
+    `<note><chord/><grace ${attributes}/><pitch><step>F</step><octave>4</octave></pitch>` +
+    '<type>eighth</type><voice>1</voice></note>'
+
   test('reads the side from the note that opens a chord, not its members', () => {
     const { measure: result, warnings } = read(
       measure(
         graceNote('steal-time-following="20"') +
-          '<note><chord/><grace steal-time-previous="99"/><pitch><step>F</step>' +
-          '<octave>4</octave></pitch><type>eighth</type><voice>1</voice></note>' +
+          chordMember('steal-time-following="20"') +
           note('C', 1),
       ),
     )
 
     expect(groupOf(result)?.graceType).toBe('stealFollowing')
+    // The member restates the side the chord already takes, so it says
+    // nothing new and the amount is reported once.
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:grace-time'])
+  })
+
+  test('reports a chord member naming a side the chord does not take', () => {
+    const { measure: result, warnings } = read(
+      measure(
+        graceNote('steal-time-following="20"') +
+          chordMember('steal-time-previous="99"') +
+          note('C', 1),
+      ),
+    )
+
+    expect(groupOf(result)?.graceType).toBe('stealFollowing')
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:grace-time',
+      'inconsistent:grace-time',
+    ])
+  })
+
+  // The member's own attributes are read so that restating the group's is not
+  // reported; the rest of its <grace> is still swept.
+  test('reports an unread attribute on a chord member grace', () => {
+    const { warnings } = read(
+      measure(graceNote('') + chordMember('color="#FF0000"') + note('C', 1)),
+    )
+
+    expect(warnings.map((w) => [w.code, w.attribute])).toEqual([['unsupported:attribute', 'color']])
   })
 })
 
