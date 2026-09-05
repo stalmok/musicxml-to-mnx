@@ -649,10 +649,13 @@ interface PartList {
   sounds: ReadonlyMap<string, InstrumentSound>
   /**
    * What a note's <instrument> resolves to: the key the score holds the sound
-   * under, and the name to draw. Keyed by the source's own instrument id,
-   * which is what a note names and which MNX may not be able to state.
+   * under, and the name to draw. Keyed by the part that sets the instrument
+   * up, then by the source's own instrument id, which is what a note names
+   * and which MNX may not be able to state. An id belongs to the part whose
+   * <score-part> declares it, so a note naming another part's id resolves to
+   * nothing.
    */
-  soundsByInstrument: ReadonlyMap<string, ResolvedSound>
+  soundsByInstrument: ReadonlyMap<string, ReadonlyMap<string, ResolvedSound>>
 }
 
 /**
@@ -671,7 +674,7 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
   const lines = new Map<string, number>()
   const grouping = new GroupingBuilder()
   const sounds = new Map<string, InstrumentSound>()
-  const soundsByInstrument = new Map<string, ResolvedSound>()
+  const soundsByInstrument = new Map<string, Map<string, ResolvedSound>>()
   // Generated keys for instrument ids MNX cannot state, running sound1,
   // sound2, ... and skipping any key already taken, so a rename cannot
   // collide with an id the source wrote.
@@ -754,7 +757,11 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
             name: instrumentName,
             midiNumber: midiPitches.get(instrumentId),
           })
-          soundsByInstrument.set(instrumentId, { key, name: instrumentName })
+          if (id !== undefined) {
+            const forPart = soundsByInstrument.get(id) ?? new Map<string, ResolvedSound>()
+            forPart.set(instrumentId, { key, name: instrumentName })
+            soundsByInstrument.set(id, forPart)
+          }
         }
 
         scorePart.reportUnread(warnings, id !== undefined ? { part: id } : {})
@@ -798,7 +805,7 @@ function readPart(
     )
   }
 
-  const state = newPartState(ids, partList.soundsByInstrument)
+  const state = newPartState(ids, partList.soundsByInstrument.get(id))
   const readings = children(element, 'measure').map((measureElement, index) =>
     readMeasure(measureElement, index, id, state, warnings, partPath),
   )

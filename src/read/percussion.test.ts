@@ -179,6 +179,35 @@ describe('a note naming an instrument the part list does not set up', () => {
   })
 })
 
+// MusicXML ids are unique across the document, so a part naming an
+// instrument set up under another part names nothing it can strike.
+describe('a note naming an instrument set up by another part', () => {
+  test('resolves nothing and reports the id', () => {
+    const warnings = new WarningCollector()
+    const score = readScore(
+      parseXmlRoot(
+        '<score-partwise><part-list>' +
+          `<score-part id="P1"><part-name>Drums</part-name>${DRUM_KIT}</score-part>` +
+          '<score-part id="P2"><part-name>Blocks</part-name></score-part>' +
+          '</part-list>' +
+          `<part id="P1"><measure number="1">${PERCUSSION_CLEF}` +
+          `${struck('C', '5', 'P1-I39')}</measure></part>` +
+          `<part id="P2"><measure number="1">${PERCUSSION_CLEF}` +
+          `${struck('C', '5', 'P1-I39')}</measure></part>` +
+          '</score-partwise>',
+      ),
+      warnings,
+    )
+    const reported = warnings.list().filter((one) => one.code !== 'unrepresentable:clef-sign')
+
+    expect([...(score.parts[1]?.kit.values() ?? [])]).toEqual([
+      { name: undefined, staffPosition: 1, sound: undefined },
+    ])
+    expect(reported.map((one) => one.code)).toEqual(['unresolved:instrument-id'])
+    expect(reported[0]?.context.part).toBe('P2')
+  })
+})
+
 describe('a note struck on more than one instrument at once', () => {
   test('strikes the first and reports the rest', () => {
     const { part, warnings } = read(
