@@ -220,7 +220,8 @@ export function sourcePitches(root: XmlElement): string[] {
  * A <backup> may reach back further than the measure has run. The cursor
  * follows it out there, because a <forward> can bring it back, but a note
  * written before the measure starts is written at the start, which is what
- * the converter does with it.
+ * the converter does with it. A chord note is the exception at both ends: it
+ * joins the event before it rather than standing where the cursor is.
  */
 export function sourceMeasureLengths(root: XmlElement): number[][] {
   const perPart: number[][] = []
@@ -248,7 +249,10 @@ export function sourceMeasureLengths(root: XmlElement): number[][] {
         } else if (item.name === 'note') {
           const isChord = item.children.some((c) => c.name === 'chord')
           const isGrace = item.children.some((c) => c.name === 'grace')
-          position = Math.max(0, position)
+          // A chord note joins the event before it and writes nothing where
+          // the cursor stands, so it is the one note that does not settle a
+          // cursor carried before the measure start.
+          if (!isChord) position = Math.max(0, position)
           if (!isChord && !isGrace) position += durationOf()
           furthest = Math.max(furthest, position)
         }

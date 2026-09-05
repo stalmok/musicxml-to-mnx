@@ -439,6 +439,11 @@ export class MeasureBuilder {
    * already wrote, and the backup is the cause, so the refusal names it.
    */
   #clampedBackup = false
+  /**
+   * The <backup> that carried the cursor before the measure start, held until
+   * something is written out there or a <forward> brings the cursor back.
+   */
+  #reached: { warnings: WarningCollector; context: WarningContext; line: number } | undefined
 
   /**
    * Where the cursor has reached, from the start of the measure. A <backup>
@@ -456,38 +461,60 @@ export class MeasureBuilder {
    * A <backup> reaching past the start of the measure is how exporters return
    * to the start of a measure a voice has not filled: the source backs up by
    * the whole measure's length whatever that voice wrote. Refusing the
-   * document over it lost three songs of the Lieder corpus, so the reach is
-   * reported and whatever is written out there is written at the start.
+   * document over it lost three songs of the Lieder corpus, so whatever is
+   * written out there is written at the start instead.
    *
    * The cursor itself is left where the source put it, because a <forward>
    * can bring it back: sources write the pair to reach a point they draw at
    * the measure start, and taking the cursor to the start on the <backup>
-   * alone made the <forward> carry everything after it that much later.
+   * alone made the <forward> carry everything after it that much later. The
+   * <backup> that reached out is held rather than reported, so that a reach
+   * a <forward> cancels is reported not at all and a reach several
+   * <forward>s cancel is reported once.
    */
   shift(by: Fraction, warnings: WarningCollector, context: WarningContext, line: number): void {
     this.#cursor = addFractions(this.#cursor, by)
-    if (compareFractions(this.#cursor, fraction(0)) < 0) {
-      warnings.add(
-        'inconsistent:backup',
-        'A <backup> reaches back further than the measure has run. Anything written ' +
-          'before the measure starts is written at its start.',
-        { ...context, line },
-        'backup',
-      )
+    if (compareFractions(this.#cursor, fraction(0)) >= 0) {
+      this.#reached = undefined
+      return
     }
+    this.#reached ??= { warnings, context, line }
   }
 
   /**
    * The cursor where something is about to be written, and where it then
    * stays: writing at the measure start settles what a <backup> reaching
-   * past it meant, and no later <forward> can take that back.
+   * past it meant, and no later <forward> can take that back. The reach is
+   * reported here, because this is where it costs the source something.
    */
-  #writeAt(): Fraction {
-    if (compareFractions(this.#cursor, fraction(0)) < 0) {
-      this.#clampedBackup = true
-      this.#cursor = fraction(0)
+  #writeAt(): void {
+    if (compareFractions(this.#cursor, fraction(0)) >= 0) return
+
+    const reached = this.#reached
+    /* v8 ignore next -- the cursor goes negative only through shift(). */
+    if (reached) {
+      reached.warnings.add(
+        'inconsistent:backup',
+        'A <backup> reaches back further than the measure has run, and the music written ' +
+          'out there is written at the start of the measure instead.',
+        { ...reached.context, line: reached.line },
+        'backup',
+      )
     }
-    return this.#cursor
+    this.#reached = undefined
+    this.#clampedBackup = true
+    this.#cursor = fraction(0)
+  }
+
+  /**
+   * Passes over the time a note takes without writing it, as a note dropped
+   * for being written over a rest that already fills the measure is. The note
+   * stood where the cursor stands, so a cursor carried before the measure
+   * start is taken to the start first, as it would be for a note written out.
+   */
+  passOver(by: Fraction): void {
+    this.#writeAt()
+    this.#cursor = addFractions(this.#cursor, by)
   }
 
   /**
@@ -687,7 +714,10 @@ export class MeasureBuilder {
     // so a note written onto one has no chord to be part of, the same way a
     // rest written into a chord has none.
     if (previous.event.isRest) {
-      throw new MusicXMLError('A rest cannot be part of a chord.', { path, line })
+      throw new MusicXMLError('A <note> joins a rest, and a rest cannot be part of a chord.', {
+        path,
+        line,
+      })
     }
 
     // Every note of a chord belongs to one event, so they have to agree on

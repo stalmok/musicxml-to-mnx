@@ -208,6 +208,21 @@ describe('the place a warning names', () => {
       at: 1,
     },
     {
+      what: 'the backup that reached past the start, not the forward returning from it',
+      // The forward does not bring the cursor back inside the measure, so the
+      // voice that follows is written at the start and the reach is reported.
+      // The <backup> is what reached, so it is the line named.
+      body: [
+        note('C', 4) + '',
+        backup(16),
+        '<forward><duration>4</duration></forward>',
+        '<note><pitch><step>G</step><octave>4</octave></pitch><duration>4</duration>' +
+          '<type>quarter</type><voice>2</voice></note>',
+      ],
+      code: 'inconsistent:backup',
+      at: 1,
+    },
+    {
       what: 'the two ends of a tremolo counting different beams',
       body: [tremoloNote('C', 'start'), tremoloNote('E', 'stop', 4, '2')],
       code: 'inconsistent:tremolo',

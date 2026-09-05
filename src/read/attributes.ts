@@ -527,11 +527,22 @@ function readClef(
       // the glyph names no note, so a staff whose clef is drawn anywhere but
       // the second line reads its heights exactly as this one does. Saying so
       // is the one thing the conversion leaves behind.
-      const drawnOn = lineElement ? readIntegerInRange(lineElement, path, 1, 5) : 2
-      if (drawnOn !== 2) {
+      //
+      // Compared as it is written rather than read as a number: the value
+      // places nothing, a percussion staff may have more than five lines to
+      // draw the glyph on, and refusing a document over a number that reaches
+      // no output would be the worse of the two answers.
+      //
+      // Reported as a gap in this converter rather than a limit of MNX: the
+      // clef's staffPosition could state the line the glyph is drawn on, and
+      // a kit note carries its own height, so nothing on the staff would
+      // move. Writing the second line whatever the source says is what keeps
+      // the clef and the heights read against it saying one thing.
+      const drawnOn = lineElement ? trimmedText(lineElement) : '2'
+      if (drawnOn !== '2') {
         warnings.add(
-          'unrepresentable:clef-line',
-          `A percussion clef is drawn on line ${String(drawnOn)}, and it is converted on the ` +
+          'unsupported:element',
+          `A percussion clef is drawn on line ${drawnOn}, and it is converted on the ` +
             'second line, where the staff reads its heights from.',
           { ...context, line: element.line },
           'clef',

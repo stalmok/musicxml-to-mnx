@@ -821,6 +821,28 @@ describe('whole-measure rests', () => {
     expect(warnings.map((w) => w.code)).toEqual(['redundant:rest'])
   })
 
+  // The dropped rest still stood somewhere, so the cursor moves on from where
+  // it stood. A <backup> reaching before the measure start puts that at the
+  // start, as it would for a rest that was written out.
+  test('passes over a dropped rest from the measure start where the backup reached past it', () => {
+    const { score: result, warnings } = read(
+      measure(
+        '<attributes><divisions>4</divisions></attributes>' +
+          '<note><rest measure="yes"/><duration>16</duration><voice>1</voice></note>' +
+          '<backup><duration>32</duration></backup>' +
+          '<note><rest/><duration>4</duration><voice>1</voice><type>quarter</type></note>' +
+          '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+          '<duration>4</duration><voice>2</voice><type>quarter</type></note>',
+      ),
+    )
+    const second = result.parts[0]?.measures[0]?.sequences[1]
+
+    // The dropped rest takes the first quarter, so voice 2 begins a quarter
+    // into the measure and states the space before it.
+    expect(second?.content.map((item) => item.kind)).toEqual(['space', 'event'])
+    expect(warnings.map((w) => w.code).sort()).toEqual(['inconsistent:backup', 'redundant:rest'])
+  })
+
   // Without a duration nothing moves the cursor, and the drop is the same.
   test('drops an extra rest that states no duration', () => {
     const { score: result, warnings } = read(

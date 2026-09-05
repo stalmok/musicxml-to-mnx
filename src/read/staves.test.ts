@@ -310,6 +310,31 @@ describe('a clef whose sign MNX does not state', () => {
     expect(warnings[0]?.message).toContain('TAB')
   })
 
+  test('writes a percussion clef stating no line as the treble clef with the glyph', () => {
+    const { part, warnings } = read(withSign('percussion'))
+
+    expect(part?.measures[0]?.clefs).toEqual([
+      {
+        sign: 'G',
+        staffPosition: -2,
+        staff: undefined,
+        position: { num: 0, den: 1 },
+        octave: undefined,
+        glyph: 'unpitchedPercussionClef1',
+      },
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  // A percussion staff may have more than the five lines a pitched staff has,
+  // and the line places nothing, so a line outside 1 to 5 is not a refusal.
+  test('converts a percussion clef drawn on a line no pitched staff has', () => {
+    const { part, warnings } = read(withSign('percussion', '<line>6</line>'))
+
+    expect(part?.measures[0]?.clefs[0]?.staffPosition).toBe(-2)
+    expect(warnings.map((w) => w.code)).toEqual(['unsupported:element'])
+  })
+
   test('writes a percussion clef as the treble clef with the percussion glyph', () => {
     const { part, warnings } = read(withSign('percussion', '<line>2</line>'))
 
@@ -330,7 +355,7 @@ describe('a clef whose sign MNX does not state', () => {
     const { part, warnings } = read(withSign('percussion', '<line>3</line>'))
 
     expect(part?.measures[0]?.clefs[0]?.staffPosition).toBe(-2)
-    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:clef-line'])
+    expect(warnings.map((w) => w.code)).toEqual(['unsupported:element'])
     expect(warnings[0]?.element).toBe('clef')
   })
 

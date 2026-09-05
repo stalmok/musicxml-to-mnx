@@ -7,6 +7,7 @@ import { convertMusicXML } from '../src/index.js'
 import type { MNXDocument } from '../src/index.js'
 import { parseXmlRoot } from '../src/xml/parse.js'
 import type { XmlElement } from '../src/xml/parse.js'
+import { schemaErrors } from './support/schema.js'
 import {
   differingLyricLines,
   layoutLosses,
@@ -94,20 +95,28 @@ test('a backup past the measure start that a forward cancels measures from the s
 
   const { mnx } = convertMusicXML(source)
   expect(mnx.parts[0]?.measures[0]?.sequences[0]?.content).toHaveLength(1)
+  expect(schemaErrors(mnx)).toEqual([])
 })
 
 test('a note written before the measure starts counts from the start', () => {
+  // The second voice writes a whole note where the backup left the cursor a
+  // whole note before the measure. Measured from where the source put the
+  // cursor it would end a quarter in; measured from the start, where the
+  // converter writes it, the measure sounds for a whole note.
   const source = backupMeasure(
     QUARTER +
       '<backup><duration>4</duration></backup>' +
-      QUARTER.replace('<voice>1</voice>', '<voice>2</voice>'),
+      '<note><pitch><step>C</step><octave>5</octave></pitch>' +
+      '<duration>4</duration><voice>2</voice><type>whole</type></note>',
   )
 
-  expect(sourceMeasureLengths(parseXmlRoot(source))).toEqual([[0.25]])
+  expect(sourceMeasureLengths(parseXmlRoot(source))).toEqual([[1]])
 
   // The second voice starts at the measure start, so it holds its note alone.
   const { mnx } = convertMusicXML(source)
-  expect(mnx.parts[0]?.measures[0]?.sequences[1]?.content).toHaveLength(1)
+  const sequences = mnx.parts[0]?.measures[0]?.sequences
+  expect(sequences?.[1]?.content).toHaveLength(1)
+  expect(schemaErrors(mnx)).toEqual([])
 })
 
 // The layout checks. A layout can state less than the part list does and

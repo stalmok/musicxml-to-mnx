@@ -113,9 +113,6 @@ export type WarningCode =
   // and whose staff is not read as a treble staff either. The staff is
   // converted without a clef.
   | 'unrepresentable:clef-sign'
-  // A percussion clef drawn on a line other than the second, which is the one
-  // the staff's heights are read from. The clef is converted on that line.
-  | 'unrepresentable:clef-line'
   // A key signature written as individual altered steps rather than a count
   // of fifths, which is all MNX can state. The signature is dropped; the
   // notes still sound right, because each carries its own alteration.
