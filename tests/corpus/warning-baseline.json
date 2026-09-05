@@ -1591,8 +1591,8 @@
     "staff-details": 1,
     "sound@dynamics": 28,
     "print-object": 67,
-    "technical": 1,
-    "notehead": 1
+    "notehead": 1,
+    "open": 1
   },
   "brahms-2-geistliches-wiegenlied": {
     "midi-device": 3,
@@ -3714,8 +3714,9 @@
     "cue": 15,
     "print-object": 9,
     "stem": 1,
-    "technical": 4,
-    "pedal": 4
+    "technical": 2,
+    "pedal": 4,
+    "fingering": 2
   },
   "elgar-1-the-torch": {
     "midi-device": 2,
@@ -5324,8 +5325,9 @@
     "direction@system": 1,
     "extend": 1,
     "sound@dynamics": 2,
-    "technical": 11,
-    "print-object": 1
+    "technical": 2,
+    "print-object": 1,
+    "fingering": 9
   },
   "greger-3-ihr-gartchen": {
     "midi-device": 2,
@@ -6103,10 +6105,10 @@
     "dashes": 22,
     "trill-mark": 3,
     "wavy-line": 6,
-    "technical": 5,
     "key": 2,
     "print-object": 1,
-    "pedal": 6
+    "pedal": 6,
+    "fingering": 5
   },
   "holmes-ogier-le-danois": {
     "midi-device": 2,
@@ -6368,8 +6370,8 @@
     "sound@dynamics": 14,
     "pedal": 14,
     "print-object": 36,
-    "technical": 12,
-    "notehead": 2
+    "notehead": 2,
+    "fingering": 12
   },
   "jaell-1-quatre-heures-du-matin": {
     "midi-device": 2,
@@ -6414,8 +6416,8 @@
     "print-object": 73,
     "dashes": 8,
     "pedal": 20,
-    "technical": 11,
-    "time": 2
+    "time": 2,
+    "fingering": 11
   },
   "jaell-2-eternel-amour": {
     "midi-device": 2,
@@ -6478,8 +6480,9 @@
     "sound@dynamics": 37,
     "pedal": 16,
     "note": 375,
-    "technical": 55,
-    "time": 2
+    "technical": 1,
+    "time": 2,
+    "fingering": 66
   },
   "jaell-4-le-bonheur-s-effeuille-et-passe": {
     "midi-device": 2,
@@ -6499,9 +6502,9 @@
     "sound@dynamics": 24,
     "notehead": 2,
     "print-object": 28,
-    "technical": 6,
     "pedal": 4,
-    "dashes": 2
+    "dashes": 2,
+    "fingering": 6
   },
   "jaell-5-en-ramant": {
     "midi-device": 2,

@@ -143,6 +143,47 @@ describe('articulations', () => {
   })
 })
 
+// MusicXML files the bow marks under <technical> rather than among the
+// articulations; MNX states one bowDirection beside the rest of the marks.
+describe('bow direction', () => {
+  const technical = (inner: string) => `<technical>${inner}</technical>`
+
+  test.each([
+    ['up-bow', 'up'],
+    ['down-bow', 'down'],
+  ])('reads <%s> as travelling %s', (written, direction) => {
+    const { events, warnings } = read(note(technical(`<${written}/>`)))
+
+    expect(events[0]?.markings.bowDirection).toEqual({ orient: undefined, direction })
+    expect(warnings).toEqual([])
+  })
+
+  test('keeps which side of the notes the mark is drawn on', () => {
+    const { events } = read(note(technical('<up-bow placement="below"/>')))
+
+    expect(events[0]?.markings.bowDirection?.orient).toBe('below')
+  })
+
+  // MNX states one direction, so a note bowed both ways has said two things.
+  test('reports a note carrying both bow marks, keeping the first', () => {
+    const { events, warnings } = read(note(technical('<up-bow/><down-bow placement="above"/>')))
+
+    expect(events[0]?.markings.bowDirection?.direction).toBe('up')
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:marking'])
+  })
+
+  // The rest of <technical> is playing instruction the converter does not
+  // carry over, and reading the bow marks must not stop it being reported.
+  test('goes on reporting the other playing instructions beside it', () => {
+    const { events, warnings } = read(
+      note(technical('<up-bow/><harmonic/><fingering>3</fingering>')),
+    )
+
+    expect(events[0]?.markings.bowDirection?.direction).toBe('up')
+    expect(warnings.map((w) => w.element)).toEqual(['harmonic', 'fingering'])
+  })
+})
+
 // A pause held over a note. MusicXML names its shape as the element's text
 // and which way it faces as its type; MNX states both on the event.
 describe('fermatas', () => {

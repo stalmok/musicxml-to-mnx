@@ -740,7 +740,7 @@ function closeTuplets(
 // Keyed by the mark rather than by the element, so the compiler demands an
 // entry for every kind the model holds: a kind added there with no spelling
 // here would simply never be read.
-const ARTICULATIONS: Record<Exclude<MarkingKind, 'tremolo'>, string> = {
+const ARTICULATIONS: Record<Exclude<MarkingKind, 'tremolo' | 'bowDirection'>, string> = {
   accent: 'accent',
   staccato: 'staccato',
   staccatissimo: 'staccatissimo',
@@ -753,6 +753,14 @@ const ARTICULATIONS: Record<Exclude<MarkingKind, 'tremolo'>, string> = {
   // MusicXML files a breath mark among the articulations; MNX states it
   // beside them, under its own name.
   breath: 'breath-mark',
+}
+
+// MusicXML's bow marks, keyed by the way the bow travels, which is what MNX
+// states. A source writing both on one note has said two things, and is
+// reported where it is read.
+const BOW_DIRECTIONS: Record<'up' | 'down', string> = {
+  up: 'up-bow',
+  down: 'down-bow',
 }
 
 /**
@@ -800,6 +808,28 @@ function readMarkings(
           } else {
             markings[kind] = { orient }
           }
+        }
+      }
+    }
+
+    // MusicXML files the bow marks under <technical>, away from the
+    // articulations; MNX states them beside the rest of the marks. The other
+    // playing instructions there stay unread, which is what reports them.
+    for (const technical of block.blocks('technical')) {
+      for (const [direction, written] of entriesOf(BOW_DIRECTIONS)) {
+        for (const found of technical.children(written)) {
+          if (markings.bowDirection !== undefined) {
+            attribute(found, 'placement')
+            warnings.add(
+              'unrepresentable:marking',
+              'An event carries more than one bow mark, and MNX states one direction. ' +
+                'The first is the one converted.',
+              { ...context, line: found.line },
+              written,
+            )
+            continue
+          }
+          markings.bowDirection = { orient: placementOf(found), direction }
         }
       }
     }

@@ -810,12 +810,12 @@ function writeMarking(marking: Marking): MNXMarking {
  * The marks on an event, as MNX keys them: by name, so a note carries at most
  * one of each. The model is keyed the same way, so this is a transcription
  * rather than a merge, and nothing here can replace a mark already written.
- * Three of them hold more than which side they sit on, and each is written out
+ * Four of them hold more than which side they sit on, and each is written out
  * rather than folded into the others, because MNX allows no property on a mark
  * beyond the ones it names for that mark.
  */
 function writeMarkings(markings: Markings): MNXEventMarkings {
-  const { strongAccent, breath, tremolo } = markings
+  const { strongAccent, bowDirection, breath, tremolo } = markings
   const written: MNXEventMarkings = {}
 
   // The eight that state nothing beyond which side they sit on.
@@ -833,6 +833,10 @@ function writeMarkings(markings: Markings): MNXEventMarkings {
       ...writeMarking(strongAccent),
       ...(strongAccent.pointing ? { pointing: strongAccent.pointing } : {}),
     }
+  }
+  // MNX states no bow mark without a direction, and neither does the model.
+  if (bowDirection) {
+    written.bowDirection = { ...writeMarking(bowDirection), direction: bowDirection.direction }
   }
   if (breath) {
     written.breath = {

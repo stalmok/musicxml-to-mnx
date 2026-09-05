@@ -989,7 +989,7 @@ describe('reporting what is not converted', () => {
     const { warnings } = read(
       measure(
         '<note><pitch><step>C</step><octave>4</octave></pitch><type>whole</type>' +
-          '<notations><tied type="start"/><technical/>' +
+          '<notations><tied type="start"/><technical><harmonic/></technical>' +
           '<ornaments><trill-mark/></ornaments></notations></note>',
       ),
     )
@@ -997,8 +997,8 @@ describe('reporting what is not converted', () => {
     // The <tied> start is a tie the measure never ends, reported as such
     // rather than as an unread block.
     expect(warnings.map((w) => w.message)).toEqual([
-      '<technical> is not converted yet.',
       '<trill-mark> cannot be expressed in MNX.',
+      '<harmonic> is not converted yet.',
       'A tie starts on a note that nothing ties to, and is not carried over.',
     ])
   })

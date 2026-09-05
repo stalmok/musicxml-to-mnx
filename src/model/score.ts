@@ -181,6 +181,11 @@ export interface StrongAccentMarking extends Marking {
   readonly pointing: 'up' | 'down' | undefined
 }
 
+/** An up-bow or down-bow, which names the way the bow travels. */
+export interface BowDirectionMarking extends Marking {
+  readonly direction: 'up' | 'down'
+}
+
 /** A breath mark, which names the glyph it is drawn with. */
 export interface BreathMarking extends Marking {
   readonly symbol: string | undefined
@@ -210,6 +215,7 @@ export interface Markings {
   readonly unstress?: Marking
   readonly softAccent?: Marking
   readonly strongAccent?: StrongAccentMarking
+  readonly bowDirection?: BowDirectionMarking
   readonly breath?: BreathMarking
   readonly tremolo?: TremoloMarking
 }

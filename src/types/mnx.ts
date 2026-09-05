@@ -130,6 +130,11 @@ export interface MNXStrongAccent extends MNXMarking {
   pointing?: 'up' | 'down' | 'auto'
 }
 
+/** An up-bow or down-bow, which names the way the bow travels. */
+export interface MNXBowDirection extends MNXMarking {
+  direction: 'up' | 'down'
+}
+
 export interface MNXBreathMark extends MNXMarking {
   /** The glyph it is drawn with, such as a comma or a tick. */
   symbol?: string
@@ -146,6 +151,7 @@ export interface MNXEventMarkings {
   unstress?: MNXMarking
   softAccent?: MNXMarking
   strongAccent?: MNXStrongAccent
+  bowDirection?: MNXBowDirection
   breath?: MNXBreathMark
   tremolo?: MNXSingleNoteTremolo
 }

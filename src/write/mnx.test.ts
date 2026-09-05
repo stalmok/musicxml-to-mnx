@@ -1080,6 +1080,12 @@ describe('event markings', () => {
     })
   })
 
+  test('writes a bow mark with the way the bow travels', () => {
+    expect(markingsOf({ bowDirection: { orient: 'above', direction: 'down' } })).toEqual({
+      bowDirection: { orient: 'above', direction: 'down' },
+    })
+  })
+
   test('writes a tremolo with how many beams it is drawn with', () => {
     expect(markingsOf({ tremolo: { orient: 'above', marks: 2 } })).toEqual({
       tremolo: { orient: 'above', marks: 2 },
@@ -1110,6 +1116,7 @@ describe('event markings', () => {
       unstress: { orient: undefined },
       softAccent: { orient: undefined },
       strongAccent: { orient: undefined, pointing: undefined },
+      bowDirection: { orient: undefined, direction: 'up' as const },
       breath: { orient: undefined, symbol: undefined },
       tremolo: { orient: undefined, marks: 3 },
     } satisfies Required<Markings>

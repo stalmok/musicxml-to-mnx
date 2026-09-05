@@ -165,7 +165,6 @@ const NOT_MODELLED: Readonly<Record<string, { properties: readonly string[]; why
     properties: ['endNote', 'startNote'],
     why: 'A slur pinned to particular notes of the two chords it joins.',
   },
-  MNXEventMarkings: { properties: ['bowDirection'], why: 'Up-bow and down-bow are not converted.' },
   MNXTuplet: {
     properties: ['staff'],
     why: 'A tuplet drawn on a staff other than the one its voice sits on.',
@@ -511,6 +510,7 @@ const MNX_SPELLING: Readonly<Record<string, string>> = {
   'Lyric.type': 'MNXLyricLineType',
   'Marking.orient': 'MNXOrientation',
   'StrongAccentMarking.pointing': 'MNXStrongAccent.pointing',
+  'BowDirectionMarking.direction': 'MNXBowDirection.direction',
   'Fermata.orient': 'MNXOrientation',
   'Fermata.pointing': 'MNXFermata.pointing',
   'Tuplet.orient': 'MNXOrientation',
