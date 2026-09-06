@@ -760,6 +760,34 @@ describe('tuplets', () => {
     expect(warnings[0]?.message).toContain('falls short')
   })
 
+  // A skip inside a bracket the source drew stays inside it: the source's own
+  // start and stop markers span the skipped time, so the bracket holds it, in
+  // the written units the ratio scales. A skip longer than the bracket counts
+  // leaves the content overrunning the ratio, which is the source disagreeing
+  // with itself and is reported as such.
+  test('states a skip inside a bracket in the units the ratio scales', () => {
+    const { content, warnings } = read(
+      measure(
+        tupletNote('C', 4, 'eighth', 'start') +
+          '<forward><duration>4</duration></forward>' +
+          tupletNote('E', 4, 'eighth', 'stop'),
+      ),
+    )
+    const tuplet = content?.[0]
+
+    expect(content).toHaveLength(1)
+    expect(tuplet?.kind === 'tuplet' && tuplet.content.map((item) => item.kind)).toEqual([
+      'event',
+      'space',
+      'event',
+    ])
+    expect(tuplet?.kind === 'tuplet' && tuplet.content[1]).toEqual({
+      kind: 'space',
+      duration: { num: 1, den: 8 },
+    })
+    expect(warnings).toEqual([])
+  })
+
   test('reports a tuplet whose written content overruns its ratio', () => {
     const over =
       tupletNote('C', 4, 'eighth', 'start') +
@@ -2260,6 +2288,61 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
 
     expect(content).toEqual([])
     expect(warnings.map((w) => w.code)).toEqual(['redundant:rest'])
+  })
+
+  // A run gathers notes that follow one another. Time the voice passes over
+  // in silence breaks that: the skip is not written in the ratio's values, so
+  // it cannot stand inside the group, and the notes after it start a new one.
+  test('ends a group at time the voice passes over in silence', () => {
+    const { content, warnings } = read(
+      measure(
+        rated('C', 4, 'eighth') +
+          '<forward><duration>24</duration></forward>' +
+          rated('D', 4, 'eighth') +
+          rated('E', 4, 'eighth'),
+      ),
+    )
+
+    expect(content?.map((item) => item.kind)).toEqual(['tuplet', 'space', 'tuplet'])
+    expect(content?.[1]).toEqual({ kind: 'space', duration: { num: 1, den: 2 } })
+    expect(content?.[0]?.kind === 'tuplet' && content[0].content).toHaveLength(1)
+    expect(content?.[2]?.kind === 'tuplet' && content[2].content).toHaveLength(2)
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tuplet', 'inconsistent:tuplet'])
+  })
+
+  // A grace note takes none of the measure's time, so the run reaches over it,
+  // but the skip standing before it still ends the run.
+  test('ends a group at a skip a grace note stands after', () => {
+    const graceNote =
+      '<note><grace/><pitch><step>G</step><octave>4</octave></pitch><type>eighth</type></note>'
+    const { content } = read(
+      measure(
+        rated('C', 4, 'eighth') +
+          '<forward><duration>24</duration></forward>' +
+          graceNote +
+          rated('D', 4, 'eighth'),
+      ),
+    )
+
+    expect(content?.map((item) => item.kind)).toEqual(['tuplet', 'space', 'grace', 'tuplet'])
+    expect(content?.[1]).toEqual({ kind: 'space', duration: { num: 1, den: 2 } })
+  })
+
+  // A <backup> and a <forward> that cancel out move nothing: five songs of the
+  // corpus write such a pair inside a tuplet to place a <direction> earlier.
+  test('reaches a group over a backup a forward takes back', () => {
+    const { content, warnings } = read(
+      measure(
+        rated('C', 4, 'eighth') +
+          '<backup><duration>4</duration></backup><forward><duration>4</duration></forward>' +
+          rated('D', 4, 'eighth') +
+          rated('E', 4, 'eighth'),
+      ),
+    )
+
+    expect(content).toHaveLength(1)
+    expect(content?.[0]?.kind === 'tuplet' && content[0].content).toHaveLength(3)
+    expect(warnings).toEqual([])
   })
 
   test('converts to MNX the schema accepts', () => {

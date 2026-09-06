@@ -468,20 +468,22 @@ export function readNote(
       ? readTupletRatio(ratio, element, path)
       : undefined
 
-  // A grace note takes none of the measure's time, so it neither fills a run
-  // nor ends one, and the run it sits in reaches over it.
-  if (!graceElement) {
-    // Full, or this note does not belong in it either way: the run ends here.
-    if (builder.impliedTupletEndsBefore(voice, rated)) {
-      builder.closeTuplet(voice, warnings, context, path, element.line)
-    }
-    // A ratio is read only where no bracket the source drew is open, and the
-    // close above ends any run this note does not belong in, so what is open
-    // here is the run this note joins, or nothing.
-    if (rated) {
-      if (builder.insideImpliedTuplet(voice)) builder.joinImpliedTuplet(voice, rated)
-      else builder.openImpliedTuplet(voice, rated.inner, rated.outer)
-    }
+  // Full, or this note does not belong in it either way: the run ends here. A
+  // grace note takes none of the measure's time, so it neither fills a run nor
+  // ends one, and the run it sits in reaches over it. Time the voice passed
+  // over in silence before it is another matter, and ends the run whatever
+  // stands after the skip.
+  const endsRun = graceElement
+    ? builder.impliedTupletEndsAtGap(voice)
+    : builder.impliedTupletEndsBefore(voice, rated)
+  if (endsRun) builder.closeTuplet(voice, warnings, context, path, element.line)
+
+  // A ratio is read only where no bracket the source drew is open, and the
+  // close above ends any run this note does not belong in, so what is open
+  // here is the run this note joins, or nothing.
+  if (!graceElement && rated) {
+    if (builder.insideImpliedTuplet(voice)) builder.joinImpliedTuplet(voice, rated)
+    else builder.openImpliedTuplet(voice, rated.inner, rated.outer)
   }
 
   if (starts.length > 0) {

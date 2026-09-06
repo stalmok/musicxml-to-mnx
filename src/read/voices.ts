@@ -951,6 +951,19 @@ export class MeasureBuilder {
   }
 
   /**
+   * Whether the tuplet the ratio alone opened in this voice ends at time the
+   * voice has passed over in silence. Such a run is gathered from notes that
+   * follow one another, not drawn by the source, and the skipped time is
+   * written in no ratio, so it cannot stand inside the run. False where no
+   * such tuplet is open.
+   */
+  impliedTupletEndsAtGap(voice: string | undefined): boolean {
+    const builder = this.#builderFor(voice)
+    if (!impliedFrame(builder)) return false
+    return compareFractions(subtractFractions(this.#cursor, builder.end), fraction(0)) > 0
+  }
+
+  /**
    * Whether the tuplet the ratio alone opened in this voice ends before a note
    * stating `quantities`. It takes the note while the note states the same
    * counts and the tuplet holds less than what its first note's ratio counts.
@@ -962,6 +975,7 @@ export class MeasureBuilder {
   ): boolean {
     const open = impliedFrame(this.#builderFor(voice))
     if (!open) return false
+    if (this.impliedTupletEndsAtGap(voice)) return true
     if (!quantities) return true
     return !sameCounts(open.tuplet, quantities) || tupletFilled(open)
   }
