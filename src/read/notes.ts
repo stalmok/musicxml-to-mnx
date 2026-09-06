@@ -624,7 +624,15 @@ export function readNote(
     )
   }
 
-  const value = written ?? measuredValue(element, duration, state, path)
+  const value =
+    written ??
+    measuredValue(
+      element,
+      duration,
+      { factor: builder.tupletFactor(voice), by: builder.scaledBy(voice) },
+      state,
+      path,
+    )
   // The event states this note's staff, so the note says nothing of its own.
   const notes: Note[] = pitchElement
     ? [readNoteAt(element, pitchElement, state, path, undefined)]
@@ -1858,10 +1866,15 @@ function readWrittenValue(element: ElementReader, path: DocumentPath): NoteValue
   return { base, dots }
 }
 
-/** The value to use when the note does not say which one is written. */
+/**
+ * The value to use when the note does not say which one is written. A
+ * <duration> is the time the note sounds, which a tuplet or a tremolo around
+ * it has already scaled, so `scale` takes that ratio back out.
+ */
 function measuredValue(
   element: ElementReader,
   duration: Fraction | undefined,
+  scale: { factor: Fraction; by: 'tuplet' | 'tremolo' | undefined },
   state: PartState,
   path: DocumentPath,
 ): NoteValue {
@@ -1882,11 +1895,16 @@ function measuredValue(
     )
   }
 
-  const value = noteValueOf(duration)
+  const written = divideFractions(duration, scale.factor)
+  const value = noteValueOf(written)
   if (!value) {
     throw new MusicXMLError(
-      `A <note> lasts ${describeLength(duration)}, which no note value can write. ` +
-        'It needs a tuplet, which is not converted yet.',
+      scale.by
+        ? `A <note> states no <type>. It lasts ${describeLength(duration)}, written as ` +
+            `${describeLength(written)} by the ${scale.by} around it, which no note value ` +
+            'can write.'
+        : `A <note> states no <type>, and lasts ${describeLength(duration)}, which no note ` +
+            'value can write.',
       { path, line: element.line },
     )
   }

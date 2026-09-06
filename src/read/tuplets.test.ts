@@ -1231,6 +1231,99 @@ describe('a note inside a tuplet lasting the wrong time', () => {
   })
 })
 
+// A <note> stating no <type> is measured from its <duration>, which is the
+// time it sounds. Inside a tuplet or a tremolo that time is the written value
+// scaled by the ratio, so the ratio is taken back out before the value is
+// read.
+describe('a note inside a tuplet stating no <type>', () => {
+  const typeless = (step: string, units: number) =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    `<duration>${String(units)}</duration>` +
+    '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+    '</time-modification></note>'
+
+  test('reads the value the ratio counts, not the time it sounds', () => {
+    const { content, warnings } = read(
+      measure(
+        tupletNote('C', 4, 'eighth', 'start') +
+          typeless('D', 4) +
+          tupletNote('E', 4, 'eighth', 'stop'),
+      ),
+    )
+    const tuplet = content?.[0]
+    const inside = tuplet?.kind === 'tuplet' ? tuplet.content : []
+
+    expect(inside[1]?.kind === 'event' && inside[1].value).toEqual({ base: 'eighth', dots: 0 })
+    expect(warnings).toEqual([])
+  })
+
+  // Each note of a two-note tremolo is written with the pair's value and
+  // lasts half of it, so the pair scales a written value as a tuplet does.
+  test('reads the value the pair of a tremolo counts', () => {
+    const typelessTremolo = (step: string, type: string) =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>12</duration>` +
+      '<time-modification><actual-notes>2</actual-notes><normal-notes>1</normal-notes>' +
+      '</time-modification>' +
+      `<notations><ornaments><tremolo type="${type}">3</tremolo></ornaments></notations></note>`
+    const { content, warnings } = read(
+      measure(tremoloNote('C', 'start') + typelessTremolo('E', 'stop')),
+    )
+    const item = content?.[0]
+    const inside = item?.kind === 'multiNoteTremolo' ? item.content : []
+
+    expect(inside[1]?.value).toEqual({ base: 'half', dots: 0 })
+    expect(warnings).toEqual([])
+  })
+
+  test('refuses a time no note value can write, naming what it is written as', () => {
+    let thrown = ''
+    try {
+      read(
+        measure(
+          tupletNote('C', 4, 'eighth', 'start') +
+            typeless('D', 5) +
+            tupletNote('E', 4, 'eighth', 'stop'),
+        ),
+      )
+    } catch (error) {
+      thrown = error instanceof MusicXMLError ? error.detail : String(error)
+    }
+
+    expect(thrown).toBe(
+      'A <note> states no <type>. It lasts 5/48 of a whole note, written as 5/32 of a ' +
+        'whole note by the tuplet around it, which no note value can write.',
+    )
+  })
+
+  test('names the length plainly where nothing scales it', () => {
+    let thrown = ''
+    try {
+      read(
+        measure(
+          '<note><pitch><step>C</step><octave>4</octave></pitch><duration>5</duration></note>',
+        ),
+      )
+    } catch (error) {
+      thrown = error instanceof MusicXMLError ? error.detail : String(error)
+    }
+
+    expect(thrown).toBe(
+      'A <note> states no <type>, and lasts 5/48 of a whole note, which no note value can write.',
+    )
+  })
+
+  test('converts to MNX the schema accepts', () => {
+    const source = measure(
+      tupletNote('C', 4, 'eighth', 'start') +
+        typeless('D', 4) +
+        tupletNote('E', 4, 'eighth', 'stop'),
+    )
+    const { mnx } = convertMusicXML(source)
+
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+})
+
 describe('beam levels', () => {
   const beamed = (level: string) =>
     '<note><pitch><step>C</step><octave>4</octave></pitch><duration>6</duration>' +
@@ -2262,7 +2355,7 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
   // hidden rest that way, with a ratio and no <type>.
   test('leaves a valueless note inside a drawn bracket alone', () => {
     const valueless =
-      '<note><rest/><duration>6</duration>' +
+      '<note><rest/><duration>4</duration>' +
       '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
       '</time-modification></note>'
     const { content, warnings } = read(
