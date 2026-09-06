@@ -564,6 +564,15 @@ export class MeasureBuilder {
     return this.#builderFor(voice).fullMeasure !== undefined
   }
 
+  /**
+   * Whether this voice holds grace notes and nothing else. They take none of
+   * the measure's time, so such a voice is silent through it.
+   */
+  holdsOnlyGraceNotes(voice: string | undefined): boolean {
+    const { content } = this.#builderFor(voice)
+    return content.length > 0 && content.every((item) => item.kind === 'grace')
+  }
+
   addEvent(
     voice: string | undefined,
     event: Event,

@@ -571,8 +571,8 @@ describe('a rest filling a measure that already holds something', () => {
     try {
       read(
         measure(
-          '<note><grace/><pitch><step>B</step><octave>4</octave></pitch><type>eighth</type></note>' +
-            '<note><rest measure="yes"/><duration>16</duration></note>',
+          note('C', 1) +
+            '<note><rest measure="yes"/><duration>16</duration><voice>1</voice></note>',
         ),
       )
     } catch (error) {

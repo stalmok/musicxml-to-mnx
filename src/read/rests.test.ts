@@ -198,3 +198,65 @@ describe('a voice holding only a rest that fills its measure', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 })
+
+// A grace note takes none of the measure's time, so a voice leading into a
+// measure of silence with one rests through it just the same. MNX wants the
+// sequence stating a full-measure rest to hold nothing, so the rest is
+// written as the event its length has a value for and the grace notes stand
+// beside it. Real editions write the pair: an editorial grace note over a
+// resting bar opens three CPDL scores.
+describe('a rest filling a measure a grace note leads into', () => {
+  const grace =
+    '<note><grace/><pitch><step>D</step><octave>5</octave></pitch>' +
+    '<type>quarter</type><voice>1</voice></note>'
+  const measureRest = '<note><rest measure="yes"/><duration>4</duration><voice>1</voice></note>'
+
+  test('writes the rest as an event beside the grace notes', () => {
+    const { mnx, warnings } = convertMusicXML(inMeasure(grace + measureRest))
+    const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
+
+    expect(sequence?.content.map((item) => ('type' in item ? item.type : 'event'))).toEqual([
+      'grace',
+      'event',
+    ])
+    expect(sequence?.fullMeasure).toBeUndefined()
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  test('states the rest with the value its length is written as', () => {
+    const { mnx } = convertMusicXML(inMeasure(grace + measureRest))
+    const event = mnx.parts[0]?.measures[0]?.sequences[0]?.content[1]
+
+    expect(event && !('type' in event) && event.duration).toEqual({ base: 'quarter' })
+    expect(event && !('type' in event) && event.rest).toEqual({})
+  })
+
+  // Nothing is different where the voice holds no grace note: the rest is
+  // still the sequence's own.
+  test('leaves a rest with no grace note before it on the sequence', () => {
+    const { mnx } = convertMusicXML(inMeasure(measureRest))
+
+    expect(mnx.parts[0]?.measures[0]?.sequences[0]?.fullMeasure).toEqual({})
+  })
+
+  // An irregular measure has no note value to write the rest as, so there is
+  // nothing to make an event of and the refusal stands.
+  test('refuses where no note value can write the measure', () => {
+    let thrown = ''
+    try {
+      convertMusicXML(
+        '<score-partwise><part id="P1"><measure number="1">' +
+          '<attributes><divisions>4</divisions><time><beats>5</beats><beat-type>4</beat-type>' +
+          '</time></attributes>' +
+          grace +
+          '<note><rest measure="yes"/><duration>20</duration><voice>1</voice></note>' +
+          '</measure></part></score-partwise>',
+      )
+    } catch (error) {
+      thrown = error instanceof Error ? error.message : String(error)
+    }
+
+    expect(thrown).toContain('both a rest that fills the measure and notes in it')
+  })
+})

@@ -589,7 +589,13 @@ export function readNote(
     written !== undefined ||
     (duration !== undefined && !state.divisionsAssumed && noteValueOf(duration) !== undefined)
 
-  if (restFillsMeasure && !((carriesLyric || carriesSlurEnd) && canBeEvent)) {
+  // A grace note takes none of the measure's time, so a voice leading into a
+  // measure of silence with one rests through it just the same. The sequence
+  // stating the rest must hold nothing, so the grace notes are what keeps the
+  // rest an event here.
+  const afterGraceNotes = builder.holdsOnlyGraceNotes(voice)
+
+  if (restFillsMeasure && !((carriesLyric || carriesSlurEnd || afterGraceNotes) && canBeEvent)) {
     // A rest is not drawn with a stem, and a beam over one alone is not a
     // beam, so a source stating either says nothing this loses.
     element.skip('stem', 'beam')
