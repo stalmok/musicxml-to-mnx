@@ -12,8 +12,9 @@ pnpm-lock.yaml
 plan.md
 CLAUDE.local.md
 
-# Vendored songs, kept byte-for-byte as retrieved (see tests/corpus/PROVENANCE.md)
+# Vendored scores, kept byte-for-byte as retrieved (see tests/corpus/PROVENANCE.md)
 tests/corpus/*.mxl
+tests/corpus/features/
 
 # Vendored spec artefacts: keep upstream bytes pristine (integrity pinned in
 # the neighbouring PROVENANCE.md)

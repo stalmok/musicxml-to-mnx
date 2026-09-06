@@ -11790,5 +11790,59 @@
     "cue": 2,
     "stem": 1,
     "sound@dynamics": 1
+  },
+  "24d-AfterGrace": {
+    "identification": 1,
+    "mode": 1,
+    "grace": 2
+  },
+  "32a-Notations": {
+    "identification": 1,
+    "movement-title": 1,
+    "mode": 1,
+    "accidental-mark": 1,
+    "detached-legato": 1,
+    "scoop": 1,
+    "plop": 1,
+    "doit": 1,
+    "falloff": 1,
+    "caesura": 1
+  },
+  "32ab-Notations3": {
+    "identification": 1,
+    "movement-title": 1,
+    "mode": 1,
+    "harmonic": 6,
+    "open-string": 1,
+    "thumb-position": 1,
+    "fingering": 9,
+    "pluck": 2,
+    "double-tongue": 1,
+    "triple-tongue": 1,
+    "stopped": 1,
+    "snap-pizzicato": 1,
+    "fret": 2,
+    "string": 2,
+    "hammer-on": 2,
+    "pull-off": 2,
+    "bend": 4,
+    "tap": 2,
+    "heel": 1,
+    "toe": 1,
+    "fingernails": 1
+  },
+  "61j-Lyrics-Elisions": {
+    "identification": 1,
+    "mode": 1
+  },
+  "72b-TransposingInstruments-Full": {
+    "identification": 1,
+    "mode": 11,
+    "key": 1
+  },
+  "73a-Percussion": {
+    "identification": 1,
+    "mode": 2,
+    "staff-details": 1
   }
 }

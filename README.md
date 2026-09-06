@@ -305,8 +305,11 @@ largest. In the CPDL sample, the largest group is hymnals that write two
 lines over each other in one voice. The converter refuses these files and
 does not guess the lines apart.
 
-The test suite converts 600 vendored Lieder songs on each run. CI runs the
-full Lieder corpus weekly and on demand.
+The test suite converts 600 vendored Lieder songs on each run, together with
+six feature files from the Unofficial MusicXML Test Suite. Lieder is voice and
+piano throughout, therefore it contains no bow mark, no unpitched note and no
+transposing part. The six files hold what the songs cannot. CI runs the full
+Lieder corpus weekly and on demand.
 
 ---
 

@@ -1,6 +1,7 @@
 # Vendored corpus
 
-Six hundred published songs, converted on every test run.
+Six hundred published songs and six feature files, converted on every test
+run. Every check in `tests/corpus.test.ts` runs over both.
 
 They are here because the bugs that mattered were all found by running against
 real music rather than by the unit tests: a grace note taking time it does not
@@ -19,13 +20,61 @@ fixes on shapes the two hundred never contained.
 
 ## Source and licence
 
-All six hundred come from the [OpenScore Lieder
+The six hundred songs come from the [OpenScore Lieder
 corpus](https://github.com/OpenScore/Lieder), released under **Creative
 Commons Zero**, so they can be redistributed here without condition.
 Transcribed by OpenScore volunteers and moderated by a professional
 proofreading team, from public-domain editions on IMSLP.
 
-`SOURCES.json` records the composer, work, and upstream path of each file.
+`SOURCES.json` records the composer, work, and upstream path of each song.
+
+The six files in `features/` come from the [Unofficial MusicXML Test
+Suite](https://github.com/cuthbertLab/musicxmlTestSuite), released under the
+**MIT Licence**, which is reproduced in `features/LICENSE` as that licence
+requires. Originally by Reinhold Kainhofer for the GNU LilyPond project,
+developed since by Michael Scott Asato Cuthbert. They keep their upstream file
+names, so that what each one is can be checked against the suite.
+
+The two licences differ, so the two sets are kept apart on disk. Nothing here
+may be added from a source without a redistribution grant: the MakeMusic
+sample set is copyrighted piece by piece, and the music21 corpus states that
+its encodings carry whatever terms their encoders set.
+
+## Why the feature files are here
+
+The six hundred are real music, and that is the point of them: every defect
+that mattered was found in a combination no hand-written fixture would hold.
+What real music cannot do is contain notation nobody wrote. Lieder is voice
+and piano throughout, so no song in the upstream corpus of 1,462 contains a
+single up-bow, down-bow, spiccato, stress, unstress, lyric elision, unpitched
+note or `<transpose>`, and none states how much time a grace note takes. The
+converter handles all of them, and the six hundred could not tell if any of it
+broke.
+
+The suite is not real music, and it is not a substitute for the six hundred.
+It is the smallest set of files that exercises what real music of one kind
+never will. One file per feature, so a failure names what broke:
+
+| File                                  | What it holds that the songs do not                                  |
+| ------------------------------------- | -------------------------------------------------------------------- |
+| `24d-AfterGrace.xml`                  | `steal-time-previous` and `steal-time-following`, and an after-grace |
+| `32a-Notations.xml`                   | Spiccato, stress and unstress                                        |
+| `32ab-Notations3.xml`                 | Up-bow, down-bow, and most of `<technical>`                          |
+| `61j-Lyrics-Elisions.xml`             | Lyric elisions                                                       |
+| `72b-TransposingInstruments-Full.xml` | Nine transposing parts of eleven, one octave-displaced               |
+| `73a-Percussion.xml`                  | Unpitched notes on percussion staves                                 |
+
+`32ab-Notations3.xml` earns its place twice over: besides the two bow marks it
+writes eighteen of the twenty-nine `<technical>` children that MNX has nowhere
+to put, so those no-home registry entries are exercised rather than only
+asserted against the schema.
+
+Three things the converter handles are still uncovered, because no file in any
+corpus available here contains them: a measure repeat, `make-time` on a grace
+note, and a hairpin dying to `niente`. Between them the Lieder corpus, the
+test suite, the MakeMusic sample set, the music21 corpus, a 2,000-file CPDL
+sample and a 20,000-file PDMX sample hold none of the three. The one measure
+repeat found anywhere is in the music21 corpus, which cannot be redistributed.
 
 ## Why `.mxl`
 
@@ -63,6 +112,10 @@ the rest of the suite missed:
 | `schumann-ich-stand-in-dunklen-traeumen` | Clara Schumann, Op. 13 No. 1  | A slur crossing between voices.                                                                                                           |
 | `schumann-im-wunderschoenen-monat-mai`   | Robert Schumann, Op. 48 No. 1 | Ties and slurs running between the pianist's two hands, which settled that spanner numbering is scoped to the part rather than the voice. |
 | `schubert-der-lindenbaum`                | Schubert, D. 911 No. 5        | Chord members inside tuplets, and notes carrying two `<notations>` blocks.                                                                |
+
+The feature files are kept as the `.xml` their suite publishes, uncompressed:
+they come to sixty kilobytes together, and a diff that shows the up-bow is
+worth more than the saving.
 
 ## What these files get wrong, and what is refused
 
