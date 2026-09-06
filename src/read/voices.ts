@@ -615,6 +615,11 @@ export class MeasureBuilder {
    * from wherever it starts.
    */
   #fillGap(builder: VoiceBuilder): void {
+    // A voice that is a rest filling the measure holds no sequence to state
+    // one in: it is already silent for the whole measure, and a note written
+    // over it is dropped rather than added, which is the only way the cursor
+    // runs ahead of such a voice.
+    if (builder.fullMeasure) return
     const gap = subtractFractions(this.#cursor, builder.end)
     if (compareFractions(gap, fraction(0)) > 0) {
       // Inside a tuplet everything is written in values the ratio scales, so

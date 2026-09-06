@@ -2384,6 +2384,23 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
     expect(warnings).toEqual([])
   })
 
+  // The dropped rests still stood somewhere, so the cursor moves on from
+  // where each stood, and a second ratio opens a run of its own after the
+  // first closes. The voice is a rest filling the measure and holds nothing,
+  // so the time between them is no space: it would state silence inside a
+  // sequence that has none.
+  test('states no space between rests dropped over a measure rest', () => {
+    const measureRest = '<note><rest measure="yes"/><duration>48</duration></note>'
+    const over = (units: number, played: number, space: number) =>
+      `<note><rest/><duration>${String(units)}</duration><type>eighth</type>` +
+      `<time-modification><actual-notes>${String(played)}</actual-notes>` +
+      `<normal-notes>${String(space)}</normal-notes></time-modification></note>`
+    const { content, warnings } = read(measure(measureRest + over(4, 3, 2) + over(3, 2, 1)))
+
+    expect(content).toEqual([])
+    expect(warnings.map((w) => w.code)).toEqual(['redundant:rest', 'redundant:rest'])
+  })
+
   test('converts to MNX the schema accepts', () => {
     const notes = ['C', 'D', 'E', 'F', 'G', 'A'].map((step) => rated(step, 4, 'eighth')).join('')
     const { mnx } = convertMusicXML(measure(notes))
