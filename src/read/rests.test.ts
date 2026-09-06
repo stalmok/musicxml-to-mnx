@@ -240,6 +240,19 @@ describe('a rest filling a measure a grace note leads into', () => {
     expect(mnx.parts[0]?.measures[0]?.sequences[0]?.fullMeasure).toEqual({})
   })
 
+  // MNX states a rest filling the measure on a sequence that holds nothing,
+  // so a grace note reaching such a voice has nowhere to stand.
+  test('refuses a grace note written after the measure rest', () => {
+    let thrown = ''
+    try {
+      convertMusicXML(inMeasure(measureRest + grace))
+    } catch (error) {
+      thrown = error instanceof Error ? error.message : String(error)
+    }
+
+    expect(thrown).toContain('rest filling the measure')
+  })
+
   // The grace notes stand where the voice last was, and a <forward> moves the
   // cursor past them. A rest reached there does not open the measure, so it
   // is not the measure's rest and the voice cannot hold both.

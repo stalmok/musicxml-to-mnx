@@ -704,6 +704,18 @@ export function readNote(
   // of the measure's time, which is why it carries no <duration>. It joins a
   // group rather than standing in the cursor's path.
   if (graceElement) {
+    // MNX states a rest filling the measure on a sequence holding nothing, so
+    // a voice that rests the measure has nowhere to put a grace note. One
+    // written before the rest keeps the rest an event instead, which is what
+    // the measure's own grace notes lead into.
+    if (builder.hasFullMeasure(voice)) {
+      throw new MusicXMLError(
+        'A grace note stands in a voice that is a rest filling the measure. MNX states ' +
+          'such a rest on a sequence that holds nothing, so nothing can hold the grace note.',
+        { path, line: element.line },
+      )
+    }
+
     builder.addGraceNote(
       voice,
       event,
