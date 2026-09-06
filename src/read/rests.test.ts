@@ -260,3 +260,85 @@ describe('a rest filling a measure a grace note leads into', () => {
     expect(thrown).toContain('both a rest that fills the measure and notes in it')
   })
 })
+
+// Chant editions are written senza misura, where no time signature says how
+// long a measure runs. A part resting through such a measure is one rest
+// carrying no <type>, often longer than any note value can write. MNX states
+// a rest filling the measure on the sequence, which needs no length, so that
+// is where such a rest goes.
+describe('a rest with no value filling an unmeasured measure', () => {
+  const unmeasured = (body: string) =>
+    '<score-partwise><part id="P1"><measure number="1">' +
+    '<attributes><divisions>4</divisions><time><senza-misura/></time></attributes>' +
+    `${body}</measure></part></score-partwise>`
+  const rest = (units: number) =>
+    `<note><rest/><duration>${String(units)}</duration><voice>1</voice></note>`
+
+  test('writes it as the rest of the voice’s measure', () => {
+    const { mnx, warnings } = convertMusicXML(unmeasured(rest(11)))
+
+    expect(mnx.parts[0]?.measures[0]?.sequences).toEqual([
+      { voice: '1', content: [], fullMeasure: {} },
+    ])
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:senza-misura',
+      'unrepresentable:rest-length',
+    ])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  test('names the length it does not state', () => {
+    const { warnings } = convertMusicXML(unmeasured(rest(11)))
+
+    expect(warnings[1]?.message).toContain('11/16 of a whole note')
+  })
+
+  // A length a note value can write needs none of this: the rest is the event
+  // it is written as, and how long the measure runs is nobody's guess.
+  test('leaves a rest a note value can write as an event', () => {
+    const { mnx, warnings } = convertMusicXML(unmeasured(rest(4)))
+    const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
+
+    expect(sequence?.fullMeasure).toBeUndefined()
+    expect(sequence?.content).toHaveLength(1)
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:senza-misura'])
+  })
+
+  // A rest reached after the voice has sounded covers what is left of the
+  // measure, not the measure, and nothing says how long that is.
+  test('refuses a rest the voice does not open with', () => {
+    let thrown = ''
+    try {
+      convertMusicXML(
+        unmeasured(
+          '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+            '<type>quarter</type><voice>1</voice></note>' +
+            rest(11),
+        ),
+      )
+    } catch (error) {
+      thrown = error instanceof Error ? error.message : String(error)
+    }
+
+    expect(thrown).toContain('no note value can write')
+  })
+
+  // A time signature states how long the measure runs, so a rest there is
+  // weighed against it as before.
+  test('leaves a measured rest to the time signature', () => {
+    let thrown = ''
+    try {
+      convertMusicXML(
+        '<score-partwise><part id="P1"><measure number="1">' +
+          '<attributes><divisions>4</divisions><time><beats>4</beats><beat-type>4</beat-type>' +
+          '</time></attributes>' +
+          rest(11) +
+          '</measure></part></score-partwise>',
+      )
+    } catch (error) {
+      thrown = error instanceof Error ? error.message : String(error)
+    }
+
+    expect(thrown).toContain('no note value can write')
+  })
+})

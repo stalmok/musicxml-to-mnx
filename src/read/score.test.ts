@@ -696,7 +696,7 @@ describe('durations', () => {
       readFailure(
         measure(
           '<attributes><divisions>3</divisions></attributes>' +
-            '<note><rest/><duration>1</duration></note>',
+            '<note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration></note>',
         ),
       ).message,
     ).toContain('no note value')

@@ -562,8 +562,28 @@ export function readNote(
     !state.divisionsAssumed &&
     state.time !== undefined &&
     compareFractions(duration, fraction(state.time.count, state.time.unit)) === 0
+
+  // Music written senza misura carries no time signature, so nothing says how
+  // long the measure runs. A rest with no written value opening a voice there
+  // is that voice's silence through the measure, and chant editions rest
+  // whole parts that way, with a rest longer than any note value can write.
+  // Only such a rest takes this path: one a note value can write is the event
+  // it is written as.
+  const unmeasuredRest =
+    restElement !== undefined &&
+    written === undefined &&
+    duration !== undefined &&
+    !state.divisionsAssumed &&
+    state.time === undefined &&
+    noteValueOf(duration) === undefined &&
+    builder.opensMeasure(voice)
+      ? duration
+      : undefined
+
   const restFillsMeasure =
-    (restElement !== undefined && attribute(restElement, 'measure') === 'yes') || fillsMeasure
+    (restElement !== undefined && attribute(restElement, 'measure') === 'yes') ||
+    fillsMeasure ||
+    unmeasuredRest !== undefined
 
   // A word spoken over an otherwise resting bar is written as a lyric on the
   // whole-measure rest. MNX's sequence-level full-measure rest states only a
@@ -599,6 +619,19 @@ export function readNote(
     // A rest is not drawn with a stem, and a beam over one alone is not a
     // beam, so a source stating either says nothing this loses.
     element.skip('stem', 'beam')
+
+    // MNX's rest filling the measure states no length, so how long the source
+    // drew this one is not carried.
+    if (unmeasuredRest) {
+      warnings.add(
+        'unrepresentable:rest-length',
+        `A rest lasting ${describeLength(unmeasuredRest)} fills a measure written with no ` +
+          'time signature. MNX states such a rest on the sequence, which carries no length, ' +
+          'so the length is not converted.',
+        { ...context, line: element.line },
+        'rest',
+      )
+    }
 
     builder.setFullMeasure(
       voice,
