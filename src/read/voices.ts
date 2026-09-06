@@ -401,9 +401,29 @@ function innermost(builder: VoiceBuilder): SequenceItem[] {
   return builder.open.at(-1)?.list ?? builder.content
 }
 
-/** Whether two <time-modification> readings count the same thing. */
-function sameQuantity(a: NoteValueQuantity, b: NoteValueQuantity): boolean {
-  return a.multiple === b.multiple && a.value.base === b.value.base && a.value.dots === b.value.dots
+/** Whether two <time-modification> readings state the same counts. */
+function sameCounts(
+  a: { inner: NoteValueQuantity; outer: NoteValueQuantity },
+  b: { inner: NoteValueQuantity; outer: NoteValueQuantity },
+): boolean {
+  return a.inner.multiple === b.inner.multiple && a.outer.multiple === b.outer.multiple
+}
+
+/** Whether two <time-modification> readings count the same note value. */
+function sameCountedValue(
+  a: { inner: NoteValueQuantity },
+  b: { inner: NoteValueQuantity },
+): boolean {
+  return a.inner.value.base === b.inner.value.base && a.inner.value.dots === b.inner.value.dots
+}
+
+/** Whether the tuplet holds at least what its ratio counts. */
+function tupletFilled(open: OpenTuplet): boolean {
+  const counted = multiplyFractions(
+    fraction(open.tuplet.inner.multiple),
+    lengthOf(open.tuplet.inner.value),
+  )
+  return compareFractions(writtenLengthOf(open.tuplet.content), counted) >= 0
 }
 
 /** The tuplet the ratio alone opened, where the voice is inside one. */
@@ -933,10 +953,8 @@ export class MeasureBuilder {
   /**
    * Whether the tuplet the ratio alone opened in this voice ends before a note
    * stating `quantities`. It takes the note while the note states the same
-   * ratio, counted in the same value, and the tuplet holds less than that
-   * ratio counts. Two notes counting different values state two tuplets, not
-   * one, even where the ratio between them is the same. False where no such
-   * tuplet is open.
+   * counts and the tuplet holds less than what its first note's ratio counts.
+   * False where no such tuplet is open.
    */
   impliedTupletEndsBefore(
     voice: string | undefined,
@@ -945,12 +963,33 @@ export class MeasureBuilder {
     const open = impliedFrame(this.#builderFor(voice))
     if (!open) return false
     if (!quantities) return true
-    const { inner, outer } = quantities
-    if (!sameQuantity(open.tuplet.inner, inner) || !sameQuantity(open.tuplet.outer, outer)) {
-      return true
-    }
-    const counted = multiplyFractions(fraction(inner.multiple), lengthOf(inner.value))
-    return compareFractions(writtenLengthOf(open.tuplet.content), counted) >= 0
+    return !sameCounts(open.tuplet, quantities) || tupletFilled(open)
+  }
+
+  /**
+   * Adds a note stating `quantities` to the run open in this voice. A ratio
+   * stating no <normal-type> counts the note's own written value, so a run
+   * whose notes are written in different values states no one length. Such a
+   * run says what it holds when it closes, as a bracket stating no ratio does.
+   */
+  joinImpliedTuplet(
+    voice: string | undefined,
+    quantities: { inner: NoteValueQuantity; outer: NoteValueQuantity },
+  ): void {
+    const open = impliedFrame(this.#builderFor(voice))
+    /* v8 ignore next -- the caller asks only where a run is open. */
+    if (!open) return
+    if (!sameCountedValue(open.tuplet, quantities)) open.derived = true
+  }
+
+  /**
+   * Whether the tuplet the ratio alone opened in this voice holds all its
+   * ratio counts, so a stop marker written here agrees with where the ratio
+   * ends it. False where no such tuplet is open.
+   */
+  impliedTupletFilled(voice: string | undefined): boolean {
+    const open = impliedFrame(this.#builderFor(voice))
+    return open !== undefined && tupletFilled(open)
   }
 
   /**
@@ -1401,6 +1440,15 @@ export class MeasureBuilder {
     builder.open.pop()
 
     const { tuplet } = closed
+    // A run the ratio alone opened on a note that turned out not to be an
+    // event holds nothing. It stands for no tuplet the source wrote, so it
+    // goes rather than being drawn empty. Such a run opens only where no other
+    // bracket is, and everything written while it is open lands inside it, so
+    // it is the last item this voice holds.
+    if (closed.unbracketed && tuplet.content.length === 0) {
+      builder.content.pop()
+      return closed.number
+    }
     const held = writtenLengthOf(tuplet.content)
     // A ratio read from the bracket's first note speaks for that note alone.
     // The whole bracket is known only here, so it is stated here: what it

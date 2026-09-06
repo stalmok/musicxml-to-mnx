@@ -434,10 +434,15 @@ export function readNote(
   // 2:1 ratio, which the tremolo item states.
   const ratio = element.child('time-modification')
 
+  // Whether a bracket the source drew is open. A tuplet the ratio alone
+  // opened is not one: it is the reading below, not something the source
+  // stated the extent of.
+  const insideDrawnBracket = builder.insideBracket(voice) && !builder.insideImpliedTuplet(voice)
+
   // A grace note takes none of the measure's time, so a ratio on one says
   // nothing about how long a group is or where it ends, and no bracket is
   // there to say it either.
-  if (ratio && markers.length === 0 && !builder.insideBracket(voice) && !tremolo && graceElement) {
+  if (ratio && markers.length === 0 && !insideDrawnBracket && !tremolo && graceElement) {
     throw new MusicXMLError(
       'A grace note carries a tuplet ratio but no <tuplet> bracket marks where the tuplet runs.',
       { path, line: element.line },
@@ -451,27 +456,32 @@ export function readNote(
   // bracket around it. A source stating the ratio and drawing nothing still
   // says how long the group is, as the written value the ratio counts, so a
   // run of notes carrying the same ratio divides into one group after another
-  // with nothing guessed. Whole pieces are written this way.
+  // with nothing guessed. Faure's Cantique de Jean Racine is written this way
+  // throughout, 1,056 triplet notes with no bracket anywhere.
   //
   // The ratio is read only where it can settle such a run. A start marker
   // opens a bracket of its own below; inside a bracket the source drew, the
   // bracket says where the tuplet runs, and a note there need not state a
   // value at all. A stop marker naming no bracket is passed over further down.
   const rated =
-    ratio &&
-    starts.length === 0 &&
-    !tremolo &&
-    !graceElement &&
-    (builder.insideImpliedTuplet(voice) || !builder.insideBracket(voice))
+    ratio && starts.length === 0 && !tremolo && !graceElement && !insideDrawnBracket
       ? readTupletRatio(ratio, element, path)
       : undefined
 
-  // Full, or this note does not belong in it either way: the run ends here.
-  if (builder.impliedTupletEndsBefore(voice, rated)) {
-    builder.closeTuplet(voice, warnings, context, path, element.line)
-  }
-  if (rated && !builder.insideBracket(voice)) {
-    builder.openImpliedTuplet(voice, rated.inner, rated.outer)
+  // A grace note takes none of the measure's time, so it neither fills a run
+  // nor ends one, and the run it sits in reaches over it.
+  if (!graceElement) {
+    // Full, or this note does not belong in it either way: the run ends here.
+    if (builder.impliedTupletEndsBefore(voice, rated)) {
+      builder.closeTuplet(voice, warnings, context, path, element.line)
+    }
+    // A ratio is read only where no bracket the source drew is open, and the
+    // close above ends any run this note does not belong in, so what is open
+    // here is the run this note joins, or nothing.
+    if (rated) {
+      if (builder.insideImpliedTuplet(voice)) builder.joinImpliedTuplet(voice, rated)
+      else builder.openImpliedTuplet(voice, rated.inner, rated.outer)
+    }
   }
 
   if (starts.length > 0) {
@@ -774,10 +784,22 @@ function closeTuplets(
     // and reported there. There is no bracket of its own to close, and
     // closing here would end the bracket around it instead.
     if (builder.closesDroppedTuplet(voice, number)) continue
-    // A stop naming a bracket the source never opened, landing inside a run
-    // the ratio alone gathered. What the ratio counts says where that run
-    // ends, so the marker has no bracket of its own to close.
-    if (builder.insideImpliedTuplet(voice)) continue
+    // A stop inside a run the ratio alone gathered. No bracket of the
+    // source's is open for it to close, and what the ratio counts is what
+    // ends the run. Where the run ends on this note the two agree; where it
+    // does not, the marker states a grouping the ratio contradicts.
+    if (builder.insideImpliedTuplet(voice)) {
+      if (!builder.impliedTupletFilled(voice)) {
+        warnings.add(
+          'inconsistent:tuplet',
+          'A <tuplet> stops where no tuplet the source opened is running, and short of ' +
+            "what its ratio counts. The ratio's count is the one converted.",
+          { ...context, line },
+          'tuplet',
+        )
+      }
+      continue
+    }
     stated.push(number)
     closed.push(builder.closeTuplet(voice, warnings, context, path, line))
   }

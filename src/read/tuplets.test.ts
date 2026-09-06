@@ -825,14 +825,14 @@ describe('tuplets', () => {
 
   test('rejects a tuplet opening on a note that says nothing about its length', () => {
     const noRatio =
-      '<note><rest/><duration>6</duration>' + '<notations><tuplet type="start"/></notations></note>'
+      '<note><rest/><duration>4</duration>' + '<notations><tuplet type="start"/></notations></note>'
 
     expect(readFailure(measure(noRatio)).message).toContain('no <time-modification>')
   })
 
   test('rejects a tuplet with no note value to count', () => {
     const noValue =
-      '<note><rest/><duration>6</duration>' +
+      '<note><rest/><duration>4</duration>' +
       '<time-modification><actual-notes>3</actual-notes>' +
       '<normal-notes>2</normal-notes></time-modification>' +
       '<notations><tuplet type="start"/></notations></note>'
@@ -2057,7 +2057,7 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
   })
 
   test('leaves a note carrying no ratio outside the group', () => {
-    const { content } = read(
+    const { content, warnings } = read(
       measure(
         rated('C', 4, 'eighth') +
           rated('D', 4, 'eighth') +
@@ -2067,7 +2067,9 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
     )
 
     expect(content).toHaveLength(2)
+    expect(content?.[0]?.kind === 'tuplet' && content[0].content).toHaveLength(3)
     expect(content?.[1]?.kind).toBe('event')
+    expect(warnings).toEqual([])
   })
 
   // A run the source cut short is converted as written and reported, the same
@@ -2097,21 +2099,92 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
 
     expect(content).toHaveLength(2)
     expect(content?.[0]?.kind === 'tuplet' && content[0].inner.multiple).toBe(3)
+    expect(content?.[0]?.kind === 'tuplet' && content[0].content).toHaveLength(3)
     expect(content?.[1]?.kind === 'tuplet' && content[1].inner.multiple).toBe(4)
+    expect(content?.[1]?.kind === 'tuplet' && content[1].content).toHaveLength(4)
     expect(warnings).toEqual([])
   })
 
+  // The ratio alone does not say which tuplet a note belongs to: three in the
+  // time of two and three in the time of one are the same three notes played
+  // over different spans.
+  test('starts a new group where the space the ratio is played in changes', () => {
+    const { content } = read(
+      measure(
+        rated('C', 4, 'eighth') +
+          rated('D', 4, 'eighth') +
+          rated('E', 2, 'eighth', 3, 1) +
+          rated('F', 2, 'eighth', 3, 1) +
+          rated('G', 2, 'eighth', 3, 1),
+      ),
+    )
+
+    expect(content).toHaveLength(2)
+    expect(content?.[0]?.kind === 'tuplet' && content[0].outer.multiple).toBe(2)
+    expect(content?.[0]?.kind === 'tuplet' && content[0].content).toHaveLength(2)
+    expect(content?.[1]?.kind === 'tuplet' && content[1].outer.multiple).toBe(1)
+    expect(content?.[1]?.kind === 'tuplet' && content[1].content).toHaveLength(3)
+  })
+
+  // A ratio stating no <normal-type> counts the note's own written value, so a
+  // run written in several values states no one length. It holds together and
+  // says what it holds when it closes, as a bracket stating no ratio does.
+  // Real files write this: three rests as a whole, a double-dotted quarter and
+  // a 16th, each marked three in the time of two, together three halves.
+  test('states a run written in several values by what it holds', () => {
+    const doubleDotted =
+      '<note><pitch><step>D</step><octave>4</octave></pitch><duration>14</duration>' +
+      '<type>quarter</type><dot/><dot/>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+      '</time-modification></note>'
+    const { content, warnings } = read(
+      measure(rated('C', 32, 'whole') + doubleDotted + rated('E', 2, '16th')),
+    )
+    const tuplet = content?.[0]
+
+    expect(content).toHaveLength(1)
+    expect(tuplet?.kind === 'tuplet' && tuplet.content).toHaveLength(3)
+    expect(tuplet?.kind === 'tuplet' && tuplet.inner).toEqual({
+      value: { base: 'half', dots: 0 },
+      multiple: 3,
+    })
+    expect(tuplet?.kind === 'tuplet' && tuplet.outer).toEqual({
+      value: { base: 'half', dots: 0 },
+      multiple: 2,
+    })
+    expect(warnings).toEqual([])
+  })
+
+  // A grace note takes none of the measure's time, so it neither fills a run
+  // nor ends one.
+  test('reaches a run over a grace note written inside it', () => {
+    const grace =
+      '<note><grace/><pitch><step>F</step><octave>5</octave></pitch><type>16th</type></note>'
+    const { content, warnings } = read(
+      measure(rated('C', 4, 'eighth') + rated('D', 4, 'eighth') + grace + rated('E', 4, 'eighth')),
+    )
+    const tuplet = content?.[0]
+
+    expect(content).toHaveLength(1)
+    expect(tuplet?.kind === 'tuplet' && tuplet.content).toHaveLength(4)
+    expect(tuplet?.kind === 'tuplet' && tuplet.inner.multiple).toBe(3)
+    expect(warnings).toEqual([])
+  })
+
+  /** A note of `units` divisions written as `type`, ending a tuplet it never opened. */
+  const stopping = (step: string, units: number, type: string) =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    `<duration>${String(units)}</duration><type>${type}</type>` +
+    '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+    '</time-modification><notations><tuplet type="stop"/></notations></note>'
+
   // Real files carry stop markers with no start anywhere: one whole CPDL file
   // writes a stop on every triplet note and opens nothing. Such a marker has
-  // no bracket of its own to close, and what the ratio counts still says
-  // where the run ends.
-  test('passes over a stop marker the source opened nothing for', () => {
-    const stopping =
-      '<note><pitch><step>D</step><octave>4</octave></pitch><duration>4</duration><type>eighth</type>' +
-      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
-      '</time-modification><notations><tuplet type="stop"/></notations></note>'
+  // no bracket of its own to close, and where it stands at the end of what the
+  // ratio counts the two say the same thing.
+  test('passes over a stop marker standing where the ratio ends the run', () => {
     const { content, warnings } = read(
-      measure(rated('C', 4, 'eighth') + stopping + rated('E', 4, 'eighth')),
+      measure(rated('C', 4, 'eighth') + rated('D', 4, 'eighth') + stopping('E', 4, 'eighth')),
     )
 
     expect(content).toHaveLength(1)
@@ -2119,12 +2192,41 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
     expect(warnings).toEqual([])
   })
 
+  // The marker states a grouping the ratio contradicts. The ratio is what is
+  // converted, so the marker is reported rather than dropped in silence.
+  test('reports a stop marker standing short of what the ratio counts', () => {
+    const { content, warnings } = read(
+      measure(rated('C', 4, 'eighth') + stopping('D', 4, 'eighth') + rated('E', 4, 'eighth')),
+    )
+
+    expect(content).toHaveLength(1)
+    expect(content?.[0]?.kind === 'tuplet' && content[0].content).toHaveLength(3)
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tuplet'])
+    expect(warnings[0]?.element).toBe('tuplet')
+  })
+
   test('closes a group the measure ends inside rather than refusing', () => {
-    const { content, warnings } = read(measure(rated('C', 4, 'eighth') + rated('D', 4, 'eighth')))
+    const source = measure(rated('C', 4, 'eighth') + rated('D', 4, 'eighth'))
+    const { content, warnings } = read(source)
 
     expect(content).toHaveLength(1)
     expect(content?.[0]?.kind === 'tuplet' && content[0].content).toHaveLength(2)
     expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tuplet'])
+    expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
+  })
+
+  // The refusal a grace note's ratio earns is the same inside such a run as
+  // outside it: a run gathers notes by the time they take, and a grace note
+  // takes none.
+  test('rejects a grace note carrying a ratio inside the run', () => {
+    const grace =
+      '<note><grace/><pitch><step>D</step><octave>4</octave></pitch><type>eighth</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+      '</time-modification></note>'
+
+    expect(readFailure(measure(rated('C', 4, 'eighth') + grace)).message).toContain(
+      'grace note carries a tuplet ratio',
+    )
   })
 
   // A note inside a bracket the source drew needs no value of its own for the
@@ -2135,13 +2237,29 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
       '<note><rest/><duration>6</duration>' +
       '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
       '</time-modification></note>'
-    const { content } = read(
+    const { content, warnings } = read(
       measure(
         tupletNote('C', 4, 'eighth', 'start') + valueless + tupletNote('E', 4, 'eighth', 'stop'),
       ),
     )
 
+    expect(content).toHaveLength(1)
     expect(content?.[0]?.kind === 'tuplet' && content[0].content).toHaveLength(3)
+    expect(warnings).toEqual([])
+  })
+
+  // A run opens on the note's ratio, before the note turns out not to be an
+  // event at all. It stands for no tuplet the source wrote.
+  test('draws no tuplet for a run that holds nothing', () => {
+    const measureRest = '<note><rest measure="yes"/><duration>48</duration></note>'
+    const over =
+      '<note><rest/><duration>4</duration><type>eighth</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+      '</time-modification></note>'
+    const { content, warnings } = read(measure(measureRest + over))
+
+    expect(content).toEqual([])
+    expect(warnings.map((w) => w.code)).toEqual(['redundant:rest'])
   })
 
   test('converts to MNX the schema accepts', () => {

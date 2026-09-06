@@ -263,10 +263,12 @@ It never drops them silently.
 warning. A `score-timewise` document gets a clear error, and the converter
 rejects it.
 
-**Rejected, not half-converted:** a tuplet whose extent the source does not
-bracket. MusicXML states a tuplet as a ratio on each note and a bracket
-around the notes. Without the bracket, the converter cannot find the end of
-the tuplet, therefore it rejects the file.
+**Rejected, not half-converted:** a grace note that carries a tuplet ratio
+with no bracket around it. MusicXML states a tuplet as a ratio on each note
+and a bracket around the notes. The converter reads the ratio where the
+bracket is missing, because the ratio states the length of the group. A grace
+note takes none of the measure's time, therefore its ratio states no length,
+and the converter rejects the file.
 
 ---
 
