@@ -961,21 +961,21 @@ describe('tempo', () => {
     expect(warnings.map((w) => w.code)).toContain('unrepresentable:tempo')
   })
 
-  test('rejects a metronome whose beat unit is not a note value', () => {
-    let thrown = ''
-    try {
-      read(
-        inMeasure(
-          direction(
-            '<metronome><beat-unit>triangle</beat-unit><per-minute>90</per-minute></metronome>',
-          ) + note('C'),
-        ),
-      )
-    } catch (e) {
-      thrown = e instanceof Error ? e.message : ''
-    }
+  // Real exporters leave <beat-unit> empty where the mark carries no note
+  // glyph: 44 of a 20,000-file PDMX sample do, and used to lose the whole file
+  // over a tempo marking.
+  test.each(['triangle', ''])('reports rather than refuses a beat unit of "%s"', (written) => {
+    const { global, warnings } = read(
+      inMeasure(
+        direction(
+          `<metronome><beat-unit>${written}</beat-unit><per-minute>90</per-minute></metronome>`,
+        ) + note('C'),
+      ),
+    )
 
-    expect(thrown).toContain('is not a note value')
+    expect(global?.tempos).toEqual([])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tempo'])
+    expect(warnings[0]?.message).toContain('is not a note value')
   })
 
   // MusicXML's per-minute is a string that can be a descriptive word such as

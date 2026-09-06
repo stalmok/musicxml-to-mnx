@@ -7,7 +7,6 @@
 // since a tempo is the whole score's. Much of what a direction can carry has
 // no home in MNX, and is reported.
 
-import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
 import { addFractions, compareFractions, fraction } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
@@ -249,9 +248,7 @@ export function readDirection(
           break
         }
         case 'metronome':
-          reading.tempos.push(
-            ...readMetronome(directionType.block(found), at, warnings, context, path),
-          )
+          reading.tempos.push(...readMetronome(directionType.block(found), at, warnings, context))
           break
         case 'octave-shift':
           // Read plainly, being an empty element.
@@ -922,7 +919,6 @@ function readMetronome(
   position: Fraction,
   warnings: WarningCollector,
   context: WarningContext,
-  path: DocumentPath,
 ): Tempo[] {
   const element = reader.element
   // MusicXML allows several <beat-unit> children: a second one states the
@@ -961,12 +957,21 @@ function readMetronome(
     return dropWholeMark()
   }
 
+  // A beat unit that is not a note value is written by real exporters, which
+  // leave the element empty where the mark carries no note glyph. The tempo is
+  // all such a mark states, and nothing reads it but the mark itself, so it is
+  // a reported drop rather than a refusal, as every other part of a metronome
+  // the converter cannot read already is.
   const base = noteValueBaseOf(beatUnit)
   if (!base) {
-    throw new MusicXMLError(
-      `A metronome's beat unit "${trimmedText(beatUnit)}" is not a note value.`,
-      { path, line: beatUnit.line },
+    warnings.add(
+      'unrepresentable:tempo',
+      `A <metronome> states a beat unit of "${trimmedText(beatUnit)}", which is not a note ` +
+        'value, so the mark cannot be expressed in MNX.',
+      { ...context, line: beatUnit.line },
+      'metronome',
     )
+    return dropWholeMark()
   }
 
   // A beat unit tied to another states a compound beat, such as a quarter
