@@ -672,7 +672,11 @@ export function readNote(
     measuredValue(
       element,
       duration,
-      { factor: builder.tupletFactor(voice), by: builder.scaledBy(voice) },
+      // A grace note takes none of the measure's time, so no ratio around it
+      // scales the <duration> an exporter writes on one.
+      graceElement
+        ? { factor: fraction(1), by: undefined }
+        : { factor: builder.tupletFactor(voice), by: builder.scaledBy(voice) },
       state,
       path,
     )
@@ -1953,8 +1957,11 @@ function measuredValue(
   const written = divideFractions(duration, scale.factor)
   const value = noteValueOf(written)
   if (!value) {
+    // A bracket may state a ratio that scales nothing, and naming the same
+    // length twice would read as though it did.
+    const scaled = scale.by !== undefined && compareFractions(written, duration) !== 0
     throw new MusicXMLError(
-      scale.by
+      scaled && scale.by
         ? `A <note> states no <type>. It lasts ${describeLength(duration)}, written as ` +
             `${describeLength(written)} by the ${scale.by} around it, which no note value ` +
             'can write.'

@@ -1312,6 +1312,58 @@ describe('a note inside a tuplet stating no <type>', () => {
     )
   })
 
+  // Some exporters write a <duration> on a grace note even though it takes
+  // no time. No ratio scaled that duration, so none is taken back out of it.
+  test('reads a grace note’s own duration inside a bracket unscaled', () => {
+    const graceInside =
+      '<note><grace/><pitch><step>D</step><octave>4</octave></pitch><duration>6</duration>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+      '</time-modification></note>'
+    const { content, warnings } = read(
+      measure(
+        tupletNote('C', 4, 'eighth', 'start') +
+          graceInside +
+          tupletNote('D', 4, 'eighth') +
+          tupletNote('E', 4, 'eighth', 'stop'),
+      ),
+    )
+    const tuplet = content?.[0]
+    const inside = tuplet?.kind === 'tuplet' ? tuplet.content : []
+    const group = inside[1]
+
+    expect(group?.kind === 'grace' && group.content[0]?.value).toEqual({ base: 'eighth', dots: 0 })
+    expect(warnings).toEqual([])
+  })
+
+  // A bracket may state a ratio that scales nothing. The refusal then reads
+  // as it does outside a bracket, rather than naming one length twice.
+  test('names the length once where the ratio scales nothing', () => {
+    const oneToOne = (units: number, bracket = '') =>
+      `<note><pitch><step>C</step><octave>4</octave></pitch><duration>${String(units)}</duration>` +
+      '<time-modification><actual-notes>1</actual-notes><normal-notes>1</normal-notes>' +
+      '</time-modification>' +
+      (bracket ? `<notations><tuplet type="${bracket}"/></notations>` : '') +
+      '</note>'
+    let thrown = ''
+    try {
+      read(
+        measure(
+          `<note><pitch><step>C</step><octave>4</octave></pitch><duration>12</duration>` +
+            '<type>quarter</type><time-modification><actual-notes>1</actual-notes>' +
+            '<normal-notes>1</normal-notes></time-modification>' +
+            '<notations><tuplet type="start"/></notations></note>' +
+            oneToOne(5),
+        ),
+      )
+    } catch (error) {
+      thrown = error instanceof MusicXMLError ? error.detail : String(error)
+    }
+
+    expect(thrown).toBe(
+      'A <note> states no <type>, and lasts 5/48 of a whole note, which no note value can write.',
+    )
+  })
+
   test('names the length plainly where nothing scales it', () => {
     let thrown = ''
     try {
