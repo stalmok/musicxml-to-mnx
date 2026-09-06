@@ -2290,10 +2290,49 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
     expect(warnings.map((w) => w.code)).toEqual(['redundant:rest'])
   })
 
-  // A run gathers notes that follow one another. Time the voice passes over
-  // in silence breaks that: the skip is not written in the ratio's values, so
-  // it cannot stand inside the group, and the notes after it start a new one.
-  test('ends a group at time the voice passes over in silence', () => {
+  // A skip the ratio still counts room for stands in the group as a space,
+  // which is how the same music reads when the source writes a rest there
+  // rather than moving its cursor over it.
+  test('reaches a group over a skip the ratio counts room for', () => {
+    const skipped = read(
+      measure(
+        rated('C', 4, 'eighth') +
+          '<forward><duration>4</duration></forward>' +
+          rated('E', 4, 'eighth'),
+      ),
+    )
+    const written = read(
+      measure(
+        rated('C', 4, 'eighth') +
+          '<note><rest/><duration>4</duration><type>eighth</type>' +
+          '<time-modification><actual-notes>3</actual-notes>' +
+          '<normal-notes>2</normal-notes></time-modification></note>' +
+          rated('E', 4, 'eighth'),
+      ),
+    )
+    const tuplet = skipped.content?.[0]
+
+    expect(skipped.content).toHaveLength(1)
+    expect(tuplet?.kind === 'tuplet' && tuplet.content.map((item) => item.kind)).toEqual([
+      'event',
+      'space',
+      'event',
+    ])
+    expect(tuplet?.kind === 'tuplet' && tuplet.content[1]).toEqual({
+      kind: 'space',
+      duration: { num: 1, den: 8 },
+    })
+    expect(skipped.warnings).toEqual([])
+    // The rest spelling holds a rest where this holds a space, and both fill
+    // the group the ratio counts.
+    expect(written.content).toHaveLength(1)
+    expect(written.warnings).toEqual([])
+  })
+
+  // A run gathers notes that follow one another, and nothing the source drew
+  // bounds it. A skip that carries the run past what its ratio counts cannot
+  // stand inside it, so the run ends and the notes after start a new one.
+  test('ends a group at a skip carrying it past what its ratio counts', () => {
     const { content, warnings } = read(
       measure(
         rated('C', 4, 'eighth') +

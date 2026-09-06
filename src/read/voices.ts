@@ -417,13 +417,14 @@ function sameCountedValue(
   return a.inner.value.base === b.inner.value.base && a.inner.value.dots === b.inner.value.dots
 }
 
+/** The written length a tuplet's ratio counts, for example three eighths. */
+function countedLengthOf(open: OpenTuplet): Fraction {
+  return multiplyFractions(fraction(open.tuplet.inner.multiple), lengthOf(open.tuplet.inner.value))
+}
+
 /** Whether the tuplet holds at least what its ratio counts. */
 function tupletFilled(open: OpenTuplet): boolean {
-  const counted = multiplyFractions(
-    fraction(open.tuplet.inner.multiple),
-    lengthOf(open.tuplet.inner.value),
-  )
-  return compareFractions(writtenLengthOf(open.tuplet.content), counted) >= 0
+  return compareFractions(writtenLengthOf(open.tuplet.content), countedLengthOf(open)) >= 0
 }
 
 /** The tuplet the ratio alone opened, where the voice is inside one. */
@@ -952,15 +953,25 @@ export class MeasureBuilder {
 
   /**
    * Whether the tuplet the ratio alone opened in this voice ends at time the
-   * voice has passed over in silence. Such a run is gathered from notes that
-   * follow one another, not drawn by the source, and the skipped time is
-   * written in no ratio, so it cannot stand inside the run. False where no
-   * such tuplet is open.
+   * voice has passed over in silence. A skip inside such a run stands in it
+   * as a space, the way a rest written there would, so a skip the ratio still
+   * counts room for leaves the run open. One that carries the run past what
+   * its ratio counts cannot be inside it, because the run is gathered from
+   * what follows the ratio and nothing the source drew bounds it. False where
+   * no such tuplet is open.
    */
   impliedTupletEndsAtGap(voice: string | undefined): boolean {
     const builder = this.#builderFor(voice)
-    if (!impliedFrame(builder)) return false
-    return compareFractions(subtractFractions(this.#cursor, builder.end), fraction(0)) > 0
+    const open = impliedFrame(builder)
+    if (!open) return false
+    const gap = subtractFractions(this.#cursor, builder.end)
+    if (compareFractions(gap, fraction(0)) <= 0) return false
+    // Stated in the run's written units, as everything inside it is.
+    const held = addFractions(
+      writtenLengthOf(open.tuplet.content),
+      divideFractions(gap, tupletFactorOf(builder)),
+    )
+    return compareFractions(held, countedLengthOf(open)) > 0
   }
 
   /**
