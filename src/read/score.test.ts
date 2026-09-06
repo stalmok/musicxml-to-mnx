@@ -1174,6 +1174,28 @@ describe('several parts', () => {
       expect(schemaErrors(mnx)).toEqual([])
     })
 
+    // The score's key is the first stated at a measure, so a measure where
+    // only the flipping part states one would take its spelling and re-spell
+    // every other part. What it contributes is the key, in the score's own
+    // spelling.
+    test('contributes the score’s spelling where it is the only part stating one', () => {
+      const restated =
+        `<part id="P1"><measure number="1"><attributes><key><fifths>5</fifths></key>` +
+        `</attributes>${NOTE}</measure><measure number="2">${NOTE}</measure></part>` +
+        `<part id="P2"><measure number="1"><attributes><key><fifths>-5</fifths></key>` +
+        `${B_FLAT}</attributes>${NOTE}</measure>` +
+        `<measure number="2"><attributes><key><fifths>-5</fifths></key></attributes>` +
+        `${NOTE}</measure></part>`
+      const { score: result, warnings } = read(score(restated))
+
+      expect(result.globalMeasures.map((measure) => measure.key)).toEqual([
+        { fifths: 5 },
+        { fifths: 5 },
+      ])
+      expect(result.parts[1]?.transposition?.keyFifthsFlipAt).toBe(7)
+      expect(warnings).toEqual([])
+    })
+
     // The ordinary transposing part: it writes the signature its transposition
     // asks for, so there is nothing to flip and no point to state.
     test('states no point for a part writing the signature it is asked for', () => {

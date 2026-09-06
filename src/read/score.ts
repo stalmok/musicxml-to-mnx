@@ -420,6 +420,19 @@ function mergeGlobalMeasures(
     transposition,
   )
 
+  // A flipped signature reads back as the score's key in the other spelling,
+  // so what such a measure contributes to the score is the score's own. The
+  // part states it in the spelling it writes, and the point above brings that
+  // back, while a measure no earlier part stated a key at would otherwise put
+  // the flipped spelling on the whole score and re-spell every other part.
+  const contributed = found.map((measure, index) => {
+    const pair = keys[index]
+    if (flipAt === undefined || !measure.key || !pair || pair.part === pair.score) {
+      return measure.key
+    }
+    return { ...measure.key, fifths: pair.score }
+  })
+
   // What each side has in force, not just what it states: a time signature
   // stands until the next one, so a part that says nothing in the measure
   // where the score changes meter is disagreeing all the same. The comparison
@@ -544,7 +557,7 @@ function mergeGlobalMeasures(
     reportDifferingMark('fine', existing?.fine, measure.fine, sameFine, context)
     reportDifferingMark('jump', existing?.jump, measure.jump, sameJump, context)
     target[index] = {
-      key: existing?.key ?? measure.key,
+      key: existing?.key ?? contributed[index],
       time: existing?.time ?? measure.time,
       tempos: mergeTempos(existing?.tempos ?? [], measure.tempos, warnings, context),
       number: existing?.number ?? measure.number,
