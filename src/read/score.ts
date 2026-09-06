@@ -173,11 +173,10 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
   )
 
   const globalMeasures: GlobalMeasure[] = []
-  const flips = new Map<string, number>()
-  for (const reading of readings) {
-    const flipAt = mergeGlobalMeasures(globalMeasures, reading.globals, reading.part, warnings)
-    if (flipAt !== undefined) flips.set(reading.part.id, flipAt)
-  }
+  // Held by position rather than by part id, which two parts can share.
+  const flips = readings.map((reading) =>
+    mergeGlobalMeasures(globalMeasures, reading.globals, reading.part, warnings),
+  )
   upgradeAlFineJumps(globalMeasures)
 
   for (const reading of readings) {
@@ -204,8 +203,8 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
   // A staff pointing at a part the score does not hold would dangle, so the
   // grouping keeps only parts that were written.
   const written = new Set(readings.map((reading) => reading.part.id))
-  const parts = readings.map(({ part }) => {
-    const flipAt = flips.get(part.id)
+  const parts = readings.map(({ part }, index) => {
+    const flipAt = flips[index]
     if (flipAt === undefined || !part.transposition) return part
     return { ...part, transposition: { ...part.transposition, keyFifthsFlipAt: flipAt } }
   })
