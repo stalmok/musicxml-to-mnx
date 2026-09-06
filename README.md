@@ -294,18 +294,18 @@ grow, and the weekly gate runs against its latest state.
 | [Unofficial MusicXML Test Suite](https://github.com/cuthbertLab/musicxmlTestSuite) (feature files)            | 150    | 142 (95%)    |
 | [MusicXML example set](https://www.musicxml.com/music-in-musicxml/example-set/) (Finale exports, some UTF-16) | 36     | 34 (94%)     |
 | [PDMX](https://zenodo.org/records/15571083) random sample (MuseScore.com, all genres)                         | 20,000 | 19,906 (99%) |
-| [music21 bundled corpus](https://github.com/cuthbertLab/music21) (hand-encoded, older tools, some UTF-16)     | 654    | 618 (94%)    |
-| [CPDL](https://www.cpdl.org) random sample (choral, mostly Sibelius exports)                                  | 2,000  | 1,847 (92%)  |
+| [music21 bundled corpus](https://github.com/cuthbertLab/music21) (hand-encoded, older tools, some UTF-16)     | 654    | 638 (98%)    |
+| [CPDL](https://www.cpdl.org) random sample (choral, mostly Sibelius exports)                                  | 2,000  | 1,864 (93%)  |
 
 The other files are refusals, and each refusal names its reason. Some files
 hold notation that MNX cannot state: microtone alterations, and composite
 meters such as 3+2/8. Other files disagree with themselves. Examples are a
 tuplet that opens and never closes, and a note that overlaps the note before
-it in the same voice. Another example is a voice that rests through the same
-measure two times. In the PDMX sample, the overlapping-note group is the
-largest. In the CPDL sample, the largest group is hymnals that write two
-lines over each other in one voice. The converter refuses these files and
-does not guess the lines apart.
+it in the same voice. Another example is a voice that holds both a rest
+filling its measure and notes beside it. In the PDMX sample, the
+overlapping-note group is the largest. In the CPDL sample, the largest group
+is hymnals that write two lines over each other in one voice. The converter
+refuses these files and does not guess the lines apart.
 
 The test suite converts 600 vendored Lieder songs on each run, together with
 seven feature files from the Unofficial MusicXML Test Suite. Lieder is voice
