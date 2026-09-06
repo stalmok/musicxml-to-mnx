@@ -569,15 +569,17 @@ export class MeasureBuilder {
     return content.length > 0 && content.every((item) => item.kind === 'grace')
   }
 
+  /** Whether the cursor stands where the measure begins. */
+  atMeasureStart(): boolean {
+    return compareFractions(this.#cursor, fraction(0)) === 0
+  }
+
   /**
    * Whether this voice holds nothing yet and the cursor stands where the
    * measure begins, so what comes next is the first thing the voice sounds.
    */
   opensMeasure(voice: string | undefined): boolean {
-    return (
-      this.#builderFor(voice).content.length === 0 &&
-      compareFractions(this.#cursor, fraction(0)) === 0
-    )
+    return this.#builderFor(voice).content.length === 0 && this.atMeasureStart()
   }
 
   /**

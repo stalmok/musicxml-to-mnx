@@ -561,7 +561,11 @@ export function readNote(
     duration !== undefined &&
     !state.divisionsAssumed &&
     state.time !== undefined &&
-    compareFractions(duration, fraction(state.time.count, state.time.unit)) === 0
+    compareFractions(duration, fraction(state.time.count, state.time.unit)) === 0 &&
+    // A rest reached after the voice has sounded fills what is left of the
+    // measure, not the measure. Exporters write one as a filler behind a note
+    // that overruns the barline, and it is a rest like any other.
+    builder.opensMeasure(voice)
 
   // Music written senza misura carries no time signature, so nothing says how
   // long the measure runs. A rest with no written value opening a voice there
@@ -613,7 +617,7 @@ export function readNote(
   // measure of silence with one rests through it just the same. The sequence
   // stating the rest must hold nothing, so the grace notes are what keeps the
   // rest an event here.
-  const afterGraceNotes = builder.holdsOnlyGraceNotes(voice)
+  const afterGraceNotes = builder.holdsOnlyGraceNotes(voice) && builder.atMeasureStart()
 
   if (restFillsMeasure && !((carriesLyric || carriesSlurEnd || afterGraceNotes) && canBeEvent)) {
     // A rest is not drawn with a stem, and a beam over one alone is not a

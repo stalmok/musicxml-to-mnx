@@ -1275,6 +1275,23 @@ describe('a note inside a tuplet stating no <type>', () => {
     expect(warnings).toEqual([])
   })
 
+  // The pair is what scales the note, and the refusal says so.
+  test('names the tremolo where a tremolo is what scales the note', () => {
+    const odd =
+      '<note><pitch><step>E</step><octave>4</octave></pitch><duration>5</duration>' +
+      '<time-modification><actual-notes>2</actual-notes><normal-notes>1</normal-notes>' +
+      '</time-modification>' +
+      '<notations><ornaments><tremolo type="stop">3</tremolo></ornaments></notations></note>'
+    let thrown = ''
+    try {
+      read(measure(tremoloNote('C', 'start') + odd))
+    } catch (error) {
+      thrown = error instanceof MusicXMLError ? error.detail : String(error)
+    }
+
+    expect(thrown).toContain('by the tremolo around it')
+  })
+
   test('refuses a time no note value can write, naming what it is written as', () => {
     let thrown = ''
     try {

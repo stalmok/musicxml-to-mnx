@@ -240,6 +240,26 @@ describe('a rest filling a measure a grace note leads into', () => {
     expect(mnx.parts[0]?.measures[0]?.sequences[0]?.fullMeasure).toEqual({})
   })
 
+  // The grace notes stand where the voice last was, and a <forward> moves the
+  // cursor past them. A rest reached there does not open the measure, so it
+  // is not the measure's rest and the voice cannot hold both.
+  test('refuses where a forward moved the cursor past the grace notes', () => {
+    let thrown = ''
+    try {
+      convertMusicXML(
+        inMeasure(
+          grace +
+            '<forward><duration>2</duration></forward>' +
+            '<note><rest measure="yes"/><duration>4</duration><voice>1</voice></note>',
+        ),
+      )
+    } catch (error) {
+      thrown = error instanceof Error ? error.message : String(error)
+    }
+
+    expect(thrown).toContain('both a rest that fills the measure and notes in it')
+  })
+
   // An irregular measure has no note value to write the rest as, so there is
   // nothing to make an event of and the refusal stands.
   test('refuses where no note value can write the measure', () => {
@@ -302,6 +322,54 @@ describe('a rest with no value filling an unmeasured measure', () => {
     expect(sequence?.fullMeasure).toBeUndefined()
     expect(sequence?.content).toHaveLength(1)
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:senza-misura'])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // A <forward> moves the cursor without the voice sounding, so the rest
+  // after one does not open the measure even where the voice holds nothing.
+  test('refuses a rest a forward moved the cursor past', () => {
+    let thrown = ''
+    try {
+      convertMusicXML(unmeasured('<forward><duration>4</duration></forward>' + rest(11)))
+    } catch (error) {
+      thrown = error instanceof Error ? error.message : String(error)
+    }
+
+    expect(thrown).toContain('no note value can write')
+  })
+
+  // The rest is read as the measure's only where the source states no value
+  // for it. One drawn as a whole says what it is, and the two lengths are the
+  // source disagreeing with itself.
+  test('leaves a rest drawn with a value an event', () => {
+    const { mnx, warnings } = convertMusicXML(
+      unmeasured('<note><rest/><duration>11</duration><voice>1</voice><type>whole</type></note>'),
+    )
+    const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
+
+    expect(sequence?.fullMeasure).toBeUndefined()
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:senza-misura',
+      'inconsistent:duration',
+    ])
+  })
+
+  // With no <divisions> anywhere, how long the duration runs is a guess, and
+  // a guessed length is not one to rest a measure on.
+  test('refuses where no divisions said how long the duration is', () => {
+    let thrown = ''
+    try {
+      convertMusicXML(
+        '<score-partwise><part id="P1"><measure number="1">' +
+          '<attributes><time><senza-misura/></time></attributes>' +
+          rest(11) +
+          '</measure></part></score-partwise>',
+      )
+    } catch (error) {
+      thrown = error instanceof Error ? error.message : String(error)
+    }
+
+    expect(thrown).toContain('no <divisions> ever said how long its <duration> is')
   })
 
   // A rest reached after the voice has sounded covers what is left of the
@@ -340,5 +408,38 @@ describe('a rest with no value filling an unmeasured measure', () => {
     }
 
     expect(thrown).toContain('no note value can write')
+  })
+})
+
+// A rest lasting exactly the measure is the measure's rest, even where the
+// source leaves measure="yes" off. It has to be where the measure begins:
+// exporters fill the bar behind a note that overruns the barline with a rest
+// of the measure's length, and that one rests what is left of the measure.
+describe('a rest lasting exactly the measure', () => {
+  const metered = (body: string) =>
+    '<score-partwise><part id="P1"><measure number="1">' +
+    '<attributes><divisions>4</divisions><time><beats>4</beats><beat-type>4</beat-type>' +
+    `</time>${TREBLE}</attributes>${body}</measure></part></score-partwise>`
+  const rest = '<note><rest/><duration>16</duration><voice>1</voice></note>'
+  const overrunning =
+    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>32</duration>' +
+    '<voice>1</voice><type>breve</type></note>'
+
+  test('rests the measure where it opens the measure', () => {
+    const { mnx, warnings } = convertMusicXML(metered(rest))
+
+    expect(mnx.parts[0]?.measures[0]?.sequences).toEqual([
+      { voice: '1', content: [], fullMeasure: {} },
+    ])
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  test('leaves a rest the voice does not open with an event', () => {
+    const { mnx } = convertMusicXML(metered(overrunning + rest))
+    const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
+
+    expect(sequence?.fullMeasure).toBeUndefined()
+    expect(sequence?.content).toHaveLength(2)
   })
 })
