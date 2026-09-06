@@ -537,6 +537,11 @@ function writePart(
               halfSteps: part.transposition.halfSteps,
               staffDistance: part.transposition.staffDistance,
             },
+            // MNX reads an absent point as a part that never flips, so it is
+            // written only for a part that does.
+            ...(part.transposition.keyFifthsFlipAt !== undefined
+              ? { keyFifthsFlipAt: part.transposition.keyFifthsFlipAt }
+              : {}),
           },
         }
       : {}),

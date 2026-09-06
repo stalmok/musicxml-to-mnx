@@ -541,6 +541,9 @@ function readTransposition(
     return {
       staffDistance: opposite(diatonic + 7 * octaves),
       halfSteps: opposite(chromatic + 12 * octaves),
+      // Settled once the whole score is in: whether the part flips its
+      // signature shows only against the key the rest of the score is in.
+      keyFifthsFlipAt: undefined,
     }
   })
 

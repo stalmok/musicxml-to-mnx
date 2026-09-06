@@ -49,6 +49,7 @@ import { readNote } from './notes.js'
 import { readPrint } from './print.js'
 import { IdGenerator } from './spanners.js'
 import { newPartState } from './state.js'
+import { keyFifthsFlipAt, writtenFifths, writtenFifthsWithFlip } from './transposition.js'
 import { attributeLoss, elementLoss } from './unrepresentable.js'
 import type { PartState } from './state.js'
 import { MeasureBuilder } from './voices.js'
@@ -172,8 +173,10 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
   )
 
   const globalMeasures: GlobalMeasure[] = []
+  const flips = new Map<string, number>()
   for (const reading of readings) {
-    mergeGlobalMeasures(globalMeasures, reading.globals, reading.part.id, warnings)
+    const flipAt = mergeGlobalMeasures(globalMeasures, reading.globals, reading.part, warnings)
+    if (flipAt !== undefined) flips.set(reading.part.id, flipAt)
   }
   upgradeAlFineJumps(globalMeasures)
 
@@ -201,10 +204,15 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
   // A staff pointing at a part the score does not hold would dangle, so the
   // grouping keeps only parts that were written.
   const written = new Set(readings.map((reading) => reading.part.id))
+  const parts = readings.map(({ part }) => {
+    const flipAt = flips.get(part.id)
+    if (flipAt === undefined || !part.transposition) return part
+    return { ...part, transposition: { ...part.transposition, keyFifthsFlipAt: flipAt } }
+  })
   return renameInvalidPartIds(
     {
       globalMeasures,
-      parts: readings.map((reading) => reading.part),
+      parts,
       grouping: pruneGrouping(partList.grouping, written, partList.lines, warnings),
       sounds: partList.sounds,
       ...(musicFont !== undefined ? { musicFont } : {}),
@@ -355,6 +363,40 @@ function segnoReturnedTo(
   return signs.find((sign) => sign.name === target)?.index
 }
 
+/**
+ * The key the score is in and the key a part states, at every measure the
+ * part writes, or nothing at a measure where neither states one and where
+ * either side is still silent.
+ *
+ * What each side has in force, not just what it states: a key stands until
+ * the next one, so a part that says nothing in the measure where the score
+ * changes key is disagreeing all the same. Held only where one side states a
+ * key there, so a disagreement is reported once where it starts rather than
+ * once per measure it spans.
+ */
+function keysInForce(
+  target: readonly GlobalMeasure[],
+  found: readonly GlobalMeasure[],
+): (KeyPair | undefined)[] {
+  let inScore: Key | undefined
+  let inPart: Key | undefined
+  return found.map((measure, index) => {
+    const existing = target[index]?.key
+    inScore = existing ?? inScore
+    inPart = measure.key ?? inPart
+    if (!(existing ?? measure.key) || !inScore || !inPart) return undefined
+    return { score: inScore.fifths, part: inPart.fifths }
+  })
+}
+
+interface KeyPair {
+  /** The fifths the score sounds in. */
+  score: number
+  /** The fifths this part sounds in, which is what it writes taken back
+   * through its transposition. */
+  part: number
+}
+
 // Parts restate the same key and time; the first to declare one wins, so a
 // later part repeating it is not treated as a change. A part declaring a
 // different one cannot be carried, because MNX states one key and one time
@@ -364,17 +406,26 @@ function segnoReturnedTo(
 function mergeGlobalMeasures(
   target: GlobalMeasure[],
   found: readonly GlobalMeasure[],
-  part: string,
+  { id: part, transposition }: Part,
   warnings: WarningCollector,
-): void {
-  // What each side has in force, not just what it states: a key or time
-  // signature stands until the next one, so a part that says nothing in the
-  // measure where the score changes meter is disagreeing all the same. The
-  // comparison runs only where one side states something, so a disagreement
-  // is reported once where it starts rather than once per measure it spans.
-  let scoreKey: Key | undefined
+): number | undefined {
+  // A transposing part writing the enharmonic signature reads back as a key
+  // twelve fifths from the rest of the score's, which is the same key spelled
+  // the other way rather than a different one. MNX states where such a part
+  // flips, so the keys are settled first and only what the flip point does
+  // not account for is reported below.
+  const keys = keysInForce(target, found)
+  const flipAt = keyFifthsFlipAt(
+    keys.filter((pair) => pair !== undefined),
+    transposition,
+  )
+
+  // What each side has in force, not just what it states: a time signature
+  // stands until the next one, so a part that says nothing in the measure
+  // where the score changes meter is disagreeing all the same. The comparison
+  // runs only where one side states something, so a disagreement is reported
+  // once where it starts rather than once per measure it spans.
   let scoreTime: TimeSignature | undefined
-  let partKey: Key | undefined
   let partTime: TimeSignature | undefined
   // The barline's rule below holds for every mark MNX states once on the
   // score's measure: parts stating different ones disagree about the one
@@ -398,16 +449,14 @@ function mergeGlobalMeasures(
   }
   found.forEach((measure, index) => {
     const existing = target[index]
-    scoreKey = existing?.key ?? scoreKey
     scoreTime = existing?.time ?? scoreTime
-    partKey = measure.key ?? partKey
     partTime = measure.time ?? partTime
     const context = { part, measure: measure.number ?? index + 1 }
+    const pair = keys[index]
     if (
-      (existing?.key ?? measure.key) &&
-      scoreKey &&
-      partKey &&
-      scoreKey.fifths !== partKey.fifths
+      pair &&
+      writtenFifthsWithFlip(pair.score, transposition, flipAt) !==
+        writtenFifths(pair.part, transposition)
     ) {
       warnings.add(
         'unrepresentable:cross-part-key',
@@ -520,6 +569,8 @@ function mergeGlobalMeasures(
       pageBreak: (existing?.pageBreak ?? false) || measure.pageBreak,
     }
   })
+
+  return flipAt
 }
 
 // The display is only the glyph the signature is drawn as, so 4/4 as a C and

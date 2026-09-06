@@ -577,11 +577,21 @@ export interface Measure {
  * major second above what it sounds, is `{ staffDistance: 1, halfSteps: 2 }`.
  * MusicXML's <transpose> states the same interval the other way round.
  */
-export interface Transposition {
+export interface TranspositionInterval {
   /** Staff steps from the sounding pitch to the written one. */
   readonly staffDistance: number
   /** Half steps from the sounding pitch to the written one. */
   readonly halfSteps: number
+}
+
+export interface Transposition extends TranspositionInterval {
+  /**
+   * The number of fifths at which the part writes the enharmonic signature
+   * rather than the one its transposition asks for, to avoid more than seven
+   * sharps or flats. Undefined for a part that flips nowhere, which is what
+   * an absent point means in MNX.
+   */
+  readonly keyFifthsFlipAt: number | undefined
 }
 
 export interface Part {

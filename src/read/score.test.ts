@@ -1134,6 +1134,163 @@ describe('several parts', () => {
     expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 1 })
   })
 
+  // A part avoids a signature of more than seven sharps or flats by writing
+  // the enharmonic one: five sharps of concert key are written for a B-flat
+  // instrument as five flats rather than the seven sharps its transposition
+  // asks for. Read back, that gives a concert key twelve fifths from the
+  // score's, which is the same key spelled the other way. MNX states where
+  // the part flips, so the score keeps one key and nothing is lost.
+  describe('a part that flips its key signature enharmonically', () => {
+    /** A part in `fifths`, transposing by `transpose` where it states one. */
+    const keyed = (id: string, fifths: number, transpose = '') =>
+      `<part id="${id}"><measure number="1"><attributes>` +
+      `<key><fifths>${String(fifths)}</fifths></key>${transpose}` +
+      `</attributes>${NOTE}</measure></part>`
+
+    /** Written a major second above what it sounds. */
+    const B_FLAT = '<transpose><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>'
+    /** Written a minor third below what it sounds. */
+    const E_FLAT = '<transpose><diatonic>2</diatonic><chromatic>3</chromatic></transpose>'
+
+    test('states where it flips, and reports no disagreement', () => {
+      const { score: result, warnings } = read(score(keyed('P1', 5) + keyed('P2', -5, B_FLAT)))
+
+      expect(result.globalMeasures[0]?.key).toEqual({ fifths: 5 })
+      expect(result.parts[1]?.transposition?.keyFifthsFlipAt).toBe(7)
+      expect(warnings).toEqual([])
+    })
+
+    // The point is measured in the fifths the part would write without the
+    // flip, so the seven sharps the source drew come back from the score's
+    // key and the point together.
+    test('brings back the signature the source drew', () => {
+      const { mnx } = convertMusicXML(score(keyed('P1', 5) + keyed('P2', -5, B_FLAT)))
+      const flipAt = mnx.parts[1]?.transposition?.keyFifthsFlipAt ?? 0
+      const interval = mnx.parts[1]?.transposition?.interval
+      const concert = mnx.global.measures[0]?.key?.fifths ?? 0
+      const written = concert - 12 * (interval?.staffDistance ?? 0) + 7 * (interval?.halfSteps ?? 0)
+
+      expect(written >= flipAt ? written - 12 : written).toBe(-5)
+      expect(schemaErrors(mnx)).toEqual([])
+    })
+
+    // The ordinary transposing part: it writes the signature its transposition
+    // asks for, so there is nothing to flip and no point to state.
+    test('states no point for a part writing the signature it is asked for', () => {
+      const { score: result, warnings } = read(score(keyed('P1', 0) + keyed('P2', 2, B_FLAT)))
+
+      expect(result.parts[1]?.transposition?.keyFifthsFlipAt).toBeUndefined()
+      expect(warnings).toEqual([])
+    })
+
+    // The other direction, which is the one the test suite's transposing-
+    // instruments file reaches: the score's nine flats leave a B-flat
+    // instrument seven flats to write, and it writes five sharps instead. A
+    // point below zero adds the twelve fifths back rather than taking them off.
+    test('states a point below zero for a part writing the sharper signature', () => {
+      const { score: result, warnings } = read(score(keyed('P1', -9) + keyed('P2', 5, B_FLAT)))
+
+      expect(result.globalMeasures[0]?.key).toEqual({ fifths: -9 })
+      expect(result.parts[1]?.transposition?.keyFifthsFlipAt).toBe(-7)
+      expect(warnings).toEqual([])
+    })
+
+    // A transposing part can be in a different key outright, which no point
+    // accounts for: only twelve fifths is the same key spelled the other way.
+    test('reports a transposing part in a different key', () => {
+      const { score: result, warnings } = read(score(keyed('P1', 0) + keyed('P2', 5, B_FLAT)))
+
+      expect(result.parts[1]?.transposition?.keyFifthsFlipAt).toBeUndefined()
+      expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-key'])
+    })
+
+    // The same point covers a part that flips only where the signature runs
+    // deep into the flats and writes what it is asked for elsewhere.
+    test('states one point below zero for a part that flips only in the flats', () => {
+      const change = (fifths: number) =>
+        `<measure number="2"><attributes><key><fifths>${String(fifths)}</fifths></key>` +
+        `</attributes>${NOTE}</measure>`
+      const mixed =
+        `<part id="P1"><measure number="1"><attributes><key><fifths>-9</fifths></key>` +
+        `</attributes>${NOTE}</measure>${change(0)}</part>` +
+        `<part id="P2"><measure number="1"><attributes><key><fifths>5</fifths></key>` +
+        `${B_FLAT}</attributes>${NOTE}</measure>${change(2)}</part>`
+      const { score: result, warnings } = read(score(mixed))
+
+      expect(result.parts[1]?.transposition?.keyFifthsFlipAt).toBe(-7)
+      expect(warnings).toEqual([])
+    })
+
+    // A part at concert pitch has no transposition to state a flip on, so a
+    // signature twelve fifths from the score's is a disagreement it cannot
+    // settle.
+    test('reports a part at concert pitch spelling the key the other way', () => {
+      const { warnings } = read(score(keyed('P1', 5) + keyed('P2', -7)))
+
+      expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-key'])
+    })
+
+    // One point covers the whole part and its sign picks the direction, so a
+    // part taking twelve fifths off at one key change and adding twelve at
+    // the next cannot be stated. The score's nine flats leave a B-flat
+    // instrument seven flats to write, which it spells as five sharps.
+    test('reports a part flipping both ways', () => {
+      const change = (fifths: number) =>
+        `<measure number="2"><attributes><key><fifths>${String(fifths)}</fifths></key>` +
+        `</attributes>${NOTE}</measure>`
+      const both =
+        `<part id="P1"><measure number="1"><attributes><key><fifths>5</fifths></key>` +
+        `</attributes>${NOTE}</measure>${change(-9)}</part>` +
+        `<part id="P2"><measure number="1"><attributes><key><fifths>-5</fifths></key>` +
+        `${B_FLAT}</attributes>${NOTE}</measure>${change(5)}</part>`
+      const { score: result, warnings } = read(score(both))
+
+      expect(result.parts[1]?.transposition?.keyFifthsFlipAt).toBeUndefined()
+      expect(warnings.map((w) => w.code)).toEqual([
+        'unrepresentable:cross-part-key',
+        'unrepresentable:cross-part-key',
+      ])
+    })
+
+    // The point stands between the keys the part flips and the keys it writes
+    // as its transposition asks, so a part that flips at a smaller signature
+    // than one it leaves alone cannot be stated either.
+    test('reports a part flipping at a smaller signature than one it leaves alone', () => {
+      const change = (fifths: number) =>
+        `<measure number="2"><attributes><key><fifths>${String(fifths)}</fifths></key>` +
+        `</attributes>${NOTE}</measure>`
+      const mixed =
+        `<part id="P1"><measure number="1"><attributes><key><fifths>5</fifths></key>` +
+        `</attributes>${NOTE}</measure>${change(6)}</part>` +
+        `<part id="P2"><measure number="1"><attributes><key><fifths>-5</fifths></key>` +
+        `${B_FLAT}</attributes>${NOTE}</measure>${change(8)}</part>`
+      const { score: result, warnings } = read(score(mixed))
+
+      expect(result.parts[1]?.transposition?.keyFifthsFlipAt).toBeUndefined()
+      expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-key'])
+    })
+
+    // A part that flips at a large signature and writes a small one as its
+    // transposition asks is covered by one point, which stands between them.
+    test('states one point for a part that flips only where the signature is large', () => {
+      const change = (fifths: number, transpose = '') =>
+        `<measure number="2"><attributes><key><fifths>${String(fifths)}</fifths></key>` +
+        `${transpose}</attributes>${NOTE}</measure>`
+      const mixed =
+        `<part id="P1"><measure number="1"><attributes><key><fifths>0</fifths></key>` +
+        `</attributes>${NOTE}</measure>${change(5)}</part>` +
+        `<part id="P2"><measure number="1"><attributes><key><fifths>3</fifths></key>` +
+        `${E_FLAT}</attributes>${NOTE}</measure>${change(-4)}</part>`
+      const { score: result, warnings } = read(score(mixed))
+
+      // An E-flat instrument writes three fifths above what it sounds: the
+      // score's C major is its three sharps, and the score's five sharps
+      // would be eight, written as four flats instead.
+      expect(result.parts[1]?.transposition?.keyFifthsFlipAt).toBe(8)
+      expect(warnings).toEqual([])
+    })
+  })
+
   test('reports parts stating different time signatures in the same measure', () => {
     const { score: result, warnings } = read(
       score(

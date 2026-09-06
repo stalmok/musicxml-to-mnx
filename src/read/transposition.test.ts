@@ -5,7 +5,7 @@
 
 import { describe, expect, test } from 'vitest'
 import { concertFifths, soundingPitch } from './transposition.js'
-import type { Transposition } from '../model/score.js'
+import type { TranspositionInterval } from '../model/score.js'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
@@ -13,8 +13,8 @@ import { convertMusicXML } from '../index.js'
 import { schemaErrors } from '../../tests/support/schema.js'
 
 // The spec's own two examples, as MNX states them.
-const B_FLAT_CLARINET: Transposition = { staffDistance: 1, halfSteps: 2 }
-const PICCOLO: Transposition = { staffDistance: -7, halfSteps: -12 }
+const B_FLAT_CLARINET: TranspositionInterval = { staffDistance: 1, halfSteps: 2 }
+const PICCOLO: TranspositionInterval = { staffDistance: -7, halfSteps: -12 }
 
 describe('the pitch a written note sounds', () => {
   test('sounds a B-flat clarinet a major second below what it reads', () => {
