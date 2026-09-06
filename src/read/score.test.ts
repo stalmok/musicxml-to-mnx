@@ -727,18 +727,22 @@ describe('durations', () => {
 
   // A tuplet's written value is deliberately longer than it sounds, so
   // converting it as an ordinary note would emit a measure that does not add
-  // up. Better to say so than to hand back the wrong rhythm.
-  test('rejects a note inside a tuplet', () => {
-    expect(
-      readFailure(
-        measure(
-          '<attributes><divisions>3</divisions></attributes>' +
-            '<note><rest/><type>eighth</type><duration>1</duration>' +
-            '<time-modification><actual-notes>3</actual-notes>' +
-            '<normal-notes>2</normal-notes></time-modification></note>',
-        ),
-      ).message,
-    ).toContain('tuplet')
+  // up. The ratio the note carries puts it in a tuplet, and the tuplet holding
+  // less than that ratio counts is reported.
+  test('puts a note carrying a ratio inside a tuplet', () => {
+    const { score, warnings } = read(
+      measure(
+        '<attributes><divisions>3</divisions></attributes>' +
+          '<note><rest/><type>eighth</type><duration>1</duration>' +
+          '<time-modification><actual-notes>3</actual-notes>' +
+          '<normal-notes>2</normal-notes></time-modification></note>',
+      ),
+    )
+    const item = score.parts[0]?.measures[0]?.sequences[0]?.content[0]
+
+    expect(item?.kind === 'tuplet' && item.inner.multiple).toBe(3)
+    expect(item?.kind === 'tuplet' && item.content).toHaveLength(1)
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tuplet'])
   })
 })
 

@@ -434,17 +434,46 @@ export function readNote(
   // 2:1 ratio, which the tremolo item states.
   const ratio = element.child('time-modification')
 
-  // A tuplet is bracketed in the source, and that bracket is what says where
-  // one ends and the next begins. Without it there is nothing to group by,
-  // and guessing would invent a grouping the source never wrote.
-  if (ratio && markers.length === 0 && !builder.insideBracket(voice) && !tremolo) {
+  // A grace note takes none of the measure's time, so a ratio on one says
+  // nothing about how long a group is or where it ends, and no bracket is
+  // there to say it either.
+  if (ratio && markers.length === 0 && !builder.insideBracket(voice) && !tremolo && graceElement) {
     throw new MusicXMLError(
-      'A note carries a tuplet ratio but no <tuplet> bracket marks where the tuplet runs.',
+      'A grace note carries a tuplet ratio but no <tuplet> bracket marks where the tuplet runs.',
       { path, line: element.line },
     )
   }
 
   const starts = markers.filter((marker) => attribute(marker, 'type') === 'start')
+
+  // MusicXML states a tuplet twice, and the two say different things: the
+  // ratio on every note is what makes it one, and <tuplet> only draws a
+  // bracket around it. A source stating the ratio and drawing nothing still
+  // says how long the group is, as the written value the ratio counts, so a
+  // run of notes carrying the same ratio divides into one group after another
+  // with nothing guessed. Whole pieces are written this way.
+  //
+  // The ratio is read only where it can settle such a run. A start marker
+  // opens a bracket of its own below; inside a bracket the source drew, the
+  // bracket says where the tuplet runs, and a note there need not state a
+  // value at all. A stop marker naming no bracket is passed over further down.
+  const rated =
+    ratio &&
+    starts.length === 0 &&
+    !tremolo &&
+    !graceElement &&
+    (builder.insideImpliedTuplet(voice) || !builder.insideBracket(voice))
+      ? readTupletRatio(ratio, element, path)
+      : undefined
+
+  // Full, or this note does not belong in it either way: the run ends here.
+  if (builder.impliedTupletEndsBefore(voice, rated)) {
+    builder.closeTuplet(voice, warnings, context, path, element.line)
+  }
+  if (rated && !builder.insideBracket(voice)) {
+    builder.openImpliedTuplet(voice, rated.inner, rated.outer)
+  }
+
   if (starts.length > 0) {
     // A bracket with no ratio beside it is written by real engravers, and the
     // note itself says what the ratio is: how long it lasts against how it is
@@ -745,6 +774,10 @@ function closeTuplets(
     // and reported there. There is no bracket of its own to close, and
     // closing here would end the bracket around it instead.
     if (builder.closesDroppedTuplet(voice, number)) continue
+    // A stop naming a bracket the source never opened, landing inside a run
+    // the ratio alone gathered. What the ratio counts says where that run
+    // ends, so the marker has no bracket of its own to close.
+    if (builder.insideImpliedTuplet(voice)) continue
     stated.push(number)
     closed.push(builder.closeTuplet(voice, warnings, context, path, line))
   }

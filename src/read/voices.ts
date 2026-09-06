@@ -92,6 +92,11 @@ interface OpenTuplet {
   derived: boolean
   /** Where this voice's content ran to when the bracket opened. */
   openEnd: Fraction
+  /**
+   * True where the source stated the ratio and drew no bracket, so what the
+   * ratio counts is what says where the tuplet ends.
+   */
+  unbracketed: boolean
 }
 
 /**
@@ -394,6 +399,17 @@ function tupletLevels(
  */
 function innermost(builder: VoiceBuilder): SequenceItem[] {
   return builder.open.at(-1)?.list ?? builder.content
+}
+
+/** Whether two <time-modification> readings count the same thing. */
+function sameQuantity(a: NoteValueQuantity, b: NoteValueQuantity): boolean {
+  return a.multiple === b.multiple && a.value.base === b.value.base && a.value.dots === b.value.dots
+}
+
+/** The tuplet the ratio alone opened, where the voice is inside one. */
+function impliedFrame(builder: VoiceBuilder): OpenTuplet | undefined {
+  const open = builder.open.at(-1)
+  return open?.opened === 'tuplet' && open.unbracketed ? open : undefined
 }
 
 /** The tuplets open around a note, outermost first. */
@@ -873,7 +889,82 @@ export class MeasureBuilder {
         // rescaling that to the content would overwrite what the source drew.
         derived: derived && starts[index]?.stated === undefined,
         openEnd,
+        unbracketed: false,
       })
+    }
+  }
+
+  /**
+   * Starts a tuplet the source stated as a ratio with no bracket around it.
+   * Opened only where nothing else is, so it is always the one frame this
+   * voice is inside.
+   */
+  openImpliedTuplet(
+    voice: string | undefined,
+    inner: NoteValueQuantity,
+    outer: NoteValueQuantity,
+  ): void {
+    const builder = this.#builderFor(voice)
+    // Time this voice passed over in silence belongs before the tuplet, not
+    // inside it, where the ratio would scale it.
+    this.#fillGap(builder)
+
+    const content: SequenceItem[] = []
+    const tuplet: Draft<Tuplet> = { kind: 'tuplet', inner, outer, content }
+    innermost(builder).push(tuplet)
+    builder.open.push({
+      opened: 'tuplet',
+      list: content,
+      tuplet,
+      ratio: ratioOf(inner, outer),
+      // No marker numbered it, and no stop of its own closes it.
+      number: '1',
+      derived: false,
+      openEnd: builder.end,
+      unbracketed: true,
+    })
+  }
+
+  /** Whether this voice is inside a tuplet stated as a ratio with no bracket. */
+  insideImpliedTuplet(voice: string | undefined): boolean {
+    return impliedFrame(this.#builderFor(voice)) !== undefined
+  }
+
+  /**
+   * Whether the tuplet the ratio alone opened in this voice ends before a note
+   * stating `quantities`. It takes the note while the note states the same
+   * ratio, counted in the same value, and the tuplet holds less than that
+   * ratio counts. Two notes counting different values state two tuplets, not
+   * one, even where the ratio between them is the same. False where no such
+   * tuplet is open.
+   */
+  impliedTupletEndsBefore(
+    voice: string | undefined,
+    quantities: { inner: NoteValueQuantity; outer: NoteValueQuantity } | undefined,
+  ): boolean {
+    const open = impliedFrame(this.#builderFor(voice))
+    if (!open) return false
+    if (!quantities) return true
+    const { inner, outer } = quantities
+    if (!sameQuantity(open.tuplet.inner, inner) || !sameQuantity(open.tuplet.outer, outer)) {
+      return true
+    }
+    const counted = multiplyFractions(fraction(inner.multiple), lengthOf(inner.value))
+    return compareFractions(writtenLengthOf(open.tuplet.content), counted) >= 0
+  }
+
+  /**
+   * Closes any tuplet the ratio alone opened, in every voice. A run of such
+   * notes ends where the measure does, whether or not it filled its ratio.
+   */
+  closeImpliedTuplets(
+    warnings: WarningCollector,
+    context: WarningContext,
+    path: DocumentPath,
+    line: number,
+  ): void {
+    for (const builder of this.#voices.values()) {
+      if (impliedFrame(builder)) this.#closeTuplet(builder, warnings, context, path, line)
     }
   }
 
@@ -1286,7 +1377,17 @@ export class MeasureBuilder {
     path: DocumentPath,
     line: number,
   ): string {
-    const builder = this.#builderFor(voice)
+    return this.#closeTuplet(this.#builderFor(voice), warnings, context, path, line)
+  }
+
+  /** The same, for a voice already in hand. */
+  #closeTuplet(
+    builder: VoiceBuilder,
+    warnings: WarningCollector,
+    context: WarningContext,
+    path: DocumentPath,
+    line: number,
+  ): string {
     const closed = builder.open.at(-1)
     // A tremolo edge and a tuplet edge can land on different notes. Popping
     // the tremolo's frame here would lose the notes it holds, so a bracket

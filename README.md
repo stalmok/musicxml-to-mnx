@@ -289,11 +289,11 @@ grow, and the weekly gate runs against its latest state.
 | ------------------------------------------------------------------------------------------------------------- | ------ | ------------ |
 | [OpenScore Lieder](https://github.com/OpenScore/Lieder) (songs, MuseScore exports)                            | 1,462  | 1,460 (99%)  |
 | [OpenScore String Quartets](https://github.com/OpenScore/StringQuartets) (exported with MuseScore 3)          | 122    | 112 (92%)    |
-| [Unofficial MusicXML Test Suite](https://github.com/cuthbertLab/musicxmlTestSuite) (feature files)            | 150    | 141 (94%)    |
+| [Unofficial MusicXML Test Suite](https://github.com/cuthbertLab/musicxmlTestSuite) (feature files)            | 150    | 142 (95%)    |
 | [MusicXML example set](https://www.musicxml.com/music-in-musicxml/example-set/) (Finale exports, some UTF-16) | 36     | 34 (94%)     |
-| [PDMX](https://zenodo.org/records/15571083) random sample (MuseScore.com, all genres)                         | 20,000 | 19,861 (99%) |
-| [music21 bundled corpus](https://github.com/cuthbertLab/music21) (hand-encoded, older tools, some UTF-16)     | 654    | 617 (94%)    |
-| [CPDL](https://www.cpdl.org) random sample (choral, mostly Sibelius exports)                                  | 2,000  | 1,842 (92%)  |
+| [PDMX](https://zenodo.org/records/15571083) random sample (MuseScore.com, all genres)                         | 20,000 | 19,862 (99%) |
+| [music21 bundled corpus](https://github.com/cuthbertLab/music21) (hand-encoded, older tools, some UTF-16)     | 654    | 618 (94%)    |
+| [CPDL](https://www.cpdl.org) random sample (choral, mostly Sibelius exports)                                  | 2,000  | 1,847 (92%)  |
 
 The other files are refusals, and each refusal names its reason. Some files
 hold notation that MNX cannot state: microtone alterations, and composite
@@ -306,10 +306,10 @@ lines over each other in one voice. The converter refuses these files and
 does not guess the lines apart.
 
 The test suite converts 600 vendored Lieder songs on each run, together with
-six feature files from the Unofficial MusicXML Test Suite. Lieder is voice and
-piano throughout, therefore it contains no bow mark, no unpitched note and no
-transposing part. The six files hold what the songs cannot. CI runs the full
-Lieder corpus weekly and on demand.
+seven feature files from the Unofficial MusicXML Test Suite. Lieder is voice
+and piano throughout, therefore it contains no bow mark, no unpitched note and
+no transposing part. The seven files hold what the songs cannot. CI runs the
+full Lieder corpus weekly and on demand.
 
 ---
 

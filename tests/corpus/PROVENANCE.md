@@ -1,6 +1,6 @@
 # Vendored corpus
 
-Six hundred published songs and six feature files, converted on every test
+Six hundred published songs and seven feature files, converted on every test
 run. Every check in `tests/corpus.test.ts` runs over both.
 
 They are here because the bugs that mattered were all found by running against
@@ -28,7 +28,7 @@ proofreading team, from public-domain editions on IMSLP.
 
 `SOURCES.json` records the composer, work, and upstream path of each song.
 
-The six files in `features/` come from the [Unofficial MusicXML Test
+The seven files in `features/` come from the [Unofficial MusicXML Test
 Suite](https://github.com/cuthbertLab/musicxmlTestSuite), released under the
 **MIT Licence**, which is reproduced in `features/LICENSE` as that licence
 requires. Originally by Reinhold Kainhofer for the GNU LilyPond project,
@@ -55,14 +55,15 @@ The suite is not real music, and it is not a substitute for the six hundred.
 It is the smallest set of files that exercises what real music of one kind
 never will. One file per feature, so a failure names what broke:
 
-| File                                  | What it holds that the songs do not                                  |
-| ------------------------------------- | -------------------------------------------------------------------- |
-| `24d-AfterGrace.xml`                  | `steal-time-previous` and `steal-time-following`, and an after-grace |
-| `32a-Notations.xml`                   | Spiccato, stress and unstress                                        |
-| `32ab-Notations3.xml`                 | Up-bow, down-bow, and most of `<technical>`                          |
-| `61j-Lyrics-Elisions.xml`             | Lyric elisions                                                       |
-| `72b-TransposingInstruments-Full.xml` | Nine transposing parts of eleven, one octave-displaced               |
-| `73a-Percussion.xml`                  | Unpitched notes on percussion staves                                 |
+| File                                   | What it holds that the songs do not                                  |
+| -------------------------------------- | -------------------------------------------------------------------- |
+| `23f-Tuplets-DurationButNoBracket.xml` | Tuplets stated as a ratio with no bracket drawn                      |
+| `24d-AfterGrace.xml`                   | `steal-time-previous` and `steal-time-following`, and an after-grace |
+| `32a-Notations.xml`                    | Spiccato, stress and unstress                                        |
+| `32ab-Notations3.xml`                  | Up-bow, down-bow, and most of `<technical>`                          |
+| `61j-Lyrics-Elisions.xml`              | Lyric elisions                                                       |
+| `72b-TransposingInstruments-Full.xml`  | Nine transposing parts of eleven, one octave-displaced               |
+| `73a-Percussion.xml`                   | Unpitched notes on percussion staves                                 |
 
 `32ab-Notations3.xml` earns its place twice over: besides the two bow marks it
 writes eighteen of the twenty-nine `<technical>` children that MNX has nowhere

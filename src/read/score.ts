@@ -1164,6 +1164,9 @@ function readMeasure(
     reader.reportUnread(warnings, context)
   }
 
+  // A tuplet the source stated as a ratio with no bracket has no stop to
+  // close it, so the measure's end is where its run ends.
+  builder.closeImpliedTuplets(warnings, context, measurePath, element.line)
   builder.checkAllClosed(measurePath, element.line)
 
   // Every event of the measure is in now, so a hairpin's and an octave
