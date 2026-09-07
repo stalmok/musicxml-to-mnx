@@ -2638,8 +2638,100 @@ describe('a tuplet opening on the note that starts a tremolo', () => {
       return tuplet?.kind === 'tuplet' ? [tuplet.inner.multiple, tuplet.outer.multiple] : []
     }
 
+    expect(ratioOf(earlier)).toEqual([3, 2])
     expect(ratioOf(opened)).toEqual(ratioOf(earlier))
     expect(earlier.warnings).toEqual([])
+  })
+
+  // A ratio the source did not write in lowest terms is the number drawn over
+  // the bracket, so six in the time of four stays six in the time of four.
+  test('keeps the counts the source wrote', () => {
+    const sextuplet = (duration: number, actual: number, notations: string) =>
+      '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+      `<duration>${String(duration)}</duration><type>quarter</type>` +
+      `<time-modification><actual-notes>${String(actual)}</actual-notes>` +
+      '<normal-notes>4</normal-notes></time-modification>' +
+      `<notations>${notations}</notations></note>`
+    const { content, warnings } = read(
+      measure(
+        sextuplet(
+          4,
+          12,
+          '<tuplet type="start"/><ornaments><tremolo type="start">3</tremolo>' + '</ornaments>',
+        ) +
+          sextuplet(4, 12, '<ornaments><tremolo type="stop">3</tremolo></ornaments>') +
+          sextuplet(8, 6, '').repeat(4) +
+          sextuplet(8, 6, '<tuplet type="stop"/>'),
+      ),
+    )
+    const tuplet = content?.[0]
+
+    expect(tuplet?.kind === 'tuplet' && tuplet.inner.multiple).toBe(6)
+    expect(tuplet?.kind === 'tuplet' && tuplet.outer.multiple).toBe(4)
+    expect(warnings).toEqual([])
+  })
+
+  // With no <time-modification> the note itself says how long it lasts
+  // against how it is written, and that reading counts the tremolo too.
+  test('names the bracket it converts where the note states no ratio', () => {
+    const bare = (duration: number, notations: string) =>
+      '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+      `<duration>${String(duration)}</duration><type>quarter</type>` +
+      `<notations>${notations}</notations></note>`
+    const { content, warnings } = read(
+      measure(
+        bare(4, '<tuplet type="start"/><ornaments><tremolo type="start">3</tremolo></ornaments>') +
+          bare(4, '<ornaments><tremolo type="stop">3</tremolo></ornaments>') +
+          bare(8, '') +
+          bare(8, '<tuplet type="stop"/>'),
+      ),
+    )
+    const tuplet = content?.[0]
+
+    expect(tuplet?.kind === 'tuplet' && tuplet.inner.multiple).toBe(3)
+    expect(tuplet?.kind === 'tuplet' && tuplet.outer.multiple).toBe(2)
+    expect(warnings.map((w) => w.code)).toEqual(['missing:time-modification'])
+    expect(warnings[0]?.message).toContain('takes half of that, so the bracket is converted as 2/3')
+  })
+
+  // A marker states the bracket's own ratio, which is the cumulative one with
+  // the tremolo's half already out of it, so the two agree and it stands.
+  test('keeps the ratio a marker states beside the tremolo', () => {
+    const portions =
+      '<tuplet-actual><tuplet-number>3</tuplet-number><tuplet-type>quarter</tuplet-type>' +
+      '</tuplet-actual><tuplet-normal><tuplet-number>2</tuplet-number>' +
+      '<tuplet-type>quarter</tuplet-type></tuplet-normal>'
+    const { content, warnings } = read(
+      measure(tremoloPair(`<tuplet type="start">${portions}</tuplet>`) + closing),
+    )
+    const tuplet = content?.[0]
+
+    expect(tuplet?.kind === 'tuplet' && tuplet.inner.multiple).toBe(3)
+    expect(tuplet?.kind === 'tuplet' && tuplet.outer.multiple).toBe(2)
+    expect(warnings).toEqual([])
+  })
+
+  // A source that leaves the tremolo out of the ratio disagrees with the
+  // notes, which is reported rather than read as the bracket's own.
+  test('reports a ratio that does not count the tremolo', () => {
+    const understated = (duration: number, notations: string) =>
+      '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+      `<duration>${String(duration)}</duration><type>quarter</type>` +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+      '</time-modification>' +
+      `<notations>${notations}</notations></note>`
+    const { warnings } = read(
+      measure(
+        understated(
+          4,
+          '<tuplet type="start"/><ornaments><tremolo type="start">3</tremolo></ornaments>',
+        ) +
+          understated(4, '<ornaments><tremolo type="stop">3</tremolo></ornaments>') +
+          closing,
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toContain('inconsistent:duration')
   })
 
   test('writes legal MNX for it', () => {

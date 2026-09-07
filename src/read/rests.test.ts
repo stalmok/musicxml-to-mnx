@@ -479,79 +479,189 @@ describe('a rest lasting exactly the measure', () => {
 describe('a rest drawn shorter than the measure it fills', () => {
   // A bar of silence is drawn with a whole rest whatever the meter says, so in
   // 3/2 the drawn value is a whole and the measure lasts a dotted whole.
-  const inThreeTwo = (body: string) =>
+  const inThreeTwo = (body: string, attributes = '') =>
     '<score-partwise><part id="P1"><measure number="1">' +
     '<attributes><divisions>4</divisions><time><beats>3</beats><beat-type>2</beat-type>' +
-    `</time>${TREBLE}</attributes>${body}</measure></part></score-partwise>`
-  const wholeRest = '<note><rest/><duration>24</duration><type>whole</type>NOTATIONS</note>'
-  const rest = (notations = '') => wholeRest.replace('NOTATIONS', notations)
+    `</time>${attributes}${TREBLE}</attributes>${body}</measure></part></score-partwise>`
+  const wholeRest =
+    '<note><rest>DISPLAY</rest><duration>24</duration><type>whole</type>NOTATIONS</note>'
+  const rest = (notations = '', display = '') =>
+    wholeRest.replace('NOTATIONS', notations).replace('DISPLAY', display)
+
+  /** The sequence and warnings of a one-measure conversion, with the MNX held. */
+  function convert(source: string) {
+    const { mnx, warnings } = convertMusicXML(source)
+    return { mnx, sequences: mnx.parts[0]?.measures[0]?.sequences ?? [], warnings }
+  }
+
+  /** A rest the reading keeps an event: the codes reported, and the MNX legal. */
+  function keptAnEvent(source: string) {
+    const { mnx, sequences, warnings } = convert(source)
+
+    expect(sequences[0]?.fullMeasure).toBeUndefined()
+    expect(schemaErrors(mnx)).toEqual([])
+    return warnings.map((w) => w.code)
+  }
 
   test('rests the measure, stating the drawn value beside it', () => {
-    const { mnx, warnings } = convertMusicXML(inThreeTwo(rest()))
-    const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
+    const { mnx, sequences, warnings } = convert(inThreeTwo(rest()))
 
-    expect(sequence?.fullMeasure).toEqual({ visualDuration: { base: 'whole' } })
-    expect(sequence?.content).toEqual([])
+    expect(sequences[0]?.fullMeasure).toEqual({ visualDuration: { base: 'whole' } })
+    expect(sequences[0]?.content).toEqual([])
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // MNX's full-measure rest carries a pause and a height of its own, so
+  // neither keeps the rest an event.
+  test('carries a fermata held over the rest', () => {
+    const { mnx, sequences, warnings } = convert(
+      inThreeTwo(rest('<notations><fermata/></notations>')),
+    )
+
+    expect(sequences[0]?.fullMeasure).toEqual({
+      visualDuration: { base: 'whole' },
+      fermata: {},
+    })
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  test('carries the height the rest is pinned to', () => {
+    const { mnx, sequences, warnings } = convert(
+      inThreeTwo(rest('', '<display-step>D</display-step><display-octave>5</display-octave>')),
+    )
+
+    expect(sequences[0]?.fullMeasure).toMatchObject({ staffPosition: 2 })
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // One voice resting a measure the others sound through is the common case,
+  // and only that voice's sequence becomes a rest.
+  test('rests one voice of a measure the others sound through', () => {
+    const { mnx, sequences, warnings } = convert(
+      inThreeTwo(
+        '<note><rest/><duration>24</duration><type>whole</type><voice>1</voice></note>' +
+          '<backup><duration>24</duration></backup>' +
+          '<note><pitch><step>C</step><octave>4</octave></pitch><duration>24</duration>' +
+          '<type>breve</type><voice>2</voice></note>',
+      ),
+    )
+
+    expect(sequences[0]?.fullMeasure).toEqual({ visualDuration: { base: 'whole' } })
+    expect(sequences[1]?.fullMeasure).toBeUndefined()
+    expect(sequences[1]?.content).toHaveLength(1)
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:duration'])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  test('rests each staff of a part on its own', () => {
+    const staffRest = (staff: number) =>
+      `<note><rest/><duration>24</duration><type>whole</type><voice>${String(staff)}</voice>` +
+      `<staff>${String(staff)}</staff></note>`
+    const { mnx, sequences, warnings } = convert(
+      inThreeTwo(
+        staffRest(1) + '<backup><duration>24</duration></backup>' + staffRest(2),
+        '<staves>2</staves>',
+      ),
+    )
+
+    expect(sequences.map((sequence) => sequence.staff)).toEqual([1, 2])
+    expect(sequences.every((sequence) => sequence.fullMeasure !== undefined)).toBe(true)
     expect(warnings).toEqual([])
     expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('reports the drawn value where the rest is not the whole of its voice', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const codes = keptAnEvent(
       inThreeTwo(
         rest() +
           '<note><grace/><pitch><step>C</step><octave>4</octave></pitch><type>eighth</type></note>',
       ),
     )
-    const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
 
-    expect(sequence?.fullMeasure).toBeUndefined()
-    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:duration'])
+    expect(codes).toEqual(['inconsistent:duration'])
+  })
+
+  // A grace note takes none of the measure's time, so a rest written as one
+  // never fills the measure, and the report stays where it is written.
+  test('leaves a rest written as a grace note alone', () => {
+    const codes = keptAnEvent(inThreeTwo(rest().replace('<note>', '<note><grace/>')))
+
+    expect(codes).toEqual(['inconsistent:duration'])
+  })
+
+  // With no <divisions> the duration is read against an assumed one, so
+  // nothing knows the rest lasts the measure.
+  test('leaves a rest an event where nothing said how long a division is', () => {
+    const { warnings } = convertMusicXML(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        '<attributes><time><beats>3</beats><beat-type>2</beat-type></time>' +
+        `${TREBLE}</attributes>${rest()}</measure></part></score-partwise>`,
+    )
+
+    expect(warnings.map((w) => w.code)).toContain('missing:divisions')
+    expect(warnings.map((w) => w.code)).toContain('inconsistent:duration')
   })
 
   test('keeps a rest carrying a marking an event', () => {
-    const { warnings } = convertMusicXML(
+    const codes = keptAnEvent(
       inThreeTwo(rest('<notations><articulations><staccato/></articulations></notations>')),
     )
 
-    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:duration'])
+    expect(codes).toEqual(['inconsistent:duration'])
   })
 
   test('keeps a rest drawn with a stem an event', () => {
-    const { warnings } = convertMusicXML(
+    const codes = keptAnEvent(
       inThreeTwo(rest().replace('<type>whole</type>', '<type>whole</type><stem>down</stem>')),
     )
 
-    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:duration'])
+    expect(codes).toEqual(['inconsistent:duration'])
   })
 
   test('keeps a rest drawn under a beam an event', () => {
-    const { warnings } = convertMusicXML(
+    const codes = keptAnEvent(
       inThreeTwo(rest().replace('</note>', '<beam number="1">begin</beam></note>')),
     )
 
-    expect(warnings.map((w) => w.code)).toContain('inconsistent:duration')
+    expect(codes).toEqual(['inconsistent:duration'])
   })
 
   test('keeps a rest marked as rolled an event', () => {
-    const { warnings } = convertMusicXML(inThreeTwo(rest('<notations><arpeggiate/></notations>')))
+    const codes = keptAnEvent(inThreeTwo(rest('<notations><arpeggiate/></notations>')))
 
-    expect(warnings.map((w) => w.code)).toContain('inconsistent:duration')
+    expect(codes).toEqual(['inconsistent:duration', 'unsupported:element'])
   })
 
   test('keeps a rest a slur reaches an event', () => {
-    const { warnings } = convertMusicXML(
+    const codes = keptAnEvent(
       inThreeTwo(rest('<notations><slur type="start" number="1"/></notations>')),
     )
 
-    expect(warnings.map((w) => w.code)).toContain('inconsistent:duration')
+    expect(codes).toEqual(['inconsistent:duration', 'unclosed:spanner'])
+  })
+
+  // The measure rest stands and the extra is discarded, but the extra still
+  // disagreed with itself, and that disagreement is reported where it stands.
+  test('reports the drawn value of a rest written over the measure rest', () => {
+    const { warnings } = convert(
+      inThreeTwo(
+        '<note><rest measure="yes"/><duration>24</duration></note>' +
+          '<backup><duration>24</duration></backup>' +
+          rest(),
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:duration', 'redundant:rest'])
   })
 
   test('keeps a rest carrying a lyric an event', () => {
-    const { warnings } = convertMusicXML(
+    const codes = keptAnEvent(
       inThreeTwo(rest().replace('</note>', '<lyric><text>ah</text></lyric></note>')),
     )
 
-    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:duration'])
+    expect(codes).toEqual(['inconsistent:duration'])
   })
 })

@@ -298,12 +298,6 @@ function countsWhole(count: Fraction): boolean {
   return count.den === 1 && count.num >= 1 && count.num <= 1_000
 }
 
-/**
- * How much of its written value each note of a two-note tremolo lasts. The
- * pair is written twice over, once per note, and sounds once.
- */
-const TWO_NOTE_TREMOLO_RATIO = fraction(1, 2)
-
 /** How long a tuplet's content is written as, before its ratio scales it. */
 function writtenLengthOf(items: readonly SequenceItem[]): Fraction {
   let total = fraction(0)
@@ -906,12 +900,6 @@ export class MeasureBuilder {
      * multiples are scaled to what the bracket holds once it closes.
      */
     derived: boolean,
-    /**
-     * True where a two-note tremolo starts on the same note. MusicXML states
-     * one cumulative ratio, so the tremolo's own share of it is not the
-     * brackets' to divide between them.
-     */
-    opensTremolo: boolean,
   ): void {
     const builder = this.#builderFor(voice)
     // A tremolo holds exactly its two notes, so no bracket may open inside
@@ -920,14 +908,8 @@ export class MeasureBuilder {
       throw new MusicXMLError('A tuplet starts inside a two-note tremolo.', { path, line })
     }
 
-    // The tremolo opening on this note counts among the ratios the brackets
-    // divide the rest of: it is not open yet, but its share of the cumulative
-    // ratio is already spoken for.
     const levels = tupletLevels(
-      [
-        ...tupletFrames(builder).map((open) => open.ratio),
-        ...(opensTremolo ? [TWO_NOTE_TREMOLO_RATIO] : []),
-      ],
+      tupletFrames(builder).map((open) => open.ratio),
       inner,
       outer,
       starts,
@@ -1105,7 +1087,7 @@ export class MeasureBuilder {
   tupletFactor(voice: string | undefined): Fraction {
     const builder = this.#builderFor(voice)
     const factor = tupletFactorOf(builder)
-    return tremoloFrame(builder) ? multiplyFractions(factor, TWO_NOTE_TREMOLO_RATIO) : factor
+    return tremoloFrame(builder) ? multiplyFractions(factor, fraction(1, 2)) : factor
   }
 
   /**
@@ -1662,6 +1644,7 @@ export class MeasureBuilder {
       const reached =
         builder.beamed.length > 0 ||
         event.stemDirection !== undefined ||
+        event.lyrics.size > 0 ||
         Object.keys(event.markings).length > 0 ||
         this.#arpeggios.some((marked) => marked.event === event)
       if (reached || builder.content.length !== 1 || builder.content[0] !== event) {
@@ -1669,10 +1652,10 @@ export class MeasureBuilder {
         continue
       }
 
+      // The rest is the whole of the voice, so the staff it named stays as
+      // the sequence's own. Its entry keeps naming the event it came from,
+      // which nothing writes once the content is empty.
       builder.content.length = 0
-      // The rest is the whole of the voice, so every staff named here is one
-      // it named, and there is no event left to state a staff of its own.
-      builder.placed = builder.placed.map(({ staff }) => ({ event: undefined, staff }))
       builder.fullMeasure = {
         visualDuration: event.value,
         fermata: event.fermata,

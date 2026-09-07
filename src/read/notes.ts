@@ -501,9 +501,13 @@ export function readNote(
       )
     }
 
-    const quantities = ratio ? readTupletRatio(ratio, element, path) : derived
+    const stated = ratio ? readTupletRatio(ratio, element, path) : derived
     /* v8 ignore next -- one of the two is set, or the throw above ran. */
-    if (!quantities) throw new Error('A tuplet opened with no ratio.')
+    if (!stated) throw new Error('A tuplet opened with no ratio.')
+    // MusicXML counts a tuplet and a two-note tremolo together, so a note
+    // that opens a bracket and starts a tremolo states the two multiplied.
+    // The tremolo's own half is not the bracket's to hold.
+    const quantities = tremolo?.type === 'start' ? withoutTremoloShare(stated) : stated
     const opening = starts.map((marker) => ({
       display: tupletDisplayOf(marker, hiddenTuplets.has(marker)),
       stated: statedTupletRatio(marker, quantities, path),
@@ -525,7 +529,11 @@ export function readNote(
       warnings.add(
         'missing:time-modification',
         `A tuplet starts with no <time-modification>. The note lasts ${describeRatio(derived)} ` +
-          'of what it is written as, so that is the ratio converted.',
+          'of what it is written as, ' +
+          (quantities === derived
+            ? 'so that is the ratio converted.'
+            : `and the two-note tremolo on it takes half of that, so the bracket is ` +
+              `converted as ${describeRatio(quantities)}.`),
         { ...context, line: element.line },
         'tuplet',
       )
@@ -541,7 +549,6 @@ export function readNote(
       path,
       element.line,
       derived !== undefined,
-      tremolo?.type === 'start',
     )
   }
 
@@ -674,8 +681,16 @@ export function readNote(
     state.time !== undefined &&
     compareFractions(duration, fraction(state.time.count, state.time.unit)) === 0 &&
     compareFractions(lengthOf(written), duration) !== 0 &&
-    !carriesLyric &&
+    // A slur is paired once the part is whole, so whether one reaches this
+    // rest is readable here and nowhere later. What the event itself carries
+    // is weighed where the reading is settled.
     !carriesSlurEnd &&
+    // A rest written over a rest that already fills the measure is reported
+    // below and discarded, so it never reaches the settling.
+    !builder.hasFullMeasure(voice) &&
+    // A rest the voice has already sounded past cannot be the measure's rest,
+    // and the settling would say so, but it would say it at the end of the
+    // measure. Ruling it out here keeps its report where the rest stands.
     builder.opensMeasure(voice)
 
   // What the tuplets and tremolos open around this note scale its written
@@ -1894,6 +1909,24 @@ function impliedTupletRatio(
     inner: { value: written, multiple: ratio.num },
     outer: { value: written, multiple: ratio.den },
   }
+}
+
+/**
+ * The ratio a bracket holds, with the share a two-note tremolo starting on
+ * the same note taken out of it. MusicXML counts the two together: a triplet
+ * whose first note is a tremolo pair states six in the time of two and draws
+ * three, so halving the count keeps the number the bracket draws. Where that
+ * count is odd, which a tremolo's own 2:1 never leaves, the space it is
+ * played in is doubled instead, for the same ratio.
+ */
+function withoutTremoloShare(quantities: { inner: NoteValueQuantity; outer: NoteValueQuantity }): {
+  inner: NoteValueQuantity
+  outer: NoteValueQuantity
+} {
+  const { inner, outer } = quantities
+  return inner.multiple % 2 === 0
+    ? { inner: { ...inner, multiple: inner.multiple / 2 }, outer }
+    : { inner, outer: { ...outer, multiple: outer.multiple * 2 } }
 }
 
 /** The derived ratio as a fraction, for the report that names it. */
