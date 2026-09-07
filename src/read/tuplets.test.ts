@@ -1985,11 +1985,14 @@ describe('two-note tremolos', () => {
   // it the tremolo's time is stated in the written values the ratio scales: a
   // pair of dotted quarters standing for three eighths in the time of two
   // occupies two written dotted eighths.
+  //
+  // <time-modification> counts the tuplet and the tremolo together, so the
+  // triplet's 3:2 and the pair's 2:1 are written as one 6:2.
   test('nests a tremolo inside a tuplet whose bracket rides the same notes', () => {
     const note = (step: string, edge: string) =>
       `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
       '<duration>6</duration><type>quarter</type><dot/>' +
-      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+      '<time-modification><actual-notes>6</actual-notes><normal-notes>2</normal-notes>' +
       '<normal-type>eighth</normal-type></time-modification>' +
       `<notations><tuplet type="${edge}"/>` +
       `<ornaments><tremolo type="${edge}">3</tremolo>` +
@@ -2589,5 +2592,62 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
     const { mnx } = convertMusicXML(measure(notes))
 
     expect(schemaErrors(mnx)).toEqual([])
+  })
+})
+
+// MusicXML's <time-modification> is cumulative, so a note that both opens a
+// bracket and starts a two-note tremolo states the two ratios multiplied
+// together: 6:2 for a tremolo inside a triplet. The tremolo's own share is
+// not the bracket's to keep.
+describe('a tuplet opening on the note that starts a tremolo', () => {
+  // A triplet of quarters whose first quarter is a two-note tremolo. Each
+  // note of the pair is written as a quarter and lasts a third of one.
+  const inTriplet = (duration: number, actual: number, notations: string) =>
+    '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+    `<duration>${String(duration)}</duration><type>quarter</type>` +
+    `<time-modification><actual-notes>${String(actual)}</actual-notes>` +
+    '<normal-notes>2</normal-notes></time-modification>' +
+    `<notations>${notations}</notations></note>`
+  const tremoloPair = (opening: string) =>
+    inTriplet(4, 6, `${opening}<ornaments><tremolo type="start">3</tremolo></ornaments>`) +
+    inTriplet(4, 6, '<ornaments><tremolo type="stop">3</tremolo></ornaments>')
+  const closing = inTriplet(8, 3, '') + inTriplet(8, 3, '<tuplet type="stop"/>')
+
+  test('states the ratio the bracket draws, with the tremolo inside it', () => {
+    const { content, warnings } = read(measure(tremoloPair('<tuplet type="start"/>') + closing))
+    const tuplet = content?.[0]
+    const inside = tuplet?.kind === 'tuplet' ? tuplet.content : []
+
+    expect(tuplet?.kind === 'tuplet' && tuplet.inner.multiple).toBe(3)
+    expect(tuplet?.kind === 'tuplet' && tuplet.outer.multiple).toBe(2)
+    expect(inside.map((item) => item.kind)).toEqual(['multiNoteTremolo', 'event', 'event'])
+    expect(warnings).toEqual([])
+  })
+
+  test('reads it as a bracket an earlier note opens is read', () => {
+    const opened = read(measure(tremoloPair('<tuplet type="start"/>') + closing))
+    const earlier = read(
+      measure(
+        inTriplet(8, 3, '<tuplet type="start"/>') +
+          tremoloPair('') +
+          inTriplet(8, 3, '<tuplet type="stop"/>'),
+      ),
+    )
+    const ratioOf = (result: typeof opened) => {
+      const tuplet = result.content?.[0]
+      return tuplet?.kind === 'tuplet' ? [tuplet.inner.multiple, tuplet.outer.multiple] : []
+    }
+
+    expect(ratioOf(opened)).toEqual(ratioOf(earlier))
+    expect(earlier.warnings).toEqual([])
+  })
+
+  test('writes legal MNX for it', () => {
+    const { mnx, warnings } = convertMusicXML(
+      measure(tremoloPair('<tuplet type="start"/>') + closing),
+    )
+
+    expect(schemaErrors(mnx)).toEqual([])
+    expect(warnings).toEqual([])
   })
 })

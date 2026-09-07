@@ -541,6 +541,7 @@ export function readNote(
       path,
       element.line,
       derived !== undefined,
+      tremolo?.type === 'start',
     )
   }
 

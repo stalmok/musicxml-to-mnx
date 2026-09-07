@@ -298,6 +298,12 @@ function countsWhole(count: Fraction): boolean {
   return count.den === 1 && count.num >= 1 && count.num <= 1_000
 }
 
+/**
+ * How much of its written value each note of a two-note tremolo lasts. The
+ * pair is written twice over, once per note, and sounds once.
+ */
+const TWO_NOTE_TREMOLO_RATIO = fraction(1, 2)
+
 /** How long a tuplet's content is written as, before its ratio scales it. */
 function writtenLengthOf(items: readonly SequenceItem[]): Fraction {
   let total = fraction(0)
@@ -900,6 +906,12 @@ export class MeasureBuilder {
      * multiples are scaled to what the bracket holds once it closes.
      */
     derived: boolean,
+    /**
+     * True where a two-note tremolo starts on the same note. MusicXML states
+     * one cumulative ratio, so the tremolo's own share of it is not the
+     * brackets' to divide between them.
+     */
+    opensTremolo: boolean,
   ): void {
     const builder = this.#builderFor(voice)
     // A tremolo holds exactly its two notes, so no bracket may open inside
@@ -908,8 +920,14 @@ export class MeasureBuilder {
       throw new MusicXMLError('A tuplet starts inside a two-note tremolo.', { path, line })
     }
 
+    // The tremolo opening on this note counts among the ratios the brackets
+    // divide the rest of: it is not open yet, but its share of the cumulative
+    // ratio is already spoken for.
     const levels = tupletLevels(
-      tupletFrames(builder).map((open) => open.ratio),
+      [
+        ...tupletFrames(builder).map((open) => open.ratio),
+        ...(opensTremolo ? [TWO_NOTE_TREMOLO_RATIO] : []),
+      ],
       inner,
       outer,
       starts,
@@ -1087,7 +1105,7 @@ export class MeasureBuilder {
   tupletFactor(voice: string | undefined): Fraction {
     const builder = this.#builderFor(voice)
     const factor = tupletFactorOf(builder)
-    return tremoloFrame(builder) ? multiplyFractions(factor, fraction(1, 2)) : factor
+    return tremoloFrame(builder) ? multiplyFractions(factor, TWO_NOTE_TREMOLO_RATIO) : factor
   }
 
   /**
