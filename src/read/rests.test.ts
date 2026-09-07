@@ -448,6 +448,25 @@ describe('a rest lasting exactly the measure', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 
+  // A <backup> reaching further back than the measure has run writes what
+  // follows at the measure start, so the rest after one opens the measure.
+  test('rests the measure after a backup that reached past the start', () => {
+    const { mnx, warnings } = convertMusicXML(
+      metered(
+        '<note><pitch><step>C</step><octave>4</octave></pitch><duration>8</duration>' +
+          '<voice>1</voice><type>half</type></note>' +
+          '<backup><duration>32</duration></backup>' +
+          '<note><rest/><duration>16</duration><voice>2</voice></note>',
+      ),
+    )
+    const resting = mnx.parts[0]?.measures[0]?.sequences[1]
+
+    expect(resting?.fullMeasure).toEqual({})
+    expect(resting?.content).toEqual([])
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:backup'])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
   test('leaves a rest the voice does not open with an event', () => {
     const { mnx } = convertMusicXML(metered(overrunning + rest))
     const sequence = mnx.parts[0]?.measures[0]?.sequences[0]

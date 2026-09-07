@@ -569,9 +569,13 @@ export class MeasureBuilder {
     return content.length > 0 && content.every((item) => item.kind === 'grace')
   }
 
-  /** Whether the cursor stands where the measure begins. */
+  /**
+   * Whether the cursor stands where the measure begins. A <backup> reaching
+   * past the start counts as the start, because that is where what follows
+   * is written.
+   */
   atMeasureStart(): boolean {
-    return compareFractions(this.#cursor, fraction(0)) === 0
+    return compareFractions(this.position(), fraction(0)) === 0
   }
 
   /**

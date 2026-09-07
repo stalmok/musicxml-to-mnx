@@ -1335,6 +1335,27 @@ describe('a note inside a tuplet stating no <type>', () => {
     expect(warnings).toEqual([])
   })
 
+  // The same duration is weighed against the written value here as the value
+  // is read from there: unscaled, because the ratio scales nothing a grace
+  // note carries.
+  test('weighs a grace note’s own duration against its value unscaled', () => {
+    const graceInside =
+      '<note><grace/><pitch><step>D</step><octave>4</octave></pitch><duration>6</duration>' +
+      '<type>eighth</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+      '</time-modification></note>'
+    const { warnings } = read(
+      measure(
+        tupletNote('C', 4, 'eighth', 'start') +
+          graceInside +
+          tupletNote('D', 4, 'eighth') +
+          tupletNote('E', 4, 'eighth', 'stop'),
+      ),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
   // A bracket may state a ratio that scales nothing. The refusal then reads
   // as it does outside a bracket, rather than naming one length twice.
   test('names the length once where the ratio scales nothing', () => {

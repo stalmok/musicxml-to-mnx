@@ -655,16 +655,15 @@ export function readNote(
     return
   }
 
+  // What the tuplets and tremolos open around this note scale its written
+  // value by. A grace note takes none of the measure's time, so none of them
+  // scales the <duration> an exporter writes on one.
+  const scale = graceElement
+    ? { factor: fraction(1), by: undefined }
+    : { factor: builder.tupletFactor(voice), by: builder.scaledBy(voice) }
+
   if (written && duration) {
-    reportDurationMismatch(
-      element,
-      written,
-      duration,
-      builder.tupletFactor(voice),
-      builder.scaledBy(voice),
-      warnings,
-      context,
-    )
+    reportDurationMismatch(element, written, duration, scale, warnings, context)
   }
 
   const value =
@@ -674,17 +673,7 @@ export function readNote(
     (graceElement && duration === undefined
       ? drawnGraceValue(element, warnings, context)
       : undefined) ??
-    measuredValue(
-      element,
-      duration,
-      // A grace note takes none of the measure's time, so no ratio around it
-      // scales the <duration> an exporter writes on one.
-      graceElement
-        ? { factor: fraction(1), by: undefined }
-        : { factor: builder.tupletFactor(voice), by: builder.scaledBy(voice) },
-      state,
-      path,
-    )
+    measuredValue(element, duration, scale, state, path)
   // The event states this note's staff, so the note says nothing of its own.
   const notes: Note[] = pitchElement
     ? [readNoteAt(element, pitchElement, state, path, undefined)]
@@ -1934,6 +1923,15 @@ function readWrittenValue(element: ElementReader, path: DocumentPath): NoteValue
 const MOST_BEAM_LEVELS = 8
 
 /**
+ * How much a note's written value is scaled by what is open around it, and
+ * which of the two states it, for a report to name.
+ */
+interface NoteScale {
+  factor: Fraction
+  by: 'tuplet' | 'tremolo' | undefined
+}
+
+/**
  * The value a grace note stating no <type> is drawn with. Nothing in the
  * source states its length: a grace note carries no <duration>, and MNX
  * states a value for every event. The beams over it are what draw it, one
@@ -1971,7 +1969,7 @@ function drawnGraceValue(
 function measuredValue(
   element: ElementReader,
   duration: Fraction | undefined,
-  scale: { factor: Fraction; by: 'tuplet' | 'tremolo' | undefined },
+  scale: NoteScale,
   state: PartState,
   path: DocumentPath,
 ): NoteValue {
@@ -2019,13 +2017,12 @@ function reportDurationMismatch(
   element: ElementReader,
   written: NoteValue,
   duration: Fraction,
-  tupletFactor: Fraction,
-  /** What is open around the note scaling it, where anything is. */
-  scaledBy: 'tuplet' | 'tremolo' | undefined,
+  scale: NoteScale,
   warnings: WarningCollector,
   context: WarningContext,
 ): void {
-  const wanted = multiplyFractions(lengthOf(written), tupletFactor)
+  const scaledBy = scale.by
+  const wanted = multiplyFractions(lengthOf(written), scale.factor)
   if (compareFractions(wanted, duration) === 0) return
 
   // The ratio is what the written value is weighed against, so inside a
