@@ -1241,6 +1241,11 @@ function readMeasure(
     (at, staff) => builder.graceNotesAt(at, staff),
   )
 
+  // Each voice is whole now, so a rest standing as the whole of one can be
+  // read as that voice's measure rest. After the covers above, which read the
+  // rest while it is still an event.
+  builder.settleMeasureRests()
+
   // Beams are stated over the measure in MNX rather than on the notes, and
   // each voice is beamed on its own.
   const beams = builder.beamedEvents().flatMap((events) => buildBeams(events))

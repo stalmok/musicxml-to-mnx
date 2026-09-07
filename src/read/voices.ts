@@ -166,6 +166,21 @@ interface VoiceBuilder {
    */
   last: { event: Event; duration: Fraction | undefined; start: Fraction } | undefined
   fullMeasure: FullMeasureRest | undefined
+  /**
+   * A rest that may turn out to be this voice's measure rest, held until the
+   * voice is whole. See settleMeasureRests.
+   */
+  measureRest: MeasureRestCandidate | undefined
+}
+
+/** A rest standing where its voice's measure rest would stand. */
+interface MeasureRestCandidate {
+  readonly event: Event
+  /**
+   * Reports the written value disagreeing with how long the rest lasts, for
+   * the reading where the rest stays an ordinary event.
+   */
+  readonly reportMismatch: () => void
 }
 
 /** A chord marked as rolled or struck, held until its notes are all in. */
@@ -1593,6 +1608,61 @@ export class MeasureBuilder {
     builder.graceBeamed.push([])
   }
 
+  /**
+   * Marks the rest just added as one that could be this voice's measure rest,
+   * to be settled by settleMeasureRests once the voice is whole.
+   */
+  markMeasureRest(voice: string | undefined, event: Event, reportMismatch: () => void): void {
+    this.#builderFor(voice).measureRest = { event, reportMismatch }
+  }
+
+  /**
+   * Reads a rest that is the whole of its voice as that voice's measure rest.
+   *
+   * A bar of silence is drawn with a whole rest whatever the meter says, so a
+   * 3/2 measure rests with a whole rest lasting a dotted whole. Where the
+   * exporter leaves measure="yes" off, taking the written value as the rest's
+   * length leaves the measure short. MNX has the full-measure rest's
+   * visualDuration for exactly this: the rest lasts the measure, and the
+   * value drawn is stated beside it.
+   *
+   * Settled here rather than at the note, because a rest lasting exactly the
+   * measure is not the measure's rest wherever it stands: sources write one
+   * beside other notes, and the voice has to be whole before the two can be
+   * told apart.
+   *
+   * Anything reaching the rest keeps it an ordinary event. MNX states a
+   * measure rest on the sequence, which carries no marking, no stem, no beam
+   * and no roll, and has no id for a slur or a lyric to reach.
+   */
+  settleMeasureRests(): void {
+    for (const builder of this.#voices.values()) {
+      const candidate = builder.measureRest
+      if (!candidate) continue
+
+      const { event } = candidate
+      const reached =
+        builder.beamed.length > 0 ||
+        event.stemDirection !== undefined ||
+        Object.keys(event.markings).length > 0 ||
+        this.#arpeggios.some((marked) => marked.event === event)
+      if (reached || builder.content.length !== 1 || builder.content[0] !== event) {
+        candidate.reportMismatch()
+        continue
+      }
+
+      builder.content.length = 0
+      // The rest is the whole of the voice, so every staff named here is one
+      // it named, and there is no event left to state a staff of its own.
+      builder.placed = builder.placed.map(({ staff }) => ({ event: undefined, staff }))
+      builder.fullMeasure = {
+        visualDuration: event.value,
+        fermata: event.fermata,
+        staffPosition: event.staffPosition,
+      }
+    }
+  }
+
   /** Reports any tuplet or tremolo the measure opened and never closed. */
   checkAllClosed(path: DocumentPath, line: number): void {
     for (const builder of this.#voices.values()) {
@@ -1663,6 +1733,7 @@ export class MeasureBuilder {
       end: fraction(0),
       last: undefined,
       fullMeasure: undefined,
+      measureRest: undefined,
     }
     this.#voices.set(key, created)
     return created

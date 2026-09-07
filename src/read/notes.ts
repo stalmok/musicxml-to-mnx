@@ -655,6 +655,28 @@ export function readNote(
     return
   }
 
+  // A bar of silence is drawn with a whole rest whatever the meter says, so a
+  // rest opening a voice can state a written value shorter than the measure
+  // it fills. Where the exporter leaves measure="yes" off, that value is the
+  // only statement of the length, and reading it as one leaves the measure
+  // short. Whether this is the measure's rest is not settled here: one
+  // lasting exactly the measure can stand beside other notes, so the voice
+  // has to be whole first. Until then it is an ordinary rest, and the
+  // disagreement between its written value and its length is held back with
+  // it. Anything the rest carries that only an event can hold keeps it one.
+  const restsWholeMeasure =
+    restElement !== undefined &&
+    graceElement === undefined &&
+    written !== undefined &&
+    duration !== undefined &&
+    !state.divisionsAssumed &&
+    state.time !== undefined &&
+    compareFractions(duration, fraction(state.time.count, state.time.unit)) === 0 &&
+    compareFractions(lengthOf(written), duration) !== 0 &&
+    !carriesLyric &&
+    !carriesSlurEnd &&
+    builder.opensMeasure(voice)
+
   // What the tuplets and tremolos open around this note scale its written
   // value by. A grace note takes none of the measure's time, so none of them
   // scales the <duration> an exporter writes on one.
@@ -662,7 +684,7 @@ export function readNote(
     ? { factor: fraction(1), by: undefined }
     : { factor: builder.tupletFactor(voice), by: builder.scaledBy(voice) }
 
-  if (written && duration) {
+  if (written && duration && !restsWholeMeasure) {
     reportDurationMismatch(element, written, duration, scale, warnings, context)
   }
 
@@ -754,6 +776,11 @@ export function readNote(
   // Where the source states no <duration>, the written value is how long the
   // note lasts.
   builder.addEvent(voice, event, duration ?? lengthOf(value), path, element.line, staff)
+  if (restsWholeMeasure) {
+    builder.markMeasureRest(voice, event, () =>
+      reportDurationMismatch(element, written, duration, scale, warnings, context),
+    )
+  }
   readEventSpanners(
     element,
     notations,

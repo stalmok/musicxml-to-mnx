@@ -475,3 +475,83 @@ describe('a rest lasting exactly the measure', () => {
     expect(sequence?.content).toHaveLength(2)
   })
 })
+
+describe('a rest drawn shorter than the measure it fills', () => {
+  // A bar of silence is drawn with a whole rest whatever the meter says, so in
+  // 3/2 the drawn value is a whole and the measure lasts a dotted whole.
+  const inThreeTwo = (body: string) =>
+    '<score-partwise><part id="P1"><measure number="1">' +
+    '<attributes><divisions>4</divisions><time><beats>3</beats><beat-type>2</beat-type>' +
+    `</time>${TREBLE}</attributes>${body}</measure></part></score-partwise>`
+  const wholeRest = '<note><rest/><duration>24</duration><type>whole</type>NOTATIONS</note>'
+  const rest = (notations = '') => wholeRest.replace('NOTATIONS', notations)
+
+  test('rests the measure, stating the drawn value beside it', () => {
+    const { mnx, warnings } = convertMusicXML(inThreeTwo(rest()))
+    const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
+
+    expect(sequence?.fullMeasure).toEqual({ visualDuration: { base: 'whole' } })
+    expect(sequence?.content).toEqual([])
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  test('reports the drawn value where the rest is not the whole of its voice', () => {
+    const { mnx, warnings } = convertMusicXML(
+      inThreeTwo(
+        rest() +
+          '<note><grace/><pitch><step>C</step><octave>4</octave></pitch><type>eighth</type></note>',
+      ),
+    )
+    const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
+
+    expect(sequence?.fullMeasure).toBeUndefined()
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:duration'])
+  })
+
+  test('keeps a rest carrying a marking an event', () => {
+    const { warnings } = convertMusicXML(
+      inThreeTwo(rest('<notations><articulations><staccato/></articulations></notations>')),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:duration'])
+  })
+
+  test('keeps a rest drawn with a stem an event', () => {
+    const { warnings } = convertMusicXML(
+      inThreeTwo(rest().replace('<type>whole</type>', '<type>whole</type><stem>down</stem>')),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:duration'])
+  })
+
+  test('keeps a rest drawn under a beam an event', () => {
+    const { warnings } = convertMusicXML(
+      inThreeTwo(rest().replace('</note>', '<beam number="1">begin</beam></note>')),
+    )
+
+    expect(warnings.map((w) => w.code)).toContain('inconsistent:duration')
+  })
+
+  test('keeps a rest marked as rolled an event', () => {
+    const { warnings } = convertMusicXML(inThreeTwo(rest('<notations><arpeggiate/></notations>')))
+
+    expect(warnings.map((w) => w.code)).toContain('inconsistent:duration')
+  })
+
+  test('keeps a rest a slur reaches an event', () => {
+    const { warnings } = convertMusicXML(
+      inThreeTwo(rest('<notations><slur type="start" number="1"/></notations>')),
+    )
+
+    expect(warnings.map((w) => w.code)).toContain('inconsistent:duration')
+  })
+
+  test('keeps a rest carrying a lyric an event', () => {
+    const { warnings } = convertMusicXML(
+      inThreeTwo(rest().replace('</note>', '<lyric><text>ah</text></lyric></note>')),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:duration'])
+  })
+})
