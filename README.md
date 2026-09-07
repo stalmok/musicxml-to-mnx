@@ -294,7 +294,7 @@ grow, and the weekly gate runs against its latest state.
 | [Unofficial MusicXML Test Suite](https://github.com/cuthbertLab/musicxmlTestSuite) (feature files)            | 150    | 142 (95%)    |
 | [MusicXML example set](https://www.musicxml.com/music-in-musicxml/example-set/) (Finale exports, some UTF-16) | 36     | 34 (94%)     |
 | [PDMX](https://zenodo.org/records/15571083) random sample (MuseScore.com, all genres)                         | 20,000 | 19,906 (99%) |
-| [music21 bundled corpus](https://github.com/cuthbertLab/music21) (hand-encoded, older tools, some UTF-16)     | 654    | 638 (98%)    |
+| [music21 bundled corpus](https://github.com/cuthbertLab/music21) (hand-encoded, older tools, some UTF-16)     | 654    | 641 (98%)    |
 | [CPDL](https://www.cpdl.org) random sample (choral, mostly Sibelius exports)                                  | 2,000  | 1,864 (93%)  |
 
 The other files are refusals, and each refusal names its reason. Some files
