@@ -270,6 +270,16 @@ describe('a grace note stating no <type>', () => {
     expect(warnings.map((w) => w.code)).toEqual(['missing:note-type', 'missing:note-type'])
   })
 
+  // <beam> states no number for the first level, which is where a beam over
+  // a grace note is usually drawn.
+  test('reads a beam that states no level as the first one', () => {
+    const { measure: result } = read(
+      measure(graceNote('<beam>begin</beam>') + graceNote('<beam>end</beam>') + note('C', 1)),
+    )
+
+    expect(valueOf(result)).toEqual({ base: 'eighth', dots: 0 })
+  })
+
   test('says which value it converted', () => {
     const { warnings } = read(measure(graceNote() + note('C', 1)))
 
