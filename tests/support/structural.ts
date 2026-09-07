@@ -822,6 +822,29 @@ export function differingLyricLines(root: XmlElement): string[] {
  * toEqual passes over such a key and JSON.stringify drops it, so the emitted
  * text is the same and the document a consumer reads is not.
  */
+/**
+ * Where a sequence states a rest filling its measure and holds content
+ * anyway, as "part 1 measure 3 voice 1". MNX states such a rest on the
+ * sequence and requires its content to be empty, which the schema does not
+ * carry: a sequence stating both passes validation and says two things at
+ * once. Named rather than counted, so a failure says where to look.
+ */
+export function crowdedMeasureRests(document: MNXDocument): string[] {
+  const found: string[] = []
+  for (const [partIndex, part] of document.parts.entries()) {
+    for (const [measureIndex, measure] of part.measures.entries()) {
+      for (const sequence of measure.sequences) {
+        if (!sequence.fullMeasure || sequence.content.length === 0) continue
+        found.push(
+          `part ${String(partIndex + 1)} measure ${String(measureIndex + 1)} ` +
+            `voice ${sequence.voice ?? '(unnamed)'}`,
+        )
+      }
+    }
+  }
+  return found
+}
+
 export function undefinedKeys(value: unknown, path = 'mnx'): string[] {
   if (Array.isArray(value)) {
     return value.flatMap((item, index) => undefinedKeys(item, `${path}[${String(index)}]`))

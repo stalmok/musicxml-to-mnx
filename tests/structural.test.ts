@@ -9,6 +9,7 @@ import { parseXmlRoot } from '../src/xml/parse.js'
 import type { XmlElement } from '../src/xml/parse.js'
 import { schemaErrors } from './support/schema.js'
 import {
+  crowdedMeasureRests,
   differingLyricLines,
   layoutLosses,
   pitchesOf,
@@ -424,4 +425,45 @@ test('a lyric with no text at all states no verse to lose', () => {
   expect(
     differingLyricLines(withLyrics('<lyric number="1"><extend/></lyric>' + verse('word'))),
   ).toEqual([])
+})
+
+// The rule MNX states in prose and the schema does not carry: a sequence that
+// states a rest filling its measure holds nothing else. The check reads a
+// document built by hand, because the converter refuses every source that
+// would produce one.
+test('a sequence resting its measure and holding content is named', () => {
+  const document = {
+    mnx: { version: 1 },
+    global: { measures: [{}] },
+    parts: [
+      {
+        measures: [
+          {
+            sequences: [
+              {
+                voice: '1',
+                content: [{ duration: { base: 'eighth' }, rest: {} }],
+                fullMeasure: {},
+              },
+              { voice: '2', content: [], fullMeasure: {} },
+            ],
+          },
+        ],
+      },
+    ],
+  } as unknown as MNXDocument
+
+  expect(crowdedMeasureRests(document)).toEqual(['part 1 measure 1 voice 1'])
+})
+
+test('a sequence resting its measure and holding nothing is not named', () => {
+  const { mnx } = convertMusicXML(
+    '<score-partwise><part id="P1"><measure number="1">' +
+      '<attributes><divisions>4</divisions><time><beats>4</beats><beat-type>4</beat-type>' +
+      '</time></attributes>' +
+      '<note><rest measure="yes"/><duration>16</duration><voice>1</voice></note>' +
+      '</measure></part></score-partwise>',
+  )
+
+  expect(crowdedMeasureRests(mnx)).toEqual([])
 })

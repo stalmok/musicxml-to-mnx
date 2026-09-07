@@ -25,7 +25,13 @@ import type { MNXDocument } from '../src/index.js'
 import { readMusicXML } from '../src/container.js'
 import { parseXmlRoot } from '../src/xml/parse.js'
 import { schemaErrors } from './support/schema.js'
-import { pitchesOf, sounding, sourceMeasureLengths, sourcePitches } from './support/structural.js'
+import {
+  crowdedMeasureRests,
+  pitchesOf,
+  sounding,
+  sourceMeasureLengths,
+  sourcePitches,
+} from './support/structural.js'
 
 const corpusDir = process.env.OSSIA_CORPUS
 
@@ -95,6 +101,17 @@ function firstFailure(
 ): Failure | undefined {
   const schema = schemaErrors(mnx)
   if (schema.length > 0) return { file, kind: 'schema', detail: schema.slice(0, 3).join('; ') }
+
+  // MNX requires the content of a sequence stating a rest that fills the
+  // measure to be empty, which the schema itself does not carry.
+  const crowded = crowdedMeasureRests(mnx)
+  if (crowded.length > 0) {
+    return {
+      file,
+      kind: 'schema',
+      detail: `rests its measure and holds content: ${crowded[0] ?? ''}`,
+    }
+  }
 
   const root = parseXmlRoot(xml)
 

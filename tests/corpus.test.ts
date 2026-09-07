@@ -34,6 +34,7 @@ import {
   sourceMeasureLengths,
   sourcePitches,
   sourceSlurSpans,
+  crowdedMeasureRests,
   undefinedKeys,
 } from './support/structural.js'
 import baseline from './corpus/warning-baseline.json' with { type: 'json' }
@@ -477,6 +478,13 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   // same and the document a consumer reads is not.
   test('states no key as undefined', () => {
     expect(undefinedKeys(mnx)).toEqual([])
+  })
+
+  // MNX states a rest filling the measure on the sequence, whose content must
+  // then be empty. The schema does not carry that rule, so a sequence saying
+  // both passes validation and says two things at once.
+  test('holds nothing in a sequence that rests its measure', () => {
+    expect(crowdedMeasureRests(mnx)).toEqual([])
   })
 
   // The writer names an event, note or measure only where something points at
