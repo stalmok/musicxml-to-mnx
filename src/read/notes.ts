@@ -35,7 +35,7 @@ import type {
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, child, children, requireChild, trimmedText } from '../xml/tree.js'
-import { beamCountForValue } from './beams.js'
+import { beamCountForValue, valueForBeamCount } from './beams.js'
 import { readDuration } from './divisions.js'
 import { describeLength, describeValue, lengthOf, noteValueOf } from './duration.js'
 import type { ElementReader } from './element.js'
@@ -669,6 +669,11 @@ export function readNote(
 
   const value =
     written ??
+    // A grace note carries no <duration> to measure a value from, so where it
+    // states no <type> the beams over it are what say how it is drawn.
+    (graceElement && duration === undefined
+      ? drawnGraceValue(element, warnings, context)
+      : undefined) ??
     measuredValue(
       element,
       duration,
@@ -1634,7 +1639,7 @@ function beamMarkers(
     // so, because a reader told only that one level is missing would not look
     // at the beams beside it.
     const level = Number(stated)
-    if (!/^\d+$/.test(stated) || level < 1 || level > 8) {
+    if (!/^\d+$/.test(stated) || level < 1 || level > MOST_BEAM_LEVELS) {
       warnings.add(
         'unresolved:attribute-value',
         `The "number" of a <beam> is "${stated}", which is not one of the eight beam ` +
@@ -1923,6 +1928,39 @@ function readWrittenValue(element: ElementReader, path: DocumentPath): NoteValue
     })
   }
   return { base, dots }
+}
+
+// A stem carries at most eight beams, so a level past that draws nothing.
+const MOST_BEAM_LEVELS = 8
+
+/**
+ * The value a grace note stating no <type> is drawn with. Nothing in the
+ * source states its length: a grace note carries no <duration>, and MNX
+ * states a value for every event. The beams over it are what draw it, one
+ * for an eighth and one more for each halving, and a grace note carrying
+ * none is drawn as an eighth.
+ */
+function drawnGraceValue(
+  element: ElementReader,
+  warnings: WarningCollector,
+  context: WarningContext,
+): NoteValue {
+  const levels = element
+    .children('beam')
+    .map((beam) => Number(attribute(beam, 'number') ?? '1'))
+    .filter((level) => Number.isInteger(level) && level >= 1 && level <= MOST_BEAM_LEVELS)
+  const beams = Math.max(0, ...levels)
+  const base = valueForBeamCount(beams) ?? 'eighth'
+
+  warnings.add(
+    'missing:note-type',
+    `A grace note states no <type>, and carries no <duration> to measure one from. ` +
+      `MNX states a value for every event, so it is converted as ${describeValue({ base, dots: 0 })}` +
+      (beams > 0 ? ', which its beams draw.' : ', which is how a grace note is drawn.'),
+    { ...context, line: element.line },
+    'grace',
+  )
+  return { base, dots: 0 }
 }
 
 /**

@@ -9,6 +9,8 @@ import { fraction } from '../fraction.js'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
+import { convertMusicXML } from '../index.js'
+import { schemaErrors } from '../../tests/support/schema.js'
 
 const DIVISIONS = '<attributes><divisions>4</divisions></attributes>'
 
@@ -234,6 +236,60 @@ describe('grace notes', () => {
     expect(content?.map((item) => item.kind)).toEqual(['grace', 'event'])
     // The event that follows is the real note, at its full value.
     expect(content?.[1]?.kind === 'event' && content[1].notes[0]?.pitch.step).toBe('C')
+  })
+})
+
+// A grace note carries no <duration>, so where it states no <type> nothing
+// says how long it is drawn. MNX states a value for every event, and the
+// beams over the note are what draw it: one beam for an eighth, one more for
+// each halving. Older encodings of the Beethoven quartets are written this
+// way throughout.
+describe('a grace note stating no <type>', () => {
+  const graceNote = (body = '') =>
+    `<note><grace/><pitch><step>D</step><octave>4</octave></pitch><voice>1</voice>${body}</note>`
+
+  const valueOf = (result: ReturnType<typeof read>['measure']) => {
+    const item = result?.sequences[0]?.content[0]
+    return item?.kind === 'grace' ? item.content[0]?.value : undefined
+  }
+
+  test('draws it as an eighth where no beam says otherwise', () => {
+    const { measure: result, warnings } = read(measure(graceNote() + note('C', 1)))
+
+    expect(valueOf(result)).toEqual({ base: 'eighth', dots: 0 })
+    expect(warnings.map((w) => w.code)).toEqual(['missing:note-type'])
+  })
+
+  test('takes the value the beams over it draw', () => {
+    const beams = '<beam number="1">begin</beam><beam number="2">begin</beam>'
+    const { measure: result, warnings } = read(
+      measure(graceNote(beams) + graceNote('<beam number="1">end</beam>') + note('C', 1)),
+    )
+
+    expect(valueOf(result)).toEqual({ base: '16th', dots: 0 })
+    expect(warnings.map((w) => w.code)).toEqual(['missing:note-type', 'missing:note-type'])
+  })
+
+  test('says which value it converted', () => {
+    const { warnings } = read(measure(graceNote() + note('C', 1)))
+
+    expect(warnings[0]?.message).toContain('an eighth')
+  })
+
+  // A note that is not a grace note has a <duration> to measure its value
+  // from, and one stating neither is the source leaving out both.
+  test('leaves a note stating neither a type nor a duration refused', () => {
+    expect(
+      readFailure(
+        measure('<note><pitch><step>C</step><octave>4</octave></pitch><voice>1</voice></note>'),
+      ).message,
+    ).toContain('states neither a <type> nor a <duration>')
+  })
+
+  test('converts to MNX the schema accepts', () => {
+    const { mnx } = convertMusicXML(measure(graceNote() + note('C', 1)))
+
+    expect(schemaErrors(mnx)).toEqual([])
   })
 })
 

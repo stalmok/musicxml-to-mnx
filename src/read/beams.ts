@@ -10,6 +10,7 @@
 // secondary levels, and a beam of one event with a direction for a hook.
 
 import type { Beam, NoteValueBase } from '../model/score.js'
+import { entriesOf } from './tables.js'
 
 /** What one event says about the beams it carries, by level. */
 export interface BeamedEvent {
@@ -47,6 +48,20 @@ const BEAM_COUNTS: Record<NoteValueBase, number> = {
 /** How many beams a note of this value carries. Zero for a quarter or longer. */
 export function beamCountForValue(base: NoteValueBase): number {
   return BEAM_COUNTS[base]
+}
+
+// The table read the other way round, for a note whose beams are all that
+// says what it is drawn with. Only the values a beam is drawn on are in it,
+// so each count names one value.
+const VALUE_FOR_BEAMS = new Map<number, NoteValueBase>(
+  entriesOf(BEAM_COUNTS)
+    .filter(([, count]) => count > 0)
+    .map(([base, count]) => [count, base]),
+)
+
+/** The value drawn with `count` beams: one beam is an eighth, two a 16th. */
+export function valueForBeamCount(count: number): NoteValueBase | undefined {
+  return VALUE_FOR_BEAMS.get(count)
 }
 
 const HOOK_DIRECTIONS = new Map<string, 'left' | 'right'>([

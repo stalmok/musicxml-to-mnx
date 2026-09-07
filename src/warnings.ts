@@ -238,6 +238,11 @@ export type WarningCode =
   // is. One division per quarter note is assumed; if that is wrong, the
   // written values disagree with the measured ones and say so.
   | 'missing:divisions'
+  // A grace note stating no <type>. It carries no <duration> either, so
+  // nothing says the value it is drawn with, and MNX states a value for
+  // every event. The beams over it are converted as that value, and an
+  // eighth where it carries none.
+  | 'missing:note-type'
   // A <tuplet> bracket starts on a note with no <time-modification> beside
   // it, so the source states no ratio for it. The ratio is read from how long
   // the note lasts against how it is written.
