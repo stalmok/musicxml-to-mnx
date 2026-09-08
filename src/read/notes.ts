@@ -463,10 +463,22 @@ export function readNote(
   // opens a bracket of its own below; inside a bracket the source drew, the
   // bracket says where the tuplet runs, and a note there need not state a
   // value at all. A stop marker naming no bracket is passed over further down.
-  const rated =
-    ratio && starts.length === 0 && !tremolo && !graceElement && !insideDrawnBracket
-      ? readTupletRatio(ratio, element, path)
-      : undefined
+  //
+  // A note that starts a two-note tremolo states the pair's 2:1 multiplied
+  // into whatever tuplet it stands in, so the ratio is read through the pair:
+  // its share comes out, and what is left says whether a tuplet is there at
+  // all. The note that stops the pair states the same and adds nothing, the
+  // tremolo standing in the run in its place. A pair stating no value to
+  // count states no tuplet either, and is left to be read as the pair it is.
+  const readsRatio =
+    ratio !== undefined &&
+    starts.length === 0 &&
+    !graceElement &&
+    !insideDrawnBracket &&
+    tremolo?.type !== 'stop' &&
+    (!tremolo || ratioCountedValue(ratio, element, path) !== undefined)
+  const stated = readsRatio ? readTupletRatio(ratio, element, path) : undefined
+  const rated = stated && tremolo ? tupletShareOfRatio(stated) : stated
 
   // Full, or this note does not belong in it either way: the run ends here. A
   // grace note takes none of the measure's time, so it neither fills a run nor
@@ -1929,6 +1941,20 @@ function withoutTremoloShare(quantities: { inner: NoteValueQuantity; outer: Note
     : { inner, outer: { ...outer, multiple: outer.multiple * 2 } }
 }
 
+/**
+ * The ratio left for a tuplet once a two-note tremolo on the same note takes
+ * its share, or undefined where the pair takes all of it: a plain pair states
+ * 2:1 and leaves one in the time of one, which is no tuplet. Both sides of a
+ * <time-modification> count the same value, so the counts alone say it.
+ */
+function tupletShareOfRatio(quantities: {
+  inner: NoteValueQuantity
+  outer: NoteValueQuantity
+}): { inner: NoteValueQuantity; outer: NoteValueQuantity } | undefined {
+  const left = withoutTremoloShare(quantities)
+  return left.inner.multiple === left.outer.multiple ? undefined : left
+}
+
 /** The derived ratio as a fraction, for the report that names it. */
 function describeRatio(quantities: { inner: NoteValueQuantity; outer: NoteValueQuantity }): string {
   return `${String(quantities.outer.multiple)}/${String(quantities.inner.multiple)}`
@@ -1947,10 +1973,7 @@ function readTupletRatio(
   const played = readIntegerInRange(requireChild(ratio, 'actual-notes', path), path, 1, 1_000)
   const space = readIntegerInRange(requireChild(ratio, 'normal-notes', path), path, 1, 1_000)
 
-  const normalType = child(ratio, 'normal-type')
-  const value = normalType
-    ? { base: requireNoteValueBase(normalType, path), dots: children(ratio, 'normal-dot').length }
-    : readWrittenValue(element, path)
+  const value = ratioCountedValue(ratio, element, path)
 
   if (!value) {
     throw new MusicXMLError('A tuplet states no note value to count.', {
@@ -1960,6 +1983,22 @@ function readTupletRatio(
   }
 
   return { inner: { value, multiple: played }, outer: { value, multiple: space } }
+}
+
+/**
+ * The note value a <time-modification> counts: <normal-type> where the source
+ * gives one, and the note's own written value otherwise. Undefined where the
+ * source states neither, which leaves the ratio counting nothing.
+ */
+function ratioCountedValue(
+  ratio: XmlElement,
+  element: ElementReader,
+  path: DocumentPath,
+): NoteValue | undefined {
+  const normalType = child(ratio, 'normal-type')
+  return normalType
+    ? { base: requireNoteValueBase(normalType, path), dots: children(ratio, 'normal-dot').length }
+    : readWrittenValue(element, path)
 }
 
 /** The value as written: `<type>` plus however many `<dot>`s follow it. */

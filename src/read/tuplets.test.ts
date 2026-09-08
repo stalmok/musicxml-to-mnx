@@ -2743,3 +2743,99 @@ describe('a tuplet opening on the note that starts a tremolo', () => {
     expect(warnings).toEqual([])
   })
 })
+
+// A source that draws no bracket says the tuplet is there in the ratio alone,
+// and that ratio counts the tremolo as well. The pair's own share has to come
+// out of it before what is left can say whether a tuplet is there at all.
+describe('a tuplet stated as a ratio with no bracket, opening on a tremolo', () => {
+  // A triplet of quarters whose first quarter is a two-note tremolo, with no
+  // <tuplet> anywhere. Each note of the pair is written as a quarter and
+  // lasts a sixth of one.
+  const rated = (duration: number, actual: number, notations = '') =>
+    '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+    `<duration>${String(duration)}</duration><type>quarter</type>` +
+    `<time-modification><actual-notes>${String(actual)}</actual-notes>` +
+    '<normal-notes>2</normal-notes></time-modification>' +
+    (notations ? `<notations>${notations}</notations>` : '') +
+    '</note>'
+  const tremoloPair =
+    rated(4, 6, '<ornaments><tremolo type="start">3</tremolo></ornaments>') +
+    rated(4, 6, '<ornaments><tremolo type="stop">3</tremolo></ornaments>')
+  const triplet = tremoloPair + rated(8, 3) + rated(8, 3)
+
+  test('reads the ratio the tremolo leaves as the tuplet', () => {
+    const { content, warnings } = read(measure(triplet))
+    const tuplet = content?.[0]
+    const inside = tuplet?.kind === 'tuplet' ? tuplet.content : []
+
+    expect(tuplet?.kind === 'tuplet' && tuplet.inner.multiple).toBe(3)
+    expect(tuplet?.kind === 'tuplet' && tuplet.outer.multiple).toBe(2)
+    expect(inside.map((item) => item.kind)).toEqual(['multiNoteTremolo', 'event', 'event'])
+    expect(warnings).toEqual([])
+  })
+
+  test('reads it as the same music with a bracket drawn around it is read', () => {
+    const bracketed = read(
+      measure(
+        rated(
+          4,
+          6,
+          '<tuplet type="start"/><ornaments><tremolo type="start">3</tremolo></ornaments>',
+        ) +
+          rated(4, 6, '<ornaments><tremolo type="stop">3</tremolo></ornaments>') +
+          rated(8, 3) +
+          rated(8, 3, '<tuplet type="stop"/>'),
+      ),
+    )
+    const ratioOf = (result: ReturnType<typeof read>) => {
+      const tuplet = result.content?.[0]
+      return tuplet?.kind === 'tuplet' ? [tuplet.inner.multiple, tuplet.outer.multiple] : []
+    }
+
+    expect(ratioOf(read(measure(triplet)))).toEqual(ratioOf(bracketed))
+  })
+
+  // The run reaches over the pair wherever it stands: both notes state the
+  // counts the run was opened with, once the pair's share comes out.
+  test('keeps a run open around a tremolo standing inside it', () => {
+    const { content, warnings } = read(measure(rated(8, 3) + tremoloPair + rated(8, 3)))
+    const tuplet = content?.[0]
+    const inside = tuplet?.kind === 'tuplet' ? tuplet.content : []
+
+    expect(content).toHaveLength(1)
+    expect(inside.map((item) => item.kind)).toEqual(['event', 'multiNoteTremolo', 'event'])
+    expect(warnings).toEqual([])
+  })
+
+  // A two-note tremolo standing on its own carries the same 2:1 and is no
+  // tuplet: taking the pair's share out leaves nothing for a tuplet to state.
+  test('opens no tuplet around a tremolo the ratio only counts the pair of', () => {
+    const { content, warnings } = read(
+      measure(tremoloNote('C', 'start') + tremoloNote('E', 'stop')),
+    )
+
+    expect(content?.map((item) => item.kind)).toEqual(['multiNoteTremolo'])
+    expect(warnings).toEqual([])
+  })
+
+  // Where the source states no value for the ratio to count, there is nothing
+  // for a tuplet to be written in, and the pair is read as the pair it is.
+  test('reads a pair stating no value to count as a plain tremolo', () => {
+    const typeless =
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>12</duration>' +
+      '<time-modification><actual-notes>2</actual-notes><normal-notes>1</normal-notes>' +
+      '</time-modification>' +
+      '<notations><ornaments><tremolo type="start">3</tremolo></ornaments></notations></note>'
+    const { content, warnings } = read(measure(typeless + tremoloNote('E', 'stop')))
+
+    expect(content?.map((item) => item.kind)).toEqual(['multiNoteTremolo'])
+    expect(warnings).toEqual([])
+  })
+
+  test('writes legal MNX for it', () => {
+    const { mnx, warnings } = convertMusicXML(measure(triplet))
+
+    expect(schemaErrors(mnx)).toEqual([])
+    expect(warnings).toEqual([])
+  })
+})
