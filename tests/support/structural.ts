@@ -126,6 +126,26 @@ function measureLine(part: number, measure: number, voices: readonly string[]): 
   return `part ${String(part + 1)} measure ${String(measure + 1)}: ${sounded.sort().join(' | ')}`
 }
 
+/**
+ * One line a voice sounds, and how far through the measure it has run. These
+ * positions are added up in whole notes rather than in exact fractions, as
+ * the rest of this file is, so a line counts as free where the cursor stands
+ * within a rounding step of its end. The smallest value any real score writes
+ * is far larger than this.
+ */
+const SETTLED = 1e-9
+
+interface SourceLine {
+  end: number
+  pitches: string[]
+}
+
+/** The lines one <voice> sounds, and the one a note joins by default. */
+interface VoiceLines {
+  lines: SourceLine[]
+  active: number
+}
+
 /** Every pitch in the converted document, one line per part and measure. */
 export function pitchesOf(document: MNXDocument): string[] {
   const lines: string[] = []
@@ -232,31 +252,79 @@ export function sourcePitches(root: XmlElement): string[] {
     .filter((c) => c.name === 'part')
     .forEach((part, partIndex) => {
       let transpose: SourceTranspose | undefined
+      let divisions = 1
       part.children
         .filter((c) => c.name === 'measure')
         .forEach((measure, measureIndex) => {
-          // Grouped by voice in document order, which within one voice is the
-          // order the music has. A chord member belongs to the note it is
-          // chorded with, and some exports (Sibelius) state no <voice> on it,
-          // so a chord note without one inherits the voice in force.
-          const byVoice = new Map<string, string[]>()
+          // Grouped by voice, and within a voice by the lines it sounds at
+          // once. A voice sounds one note at a time, so it is one line in all
+          // but a known dialect: closed-score hymnals write two lines in one
+          // <voice>, laid over each other with <backup>. A note written where
+          // its voice is still sounding therefore goes to the first line of
+          // it with room at the cursor, and opens one where every line is
+          // still sounding.
+          //
+          // Order within a line is document order, which is the order the
+          // music has. A chord member belongs to the note it is chorded with,
+          // and some exports (Sibelius) state no <voice> on it, so a chord
+          // note without one inherits the voice in force. Neither a chord
+          // member nor a grace note stands where the cursor is, so neither
+          // chooses a line: both join the note they were written against.
+          const byVoice = new Map<string, VoiceLines>()
           let voiceInForce = ''
-          for (const note of measure.children) {
-            if (note.name === 'attributes') {
-              transpose = statedTranspose(note) ?? transpose
+          let position = 0
+
+          for (const item of measure.children) {
+            const durationOf = () =>
+              Number(item.children.find((c) => c.name === 'duration')?.text.trim() ?? '0') /
+              (divisions * 4)
+
+            if (item.name === 'attributes') {
+              transpose = statedTranspose(item) ?? transpose
+              const stated = item.children.find((c) => c.name === 'divisions')?.text.trim()
+              if (stated) divisions = Number(stated)
               continue
             }
-            if (note.name !== 'note') continue
-            const isChord = note.children.some((c) => c.name === 'chord')
-            const stated = note.children.find((c) => c.name === 'voice')?.text.trim() ?? ''
+            if (item.name === 'backup') {
+              position -= durationOf()
+              continue
+            }
+            if (item.name === 'forward') {
+              position += durationOf()
+              continue
+            }
+            if (item.name !== 'note') continue
+
+            const isChord = item.children.some((c) => c.name === 'chord')
+            const isGrace = item.children.some((c) => c.name === 'grace')
+            const stated = item.children.find((c) => c.name === 'voice')?.text.trim() ?? ''
             const voice = stated === '' && isChord ? voiceInForce : stated
             if (!isChord) voiceInForce = voice
-            const pitch = note.children.find((c) => c.name === 'pitch')
+
+            const held = byVoice.get(voice) ?? { lines: [], active: 0 }
+            byVoice.set(voice, held)
+
+            if (!isChord && !isGrace) {
+              // A note written before the measure starts is written at the
+              // start, which is what the converter does with it.
+              position = Math.max(0, position)
+              const duration = durationOf()
+              let index = held.lines.findIndex((line) => line.end <= position + SETTLED)
+              if (index === -1) {
+                index = held.lines.length
+                held.lines.push({ end: 0, pitches: [] })
+              }
+              ;(held.lines[index] as SourceLine).end = position + duration
+              held.active = index
+              position += duration
+            }
+
+            const line = (held.lines[held.active] ??= { end: 0, pitches: [] })
+            const pitch = item.children.find((c) => c.name === 'pitch')
             if (!pitch) continue
             const text = (name: string) =>
               pitch.children.find((c) => c.name === name)?.text.trim() ?? ''
-            const list = byVoice.get(voice) ?? []
-            list.push(
+            line.pitches.push(
               pitchKey(
                 sounded(
                   {
@@ -268,13 +336,15 @@ export function sourcePitches(root: XmlElement): string[] {
                 ),
               ),
             )
-            byVoice.set(voice, list)
           }
+
           lines.push(
             measureLine(
               partIndex,
               measureIndex,
-              [...byVoice.values()].map((v) => v.join(' ')),
+              [...byVoice.values()].flatMap((held) =>
+                held.lines.map((line) => line.pitches.join(' ')),
+              ),
             ),
           )
         })

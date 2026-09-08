@@ -597,34 +597,92 @@ describe('the measure cursor', () => {
     expect(warnings.map((w) => w.message)).toContain('<staff> is not converted yet.')
   })
 
-  test('rejects two notes of one voice overlapping', () => {
-    expect(
-      readFailure(
-        measure(note('C', 2, '1') + '<backup><duration>4</duration></backup>' + note('E', 1, '1')),
-      ).message,
-    ).toContain('overlaps')
-  })
-
-  // A backup reaching past the measure start is taken to the start, and a
-  // voice continuing there overlaps what it already wrote. The backup is the
-  // cause, and the refusal used to name the note alone.
-  test('names the clamped backup where the overlap follows one', () => {
-    const message = readFailure(
-      measure(note('C', 2, '1') + '<backup><duration>16</duration></backup>' + note('E', 1, '1')),
-    ).message
-
-    expect(message).toContain('overlaps')
-    expect(message).toContain('<backup>')
-  })
-
-  // Where no backup was clamped, the note is the whole of the story.
-  test('names the note alone where no backup was clamped', () => {
-    const message = readFailure(
+  test('lays a note over what its voice already wrote in a second sequence', () => {
+    const { measure: result } = read(
       measure(note('C', 2, '1') + '<backup><duration>4</duration></backup>' + note('E', 1, '1')),
-    ).message
+    )
 
-    expect(message).toContain('A <note> overlaps the one before it in the same voice.')
-    expect(message).not.toContain('<backup>')
+    expect(result?.sequences).toHaveLength(2)
+    expect(result?.sequences[0]?.content.map((item) => item.kind)).toEqual(['event'])
+    expect(result?.sequences[1]?.content.map((item) => item.kind)).toEqual(['space', 'event'])
+  })
+
+  test('spaces the laid-over sequence out to where it begins', () => {
+    const { measure: result } = read(
+      measure(note('C', 2, '1') + '<backup><duration>4</duration></backup>' + note('E', 1, '1')),
+    )
+
+    const first = result?.sequences[1]?.content[0]
+    expect(first?.kind === 'space' && first.duration).toEqual(fraction(1, 4))
+  })
+
+  // The laid-over run is a line the source never named, so naming it after
+  // the voice it was written in would claim two lines are one.
+  test('leaves the laid-over sequence unnamed', () => {
+    const { measure: result } = read(
+      measure(note('C', 2, '1') + '<backup><duration>4</duration></backup>' + note('E', 1, '1')),
+    )
+
+    expect(result?.sequences.map((s) => s.voice)).toEqual(['1', undefined])
+  })
+
+  test('returns to the first sequence once it has room again', () => {
+    const { measure: result } = read(
+      measure(
+        note('C', 2, '1') +
+          '<backup><duration>4</duration></backup>' +
+          note('E', 1, '1') +
+          note('G', 2, '1'),
+      ),
+    )
+
+    expect(result?.sequences[0]?.content.map((item) => item.kind)).toEqual(['event', 'event'])
+    expect(result?.sequences[1]?.content.map((item) => item.kind)).toEqual(['space', 'event'])
+  })
+
+  test('opens a third sequence where two are already sounding', () => {
+    const { measure: result } = read(
+      measure(
+        note('C', 2, '1') +
+          '<backup><duration>8</duration></backup>' +
+          note('E', 2, '1') +
+          '<backup><duration>8</duration></backup>' +
+          note('G', 2, '1'),
+      ),
+    )
+
+    expect(result?.sequences).toHaveLength(3)
+  })
+
+  test('reports a voice sounding two notes at once', () => {
+    const { warnings } = read(
+      measure(note('C', 2, '1') + '<backup><duration>4</duration></backup>' + note('E', 1, '1')),
+    )
+
+    expect(warnings.map((w) => w.code)).toContain('inconsistent:voice')
+  })
+
+  // Notes that name no voice are one line of their own, and lay over each
+  // other the same way. The report has no name to give, so it says so.
+  test('names the unnamed voice in the report', () => {
+    const bare = (step: string, quarters: number) =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+      `<duration>${String(quarters * 4)}</duration></note>`
+    const { warnings } = read(
+      measure(bare('C', 2) + '<backup><duration>4</duration></backup>' + bare('E', 1)),
+    )
+
+    expect(warnings.map((w) => w.message)).toContainEqual(
+      expect.stringContaining('Voice (unnamed) sounds 2 notes at once'),
+    )
+  })
+
+  test('converts a laid-over voice to MNX the schema accepts', () => {
+    const { mnx } = convertMusicXML(
+      measure(note('C', 2, '1') + '<backup><duration>4</duration></backup>' + note('E', 1, '1')),
+    )
+
+    expect(schemaErrors(mnx)).toEqual([])
   })
 })
 

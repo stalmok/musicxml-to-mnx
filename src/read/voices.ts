@@ -173,6 +173,23 @@ interface VoiceBuilder {
   measureRest: MeasureRestCandidate | undefined
 }
 
+/**
+ * The sequences one <voice> is read into. A voice sounds one note at a time,
+ * so it is one sequence in all but a known dialect: closed-score hymnals
+ * write two lines in one voice, laid over each other with <backup> and told
+ * apart only by how they are drawn. MNX states each line as its own sequence
+ * of the measure, so a note written where its voice is still sounding opens
+ * another here rather than refusing the file.
+ *
+ * `active` is the one what comes next is written in, which is the one the
+ * most recent note went to: a chord member, a beam marker and a tuplet
+ * marker all belong to the note before them.
+ */
+interface VoiceLayers {
+  layers: VoiceBuilder[]
+  active: number
+}
+
 /** A rest standing where its voice's measure rest would stand. */
 interface MeasureRestCandidate {
   readonly event: Event
@@ -474,7 +491,7 @@ function tupletFactorOf(builder: VoiceBuilder): Fraction {
  * MusicXML's cursor. Callers push what they read in document order.
  */
 export class MeasureBuilder {
-  readonly #voices = new Map<string, VoiceBuilder>()
+  readonly #voices = new Map<string, VoiceLayers>()
   readonly #arpeggios: MarkedArpeggio[] = []
   /**
    * Where each event of the measure begins, whatever voice it is in, the
@@ -486,12 +503,6 @@ export class MeasureBuilder {
   #cursor: Fraction = fraction(0)
   /** The voice of the most recent event, which a chord member joins. */
   #lastVoice: string | undefined
-  /**
-   * Whether a <backup> in this measure was taken to the measure start rather
-   * than where it reached. A voice writing on after one overlaps what it
-   * already wrote, and the backup is the cause, so the refusal names it.
-   */
-  #clampedBackup = false
   /**
    * The <backup> that carried the cursor before the measure start, held until
    * something is written out there or a <forward> brings the cursor back.
@@ -555,7 +566,6 @@ export class MeasureBuilder {
       )
     }
     this.#reached = undefined
-    this.#clampedBackup = true
     this.#cursor = fraction(0)
   }
 
@@ -613,8 +623,7 @@ export class MeasureBuilder {
     line: number,
     staff?: number,
   ): void {
-    const builder = this.#builderFor(voice)
-    if (builder.fullMeasure) {
+    if (this.#builderFor(voice).fullMeasure) {
       throw new MusicXMLError('A voice has both a rest that fills the measure and notes in it.', {
         path,
         line,
@@ -623,20 +632,10 @@ export class MeasureBuilder {
 
     this.#writeAt()
 
-    // A known dialect trips this deliberately: closed-score hymnals write two
-    // lines in one voice, laid over each other with <backup> and told apart
-    // only by stem direction. Converting those would take a documented
-    // heuristic splitting the overlapping run into its own sequence, with the
-    // corpus checks taught the same reading. Refused until that is decided.
-    if (compareFractions(subtractFractions(this.#cursor, builder.end), fraction(0)) < 0) {
-      throw new MusicXMLError(
-        this.#clampedBackup
-          ? 'A <note> overlaps the one before it in the same voice, after a <backup> in ' +
-              'this measure was taken back to its start.'
-          : 'A <note> overlaps the one before it in the same voice.',
-        { path, line },
-      )
-    }
+    // Chosen once the cursor has settled, since a <backup> taken back to the
+    // measure start moves it. A note written where this voice is still
+    // sounding goes to another sequence of it rather than over what is there.
+    const builder = this.#layerAt(voice)
     this.#fillGap(builder)
 
     innermost(builder).push(event)
@@ -1073,7 +1072,7 @@ export class MeasureBuilder {
     path: DocumentPath,
     line: number,
   ): void {
-    for (const builder of this.#voices.values()) {
+    for (const builder of this.#allBuilders()) {
       if (impliedFrame(builder)) this.#closeTuplet(builder, warnings, context, path, line)
     }
   }
@@ -1412,7 +1411,7 @@ export class MeasureBuilder {
 
   /** What every voice said about its beams, voice by voice. */
   beamedEvents(): BeamedEvent[][] {
-    const builders = [...this.#voices.values()]
+    const builders = this.#allBuilders()
     return [...builders.map((b) => b.beamed), ...builders.flatMap((b) => b.graceBeamed)]
   }
 
@@ -1636,7 +1635,7 @@ export class MeasureBuilder {
    * and no roll, and has no id for a slur or a lyric to reach.
    */
   settleMeasureRests(): void {
-    for (const builder of this.#voices.values()) {
+    for (const builder of this.#allBuilders()) {
       const candidate = builder.measureRest
       if (!candidate) continue
 
@@ -1666,7 +1665,7 @@ export class MeasureBuilder {
 
   /** Reports any tuplet or tremolo the measure opened and never closed. */
   checkAllClosed(path: DocumentPath, line: number): void {
-    for (const builder of this.#voices.values()) {
+    for (const builder of this.#allBuilders()) {
       if (tremoloFrame(builder)) {
         throw new MusicXMLError('A tremolo is opened and never closed.', { path, line })
       }
@@ -1696,47 +1695,97 @@ export class MeasureBuilder {
       )
     }
 
-    return [...this.#voices].map(([voice, builder]) => {
-      const staff = commonestStaff(builder.placed.map((placed) => placed.staff))
+    for (const [voice, layers] of this.#voices) {
+      if (layers.layers.length < 2) continue
+      warnings.add(
+        'inconsistent:voice',
+        `Voice ${voice === UNNAMED_VOICE ? '(unnamed)' : voice} sounds ` +
+          `${String(layers.layers.length)} notes at once in this measure. Each is kept as a ` +
+          'separate line.',
+        context,
+        'note',
+      )
+    }
 
-      // Only the events that reach across to another staff say so.
-      for (const placed of builder.placed) {
-        if (placed.event && placed.staff !== undefined && placed.staff !== staff) {
-          placed.event.staff = placed.staff
+    return [...this.#voices].flatMap(([voice, layers]) =>
+      layers.layers.map((builder, index) => {
+        const staff = commonestStaff(builder.placed.map((placed) => placed.staff))
+
+        // Only the events that reach across to another staff say so.
+        for (const placed of builder.placed) {
+          if (placed.event && placed.staff !== undefined && placed.staff !== staff) {
+            placed.event.staff = placed.staff
+          }
         }
-      }
 
-      return {
-        staff,
-        // Whenever the source named the voice. MNX treats the name as a label
-        // for the line across the whole score, so deciding it per measure would
-        // give one musical line a different identity from bar to bar.
-        voice: voice === UNNAMED_VOICE ? undefined : voice,
-        content: builder.content,
-        fullMeasure: builder.fullMeasure,
-      }
-    })
+        return {
+          staff,
+          // Whenever the source named the voice. MNX treats the name as a label
+          // for the line across the whole score, so deciding it per measure would
+          // give one musical line a different identity from bar to bar. A line
+          // laid over the voice takes no name: the source named one voice, and
+          // calling both by it would state that two lines are one.
+          voice: index > 0 || voice === UNNAMED_VOICE ? undefined : voice,
+          content: builder.content,
+          fullMeasure: builder.fullMeasure,
+        }
+      }),
+    )
   }
 
+  /** The sequence of this voice that what comes next is written in. */
   #builderFor(voice: string | undefined): VoiceBuilder {
+    const layers = this.#layersFor(voice)
+    return layers.layers[layers.active] as VoiceBuilder
+  }
+
+  #layersFor(voice: string | undefined): VoiceLayers {
     const key = voice ?? UNNAMED_VOICE
     const existing = this.#voices.get(key)
     if (existing) return existing
 
-    const created: VoiceBuilder = {
-      beamed: [],
-      graceBeamed: [],
-      placed: [],
-      open: [],
-      droppedTuplets: [],
-      eventTupletMarkers: [],
-      content: [],
-      end: fraction(0),
-      last: undefined,
-      fullMeasure: undefined,
-      measureRest: undefined,
-    }
+    const created: VoiceLayers = { layers: [newVoiceBuilder()], active: 0 }
     this.#voices.set(key, created)
     return created
+  }
+
+  /**
+   * The sequence of this voice with room at the cursor, made active. The
+   * first with room takes the note, so a voice opens no more sequences than
+   * the music laid over it needs; a new one opens where every sequence is
+   * still sounding.
+   */
+  #layerAt(voice: string | undefined): VoiceBuilder {
+    const layers = this.#layersFor(voice)
+    let index = layers.layers.findIndex(
+      (candidate) => compareFractions(this.#cursor, candidate.end) >= 0,
+    )
+    if (index === -1) {
+      index = layers.layers.length
+      layers.layers.push(newVoiceBuilder())
+    }
+    layers.active = index
+    return layers.layers[index] as VoiceBuilder
+  }
+
+  /** Every sequence of every voice, voice by voice. */
+  #allBuilders(): VoiceBuilder[] {
+    return [...this.#voices.values()].flatMap((layers) => layers.layers)
+  }
+}
+
+function newVoiceBuilder(): VoiceBuilder {
+  return {
+    beamed: [],
+    graceBeamed: [],
+    placed: [],
+    open: [],
+    droppedTuplets: [],
+    eventTupletMarkers: [],
+    content: [],
+    end: fraction(0),
+    last: undefined,
+    fullMeasure: undefined,
+    measureRest: undefined,
   }
 }

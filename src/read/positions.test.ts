@@ -94,11 +94,6 @@ function warningsOf(source: string): readonly ConversionWarning[] {
 const REFUSALS: readonly { what: string; body: readonly string[]; at: number }[] = [
   { what: 'a note after a rest that fills the measure', body: [FULL_REST, note('C', 4)], at: 1 },
   {
-    what: 'a note overlapping the one before it',
-    body: [note('C', 4), backup(4), note('E', 4)],
-    at: 2,
-  },
-  {
     what: 'a chord member with nothing to join',
     body: [note('C', 4, 'quarter', '<chord/>')],
     at: 0,

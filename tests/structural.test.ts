@@ -467,3 +467,80 @@ test('a sequence resting its measure and holding nothing is not named', () => {
 
   expect(crowdedMeasureRests(mnx)).toEqual([])
 })
+
+// Closed-score hymnals write two lines in one <voice>, laid over each other
+// with <backup>. The converter states each as its own sequence, so the
+// source-side reading has to group them the same way: grouping strictly by
+// <voice> would read one line where the music has two.
+test('a voice sounding two notes at once counts as two lines', () => {
+  const source = `<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.0">
+  <part-list>
+    <score-part id="P1"><part-name>Music</part-name></score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>1</divisions>
+        <time><beats>2</beats><beat-type>4</beat-type></time>
+        <clef><sign>G</sign><line>2</line></clef>
+      </attributes>
+      <note>
+        <pitch><step>C</step><octave>5</octave></pitch>
+        <duration>2</duration><voice>1</voice><type>half</type>
+      </note>
+      <backup><duration>1</duration></backup>
+      <note>
+        <pitch><step>E</step><octave>4</octave></pitch>
+        <duration>1</duration><voice>1</voice><type>quarter</type>
+      </note>
+    </measure>
+  </part>
+</score-partwise>
+`
+  const inSource = sourcePitches(parseXmlRoot(source))
+  expect(inSource).toEqual(['part 1 measure 1: C5 | E4'])
+
+  const { mnx } = convertMusicXML(source)
+  expect(pitchesOf(mnx)).toEqual(inSource)
+})
+
+// The line laid over a voice goes back to the first sequence once it has
+// room, so the two are told apart by where they sound and not by how many
+// notes came before.
+test('a laid-over line rejoins the first once it has room', () => {
+  const source = `<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.0">
+  <part-list>
+    <score-part id="P1"><part-name>Music</part-name></score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>1</divisions>
+        <time><beats>4</beats><beat-type>4</beat-type></time>
+        <clef><sign>G</sign><line>2</line></clef>
+      </attributes>
+      <note>
+        <pitch><step>C</step><octave>5</octave></pitch>
+        <duration>2</duration><voice>1</voice><type>half</type>
+      </note>
+      <backup><duration>1</duration></backup>
+      <note>
+        <pitch><step>E</step><octave>4</octave></pitch>
+        <duration>1</duration><voice>1</voice><type>quarter</type>
+      </note>
+      <note>
+        <pitch><step>G</step><octave>4</octave></pitch>
+        <duration>2</duration><voice>1</voice><type>half</type>
+      </note>
+    </measure>
+  </part>
+</score-partwise>
+`
+  const inSource = sourcePitches(parseXmlRoot(source))
+  expect(inSource).toEqual(['part 1 measure 1: C5 G4 | E4'])
+
+  const { mnx } = convertMusicXML(source)
+  expect(pitchesOf(mnx)).toEqual(inSource)
+})
