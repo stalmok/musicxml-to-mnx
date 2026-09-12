@@ -58,10 +58,25 @@ describe('parseXmlRoot', () => {
     expect(root.children[1]?.line).toBe(4)
   })
 
+  // A lyric or a credit whose text would otherwise need escaping is written
+  // as a CDATA section, which the parser reports as its own kind of node.
+  test('reads a CDATA section as text', () => {
+    const root = parseXmlRoot('<credit-words><![CDATA[Bach & Sons <1750>]]></credit-words>')
+
+    expect(root.text).toBe('Bach & Sons <1750>')
+  })
+
+  test('joins text written either side of a CDATA section', () => {
+    const root = parseXmlRoot('<credit-words>Bach <![CDATA[&]]> Sons</credit-words>')
+
+    expect(root.text).toBe('Bach & Sons')
+  })
+
   test('ignores comments and processing instructions', () => {
     const root = parseXmlRoot('<part><!-- a note --><?php ?><measure/></part>')
 
     expect(root.children.map((c) => c.name)).toEqual(['measure'])
+    expect(root.text).toBe('')
   })
 
   test('accepts a document with an XML declaration and a DOCTYPE', () => {

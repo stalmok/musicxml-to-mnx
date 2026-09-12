@@ -3,7 +3,7 @@
 // MusicXMLError. Nothing above this layer touches the XML parser directly.
 
 import { parseXml, XmlNode } from '@rgrove/parse-xml'
-import type { XmlCdata, XmlElement as SourceElement, XmlText } from '@rgrove/parse-xml'
+import type { XmlElement as SourceElement, XmlText } from '@rgrove/parse-xml'
 import { MusicXMLError } from '../errors.js'
 
 /**
@@ -58,11 +58,13 @@ function convertElement(element: SourceElement, starts: readonly number[]): XmlE
   for (const child of element.children) {
     if (child.type === XmlNode.TYPE_ELEMENT) {
       children.push(convertElement(child as SourceElement, starts))
-    } else if (child.type === XmlNode.TYPE_TEXT || child.type === XmlNode.TYPE_CDATA) {
+    } else if (child.type === XmlNode.TYPE_TEXT) {
       // Direct text only. The parser's own `text` getter concatenates every
       // descendant's text, which would silently merge a <lyric>'s <syllabic>
-      // and <text> children into one string.
-      text += (child as XmlText | XmlCdata).text
+      // and <text> children into one string. A CDATA section is text here too:
+      // the parser folds one into the text around it unless asked to keep it
+      // separate, which nothing above this layer would want.
+      text += (child as XmlText).text
     }
     // Comments and processing instructions carry no notation.
   }
