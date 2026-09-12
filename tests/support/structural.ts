@@ -144,6 +144,13 @@ interface SourceLine {
 interface VoiceLines {
   lines: SourceLine[]
   active: number
+  /**
+   * A grace group read into the line the voice last sounded in, still
+   * waiting for the note it leads into. `at` is where it stands and `from`
+   * is where its pitches begin in that line, so that it can follow its note
+   * into whichever line the note takes.
+   */
+  grace: { at: number; from: number } | undefined
 }
 
 /** Every pitch in the converted document, one line per part and measure. */
@@ -260,9 +267,10 @@ export function sourcePitches(root: XmlElement): string[] {
           // once. A voice sounds one note at a time, so it is one line in all
           // but a known dialect: closed-score hymnals write two lines in one
           // <voice>, laid over each other with <backup>. A note written where
-          // its voice is still sounding therefore goes to the first line of
-          // it with room at the cursor, and opens one where every line is
-          // still sounding.
+          // its voice is still sounding therefore goes to another line of it:
+          // the one it last sounded in wherever that has room, so a run
+          // written as one run stays in one line, then the first line with
+          // room, and a new line where every one is still sounding.
           //
           // Order within a line is document order, which is the order the
           // music has. A chord member belongs to the note it is chorded with,
@@ -301,7 +309,7 @@ export function sourcePitches(root: XmlElement): string[] {
             const voice = stated === '' && isChord ? voiceInForce : stated
             if (!isChord) voiceInForce = voice
 
-            const held = byVoice.get(voice) ?? { lines: [], active: 0 }
+            const held = byVoice.get(voice) ?? { lines: [], active: 0, grace: undefined }
             byVoice.set(voice, held)
 
             if (!isChord && !isGrace) {
@@ -309,14 +317,37 @@ export function sourcePitches(root: XmlElement): string[] {
               // start, which is what the converter does with it.
               position = Math.max(0, position)
               const duration = durationOf()
-              let index = held.lines.findIndex((line) => line.end <= position + SETTLED)
+              const free = (line: SourceLine) => line.end <= position + SETTLED
+              const last = held.lines[held.active]
+              let index = last && free(last) ? held.active : held.lines.findIndex(free)
               if (index === -1) {
                 index = held.lines.length
                 held.lines.push({ end: 0, pitches: [] })
               }
+              // A grace group waiting where this note stands is what leads
+              // into it, so it belongs to whichever line the note takes.
+              const waiting = held.grace
+              if (waiting && index !== held.active && Math.abs(waiting.at - position) <= SETTLED) {
+                const led = held.lines[held.active]
+                if (led)
+                  (held.lines[index] as SourceLine).pitches.push(
+                    ...led.pitches.splice(waiting.from),
+                  )
+              }
+              held.grace = undefined
               ;(held.lines[index] as SourceLine).end = position + duration
               held.active = index
               position += duration
+            } else if (isGrace && !isChord) {
+              // A group taking its time from the note before it is drawn
+              // after that note and stays in that note's line.
+              const stealsPrevious =
+                item.children.find((c) => c.name === 'grace')?.attributes['steal-time-previous'] !==
+                undefined
+              if (stealsPrevious) held.grace = undefined
+              else if (!held.grace || Math.abs(held.grace.at - position) > SETTLED) {
+                held.grace = { at: position, from: held.lines[held.active]?.pitches.length ?? 0 }
+              }
             }
 
             const line = (held.lines[held.active] ??= { end: 0, pitches: [] })

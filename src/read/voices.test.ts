@@ -626,7 +626,10 @@ describe('the measure cursor', () => {
     expect(result?.sequences.map((s) => s.voice)).toEqual(['1', undefined])
   })
 
-  test('returns to the first sequence once it has room again', () => {
+  // A run written as one run stays in one sequence. Sending it back to the
+  // first sequence the moment that one has room would split a beam, a
+  // bracket or a chord between two sequences, which is to draw neither.
+  test('keeps writing in the sequence the voice last sounded in', () => {
     const { measure: result } = read(
       measure(
         note('C', 2, '1') +
@@ -636,8 +639,30 @@ describe('the measure cursor', () => {
       ),
     )
 
+    expect(result?.sequences[0]?.content.map((item) => item.kind)).toEqual(['event'])
+    expect(result?.sequences[1]?.content.map((item) => item.kind)).toEqual([
+      'space',
+      'event',
+      'event',
+    ])
+  })
+
+  // Where it has no room, the first sequence that has takes the note, so a
+  // voice opens no more sequences than the music laid over it needs.
+  test('takes the first sequence with room where the last one has none', () => {
+    const { measure: result } = read(
+      measure(
+        note('C', 1, '1') +
+          '<backup><duration>4</duration></backup>' +
+          note('E', 2, '1') +
+          '<backup><duration>4</duration></backup>' +
+          note('G', 1, '1'),
+      ),
+    )
+
+    expect(result?.sequences).toHaveLength(2)
     expect(result?.sequences[0]?.content.map((item) => item.kind)).toEqual(['event', 'event'])
-    expect(result?.sequences[1]?.content.map((item) => item.kind)).toEqual(['space', 'event'])
+    expect(result?.sequences[1]?.content.map((item) => item.kind)).toEqual(['event'])
   })
 
   test('opens a third sequence where two are already sounding', () => {
@@ -652,6 +677,16 @@ describe('the measure cursor', () => {
     )
 
     expect(result?.sequences).toHaveLength(3)
+  })
+
+  // The report has to name a line, and the note that opened the second
+  // sequence is the one the source wrote.
+  test('reports the split at the note that opened the second sequence', () => {
+    const { warnings } = read(
+      measure(note('C', 2, '1') + '<backup><duration>4</duration></backup>' + note('E', 1, '1')),
+    )
+
+    expect(warnings.find((w) => w.code === 'inconsistent:voice')?.context.line).toBeDefined()
   })
 
   test('reports a voice sounding two notes at once', () => {
@@ -673,8 +708,64 @@ describe('the measure cursor', () => {
     )
 
     expect(warnings.map((w) => w.message)).toContainEqual(
-      expect.stringContaining('Voice (unnamed) sounds 2 notes at once'),
+      expect.stringContaining('Voice (unnamed) sounds 2 lines at once'),
     )
+  })
+
+  // A beam, a bracket and a grace note all belong to one line. Settling the
+  // sequence only once the note is written left them reaching for the line
+  // the voice sounded in before, which is a different line.
+  test('keeps a beam over a laid-over line whole', () => {
+    const eighth = (step: string, beam = '') =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>2</duration>` +
+      `<voice>1</voice><type>eighth</type>${beam}</note>`
+    const { measure: result } = read(
+      measure(
+        note('C', 1, '1') +
+          '<backup><duration>4</duration></backup>' +
+          eighth('D') +
+          eighth('E', '<beam number="1">begin</beam>') +
+          eighth('F', '<beam number="1">end</beam>'),
+      ),
+    )
+
+    expect(result?.beams).toHaveLength(1)
+    expect(result?.beams[0]?.events).toHaveLength(2)
+  })
+
+  test('ornaments the note a grace note was written against, in its line', () => {
+    const { measure: result } = read(
+      measure(
+        note('C', 2, '1') +
+          '<backup><duration>8</duration></backup>' +
+          '<note><grace/><pitch><step>B</step><octave>4</octave></pitch>' +
+          '<voice>1</voice><type>eighth</type></note>' +
+          note('D', 1, '1'),
+      ),
+    )
+
+    expect(result?.sequences[0]?.content.map((item) => item.kind)).toEqual(['event'])
+    expect(result?.sequences[1]?.content.map((item) => item.kind)).toEqual(['grace', 'event'])
+  })
+
+  // A group taking its time from the note before it is drawn after that
+  // note, so it stays in that note's sequence rather than following the one
+  // that comes next.
+  test('leaves an after-grace group in the sequence of the note it follows', () => {
+    const { measure: result } = read(
+      measure(
+        note('C', 1, '1') +
+          '<backup><duration>4</duration></backup>' +
+          note('E', 2, '1') +
+          '<backup><duration>4</duration></backup>' +
+          '<note><grace steal-time-previous="50"/><pitch><step>B</step><octave>4</octave></pitch>' +
+          '<voice>1</voice><type>eighth</type></note>' +
+          note('D', 1, '1'),
+      ),
+    )
+
+    expect(result?.sequences[0]?.content.map((item) => item.kind)).toEqual(['event', 'event'])
+    expect(result?.sequences[1]?.content.map((item) => item.kind)).toEqual(['event', 'grace'])
   })
 
   test('converts a laid-over voice to MNX the schema accepts', () => {

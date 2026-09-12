@@ -269,6 +269,16 @@ export function readNote(
   const written = readWrittenValue(element, path)
   const graceElement = element.child('grace')
 
+  // Which sequence of its voice this note is written in, settled before
+  // anything asks the voice what is open around it.
+  //
+  // A chord member joins the event before it and settles nothing. Neither
+  // does a grace note: it takes none of the measure's time, so it overlaps
+  // nothing and cannot open a sequence on its own account. It is read into
+  // the sequence the voice last sounded in and carried to the one its note
+  // turns out to take.
+  if (!element.child('chord') && !graceElement) builder.beginNote(voice, element.line)
+
   // Which staff the note names. Read and bounded whatever the part has, so
   // that a note naming a staff before <staves> said the part had one is
   // rejected rather than quietly placed on the first. It is only worth

@@ -2839,3 +2839,42 @@ describe('a tuplet stated as a ratio with no bracket, opening on a tremolo', () 
     expect(warnings).toEqual([])
   })
 })
+
+// A tuplet in a line laid over its voice belongs to that line. The bracket
+// is opened before the note is written, so reading the sequence only at the
+// note left the bracket in the line the voice sounded in before, holding
+// nothing, while its notes stood outside it in the new line.
+describe('a tuplet in a line laid over its voice', () => {
+  /** A triplet eighth of voice 1, so that the whole run is one voice. */
+  const voiced = (step: string, bracket = ''): string =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>4</duration>` +
+    '<voice>1</voice><type>eighth</type>' +
+    '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+    '</time-modification>' +
+    (bracket ? `<notations><tuplet type="${bracket}"/></notations>` : '') +
+    '</note>'
+
+  const laidOver =
+    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>12</duration>' +
+    '<voice>1</voice><type>quarter</type></note>' +
+    '<backup><duration>12</duration></backup>' +
+    voiced('D', 'start') +
+    voiced('E') +
+    voiced('F', 'stop')
+
+  test('holds its notes in the line they were written in', () => {
+    const warnings = new WarningCollector()
+    const result = readScore(parseXmlRoot(measure(laidOver)), warnings)
+    const sequences = result.parts[0]?.measures[0]?.sequences
+
+    expect(sequences).toHaveLength(2)
+    expect(sequences?.[0]?.content.map((item) => item.kind)).toEqual(['event'])
+    expect(sequences?.[1]?.content.map((item) => item.kind)).toEqual(['tuplet'])
+  })
+
+  test('converts to MNX the schema accepts', () => {
+    const { mnx } = convertMusicXML(measure(laidOver))
+
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+})

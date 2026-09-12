@@ -110,8 +110,8 @@ const REFUSALS: readonly { what: string; body: readonly string[]; at: number }[]
   },
   {
     what: 'a rest filling the measure after notes',
-    body: [note('C', 4), backup(4), FULL_REST],
-    at: 2,
+    body: [note('C', 4), FULL_REST],
+    at: 1,
   },
   {
     what: 'a tuplet starting inside a tremolo',

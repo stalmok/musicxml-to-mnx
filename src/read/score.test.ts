@@ -863,13 +863,34 @@ describe('whole-measure rests', () => {
 
   // A pitched note over a measure rest is a real contradiction, not a
   // redundancy.
-  test('still rejects a note written over a measure rest', () => {
+  // A voice whose measure rest is one line and whose notes are another is
+  // the closed-score dialect again: the rest stays the sequence's own, and
+  // the notes laid over it become a sequence beside it.
+  test('lays a note written over a measure rest into a sequence of its own', () => {
+    const { score: result, warnings } = read(
+      measure(
+        '<attributes><divisions>4</divisions></attributes>' +
+          '<note><rest measure="yes"/><duration>16</duration><voice>1</voice></note>' +
+          '<backup><duration>4</duration></backup>' +
+          '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+          '<duration>4</duration><voice>1</voice><type>quarter</type></note>',
+      ),
+    )
+    const sequences = result.parts[0]?.measures[0]?.sequences
+
+    expect(sequences?.[0]?.fullMeasure).toBeDefined()
+    expect(sequences?.[1]?.content.map((item) => item.kind)).toEqual(['space', 'event'])
+    expect(warnings.map((w) => w.code)).toContain('inconsistent:voice')
+  })
+
+  // Written one after the other, with no <backup> laying one over the other,
+  // the two are one line saying two things.
+  test('still rejects a note written after a measure rest', () => {
     expect(
       readFailure(
         measure(
           '<attributes><divisions>4</divisions></attributes>' +
             '<note><rest measure="yes"/><duration>16</duration><voice>1</voice></note>' +
-            '<backup><duration>4</duration></backup>' +
             '<note><pitch><step>C</step><octave>4</octave></pitch>' +
             '<duration>4</duration><voice>1</voice><type>quarter</type></note>',
         ),

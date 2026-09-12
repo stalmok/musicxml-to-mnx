@@ -505,10 +505,10 @@ test('a voice sounding two notes at once counts as two lines', () => {
   expect(pitchesOf(mnx)).toEqual(inSource)
 })
 
-// The line laid over a voice goes back to the first sequence once it has
-// room, so the two are told apart by where they sound and not by how many
-// notes came before.
-test('a laid-over line rejoins the first once it has room', () => {
+// A run written as one run stays in one line, so the reading follows the
+// line the voice last sounded in wherever it has room rather than returning
+// to the first the moment that one is free.
+test('a laid-over line keeps the notes written after it', () => {
   const source = `<?xml version="1.0" encoding="UTF-8"?>
 <score-partwise version="3.0">
   <part-list>
@@ -539,7 +539,47 @@ test('a laid-over line rejoins the first once it has room', () => {
 </score-partwise>
 `
   const inSource = sourcePitches(parseXmlRoot(source))
-  expect(inSource).toEqual(['part 1 measure 1: C5 G4 | E4'])
+  expect(inSource).toEqual(['part 1 measure 1: C5 | E4 G4'])
+
+  const { mnx } = convertMusicXML(source)
+  expect(pitchesOf(mnx)).toEqual(inSource)
+})
+
+// A grace note takes none of the measure's time, so it overlaps nothing and
+// opens no line of its own. It belongs to the note it leads into, which a
+// <forward> can put in a different line from the one it was written after.
+test('a grace note follows the note it leads into, not where it was written', () => {
+  const source = `<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.0">
+  <part-list>
+    <score-part id="P1"><part-name>Music</part-name></score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>1</divisions>
+        <time><beats>2</beats><beat-type>4</beat-type></time>
+        <clef><sign>G</sign><line>2</line></clef>
+      </attributes>
+      <note>
+        <pitch><step>C</step><octave>5</octave></pitch>
+        <duration>2</duration><voice>1</voice><type>half</type>
+      </note>
+      <backup><duration>2</duration></backup>
+      <note>
+        <grace/><pitch><step>B</step><octave>4</octave></pitch>
+        <voice>1</voice><type>eighth</type>
+      </note>
+      <note>
+        <pitch><step>E</step><octave>4</octave></pitch>
+        <duration>1</duration><voice>1</voice><type>quarter</type>
+      </note>
+    </measure>
+  </part>
+</score-partwise>
+`
+  const inSource = sourcePitches(parseXmlRoot(source))
+  expect(inSource).toEqual(['part 1 measure 1: B4 E4 | C5'])
 
   const { mnx } = convertMusicXML(source)
   expect(pitchesOf(mnx)).toEqual(inSource)

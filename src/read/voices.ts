@@ -165,6 +165,20 @@ interface VoiceBuilder {
    * the event's own place in the measure.
    */
   last: { event: Event; duration: Fraction | undefined; start: Fraction } | undefined
+  /**
+   * The grace group at the end of this sequence that is still waiting for
+   * the note it ornaments, where the sequence ends in one. `at` is where it
+   * stands, `beams` is the run its own beams are read into and `placedFrom`
+   * is where its notes begin in `placed`, so that the whole of it can follow
+   * its note into another sequence of the voice.
+   */
+  grace: { group: GraceGroup; beams: BeamedEvent[]; at: Fraction; placedFrom: number } | undefined
+  /**
+   * The line of the note that opened this sequence, where it is a line laid
+   * over the voice rather than the voice's first. The split is reported
+   * there: the measure would do, but the note is what the source wrote.
+   */
+  openedAt: number | undefined
   fullMeasure: FullMeasureRest | undefined
   /**
    * A rest that may turn out to be this voice's measure rest, held until the
@@ -580,9 +594,14 @@ export class MeasureBuilder {
     this.#cursor = addFractions(this.#cursor, by)
   }
 
-  /** Whether this voice is already a rest filling the measure. */
+  /**
+   * Whether any line of this voice is already a rest filling the measure.
+   * Asked across all of them, because resting the measure is something the
+   * voice does rather than one of its lines: a second rest written over the
+   * first is silence over silence whichever line it would go to.
+   */
   hasFullMeasure(voice: string | undefined): boolean {
-    return this.#builderFor(voice).fullMeasure !== undefined
+    return this.#layersFor(voice).layers.some((layer) => layer.fullMeasure !== undefined)
   }
 
   /**
@@ -612,6 +631,58 @@ export class MeasureBuilder {
   }
 
   /**
+   * Settles which sequence of a voice the note now being read is written in.
+   * Called before anything asks the voice what is open around it, because a
+   * note laid over what its voice is still sounding goes to a sequence of
+   * its own, and the ratio scaling it, the brackets holding it, the beams
+   * joining it and the grace notes ornamenting it all have to reach the same
+   * one.
+   *
+   * A chord member and a grace note settle nothing: both stand where the
+   * note they were written against stands, and belong to the sequence it
+   * went to.
+   */
+  beginNote(voice: string | undefined, line: number): void {
+    this.#writeAt()
+    const layers = this.#layersFor(voice)
+    const before = layers.layers[layers.active] as VoiceBuilder
+    const taken = this.#layerAt(voice, line)
+    if (taken !== before) this.#carryGrace(before, taken)
+  }
+
+  /**
+   * Moves a grace group waiting where the cursor stands into the sequence
+   * the note it ornaments turned out to take.
+   *
+   * A grace note takes none of the measure's time, so which line it belongs
+   * to is not readable where it stands: it is the line of the note it leads
+   * into, and that note may not be read for another <backup> or <forward>.
+   * Reading the group into the line the voice last sounded in and carrying
+   * it across settles it at the note, which is the first point the source
+   * has said enough.
+   *
+   * A group taking its time from the note before it is drawn after that
+   * note, so it belongs to the line that note is in and stays there.
+   */
+  #carryGrace(from: VoiceBuilder, to: VoiceBuilder): void {
+    const waiting = from.grace
+    if (!waiting || compareFractions(waiting.at, this.#cursor) !== 0) return
+    if (waiting.group.graceType === 'stealPrevious') return
+
+    // The group is the last thing written in the sequence it is leaving.
+    // This runs as the note is read and before the note opens or closes a
+    // bracket of its own, so nothing has been written since the group was.
+    innermost(from).pop()
+    innermost(to).push(waiting.group)
+    from.graceBeamed = from.graceBeamed.filter((run) => run !== waiting.beams)
+    to.graceBeamed.push(waiting.beams)
+    to.placed.push(...from.placed.splice(waiting.placedFrom))
+    to.last = from.last
+    to.grace = { ...waiting, placedFrom: to.placed.length - waiting.group.content.length }
+    from.grace = undefined
+  }
+
+  /**
    * Adds a note that stands on its own, at the cursor, and advances past it.
    * A gap since this voice last sounded becomes a space.
    */
@@ -630,15 +701,11 @@ export class MeasureBuilder {
       })
     }
 
-    this.#writeAt()
-
-    // Chosen once the cursor has settled, since a <backup> taken back to the
-    // measure start moves it. A note written where this voice is still
-    // sounding goes to another sequence of it rather than over what is there.
-    const builder = this.#layerAt(voice)
+    const builder = this.#builderFor(voice)
     this.#fillGap(builder)
 
     innermost(builder).push(event)
+    builder.grace = undefined
     builder.placed.push({ event, staff })
     this.#lastVoice = voice ?? UNNAMED_VOICE
     builder.last = { event, duration, start: this.#cursor }
@@ -840,7 +907,7 @@ export class MeasureBuilder {
     line: number,
   ): void {
     const builder = this.#builderFor(voice)
-    if (builder.fullMeasure) {
+    if (this.hasFullMeasure(voice)) {
       throw new MusicXMLError('A voice has more than one rest that fills the measure.', {
         path,
         line,
@@ -1604,7 +1671,11 @@ export class MeasureBuilder {
     const group: GraceGroup = { kind: 'grace', content: [event], slashed, graceType }
     list.push(group)
     // Each group beams within itself, so each starts a run of its own.
-    builder.graceBeamed.push([])
+    const beams: BeamedEvent[] = []
+    builder.graceBeamed.push(beams)
+    // Held until the note it leads into says which sequence it is in. Its
+    // own entry in `placed` is the one just pushed.
+    builder.grace = { group, beams, at: this.#cursor, placedFrom: builder.placed.length - 1 }
   }
 
   /**
@@ -1695,20 +1766,37 @@ export class MeasureBuilder {
       )
     }
 
-    for (const [voice, layers] of this.#voices) {
-      if (layers.layers.length < 2) continue
+    // A line opened for a note that was then dropped holds nothing, and a
+    // sequence stating nothing is not a line the source drew. The voice's
+    // first line stays whatever it holds, so a voice that wrote nothing is
+    // the one empty sequence it always was.
+    const sounding = new Map(
+      [...this.#voices].map(([voice, layers]) => [
+        voice,
+        layers.layers.filter(
+          (builder, index) =>
+            index === 0 || builder.content.length > 0 || builder.fullMeasure !== undefined,
+        ),
+      ]),
+    )
+
+    for (const [voice, layers] of sounding) {
+      // Undefined for a voice that sounds one line, which is the voice's
+      // first and was opened by nothing.
+      const openedAt = layers[1]?.openedAt
+      if (openedAt === undefined) continue
       warnings.add(
         'inconsistent:voice',
         `Voice ${voice === UNNAMED_VOICE ? '(unnamed)' : voice} sounds ` +
-          `${String(layers.layers.length)} notes at once in this measure. Each is kept as a ` +
-          'separate line.',
-        context,
+          `${String(layers.length)} lines at once in this measure. Each is kept as a ` +
+          'separate sequence.',
+        { ...context, line: openedAt },
         'note',
       )
     }
 
-    return [...this.#voices].flatMap(([voice, layers]) =>
-      layers.layers.map((builder, index) => {
+    return [...sounding].flatMap(([voice, layers]) =>
+      layers.map((builder, index) => {
         const staff = commonestStaff(builder.placed.map((placed) => placed.staff))
 
         // Only the events that reach across to another staff say so.
@@ -1750,19 +1838,24 @@ export class MeasureBuilder {
   }
 
   /**
-   * The sequence of this voice with room at the cursor, made active. The
-   * first with room takes the note, so a voice opens no more sequences than
-   * the music laid over it needs; a new one opens where every sequence is
-   * still sounding.
+   * The sequence of this voice with room at the cursor, made active.
+   *
+   * The one the voice last sounded in is preferred wherever it has room, so
+   * that a run written as one run stays in one sequence: a beam, a bracket
+   * or a chord split between two sequences is drawn as neither. Where it is
+   * still sounding, the first sequence with room takes the note, and a new
+   * one opens where every sequence is still sounding.
    */
-  #layerAt(voice: string | undefined): VoiceBuilder {
+  #layerAt(voice: string | undefined, line: number): VoiceBuilder {
     const layers = this.#layersFor(voice)
-    let index = layers.layers.findIndex(
-      (candidate) => compareFractions(this.#cursor, candidate.end) >= 0,
-    )
+    const free = (candidate: VoiceBuilder) => compareFractions(this.#cursor, candidate.end) >= 0
+
+    let index = free(layers.layers[layers.active] as VoiceBuilder)
+      ? layers.active
+      : layers.layers.findIndex(free)
     if (index === -1) {
       index = layers.layers.length
-      layers.layers.push(newVoiceBuilder())
+      layers.layers.push(newVoiceBuilder(line))
     }
     layers.active = index
     return layers.layers[index] as VoiceBuilder
@@ -1774,8 +1867,9 @@ export class MeasureBuilder {
   }
 }
 
-function newVoiceBuilder(): VoiceBuilder {
+function newVoiceBuilder(openedAt?: number): VoiceBuilder {
   return {
+    openedAt,
     beamed: [],
     graceBeamed: [],
     placed: [],
@@ -1785,6 +1879,7 @@ function newVoiceBuilder(): VoiceBuilder {
     content: [],
     end: fraction(0),
     last: undefined,
+    grace: undefined,
     fullMeasure: undefined,
     measureRest: undefined,
   }
