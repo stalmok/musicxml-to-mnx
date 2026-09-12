@@ -498,17 +498,19 @@ describe('a loss the schema has no home for', () => {
           '<divisions>4</divisions><staff-details><staff-lines>1</staff-lines></staff-details>',
         ),
       ),
-    ).toEqual(['unsupported:element A staff line count other than five is not converted yet.'])
+    ).toEqual(['unsupported:element A staff line count of 1 is not converted yet.'])
   })
 
   // Five lines is what MNX draws a staff with when no config names it, so a
-  // source stating five loses nothing by going unwritten.
-  test('says nothing about a staff stated with five lines', () => {
+  // source stating five loses nothing by going unwritten. The count is read
+  // as a number, so a padded one states the same five.
+  test.each(['5', '05'])('says nothing about a staff stated with %s lines', (written) => {
     expect(
       codes(
         measure(
           note(''),
-          '<divisions>4</divisions><staff-details><staff-lines>5</staff-lines></staff-details>',
+          `<divisions>4</divisions><staff-details><staff-lines>${written}</staff-lines>` +
+            '</staff-details>',
         ),
       ),
     ).toEqual([])
@@ -545,7 +547,7 @@ describe('a loss the schema has no home for', () => {
     ).toEqual([
       'unsupported:element Hiding a staff with <staff-details print-object="no"> is not ' +
         'converted yet.',
-      'unsupported:element A staff line count other than five is not converted yet.',
+      'unsupported:element A staff line count of 3 is not converted yet.',
       'unrepresentable:element <staff-size> cannot be expressed in MNX.',
     ])
   })

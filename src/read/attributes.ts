@@ -148,14 +148,20 @@ export function readAttributes(
         'staff-details',
       )
     }
+    // Read as the count it is, so that "05" states the same five lines "5"
+    // does. No range, because a count this converter would not expect is
+    // still a count, and it is reported rather than refused.
     const lines = details.child('staff-lines')
-    if (lines && trimmedText(lines) !== '5') {
-      warnings.add(
-        'unsupported:element',
-        'A staff line count other than five is not converted yet.',
-        { ...context, line: lines.line },
-        'staff-lines',
-      )
+    if (lines) {
+      const count = readInteger(lines, path)
+      if (count !== 5) {
+        warnings.add(
+          'unsupported:element',
+          `A staff line count of ${String(count)} is not converted yet.`,
+          { ...context, line: lines.line },
+          'staff-lines',
+        )
+      }
     }
   }
 

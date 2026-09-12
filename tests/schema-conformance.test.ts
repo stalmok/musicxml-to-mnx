@@ -407,6 +407,10 @@ const ATTRIBUTES_NOWHERE: Readonly<Record<string, readonly string[]>> = {
   'sound damper-pedal': ['pedal'],
   'sound soft-pedal': ['pedal'],
   'sound sostenuto-pedal': ['pedal'],
+  // The same fact <staff-tuning>, <capo> and <fret> rest on: no tablature
+  // anywhere. <string> is left out, because the schema's "string" is the JSON
+  // type, which is what ELEMENT_COLLISIONS records for that entry.
+  'staff-details show-frets': ['tablature', 'tuning', 'fret', 'capo'],
 }
 
 /** Attributes whose home would be a wider jump-type, not a property. */

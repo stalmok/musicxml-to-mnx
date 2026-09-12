@@ -137,8 +137,8 @@ export const NO_HOME_IN_MNX: ReadonlySet<string> = new Set([
   // staffConfigs carries: the ossia or cue marking, the per-line
   // detailing, the size, a tablature tuning and a capo. The schema's
   // staff-config states a line count and nothing else, and its staff states
-  // a label, sources, a symbol and a type, where the type is the constant
-  // naming it a staff.
+  // a label, a labelref, sources, a symbol and a type, where the type is the
+  // constant naming it a staff.
   'staff-type',
   'line-detail',
   'staff-tuning',
@@ -216,6 +216,10 @@ export const NO_HOME_ATTRIBUTES: ReadonlySet<string> = new Set([
   // sign it goes back to. The schema's segno states a location, a colour and
   // a glyph, and has no label.
   'sound segno',
+  // Whether a tablature staff draws its fret numbers. The schema has no
+  // tablature at all, which is why <staff-tuning>, <capo>, <fret> and
+  // <string> are on the element list above.
+  'staff-details show-frets',
   // A clef drawn after the barline it changes at. The schema's clef states
   // its sign and position, and nothing about where it is drawn.
   'clef after-barline',

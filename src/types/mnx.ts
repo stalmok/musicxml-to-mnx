@@ -451,7 +451,7 @@ export interface MNXPositionedStaffConfig {
   config: MNXStaffConfig
   /** Where in the measure the config takes effect. Absent means its start. */
   position?: MNXRhythmicPosition
-  /** Which staff of the part, where it has more than one. */
+  /** Which staff of the part the config draws. Absent means the first. */
   staff?: number
 }
 
