@@ -175,6 +175,10 @@ export type WarningCode =
   // A <print> detail beyond the system and page breaks, such as a page
   // number or staff spacing, which MNX's pages and systems cannot state.
   | 'unrepresentable:print-detail'
+  // A note altered by a fraction of a semitone, such as a quarter-tone
+  // flat. MNX's alter is a whole number of semitones, so the note is
+  // converted altered by the nearest whole one.
+  | 'unrepresentable:microtone'
   // An attribute with no schema definition to hold it, such as the side an
   // augmentation dot is drawn on, named with the element it sits on.
   | 'unrepresentable:attribute'

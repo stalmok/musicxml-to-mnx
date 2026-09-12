@@ -337,7 +337,7 @@ export function readNote(
     // A chord member is a pitch or an unpitched note: a rest was refused just
     // above, and a note sounding none of the three never reached here.
     const chordNote = pitchElement
-      ? readNoteAt(element, pitchElement, state, path, reaches)
+      ? readNoteAt(element, pitchElement, state, path, reaches, warnings, context)
       : readKitNoteAt(
           element,
           requireChild(element.element, 'unpitched', path),
@@ -760,7 +760,7 @@ export function readNote(
     measuredValue(element, duration, scale, state, path)
   // The event states this note's staff, so the note says nothing of its own.
   const notes: Note[] = pitchElement
-    ? [readNoteAt(element, pitchElement, state, path, undefined)]
+    ? [readNoteAt(element, pitchElement, state, path, undefined, warnings, context)]
     : []
   const kitNotes: KitNote[] = unpitchedElement
     ? [readKitNoteAt(element, unpitchedElement, staff, undefined, state, warnings, context)]
@@ -1398,11 +1398,13 @@ function readNoteAt(
   state: PartState,
   path: DocumentPath,
   staff: number | undefined,
+  warnings: WarningCollector,
+  context: WarningContext,
 ): Note {
   // MusicXML writes the pitch the player reads, MNX the pitch the instrument
   // sounds. They differ only for a transposing part, which states the
   // interval between them.
-  const written = readPitch(pitchElement, path)
+  const written = readPitch(pitchElement, path, warnings, context)
 
   return {
     id: state.ids.nextNote(),
@@ -2194,7 +2196,12 @@ function reportDurationMismatch(
   )
 }
 
-function readPitch(element: XmlElement, path: DocumentPath): Pitch {
+function readPitch(
+  element: XmlElement,
+  path: DocumentPath,
+  warnings: WarningCollector,
+  context: WarningContext,
+): Pitch {
   const step = trimmedText(requireChild(element, 'step', path))
   if (!isStep(step)) {
     throw new MusicXMLError(`Unknown pitch step "${step}".`, { path, line: element.line })
@@ -2206,9 +2213,47 @@ function readPitch(element: XmlElement, path: DocumentPath): Pitch {
   return {
     step,
     octave,
-    // MusicXML allows fractional alterations for microtones; MNX's alter is an
-    // integer, so anything fractional would have to be rounded, silently
-    // retuning the note. Two semitones covers double sharps and flats.
-    alter: alterElement ? readIntegerInRange(alterElement, path, -2, 2) : 0,
+    alter: alterElement ? readAlter(alterElement, path, warnings, context) : 0,
   }
+}
+
+// A decimal as MusicXML writes one, which is what <alter> counts semitones
+// in. Deliberately stricter than Number(), for the reason readInteger is.
+const DECIMAL_SEMITONES = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/
+
+/**
+ * How many semitones a note is altered by. MNX states this as a plain
+ * integer, with no range, so a triple sharp goes over as readily as a sharp.
+ *
+ * MusicXML writes it as a decimal so that a microtone can state a quarter of
+ * a semitone. MNX has no fraction of one, so such a note takes the nearest
+ * whole alteration and the microtone is reported. A half-way alteration takes
+ * the smaller: a three-quarter flat is drawn as a flat rather than as a
+ * double flat.
+ */
+function readAlter(
+  element: XmlElement,
+  path: DocumentPath,
+  warnings: WarningCollector,
+  context: WarningContext,
+): number {
+  const written = trimmedText(element)
+  const value = Number(written)
+  if (!DECIMAL_SEMITONES.test(written) || !Number.isFinite(value)) {
+    throw new MusicXMLError(`<alter> is not a number of semitones: "${written}".`, {
+      path,
+      line: element.line,
+    })
+  }
+  if (Number.isInteger(value)) return value
+
+  const nearest = Math.sign(value) * Math.ceil(Math.abs(value) - 0.5)
+  warnings.add(
+    'unrepresentable:microtone',
+    `A note is altered by ${written} semitones, which MNX cannot state: its alter is a ` +
+      `whole number of them. The note is converted altered by ${String(nearest)}.`,
+    { ...context, line: element.line },
+    'alter',
+  )
+  return nearest === 0 ? 0 : nearest
 }

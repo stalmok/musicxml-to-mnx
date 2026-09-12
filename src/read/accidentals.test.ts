@@ -114,3 +114,36 @@ describe('a chord note', () => {
     expect(flat?.accidentalDisplay?.show).toBe(true)
   })
 })
+
+// MusicXML counts an alteration in semitones, written as a decimal so a
+// microtone can state a quarter of one. MNX's alter is a whole number of
+// them, so the note takes the nearest, and a half-way alteration takes the
+// smaller.
+describe('an altered note', () => {
+  test.each([
+    ['0.5', 0],
+    ['-0.5', 0],
+    ['1.5', 1],
+    ['-1.5', -1],
+    ['1.75', 2],
+  ])('converts an alteration of %s semitones as %i', (written, expected) => {
+    const { notes, warnings } = read(score(note('C', written, '')))
+
+    expect(notes[0]?.pitch.alter).toBe(expected)
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:microtone'])
+    expect(warnings[0]?.message).toContain(`altered by ${written} semitones`)
+  })
+
+  // MNX states alter as a plain integer with no range, so an alteration
+  // beyond a double sharp goes over as readily as a sharp.
+  test('converts a triple sharp', () => {
+    const { notes, warnings } = read(score(note('C', '3', '')))
+
+    expect(notes[0]?.pitch.alter).toBe(3)
+    expect(warnings).toEqual([])
+  })
+
+  test('refuses an alteration that is not a number', () => {
+    expect(() => read(score(note('C', 'flat', '')))).toThrow('not a number of semitones')
+  })
+})
