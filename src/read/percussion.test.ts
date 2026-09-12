@@ -346,6 +346,22 @@ describe('the MNX a percussion part converts to', () => {
     expect(warnings).toEqual([])
   })
 
+  // A chord struck across a pitched staff and a kit sounds both at once, so
+  // the event states both.
+  test('states the notes and the kit notes of a chord that sounds both', () => {
+    const mixed =
+      '<note><pitch><step>C</step><octave>5</octave></pitch><duration>1</duration>' +
+      '<type>quarter</type></note>' +
+      '<note><chord/><unpitched><display-step>G</display-step><display-octave>5</display-octave>' +
+      '</unpitched><duration>1</duration><type>quarter</type><instrument id="P1-I39"/></note>'
+    const { mnx } = convertMusicXML(source(mixed, DRUM_KIT))
+    const event = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
+
+    expect(event && 'notes' in event ? event.notes?.length : 0).toBe(1)
+    expect(event && 'kitNotes' in event ? event.kitNotes?.length : 0).toBe(1)
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
   test('writes no notes array on an event that only strikes the kit', () => {
     const { mnx } = convertMusicXML(source(struck('C', '5', 'P1-I39'), DRUM_KIT))
     const event = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]

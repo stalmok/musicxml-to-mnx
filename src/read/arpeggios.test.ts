@@ -507,6 +507,25 @@ describe('two chords marked in opposite ways', () => {
     expect(measure?.arpeggios.map((a) => a.struck)).toEqual([false, true])
     expect(warnings).toEqual([])
   })
+
+  // MNX keeps the two apart: a rolled chord under arpeggios, a chord bracketed
+  // as struck together under nonArpeggios.
+  test('writes each under its own key', () => {
+    const { mnx } = convertMusicXML(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        '<attributes><divisions>4</divisions></attributes>' +
+        head(ROLL) +
+        member('E', ROLL) +
+        head('<non-arpeggiate type="bottom"/>', 'D') +
+        member('F', '<non-arpeggiate type="top"/>') +
+        '</measure></part></score-partwise>',
+    )
+    const measure = mnx.parts[0]?.measures[0]
+
+    expect(measure?.arpeggios?.map((a) => a.span)).toEqual([{ start: 'note1', end: 'note2' }])
+    expect(measure?.nonArpeggios?.map((a) => a.span)).toEqual([{ start: 'note3', end: 'note4' }])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
 })
 
 // One roll cannot go both ways. The mark that loses used to be dropped with

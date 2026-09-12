@@ -140,6 +140,16 @@ describe('staying within exact arithmetic', () => {
     expect(() => addFractions(a, b)).toThrow('Cannot add')
   })
 
+  // Both scaled numerators are checked, not just one: a pair where only one
+  // side runs past the range is refused by name rather than reaching the
+  // reduction, which would refuse it as an impossible fraction instead.
+  test.each([
+    ['the first side', () => addFractions(fraction(Number.MAX_SAFE_INTEGER, 3), fraction(1, 2))],
+    ['the second side', () => addFractions(fraction(1, 2), fraction(Number.MAX_SAFE_INTEGER, 3))],
+  ])('refuses a sum where %s cannot be scaled exactly', (_name, add) => {
+    expect(add).toThrow('Cannot add')
+  })
+
   test('divides without building a product it does not need', () => {
     const a = fraction(2 ** 27, 3)
     const b = fraction(2 ** 27, 2 ** 26 + 1)

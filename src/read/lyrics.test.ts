@@ -311,6 +311,15 @@ describe('the order of the verse lines', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 
+  // Two is the fewest verses that have an order between them.
+  test('states the order of two verses', () => {
+    const { mnx } = convertMusicXML(
+      measure(note('C', lyric('one', 'single', '1') + lyric('two', 'single', '2'))),
+    )
+
+    expect(mnx.global.lyrics).toEqual({ lineOrder: ['1', '2'] })
+  })
+
   test('states no order for a single verse, which has none to state', () => {
     const { mnx } = convertMusicXML(measure(note('C', lyric('la'))))
 

@@ -63,12 +63,41 @@ describe('the document declaring it states accidentals', () => {
     expect(mnx.mnx.support).toBeUndefined()
   })
 
-  test('finds one drawn inside a tuplet or a grace group', () => {
+  test('finds one drawn inside a grace group', () => {
     const mnx = convert(
       '<note><grace/><pitch><step>G</step><octave>4</octave></pitch><type>eighth</type>' +
         '<accidental>sharp</accidental></note>' +
         note('C', '', ''),
     )
+
+    expect(mnx.mnx.support).toEqual({ useAccidentalDisplay: true })
+  })
+
+  // The notes a tuplet or a two-note tremolo holds stand inside it rather than
+  // beside it, so looking no deeper than the sequence would miss them.
+  test('finds one drawn inside a tuplet', () => {
+    // Two eighths in the time of three, so each lasts three divisions.
+    const duplet = (step: string, marker: string, accidental = '') =>
+      `<note><pitch><step>${step}</step><alter>1</alter><octave>4</octave></pitch>` +
+      `<duration>3</duration><type>eighth</type>${accidental}` +
+      '<time-modification><actual-notes>2</actual-notes><normal-notes>3</normal-notes>' +
+      '</time-modification>' +
+      `<notations><tuplet type="${marker}"/></notations></note>`
+    const mnx = convert(
+      duplet('G', 'start', '<accidental>sharp</accidental>') + duplet('A', 'stop'),
+    )
+
+    expect(mnx.mnx.support).toEqual({ useAccidentalDisplay: true })
+  })
+
+  test('finds one drawn inside a two-note tremolo', () => {
+    const tremolo = (type: string, accidental = '') =>
+      '<note><pitch><step>G</step><alter>1</alter><octave>4</octave></pitch>' +
+      `<duration>4</duration><type>half</type>${accidental}` +
+      '<time-modification><actual-notes>2</actual-notes><normal-notes>1</normal-notes>' +
+      '</time-modification>' +
+      `<notations><ornaments><tremolo type="${type}">3</tremolo></ornaments></notations></note>`
+    const mnx = convert(tremolo('start', '<accidental>sharp</accidental>') + tremolo('stop'))
 
     expect(mnx.mnx.support).toEqual({ useAccidentalDisplay: true })
   })
