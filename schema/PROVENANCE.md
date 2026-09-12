@@ -5,9 +5,9 @@
 |                |                                                                                                                                                                                             |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Source         | https://github.com/w3c/mnx, `docs/mnx-schema.json`                                                                                                                                          |
-| Pinned commit  | `0a8c7602d624942668e1ac2b5c6a1aa2214be0d1` ("Changed bpm to allow floats.", 2026-08-25)                                                                                                     |
-| Retrieved      | 2026-08-29                                                                                                                                                                                  |
-| SHA-256        | `56a4c05d0fc14aceb8ff899473a90e5271766cb93423bb421b27b3caeb7b9409`                                                                                                                          |
+| Pinned commit  | `92f714347d3f721a4f61477cc9665b542ced9be1` ("Added way to encode number of staff lines.", 2026-09-08)                                                                                       |
+| Retrieved      | 2026-09-12                                                                                                                                                                                  |
+| SHA-256        | `40249ffaaea8ce3da47693d7aaf6e9e85243fe225de748c9333f4652029cce90`                                                                                                                          |
 | Schema dialect | JSON Schema draft 2020-12                                                                                                                                                                   |
 | Licence        | The MNX specification is published by the W3C Music Notation Community Group under the [W3C Community Final Specification Agreement](https://www.w3.org/community/about/agreements/final/). |
 
