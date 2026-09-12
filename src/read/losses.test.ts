@@ -475,9 +475,9 @@ describe('a loss the schema has no home for', () => {
     ).toEqual(['unrepresentable:element A <bracket> direction cannot be expressed in MNX.'])
   })
 
-  // A cutaway staff drawn at 70 percent is a visible loss, and the schema has
-  // no staffLines, staffSize or scale to carry it.
-  test('reports <staff-details> as unrepresentable', () => {
+  // A staff drawn at 70 percent is a visible loss, and the schema's
+  // staff-config states a line count and nothing else.
+  test('reports <staff-size> as unrepresentable', () => {
     expect(
       codes(
         measure(
@@ -485,7 +485,33 @@ describe('a loss the schema has no home for', () => {
           '<divisions>4</divisions><staff-details><staff-size>70</staff-size></staff-details>',
         ),
       ),
-    ).toEqual(['unrepresentable:element <staff-details> cannot be expressed in MNX.'])
+    ).toEqual(['unrepresentable:element <staff-size> cannot be expressed in MNX.'])
+  })
+
+  // A measure's staffConfigs states a line count, so a staff drawn on one
+  // line is a converter gap rather than a format limit.
+  test('reports a line count other than five as a gap', () => {
+    expect(
+      codes(
+        measure(
+          note(''),
+          '<divisions>4</divisions><staff-details><staff-lines>1</staff-lines></staff-details>',
+        ),
+      ),
+    ).toEqual(['unsupported:element A staff line count other than five is not converted yet.'])
+  })
+
+  // Five lines is what MNX draws a staff with when no config names it, so a
+  // source stating five loses nothing by going unwritten.
+  test('says nothing about a staff stated with five lines', () => {
+    expect(
+      codes(
+        measure(
+          note(''),
+          '<divisions>4</divisions><staff-details><staff-lines>5</staff-lines></staff-details>',
+        ),
+      ),
+    ).toEqual([])
   })
 
   // Hiding a staff is score structure, and a layout omitting the staff can
@@ -513,13 +539,14 @@ describe('a loss the schema has no home for', () => {
         measure(
           note(''),
           '<divisions>4</divisions><staff-details print-object="no">' +
-            '<staff-lines>3</staff-lines></staff-details>',
+            '<staff-lines>3</staff-lines><staff-size>70</staff-size></staff-details>',
         ),
       ),
     ).toEqual([
       'unsupported:element Hiding a staff with <staff-details print-object="no"> is not ' +
         'converted yet.',
-      'unrepresentable:element <staff-details> cannot be expressed in MNX.',
+      'unsupported:element A staff line count other than five is not converted yet.',
+      'unrepresentable:element <staff-size> cannot be expressed in MNX.',
     ])
   })
 

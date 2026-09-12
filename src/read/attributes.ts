@@ -17,7 +17,6 @@ import { readAttributeInRange, readInteger, readIntegerInRange } from './numbers
 import type { PartState } from './state.js'
 import { recogniser } from './tables.js'
 import { concertFifths } from './transposition.js'
-import { elementLoss } from './unrepresentable.js'
 import { reportHidden } from './unrepresentable.js'
 
 // Recognisers rather than bare sets: each one narrows the value it accepts to
@@ -127,18 +126,21 @@ export function readAttributes(
     state.staves = readIntegerInRange(stavesElement, path, 1, 16)
   }
 
-  // <staff-details> carries two different statements with two different
-  // verdicts. Hiding a staff with print-object="no" is score structure with
-  // a home in MNX's layouts, not built yet, so it reports as a gap; its
-  // print-spacing rides on the hiding. How the staff is drawn, its line
-  // count, its size or a tuning, has no home and keeps saying so. The
-  // number attribute names the staff either statement is about, and an
-  // element stating nothing loses nothing. MusicXML allows one
-  // <staff-details> per staff, which is why every one is read.
-  for (const details of element.children('staff-details')) {
-    attribute(details, 'number')
-    if (attribute(details, 'print-object') === 'no') {
-      attribute(details, 'print-spacing')
+  // <staff-details> carries statements with different verdicts, so each is
+  // read on its own and the sweep reports the rest by name. Hiding a staff
+  // with print-object="no" is score structure with a home in MNX's layouts,
+  // not built yet, so it reports as a gap; its print-spacing rides on the
+  // hiding. The line count has a home in a measure's staffConfigs, also not
+  // built yet, except where it states the five lines MNX assumes when no
+  // config names the staff. The size, the tablature tuning and the rest have
+  // no home and keep saying so. The number attribute names the staff a
+  // statement is about, and an element stating nothing loses nothing.
+  // MusicXML allows one <staff-details> per staff, which is why every one is
+  // read, and one <staff-lines> in each.
+  for (const details of element.blocks('staff-details')) {
+    attribute(details.element, 'number')
+    if (attribute(details.element, 'print-object') === 'no') {
+      attribute(details.element, 'print-spacing')
       warnings.add(
         'unsupported:element',
         'Hiding a staff with <staff-details print-object="no"> is not converted yet.',
@@ -146,13 +148,13 @@ export function readAttributes(
         'staff-details',
       )
     }
-    if (details.children.length > 0) {
-      const loss = elementLoss('staff-details')
+    const lines = details.child('staff-lines')
+    if (lines && trimmedText(lines) !== '5') {
       warnings.add(
-        loss.code,
-        `<staff-details> ${loss.ending}`,
-        { ...context, line: details.line },
-        'staff-details',
+        'unsupported:element',
+        'A staff line count other than five is not converted yet.',
+        { ...context, line: lines.line },
+        'staff-lines',
       )
     }
   }

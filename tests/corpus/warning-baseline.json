@@ -105,7 +105,6 @@
     "credit": 7,
     "measure@implicit": 2,
     "system-layout": 14,
-    "staff-details": 1,
     "words": 12,
     "sound@tempo": 2,
     "direction@system": 3,
@@ -114,7 +113,8 @@
     "sound@dynamics": 8,
     "staff-layout": 28,
     "dashes": 2,
-    "wedge": 5
+    "wedge": 5,
+    "staff-size": 1
   },
   "arne-by-dimpled-brook": {
     "midi-device": 2,
@@ -362,12 +362,12 @@
     "movement-title": 1,
     "identification": 1,
     "measure@implicit": 3,
-    "staff-details": 1,
     "print-object": 20,
     "words": 2,
     "extend": 5,
     "other-notation": 2,
-    "cue": 7
+    "cue": 7,
+    "staff-size": 1
   },
   "barnard-five-o-clock-in-the-morning": {
     "midi-device": 2,
@@ -643,7 +643,6 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
-    "staff-details": 1,
     "words": 35,
     "sound@tempo": 1,
     "direction@system": 1,
@@ -656,7 +655,8 @@
     "sound@dynamics": 21,
     "cue": 7,
     "dot@placement": 2,
-    "pedal": 52
+    "pedal": 52,
+    "staff-size": 1
   },
   "beethoven-1-bitten": {
     "midi-device": 2,
@@ -1588,11 +1588,11 @@
     "sound@tempo": 1,
     "direction@system": 1,
     "extend": 16,
-    "staff-details": 1,
     "sound@dynamics": 28,
     "print-object": 67,
     "notehead": 1,
-    "open": 1
+    "open": 1,
+    "staff-size": 1
   },
   "brahms-2-geistliches-wiegenlied": {
     "midi-device": 3,
@@ -1609,13 +1609,13 @@
     "sound@tempo": 2,
     "direction@system": 2,
     "extend": 16,
-    "staff-details": 1,
     "sound@dynamics": 33,
     "dot@placement": 12,
     "print-object": 9,
     "dashes": 2,
     "pedal": 12,
-    "stem": 8
+    "stem": 8,
+    "staff-size": 1
   },
   "brahms-2-ich-wandte-mich-und-sahe": {
     "midi-device": 2,
@@ -3054,13 +3054,13 @@
     "pan": 3,
     "work": 1,
     "identification": 1,
-    "staff-details": 1,
     "words": 34,
     "sound@tempo": 1,
     "direction@system": 1,
     "sound@dynamics": 11,
     "extend": 4,
-    "dashes": 4
+    "dashes": 4,
+    "staff-size": 1
   },
   "cowen-the-better-land": {
     "midi-device": 2,
@@ -4550,7 +4550,6 @@
     "pan": 3,
     "work": 1,
     "identification": 1,
-    "staff-details": 1,
     "words": 11,
     "sound@tempo": 1,
     "direction@system": 1,
@@ -4559,7 +4558,8 @@
     "sound@dynamics": 2,
     "cue": 1,
     "stem": 1,
-    "notehead": 2
+    "notehead": 2,
+    "staff-size": 1
   },
   "gabriel-sacred-vows": {
     "midi-device": 2,
@@ -4996,7 +4996,7 @@
     "type@size": 16,
     "ending": 2,
     "turn": 1,
-    "staff-details": 4,
+    "staff-details": 2,
     "note": 12
   },
   "grandval-chanson-de-barberine": {
@@ -5144,7 +5144,6 @@
     "work": 1,
     "identification": 1,
     "measure@implicit": 3,
-    "staff-details": 1,
     "words": 7,
     "sound@tempo": 1,
     "direction@system": 1,
@@ -5155,7 +5154,8 @@
     "dashes": 4,
     "type@size": 1,
     "sound@dynamics": 4,
-    "other-notation": 1
+    "other-notation": 1,
+    "staff-size": 1
   },
   "gray-then-and-now": {
     "midi-device": 2,
@@ -5395,7 +5395,6 @@
     "pan": 3,
     "work": 1,
     "identification": 1,
-    "staff-details": 1,
     "words": 24,
     "sound@tempo": 1,
     "direction@system": 1,
@@ -5403,7 +5402,8 @@
     "dashes": 2,
     "extend": 2,
     "print-object": 13,
-    "notehead": 5
+    "notehead": 5,
+    "staff-size": 1
   },
   "gurney-1-orpheus": {
     "midi-device": 2,
@@ -7106,7 +7106,6 @@
     "movement-title": 1,
     "identification": 1,
     "measure@implicit": 3,
-    "staff-details": 1,
     "words": 15,
     "sound@tempo": 1,
     "direction@system": 1,
@@ -7115,7 +7114,8 @@
     "print-object": 11,
     "cue": 3,
     "extend": 4,
-    "dashes": 4
+    "dashes": 4,
+    "staff-size": 1
   },
   "lehmann-1-there-s-a-bird-beneath-your-window": {
     "midi-device": 2,
@@ -7437,7 +7437,8 @@
     "pedal": 100,
     "dashes": 8,
     "notehead": 40,
-    "staff-details": 21
+    "staff-details": 20,
+    "staff-size": 1
   },
   "mackenzie-1-the-first-rose": {
     "midi-device": 2,
@@ -9368,7 +9369,7 @@
     "movement-number": 1,
     "movement-title": 1,
     "identification": 1,
-    "staff-details": 2,
+    "staff-details": 1,
     "words": 1,
     "sound@tempo": 1,
     "direction@system": 1,
@@ -11845,6 +11846,6 @@
   "73a-Percussion": {
     "identification": 1,
     "mode": 2,
-    "staff-details": 1
+    "staff-lines": 1
   }
 }

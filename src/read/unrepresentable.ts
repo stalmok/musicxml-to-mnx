@@ -133,10 +133,17 @@ export const NO_HOME_IN_MNX: ReadonlySet<string> = new Set([
   'work',
   'movement-title',
   'movement-number',
-  // How a staff is drawn: its number of lines, its size and a tablature
-  // tuning. The schema has no staffLines, staffSize or scale; its staff
-  // states a label, sources, a symbol and a type.
-  'staff-details',
+  // How a staff is drawn beyond its line count, which a measure's
+  // staffConfigs carries: the ossia or cue marking, the per-line
+  // detailing, the size, a tablature tuning and a capo. The schema's
+  // staff-config states a line count and nothing else, and its staff states
+  // a label, sources, a symbol and a type, where the type is the constant
+  // naming it a staff.
+  'staff-type',
+  'line-detail',
+  'staff-tuning',
+  'capo',
+  'staff-size',
   // The free text printed on a page, such as the title or the composer's
   // name. The schema's layouts state staves and systems, and hold no text.
   'credit',
