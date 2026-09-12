@@ -616,14 +616,50 @@ describe('the measure cursor', () => {
     expect(first?.kind === 'space' && first.duration).toEqual(fraction(1, 4))
   })
 
-  // The laid-over run is a line the source never named, so naming it after
-  // the voice it was written in would claim two lines are one.
-  test('leaves the laid-over sequence unnamed', () => {
+  // MNX lets no two sequences of a measure share a voice name, and naming a
+  // laid-over line after the voice it was written in would claim two lines
+  // are one.
+  test('names the laid-over sequence after the voice and the line it is', () => {
     const { measure: result } = read(
       measure(note('C', 2, '1') + '<backup><duration>4</duration></backup>' + note('E', 1, '1')),
     )
 
-    expect(result?.sequences.map((s) => s.voice)).toEqual(['1', undefined])
+    expect(result?.sequences.map((s) => s.voice)).toEqual(['1', '1.2'])
+  })
+
+  // Two voices splitting in one measure used to leave two sequences with no
+  // name, which nothing can tell apart.
+  test('gives every sequence of a measure a name of its own', () => {
+    const { measure: result } = read(
+      measure(
+        note('C', 2, '1') +
+          '<backup><duration>8</duration></backup>' +
+          note('E', 1, '1') +
+          '<backup><duration>4</duration></backup>' +
+          note('G', 2, '2') +
+          '<backup><duration>8</duration></backup>' +
+          note('B', 1, '2'),
+      ),
+    )
+    const named = result?.sequences.map((s) => s.voice) ?? []
+
+    expect(named).toEqual(['1', '1.2', '2', '2.2'])
+    expect(new Set(named).size).toBe(named.length)
+  })
+
+  // A name the measure already uses is stepped past, so the source naming a
+  // voice "1.2" does not collide with the line laid over voice 1.
+  test('steps past a name the measure already uses', () => {
+    const { measure: result } = read(
+      measure(
+        note('C', 2, '1') +
+          '<backup><duration>4</duration></backup>' +
+          note('E', 1, '1') +
+          note('G', 1, '1.2'),
+      ),
+    )
+
+    expect(result?.sequences.map((s) => s.voice)).toEqual(['1', '1.3', '1.2'])
   })
 
   // A run written as one run stays in one sequence. Sending it back to the

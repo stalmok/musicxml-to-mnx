@@ -1795,6 +1795,23 @@ export class MeasureBuilder {
       )
     }
 
+    // MNX lets no two sequences of a measure share a voice name, and a line
+    // laid over a voice has none of its own: the source named one voice for
+    // both. Naming both by it would state that two lines are one, and
+    // leaving every laid-over line unnamed leaves two of them in a measure
+    // that nothing can tell apart. Each takes a name of its own, built from
+    // the voice it was laid over and the line it is, and stepped on past any
+    // name the measure already uses.
+    const taken = new Set(this.#voices.keys())
+    const nameFor = (voice: string, index: number): string => {
+      const base = voice === UNNAMED_VOICE ? '' : voice
+      let line = index + 1
+      while (taken.has(`${base}.${String(line)}`)) line += 1
+      const name = `${base}.${String(line)}`
+      taken.add(name)
+      return name
+    }
+
     return [...sounding].flatMap(([voice, layers]) =>
       layers.map((builder, index) => {
         const staff = commonestStaff(builder.placed.map((placed) => placed.staff))
@@ -1810,10 +1827,8 @@ export class MeasureBuilder {
           staff,
           // Whenever the source named the voice. MNX treats the name as a label
           // for the line across the whole score, so deciding it per measure would
-          // give one musical line a different identity from bar to bar. A line
-          // laid over the voice takes no name: the source named one voice, and
-          // calling both by it would state that two lines are one.
-          voice: index > 0 || voice === UNNAMED_VOICE ? undefined : voice,
+          // give one musical line a different identity from bar to bar.
+          voice: index > 0 ? nameFor(voice, index) : voice === UNNAMED_VOICE ? undefined : voice,
           content: builder.content,
           fullMeasure: builder.fullMeasure,
         }
