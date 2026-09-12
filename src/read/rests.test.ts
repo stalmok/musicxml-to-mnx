@@ -404,23 +404,44 @@ describe('a rest with no value filling an unmeasured measure', () => {
     expect(thrown).toContain('no note value can write')
   })
 
-  // A time signature states how long the measure runs, so a rest there is
-  // weighed against it as before.
-  test('leaves a measured rest to the time signature', () => {
-    let thrown = ''
-    try {
-      convertMusicXML(
-        '<score-partwise><part id="P1"><measure number="1">' +
-          '<attributes><divisions>4</divisions><time><beats>4</beats><beat-type>4</beat-type>' +
-          '</time></attributes>' +
-          rest(11) +
-          '</measure></part></score-partwise>',
-      )
-    } catch (error) {
-      thrown = error instanceof Error ? error.message : String(error)
-    }
+  // A rest lasting exactly what the time signature states loses nothing by
+  // going on the sequence, whatever note values can write: the measure says
+  // how long it runs.
+  test('says nothing about a rest filling an irregular measure', () => {
+    const { mnx, warnings } = convertMusicXML(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        '<attributes><divisions>4</divisions><time><beats>5</beats><beat-type>4</beat-type>' +
+        '</time></attributes>' +
+        rest(20) +
+        '</measure></part></score-partwise>',
+    )
 
-    expect(thrown).toContain('no note value can write')
+    expect(mnx.parts[0]?.measures[0]?.sequences).toEqual([
+      { voice: '1', content: [], fullMeasure: {} },
+    ])
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // A measure longer than its time signature says is the source's own
+  // measure, and a hidden part rests through one with a bare rest of that
+  // length. There is no event to write it as either, so it rests the measure
+  // the same way, and the length is reported.
+  test('rests a measure longer than its time signature', () => {
+    const { mnx, warnings } = convertMusicXML(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        '<attributes><divisions>4</divisions><time><beats>4</beats><beat-type>4</beat-type>' +
+        '</time></attributes>' +
+        rest(20) +
+        '</measure></part></score-partwise>',
+    )
+
+    expect(mnx.parts[0]?.measures[0]?.sequences).toEqual([
+      { voice: '1', content: [], fullMeasure: {} },
+    ])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:rest-length'])
+    expect(warnings[0]?.message).toContain('no note value can write that length')
+    expect(schemaErrors(mnx)).toEqual([])
   })
 })
 

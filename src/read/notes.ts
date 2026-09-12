@@ -621,27 +621,33 @@ export function readNote(
     // that overruns the barline, and it is a rest like any other.
     builder.opensMeasure(voice)
 
-  // Music written senza misura carries no time signature, so nothing says how
-  // long the measure runs. A rest with no written value opening a voice there
-  // is that voice's silence through the measure, and chant editions rest
-  // whole parts that way, with a rest longer than any note value can write.
-  // Only such a rest takes this path: one a note value can write is the event
-  // it is written as.
-  const unmeasuredRest =
+  const markedAsTheMeasure =
+    restElement !== undefined && attribute(restElement, 'measure') === 'yes'
+
+  // A rest the source neither marks as the measure's nor draws to the length
+  // the time signature states, with no written value, opening its voice, and
+  // lasting a time no note value can write. It is that voice's silence
+  // through the measure, and there is no event to write it as, so MNX's rest
+  // on the sequence is the only place for it. Chant editions written senza
+  // misura rest whole parts that way, and so do the hidden parts that
+  // early-music engravings carry: one bare rest per measure, in a bar longer
+  // than the time signature says. Only such a rest takes this path: one a
+  // note value can write is the event it is written as. The value weighed is
+  // the one a tuplet open around the rest would have it drawn as, which is
+  // what measuredValue would look for.
+  const unwritableRest =
+    !markedAsTheMeasure &&
+    !fillsMeasure &&
     restElement !== undefined &&
     written === undefined &&
     duration !== undefined &&
     !state.divisionsAssumed &&
-    state.time === undefined &&
-    noteValueOf(duration) === undefined &&
+    noteValueOf(divideFractions(duration, builder.tupletFactor(voice))) === undefined &&
     builder.opensMeasure(voice)
       ? duration
       : undefined
 
-  const restFillsMeasure =
-    (restElement !== undefined && attribute(restElement, 'measure') === 'yes') ||
-    fillsMeasure ||
-    unmeasuredRest !== undefined
+  const restFillsMeasure = markedAsTheMeasure || fillsMeasure || unwritableRest !== undefined
 
   // A word spoken over an otherwise resting bar is written as a lyric on the
   // whole-measure rest. MNX's sequence-level full-measure rest states only a
@@ -679,13 +685,18 @@ export function readNote(
     element.skip('stem', 'beam')
 
     // MNX's rest filling the measure states no length, so how long the source
-    // drew this one is not carried.
-    if (unmeasuredRest) {
+    // drew this one is not carried. Only a rest that reached here on its own
+    // length reports it: one marked as the measure's, or drawn to what the
+    // time signature states, says nothing MNX's measure does not.
+    if (unwritableRest) {
       warnings.add(
         'unrepresentable:rest-length',
-        `A rest lasting ${describeLength(unmeasuredRest)} fills a measure written with no ` +
-          'time signature. MNX states such a rest on the sequence, which carries no length, ' +
-          'so the length is not converted.',
+        `A rest lasting ${describeLength(unwritableRest)} is the whole of its voice in ` +
+          (state.time === undefined
+            ? 'a measure written with no time signature. '
+            : 'this measure, and no note value can write that length. ') +
+          'MNX states such a rest on the sequence, which carries no length, so the length ' +
+          'is not converted.',
         { ...context, line: element.line },
         'rest',
       )
