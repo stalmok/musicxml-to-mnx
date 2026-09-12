@@ -4,7 +4,12 @@
 // other way round. These cover the arithmetic between the two.
 
 import { describe, expect, test } from 'vitest'
-import { concertFifths, soundingPitch } from './transposition.js'
+import {
+  concertFifths,
+  keyFifthsFlipAt,
+  soundingPitch,
+  writtenFifthsWithFlip,
+} from './transposition.js'
 import type { TranspositionInterval } from '../model/score.js'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
@@ -93,6 +98,102 @@ describe('the key a written signature sounds in', () => {
 
   test('leaves a part at concert pitch alone', () => {
     expect(concertFifths(-4, { staffDistance: 0, halfSteps: 0 })).toBe(-4)
+  })
+})
+
+// A part avoiding a signature of more than seven sharps or flats writes the
+// enharmonic one, which reads back twelve fifths from the score's key. MNX
+// states one point for the whole part, measured in the fifths the part would
+// write without the flip, and the sign of that point picks the direction.
+describe('the point at which a part flips its key signature', () => {
+  // The part writes the flatter spelling, so its keys read back twelve fifths
+  // below the score's. A B-flat instrument writes two fifths above what it
+  // sounds, so the score's five sharps are its seven.
+  test('stands at the lowest key the part flips at', () => {
+    const keys = [
+      { score: 5, part: -7 },
+      { score: 7, part: -5 },
+    ]
+
+    expect(keyFifthsFlipAt(keys, B_FLAT_CLARINET)).toBe(7)
+  })
+
+  // The other direction: the part writes the sharper spelling, so its keys
+  // read back twelve fifths above the score's, and the point is the highest
+  // it flips at so that every flipped key is below it.
+  test('stands at the highest key the part flips at', () => {
+    const keys = [
+      { score: -5, part: 7 },
+      { score: -7, part: 5 },
+    ]
+
+    expect(keyFifthsFlipAt(keys, B_FLAT_CLARINET)).toBe(-3)
+  })
+
+  // The point is inclusive, so a part flipping where it would write no sharps
+  // or flats states zero rather than nothing.
+  test('stands at zero where that is the key the part flips at', () => {
+    expect(keyFifthsFlipAt([{ score: -2, part: -14 }], B_FLAT_CLARINET)).toBe(0)
+  })
+
+  test('says nothing where the part writes what its transposition asks', () => {
+    expect(keyFifthsFlipAt([{ score: 2, part: 2 }], B_FLAT_CLARINET)).toBeUndefined()
+  })
+
+  // One point stands between the keys the part flips and the keys it leaves
+  // alone, so a key it writes both ways cannot be stated.
+  test.each([
+    [
+      'flips at a key it also leaves alone',
+      [
+        { score: 5, part: -7 },
+        { score: 5, part: 5 },
+      ],
+    ],
+    [
+      'flips upward at a key it also leaves alone',
+      [
+        { score: -5, part: 7 },
+        { score: -5, part: -5 },
+      ],
+    ],
+  ])('says nothing where the part %s', (_name, keys) => {
+    expect(keyFifthsFlipAt(keys, B_FLAT_CLARINET)).toBeUndefined()
+  })
+
+  // The direction follows from the sign of the point, so a part flipping down
+  // from below zero, or up from zero, is a flip no point states.
+  test.each([
+    ['down from a key below zero', [{ score: -3, part: -15 }], undefined],
+    ['up from a key at zero', [{ score: -2, part: 10 }], undefined],
+  ])('says nothing for a part flipping %s', (_name, keys, expected) => {
+    expect(keyFifthsFlipAt(keys, B_FLAT_CLARINET)).toBe(expected)
+  })
+
+  // Only twelve fifths is the same key spelled the other way; any other
+  // distance is a different key, which no point accounts for.
+  test('says nothing for a part in a different key outright', () => {
+    expect(keyFifthsFlipAt([{ score: -9, part: -4 }], B_FLAT_CLARINET)).toBeUndefined()
+  })
+})
+
+describe('the key a part writes past its flip point', () => {
+  // A point at or above zero takes twelve fifths off from there on; below
+  // zero, twelve are added from there down. Either way a key on the other
+  // side of the point is written as its transposition asks.
+  test.each([
+    ['at the point', 5, 7, -5],
+    ['past the point', 6, 7, -4],
+    ['short of the point', 3, 7, 5],
+    ['at a point of zero', 1, 0, -9],
+    ['below a point below zero', -9, -7, 5],
+    ['above a point below zero', -3, -7, -1],
+  ])('writes a key %s', (_name, concert, flipAt, expected) => {
+    expect(writtenFifthsWithFlip(concert, B_FLAT_CLARINET, flipAt)).toBe(expected)
+  })
+
+  test('writes what its transposition asks where there is no point', () => {
+    expect(writtenFifthsWithFlip(5, B_FLAT_CLARINET, undefined)).toBe(7)
   })
 })
 
