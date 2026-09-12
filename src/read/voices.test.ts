@@ -280,10 +280,40 @@ describe('a grace note stating no <type>', () => {
     expect(valueOf(result)).toEqual({ base: 'eighth', dots: 0 })
   })
 
-  test('says which value it converted', () => {
+  // Eight beams is as many as a stem carries.
+  test('takes the deepest level a stem can carry', () => {
+    const { measure: result } = read(
+      measure(graceNote('<beam number="8">begin</beam>') + note('C', 1)),
+    )
+
+    expect(valueOf(result)).toEqual({ base: '1024th', dots: 0 })
+  })
+
+  // A level no stem carries, or one that is not a whole number, draws nothing,
+  // so the note falls back to the eighth a grace note is drawn as.
+  test.each([
+    ['past the deepest a stem carries', '9'],
+    ['that is not a whole number', '1.5'],
+  ])('ignores a beam level %s', (_name, level) => {
+    const { measure: result, warnings } = read(
+      measure(graceNote(`<beam number="${level}">begin</beam>`) + note('C', 1)),
+    )
+
+    expect(valueOf(result)).toEqual({ base: 'eighth', dots: 0 })
+    expect(warnings[0]?.message).toContain('which is how a grace note is drawn')
+  })
+
+  test('says which value it converted, and that a grace note is drawn that way', () => {
     const { warnings } = read(measure(graceNote() + note('C', 1)))
 
     expect(warnings[0]?.message).toContain('an eighth')
+    expect(warnings[0]?.message).toContain('which is how a grace note is drawn')
+  })
+
+  test('says the beams drew the value where one beam is all there is', () => {
+    const { warnings } = read(measure(graceNote('<beam number="1">begin</beam>') + note('C', 1)))
+
+    expect(warnings[0]?.message).toContain('an eighth, which its beams draw')
   })
 
   // A note that is not a grace note has a <duration> to measure its value
@@ -389,6 +419,100 @@ describe('where a grace group takes its time from', () => {
     ])
   })
 
+  // A note beamed into the group that restates the side it already takes says
+  // nothing the group does not, so only the amount is reported.
+  test('says nothing where a note beamed into the group restates its side', () => {
+    const { measure: result, warnings } = read(
+      measure(
+        graceNote('steal-time-previous="20"', 'D', '<beam number="1">begin</beam>') +
+          graceNote('steal-time-previous="20"', 'E', '<beam number="1">end</beam>') +
+          note('C', 1),
+      ),
+    )
+
+    expect(groupOf(result)?.graceType).toBe('stealPrevious')
+    expect(groupOf(result)?.content).toHaveLength(2)
+    expect(warnings.map((w) => w.message)).toEqual([
+      expect.stringContaining('states steal-time-previous="20"'),
+      expect.stringContaining('states steal-time-previous="20"'),
+    ])
+  })
+
+  test('keeps a note stating no side in the group it is beamed to', () => {
+    const { measure: result, warnings } = read(
+      measure(
+        graceNote('steal-time-previous="20"', 'D', '<beam number="1">begin</beam>') +
+          graceNote('', 'E', '<beam number="1">end</beam>') +
+          note('C', 1),
+      ),
+    )
+
+    expect(groupOf(result)?.graceType).toBe('stealPrevious')
+    expect(groupOf(result)?.content).toHaveLength(2)
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:grace-time'])
+  })
+
+  test('takes the side from a note beamed into a group that states none', () => {
+    const { measure: result, warnings } = read(
+      measure(
+        graceNote('', 'D', '<beam number="1">begin</beam>') +
+          graceNote('make-time="4"', 'E', '<beam number="1">end</beam>') +
+          note('C', 1),
+      ),
+    )
+
+    expect(groupOf(result)?.graceType).toBe('makeTime')
+    expect(groupOf(result)?.content).toHaveLength(2)
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:grace-time'])
+  })
+
+  // Exporters indent the text inside a <beam>.
+  test('reads a beam whose text is written across lines', () => {
+    const { measure: result, warnings } = read(
+      measure(
+        graceNote('steal-time-previous="20"', 'D', '<beam number="1">begin</beam>') +
+          graceNote('steal-time-following="20"', 'E', '<beam number="1">\n  end\n</beam>') +
+          note('C', 1),
+      ),
+    )
+
+    const groups = result?.sequences[0]?.content.filter((item) => item.kind === 'grace')
+    expect(groups?.map((group) => [group.graceType, group.content.length])).toEqual([
+      ['stealPrevious', 2],
+    ])
+    expect(warnings.map((w) => w.message)).toContainEqual(expect.stringContaining('beamed to'))
+  })
+
+  // The first beam is the one that joins notes, so a deeper level on its own
+  // says nothing about the group the note stands in.
+  test('reads the first beam level as what joins a note to the group', () => {
+    const { measure: result } = read(
+      measure(
+        graceNote('steal-time-previous="20"', 'D', '<beam number="1">begin</beam>') +
+          graceNote('steal-time-following="20"', 'E', '<beam number="2">end</beam>') +
+          note('C', 1),
+      ),
+    )
+
+    const groups = result?.sequences[0]?.content.filter((item) => item.kind === 'grace')
+    expect(groups?.map((group) => group.graceType)).toEqual(['stealPrevious', 'stealFollowing'])
+  })
+
+  // A beam is what says a note is beamed to the one before it, so another
+  // child whose text happens to read "end" is not one.
+  test('reads only a beam as joining a note to the group', () => {
+    const { measure: result } = read(
+      measure(
+        graceNote('steal-time-previous="20"') +
+          graceNote('steal-time-following="20"', 'E', '<footnote>end</footnote>') +
+          note('C', 1),
+      ),
+    )
+
+    const groups = result?.sequences[0]?.content.filter((item) => item.kind === 'grace')
+    expect(groups?.map((group) => group.graceType)).toEqual(['stealPrevious', 'stealFollowing'])
+  })
+
   test('cuts the run where the beam does not reach across it', () => {
     const { measure: result } = read(
       measure(
@@ -428,6 +552,17 @@ describe('where a grace group takes its time from', () => {
     // The member restates the side the chord already takes, so it says
     // nothing new and the amount is reported once.
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:grace-time'])
+  })
+
+  // The chord takes the side of the note that opens it, and a chord opening
+  // with none takes whatever a member states rather than disagreeing with it.
+  test('says nothing where a member states a side the chord opened with none', () => {
+    const { measure: result, warnings } = read(
+      measure(graceNote('') + chordMember('steal-time-previous="20"') + note('C', 1)),
+    )
+
+    expect(groupOf(result)?.graceType).toBeUndefined()
+    expect(warnings.map((w) => w.code)).toEqual([])
   })
 
   test('reports a chord member naming a side the chord does not take', () => {

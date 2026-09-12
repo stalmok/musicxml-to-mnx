@@ -95,6 +95,17 @@ describe('an unpitched note', () => {
       { name: 'Closed Hi-Hat', staffPosition: 5, sound: 'P1-I43' },
     ])
   })
+
+  // Two instruments drawn on one line are two components, which is how a
+  // source that tells its drums apart by instrument alone writes them.
+  test('strikes a component of its own where another names a different instrument at the same height', () => {
+    const { part } = read(struck('C', '5', 'P1-I39') + struck('C', '5', 'P1-I43'), DRUM_KIT)
+
+    expect([...(part?.kit.values() ?? [])]).toEqual([
+      { name: 'Acoustic Snare', staffPosition: 1, sound: 'P1-I39' },
+      { name: 'Closed Hi-Hat', staffPosition: 1, sound: 'P1-I43' },
+    ])
+  })
 })
 
 // Older exporters write no <score-instrument> and no <instrument> on a note.

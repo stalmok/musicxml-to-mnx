@@ -926,7 +926,9 @@ describe('a bracket the source states no ratio for', () => {
       multiple: 2,
     })
     expect(warnings.map((w) => w.code)).toEqual(['missing:time-modification'])
-    expect(warnings[0]?.message).toContain('lasts 2/3 of what it is written as')
+    expect(warnings[0]?.message).toContain(
+      'lasts 2/3 of what it is written as, so that is the ratio converted',
+    )
   })
 
   // The bracket states what it holds against the time it takes, so a bracket

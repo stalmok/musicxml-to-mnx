@@ -467,6 +467,20 @@ describe('a rest lasting exactly the measure', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 
+  // A whole rest in 4/4 is drawn as long as it lasts, so nothing about it is
+  // left to settle and it converts as the rest it is written as.
+  test('leaves a rest drawn as long as the measure an event', () => {
+    const { mnx, warnings } = convertMusicXML(
+      metered('<note><rest/><duration>16</duration><type>whole</type><voice>1</voice></note>'),
+    )
+    const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
+
+    expect(sequence?.fullMeasure).toBeUndefined()
+    expect(sequence?.content).toHaveLength(1)
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
   test('leaves a rest the voice does not open with an event', () => {
     const { mnx } = convertMusicXML(metered(overrunning + rest))
     const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
