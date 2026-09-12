@@ -188,4 +188,32 @@ describe('comparing without overflowing', () => {
     expect(() => compareFractions(huge, small)).toThrow(MusicXMLError)
     expect(() => compareFractions(huge, small)).toThrow('Cannot compare')
   })
+
+  // Arithmetic is not a place in the document, so these refusals name none
+  // and their message carries no location at all.
+  test.each([
+    ['a fraction that cannot exist', () => fraction(1, 0)],
+    [
+      'a sum that cannot be exact',
+      () => addFractions(fraction(3002399751580331, 3), fraction(5003999585967218, 5)),
+    ],
+    [
+      'a comparison that cannot be exact',
+      () =>
+        compareFractions(
+          fraction(Number.MAX_SAFE_INTEGER, 2),
+          fraction(1, Number.MAX_SAFE_INTEGER - 1),
+        ),
+    ],
+  ])('names no place in the document for %s', (_name, run) => {
+    let thrown: unknown
+    try {
+      run()
+    } catch (error) {
+      thrown = error
+    }
+
+    expect((thrown as MusicXMLError).path).toEqual([])
+    expect((thrown as MusicXMLError).message).not.toContain(' (')
+  })
 })

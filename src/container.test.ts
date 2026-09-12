@@ -243,6 +243,35 @@ describe('an .mxl package', () => {
   })
 })
 
+// Each of these refusals is of the document or the package as a whole: there
+// is no element inside it to name, and stating the empty path is what makes
+// that a decision rather than an omission.
+describe('a refusal with no place inside the document', () => {
+  test.each([
+    ['bytes past the limit', () => new Uint8Array(LIMIT + 1)],
+    ['a package holding no score', () => mxl({ 'META-INF/manifest.txt': 'nothing here' })],
+    [
+      'bytes that begin like a zip but are not one',
+      () => new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0, 0, 0]),
+    ],
+    [
+      'an entry declaring more than the limit',
+      () => withForgedSize(mxl({ 'big.musicxml': SCORE }), 'big.musicxml', LIMIT + 1),
+    ],
+    ['a UTF-16 document cut short', () => new Uint8Array([0xff, 0xfe, 0x3c])],
+  ])('names none for %s', (_name, source) => {
+    let thrown: unknown
+    try {
+      readMusicXML(source())
+    } catch (error) {
+      thrown = error
+    }
+
+    expect(thrown).toBeInstanceOf(MusicXMLError)
+    expect((thrown as MusicXMLError).path).toEqual([])
+  })
+})
+
 // Finale ships UTF-16 MusicXML, so a byte-order mark means decoding it, not
 // refusing it.
 describe('a UTF-16 document', () => {

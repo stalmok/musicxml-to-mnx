@@ -68,7 +68,12 @@ describe('the document element', () => {
   })
 
   test('rejects a document that is not a score at all', () => {
-    expect(readFailure('<html/>').message).toContain('found <html>')
+    const failure = readFailure('<html/>')
+
+    expect(failure.message).toContain('found <html>')
+    // The whole document is wrong, so there is no element inside it to name.
+    expect(failure.path).toEqual([])
+    expect(failure.line).toBe(1)
   })
 
   // The parser does not resolve namespaces, so a prefix stays on the name and
@@ -236,6 +241,42 @@ describe('measure attributes', () => {
     expect(result.parts[0]?.measures[0]?.clefs).toEqual([
       { sign: 'F', staffPosition: 2, staff: undefined, position: { num: 0, den: 1 } },
     ])
+  })
+
+  // A source states a clef change and then a key change further into the
+  // measure, so a block stating neither must settle neither.
+  test('reads a key and a time signature stated in a later attributes block', () => {
+    const { score: result } = read(
+      measure(
+        '<attributes><divisions>4</divisions><clef><sign>F</sign><line>4</line></clef>' +
+          '</attributes>' +
+          QUARTER +
+          '<attributes><key><fifths>2</fifths></key>' +
+          '<time><beats>3</beats><beat-type>4</beat-type></time></attributes>',
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.key).toEqual({ fifths: 2 })
+    expect(result.globalMeasures[0]?.time).toEqual({ count: 3, unit: 4 })
+  })
+
+  // A time signature stands until another states one, so the rest filling the
+  // second measure is still read against the meter the first stated.
+  test('keeps the time in force through a measure stating only a clef', () => {
+    const { score: result } = read(
+      score(
+        '<part id="P1">' +
+          '<measure number="1"><attributes><divisions>4</divisions>' +
+          '<time><beats>4</beats><beat-type>4</beat-type></time></attributes>' +
+          '<note><pitch><step>C</step><octave>4</octave></pitch><duration>16</duration>' +
+          '<type>whole</type></note></measure>' +
+          '<measure number="2"><attributes><clef><sign>F</sign><line>4</line></clef>' +
+          '</attributes><note><rest/><duration>16</duration></note></measure>' +
+          '</part>',
+      ),
+    )
+
+    expect(result.parts[0]?.measures[1]?.sequences[0]?.fullMeasure).toBeDefined()
   })
 
   test('reads a key change in a measure that restates no time signature', () => {

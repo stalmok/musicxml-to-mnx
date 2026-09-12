@@ -315,6 +315,26 @@ describe('a part stating more than one transposition', () => {
     expect(warnings[0]?.element).toBe('transpose')
   })
 
+  // The two are compared whole, so a pair agreeing on the staff distance but
+  // not the half steps is two intervals, and so is the pair the other way
+  // round: a major second and a diminished third move the same half steps.
+  test.each([
+    ['the staff distance', '<diatonic>-1</diatonic><chromatic>-1</chromatic>'],
+    ['the half steps', '<diatonic>-2</diatonic><chromatic>-2</chromatic>'],
+  ])('reports staves agreeing on %s alone', (_name, second) => {
+    const { part, warnings } = read(
+      inPart(
+        '<staves>2</staves>' +
+          '<transpose number="1"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>' +
+          `<transpose number="2">${second}</transpose>`,
+        NOTE,
+      ),
+    )
+
+    expect(part?.transposition).toEqual({ staffDistance: 1, halfSteps: 2 })
+    expect(warnings.map((w) => w.code)).toContain('unrepresentable:per-staff-transposition')
+  })
+
   test('reports a part that changes instrument partway', () => {
     const warnings = new WarningCollector()
     const score = readScore(

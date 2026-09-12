@@ -30,11 +30,11 @@ function struck(step: string, octave: string, instrument?: string, extra = ''): 
   )
 }
 
-function source(body: string, instruments = ''): string {
+function source(body: string, instruments = '', attributes = PERCUSSION_CLEF): string {
   return (
     '<score-partwise><part-list><score-part id="P1"><part-name>Drums</part-name>' +
     `${instruments}</score-part></part-list>` +
-    `<part id="P1"><measure number="1">${PERCUSSION_CLEF}${body}</measure></part>` +
+    `<part id="P1"><measure number="1">${attributes}${body}</measure></part>` +
     '</score-partwise>'
   )
 }
@@ -330,6 +330,22 @@ describe('the MNX a percussion part converts to', () => {
     ])
   })
 
+  // MNX states the staff only where a part has more than one, so a clef
+  // naming the first staff of a one-staff part states none.
+  test('leaves the staff off the clef of a one-staff part', () => {
+    const numbered =
+      '<attributes><divisions>1</divisions>' +
+      '<clef number="1"><sign>percussion</sign><line>2</line></clef></attributes>'
+    const { mnx, warnings } = convertMusicXML(
+      source(struck('C', '5', 'P1-I39'), DRUM_KIT, numbered),
+    )
+
+    expect(mnx.parts[0]?.measures[0]?.clefs).toEqual([
+      { clef: { sign: 'G', staffPosition: -2, glyph: 'unpitchedPercussionClef1' } },
+    ])
+    expect(warnings).toEqual([])
+  })
+
   test('writes no notes array on an event that only strikes the kit', () => {
     const { mnx } = convertMusicXML(source(struck('C', '5', 'P1-I39'), DRUM_KIT))
     const event = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
@@ -401,6 +417,9 @@ describe('the MNX a percussion part converts to', () => {
       undefined,
       2,
     ])
+    // Each staff is headed by its own clef, and with two of them each says
+    // which it heads.
+    expect(mnx.parts[0]?.measures[0]?.clefs?.map((clef) => clef.staff)).toEqual([1, 2])
     expect(schemaErrors(mnx)).toEqual([])
   })
 
