@@ -7,6 +7,9 @@ import { readMusicXML } from './container.js'
 
 const SCORE = '<score-partwise><part id="P1"><measure number="1"/></part></score-partwise>'
 
+// The size a document, or any one entry of a package, may decompress to.
+const LIMIT = 100 * 1024 * 1024
+
 function container(...rootfiles: string[]): string {
   return (
     '<?xml version="1.0" encoding="UTF-8"?><container><rootfiles>' +
@@ -21,31 +24,41 @@ function mxl(files: Record<string, string>): Uint8Array {
   return zipSync(entries)
 }
 
+// Where a zip states an entry's uncompressed size and its compression method:
+// once in the local header before the entry's data, once in the central
+// directory at the end of the file. Both carry the entry's name, so either is
+// found by scanning for its signature and then the name inside it.
+const LOCAL = { signature: [0x50, 0x4b, 0x03, 0x04], nameAt: 30, sizeAt: 22, methodAt: 8 }
+const CENTRAL = { signature: [0x50, 0x4b, 0x01, 0x02], nameAt: 46, sizeAt: 24, methodAt: 10 }
+
 /**
- * A one-entry zip whose declared uncompressed size is forged to `size`, its
+ * The zip with one entry's declared uncompressed size forged to `size`, its
  * data left tiny. A decompression bomb is only dangerous for the size it
  * claims, and the reader refuses it on that claim before inflating anything,
- * so forging the claim tests the guard without a 100 MB allocation. Both the
- * uncompressed-size fields a zip carries, in the local header after
- * `PK\x03\x04` and in the central directory after `PK\x01\x02`, are set.
+ * so forging the claim tests the guard without a 100 MB allocation.
  */
-function withForgedSize(name: string, content: string, size: number): Uint8Array {
-  const zip = zipSync({ [name]: strToU8(content) })
-  writeSize(zip, [0x50, 0x4b, 0x03, 0x04], 22, size)
-  writeSize(zip, [0x50, 0x4b, 0x01, 0x02], 24, size)
+function withForgedSize(zip: Uint8Array, name: string, size: number): Uint8Array {
+  const field = Uint8Array.from([0, 8, 16, 24], (shift) => (size >>> shift) & 0xff)
+  for (const header of [LOCAL, CENTRAL]) zip.set(field, headerOf(zip, header, name) + header.sizeAt)
   return zip
 }
 
-function writeSize(zip: Uint8Array, signature: number[], fieldOffset: number, size: number): void {
-  const at = indexOf(zip, signature) + fieldOffset
-  for (let i = 0; i < 4; i++) zip[at + i] = (size >>> (i * 8)) & 0xff
+/** The zip with one entry's compression method forged to one no reader knows. */
+function withUnreadableEntry(zip: Uint8Array, name: string): Uint8Array {
+  const unknown = Uint8Array.of(99, 0)
+  for (const header of [LOCAL, CENTRAL]) {
+    zip.set(unknown, headerOf(zip, header, name) + header.methodAt)
+  }
+  return zip
 }
 
-function indexOf(bytes: Uint8Array, signature: number[]): number {
-  for (let i = 0; i + signature.length <= bytes.length; i++) {
-    if (signature.every((byte, j) => bytes[i + j] === byte)) return i
+function headerOf(zip: Uint8Array, header: typeof LOCAL, name: string): number {
+  const wanted = strToU8(name)
+  for (let at = 0; at + header.nameAt + wanted.length <= zip.length; at++) {
+    if (!header.signature.every((byte, index) => zip[at + index] === byte)) continue
+    if (wanted.every((byte, index) => zip[at + header.nameAt + index] === byte)) return at
   }
-  throw new Error('signature not found')
+  throw new Error(`no header for ${name}`)
 }
 
 describe('a string', () => {
@@ -156,7 +169,7 @@ describe('an .mxl package', () => {
   // 100 MB entry, so the test is light: the point is that the size is checked
   // before anything is decompressed, which is exactly what forging it proves.
   test('refuses a score that decompresses past the limit', () => {
-    const archive = withForgedSize('big.musicxml', SCORE, 100 * 1024 * 1024 + 1)
+    const archive = withForgedSize(mxl({ 'big.musicxml': SCORE }), 'big.musicxml', LIMIT + 1)
 
     let thrown: unknown
     try {
@@ -172,7 +185,7 @@ describe('an .mxl package', () => {
   // Raw input carries no per-entry size field to check, so its own length is
   // the bound. Without it the zip path is capped and the raw path is not.
   test('refuses raw bytes past the limit', () => {
-    const huge = new Uint8Array(100 * 1024 * 1024 + 1)
+    const huge = new Uint8Array(LIMIT + 1)
 
     let thrown: unknown
     try {
@@ -183,6 +196,41 @@ describe('an .mxl package', () => {
 
     expect(thrown).toBeInstanceOf(MusicXMLError)
     expect((thrown as MusicXMLError).message).toContain('over the')
+  })
+
+  // The limit is a limit, not a bound: a document exactly that long is read.
+  test('accepts a document exactly at the limit', () => {
+    expect(readMusicXML('a'.repeat(LIMIT))).toHaveLength(LIMIT)
+  })
+
+  // Bytes beginning "PK" are not a package unless the whole signature is
+  // there, and the rest of a zip's magic number is not printable text.
+  test('reads bytes that begin like a zip signature but are text as text', () => {
+    const text = `PK${SCORE}`
+
+    expect(readMusicXML(strToU8(text))).toBe(text)
+  })
+
+  // The listing and the one score it names are decompressed; every other
+  // entry stays packed, so an entry nothing can decompress is no obstacle,
+  // and a bomb hidden beside the score is never inflated.
+  test('leaves every other entry in a package packed', () => {
+    const archive = withUnreadableEntry(
+      mxl({
+        'META-INF/container.xml': container('score.musicxml'),
+        'score.musicxml': SCORE,
+        'cover.png': 'x'.repeat(200),
+      }),
+      'cover.png',
+    )
+
+    expect(readMusicXML(archive)).toBe(SCORE)
+  })
+
+  test('accepts an entry declaring exactly the limit', () => {
+    const archive = withForgedSize(mxl({ 'score.musicxml': SCORE }), 'score.musicxml', LIMIT)
+
+    expect(readMusicXML(archive)).toBe(SCORE)
   })
 
   test('falls back to the only score where the container carries no rootfiles', () => {
@@ -220,6 +268,18 @@ describe('a UTF-16 document', () => {
   // must survive the pairing.
   test('keeps a character written as a surrogate pair', () => {
     expect(readMusicXML(utf16('<x>𝄞</x>', true))).toBe('<x>𝄞</x>')
+  })
+
+  // Half a mark is no mark: one byte of a pair, or the two bytes of a pair in
+  // neither order, is a UTF-8 document. Each case is an odd number of bytes,
+  // which UTF-16 would refuse, so reading it at all says which branch ran.
+  test.each([
+    ['a first byte of 0xff alone', [0xff, 0x3c, 0x78, 0x2f, 0x3e]],
+    ['a first byte of 0xfe alone', [0xfe, 0x3c, 0x78, 0x2f, 0x3e]],
+    ['a second byte of 0xfe alone', [0x3c, 0xfe, 0x78, 0x2f, 0x3e]],
+    ['a second byte of 0xff alone', [0x3c, 0xff, 0x78, 0x2f, 0x3e]],
+  ])('decodes %s as UTF-8', (_name, bytes) => {
+    expect(readMusicXML(new Uint8Array(bytes))).toContain('x/>')
   })
 
   test('refuses a document ending in the middle of a character', () => {
