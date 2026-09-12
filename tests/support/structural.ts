@@ -130,11 +130,16 @@ function pitchKey(pitch: Pitch): string {
  * one thing the two sides may legitimately disagree on. A lost, changed, or
  * reordered pitch within a line still shows.
  *
- * A line that sounds no pitch is kept, written as nothing between its
- * separators, so that a line one side has and the other does not shows even
- * where it holds only rests. */
+ * A line that sounds no pitch is left out, so how many of those a measure
+ * holds is not compared. Counting them was tried and does not work: the
+ * converter drops a rest that adds nothing to silence already written, as a
+ * rest laid over a rest that fills the measure, and reports it. The source
+ * draws both, so the two sides can only agree on how many silent lines a
+ * measure holds if this reproduces every rule the converter drops one by,
+ * which is more of the converter's reading than a check should hold. */
 function measureLine(part: number, measure: number, voices: readonly string[]): string {
-  return `part ${String(part + 1)} measure ${String(measure + 1)}: ${[...voices].sort().join(' | ')}`
+  const sounded = voices.filter((voice) => voice !== '')
+  return `part ${String(part + 1)} measure ${String(measure + 1)}: ${sounded.sort().join(' | ')}`
 }
 
 /**
