@@ -81,6 +81,31 @@ describe('an unpitched note', () => {
     expect(score.sounds.get('P1-I39')).toEqual({ name: 'Acoustic Snare', midiNumber: 38 })
   })
 
+  // MusicXML numbers a percussion pitch from 1 and MIDI from 0, so 1 and 128
+  // are the ends of the range and both are kept. Anything outside it is not a
+  // sound, and the component is named without one.
+  test.each([
+    ['the lowest', '1', 0],
+    ['the highest', '128', 127],
+    ['one written across lines', '\n  39\n', 38],
+  ])('keeps %s unpitched value', (_name, stated, midiNumber) => {
+    const instrument =
+      '<score-instrument id="P1-I1"><instrument-name>Drum</instrument-name></score-instrument>' +
+      `<midi-instrument id="P1-I1"><midi-unpitched>${stated}</midi-unpitched></midi-instrument>`
+    const { score } = read(struck('C', '5', 'P1-I1'), instrument)
+
+    expect(score.sounds.get('P1-I1')).toEqual({ name: 'Drum', midiNumber })
+  })
+
+  test('keeps no sound for an unpitched value outside the range', () => {
+    const instrument =
+      '<score-instrument id="P1-I1"><instrument-name>Drum</instrument-name></score-instrument>' +
+      '<midi-instrument id="P1-I1"><midi-unpitched>129</midi-unpitched></midi-instrument>'
+    const { score } = read(struck('C', '5', 'P1-I1'), instrument)
+
+    expect(score.sounds.get('P1-I1')).toEqual({ name: 'Drum', midiNumber: undefined })
+  })
+
   test('strikes the same component as another note on the same instrument', () => {
     const { part } = read(struck('C', '5', 'P1-I39') + struck('C', '5', 'P1-I39'), DRUM_KIT)
 

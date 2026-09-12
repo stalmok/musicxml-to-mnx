@@ -94,6 +94,19 @@ describe('system and page breaks', () => {
     expect(warnings).toEqual([])
   })
 
+  test('takes a page turn from whichever part states it', () => {
+    const { mnx, warnings } = convert(
+      part('P1', ['', '']),
+      part('P2', ['', '<print new-page="yes"/>']),
+    )
+
+    expect(mnx.scores?.[0]?.pages).toEqual([
+      { systems: [{ measure: 'm1' }] },
+      { systems: [{ measure: 'm2' }] },
+    ])
+    expect(warnings).toEqual([])
+  })
+
   // The rest of what a <print> states, page numbering and spacing, has no
   // home in MNX's pages and systems.
   test('reports the print details it cannot carry', () => {

@@ -1279,6 +1279,36 @@ describe('several parts', () => {
       expect(warnings).toEqual([])
     })
 
+    // A measure the part states no key in contributes none: the key it stands
+    // in was settled where it was stated.
+    test('contributes nothing for a measure the part states no key in', () => {
+      const twoMeasures =
+        '<part id="P1"><measure number="1"><attributes><key><fifths>5</fifths></key>' +
+        `</attributes>${NOTE}</measure><measure number="2">${NOTE}</measure></part>` +
+        '<part id="P2"><measure number="1"><attributes><key><fifths>-5</fifths></key>' +
+        `${B_FLAT}</attributes>${NOTE}</measure><measure number="2">${NOTE}</measure></part>`
+      const { score: result, warnings } = read(score(twoMeasures))
+
+      expect(result.globalMeasures[1]?.key).toBeUndefined()
+      expect(result.parts[1]?.transposition?.keyFifthsFlipAt).toBe(7)
+      expect(warnings).toEqual([])
+    })
+
+    // A part in a different key with no point to state contributes the key it
+    // is in, not the score's, and the disagreement is reported.
+    test('contributes its own key where it differs and no point is stated', () => {
+      const later =
+        '<part id="P1"><measure number="1"><attributes><key><fifths>2</fifths></key>' +
+        `</attributes>${NOTE}</measure><measure number="2">${NOTE}</measure></part>` +
+        `<part id="P2"><measure number="1">${NOTE}</measure>` +
+        '<measure number="2"><attributes><key><fifths>-3</fifths></key></attributes>' +
+        `${NOTE}</measure></part>`
+      const { score: result, warnings } = read(score(later))
+
+      expect(result.globalMeasures[1]?.key).toEqual({ fifths: -3 })
+      expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-key'])
+    })
+
     // A transposing part can be in a different key outright, which no point
     // accounts for: only twelve fifths is the same key spelled the other way.
     test('reports a transposing part in a different key', () => {
@@ -1373,6 +1403,24 @@ describe('several parts', () => {
       expect(result.parts[1]?.transposition?.keyFifthsFlipAt).toBe(8)
       expect(warnings).toEqual([])
     })
+  })
+
+  // A repeat sign belongs to the score and is usually written into one part
+  // only, so a part not stating one is not disagreeing: the sign any part
+  // states is the score's.
+  test('takes a repeat sign from whichever part states it', () => {
+    const keyed = (id: string, barline = '') =>
+      `<part id="${id}"><measure number="1">${barline}` +
+      `<attributes><divisions>4</divisions></attributes>${QUARTER}</measure></part>`
+    const { score: result, warnings } = read(
+      score(
+        keyed('P1') +
+          keyed('P2', '<barline location="left"><repeat direction="forward"/></barline>'),
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.repeatStart).toBe(true)
+    expect(warnings).toEqual([])
   })
 
   test('reports parts stating different time signatures in the same measure', () => {
