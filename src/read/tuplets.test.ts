@@ -1969,6 +1969,31 @@ describe('two-note tremolos', () => {
     )
   })
 
+  // MuseScore writes a two-note tremolo's own pair as a degenerate bracket on
+  // each note: eight sixteenths in the time of eight sixteenths, drawn with
+  // neither bracket nor number. MNX holds the pair as one item, so the
+  // bracket has nowhere to go, and it scales nothing, so passing it over
+  // costs no duration.
+  test('passes over a bracket of one in the time of one around a tremolo note', () => {
+    const degenerate = (step: string, edge: string): string =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+      '<duration>12</duration><type>half</type>' +
+      '<time-modification><actual-notes>2</actual-notes><normal-notes>1</normal-notes>' +
+      '<normal-type>quarter</normal-type></time-modification>' +
+      '<notations><tuplet type="start" bracket="no" show-number="none">' +
+      '<tuplet-actual><tuplet-number>1</tuplet-number><tuplet-type>quarter</tuplet-type>' +
+      '</tuplet-actual><tuplet-normal><tuplet-number>1</tuplet-number>' +
+      '<tuplet-type>quarter</tuplet-type></tuplet-normal></tuplet>' +
+      '<tuplet type="stop"/>' +
+      `<ornaments><tremolo type="${edge}">3</tremolo></ornaments></notations></note>`
+
+    const { content, warnings } = read(measure(degenerate('C', 'start') + degenerate('E', 'stop')))
+
+    expect(content?.[0]?.kind).toBe('multiNoteTremolo')
+    expect(warnings.map((w) => w.code)).toEqual(['unsupported:element', 'unsupported:element'])
+    expect(warnings[0]?.message).toContain('one note of a two-note tremolo')
+  })
+
   // An unmeasured tremolo names no beam count at all.
   test('reports an unmeasured tremolo, which MNX cannot state', () => {
     const unmeasured =

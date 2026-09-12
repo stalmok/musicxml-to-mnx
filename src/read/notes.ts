@@ -561,17 +561,41 @@ export function readNote(
       )
     }
 
-    builder.openTuplets(
-      voice,
-      quantities.inner,
-      quantities.outer,
-      opening,
-      warnings,
-      context,
-      path,
-      element.line,
-      derived !== undefined,
-    )
+    // MNX states a two-note tremolo as one item holding both notes, so a
+    // bracket around one of them has nowhere to go. MuseScore writes exactly
+    // that: each note of the pair carries a bracket of one in the time of
+    // one, drawn with neither bracket nor number. Such a bracket scales
+    // nothing, so passing it over costs no duration, and the stop that
+    // matches it is passed over with it. A bracket that does scale something
+    // is refused where it opens.
+    const inTremolo = tremolo?.type === 'start' || builder.insideTremolo(voice)
+    const opened = opening.filter((start) => {
+      if (!inTremolo || !scalesNothing(start.stated ?? quantities)) return true
+      warnings.add(
+        'unsupported:element',
+        'A <tuplet> holds one note of a two-note tremolo, which MNX states as one item ' +
+          'holding both notes. The bracket is one in the time of one, so it scales nothing ' +
+          'and is not converted.',
+        { ...context, line: element.line },
+        'tuplet',
+      )
+      builder.dropTuplet(voice, start.number)
+      return false
+    })
+
+    if (opened.length > 0) {
+      builder.openTuplets(
+        voice,
+        quantities.inner,
+        quantities.outer,
+        opened,
+        warnings,
+        context,
+        path,
+        element.line,
+        derived !== undefined,
+      )
+    }
   }
 
   // Opened after any tuplet starting on the same note: the pair may sit
@@ -1963,6 +1987,23 @@ function tupletShareOfRatio(quantities: {
 }): { inner: NoteValueQuantity; outer: NoteValueQuantity } | undefined {
   const left = withoutTremoloShare(quantities)
   return left.inner.multiple === left.outer.multiple ? undefined : left
+}
+
+/**
+ * Whether a tuplet's ratio plays its notes in exactly the time they are
+ * written as. Both sides may count different values, so the two are compared
+ * as lengths rather than as counts.
+ */
+function scalesNothing(quantities: {
+  inner: NoteValueQuantity
+  outer: NoteValueQuantity
+}): boolean {
+  return (
+    compareFractions(
+      multiplyFractions(lengthOf(quantities.inner.value), fraction(quantities.inner.multiple)),
+      multiplyFractions(lengthOf(quantities.outer.value), fraction(quantities.outer.multiple)),
+    ) === 0
+  )
 }
 
 /** The derived ratio as a fraction, for the report that names it. */

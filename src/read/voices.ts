@@ -1063,6 +1063,11 @@ export class MeasureBuilder {
     return impliedFrame(this.#builderFor(voice)) !== undefined
   }
 
+  /** Whether a two-note tremolo is open in this voice. */
+  insideTremolo(voice: string | undefined): boolean {
+    return tremoloFrame(this.#builderFor(voice)) !== undefined
+  }
+
   /**
    * Whether the tuplet the ratio alone opened in this voice ends at time the
    * voice has passed over in silence. A skip inside such a run stands in it
