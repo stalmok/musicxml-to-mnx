@@ -10,9 +10,11 @@ import type { XmlElement } from '../src/xml/parse.js'
 import { schemaErrors } from './support/schema.js'
 import {
   crowdedMeasureRests,
+  lyricPlaces,
   differingLyricLines,
   layoutLosses,
   pitchesOf,
+  sourceLyricPlaces,
   sourceMeasureLengths,
   sourcePitches,
 } from './support/structural.js'
@@ -580,6 +582,74 @@ test('a grace note follows the note it leads into, not where it was written', ()
 `
   const inSource = sourcePitches(parseXmlRoot(source))
   expect(inSource).toEqual(['part 1 measure 1: B4 E4 | C5'])
+
+  const { mnx } = convertMusicXML(source)
+  expect(pitchesOf(mnx)).toEqual(inSource)
+})
+
+// Lyrics are compared by the note each syllable is sung on, because a voice
+// that sounds two lines at once is one <voice> in the source and two
+// sequences in MNX, so the two sides have no grouping in common.
+test('a syllable on each of a voice two lines is read on the note that sings it', () => {
+  const sung = (step: string, duration: number, type: string, text: string): string =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    `<duration>${String(duration)}</duration><voice>1</voice><type>${type}</type>` +
+    `<lyric number="1"><syllabic>single</syllabic><text>${text}</text></lyric></note>`
+  const source = `<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.0">
+  <part-list>
+    <score-part id="P1"><part-name>Music</part-name></score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>1</divisions>
+        <time><beats>2</beats><beat-type>4</beat-type></time>
+        <clef><sign>G</sign><line>2</line></clef>
+      </attributes>
+      ${sung('C', 2, 'half', 'Glo')}
+      <backup><duration>1</duration></backup>
+      ${sung('E', 1, 'quarter', 'ri')}
+    </measure>
+  </part>
+</score-partwise>
+`
+  const { mnx } = convertMusicXML(source)
+
+  expect(lyricPlaces(mnx).sort()).toEqual([
+    'part 1 measure 1 at 0.000000000 line 1: Glo',
+    'part 1 measure 1 at 0.250000000 line 1: ri',
+  ])
+  expect(lyricPlaces(mnx).sort()).toEqual(sourceLyricPlaces(parseXmlRoot(source)).sort())
+})
+
+// A line that only rests still is a line. Dropping it from the comparison
+// would hide a sequence one side has and the other does not.
+test('a line laid over a voice that only rests is still counted', () => {
+  const source = `<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.0">
+  <part-list>
+    <score-part id="P1"><part-name>Music</part-name></score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>1</divisions>
+        <time><beats>2</beats><beat-type>4</beat-type></time>
+        <clef><sign>G</sign><line>2</line></clef>
+      </attributes>
+      <note>
+        <pitch><step>C</step><octave>5</octave></pitch>
+        <duration>2</duration><voice>1</voice><type>half</type>
+      </note>
+      <backup><duration>1</duration></backup>
+      <note><rest/><duration>1</duration><voice>1</voice><type>quarter</type></note>
+    </measure>
+  </part>
+</score-partwise>
+`
+  const inSource = sourcePitches(parseXmlRoot(source))
+  expect(inSource).toEqual(['part 1 measure 1:  | C5'])
 
   const { mnx } = convertMusicXML(source)
   expect(pitchesOf(mnx)).toEqual(inSource)

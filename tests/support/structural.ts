@@ -3,12 +3,20 @@
 // can be held against each other. Nothing here goes through the converter's
 // own reader, which is the point: it has to be able to disagree with it.
 //
+// One reading is shared rather than independent, and is marked where it is:
+// how a voice that sounds two lines at once divides into them. MusicXML
+// states the two in one <voice>, so there is nothing in the source to read
+// the division off, and both sides settle it the same way. What that leaves
+// checked is every pitch, its line's order, and which note each syllable is
+// sung on; what it leaves unchecked is the division itself.
+//
 // Shared by the vendored corpus test and the full-corpus gate, so both hold
 // the output to the same equivalence.
 
 import type {
   MNXDocument,
   MNXLayoutStaff,
+  MNXLyrics,
   MNXNoteValue,
   MNXSequenceItem,
   MNXStaffGroup,
@@ -116,14 +124,17 @@ function pitchKey(pitch: Pitch): string {
   return `${pitch.step}${String(pitch.octave)}${pitch.alter === 0 ? '' : `(${String(pitch.alter)})`}`
 }
 
-/** One line per part and measure: each voice's pitches in order, the voices
- * sorted. The voices sort because the source interleaves a measure's voices
+/** One line per part and measure: each line's pitches in order, the lines
+ * sorted. The lines sort because the source interleaves a measure's voices
  * through its cursor while MNX states each on its own, so their order is the
  * one thing the two sides may legitimately disagree on. A lost, changed, or
- * reordered pitch within a voice still shows. */
+ * reordered pitch within a line still shows.
+ *
+ * A line that sounds no pitch is kept, written as nothing between its
+ * separators, so that a line one side has and the other does not shows even
+ * where it holds only rests. */
 function measureLine(part: number, measure: number, voices: readonly string[]): string {
-  const sounded = voices.filter((voice) => voice !== '')
-  return `part ${String(part + 1)} measure ${String(measure + 1)}: ${sounded.sort().join(' | ')}`
+  return `part ${String(part + 1)} measure ${String(measure + 1)}: ${[...voices].sort().join(' | ')}`
 }
 
 /**
@@ -441,7 +452,7 @@ export function sourceMeasureLengths(root: XmlElement): number[][] {
 
 /** An event of the converted document, and where in the score it stands. */
 interface PlacedEvent {
-  item: { id?: string; slurs?: { target: string }[] }
+  item: { id?: string; slurs?: { target: string }[]; lyrics?: MNXLyrics }
   place: string
 }
 
@@ -510,6 +521,139 @@ function placeEvents(
     at += writtenLength(item.duration) * scale
   }
   return at
+}
+
+/**
+ * How long a <note> is drawn as, in whole notes: its <type> with its dots,
+ * scaled by any <time-modification> around it. Undefined where the note
+ * states no <type>, which leaves its <duration> the only statement of its
+ * length.
+ *
+ * A source can disagree with itself here, writing a <duration> that is not
+ * what the note is drawn as. The converter converts the written value and
+ * reports the disagreement, so a place read from the source has to be read
+ * the same way or the two sides measure the measure differently.
+ */
+function drawnLength(note: XmlElement): number | undefined {
+  const type = note.children.find((c) => c.name === 'type')?.text.trim()
+  const base = type === undefined ? undefined : BASE_LENGTHS[type]
+  if (base === undefined) return undefined
+
+  const dots = note.children.filter((c) => c.name === 'dot').length
+  const modification = note.children.find((c) => c.name === 'time-modification')
+  const stated = (name: string): number => {
+    const text = modification?.children.find((c) => c.name === name)?.text.trim()
+    return text === undefined || text === '' ? 1 : Number(text)
+  }
+  const actual = stated('actual-notes')
+  return (base * (2 - 2 ** -dots) * stated('normal-notes')) / (actual === 0 ? 1 : actual)
+}
+
+/**
+ * Every lyric syllable in the source, as the place it is sung, the verse
+ * line it belongs to and its text. The cursor is followed by hand, the same
+ * way sourceSlurSpans and sourceMeasureLengths follow it.
+ */
+export function sourceLyricPlaces(root: XmlElement): string[] {
+  const found: string[] = []
+
+  root.children
+    .filter((c) => c.name === 'part')
+    .forEach((part, partIndex) => {
+      let divisions = 1
+
+      part.children
+        .filter((c) => c.name === 'measure')
+        .forEach((measure, measureIndex) => {
+          let position = 0
+
+          for (const item of measure.children) {
+            const durationOf = () =>
+              Number(item.children.find((c) => c.name === 'duration')?.text.trim() ?? '0') /
+              (divisions * 4)
+
+            if (item.name === 'attributes') {
+              const stated = item.children.find((c) => c.name === 'divisions')?.text.trim()
+              if (stated) divisions = Number(stated)
+              continue
+            }
+            if (item.name === 'backup') {
+              position -= durationOf()
+              continue
+            }
+            if (item.name === 'forward') {
+              position += durationOf()
+              continue
+            }
+            if (item.name !== 'note') continue
+
+            const isChord = item.children.some((c) => c.name === 'chord')
+            const isGrace = item.children.some((c) => c.name === 'grace')
+
+            // One text per line per note, because MNX states one lyric per
+            // line on an event. A source occasionally writes the same
+            // <lyric number="1"> twice on one note; counting both would
+            // fault the converter for collapsing a duplicate that carries
+            // nothing new. Which of the two is kept here does not matter
+            // while they agree, and differingLyricLines is what reports it
+            // where they differ.
+            const perLine = new Map<string, string>()
+            for (const lyric of item.children.filter((c) => c.name === 'lyric')) {
+              // Every <text>, joined by whatever the source put between
+              // them. Two syllables sung on one note are written as two
+              // <text>s, and taking the first was this check making the same
+              // mistake the converter used to: it would pass while half the
+              // word was lost. Trimmed at the two ends, and with any line
+              // break inside it dropped, the way the reader joins them:
+              // whitespace around a syllable is layout, and so is a break a
+              // pretty-printer wrote to put each <text> on its own line.
+              // Nobody sings either. A no-break space is not layout and
+              // stays, which is what the comparison is here to catch.
+              //
+              // The pattern is written out again rather than imported from
+              // the reader, and the corpus run is what compares the two: an
+              // edit to one and not the other fails there. Sharing the
+              // constant would make that edit silent, which is the opposite
+              // of what a check is for.
+              const text = lyric.children
+                .filter((c) => c.name === 'text' || c.name === 'elision')
+                .map((c) => c.text)
+                .join('')
+                .replace(/[ \t\r\n]*[\r\n][ \t\r\n]*/g, '')
+                .trim()
+              if (text === '') continue
+              perLine.set(String(lyric.attributes.number ?? '1'), text)
+            }
+            for (const [line, text] of perLine) {
+              found.push(`${place(partIndex, measureIndex, position)} line ${line}: ${text}`)
+            }
+
+            if (!isChord && !isGrace) position += drawnLength(item) ?? durationOf()
+          }
+        })
+    })
+  return found
+}
+
+/**
+ * Every lyric syllable in the converted document, as the place it is sung,
+ * the verse line it belongs to and its text.
+ *
+ * Placed rather than grouped by sequence: a voice written as two lines laid
+ * over each other is two sequences, and the source states one voice, so the
+ * two sides have no grouping in common. Where a syllable is sung is
+ * something both can read without agreeing on how the lines divide, and it
+ * says more than the grouping did, since a syllable moved to another note
+ * shows here and did not show there.
+ */
+export function lyricPlaces(document: MNXDocument): string[] {
+  const found: string[] = []
+  for (const { item, place: at } of placedEvents(document)) {
+    for (const [line, verse] of Object.entries(item.lyrics?.lines ?? {})) {
+      found.push(`${at} line ${line}: ${verse.text}`)
+    }
+  }
+  return found
 }
 
 /**
@@ -664,13 +808,20 @@ function crossesVoicesInAMeasure(ends: readonly SourceSlurEnd[]): ReadonlySet<st
  * The slurs the source states beyond doubt, as the two places each joins.
  *
  * MusicXML writes a measure one voice at a time, so within a voice the
- * document's order is the music's. A slur that opens and closes there can be
- * paired by reading alone, but only where the voice leaves no room for doubt:
- * its ends of that number must account for each other exactly, and it must
- * never hold two of them open at once. A voice whose ends do not balance has
- * slurs running to another voice, and one that nests them leaves which start
- * a stop closes open to reading. Both are what the converter has to work out,
- * so both are left out and this can disagree with it rather than assume it.
+ * document's order is usually the music's. A slur that opens and closes
+ * there can be paired by reading alone, but only where the voice leaves no
+ * room for doubt: its ends of that number must account for each other
+ * exactly, and it must never hold two of them open at once. A voice whose
+ * ends do not balance has slurs running to another voice, and one that nests
+ * them leaves which start a stop closes open to reading. Both are what the
+ * converter has to work out, so both are left out and this can disagree with
+ * it rather than assume it.
+ *
+ * A measure where a voice sounds two lines at once is left out for the same
+ * reason. There the document's order is not the music's: the second line is
+ * written after the first and sounds under it, so a start and a stop written
+ * one after the other may be in different lines, and pairing them by reading
+ * alone would state a slur the source does not.
  *
  * A slur written on a chord member is left out too: the converter reports
  * those as a loss rather than carrying them.
@@ -684,6 +835,9 @@ export function sourceSlurSpans(root: XmlElement): Set<string> {
       // Every slur end of the part, gathered per voice and slur number in the
       // order it was read, so each stream can be judged as a whole.
       const streams = new Map<string, SourceSlurEnd[]>()
+      // The voice-and-measure pairs where a voice sounds two lines at once,
+      // whose slurs cannot be paired by reading alone.
+      const laidOver = new Set<string>()
       let divisions = 1
 
       part.children
@@ -691,6 +845,10 @@ export function sourceSlurSpans(root: XmlElement): Set<string> {
         .forEach((measure, measureIndex) => {
           let position = 0
           let voiceInForce = ''
+          // How far each voice has sounded in this measure, and the voices
+          // that wrote a note before their own end, which is a voice
+          // sounding two lines at once.
+          const reached = new Map<string, number>()
 
           for (const item of measure.children) {
             const durationOf = () =>
@@ -718,6 +876,13 @@ export function sourceSlurSpans(root: XmlElement): Set<string> {
             const voice = stated === '' && isChord ? voiceInForce : stated
             if (!isChord) voiceInForce = voice
 
+            if (!isChord && !isGrace) {
+              const end = reached.get(voice)
+              if (end !== undefined && position < end - SETTLED)
+                laidOver.add(`${voice}|${String(measureIndex)}`)
+              reached.set(voice, Math.max(end ?? 0, position + durationOf()))
+            }
+
             if (!isChord) {
               const here = place(partIndex, measureIndex, position)
               for (const notations of item.children.filter((c) => c.name === 'notations')) {
@@ -744,6 +909,7 @@ export function sourceSlurSpans(root: XmlElement): Set<string> {
 
       for (const [key, ends] of streams) {
         if (crossing.has(key)) continue
+        if (ends.some((end) => laidOver.has(`${end.voice}|${String(end.measure)}`))) continue
         const open: string[] = []
         const paired: string[] = []
         let plain = true

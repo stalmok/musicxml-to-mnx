@@ -28,10 +28,12 @@ import {
   collectStarts,
   differingLyricLines,
   layoutLosses,
+  lyricPlaces,
   pitchesOf,
   sounding,
   slurSpans,
   sourceMeasureLengths,
+  sourceLyricPlaces,
   sourcePitches,
   sourceSlurSpans,
   crowdedMeasureRests,
@@ -885,102 +887,19 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   })
 
   // The words are the point of a song, so losing or mangling one is not a
-  // detail. Gathered per voice and per verse, because the source interleaves
-  // the voices of a measure through its cursor and may list a note's verses
-  // in any order, while MNX states each voice on its own and keys the verses
-  // by number. Compared verse-line by verse-line, both orderings fall away
-  // and only a lost or changed syllable shows.
-  test('keeps every lyric syllable the source wrote, in order', () => {
-    // From MNX: each sequence is already one voice; split its syllables by
-    // verse line.
-    const fromMnx: string[] = []
-    for (const part of mnx.parts) {
-      for (const measure of part.measures) {
-        for (const sequence of measure.sequences) {
-          const byLine = new Map<string, string[]>()
-          const collect = (items: readonly MNXSequenceItem[]): void => {
-            for (const item of items) {
-              if (
-                'type' in item &&
-                (item.type === 'tuplet' || item.type === 'grace' || item.type === 'tremolo')
-              ) {
-                collect(item.content)
-                continue
-              }
-              if ('lyrics' in item && item.lyrics) {
-                for (const [line, verse] of Object.entries(item.lyrics.lines ?? {})) {
-                  const list = byLine.get(line) ?? []
-                  list.push(verse.text)
-                  byLine.set(line, list)
-                }
-              }
-            }
-          }
-          collect(sequence.content)
-          for (const [line, texts] of byLine) fromMnx.push(`${line}: ${texts.join(' ')}`)
-        }
-      }
-    }
-
-    // From the source: the same, grouped by the measure's voices.
-    const fromSource: string[] = []
-    const root = parseXmlRoot(source)
-    for (const part of root.children.filter((c) => c.name === 'part')) {
-      for (const measure of part.children.filter((c) => c.name === 'measure')) {
-        const byVoiceLine = new Map<string, string[]>()
-        for (const note of measure.children.filter((c) => c.name === 'note')) {
-          const voice = note.children.find((c) => c.name === 'voice')?.text.trim() ?? ''
-          // One text per line per note, because MNX states one lyric per
-          // line on an event. A source occasionally writes the same
-          // <lyric number="1"> twice on one note; counting both would fault
-          // the converter for collapsing a duplicate that carries nothing new.
-          // Which of the two is kept here does not matter while they agree,
-          // and where they differ the check below is what reports it.
-          const perLine = new Map<string, string>()
-          for (const lyric of note.children.filter((c) => c.name === 'lyric')) {
-            // Every <text>, joined by whatever the source put between them.
-            // Two syllables sung on one note are written as two <text>s, and
-            // taking the first was this check making the same mistake the
-            // converter used to: it would pass while half the word was lost.
-            // Trimmed at the two ends, and with any line break inside it
-            // dropped, the way the reader joins them: whitespace around a
-            // syllable is layout, and so is a break a pretty-printer wrote to
-            // put each <text> on its own line. Nobody sings either. A no-break
-            // space is not layout and stays, which is what the comparison
-            // below is here to catch.
-            //
-            // The pattern is written out again rather than imported from the
-            // reader, and this run is what compares the two: an edit to one
-            // and not the other fails here. Sharing the constant would make
-            // that edit silent, which is the opposite of what a check is for.
-            const text = lyric.children
-              .filter((c) => c.name === 'text' || c.name === 'elision')
-              .map((c) => c.text)
-              .join('')
-              .replace(/[ \t\r\n]*[\r\n][ \t\r\n]*/g, '')
-              .trim()
-            if (text === '') continue
-            perLine.set(String(lyric.attributes.number ?? '1'), text)
-          }
-          for (const [number, text] of perLine) {
-            const key = `${voice}|${number}`
-            const list = byVoiceLine.get(key) ?? []
-            list.push(text)
-            byVoiceLine.set(key, list)
-          }
-        }
-        for (const [key, texts] of byVoiceLine) {
-          fromSource.push(`${key.split('|')[1] ?? ''}: ${texts.join(' ')}`)
-        }
-      }
-    }
-
-    expect(fromMnx.sort()).toEqual(fromSource.sort())
+  // detail. Compared by the place each syllable is sung and the verse line
+  // it belongs to, because the source interleaves the voices of a measure
+  // through its cursor, lists a note's verses in any order, and writes a
+  // voice's two laid-over lines as one voice while MNX states them as two
+  // sequences. Where a syllable is sung is the one thing both sides read the
+  // same way, and a syllable moved to another note shows in it.
+  test('keeps every lyric syllable the source wrote, on the note that sings it', () => {
+    expect(lyricPlaces(mnx).sort()).toEqual(sourceLyricPlaces(parseXmlRoot(source)).sort())
   })
 
-  // The check above compares one text per line per note, so a note stating
-  // one line twice with two different texts would pass it while half of what
-  // it says is dropped. No vendored song does that today; one that started to
+  // The check above keeps one text per line per note, so a note stating one
+  // line twice with two different texts would pass it while half of what it
+  // says is dropped. No vendored song does that today; one that started to
   // would be a loss to look at rather than to keep quiet about.
   test('states no lyric line twice on one note with different words', () => {
     expect(differingLyricLines(parseXmlRoot(source))).toEqual([])
