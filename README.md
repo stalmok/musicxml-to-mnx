@@ -289,23 +289,27 @@ grow, and the weekly gate runs against its latest state.
 
 | Corpus                                                                                                        | Files  | Convert      |
 | ------------------------------------------------------------------------------------------------------------- | ------ | ------------ |
-| [OpenScore Lieder](https://github.com/OpenScore/Lieder) (songs, MuseScore exports)                            | 1,462  | 1,460 (99%)  |
+| [OpenScore Lieder](https://github.com/OpenScore/Lieder) (songs, MuseScore exports)                            | 1,462  | 1,461 (99%)  |
 | [OpenScore String Quartets](https://github.com/OpenScore/StringQuartets) (exported with MuseScore 3)          | 122    | 112 (92%)    |
 | [Unofficial MusicXML Test Suite](https://github.com/cuthbertLab/musicxmlTestSuite) (feature files)            | 150    | 142 (95%)    |
 | [MusicXML example set](https://www.musicxml.com/music-in-musicxml/example-set/) (Finale exports, some UTF-16) | 36     | 34 (94%)     |
-| [PDMX](https://zenodo.org/records/15571083) random sample (MuseScore.com, all genres)                         | 20,000 | 19,906 (99%) |
+| [PDMX](https://zenodo.org/records/15571083) random sample (MuseScore.com, all genres)                         | 20,000 | 19,965 (99%) |
 | [music21 bundled corpus](https://github.com/cuthbertLab/music21) (hand-encoded, older tools, some UTF-16)     | 654    | 641 (98%)    |
-| [CPDL](https://www.cpdl.org) random sample (choral, mostly Sibelius exports)                                  | 2,000  | 1,864 (93%)  |
+| [CPDL](https://www.cpdl.org) random sample (choral, mostly Sibelius exports)                                  | 2,000  | 1,943 (97%)  |
 
 The other files are refusals, and each refusal names its reason. Some files
 hold notation that MNX cannot state: microtone alterations, and composite
 meters such as 3+2/8. Other files disagree with themselves. Examples are a
-tuplet that opens and never closes, and a note that overlaps the note before
-it in the same voice. Another example is a voice that holds both a rest
-filling its measure and notes beside it. In the PDMX sample, the
-overlapping-note group is the largest. In the CPDL sample, the largest group
-is hymnals that write two lines over each other in one voice. The converter
-refuses these files and does not guess the lines apart.
+tuplet that opens and never closes, a note whose written value and measured
+length disagree in a way no note value can write, and a voice that holds
+both a rest filling its measure and notes written after it.
+
+Closed-score hymnals write two lines in one voice, laid over each other with
+`<backup>`. MNX states each line as its own sequence of the measure, so the
+converter splits them rather than refusing the file, and reports the split.
+It does not guess which line is which: a note stays in the sequence its
+voice last sounded in wherever that has room, and takes another only where
+that one is still sounding.
 
 The test suite converts 600 vendored Lieder songs on each run, together with
 seven feature files from the Unofficial MusicXML Test Suite. Lieder is voice
