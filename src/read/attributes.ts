@@ -17,7 +17,7 @@ import { readAttributeInRange, readInteger, readIntegerInRange } from './numbers
 import type { PartState } from './state.js'
 import { recogniser } from './tables.js'
 import { concertFifths } from './transposition.js'
-import { reportHidden } from './unrepresentable.js'
+import { elementLoss, reportHidden } from './unrepresentable.js'
 
 // Recognisers rather than bare sets: each one narrows the value it accepts to
 // the model's type, so a validated value reaches the writer without a cast
@@ -105,6 +105,11 @@ export type MeasureRepeatReading =
   | { edge: 'start'; measures: number; staff: number }
   | { edge: 'stop'; staff: number }
 
+// The one <staff-size> that states the default: a hundred percent of the
+// work's scaling, written with or without a fraction. Matched as text rather
+// than through Number(), which also reads "1e2" as a hundred.
+const DEFAULT_STAFF_SIZE = /^\+?0*100(?:\.0*)?$/
+
 export function readAttributes(
   element: ElementReader,
   state: PartState,
@@ -132,11 +137,12 @@ export function readAttributes(
   // not built yet, so it reports as a gap; its print-spacing rides on the
   // hiding. The line count has a home in a measure's staffConfigs, also not
   // built yet, except where it states the five lines MNX assumes when no
-  // config names the staff. The size, the tablature tuning and the rest have
-  // no home and keep saying so. The number attribute names the staff a
-  // statement is about, and an element stating nothing loses nothing.
-  // MusicXML allows one <staff-details> per staff, which is why every one is
-  // read, and one <staff-lines> in each.
+  // config names the staff. The size has no home, except where it states the
+  // default; the tablature tuning and the rest have no home and keep saying
+  // so. The number attribute names the staff a statement is about, and an
+  // element stating nothing loses nothing. MusicXML allows one
+  // <staff-details> per staff, which is why every one is read, and one
+  // <staff-lines> in each.
   for (const details of element.blocks('staff-details')) {
     attribute(details.element, 'number')
     if (attribute(details.element, 'print-object') === 'no') {
@@ -162,6 +168,21 @@ export function readAttributes(
           'staff-lines',
         )
       }
+    }
+    // <staff-size> is a percentage of the work's default scaling, so 100
+    // states that default and loses nothing. It is a decimal, so "100.0"
+    // states the same size "100" does, and anything else is reported rather
+    // than reinterpreted. MusicXML allows one per <staff-details>; its
+    // scaling attribute is a separate loss the sweep reports.
+    const size = details.child('staff-size')
+    if (size && !DEFAULT_STAFF_SIZE.test(trimmedText(size))) {
+      const loss = elementLoss('staff-size')
+      warnings.add(
+        loss.code,
+        `<staff-size> ${loss.ending}`,
+        { ...context, line: size.line },
+        'staff-size',
+      )
     }
   }
 

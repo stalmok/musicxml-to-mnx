@@ -113,8 +113,7 @@
     "sound@dynamics": 8,
     "staff-layout": 28,
     "dashes": 2,
-    "wedge": 5,
-    "staff-size": 1
+    "wedge": 5
   },
   "arne-by-dimpled-brook": {
     "midi-device": 2,
@@ -7437,8 +7436,7 @@
     "pedal": 100,
     "dashes": 8,
     "notehead": 40,
-    "staff-details": 20,
-    "staff-size": 1
+    "staff-details": 20
   },
   "mackenzie-1-the-first-rose": {
     "midi-device": 2,

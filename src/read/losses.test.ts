@@ -488,6 +488,50 @@ describe('a loss the schema has no home for', () => {
     ).toEqual(['unrepresentable:element <staff-size> cannot be expressed in MNX.'])
   })
 
+  // A size is a percentage of the work's own scaling, so a hundred percent is
+  // the staff MNX draws anyway. The value is a decimal, so a fraction of
+  // nothing and a leading zero state the same hundred.
+  test.each(['100', '100.0', '0100'])('says nothing about a staff sized %s', (written) => {
+    expect(
+      codes(
+        measure(
+          note(''),
+          `<divisions>4</divisions><staff-details><staff-size>${written}</staff-size>` +
+            '</staff-details>',
+        ),
+      ),
+    ).toEqual([])
+  })
+
+  // Exponent notation is not a decimal, and is reported rather than read as
+  // the hundred it would come to.
+  test('reports a size written in exponent notation', () => {
+    expect(
+      codes(
+        measure(
+          note(''),
+          '<divisions>4</divisions><staff-details><staff-size>1e2</staff-size></staff-details>',
+        ),
+      ),
+    ).toEqual(['unrepresentable:element <staff-size> cannot be expressed in MNX.'])
+  })
+
+  // The scaling a size states beyond the staff itself is its own loss, and
+  // stands whether or not the size is the default.
+  test('reports the scaling of a default-sized staff', () => {
+    expect(
+      codes(
+        measure(
+          note(''),
+          '<divisions>4</divisions><staff-details>' +
+            '<staff-size scaling="80">100</staff-size></staff-details>',
+        ),
+      ),
+    ).toEqual([
+      'unsupported:attribute The "scaling" attribute of a <staff-size> is not converted yet.',
+    ])
+  })
+
   // A measure's staffConfigs states a line count, so a staff drawn on one
   // line is a converter gap rather than a format limit.
   test('reports a line count other than five as a gap', () => {
