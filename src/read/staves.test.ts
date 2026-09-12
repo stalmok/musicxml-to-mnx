@@ -449,6 +449,27 @@ describe('a voice that reaches across to the other staff', () => {
     ])
   })
 
+  // A grace group waits where it stands until the note it ornaments says which
+  // line it belongs to, and the staff its notes are on moves with it: left
+  // behind, it would count towards the staff of the line it came from.
+  test('counts a carried grace group towards the line it ends up in', () => {
+    const graceOn = (step: string, staff: string) =>
+      `<note><grace/><pitch><step>${step}</step><octave>4</octave></pitch>` +
+      `<voice>1</voice><type>eighth</type><staff>${staff}</staff></note>`
+    const { part } = read(
+      measures(
+        GRAND_STAFF +
+          note('C', '1') +
+          '<backup><duration>4</duration></backup>' +
+          graceOn('A', '2') +
+          graceOn('B', '2') +
+          note('D', '2'),
+      ),
+    )
+
+    expect(part?.measures[0]?.sequences.map((sequence) => sequence.staff)).toEqual([1, 2])
+  })
+
   test('takes the voice to be on the staff it spends most of its time', () => {
     const { part } = read(measures(GRAND_STAFF + note('C', '1') + note('D', '2') + note('E', '2')))
     const sequence = part?.measures[0]?.sequences[0]

@@ -657,6 +657,40 @@ describe('the measure cursor', () => {
     expect(first?.kind === 'space' && first.duration).toEqual(fraction(1, 4))
   })
 
+  // A <backup> reaching past the start is held rather than reported, because a
+  // <forward> can bring the cursor back: one that brings it back to the start
+  // leaves nothing written out there and nothing to report.
+  test('says nothing where a forward cancels a backup that reached past the start', () => {
+    const { measure: result, warnings } = read(
+      measure(
+        note('C', 1, '1') +
+          '<backup><duration>8</duration></backup>' +
+          '<forward><duration>4</duration></forward>' +
+          note('E', 1, '2'),
+      ),
+    )
+
+    expect(warnings).toEqual([])
+    expect(result?.sequences[1]?.content.map((item) => item.kind)).toEqual(['event'])
+  })
+
+  // A reach the cursor comes back from is forgotten, so a later reach is the
+  // one reported, at the <backup> that made it. Each element is on its own
+  // line, so the line in the report says which.
+  test('reports the backup that last reached past the start', () => {
+    const { warnings } = read(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        `${DIVISIONS}\n${note('C', 1, '1')}` +
+        '\n<backup><duration>8</duration></backup>' +
+        '\n<forward><duration>4</duration></forward>' +
+        '\n<backup><duration>4</duration></backup>' +
+        `\n${note('E', 1, '2')}` +
+        '\n</measure></part></score-partwise>',
+    )
+
+    expect(warnings.map((w) => [w.code, w.context.line])).toEqual([['inconsistent:backup', 5]])
+  })
+
   test('treats forward as a gap in the voice it lands in', () => {
     const { measure: result } = read(
       measure('<forward><duration>4</duration></forward>' + note('C', 1)),
@@ -860,12 +894,15 @@ describe('the measure cursor', () => {
     expect(warnings.find((w) => w.code === 'inconsistent:voice')?.context.line).toBeDefined()
   })
 
-  test('reports a voice sounding two notes at once', () => {
+  test('reports a voice sounding two notes at once, naming it', () => {
     const { warnings } = read(
       measure(note('C', 2, '1') + '<backup><duration>4</duration></backup>' + note('E', 1, '1')),
     )
 
     expect(warnings.map((w) => w.code)).toContain('inconsistent:voice')
+    expect(warnings.find((w) => w.code === 'inconsistent:voice')?.message).toContain(
+      'Voice 1 sounds 2 lines',
+    )
   })
 
   // Notes that name no voice are one line of their own, and lay over each
@@ -917,6 +954,27 @@ describe('the measure cursor', () => {
 
     expect(result?.sequences[0]?.content.map((item) => item.kind)).toEqual(['event'])
     expect(result?.sequences[1]?.content.map((item) => item.kind)).toEqual(['grace', 'event'])
+  })
+
+  // The beams over a grace group move with it, so the group is beamed once, in
+  // the line it ends up in, rather than twice or not at all.
+  test('carries the beams over a grace group into the line it moves to', () => {
+    const graced = (step: string, marker: string) =>
+      `<note><grace/><pitch><step>${step}</step><octave>4</octave></pitch>` +
+      `<voice>1</voice><type>eighth</type><beam number="1">${marker}</beam></note>`
+    const { measure: result } = read(
+      measure(
+        note('C', 2, '1') +
+          '<backup><duration>8</duration></backup>' +
+          graced('A', 'begin') +
+          graced('B', 'end') +
+          note('D', 1, '1'),
+      ),
+    )
+
+    expect(result?.sequences[1]?.content.map((item) => item.kind)).toEqual(['grace', 'event'])
+    expect(result?.beams).toHaveLength(1)
+    expect(result?.beams[0]?.events).toHaveLength(2)
   })
 
   // A group taking its time from the note before it is drawn after that

@@ -644,9 +644,15 @@ describe('a rest drawn shorter than the measure it fills', () => {
   })
 
   test('keeps a rest marked as rolled an event', () => {
-    const codes = keptAnEvent(inThreeTwo(rest('<notations><arpeggiate/></notations>')))
+    const { sequences, warnings } = convert(
+      inThreeTwo(rest('<notations><arpeggiate/></notations>')),
+    )
 
-    expect(codes).toEqual(['inconsistent:duration', 'unsupported:element'])
+    expect(sequences[0]?.fullMeasure).toBeUndefined()
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:duration', 'unsupported:element'])
+    // A roll runs between notes, and a rest has none. It is not a chord on a
+    // kit, which has notes but no pitches to order them by.
+    expect(warnings[1]?.message).toContain('A rest is marked as rolled')
   })
 
   test('keeps a rest a slur reaches an event', () => {
