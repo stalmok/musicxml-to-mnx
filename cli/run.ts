@@ -58,7 +58,14 @@ function parseCommandLine(argv: readonly string[]): Parsed | { error: string } {
   }
 }
 
-export async function run(argv: readonly string[], io: CommandIO): Promise<number> {
+export async function run(
+  argv: readonly string[],
+  io: CommandIO,
+  // A real run builds the check from the vendored schema. The tests pass their
+  // own, because a conversion never produces invalid MNX and the reporting for
+  // one would otherwise be unreachable.
+  makeValidator: () => (document: unknown) => string[] = buildValidator,
+): Promise<number> {
   const parsed = parseCommandLine(argv)
   if ('error' in parsed) {
     io.log(parsed.error)
@@ -95,7 +102,7 @@ export async function run(argv: readonly string[], io: CommandIO): Promise<numbe
   }
 
   // Built only when asked for, so the ordinary path never touches the schema.
-  const validate = values.validate ? buildValidator() : undefined
+  const validate = values.validate ? makeValidator() : undefined
   const report: Record<string, readonly ConversionWarning[]> = {}
   // What has been written where, so two inputs with the same name written into
   // one --out directory are caught rather than one silently overwriting the
@@ -135,11 +142,9 @@ export async function run(argv: readonly string[], io: CommandIO): Promise<numbe
     report[file] = warnings
     if (warnings.length > 0) lossy += 1
 
+    // A conversion emitting invalid MNX is a bug in the converter, so this is a
+    // regression guard rather than a path real input reaches.
     const errors = validate?.(mnx) ?? []
-    /* v8 ignore next 5 -- reachable only if a conversion emits invalid MNX;
-       the whole suite validates every output, so this is a regression guard,
-       not a path real input reaches. buildValidator's own error handling is
-       tested directly. */
     if (errors.length > 0) {
       io.log(`${file}: the output is not valid MNX:`)
       for (const error of errors) io.log(`  ${error}`)
@@ -166,8 +171,6 @@ export async function run(argv: readonly string[], io: CommandIO): Promise<numbe
   )
 
   if (failed > 0) return 1
-  /* v8 ignore next -- invalid is only ever raised in the guarded block above,
-     which the converter's correctness keeps unreachable. */
   if (invalid > 0) return 1
   if (values['fail-on-loss'] && lossy > 0) return 1
   return 0
@@ -198,8 +201,9 @@ export function buildValidator(): (document: unknown) => string[] {
   const schemaPath = join(commandDir(), '..', 'schema', 'mnx-schema.json')
   const schema = JSON.parse(readFileSync(schemaPath, 'utf8')) as object
 
-  // strict:false because the schema uses draft-2020 keywords Ajv's strict mode
-  // flags as unknown in places; it is upstream's and is not ours to rewrite.
+  // strict:false to silence the type warnings Ajv logs about the schema's own
+  // keyword placement; the schema is upstream's and is not ours to rewrite.
+  // allErrors so that a rejected document reports every problem, not the first.
   const validator = new Ajv2020({ strict: false, allErrors: true }).compile(schema)
 
   return (document) => {

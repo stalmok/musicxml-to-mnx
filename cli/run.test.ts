@@ -48,6 +48,8 @@ describe('converting files', () => {
     expect(code).toBe(0)
     const mnx: unknown = JSON.parse(readFileSync(join(dir, 'song.mnx'), 'utf8'))
     expect((mnx as { mnx: { version: number } }).mnx.version).toBe(1)
+    // Nothing was lost, so the line names no count.
+    expect(lines[0]).toBe(`${file} -> ${join(dir, 'song.mnx')}`)
   })
 
   test('converts the same way with an explicit to-mnx', async () => {
@@ -114,7 +116,7 @@ describe('a file the converter refuses', () => {
     )
     // The good one was still written.
     expect(() => readFileSync(join(dir, 'good.mnx'))).not.toThrow()
-    expect(lines.at(-1)).toContain('1 refused')
+    expect(lines.at(-1)).toBe('Converted 1 of 2, 1 refused.')
   })
 })
 
@@ -180,7 +182,9 @@ describe('reporting losses', () => {
     const code = await run(['to-mnx', file, '-o', dir, '--fail-on-loss'], io)
 
     expect(code).toBe(1)
-    expect(lines.at(-1)).toContain('1 with losses')
+    // The count of what was lost is on the file's own line.
+    expect(lines[0]).toBe(`${file} -> ${join(dir, 'song.mnx')} (1 lost)`)
+    expect(lines.at(-1)).toBe('Converted 1 of 1, 1 with losses.')
   })
 
   test('--fail-on-loss returns zero when nothing is lost', async () => {
@@ -200,6 +204,24 @@ describe('checking the output against the schema', () => {
     expect(lines.some((line) => line.includes('not valid MNX'))).toBe(false)
   })
 
+  // A conversion never produces invalid MNX, so the reporting and the exit code
+  // that follow from one are driven with a check that rejects.
+  test('--validate reports every error and fails the run', async () => {
+    const file = input('song.xml', LOSSLESS)
+    const reject = () => () => ['/parts: must be an array', '/global: must be an object']
+
+    const code = await run(['to-mnx', file, '-o', dir, '--validate'], io, reject)
+
+    expect(code).toBe(1)
+    expect(lines).toEqual([
+      `${file}: the output is not valid MNX:`,
+      '  /parts: must be an array',
+      '  /global: must be an object',
+      `${file} -> ${join(dir, 'song.mnx')}`,
+      'Converted 1 of 1.',
+    ])
+  })
+
   // The validator itself is tested here, because a conversion never produces
   // invalid MNX for the command to catch.
   test('the validator accepts a real document and rejects a broken one', async () => {
@@ -210,9 +232,13 @@ describe('checking the output against the schema', () => {
     const validate = buildValidator()
     expect(validate(mnx)).toEqual([])
 
+    // A document missing two required properties reports both, each with the
+    // place it went wrong and the reason, not just the first.
     const errors = validate({ mnx: { version: 1 } })
-    expect(errors.length).toBeGreaterThan(0)
-    expect(errors[0]).toContain('<root>')
+    expect(errors).toEqual([
+      "<root>: must have required property 'global'",
+      "<root>: must have required property 'parts'",
+    ])
   })
 })
 
@@ -245,6 +271,7 @@ describe('the command line itself', () => {
   test('refuses to run with to-mnx but no files', async () => {
     expect(await run(['to-mnx'], io)).toBe(2)
     expect(lines[0]).toContain('No input files')
+    expect(lines[1]).toContain('Usage')
   })
 
   test('reports an unknown option', async () => {
@@ -252,5 +279,6 @@ describe('the command line itself', () => {
 
     expect(code).toBe(2)
     expect(String(lines[0]).toLowerCase()).toContain('unknown option')
+    expect(lines[1]).toContain('Usage')
   })
 })
