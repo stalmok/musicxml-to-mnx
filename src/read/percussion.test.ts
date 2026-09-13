@@ -498,6 +498,27 @@ describe('the MNX a percussion part converts to', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 
+  // MNX reads the notes inside a roll as the ones whose pitch lies between
+  // its ends, and a kit note has none, so one left out of the span is left
+  // out of the roll. The span is the pitched pair and the loss is reported.
+  test('reports a roll over a chord sounding on a staff and a kit at once', () => {
+    const rolled =
+      '<note><pitch><step>C</step><octave>5</octave></pitch><duration>1</duration>' +
+      '<type>quarter</type><notations><arpeggiate/></notations></note>' +
+      '<note><chord/><pitch><step>E</step><octave>5</octave></pitch><duration>1</duration>' +
+      '<type>quarter</type><notations><arpeggiate/></notations></note>' +
+      '<note><chord/><unpitched><display-step>G</display-step><display-octave>5</display-octave>' +
+      '</unpitched><duration>1</duration><type>quarter</type><instrument id="P1-I39"/>' +
+      '<notations><arpeggiate/></notations></note>'
+    const { part, warnings } = read(rolled, DRUM_KIT)
+    const event = firstEvent(part)
+    const arpeggio = part?.measures[0]?.arpeggios[0]
+
+    expect(arpeggio?.span).toEqual({ start: event?.notes[0]?.id, end: event?.notes[1]?.id })
+    expect(warnings.map((w) => w.code)).toEqual(['unsupported:element'])
+    expect(warnings[0]?.element).toBe('arpeggiate')
+  })
+
   test('writes no notes array on an event that only strikes the kit', () => {
     const { mnx } = convertMusicXML(source(struck('C', '5', 'P1-I39'), DRUM_KIT))
     const event = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]

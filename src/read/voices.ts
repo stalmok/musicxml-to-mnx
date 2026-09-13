@@ -1443,18 +1443,31 @@ export class MeasureBuilder {
       if (!first) continue
 
       const notes = group.flatMap((one) => (divided.has(one.event) ? one.notes : one.event.notes))
+      const kitNotes = group.flatMap((one) => one.event.kitNotes)
       // A chord struck on a percussion kit carries no pitches to order by, so
       // it is ordered by the height the part's kit draws each component at. A
       // mark is written on a note and a kit note carries none, so such a roll
-      // spans the whole chord. A chord sounding both at once is spanned by its
-      // pitched notes: a diatonic index and a staff height do not compare.
+      // spans the whole chord.
       const ordered: readonly TieTarget[] =
         notes.length > 0
           ? [...notes].sort((a, b) => staffOrder(a.pitch) - staffOrder(b.pitch))
-          : kitOrder(
-              group.flatMap((one) => one.event.kitNotes),
-              kit,
-            )
+          : kitOrder(kitNotes, kit)
+
+      // A chord sounding on a pitched staff and a kit at once is spanned by
+      // its pitched notes: a diatonic index and a staff height do not
+      // compare, and ordering the two together would mean reading each pitch
+      // against the clef drawing it. MNX reads the notes inside a roll as the
+      // ones whose pitch lies between its ends, so a kit note left out of the
+      // span is left out of the roll.
+      if (notes.length > 0 && kitNotes.length > 0) {
+        warnings.add(
+          'unsupported:element',
+          'A chord is rolled across a pitched staff and a percussion kit. The roll is ' +
+            'carried over the pitched notes only, which is not the whole chord.',
+          { ...context, line: first.line },
+          'arpeggiate',
+        )
+      }
       if (ordered.length === 0) {
         // MNX states a roll as the two notes it runs between, and there are
         // none to name.
