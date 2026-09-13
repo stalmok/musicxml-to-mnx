@@ -757,3 +757,114 @@ describe('a chord member that states no voice', () => {
     expect(warnings).toEqual([])
   })
 })
+
+describe('how many lines a staff is drawn with', () => {
+  const details = (lines: string, number = '') =>
+    `<staff-details${number ? ` number="${number}"` : ''}>` +
+    `<staff-lines>${lines}</staff-lines></staff-details>`
+  const oneStaff = (body: string) =>
+    `<attributes><divisions>4</divisions>${body}</attributes>` + note('C', '1')
+  // <staff-details> follows the clefs inside <attributes>, as MusicXML orders
+  // them.
+  const grandStaff = (body: string) => GRAND_STAFF.replace('</attributes>', `${body}</attributes>`)
+
+  test('carries a count other than five as the measure config', () => {
+    const { part, warnings } = read(measures(oneStaff(details('1'))))
+
+    expect(part?.measures[0]?.staffConfigs).toEqual([
+      { lines: 1, staff: undefined, position: { num: 0, den: 1 } },
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  // Nothing names a staff MNX already draws with five lines, so the count is
+  // carried by writing no config at all.
+  test.each(['5', '05'])('writes no config for a staff of %s lines', (written) => {
+    const { part } = read(measures(oneStaff(details(written))))
+
+    expect(part?.measures[0]?.staffConfigs).toEqual([])
+  })
+
+  test('draws a staff on no lines where the source says so', () => {
+    const { part } = read(measures(oneStaff(details('0'))))
+
+    expect(part?.measures[0]?.staffConfigs[0]?.lines).toBe(0)
+  })
+
+  // A config holds until another replaces it, so restating the count a staff
+  // already has says nothing new.
+  test('states the count once where later measures restate it', () => {
+    const { part } = read(measures(oneStaff(details('1')), oneStaff(details('1'))))
+
+    expect(part?.measures.map((m) => m.staffConfigs.length)).toEqual([1, 0])
+  })
+
+  test('states five again where a staff goes back to it', () => {
+    const { part } = read(measures(oneStaff(details('1')), oneStaff(details('5'))))
+
+    expect(part?.measures[1]?.staffConfigs[0]?.lines).toBe(5)
+  })
+
+  test('names the staff a count is about where the part has more than one', () => {
+    const { part } = read(measures(grandStaff(details('1', '2')) + note('C', '1')))
+
+    expect(part?.measures[0]?.staffConfigs).toEqual([
+      { lines: 1, staff: 2, position: { num: 0, den: 1 } },
+    ])
+  })
+
+  // Each staff keeps its own count, so the second changing says nothing about
+  // the first.
+  test('holds a count per staff', () => {
+    const { part } = read(
+      measures(grandStaff(details('1', '1') + details('1', '2')) + note('C', '1')),
+    )
+
+    expect(part?.measures[0]?.staffConfigs.map((config) => config.staff)).toEqual([1, 2])
+  })
+
+  // <attributes> may come partway through a measure, and the config takes
+  // effect where the cursor has reached.
+  test('states where in the measure the count changes', () => {
+    const { part } = read(
+      measures(
+        '<attributes><divisions>4</divisions></attributes>' +
+          note('C', '1') +
+          `<attributes>${details('1')}</attributes>` +
+          note('D', '1'),
+      ),
+    )
+
+    expect(part?.measures[0]?.staffConfigs[0]?.position).toEqual({ num: 1, den: 4 })
+  })
+
+  test('keeps only the last of two counts stated at the same point', () => {
+    const { part, warnings } = read(measures(oneStaff(details('1') + details('3'))))
+
+    expect(part?.measures[0]?.staffConfigs.map((config) => config.lines)).toEqual([3])
+    expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:staff-config'])
+  })
+
+  test('refuses a count no staff could be drawn with', () => {
+    expect(() => read(measures(oneStaff(details('99'))))).toThrow(/outside the range 0 to 32/)
+  })
+
+  test('writes the config into legal MNX', () => {
+    const { mnx, warnings } = convertMusicXML(measures(oneStaff(details('1'))))
+
+    expect(mnx.parts[0]?.measures[0]?.staffConfigs).toEqual([{ config: { lines: 1 } }])
+    expect(schemaErrors(mnx)).toEqual([])
+    expect(warnings).toEqual([])
+  })
+
+  test('writes the staff and the position of a config that states them', () => {
+    const { mnx } = convertMusicXML(
+      measures(GRAND_STAFF + note('C', '1') + `<attributes>${details('1', '2')}</attributes>`),
+    )
+
+    expect(mnx.parts[0]?.measures[0]?.staffConfigs).toEqual([
+      { config: { lines: 1 }, position: { fraction: [1, 4] }, staff: 2 },
+    ])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+})

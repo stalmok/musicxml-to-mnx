@@ -39,6 +39,13 @@ export interface PartState {
    */
   clefs: Map<number, ClefInForce>
   /**
+   * How many lines each staff is drawn with, keyed by staff number, for the
+   * staves that state a count other than the five MNX draws by default. A
+   * config holds until another replaces it, so a measure carries one only
+   * where the count changes.
+   */
+  staffLines: Map<number, number>
+  /**
    * Which measure of the part is being read, counted from zero. Held because
    * a slur is written on a note and paired once the whole part is in, so each
    * end has to record where in the part it stands.
@@ -91,6 +98,7 @@ export function newPartState(
     time: undefined,
     staves: 1,
     clefs: new Map(),
+    staffLines: new Map(),
     measure: 0,
     ids,
     spanners: new SpannerResolver(),

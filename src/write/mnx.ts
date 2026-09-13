@@ -32,6 +32,7 @@ import type {
   Pitch,
   Score,
   Segno,
+  StaffConfig,
   NoteValueQuantity,
   Sequence,
   SequenceItem,
@@ -48,6 +49,7 @@ import type {
   MNXPartMeasure,
   MNXPitch,
   MNXPositionedClef,
+  MNXPositionedStaffConfig,
   MNXNoteValueQuantity,
   MNXSequence,
   MNXSequenceItem,
@@ -575,6 +577,9 @@ function writeMeasure(
 ): MNXPartMeasure {
   return {
     ...(measure.clefs.length > 0 ? { clefs: measure.clefs.map(writeClef) } : {}),
+    ...(measure.staffConfigs.length > 0
+      ? { staffConfigs: measure.staffConfigs.map(writeStaffConfig) }
+      : {}),
     ...(measure.beams.length > 0 ? { beams: measure.beams.map(writeBeam) } : {}),
     ...(measure.dynamics.length > 0
       ? { dynamics: measure.dynamics.map((dynamic) => writeDynamic(dynamic, names)) }
@@ -698,6 +703,15 @@ function writeClef(clef: Clef): MNXPositionedClef {
     // A clef at the start of the measure needs no position.
     ...(clef.position.num === 0 ? {} : { position: writePosition(clef.position) }),
     ...(clef.staff !== undefined ? { staff: clef.staff } : {}),
+  }
+}
+
+function writeStaffConfig(config: StaffConfig): MNXPositionedStaffConfig {
+  return {
+    config: { lines: config.lines },
+    // A config taking effect at the start of the measure needs no position.
+    ...(config.position.num === 0 ? {} : { position: writePosition(config.position) }),
+    ...(config.staff !== undefined ? { staff: config.staff } : {}),
   }
 }
 

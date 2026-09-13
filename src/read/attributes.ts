@@ -8,7 +8,15 @@
 import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
 import type { Fraction } from '../fraction.js'
-import type { Clef, ClefSign, Key, TimeSignature, TimeUnit, Transposition } from '../model/score.js'
+import type {
+  Clef,
+  ClefSign,
+  Key,
+  StaffConfig,
+  TimeSignature,
+  TimeUnit,
+  Transposition,
+} from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, requireChild, trimmedText } from '../xml/tree.js'
@@ -81,6 +89,8 @@ export interface AttributesReading {
   key: Key | undefined
   time: TimeSignature | undefined
   clefs: Clef[]
+  /** The staves this block starts drawing with a line count of their own. */
+  staffConfigs: StaffConfig[]
   /**
    * Every multi-measure rest span this block stated, as a count of measures
    * starting at this one. A list rather than one value, because a block may
@@ -110,6 +120,12 @@ export type MeasureRepeatReading =
 // than through Number(), which also reads "1e2" as a hundred.
 const DEFAULT_STAFF_SIZE = /^\+?0*100(?:\.0*)?$/
 
+// The lines MNX draws a staff with when no config names it, and the widest
+// count read as one: a staff carrying more lines than this is not a staff,
+// and MusicXML states the count as a non-negative number.
+const DEFAULT_STAFF_LINES = 5
+const MOST_STAFF_LINES = 32
+
 export function readAttributes(
   element: ElementReader,
   state: PartState,
@@ -135,16 +151,19 @@ export function readAttributes(
   // read on its own and the sweep reports the rest by name. Hiding a staff
   // with print-object="no" is score structure with a home in MNX's layouts,
   // not built yet, so it reports as a gap; its print-spacing rides on the
-  // hiding. The line count has a home in a measure's staffConfigs, also not
-  // built yet, except where it states the five lines MNX assumes when no
-  // config names the staff. The size has no home, except where it states the
-  // default; the tablature tuning and the rest have no home and keep saying
-  // so. The number attribute names the staff a statement is about, and an
-  // element stating nothing loses nothing. MusicXML allows one
-  // <staff-details> per staff, which is why every one is read, and one
-  // <staff-lines> in each.
+  // hiding. The line count is converted into the measure's staffConfigs. The
+  // size has no home, except where it states the default; the tablature
+  // tuning and the rest have no home and keep saying so. The number
+  // attribute names the staff a statement is about, and an element stating
+  // nothing loses nothing. MusicXML allows one <staff-details> per staff,
+  // which is why every one is read, and one <staff-lines> in each.
+  const staffConfigs: StaffConfig[] = []
   for (const details of element.blocks('staff-details')) {
-    attribute(details.element, 'number')
+    // Bounded to the staves any part could have rather than to the ones this
+    // part states: a count naming a staff the part does not have still says
+    // something about a staff, and refusing the document over it would be the
+    // worse of the two answers.
+    const named = readAttributeInRange(details.element, 'number', path, 1, 16)
     if (attribute(details.element, 'print-object') === 'no') {
       attribute(details.element, 'print-spacing')
       warnings.add(
@@ -155,18 +174,21 @@ export function readAttributes(
       )
     }
     // Read as the count it is, so that "05" states the same five lines "5"
-    // does. No range, because a count this converter would not expect is
-    // still a count, and it is reported rather than refused.
+    // does. MNX holds a config in force until another replaces it, so a count
+    // is carried only where it changes what the staff is already drawn with.
     const lines = details.child('staff-lines')
     if (lines) {
-      const count = readInteger(lines, path)
-      if (count !== 5) {
-        warnings.add(
-          'unsupported:element',
-          `A staff line count of ${String(count)} is not converted yet.`,
-          { ...context, line: lines.line },
-          'staff-lines',
-        )
+      const count = readIntegerInRange(lines, path, 0, MOST_STAFF_LINES)
+      const staff = named ?? 1
+      if ((state.staffLines.get(staff) ?? DEFAULT_STAFF_LINES) !== count) {
+        state.staffLines.set(staff, count)
+        staffConfigs.push({
+          lines: count,
+          // Only worth stating where the part has more than one staff, as a
+          // clef is.
+          staff: state.staves > 1 ? named : undefined,
+          position,
+        })
       }
     }
     // <staff-size> is a percentage of the work's default scaling, so 100
@@ -249,6 +271,7 @@ export function readAttributes(
       .blocks('clef')
       .map((found) => readClef(found, state, position, warnings, context, path))
       .filter((clef) => clef !== undefined),
+    staffConfigs,
     // MusicXML allows one <measure-style> per staff, told apart by a
     // "number" attribute, so every block is read. Which staff states the
     // rest or repeat does not matter here: the measure only has to see them

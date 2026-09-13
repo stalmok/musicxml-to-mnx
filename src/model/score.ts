@@ -413,6 +413,20 @@ export interface Clef {
 }
 
 /**
+ * How a staff is drawn from a point in a measure on. MNX holds a config in
+ * force until a later measure states another for the same staff, so one is
+ * carried only where the count changes.
+ */
+export interface StaffConfig {
+  /** How many lines the staff is drawn with. Five is what MNX draws anyway. */
+  readonly lines: number
+  /** Which staff of the part, where it has more than one. */
+  readonly staff: number | undefined
+  /** Where in the measure it takes effect: zero unless it changes partway. */
+  readonly position: Fraction
+}
+
+/**
  * A beam over several events, with the secondary beams nested inside it. A
  * beam of one event is a hook, and says which way it points.
  */
@@ -552,6 +566,8 @@ export interface Ottava {
 
 export interface Measure {
   readonly clefs: readonly Clef[]
+  /** The staves this measure starts drawing with a line count of their own. */
+  readonly staffConfigs: readonly StaffConfig[]
   /** Stated over the measure rather than on the notes, as MNX has it. */
   readonly beams: readonly Beam[]
   /**

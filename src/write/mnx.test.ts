@@ -87,6 +87,7 @@ function scoreOf(
 function measureOf(...events: Event[]): Measure {
   return {
     clefs: [],
+    staffConfigs: [],
     beams: [],
     dynamics: [],
     arpeggios: [],
@@ -167,6 +168,7 @@ test.each([
             glyph: undefined,
           },
         ],
+        staffConfigs: [],
         beams: [],
         dynamics: [],
         arpeggios: [],
@@ -352,6 +354,7 @@ describe('measures', () => {
           glyph: undefined,
         },
       ],
+      staffConfigs: [],
       beams: [],
       dynamics: [],
       arpeggios: [],
@@ -389,6 +392,7 @@ describe('measures', () => {
           glyph: undefined,
         },
       ],
+      staffConfigs: [],
       beams: [],
       dynamics: [],
       arpeggios: [],
@@ -421,6 +425,7 @@ describe('measures', () => {
           glyph: undefined,
         },
       ],
+      staffConfigs: [],
       beams: [],
       dynamics: [],
       arpeggios: [],
@@ -496,6 +501,7 @@ describe('ties and slurs', () => {
   function joined(): Score {
     return scoreOf({
       clefs: [],
+      staffConfigs: [],
       beams: [],
       dynamics: [],
       arpeggios: [],
@@ -528,6 +534,7 @@ describe('ties and slurs', () => {
     ]
     const score = scoreOf({
       clefs: [],
+      staffConfigs: [],
       beams: [],
       dynamics: [],
       arpeggios: [],
@@ -559,6 +566,7 @@ describe('ties and slurs', () => {
     bending.slurs = [{ target: 'ev-target', side: 'up', sideEnd: 'down' }]
     const score = scoreOf({
       clefs: [],
+      staffConfigs: [],
       beams: [],
       dynamics: [],
       arpeggios: [],
@@ -600,6 +608,7 @@ describe('beams', () => {
     const second = { ...WHOLE_C, id: 'ev2' }
     return scoreOf({
       clefs: [],
+      staffConfigs: [],
       beams: [{ events: ['ev1', 'ev2'], beams: [], direction: undefined }],
       dynamics: [],
       arpeggios: [],
@@ -626,6 +635,7 @@ describe('beams', () => {
   test('nests secondary beams and marks a hook with its direction', () => {
     const score = scoreOf({
       clefs: [],
+      staffConfigs: [],
       beams: [
         {
           events: ['ev1', 'ev2'],
@@ -666,6 +676,7 @@ describe('voices and spaces', () => {
   function voicedScore(voice: string | undefined, content: SequenceItem[]): Score {
     return scoreOf({
       clefs: [],
+      staffConfigs: [],
       beams: [],
       dynamics: [],
       arpeggios: [],
@@ -741,6 +752,7 @@ describe('tuplets and grace groups', () => {
   function itemScore(item: SequenceItem): Score {
     return scoreOf({
       clefs: [],
+      staffConfigs: [],
       beams: [],
       dynamics: [],
       arpeggios: [],
@@ -837,6 +849,7 @@ describe('full-measure rests', () => {
   function restingScore(fullMeasure: FullMeasureRest): Score {
     return scoreOf({
       clefs: [],
+      staffConfigs: [],
       beams: [],
       dynamics: [],
       arpeggios: [],

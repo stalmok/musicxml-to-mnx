@@ -27,6 +27,7 @@ import type {
   ResolvedSound,
   Score,
   Segno,
+  StaffConfig,
   Tempo,
   TimeSignature,
 } from '../model/score.js'
@@ -1066,6 +1067,7 @@ function readMeasure(
   reportUnreadAttributes(element, warnings, context)
 
   const clefs: Clef[] = []
+  const staffConfigs: StaffConfig[] = []
   let key: Key | undefined
   let time: TimeSignature | undefined
   // Whether an <attributes> block has spoken on each. Kept apart from the
@@ -1125,6 +1127,7 @@ function readMeasure(
           timeSettled = true
         }
         clefs.push(...reading.clefs)
+        staffConfigs.push(...reading.staffConfigs)
         multimeasureRests.push(...reading.multimeasureRests)
         measureRepeats.push(...reading.measureRepeats)
         break
@@ -1253,6 +1256,7 @@ function readMeasure(
   return {
     measure: {
       clefs: dedupeClefs(clefs, warnings, context),
+      staffConfigs: dedupeStaffConfigs(staffConfigs, warnings, context),
       beams,
       dynamics,
       arpeggios: builder.arpeggios(warnings, context),
@@ -1386,6 +1390,36 @@ function dedupeClefs(
           'one there. The last is the one converted.',
         context,
         'clef',
+      )
+    }
+    return replacing === undefined
+  })
+}
+
+/**
+ * MNX draws a staff one way at a time, so two line counts stated for the same
+ * staff at the same point cannot both stand. The last is the one drawn, as it
+ * is for a clef.
+ */
+function dedupeStaffConfigs(
+  configs: readonly StaffConfig[],
+  warnings: WarningCollector,
+  context: WarningContext,
+): StaffConfig[] {
+  return configs.filter((config, index) => {
+    const replacing = configs.find(
+      (later, at) =>
+        at > index &&
+        later.staff === config.staff &&
+        compareFractions(later.position, config.position) === 0,
+    )
+    if (replacing) {
+      warnings.add(
+        'unrepresentable:staff-config',
+        'Two staff line counts are written at the same point on the same staff, and ' +
+          'MNX draws one there. The last is the one converted.',
+        context,
+        'staff-lines',
       )
     }
     return replacing === undefined

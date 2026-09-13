@@ -99,6 +99,9 @@ export type WarningCode =
   // Two clefs written at the same point on the same staff, where MNX draws
   // one. The last declared is the one the following notes obey.
   | 'unrepresentable:clef'
+  // Two staff line counts written at the same point on the same staff, where
+  // MNX draws the staff one way. The last declared is the one drawn.
+  | 'unrepresentable:staff-config'
   // A measure marked senza misura is unmetered, and MNX states meter as a
   // time signature or nothing. The measure carries no time signature.
   | 'unrepresentable:senza-misura'
