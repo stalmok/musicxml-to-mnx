@@ -1329,6 +1329,62 @@ describe('a bracket the source states no ratio for', () => {
   })
 })
 
+// A bracket states its outer in the frame the brackets around it are written
+// in, not in measure time. A run whose ratio came from its notes sits inside
+// an enclosing bracket, whose ratio stands between the time the voice spent
+// and the value the inner bracket has to state.
+describe('a bracket with no stated ratio inside another bracket', () => {
+  // Divisions of 36 to a quarter: an eighth is 18, a sixteenth 9. A triplet
+  // eighth lasts 12, and inside a further triplet an eighth lasts 8 and a
+  // sixteenth 4, so the inner bracket fills one triplet eighth.
+  const nested = (body: string) =>
+    read(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        '<attributes><divisions>36</divisions></attributes>' +
+        `${body}</measure></part></score-partwise>`,
+    )
+  const outerNote = (step: string, bracket: string) =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    '<duration>12</duration><type>eighth</type>' +
+    '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+    '</time-modification>' +
+    `<notations><tuplet type="${bracket}" number="1"/></notations></note>`
+  // No <time-modification>, so the ratio comes from how long the note lasts
+  // against how it is written, which is the two levels multiplied.
+  const innerNote = (step: string, units: number, type: string, bracket = '') =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    `<duration>${String(units)}</duration><type>${type}</type>` +
+    (bracket ? `<notations><tuplet type="${bracket}" number="2"/></notations>` : '') +
+    '</note>'
+  // An eighth and a sixteenth: three sixteenths written, two sounded. The
+  // first note alone says eighths, so the bracket is restated as it closes.
+  const inner = innerNote('D', 8, 'eighth', 'start') + innerNote('E', 4, '16th', 'stop')
+
+  test('counts the inner bracket in the frame its enclosing bracket writes', () => {
+    const { content } = nested(outerNote('C', 'start') + inner + outerNote('G', 'stop'))
+    const outer = content?.[0]
+    const run = outer?.kind === 'tuplet' ? outer.content[1] : undefined
+
+    expect(run?.kind === 'tuplet' && run.inner).toEqual({
+      value: { base: '16th', dots: 0 },
+      multiple: 3,
+    })
+    expect(run?.kind === 'tuplet' && run.outer).toEqual({
+      value: { base: '16th', dots: 0 },
+      multiple: 2,
+    })
+  })
+
+  test('leaves the enclosing bracket holding the length its ratio states', () => {
+    const { warnings } = nested(outerNote('C', 'start') + inner + outerNote('G', 'stop'))
+
+    // Measured in measure time, the inner bracket states two eighths of space
+    // where it takes two sixteenths, and the outer bracket comes out holding
+    // four eighths under a ratio counting three.
+    expect(warnings.map((w) => w.code)).toEqual(['missing:time-modification'])
+  })
+})
+
 // A note inside a tuplet is weighed against its written value scaled by the
 // ratio around it. The report named the written value alone, so a note in a
 // triplet came out as "written as an eighth but lasts an eighth": the same

@@ -1702,7 +1702,11 @@ export class MeasureBuilder {
     // outer one's content comes to, which moved three real measures off the
     // length their sources state.
     if (closed.derived) {
-      scaleToContent(tuplet, held, subtractFractions(builder.end, closed.openEnd))
+      // The time the voice spent is measure time, while a bracket's outer is
+      // written in the frame of the brackets around it. The ratios still open
+      // are what stands between the two, so they divide out.
+      const spent = subtractFractions(builder.end, closed.openEnd)
+      scaleToContent(tuplet, held, divideFractions(spent, tupletFactorOf(builder)))
     }
 
     // Real scores contain brackets whose content does not add up to the
