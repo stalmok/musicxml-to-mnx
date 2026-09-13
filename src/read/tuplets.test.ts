@@ -608,10 +608,10 @@ describe('tuplets', () => {
     const { content } = read(
       measure(
         '<note><pitch><step>C</step><octave>4</octave></pitch><duration>8</duration>' +
-          '<type>16th</type><time-modification><actual-notes>3</actual-notes>' +
+          '<type>quarter</type><time-modification><actual-notes>3</actual-notes>' +
           '<normal-notes>2</normal-notes><normal-type>eighth</normal-type></time-modification>' +
           '<notations><tuplet type="start"/></notations></note>' +
-          '<note><pitch><step>D</step><octave>4</octave></pitch><duration>16</duration>' +
+          '<note><pitch><step>D</step><octave>4</octave></pitch><duration>4</duration>' +
           '<type>eighth</type><time-modification><actual-notes>3</actual-notes>' +
           '<normal-notes>2</normal-notes><normal-type>eighth</normal-type></time-modification>' +
           '<notations><tuplet type="stop"/></notations></note>',
@@ -838,11 +838,10 @@ describe('tuplets', () => {
     expect(warnings[0]?.element).toBe('tuplet')
   })
 
-  // The ratio stands as the source drew it. Restating it over what the
-  // bracket holds was tried and put back: where a cut bracket holds another,
-  // the inner one is closed first, and rewriting its outer changes what the
-  // written length of the outer one's content comes to.
-  test('leaves the ratio of a cut bracket as the source drew it', () => {
+  // A cut bracket holds part of what its ratio counts, so the part it holds
+  // is what it states: four sixteenths in the time of three, cut in half, are
+  // four thirty-seconds in the time of three.
+  test('states the ratio of a cut bracket over the part it holds', () => {
     const quadruplet = (step: string, bracket = ''): string =>
       `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>9</duration>` +
       '<type>16th</type>' +
@@ -860,11 +859,11 @@ describe('tuplets', () => {
     const tuplet = content?.[0]
 
     expect(tuplet?.kind === 'tuplet' && tuplet.inner).toEqual({
-      value: { base: '16th', dots: 0 },
+      value: { base: '32nd', dots: 0 },
       multiple: 4,
     })
     expect(tuplet?.kind === 'tuplet' && tuplet.outer).toEqual({
-      value: { base: '16th', dots: 0 },
+      value: { base: '32nd', dots: 0 },
       multiple: 3,
     })
     expect(warnings.map((w) => w.code)).toEqual([
@@ -1137,10 +1136,10 @@ describe('a bracket the source states no ratio for', () => {
     ])
   })
 
-  // The same rule where scaling the bracket to its content would state a
-  // different number: six eighths under a marker reading 3:2 are six in the
-  // time of four, and the source's own 3:2 is what is drawn over them.
-  test('keeps the stated ratio rather than the one its content would state', () => {
+  // A marker counting less than the bracket holds is restated over what it
+  // holds: six eighths under a marker reading 3:2 are six in the time of four,
+  // which sounds for the time the source gives them and counts what is there.
+  test('states a marker that counts less than its bracket holds over the content', () => {
     const stating =
       '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
       '<type>eighth</type><notations><tuplet type="start">' +
@@ -1156,10 +1155,10 @@ describe('a bracket the source states no ratio for', () => {
     const tuplet = content?.[0]
 
     expect(tuplet?.kind === 'tuplet' && [tuplet.inner.multiple, tuplet.outer.multiple]).toEqual([
-      3, 2,
+      6, 4,
     ])
     // Six eighths under a bracket that says three: the source's own
-    // disagreement, reported rather than scaled away.
+    // disagreement, reported as well as restated.
     expect(warnings.map((w) => w.code)).toEqual([
       'missing:time-modification',
       'inconsistent:tuplet',
@@ -2369,9 +2368,12 @@ describe('the ratio each level of a tuplet states', () => {
     const { content } = read(
       measureOf(
         12,
-        ratioNote('C', 8, 'eighth', 6, 4, '<tuplet type="start"/>') +
-          ratioNote('D', 8, 'eighth', 6, 4) +
-          ratioNote('E', 8, 'eighth', 6, 4, '<tuplet type="stop"/>'),
+        ratioNote('C', 4, 'eighth', 6, 4, '<tuplet type="start"/>') +
+          ratioNote('D', 4, 'eighth', 6, 4) +
+          ratioNote('E', 4, 'eighth', 6, 4) +
+          ratioNote('F', 4, 'eighth', 6, 4) +
+          ratioNote('G', 4, 'eighth', 6, 4) +
+          ratioNote('A', 4, 'eighth', 6, 4, '<tuplet type="stop"/>'),
       ),
     )
     const tuplet = content?.[0]
@@ -2419,6 +2421,8 @@ describe('the ratio each level of a tuplet states', () => {
   // A note's <time-modification> states the ratio of every level together, so
   // where two brackets open on one note and neither says what its own share
   // is, the outer one takes the whole of it and the inner one changes nothing.
+  // The inner one holds all three eighths, so what it states is three in the
+  // time of three, a bracket drawn over its content that scales none of it.
   test('gives the outer level the whole ratio where two open on one note', () => {
     const starts = '<tuplet type="start" number="1"/><tuplet type="start" number="2"/>'
     const stops = '<tuplet type="stop" number="2"/><tuplet type="stop" number="1"/>'
@@ -2434,7 +2438,7 @@ describe('the ratio each level of a tuplet states', () => {
     const inner = outer?.kind === 'tuplet' ? outer.content[0] : undefined
 
     expect(outer?.kind === 'tuplet' && [outer.inner.multiple, outer.outer.multiple]).toEqual([3, 2])
-    expect(inner?.kind === 'tuplet' && [inner.inner.multiple, inner.outer.multiple]).toEqual([1, 1])
+    expect(inner?.kind === 'tuplet' && [inner.inner.multiple, inner.outer.multiple]).toEqual([3, 3])
   })
 })
 

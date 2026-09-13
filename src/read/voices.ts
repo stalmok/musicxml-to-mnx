@@ -1691,17 +1691,18 @@ export class MeasureBuilder {
       return closed.number
     }
     const held = writtenLengthOf(tuplet.content)
-    // A ratio read from the bracket's first note speaks for that note alone.
-    // The whole bracket is known only here, so it is stated here: what it
-    // holds, against the time this voice spent inside it.
-    //
-    // A bracket the barline cut is left stating the ratio the source drew for
-    // the whole of it. Restating that one over what it holds was tried and
-    // put back: where such a bracket holds another, the inner one is closed
-    // first, and rewriting its outer changes what the written length of the
-    // outer one's content comes to, which moved three real measures off the
-    // length their sources state.
-    if (closed.derived) {
+    const counted = () =>
+      multiplyFractions(fraction(tuplet.inner.multiple), lengthOf(tuplet.inner.value))
+    // Real scores contain brackets whose content does not add up to the
+    // stated ratio: a lone quarter under a 3:2 eighth ratio, standing for a
+    // triplet quarter. MNX sequences a tuplet by advancing the cursor over
+    // its outer and requires the content to fill inner, so such a bracket is
+    // restated over what it holds: the same notes, sounding for the same
+    // time, under a ratio that counts them. A ratio read from the bracket's
+    // first note speaks for that note alone, and is restated whatever it
+    // holds.
+    const misfits = compareFractions(held, counted())
+    if (closed.derived || misfits !== 0) {
       // The time the voice spent is measure time, while a bracket's outer is
       // written in the frame of the brackets around it. The ratios still open
       // are what stands between the two, so they divide out.
@@ -1709,21 +1710,30 @@ export class MeasureBuilder {
       scaleToContent(tuplet, held, divideFractions(spent, tupletFactorOf(builder)))
     }
 
-    // Real scores contain brackets whose content does not add up to the
-    // stated ratio: a lone quarter under a 3:2 eighth ratio, standing for a
-    // triplet quarter. The content is converted as written, and the
-    // disagreement is reported, because a consumer cannot tell how much time
-    // such a tuplet means to take.
-    const statedLength = multiplyFractions(
-      fraction(tuplet.inner.multiple),
-      lengthOf(tuplet.inner.value),
-    )
-    const compared = compareFractions(held, statedLength)
-    if (compared !== 0) {
+    if (compareFractions(held, counted()) !== 0) {
+      // No pair of note values writes every ratio. A quarter sounding a sixth
+      // of a whole note is one quarter in the time of two thirds of one, and
+      // MNX counts both sides of a ratio in whole note values, so that tuplet
+      // cannot be stated at all. The bracket stands as the source drew it, and
+      // the disagreement is reported, because a consumer cannot tell how much
+      // time such a tuplet means to take.
       warnings.add(
         'inconsistent:tuplet',
-        `A tuplet's written content ${compared < 0 ? 'falls short of' : 'overruns'} its ` +
-          'stated ratio. The content is converted as written.',
+        `A tuplet's written content ${misfits < 0 ? 'falls short of' : 'overruns'} its ` +
+          'stated ratio, and no ratio counts both what it holds and the time it takes. ' +
+          'The content is converted as written.',
+        { ...context, line },
+        'tuplet',
+      )
+    } else if (misfits !== 0 && !closed.derived) {
+      // Restated over its content, which is the ratio the notes themselves
+      // state. A bracket whose ratio was read from its first note says nothing
+      // about what the source drew, and is reported where that ratio is read.
+      warnings.add(
+        'inconsistent:tuplet',
+        `A tuplet's written content ${misfits < 0 ? 'falls short of' : 'overruns'} its ` +
+          'stated ratio. The ratio is restated over what the bracket holds, which leaves ' +
+          'the notes sounding for the time the source gives them.',
         { ...context, line },
         'tuplet',
       )
