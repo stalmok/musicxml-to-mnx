@@ -22,6 +22,7 @@ import type { XmlElement } from '../xml/parse.js'
 import { attribute, requireChild, trimmedText } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
 import { readAttributeInRange, readInteger, readIntegerInRange } from './numbers.js'
+import { staffLinesOf, staffPositionOfLine } from './state.js'
 import type { PartState } from './state.js'
 import { recogniser } from './tables.js'
 import { concertFifths } from './transposition.js'
@@ -119,12 +120,6 @@ export type MeasureRepeatReading =
 // than through Number(), which also reads "1e2" as a hundred.
 const DEFAULT_STAFF_SIZE = /^\+?0*100(?:\.0*)?$/
 
-// The lines MNX draws a staff with when no config names it, and the widest
-// count read as one: a staff carrying more lines than this is not a staff,
-// and MusicXML states the count as a non-negative number.
-const DEFAULT_STAFF_LINES = 5
-const MOST_STAFF_LINES = 32
-
 export function readAttributes(
   element: ElementReader,
   state: PartState,
@@ -158,11 +153,11 @@ export function readAttributes(
   // which is why every one is read, and one <staff-lines> in each.
   const staffConfigs: StaffConfig[] = []
   for (const details of element.blocks('staff-details')) {
-    // Bounded to the staves any part could have rather than to the ones this
-    // part states: a count naming a staff the part does not have still says
-    // something about a staff, and refusing the document over it would be the
-    // worse of the two answers.
-    const named = readAttributeInRange(details.element, 'number', path, 1, 16)
+    // Read as the staff number it is, not bounded to the staves this part
+    // states: MusicXML numbers a staff with any positive integer, and a
+    // number naming a staff the part does not have still says something
+    // about a staff.
+    const named = readAttributeInRange(details.element, 'number', path, 1, Number.MAX_SAFE_INTEGER)
     if (attribute(details.element, 'print-object') === 'no') {
       attribute(details.element, 'print-spacing')
       warnings.add(
@@ -173,13 +168,15 @@ export function readAttributes(
       )
     }
     // Read as the count it is, so that "05" states the same five lines "5"
-    // does. MNX holds a config in force until another replaces it, so a count
-    // is carried only where it changes what the staff is already drawn with.
+    // does. MusicXML states it as a non-negative number and MNX draws a staff
+    // on none, so only a negative count is no count at all. MNX holds a
+    // config in force until another replaces it, so a count is carried only
+    // where it changes what the staff is already drawn with.
     const lines = details.child('staff-lines')
     if (lines) {
-      const count = readIntegerInRange(lines, path, 0, MOST_STAFF_LINES)
+      const count = readIntegerInRange(lines, path, 0, Number.MAX_SAFE_INTEGER)
       const staff = named ?? 1
-      if ((state.staffLines.get(staff) ?? DEFAULT_STAFF_LINES) !== count) {
+      if (staffLinesOf(state, staff) !== count) {
         state.staffLines.set(staff, count)
         staffConfigs.push({
           lines: count,
@@ -681,7 +678,7 @@ function readClef(
       const drawnOn = lineElement ? readInteger(lineElement, path) : DEFAULT_CLEF_LINES.G
       return {
         sign: 'G',
-        staffPosition: 2 * drawnOn - 6,
+        staffPosition: staffPositionOfLine(drawnOn, staffLinesOf(state, named)),
         staff: state.staves > 1 ? named : undefined,
         position,
         octave: undefined,
@@ -699,7 +696,10 @@ function readClef(
     return undefined
   }
 
-  const line = lineElement ? readIntegerInRange(lineElement, path, 1, 5) : DEFAULT_CLEF_LINES[sign]
+  // Read with no range: MusicXML draws a clef outside the lines of its staff
+  // by the same value, such as a C clef in the middle of a grand staff, and a
+  // staff may be drawn on other than five lines.
+  const line = lineElement ? readInteger(lineElement, path) : DEFAULT_CLEF_LINES[sign]
 
   // A clef says which staff it belongs to. Read and bounded whatever the part
   // has, because a clef naming a staff the part does not have would place it
@@ -734,6 +734,13 @@ function readClef(
   state.clefs.set(staff ?? 1, { sign, line })
 
   // MusicXML counts staff lines from 1 at the bottom; MNX counts staff steps
-  // from 0 at the middle line. On a five-line staff they differ by this.
-  return { sign, staffPosition: 2 * line - 6, staff, position, octave, glyph: undefined }
+  // from 0 at the middle of the staff, which moves with the line count.
+  return {
+    sign,
+    staffPosition: staffPositionOfLine(line, staffLinesOf(state, named)),
+    staff,
+    position,
+    octave,
+    glyph: undefined,
+  }
 }

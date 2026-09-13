@@ -436,9 +436,10 @@ describe('the MNX a percussion part converts to', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 
-  // A percussion staff may be drawn on more lines than five, and MusicXML
-  // draws a clef outside the staff by the same value, so the line is read as
-  // the number it is rather than held to the five a pitched staff has.
+  // A percussion staff may be drawn on more lines than five, and the middle
+  // of the staff moves with the count, so the line is read against the staff
+  // it is drawn on. The top line of a seven-line staff is three lines above
+  // the middle.
   test('draws the clef of a staff with more lines than five', () => {
     const drawn =
       '<attributes><divisions>1</divisions>' +
@@ -446,8 +447,25 @@ describe('the MNX a percussion part converts to', () => {
       '<clef><sign>percussion</sign><line>7</line></clef></attributes>'
     const { mnx, warnings } = convertMusicXML(source(struck('C', '5', 'P1-I39'), DRUM_KIT, drawn))
 
-    expect(mnx.parts[0]?.measures[0]?.clefs?.[0]?.clef.staffPosition).toBe(8)
+    expect(mnx.parts[0]?.measures[0]?.clefs?.[0]?.clef.staffPosition).toBe(6)
     expect(mnx.parts[0]?.measures[0]?.staffConfigs).toEqual([{ config: { lines: 7 } }])
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // The one line of a one-line staff is its middle, so a clef drawn on it
+  // sits at nought and the notes on it sit beside it, not four steps below.
+  test('draws the clef and the kit of a one-line staff on the line', () => {
+    const drawn =
+      '<attributes><divisions>1</divisions>' +
+      '<staff-details><staff-lines>1</staff-lines></staff-details>' +
+      '<clef><sign>percussion</sign><line>1</line></clef></attributes>'
+    const { mnx, warnings } = convertMusicXML(source(struck('G', '4', 'P1-I39'), DRUM_KIT, drawn))
+
+    expect(mnx.parts[0]?.measures[0]?.clefs?.[0]?.clef.staffPosition).toBe(0)
+    expect(mnx.parts[0]?.kit).toEqual({
+      kit1: { name: 'Acoustic Snare', sound: 'P1-I39', staffPosition: 2 },
+    })
     expect(warnings).toEqual([])
     expect(schemaErrors(mnx)).toEqual([])
   })

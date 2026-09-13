@@ -1406,11 +1406,14 @@ function dedupeStaffConfigs(
   warnings: WarningCollector,
   context: WarningContext,
 ): StaffConfig[] {
+  // A config naming no staff draws the first, as MNX reads it, so the two
+  // ways of naming staff 1 are the same staff.
+  const staffOf = (config: StaffConfig) => config.staff ?? 1
   return configs.filter((config, index) => {
     const replacing = configs.find(
       (later, at) =>
         at > index &&
-        later.staff === config.staff &&
+        staffOf(later) === staffOf(config) &&
         compareFractions(later.position, config.position) === 0,
     )
     if (replacing) {

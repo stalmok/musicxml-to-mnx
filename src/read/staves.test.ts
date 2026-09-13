@@ -850,8 +850,17 @@ describe('how many lines a staff is drawn with', () => {
     expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:staff-config'])
   })
 
-  test('refuses a count no staff could be drawn with', () => {
-    expect(() => read(measures(oneStaff(details('99'))))).toThrow(/outside the range 0 to 32/)
+  // MusicXML states the count as a non-negative number, so only a negative
+  // one is no count at all. A staff drawn on more lines than any this
+  // converter expects is still a staff.
+  test('draws a staff on however many lines the source states', () => {
+    const { part } = read(measures(oneStaff(details('99'))))
+
+    expect(part?.measures[0]?.staffConfigs[0]?.lines).toBe(99)
+  })
+
+  test('refuses a line count that is not a count', () => {
+    expect(() => read(measures(oneStaff(details('-1'))))).toThrow(/outside the range/)
   })
 
   test('writes the config into legal MNX', () => {

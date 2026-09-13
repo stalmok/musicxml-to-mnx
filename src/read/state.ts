@@ -5,6 +5,29 @@ import type { ClefSign, KitComponent, ResolvedSound, Transposition } from '../mo
 import { IdGenerator, SpannerResolver } from './spanners.js'
 import type { CarriedTupletStop } from './voices.js'
 
+/**
+ * The lines a staff is drawn with where it says nothing, which is what MNX
+ * draws when no config names the staff.
+ */
+export const DEFAULT_STAFF_LINES = 5
+
+/** How many lines a staff of this part is drawn with, as things stand. */
+export function staffLinesOf(state: PartState, staff: number | undefined): number {
+  return state.staffLines.get(staff ?? 1) ?? DEFAULT_STAFF_LINES
+}
+
+/**
+ * A MusicXML staff line, counted from 1 at the bottom of the staff, as the
+ * MNX staff position it is drawn at, counted in half spaces from the middle
+ * of the staff. The middle of a five-line staff is its third line; of a
+ * one-line staff, the line itself; of a two-line staff, the space between
+ * the two. So the middle moves with the count, and a staff drawn on other
+ * than five lines places everything on it differently.
+ */
+export function staffPositionOfLine(line: number, lines: number): number {
+  return 2 * line - lines - 1
+}
+
 /** The clef in force on a staff: its sign and the line it sits on. */
 export interface ClefInForce {
   sign: ClefSign
