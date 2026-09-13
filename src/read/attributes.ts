@@ -41,9 +41,9 @@ const isClefSign = recogniser<ClefSign>({ C: true, F: true, G: true })
 // positions of the steps the source writes.
 //
 // The <line> such a clef states is where its glyph is drawn, not a reference
-// pitch: the percussion glyph is two bars, which name no note. So it is not
-// read as a G clef's line would be, and a percussion clef drawn on line 3
-// places its notes exactly where one drawn on line 2 does.
+// pitch: MusicXML states a line to place pitches by for the G, F and C signs
+// only. So it is not read as a G clef's line would be, and a percussion clef
+// drawn on line 3 places its notes exactly where one drawn on line 2 does.
 //
 // A percussion clef is written out through the glyph below. The other three
 // are not: a TAB staff's lines are strings and its notes are pitched, jianpu
@@ -56,9 +56,8 @@ const UNSTATED_CLEF_SIGNS: ReadonlySet<string> = new Set(['percussion', 'TAB', '
 // unpitchedPercussionClef1. MNX signs the C, F and G clefs only, and its clef
 // carries a glyph to draw in place of the sign's own; a staff headed this way
 // holds kit notes, each placed by its own staff position, so the sign the
-// glyph covers places nothing. Written as the treble clef the reader already
-// reads the staff's heights against, which keeps the clef and those heights
-// saying the same thing.
+// glyph covers places nothing. The sign written under the glyph is the treble
+// clef the reader reads the staff's heights against.
 const PERCUSSION_GLYPH = 'unpitchedPercussionClef1'
 const isTimeUnit = recogniser<TimeUnit>({
   1: true,
@@ -668,34 +667,21 @@ function readClef(
     state.clefs.set(named ?? 1, { sign: 'G', line: DEFAULT_CLEF_LINES.G })
 
     if (sign === 'percussion') {
-      // The <line> a percussion clef states is where its glyph is drawn, and
-      // the glyph names no note, so a staff whose clef is drawn anywhere but
-      // the second line reads its heights exactly as this one does. Saying so
-      // is the one thing the conversion leaves behind.
+      // MNX's staffPosition is the position the clef is drawn at, and the
+      // glyph drawn here names no note, so the line the source states is
+      // carried straight through. The heights on the staff do not move with
+      // it: a kit note carries its own, and a rest placed by <display-step>
+      // is read against the treble clef held in force above, because
+      // MusicXML states a line to place pitches by for the G, F and C signs
+      // only.
       //
-      // Compared as it is written rather than read as a number: the value
-      // places nothing, a percussion staff may have more than five lines to
-      // draw the glyph on, and refusing a document over a number that reaches
-      // no output would be the worse of the two answers.
-      //
-      // Reported as a gap in this converter rather than a limit of MNX: the
-      // clef's staffPosition could state the line the glyph is drawn on, and
-      // a kit note carries its own height, so nothing on the staff would
-      // move. Writing the second line whatever the source says is what keeps
-      // the clef and the heights read against it saying one thing.
-      const drawnOn = lineElement ? trimmedText(lineElement) : '2'
-      if (drawnOn !== '2') {
-        warnings.add(
-          'unsupported:element',
-          `A percussion clef is drawn on line ${drawnOn}, and it is converted on the ` +
-            'second line, where the staff reads its heights from.',
-          { ...context, line: element.line },
-          'clef',
-        )
-      }
+      // Read with no range: a percussion staff may be drawn on more or fewer
+      // than five lines, and MusicXML draws a clef outside the staff by the
+      // same value.
+      const drawnOn = lineElement ? readInteger(lineElement, path) : DEFAULT_CLEF_LINES.G
       return {
         sign: 'G',
-        staffPosition: 2 * DEFAULT_CLEF_LINES.G - 6,
+        staffPosition: 2 * drawnOn - 6,
         staff: state.staves > 1 ? named : undefined,
         position,
         octave: undefined,

@@ -327,12 +327,12 @@ describe('a clef whose sign MNX does not state', () => {
   })
 
   // A percussion staff may have more than the five lines a pitched staff has,
-  // and the line places nothing, so a line outside 1 to 5 is not a refusal.
+  // so a line outside 1 to 5 is drawn where it says rather than refused.
   test('converts a percussion clef drawn on a line no pitched staff has', () => {
     const { part, warnings } = read(withSign('percussion', '<line>6</line>'))
 
-    expect(part?.measures[0]?.clefs[0]?.staffPosition).toBe(-2)
-    expect(warnings.map((w) => w.code)).toEqual(['unsupported:element'])
+    expect(part?.measures[0]?.clefs[0]?.staffPosition).toBe(6)
+    expect(warnings).toEqual([])
   })
 
   test('writes a percussion clef as the treble clef with the percussion glyph', () => {
@@ -351,12 +351,17 @@ describe('a clef whose sign MNX does not state', () => {
     expect(warnings).toEqual([])
   })
 
-  test('reports a percussion clef drawn anywhere but the second line', () => {
+  test('draws a percussion clef on the line the source states', () => {
     const { part, warnings } = read(withSign('percussion', '<line>3</line>'))
 
-    expect(part?.measures[0]?.clefs[0]?.staffPosition).toBe(-2)
-    expect(warnings.map((w) => w.code)).toEqual(['unsupported:element'])
-    expect(warnings[0]?.element).toBe('clef')
+    expect(part?.measures[0]?.clefs[0]?.staffPosition).toBe(0)
+    expect(warnings).toEqual([])
+  })
+
+  test('refuses a percussion clef drawn on a line that is not a number', () => {
+    expect(() => read(withSign('percussion', '<line>middle</line>'))).toThrow(
+      /<line> is not a whole number/,
+    )
   })
 
   test('refuses a sign MusicXML does not state either', () => {

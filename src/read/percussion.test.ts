@@ -371,6 +371,53 @@ describe('the MNX a percussion part converts to', () => {
     expect(warnings).toEqual([])
   })
 
+  // MNX's staffPosition is where the clef is drawn, and the glyph names no
+  // note, so the line the source draws the clef on is carried as it is.
+  test.each([
+    ['1', -4],
+    ['3', 0],
+    ['5', 4],
+  ])('draws the percussion clef on line %s', (line, staffPosition) => {
+    const drawn =
+      '<attributes><divisions>1</divisions>' +
+      `<clef><sign>percussion</sign><line>${line}</line></clef></attributes>`
+    const { mnx, warnings } = convertMusicXML(source(struck('C', '5', 'P1-I39'), DRUM_KIT, drawn))
+
+    expect(mnx.parts[0]?.measures[0]?.clefs).toEqual([
+      { clef: { sign: 'G', staffPosition, glyph: 'unpitchedPercussionClef1' } },
+    ])
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // A percussion staff may be drawn on more lines than five, and MusicXML
+  // draws a clef outside the staff by the same value, so the line is read as
+  // the number it is rather than held to the five a pitched staff has.
+  test('draws the clef of a staff with more lines than five', () => {
+    const drawn =
+      '<attributes><divisions>1</divisions>' +
+      '<staff-details><staff-lines>7</staff-lines></staff-details>' +
+      '<clef><sign>percussion</sign><line>7</line></clef></attributes>'
+    const { mnx, warnings } = convertMusicXML(source(struck('C', '5', 'P1-I39'), DRUM_KIT, drawn))
+
+    expect(mnx.parts[0]?.measures[0]?.clefs?.[0]?.clef.staffPosition).toBe(8)
+    expect(mnx.parts[0]?.measures[0]?.staffConfigs).toEqual([{ config: { lines: 7 } }])
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // The glyph places nothing, so the heights on the staff stay where the
+  // source writes them wherever the clef is drawn.
+  test('leaves the staff heights where they are wherever the clef is drawn', () => {
+    const drawn =
+      '<attributes><divisions>1</divisions>' +
+      '<clef><sign>percussion</sign><line>4</line></clef></attributes>'
+    const { mnx } = convertMusicXML(source(struck('C', '5', 'P1-I39'), DRUM_KIT, drawn))
+    const pinned = convertMusicXML(source(struck('C', '5', 'P1-I39'), DRUM_KIT)).mnx
+
+    expect(mnx.parts[0]?.kit).toEqual(pinned.parts[0]?.kit)
+  })
+
   // A chord struck across a pitched staff and a kit sounds both at once, so
   // the event states both.
   test('states the notes and the kit notes of a chord that sounds both', () => {
