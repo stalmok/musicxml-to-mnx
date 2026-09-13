@@ -32,6 +32,7 @@ import {
   sounding,
   sourceMeasureLengths,
   sourcePitches,
+  underfilledTuplets,
 } from './support/structural.js'
 
 const corpusDir = process.env.OSSIA_CORPUS
@@ -117,6 +118,20 @@ function firstFailure(
 
   const root = parseXmlRoot(xml)
 
+  // MNX advances the sequence cursor over a tuplet's outer and states that its
+  // content must come to inner, which the schema cannot check. Such a tuplet
+  // is legal only as the reported loss it is: a ratio no pair of note values
+  // writes, drawn as the source drew it.
+  const reported = measuresWarned(root, warnings, 'unrepresentable:tuplet-ratio')
+  const unreported = [...underfilledTuplets(mnx)].filter((at) => !reported.has(at))
+  if (unreported.length > 0) {
+    return {
+      file,
+      kind: 'schema',
+      detail: `holds a tuplet short of what its ratio counts, unreported: ${unreported[0] ?? ''}`,
+    }
+  }
+
   const converted = pitchesOf(mnx)
   const inSource = sourcePitches(root)
   if (converted.length !== inSource.length || converted.some((p, i) => p !== inSource[i])) {
@@ -136,9 +151,9 @@ function firstFailure(
   const lengths = sourceMeasureLengths(root)
   // A tuplet whose ratio no pair of note values writes stands as the source
   // drew it, and occupies its outer whatever it holds, so its measure sounds
-  // longer than the source's durations add up to. Only the measure the report
-  // names is passed over.
-  const misfitting = measuresWarned(root, warnings, 'unrepresentable:tuplet-ratio')
+  // longer than the source's durations add up to. Only the measures holding
+  // one are passed over, and the check above holds each of those to a report.
+  const misfitting = underfilledTuplets(mnx)
   for (const [partIndex, part] of mnx.parts.entries()) {
     for (const [measureIndex, measure] of part.measures.entries()) {
       // A full-measure rest states no length of its own; the time signature

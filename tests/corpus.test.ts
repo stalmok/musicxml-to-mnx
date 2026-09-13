@@ -29,6 +29,7 @@ import {
   differingLyricLines,
   layoutLosses,
   lyricPlaces,
+  holdsUnderfilledTuplet,
   measuresWarned,
   pitchesOf,
   sounding,
@@ -37,6 +38,7 @@ import {
   sourceLyricPlaces,
   sourcePitches,
   sourceSlurSpans,
+  underfilledTuplets,
   crowdedMeasureRests,
   undefinedKeys,
 } from './support/structural.js'
@@ -516,22 +518,20 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     // checks still hold the song to account.
     if (warnings.some((warning) => warning.code === 'inconsistent:duration')) return
 
-    const root = parseXmlRoot(source)
-    const lengths = sourceMeasureLengths(root)
-    // A tuplet whose ratio no pair of note values writes stands as the source
-    // drew it, and occupies its outer whatever it holds, so its measure sounds
-    // longer than the source's durations add up to. Only the measure the
-    // report names is passed over.
-    const misfitting = measuresWarned(root, warnings, 'unrepresentable:tuplet-ratio')
+    const lengths = sourceMeasureLengths(parseXmlRoot(source))
     const overfull: string[] = []
 
     mnx.parts.forEach((part, partIndex) => {
       part.measures.forEach((measure, index) => {
         const inSource = lengths[partIndex]?.[index] ?? 0
-        if (misfitting.has(`${String(partIndex)}:${String(index)}`)) return
 
         measure.sequences.forEach((sequence, voice) => {
           if (sequence.fullMeasure) return
+          // A tuplet whose ratio no pair of note values writes stands as the
+          // source drew it, and occupies its outer whatever it holds, so its
+          // voice sounds longer than the source's durations add up to. The
+          // test below holds every one of those to a report of its own.
+          if (holdsUnderfilledTuplet(sequence.content)) return
           const total = sequence.content.reduce((sum, item) => sum + sounding(item), 0)
           if (total > inSource + 1e-9) {
             overfull.push(
@@ -988,14 +988,26 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     expect(pitchesOf(mnx)).toEqual(sourcePitches(parseXmlRoot(source)))
   })
 
+  // MNX advances the sequence cursor over a tuplet's outer and states that
+  // its content must come to inner. The schema checks the shape of a ratio
+  // and not the arithmetic, so nothing else here sees a tuplet holding
+  // something other than what it counts. Such a tuplet is legal only as the
+  // reported loss it is: a ratio no pair of note values writes, drawn as the
+  // source drew it.
+  test('fills every tuplet it writes, or says why it cannot', () => {
+    const reported = measuresWarned(parseXmlRoot(source), warnings, 'unrepresentable:tuplet-ratio')
+    const unreported = [...underfilledTuplets(mnx)].filter((at) => !reported.has(at))
+
+    expect(unreported).toEqual([])
+  })
+
   test('sounds for as long as the source does, measure by measure', () => {
-    const root = parseXmlRoot(source)
-    const expected = sourceMeasureLengths(root)
+    const expected = sourceMeasureLengths(parseXmlRoot(source))
     const disagreements: string[] = []
     // The same for a tuplet whose ratio no pair of note values writes: it
-    // occupies its outer whatever it holds, so only the measure the report
-    // names is passed over.
-    const misfitting = measuresWarned(root, warnings, 'unrepresentable:tuplet-ratio')
+    // occupies its outer whatever it holds, so only the measures holding one
+    // are passed over.
+    const misfitting = underfilledTuplets(mnx)
 
     // Where a note's written value disagrees with its measured duration, the
     // converter carries the written value and reports it as inconsistent:

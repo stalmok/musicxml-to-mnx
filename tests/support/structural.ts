@@ -459,6 +459,63 @@ export function sourceMeasureLengths(root: XmlElement): number[][] {
 }
 
 /**
+ * What a sequence's items are written as, in whole notes, which is what a
+ * tuplet around them has to count. A nested tuplet and a tremolo stand for the
+ * space they occupy, as MNX counts them; a grace group takes none.
+ */
+function writtenExtent(items: readonly MNXSequenceItem[]): number {
+  let total = 0
+  for (const item of items) {
+    if ('type' in item && item.type === 'grace') continue
+    if ('type' in item && item.type === 'space') {
+      total += item.duration[0] / item.duration[1]
+      continue
+    }
+    if ('type' in item && (item.type === 'tuplet' || item.type === 'tremolo')) {
+      total += writtenLength(item.outer.duration) * item.outer.multiple
+      continue
+    }
+    total += writtenLength(item.duration)
+  }
+  return total
+}
+
+/**
+ * Whether any tuplet in these items holds something other than what its inner
+ * counts. MNX advances the sequence cursor over a tuplet's outer and states
+ * that the content must come to inner, which the schema cannot see: it checks
+ * the shape of a ratio, not the arithmetic.
+ *
+ * Only a tuplet holds another. A tremolo and a grace group hold events.
+ */
+export function holdsUnderfilledTuplet(items: readonly MNXSequenceItem[]): boolean {
+  for (const item of items) {
+    if ('type' in item && item.type === 'tuplet') {
+      const inner = writtenLength(item.inner.duration) * item.inner.multiple
+      if (Math.abs(writtenExtent(item.content) - inner) > 1e-9) return true
+      if (holdsUnderfilledTuplet(item.content)) return true
+    }
+  }
+  return false
+}
+
+/** The measures holding such a tuplet, keyed as the length checks index. */
+export function underfilledTuplets(document: MNXDocument): Set<string> {
+  const found = new Set<string>()
+
+  document.parts.forEach((part, partIndex) => {
+    part.measures?.forEach((measure, measureIndex) => {
+      for (const sequence of measure.sequences ?? []) {
+        if (holdsUnderfilledTuplet(sequence.content)) {
+          found.add(`${String(partIndex)}:${String(measureIndex)}`)
+        }
+      }
+    })
+  })
+  return found
+}
+
+/**
  * The measures a warning code names, keyed as `part:measure` on the indices
  * the length checks walk by. A warning states the MusicXML part id and the
  * measure's position in that part, so both are looked up here rather than

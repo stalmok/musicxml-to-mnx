@@ -4,7 +4,7 @@
 
 import { expect, test } from 'vitest'
 import { convertMusicXML } from '../src/index.js'
-import type { MNXDocument, MNXSequenceItem } from '../src/index.js'
+import type { MNXDocument, MNXEvent, MNXSequenceItem } from '../src/index.js'
 import { parseXmlRoot } from '../src/xml/parse.js'
 import type { XmlElement } from '../src/xml/parse.js'
 import { schemaErrors } from './support/schema.js'
@@ -14,6 +14,7 @@ import {
   lyricPlaces,
   differingLyricLines,
   layoutLosses,
+  holdsUnderfilledTuplet,
   measuresWarned,
   pitchesOf,
   sounding,
@@ -633,7 +634,7 @@ test('a syllable on each of a voice two lines is read on the note that sings it'
 // and the two agree with each other whatever the source said.
 const quarter = { base: 'quarter' as const, dots: 0 }
 const eighth = { base: 'eighth' as const, dots: 0 }
-const note = (duration: { base: 'quarter' | 'eighth'; dots: number }): MNXSequenceItem => ({
+const note = (duration: { base: 'quarter' | 'eighth'; dots: number }): MNXEvent => ({
   type: 'event',
   duration,
   notes: [{ pitch: { step: 'C', octave: 4, alter: 0 } }],
@@ -669,6 +670,56 @@ test('a warning names the measure it was reported against', () => {
   expect(measuresWarned(root, [at('P2', 2), at('P1', 1)], 'inconsistent:tuplet')).toEqual(
     new Set(['0:1', '1:0']),
   )
+})
+
+test('a tuplet holding less than its ratio counts is named', () => {
+  expect(holdsUnderfilledTuplet([underfilled])).toBe(true)
+})
+
+test('a tuplet holding what its ratio counts is not', () => {
+  const filled: MNXSequenceItem = {
+    type: 'tuplet',
+    inner: { duration: eighth, multiple: 3 },
+    outer: { duration: eighth, multiple: 2 },
+    content: [note(eighth), note(eighth), note(eighth)],
+  }
+
+  expect(holdsUnderfilledTuplet([filled, note(quarter)])).toBe(false)
+})
+
+// A nested tuplet and a tremolo stand in their parent for the space they take,
+// and each is walked into for one of its own.
+test('a tuplet is measured by its outer where it stands inside another', () => {
+  const nested: MNXSequenceItem = {
+    type: 'tuplet',
+    inner: { duration: eighth, multiple: 2 },
+    outer: { duration: eighth, multiple: 2 },
+    content: [note(eighth), underfilled],
+  }
+
+  expect(holdsUnderfilledTuplet([nested])).toBe(true)
+})
+
+test('a grace group takes none of the time its tuplet counts', () => {
+  const withGrace: MNXSequenceItem = {
+    type: 'tuplet',
+    inner: { duration: eighth, multiple: 2 },
+    outer: { duration: eighth, multiple: 3 },
+    content: [{ type: 'grace', content: [note(eighth)] }, note(eighth), note(eighth)],
+  }
+
+  expect(holdsUnderfilledTuplet([withGrace])).toBe(false)
+})
+
+test('a space counts toward what a tuplet holds', () => {
+  const withSpace: MNXSequenceItem = {
+    type: 'tuplet',
+    inner: { duration: eighth, multiple: 3 },
+    outer: { duration: eighth, multiple: 2 },
+    content: [note(eighth), note(eighth), { type: 'space', duration: [1, 8] }],
+  }
+
+  expect(holdsUnderfilledTuplet([withSpace])).toBe(false)
 })
 
 test('a warning naming an id two parts answer to names the measure in both', () => {
