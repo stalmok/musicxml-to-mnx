@@ -28,10 +28,16 @@ export function staffPositionOfLine(line: number, lines: number): number {
   return 2 * line - lines - 1
 }
 
-/** The clef in force on a staff: its sign and the line it sits on. */
+/**
+ * The clef in force on a staff: its sign, and the staff position its
+ * reference pitch sits at. The position rather than the MusicXML line,
+ * because the two are the same thing only on a staff of a given line count,
+ * and holding the position keeps every height read against this clef in the
+ * frame the clef itself was written in.
+ */
 export interface ClefInForce {
   sign: ClefSign
-  line: number
+  staffPosition: number
 }
 
 /**

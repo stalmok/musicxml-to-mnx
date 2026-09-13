@@ -517,6 +517,53 @@ describe('the MNX a percussion part converts to', () => {
     expect(arpeggio?.span).toEqual({ start: event?.notes[0]?.id, end: event?.notes[1]?.id })
     expect(warnings.map((w) => w.code)).toEqual(['unsupported:element'])
     expect(warnings[0]?.element).toBe('arpeggiate')
+    expect(schemaErrors(convertMusicXML(source(rolled, DRUM_KIT)).mnx)).toEqual([])
+  })
+
+  // A bracket marking the chord struck together is not a roll, so the report
+  // names the element the source wrote and says what it means.
+  test('names the bracket for a struck chord sounding on a staff and a kit', () => {
+    const struckTogether =
+      '<note><pitch><step>C</step><octave>5</octave></pitch><duration>1</duration>' +
+      '<type>quarter</type><notations><non-arpeggiate type="bottom"/></notations></note>' +
+      '<note><chord/><pitch><step>E</step><octave>5</octave></pitch><duration>1</duration>' +
+      '<type>quarter</type><notations><non-arpeggiate type="top"/></notations></note>' +
+      '<note><chord/><unpitched><display-step>G</display-step><display-octave>5</display-octave>' +
+      '</unpitched><duration>1</duration><type>quarter</type><instrument id="P1-I39"/>' +
+      '<notations><non-arpeggiate type="top"/></notations></note>'
+    const { warnings } = read(struckTogether, DRUM_KIT)
+
+    expect(warnings.map((w) => w.element)).toEqual(['non-arpeggiate'])
+    expect(warnings[0]?.message).toContain('struck together')
+  })
+
+  // Nothing was carried at all, so nothing may be said to have been.
+  test('says nothing was carried where the bracket holds one note', () => {
+    const half =
+      '<note><pitch><step>C</step><octave>5</octave></pitch><duration>1</duration>' +
+      '<type>quarter</type><notations><non-arpeggiate type="bottom"/></notations></note>' +
+      '<note><chord/><unpitched><display-step>G</display-step><display-octave>5</display-octave>' +
+      '</unpitched><duration>1</duration><type>quarter</type><instrument id="P1-I39"/>' +
+      '<notations><non-arpeggiate type="top"/></notations></note>'
+    const { part, warnings } = read(half, DRUM_KIT)
+
+    expect(part?.measures[0]?.arpeggios).toEqual([])
+    expect(warnings.map((w) => w.code)).toEqual(['unclosed:spanner'])
+  })
+
+  // A mark is written on a note and a kit note carries none, so a kit chord
+  // numbered two ways cannot say which of its notes each number covers.
+  test('reports a kit chord marked twice under different numbers', () => {
+    const numbered =
+      struck('C', '5', 'P1-I39', '<notations><arpeggiate number="1"/></notations>') +
+      '<note><chord/><unpitched><display-step>G</display-step>' +
+      '<display-octave>5</display-octave></unpitched><duration>1</duration>' +
+      '<type>quarter</type><instrument id="P1-I43"/>' +
+      '<notations><arpeggiate number="2"/></notations></note>'
+    const { warnings } = read(numbered, DRUM_KIT)
+
+    expect(warnings.map((w) => w.code)).toEqual(['unsupported:element', 'unsupported:element'])
+    expect(warnings[0]?.message).toContain('different numbers')
   })
 
   test('writes no notes array on an event that only strikes the kit', () => {

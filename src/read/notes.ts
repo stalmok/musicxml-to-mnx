@@ -43,7 +43,6 @@ import { reportHidden } from './unrepresentable.js'
 import { readLyrics } from './lyrics.js'
 import { noteValueBaseOf, requireNoteValueBase } from './noteValues.js'
 import { readIntegerInRange } from './numbers.js'
-import { staffLinesOf, staffPositionOfLine } from './state.js'
 import type { PartState } from './state.js'
 import { soundingPitch } from './transposition.js'
 import { entriesOf, recogniser } from './tables.js'
@@ -75,13 +74,12 @@ function diatonicIndex(step: Step, octave: number): number {
 
 /**
  * The height a <display-step>/<display-octave> pair states, in steps from the
- * middle of the staff. The clef in force sits its reference pitch on its own
- * line, and each diatonic step from there is one more step of height. The
- * line is read against the staff's own line count, because the middle a
- * height is measured from moves with it. Undefined where the pair is
- * incomplete or no clef is in force to read it against; what to do about that
- * is the caller's, because a rest without a height is drawn at its default
- * one and an unpitched note without one has nowhere to sit.
+ * middle of the staff. The clef in force holds the position its reference
+ * pitch sits at, and each diatonic step from there is one more step of
+ * height. Undefined where the pair is incomplete or no clef is in force to
+ * read it against; what to do about that is the caller's, because a rest
+ * without a height is drawn at its default one and an unpitched note without
+ * one has nowhere to sit.
  */
 function displayStaffPosition(
   element: XmlElement,
@@ -96,10 +94,7 @@ function displayStaffPosition(
   const clef = state.clefs.get(staff ?? 1)
   if (!isStep(step) || !/^-?\d+$/.test(octaveText) || clef === undefined) return undefined
 
-  return (
-    staffPositionOfLine(clef.line, staffLinesOf(state, staff)) +
-    (diatonicIndex(step, Number(octaveText)) - CLEF_REFERENCE[clef.sign])
-  )
+  return clef.staffPosition + (diatonicIndex(step, Number(octaveText)) - CLEF_REFERENCE[clef.sign])
 }
 
 /** A rest's height, with the loss reported where the source states one it cannot place. */

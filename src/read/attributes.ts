@@ -176,7 +176,34 @@ export function readAttributes(
     if (lines) {
       const count = readIntegerInRange(lines, path, 0, Number.MAX_SAFE_INTEGER)
       const staff = named ?? 1
-      if (staffLinesOf(state, staff) !== count) {
+      if (staff > state.staves) {
+        // There is no staff to draw that way. Reported rather than refused,
+        // and rather than drawn on a staff the count does not name: a count
+        // for staff 7 of a one-staff part, carried with no staff stated,
+        // would redraw the one staff the part has.
+        warnings.add(
+          'inconsistent:staff',
+          `A staff line count is stated for staff ${String(staff)}, and this part is ` +
+            `written on ${String(state.staves)}. It is not carried over.`,
+          { ...context, line: lines.line },
+          'staff-lines',
+        )
+      } else if (staffLinesOf(state, staff) !== count) {
+        // A height is measured from the middle of the staff, and the middle
+        // moves with the count, so a staff that changes it redraws everything
+        // on it. The clef in force holds the position it was written at and
+        // the heights read against it follow, so the notes stay where they
+        // were drawn. Restating the clef where the count changes would move
+        // them, and is not built.
+        if (state.clefs.has(staff)) {
+          warnings.add(
+            'unsupported:element',
+            'A staff changes how many lines it is drawn with, and no clef is restated ' +
+              'on it. The notes on it keep the heights the clef in force gives them.',
+            { ...context, line: lines.line },
+            'staff-lines',
+          )
+        }
         state.staffLines.set(staff, count)
         staffConfigs.push({
           lines: count,
@@ -659,9 +686,14 @@ function readClef(
 
   if (!stated) {
     // Held in force so that whatever the staff places by <display-step> is
-    // still placed, at the height the treble clef gives it.
+    // still placed, at the height the treble clef gives it. MusicXML reads a
+    // height on a percussion staff as if in treble clef with G4 on the second
+    // line, whatever line the glyph below is drawn on.
     const named = readAttributeInRange(element.element, 'number', path, 1, state.staves)
-    state.clefs.set(named ?? 1, { sign: 'G', line: DEFAULT_CLEF_LINES.G })
+    state.clefs.set(named ?? 1, {
+      sign: 'G',
+      staffPosition: staffPositionOfLine(DEFAULT_CLEF_LINES.G, staffLinesOf(state, named)),
+    })
 
     if (sign === 'percussion') {
       // MNX's staffPosition is the position the clef is drawn at, and the
@@ -728,16 +760,18 @@ function readClef(
     )
   }
 
+  // MusicXML counts staff lines from 1 at the bottom; MNX counts staff steps
+  // from 0 at the middle of the staff, which moves with the line count.
+  const staffPosition = staffPositionOfLine(line, staffLinesOf(state, named))
+
   // Kept in force on its staff so a later rest placed by <display-step> reads
   // its height against the right clef. A single-staff part names no staff, so
   // its one clef is held under staff 1.
-  state.clefs.set(staff ?? 1, { sign, line })
+  state.clefs.set(staff ?? 1, { sign, staffPosition })
 
-  // MusicXML counts staff lines from 1 at the bottom; MNX counts staff steps
-  // from 0 at the middle of the staff, which moves with the line count.
   return {
     sign,
-    staffPosition: staffPositionOfLine(line, staffLinesOf(state, named)),
+    staffPosition,
     staff,
     position,
     octave,

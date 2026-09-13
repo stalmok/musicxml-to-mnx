@@ -1453,21 +1453,6 @@ export class MeasureBuilder {
           ? [...notes].sort((a, b) => staffOrder(a.pitch) - staffOrder(b.pitch))
           : kitOrder(kitNotes, kit)
 
-      // A chord sounding on a pitched staff and a kit at once is spanned by
-      // its pitched notes: a diatonic index and a staff height do not
-      // compare, and ordering the two together would mean reading each pitch
-      // against the clef drawing it. MNX reads the notes inside a roll as the
-      // ones whose pitch lies between its ends, so a kit note left out of the
-      // span is left out of the roll.
-      if (notes.length > 0 && kitNotes.length > 0) {
-        warnings.add(
-          'unsupported:element',
-          'A chord is rolled across a pitched staff and a percussion kit. The roll is ' +
-            'carried over the pitched notes only, which is not the whole chord.',
-          { ...context, line: first.line },
-          'arpeggiate',
-        )
-      }
       if (ordered.length === 0) {
         // MNX states a roll as the two notes it runs between, and there are
         // none to name.
@@ -1493,6 +1478,39 @@ export class MeasureBuilder {
           'non-arpeggiate',
         )
         continue
+      }
+
+      // A chord sounding on a pitched staff and a kit at once is spanned by
+      // its pitched notes: a diatonic index and a staff height do not
+      // compare, and ordering the two together would mean reading each pitch
+      // against the clef drawing it. MNX reads the notes a mark covers as the
+      // ones whose pitch lies between its ends, so a kit note left out of the
+      // span is left out of the mark. Reported here rather than above, where
+      // the mark may still turn out not to be carried at all.
+      if (notes.length > 0 && kitNotes.length > 0) {
+        warnings.add(
+          'unsupported:element',
+          `A chord ${first.struck ? 'bracketed as struck together' : 'rolled'} across a ` +
+            'pitched staff and a percussion kit is carried over its pitched notes only, ' +
+            'which is not the whole chord.',
+          { ...context, line: first.line },
+          first.struck ? 'non-arpeggiate' : 'arpeggiate',
+        )
+      }
+
+      // Marks numbered two ways divide a chord into two, each over the notes
+      // that carried its own mark. A mark is written on a note and a kit note
+      // carries none, so which of them each number covers is not known, and
+      // both come out over the whole chord.
+      if (notes.length === 0 && group.some((one) => divided.has(one.event))) {
+        warnings.add(
+          'unsupported:element',
+          'A chord struck on a percussion kit is marked twice under different numbers, ' +
+            'and which notes each covers is not known. Each is carried over the whole ' +
+            'chord.',
+          { ...context, line: first.line },
+          first.struck ? 'non-arpeggiate' : 'arpeggiate',
+        )
       }
 
       if (group.some((one) => one.crossed)) {

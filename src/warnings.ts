@@ -235,6 +235,10 @@ export type WarningCode =
   // A chord is rolled upwards by one mark and downwards by another. The first
   // is the one converted.
   | 'inconsistent:arpeggio'
+  // A statement about a staff the part does not have: the part says how many
+  // staves it is written on, and the statement names one beyond them. There
+  // is no staff for it to be about, so it is not carried over.
+  | 'inconsistent:staff'
   // A tie or slur has only one of its two ends, so there is nothing to join
   // it to. Real scores contain these, so it is reported rather than refused.
   | 'unclosed:spanner'

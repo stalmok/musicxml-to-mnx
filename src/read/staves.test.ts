@@ -358,6 +358,36 @@ describe('a clef whose sign MNX does not state', () => {
     expect(warnings).toEqual([])
   })
 
+  // The middle a clef is measured from moves with the line count, for the C,
+  // F and G signs as much as for the percussion glyph. On a one-line staff
+  // the line itself is the middle, so a treble clef on the second line sits
+  // one line above it.
+  test('measures a pitched clef against the lines its staff is drawn with', () => {
+    const onOneLine = measures(
+      '<attributes><divisions>4</divisions>' +
+        '<staff-details><staff-lines>1</staff-lines></staff-details>' +
+        '<clef><sign>G</sign><line>2</line></clef></attributes>' +
+        note('C', '1'),
+    )
+    const { part, warnings } = read(onOneLine)
+
+    expect(part?.measures[0]?.clefs[0]?.staffPosition).toBe(2)
+    expect(warnings).toEqual([])
+  })
+
+  // MusicXML draws a clef outside the lines of its staff by the same value,
+  // such as a C clef in the middle of a grand staff, so a line no five-line
+  // staff has is drawn where it says rather than refused.
+  test.each([
+    ['0', -6],
+    ['6', 6],
+  ])('draws a pitched clef stated on line %s', (line, staffPosition) => {
+    const { part, warnings } = read(withSign('G', `<line>${line}</line>`))
+
+    expect(part?.measures[0]?.clefs[0]?.staffPosition).toBe(staffPosition)
+    expect(warnings).toEqual([])
+  })
+
   test('refuses a percussion clef drawn on a line that is not a number', () => {
     expect(() => read(withSign('percussion', '<line>middle</line>'))).toThrow(
       /<line> is not a whole number/,
@@ -857,6 +887,48 @@ describe('how many lines a staff is drawn with', () => {
     const { part } = read(measures(oneStaff(details('99'))))
 
     expect(part?.measures[0]?.staffConfigs[0]?.lines).toBe(99)
+  })
+
+  // A count for a staff the part is not written on is about no staff at all.
+  // Carried with no staff stated, it would redraw the one staff the part has.
+  test('reports a count for a staff the part does not have', () => {
+    const { part, warnings } = read(measures(oneStaff(details('1', '7'))))
+
+    expect(part?.measures[0]?.staffConfigs).toEqual([])
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:staff'])
+    expect(warnings[0]?.element).toBe('staff-lines')
+  })
+
+  // A config naming no staff draws the first, as MNX reads it, so the two
+  // ways of naming staff 1 are the same staff and cannot both stand.
+  test('counts an unnumbered statement and a numbered one as the same staff', () => {
+    const { part, warnings } = read(measures(oneStaff(details('1') + details('3', '1'))))
+
+    expect(part?.measures[0]?.staffConfigs.map((config) => config.lines)).toEqual([3])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:staff-config'])
+  })
+
+  // A height is measured from the middle of the staff, and the middle moves
+  // with the count, so the notes on a staff that changes it would move too.
+  // They keep the heights the clef in force gives them, and the departure is
+  // reported.
+  test('reports a line count that changes under a clef already in force', () => {
+    const placed =
+      '<note><rest><display-step>B</display-step><display-octave>4</display-octave></rest>' +
+      '<duration>4</duration><type>quarter</type></note>'
+    const { part, warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions><clef><sign>G</sign><line>2</line></clef>' +
+          '</attributes>' +
+          placed,
+        `<attributes>${details('1')}</attributes>` + placed,
+      ),
+    )
+    const heights = part?.measures.map((m) => m.sequences[0]?.content[0])
+
+    expect(heights?.map((item) => item?.kind === 'event' && item.staffPosition)).toEqual([0, 0])
+    expect(warnings.map((w) => w.code)).toEqual(['unsupported:element'])
+    expect(warnings[0]?.element).toBe('staff-lines')
   })
 
   test('refuses a line count that is not a count', () => {
