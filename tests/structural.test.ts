@@ -671,6 +671,16 @@ test('a warning names the measure it was reported against', () => {
   )
 })
 
+test('a warning naming an id two parts answer to names the measure in both', () => {
+  const root = parseXmlRoot(
+    '<score-partwise><part id="P1"><measure number="1"/></part>' +
+      '<part id="P1"><measure number="1"/></part></score-partwise>',
+  )
+  const warnings = [{ code: 'inconsistent:tuplet' as const, context: { part: 'P1', measure: 1 } }]
+
+  expect(measuresWarned(root, warnings, 'inconsistent:tuplet')).toEqual(new Set(['0:0', '1:0']))
+})
+
 test('a warning of another code, or naming no measure, names nothing', () => {
   const root = parseXmlRoot(
     '<score-partwise><part id="P1"><measure number="1"/></part></score-partwise>',

@@ -1595,7 +1595,10 @@ describe('several parts', () => {
 
     expect(result.globalMeasures[0]?.number).toBe(0)
     expect(warnings.map((w) => w.code)).toEqual(['inconsistent:measure-number'])
-    expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 5 })
+    // Named by where the measure sits, as every other report names it; the
+    // two labels the parts disagree over are in the message.
+    expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 1 })
+    expect(warnings[0]?.message).toContain('numbered 0 by an earlier part and 5 by this one')
   })
 
   // A part labelling the measure by its position states no label at all, so

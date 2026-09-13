@@ -464,7 +464,10 @@ function mergeGlobalMeasures(
     const existing = target[index]
     scoreTime = existing?.time ?? scoreTime
     partTime = measure.time ?? partTime
-    const context = { part, measure: measure.number ?? index + 1 }
+    // The measure's position, as every other report names it. A source that
+    // labels it otherwise still labels one measure of a part, and two reports
+    // naming the same measure two ways cannot be held together.
+    const context = { part, measure: index + 1 }
     const pair = keys[index]
     if (
       pair &&

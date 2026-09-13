@@ -470,15 +470,19 @@ export function measuresWarned(
   code: WarningCode,
 ): Set<string> {
   const parts = root.children.filter((c) => c.name === 'part')
-  const indexOfPart = new Map(parts.map((part, index) => [part.attributes['id'], index]))
   const named = new Set<string>()
 
   for (const warning of warnings) {
     if (warning.code !== code) continue
-    const part = indexOfPart.get(warning.context.part)
     const measure = warning.context.measure
-    if (part === undefined || measure === undefined) continue
-    named.add(`${String(part)}:${String(measure - 1)}`)
+    if (measure === undefined) continue
+    // Nothing stops two parts carrying the same id, and a warning names only
+    // the id, so every part answering to it is named.
+    parts.forEach((part, index) => {
+      if (part.attributes['id'] === warning.context.part) {
+        named.add(`${String(index)}:${String(measure - 1)}`)
+      }
+    })
   }
   return named
 }

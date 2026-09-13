@@ -363,7 +363,9 @@ function nameSourceProblem(_code: SourceProblem): WarningCategory {
 export interface WarningContext {
   /** The MusicXML part id the warning came from, when known. */
   part?: string
-  /** The measure number as written in the source, when known. */
+  /** Where the measure sits in its part, counting from one, when known. A
+   * measure the source labels differently, such as a pickup numbered 0, is
+   * still named by its position. */
   measure?: number
   /** Line in the source document, when known. */
   line?: number
