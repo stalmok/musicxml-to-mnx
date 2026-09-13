@@ -1259,7 +1259,7 @@ function readMeasure(
       staffConfigs: dedupeStaffConfigs(staffConfigs, warnings, context),
       beams,
       dynamics,
-      arpeggios: builder.arpeggios(warnings, context),
+      arpeggios: builder.arpeggios(warnings, context, state.kit),
       // Filled in below, once the whole part has been read.
       ottavas: [],
       measureRepeat: undefined,

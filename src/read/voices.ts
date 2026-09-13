@@ -30,6 +30,7 @@ import type {
   FullMeasureRest,
   GraceGroup,
   GraceType,
+  KitComponent,
   KitNote,
   Note,
   NoteValue,
@@ -37,6 +38,7 @@ import type {
   Pitch,
   Sequence,
   SequenceItem,
+  TieTarget,
   Tuplet,
   TupletDisplay,
 } from '../model/score.js'
@@ -256,6 +258,20 @@ interface MarkedArpeggio {
  */
 function staffOrder(pitch: Pitch): number {
   return pitch.octave * 7 + 'CDEFGAB'.indexOf(pitch.step)
+}
+
+/**
+ * The notes of a kit chord, bottom to top. Ordered by walking the kit in
+ * height order rather than by looking each note's component up, so a
+ * component the kit does not hold cannot come back as a height of nothing.
+ */
+function kitOrder(
+  notes: readonly KitNote[],
+  kit: ReadonlyMap<string, KitComponent>,
+): readonly KitNote[] {
+  return [...kit]
+    .sort(([, a], [, b]) => a.staffPosition - b.staffPosition)
+    .flatMap(([component]) => notes.filter((note) => note.component === component))
 }
 
 /** The staff a voice is mostly on, or nothing when it names no staff at all. */
@@ -1357,7 +1373,12 @@ export class MeasureBuilder {
    * rather than by where it sits: a grace chord takes no time, so it begins
    * where the chord it decorates does, and the two are still two chords.
    */
-  arpeggios(warnings: WarningCollector, context: WarningContext): Arpeggio[] {
+  arpeggios(
+    warnings: WarningCollector,
+    context: WarningContext,
+    /** The components this part strikes, which is where a kit note's height is. */
+    kit: ReadonlyMap<string, KitComponent>,
+  ): Arpeggio[] {
     // Marks on one chord are weighed together first, whatever they are
     // numbered. Numbering them differently otherwise put them in groups that
     // could not see each other, and a chord marked rolled by one and struck
@@ -1406,19 +1427,25 @@ export class MeasureBuilder {
       if (!first) continue
 
       const notes = group.flatMap((one) => (divided.has(one.event) ? one.notes : one.event.notes))
-      if (notes.length === 0) {
+      // A chord struck on a percussion kit carries no pitches to order by, so
+      // it is ordered by the height the part's kit draws each component at. A
+      // mark is written on a note and a kit note carries none, so such a roll
+      // spans the whole chord. A chord sounding both at once is spanned by its
+      // pitched notes: a diatonic index and a staff height do not compare.
+      const ordered: readonly TieTarget[] =
+        notes.length > 0
+          ? [...notes].sort((a, b) => staffOrder(a.pitch) - staffOrder(b.pitch))
+          : kitOrder(
+              group.flatMap((one) => one.event.kitNotes),
+              kit,
+            )
+      if (ordered.length === 0) {
         // MNX states a roll as the two notes it runs between, and there are
-        // none to name. A chord struck on a percussion kit has notes, but no
-        // pitches to order them by, so the roll on one is a gap rather than a
-        // rest carrying a mark that means nothing.
-        const struckOnKit = group.some((one) => one.event.kitNotes.length > 0)
+        // none to name.
         warnings.add(
           'unsupported:element',
-          struckOnKit
-            ? 'A chord struck on a percussion kit is marked as rolled, which is not ' +
-                'converted yet, so the mark is not carried over.'
-            : 'A rest is marked as rolled, and a roll runs between notes, so it is not ' +
-                'carried over.',
+          'A rest is marked as rolled, and a roll runs between notes, so it is not ' +
+            'carried over.',
           { ...context, line: first.line },
           'arpeggiate',
         )
@@ -1428,7 +1455,7 @@ export class MeasureBuilder {
       // A struck bracket runs between its bottom and top ends, each written
       // on its own note. A lone marker with one note under it is half a
       // bracket: written out, it would span the note to itself.
-      if (first.struck && notes.length === 1) {
+      if (first.struck && ordered.length === 1) {
         warnings.add(
           'unclosed:spanner',
           'A bracket marking notes as struck together has only one note under it, ' +
@@ -1459,7 +1486,6 @@ export class MeasureBuilder {
         )
       }
 
-      const ordered = [...notes].sort((a, b) => staffOrder(a.pitch) - staffOrder(b.pitch))
       const lowest = ordered[0]
       const highest = ordered.at(-1)
       /* v8 ignore next -- the list is not empty, so it has both ends. */

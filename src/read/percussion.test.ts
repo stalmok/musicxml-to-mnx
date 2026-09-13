@@ -253,23 +253,69 @@ describe('a note struck on more than one instrument at once', () => {
   })
 })
 
-// The roll runs between two notes, and MNX names them; a kit note has no pitch
-// to order it by. The mark is reported rather than carried, and what it says
-// has to name what was actually written.
+// The roll runs between two notes, and MNX names them by id. A kit note has no
+// pitch, so the chord is ordered by the height its part's kit draws each
+// component at: the snare on the third line, the hi-hat above the staff.
 describe('a rolled chord struck on a kit', () => {
-  test('reports the roll against the chord, not against a rest', () => {
+  const ROLLED =
+    struck('C', '5', 'P1-I39', '<notations><arpeggiate/></notations>') +
+    '<note><chord/><unpitched><display-step>G</display-step>' +
+    '<display-octave>5</display-octave></unpitched><duration>1</duration>' +
+    '<type>quarter</type><instrument id="P1-I43"/>' +
+    '<notations><arpeggiate/></notations></note>'
+
+  test('runs from the lowest component struck to the highest', () => {
+    const { part, warnings } = read(ROLLED, DRUM_KIT)
+    const event = firstEvent(part)
+    const arpeggio = part?.measures[0]?.arpeggios[0]
+
+    expect(arpeggio?.span).toEqual({ start: event?.kitNotes[0]?.id, end: event?.kitNotes[1]?.id })
+    expect(arpeggio?.direction).toBe('up')
+    expect(warnings).toEqual([])
+  })
+
+  // The mark states the direction, not the order the notes are written in, so
+  // a roll drawn downwards runs from the top component to the bottom.
+  test('runs the other way where the mark rolls downwards', () => {
+    const downwards = ROLLED.replaceAll('<arpeggiate/>', '<arpeggiate direction="down"/>')
+    const { part, warnings } = read(downwards, DRUM_KIT)
+    const event = firstEvent(part)
+
+    expect(part?.measures[0]?.arpeggios[0]?.span).toEqual({
+      start: event?.kitNotes[1]?.id,
+      end: event?.kitNotes[0]?.id,
+    })
+    expect(warnings).toEqual([])
+  })
+
+  test('writes the roll into legal MNX, naming the kit notes it runs between', () => {
+    const { mnx, warnings } = convertMusicXML(source(ROLLED, DRUM_KIT))
+    const event = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
+    const notes = event && 'kitNotes' in event ? event.kitNotes : []
+
+    expect(mnx.parts[0]?.measures[0]?.arpeggios).toEqual([
+      {
+        position: { fraction: [0, 1] },
+        span: { start: notes[0]?.id, end: notes[1]?.id },
+        direction: 'up',
+      },
+    ])
+    expect(notes.map((note) => note.id)).not.toContain(undefined)
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // A rest carries no note either way, and a roll drawn beside one names
+  // nothing to run between.
+  test('reports a roll marked on a rest', () => {
     const { warnings } = read(
-      struck('C', '5', 'P1-I39', '<notations><arpeggiate/></notations>') +
-        '<note><chord/><unpitched><display-step>G</display-step>' +
-        '<display-octave>5</display-octave></unpitched><duration>1</duration>' +
-        '<type>quarter</type><instrument id="P1-I43"/>' +
+      '<note><rest/><duration>1</duration><type>quarter</type>' +
         '<notations><arpeggiate/></notations></note>',
       DRUM_KIT,
     )
 
     expect(warnings.map((w) => w.code)).toEqual(['unsupported:element'])
-    expect(warnings[0]?.message).toContain('struck on a percussion kit')
-    expect(warnings[0]?.message).not.toContain('rest')
+    expect(warnings[0]?.message).toContain('rest')
   })
 })
 
