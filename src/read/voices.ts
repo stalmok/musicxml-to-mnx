@@ -1600,6 +1600,22 @@ export class MeasureBuilder {
       return true
     }
 
+    // A stop written inside a bracket the source drew names that bracket,
+    // however the source numbers the two, so a carried stop is taken only
+    // where this voice has no such bracket open, in any of its lines. A run
+    // the ratio alone opened is not one: the source drew no bracket for it,
+    // and it ends by its own count rather than on a stop.
+    //
+    // The test matters twice over. A bracket cut at a barline is usually
+    // carried on by notes that state the same ratio, which opens such a run,
+    // so without it the stop that ends the source's bracket closes the run
+    // instead and the record of the cut bracket is left standing for the rest
+    // of the part, to swallow some later stop that means something else.
+    const drawn = this.#layersFor(voice).layers.some((layer) =>
+      tupletFrames(layer).some((open) => !open.unbracketed),
+    )
+    if (drawn) return false
+
     const carried = this.#carriedStops.findIndex(
       (one) => one.voice === (voice ?? UNNAMED_VOICE) && one.number === number,
     )
@@ -1633,12 +1649,6 @@ export class MeasureBuilder {
     context: WarningContext,
     path: DocumentPath,
     line: number,
-    /**
-     * True where the barline is closing the bracket rather than a stop the
-     * source wrote. Such a bracket holds only the part of itself that fits in
-     * the measure, so its ratio is restated over what it does hold.
-     */
-    cutAtBarline = false,
   ): string {
     const closed = builder.open.at(-1)
     // A tremolo edge and a tuplet edge can land on different notes. Popping
@@ -1663,14 +1673,17 @@ export class MeasureBuilder {
       return closed.number
     }
     const held = writtenLengthOf(tuplet.content)
-    // A ratio read from the bracket's first note speaks for that note alone,
-    // and a bracket the barline cut holds less than the one the source drew.
-    // Either way the whole bracket is known only here, so it is stated here:
-    // what it holds, against the time this voice spent inside it. MNX reads a
-    // tuplet's outer as the time it takes up in the measure, so a bracket
-    // left stating the time the whole of it would have taken would push
-    // everything after it along.
-    if (closed.derived || cutAtBarline) {
+    // A ratio read from the bracket's first note speaks for that note alone.
+    // The whole bracket is known only here, so it is stated here: what it
+    // holds, against the time this voice spent inside it.
+    //
+    // A bracket the barline cut is left stating the ratio the source drew for
+    // the whole of it. Restating that one over what it holds was tried and
+    // put back: where such a bracket holds another, the inner one is closed
+    // first, and rewriting its outer changes what the written length of the
+    // outer one's content comes to, which moved three real measures off the
+    // length their sources state.
+    if (closed.derived) {
       scaleToContent(tuplet, held, subtractFractions(builder.end, closed.openEnd))
     }
 
@@ -1824,6 +1837,11 @@ export class MeasureBuilder {
    * A <tuplet> bracket may start in one measure and stop in the next, and MNX
    * states a tuplet inside one measure's sequence, so a bracket still open
    * here is closed at the barline and the loss reported.
+   *
+   * A stop carried in and not met here is handed on with them. The source may
+   * write it any number of measures later, and a stop that closes nothing is
+   * passed over rather than refusing the file, as one whose start was dropped
+   * already is.
    */
   closeAtBarline(
     warnings: WarningCollector,
@@ -1848,7 +1866,7 @@ export class MeasureBuilder {
           )
           carried.push({
             voice,
-            number: this.#closeTuplet(builder, warnings, context, path, line, true),
+            number: this.#closeTuplet(builder, warnings, context, path, line),
           })
         }
       }

@@ -822,9 +822,8 @@ describe('tuplets', () => {
   // tuplet in MNX is an item inside one measure's sequence. The bracket holds
   // what fits and the loss is reported, rather than the file being refused.
   //
-  // Two of the ratio's three eighths are inside it, and two eighths in the
-  // time of four thirds of one is a ratio no pair of note values can write,
-  // so the ratio stands as drawn and the disagreement is reported too.
+  // Two of the ratio's three eighths are inside it, so the bracket holds less
+  // than its ratio counts, which is reported on top of the cut.
   test('draws a tuplet the source never closes as far as the barline', () => {
     const { content, warnings } = read(
       measure(tupletNote('C', 4, 'eighth', 'start') + tupletNote('D', 4, 'eighth')),
@@ -839,11 +838,11 @@ describe('tuplets', () => {
     expect(warnings[0]?.element).toBe('tuplet')
   })
 
-  // MNX reads a tuplet's outer as the time it takes up in the measure, so a
-  // cut bracket left stating the time the whole of it would have taken would
-  // push everything after it along. Four sixteenths in the time of three,
-  // cut after two, is four thirty-seconds in the time of three.
-  test('restates the ratio of a cut bracket over what it holds', () => {
+  // The ratio stands as the source drew it. Restating it over what the
+  // bracket holds was tried and put back: where a cut bracket holds another,
+  // the inner one is closed first, and rewriting its outer changes what the
+  // written length of the outer one's content comes to.
+  test('leaves the ratio of a cut bracket as the source drew it', () => {
     const quadruplet = (step: string, bracket = ''): string =>
       `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>9</duration>` +
       '<type>16th</type>' +
@@ -861,14 +860,17 @@ describe('tuplets', () => {
     const tuplet = content?.[0]
 
     expect(tuplet?.kind === 'tuplet' && tuplet.inner).toEqual({
-      value: { base: '32nd', dots: 0 },
+      value: { base: '16th', dots: 0 },
       multiple: 4,
     })
     expect(tuplet?.kind === 'tuplet' && tuplet.outer).toEqual({
-      value: { base: '32nd', dots: 0 },
+      value: { base: '16th', dots: 0 },
       multiple: 3,
     })
-    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-span'])
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:tuplet-span',
+      'inconsistent:tuplet',
+    ])
   })
 
   // The bracket ended at the barline, so the stop the source writes in the
@@ -885,6 +887,44 @@ describe('tuplets', () => {
 
     // A bracket around notes carrying no ratio states one of its own, which
     // is the first report; the second is the barline cutting it.
+    expect(warnings.map((w) => w.code)).toEqual([
+      'missing:time-modification',
+      'unrepresentable:tuplet-span',
+    ])
+  })
+
+  // A stop written inside a bracket the source drew names that bracket. The
+  // record of one an earlier barline cut must not take it: the file then
+  // loses the bracket the stop really ends, and everything after it is drawn
+  // inside a bracket that should have closed.
+  test('leaves a stop inside a drawn bracket to that bracket', () => {
+    const crossing =
+      tupletNote('C', 4, 'eighth', 'start') +
+      tupletNote('D', 4, 'eighth') +
+      tupletNote('E', 4, 'eighth', 'stop')
+    const { content, warnings } = read(
+      measures(
+        DIVISIONS + tupletNote('C', 4, 'eighth', 'start') + tupletNote('D', 4, 'eighth'),
+        crossing,
+      ),
+    )
+    const second = content?.[0]
+
+    expect(second?.kind === 'tuplet' && second.content).toHaveLength(2)
+    expect(warnings.map((w) => w.code)).toContain('unrepresentable:tuplet-span')
+  })
+
+  // The source may write the stop any number of measures after the barline
+  // that cut the bracket, so the record is kept until it is met.
+  test('passes over the stop of a cut bracket written measures later', () => {
+    const { warnings } = read(
+      measures(
+        DIVISIONS + bracketedNote('C', 'start') + bracketedNote('D'),
+        bracketedNote('E'),
+        bracketedNote('F', 'stop'),
+      ),
+    )
+
     expect(warnings.map((w) => w.code)).toEqual([
       'missing:time-modification',
       'unrepresentable:tuplet-span',
