@@ -1095,7 +1095,7 @@ function readMeasure(
   let endingStop: { open: boolean; line: number } | undefined
   let fermata: Fermata | undefined
 
-  const builder = new MeasureBuilder()
+  const builder = new MeasureBuilder(state.carriedTupletStops)
 
   // Walked in document order, because MusicXML states a measure as one stream
   // with a cursor running through it: what a <note> means depends on the
@@ -1233,7 +1233,7 @@ function readMeasure(
   // A tuplet the source stated as a ratio with no bracket has no stop to
   // close it, so the measure's end is where its run ends.
   builder.closeImpliedTuplets(warnings, context, measurePath, element.line)
-  builder.checkAllClosed(measurePath, element.line)
+  state.carriedTupletStops = builder.closeAtBarline(warnings, context, measurePath, element.line)
 
   // Every event of the measure is in now, so a hairpin's and an octave
   // shift's stop can each be told which one it covers, whatever order the

@@ -298,11 +298,11 @@ grow, and the weekly gate runs against its latest state.
 | [CPDL](https://www.cpdl.org) random sample (choral, mostly Sibelius exports)                                  | 2,000  | 1,943 (97%)  |
 
 The other files are refusals, and each refusal names its reason. Some files
-hold notation that MNX cannot state: microtone alterations, and composite
-meters such as 3+2/8. Other files disagree with themselves. Examples are a
-tuplet that opens and never closes, a note whose written value and measured
-length disagree in a way no note value can write, and a voice that holds
-both a rest filling its measure and notes written after it.
+hold notation that MNX cannot state: composite meters such as 3+2/8. Other
+files disagree with themselves. Examples are a note whose written value and
+measured length disagree in a way no note value can write, a chord whose
+notes last different times, and a voice that holds both a rest filling its
+measure and notes written after it.
 
 Closed-score hymnals write two lines in one voice, laid over each other with
 `<backup>`. MNX states each line as its own sequence of the measure, so the

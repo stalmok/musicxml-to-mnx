@@ -28,6 +28,16 @@ function tupletNote(step: string, units: number, type: string, bracket = ''): st
   )
 }
 
+/** A quarter outside any ratio, carrying only the bracket marker given. */
+function bracketedNote(step: string, bracket = ''): string {
+  return (
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>12</duration>` +
+    '<type>quarter</type>' +
+    (bracket ? `<notations><tuplet type="${bracket}"/></notations>` : '') +
+    '</note>'
+  )
+}
+
 /**
  * One note of a two-note tremolo: written as a half, lasting a quarter of
  * the measure (12 divisions), with the pair's 2:1 ratio.
@@ -50,7 +60,15 @@ const TRIPLET =
   tupletNote('E', 4, 'eighth', 'stop')
 
 function measure(body: string): string {
-  return `<score-partwise><part id="P1"><measure number="1">${DIVISIONS}${body}</measure></part></score-partwise>`
+  return measures(DIVISIONS + body)
+}
+
+/** A score of one part, each body its own measure. */
+function measures(...bodies: string[]): string {
+  const inner = bodies
+    .map((body, index) => `<measure number="${String(index + 1)}">${body}</measure>`)
+    .join('')
+  return `<score-partwise><part id="P1">${inner}</part></score-partwise>`
 }
 
 function read(source: string) {
@@ -800,11 +818,71 @@ describe('tuplets', () => {
     expect(warnings[0]?.message).toContain('overruns')
   })
 
-  test('rejects a tuplet the source never closes', () => {
-    expect(
-      readFailure(measure(tupletNote('C', 4, 'eighth', 'start') + tupletNote('D', 4, 'eighth')))
-        .message,
-    ).toContain('never closed')
+  // MusicXML lets a bracket start in one measure and stop in the next, and a
+  // tuplet in MNX is an item inside one measure's sequence. The bracket holds
+  // what fits and the loss is reported, rather than the file being refused.
+  //
+  // Two of the ratio's three eighths are inside it. That the bracket holds
+  // less than it counts is what the report already says, so it is not weighed
+  // against its ratio on top of it.
+  test('draws a tuplet the source never closes as far as the barline', () => {
+    const { content, warnings } = read(
+      measure(tupletNote('C', 4, 'eighth', 'start') + tupletNote('D', 4, 'eighth')),
+    )
+    const tuplet = content?.[0]
+
+    expect(tuplet?.kind === 'tuplet' && tuplet.content).toHaveLength(2)
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-span'])
+    expect(warnings[0]?.element).toBe('tuplet')
+  })
+
+  // The bracket ended at the barline, so the stop the source writes in the
+  // next measure has nothing to close, and passes over rather than closing
+  // the bracket around it or refusing the file. Drawn over notes carrying no
+  // ratio, as early-music editions draw a ligature mark.
+  test('passes over the stop of a bracket closed at the barline', () => {
+    const { warnings } = read(
+      measures(
+        DIVISIONS + bracketedNote('C', 'start') + bracketedNote('D'),
+        bracketedNote('E', 'stop'),
+      ),
+    )
+
+    // A bracket around notes carrying no ratio states one of its own, which
+    // is the first report; the second is the barline cutting it.
+    expect(warnings.map((w) => w.code)).toEqual([
+      'missing:time-modification',
+      'unrepresentable:tuplet-span',
+    ])
+  })
+
+  test('closes every bracket a measure leaves open, innermost first', () => {
+    const nested =
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+      '<type>eighth</type><time-modification><actual-notes>3</actual-notes>' +
+      '<normal-notes>2</normal-notes></time-modification><notations>' +
+      '<tuplet type="start" number="1"/><tuplet type="start" number="2"/></notations></note>'
+    const { warnings } = read(measure(nested))
+
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:tuplet-span',
+      'unrepresentable:tuplet-span',
+    ])
+  })
+
+  test('writes a bracket cut at the barline into legal MNX', () => {
+    const { mnx, warnings } = convertMusicXML(
+      measures(
+        DIVISIONS + bracketedNote('C', 'start') + bracketedNote('D'),
+        bracketedNote('E', 'stop'),
+      ),
+    )
+
+    expect(schemaErrors(mnx)).toEqual([])
+    expect(warnings.map((w) => w.code)).toEqual([
+      'missing:time-modification',
+      'unrepresentable:tuplet-span',
+    ])
   })
 
   // The note carries no ratio, so nothing opened on it either.

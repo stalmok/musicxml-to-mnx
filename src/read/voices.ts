@@ -43,6 +43,16 @@ import type {
   TupletDisplay,
 } from '../model/score.js'
 
+/**
+ * A tuplet stop the measure that meets it does not close anything with: the
+ * bracket it names was closed at the barline of an earlier measure, because
+ * MNX states a tuplet inside one measure's sequence.
+ */
+export interface CarriedTupletStop {
+  readonly voice: string
+  readonly number: string
+}
+
 /** What the source draws of a tuplet, read from its start bracket. */
 export interface TupletDisplaySettings {
   bracket?: 'yes' | 'no'
@@ -523,6 +533,8 @@ function tupletFactorOf(builder: VoiceBuilder): Fraction {
 export class MeasureBuilder {
   readonly #voices = new Map<string, VoiceLayers>()
   readonly #arpeggios: MarkedArpeggio[] = []
+  /** The stops carried in from the measures before, consumed as they are met. */
+  readonly #carriedStops: CarriedTupletStop[]
   /**
    * Where each event of the measure begins, whatever voice it is in, the
    * staff it was placed on, and whether it is a grace note. An event states
@@ -538,6 +550,10 @@ export class MeasureBuilder {
    * something is written out there or a <forward> brings the cursor back.
    */
   #reached: { warnings: WarningCollector; context: WarningContext; line: number } | undefined
+
+  constructor(carriedStops: readonly CarriedTupletStop[] = []) {
+    this.#carriedStops = [...carriedStops]
+  }
 
   /**
    * Where the cursor has reached, from the start of the measure. A <backup>
@@ -1550,11 +1566,13 @@ export class MeasureBuilder {
   }
 
   /**
-   * Whether this stop closes a tuplet whose start was dropped. A bracket of
-   * that number standing open is what the stop closes instead: the source
-   * numbers every tuplet 1 unless it nests them, so a dropped start and an
-   * open bracket share a number as a matter of course, and taking the stop
-   * from the open bracket would leave it open to the end of the measure.
+   * Whether this stop closes a tuplet there is no bracket of its own to close:
+   * one whose start was dropped where it could not be drawn, or one an earlier
+   * measure closed at its barline. A bracket of that number standing open is
+   * what the stop closes instead: the source numbers every tuplet 1 unless it
+   * nests them, so a dropped start and an open bracket share a number as a
+   * matter of course, and taking the stop from the open bracket would leave it
+   * open to the end of the measure.
    *
    * The record is consumed, so a second stop stating the number closes an
    * open bracket as any other stop does.
@@ -1564,9 +1582,17 @@ export class MeasureBuilder {
     if (tupletFrames(builder).some((open) => open.number === number)) return false
 
     const at = builder.droppedTuplets.lastIndexOf(number)
-    if (at < 0) return false
+    if (at >= 0) {
+      builder.droppedTuplets.splice(at, 1)
+      return true
+    }
 
-    builder.droppedTuplets.splice(at, 1)
+    const carried = this.#carriedStops.findIndex(
+      (one) => one.voice === (voice ?? UNNAMED_VOICE) && one.number === number,
+    )
+    if (carried < 0) return false
+
+    this.#carriedStops.splice(carried, 1)
     return true
   }
 
@@ -1594,6 +1620,12 @@ export class MeasureBuilder {
     context: WarningContext,
     path: DocumentPath,
     line: number,
+    /**
+     * True where the barline is closing the bracket rather than a stop the
+     * source wrote. Such a bracket holds only the part of itself that fits in
+     * the measure, which the report above already states.
+     */
+    cutAtBarline = false,
   ): string {
     const closed = builder.open.at(-1)
     // A tremolo edge and a tuplet edge can land on different notes. Popping
@@ -1635,7 +1667,7 @@ export class MeasureBuilder {
       lengthOf(tuplet.inner.value),
     )
     const compared = compareFractions(held, statedLength)
-    if (compared !== 0) {
+    if (compared !== 0 && !cutAtBarline) {
       warnings.add(
         'inconsistent:tuplet',
         `A tuplet's written content ${compared < 0 ? 'falls short of' : 'overruns'} its ` +
@@ -1765,16 +1797,45 @@ export class MeasureBuilder {
     }
   }
 
-  /** Reports any tuplet or tremolo the measure opened and never closed. */
-  checkAllClosed(path: DocumentPath, line: number): void {
-    for (const builder of this.#allBuilders()) {
-      if (tremoloFrame(builder)) {
-        throw new MusicXMLError('A tremolo is opened and never closed.', { path, line })
-      }
-      if (builder.open.length > 0) {
-        throw new MusicXMLError('A tuplet is opened and never closed.', { path, line })
+  /**
+   * Settles what the measure leaves open at its barline, and hands back the
+   * stops the measures after it will meet with nothing to close.
+   *
+   * A tremolo holds exactly its two notes, so one left open is a source the
+   * reader can make no sense of and the document is refused.
+   *
+   * A <tuplet> bracket may start in one measure and stop in the next, and MNX
+   * states a tuplet inside one measure's sequence, so a bracket still open
+   * here is closed at the barline and the loss reported.
+   */
+  closeAtBarline(
+    warnings: WarningCollector,
+    context: WarningContext,
+    path: DocumentPath,
+    line: number,
+  ): CarriedTupletStop[] {
+    const carried = [...this.#carriedStops]
+    for (const [voice, layers] of this.#voices) {
+      for (const builder of layers.layers) {
+        if (tremoloFrame(builder)) {
+          throw new MusicXMLError('A tremolo is opened and never closed.', { path, line })
+        }
+        while (builder.open.length > 0) {
+          warnings.add(
+            'unrepresentable:tuplet-span',
+            'A tuplet bracket runs past the end of the measure, and MNX states a tuplet ' +
+              'inside one measure. It is drawn as far as the barline.',
+            { ...context, line },
+            'tuplet',
+          )
+          carried.push({
+            voice,
+            number: this.#closeTuplet(builder, warnings, context, path, line, true),
+          })
+        }
       }
     }
+    return carried
   }
 
   /**

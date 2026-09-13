@@ -173,13 +173,10 @@ describe('the place a refusal names', () => {
     expect(error.line).toBe(FIRST_BODY_LINE + at)
   })
 
-  // A tuplet or a tremolo the measure never closes is found once the measure
-  // is whole, so the measure itself is the place.
-  test.each([
-    ['a tremolo', [tremoloNote('C', 'start')]],
-    ['a tuplet', [tupletNote('C', '<tuplet type="start"/>')]],
-  ])('points at the measure for %s left open', (_what, body) => {
-    const error = refusal(score(...body))
+  // A tremolo the measure never closes is found once the measure is whole, so
+  // the measure itself is the place.
+  test('points at the measure for a tremolo left open', () => {
+    const error = refusal(score(tremoloNote('C', 'start')))
 
     expect(error.path).toEqual(['score-partwise', 'part P1', 'measure 7'])
     expect(error.line).toBe(MEASURE_LINE)
@@ -274,6 +271,18 @@ describe('the place a warning names', () => {
     expect(reported?.context.part).toBe('P1')
     expect(reported?.context.measure).toBe(MEASURE_POSITION)
     expect(reported?.context.line).toBe(FIRST_BODY_LINE)
+  })
+
+  // A bracket still open at the barline is closed there, which is found once
+  // the measure is whole, so the report carries the measure's own line.
+  test('points at the measure for a tuplet cut at the barline', () => {
+    const reported = warningsOf(score(tupletNote('C', '<tuplet type="start"/>'))).find(
+      (warning) => warning.code === 'unrepresentable:tuplet-span',
+    )
+
+    expect(reported?.context.part).toBe('P1')
+    expect(reported?.context.measure).toBe(MEASURE_POSITION)
+    expect(reported?.context.line).toBe(MEASURE_LINE)
   })
 
   // A roll is drawn beside a chord rather than on a note, so its report names

@@ -3,6 +3,7 @@
 
 import type { ClefSign, KitComponent, ResolvedSound, Transposition } from '../model/score.js'
 import { IdGenerator, SpannerResolver } from './spanners.js'
+import type { CarriedTupletStop } from './voices.js'
 
 /** The clef in force on a staff: its sign and the line it sits on. */
 export interface ClefInForce {
@@ -81,6 +82,12 @@ export interface PartState {
    */
   transposition: Transposition | undefined
   /**
+   * The <tuplet> stops still to be met: a bracket the reader closed at a
+   * barline, because MNX states a tuplet inside one measure, leaves the stop
+   * the source wrote in a later measure with nothing to close.
+   */
+  carriedTupletStops: readonly CarriedTupletStop[]
+  /**
    * The first transposition the part stated, which is the one written out.
    * MNX states one per part, so a part that changes instrument partway keeps
    * this one and reports the change.
@@ -105,6 +112,7 @@ export function newPartState(
     sounds,
     kit: new Map(),
     kitKeys: new Map(),
+    carriedTupletStops: [],
     transposition: undefined,
     statedTransposition: undefined,
   }

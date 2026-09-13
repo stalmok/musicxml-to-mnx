@@ -175,6 +175,10 @@ export type WarningCode =
   // last opened, which MNX's nested tuplets cannot state. The stop is matched
   // to the innermost open tuplet.
   | 'unrepresentable:tuplet-crossing'
+  // A tuplet bracket that starts in one measure and stops in a later one,
+  // which MNX cannot state: a tuplet is an item inside one measure's
+  // sequence. The bracket is drawn as far as the barline.
+  | 'unrepresentable:tuplet-span'
   // A <print> detail beyond the system and page breaks, such as a page
   // number or staff spacing, which MNX's pages and systems cannot state.
   | 'unrepresentable:print-detail'
