@@ -647,8 +647,6 @@ export function readNote(
       ? duration
       : undefined
 
-  const restFillsMeasure = markedAsTheMeasure || fillsMeasure || unwritableRest !== undefined
-
   // A word spoken over an otherwise resting bar is written as a lyric on the
   // whole-measure rest. MNX's sequence-level full-measure rest states only a
   // visual duration and a fermata, with no room for a lyric, but a plain rest
@@ -678,6 +676,26 @@ export function readNote(
   // stating the rest must hold nothing, so the grace notes are what keeps the
   // rest an event here.
   const afterGraceNotes = builder.holdsOnlyGraceNotes(voice) && builder.atMeasureStart()
+
+  // A rest the source marks as the measure's is the measure's rest only where
+  // it is the whole of its voice. Sources write one beside other notes too:
+  // early-music editions bar their parts at different lengths and pad a voice
+  // with a marked whole rest, before the notes it sings or after them. Where
+  // the source states the value the rest is drawn as, the rest can stand as
+  // an ordinary event, so which reading holds is settled once the voice is
+  // whole, as it is for a rest that only looks like the measure's. Without
+  // that value there is no event to fall back to, and the mark is taken as
+  // written.
+  const markedCandidate =
+    markedAsTheMeasure &&
+    written !== undefined &&
+    duration !== undefined &&
+    graceElement === undefined &&
+    !carriesSlurEnd &&
+    !builder.hasFullMeasure(voice)
+
+  const restFillsMeasure =
+    (markedAsTheMeasure && !markedCandidate) || fillsMeasure || unwritableRest !== undefined
 
   if (restFillsMeasure && !((carriesLyric || carriesSlurEnd || afterGraceNotes) && canBeEvent)) {
     // A rest is not drawn with a stem, and a beam over one alone is not a
@@ -730,25 +748,26 @@ export function readNote(
   // disagreement between its written value and its length is held back with
   // it. Anything the rest carries that only an event can hold keeps it one.
   const restsWholeMeasure =
-    restElement !== undefined &&
-    graceElement === undefined &&
     written !== undefined &&
     duration !== undefined &&
-    !state.divisionsAssumed &&
-    state.time !== undefined &&
-    compareFractions(duration, fraction(state.time.count, state.time.unit)) === 0 &&
-    compareFractions(lengthOf(written), duration) !== 0 &&
-    // A slur is paired once the part is whole, so whether one reaches this
-    // rest is readable here and nowhere later. What the event itself carries
-    // is weighed where the reading is settled.
-    !carriesSlurEnd &&
-    // A rest written over a rest that already fills the measure is reported
-    // below and discarded, so it never reaches the settling.
-    !builder.hasFullMeasure(voice) &&
-    // A rest the voice has already sounded past cannot be the measure's rest,
-    // and the settling would say so, but it would say it at the end of the
-    // measure. Ruling it out here keeps its report where the rest stands.
-    builder.opensMeasure(voice)
+    (markedCandidate ||
+      (restElement !== undefined &&
+        graceElement === undefined &&
+        !state.divisionsAssumed &&
+        state.time !== undefined &&
+        compareFractions(duration, fraction(state.time.count, state.time.unit)) === 0 &&
+        compareFractions(lengthOf(written), duration) !== 0 &&
+        // A slur is paired once the part is whole, so whether one reaches this
+        // rest is readable here and nowhere later. What the event itself carries
+        // is weighed where the reading is settled.
+        !carriesSlurEnd &&
+        // A rest written over a rest that already fills the measure is reported
+        // below and discarded, so it never reaches the settling.
+        !builder.hasFullMeasure(voice) &&
+        // A rest the voice has already sounded past cannot be the measure's rest,
+        // and the settling would say so, but it would say it at the end of the
+        // measure. Ruling it out here keeps its report where the rest stands.
+        builder.opensMeasure(voice)))
 
   // What the tuplets and tremolos open around this note scale its written
   // value by. A grace note takes none of the measure's time, so none of them

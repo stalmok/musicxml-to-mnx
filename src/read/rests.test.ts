@@ -706,3 +706,66 @@ describe('a rest drawn shorter than the measure it fills', () => {
     expect(codes).toEqual(['inconsistent:duration'])
   })
 })
+
+// A rest the source marks as the measure's is the measure's rest only where
+// it is the whole of its voice. Early-music editions bar their parts at
+// different lengths and pad a voice with a marked whole rest beside the notes
+// it sings; ten CPDL scores write one, some before the notes and some after.
+// Where the source states the value the rest is drawn as, the rest can stand
+// as an ordinary event, so which reading holds waits until the voice is whole.
+describe("a rest marked as the measure's standing beside other notes", () => {
+  const marked =
+    '<note><rest measure="yes"/><duration>16</duration><type>whole</type>' +
+    '<voice>1</voice></note>'
+  const note = (duration: number, value: string) =>
+    '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+    `<duration>${String(duration)}</duration><type>${value}</type><voice>1</voice></note>`
+
+  test('keeps the rest an event where the voice has already sounded', () => {
+    const { mnx, warnings } = convertMusicXML(inMeasure(note(8, 'half') + marked))
+    const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
+
+    expect(sequence?.fullMeasure).toBeUndefined()
+    expect(sequence?.content).toHaveLength(2)
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  test('keeps the rest an event where notes follow it', () => {
+    const { mnx, warnings } = convertMusicXML(inMeasure(marked + note(4, 'quarter')))
+    const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
+
+    expect(sequence?.fullMeasure).toBeUndefined()
+    expect(sequence?.content).toHaveLength(2)
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  test('rests the measure where the rest is the whole of the voice', () => {
+    const { mnx, warnings } = convertMusicXML(inMeasure(marked))
+    const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
+
+    expect(sequence?.fullMeasure).toEqual({ visualDuration: { base: 'whole' } })
+    expect(sequence?.content).toEqual([])
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // Without a written value there is no event for the rest to fall back to,
+  // so the mark is taken as written and the voice cannot hold both.
+  test('refuses where the source states no value to draw the rest as', () => {
+    let thrown = ''
+    try {
+      convertMusicXML(
+        inMeasure(
+          note(8, 'half') +
+            '<note><rest measure="yes"/><duration>16</duration><voice>1</voice></note>',
+        ),
+      )
+    } catch (error) {
+      thrown = error instanceof Error ? error.message : String(error)
+    }
+
+    expect(thrown).toContain('both a rest that fills the measure and notes in it')
+  })
+})

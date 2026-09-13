@@ -1008,7 +1008,9 @@ describe('the measure cursor', () => {
 
 // MNX states a rest that fills the measure on the sequence rather than as an
 // event, so a voice cannot hold both. The two ways that happens are different
-// mistakes, and used to share a message that named only one of them.
+// mistakes, and used to share a message that named only one of them. Each
+// rest here states no value it is drawn as: one that does can stand as an
+// ordinary rest instead, and is read as one.
 describe('a rest filling a measure that already holds something', () => {
   test('names the notes it clashes with, not a second rest', () => {
     let thrown = ''
@@ -1043,23 +1045,28 @@ describe('a rest filling a measure that already holds something', () => {
     expect(thrown).toContain('more than one rest that fills the measure')
   })
 
+  // A tuplet counts in note values, so the bracket is opened by the note
+  // before the rest rather than by the rest itself.
+  const tuplet =
+    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+    '<type>quarter</type>' +
+    '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+    '</time-modification><notations><tuplet type="start"/></notations></note>'
+
   // A bracket around such a rest is a third mistake again: the rest is stated
   // on the sequence, where a tuplet cannot reach it. The refusal used to
   // describe notes that are not there.
   test('names the bracket around it, not notes it does not hold', () => {
-    const rest =
-      '<note><rest measure="yes"/><duration>16</duration><type>whole</type>' +
-      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
-      '</time-modification><notations><tuplet type="start"/></notations></note>'
+    const rest = '<note><rest measure="yes"/><duration>16</duration></note>'
 
-    expect(readFailure(measure(rest)).message).toContain('<tuplet>')
+    expect(readFailure(measure(tuplet + rest)).message).toContain('<tuplet>')
   })
 
   // A tremolo gathers the two notes it holds, and a rest stated on the
   // sequence is not one of them.
   test('names a tremolo open around it', () => {
     const rest =
-      '<note><rest measure="yes"/><duration>16</duration><type>whole</type>' +
+      '<note><rest measure="yes"/><duration>16</duration>' +
       '<time-modification><actual-notes>2</actual-notes><normal-notes>1</normal-notes>' +
       '</time-modification>' +
       '<notations><ornaments><tremolo type="start">3</tremolo></ornaments></notations></note>'
@@ -1075,18 +1082,13 @@ describe('a rest filling a measure that already holds something', () => {
   // rest, and the one the refusal names. Every fixture above opens one, so
   // nothing said which of several is picked.
   test('names the innermost of two brackets open around it', () => {
-    const tuplet =
-      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
-      '<type>quarter</type>' +
-      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
-      '</time-modification><notations><tuplet type="start"/></notations></note>'
     const tremolo =
       '<note><pitch><step>D</step><octave>4</octave></pitch><duration>2</duration>' +
       '<type>quarter</type>' +
       '<time-modification><actual-notes>2</actual-notes><normal-notes>1</normal-notes>' +
       '</time-modification>' +
       '<notations><ornaments><tremolo type="start">3</tremolo></ornaments></notations></note>'
-    const rest = '<note><rest measure="yes"/><duration>16</duration><type>whole</type></note>'
+    const rest = '<note><rest measure="yes"/><duration>16</duration></note>'
 
     expect(readFailure(measure(tuplet + tremolo + rest)).message).toContain(
       'A rest that fills the measure is inside a two-note tremolo.',

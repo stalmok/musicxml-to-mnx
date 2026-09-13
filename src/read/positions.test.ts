@@ -44,7 +44,10 @@ const note = (step: string, duration: number, type = 'quarter', extra = ''): str
   `<note>${extra}<pitch><step>${step}</step><octave>4</octave></pitch>` +
   `<duration>${String(duration)}</duration><type>${type}</type></note>`
 
-const FULL_REST = '<note><rest measure="yes"/><duration>16</duration><type>whole</type></note>'
+// No <type>: a marked rest the source states a value for can stand as an
+// ordinary rest, and the reading that keeps it one is settled once the voice
+// is whole. Without one the mark is taken as written, which is what refuses.
+const FULL_REST = '<note><rest measure="yes"/><duration>16</duration></note>'
 
 const backup = (duration: number): string =>
   `<backup><duration>${String(duration)}</duration></backup>`
