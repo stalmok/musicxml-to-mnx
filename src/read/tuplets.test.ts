@@ -773,7 +773,7 @@ describe('tuplets', () => {
     const { warnings } = read(measure(partial))
 
     expect(warnings.map((w) => ({ code: w.code, element: w.element }))).toEqual([
-      { code: 'inconsistent:tuplet', element: 'tuplet' },
+      { code: 'unrepresentable:tuplet-ratio', element: 'tuplet' },
     ])
     expect(warnings[0]?.message).toContain('falls short')
   })
@@ -833,7 +833,7 @@ describe('tuplets', () => {
     expect(tuplet?.kind === 'tuplet' && tuplet.content).toHaveLength(2)
     expect(warnings.map((w) => w.code)).toEqual([
       'unrepresentable:tuplet-span',
-      'inconsistent:tuplet',
+      'unrepresentable:tuplet-ratio',
     ])
     expect(warnings[0]?.element).toBe('tuplet')
   })
@@ -941,7 +941,7 @@ describe('tuplets', () => {
     expect(warnings.map((w) => w.code)).toEqual([
       'unrepresentable:tuplet-span',
       'unrepresentable:tuplet-span',
-      'inconsistent:tuplet',
+      'unrepresentable:tuplet-ratio',
     ])
   })
 
@@ -1128,11 +1128,12 @@ describe('a bracket the source states no ratio for', () => {
 
     expect(tuplet?.kind === 'tuplet' && tuplet.inner.multiple).toBe(3)
     expect(tuplet?.kind === 'tuplet' && tuplet.outer.multiple).toBe(2)
-    // Four eighths under a bracket that says three: the source's own
-    // disagreement, which is reported rather than scaled away.
+    // Four eighths under a bracket that says three, sounding for eight thirds
+    // of an eighth, which no ratio counts: the bracket stands as drawn and the
+    // disagreement is reported.
     expect(warnings.map((w) => w.code)).toEqual([
       'missing:time-modification',
-      'inconsistent:tuplet',
+      'unrepresentable:tuplet-ratio',
     ])
   })
 
@@ -1231,7 +1232,7 @@ describe('a bracket the source states no ratio for', () => {
         { value: { base: 'quarter', dots: 0 }, multiple: 2 },
         { value: { base: 'quarter', dots: 0 }, multiple: 1 },
       ])
-      expect(warnings.map((w) => w.code)).toContain('inconsistent:tuplet')
+      expect(warnings.map((w) => w.code)).toContain('unrepresentable:tuplet-ratio')
     })
   })
 
@@ -2536,7 +2537,7 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
 
     expect(content).toHaveLength(2)
     expect(content?.[0]?.kind === 'tuplet' && content[0].content).toHaveLength(2)
-    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tuplet'])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-ratio'])
   })
 
   test('starts a new group where the ratio changes', () => {
@@ -2666,7 +2667,7 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
 
     expect(content).toHaveLength(1)
     expect(content?.[0]?.kind === 'tuplet' && content[0].content).toHaveLength(2)
-    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tuplet'])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-ratio'])
     expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
   })
 
@@ -2773,7 +2774,10 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
     expect(content?.[1]).toEqual({ kind: 'space', duration: { num: 1, den: 2 } })
     expect(content?.[0]?.kind === 'tuplet' && content[0].content).toHaveLength(1)
     expect(content?.[2]?.kind === 'tuplet' && content[2].content).toHaveLength(2)
-    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tuplet', 'inconsistent:tuplet'])
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:tuplet-ratio',
+      'unrepresentable:tuplet-ratio',
+    ])
   })
 
   // A grace note takes none of the measure's time, so the run reaches over it,

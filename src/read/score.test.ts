@@ -783,7 +783,7 @@ describe('durations', () => {
 
     expect(item?.kind === 'tuplet' && item.inner.multiple).toBe(3)
     expect(item?.kind === 'tuplet' && item.content).toHaveLength(1)
-    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tuplet'])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-ratio'])
   })
 })
 

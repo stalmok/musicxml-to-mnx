@@ -179,6 +179,12 @@ export type WarningCode =
   // which MNX cannot state: a tuplet is an item inside one measure's
   // sequence. The bracket is drawn as far as the barline.
   | 'unrepresentable:tuplet-span'
+  // A tuplet whose content does not fill its ratio and whose sounding time no
+  // pair of note values counts: a quarter sounding a sixth of a whole note is
+  // one quarter in the time of two thirds of one, and MNX counts both sides of
+  // a ratio in note values. The bracket is drawn as the source wrote it, and
+  // occupies more of its measure than the notes in it sound for.
+  | 'unrepresentable:tuplet-ratio'
   // A <print> detail beyond the system and page breaks, such as a page
   // number or staff spacing, which MNX's pages and systems cannot state.
   | 'unrepresentable:print-detail'

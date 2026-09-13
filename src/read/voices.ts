@@ -1718,7 +1718,7 @@ export class MeasureBuilder {
       // the disagreement is reported, because a consumer cannot tell how much
       // time such a tuplet means to take.
       warnings.add(
-        'inconsistent:tuplet',
+        'unrepresentable:tuplet-ratio',
         `A tuplet's written content ${misfits < 0 ? 'falls short of' : 'overruns'} its ` +
           'stated ratio, and no ratio counts both what it holds and the time it takes. ' +
           'The content is converted as written.',

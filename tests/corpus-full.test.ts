@@ -134,11 +134,11 @@ function firstFailure(
   if (skipLengths) return undefined
 
   const lengths = sourceMeasureLengths(root)
-  // A tuplet whose content disagrees with its ratio stands as the source drew
-  // it, and occupies its outer whatever it holds, so its measure sounds longer
-  // than the source's durations add up to. Only the measure the report names
-  // is passed over.
-  const misfitting = measuresWarned(root, warnings, 'inconsistent:tuplet')
+  // A tuplet whose ratio no pair of note values writes stands as the source
+  // drew it, and occupies its outer whatever it holds, so its measure sounds
+  // longer than the source's durations add up to. Only the measure the report
+  // names is passed over.
+  const misfitting = measuresWarned(root, warnings, 'unrepresentable:tuplet-ratio')
   for (const [partIndex, part] of mnx.parts.entries()) {
     for (const [measureIndex, measure] of part.measures.entries()) {
       // A full-measure rest states no length of its own; the time signature

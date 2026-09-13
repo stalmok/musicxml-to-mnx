@@ -518,11 +518,11 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
 
     const root = parseXmlRoot(source)
     const lengths = sourceMeasureLengths(root)
-    // A tuplet whose content disagrees with its ratio stands as the source
+    // A tuplet whose ratio no pair of note values writes stands as the source
     // drew it, and occupies its outer whatever it holds, so its measure sounds
     // longer than the source's durations add up to. Only the measure the
     // report names is passed over.
-    const misfitting = measuresWarned(root, warnings, 'inconsistent:tuplet')
+    const misfitting = measuresWarned(root, warnings, 'unrepresentable:tuplet-ratio')
     const overfull: string[] = []
 
     mnx.parts.forEach((part, partIndex) => {
@@ -992,10 +992,10 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     const root = parseXmlRoot(source)
     const expected = sourceMeasureLengths(root)
     const disagreements: string[] = []
-    // A tuplet whose content disagrees with its ratio stands as the source
-    // drew it, and occupies its outer whatever it holds. Only the measure the
-    // report names is passed over.
-    const misfitting = measuresWarned(root, warnings, 'inconsistent:tuplet')
+    // The same for a tuplet whose ratio no pair of note values writes: it
+    // occupies its outer whatever it holds, so only the measure the report
+    // names is passed over.
+    const misfitting = measuresWarned(root, warnings, 'unrepresentable:tuplet-ratio')
 
     // Where a note's written value disagrees with its measured duration, the
     // converter carries the written value and reports it as inconsistent:
