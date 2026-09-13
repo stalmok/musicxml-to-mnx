@@ -822,9 +822,9 @@ describe('tuplets', () => {
   // tuplet in MNX is an item inside one measure's sequence. The bracket holds
   // what fits and the loss is reported, rather than the file being refused.
   //
-  // Two of the ratio's three eighths are inside it. That the bracket holds
-  // less than it counts is what the report already says, so it is not weighed
-  // against its ratio on top of it.
+  // Two of the ratio's three eighths are inside it, and two eighths in the
+  // time of four thirds of one is a ratio no pair of note values can write,
+  // so the ratio stands as drawn and the disagreement is reported too.
   test('draws a tuplet the source never closes as far as the barline', () => {
     const { content, warnings } = read(
       measure(tupletNote('C', 4, 'eighth', 'start') + tupletNote('D', 4, 'eighth')),
@@ -832,8 +832,43 @@ describe('tuplets', () => {
     const tuplet = content?.[0]
 
     expect(tuplet?.kind === 'tuplet' && tuplet.content).toHaveLength(2)
-    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-span'])
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:tuplet-span',
+      'inconsistent:tuplet',
+    ])
     expect(warnings[0]?.element).toBe('tuplet')
+  })
+
+  // MNX reads a tuplet's outer as the time it takes up in the measure, so a
+  // cut bracket left stating the time the whole of it would have taken would
+  // push everything after it along. Four sixteenths in the time of three,
+  // cut after two, is four thirty-seconds in the time of three.
+  test('restates the ratio of a cut bracket over what it holds', () => {
+    const quadruplet = (step: string, bracket = ''): string =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>9</duration>` +
+      '<type>16th</type>' +
+      '<time-modification><actual-notes>4</actual-notes><normal-notes>3</normal-notes>' +
+      '</time-modification>' +
+      (bracket ? `<notations><tuplet type="${bracket}"/></notations>` : '') +
+      '</note>'
+    const { content, warnings } = read(
+      measures(
+        '<attributes><divisions>48</divisions></attributes>' +
+          quadruplet('C', 'start') +
+          quadruplet('D'),
+      ),
+    )
+    const tuplet = content?.[0]
+
+    expect(tuplet?.kind === 'tuplet' && tuplet.inner).toEqual({
+      value: { base: '32nd', dots: 0 },
+      multiple: 4,
+    })
+    expect(tuplet?.kind === 'tuplet' && tuplet.outer).toEqual({
+      value: { base: '32nd', dots: 0 },
+      multiple: 3,
+    })
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-span'])
   })
 
   // The bracket ended at the barline, so the stop the source writes in the
@@ -867,6 +902,7 @@ describe('tuplets', () => {
     expect(warnings.map((w) => w.code)).toEqual([
       'unrepresentable:tuplet-span',
       'unrepresentable:tuplet-span',
+      'inconsistent:tuplet',
     ])
   })
 

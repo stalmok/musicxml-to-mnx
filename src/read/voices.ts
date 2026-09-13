@@ -1623,7 +1623,7 @@ export class MeasureBuilder {
     /**
      * True where the barline is closing the bracket rather than a stop the
      * source wrote. Such a bracket holds only the part of itself that fits in
-     * the measure, which the report above already states.
+     * the measure, so its ratio is restated over what it does hold.
      */
     cutAtBarline = false,
   ): string {
@@ -1650,10 +1650,14 @@ export class MeasureBuilder {
       return closed.number
     }
     const held = writtenLengthOf(tuplet.content)
-    // A ratio read from the bracket's first note speaks for that note alone.
-    // The whole bracket is known only here, so it is stated here: what it
-    // holds, against the time this voice spent inside it.
-    if (closed.derived) {
+    // A ratio read from the bracket's first note speaks for that note alone,
+    // and a bracket the barline cut holds less than the one the source drew.
+    // Either way the whole bracket is known only here, so it is stated here:
+    // what it holds, against the time this voice spent inside it. MNX reads a
+    // tuplet's outer as the time it takes up in the measure, so a bracket
+    // left stating the time the whole of it would have taken would push
+    // everything after it along.
+    if (closed.derived || cutAtBarline) {
       scaleToContent(tuplet, held, subtractFractions(builder.end, closed.openEnd))
     }
 
@@ -1667,7 +1671,7 @@ export class MeasureBuilder {
       lengthOf(tuplet.inner.value),
     )
     const compared = compareFractions(held, statedLength)
-    if (compared !== 0 && !cutAtBarline) {
+    if (compared !== 0) {
       warnings.add(
         'inconsistent:tuplet',
         `A tuplet's written content ${compared < 0 ? 'falls short of' : 'overruns'} its ` +
@@ -1824,7 +1828,8 @@ export class MeasureBuilder {
           warnings.add(
             'unrepresentable:tuplet-span',
             'A tuplet bracket runs past the end of the measure, and MNX states a tuplet ' +
-              'inside one measure. It is drawn as far as the barline.',
+              'inside one measure. It is drawn as far as the barline, over the notes of ' +
+              'it that this measure holds.',
             { ...context, line },
             'tuplet',
           )
