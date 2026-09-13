@@ -21,12 +21,13 @@ import { describe, expect, test } from 'vitest'
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { convertMusicXML, MusicXMLError } from '../src/index.js'
-import type { MNXDocument } from '../src/index.js'
+import type { ConversionWarning, MNXDocument } from '../src/index.js'
 import { readMusicXML } from '../src/container.js'
 import { parseXmlRoot } from '../src/xml/parse.js'
 import { schemaErrors } from './support/schema.js'
 import {
   crowdedMeasureRests,
+  measuresWarned,
   pitchesOf,
   sounding,
   sourceMeasureLengths,
@@ -86,7 +87,7 @@ function assess(file: string): Outcome {
   // thing. The pitch and schema checks still hold that file to account.
   const inconsistent = warnings.some((warning) => warning.code === 'inconsistent:duration')
 
-  const failure = firstFailure(file, xml, mnx, inconsistent)
+  const failure = firstFailure(file, xml, mnx, inconsistent, warnings)
   if (failure) return { kind: 'failed', failure }
 
   return { kind: 'converted', losses: warnings.map((warning) => warning.element ?? warning.code) }
@@ -98,6 +99,7 @@ function firstFailure(
   xml: string,
   mnx: MNXDocument,
   skipLengths: boolean,
+  warnings: readonly ConversionWarning[],
 ): Failure | undefined {
   const schema = schemaErrors(mnx)
   if (schema.length > 0) return { file, kind: 'schema', detail: schema.slice(0, 3).join('; ') }
@@ -132,11 +134,17 @@ function firstFailure(
   if (skipLengths) return undefined
 
   const lengths = sourceMeasureLengths(root)
+  // A tuplet whose content disagrees with its ratio stands as the source drew
+  // it, and occupies its outer whatever it holds, so its measure sounds longer
+  // than the source's durations add up to. Only the measure the report names
+  // is passed over.
+  const misfitting = measuresWarned(root, warnings, 'inconsistent:tuplet')
   for (const [partIndex, part] of mnx.parts.entries()) {
     for (const [measureIndex, measure] of part.measures.entries()) {
       // A full-measure rest states no length of its own; the time signature
       // does, and this check is about what the converter carried over.
       if (measure.sequences.some((sequence) => sequence.fullMeasure)) continue
+      if (misfitting.has(`${String(partIndex)}:${String(measureIndex)}`)) continue
 
       const soundsFor = Math.max(
         0,

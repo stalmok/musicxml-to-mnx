@@ -20,6 +20,8 @@ import type {
   MNXNoteValue,
   MNXSequenceItem,
   MNXStaffGroup,
+  WarningCode,
+  WarningContext,
 } from '../../src/index.js'
 import type { XmlElement } from '../../src/xml/parse.js'
 
@@ -58,13 +60,13 @@ export function sounding(item: MNXSequenceItem): number {
   if ('type' in item && item.type === 'tremolo') {
     return writtenLength(item.outer.duration) * item.outer.multiple
   }
+  // A tuplet occupies its outer, whatever it holds: MNX advances the sequence
+  // cursor by outer and requires the content to fill inner. Measuring the
+  // content and scaling it by the ratio instead reproduces the converter's own
+  // arithmetic, so a tuplet whose content disagrees with its ratio would never
+  // show here.
   if ('type' in item && item.type === 'tuplet') {
-    // Scaled by the ratio rather than assumed full, so a tuplet the source
-    // only partly fills is still measured correctly.
-    const written = item.content.reduce((total, inner) => total + sounding(inner), 0)
-    const outer = writtenLength(item.outer.duration) * item.outer.multiple
-    const inner = writtenLength(item.inner.duration) * item.inner.multiple
-    return (written * outer) / inner
+    return writtenLength(item.outer.duration) * item.outer.multiple
   }
   return writtenLength((item as { duration: MNXNoteValue }).duration)
 }
@@ -85,7 +87,8 @@ export function collectStarts(
     if ('type' in item && item.type === 'tuplet') {
       const outer = writtenLength(item.outer.duration) * item.outer.multiple
       const inner = writtenLength(item.inner.duration) * item.inner.multiple
-      at = collectStarts(item.content, at, (scale * outer) / inner, into)
+      collectStarts(item.content, at, (scale * outer) / inner, into)
+      at += outer * scale
       continue
     }
     // The notes of a two-note tremolo begin one outer unit apart, whatever
@@ -455,6 +458,31 @@ export function sourceMeasureLengths(root: XmlElement): number[][] {
   return perPart
 }
 
+/**
+ * The measures a warning code names, keyed as `part:measure` on the indices
+ * the length checks walk by. A warning states the MusicXML part id and the
+ * measure's position in that part, so both are looked up here rather than
+ * passing over the whole song the way an inconsistent duration does.
+ */
+export function measuresWarned(
+  root: XmlElement,
+  warnings: readonly { code: WarningCode; context: WarningContext }[],
+  code: WarningCode,
+): Set<string> {
+  const parts = root.children.filter((c) => c.name === 'part')
+  const indexOfPart = new Map(parts.map((part, index) => [part.attributes['id'], index]))
+  const named = new Set<string>()
+
+  for (const warning of warnings) {
+    if (warning.code !== code) continue
+    const part = indexOfPart.get(warning.context.part)
+    const measure = warning.context.measure
+    if (part === undefined || measure === undefined) continue
+    named.add(`${String(part)}:${String(measure - 1)}`)
+  }
+  return named
+}
+
 /** An event of the converted document, and where in the score it stands. */
 interface PlacedEvent {
   item: { id?: string; slurs?: { target: string }[]; lyrics?: MNXLyrics }
@@ -500,7 +528,8 @@ function placeEvents(
     if ('type' in item && item.type === 'tuplet') {
       const outer = writtenLength(item.outer.duration) * item.outer.multiple
       const inner = writtenLength(item.inner.duration) * item.inner.multiple
-      at = placeEvents(item.content, at, (scale * outer) / inner, found)
+      placeEvents(item.content, at, (scale * outer) / inner, found)
+      at += outer * scale
       continue
     }
     // The notes of a two-note tremolo begin one outer unit apart.

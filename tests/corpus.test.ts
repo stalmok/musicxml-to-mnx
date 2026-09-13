@@ -29,6 +29,7 @@ import {
   differingLyricLines,
   layoutLosses,
   lyricPlaces,
+  measuresWarned,
   pitchesOf,
   sounding,
   slurSpans,
@@ -515,12 +516,19 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     // checks still hold the song to account.
     if (warnings.some((warning) => warning.code === 'inconsistent:duration')) return
 
-    const lengths = sourceMeasureLengths(parseXmlRoot(source))
+    const root = parseXmlRoot(source)
+    const lengths = sourceMeasureLengths(root)
+    // A tuplet whose content disagrees with its ratio stands as the source
+    // drew it, and occupies its outer whatever it holds, so its measure sounds
+    // longer than the source's durations add up to. Only the measure the
+    // report names is passed over.
+    const misfitting = measuresWarned(root, warnings, 'inconsistent:tuplet')
     const overfull: string[] = []
 
     mnx.parts.forEach((part, partIndex) => {
       part.measures.forEach((measure, index) => {
         const inSource = lengths[partIndex]?.[index] ?? 0
+        if (misfitting.has(`${String(partIndex)}:${String(index)}`)) return
 
         measure.sequences.forEach((sequence, voice) => {
           if (sequence.fullMeasure) return
@@ -981,8 +989,13 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   })
 
   test('sounds for as long as the source does, measure by measure', () => {
-    const expected = sourceMeasureLengths(parseXmlRoot(source))
+    const root = parseXmlRoot(source)
+    const expected = sourceMeasureLengths(root)
     const disagreements: string[] = []
+    // A tuplet whose content disagrees with its ratio stands as the source
+    // drew it, and occupies its outer whatever it holds. Only the measure the
+    // report names is passed over.
+    const misfitting = measuresWarned(root, warnings, 'inconsistent:tuplet')
 
     // Where a note's written value disagrees with its measured duration, the
     // converter carries the written value and reports it as inconsistent:
@@ -997,6 +1010,7 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
           // A full-measure rest states no length of its own: the time signature
           // does, and this check is about what the converter carried over.
           if (measure.sequences.some((sequence) => sequence.fullMeasure)) return
+          if (misfitting.has(`${String(partIndex)}:${String(index)}`)) return
 
           const converted = Math.max(
             0,

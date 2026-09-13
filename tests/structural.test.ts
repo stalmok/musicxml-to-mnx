@@ -4,16 +4,19 @@
 
 import { expect, test } from 'vitest'
 import { convertMusicXML } from '../src/index.js'
-import type { MNXDocument } from '../src/index.js'
+import type { MNXDocument, MNXSequenceItem } from '../src/index.js'
 import { parseXmlRoot } from '../src/xml/parse.js'
 import type { XmlElement } from '../src/xml/parse.js'
 import { schemaErrors } from './support/schema.js'
 import {
+  collectStarts,
   crowdedMeasureRests,
   lyricPlaces,
   differingLyricLines,
   layoutLosses,
+  measuresWarned,
   pitchesOf,
+  sounding,
   sourceLyricPlaces,
   sourceMeasureLengths,
   sourcePitches,
@@ -621,4 +624,62 @@ test('a syllable on each of a voice two lines is read on the note that sings it'
     'part 1 measure 1 at 0.250000000 line 1: ri',
   ])
   expect(lyricPlaces(mnx).sort()).toEqual(sourceLyricPlaces(parseXmlRoot(source)).sort())
+})
+
+// MNX advances the sequence cursor by a tuplet's outer and requires its
+// content to fill inner. A tuplet holding less than its ratio counts still
+// occupies its whole outer, so the check has to measure it that way: scaling
+// the content by the ratio instead reproduces the converter's own arithmetic,
+// and the two agree with each other whatever the source said.
+const quarter = { base: 'quarter' as const, dots: 0 }
+const eighth = { base: 'eighth' as const, dots: 0 }
+const note = (duration: { base: 'quarter' | 'eighth'; dots: number }): MNXSequenceItem => ({
+  type: 'event',
+  duration,
+  notes: [{ pitch: { step: 'C', octave: 4, alter: 0 } }],
+})
+const underfilled: MNXSequenceItem = {
+  type: 'tuplet',
+  inner: { duration: eighth, multiple: 3 },
+  outer: { duration: eighth, multiple: 2 },
+  content: [note(eighth)],
+}
+
+test('a tuplet holding less than its ratio counts still occupies its outer', () => {
+  expect(sounding(underfilled)).toBe(1 / 4)
+})
+
+test('what follows an underfilled tuplet begins after its whole outer', () => {
+  const starts = new Set<string>()
+  collectStarts([underfilled, note(quarter)], 0, 1, starts)
+
+  expect([...starts]).toEqual([(0).toFixed(9), (0.25).toFixed(9)])
+})
+
+test('a warning names the measure it was reported against', () => {
+  const root = parseXmlRoot(
+    '<score-partwise><part id="P2"><measure number="1"/><measure number="2"/></part>' +
+      '<part id="P1"><measure number="1"/></part></score-partwise>',
+  )
+  const at = (part: string, measure: number) => ({
+    code: 'inconsistent:tuplet' as const,
+    context: { part, measure },
+  })
+
+  expect(measuresWarned(root, [at('P2', 2), at('P1', 1)], 'inconsistent:tuplet')).toEqual(
+    new Set(['0:1', '1:0']),
+  )
+})
+
+test('a warning of another code, or naming no measure, names nothing', () => {
+  const root = parseXmlRoot(
+    '<score-partwise><part id="P1"><measure number="1"/></part></score-partwise>',
+  )
+  const warnings = [
+    { code: 'inconsistent:tuplet' as const, context: { part: 'P1' } },
+    { code: 'inconsistent:tuplet' as const, context: { measure: 1 } },
+    { code: 'inconsistent:duration' as const, context: { part: 'P1', measure: 1 } },
+  ]
+
+  expect(measuresWarned(root, warnings, 'inconsistent:tuplet')).toEqual(new Set())
 })
