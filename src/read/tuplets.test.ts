@@ -1167,8 +1167,9 @@ describe('a bracket the source states no ratio for', () => {
   })
 
   // The counts a bracket states are worked out by halving the value it opened
-  // with until both sides count whole. The three edges of that search are the
-  // smallest count, the deepest halving, and the largest count.
+  // with until both sides count whole, and where no halving does, by taking
+  // the largest value that counts them both. The edges of that search are the
+  // smallest count, the deepest halving, and a value the halvings never reach.
   describe('the counts a bracket is scaled to', () => {
     const at = (divisions: number, body: string) =>
       read(
@@ -1216,10 +1217,9 @@ describe('a bracket the source states no ratio for', () => {
       ])
     })
 
-    // A count past a thousand is not one MusicXML would write, so the bracket
-    // is left with the ratio its first note gave it and the disagreement
-    // between that and its content is reported.
-    test('leaves a bracket alone where the count runs past a thousand', () => {
+    // MNX puts no bound on how many of a value a tuplet counts, so a count
+    // past a thousand is stated like any other.
+    test('states a count past a thousand', () => {
       const { content, warnings } = at(
         256,
         note('C', 128, 'quarter', '<tuplet type="start"/>') +
@@ -1229,10 +1229,31 @@ describe('a bracket the source states no ratio for', () => {
       const tuplet = content?.[0]
 
       expect(tuplet?.kind === 'tuplet' && [tuplet.inner, tuplet.outer]).toEqual([
-        { value: { base: 'quarter', dots: 0 }, multiple: 2 },
-        { value: { base: 'quarter', dots: 0 }, multiple: 1 },
+        { value: { base: '1024th', dots: 0 }, multiple: 1281 },
+        { value: { base: '1024th', dots: 0 }, multiple: 641 },
       ])
-      expect(warnings.map((w) => w.code)).toContain('unrepresentable:tuplet-ratio')
+      expect(warnings.map((w) => w.code)).not.toContain('unrepresentable:tuplet-ratio')
+    })
+
+    // A bracket opening on a dotted value counts in dotted values as it
+    // halves, so content no dotted value counts falls to the largest value
+    // that counts both sides. Four quarters in the time of three dotted
+    // quarters, cut after two, are four eighths in the time of three.
+    test('counts in a value the halvings never reach', () => {
+      const dotted = (step: string, markers = '') =>
+        `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+        '<duration>9</duration><type>quarter</type>' +
+        '<time-modification><actual-notes>4</actual-notes><normal-notes>3</normal-notes>' +
+        '<normal-type>quarter</normal-type><normal-dot/></time-modification>' +
+        (markers ? `<notations>${markers}</notations>` : '') +
+        '</note>'
+      const { content } = at(12, dotted('C', '<tuplet type="start"/>') + dotted('D'))
+      const tuplet = content?.[0]
+
+      expect(tuplet?.kind === 'tuplet' && [tuplet.inner, tuplet.outer]).toEqual([
+        { value: { base: 'eighth', dots: 0 }, multiple: 4 },
+        { value: { base: 'eighth', dots: 0 }, multiple: 3 },
+      ])
     })
   })
 

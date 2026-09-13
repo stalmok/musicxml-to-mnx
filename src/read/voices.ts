@@ -14,6 +14,7 @@ import type { DocumentPath } from '../errors.js'
 import {
   addFractions,
   compareFractions,
+  commonMeasure,
   divideFractions,
   fraction,
   multiplyFractions,
@@ -317,42 +318,53 @@ function ratioOf(inner: NoteValueQuantity, outer: NoteValueQuantity): Fraction {
  * time of two, and two eighths that played as written are two in the time of
  * two, which is a bracket drawn over what it holds and changing nothing.
  *
- * Used for a bracket the source states no ratio for. The ratio it opens with
- * comes from its first note, which is all there is to go on while its content
- * is still being read; here the whole bracket is known, so the whole bracket
- * is what it states. A first note the rest of the bracket does not follow
- * would otherwise state a time the notes inside do not take.
+ * Both sides are counted in one value, the largest that counts each of them
+ * whole. A bracket over a quarter and an eighth is three eighths, not one and
+ * a half quarters.
  *
- * Both sides are counted in one value, the largest that divides them both,
- * starting from the value the bracket opened with and halving. A bracket over
- * a quarter and an eighth is three eighths, not one and a half quarters.
- * Left alone where no value counts them both, which the caller reports as the
- * disagreement between content and ratio that it is.
+ * Left alone where no note value is that long. A note value lasts a power of
+ * two of a whole note, dots included, so a quarter sounding a sixth of one is
+ * a ratio no pair of them states, which the caller reports.
  */
 function scaleToContent(tuplet: Draft<Tuplet>, held: Fraction, sounded: Fraction): void {
-  let length = lengthOf(tuplet.inner.value)
-  // Eight halvings reach a 1024th from a quarter, which is as far down as a
-  // bracket is drawn. A bracket opening on a longer value and holding a
-  // 1024th would want more, and is left alone instead, which the caller
-  // reports as the disagreement between content and ratio that it is.
-  for (let halved = 0; halved <= 8; halved += 1) {
-    const value = noteValueOf(length)
-    if (value) {
-      const written = divideFractions(held, length)
-      const played = divideFractions(sounded, length)
-      if (countsWhole(written) && countsWhole(played)) {
-        tuplet.inner = { value, multiple: written.num }
-        tuplet.outer = { value, multiple: played.num }
-        return
-      }
-    }
-    length = multiplyFractions(length, fraction(1, 2))
-  }
+  const unit = countingUnit(tuplet.inner.value, held, sounded)
+  const value = noteValueOf(unit)
+  if (!value) return
+
+  // Both divide exactly: the unit counts each of them whole.
+  tuplet.inner = { value, multiple: divideFractions(held, unit).num }
+  tuplet.outer = { value, multiple: divideFractions(sounded, unit).num }
 }
 
-/** A count of note values MusicXML would write as a tuplet's actual or normal. */
-function countsWhole(count: Fraction): boolean {
-  return count.den === 1 && count.num >= 1 && count.num <= 1_000
+/**
+ * The value both sides are counted in: the one the bracket opened with where
+ * that counts them both whole, else the same halved, and failing that the
+ * largest value that counts them both at all.
+ *
+ * The value the bracket opened with comes first so that what the source wrote
+ * stands where it can: six in the time of four is not three in the time of
+ * two, because the source drew six notes. Halving reaches a 1024th from a
+ * quarter in eight steps, which is as far down as a bracket is drawn, and it
+ * keeps the dots the opening value has. The largest common value is what
+ * catches the rest, a dotted opening value over undotted content among them.
+ */
+function countingUnit(stated: NoteValue, held: Fraction, sounded: Fraction): Fraction {
+  let length = lengthOf(stated)
+  for (let halved = 0; halved <= 8; halved += 1) {
+    if (noteValueOf(length) && countsBoth(length, held, sounded)) return length
+    length = multiplyFractions(length, fraction(1, 2))
+  }
+  return commonMeasure(held, sounded)
+}
+
+/** Whether one value counts each of two lengths a whole number of times. */
+function countsBoth(unit: Fraction, held: Fraction, sounded: Fraction): boolean {
+  return countsOnce(divideFractions(held, unit)) && countsOnce(divideFractions(sounded, unit))
+}
+
+/** Whether a count is one MNX states: a whole number, and at least one. */
+function countsOnce(count: Fraction): boolean {
+  return count.den === 1 && count.num >= 1
 }
 
 /** How long a tuplet's content is written as, before its ratio scales it. */

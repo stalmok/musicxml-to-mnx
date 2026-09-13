@@ -120,6 +120,18 @@ export function divideFractions(a: Fraction, b: Fraction): Fraction {
   return fraction((a.num / nums) * (b.den / dens), (a.den / dens) * (b.num / nums))
 }
 
+/**
+ * The largest value that counts both a and b a whole number of times: the
+ * greatest common divisor of the numerators over the least common multiple of
+ * the denominators. Zero where either side is zero, since no value counts
+ * zero a whole number of times and something else too.
+ */
+export function commonMeasure(a: Fraction, b: Fraction): Fraction {
+  if (a.num === 0 || b.num === 0) return fraction(0)
+  const common = greatestCommonDivisor(a.den, b.den)
+  return fraction(greatestCommonDivisor(Math.abs(a.num), Math.abs(b.num)), (a.den / common) * b.den)
+}
+
 export function negate(value: Fraction): Fraction {
   return fraction(-value.num, value.den)
 }

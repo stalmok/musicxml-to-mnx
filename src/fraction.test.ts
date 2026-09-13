@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { MusicXMLError } from './errors.js'
 import {
   addFractions,
+  commonMeasure,
   compareFractions,
   divideFractions,
   fraction,
@@ -83,6 +84,17 @@ describe('arithmetic', () => {
   test('rejects division by zero', () => {
     expect(() => divideFractions(fraction(1, 2), fraction(0))).toThrow(MusicXMLError)
     expect(() => divideFractions(fraction(1, 2), fraction(0))).toThrow('Invalid fraction')
+  })
+
+  test('takes the largest value that counts two others whole', () => {
+    expect(commonMeasure(fraction(1, 2), fraction(3, 8))).toEqual({ num: 1, den: 8 })
+    expect(commonMeasure(fraction(3, 8), fraction(1, 4))).toEqual({ num: 1, den: 8 })
+    expect(commonMeasure(fraction(2, 3), fraction(4, 3))).toEqual({ num: 2, den: 3 })
+  })
+
+  test('counts nothing where one side is zero', () => {
+    expect(commonMeasure(fraction(0), fraction(3, 8))).toEqual({ num: 0, den: 1 })
+    expect(commonMeasure(fraction(3, 8), fraction(0))).toEqual({ num: 0, den: 1 })
   })
 
   // The reason this module exists: a triplet eighth is 1/12 of a whole note,
