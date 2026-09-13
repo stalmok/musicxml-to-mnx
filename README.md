@@ -162,6 +162,11 @@ The exit code is the contract for a pipeline:
 - More than one voice in a measure.
 - Clefs, including a clef change in the middle of a measure. Key signatures
   and time signatures.
+- Staff line counts. A staff drawn on other than five lines becomes a staff
+  config on the measure that changes it. MNX measures a staff position from
+  the middle of the staff, and the middle moves with the count, therefore the
+  converter reads every clef and every drawn height against the count in
+  force.
 - Part names, with the short name for the later systems.
 - Measure numbers that are different from plain 1, 2, 3. A pickup measure
   keeps its number.
@@ -230,8 +235,10 @@ The exit code is the contract for a pipeline:
   heights on such a staff as the treble clef gives them, which is how
   percussion is written and read. MNX states the C, F and G clefs only, so it
   writes a percussion clef as the treble clef with the SMuFL glyph MNX's clef
-  carries for a drawn sign. It reports a TAB, jianpu or "none" clef and writes
-  the staff without a clef.
+  carries for a drawn sign, drawn on the line the source states. It reports a
+  TAB, jianpu or "none" clef and writes the staff without a clef. A rolled
+  chord struck on a kit runs between the two components that the part's kit
+  draws lowest and highest.
 - Beams, including secondary beams, hooks, and beams over a grace group. The
   converter builds them as the MNX tree of beams over the measure.
 - Grace notes. Consecutive grace notes become one group, with the slash where
@@ -289,13 +296,13 @@ grow, and the weekly gate runs against its latest state.
 
 | Corpus                                                                                                        | Files  | Convert      |
 | ------------------------------------------------------------------------------------------------------------- | ------ | ------------ |
-| [OpenScore Lieder](https://github.com/OpenScore/Lieder) (songs, MuseScore exports)                            | 1,462  | 1,461 (99%)  |
+| [OpenScore Lieder](https://github.com/OpenScore/Lieder) (songs, MuseScore exports)                            | 1,462  | 1,462 (100%) |
 | [OpenScore String Quartets](https://github.com/OpenScore/StringQuartets) (exported with MuseScore 3)          | 122    | 112 (92%)    |
 | [Unofficial MusicXML Test Suite](https://github.com/cuthbertLab/musicxmlTestSuite) (feature files)            | 150    | 142 (95%)    |
 | [MusicXML example set](https://www.musicxml.com/music-in-musicxml/example-set/) (Finale exports, some UTF-16) | 36     | 34 (94%)     |
-| [PDMX](https://zenodo.org/records/15571083) random sample (MuseScore.com, all genres)                         | 20,000 | 19,965 (99%) |
-| [music21 bundled corpus](https://github.com/cuthbertLab/music21) (hand-encoded, older tools, some UTF-16)     | 654    | 641 (98%)    |
-| [CPDL](https://www.cpdl.org) random sample (choral, mostly Sibelius exports)                                  | 2,000  | 1,943 (97%)  |
+| [PDMX](https://zenodo.org/records/15571083) random sample (MuseScore.com, all genres)                         | 20,000 | 19,982 (99%) |
+| [music21 bundled corpus](https://github.com/cuthbertLab/music21) (hand-encoded, older tools, some UTF-16)     | 654    | 646 (99%)    |
+| [CPDL](https://www.cpdl.org) random sample (choral, mostly Sibelius exports)                                  | 2,000  | 1,985 (99%)  |
 
 The other files are refusals, and each refusal names its reason. Some files
 hold notation that MNX cannot state: composite meters such as 3+2/8. Other
