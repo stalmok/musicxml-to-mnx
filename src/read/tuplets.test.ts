@@ -1404,6 +1404,125 @@ describe('a bracket with no stated ratio inside another bracket', () => {
   })
 })
 
+// A bracket rewritten over its content states its inner against the time it
+// took, so the frame it writes is not the one its opening ratio stated. A
+// bracket inside it was written in the opening frame and came out sounding
+// for a time the source gives nowhere.
+describe('a bracket rewritten inside a bracket that is rewritten too', () => {
+  // Divisions of 36 to a quarter: an eighth is 18 and a sixteenth 9. Under
+  // the outer 3:2 an eighth should last 12, and C and G last 18 instead, so
+  // the outer bracket is rewritten over what it holds.
+  const outerNote = (step: string, bracket: string) =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    '<duration>18</duration><type>eighth</type>' +
+    '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+    '</time-modification>' +
+    `<notations><tuplet type="${bracket}" number="1"/></notations></note>`
+  const innerNote = (step: string, units: number, type: string, bracket = '') =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    `<duration>${String(units)}</duration><type>${type}</type>` +
+    (bracket ? `<notations><tuplet type="${bracket}" number="2"/></notations>` : '') +
+    '</note>'
+
+  const nested = read(
+    '<score-partwise><part id="P1"><measure number="1">' +
+      '<attributes><divisions>36</divisions></attributes>' +
+      outerNote('C', 'start') +
+      innerNote('D', 12, 'eighth', 'start') +
+      innerNote('E', 6, '16th', 'stop') +
+      outerNote('G', 'stop') +
+      '</measure></part></score-partwise>',
+  )
+  const outer = nested.content?.[0]
+  const inner = outer?.kind === 'tuplet' ? outer.content[1] : undefined
+
+  // C and G are written as eighths and last eighths, so the bracket holds
+  // three eighths sounding three eighths.
+  test('states the enclosing bracket over the time its notes take', () => {
+    expect(outer?.kind === 'tuplet' && outer.inner).toEqual({
+      value: { base: 'eighth', dots: 0 },
+      multiple: 3,
+    })
+    expect(outer?.kind === 'tuplet' && outer.outer).toEqual({
+      value: { base: 'eighth', dots: 0 },
+      multiple: 3,
+    })
+  })
+
+  // The inner bracket holds three sixteenths and takes an eighth. The frame
+  // around it scales nothing, so its outer is the two sixteenths that eighth
+  // is written as there. Under the opening 3:2 it came out as three, which
+  // the rewritten outer then played as 3/20 of a whole note.
+  test('writes the bracket inside it in the frame the outer ends up with', () => {
+    expect(inner?.kind === 'tuplet' && inner.inner).toEqual({
+      value: { base: '16th', dots: 0 },
+      multiple: 3,
+    })
+    expect(inner?.kind === 'tuplet' && inner.outer).toEqual({
+      value: { base: '16th', dots: 0 },
+      multiple: 2,
+    })
+  })
+
+  test('reports the source disagreeing with itself and nothing else', () => {
+    expect(nested.warnings.map((w) => w.code)).toEqual([
+      'inconsistent:duration',
+      'missing:time-modification',
+      'inconsistent:duration',
+      'inconsistent:tuplet',
+    ])
+  })
+})
+
+// A bracket holding nothing but another bracket says nothing about how much
+// written length it spends for each unit of time, so the bracket inside it
+// keeps the frame it was written in when it closed.
+describe('a bracket whose whole content is one other bracket', () => {
+  // Divisions of 12 to a quarter, so an eighth is 6. Both brackets open on
+  // one note and close on the next, and the outer keeps the whole 3:2.
+  const both = (step: string, units: number, markers: string) =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    `<duration>${String(units)}</duration><type>eighth</type>` +
+    '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+    '</time-modification>' +
+    `<notations>${markers}</notations></note>`
+  const starts = '<tuplet type="start" number="1"/><tuplet type="start" number="2"/>'
+  const stops = '<tuplet type="stop" number="2"/><tuplet type="stop" number="1"/>'
+
+  const nested = (units: number) =>
+    read(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        '<attributes><divisions>12</divisions></attributes>' +
+        both('C', units, starts) +
+        both('D', units, stops) +
+        '</measure></part></score-partwise>',
+    )
+
+  // Each note lasts a quarter, so the pair takes half a whole note where the
+  // ratio counts three eighths. The outer is rewritten to six eighths in the
+  // time of four, and the inner keeps the six eighths of space the opening
+  // 3:2 wrote it in.
+  test('keeps the opening frame where nothing else fixes the rate', () => {
+    const { content } = nested(12)
+    const outer = content?.[0]
+    const inner = outer?.kind === 'tuplet' ? outer.content[0] : undefined
+
+    expect(outer?.kind === 'tuplet' && [outer.inner.multiple, outer.outer.multiple]).toEqual([6, 4])
+    expect(inner?.kind === 'tuplet' && [inner.inner.multiple, inner.outer.multiple]).toEqual([2, 6])
+  })
+
+  // Here the pair takes the quarter the outer ratio counts, so the outer
+  // stands as the source drew it and the inner is written in that.
+  test('keeps the opening frame where the enclosing ratio stands', () => {
+    const { content } = nested(6)
+    const outer = content?.[0]
+    const inner = outer?.kind === 'tuplet' ? outer.content[0] : undefined
+
+    expect(outer?.kind === 'tuplet' && [outer.inner.multiple, outer.outer.multiple]).toEqual([3, 2])
+    expect(inner?.kind === 'tuplet' && [inner.inner.multiple, inner.outer.multiple]).toEqual([2, 3])
+  })
+})
+
 // A note inside a tuplet is weighed against its written value scaled by the
 // ratio around it. The report named the written value alone, so a note in a
 // triplet came out as "written as an eighth but lasts an eighth": the same
