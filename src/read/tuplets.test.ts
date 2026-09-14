@@ -814,7 +814,9 @@ describe('tuplets', () => {
       tupletNote('F', 4, 'eighth', 'stop')
     const { warnings } = read(measure(over))
 
-    expect(warnings.map((w) => w.element)).toEqual(['tuplet'])
+    expect(warnings.map((w) => ({ code: w.code, element: w.element }))).toEqual([
+      { code: 'unrepresentable:tuplet-ratio', element: 'tuplet' },
+    ])
     expect(warnings[0]?.message).toContain('overruns')
   })
 
@@ -840,7 +842,9 @@ describe('tuplets', () => {
 
   // A cut bracket holds part of what its ratio counts, so the part it holds
   // is what it states: four sixteenths in the time of three, cut in half, are
-  // four thirty-seconds in the time of three.
+  // four thirty-seconds in the time of three. It holds less because the
+  // converter cut it, which the span report already says, so the content
+  // falling short of the ratio is not reported on top of that.
   test('states the ratio of a cut bracket over the part it holds', () => {
     const quadruplet = (step: string, bracket = ''): string =>
       `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>9</duration>` +
@@ -866,10 +870,7 @@ describe('tuplets', () => {
       value: { base: '32nd', dots: 0 },
       multiple: 3,
     })
-    expect(warnings.map((w) => w.code)).toEqual([
-      'unrepresentable:tuplet-span',
-      'inconsistent:tuplet',
-    ])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-span'])
   })
 
   // The bracket ended at the barline, so the stop the source writes in the
@@ -1110,10 +1111,10 @@ describe('a bracket the source states no ratio for', () => {
     })
   })
 
-  // A marker stating its own ratio has said what the bracket is; only the
-  // <time-modification> beside the note is missing. Scaling that to the
-  // content would redraw the number the source put over the bracket.
-  test('keeps a ratio the start marker states of its own', () => {
+  // Four eighths under a marker reading 3:2, sounding for eight thirds of an
+  // eighth. No value counts both that and the four eighths written, so the
+  // bracket stands as the source drew it.
+  test('keeps a ratio no value states over the content it holds', () => {
     const stating =
       '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
       '<type>eighth</type><notations><tuplet type="start">' +
@@ -1128,9 +1129,6 @@ describe('a bracket the source states no ratio for', () => {
 
     expect(tuplet?.kind === 'tuplet' && tuplet.inner.multiple).toBe(3)
     expect(tuplet?.kind === 'tuplet' && tuplet.outer.multiple).toBe(2)
-    // Four eighths under a bracket that says three, sounding for eight thirds
-    // of an eighth, which no ratio counts: the bracket stands as drawn and the
-    // disagreement is reported.
     expect(warnings.map((w) => w.code)).toEqual([
       'missing:time-modification',
       'unrepresentable:tuplet-ratio',
@@ -2448,7 +2446,7 @@ describe('the ratio each level of a tuplet states', () => {
   test('gives the outer level the whole ratio where two open on one note', () => {
     const starts = '<tuplet type="start" number="1"/><tuplet type="start" number="2"/>'
     const stops = '<tuplet type="stop" number="2"/><tuplet type="stop" number="1"/>'
-    const { content } = read(
+    const { content, warnings } = read(
       measureOf(
         12,
         ratioNote('C', 4, 'eighth', 3, 2, starts) +
@@ -2461,6 +2459,10 @@ describe('the ratio each level of a tuplet states', () => {
 
     expect(outer?.kind === 'tuplet' && [outer.inner.multiple, outer.outer.multiple]).toEqual([3, 2])
     expect(inner?.kind === 'tuplet' && [inner.inner.multiple, inner.outer.multiple]).toEqual([3, 3])
+    // The one in the time of one the inner level opened with is what the
+    // division left it, not what the source drew, so the notes disagreeing
+    // with it says nothing about the source and is not reported.
+    expect(warnings).toEqual([])
   })
 })
 

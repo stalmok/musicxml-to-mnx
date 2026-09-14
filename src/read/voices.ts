@@ -103,6 +103,15 @@ interface OpenTuplet {
    * stated, so the bracket states what it holds once it closes.
    */
   derived: boolean
+  /**
+   * True where the source stated this level's ratio: its own marker gave it,
+   * or one level opened and the note's <time-modification> is all of it.
+   * False where the converter worked it out instead, by reading it off the
+   * first note or by dividing a cumulative ratio between levels, which leaves
+   * a level with whatever the others did not take. Such a ratio says nothing
+   * about what the source drew over the bracket.
+   */
+  stated: boolean
   /** Where this voice's content ran to when the bracket opened. */
   openEnd: Fraction
   /**
@@ -1065,6 +1074,7 @@ export class MeasureBuilder {
         // A level whose own marker stated its ratio states it already, and
         // rescaling that to the content would overwrite what the source drew.
         derived: derived && starts[index]?.stated === undefined,
+        stated: starts[index]?.stated !== undefined || (!derived && levels.length === 1),
         openEnd,
         unbracketed: false,
       })
@@ -1097,6 +1107,9 @@ export class MeasureBuilder {
       // No marker numbered it, and no stop of its own closes it.
       number: '1',
       derived: false,
+      // The notes state the ratio; where the run ends is the converter's
+      // reading of where they stop agreeing with it.
+      stated: false,
       openEnd: builder.end,
       unbracketed: true,
     })
@@ -1189,7 +1202,7 @@ export class MeasureBuilder {
     line: number,
   ): void {
     for (const builder of this.#allBuilders()) {
-      if (impliedFrame(builder)) this.#closeTuplet(builder, warnings, context, path, line)
+      if (impliedFrame(builder)) this.#closeTuplet(builder, warnings, context, path, line, false)
     }
   }
 
@@ -1669,16 +1682,21 @@ export class MeasureBuilder {
     path: DocumentPath,
     line: number,
   ): string {
-    return this.#closeTuplet(this.#builderFor(voice), warnings, context, path, line)
+    return this.#closeTuplet(this.#builderFor(voice), warnings, context, path, line, false)
   }
 
-  /** The same, for a voice already in hand. */
+  /**
+   * The same, for a voice already in hand. `cut` marks a close the barline
+   * forced rather than a stop the source wrote, so the bracket holding less
+   * than its ratio counts is the converter's doing and is not reported again.
+   */
   #closeTuplet(
     builder: VoiceBuilder,
     warnings: WarningCollector,
     context: WarningContext,
     path: DocumentPath,
     line: number,
+    cut: boolean,
   ): string {
     const closed = builder.open.at(-1)
     // A tremolo edge and a tuplet edge can land on different notes. Popping
@@ -1708,10 +1726,10 @@ export class MeasureBuilder {
     // Real scores contain brackets whose content does not add up to the
     // stated ratio: a lone quarter under a 3:2 eighth ratio, standing for a
     // triplet quarter. MNX sequences a tuplet by advancing the cursor over
-    // its outer and requires the content to fill inner, so such a bracket is
-    // restated over what it holds: the same notes, sounding for the same
-    // time, under a ratio that counts them. A ratio read from the bracket's
-    // first note speaks for that note alone, and is restated whatever it
+    // its outer and requires the content to come to inner, so such a bracket
+    // is rewritten to count the notes it holds, which leaves them sounding
+    // for the time the source gives them. A ratio read from the bracket's
+    // first note speaks for that note alone, and is rewritten whatever it
     // holds.
     const misfits = compareFractions(held, counted())
     if (closed.derived || misfits !== 0) {
@@ -1723,29 +1741,31 @@ export class MeasureBuilder {
     }
 
     if (compareFractions(held, counted()) !== 0) {
-      // No pair of note values writes every ratio. A quarter sounding a sixth
-      // of a whole note is one quarter in the time of two thirds of one, and
-      // MNX counts both sides of a ratio in whole note values, so that tuplet
-      // cannot be stated at all. The bracket stands as the source drew it, and
-      // the disagreement is reported, because a consumer cannot tell how much
-      // time such a tuplet means to take.
+      // MNX counts both sides of a ratio in note values, and a note value
+      // lasts a power of two of a whole note, dots included. A quarter
+      // sounding a sixth of a whole note is one quarter in the time of two
+      // thirds of a quarter, which no pair of them states.
       warnings.add(
         'unrepresentable:tuplet-ratio',
         `A tuplet's written content ${misfits < 0 ? 'falls short of' : 'overruns'} its ` +
-          'stated ratio, and no ratio counts both what it holds and the time it takes. ' +
-          'The content is converted as written.',
+          'stated ratio, and no pair of note values states the ratio between the notes ' +
+          'written and the time they take. The content is converted as written, under the ' +
+          'ratio the source drew, so the tuplet takes the time that ratio states.',
         { ...context, line },
         'tuplet',
       )
-    } else if (misfits !== 0 && !closed.derived) {
-      // Restated over its content, which is the ratio the notes themselves
-      // state. A bracket whose ratio was read from its first note says nothing
-      // about what the source drew, and is reported where that ratio is read.
+    } else if (misfits !== 0 && closed.stated && !cut) {
+      // The source drew a bracket over notes its own ratio does not count, so
+      // the ratio is rewritten to count them. Reported only where the source
+      // stated that ratio for this bracket: one read from its first note is
+      // reported where it is read, one the converter divided out of a
+      // cumulative ratio says nothing about what the source drew, and one the
+      // barline cut holds less because the converter cut it.
       warnings.add(
         'inconsistent:tuplet',
-        `A tuplet's written content ${misfits < 0 ? 'falls short of' : 'overruns'} its ` +
-          'stated ratio. The ratio is restated over what the bracket holds, which leaves ' +
-          'the notes sounding for the time the source gives them.',
+        `A tuplet's written content ${misfits < 0 ? 'falls short of' : 'overruns'} the ` +
+          'ratio the source states for it. The ratio is rewritten to count the notes the ' +
+          'bracket holds.',
         { ...context, line },
         'tuplet',
       )
@@ -1910,7 +1930,7 @@ export class MeasureBuilder {
           )
           carried.push({
             voice,
-            number: this.#closeTuplet(builder, warnings, context, path, line),
+            number: this.#closeTuplet(builder, warnings, context, path, line, true),
           })
         }
       }
