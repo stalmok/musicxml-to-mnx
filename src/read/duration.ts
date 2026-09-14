@@ -12,7 +12,11 @@ import { entriesOf } from './tables.js'
 
 // Every note value, as a fraction of a whole note. Keyed by the model's own
 // value, so a value the model gains and this table lacks does not compile.
-const BASE_VALUES: Record<NoteValueBase, Fraction> = {
+//
+// Exported so the conformance test can hold it to the vendored schema: which
+// values MNX names, and that each of them lasts a power of two of a whole
+// note, which is what makes a ratio no pair of them states a limit of MNX.
+export const BASE_VALUES: Record<NoteValueBase, Fraction> = {
   maxima: fraction(8),
   longa: fraction(4),
   breve: fraction(2),

@@ -28,6 +28,7 @@
 import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
 import { describe, expect, test } from 'vitest'
+import { BASE_VALUES } from '../src/read/duration.js'
 import { MNX_ID_PATTERN } from '../src/read/score.js'
 import { NO_HOME_ATTRIBUTES, NO_HOME_IN_MNX } from '../src/read/unrepresentable.js'
 import { resolveRef, schemaDefs } from './support/schema.js'
@@ -61,6 +62,51 @@ describe('the instrument id a sound is keyed by', () => {
 
   test('a kit component is what the types name a sound from', () => {
     expect(mnxTypes.get('MNXKitComponent')?.has('sound')).toBe(true)
+  })
+})
+
+// A tuplet whose ratio no pair of note values states is reported as a limit of
+// MNX rather than a gap here (unrepresentable:tuplet-ratio). That rests on
+// what the schema says a ratio is counted in, so each part of it is checked
+// rather than believed.
+describe('the note values a tuplet ratio is counted in', () => {
+  const named = schemaDefs['note-value-base']?.enum ?? []
+
+  test('every value the converter writes is one the schema names', () => {
+    expect(Object.keys(BASE_VALUES).filter((base) => !named.includes(base))).toEqual([])
+  })
+
+  test('every value the schema names and the converter does not is accounted for', () => {
+    // MusicXML's <note-type-value> stops at a 1024th and has no duplex maxima,
+    // so no source can ask for these three.
+    expect(named.filter((base) => !(String(base) in BASE_VALUES))).toEqual([
+      'duplexMaxima',
+      '2048th',
+      '4096th',
+    ])
+  })
+
+  test('each side of a ratio is a value counted a whole number of times', () => {
+    const quantity = schemaDefs['note-value-quantity']
+
+    expect([...(quantity?.required ?? [])].sort()).toEqual(['duration', 'multiple'])
+    expect(resolveRef(quantity?.properties?.['duration'])).toBe(schemaDefs['note-value'])
+    expect(resolveRef(quantity?.properties?.['multiple'])).toBe(schemaDefs['positive-integer'])
+  })
+
+  test('the schema puts no bound on how many of a value a ratio counts', () => {
+    // The reader states whatever count the notes come to, rather than giving
+    // up past some figure of its own.
+    expect(schemaDefs['positive-integer']?.maximum).toBeUndefined()
+  })
+
+  test('every value the converter writes lasts a power of two of a whole note', () => {
+    // A quarter sounding a sixth of a whole note is one quarter in the time of
+    // two thirds of a quarter, and no power of two counts both sides of that.
+    for (const length of Object.values(BASE_VALUES)) {
+      expect(Math.log2(length.num * length.den) % 1).toBe(0)
+      expect(length.num === 1 || length.den === 1).toBe(true)
+    }
   })
 })
 

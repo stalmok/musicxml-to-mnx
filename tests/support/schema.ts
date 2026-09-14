@@ -18,6 +18,8 @@ export interface SchemaNode {
   const?: string | number
   pattern?: string
   type?: string
+  minimum?: number
+  maximum?: number
 }
 
 const parsed = JSON.parse(
