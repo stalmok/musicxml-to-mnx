@@ -766,10 +766,11 @@ describe('durations', () => {
     expect(warnings).toEqual([])
   })
 
-  // A lone note carrying a 3:2 ratio is an eighth sounding a twelfth of a
-  // whole note, and no pair of note values states that, so no tuplet can
-  // hold it. It is written as it stands and the loss is reported.
-  test('writes a note whose ratio no value states as the source wrote it', () => {
+  // A tuplet's written value is deliberately longer than it sounds, so
+  // converting it as an ordinary note would emit a measure that does not add
+  // up. The ratio the note carries puts it in a tuplet, which counts what it
+  // holds and keeps the space the ratio gives it, and the loss is reported.
+  test('puts a note carrying a ratio inside a tuplet', () => {
     const { score, warnings } = read(
       measure(
         '<attributes><divisions>3</divisions></attributes>' +
@@ -780,7 +781,8 @@ describe('durations', () => {
     )
     const item = score.parts[0]?.measures[0]?.sequences[0]?.content[0]
 
-    expect(item?.kind).toBe('event')
+    expect(item?.kind === 'tuplet' && [item.inner.multiple, item.outer.multiple]).toEqual([1, 2])
+    expect(item?.kind === 'tuplet' && item.content).toHaveLength(1)
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-ratio'])
   })
 })

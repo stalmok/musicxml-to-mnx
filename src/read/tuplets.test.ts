@@ -826,13 +826,17 @@ describe('tuplets', () => {
   //
   // Two of the ratio's three eighths are inside it, and two eighths sounding
   // a sixth of a whole note is a ratio no pair of note values states, so the
-  // notes are written as they stand and both losses are reported.
-  test('writes the notes of a bracket the source never closes as they stand', () => {
+  // bracket counts what it holds and takes the time its own ratio gives it.
+  test('draws a tuplet the source never closes as far as the barline', () => {
     const { content, warnings } = read(
       measure(tupletNote('C', 4, 'eighth', 'start') + tupletNote('D', 4, 'eighth')),
     )
+    const tuplet = content?.[0]
 
-    expect(content?.map((item) => item.kind)).toEqual(['event', 'event'])
+    expect(tuplet?.kind === 'tuplet' && [tuplet.inner.multiple, tuplet.outer.multiple]).toEqual([
+      2, 2,
+    ])
+    expect(tuplet?.kind === 'tuplet' && tuplet.content).toHaveLength(2)
     expect(warnings.map((w) => w.code)).toEqual([
       'unrepresentable:tuplet-span',
       'unrepresentable:tuplet-ratio',
@@ -908,10 +912,12 @@ describe('tuplets', () => {
         crossing,
       ),
     )
+    const second = content?.[0]
+
     // One span report, for the bracket the first barline cut. A stop taken by
     // the carried record would leave the second measure's bracket open and
     // cut at its own barline, which would report a second.
-    expect(content?.map((item) => item.kind)).toEqual(['event', 'event'])
+    expect(second?.kind === 'tuplet' && second.content).toHaveLength(2)
     expect(warnings.map((w) => w.code)).toEqual([
       'unrepresentable:tuplet-span',
       'unrepresentable:tuplet-ratio',
@@ -1117,8 +1123,9 @@ describe('a bracket the source states no ratio for', () => {
 
   // Four eighths under a marker reading 3:2, sounding for eight thirds of an
   // eighth. No value counts both that and the four eighths written, so the
-  // bracket is not drawn and its notes stand as they are written.
-  test('drops a bracket whose ratio no value states', () => {
+  // bracket counts the four it holds and keeps the two eighths of space its
+  // own ratio gives it.
+  test('counts a bracket whose ratio no value states over what it holds', () => {
     const stating =
       '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
       '<type>eighth</type><notations><tuplet type="start">' +
@@ -1129,7 +1136,10 @@ describe('a bracket the source states no ratio for', () => {
     const { content, warnings } = read(
       measure(stating + bare('D', 4) + bare('E', 4) + bare('F', 4, 'stop')),
     )
-    expect(content?.map((item) => item.kind)).toEqual(['event', 'event', 'event', 'event'])
+    const tuplet = content?.[0]
+
+    expect(tuplet?.kind === 'tuplet' && tuplet.inner.multiple).toBe(4)
+    expect(tuplet?.kind === 'tuplet' && tuplet.outer.multiple).toBe(2)
     expect(warnings.map((w) => w.code)).toEqual([
       'missing:time-modification',
       'unrepresentable:tuplet-ratio',
@@ -2672,14 +2682,15 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
   })
 
   // A run the source cut short holds two eighths sounding a sixth of a whole
-  // note, which no pair of note values states, so the notes stand as written
-  // and the loss is reported.
+  // note, which no pair of note values states, so it counts what it holds and
+  // keeps the space its ratio gives it.
   test('closes a group a note carrying no ratio interrupts', () => {
     const { content, warnings } = read(
       measure(rated('C', 4, 'eighth') + rated('D', 4, 'eighth') + plain('E', 12, 'quarter')),
     )
 
-    expect(content?.map((item) => item.kind)).toEqual(['event', 'event', 'event'])
+    expect(content).toHaveLength(2)
+    expect(content?.[0]?.kind === 'tuplet' && content[0].content).toHaveLength(2)
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-ratio'])
   })
 
@@ -2718,11 +2729,11 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
       ),
     )
 
-    // The first run holds two of the three eighths its ratio counts, which no
-    // pair of note values states, so its notes stand as written.
-    expect(content?.map((item) => item.kind)).toEqual(['event', 'event', 'tuplet'])
-    expect(content?.[2]?.kind === 'tuplet' && content[2].outer.multiple).toBe(1)
-    expect(content?.[2]?.kind === 'tuplet' && content[2].content).toHaveLength(3)
+    expect(content).toHaveLength(2)
+    expect(content?.[0]?.kind === 'tuplet' && content[0].outer.multiple).toBe(2)
+    expect(content?.[0]?.kind === 'tuplet' && content[0].content).toHaveLength(2)
+    expect(content?.[1]?.kind === 'tuplet' && content[1].outer.multiple).toBe(1)
+    expect(content?.[1]?.kind === 'tuplet' && content[1].content).toHaveLength(3)
   })
 
   // A ratio stating no <normal-type> counts the note's own written value, so a
@@ -2808,7 +2819,8 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
     const source = measure(rated('C', 4, 'eighth') + rated('D', 4, 'eighth'))
     const { content, warnings } = read(source)
 
-    expect(content?.map((item) => item.kind)).toEqual(['event', 'event'])
+    expect(content).toHaveLength(1)
+    expect(content?.[0]?.kind === 'tuplet' && content[0].content).toHaveLength(2)
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-ratio'])
     expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
   })
@@ -2912,11 +2924,10 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
       ),
     )
 
-    // Neither run reaches the three eighths its ratio counts, and neither
-    // part of one is a ratio any pair of note values states, so the notes of
-    // both stand as written.
-    expect(content?.map((item) => item.kind)).toEqual(['event', 'space', 'event', 'event'])
+    expect(content?.map((item) => item.kind)).toEqual(['tuplet', 'space', 'tuplet'])
     expect(content?.[1]).toEqual({ kind: 'space', duration: { num: 1, den: 2 } })
+    expect(content?.[0]?.kind === 'tuplet' && content[0].content).toHaveLength(1)
+    expect(content?.[2]?.kind === 'tuplet' && content[2].content).toHaveLength(2)
     expect(warnings.map((w) => w.code)).toEqual([
       'unrepresentable:tuplet-ratio',
       'unrepresentable:tuplet-ratio',
@@ -2937,7 +2948,7 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
       ),
     )
 
-    expect(content?.map((item) => item.kind)).toEqual(['event', 'space', 'grace', 'event'])
+    expect(content?.map((item) => item.kind)).toEqual(['tuplet', 'space', 'grace', 'tuplet'])
     expect(content?.[1]).toEqual({ kind: 'space', duration: { num: 1, den: 2 } })
   })
 
@@ -3264,5 +3275,121 @@ describe('a tuplet in a line laid over its voice', () => {
     const { mnx } = convertMusicXML(measure(laidOver))
 
     expect(schemaErrors(mnx)).toEqual([])
+  })
+})
+
+// A bracket states what it holds against the time it takes, and where no pair
+// of note values counts that it takes the time its own ratio gives it
+// instead. Where no pair of them counts that either, MNX can state no ratio
+// over the content at all: a tuplet's content must come to its inner, and
+// nothing writes an inner it comes to. The bracket is dropped and what it
+// held stands where it stood.
+describe('a bracket no pair of note values counts at all', () => {
+  // Divisions of 128 to a quarter, so a whole note is 512 and a 128th is 4.
+  // The ratio counts one whole note in the time of a triple-dotted 64th,
+  // which is fifteen five-hundred-and-twelfths of a whole note. The bracket
+  // holds five of those, and five against fifteen is counted only in a fifth
+  // of a five-hundred-and-twelfth, which is no note value. Neither is five of
+  // them, which is the largest length that counts both.
+  const ratio =
+    '<time-modification><actual-notes>512</actual-notes><normal-notes>15</normal-notes>' +
+    '<normal-type>512th</normal-type></time-modification>'
+  const stating =
+    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+    `<type>128th</type>${ratio}<notations><tuplet type="start">` +
+    '<tuplet-actual><tuplet-number>1</tuplet-number><tuplet-type>whole</tuplet-type>' +
+    '</tuplet-actual>' +
+    '<tuplet-normal><tuplet-number>1</tuplet-number><tuplet-type>64th</tuplet-type>' +
+    '<tuplet-dot/><tuplet-dot/><tuplet-dot/></tuplet-normal></tuplet></notations></note>'
+  const closing =
+    '<note><pitch><step>D</step><octave>4</octave></pitch><duration>1</duration>' +
+    `<type>512th</type>${ratio}<notations><tuplet type="stop"/></notations></note>`
+  const source =
+    '<score-partwise><part id="P1"><measure number="1">' +
+    '<attributes><divisions>128</divisions></attributes>' +
+    stating +
+    closing +
+    '</measure></part></score-partwise>'
+
+  test('writes what it held where it stood', () => {
+    const { content } = read(source)
+
+    expect(content?.map((item) => item.kind)).toEqual(['event', 'event'])
+  })
+
+  test('says no pair of note values counts what it holds either', () => {
+    const { warnings } = read(source)
+    const reported = warnings.find((w) => w.code === 'unrepresentable:tuplet-ratio')
+
+    expect(reported?.message).toContain('so the tuplet is not converted')
+  })
+
+  test('leaves output the schema takes', () => {
+    expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
+  })
+
+  test('leaves what stands beside it where it stands', () => {
+    const before =
+      '<note><pitch><step>G</step><octave>4</octave></pitch><duration>128</duration>' +
+      '<type>quarter</type></note>'
+    const { content } = read(source.replace(stating, before + stating))
+
+    expect(content?.map((item) => item.kind)).toEqual(['event', 'event', 'event'])
+  })
+})
+
+// A bracket dropped inside another leaves what it held where it stood, and
+// what it held is not the length its outer stated. The bracket around it was
+// measured before that happened, so a ratio that counted its content then
+// need not count it after, and it is measured again.
+describe('a bracket dropped inside one whose ratio counted it', () => {
+  // Divisions of 128 to a quarter, so a whole note is 512. The outer bracket
+  // counts one triple-dotted 64th, which is fifteen five-hundred-and-twelfths
+  // of a whole note, and the inner bracket states exactly that much space, so
+  // the outer counts what it holds. The inner bracket holds five of them.
+  const ratio =
+    '<time-modification><actual-notes>128</actual-notes><normal-notes>1</normal-notes>' +
+    '<normal-type>128th</normal-type></time-modification>'
+  const dotted = '<tuplet-dot/><tuplet-dot/><tuplet-dot/>'
+  const starting =
+    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+    `<type>128th</type>${ratio}<notations>` +
+    '<tuplet type="start" number="1">' +
+    `<tuplet-actual><tuplet-number>1</tuplet-number><tuplet-type>64th</tuplet-type>${dotted}` +
+    '</tuplet-actual>' +
+    '<tuplet-normal><tuplet-number>1</tuplet-number><tuplet-type>128th</tuplet-type>' +
+    '</tuplet-normal></tuplet>' +
+    '<tuplet type="start" number="2">' +
+    '<tuplet-actual><tuplet-number>1</tuplet-number><tuplet-type>whole</tuplet-type>' +
+    '</tuplet-actual>' +
+    `<tuplet-normal><tuplet-number>1</tuplet-number><tuplet-type>64th</tuplet-type>${dotted}` +
+    '</tuplet-normal></tuplet></notations></note>'
+  const closing =
+    '<note><pitch><step>D</step><octave>4</octave></pitch><duration>1</duration>' +
+    `<type>512th</type>${ratio}<notations>` +
+    '<tuplet type="stop" number="2"/><tuplet type="stop" number="1"/></notations></note>'
+  const source =
+    '<score-partwise><part id="P1"><measure number="1">' +
+    '<attributes><divisions>128</divisions></attributes>' +
+    starting +
+    closing +
+    '</measure></part></score-partwise>'
+
+  test('counts the bracket around it over what it holds after the drop', () => {
+    const { content } = read(source)
+    const outer = content?.[0]
+
+    expect(outer?.kind === 'tuplet' && outer.inner).toEqual({
+      value: { base: '512th', dots: 0 },
+      multiple: 5,
+    })
+    expect(outer?.kind === 'tuplet' && outer.outer).toEqual({
+      value: { base: '512th', dots: 0 },
+      multiple: 4,
+    })
+    expect(outer?.kind === 'tuplet' && outer.content.map((item) => item.kind)).toEqual([
+      'event',
+      'event',
+    ])
   })
 })

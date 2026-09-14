@@ -145,6 +145,9 @@ interface RewrittenTuplet {
   /** The outer the ratios open at its close gave it, used where the frame
    * around it says nothing. */
   provisional: Fraction
+  /** The length the ratio the source drew gives it, which is what it takes
+   * where no pair of note values states the time its notes do. */
+  drawnOuter: Fraction
   /** How its content compares with the ratio the source stated for it. */
   misfits: number
   /** True where a rewritten ratio is the source's to answer for. */
@@ -565,10 +568,13 @@ function countedLengthOf(open: OpenTuplet): Fraction {
  *
  * A bracket rewritten over its content states its own inner against the time
  * it took, so the frame it writes is not the one its opening ratio stated.
- * The notes and tremolos it holds are written at the values the source gave
- * them, and the time they took is the rest of the bracket's own, which
+ * Everything it holds but a rewritten bracket is already written at a length
+ * of its own, and the time those took is the rest of the bracket's own, which
  * together give the rate. Undefined where it holds nothing else, or where
  * what it holds took no time, and the rate says nothing.
+ *
+ * A skip inside the bracket counts among them, though the length it was
+ * filled at came from the ratios open then rather than from the source.
  */
 function frameRate(open: OpenTuplet, spent: Fraction): Fraction | undefined {
   let insideSpent = fraction(0)
@@ -606,6 +612,14 @@ function settleRewritten(
   open.rewritten.length = 0
 }
 
+/** Takes a bracket out of the list it stands in, leaving what it held. */
+function dropTuplet(within: SequenceItem[], tuplet: Draft<Tuplet>): void {
+  const left = within.flatMap((item) =>
+    item === (tuplet as SequenceItem) ? tuplet.content : [item],
+  )
+  within.splice(0, within.length, ...left)
+}
+
 /**
  * States a rewritten bracket over its content, and reports where the ratio
  * that leaves it is not one MNX can carry or is not the one the source drew.
@@ -623,17 +637,26 @@ function settleTuplet(
     // MNX counts both sides of a ratio in note values, and a note value
     // lasts a power of two of a whole note, dots included. A quarter
     // sounding a sixth of a whole note is one quarter in the time of two
-    // thirds of a quarter, which no pair of them states. MNX also states
-    // that a tuplet's content comes to its inner, so the bracket cannot be
-    // drawn as it stands, and what it holds takes its place.
-    const at = entry.within.indexOf(tuplet as SequenceItem)
-    entry.within.splice(at, 1, ...tuplet.content)
+    // thirds of a quarter, which no pair of them states. MNX also requires a
+    // tuplet's content to come to its inner, so the bracket cannot stand over
+    // the time its notes take. It takes the time its own ratio gives it
+    // instead, which is the time it took before this was read, and states
+    // that over what it holds.
+    scaleToContent(tuplet, entry.drawn, held, entry.drawnOuter)
+    const counts = compareFractions(held, quantityLength(tuplet.inner)) === 0
+    // A bracket no pair of note values counts at all cannot be drawn: what it
+    // holds takes its place, written as it stands.
+    if (!counts) dropTuplet(entry.within, tuplet)
     warnings.add(
       'unrepresentable:tuplet-ratio',
       `A tuplet's written content ${misfits < 0 ? 'falls short of' : 'overruns'} its ` +
         'stated ratio, and no pair of note values states the ratio between the notes ' +
-        'written and the time they take. The tuplet is not converted, and its notes are ' +
-        'written as they stand, sounding for the time their own values state.',
+        'written and the time they take. ' +
+        (counts
+          ? 'The tuplet counts what it holds and takes the time its stated ratio gives ' +
+            'it, which is not the time the source gives its notes.'
+          : 'No pair of them counts what it holds against that ratio either, so the ' +
+            'tuplet is not converted and its notes are written as they stand.'),
       { ...context, line },
       'tuplet',
     )
@@ -1876,15 +1899,19 @@ export class MeasureBuilder {
     // first note speaks for that note alone, and is rewritten whatever it
     // holds.
     const misfits = compareFractions(writtenLengthOf(tuplet.content), quantityLength(tuplet.inner))
-    // The ratio the source stated counts what the bracket holds, so it
+    // Where the ratio the source stated counts what the bracket holds, it
     // stands, and the brackets inside it are written in the frame it opened
-    // with.
-    if (!closed.derived && misfits === 0) {
-      settleRewritten(closed, undefined, warnings, context)
+    // with. An ancestor rewritten later moves that frame, as it moves the
+    // written values of the notes beside them.
+    const stands = !closed.derived && misfits === 0
+    settleRewritten(closed, stands ? undefined : frameRate(closed, spent), warnings, context)
+
+    // Measured again: a bracket dropped inside this one leaves what it held
+    // where it stood, which the stated ratio need no longer count.
+    const held = writtenLengthOf(tuplet.content)
+    if (stands && compareFractions(held, quantityLength(tuplet.inner)) === 0) {
       return closed.number
     }
-
-    settleRewritten(closed, frameRate(closed, spent), warnings, context)
 
     // The time the voice spent is measure time, while a bracket's outer is
     // written in the frame of the brackets around it. The ratios still open
@@ -1893,9 +1920,10 @@ export class MeasureBuilder {
       tuplet,
       within: closed.within,
       drawn: tuplet.inner.value,
-      held: writtenLengthOf(tuplet.content),
+      held,
       spent,
       provisional: divideFractions(spent, tupletFactorOf(builder)),
+      drawnOuter: quantityLength(tuplet.outer),
       misfits,
       reportable: closed.stated && !cut,
       line,
