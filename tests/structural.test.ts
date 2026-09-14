@@ -15,7 +15,6 @@ import {
   differingLyricLines,
   layoutLosses,
   holdsUnderfilledTuplet,
-  measuresWarned,
   pitchesOf,
   sounding,
   sourceLyricPlaces,
@@ -657,21 +656,6 @@ test('what follows an underfilled tuplet begins after its whole outer', () => {
   expect([...starts]).toEqual([(0).toFixed(9), (0.25).toFixed(9)])
 })
 
-test('a warning names the measure it was reported against', () => {
-  const root = parseXmlRoot(
-    '<score-partwise><part id="P2"><measure number="1"/><measure number="2"/></part>' +
-      '<part id="P1"><measure number="1"/></part></score-partwise>',
-  )
-  const at = (part: string, measure: number) => ({
-    code: 'inconsistent:tuplet' as const,
-    context: { part, measure },
-  })
-
-  expect(measuresWarned(root, [at('P2', 2), at('P1', 1)], 'inconsistent:tuplet')).toEqual(
-    new Set(['0:1', '1:0']),
-  )
-})
-
 test('a tuplet holding less than its ratio counts is named', () => {
   expect(holdsUnderfilledTuplet([underfilled])).toBe(true)
 })
@@ -720,27 +704,4 @@ test('a space counts toward what a tuplet holds', () => {
   }
 
   expect(holdsUnderfilledTuplet([withSpace])).toBe(false)
-})
-
-test('a warning naming an id two parts answer to names the measure in both', () => {
-  const root = parseXmlRoot(
-    '<score-partwise><part id="P1"><measure number="1"/></part>' +
-      '<part id="P1"><measure number="1"/></part></score-partwise>',
-  )
-  const warnings = [{ code: 'inconsistent:tuplet' as const, context: { part: 'P1', measure: 1 } }]
-
-  expect(measuresWarned(root, warnings, 'inconsistent:tuplet')).toEqual(new Set(['0:0', '1:0']))
-})
-
-test('a warning of another code, or naming no measure, names nothing', () => {
-  const root = parseXmlRoot(
-    '<score-partwise><part id="P1"><measure number="1"/></part></score-partwise>',
-  )
-  const warnings = [
-    { code: 'inconsistent:tuplet' as const, context: { part: 'P1' } },
-    { code: 'inconsistent:tuplet' as const, context: { measure: 1 } },
-    { code: 'inconsistent:duration' as const, context: { part: 'P1', measure: 1 } },
-  ]
-
-  expect(measuresWarned(root, warnings, 'inconsistent:tuplet')).toEqual(new Set())
 })

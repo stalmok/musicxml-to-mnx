@@ -119,6 +119,8 @@ interface OpenTuplet {
    * ratio counts is what says where the tuplet ends.
    */
   unbracketed: boolean
+  /** The list this bracket sits in, for dropping it from where it stands. */
+  within: SequenceItem[]
   /** The brackets that closed inside this one and are written over what they
    * hold, waiting for the frame this one ends up with. */
   rewritten: RewrittenTuplet[]
@@ -132,6 +134,8 @@ interface OpenTuplet {
  */
 interface RewrittenTuplet {
   tuplet: Draft<Tuplet>
+  /** The list it sits in, for dropping it from where it stands. */
+  within: SequenceItem[]
   /** The value the source drew the bracket with. */
   drawn: NoteValue
   /** The written length of what it holds, which becomes its inner. */
@@ -619,13 +623,17 @@ function settleTuplet(
     // MNX counts both sides of a ratio in note values, and a note value
     // lasts a power of two of a whole note, dots included. A quarter
     // sounding a sixth of a whole note is one quarter in the time of two
-    // thirds of a quarter, which no pair of them states.
+    // thirds of a quarter, which no pair of them states. MNX also states
+    // that a tuplet's content comes to its inner, so the bracket cannot be
+    // drawn as it stands, and what it holds takes its place.
+    const at = entry.within.indexOf(tuplet as SequenceItem)
+    entry.within.splice(at, 1, ...tuplet.content)
     warnings.add(
       'unrepresentable:tuplet-ratio',
       `A tuplet's written content ${misfits < 0 ? 'falls short of' : 'overruns'} its ` +
         'stated ratio, and no pair of note values states the ratio between the notes ' +
-        'written and the time they take. The content is converted as written, under the ' +
-        'ratio the source drew, so the tuplet takes the time that ratio states.',
+        'written and the time they take. The tuplet is not converted, and its notes are ' +
+        'written as they stand, sounding for the time their own values state.',
       { ...context, line },
       'tuplet',
     )
@@ -1196,7 +1204,8 @@ export class MeasureBuilder {
       if (display.showValue !== undefined) tuplet.showValue = display.showValue
       if (display.orient !== undefined) tuplet.orient = display.orient
 
-      innermost(builder).push(tuplet)
+      const within = innermost(builder)
+      within.push(tuplet)
       builder.open.push({
         opened: 'tuplet',
         list: content,
@@ -1209,6 +1218,7 @@ export class MeasureBuilder {
         stated: starts[index]?.stated !== undefined || (!derived && levels.length === 1),
         openEnd,
         unbracketed: false,
+        within,
         rewritten: [],
       })
     }
@@ -1231,7 +1241,8 @@ export class MeasureBuilder {
 
     const content: SequenceItem[] = []
     const tuplet: Draft<Tuplet> = { kind: 'tuplet', inner, outer, content }
-    innermost(builder).push(tuplet)
+    const within = innermost(builder)
+    within.push(tuplet)
     builder.open.push({
       opened: 'tuplet',
       list: content,
@@ -1245,6 +1256,7 @@ export class MeasureBuilder {
       stated: false,
       openEnd: builder.end,
       unbracketed: true,
+      within,
       rewritten: [],
     })
   }
@@ -1879,6 +1891,7 @@ export class MeasureBuilder {
     // are what stands between the two, so they divide out.
     const entry: RewrittenTuplet = {
       tuplet,
+      within: closed.within,
       drawn: tuplet.inner.value,
       held: writtenLengthOf(tuplet.content),
       spent,

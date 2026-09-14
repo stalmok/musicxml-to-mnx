@@ -20,8 +20,6 @@ import type {
   MNXNoteValue,
   MNXSequenceItem,
   MNXStaffGroup,
-  WarningCode,
-  WarningContext,
 } from '../../src/index.js'
 import type { XmlElement } from '../../src/xml/parse.js'
 
@@ -513,35 +511,6 @@ export function underfilledTuplets(document: MNXDocument): Set<string> {
     })
   })
   return found
-}
-
-/**
- * The measures a warning code names, keyed as `part:measure` on the indices
- * the length checks walk by. A warning states the MusicXML part id and the
- * measure's position in that part, so both are looked up here rather than
- * passing over the whole song the way an inconsistent duration does.
- */
-export function measuresWarned(
-  root: XmlElement,
-  warnings: readonly { code: WarningCode; context: WarningContext }[],
-  code: WarningCode,
-): Set<string> {
-  const parts = root.children.filter((c) => c.name === 'part')
-  const named = new Set<string>()
-
-  for (const warning of warnings) {
-    if (warning.code !== code) continue
-    const measure = warning.context.measure
-    if (measure === undefined) continue
-    // Nothing stops two parts carrying the same id, and a warning names only
-    // the id, so every part answering to it is named.
-    parts.forEach((part, index) => {
-      if (part.attributes['id'] === warning.context.part) {
-        named.add(`${String(index)}:${String(measure - 1)}`)
-      }
-    })
-  }
-  return named
 }
 
 /** An event of the converted document, and where in the score it stands. */
