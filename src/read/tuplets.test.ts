@@ -1546,16 +1546,16 @@ describe('a bracket rewritten around a skip and a bracket rewritten too', () => 
     (bracket ? `<notations><tuplet type="${bracket}" number="2"/></notations>` : '') +
     '</note>'
 
-  const nested = read(
+  const source =
     '<score-partwise><part id="P1"><measure number="1">' +
-      '<attributes><divisions>36</divisions></attributes>' +
-      outerNote('C', 'start') +
-      innerNote('D', 12, 'eighth', 'start') +
-      innerNote('E', 6, '16th', 'stop') +
-      '<forward><duration>18</duration></forward>' +
-      outerNote('G', 'stop') +
-      '</measure></part></score-partwise>',
-  )
+    '<attributes><divisions>36</divisions></attributes>' +
+    outerNote('C', 'start') +
+    innerNote('D', 12, 'eighth', 'start') +
+    innerNote('E', 6, '16th', 'stop') +
+    '<forward><duration>18</duration></forward>' +
+    outerNote('G', 'stop') +
+    '</measure></part></score-partwise>'
+  const nested = read(source)
   const outer = nested.content?.[0]
 
   // C, G and the skipped eighth each last an eighth, and the bracket inside
@@ -1576,6 +1576,10 @@ describe('a bracket rewritten around a skip and a bracket rewritten too', () => 
       kind: 'space',
       duration: { num: 1, den: 8 },
     })
+  })
+
+  test('leaves output the schema takes', () => {
+    expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
   })
 
   // The same reading the skipless bracket gives: three sixteenths in the time
@@ -3587,6 +3591,10 @@ describe('a bracket dropped inside one whose ratio counted it', () => {
       'event',
     ])
   })
+
+  test('leaves output the schema takes', () => {
+    expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
+  })
 })
 
 // A quarter under a 3:2 eighth ratio fills two of a bracket's three eighth
@@ -3713,5 +3721,10 @@ describe('a bracket the silence after it completes', () => {
       held: ['event'],
     })
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-ratio'])
+  })
+
+  // The bracket holding a space is a shape no other conversion produces.
+  test('leaves output the schema takes', () => {
+    expect(schemaErrors(convertMusicXML(measures(TIMED + TRIPLET + shortQuarter)).mnx)).toEqual([])
   })
 })
