@@ -40,13 +40,16 @@ minimumReleaseAge: 1440
 # to be incomplete. 5.0.9 patches it and satisfies minimatch's range. Remove
 # when eslint's minimatch depends on a patched range itself.
 #
-# qs >=6.11.1 <=6.15.1, pulled in by typed-rest-client under the mutation
-# testing runner (dev-only), is GHSA-q8mj-m7cp-5q26: a TypeError crash on null
-# entries in comma-format arrays. typed-rest-client 2.3.1 pins qs 6.15.1
-# exactly and the fix arrived in its 3.x, which the runner's ~2.3.0 range
-# cannot reach. 6.15.3 is the newest of the 6.15.x line the parent pins into.
-# Remove when the runner's typed-rest-client range reaches 3.x.
+# qs, pulled in by typed-rest-client under the mutation testing runner
+# (dev-only), is named by two advisories. GHSA-x5fp-wj9c-mxmx is an array-limit
+# bypass through a bracket key parsed as a comma list, reading >=6.14.2
+# <=6.15.3. GHSA-4mjr-xmp4-gh2g is a denial of service through an attacker
+# controlled isBuffer, reading >=2.2.5 <6.16.0. They replace the TypeError
+# crash this pin first held past, which the 6.15.x line had already fixed.
+# typed-rest-client 2.3.1 pins qs 6.15.1 exactly and the parent range cannot
+# reach further, so 6.16.0 is forced here. Remove when the runner's
+# typed-rest-client range reaches a version pinning 6.16.0 or later.
 overrides:
   fast-uri: 3.1.6
   brace-expansion: 5.0.9
-  qs: 6.15.3
+  qs: 6.16.0
