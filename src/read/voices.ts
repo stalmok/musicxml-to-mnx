@@ -2064,6 +2064,23 @@ export class MeasureBuilder {
       builder.content.pop()
       return closed.number
     }
+    // A bracket that holds nothing taking any of the measure's time, which is
+    // what a bracket opening and closing on grace notes holds. MNX states a
+    // tuplet as a written length against the time it is played in, and a
+    // grace note gives neither, so there is no tuplet to write.
+    if (writtenLengthOf(tuplet.content).num === 0) {
+      dropTuplet(closed.within, tuplet)
+      warnings.add(
+        'unrepresentable:tuplet-untimed',
+        "A tuplet bracket holds nothing that takes any of the measure's time, as a bracket " +
+          'over grace notes alone does. MNX states a tuplet as a written length against the ' +
+          'time it is played in, so the bracket is not converted and what it holds is ' +
+          'written as it stands.',
+        { ...context, line },
+        'tuplet',
+      )
+      return closed.number
+    }
     const spent = subtractFractions(builder.end, closed.openEnd)
     // Real scores contain brackets whose content does not add up to the
     // stated ratio: a lone quarter under a 3:2 eighth ratio, standing for a

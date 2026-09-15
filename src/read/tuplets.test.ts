@@ -2259,6 +2259,80 @@ describe('grace notes', () => {
     // nothing to that.
     expect(content?.filter((item) => item.kind === 'event')).toHaveLength(2)
   })
+
+  // A bracket runs from its start marker to its stop, and both can sit on a
+  // grace note. What it holds then takes none of the measure's time, which
+  // MNX has no tuplet to state.
+  const graceMarked = (step: string, mark: string) =>
+    `<note><grace/><pitch><step>${step}</step><octave>5</octave></pitch><type>eighth</type>` +
+    '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+    '</time-modification>' +
+    `<notations><tuplet type="${mark}"/></notations></note>`
+
+  test('drops a bracket that opens and closes on one grace note', () => {
+    const { content, warnings } = read(
+      measure(
+        '<note><grace/><pitch><step>B</step><octave>5</octave></pitch><type>eighth</type>' +
+          '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+          '</time-modification>' +
+          '<notations><tuplet type="start"/><tuplet type="stop"/></notations></note>' +
+          REAL,
+      ),
+    )
+
+    expect(content?.map((item) => item.kind)).toEqual(['grace', 'event'])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-untimed'])
+  })
+
+  test('drops a bracket that opens on one grace note and closes on the next', () => {
+    const { content, warnings } = read(
+      measure(graceMarked('B', 'start') + graceMarked('C', 'stop') + REAL),
+    )
+
+    expect(content?.map((item) => item.kind)).toEqual(['grace', 'event'])
+    const group = content?.[0]
+    expect(group?.kind === 'grace' && group.content).toHaveLength(2)
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-untimed'])
+  })
+
+  // The note after the bracket was never inside it, and stays outside it.
+  test('leaves the note after such a bracket out of it', () => {
+    const { mnx, warnings } = convertMusicXML(
+      measure(graceMarked('B', 'start') + graceMarked('C', 'stop') + REAL),
+    )
+    const items = mnx.parts[0]?.measures?.[0]?.sequences?.[0]?.content
+
+    expect(items?.map((item) => item.type)).toEqual(['grace', undefined])
+    expect(schemaErrors(mnx)).toEqual([])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-untimed'])
+  })
+
+  // A bracket the source drew over a grace note and the notes it ornaments
+  // holds time, and is the tuplet the source stated.
+  test('keeps a bracket that opens on a grace note and closes on a note', () => {
+    const { content, warnings } = read(
+      measure(
+        graceMarked('B', 'start') +
+          tupletNote('C', 4, 'eighth') +
+          tupletNote('D', 4, 'eighth') +
+          tupletNote('E', 4, 'eighth', 'stop') +
+          REAL,
+      ),
+    )
+    const tuplet = content?.[0]
+
+    expect(tuplet?.kind === 'tuplet' && tuplet.inner).toEqual({
+      value: { base: 'eighth', dots: 0 },
+      multiple: 3,
+    })
+    expect(tuplet?.kind === 'tuplet' && tuplet.content.map((item) => item.kind)).toEqual([
+      'grace',
+      'event',
+      'event',
+      'event',
+    ])
+    expect(warnings).toEqual([])
+  })
 })
 
 // A tremolo written across two notes gives each the value of the pair while

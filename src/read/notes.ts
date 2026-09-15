@@ -847,6 +847,10 @@ export function readNote(
       tieds,
       true,
     )
+    // A bracket can stop on a grace note, and the stop is read here as it is
+    // on any other note. Left unread, the bracket ran on past the group to
+    // whatever sounded next and took that in.
+    closeTuplets(builder, voice, markers, warnings, context, path, element.line)
     return
   }
 

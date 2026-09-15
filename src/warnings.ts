@@ -187,6 +187,12 @@ export type WarningCode =
   // bracket is drawn as the source wrote it and takes the time its ratio
   // states rather than the time its notes sound for.
   | 'unrepresentable:tuplet-ratio'
+  // A tuplet bracket holding nothing that takes any of the measure's time,
+  // which a bracket that opens and closes on grace notes holds. MNX states a
+  // tuplet as a written length against the time it is played in, and neither
+  // is there to state, so the bracket is dropped and what it held is written
+  // as it stands.
+  | 'unrepresentable:tuplet-untimed'
   // A <print> detail beyond the system and page breaks, such as a page
   // number or staff spacing, which MNX's pages and systems cannot state.
   | 'unrepresentable:print-detail'
