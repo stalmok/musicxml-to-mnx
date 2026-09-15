@@ -1057,11 +1057,14 @@ export class MeasureBuilder {
     if (builder.fullMeasure) return
     // A bracket waiting on the silence after it is answered by what the voice
     // passes over, and what the bracket takes of it is no longer a gap. A
-    // grace note takes none of the measure's time, so nothing passed over
-    // before one says nothing, and the bracket goes on waiting for the note
-    // the group ornaments or for the barline.
+    // grace note takes none of the measure's time, so the gap before one is
+    // only the silence read so far, not all of it: answering on that gap
+    // would settle the bracket for less silence than the voice goes on to
+    // pass over. Unless the gap already completes the bracket, it goes on
+    // waiting for the note the group ornaments or for the barline.
     const passed = subtractFractions(this.#cursor, builder.end)
-    if (sounding || compareFractions(passed, fraction(0)) > 0) {
+    const completed = builder.short && compareFractions(passed, builder.short.silence) >= 0
+    if (sounding || completed) {
       this.#answerShort(builder, passed)
     }
     const gap = subtractFractions(this.#cursor, builder.end)

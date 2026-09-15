@@ -3610,6 +3610,10 @@ describe('a bracket the silence after it completes', () => {
     `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
     `<duration>${String(units)}</duration><type>${type}</type></note>`
 
+  /** A grace note, which takes none of the measure's time. */
+  const grace =
+    '<note><grace/><pitch><step>G</step><octave>4</octave></pitch><type>eighth</type></note>'
+
   function timed(body: string) {
     return read(measures(TIMED + body))
   }
@@ -3671,8 +3675,6 @@ describe('a bracket the silence after it completes', () => {
   // A grace note takes none of the measure's time, so the voice has not
   // sounded again where one stands after the bracket.
   test('states the silence past a grace note standing after the bracket', () => {
-    const grace =
-      '<note><grace/><pitch><step>G</step><octave>4</octave></pitch><type>eighth</type></note>'
     const { content, warnings } = timed(TRIPLET + shortQuarter + grace)
 
     expect(stated(content?.[1])).toEqual({
@@ -3681,6 +3683,22 @@ describe('a bracket the silence after it completes', () => {
       held: ['event', 'space'],
     })
     expect(content?.[2]?.kind).toBe('grace')
+    expect(warnings).toEqual([])
+  })
+
+  // A gap before the grace note is only the silence read so far, not all the
+  // silence there is, so a bracket the gap alone cannot complete keeps
+  // waiting for the barline rather than settling for what has passed.
+  test('keeps waiting where a gap too short to complete it precedes a grace note', () => {
+    const { content, warnings } = timed(
+      shortQuarter + '<forward><duration>2</duration></forward>' + grace,
+    )
+
+    expect(stated(content?.[0])).toEqual({
+      inner: { value: { base: 'eighth', dots: 0 }, multiple: 3 },
+      outer: { value: { base: 'eighth', dots: 0 }, multiple: 2 },
+      held: ['event', 'space'],
+    })
     expect(warnings).toEqual([])
   })
 
