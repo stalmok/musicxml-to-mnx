@@ -806,6 +806,48 @@ describe('tuplets', () => {
     expect(warnings).toEqual([])
   })
 
+  // A skip is written at the ratios open when it is filled, so its length is
+  // the converter's reading and not the source's. Where the bracket is
+  // rewritten over what it holds, the frame it writes moves, and a skip left
+  // at its filled length stands for a time the source never passed over. The
+  // rate is read off the notes, which carry lengths of their own, and the skip
+  // is written at that rate: here the notes are drawn as quarters and last an
+  // eighth each, so the bracket writes two written values per eighth of time,
+  // and the skipped eighth is a quarter of written space.
+  test('writes a skip at the rate the bracket it sits in settles on', () => {
+    // Drawn as a quarter, lasting an eighth, under a 3:2 eighth ratio.
+    const drawnLong = (step: string, bracket = ''): string =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+      '<duration>6</duration><type>quarter</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+      '<normal-type>eighth</normal-type></time-modification>' +
+      (bracket ? `<notations><tuplet type="${bracket}"/></notations>` : '') +
+      '</note>'
+    const { content } = read(
+      measure(
+        drawnLong('C', 'start') +
+          '<forward><duration>6</duration></forward>' +
+          drawnLong('E', 'stop'),
+      ),
+    )
+    const tuplet = content?.[0]
+
+    expect(tuplet?.kind === 'tuplet' && tuplet.inner).toEqual({
+      value: { base: 'eighth', dots: 0 },
+      multiple: 6,
+    })
+    expect(tuplet?.kind === 'tuplet' && tuplet.outer).toEqual({
+      value: { base: 'eighth', dots: 0 },
+      multiple: 3,
+    })
+    // Six written eighths in the time of three: the skipped eighth is a
+    // quarter of written space, and sounds the eighth the source skipped.
+    expect(tuplet?.kind === 'tuplet' && tuplet.content[1]).toEqual({
+      kind: 'space',
+      duration: { num: 1, den: 4 },
+    })
+  })
+
   test('reports a tuplet whose written content overruns its ratio', () => {
     const over =
       tupletNote('C', 4, 'eighth', 'start') +
@@ -1465,6 +1507,83 @@ describe('a bracket rewritten inside a bracket that is rewritten too', () => {
   // is written as there. Under the opening 3:2 it came out as three, which
   // the rewritten outer then played as 3/20 of a whole note.
   test('writes the bracket inside it in the frame the outer ends up with', () => {
+    expect(inner?.kind === 'tuplet' && inner.inner).toEqual({
+      value: { base: '16th', dots: 0 },
+      multiple: 3,
+    })
+    expect(inner?.kind === 'tuplet' && inner.outer).toEqual({
+      value: { base: '16th', dots: 0 },
+      multiple: 2,
+    })
+  })
+
+  test('reports the source disagreeing with itself and nothing else', () => {
+    expect(nested.warnings.map((w) => w.code)).toEqual([
+      'inconsistent:duration',
+      'missing:time-modification',
+      'inconsistent:duration',
+      'inconsistent:tuplet',
+    ])
+  })
+})
+
+// The same, with a skip among what the outer bracket holds. The skip was
+// written at the ratios open when it was filled, so it says nothing about the
+// frame the outer ends up with, and reading the rate off it pulls the bracket
+// inside back toward the ratio the outer opened with.
+describe('a bracket rewritten around a skip and a bracket rewritten too', () => {
+  const outerNote = (step: string, bracket: string) =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    '<duration>18</duration><type>eighth</type>' +
+    '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+    '</time-modification>' +
+    `<notations><tuplet type="${bracket}" number="1"/></notations></note>`
+  const innerNote = (step: string, units: number, type: string, bracket = '') =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    `<duration>${String(units)}</duration><type>${type}</type>` +
+    (bracket ? `<notations><tuplet type="${bracket}" number="2"/></notations>` : '') +
+    '</note>'
+
+  const nested = read(
+    '<score-partwise><part id="P1"><measure number="1">' +
+      '<attributes><divisions>36</divisions></attributes>' +
+      outerNote('C', 'start') +
+      innerNote('D', 12, 'eighth', 'start') +
+      innerNote('E', 6, '16th', 'stop') +
+      '<forward><duration>18</duration></forward>' +
+      outerNote('G', 'stop') +
+      '</measure></part></score-partwise>',
+  )
+  const outer = nested.content?.[0]
+
+  // C, G and the skipped eighth each last an eighth, and the bracket inside
+  // takes another, so the bracket holds four eighths sounding four eighths.
+  test('states the enclosing bracket over the time its notes take', () => {
+    expect(outer?.kind === 'tuplet' && outer.inner).toEqual({
+      value: { base: 'eighth', dots: 0 },
+      multiple: 4,
+    })
+    expect(outer?.kind === 'tuplet' && outer.outer).toEqual({
+      value: { base: 'eighth', dots: 0 },
+      multiple: 4,
+    })
+  })
+
+  test('writes the skip at the rate the enclosing bracket settles on', () => {
+    expect(outer?.kind === 'tuplet' && outer.content[2]).toEqual({
+      kind: 'space',
+      duration: { num: 1, den: 8 },
+    })
+  })
+
+  // The same reading the skipless bracket gives: three sixteenths in the time
+  // of two. Counting the skip as a witness leaves the outer spending seven
+  // written sixteenths for every six of time. No pair of note values states
+  // that over what this bracket holds, so the bracket keeps the three
+  // sixteenths the opening ratio gave it, with nothing reported.
+  test('writes the bracket inside it in the frame the outer ends up with', () => {
+    const inner = outer?.kind === 'tuplet' ? outer.content[1] : undefined
+
     expect(inner?.kind === 'tuplet' && inner.inner).toEqual({
       value: { base: '16th', dots: 0 },
       multiple: 3,

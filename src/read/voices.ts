@@ -39,6 +39,7 @@ import type {
   Pitch,
   Sequence,
   SequenceItem,
+  Space,
   TieTarget,
   Tuplet,
   TupletDisplay,
@@ -124,6 +125,19 @@ interface OpenTuplet {
   /** The brackets that closed inside this one and are written over what they
    * hold, waiting for the frame this one ends up with. */
   rewritten: RewrittenTuplet[]
+  /** The skips filled directly inside this one, waiting for the same frame. */
+  skips: OpenSkip[]
+}
+
+/**
+ * A skip filled inside a bracket. Its written length is the converter's
+ * reading of the measure time it stands for, taken at the ratios open when it
+ * was filled, so it moves with the frame the bracket ends up with.
+ */
+interface OpenSkip {
+  space: Draft<Space>
+  /** The measure time it stands for, which the frame does not change. */
+  spent: Fraction
 }
 
 /**
@@ -573,8 +587,9 @@ function countedLengthOf(open: OpenTuplet): Fraction {
  * together give the rate. Undefined where it holds nothing else, or where
  * what it holds took no time, and the rate says nothing.
  *
- * A skip inside the bracket counts among them, though the length it was
- * filled at came from the ratios open then rather than from the source.
+ * A skip is not one of them. Its written length came from the ratios open
+ * when it was filled rather than from the source, so it witnesses the frame
+ * the bracket opened with and not the one it ends up with.
  */
 function frameRate(open: OpenTuplet, spent: Fraction): Fraction | undefined {
   let insideSpent = fraction(0)
@@ -583,6 +598,10 @@ function frameRate(open: OpenTuplet, spent: Fraction): Fraction | undefined {
     insideSpent = addFractions(insideSpent, entry.spent)
     insideWritten = addFractions(insideWritten, quantityLength(entry.tuplet.outer))
   }
+  for (const skip of open.skips) {
+    insideSpent = addFractions(insideSpent, skip.spent)
+    insideWritten = addFractions(insideWritten, skip.space.duration)
+  }
   const restSpent = subtractFractions(spent, insideSpent)
   const restWritten = subtractFractions(writtenLengthOf(open.tuplet.content), insideWritten)
   if (restSpent.num <= 0 || restWritten.num <= 0) return undefined
@@ -590,12 +609,12 @@ function frameRate(open: OpenTuplet, spent: Fraction): Fraction | undefined {
 }
 
 /**
- * Writes the brackets rewritten inside `open` in the frame it ends up with.
- * `rate` is that frame; where it is undefined each keeps the reading the
- * ratios open at its close gave it, which is the frame the bracket opened
- * with.
+ * Writes what `open` holds that waits on the frame it ends up with: the
+ * brackets rewritten inside it, and the skips filled in it. `rate` is that
+ * frame; where it is undefined each keeps the reading it has, which is the
+ * frame the bracket opened with.
  */
-function settleRewritten(
+function settleInside(
   open: OpenTuplet,
   rate: Fraction | undefined,
   warnings: WarningCollector,
@@ -610,6 +629,15 @@ function settleRewritten(
     )
   }
   open.rewritten.length = 0
+
+  // A skip stands for the measure time the cursor passed over, whatever the
+  // frame. Written at the settled rate, it goes on standing for that time.
+  if (rate) {
+    for (const skip of open.skips) {
+      skip.space.duration = multiplyFractions(skip.spent, rate)
+    }
+  }
+  open.skips.length = 0
 }
 
 /** Takes a bracket out of the list it stands in, leaving what it held. */
@@ -948,10 +976,16 @@ export class MeasureBuilder {
       // Inside a tuplet everything is written in values the ratio scales, so
       // a gap there is stated in written units: a skipped triplet eighth is
       // written as an eighth even though it lasts a twelfth of a whole note.
-      innermost(builder).push({
+      const space: Draft<Space> = {
         kind: 'space',
         duration: divideFractions(gap, tupletFactorOf(builder)),
-      })
+      }
+      innermost(builder).push(space)
+      // A bracket rewritten when it closes moves the frame this length was
+      // taken in, so the skip waits for it. A tremolo is the innermost frame
+      // whenever there is one, and states what it holds itself.
+      const around = builder.open.at(-1)
+      if (around?.opened === 'tuplet') around.skips.push({ space, spent: gap })
       builder.end = this.#cursor
     }
   }
@@ -1243,6 +1277,7 @@ export class MeasureBuilder {
         unbracketed: false,
         within,
         rewritten: [],
+        skips: [],
       })
     }
   }
@@ -1281,6 +1316,7 @@ export class MeasureBuilder {
       unbracketed: true,
       within,
       rewritten: [],
+      skips: [],
     })
   }
 
@@ -1904,7 +1940,7 @@ export class MeasureBuilder {
     // with. An ancestor rewritten later moves that frame, as it moves the
     // written values of the notes beside them.
     const stands = !closed.derived && misfits === 0
-    settleRewritten(closed, stands ? undefined : frameRate(closed, spent), warnings, context)
+    settleInside(closed, stands ? undefined : frameRate(closed, spent), warnings, context)
 
     // Measured again: a bracket dropped inside this one leaves what it held
     // where it stood, which the stated ratio need no longer count.
