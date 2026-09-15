@@ -420,17 +420,30 @@ function mergeGlobalMeasures(
     transposition,
   )
 
+  // What the score is in, for each key this part reads back, taken from the
+  // measures where both sides state one. The first reading settled for a
+  // signature is the one it keeps, as the first stated wins throughout here.
+  const spellings = new Map<number, number>()
+  for (const pair of keys) {
+    if (pair && !spellings.has(pair.part)) spellings.set(pair.part, pair.score)
+  }
+
   // A flipped signature reads back as the score's key in the other spelling,
   // so what such a measure contributes to the score is the score's own. The
   // part states it in the spelling it writes, and the point above brings that
   // back, while a measure no earlier part stated a key at would otherwise put
   // the flipped spelling on the whole score and re-spell every other part.
+  //
+  // A measure the score states no key at yet has no pair to compare, so the
+  // flip is settled by the signature the part writes rather than by how far
+  // the merge has reached: the reading another measure of this part settled
+  // for the same signature is the one contributed here. A signature no
+  // measure settles is read as it stands, since nothing says a flip covers it.
   const contributed = found.map((measure, index) => {
-    const pair = keys[index]
-    if (flipAt === undefined || !measure.key || !pair || pair.part === pair.score) {
-      return measure.key
-    }
-    return { ...measure.key, fifths: pair.score }
+    if (flipAt === undefined || !measure.key) return measure.key
+    const inScore = keys[index]?.score ?? spellings.get(measure.key.fifths)
+    if (inScore === undefined || inScore === measure.key.fifths) return measure.key
+    return { ...measure.key, fifths: inScore }
   })
 
   // What each side has in force, not just what it states: a time signature

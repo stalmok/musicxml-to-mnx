@@ -1258,6 +1258,31 @@ describe('several parts', () => {
       expect(warnings).toEqual([])
     })
 
+    // A measure the score states no key at has nothing to compare the part
+    // against, so the flip is settled by the signature the part writes rather
+    // than by how far the merge has reached: the reading another measure of
+    // the part settled for the same signature is the one contributed here.
+    // Otherwise the measure takes the flipped spelling and the score gains a
+    // key change the source does not have.
+    test('contributes the score\u2019s spelling before the score states a key', () => {
+      const late =
+        `<part id="P1"><measure number="1">${NOTE}</measure>` +
+        `<measure number="2"><attributes><key><fifths>5</fifths></key></attributes>` +
+        `${NOTE}</measure></part>` +
+        `<part id="P2"><measure number="1"><attributes><key><fifths>-5</fifths></key>` +
+        `${B_FLAT}</attributes>${NOTE}</measure>` +
+        `<measure number="2"><attributes><key><fifths>-5</fifths></key></attributes>` +
+        `${NOTE}</measure></part>`
+      const { score: result, warnings } = read(score(late))
+
+      expect(result.globalMeasures.map((measure) => measure.key)).toEqual([
+        { fifths: 5 },
+        { fifths: 5 },
+      ])
+      expect(result.parts[1]?.transposition?.keyFifthsFlipAt).toBe(7)
+      expect(warnings).toEqual([])
+    })
+
     // The ordinary transposing part: it writes the signature its transposition
     // asks for, so there is nothing to flip and no point to state.
     test('states no point for a part writing the signature it is asked for', () => {
