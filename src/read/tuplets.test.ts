@@ -3594,6 +3594,22 @@ describe('a bracket the silence after it completes', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-ratio'])
   })
 
+  // A grace note takes none of the measure's time, so the voice has not
+  // sounded again where one stands after the bracket.
+  test('states the silence past a grace note standing after the bracket', () => {
+    const grace =
+      '<note><grace/><pitch><step>G</step><octave>4</octave></pitch><type>eighth</type></note>'
+    const { content, warnings } = timed(TRIPLET + shortQuarter + grace)
+
+    expect(stated(content?.[1])).toEqual({
+      inner: { value: { base: 'eighth', dots: 0 }, multiple: 3 },
+      outer: { value: { base: 'eighth', dots: 0 }, multiple: 2 },
+      held: ['event', 'space'],
+    })
+    expect(content?.[2]?.kind).toBe('grace')
+    expect(warnings).toEqual([])
+  })
+
   test('counts what the bracket holds where the silence falls short of its ratio', () => {
     const { content, warnings } = timed(
       shortQuarter + '<forward><duration>2</duration></forward>' + plain('D', 6, 'eighth'),

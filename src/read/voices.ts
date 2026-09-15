@@ -1045,17 +1045,25 @@ export class MeasureBuilder {
    * since it last sounded. MusicXML leaves such a gap implicit by moving its
    * cursor; MNX has to state it, because a sequence runs without interruption
    * from wherever it starts.
+   *
+   * `sounding` is false where what comes next takes none of the measure's
+   * time, which is a grace note.
    */
-  #fillGap(builder: VoiceBuilder): void {
+  #fillGap(builder: VoiceBuilder, sounding = true): void {
     // A voice that is a rest filling the measure holds no sequence to state
     // one in: it is already silent for the whole measure, and a note written
     // over it is dropped rather than added, which is the only way the cursor
     // runs ahead of such a voice.
     if (builder.fullMeasure) return
-    // A bracket waiting on the silence after it is answered here: what the
-    // voice passes over before it sounds again is that silence, and what the
-    // bracket takes of it is no longer a gap.
-    this.#answerShort(builder, subtractFractions(this.#cursor, builder.end))
+    // A bracket waiting on the silence after it is answered by what the voice
+    // passes over, and what the bracket takes of it is no longer a gap. A
+    // grace note takes none of the measure's time, so nothing passed over
+    // before one says nothing, and the bracket goes on waiting for the note
+    // the group ornaments or for the barline.
+    const passed = subtractFractions(this.#cursor, builder.end)
+    if (sounding || compareFractions(passed, fraction(0)) > 0) {
+      this.#answerShort(builder, passed)
+    }
     const gap = subtractFractions(this.#cursor, builder.end)
     if (compareFractions(gap, fraction(0)) > 0) {
       // Inside a tuplet everything is written in values the ratio scales, so
@@ -2134,7 +2142,7 @@ export class MeasureBuilder {
     // voice has passed over in silence is passed over before the group rather
     // than after it. Filling the gap here keeps the group beside its note
     // instead of stranding it at the point the voice last sounded.
-    this.#fillGap(builder)
+    this.#fillGap(builder, false)
 
     const list = innermost(builder)
     const previous = list.at(-1)
