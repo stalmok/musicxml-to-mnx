@@ -22,7 +22,7 @@ import {
 } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import { describeLength, lengthOf, noteValueOf } from './duration.js'
-import type { WarningCollector, WarningContext } from '../warnings.js'
+import type { WarningCollector, WarningContext, WarningPlace } from '../warnings.js'
 import type { BeamedEvent } from './beams.js'
 import type {
   Arpeggio,
@@ -166,7 +166,32 @@ interface RewrittenTuplet {
   misfits: number
   /** True where a rewritten ratio is the source's to answer for. */
   reportable: boolean
+  /**
+   * The place the report keeps for it. A bracket settles after everything it
+   * waits on has been read, which can be the end of the measure, and the
+   * report reads in document order, so the place is taken at the stop the
+   * source wrote.
+   */
+  place: WarningPlace
   line: number
+}
+
+/**
+ * A bracket that closed holding less than its stated ratio counts, and whose
+ * own reading no pair of note values states. The silence the voice passes
+ * over next can stand for what it is missing, so the reading waits until the
+ * voice sounds again or the measure ends.
+ */
+interface ShortTuplet {
+  tuplet: Draft<Tuplet>
+  /** The ratio the source stated, which the silence lets the bracket keep. */
+  ratio: { inner: NoteValueQuantity; outer: NoteValueQuantity }
+  /** The written length still missing from what that ratio counts. */
+  missing: Fraction
+  /** The measure time that missing length stands for. */
+  silence: Fraction
+  /** What to state instead, where no silence completes it. */
+  entry: RewrittenTuplet
 }
 
 /**
@@ -255,6 +280,13 @@ interface VoiceBuilder {
    * voice is whole. See settleMeasureRests.
    */
   measureRest: MeasureRestCandidate | undefined
+  /**
+   * The bracket at the end of this sequence that the silence after it could
+   * complete, where it closed needing some. See ShortTuplet.
+   */
+  short: ShortTuplet | undefined
+  /** The brackets no silence completed, waiting only to be reported. */
+  unsettled: RewrittenTuplet[]
 }
 
 /**
@@ -430,6 +462,17 @@ function countsBoth(unit: Fraction, held: Fraction, sounded: Fraction): boolean 
 /** Whether a count is one MNX states: a whole number, and at least one. */
 function countsOnce(count: Fraction): boolean {
   return count.den === 1 && count.num >= 1
+}
+
+/**
+ * Whether a pair of note values states what a bracket holds against the time
+ * it takes. False where the counting unit is no written value, which is what
+ * leaves a bracket unstatable: a quarter sounding a sixth of a whole note is
+ * one quarter in the time of two thirds of a quarter, and no note value is
+ * two thirds of one.
+ */
+function statesRatio(drawn: NoteValue, held: Fraction, sounded: Fraction): boolean {
+  return noteValueOf(countingUnit(drawn, held, sounded)) !== undefined
 }
 
 /** How long a tuplet's content is written as, before its ratio scales it. */
@@ -658,7 +701,7 @@ function settleTuplet(
   warnings: WarningCollector,
   context: WarningContext,
 ): void {
-  const { tuplet, held, misfits, line } = entry
+  const { tuplet, held, misfits, place, line } = entry
   scaleToContent(tuplet, entry.drawn, held, sounded)
 
   if (compareFractions(held, quantityLength(tuplet.inner)) !== 0) {
@@ -675,7 +718,8 @@ function settleTuplet(
     // A bracket no pair of note values counts at all cannot be drawn: what it
     // holds takes its place, written as it stands.
     if (!counts) dropTuplet(entry.within, tuplet)
-    warnings.add(
+    warnings.addAt(
+      place,
       'unrepresentable:tuplet-ratio',
       `A tuplet's written content ${misfits < 0 ? 'falls short of' : 'overruns'} its ` +
         'stated ratio, and no pair of note values states the ratio between the notes ' +
@@ -695,7 +739,8 @@ function settleTuplet(
     // reported where it is read, one the converter divided out of a
     // cumulative ratio says nothing about what the source drew, and one the
     // barline cut holds less because the converter cut it.
-    warnings.add(
+    warnings.addAt(
+      place,
       'inconsistent:tuplet',
       `A tuplet's written content ${misfits < 0 ? 'falls short of' : 'overruns'} the ` +
         'ratio the source states for it. The ratio is rewritten to count the notes the ' +
@@ -703,6 +748,42 @@ function settleTuplet(
       { ...context, line },
       'tuplet',
     )
+  }
+}
+
+/**
+ * What a closing bracket would need from the silence after it, where silence
+ * is what stands between it and the ratio the source drew.
+ *
+ * Three things have to hold. The source has to have stated the ratio for this
+ * bracket, so that keeping it keeps what the source drew: a run the ratio
+ * alone opens is bounded by the skip after it rather than reaching over it,
+ * and a ratio read off the bracket's first note speaks for that note alone.
+ * The notes it holds have to have sounded at that ratio, so that completing
+ * the content completes the time as well. And its own reading has to be one
+ * no pair of note values states, because a bracket that states its content
+ * against the time it took already says what the source drew.
+ *
+ * A bracket the barline cut is none of these: the rest of it is in the next
+ * measure, not in silence.
+ */
+function shortOf(
+  closed: OpenTuplet,
+  entry: RewrittenTuplet,
+  cut: boolean,
+): ShortTuplet | undefined {
+  const { tuplet, held, spent } = entry
+  const missing = subtractFractions(quantityLength(tuplet.inner), held)
+  if (cut || !closed.stated || closed.derived || missing.num <= 0) return undefined
+  if (compareFractions(spent, multiplyFractions(held, closed.ratio)) !== 0) return undefined
+  if (statesRatio(entry.drawn, held, entry.provisional)) return undefined
+
+  return {
+    tuplet,
+    ratio: { inner: tuplet.inner, outer: tuplet.outer },
+    missing,
+    silence: multiplyFractions(missing, closed.ratio),
+    entry,
   }
 }
 
@@ -971,6 +1052,10 @@ export class MeasureBuilder {
     // over it is dropped rather than added, which is the only way the cursor
     // runs ahead of such a voice.
     if (builder.fullMeasure) return
+    // A bracket waiting on the silence after it is answered here: what the
+    // voice passes over before it sounds again is that silence, and what the
+    // bracket takes of it is no longer a gap.
+    this.#answerShort(builder, subtractFractions(this.#cursor, builder.end))
     const gap = subtractFractions(this.#cursor, builder.end)
     if (compareFractions(gap, fraction(0)) > 0) {
       // Inside a tuplet everything is written in values the ratio scales, so
@@ -987,6 +1072,52 @@ export class MeasureBuilder {
       const around = builder.open.at(-1)
       if (around?.opened === 'tuplet') around.skips.push({ space, spent: gap })
       builder.end = this.#cursor
+    }
+  }
+
+  /**
+   * Answers the bracket waiting on the silence after it, where one waits.
+   * `silence` is the measure time the voice is known to pass over before it
+   * sounds again. Enough of it, and the bracket states what it is missing as
+   * a space and keeps the ratio the source drew. Otherwise it goes back to
+   * the reading it would have taken when it closed, which waits for a
+   * collector to report through rather than for anything more to be read.
+   */
+  #answerShort(builder: VoiceBuilder, silence: Fraction): void {
+    const short = builder.short
+    if (!short) return
+    builder.short = undefined
+
+    if (compareFractions(silence, short.silence) < 0) {
+      builder.unsettled.push(short.entry)
+      return
+    }
+    short.tuplet.content.push({ kind: 'space', duration: short.missing })
+    short.tuplet.inner = short.ratio.inner
+    short.tuplet.outer = short.ratio.outer
+    builder.end = addFractions(builder.end, short.silence)
+  }
+
+  /**
+   * Answers every bracket still waiting on the silence after it, the measure
+   * being whole, and states the ones no silence completed.
+   *
+   * A voice silent from where it ends to the barline is silent for what a
+   * bracket at its end is missing, provided the barline is far enough away.
+   * `measure` is how long the measure is, and is unset where the source
+   * states no time signature, which leaves nothing to measure against.
+   */
+  settleShortTuplets(
+    measure: Fraction | undefined,
+    warnings: WarningCollector,
+    context: WarningContext,
+  ): void {
+    for (const builder of this.#allBuilders()) {
+      this.#answerShort(builder, measure ? subtractFractions(measure, builder.end) : fraction(0))
+      for (const entry of builder.unsettled) {
+        settleTuplet(entry, entry.provisional, warnings, context)
+      }
+      builder.unsettled.length = 0
     }
   }
 
@@ -1962,6 +2093,7 @@ export class MeasureBuilder {
       drawnOuter: quantityLength(tuplet.outer),
       misfits,
       reportable: closed.stated && !cut,
+      place: warnings.reserve(),
       line,
     }
 
@@ -1970,7 +2102,9 @@ export class MeasureBuilder {
     // that bracket's opening ones, which its own rewriting can leave behind.
     const around = tupletFrames(builder).at(-1)
     if (!around) {
-      settleTuplet(entry, entry.provisional, warnings, context)
+      const short = shortOf(closed, entry, cut)
+      if (short) builder.short = short
+      else settleTuplet(entry, entry.provisional, warnings, context)
       return closed.number
     }
     // Written as the ratios open now state it while the bracket around it
@@ -2297,5 +2431,7 @@ function newVoiceBuilder(openedAt?: number): VoiceBuilder {
     grace: undefined,
     fullMeasure: undefined,
     measureRest: undefined,
+    short: undefined,
+    unsettled: [],
   }
 }

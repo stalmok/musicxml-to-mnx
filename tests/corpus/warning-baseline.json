@@ -2891,8 +2891,7 @@
     "direction@system": 1,
     "sound@dynamics": 15,
     "extend": 26,
-    "print-object": 284,
-    "tuplet": 1
+    "print-object": 284
   },
   "cornelius-1-untreu": {
     "midi-device": 2,
@@ -11247,8 +11246,7 @@
     "sound@dynamics": 21,
     "extend": 2,
     "print-object": 25,
-    "pedal": 8,
-    "tuplet": 1
+    "pedal": 8
   },
   "webern-1-eingang": {
     "midi-device": 2,

@@ -5,6 +5,8 @@
 
 import { describe, expect, test } from 'vitest'
 import { MusicXMLError } from '../errors.js'
+import { fraction } from '../fraction.js'
+import type { SequenceItem } from '../model/score.js'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
@@ -3510,5 +3512,98 @@ describe('a bracket dropped inside one whose ratio counted it', () => {
       'event',
       'event',
     ])
+  })
+})
+
+// A quarter under a 3:2 eighth ratio fills two of a bracket's three eighth
+// slots. On its own it is a quarter sounding two thirds of a quarter, which
+// no pair of note values states. Where the voice is silent for the slot it
+// leaves, the bracket states that silence and keeps the ratio the source drew.
+describe('a bracket the silence after it completes', () => {
+  const TIMED =
+    '<attributes><divisions>12</divisions>' +
+    '<time><beats>2</beats><beat-type>4</beat-type></time></attributes>'
+
+  /** A quarter taking two of the three eighth slots of its own bracket. */
+  const shortQuarter =
+    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>8</duration>' +
+    '<type>quarter</type><time-modification><actual-notes>3</actual-notes>' +
+    '<normal-notes>2</normal-notes><normal-type>eighth</normal-type></time-modification>' +
+    '<notations><tuplet type="start" bracket="no"/><tuplet type="stop"/></notations></note>'
+
+  /** A note of `units` divisions written as `type`, with no ratio on it. */
+  const plain = (step: string, units: number, type: string) =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    `<duration>${String(units)}</duration><type>${type}</type></note>`
+
+  function timed(body: string) {
+    return read(measures(TIMED + body))
+  }
+
+  /** The bracket, with what it holds named by kind. */
+  function stated(item: SequenceItem | undefined) {
+    if (item?.kind !== 'tuplet') return undefined
+    return {
+      inner: item.inner,
+      outer: item.outer,
+      held: item.content.map((held) => held.kind),
+    }
+  }
+
+  test('states the silence the measure ends on inside the bracket', () => {
+    const { content, warnings } = timed(TRIPLET + shortQuarter)
+
+    expect(stated(content?.[1])).toEqual({
+      inner: { value: { base: 'eighth', dots: 0 }, multiple: 3 },
+      outer: { value: { base: 'eighth', dots: 0 }, multiple: 2 },
+      held: ['event', 'space'],
+    })
+    expect(warnings).toEqual([])
+  })
+
+  test('writes that silence at the value the ratio counts it in', () => {
+    const { content } = timed(TRIPLET + shortQuarter)
+    const tuplet = content?.[1]
+    const space = tuplet?.kind === 'tuplet' ? tuplet.content[1] : undefined
+
+    expect(space?.kind === 'space' && space.duration).toEqual(fraction(1, 8))
+  })
+
+  test('states a gap the source skips over inside the bracket', () => {
+    const { content, warnings } = timed(
+      shortQuarter + '<forward><duration>4</duration></forward>' + plain('D', 12, 'quarter'),
+    )
+
+    expect(stated(content?.[0])).toEqual({
+      inner: { value: { base: 'eighth', dots: 0 }, multiple: 3 },
+      outer: { value: { base: 'eighth', dots: 0 }, multiple: 2 },
+      held: ['event', 'space'],
+    })
+    expect(content?.[1]?.kind).toBe('event')
+    expect(warnings).toEqual([])
+  })
+
+  test('counts what the bracket holds where the voice sounds straight after', () => {
+    const { content, warnings } = timed(shortQuarter + plain('D', 12, 'quarter'))
+
+    expect(stated(content?.[0])).toEqual({
+      inner: { value: { base: 'eighth', dots: 0 }, multiple: 2 },
+      outer: { value: { base: 'eighth', dots: 0 }, multiple: 2 },
+      held: ['event'],
+    })
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-ratio'])
+  })
+
+  test('counts what the bracket holds where the silence falls short of its ratio', () => {
+    const { content, warnings } = timed(
+      shortQuarter + '<forward><duration>2</duration></forward>' + plain('D', 6, 'eighth'),
+    )
+
+    expect(stated(content?.[0])).toEqual({
+      inner: { value: { base: 'eighth', dots: 0 }, multiple: 2 },
+      outer: { value: { base: 'eighth', dots: 0 }, multiple: 2 },
+      held: ['event'],
+    })
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-ratio'])
   })
 })

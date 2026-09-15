@@ -44,7 +44,7 @@ import { requireDuration } from './divisions.js'
 import { lengthOf } from './duration.js'
 import { drawnName, ElementReader, reportUnreadAttributes } from './element.js'
 import { GroupingBuilder, pruneGrouping } from './part-groups.js'
-import { compareFractions, negate } from '../fraction.js'
+import { compareFractions, fraction, negate } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import { readNote } from './notes.js'
 import { readPrint } from './print.js'
@@ -1237,6 +1237,14 @@ function readMeasure(
   // close it, so the measure's end is where its run ends.
   builder.closeImpliedTuplets(warnings, context, measurePath, element.line)
   state.carriedTupletStops = builder.closeAtBarline(warnings, context, measurePath, element.line)
+
+  // A bracket the silence after it could complete has waited for the measure
+  // to be whole, because a voice silent to the barline is what completes one.
+  builder.settleShortTuplets(
+    state.time && fraction(state.time.count, state.time.unit),
+    warnings,
+    context,
+  )
 
   // Every event of the measure is in now, so a hairpin's and an octave
   // shift's stop can each be told which one it covers, whatever order the
