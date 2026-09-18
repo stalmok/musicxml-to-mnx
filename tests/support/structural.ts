@@ -125,6 +125,32 @@ function pitchKey(pitch: Pitch): string {
   return `${pitch.step}${String(pitch.octave)}${pitch.alter === 0 ? '' : `(${String(pitch.alter)})`}`
 }
 
+/**
+ * An alteration as MNX states it. MNX counts whole semitones, so a microtone
+ * takes the nearest whole alteration, and a half-way one the smaller.
+ */
+function statedAlter(alter: number): number {
+  if (Number.isInteger(alter)) return alter
+  return Math.sign(alter) * Math.ceil(Math.abs(alter) - 0.5) || 0
+}
+
+/** How many notes in the source are altered by a fraction of a semitone. */
+export function sourceMicrotones(root: XmlElement): number {
+  let count = 0
+  for (const part of root.children.filter((c) => c.name === 'part')) {
+    for (const measure of part.children.filter((c) => c.name === 'measure')) {
+      for (const note of measure.children.filter((c) => c.name === 'note')) {
+        const alter = note.children
+          .find((c) => c.name === 'pitch')
+          ?.children.find((c) => c.name === 'alter')
+          ?.text.trim()
+        if (alter !== undefined && !Number.isInteger(Number(alter))) count += 1
+      }
+    }
+  }
+  return count
+}
+
 /** One line per part and measure: each line's pitches in order, the lines
  * sorted. The lines sort because the source interleaves a measure's voices
  * through its cursor while MNX states each on its own, so their order is the
@@ -378,7 +404,7 @@ export function sourcePitches(root: XmlElement): string[] {
                   {
                     step: text('step'),
                     octave: Number(text('octave')),
-                    alter: text('alter') === '' ? 0 : Number(text('alter')),
+                    alter: text('alter') === '' ? 0 : statedAlter(Number(text('alter'))),
                   },
                   transpose,
                 ),

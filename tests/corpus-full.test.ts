@@ -21,7 +21,7 @@ import { describe, expect, test } from 'vitest'
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { convertMusicXML, MusicXMLError } from '../src/index.js'
-import type { MNXDocument } from '../src/index.js'
+import type { ConversionWarning, MNXDocument } from '../src/index.js'
 import { readMusicXML } from '../src/container.js'
 import { parseXmlRoot } from '../src/xml/parse.js'
 import { schemaErrors } from './support/schema.js'
@@ -30,6 +30,7 @@ import {
   pitchesOf,
   sounding,
   sourceMeasureLengths,
+  sourceMicrotones,
   sourcePitches,
   underfilledTuplets,
 } from './support/structural.js'
@@ -87,7 +88,7 @@ function assess(file: string): Outcome {
   // thing. The pitch and schema checks still hold that file to account.
   const inconsistent = warnings.some((warning) => warning.code === 'inconsistent:duration')
 
-  const failure = firstFailure(file, xml, mnx, inconsistent)
+  const failure = firstFailure(file, xml, mnx, warnings, inconsistent)
   if (failure) return { kind: 'failed', failure }
 
   return { kind: 'converted', losses: warnings.map((warning) => warning.element ?? warning.code) }
@@ -98,6 +99,7 @@ function firstFailure(
   file: string,
   xml: string,
   mnx: MNXDocument,
+  warnings: readonly ConversionWarning[],
   skipLengths: boolean,
 ): Failure | undefined {
   const schema = schemaErrors(mnx)
@@ -140,6 +142,19 @@ function firstFailure(
         at === -1
           ? `${String(converted.length)} measure lines against ${String(inSource.length)} in the source`
           : `"${converted[at] ?? ''}" against "${inSource[at] ?? ''}" in the source`,
+    }
+  }
+
+  // MNX states a whole number of semitones, so the source pitches above are
+  // read at the whole alteration a microtone converts to. Each one converted
+  // that way must be reported.
+  const microtones = sourceMicrotones(root)
+  const reported = warnings.filter((w) => w.code === 'unrepresentable:microtone').length
+  if (reported !== microtones) {
+    return {
+      file,
+      kind: 'pitches',
+      detail: `${String(reported)} microtones reported against ${String(microtones)} in the source`,
     }
   }
 

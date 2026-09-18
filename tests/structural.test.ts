@@ -19,6 +19,7 @@ import {
   sounding,
   sourceLyricPlaces,
   sourceMeasureLengths,
+  sourceMicrotones,
   sourcePitches,
 } from './support/structural.js'
 
@@ -70,6 +71,39 @@ test('a chord member without a voice counts toward its base note voice', () => {
   // compares.
   const { mnx } = convertMusicXML(source)
   expect(pitchesOf(mnx)).toEqual(inSource)
+})
+
+// MNX states a whole number of semitones, so a microtone converts as the
+// nearest whole alteration, a half-way one as the smaller, and is reported.
+test('a microtone is read as the whole alteration MNX states, and counted', () => {
+  const note = (step: string, alter: string) =>
+    `<note><pitch><step>${step}</step><alter>${alter}</alter><octave>4</octave></pitch>` +
+    '<duration>1</duration><voice>1</voice><type>quarter</type></note>'
+  const source = `<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.0">
+  <part-list>
+    <score-part id="P1"><part-name>Music</part-name></score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>1</divisions>
+        <time><beats>5</beats><beat-type>4</beat-type></time>
+        <clef><sign>G</sign><line>2</line></clef>
+      </attributes>
+      ${note('C', '-1.5')}${note('D', '-0.5')}${note('E', '0.5')}${note('F', '1.75')}${note('G', '1')}
+    </measure>
+  </part>
+</score-partwise>
+`
+  const root = parseXmlRoot(source)
+  const inSource = sourcePitches(root)
+  expect(inSource).toEqual(['part 1 measure 1: C4(-1) D4 E4 F4(2) G4(1)'])
+  expect(sourceMicrotones(root)).toBe(4)
+
+  const { mnx, warnings } = convertMusicXML(source)
+  expect(pitchesOf(mnx)).toEqual(inSource)
+  expect(warnings.filter((w) => w.code === 'unrepresentable:microtone')).toHaveLength(4)
 })
 
 // A <backup> can reach further back than the measure has run. Nothing sounds
