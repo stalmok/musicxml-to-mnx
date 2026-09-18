@@ -836,6 +836,11 @@ export class MeasureBuilder {
    */
   readonly #eventStarts: { start: Fraction; staff: number | undefined; grace: boolean }[] = []
   #cursor: Fraction = fraction(0)
+  /**
+   * The furthest the cursor has run in the measure, over notes and <forward>
+   * alike: a <forward> is how MusicXML writes silence it draws nothing for.
+   */
+  #furthest: Fraction = fraction(0)
   /** The voice of the most recent event, which a chord member joins. */
   #lastVoice: string | undefined
   /**
@@ -876,7 +881,7 @@ export class MeasureBuilder {
    * <forward>s cancel is reported once.
    */
   shift(by: Fraction, warnings: WarningCollector, context: WarningContext, line: number): void {
-    this.#cursor = addFractions(this.#cursor, by)
+    this.#moveTo(addFractions(this.#cursor, by))
     if (compareFractions(this.#cursor, fraction(0)) >= 0) {
       this.#reached = undefined
       return
@@ -916,7 +921,12 @@ export class MeasureBuilder {
    */
   passOver(by: Fraction): void {
     this.#writeAt()
-    this.#cursor = addFractions(this.#cursor, by)
+    this.#moveTo(addFractions(this.#cursor, by))
+  }
+
+  #moveTo(position: Fraction): void {
+    this.#cursor = position
+    if (compareFractions(position, this.#furthest) > 0) this.#furthest = position
   }
 
   /**
@@ -1037,7 +1047,7 @@ export class MeasureBuilder {
     this.#eventStarts.push({ start: this.#cursor, staff, grace: false })
     tremoloFrame(builder)?.durations.push(duration)
     builder.end = addFractions(this.#cursor, duration)
-    this.#cursor = builder.end
+    this.#moveTo(builder.end)
   }
 
   /**
@@ -1115,17 +1125,17 @@ export class MeasureBuilder {
    *
    * A voice silent from where it ends to the barline is silent for what a
    * bracket at its end is missing, provided the barline is far enough away.
-   * The barline is where the furthest voice of the measure ends, not where
-   * the time signature puts it: a pickup or a short measure ends early, and
-   * the silence after a bracket cannot run past the measure's own end.
+   * The barline is where the time signature puts it, or further where the
+   * part runs past it. `time` is unset where the part states no time
+   * signature, and then how far the part runs is all there is.
    */
-  settleShortTuplets(warnings: WarningCollector, context: WarningContext): void {
-    const builders = this.#allBuilders()
-    let measure = fraction(0)
-    for (const builder of builders) {
-      if (compareFractions(builder.end, measure) > 0) measure = builder.end
-    }
-    for (const builder of builders) {
+  settleShortTuplets(
+    time: Fraction | undefined,
+    warnings: WarningCollector,
+    context: WarningContext,
+  ): void {
+    const measure = time && compareFractions(time, this.#furthest) > 0 ? time : this.#furthest
+    for (const builder of this.#allBuilders()) {
       this.#answerShort(builder, subtractFractions(measure, builder.end))
       for (const entry of builder.unsettled) {
         settleTuplet(entry, entry.provisional, warnings, context)
