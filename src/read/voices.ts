@@ -17,6 +17,7 @@ import {
   commonMeasure,
   divideFractions,
   fraction,
+  isZero,
   multiplyFractions,
   subtractFractions,
 } from '../fraction.js'
@@ -115,6 +116,8 @@ interface OpenTuplet {
   stated: boolean
   /** Where this voice's content ran to when the bracket opened. */
   openEnd: Fraction
+  /** The skip standing straight before a bracket no other bracket holds. */
+  before: LeadingSkip | undefined
   /**
    * True where the source stated the ratio and drew no bracket, so what the
    * ratio counts is what says where the tuplet ends.
@@ -138,6 +141,18 @@ interface OpenSkip {
   space: Draft<Space>
   /** The measure time it stands for, which the frame does not change. */
   spent: Fraction
+}
+
+/** A skip written where no bracket is open, with the list it stands in. */
+interface LeadingSkip extends OpenSkip {
+  within: SequenceItem[]
+}
+
+/** Takes measure time off the front of a bracket from the skip before it. */
+function takeLead(before: LeadingSkip, lead: Fraction): void {
+  const left = subtractFractions(before.spent, lead)
+  if (isZero(left)) before.within.splice(before.within.indexOf(before.space), 1)
+  else before.space.duration = left
 }
 
 /**
@@ -186,9 +201,13 @@ interface ShortTuplet {
   tuplet: Draft<Tuplet>
   /** The ratio the source stated, which the silence lets the bracket keep. */
   ratio: { inner: NoteValueQuantity; outer: NoteValueQuantity }
-  /** The written length still missing from what that ratio counts. */
-  missing: Fraction
-  /** The measure time that missing length stands for. */
+  /** How much of its written value a note in the bracket lasts. */
+  ratioFactor: Fraction
+  /** The measure time taken from the skip before the bracket. */
+  lead: Fraction
+  /** The skip it is taken from, where it takes any. */
+  before: LeadingSkip | undefined
+  /** The measure time still missing, which the silence after has to give. */
   silence: Fraction
   /** What to state instead, where no silence completes it. */
   entry: RewrittenTuplet
@@ -778,13 +797,38 @@ function shortOf(
   if (compareFractions(spent, multiplyFractions(held, closed.ratio)) !== 0) return undefined
   if (statesRatio(entry.drawn, held, entry.provisional)) return undefined
 
+  const silence = multiplyFractions(missing, closed.ratio)
+  const lead = leadOf(closed, silence)
   return {
     tuplet,
     ratio: { inner: tuplet.inner, outer: tuplet.outer },
-    missing,
-    silence: multiplyFractions(missing, closed.ratio),
+    ratioFactor: closed.ratio,
+    lead,
+    before: closed.before,
+    silence: subtractFractions(silence, lead),
     entry,
   }
+}
+
+/**
+ * How much of the silence a short bracket is missing stands before its notes.
+ * The bracket starts where a multiple of its outer from the barline puts it,
+ * which is where the beat it divides begins, provided the skip before it
+ * holds that much and the bracket is missing that much. Otherwise all of it
+ * stands after.
+ */
+function leadOf(closed: OpenTuplet, silence: Fraction): Fraction {
+  const none = fraction(0)
+  if (!closed.before) return none
+  const beat = quantityLength(closed.tuplet.outer)
+  const beats = divideFractions(closed.openEnd, beat)
+  const lead = subtractFractions(
+    closed.openEnd,
+    multiplyFractions(beat, fraction(Math.floor(beats.num / beats.den))),
+  )
+  if (compareFractions(lead, silence) > 0) return none
+  if (compareFractions(lead, closed.before.spent) > 0) return none
+  return lead
 }
 
 /** Whether the tuplet holds at least what its ratio counts. */
@@ -1060,7 +1104,7 @@ export class MeasureBuilder {
    * `sounding` is false where what comes next takes none of the measure's
    * time, which is a grace note.
    */
-  #fillGap(builder: VoiceBuilder, sounding = true): void {
+  #fillGap(builder: VoiceBuilder, sounding = true): LeadingSkip | undefined {
     // A voice that is a rest filling the measure holds no sequence to state
     // one in: it is already silent for the whole measure, and a note written
     // over it is dropped rather than added, which is the only way the cursor
@@ -1094,7 +1138,9 @@ export class MeasureBuilder {
       const around = builder.open.at(-1)
       if (around?.opened === 'tuplet') around.skips.push({ space, spent: gap })
       builder.end = this.#cursor
+      if (!around) return { space, spent: gap, within: builder.content }
     }
+    return undefined
   }
 
   /**
@@ -1114,7 +1160,13 @@ export class MeasureBuilder {
       builder.unsettled.push(short.entry)
       return
     }
-    short.tuplet.content.push({ kind: 'space', duration: short.missing })
+    if (short.before && !isZero(short.lead)) takeLead(short.before, short.lead)
+    const written = (time: Fraction): Draft<Space> => ({
+      kind: 'space',
+      duration: divideFractions(time, short.ratioFactor),
+    })
+    if (!isZero(short.lead)) short.tuplet.content.unshift(written(short.lead))
+    if (!isZero(short.silence)) short.tuplet.content.push(written(short.silence))
     short.tuplet.inner = short.ratio.inner
     short.tuplet.outer = short.ratio.outer
     builder.end = addFractions(builder.end, short.silence)
@@ -1391,7 +1443,7 @@ export class MeasureBuilder {
 
     // Time this voice has passed over in silence belongs before the brackets,
     // not inside them, where the tuplets' ratios would scale it.
-    this.#fillGap(builder)
+    const before = this.#fillGap(builder)
     // Where this voice has reached, before anything the brackets hold. A
     // bracket that states no ratio compares it with where the voice reaches
     // when it closes, to state the time it took.
@@ -1429,6 +1481,7 @@ export class MeasureBuilder {
         derived: derived && starts[index]?.stated === undefined,
         stated: starts[index]?.stated !== undefined || (!derived && levels.length === 1),
         openEnd,
+        before: index === 0 ? before : undefined,
         unbracketed: false,
         within,
         rewritten: [],
@@ -1468,6 +1521,7 @@ export class MeasureBuilder {
       // reading of where they stop agreeing with it.
       stated: false,
       openEnd: builder.end,
+      before: undefined,
       unbracketed: true,
       within,
       rewritten: [],

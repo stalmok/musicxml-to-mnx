@@ -3860,3 +3860,119 @@ describe('a bracket the silence after it completes', () => {
     expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
   })
 })
+
+// A bracket's missing slots can stand before its notes as well as after them.
+// Where the voice is silent on both sides, the bracket takes what puts its
+// start on a multiple of its outer from the barline, which is where the beat
+// it divides begins.
+describe('a bracket the silence before it completes', () => {
+  const TIMED =
+    '<attributes><divisions>12</divisions>' +
+    '<time><beats>2</beats><beat-type>4</beat-type></time></attributes>'
+
+  /** One note under a 3:2 eighth ratio, opening and closing its own bracket. */
+  const alone = (step: string, units: number, type: string) =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    `<duration>${String(units)}</duration><type>${type}</type>` +
+    '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+    '<normal-type>eighth</normal-type></time-modification>' +
+    '<notations><tuplet type="start" bracket="no"/><tuplet type="stop"/></notations></note>'
+
+  const skip = (units: number) => `<forward><duration>${String(units)}</duration></forward>`
+
+  const plain = (step: string, units: number, type: string) =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    `<duration>${String(units)}</duration><type>${type}</type></note>`
+
+  function timed(body: string) {
+    return read(measures(TIMED + body))
+  }
+
+  /** Each item by kind, a bracket as what it holds. */
+  function shape(content: readonly SequenceItem[] | undefined): unknown[] {
+    return (content ?? []).map((item) =>
+      item.kind === 'tuplet' ? item.content.map((held) => held.kind) : item.kind,
+    )
+  }
+
+  test('states the silence before the bracket inside it', () => {
+    const { content, warnings } = timed(
+      skip(4) + alone('C', 8, 'quarter') + plain('D', 12, 'quarter'),
+    )
+
+    expect(shape(content)).toEqual([['space', 'event'], 'event'])
+    expect(warnings).toEqual([])
+  })
+
+  test('writes that silence at the value the ratio counts it in', () => {
+    const { content } = timed(skip(4) + alone('C', 8, 'quarter') + plain('D', 12, 'quarter'))
+    const tuplet = content?.[0]
+    const space = tuplet?.kind === 'tuplet' ? tuplet.content[0] : undefined
+
+    expect(space?.kind === 'space' && space.duration).toEqual(fraction(1, 8))
+  })
+
+  test('splits the silence around a note standing in the middle of its bracket', () => {
+    const { content, warnings } = timed(
+      skip(4) + alone('C', 4, 'eighth') + skip(4) + plain('D', 12, 'quarter'),
+    )
+
+    expect(shape(content)).toEqual([['space', 'event', 'space'], 'event'])
+    expect(warnings).toEqual([])
+  })
+
+  test('takes the silence before rather than after where that puts the bracket on its beat', () => {
+    const { content, warnings } = timed(
+      skip(4) + alone('C', 8, 'quarter') + skip(4) + alone('D', 8, 'quarter'),
+    )
+
+    expect(shape(content)).toEqual([
+      ['space', 'event'],
+      ['space', 'event'],
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  test('takes the silence before a bracket that ends at the barline', () => {
+    const { content, warnings } = timed(
+      plain('D', 12, 'quarter') + skip(4) + alone('C', 8, 'quarter'),
+    )
+
+    expect(shape(content)).toEqual(['event', ['space', 'event']])
+    expect(warnings).toEqual([])
+  })
+
+  test('leaves the rest of a longer silence before the bracket', () => {
+    const { content, warnings } = timed(skip(16) + alone('C', 8, 'quarter'))
+
+    expect(shape(content)).toEqual(['space', ['space', 'event']])
+    expect(content?.[0]?.kind === 'space' && content[0].duration).toEqual(fraction(1, 4))
+    expect(warnings).toEqual([])
+  })
+
+  test('leaves outside the bracket a silence that would not put it on its beat', () => {
+    const { content, warnings } = timed(
+      plain('D', 6, 'eighth') + skip(2) + alone('C', 8, 'quarter') + skip(8),
+    )
+
+    expect(shape(content)).toEqual(['event', 'space', ['event', 'space']])
+    expect(warnings).toEqual([])
+  })
+
+  test('counts what the bracket holds where the silence before it falls short', () => {
+    const { content, warnings } = timed(
+      plain('D', 6, 'eighth') + skip(2) + alone('C', 4, 'eighth') + plain('E', 12, 'quarter'),
+    )
+
+    expect(shape(content)).toEqual(['event', 'space', ['event'], 'event'])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-ratio'])
+  })
+
+  test.each([
+    ['before', skip(4) + alone('C', 8, 'quarter') + plain('D', 12, 'quarter')],
+    ['around', skip(4) + alone('C', 4, 'eighth') + skip(4) + plain('D', 12, 'quarter')],
+    ['at the barline', plain('D', 12, 'quarter') + skip(4) + alone('C', 8, 'quarter')],
+  ])('leaves output the schema takes: a bracket completed %s', (_, body) => {
+    expect(schemaErrors(convertMusicXML(measures(TIMED + body)).mnx)).toEqual([])
+  })
+})
