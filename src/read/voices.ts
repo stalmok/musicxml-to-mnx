@@ -1055,7 +1055,10 @@ export class MeasureBuilder {
     // The group is the last thing written in the sequence it is leaving.
     // This runs as the note is read and before the note opens or closes a
     // bracket of its own, so nothing has been written since the group was.
+    // The sequence it joins may have been silent since it last sounded, and
+    // that silence comes before the group.
     innermost(from).pop()
+    this.#fillGap(to, false)
     innermost(to).push(waiting.group)
     from.graceBeamed = from.graceBeamed.filter((run) => run !== waiting.beams)
     to.graceBeamed.push(waiting.beams)

@@ -956,6 +956,27 @@ describe('the measure cursor', () => {
     expect(result?.sequences[1]?.content.map((item) => item.kind)).toEqual(['grace', 'event'])
   })
 
+  test('writes the gap before a grace group carried into another line', () => {
+    const { measure: result } = read(
+      measure(
+        note('C', 1, '1') +
+          '<backup><duration>4</duration></backup>' +
+          note('D', 2, '1') +
+          '<backup><duration>2</duration></backup>' +
+          '<note><grace/><pitch><step>B</step><octave>4</octave></pitch>' +
+          '<voice>1</voice><type>eighth</type></note>' +
+          note('E', 0.5, '1'),
+      ),
+    )
+
+    expect(result?.sequences[0]?.content.map((item) => item.kind)).toEqual([
+      'event',
+      'space',
+      'grace',
+      'event',
+    ])
+  })
+
   // The beams over a grace group move with it, so the group is beamed once, in
   // the line it ends up in, rather than twice or not at all.
   test('carries the beams over a grace group into the line it moves to', () => {

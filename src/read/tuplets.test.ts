@@ -3702,6 +3702,20 @@ describe('a bracket the silence after it completes', () => {
     expect(space?.kind === 'space' && space.duration).toEqual(fraction(1, 8))
   })
 
+  test('leaves a grace note carried from another line beside the note it ornaments', () => {
+    const { content } = timed(
+      shortQuarter +
+        '<backup><duration>8</duration></backup>' +
+        plain('D', 24, 'half') +
+        '<backup><duration>12</duration></backup>' +
+        grace +
+        plain('E', 6, 'eighth'),
+    )
+
+    expect(stated(content?.[0])?.held).toEqual(['event', 'space'])
+    expect(content?.slice(1).map((item) => item.kind)).toEqual(['grace', 'event'])
+  })
+
   test('states a gap the source skips over inside the bracket', () => {
     const { content, warnings } = timed(
       shortQuarter + '<forward><duration>4</duration></forward>' + plain('D', 12, 'quarter'),
