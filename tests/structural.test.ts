@@ -2,7 +2,7 @@
 // independently of the converter, so their own readings need pinning where
 // the format allows more than one shape for the same music.
 
-import { expect, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { convertMusicXML } from '../src/index.js'
 import type { MNXDocument, MNXEvent, MNXSequenceItem } from '../src/index.js'
 import { parseXmlRoot } from '../src/xml/parse.js'
@@ -14,6 +14,7 @@ import {
   lyricPlaces,
   differingLyricLines,
   layoutLosses,
+  measureLengthDisagreements,
   holdsUnderfilledTuplet,
   pitchesOf,
   sounding,
@@ -738,4 +739,95 @@ test('a space counts toward what a tuplet holds', () => {
   }
 
   expect(holdsUnderfilledTuplet([withSpace])).toBe(false)
+})
+
+describe('the measure length check', () => {
+  /** A quarter taking two of the three eighth slots of its own 3:2 bracket. */
+  const shortQuarter =
+    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>8</duration>' +
+    '<type>quarter</type><time-modification><actual-notes>3</actual-notes>' +
+    '<normal-notes>2</normal-notes><normal-type>eighth</normal-type></time-modification>' +
+    '<notations><tuplet type="start" bracket="no"/><tuplet type="stop"/></notations></note>'
+
+  const quarter = (step: string) =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    '<duration>12</duration><type>quarter</type></note>'
+
+  const TIMED =
+    '<attributes><divisions>12</divisions>' +
+    '<time><beats>2</beats><beat-type>4</beat-type></time></attributes>'
+
+  function score(...parts: string[]): string {
+    const list = parts
+      .map((_, index) => `<score-part id="P${String(index + 1)}"><part-name/></score-part>`)
+      .join('')
+    const written = parts
+      .map(
+        (body, index) =>
+          `<part id="P${String(index + 1)}"><measure number="1">${TIMED}${body}</measure></part>`,
+      )
+      .join('')
+    return `<score-partwise><part-list>${list}</part-list>${written}</score-partwise>`
+  }
+
+  function disagreements(source: string, edit?: (mnx: MNXDocument) => void): string[] {
+    const { mnx, warnings } = convertMusicXML(source)
+    edit?.(mnx)
+    return measureLengthDisagreements(mnx, parseXmlRoot(source), warnings)
+  }
+
+  test('holds a measure the converter writes as the source does', () => {
+    expect(disagreements(score(quarter('C') + quarter('D')))).toEqual([])
+  })
+
+  test('reports a note that sounds longer than the source gives it', () => {
+    const lengthened = (mnx: MNXDocument) => {
+      const first = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0] as MNXEvent
+      first.duration = { base: 'half' }
+    }
+    expect(disagreements(score(quarter('C') + quarter('D')), lengthened)).toEqual([
+      'part 1 measure 1: 0.75 against 0.5 in the source',
+    ])
+  })
+
+  // The other part fills the measure, so the part written short is silent to
+  // the barline, and the bracket takes in that silence to keep its ratio.
+  test('lets a part written short run on in silence to the barline', () => {
+    const source = score(quarter('C') + quarter('D'), shortQuarter)
+    const { mnx } = convertMusicXML(source)
+    const bracket = mnx.parts[1]?.measures[0]?.sequences[0]?.content[0]
+
+    expect(bracket && 'type' in bracket && bracket.type).toBe('tuplet')
+    expect(disagreements(source)).toEqual([])
+  })
+
+  test('reports a note that sounds past where a part written short runs', () => {
+    const lengthened = (mnx: MNXDocument) => {
+      const only = mnx.parts[1]?.measures[0]?.sequences[0]?.content[0] as MNXEvent
+      only.duration = { base: 'half' }
+    }
+    expect(disagreements(score(quarter('C') + quarter('D'), quarter('E')), lengthened)).toEqual([
+      'part 2 measure 1: 0.5 against 0.25 in the source',
+    ])
+  })
+
+  test('reports silence that runs past the barline', () => {
+    const padded = (mnx: MNXDocument) => {
+      mnx.parts[0]?.measures[0]?.sequences[0]?.content.push({ type: 'space', duration: [1, 4] })
+    }
+    expect(disagreements(score(quarter('C') + quarter('D')), padded)).toEqual([
+      'part 1 measure 1: 0.75 against 0.5 in the source',
+    ])
+  })
+
+  // No pair of note values states a quarter sounding a sixth of a whole note,
+  // so the bracket takes the time its stated ratio gives it and says so.
+  test('passes over the measure a tuplet ratio report names', () => {
+    const source = score(shortQuarter + quarter('D'))
+    const { mnx, warnings } = convertMusicXML(source)
+
+    expect(warnings.map((w) => w.code)).toContain('unrepresentable:tuplet-ratio')
+    expect(measureLengthDisagreements(mnx, parseXmlRoot(source), warnings)).toEqual([])
+    expect(measureLengthDisagreements(mnx, parseXmlRoot(source), [])).toHaveLength(1)
+  })
 })

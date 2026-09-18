@@ -28,6 +28,7 @@ import {
   collectStarts,
   differingLyricLines,
   layoutLosses,
+  measureLengthDisagreements,
   lyricPlaces,
   pitchesOf,
   sounding,
@@ -992,9 +993,6 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   })
 
   test('sounds for as long as the source does, measure by measure', () => {
-    const expected = sourceMeasureLengths(parseXmlRoot(source))
-    const disagreements: string[] = []
-
     // Where a note's written value disagrees with its measured duration, the
     // converter carries the written value and reports it as inconsistent:
     // duration. Its measures then sound as the written values do, not as the
@@ -1002,29 +1000,9 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     // wrong thing. The pitch and schema checks still hold the song to account.
     const inconsistent = warnings.some((warning) => warning.code === 'inconsistent:duration')
 
-    if (!inconsistent) {
-      mnx.parts.forEach((part, partIndex) => {
-        part.measures.forEach((measure, index) => {
-          // A full-measure rest states no length of its own: the time signature
-          // does, and this check is about what the converter carried over.
-          if (measure.sequences.some((sequence) => sequence.fullMeasure)) return
-
-          const converted = Math.max(
-            0,
-            ...measure.sequences.map((sequence) =>
-              sequence.content.reduce((sum, item) => sum + sounding(item), 0),
-            ),
-          )
-          const inSource = expected[partIndex]?.[index] ?? 0
-          if (Math.abs(converted - inSource) > 1e-9) {
-            disagreements.push(
-              `part ${String(partIndex + 1)} measure ${String(index + 1)}: ` +
-                `converted ${String(converted)} against ${String(inSource)} in the source`,
-            )
-          }
-        })
-      })
-    }
+    const disagreements = inconsistent
+      ? []
+      : measureLengthDisagreements(mnx, parseXmlRoot(source), warnings)
 
     expect(disagreements.slice(0, 5)).toEqual([])
   })

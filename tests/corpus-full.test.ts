@@ -27,9 +27,8 @@ import { parseXmlRoot } from '../src/xml/parse.js'
 import { schemaErrors } from './support/schema.js'
 import {
   crowdedMeasureRests,
+  measureLengthDisagreements,
   pitchesOf,
-  sounding,
-  sourceMeasureLengths,
   sourceMicrotones,
   sourcePitches,
   underfilledTuplets,
@@ -160,31 +159,8 @@ function firstFailure(
 
   if (skipLengths) return undefined
 
-  const lengths = sourceMeasureLengths(root)
-  for (const [partIndex, part] of mnx.parts.entries()) {
-    for (const [measureIndex, measure] of part.measures.entries()) {
-      // A full-measure rest states no length of its own; the time signature
-      // does, and this check is about what the converter carried over.
-      if (measure.sequences.some((sequence) => sequence.fullMeasure)) continue
-
-      const soundsFor = Math.max(
-        0,
-        ...measure.sequences.map((sequence) =>
-          sequence.content.reduce((sum, item) => sum + sounding(item), 0),
-        ),
-      )
-      const source = lengths[partIndex]?.[measureIndex] ?? 0
-      if (Math.abs(soundsFor - source) > 1e-9) {
-        return {
-          file,
-          kind: 'lengths',
-          detail:
-            `part ${String(partIndex + 1)} measure ${String(measureIndex + 1)}: ` +
-            `${String(soundsFor)} against ${String(source)} in the source`,
-        }
-      }
-    }
-  }
+  const disagreement = measureLengthDisagreements(mnx, root, warnings)[0]
+  if (disagreement) return { file, kind: 'lengths', detail: disagreement }
 
   return undefined
 }

@@ -14,6 +14,7 @@
 // the output to the same equivalence.
 
 import type {
+  ConversionWarning,
   MNXDocument,
   MNXLayoutStaff,
   MNXLyrics,
@@ -487,6 +488,112 @@ export function sourceMeasureLengths(root: XmlElement): number[][] {
  * tuplet around them has to count. A nested tuplet and a tremolo stand for the
  * space they occupy, as MNX counts them; a grace group takes none.
  */
+/**
+ * How long a sequence runs in silence at its end: the spaces it closes on,
+ * including those a tuplet it closes on ends with, at the time they take.
+ */
+function trailingSilence(items: readonly MNXSequenceItem[]): number {
+  let silence = 0
+  for (const item of [...items].reverse()) {
+    if ('type' in item && item.type === 'space') {
+      silence += sounding(item)
+      continue
+    }
+    if (!('type' in item) || item.type !== 'tuplet') break
+    const held = item.content.reduce((sum, inner) => sum + sounding(inner), 0)
+    const inside = trailingSilence(item.content)
+    silence += (inside * sounding(item)) / held
+    if (inside < held - 1e-9) break
+  }
+  return silence
+}
+
+/**
+ * The part and measure of each report with the given code, as
+ * "partIndex:measureIndex", both counting from zero.
+ */
+function measuresWarned(
+  root: XmlElement,
+  warnings: readonly ConversionWarning[],
+  code: ConversionWarning['code'],
+): Set<string> {
+  const parts = root.children.filter((c) => c.name === 'part')
+  const indexOfPart = new Map(parts.map((part, index) => [part.attributes['id'], index]))
+  const named = new Set<string>()
+  for (const warning of warnings) {
+    if (warning.code !== code) continue
+    const part = indexOfPart.get(warning.context.part)
+    const measure = warning.context.measure
+    if (part === undefined || measure === undefined) continue
+    named.add(`${String(part)}:${String(measure - 1)}`)
+  }
+  return named
+}
+
+/**
+ * Every measure whose converted length disagrees with the source's, part by
+ * part. A measure is as long as its longest sequence.
+ *
+ * Two readings of the converter change a measure's length on purpose. A
+ * bracket that closes short of its ratio takes in the silence after it up to
+ * the barline, which in a part written shorter than the others is past where
+ * the part runs. So a measure may run on past the source, but only in
+ * silence, and only to the barline: the time signature, or the longest part
+ * where that runs further. And a bracket whose ratio no pair of note values
+ * states takes a time the source does not give its notes, which the converter
+ * reports as unrepresentable:tuplet-ratio. The measure that report names is
+ * passed over.
+ */
+export function measureLengthDisagreements(
+  document: MNXDocument,
+  root: XmlElement,
+  warnings: readonly ConversionWarning[],
+): string[] {
+  const lengths = sourceMeasureLengths(root)
+  const reported = measuresWarned(root, warnings, 'unrepresentable:tuplet-ratio')
+  const found: string[] = []
+  let time: { count: number; unit: number } | undefined
+
+  document.global.measures.forEach((global, measureIndex) => {
+    time = global.time ?? time
+    const barline = Math.max(
+      time ? time.count / time.unit : 0,
+      ...lengths.map((part) => part[measureIndex] ?? 0),
+    )
+
+    document.parts.forEach((part, partIndex) => {
+      const measure = part.measures[measureIndex]
+      // A full-measure rest states no length of its own; the time signature
+      // does, and this check is about what the converter carried over.
+      if (!measure || measure.sequences.some((sequence) => sequence.fullMeasure)) return
+      if (reported.has(`${String(partIndex)}:${String(measureIndex)}`)) return
+
+      const totals = measure.sequences.map((sequence) =>
+        sequence.content.reduce((sum, item) => sum + sounding(item), 0),
+      )
+      const converted = Math.max(0, ...totals)
+      const inSource = lengths[partIndex]?.[measureIndex] ?? 0
+      if (Math.abs(converted - inSource) <= 1e-9) return
+
+      const soundsTo = Math.max(
+        0,
+        ...measure.sequences.map(
+          (sequence, index) => (totals[index] ?? 0) - trailingSilence(sequence.content),
+        ),
+      )
+      const silentToBarline =
+        converted > inSource && soundsTo <= inSource + 1e-9 && converted <= barline + 1e-9
+      if (silentToBarline) return
+
+      found.push(
+        `part ${String(partIndex + 1)} measure ${String(measureIndex + 1)}: ` +
+          `${String(converted)} against ${String(inSource)} in the source`,
+      )
+    })
+  })
+  return found
+}
+
 function writtenExtent(items: readonly MNXSequenceItem[]): number {
   let total = 0
   for (const item of items) {
