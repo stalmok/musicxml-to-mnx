@@ -302,8 +302,9 @@ interface VoiceBuilder {
    */
   measureRest: MeasureRestCandidate | undefined
   /**
-   * The bracket at the end of this sequence that the silence after it could
-   * complete, where it closed needing some. See ShortTuplet.
+   * The bracket that the silence after it could complete, where it closed
+   * needing some. While it waits, only the gaps before grace notes and the
+   * groups themselves are written after it. See ShortTuplet.
    */
   short: ShortTuplet | undefined
   /** The brackets no silence completed, waiting only to be reported. */
@@ -1118,11 +1119,11 @@ export class MeasureBuilder {
     if (builder.fullMeasure) return
     // A bracket waiting on the silence after it is answered by what the voice
     // passes over, and what the bracket takes of it is no longer a gap. A
-    // grace note takes none of the measure's time, so the gap before one is
-    // only the silence read so far, not all of it: answering on that gap
-    // would settle the bracket for less silence than the voice goes on to
-    // pass over. Unless the silence so far already completes the bracket, it
-    // goes on waiting for the note the group ornaments or for the barline.
+    // grace note takes none of the measure's time, so the silence before one
+    // is only the silence read so far, not all of it: answering there would
+    // settle the bracket for less silence than the voice goes on to pass
+    // over. Unless the silence since the bracket ended already completes it,
+    // it goes on waiting for the note the group ornaments or for the barline.
     const short = builder.short
     const completed =
       short && compareFractions(subtractFractions(this.#cursor, short.end), short.silence) >= 0
@@ -1193,8 +1194,9 @@ export class MeasureBuilder {
    * Answers every bracket still waiting on the silence after it, the measure
    * being whole, and states the ones no silence completed.
    *
-   * A voice silent from where it ends to the barline is silent for what a
-   * bracket at its end is missing, provided the barline is far enough away.
+   * A voice that does not sound again between the end of a bracket and the
+   * barline is silent for what the bracket is missing, provided the barline
+   * is far enough away.
    * The barline is where the time signature puts it, or further where the
    * part runs past it. `time` is unset where the part states no time
    * signature, and then how far the part runs is all there is.

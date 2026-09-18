@@ -3773,6 +3773,18 @@ describe('a bracket the silence after it completes', () => {
     expect(warnings).toEqual([])
   })
 
+  // A grace note where the silence completes the bracket leads into what
+  // follows it, not into the end of the bracket.
+  test('leaves a grace note standing where the bracket ends outside it', () => {
+    const { content, warnings } = timed(
+      shortQuarter + '<forward><duration>4</duration></forward>' + grace,
+    )
+
+    expect(stated(content?.[0])?.held).toEqual(['event', 'space'])
+    expect(content?.slice(1).map((item) => item.kind)).toEqual(['grace'])
+    expect(warnings).toEqual([])
+  })
+
   test('counts the silence on both sides of a grace note toward the bracket', () => {
     const { content, warnings } = timed(
       shortQuarter +
@@ -3908,9 +3920,36 @@ describe('a bracket the silence after it completes', () => {
       measures(UNTIMED + shortQuarter + '<forward><duration>16</duration></forward>'),
     ],
     ['counted in a part with no time signature', measures(UNTIMED + shortQuarter)],
+    ['holding a grace note', measures(TIMED + shortQuarter + grace)],
     [
-      'completed around a grace note',
+      'completed at the barline around a grace note',
       measures(TIMED + shortQuarter + '<forward><duration>2</duration></forward>' + grace),
+    ],
+    [
+      'completed by the silence on both sides of a grace note',
+      measures(
+        TIMED +
+          shortQuarter +
+          '<forward><duration>2</duration></forward>' +
+          grace +
+          '<forward><duration>3</duration></forward>' +
+          grace,
+      ),
+    ],
+    [
+      'completed around a grace note where the voice sounds again',
+      measures(
+        TIMED +
+          shortQuarter +
+          '<forward><duration>2</duration></forward>' +
+          grace +
+          '<forward><duration>2</duration></forward>' +
+          plain('D', 12, 'quarter'),
+      ),
+    ],
+    [
+      'completed where a grace note stands',
+      measures(TIMED + shortQuarter + '<forward><duration>4</duration></forward>' + grace),
     ],
   ])('leaves output the schema takes: a bracket %s', (_, source) => {
     expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
