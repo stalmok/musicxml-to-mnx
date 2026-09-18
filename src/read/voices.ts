@@ -1115,16 +1115,18 @@ export class MeasureBuilder {
    *
    * A voice silent from where it ends to the barline is silent for what a
    * bracket at its end is missing, provided the barline is far enough away.
-   * `measure` is how long the measure is, and is unset where the source
-   * states no time signature, which leaves nothing to measure against.
+   * The barline is where the furthest voice of the measure ends, not where
+   * the time signature puts it: a pickup or a short measure ends early, and
+   * the silence after a bracket cannot run past the measure's own end.
    */
-  settleShortTuplets(
-    measure: Fraction | undefined,
-    warnings: WarningCollector,
-    context: WarningContext,
-  ): void {
-    for (const builder of this.#allBuilders()) {
-      this.#answerShort(builder, measure ? subtractFractions(measure, builder.end) : fraction(0))
+  settleShortTuplets(warnings: WarningCollector, context: WarningContext): void {
+    const builders = this.#allBuilders()
+    let measure = fraction(0)
+    for (const builder of builders) {
+      if (compareFractions(builder.end, measure) > 0) measure = builder.end
+    }
+    for (const builder of builders) {
+      this.#answerShort(builder, subtractFractions(measure, builder.end))
       for (const entry of builder.unsettled) {
         settleTuplet(entry, entry.provisional, warnings, context)
       }

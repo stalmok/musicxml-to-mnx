@@ -3622,6 +3622,16 @@ describe('a bracket the silence after it completes', () => {
   const grace =
     '<note><grace/><pitch><step>G</step><octave>4</octave></pitch><type>eighth</type></note>'
 
+  /**
+   * A second voice sounding through the whole 2/4 measure, written after the
+   * first has run `written` divisions. The first voice names none, which is
+   * reported once a second voice is named.
+   */
+  const underneath = (written: number) =>
+    `<backup><duration>${String(written)}</duration></backup>` +
+    '<note><pitch><step>A</step><octave>3</octave></pitch><duration>24</duration>' +
+    '<voice>2</voice><type>half</type></note>'
+
   function timed(body: string) {
     return read(measures(TIMED + body))
   }
@@ -3637,18 +3647,18 @@ describe('a bracket the silence after it completes', () => {
   }
 
   test('states the silence the measure ends on inside the bracket', () => {
-    const { content, warnings } = timed(TRIPLET + shortQuarter)
+    const { content, warnings } = timed(TRIPLET + shortQuarter + underneath(20))
 
     expect(stated(content?.[1])).toEqual({
       inner: { value: { base: 'eighth', dots: 0 }, multiple: 3 },
       outer: { value: { base: 'eighth', dots: 0 }, multiple: 2 },
       held: ['event', 'space'],
     })
-    expect(warnings).toEqual([])
+    expect(warnings.map((w) => w.code)).toEqual(['missing:voice'])
   })
 
   test('writes that silence at the value the ratio counts it in', () => {
-    const { content } = timed(TRIPLET + shortQuarter)
+    const { content } = timed(TRIPLET + shortQuarter + underneath(20))
     const tuplet = content?.[1]
     const space = tuplet?.kind === 'tuplet' ? tuplet.content[1] : undefined
 
@@ -3683,7 +3693,7 @@ describe('a bracket the silence after it completes', () => {
   // A grace note takes none of the measure's time, so the voice has not
   // sounded again where one stands after the bracket.
   test('states the silence past a grace note standing after the bracket', () => {
-    const { content, warnings } = timed(TRIPLET + shortQuarter + grace)
+    const { content, warnings } = timed(TRIPLET + shortQuarter + grace + underneath(20))
 
     expect(stated(content?.[1])).toEqual({
       inner: { value: { base: 'eighth', dots: 0 }, multiple: 3 },
@@ -3691,7 +3701,7 @@ describe('a bracket the silence after it completes', () => {
       held: ['event', 'space'],
     })
     expect(content?.[2]?.kind).toBe('grace')
-    expect(warnings).toEqual([])
+    expect(warnings.map((w) => w.code)).toEqual(['missing:voice'])
   })
 
   // A gap before the grace note is only the silence read so far, not all the
@@ -3699,7 +3709,7 @@ describe('a bracket the silence after it completes', () => {
   // waiting for the barline rather than settling for what has passed.
   test('keeps waiting where a gap too short to complete it precedes a grace note', () => {
     const { content, warnings } = timed(
-      shortQuarter + '<forward><duration>2</duration></forward>' + grace,
+      shortQuarter + '<forward><duration>2</duration></forward>' + grace + underneath(10),
     )
 
     expect(stated(content?.[0])).toEqual({
@@ -3707,7 +3717,7 @@ describe('a bracket the silence after it completes', () => {
       outer: { value: { base: 'eighth', dots: 0 }, multiple: 2 },
       held: ['event', 'space'],
     })
-    expect(warnings).toEqual([])
+    expect(warnings.map((w) => w.code)).toEqual(['missing:voice'])
   })
 
   test('counts what the bracket holds where the silence falls short of its ratio', () => {
@@ -3723,8 +3733,66 @@ describe('a bracket the silence after it completes', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-ratio'])
   })
 
+  // Nothing in the measure sounds past the bracket, so the measure ends where
+  // it does and there is no silence after it. A pickup is the usual case.
+  test('counts what the bracket holds where nothing in the measure runs past it', () => {
+    const { content, warnings } = read(
+      measures(TIMED + shortQuarter).replace(
+        '<measure number="1">',
+        '<measure number="1" implicit="yes">',
+      ),
+    )
+
+    expect(stated(content?.[0])).toEqual({
+      inner: { value: { base: 'eighth', dots: 0 }, multiple: 2 },
+      outer: { value: { base: 'eighth', dots: 0 }, multiple: 2 },
+      held: ['event'],
+    })
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:attribute',
+      'unrepresentable:tuplet-ratio',
+    ])
+  })
+
+  test('states the silence where the measure runs past its time signature', () => {
+    const { content, warnings } = timed(
+      plain('D', 24, 'half') +
+        shortQuarter +
+        '<backup><duration>32</duration></backup>' +
+        '<note><pitch><step>A</step><octave>3</octave></pitch><duration>36</duration>' +
+        '<voice>2</voice><type>half</type><dot/></note>',
+    )
+
+    expect(stated(content?.[1])).toEqual({
+      inner: { value: { base: 'eighth', dots: 0 }, multiple: 3 },
+      outer: { value: { base: 'eighth', dots: 0 }, multiple: 2 },
+      held: ['event', 'space'],
+    })
+    expect(warnings.map((w) => w.code)).toEqual(['missing:voice'])
+  })
+
+  // How long the measure runs is what the part writes in it, so a part that
+  // states no time signature of its own reads the same as one that does.
+  test('states the silence in a part that states no time signature', () => {
+    const body = shortQuarter + underneath(8)
+    const source =
+      '<score-partwise>' +
+      `<part id="P1"><measure number="1">${TIMED}${body}</measure></part>` +
+      '<part id="P2"><measure number="1"><attributes><divisions>12</divisions></attributes>' +
+      `${body}</measure></part>` +
+      '</score-partwise>'
+    const warnings = new WarningCollector()
+    const score = readScore(parseXmlRoot(source), warnings)
+    const brackets = score.parts.map((part) => stated(part.measures[0]?.sequences[0]?.content[0]))
+
+    expect(brackets[1]).toEqual(brackets[0])
+    expect(brackets[1]?.held).toEqual(['event', 'space'])
+    expect(warnings.list().map((w) => w.code)).not.toContain('unrepresentable:tuplet-ratio')
+  })
+
   // The bracket holding a space is a shape no other conversion produces.
   test('leaves output the schema takes', () => {
-    expect(schemaErrors(convertMusicXML(measures(TIMED + TRIPLET + shortQuarter)).mnx)).toEqual([])
+    const source = measures(TIMED + TRIPLET + shortQuarter + underneath(20))
+    expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
   })
 })
