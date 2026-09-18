@@ -3677,6 +3677,12 @@ describe('a bracket the silence after it completes', () => {
     }
   }
 
+  /** The written lengths of the spaces the bracket holds. */
+  function spaces(item: SequenceItem | undefined) {
+    if (item?.kind !== 'tuplet') return undefined
+    return item.content.flatMap((held) => (held.kind === 'space' ? [held.duration] : []))
+  }
+
   test('states the silence the measure ends on inside the bracket', () => {
     const { content, warnings } = timed(TRIPLET + shortQuarter)
 
@@ -3729,9 +3735,9 @@ describe('a bracket the silence after it completes', () => {
     expect(stated(content?.[1])).toEqual({
       inner: { value: { base: 'eighth', dots: 0 }, multiple: 3 },
       outer: { value: { base: 'eighth', dots: 0 }, multiple: 2 },
-      held: ['event', 'space'],
+      held: ['event', 'grace', 'space'],
     })
-    expect(content?.[2]?.kind).toBe('grace')
+    expect(content).toHaveLength(2)
     expect(warnings).toEqual([])
   })
 
@@ -3746,8 +3752,40 @@ describe('a bracket the silence after it completes', () => {
     expect(stated(content?.[0])).toEqual({
       inner: { value: { base: 'eighth', dots: 0 }, multiple: 3 },
       outer: { value: { base: 'eighth', dots: 0 }, multiple: 2 },
-      held: ['event', 'space'],
+      held: ['event', 'space', 'grace', 'space'],
     })
+    expect(spaces(content?.[0])).toEqual([fraction(1, 16), fraction(1, 16)])
+    expect(content).toHaveLength(1)
+    expect(warnings).toEqual([])
+  })
+
+  test('counts the silence on both sides of a grace note toward the bracket', () => {
+    const { content, warnings } = timed(
+      shortQuarter +
+        '<forward><duration>2</duration></forward>' +
+        grace +
+        '<forward><duration>3</duration></forward>' +
+        grace,
+    )
+
+    expect(stated(content?.[0])?.held).toEqual(['event', 'space', 'grace', 'space'])
+    expect(spaces(content?.[0])).toEqual([fraction(1, 16), fraction(1, 16)])
+    expect(content?.slice(1).map((item) => item.kind)).toEqual(['space', 'grace'])
+    expect(content?.[1]?.kind === 'space' && content[1].duration).toEqual(fraction(1, 48))
+    expect(warnings).toEqual([])
+  })
+
+  test('counts the silence on both sides of a grace note where the voice sounds again', () => {
+    const { content, warnings } = timed(
+      shortQuarter +
+        '<forward><duration>2</duration></forward>' +
+        grace +
+        '<forward><duration>2</duration></forward>' +
+        plain('D', 12, 'quarter'),
+    )
+
+    expect(stated(content?.[0])?.held).toEqual(['event', 'space', 'grace', 'space'])
+    expect(content?.slice(1).map((item) => item.kind)).toEqual(['event'])
     expect(warnings).toEqual([])
   })
 
@@ -3856,6 +3894,10 @@ describe('a bracket the silence after it completes', () => {
       measures(UNTIMED + shortQuarter + '<forward><duration>16</duration></forward>'),
     ],
     ['counted in a part with no time signature', measures(UNTIMED + shortQuarter)],
+    [
+      'completed around a grace note',
+      measures(TIMED + shortQuarter + '<forward><duration>2</duration></forward>' + grace),
+    ],
   ])('leaves output the schema takes: a bracket %s', (_, source) => {
     expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
   })

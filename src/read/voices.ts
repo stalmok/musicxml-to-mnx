@@ -209,6 +209,8 @@ interface ShortTuplet {
   before: LeadingSkip | undefined
   /** The measure time still missing, which the silence after has to give. */
   silence: Fraction
+  /** Where the bracket ends, which the silence after it is measured from. */
+  end: Fraction
   /** What to state instead, where no silence completes it. */
   entry: RewrittenTuplet
 }
@@ -806,6 +808,7 @@ function shortOf(
     lead,
     before: closed.before,
     silence: subtractFractions(silence, lead),
+    end: addFractions(closed.openEnd, spent),
     entry,
   }
 }
@@ -1115,12 +1118,13 @@ export class MeasureBuilder {
     // grace note takes none of the measure's time, so the gap before one is
     // only the silence read so far, not all of it: answering on that gap
     // would settle the bracket for less silence than the voice goes on to
-    // pass over. Unless the gap already completes the bracket, it goes on
-    // waiting for the note the group ornaments or for the barline.
-    const passed = subtractFractions(this.#cursor, builder.end)
-    const completed = builder.short && compareFractions(passed, builder.short.silence) >= 0
+    // pass over. Unless the silence so far already completes the bracket, it
+    // goes on waiting for the note the group ornaments or for the barline.
+    const short = builder.short
+    const completed =
+      short && compareFractions(subtractFractions(this.#cursor, short.end), short.silence) >= 0
     if (sounding || completed) {
-      this.#answerShort(builder, passed)
+      this.#answerShort(builder, this.#cursor)
     }
     const gap = subtractFractions(this.#cursor, builder.end)
     if (compareFractions(gap, fraction(0)) > 0) {
@@ -1145,18 +1149,22 @@ export class MeasureBuilder {
 
   /**
    * Answers the bracket waiting on the silence after it, where one waits.
-   * `silence` is the measure time the voice is known to pass over before it
-   * sounds again. Enough of it, and the bracket states what it is missing as
-   * a space and keeps the ratio the source drew. Otherwise it goes back to
-   * the reading it would have taken when it closed, which waits for a
-   * collector to report through rather than for anything more to be read.
+   * `until` is where the voice is known to stay silent to. Enough silence,
+   * and the bracket states what it is missing as a space and keeps the ratio
+   * the source drew. Otherwise it goes back to the reading it would have
+   * taken when it closed, which waits for a collector to report through
+   * rather than for anything more to be read.
+   *
+   * The gaps before grace notes and the groups themselves are written after
+   * the bracket while it waits. They stand in the time it completes, so they
+   * go inside it, before the space for the rest of what it is missing.
    */
-  #answerShort(builder: VoiceBuilder, silence: Fraction): void {
+  #answerShort(builder: VoiceBuilder, until: Fraction): void {
     const short = builder.short
     if (!short) return
     builder.short = undefined
 
-    if (compareFractions(silence, short.silence) < 0) {
+    if (compareFractions(subtractFractions(until, short.end), short.silence) < 0) {
       builder.unsettled.push(short.entry)
       return
     }
@@ -1166,10 +1174,16 @@ export class MeasureBuilder {
       duration: divideFractions(time, short.ratioFactor),
     })
     if (!isZero(short.lead)) short.tuplet.content.unshift(written(short.lead))
-    if (!isZero(short.silence)) short.tuplet.content.push(written(short.silence))
+    const { within } = short.entry
+    const waited = within.splice(within.indexOf(short.tuplet) + 1)
+    short.tuplet.content.push(
+      ...waited.map((item) => (item.kind === 'space' ? written(item.duration) : item)),
+    )
+    const rest = subtractFractions(short.silence, subtractFractions(builder.end, short.end))
+    if (!isZero(rest)) short.tuplet.content.push(written(rest))
     short.tuplet.inner = short.ratio.inner
     short.tuplet.outer = short.ratio.outer
-    builder.end = addFractions(builder.end, short.silence)
+    builder.end = addFractions(short.end, short.silence)
   }
 
   /**
@@ -1189,7 +1203,7 @@ export class MeasureBuilder {
   ): void {
     const measure = time && compareFractions(time, this.#furthest) > 0 ? time : this.#furthest
     for (const builder of this.#allBuilders()) {
-      this.#answerShort(builder, subtractFractions(measure, builder.end))
+      this.#answerShort(builder, measure)
       for (const entry of builder.unsettled) {
         settleTuplet(entry, entry.provisional, warnings, context)
       }
