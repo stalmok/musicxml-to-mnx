@@ -34,7 +34,7 @@ import type {
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, child, children, requireAttribute, trimmedText } from '../xml/tree.js'
-import { readAttributes } from './attributes.js'
+import { readAttributes, timesInForce } from './attributes.js'
 import type { MeasureRepeatReading } from './attributes.js'
 import { readBarline, resolveEndings } from './barlines.js'
 import { buildBeams } from './beams.js'
@@ -169,8 +169,10 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
   reader.reportUnread(warnings, {})
 
   const ids = new IdGenerator()
-  const readings = children(root, 'part').map((element) =>
-    readPart(element, partList, ids, warnings, path),
+  const partElements = children(root, 'part')
+  const scoreTimes = scoreTimesInForce(partElements)
+  const readings = partElements.map((element) =>
+    readPart(element, partList, ids, scoreTimes, warnings, path),
   )
 
   const globalMeasures: GlobalMeasure[] = []
@@ -864,10 +866,23 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
   }
 }
 
+/**
+ * The time signature the score has in force at the end of each measure, as
+ * the first part stating one there has it.
+ */
+function scoreTimesInForce(parts: readonly XmlElement[]): (TimeSignature | undefined)[] {
+  const perPart = parts.map(timesInForce)
+  const longest = Math.max(0, ...perPart.map((times) => times.length))
+  return Array.from({ length: longest }, (_, index) =>
+    perPart.map((times) => times[index]).find((time) => time !== undefined),
+  )
+}
+
 function readPart(
   element: XmlElement,
   partList: PartList,
   ids: IdGenerator,
+  scoreTimes: readonly (TimeSignature | undefined)[],
   warnings: WarningCollector,
   path: DocumentPath,
 ): PartReading {
@@ -887,7 +902,7 @@ function readPart(
 
   const state = newPartState(ids, partList.soundsByInstrument.get(id))
   const readings = children(element, 'measure').map((measureElement, index) =>
-    readMeasure(measureElement, index, id, state, warnings, partPath),
+    readMeasure(measureElement, index, id, state, scoreTimes[index], warnings, partPath),
   )
   // Hairpins and octave shifts are paired once the whole part is in, because
   // each is written between the notes and the document's order is not the
@@ -1068,6 +1083,7 @@ function readMeasure(
   index: number,
   partId: string,
   state: PartState,
+  scoreTime: TimeSignature | undefined,
   warnings: WarningCollector,
   path: DocumentPath,
 ): MeasureReading {
@@ -1253,11 +1269,9 @@ function readMeasure(
 
   // A bracket the silence after it could complete has waited for the measure
   // to be whole, because a voice silent to the barline is what completes one.
-  builder.settleShortTuplets(
-    state.time && fraction(state.time.count, state.time.unit),
-    warnings,
-    context,
-  )
+  // A part stating no time signature runs to the barline the score states.
+  const inForce = state.time ?? scoreTime
+  builder.settleShortTuplets(inForce && fraction(inForce.count, inForce.unit), warnings, context)
 
   // Every event of the measure is in now, so a hairpin's and an octave
   // shift's stop can each be told which one it covers, whatever order the

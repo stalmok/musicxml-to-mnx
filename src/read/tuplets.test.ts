@@ -3800,6 +3800,34 @@ describe('a bracket the silence after it completes', () => {
     expect(warnings.list().map((w) => w.code)).not.toContain('unrepresentable:tuplet-ratio')
   })
 
+  // The score states the time signature once for every part, so a part that
+  // leaves it off still runs to the barline the others state, whichever of
+  // them comes first.
+  test.each([
+    ['after', twoParts(TIMED + plain('D', 24, 'half'), UNTIMED + shortQuarter), 1],
+    ['before', twoParts(UNTIMED + shortQuarter, TIMED + plain('D', 24, 'half')), 0],
+  ])(
+    'states the silence in a part with no time signature written %s one that states it',
+    (_, source, untimed) => {
+      const warnings = new WarningCollector()
+      const score = readScore(parseXmlRoot(source), warnings)
+      const bracket = score.parts[untimed]?.measures[0]?.sequences[0]?.content[0]
+
+      expect(stated(bracket)?.held).toEqual(['event', 'space'])
+      expect(warnings.list()).toEqual([])
+    },
+  )
+
+  test('states the silence to the barline a rest filling the measure runs to', () => {
+    const { content } = untimed(
+      shortQuarter +
+        '<backup><duration>8</duration></backup>' +
+        '<note><rest measure="yes"/><duration>24</duration><voice>2</voice></note>',
+    )
+
+    expect(stated(content?.[0])?.held).toEqual(['event', 'space'])
+  })
+
   // A <forward> is how MusicXML writes silence it draws nothing for, such as a
   // hidden rest, so the time it passes over is the measure's all the same.
   test('states the silence a part with no time signature skips to', () => {

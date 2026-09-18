@@ -17,10 +17,11 @@ import type {
   TimeUnit,
   Transposition,
 } from '../model/score.js'
-import type { WarningCollector, WarningContext } from '../warnings.js'
+import { WarningCollector } from '../warnings.js'
+import type { WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
-import { attribute, requireChild, trimmedText } from '../xml/tree.js'
-import type { ElementReader } from './element.js'
+import { attribute, children, requireChild, trimmedText } from '../xml/tree.js'
+import { ElementReader } from './element.js'
 import { readAttributeInRange, readInteger, readIntegerInRange } from './numbers.js'
 import { staffLinesOf, staffPositionOfLine } from './state.js'
 import type { PartState } from './state.js'
@@ -491,6 +492,35 @@ function readKey(
   // Seven accidentals is the practical limit; beyond eleven a key signature
   // cannot be written at all, so anything larger is a corrupt file.
   return { fifths: readIntegerInRange(fifths, path, -11, 11) }
+}
+
+/**
+ * The time signature in force at the end of each measure of a part, read
+ * ahead of the part itself: a part that states none of its own runs to the
+ * barline the other parts state, and those may be read after it. Whatever a
+ * time signature says that is lost or broken is reported, or refused, where
+ * the part itself is read, so nothing here reports anything.
+ */
+export function timesInForce(part: XmlElement): (TimeSignature | undefined)[] {
+  const unreported = new WarningCollector()
+  let inForce: TimeSignature | undefined
+  return children(part, 'measure').map((measure) => {
+    // MusicXML allows several <attributes> in a measure and one <time> per
+    // staff in each. As where the part is read, the first metered one in a
+    // block is the one in force.
+    for (const attributes of children(measure, 'attributes')) {
+      const times = children(attributes, 'time')
+      if (times.length === 0) continue
+      try {
+        inForce = times
+          .map((time) => readTime(new ElementReader(time), unreported, {}, []))
+          .find((time) => time !== undefined)
+      } catch {
+        inForce = undefined
+      }
+    }
+    return inForce
+  })
 }
 
 function readTime(

@@ -837,8 +837,9 @@ export class MeasureBuilder {
   readonly #eventStarts: { start: Fraction; staff: number | undefined; grace: boolean }[] = []
   #cursor: Fraction = fraction(0)
   /**
-   * The furthest the cursor has run in the measure, over notes and <forward>
-   * alike: a <forward> is how MusicXML writes silence it draws nothing for.
+   * The furthest the cursor has run in the measure, over notes, rests filling
+   * the measure and <forward> alike: a <forward> is how MusicXML writes
+   * silence it draws nothing for.
    */
   #furthest: Fraction = fraction(0)
   /** The voice of the most recent event, which a chord member joins. */
