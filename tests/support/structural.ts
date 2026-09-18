@@ -19,6 +19,7 @@ import type {
   MNXLayoutStaff,
   MNXLyrics,
   MNXNoteValue,
+  MNXSequence,
   MNXSequenceItem,
   MNXStaffGroup,
 } from '../../src/index.js'
@@ -484,24 +485,20 @@ export function sourceMeasureLengths(root: XmlElement): number[][] {
 }
 
 /**
- * What a sequence's items are written as, in whole notes, which is what a
- * tuplet around them has to count. A nested tuplet and a tremolo stand for the
- * space they occupy, as MNX counts them; a grace group takes none.
+ * How long a sequence runs in silence inside the tuplet it ends on, at the
+ * time that silence takes. That is where a bracket completed by the silence
+ * after it states that silence.
  */
-/**
- * How long a sequence runs in silence at its end: the spaces it closes on,
- * including those a tuplet it closes on ends with, at the time they take.
- */
-function trailingSilence(items: readonly MNXSequenceItem[]): number {
+function bracketedSilence(items: readonly MNXSequenceItem[], inTuplet = false): number {
   let silence = 0
   for (const item of [...items].reverse()) {
-    if ('type' in item && item.type === 'space') {
+    if ('type' in item && item.type === 'space' && inTuplet) {
       silence += sounding(item)
       continue
     }
     if (!('type' in item) || item.type !== 'tuplet') break
     const held = item.content.reduce((sum, inner) => sum + sounding(inner), 0)
-    const inside = trailingSilence(item.content)
+    const inside = bracketedSilence(item.content, true)
     silence += (inside * sounding(item)) / held
     if (inside < held - 1e-9) break
   }
@@ -509,25 +506,51 @@ function trailingSilence(items: readonly MNXSequenceItem[]): number {
 }
 
 /**
- * The part and measure of each report with the given code, as
- * "partIndex:measureIndex", both counting from zero.
+ * The voices the reports with the given code name, keyed by part and measure
+ * as "partIndex:measureIndex", both counting from zero. A report names the
+ * <note> it was read from by its line, and the voice is that note's: a chord
+ * note naming none is in the voice of the note it joins, and a note naming
+ * none at all is in the unnamed voice, written ''. Where no one voice stands
+ * at that line, the report names every voice of the measure, written
+ * undefined.
  */
-function measuresWarned(
+function voicesWarned(
   root: XmlElement,
   warnings: readonly ConversionWarning[],
   code: ConversionWarning['code'],
-): Set<string> {
+): Map<string, Set<string | undefined>> {
   const parts = root.children.filter((c) => c.name === 'part')
   const indexOfPart = new Map(parts.map((part, index) => [part.attributes['id'], index]))
-  const named = new Set<string>()
+  const named = new Map<string, Set<string | undefined>>()
+
   for (const warning of warnings) {
     if (warning.code !== code) continue
-    const part = indexOfPart.get(warning.context.part)
-    const measure = warning.context.measure
-    if (part === undefined || measure === undefined) continue
-    named.add(`${String(part)}:${String(measure - 1)}`)
+    const partIndex = indexOfPart.get(warning.context.part)
+    const measureIndex = (warning.context.measure ?? 0) - 1
+    if (partIndex === undefined || measureIndex < 0) continue
+    const measure = parts[partIndex]?.children.filter((c) => c.name === 'measure')[measureIndex]
+
+    let inForce = ''
+    const atLine = new Set<string>()
+    for (const note of measure?.children.filter((c) => c.name === 'note') ?? []) {
+      const stated = note.children.find((c) => c.name === 'voice')?.text.trim() ?? ''
+      const isChord = note.children.some((c) => c.name === 'chord')
+      const own = stated === '' && isChord ? inForce : stated
+      if (!isChord) inForce = own
+      if (note.line === warning.context.line) atLine.add(own)
+    }
+
+    const key = `${String(partIndex)}:${String(measureIndex)}`
+    const voices = named.get(key) ?? new Set()
+    voices.add(atLine.size === 1 ? [...atLine][0] : undefined)
+    named.set(key, voices)
   }
   return named
+}
+
+/** The voice the source names for a sequence: a line laid over voice "1" is "1.2". */
+function sourceVoiceOf(sequence: MNXSequence): string {
+  return (sequence.voice ?? '').split('.')[0] ?? ''
 }
 
 /**
@@ -537,12 +560,15 @@ function measuresWarned(
  * Two readings of the converter change a measure's length on purpose. A
  * bracket that closes short of its ratio takes in the silence after it up to
  * the barline, which in a part written shorter than the others is past where
- * the part runs. So a measure may run on past the source, but only in
- * silence, and only to the barline: the time signature, or the longest part
- * where that runs further. And a bracket whose ratio no pair of note values
- * states takes a time the source does not give its notes, which the converter
- * reports as unrepresentable:tuplet-ratio. The measure that report names is
- * passed over.
+ * the part runs. So a measure may run on past the source, but only in the
+ * silence that bracket ends on, and only to the barline: the time signature,
+ * or where the part runs further. A pickup's barline is where its longest
+ * part ends. And a bracket whose ratio no pair of note
+ * values states takes a time the source does not give its notes, which the
+ * converter reports as unrepresentable:tuplet-ratio, or it drops the bracket
+ * and its notes take the time they are written as. The voice that report
+ * names is passed over in its measure, and every other voice may run no
+ * further than the source.
  */
 export function measureLengthDisagreements(
   document: MNXDocument,
@@ -550,50 +576,75 @@ export function measureLengthDisagreements(
   warnings: readonly ConversionWarning[],
 ): string[] {
   const lengths = sourceMeasureLengths(root)
-  const reported = measuresWarned(root, warnings, 'unrepresentable:tuplet-ratio')
+  const reported = voicesWarned(root, warnings, 'unrepresentable:tuplet-ratio')
   const found: string[] = []
   let time: { count: number; unit: number } | undefined
 
+  const firstPart = root.children.find((c) => c.name === 'part')
+  const sourceMeasures = firstPart?.children.filter((c) => c.name === 'measure') ?? []
+
   document.global.measures.forEach((global, measureIndex) => {
     time = global.time ?? time
-    const barline = Math.max(
-      time ? time.count / time.unit : 0,
-      ...lengths.map((part) => part[measureIndex] ?? 0),
-    )
+    // A pickup ends where its music does: the time signature counts from the
+    // barline after it. Every part writes the pickup, so the first says so.
+    const pickup = sourceMeasures[measureIndex]?.attributes['implicit'] === 'yes'
+    const signature = pickup
+      ? Math.max(...lengths.map((part) => part[measureIndex] ?? 0))
+      : time
+        ? time.count / time.unit
+        : 0
 
     document.parts.forEach((part, partIndex) => {
       const measure = part.measures[measureIndex]
       // A full-measure rest states no length of its own; the time signature
       // does, and this check is about what the converter carried over.
       if (!measure || measure.sequences.some((sequence) => sequence.fullMeasure)) return
-      if (reported.has(`${String(partIndex)}:${String(measureIndex)}`)) return
 
+      const inSource = lengths[partIndex]?.[measureIndex] ?? 0
+      const barline = Math.max(signature, inSource)
+      const at = `part ${String(partIndex + 1)} measure ${String(measureIndex + 1)}`
       const totals = measure.sequences.map((sequence) =>
         sequence.content.reduce((sum, item) => sum + sounding(item), 0),
       )
+      // Past the source only in the silence a bracket ends on, and only to the
+      // barline.
+      const overruns = (sequence: MNXSequence, total: number) =>
+        total > inSource + 1e-9 &&
+        (total - bracketedSilence(sequence.content) > inSource + 1e-9 || total > barline + 1e-9)
+
+      const passedOver = reported.get(`${String(partIndex)}:${String(measureIndex)}`)
+      if (passedOver) {
+        measure.sequences.forEach((sequence, index) => {
+          if (passedOver.has(undefined) || passedOver.has(sourceVoiceOf(sequence))) return
+          const total = totals[index] ?? 0
+          if (overruns(sequence, total)) {
+            found.push(
+              `${at}: voice ${String(index + 1)} runs ${String(total)} ` +
+                `against ${String(inSource)} in the source`,
+            )
+          }
+        })
+        return
+      }
+
       const converted = Math.max(0, ...totals)
-      const inSource = lengths[partIndex]?.[measureIndex] ?? 0
       if (Math.abs(converted - inSource) <= 1e-9) return
+      const silentPast =
+        converted > inSource &&
+        measure.sequences.every((sequence, index) => !overruns(sequence, totals[index] ?? 0))
+      if (silentPast) return
 
-      const soundsTo = Math.max(
-        0,
-        ...measure.sequences.map(
-          (sequence, index) => (totals[index] ?? 0) - trailingSilence(sequence.content),
-        ),
-      )
-      const silentToBarline =
-        converted > inSource && soundsTo <= inSource + 1e-9 && converted <= barline + 1e-9
-      if (silentToBarline) return
-
-      found.push(
-        `part ${String(partIndex + 1)} measure ${String(measureIndex + 1)}: ` +
-          `${String(converted)} against ${String(inSource)} in the source`,
-      )
+      found.push(`${at}: ${String(converted)} against ${String(inSource)} in the source`)
     })
   })
   return found
 }
 
+/**
+ * What a sequence's items are written as, in whole notes, which is what a
+ * tuplet around them has to count. A nested tuplet and a tremolo stand for the
+ * space they occupy, as MNX counts them; a grace group takes none.
+ */
 function writtenExtent(items: readonly MNXSequenceItem[]): number {
   let total = 0
   for (const item of items) {

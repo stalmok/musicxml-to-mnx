@@ -4,7 +4,7 @@
 
 import { describe, expect, test } from 'vitest'
 import { convertMusicXML } from '../src/index.js'
-import type { MNXDocument, MNXEvent, MNXSequenceItem } from '../src/index.js'
+import type { ConversionWarning, MNXDocument, MNXEvent, MNXSequenceItem } from '../src/index.js'
 import { parseXmlRoot } from '../src/xml/parse.js'
 import type { XmlElement } from '../src/xml/parse.js'
 import { schemaErrors } from './support/schema.js'
@@ -811,12 +811,52 @@ describe('the measure length check', () => {
     ])
   })
 
-  test('reports silence that runs past the barline', () => {
-    const padded = (mnx: MNXDocument) => {
-      mnx.parts[0]?.measures[0]?.sequences[0]?.content.push({ type: 'space', duration: [1, 4] })
-    }
-    expect(disagreements(score(quarter('C') + quarter('D')), padded)).toEqual([
+  /** Wraps the last event of the first sequence in a bracket that ends on a quarter of silence. */
+  const closedOnSilence = (partIndex: number) => (mnx: MNXDocument) => {
+    const sequence = mnx.parts[partIndex]?.measures[0]?.sequences[0]
+    const last = sequence?.content.pop() as MNXEvent
+    sequence?.content.push({
+      type: 'tuplet',
+      inner: { duration: { base: 'quarter' }, multiple: 2 },
+      outer: { duration: { base: 'quarter' }, multiple: 2 },
+      content: [last, { type: 'space', duration: [1, 4] }],
+    })
+  }
+
+  test('reports silence in a bracket that runs past the barline', () => {
+    expect(disagreements(score(quarter('C') + quarter('D')), closedOnSilence(0))).toEqual([
       'part 1 measure 1: 0.75 against 0.5 in the source',
+    ])
+  })
+
+  test('reports silence written outside a bracket past where the part runs', () => {
+    const padded = (mnx: MNXDocument) => {
+      mnx.parts[1]?.measures[0]?.sequences[0]?.content.push({ type: 'space', duration: [1, 4] })
+    }
+    expect(disagreements(score(quarter('C') + quarter('D'), quarter('E')), padded)).toEqual([
+      'part 2 measure 1: 0.5 against 0.25 in the source',
+    ])
+  })
+
+  test('reports silence past a part that states no time signature', () => {
+    const untimed = score(quarter('C')).replace(/<time>.*?<\/time>/, '')
+    expect(disagreements(untimed, closedOnSilence(0))).toEqual([
+      'part 1 measure 1: 0.5 against 0.25 in the source',
+    ])
+  })
+
+  // A pickup ends where its music does: the time signature counts from the
+  // barline after it, so no silence runs on to it.
+  test('reports silence in a bracket that runs past the end of a pickup', () => {
+    const pickup = score(quarter('C')).replace(
+      '<measure number="1">',
+      '<measure number="0" implicit="yes">',
+    )
+    const inBar = score(quarter('C'))
+
+    expect(disagreements(inBar, closedOnSilence(0))).toEqual([])
+    expect(disagreements(pickup, closedOnSilence(0))).toEqual([
+      'part 1 measure 1: 0.5 against 0.25 in the source',
     ])
   })
 
@@ -829,5 +869,62 @@ describe('the measure length check', () => {
     expect(warnings.map((w) => w.code)).toContain('unrepresentable:tuplet-ratio')
     expect(measureLengthDisagreements(mnx, parseXmlRoot(source), warnings)).toEqual([])
     expect(measureLengthDisagreements(mnx, parseXmlRoot(source), [])).toHaveLength(1)
+  })
+
+  // A bracket no pair of note values counts at all is dropped, and its notes
+  // take the time they are written as, so the voice the report names may
+  // hold no tuplet.
+  test('passes over the voice a tuplet ratio report names, whatever it holds', () => {
+    const lines = [
+      TIMED,
+      quarter('C').replace('</duration>', '</duration><voice>1</voice>'),
+      quarter('D').replace('</duration>', '</duration><voice>1</voice>'),
+      '<backup><duration>24</duration></backup>',
+      quarter('E').replace('</duration>', '</duration><voice>2</voice>'),
+      quarter('F').replace('</duration>', '</duration><voice>2</voice>'),
+    ]
+    const source =
+      '<score-partwise><part-list><score-part id="P1"><part-name/></score-part></part-list>\n' +
+      `<part id="P1"><measure number="1">\n${lines.join('\n')}\n</measure></part></score-partwise>`
+    const { mnx } = convertMusicXML(source)
+    const lengthen = (voice: number) => {
+      const last = mnx.parts[0]?.measures[0]?.sequences[voice]?.content[1] as MNXEvent
+      last.duration = { base: 'half' }
+    }
+    const report = (line: number): ConversionWarning => ({
+      code: 'unrepresentable:tuplet-ratio',
+      message: '',
+      element: undefined,
+      attribute: undefined,
+      context: { part: 'P1', measure: 1, line },
+    })
+    const root = parseXmlRoot(source)
+
+    lengthen(1)
+    expect(measureLengthDisagreements(mnx, root, [report(8)])).toEqual([])
+    lengthen(0)
+    expect(measureLengthDisagreements(mnx, root, [report(8)])).toEqual([
+      'part 1 measure 1: voice 1 runs 0.75 against 0.5 in the source',
+    ])
+  })
+
+  test('holds the other voices of a measure a tuplet ratio report names', () => {
+    // One note to a line, since the report names the note by its line.
+    const source = score(
+      [
+        shortQuarter,
+        quarter('D'),
+        '<backup><duration>20</duration></backup>',
+        quarter('E').replace('</duration>', '</duration><voice>2</voice>'),
+        quarter('F').replace('</duration>', '</duration><voice>2</voice>'),
+      ].join('\n'),
+    )
+    const lengthened = (mnx: MNXDocument) => {
+      const second = mnx.parts[0]?.measures[0]?.sequences[1]?.content[1] as MNXEvent
+      second.duration = { base: 'half' }
+    }
+    expect(disagreements(source, lengthened)).toEqual([
+      'part 1 measure 1: voice 2 runs 0.75 against 0.5 in the source',
+    ])
   })
 })
