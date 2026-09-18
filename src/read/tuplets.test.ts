@@ -3968,6 +3968,26 @@ describe('a bracket the silence before it completes', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-ratio'])
   })
 
+  test('keeps the silence before where the silence after falls short', () => {
+    const { content, warnings } = timed(
+      skip(4) + alone('C', 4, 'eighth') + plain('E', 12, 'quarter') + skip(4),
+    )
+
+    expect(shape(content)).toEqual(['space', ['event'], 'event'])
+    expect(content?.[0]?.kind === 'space' && content[0].duration).toEqual(fraction(1, 12))
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-ratio'])
+  })
+
+  test('takes no more silence before than the bracket is missing', () => {
+    const { content, warnings } = timed(
+      skip(8) + alone('C', 8, 'quarter') + plain('D', 6, 'eighth'),
+    )
+
+    expect(shape(content)).toEqual(['space', ['event'], 'event'])
+    expect(content?.[0]?.kind === 'space' && content[0].duration).toEqual(fraction(1, 6))
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-ratio'])
+  })
+
   test.each([
     ['before', skip(4) + alone('C', 8, 'quarter') + plain('D', 12, 'quarter')],
     ['around', skip(4) + alone('C', 4, 'eighth') + skip(4) + plain('D', 12, 'quarter')],
