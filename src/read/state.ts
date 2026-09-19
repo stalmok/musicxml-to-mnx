@@ -52,6 +52,13 @@ export interface ClefInForce {
  * once and stays in force until restated, so a measure is not readable on its
  * own.
  */
+/** A time signature a measure held for the next one, as PartState.lateTime. */
+export interface HeldTime {
+  time: TimeSignature
+  partway: boolean
+  context: WarningContext
+}
+
 export interface PartState {
   divisions: number | undefined
   /**
@@ -73,7 +80,7 @@ export interface PartState {
    * measure takes it unless it states its own. Where it was stated partway
    * through the measure rather than after its notes, the move is a loss.
    */
-  lateTime: { time: TimeSignature; partway: boolean; context: WarningContext } | undefined
+  lateTime: HeldTime | undefined
   /** How many staves the part is written on, once it says. */
   staves: number
   /**
