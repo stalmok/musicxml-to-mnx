@@ -1039,6 +1039,23 @@ describe('a key signature stated after the measure start', () => {
     ])
   })
 
+  // The cursor is back inside the measure, although every note in it is read.
+  test('takes a statement after a <backup> into the measure as partway through', () => {
+    const { warnings } = read(
+      part(
+        opening + keyed(0) + note(24) + '<backup><duration>12</duration></backup>' + keyed(2),
+        note(24),
+      ),
+    )
+
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        code: 'unrepresentable:mid-measure-key',
+        message: expect.stringContaining('partway through'),
+      }),
+    ])
+  })
+
   test('carries one stated after a non-traditional key in the same measure', () => {
     const { score: result, warnings } = read(
       part(
@@ -1101,6 +1118,24 @@ describe('a key signature stated after the measure start', () => {
   // Written a major second above what it sounds, so five flats written read
   // back as seven flats of concert key: the five sharps the other part states,
   // spelled the other way.
+  // Two sharps written read back as C major, which is the key in force.
+  test('adds nothing when a transposing part restates its written key', () => {
+    const B_FLAT = '<transpose><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>'
+    const { score: result, warnings } = read(
+      part(
+        opening.replace('</attributes>', `${B_FLAT}</attributes>`) +
+          keyed(2) +
+          note(12) +
+          keyed(2) +
+          note(12),
+        note(24),
+      ),
+    )
+
+    expect(result.globalMeasures.map((m) => m.key)).toEqual([{ fifths: 0 }, undefined])
+    expect(warnings).toEqual([])
+  })
+
   test('carries the concert key of a transposing part, and settles its flip', () => {
     const B_FLAT = '<transpose><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>'
     const { score: result, warnings } = read(
