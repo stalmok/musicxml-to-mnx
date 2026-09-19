@@ -676,6 +676,23 @@ describe('a time signature stated after the measure start', () => {
     ])
   })
 
+  test('reports a change partway through a measure when the next restates it', () => {
+    const { score: result, warnings } = read(
+      part(opening + timed(2) + note(12) + timed(3) + note(12), timed(3) + note(36)),
+    )
+
+    expect(result.globalMeasures.map((m) => m.time)).toEqual([
+      { count: 2, unit: 4 },
+      { count: 3, unit: 4 },
+    ])
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        code: 'unrepresentable:mid-measure-time',
+        context: expect.objectContaining({ measure: 1 }),
+      }),
+    ])
+  })
+
   test('reports one the next measure replaces with its own', () => {
     const { score: result, warnings } = read(
       part(opening + timed(2) + note(24) + timed(3), timed(4) + note(48)),

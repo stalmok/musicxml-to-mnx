@@ -952,13 +952,12 @@ function settleLateTimes(
   context: WarningContext,
 ): TimeSignature | undefined {
   const held = state.lateTime
-  let opens = time
-  if (held && !timeSettled) {
-    opens = held.time
-    if (held.partway) reportLateTime(held, 'It is converted at the next measure.', warnings)
-  } else if (held && !(time && sameTime(time, held.time))) {
+  if (held && timeSettled && !(time && sameTime(time, held.time))) {
     reportLateTime(held, 'The next measure states its own, so it is not converted.', warnings)
+  } else if (held?.partway) {
+    reportLateTime(held, 'It is converted at the next measure.', warnings)
   }
+  const opens = held && !timeSettled ? held.time : time
 
   state.lateTime = undefined
   lateTimes.forEach(({ time: late, at, line }, index) => {
