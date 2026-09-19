@@ -1115,9 +1115,6 @@ describe('a key signature stated after the measure start', () => {
     expect(warnings).toEqual([])
   })
 
-  // Written a major second above what it sounds, so five flats written read
-  // back as seven flats of concert key: the five sharps the other part states,
-  // spelled the other way.
   // Two sharps written read back as C major, which is the key in force.
   test('adds nothing when a transposing part restates its written key', () => {
     const B_FLAT = '<transpose><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>'
@@ -1136,6 +1133,9 @@ describe('a key signature stated after the measure start', () => {
     expect(warnings).toEqual([])
   })
 
+  // Written a major second above what it sounds, so five flats written read
+  // back as seven flats of concert key: the five sharps the other part states,
+  // spelled the other way.
   test('carries the concert key of a transposing part, and settles its flip', () => {
     const B_FLAT = '<transpose><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>'
     const { score: result, warnings } = read(
