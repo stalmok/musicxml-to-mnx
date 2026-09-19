@@ -982,6 +982,77 @@ describe('a time signature stated after the measure start', () => {
     expect(warnings).toEqual([])
   })
 
+  // The second part states no time signature, so its second measure runs to
+  // the barline the first part's second measure opens with.
+  const untimedBesideNext = (first: string, length: number) =>
+    score(
+      `<part id="P1"><measure number="1">${opening + first}</measure>` +
+        `<measure number="2">${note(36)}</measure></part>` +
+        `<part id="P2"><measure number="1">${opening + note(length)}</measure>` +
+        `<measure number="2">${note(24) + shortTriplet}</measure></part>`,
+    )
+  const back = (duration: number) => `<backup><duration>${String(duration)}</duration></backup>`
+
+  test('reads ahead a second statement at the start as the first one stands', () => {
+    const { score: result, warnings } = read(
+      untimedBesideNext(timed(3) + note(36) + back(36) + timed(2) + note(36, 2), 36),
+    )
+
+    expect(result.globalMeasures.map((m) => m.time)).toEqual([{ count: 3, unit: 4 }, undefined])
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:time'])
+  })
+
+  test('reads ahead a late statement before a restatement at the start', () => {
+    const { score: result, warnings } = read(
+      untimedBesideNext(timed(2) + note(24) + timed(3) + back(24) + timed(2) + note(24, 2), 24),
+    )
+
+    expect(result.globalMeasures.map((m) => m.time)).toEqual([
+      { count: 2, unit: 4 },
+      { count: 3, unit: 4 },
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  test('reads ahead a late statement before the first one at the start', () => {
+    const { score: result, warnings } = read(
+      untimedBesideNext(note(24) + timed(3) + back(24) + timed(2) + note(24, 2), 24),
+    )
+
+    expect(result.globalMeasures.map((m) => m.time)).toEqual([
+      { count: 2, unit: 4 },
+      { count: 3, unit: 4 },
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  test('reads ahead a statement after a <forward> as late', () => {
+    const { warnings } = read(
+      untimedBesideNext(timed(2) + '<forward><duration>24</duration></forward>' + timed(3), 24),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  test('reads ahead a chord as one step of the cursor', () => {
+    const chord =
+      '<note><chord/><pitch><step>E</step><octave>4</octave></pitch>' +
+      '<duration>36</duration><voice>1</voice></note>'
+    const { warnings } = read(
+      untimedBesideNext(timed(3) + note(36) + chord + back(36) + timed(2) + note(36, 2), 36),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:time'])
+  })
+
+  test('reads ahead a <backup> past the start as reaching the start', () => {
+    const { warnings } = read(
+      untimedBesideNext(timed(3) + note(36) + back(48) + timed(2) + note(36, 2), 36),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:time', 'inconsistent:backup'])
+  })
+
   // An unmetered measure has no barline to measure silence to, so the time
   // signature before it does not complete a bracket in it.
   test('measures a senza misura measure against no time signature', () => {

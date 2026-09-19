@@ -503,8 +503,9 @@ function readKey(
 /**
  * The time signature each measure of a part opens with, read ahead of the
  * part itself: a part that states none of its own runs to the barline the
- * other parts state, and those may be read after it. One stated after the
- * measure's first note or <forward> opens the next measure. Whatever a time
+ * other parts state, and those may be read after it. The rules are the ones
+ * the part is read by: the first stated where the measure begins stands, and
+ * the last stated after that opens the next measure. Whatever a time
  * signature says that is lost or broken is reported, or refused, where the
  * part itself is read, so nothing here reports anything.
  */
@@ -513,25 +514,39 @@ export function timesInForce(part: XmlElement): (TimeSignature | undefined)[] {
   let inForce: TimeSignature | undefined
   return children(part, 'measure').map((measure) => {
     let opens = inForce
-    let started = false
-    // MusicXML allows several <attributes> in a measure and one <time> per
-    // staff in each. As where the part is read, the first metered one in a
-    // block is the one in force.
+    let settled = false
+    let late = false
+    // In divisions as the source counts them. Only whether the cursor stands
+    // at the start matters here.
+    let cursor = 0
     for (const found of measure.children) {
-      if (found.name === 'forward' || (found.name === 'note' && !child(found, 'grace'))) {
-        started = true
+      const by = Number(child(found, 'duration')?.text ?? 0)
+      if (found.name === 'forward') cursor += by
+      else if (found.name === 'backup') cursor -= by
+      else if (found.name === 'note' && !child(found, 'chord')) {
+        cursor += by
       }
       if (found.name !== 'attributes') continue
       const times = children(found, 'time')
       if (times.length === 0) continue
+      let time: TimeSignature | undefined
+      // MusicXML allows one <time> per staff in a block. As where the part
+      // is read, the first metered one is the one in force.
       try {
-        inForce = times
-          .map((time) => readTime(new ElementReader(time), unreported, {}, []))
-          .find((time) => time !== undefined)
+        time = times
+          .map((block) => readTime(new ElementReader(block), unreported, {}, []))
+          .find((read) => read !== undefined)
       } catch {
-        inForce = undefined
+        time = undefined
       }
-      if (!started) opens = inForce
+      if (cursor > 0) {
+        late = true
+        inForce = time
+      } else if (!settled) {
+        settled = true
+        opens = time
+        if (!late) inForce = time
+      }
     }
     return opens
   })
