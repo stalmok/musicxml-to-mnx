@@ -2079,6 +2079,31 @@ describe('several parts', () => {
       expect(warnings).toEqual([])
     })
 
+    // The score's key in force settles the reading before any other measure
+    // does, so a part restating its signature after the score changes spelling
+    // takes the new spelling.
+    test('contributes the score’s spelling in force after the score changes it', () => {
+      const respelled =
+        `<part id="P1"><measure number="1"><attributes><key><fifths>5</fifths></key>` +
+        `</attributes>${NOTE}</measure>` +
+        `<measure number="2"><attributes><key><fifths>-7</fifths></key></attributes>` +
+        `${NOTE}</measure><measure number="3">${NOTE}</measure></part>` +
+        `<part id="P2"><measure number="1"><attributes><key><fifths>-5</fifths></key>` +
+        `${B_FLAT}</attributes>${NOTE}</measure><measure number="2">${NOTE}</measure>` +
+        `<measure number="3"><attributes><key><fifths>-5</fifths></key></attributes>` +
+        `${NOTE}</measure></part>`
+      const { score: result, warnings } = read(score(respelled))
+
+      expect(result.globalMeasures.map((measure) => measure.key)).toEqual([
+        { fifths: 5 },
+        { fifths: -7 },
+        { fifths: -7 },
+      ])
+      expect(result.parts[1]?.transposition?.keyFifthsFlipAt).toBe(7)
+      expect(warnings).toEqual([])
+      expect(schemaErrors(convertMusicXML(score(respelled)).mnx)).toEqual([])
+    })
+
     // The ordinary transposing part: it writes the signature its transposition
     // asks for, so there is nothing to flip and no point to state.
     test('states no point for a part writing the signature it is asked for', () => {
@@ -2119,14 +2144,14 @@ describe('several parts', () => {
     // is in, not the score's, and the disagreement is reported.
     test('contributes its own key where it differs and no point is stated', () => {
       const later =
-        '<part id="P1"><measure number="1"><attributes><key><fifths>2</fifths></key>' +
+        '<part id="P1"><measure number="1"><attributes><key><fifths>5</fifths></key>' +
         `</attributes>${NOTE}</measure><measure number="2">${NOTE}</measure></part>` +
         `<part id="P2"><measure number="1">${NOTE}</measure>` +
-        '<measure number="2"><attributes><key><fifths>-3</fifths></key></attributes>' +
+        '<measure number="2"><attributes><key><fifths>-9</fifths></key></attributes>' +
         `${NOTE}</measure></part>`
       const { score: result, warnings } = read(score(later))
 
-      expect(result.globalMeasures[1]?.key).toEqual({ fifths: -3 })
+      expect(result.globalMeasures[1]?.key).toEqual({ fifths: -9 })
       expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-key'])
     })
 
