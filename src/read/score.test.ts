@@ -774,6 +774,29 @@ describe('a time signature stated after the measure start', () => {
     ])
   })
 
+  test('does not carry one a later senza misura in the same measure replaces', () => {
+    const { score: result, warnings } = read(
+      part(
+        opening +
+          timed(2) +
+          note(12) +
+          timed(3) +
+          note(12) +
+          '<attributes><time><senza-misura/></time></attributes>',
+        note(36),
+      ),
+    )
+
+    expect(result.globalMeasures[1]?.time).toBeUndefined()
+    expect(warnings).toEqual([
+      expect.objectContaining({ code: 'unrepresentable:senza-misura' }),
+      expect.objectContaining({
+        code: 'unrepresentable:mid-measure-time',
+        message: expect.stringContaining('A later one in this measure replaces it'),
+      }),
+    ])
+  })
+
   test("takes a statement at the start of the measure after a backup as the measure's own", () => {
     const { score: result, warnings } = read(
       part(

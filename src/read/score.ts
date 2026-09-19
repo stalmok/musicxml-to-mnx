@@ -948,7 +948,7 @@ function readPart(
  */
 function settleLateTimes(
   state: PartState,
-  lateTimes: readonly { time: TimeSignature; at: Fraction; line: number }[],
+  lateTimes: readonly { time: TimeSignature | undefined; at: Fraction; line: number }[],
   end: Fraction,
   timeSettled: boolean,
   time: TimeSignature | undefined,
@@ -965,6 +965,9 @@ function settleLateTimes(
 
   state.lateTime = undefined
   lateTimes.forEach(({ time: late, at, line }, index) => {
+    // Senza misura, which is reported where it is read. As the last
+    // statement, it leaves nothing for the next measure to take.
+    if (!late) return
     const stated = {
       time: late,
       partway: compareFractions(at, end) < 0,
@@ -1175,8 +1178,8 @@ function readMeasure(
   let keySettled = false
   let timeSettled = false
   // Time signatures stated after the measure start, each differing from the
-  // one in force where it is stated.
-  const lateTimes: { time: TimeSignature; at: Fraction; line: number }[] = []
+  // one in force where it is stated. Senza misura states none.
+  const lateTimes: { time: TimeSignature | undefined; at: Fraction; line: number }[] = []
   const dynamics: Dynamic[] = []
   const tempos: Tempo[] = []
   // Every <sound tempo> of the measure, waiting on the score's marks to say
@@ -1230,7 +1233,7 @@ function readMeasure(
         if (reading.timeStated && builder.atMeasureStart()) {
           if (!timeSettled) time = reading.time
           timeSettled = true
-        } else if (reading.time && !sameTime(reading.time, before)) {
+        } else if (reading.timeStated && !(reading.time && sameTime(reading.time, before))) {
           lateTimes.push({ time: reading.time, at: builder.position(), line: found.line })
         }
         clefs.push(...reading.clefs)
