@@ -917,7 +917,11 @@ function readPart(
     warnings,
   )
   if (state.lateTime)
-    reportLateTime(state.lateTime, 'The part ends there, so it is not converted.', warnings)
+    reportLateTime(
+      state.lateTime,
+      'This is the last measure of the part, so it is not converted.',
+      warnings,
+    )
   resolveEndings(readings, warnings, id)
   resolveMeasureRepeats(readings, warnings, id)
 
@@ -970,7 +974,7 @@ function settleLateTimes(
     else {
       reportLateTime(
         stated,
-        'A later one in the measure replaces it, so it is not converted.',
+        'A later one in this measure replaces it, so it is not converted.',
         warnings,
       )
     }

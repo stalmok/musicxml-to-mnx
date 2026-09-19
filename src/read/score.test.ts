@@ -243,8 +243,8 @@ describe('measure attributes', () => {
     ])
   })
 
-  // A source states a clef change and then a key change further into the
-  // measure, so a block stating neither must settle neither.
+  // A source states a clef in one block and the key and time in the next, so
+  // a block stating neither must settle neither.
   test('reads a key and a time signature stated in a later attributes block', () => {
     const { score: result } = read(
       measure(
@@ -660,7 +660,7 @@ describe('a time signature stated after the measure start', () => {
 
   test('reports a change partway through a measure and converts it at the next', () => {
     const { score: result, warnings } = read(
-      part(opening + timed(2) + note(12) + timed(3) + note(24), note(36)),
+      part(opening + timed(2) + note(12) + '\n' + timed(3) + note(24), note(36)),
     )
 
     expect(result.globalMeasures.map((m) => m.time)).toEqual([
@@ -671,7 +671,8 @@ describe('a time signature stated after the measure start', () => {
       expect.objectContaining({
         code: 'unrepresentable:mid-measure-time',
         element: 'time',
-        context: expect.objectContaining({ part: 'P1', measure: 1, line: 1 }),
+        message: expect.stringMatching(/partway through .* It is converted at the next measure\.$/),
+        context: { part: 'P1', measure: 1, line: 2 },
       }),
     ])
   })
@@ -688,6 +689,7 @@ describe('a time signature stated after the measure start', () => {
     expect(warnings).toEqual([
       expect.objectContaining({
         code: 'unrepresentable:mid-measure-time',
+        message: expect.stringMatching(/partway through .* It is converted at the next measure\.$/),
         context: expect.objectContaining({ measure: 1 }),
       }),
     ])
@@ -705,6 +707,9 @@ describe('a time signature stated after the measure start', () => {
     expect(warnings).toEqual([
       expect.objectContaining({
         code: 'unrepresentable:mid-measure-time',
+        message: expect.stringMatching(
+          /at the end of .* The next measure states its own, so it is not converted\.$/,
+        ),
         context: expect.objectContaining({ measure: 1 }),
       }),
     ])
@@ -716,6 +721,9 @@ describe('a time signature stated after the measure start', () => {
     expect(warnings).toEqual([
       expect.objectContaining({
         code: 'unrepresentable:mid-measure-time',
+        message: expect.stringContaining(
+          'This is the last measure of the part, so it is not converted.',
+        ),
         context: expect.objectContaining({ measure: 1 }),
       }),
     ])
@@ -730,7 +738,14 @@ describe('a time signature stated after the measure start', () => {
       { count: 2, unit: 4 },
       { count: 4, unit: 4 },
     ])
-    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:mid-measure-time'])
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        code: 'unrepresentable:mid-measure-time',
+        message: expect.stringContaining(
+          'A later one in this measure replaces it, so it is not converted.',
+        ),
+      }),
+    ])
   })
 
   test("takes a statement at the start of the measure after a backup as the measure's own", () => {

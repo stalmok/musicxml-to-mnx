@@ -63,8 +63,8 @@ export interface PartState {
   divisionsAssumed: boolean
   /**
    * The time signature in force, which like <divisions> stays until restated.
-   * Held only so that a direction moved by an <offset> can be checked against
-   * the length of the measure it lands in.
+   * It changes where the source states one, which can be partway through a
+   * measure.
    */
   time: TimeSignature | undefined
   /**
