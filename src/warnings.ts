@@ -242,6 +242,11 @@ export type WarningCode =
   // Two barlines close the same measure with different styles. The first is
   // the one converted.
   | 'inconsistent:barline'
+  // A measure states two different key signatures, or two different time
+  // signatures, at its start for the same staves. The later one is not
+  // converted.
+  | 'inconsistent:key'
+  | 'inconsistent:time'
   // The parts of the score state different tempos at the same point in a
   // measure. MNX holds a list of them, so this is the parts disagreeing
   // rather than a limit of the format: both would be drawn over one beat.

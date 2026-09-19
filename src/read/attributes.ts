@@ -87,6 +87,9 @@ export interface AttributesReading {
    */
   keyStated: boolean
   timeStated: boolean
+  /** Whether the key or the time was stated for some staves and not others. */
+  keyPartial: boolean
+  timePartial: boolean
   key: Key | undefined
   time: TimeSignature | undefined
   clefs: Clef[]
@@ -243,7 +246,7 @@ export function readAttributes(
   // inside a <key>, <time> or <clef> is reported along with the rest of the
   // measure rather than vanishing a level down.
   const keyBlocks = element.blocks('key')
-  reportPartialSignature(keyBlocks, 'key', state, warnings, context, path)
+  const keyPartial = reportPartialSignature(keyBlocks, 'key', state, warnings, context, path)
   const keys = keyBlocks
     .map((found) => readKey(found, warnings, context, path))
     .filter((key): key is Key => key !== undefined)
@@ -258,7 +261,7 @@ export function readAttributes(
   }
 
   const timeBlocks = element.blocks('time')
-  reportPartialSignature(timeBlocks, 'time', state, warnings, context, path)
+  const timePartial = reportPartialSignature(timeBlocks, 'time', state, warnings, context, path)
   const times = timeBlocks.map((found) => readTime(found, warnings, context, path))
   const metered = times.filter((time): time is TimeSignature => time !== undefined)
   if (
@@ -289,6 +292,8 @@ export function readAttributes(
   return {
     keyStated: keyBlocks.length > 0,
     timeStated: times.length > 0,
+    keyPartial,
+    timePartial,
     key,
     time: metered[0],
     clefs: element
@@ -319,11 +324,11 @@ interface MeasureStyleReading {
 }
 
 /**
- * Report a key or time signature stated for some staves and not others. The
- * blocks are compared by content where each staff writes one, but a numbered
- * block with no counterpart for the other staves is a per-staff statement
- * that comparison cannot see, and MNX applies the one signature to the whole
- * score.
+ * Report a key or time signature stated for some staves and not others, and
+ * say whether it was. The blocks are compared by content where each staff
+ * writes one, but a numbered block with no counterpart for the other staves
+ * is a per-staff statement that comparison cannot see, and MNX applies the
+ * one signature to the whole score.
  */
 function reportPartialSignature(
   blocks: readonly ElementReader[],
@@ -332,8 +337,8 @@ function reportPartialSignature(
   warnings: WarningCollector,
   context: WarningContext,
   path: DocumentPath,
-): void {
-  if (blocks.length === 0) return
+): boolean {
+  if (blocks.length === 0) return false
   const numbers = blocks.map((block) =>
     readAttributeInRange(block.element, 'number', path, 1, state.staves),
   )
@@ -351,9 +356,10 @@ function reportPartialSignature(
         { ...context, line: blocks[0]?.line ?? 0 },
         name,
       )
-      return
+      return true
     }
   }
+  return false
 }
 
 // A signature block without a number speaks for every staff.

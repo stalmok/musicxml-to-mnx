@@ -1024,6 +1024,27 @@ function holdLate<T>(
   return held(last, last.value)
 }
 
+/**
+ * Reports a key or time signature stated again at the start of a measure,
+ * differing from the first one stated there, which stands.
+ */
+function reportSecondAtStart<T>(
+  kind: SignatureKind<T>,
+  first: T | undefined,
+  second: T | undefined,
+  warnings: WarningCollector,
+  context: WarningContext,
+): void {
+  if (first === undefined ? second === undefined : kind.same(first, second)) return
+  warnings.add(
+    `inconsistent:${kind.element}`,
+    `Two different ${kind.element} signatures are stated at the start of this measure. ` +
+      'The later one is not converted.',
+    context,
+    kind.element,
+  )
+}
+
 function reportLate<T>(
   kind: SignatureKind<T>,
   late: HeldSignature<T>,
@@ -1257,6 +1278,7 @@ function readMeasure(
 
     switch (found.name) {
       case 'attributes': {
+        const timeBefore = state.time
         const reading = readAttributes(
           reader,
           state,
@@ -1266,14 +1288,25 @@ function readMeasure(
           measurePath,
         )
         const at = builder.position()
+        const place = { ...context, line: found.line }
+        // One stated for some staves only is reported as a per-staff
+        // statement where the block is read.
         if (reading.keyStated && builder.atMeasureStart()) {
           if (!keySettled) key = reading.key
+          else if (!reading.keyPartial) reportSecondAtStart(KEY, key, reading.key, warnings, place)
           keySettled = true
         } else if (reading.keyStated) {
           lateKeys.push({ value: reading.key, at, line: found.line })
         }
         if (reading.timeStated && builder.atMeasureStart()) {
           if (!timeSettled) time = reading.time
+          else {
+            if (!reading.timePartial) {
+              reportSecondAtStart(TIME, time, reading.time, warnings, place)
+            }
+            // It changes nothing, so the music after it is read as before.
+            state.time = timeBefore
+          }
           timeSettled = true
         } else if (reading.timeStated) {
           lateTimes.push({ value: reading.time, at, line: found.line })

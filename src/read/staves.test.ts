@@ -591,6 +591,70 @@ describe('key and time signatures stated per staff', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-key'])
   })
 
+  // Each staff states its key in a block of its own, the second after a
+  // <backup> to the start of the measure. The staves disagree, which is not
+  // the source disagreeing with itself.
+  test('reports keys stated for each staff in blocks of their own as per staff', () => {
+    const { warnings } = read(
+      measures(
+        GRAND_STAFF.replace(
+          '</attributes>',
+          '<key number="1"><fifths>0</fifths></key></attributes>',
+        ) +
+          note('C', '1') +
+          '<backup><duration>4</duration></backup>' +
+          '<attributes><key number="2"><fifths>2</fifths></key></attributes>' +
+          note('D', '2', '2'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:per-staff-key',
+      'unrepresentable:per-staff-key',
+    ])
+  })
+
+  test('reports time signatures stated for each staff in blocks of their own as per staff', () => {
+    const time = (staff: string, beats: string) =>
+      `<time number="${staff}"><beats>${beats}</beats><beat-type>4</beat-type></time>`
+    const { warnings } = read(
+      measures(
+        GRAND_STAFF.replace('</attributes>', `${time('1', '1')}</attributes>`) +
+          note('C', '1') +
+          '<backup><duration>4</duration></backup>' +
+          `<attributes>${time('2', '2')}</attributes>` +
+          note('D', '2', '2'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:per-staff-time',
+      'unrepresentable:per-staff-time',
+    ])
+  })
+
+  // A block with no number speaks for every staff, so a numbered block before
+  // it is contradicted on its own staff.
+  test('reports a key for every staff that contradicts a numbered one before it', () => {
+    const { warnings } = read(
+      measures(
+        GRAND_STAFF.replace(
+          '</attributes>',
+          '<key number="1"><fifths>0</fifths></key></attributes>',
+        ) +
+          note('C', '1') +
+          '<backup><duration>4</duration></backup>' +
+          '<attributes><key><fifths>2</fifths></key></attributes>' +
+          note('D', '2', '2'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:per-staff-key',
+      'inconsistent:key',
+    ])
+  })
+
   test('reports a time signature stated for one staff and not the other', () => {
     const { warnings } = read(
       measures(

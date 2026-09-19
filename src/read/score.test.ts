@@ -861,6 +861,77 @@ describe('a time signature stated after the measure start', () => {
     expect(warnings).toEqual([])
   })
 
+  describe('stated twice at the start of the measure', () => {
+    const twice = (second: string) =>
+      opening + timed(2) + note(24) + '<backup><duration>24</duration></backup>\n' + second
+
+    test('keeps the first and reports a different second one', () => {
+      const { score: result, warnings } = read(part(twice(timed(3) + note(24, 2)), note(24)))
+
+      expect(result.globalMeasures.map((m) => m.time)).toEqual([{ count: 2, unit: 4 }, undefined])
+      expect(warnings).toEqual([
+        expect.objectContaining({
+          code: 'inconsistent:time',
+          element: 'time',
+          message: expect.stringContaining('The later one is not converted.'),
+          context: { part: 'P1', measure: 1, line: 2 },
+        }),
+      ])
+    })
+
+    test('says nothing when the second restates the first', () => {
+      const { warnings } = read(part(twice(timed(2) + note(24, 2))))
+
+      expect(warnings).toEqual([])
+    })
+
+    // A rest with no written value lasting the measure is the measure's rest,
+    // so it shows which time signature the next measure is read against.
+    test('reads the next measure against the one converted', () => {
+      const rest = '<note><rest/><duration>24</duration><voice>1</voice></note>'
+      const { score: result } = read(part(twice(timed(3) + note(24, 2)), rest))
+
+      expect(result.parts[0]?.measures[1]?.sequences[0]?.fullMeasure).toBeDefined()
+    })
+
+    test('reads the next measure against a late one stated before the restatement', () => {
+      const rest = '<note><rest/><duration>36</duration><voice>1</voice></note>'
+      const { score: result } = read(
+        part(
+          opening +
+            timed(2) +
+            note(24) +
+            timed(3) +
+            '<backup><duration>24</duration></backup>' +
+            timed(2) +
+            note(24, 2),
+          rest,
+        ),
+      )
+
+      expect(result.globalMeasures.map((m) => m.time)).toEqual([
+        { count: 2, unit: 4 },
+        { count: 3, unit: 4 },
+      ])
+      expect(result.parts[0]?.measures[1]?.sequences[0]?.fullMeasure).toBeDefined()
+    })
+
+    test('reports one following senza misura', () => {
+      const unmetered = '<attributes><time><senza-misura/></time></attributes>'
+      const { score: result, warnings } = read(
+        part(
+          opening + unmetered + note(24) + '<backup><duration>24</duration></backup>' + timed(3),
+        ),
+      )
+
+      expect(result.globalMeasures[0]?.time).toBeUndefined()
+      expect(warnings.map((w) => w.code)).toEqual([
+        'unrepresentable:senza-misura',
+        'inconsistent:time',
+      ])
+    })
+  })
+
   // A 3:2 quarter written short of its ratio, which the silence after it to
   // the barline completes. How much silence there is depends on the measure's
   // own time signature, not on the one stated late for the next measure.
@@ -1162,6 +1233,43 @@ describe('a key signature stated after the measure start', () => {
 
     expect(result.globalMeasures[0]?.key).toEqual({ fifths: 2 })
     expect(warnings).toEqual([])
+  })
+
+  describe('stated twice at the start of the measure', () => {
+    const twice = (first: string, second: string) =>
+      opening + first + note(24) + '<backup><duration>24</duration></backup>\n' + second
+
+    test('keeps the first and reports a different second one', () => {
+      const { score: result, warnings } = read(part(twice(keyed(0), keyed(2)), note(24)))
+
+      expect(result.globalMeasures.map((m) => m.key)).toEqual([{ fifths: 0 }, undefined])
+      expect(warnings).toEqual([
+        expect.objectContaining({
+          code: 'inconsistent:key',
+          element: 'key',
+          message: expect.stringContaining('The later one is not converted.'),
+          context: { part: 'P1', measure: 1, line: 2 },
+        }),
+      ])
+    })
+
+    test('says nothing when the second restates the first', () => {
+      const { warnings } = read(part(twice(keyed(2), keyed(2))))
+
+      expect(warnings).toEqual([])
+    })
+
+    test('reports one following a key MNX cannot carry', () => {
+      const nonTraditional =
+        '<attributes><key><key-step>F</key-step><key-alter>1</key-alter></key></attributes>'
+      const { score: result, warnings } = read(part(twice(nonTraditional, keyed(2))))
+
+      expect(result.globalMeasures[0]?.key).toBeUndefined()
+      expect(warnings.map((w) => w.code)).toEqual([
+        'unrepresentable:non-traditional-key',
+        'inconsistent:key',
+      ])
+    })
   })
 
   // Two sharps written read back as C major, which is the key in force.
