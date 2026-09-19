@@ -797,6 +797,36 @@ describe('a time signature stated after the measure start', () => {
     ])
   })
 
+  test('carries one equal to a time signature the start of the measure did not convert', () => {
+    const { score: result } = read(
+      part(
+        opening + timed(2) + note(24) + '<backup><duration>24</duration></backup>' + timed(3),
+        note(24) + timed(3),
+        note(36),
+      ),
+    )
+
+    expect(result.globalMeasures.map((m) => m.time)).toEqual([
+      { count: 2, unit: 4 },
+      undefined,
+      { count: 3, unit: 4 },
+    ])
+  })
+
+  test('carries nothing when the last statement returns to the time signature in force', () => {
+    const { score: result, warnings } = read(
+      part(opening + timed(2) + note(12) + timed(3) + note(6) + timed(2) + note(6), note(24)),
+    )
+
+    expect(result.globalMeasures.map((m) => m.time)).toEqual([{ count: 2, unit: 4 }, undefined])
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        code: 'unrepresentable:mid-measure-time',
+        message: expect.stringContaining('A later one in this measure replaces it'),
+      }),
+    ])
+  })
+
   test("takes a statement at the start of the measure after a backup as the measure's own", () => {
     const { score: result, warnings } = read(
       part(
@@ -1002,6 +1032,54 @@ describe('a key signature stated after the measure start', () => {
     expect(result.globalMeasures[1]?.key).toBeUndefined()
     expect(warnings).toEqual([
       expect.objectContaining({ code: 'unrepresentable:non-traditional-key' }),
+      expect.objectContaining({
+        code: 'unrepresentable:mid-measure-key',
+        message: expect.stringContaining('A later one in this measure replaces it'),
+      }),
+    ])
+  })
+
+  test('carries one stated after a non-traditional key in the same measure', () => {
+    const { score: result, warnings } = read(
+      part(
+        opening +
+          keyed(0) +
+          note(24) +
+          '<attributes><key><key-step>F</key-step><key-alter>1</key-alter></key></attributes>' +
+          keyed(2),
+        note(24),
+      ),
+    )
+
+    expect(result.globalMeasures[1]?.key).toEqual({ fifths: 2 })
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:non-traditional-key'])
+  })
+
+  // A second key at the start of a measure is not converted, so the key in
+  // force is still the first one.
+  test('carries one equal to a key the start of the measure did not convert', () => {
+    const { score: result } = read(
+      part(
+        opening + keyed(0) + note(24) + '<backup><duration>24</duration></backup>' + keyed(2),
+        note(24) + keyed(2),
+        note(24),
+      ),
+    )
+
+    expect(result.globalMeasures.map((m) => m.key)).toEqual([
+      { fifths: 0 },
+      undefined,
+      { fifths: 2 },
+    ])
+  })
+
+  test('carries nothing when the last statement returns to the key in force', () => {
+    const { score: result, warnings } = read(
+      part(opening + keyed(0) + note(12) + keyed(2) + note(6) + keyed(0) + note(6), note(24)),
+    )
+
+    expect(result.globalMeasures.map((m) => m.key)).toEqual([{ fifths: 0 }, undefined])
+    expect(warnings).toEqual([
       expect.objectContaining({
         code: 'unrepresentable:mid-measure-key',
         message: expect.stringContaining('A later one in this measure replaces it'),

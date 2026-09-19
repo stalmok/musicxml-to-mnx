@@ -86,10 +86,13 @@ export interface PartState {
    */
   lateTime: HeldSignature<TimeSignature> | undefined
   /**
-   * The key in force, as MNX states it: the concert key of a transposing part.
-   * Undefined where no key is stated, or where the last one is non-traditional.
+   * The key and time signature MNX has in force after the measures read so
+   * far. A statement after a measure's start is compared with these rather
+   * than with what the source last stated, because the source can state one
+   * that is not converted, such as a second one at the measure start.
    */
-  key: Key | undefined
+  convertedKey: Key | undefined
+  convertedTime: TimeSignature | undefined
   /** A key signature stated after the start of a measure, held as lateTime is. */
   lateKey: HeldSignature<Key> | undefined
   /** How many staves the part is written on, once it says. */
@@ -165,7 +168,8 @@ export function newPartState(
     divisionsAssumed: false,
     time: undefined,
     lateTime: undefined,
-    key: undefined,
+    convertedKey: undefined,
+    convertedTime: undefined,
     lateKey: undefined,
     staves: 1,
     clefs: new Map(),

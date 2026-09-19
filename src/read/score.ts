@@ -990,32 +990,41 @@ function opening<T>(
 
 /**
  * The last signature a measure stated after its start, held for the next
- * measure. Each one before it is replaced, and reported.
+ * measure where it differs from the one MNX has in force. Each change before
+ * it is replaced, and reported.
  */
 function holdLate<T>(
   kind: SignatureKind<T>,
   lates: readonly LateStatement<T>[],
+  inForce: T | undefined,
   end: Fraction,
   warnings: WarningCollector,
   context: WarningContext,
 ): HeldSignature<T> | undefined {
-  let held: HeldSignature<T> | undefined
-  lates.forEach(({ value, at, line }, index) => {
-    // Reported where it is read. As the last statement, it leaves nothing for
-    // the next measure to take.
-    if (value === undefined) return
-    const stated = { value, partway: compareFractions(at, end) < 0, context: { ...context, line } }
-    if (index === lates.length - 1) held = stated
-    else {
-      reportLate(
-        kind,
-        stated,
-        'A later one in this measure replaces it, so it is not converted.',
-        warnings,
-      )
-    }
+  const changes: LateStatement<T>[] = []
+  let current = inForce
+  for (const late of lates) {
+    if (late.value === undefined || !kind.same(late.value, current)) changes.push(late)
+    current = late.value
+  }
+  const held = ({ at, line }: LateStatement<T>, value: T): HeldSignature<T> => ({
+    value,
+    partway: compareFractions(at, end) < 0,
+    context: { ...context, line },
   })
-  return held
+  const last = changes.pop()
+  for (const replaced of changes) {
+    // One MNX cannot carry, such as senza misura, is reported where it is read.
+    if (replaced.value === undefined) continue
+    reportLate(
+      kind,
+      held(replaced, replaced.value),
+      'A later one in this measure replaces it, so it is not converted.',
+      warnings,
+    )
+  }
+  if (!last || last.value === undefined || kind.same(last.value, inForce)) return undefined
+  return held(last, last.value)
 }
 
 function reportLate<T>(
@@ -1211,8 +1220,7 @@ function readMeasure(
   // block in the same measure may not overwrite it.
   let keySettled = false
   let timeSettled = false
-  // Key and time signatures stated after the measure start, each differing
-  // from the one in force where it is stated.
+  // Key and time signatures stated after the measure start.
   const lateKeys: LateStatement<Key>[] = []
   const lateTimes: LateStatement<TimeSignature>[] = []
   const dynamics: Dynamic[] = []
@@ -1252,8 +1260,6 @@ function readMeasure(
 
     switch (found.name) {
       case 'attributes': {
-        const keyBefore = state.key
-        const timeBefore = state.time
         const reading = readAttributes(
           reader,
           state,
@@ -1266,13 +1272,13 @@ function readMeasure(
         if (reading.keyStated && builder.atMeasureStart()) {
           if (!keySettled) key = reading.key
           keySettled = true
-        } else if (reading.keyStated && !(reading.key && KEY.same(reading.key, keyBefore))) {
+        } else if (reading.keyStated) {
           lateKeys.push({ value: reading.key, at, line: found.line })
         }
         if (reading.timeStated && builder.atMeasureStart()) {
           if (!timeSettled) time = reading.time
           timeSettled = true
-        } else if (reading.timeStated && !(reading.time && TIME.same(reading.time, timeBefore))) {
+        } else if (reading.timeStated) {
           lateTimes.push({ value: reading.time, at, line: found.line })
         }
         clefs.push(...reading.clefs)
@@ -1379,10 +1385,21 @@ function readMeasure(
     reader.reportUnread(warnings, context)
   }
 
+  // A measure stating none, or one MNX cannot carry, leaves the one before in
+  // force.
   key = opening(KEY, state.lateKey, { settled: keySettled, value: key }, warnings)
-  state.lateKey = holdLate(KEY, lateKeys, builder.furthest(), warnings, context)
+  state.convertedKey = key ?? state.convertedKey
+  state.lateKey = holdLate(KEY, lateKeys, state.convertedKey, builder.furthest(), warnings, context)
   time = opening(TIME, state.lateTime, { settled: timeSettled, value: time }, warnings)
-  state.lateTime = holdLate(TIME, lateTimes, builder.furthest(), warnings, context)
+  state.convertedTime = time ?? state.convertedTime
+  state.lateTime = holdLate(
+    TIME,
+    lateTimes,
+    state.convertedTime,
+    builder.furthest(),
+    warnings,
+    context,
+  )
 
   // A tuplet the source stated as a ratio with no bracket has no stop to
   // close it, so the measure's end is where its run ends.
