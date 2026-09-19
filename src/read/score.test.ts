@@ -744,6 +744,69 @@ describe('a time signature stated after the measure start', () => {
     expect(warnings).toEqual([])
   })
 
+  // A 3:2 quarter written short of its ratio, which the silence after it to
+  // the barline completes. How much silence there is depends on the measure's
+  // own time signature, not on the one stated late for the next measure.
+  const shortTriplet =
+    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>8</duration>' +
+    '<voice>1</voice><type>quarter</type><time-modification><actual-notes>3</actual-notes>' +
+    '<normal-notes>2</normal-notes><normal-type>eighth</normal-type></time-modification>' +
+    '<notations><tuplet type="start" bracket="no"/><tuplet type="stop"/></notations></note>'
+
+  test("measures the silence to the barline against the measure's own time signature", () => {
+    const { warnings } = read(
+      part(opening + timed(3) + note(24) + shortTriplet + timed(2), note(24)),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  // The second part states no time signature, so its barline is the one the
+  // first part's measure opens with.
+  const untimedBeside = (first: string) =>
+    score(
+      `<part id="P1"><measure number="1">${opening + first}</measure>` +
+        `<measure number="2">${note(24)}</measure></part>` +
+        `<part id="P2"><measure number="1">${opening + note(24) + shortTriplet}</measure>` +
+        `<measure number="2">${note(24)}</measure></part>`,
+    )
+
+  test('measures a part stating no time signature against the one the score opens with', () => {
+    const { warnings } = read(untimedBeside(timed(3) + note(36) + timed(2)))
+
+    expect(warnings).toEqual([])
+  })
+
+  test('takes a <forward> as the start of the music when reading ahead', () => {
+    const { warnings } = read(
+      untimedBeside(timed(3) + '<forward><duration>36</duration></forward>' + timed(2)),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  test('does not take a grace note as the start of the music when reading ahead', () => {
+    const grace =
+      '<note><grace/><pitch><step>D</step><octave>4</octave></pitch>' +
+      '<voice>1</voice><type>eighth</type></note>'
+    const { warnings } = read(untimedBeside(grace + timed(3) + note(36)))
+
+    expect(warnings).toEqual([])
+  })
+
+  // An unmetered measure has no barline to measure silence to, so the time
+  // signature before it does not complete a bracket in it.
+  test('measures a senza misura measure against no time signature', () => {
+    const { warnings } = read(
+      part(
+        opening + timed(3) + note(36),
+        '<attributes><time><senza-misura/></time></attributes>' + note(24) + shortTriplet,
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toContain('unrepresentable:tuplet-ratio')
+  })
+
   test('converts to legal MNX', () => {
     const { mnx } = convertMusicXML(
       part(opening + timed(2) + note(12) + timed(3) + note(12), note(36)),

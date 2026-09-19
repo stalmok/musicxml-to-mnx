@@ -20,7 +20,7 @@ import type {
 import { WarningCollector } from '../warnings.js'
 import type { WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
-import { attribute, children, requireChild, trimmedText } from '../xml/tree.js'
+import { attribute, child, children, requireChild, trimmedText } from '../xml/tree.js'
 import { ElementReader } from './element.js'
 import { readAttributeInRange, readInteger, readIntegerInRange } from './numbers.js'
 import { staffLinesOf, staffPositionOfLine } from './state.js'
@@ -495,21 +495,28 @@ function readKey(
 }
 
 /**
- * The time signature in force at the end of each measure of a part, read
- * ahead of the part itself: a part that states none of its own runs to the
- * barline the other parts state, and those may be read after it. Whatever a
- * time signature says that is lost or broken is reported, or refused, where
- * the part itself is read, so nothing here reports anything.
+ * The time signature each measure of a part opens with, read ahead of the
+ * part itself: a part that states none of its own runs to the barline the
+ * other parts state, and those may be read after it. One stated after the
+ * measure's first note or <forward> opens the next measure. Whatever a time
+ * signature says that is lost or broken is reported, or refused, where the
+ * part itself is read, so nothing here reports anything.
  */
 export function timesInForce(part: XmlElement): (TimeSignature | undefined)[] {
   const unreported = new WarningCollector()
   let inForce: TimeSignature | undefined
   return children(part, 'measure').map((measure) => {
+    let opens = inForce
+    let started = false
     // MusicXML allows several <attributes> in a measure and one <time> per
     // staff in each. As where the part is read, the first metered one in a
     // block is the one in force.
-    for (const attributes of children(measure, 'attributes')) {
-      const times = children(attributes, 'time')
+    for (const found of measure.children) {
+      if (found.name === 'forward' || (found.name === 'note' && !child(found, 'grace'))) {
+        started = true
+      }
+      if (found.name !== 'attributes') continue
+      const times = children(found, 'time')
       if (times.length === 0) continue
       try {
         inForce = times
@@ -518,8 +525,9 @@ export function timesInForce(part: XmlElement): (TimeSignature | undefined)[] {
       } catch {
         inForce = undefined
       }
+      if (!started) opens = inForce
     }
-    return inForce
+    return opens
   })
 }
 

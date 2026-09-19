@@ -871,8 +871,8 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
 }
 
 /**
- * The time signature the score has in force at the end of each measure, as
- * the first part stating one there has it.
+ * The time signature each measure of the score opens with, as the first part
+ * stating one there has it.
  */
 function scoreTimesInForce(parts: readonly XmlElement[]): (TimeSignature | undefined)[] {
   const perPart = parts.map(timesInForce)
@@ -1193,6 +1193,9 @@ function readMeasure(
   let fermata: Fermata | undefined
 
   const builder = new MeasureBuilder(state.carriedTupletStops)
+  // The time signature in force from the measure before, which this measure
+  // keeps unless it states its own at its start.
+  const startTime = state.time
 
   // Walked in document order, because MusicXML states a measure as one stream
   // with a cursor running through it: what a <note> means depends on the
@@ -1340,7 +1343,9 @@ function readMeasure(
   // A bracket the silence after it could complete has waited for the measure
   // to be whole, because a voice silent to the barline is what completes one.
   // A part stating no time signature runs to the barline the score states.
-  const inForce = state.time ?? scoreTime
+  // Measured against the time signature the measure opens with, since one
+  // stated after its start is the next measure's.
+  const inForce = (timeSettled ? time : startTime) ?? scoreTime
   builder.settleShortTuplets(inForce && fraction(inForce.count, inForce.unit), warnings, context)
 
   // Every event of the measure is in now, so a hairpin's and an octave
