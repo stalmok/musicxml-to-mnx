@@ -677,6 +677,32 @@ describe('a time signature stated after the measure start', () => {
     ])
   })
 
+  // The cursor is back inside the measure, although every note in it is read.
+  test('takes a statement after a <backup> into the measure as partway through', () => {
+    const { warnings } = read(
+      part(
+        opening + timed(2) + note(24) + '<backup><duration>12</duration></backup>' + timed(3),
+        note(36),
+      ),
+    )
+
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        code: 'unrepresentable:mid-measure-time',
+        message: expect.stringContaining('partway through'),
+      }),
+    ])
+  })
+
+  test('carries a change of glyph alone to the next measure', () => {
+    const common =
+      '<attributes><time symbol="common"><beats>4</beats><beat-type>4</beat-type></time>' +
+      '</attributes>'
+    const { score: result } = read(part(opening + timed(4) + note(48) + common, note(48)))
+
+    expect(result.globalMeasures[1]?.time).toEqual({ count: 4, unit: 4, display: 'common' })
+  })
+
   test('reports a change partway through a measure when the next restates it', () => {
     const { score: result, warnings } = read(
       part(opening + timed(2) + note(12) + timed(3) + note(12), timed(3) + note(36)),
