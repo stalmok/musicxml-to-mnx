@@ -797,6 +797,29 @@ describe('a time signature stated after the measure start', () => {
     ])
   })
 
+  test('reports a restatement partway through after one at the end of the measure', () => {
+    const { warnings } = read(
+      part(
+        opening +
+          timed(2) +
+          note(24) +
+          timed(3) +
+          '<backup><duration>24</duration></backup>' +
+          note(12, 2) +
+          timed(3) +
+          note(12, 2),
+        note(36),
+      ),
+    )
+
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        code: 'unrepresentable:mid-measure-time',
+        message: expect.stringContaining('partway through'),
+      }),
+    ])
+  })
+
   test('carries one equal to a time signature the start of the measure did not convert', () => {
     const { score: result } = read(
       part(
@@ -1052,6 +1075,32 @@ describe('a key signature stated after the measure start', () => {
       expect.objectContaining({
         code: 'unrepresentable:mid-measure-key',
         message: expect.stringContaining('partway through'),
+      }),
+    ])
+  })
+
+  // The two statements are one change, written once for each voice. The
+  // second stands partway through the measure, so the change is a loss.
+  test('reports a restatement partway through after one at the end of the measure', () => {
+    const { score: result, warnings } = read(
+      part(
+        opening +
+          keyed(0) +
+          note(24) +
+          keyed(2) +
+          '<backup><duration>24</duration></backup>' +
+          note(12, 2) +
+          keyed(2) +
+          note(12, 2),
+        note(24),
+      ),
+    )
+
+    expect(result.globalMeasures.map((m) => m.key)).toEqual([{ fifths: 0 }, { fifths: 2 }])
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        code: 'unrepresentable:mid-measure-key',
+        message: expect.stringMatching(/partway through .* It is converted at the next measure\.$/),
       }),
     ])
   })

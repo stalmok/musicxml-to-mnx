@@ -995,7 +995,13 @@ function holdLate<T>(
   const changes: LateSignature<T>[] = []
   let current = inForce
   for (const late of lates) {
+    const restated = changes.at(-1)
     if (late.value === undefined || !kind.same(late.value, current)) changes.push(late)
+    // The same change written again, as each voice may write it after a
+    // <backup>. It stands where the earliest of them does.
+    else if (restated && compareFractions(late.at, restated.at) < 0) {
+      changes[changes.length - 1] = late
+    }
     current = late.value
   }
   const held = ({ at, line }: LateSignature<T>, value: T): HeldSignature<T> => ({
