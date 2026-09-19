@@ -250,9 +250,9 @@ describe('measure attributes', () => {
       measure(
         '<attributes><divisions>4</divisions><clef><sign>F</sign><line>4</line></clef>' +
           '</attributes>' +
-          QUARTER +
           '<attributes><key><fifths>2</fifths></key>' +
-          '<time><beats>3</beats><beat-type>4</beat-type></time></attributes>',
+          '<time><beats>3</beats><beat-type>4</beat-type></time></attributes>' +
+          QUARTER,
       ),
     )
 
@@ -534,8 +534,8 @@ describe('measure attributes', () => {
     const { score: result } = read(
       measure(
         '<attributes><divisions>1</divisions><time><senza-misura/></time></attributes>' +
-          NOTE +
-          '<attributes><time><beats>4</beats><beat-type>4</beat-type></time></attributes>',
+          '<attributes><time><beats>4</beats><beat-type>4</beat-type></time></attributes>' +
+          NOTE,
       ),
     )
 
@@ -596,6 +596,143 @@ describe('measure attributes', () => {
       readFailure(measure('<attributes><clef><sign>G</sign><line>９</line></clef></attributes>'))
         .message,
     ).toContain('is not a whole number')
+  })
+})
+
+// MNX states a time signature at the start of a measure only. MusicXML can
+// state one at any point, and one stated after a measure's notes is how some
+// sources write a change that takes effect at the next barline.
+describe('a time signature stated after the measure start', () => {
+  const timed = (beats: number) =>
+    `<attributes><time><beats>${String(beats)}</beats><beat-type>4</beat-type></time></attributes>`
+  const note = (duration: number, voice = 1) =>
+    '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+    `<duration>${String(duration)}</duration><voice>${String(voice)}</voice></note>`
+  const part = (...measures: string[]) =>
+    score(
+      '<part id="P1">' +
+        measures
+          .map((body, index) => `<measure number="${String(index + 1)}">${body}</measure>`)
+          .join('') +
+        '</part>',
+    )
+  const opening = '<attributes><divisions>12</divisions></attributes>'
+
+  test('takes effect at the next measure when stated after the notes', () => {
+    const { score: result, warnings } = read(
+      part(opening + timed(2) + note(24) + timed(3), note(36)),
+    )
+
+    expect(result.globalMeasures.map((m) => m.time)).toEqual([
+      { count: 2, unit: 4 },
+      { count: 3, unit: 4 },
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  test("is the next measure's own when the measure states none before it", () => {
+    const { score: result, warnings } = read(part(opening + note(24) + timed(3), note(36)))
+
+    expect(result.globalMeasures.map((m) => m.time)).toEqual([undefined, { count: 3, unit: 4 }])
+    expect(warnings).toEqual([])
+  })
+
+  test('adds nothing when it restates the time signature in force', () => {
+    const { score: result, warnings } = read(
+      part(opening + timed(2) + note(24) + timed(2), note(24)),
+    )
+
+    expect(result.globalMeasures.map((m) => m.time)).toEqual([{ count: 2, unit: 4 }, undefined])
+    expect(warnings).toEqual([])
+  })
+
+  test('adds nothing when the next measure restates it', () => {
+    const { score: result, warnings } = read(
+      part(opening + timed(2) + note(24) + timed(3), timed(3) + note(36)),
+    )
+
+    expect(result.globalMeasures.map((m) => m.time)).toEqual([
+      { count: 2, unit: 4 },
+      { count: 3, unit: 4 },
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  test('reports a change partway through a measure and converts it at the next', () => {
+    const { score: result, warnings } = read(
+      part(opening + timed(2) + note(12) + timed(3) + note(24), note(36)),
+    )
+
+    expect(result.globalMeasures.map((m) => m.time)).toEqual([
+      { count: 2, unit: 4 },
+      { count: 3, unit: 4 },
+    ])
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        code: 'unrepresentable:mid-measure-time',
+        element: 'time',
+        context: expect.objectContaining({ part: 'P1', measure: 1, line: 1 }),
+      }),
+    ])
+  })
+
+  test('reports one the next measure replaces with its own', () => {
+    const { score: result, warnings } = read(
+      part(opening + timed(2) + note(24) + timed(3), timed(4) + note(48)),
+    )
+
+    expect(result.globalMeasures.map((m) => m.time)).toEqual([
+      { count: 2, unit: 4 },
+      { count: 4, unit: 4 },
+    ])
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        code: 'unrepresentable:mid-measure-time',
+        context: expect.objectContaining({ measure: 1 }),
+      }),
+    ])
+  })
+
+  test('reports one stated after the notes of the last measure', () => {
+    const { warnings } = read(part(opening + timed(2) + note(24) + timed(3)))
+
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        code: 'unrepresentable:mid-measure-time',
+        context: expect.objectContaining({ measure: 1 }),
+      }),
+    ])
+  })
+
+  test('reports one a later statement in the same measure replaces', () => {
+    const { score: result, warnings } = read(
+      part(opening + timed(2) + note(12) + timed(3) + note(12) + timed(4), note(48)),
+    )
+
+    expect(result.globalMeasures.map((m) => m.time)).toEqual([
+      { count: 2, unit: 4 },
+      { count: 4, unit: 4 },
+    ])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:mid-measure-time'])
+  })
+
+  test("takes a statement at the start of the measure after a backup as the measure's own", () => {
+    const { score: result, warnings } = read(
+      part(
+        opening + note(24) + '<backup><duration>24</duration></backup>' + timed(2) + note(24, 2),
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.time).toEqual({ count: 2, unit: 4 })
+    expect(warnings).toEqual([])
+  })
+
+  test('converts to legal MNX', () => {
+    const { mnx } = convertMusicXML(
+      part(opening + timed(2) + note(12) + timed(3) + note(12), note(36)),
+    )
+
+    expect(schemaErrors(mnx)).toEqual([])
   })
 })
 

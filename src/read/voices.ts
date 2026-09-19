@@ -912,6 +912,11 @@ export class MeasureBuilder {
     return compareFractions(this.#cursor, fraction(0)) < 0 ? fraction(0) : this.#cursor
   }
 
+  /** The furthest the cursor has run in the measure. */
+  furthest(): Fraction {
+    return this.#furthest
+  }
+
   /**
    * Moves the cursor, as <backup> and <forward> do.
    *

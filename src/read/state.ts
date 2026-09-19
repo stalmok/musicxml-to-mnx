@@ -1,7 +1,14 @@
 // What the readers of one part share: the running state a measure cannot be
 // read without.
 
-import type { ClefSign, KitComponent, ResolvedSound, Transposition } from '../model/score.js'
+import type {
+  ClefSign,
+  KitComponent,
+  ResolvedSound,
+  TimeSignature,
+  Transposition,
+} from '../model/score.js'
+import type { WarningContext } from '../warnings.js'
 import { IdGenerator, SpannerResolver } from './spanners.js'
 import type { CarriedTupletStop } from './voices.js'
 
@@ -59,7 +66,14 @@ export interface PartState {
    * Held only so that a direction moved by an <offset> can be checked against
    * the length of the measure it lands in.
    */
-  time: { count: number; unit: number } | undefined
+  time: TimeSignature | undefined
+  /**
+   * A time signature stated after the start of a measure, held for the next
+   * one. MNX states a time signature only where a measure begins, so the next
+   * measure takes it unless it states its own. Where it was stated partway
+   * through the measure rather than after its notes, the move is a loss.
+   */
+  lateTime: { time: TimeSignature; partway: boolean; context: WarningContext } | undefined
   /** How many staves the part is written on, once it says. */
   staves: number
   /**
@@ -132,6 +146,7 @@ export function newPartState(
     divisions: undefined,
     divisionsAssumed: false,
     time: undefined,
+    lateTime: undefined,
     staves: 1,
     clefs: new Map(),
     staffLines: new Map(),

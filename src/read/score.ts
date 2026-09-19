@@ -610,6 +610,10 @@ function sameMeter(a: TimeSignature, b: TimeSignature): boolean {
   return a.count === b.count && a.unit === b.unit
 }
 
+function sameTime(a: TimeSignature, b: TimeSignature | undefined): boolean {
+  return b !== undefined && sameMeter(a, b) && a.display === b.display
+}
+
 // The written sign: where it sits, its glyph and its color. The name is
 // compared too: it is never drawn, but it tells one sign from another when a
 // jump is matched to the one it returns to, so parts naming the sign
@@ -912,6 +916,8 @@ function readPart(
     readings.map((reading) => reading.measure),
     warnings,
   )
+  if (state.lateTime)
+    reportLateTime(state.lateTime, 'The part ends there, so it is not converted.', warnings)
   resolveEndings(readings, warnings, id)
   resolveMeasureRepeats(readings, warnings, id)
 
@@ -928,6 +934,63 @@ function readPart(
     globals: readings.map((reading) => reading.global),
     soundTempos: readings.map((reading) => reading.soundTempos),
   }
+}
+
+/**
+ * Places the time signatures a measure stated after its start. The one held
+ * from the measure before is this measure's unless it states its own, and
+ * the last one this measure stated late is held for the next. Returns the
+ * time signature this measure opens with.
+ */
+function settleLateTimes(
+  state: PartState,
+  lateTimes: readonly { time: TimeSignature; at: Fraction; line: number }[],
+  end: Fraction,
+  timeSettled: boolean,
+  time: TimeSignature | undefined,
+  warnings: WarningCollector,
+  context: WarningContext,
+): TimeSignature | undefined {
+  const held = state.lateTime
+  let opens = time
+  if (held && !timeSettled) {
+    opens = held.time
+    if (held.partway) reportLateTime(held, 'It is converted at the next measure.', warnings)
+  } else if (held && !(time && sameTime(time, held.time))) {
+    reportLateTime(held, 'The next measure states its own, so it is not converted.', warnings)
+  }
+
+  state.lateTime = undefined
+  lateTimes.forEach(({ time: late, at, line }, index) => {
+    const stated = {
+      time: late,
+      partway: compareFractions(at, end) < 0,
+      context: { ...context, line },
+    }
+    if (index === lateTimes.length - 1) state.lateTime = stated
+    else {
+      reportLateTime(
+        stated,
+        'A later one in the measure replaces it, so it is not converted.',
+        warnings,
+      )
+    }
+  })
+  return opens
+}
+
+function reportLateTime(
+  late: NonNullable<PartState['lateTime']>,
+  outcome: string,
+  warnings: WarningCollector,
+): void {
+  warnings.add(
+    'unrepresentable:mid-measure-time',
+    `A time signature is stated ${late.partway ? 'partway through' : 'at the end of'} this ` +
+      `measure, and MNX states one only where a measure begins. ${outcome}`,
+    late.context,
+    'time',
+  )
 }
 
 /**
@@ -1108,6 +1171,9 @@ function readMeasure(
   // block in the same measure may not overwrite it.
   let keySettled = false
   let timeSettled = false
+  // Time signatures stated after the measure start, each differing from the
+  // one in force where it is stated.
+  const lateTimes: { time: TimeSignature; at: Fraction; line: number }[] = []
   const dynamics: Dynamic[] = []
   const tempos: Tempo[] = []
   // Every <sound tempo> of the measure, waiting on the score's marks to say
@@ -1142,6 +1208,7 @@ function readMeasure(
 
     switch (found.name) {
       case 'attributes': {
+        const before = state.time
         const reading = readAttributes(
           reader,
           state,
@@ -1154,9 +1221,11 @@ function readMeasure(
           key = reading.key
           keySettled = true
         }
-        if (!timeSettled && reading.timeStated) {
-          time = reading.time
+        if (reading.timeStated && builder.atMeasureStart()) {
+          if (!timeSettled) time = reading.time
           timeSettled = true
+        } else if (reading.time && !sameTime(reading.time, before)) {
+          lateTimes.push({ time: reading.time, at: builder.position(), line: found.line })
         }
         clefs.push(...reading.clefs)
         staffConfigs.push(...reading.staffConfigs)
@@ -1261,6 +1330,8 @@ function readMeasure(
 
     reader.reportUnread(warnings, context)
   }
+
+  time = settleLateTimes(state, lateTimes, builder.furthest(), timeSettled, time, warnings, context)
 
   // A tuplet the source stated as a ratio with no bracket has no stop to
   // close it, so the measure's end is where its run ends.

@@ -105,6 +105,10 @@ export type WarningCode =
   // A measure marked senza misura is unmetered, and MNX states meter as a
   // time signature or nothing. The measure carries no time signature.
   | 'unrepresentable:senza-misura'
+  // A time signature stated after the start of a measure. MNX states one only
+  // where a measure begins, so it is converted at the next measure, and not
+  // at all where the next measure states its own or there is none.
+  | 'unrepresentable:mid-measure-time'
   // A rest filling a measure that states no time signature, whose length no
   // note value can write. MNX states such a rest on the sequence, which
   // carries no length, so the length the source drew is not converted.
