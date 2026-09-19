@@ -110,6 +110,10 @@ export type WarningCode =
   // begins, so it is converted at the next measure, and not at all where the
   // next measure states its own or there is none.
   | 'unrepresentable:mid-measure-time'
+  // A key signature stated partway through a measure, or after its notes
+  // where no next measure takes it. It is converted as a time signature
+  // stated there is.
+  | 'unrepresentable:mid-measure-key'
   // A rest filling a measure that states no time signature, whose length no
   // note value can write. MNX states such a rest on the sequence, which
   // carries no length, so the length the source drew is not converted.

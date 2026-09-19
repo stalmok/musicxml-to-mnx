@@ -880,6 +880,180 @@ describe('a time signature stated after the measure start', () => {
   })
 })
 
+// MNX states a key signature at the start of a measure only, as it does a
+// time signature.
+describe('a key signature stated after the measure start', () => {
+  const keyed = (fifths: number) =>
+    `<attributes><key><fifths>${String(fifths)}</fifths></key></attributes>`
+  const note = (duration: number, voice = 1) =>
+    '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+    `<duration>${String(duration)}</duration><voice>${String(voice)}</voice></note>`
+  const measures = (...bodies: string[]) =>
+    bodies.map((body, index) => `<measure number="${String(index + 1)}">${body}</measure>`).join('')
+  const part = (...bodies: string[]) => score(`<part id="P1">${measures(...bodies)}</part>`)
+  const opening =
+    '<attributes><divisions>12</divisions>' +
+    '<time><beats>2</beats><beat-type>4</beat-type></time></attributes>'
+
+  test('takes effect at the next measure when stated after the notes', () => {
+    const { score: result, warnings } = read(
+      part(opening + keyed(0) + note(24) + keyed(2), note(24)),
+    )
+
+    expect(result.globalMeasures.map((m) => m.key)).toEqual([{ fifths: 0 }, { fifths: 2 }])
+    expect(warnings).toEqual([])
+  })
+
+  test('adds nothing when it restates the key in force', () => {
+    const { score: result, warnings } = read(
+      part(opening + keyed(2) + note(24) + keyed(2), note(24)),
+    )
+
+    expect(result.globalMeasures.map((m) => m.key)).toEqual([{ fifths: 2 }, undefined])
+    expect(warnings).toEqual([])
+  })
+
+  test('adds nothing when the next measure restates it', () => {
+    const { score: result, warnings } = read(
+      part(opening + keyed(0) + note(24) + keyed(2), keyed(2) + note(24)),
+    )
+
+    expect(result.globalMeasures.map((m) => m.key)).toEqual([{ fifths: 0 }, { fifths: 2 }])
+    expect(warnings).toEqual([])
+  })
+
+  test('reports a change partway through a measure and converts it at the next', () => {
+    const { score: result, warnings } = read(
+      part(opening + keyed(0) + note(12) + '\n' + keyed(2) + note(12), note(24)),
+    )
+
+    expect(result.globalMeasures.map((m) => m.key)).toEqual([{ fifths: 0 }, { fifths: 2 }])
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        code: 'unrepresentable:mid-measure-key',
+        element: 'key',
+        message: expect.stringMatching(
+          /^A key signature is stated partway through .* It is converted at the next measure\.$/,
+        ),
+        context: { part: 'P1', measure: 1, line: 2 },
+      }),
+    ])
+  })
+
+  test('reports one the next measure replaces with its own', () => {
+    const { score: result, warnings } = read(
+      part(opening + keyed(0) + note(24) + keyed(2), keyed(-1) + note(24)),
+    )
+
+    expect(result.globalMeasures.map((m) => m.key)).toEqual([{ fifths: 0 }, { fifths: -1 }])
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        code: 'unrepresentable:mid-measure-key',
+        message: expect.stringMatching(
+          /at the end of .* The next measure states its own, so it is not converted\.$/,
+        ),
+        context: expect.objectContaining({ measure: 1 }),
+      }),
+    ])
+  })
+
+  test('reports one stated after the notes of the last measure', () => {
+    const { warnings } = read(part(opening + keyed(0) + note(24) + keyed(2)))
+
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        code: 'unrepresentable:mid-measure-key',
+        message: expect.stringContaining(
+          'This is the last measure of the part, so it is not converted.',
+        ),
+      }),
+    ])
+  })
+
+  test('reports one a later statement in the same measure replaces', () => {
+    const { score: result, warnings } = read(
+      part(opening + keyed(0) + note(12) + keyed(2) + note(12) + keyed(3), note(24)),
+    )
+
+    expect(result.globalMeasures.map((m) => m.key)).toEqual([{ fifths: 0 }, { fifths: 3 }])
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        code: 'unrepresentable:mid-measure-key',
+        message: expect.stringContaining(
+          'A later one in this measure replaces it, so it is not converted.',
+        ),
+      }),
+    ])
+  })
+
+  test('does not carry one a later non-traditional key in the same measure replaces', () => {
+    const { score: result, warnings } = read(
+      part(
+        opening +
+          keyed(0) +
+          note(12) +
+          keyed(2) +
+          note(12) +
+          '<attributes><key><key-step>F</key-step><key-alter>1</key-alter></key></attributes>',
+        note(24),
+      ),
+    )
+
+    expect(result.globalMeasures[1]?.key).toBeUndefined()
+    expect(warnings).toEqual([
+      expect.objectContaining({ code: 'unrepresentable:non-traditional-key' }),
+      expect.objectContaining({
+        code: 'unrepresentable:mid-measure-key',
+        message: expect.stringContaining('A later one in this measure replaces it'),
+      }),
+    ])
+  })
+
+  test("takes a statement at the start of the measure after a backup as the measure's own", () => {
+    const { score: result, warnings } = read(
+      part(
+        opening + note(24) + '<backup><duration>24</duration></backup>' + keyed(2) + note(24, 2),
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.key).toEqual({ fifths: 2 })
+    expect(warnings).toEqual([])
+  })
+
+  // Written a major second above what it sounds, so five flats written read
+  // back as seven flats of concert key: the five sharps the other part states,
+  // spelled the other way.
+  test('carries the concert key of a transposing part, and settles its flip', () => {
+    const B_FLAT = '<transpose><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>'
+    const { score: result, warnings } = read(
+      score(
+        `<part id="P1">${measures(opening + keyed(0) + note(24), keyed(5) + note(24))}</part>` +
+          '<part id="P2">' +
+          measures(
+            opening.replace('</attributes>', `${B_FLAT}</attributes>`) +
+              keyed(2) +
+              note(24) +
+              keyed(-5),
+            note(24),
+          ) +
+          '</part>',
+      ),
+    )
+
+    expect(result.globalMeasures.map((m) => m.key)).toEqual([{ fifths: 0 }, { fifths: 5 }])
+    expect(result.parts[1]?.transposition?.keyFifthsFlipAt).toBeDefined()
+    expect(warnings).toEqual([])
+  })
+
+  test('converts to legal MNX', () => {
+    const { mnx } = convertMusicXML(
+      part(opening + keyed(0) + note(12) + keyed(2) + note(12), note(24)),
+    )
+
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+})
+
 describe('notes', () => {
   test('reads a pitch, including its alteration', () => {
     const { score: result } = read(

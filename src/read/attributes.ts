@@ -285,6 +285,7 @@ export function readAttributes(
     written && state.transposition
       ? { ...written, fifths: concertFifths(written.fifths, state.transposition) }
       : written
+  if (keyBlocks.length > 0) state.key = key
 
   return {
     keyStated: keyBlocks.length > 0,

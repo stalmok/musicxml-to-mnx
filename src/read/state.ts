@@ -3,6 +3,7 @@
 
 import type {
   ClefSign,
+  Key,
   KitComponent,
   ResolvedSound,
   TimeSignature,
@@ -48,17 +49,20 @@ export interface ClefInForce {
 }
 
 /**
- * What a part carries from one measure to the next. `<divisions>` is stated
- * once and stays in force until restated, so a measure is not readable on its
- * own.
+ * A key or time signature a measure stated after its start and held for the
+ * next one, as PartState.lateKey and PartState.lateTime.
  */
-/** A time signature a measure held for the next one, as PartState.lateTime. */
-export interface HeldTime {
-  time: TimeSignature
+export interface HeldSignature<T> {
+  value: T
   partway: boolean
   context: WarningContext
 }
 
+/**
+ * What a part carries from one measure to the next. `<divisions>` is stated
+ * once and stays in force until restated, so a measure is not readable on its
+ * own.
+ */
 export interface PartState {
   divisions: number | undefined
   /**
@@ -80,7 +84,14 @@ export interface PartState {
    * measure takes it unless it states its own. Where it was stated partway
    * through the measure rather than after its notes, the move is a loss.
    */
-  lateTime: HeldTime | undefined
+  lateTime: HeldSignature<TimeSignature> | undefined
+  /**
+   * The key in force, as MNX states it: the concert key of a transposing part.
+   * Undefined where no key is stated, or where the last one is non-traditional.
+   */
+  key: Key | undefined
+  /** A key signature stated after the start of a measure, held as lateTime is. */
+  lateKey: HeldSignature<Key> | undefined
   /** How many staves the part is written on, once it says. */
   staves: number
   /**
@@ -154,6 +165,8 @@ export function newPartState(
     divisionsAssumed: false,
     time: undefined,
     lateTime: undefined,
+    key: undefined,
+    lateKey: undefined,
     staves: 1,
     clefs: new Map(),
     staffLines: new Map(),
