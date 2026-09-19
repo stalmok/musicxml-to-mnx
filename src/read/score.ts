@@ -441,10 +441,16 @@ function mergeGlobalMeasures(
   // the merge has reached: the reading another measure of this part settled
   // for the same signature is the one contributed here. A signature no
   // measure settles is read as it stands, since nothing says a flip covers it.
+  //
+  // A part with no point to state spells the key both ways, and is reported
+  // below. The spelling it writes where the score's key is in force is still
+  // that key, so it does not re-spell the parts that stated it first.
   const contributed = found.map((measure, index) => {
-    if (flipAt === undefined || !measure.key) return measure.key
+    if (!measure.key) return measure.key
     const inScore = keys[index]?.score ?? spellings.get(measure.key.fifths)
-    if (inScore === undefined || inScore === measure.key.fifths) return measure.key
+    if (inScore === undefined || Math.abs(inScore - measure.key.fifths) !== 12) {
+      return measure.key
+    }
     return { ...measure.key, fifths: inScore }
   })
 

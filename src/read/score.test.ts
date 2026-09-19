@@ -2130,6 +2130,36 @@ describe('several parts', () => {
       expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-key'])
     })
 
+    // One point cannot state a part that writes seven sharps and then five
+    // flats for the same five sharps of concert key. The flat spelling is
+    // the score's key spelled the other way, so it does not re-spell the
+    // parts that stated the key first.
+    test.each([
+      ['at the measure start', '', '<attributes><key><fifths>-5</fifths></key></attributes>'],
+      ['late in the measure before', '<attributes><key><fifths>-5</fifths></key></attributes>', ''],
+    ])(
+      'keeps the score’s spelling where a part with no point flips %s',
+      (_name, lateInFirst, atSecond) => {
+        const flipped =
+          `<part id="P1"><measure number="1"><attributes><key><fifths>5</fifths></key>` +
+          `</attributes>${NOTE}</measure><measure number="2">${NOTE}</measure></part>` +
+          `<part id="P2"><measure number="1"><attributes><key><fifths>7</fifths></key>` +
+          `${B_FLAT}</attributes>${NOTE}${lateInFirst}</measure>` +
+          `<measure number="2">${atSecond}${NOTE}</measure></part>`
+        const { score: result, warnings } = read(score(flipped))
+
+        expect(result.globalMeasures.map((measure) => measure.key)).toEqual([
+          { fifths: 5 },
+          { fifths: 5 },
+        ])
+        expect(result.parts[1]?.transposition?.keyFifthsFlipAt).toBeUndefined()
+        expect(warnings.map((w) => [w.code, w.context])).toEqual([
+          ['unrepresentable:cross-part-key', { part: 'P2', measure: 2 }],
+        ])
+        expect(schemaErrors(convertMusicXML(score(flipped)).mnx)).toEqual([])
+      },
+    )
+
     // A transposing part can be in a different key outright, which no point
     // accounts for: only twelve fifths is the same key spelled the other way.
     test('reports a transposing part in a different key', () => {
@@ -2163,6 +2193,22 @@ describe('several parts', () => {
       const { warnings } = read(score(keyed('P1', 5) + keyed('P2', -7)))
 
       expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-key'])
+    })
+
+    test('keeps the score’s spelling where a part at concert pitch alone restates it', () => {
+      const respelled =
+        `<part id="P1"><measure number="1"><attributes><key><fifths>5</fifths></key>` +
+        `</attributes>${NOTE}</measure><measure number="2">${NOTE}</measure></part>` +
+        `<part id="P2"><measure number="1"><attributes><key><fifths>5</fifths></key>` +
+        `</attributes>${NOTE}</measure>` +
+        `<measure number="2"><attributes><key><fifths>-7</fifths></key></attributes>` +
+        `${NOTE}</measure></part>`
+      const { score: result, warnings } = read(score(respelled))
+
+      expect(result.globalMeasures[1]?.key).toEqual({ fifths: 5 })
+      expect(warnings.map((w) => [w.code, w.context])).toEqual([
+        ['unrepresentable:cross-part-key', { part: 'P2', measure: 2 }],
+      ])
     })
 
     // One point covers the whole part and its sign picks the direction, so a
