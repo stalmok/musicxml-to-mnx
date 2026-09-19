@@ -941,7 +941,7 @@ function readPart(
  * A key or time signature stated after the start of a measure. A statement
  * MNX cannot carry, such as senza misura or a non-traditional key, states none.
  */
-interface LateStatement<T> {
+interface LateSignature<T> {
   value: T | undefined
   at: Fraction
   line: number
@@ -949,25 +949,16 @@ interface LateStatement<T> {
 
 /** What reports and compares a key or a time signature stated late. */
 interface SignatureKind<T> {
-  code: 'unrepresentable:mid-measure-key' | 'unrepresentable:mid-measure-time'
   element: 'key' | 'time'
-  name: string
   same: (a: T, b: T | undefined) => boolean
 }
 
 const KEY: SignatureKind<Key> = {
-  code: 'unrepresentable:mid-measure-key',
   element: 'key',
-  name: 'A key signature',
   same: (a, b) => b !== undefined && a.fifths === b.fifths,
 }
 
-const TIME: SignatureKind<TimeSignature> = {
-  code: 'unrepresentable:mid-measure-time',
-  element: 'time',
-  name: 'A time signature',
-  same: sameTime,
-}
+const TIME: SignatureKind<TimeSignature> = { element: 'time', same: sameTime }
 
 /**
  * The signature a measure opens with: its own, stated at its start, or else
@@ -995,19 +986,19 @@ function opening<T>(
  */
 function holdLate<T>(
   kind: SignatureKind<T>,
-  lates: readonly LateStatement<T>[],
+  lates: readonly LateSignature<T>[],
   inForce: T | undefined,
   end: Fraction,
   warnings: WarningCollector,
   context: WarningContext,
 ): HeldSignature<T> | undefined {
-  const changes: LateStatement<T>[] = []
+  const changes: LateSignature<T>[] = []
   let current = inForce
   for (const late of lates) {
     if (late.value === undefined || !kind.same(late.value, current)) changes.push(late)
     current = late.value
   }
-  const held = ({ at, line }: LateStatement<T>, value: T): HeldSignature<T> => ({
+  const held = ({ at, line }: LateSignature<T>, value: T): HeldSignature<T> => ({
     value,
     partway: compareFractions(at, end) < 0,
     context: { ...context, line },
@@ -1034,8 +1025,8 @@ function reportLate<T>(
   warnings: WarningCollector,
 ): void {
   warnings.add(
-    kind.code,
-    `${kind.name} is stated ${late.partway ? 'partway through' : 'at the end of'} this ` +
+    `unrepresentable:mid-measure-${kind.element}`,
+    `A ${kind.element} signature is stated ${late.partway ? 'partway through' : 'at the end of'} this ` +
       `measure, and MNX states one only where a measure begins. ${outcome}`,
     late.context,
     kind.element,
@@ -1221,8 +1212,8 @@ function readMeasure(
   let keySettled = false
   let timeSettled = false
   // Key and time signatures stated after the measure start.
-  const lateKeys: LateStatement<Key>[] = []
-  const lateTimes: LateStatement<TimeSignature>[] = []
+  const lateKeys: LateSignature<Key>[] = []
+  const lateTimes: LateSignature<TimeSignature>[] = []
   const dynamics: Dynamic[] = []
   const tempos: Tempo[] = []
   // Every <sound tempo> of the measure, waiting on the score's marks to say
