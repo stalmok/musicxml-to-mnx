@@ -2195,20 +2195,73 @@ describe('several parts', () => {
       expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-key'])
     })
 
-    test('keeps the score’s spelling where a part at concert pitch alone restates it', () => {
-      const respelled =
-        `<part id="P1"><measure number="1"><attributes><key><fifths>5</fifths></key>` +
-        `</attributes>${NOTE}</measure><measure number="2">${NOTE}</measure></part>` +
-        `<part id="P2"><measure number="1"><attributes><key><fifths>5</fifths></key>` +
-        `</attributes>${NOTE}</measure>` +
-        `<measure number="2"><attributes><key><fifths>-7</fifths></key></attributes>` +
-        `${NOTE}</measure></part>`
-      const { score: result, warnings } = read(score(respelled))
+    /** Two parts at concert pitch, each stating the keys given, measure by measure. */
+    const concert = (...parts: readonly (number | undefined)[][]) =>
+      parts
+        .map(
+          (keys, index) =>
+            `<part id="P${String(index + 1)}">` +
+            keys
+              .map(
+                (fifths, measure) =>
+                  `<measure number="${String(measure + 1)}">` +
+                  (fifths === undefined
+                    ? ''
+                    : `<attributes><key><fifths>${String(fifths)}</fifths></key></attributes>`) +
+                  `${NOTE}</measure>`,
+              )
+              .join('') +
+            '</part>',
+        )
+        .join('')
 
-      expect(result.globalMeasures[1]?.key).toEqual({ fifths: 5 })
-      expect(warnings.map((w) => [w.code, w.context])).toEqual([
-        ['unrepresentable:cross-part-key', { part: 'P2', measure: 2 }],
-      ])
+    // A part at concert pitch has no point to state either. Where an earlier
+    // part has the measure and the score's key is in force, the other
+    // spelling is that key. Elsewhere it is the only key stated.
+    const key = (measure: number) => ['unrepresentable:cross-part-key', { part: 'P2', measure }]
+    test.each([
+      [
+        'the score’s spelling for the same key written flatter',
+        [5, undefined],
+        [5, -7],
+        [5, 5],
+        [key(2)],
+      ],
+      [
+        'the score’s spelling for the same key written sharper',
+        [-7, undefined],
+        [-7, 5],
+        [-7, -7],
+        [key(2)],
+      ],
+      [
+        'the score’s spelling after the score changes it',
+        [5, -7, undefined],
+        [5, undefined, 5],
+        [5, -7, -7],
+        [key(2), key(3)],
+      ],
+      [
+        'its own spelling where the score has no key in force yet',
+        [undefined, -7],
+        [5, undefined],
+        [5, -7],
+        [key(2)],
+      ],
+      [
+        'its own spelling past the measures of a shorter earlier part',
+        [5, undefined],
+        [5, undefined, -7],
+        [5, undefined, -7],
+        [key(3), ['inconsistent:measure-count', { part: 'P1' }]],
+      ],
+    ])('contributes %s', (_name, first, second, expected, reported) => {
+      const source = score(concert(first, second))
+      const { score: result, warnings } = read(source)
+
+      expect(result.globalMeasures.map((measure) => measure.key?.fifths)).toEqual(expected)
+      expect(warnings.map((w) => [w.code, w.context])).toEqual(reported)
+      expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
     })
 
     // One point covers the whole part and its sign picks the direction, so a
