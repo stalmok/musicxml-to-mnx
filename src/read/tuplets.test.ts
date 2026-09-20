@@ -3592,6 +3592,58 @@ describe('a bracket dropped inside one whose ratio counted it', () => {
     ])
   })
 
+  // The wording comes from what the bracket holds once the drop has happened,
+  // not from what it held before: the drop is the converter's doing, and
+  // describing the bracket as overrunning blames the source for it.
+  test('describes the bracket around it by what it holds after the drop', () => {
+    const { warnings } = read(source)
+    const reported = warnings.filter((w) => w.code === 'unrepresentable:tuplet-ratio')
+
+    expect(reported.at(-1)?.message).toContain('falls short of')
+  })
+
+  test('leaves output the schema takes', () => {
+    expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
+  })
+})
+
+// A ratio states two things: it counts what the bracket holds, and it gives
+// the notes the time they take. A bracket whose content its ratio counts, but
+// whose notes sound for a time that ratio does not give them, is rewritten
+// over the time all the same, so that the measure adds up.
+describe('a bracket whose notes take a time its ratio does not give them', () => {
+  // Three eighths under 3:2, each lasting a 16th where the ratio makes an
+  // eighth a twelfth of a whole note.
+  const note = (step: string, bracket = '') =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    '<duration>3</duration><type>eighth</type>' +
+    '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+    '</time-modification>' +
+    (bracket ? `<notations><tuplet type="${bracket}"/></notations>` : '') +
+    '</note>'
+  const source = measure(note('C', 'start') + note('D') + note('E', 'stop'))
+
+  test('states the bracket over the time its notes take', () => {
+    const { content } = read(source)
+    const tuplet = content?.[0]
+
+    expect(tuplet?.kind === 'tuplet' && tuplet.inner).toEqual({
+      value: { base: '16th', dots: 0 },
+      multiple: 6,
+    })
+    expect(tuplet?.kind === 'tuplet' && tuplet.outer).toEqual({
+      value: { base: '16th', dots: 0 },
+      multiple: 3,
+    })
+  })
+
+  test('says the notes take less time than the stated ratio gives them', () => {
+    const { warnings } = read(source)
+    const reported = warnings.find((w) => w.code === 'inconsistent:tuplet')
+
+    expect(reported?.message).toContain('take less time')
+  })
+
   test('leaves output the schema takes', () => {
     expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
   })
@@ -3621,6 +3673,13 @@ describe('a bracket the silence after it completes', () => {
   /** A grace note, which takes none of the measure's time. */
   const grace =
     '<note><grace/><pitch><step>G</step><octave>4</octave></pitch><type>eighth</type></note>'
+
+  /** The same, opening and closing a bracket of its own. */
+  const graceBracket =
+    '<note><grace/><pitch><step>G</step><octave>4</octave></pitch><type>eighth</type>' +
+    '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+    '</time-modification>' +
+    '<notations><tuplet type="start"/><tuplet type="stop"/></notations></note>'
 
   /** Divisions and nothing else: the part states no time signature. */
   const UNTIMED = '<attributes><divisions>12</divisions></attributes>'
@@ -3782,6 +3841,43 @@ describe('a bracket the silence after it completes', () => {
 
     expect(stated(content?.[0])?.held).toEqual(['event', 'space'])
     expect(content?.slice(1).map((item) => item.kind)).toEqual(['grace'])
+    expect(warnings).toEqual([])
+  })
+
+  // A grace note that opens a bracket of its own is a grace note still: it
+  // takes none of the measure's time, so the silence around it is one
+  // silence, read to the end.
+  test.each([
+    [
+      'standing after the bracket',
+      graceBracket + '<forward><duration>4</duration></forward>',
+      ['event', 'grace', 'space'],
+    ],
+    [
+      'between two gaps after the bracket',
+      '<forward><duration>2</duration></forward>' +
+        graceBracket +
+        '<forward><duration>2</duration></forward>',
+      ['event', 'space', 'grace', 'space'],
+    ],
+  ])('states the silence past a grace note %s that opens a bracket', (_, between, held) => {
+    const { content, warnings } = timed(shortQuarter + between + plain('D', 12, 'quarter'))
+
+    expect(stated(content?.[0])).toEqual({
+      inner: { value: { base: 'eighth', dots: 0 }, multiple: 3 },
+      outer: { value: { base: 'eighth', dots: 0 }, multiple: 2 },
+      held,
+    })
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-untimed'])
+  })
+
+  test('takes no more of a longer gap after the bracket than it is missing', () => {
+    const { content, warnings } = timed(
+      shortQuarter + '<forward><duration>8</duration></forward>' + plain('D', 6, 'eighth'),
+    )
+
+    expect(stated(content?.[0])?.held).toEqual(['event', 'space'])
+    expect(content?.[1]?.kind === 'space' && content[1].duration).toEqual(fraction(1, 12))
     expect(warnings).toEqual([])
   })
 
@@ -4005,6 +4101,31 @@ describe('a bracket the silence before it completes', () => {
     const space = tuplet?.kind === 'tuplet' ? tuplet.content[0] : undefined
 
     expect(space?.kind === 'space' && space.duration).toEqual(fraction(1, 8))
+  })
+
+  /** A grace note, which takes none of the measure's time. */
+  const grace =
+    '<note><grace/><pitch><step>G</step><octave>4</octave></pitch><type>eighth</type></note>'
+
+  // A grace note takes none of the measure's time, so the skip written before
+  // it still stands straight before the bracket. The group is drawn where the
+  // bracket now runs, so it moves inside with the silence.
+  test('states the silence past a grace note standing before the bracket', () => {
+    const { content, warnings } = timed(
+      skip(4) + grace + alone('C', 8, 'quarter') + plain('D', 12, 'quarter'),
+    )
+
+    expect(shape(content)).toEqual([['space', 'grace', 'event'], 'event'])
+    expect(warnings).toEqual([])
+  })
+
+  // Nothing but a grace group stands before a bracket opening the measure, so
+  // there is no skip for the silence to come off.
+  test('takes the silence after where only a grace note stands before', () => {
+    const { content, warnings } = timed(grace + alone('C', 8, 'quarter'))
+
+    expect(shape(content)).toEqual(['grace', ['event', 'space']])
+    expect(warnings).toEqual([])
   })
 
   test('splits the silence around a note standing in the middle of its bracket', () => {

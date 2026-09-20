@@ -78,18 +78,16 @@ export interface OpenTuplet {
    */
   derived: boolean
   /**
-   * True where the source stated this level's ratio: its own marker gave it,
-   * or one level opened and the note's <time-modification> is all of it.
-   * False where the converter worked it out instead, by reading it off the
-   * first note or by dividing a cumulative ratio between levels, which leaves
-   * a level with whatever the others did not take. Such a ratio says nothing
+   * The ratio the source stated for this level: its own marker gave it, or
+   * one level opened and the note's <time-modification> is all of it. Unset
+   * where the converter worked it out instead, by reading it off the first
+   * note or by dividing a cumulative ratio between levels, which leaves a
+   * level with whatever the others did not take. Such a ratio says nothing
    * about what the source drew over the bracket.
    */
-  stated: boolean
+  stated: { inner: NoteValueQuantity; outer: NoteValueQuantity } | undefined
   /** Where this voice's content ran to when the bracket opened. */
   openEnd: Fraction
-  /** The skip standing straight before a bracket no other bracket holds. */
-  before: LeadingSkip | undefined
   /**
    * True where the source stated the ratio and drew no bracket, so what the
    * ratio counts is what says where the tuplet ends.
@@ -97,10 +95,9 @@ export interface OpenTuplet {
   unbracketed: boolean
   /** The list this bracket sits in, for dropping it from where it stands. */
   within: SequenceItem[]
-  /** The brackets that closed inside this one and are written over what they
-   * hold, waiting for the frame this one ends up with. */
-  rewritten: RewrittenTuplet[]
-  /** The skips filled directly inside this one, waiting for the same frame. */
+  /** The brackets that closed inside this one, for its claim to carry. */
+  children: TupletClaim[]
+  /** The skips filled directly inside this one, waiting for its frame. */
   skips: OpenSkip[]
 }
 
@@ -113,78 +110,6 @@ export interface OpenSkip {
   space: Draft<Space>
   /** The measure time it stands for, which the frame does not change. */
   spent: Fraction
-}
-
-/** A skip written where no bracket is open, with the list it stands in. */
-export interface LeadingSkip extends OpenSkip {
-  within: SequenceItem[]
-}
-
-/** Takes measure time off the front of a bracket from the skip before it. */
-export function takeLead(before: LeadingSkip, lead: Fraction): void {
-  const left = subtractFractions(before.spent, lead)
-  if (isZero(left)) before.within.splice(before.within.indexOf(before.space), 1)
-  else before.space.duration = left
-}
-
-/**
- * A bracket that closed inside another and states what it holds against the
- * time it took. Its outer is written in the frame of the bracket around it,
- * and that bracket may itself be rewritten when it closes, so the reading is
- * held here until the frame is settled.
- */
-export interface RewrittenTuplet {
-  tuplet: Draft<Tuplet>
-  /** The list it sits in, for dropping it from where it stands. */
-  within: SequenceItem[]
-  /** The value the source drew the bracket with. */
-  drawn: NoteValue
-  /** The written length of what it holds, which becomes its inner. */
-  held: Fraction
-  /** The measure time it took. */
-  spent: Fraction
-  /** The outer the ratios open at its close gave it, used where the frame
-   * around it says nothing. */
-  provisional: Fraction
-  /** The length the ratio the source drew gives it, which is what it takes
-   * where no pair of note values states the time its notes do. */
-  drawnOuter: Fraction
-  /** How its content compares with the ratio the source stated for it. */
-  misfits: number
-  /** True where a rewritten ratio is the source's to answer for. */
-  reportable: boolean
-  /**
-   * The place the report keeps for it. A bracket settles after everything it
-   * waits on has been read, which can be the end of the measure, and the
-   * report reads in document order, so the place is taken at the stop the
-   * source wrote.
-   */
-  place: WarningPlace
-  line: number
-}
-
-/**
- * A bracket that closed holding less than its stated ratio counts, and whose
- * own reading no pair of note values states. The silence the voice passes
- * over next can stand for what it is missing, so the reading waits until the
- * voice sounds again or the measure ends.
- */
-export interface ShortTuplet {
-  tuplet: Draft<Tuplet>
-  /** The ratio the source stated, which the silence lets the bracket keep. */
-  ratio: { inner: NoteValueQuantity; outer: NoteValueQuantity }
-  /** How much of its written value a note in the bracket lasts. */
-  ratioFactor: Fraction
-  /** The measure time taken from the skip before the bracket. */
-  lead: Fraction
-  /** The skip it is taken from, where it takes any. */
-  before: LeadingSkip | undefined
-  /** The measure time still missing, which the silence after has to give. */
-  silence: Fraction
-  /** Where the bracket ends, which the silence after it is measured from. */
-  end: Fraction
-  /** What to state instead, where no silence completes it. */
-  entry: RewrittenTuplet
 }
 
 /** The space a tuplet is played in, against what is written in it. */
@@ -399,73 +324,148 @@ export function quantityLength(quantity: NoteValueQuantity): Fraction {
   return multiplyFractions(fraction(quantity.multiple), lengthOf(quantity.value))
 }
 
-/** The written length a tuplet's ratio counts, for example three eighths. */
-export function countedLengthOf(open: OpenTuplet): Fraction {
-  return quantityLength(open.tuplet.inner)
+/**
+ * A bracket the read has closed, and what the read saw of it.
+ *
+ * What the bracket writes is not decided here. It turns on what the bracket
+ * holds once the brackets inside it are written, on the frame the brackets
+ * around it end up writing in, and on the silence after it, and none of the
+ * three is known while the bracket is being read. So every field is a fact
+ * the read observed, and nothing derived is stored.
+ */
+export interface TupletClaim {
+  tuplet: Draft<Tuplet>
+  /** The list it stands in, for taking it out where it cannot be drawn. */
+  within: SequenceItem[]
+  /** The ratio the source stated for it, where it stated one. */
+  stated: { inner: NoteValueQuantity; outer: NoteValueQuantity } | undefined
+  /** True where the ratio was read off the bracket's first note. */
+  derived: boolean
+  /** True where the source stated the ratio and drew no bracket. */
+  unbracketed: boolean
+  /** True where the barline closed it rather than a stop the source wrote. */
+  cut: boolean
+  /** Where this voice's content ran to when the bracket opened. */
+  openEnd: Fraction
+  /** The measure time it took. */
+  spent: Fraction
+  /**
+   * How much of its written value a note beside it lasts, at its close: the
+   * ratios of the brackets still open around it, multiplied. It says what the
+   * bracket's own outer comes to where those brackets keep their ratios.
+   */
+  frame: Fraction
+  /** The brackets that closed inside it. */
+  children: TupletClaim[]
+  /** The skips filled directly inside it. */
+  skips: OpenSkip[]
+  /**
+   * The place the report keeps for it. A bracket settles once the measure is
+   * whole, when the element it came from is gone, and the report reads in
+   * document order, so the place is taken at the stop the source wrote.
+   */
+  place: WarningPlace
+  line: number
+}
+
+/** A voice's own item list and where it runs to, for a claim to reach into. */
+export interface VoiceTail {
+  content: SequenceItem[]
+  end: Fraction
+  /** How far the measure runs, which bounds the silence a claim may take. */
+  measure: Fraction
 }
 
 /**
- * How much written length a rewritten bracket spends for each unit of time,
- * read off what else it holds.
+ * Settles every bracket of one voice, the measure being whole, and hands
+ * back where the voice runs to: a bracket completed by the measure's tail
+ * carries the voice that much further.
  *
- * A bracket rewritten over its content states its own inner against the time
- * it took, so the frame it writes is not the one its opening ratio stated.
- * Everything it holds but a rewritten bracket is already written at a length
- * of its own, and the time those took is the rest of the bracket's own, which
- * together give the rate. Undefined where it holds nothing else, or where
- * what it holds took no time, and the rate says nothing.
- *
- * A skip is not one of them. Its written length came from the ratios open
- * when it was filled rather than from the source, so it witnesses the frame
- * the bracket opened with and not the one it ends up with.
+ * A bracket standing directly in the voice's own list is the one the silence
+ * around it can complete. Anything deeper is bounded by the bracket around
+ * it, which has already gathered what silence there is into its own skips.
  */
-export function frameRate(open: OpenTuplet, spent: Fraction): Fraction | undefined {
-  let insideSpent = fraction(0)
-  let insideWritten = fraction(0)
-  for (const entry of open.rewritten) {
-    insideSpent = addFractions(insideSpent, entry.spent)
-    insideWritten = addFractions(insideWritten, quantityLength(entry.tuplet.outer))
-  }
-  for (const skip of open.skips) {
-    insideSpent = addFractions(insideSpent, skip.spent)
-    insideWritten = addFractions(insideWritten, skip.space.duration)
-  }
-  const restSpent = subtractFractions(spent, insideSpent)
-  const restWritten = subtractFractions(writtenLengthOf(open.tuplet.content), insideWritten)
-  if (restSpent.num <= 0 || restWritten.num <= 0) return undefined
-  return divideFractions(restWritten, restSpent)
+export function settleClaims(
+  claims: readonly TupletClaim[],
+  voice: VoiceTail,
+  warnings: WarningCollector,
+  context: WarningContext,
+): Fraction {
+  for (const claim of claims) settleClaim(claim, undefined, voice, warnings, context)
+  return voice.end
 }
 
 /**
- * Writes what `open` holds that waits on the frame it ends up with: the
- * brackets rewritten inside it, and the skips filled in it. `rate` is that
- * frame; where it is undefined each keeps the reading it has, which is the
- * frame the bracket opened with.
+ * Writes one bracket, outermost first.
+ *
+ * A bracket's written statement needs its children's written outers, and a
+ * child's outer needs the frame the bracket ends up writing in. That frame is
+ * fixed by the content that does not wait, so one descent does both: fix the
+ * frame, hand it down, then measure what the bracket holds.
+ *
+ * `rate` is the frame the bracket around it writes in, unset for a bracket
+ * standing in the voice's own list or one whose parent's frame says nothing.
  */
-export function settleInside(
-  open: OpenTuplet,
+function settleClaim(
+  claim: TupletClaim,
   rate: Fraction | undefined,
+  voice: VoiceTail | undefined,
   warnings: WarningCollector,
   context: WarningContext,
 ): void {
-  for (const entry of open.rewritten) {
-    settleTuplet(
-      entry,
-      rate ? multiplyFractions(entry.spent, rate) : entry.provisional,
-      warnings,
-      context,
-    )
-  }
-  open.rewritten.length = 0
-
+  const inside = frameOf(claim)
+  for (const child of claim.children) settleClaim(child, inside, undefined, warnings, context)
   // A skip stands for the measure time the cursor passed over, whatever the
   // frame. Written at the settled rate, it goes on standing for that time.
-  if (rate) {
-    for (const skip of open.skips) {
-      skip.space.duration = multiplyFractions(skip.spent, rate)
-    }
+  if (inside) {
+    for (const skip of claim.skips) skip.space.duration = multiplyFractions(skip.spent, inside)
   }
-  open.skips.length = 0
+
+  // Measured now that what the bracket holds is final: a bracket dropped
+  // inside it leaves what it held where it stood.
+  const held = writtenLengthOf(claim.tuplet.content)
+  const sounded = rate
+    ? multiplyFractions(claim.spent, rate)
+    : divideFractions(claim.spent, claim.frame)
+  // A ratio states two things, and both have to hold for it to stand: it
+  // counts what the bracket holds, and it gives the notes the time they take.
+  const misfits = compareFractions(held, quantityLength(claim.tuplet.inner))
+  const mistimed = compareFractions(sounded, quantityLength(claim.tuplet.outer))
+  if (!claim.derived && misfits === 0 && mistimed === 0) return
+
+  if (voice && complete(claim, held, sounded, voice)) return
+  rewrite(claim, held, misfits, mistimed, sounded, warnings, context)
+}
+
+/**
+ * How much written length a bracket spends for each unit of measure time,
+ * read off the content that does not wait for it.
+ *
+ * Everything a bracket holds but a bracket of its own and a skip is already
+ * written at a length the source gave it, and the time those took is the rest
+ * of the bracket's own, which together give the rate. Undefined where it
+ * holds nothing else, or where what it holds took no time, and the rate says
+ * nothing.
+ *
+ * A skip is none of them. Its written length came from the ratios open when
+ * it was filled rather than from the source, so it witnesses the frame the
+ * bracket opened with and not the one it ends up with.
+ */
+function frameOf(claim: TupletClaim): Fraction | undefined {
+  const waiting = new Set<SequenceItem>()
+  let waitingSpent = fraction(0)
+  for (const child of claim.children) {
+    waiting.add(child.tuplet as SequenceItem)
+    waitingSpent = addFractions(waitingSpent, child.spent)
+  }
+  for (const skip of claim.skips) {
+    waiting.add(skip.space as SequenceItem)
+    waitingSpent = addFractions(waitingSpent, skip.spent)
+  }
+  const restWritten = writtenLengthOf(claim.tuplet.content.filter((item) => !waiting.has(item)))
+  const restSpent = subtractFractions(claim.spent, waitingSpent)
+  if (restSpent.num <= 0 || restWritten.num <= 0) return undefined
+  return divideFractions(restWritten, restSpent)
 }
 
 /** Takes a bracket out of the list it stands in, leaving what it held. */
@@ -477,17 +477,25 @@ export function unwrapTuplet(within: SequenceItem[], tuplet: Draft<Tuplet>): voi
 }
 
 /**
- * States a rewritten bracket over its content, and reports where the ratio
- * that leaves it is not one MNX can carry or is not the one the source drew.
+ * States a bracket over what it holds against the time it took, and reports
+ * where the ratio that leaves it is not one MNX can carry or is not the one
+ * the source drew.
  */
-export function settleTuplet(
-  entry: RewrittenTuplet,
+function rewrite(
+  claim: TupletClaim,
+  held: Fraction,
+  misfits: number,
+  mistimed: number,
   sounded: Fraction,
   warnings: WarningCollector,
   context: WarningContext,
 ): void {
-  const { tuplet, held, misfits, place, line } = entry
-  scaleToContent(tuplet, entry.drawn, held, sounded)
+  const { tuplet, place, line } = claim
+  const drawn = tuplet.inner.value
+  // The length the ratio the source drew gives it, which is what it takes
+  // where no pair of note values states the time its notes do.
+  const drawnOuter = quantityLength(tuplet.outer)
+  scaleToContent(tuplet, drawn, held, sounded)
 
   if (compareFractions(held, quantityLength(tuplet.inner)) !== 0) {
     // MNX counts both sides of a ratio in note values, and a note value
@@ -496,13 +504,12 @@ export function settleTuplet(
     // thirds of a quarter, which no pair of them states. MNX also requires a
     // tuplet's content to come to its inner, so the bracket cannot stand over
     // the time its notes take. It takes the time its own ratio gives it
-    // instead, which is the time it took before this was read, and states
-    // that over what it holds.
-    scaleToContent(tuplet, entry.drawn, held, entry.drawnOuter)
+    // instead, and states that over what it holds.
+    scaleToContent(tuplet, drawn, held, drawnOuter)
     const counts = compareFractions(held, quantityLength(tuplet.inner)) === 0
     // A bracket no pair of note values counts at all cannot be drawn: what it
     // holds takes its place, written as it stands.
-    if (!counts) unwrapTuplet(entry.within, tuplet)
+    if (!counts) unwrapTuplet(claim.within, tuplet)
     warnings.addAt(
       place,
       'unrepresentable:tuplet-ratio',
@@ -517,19 +524,23 @@ export function settleTuplet(
       { ...context, line },
       'tuplet',
     )
-  } else if (misfits !== 0 && entry.reportable) {
-    // The source drew a bracket over notes its own ratio does not count, so
-    // the ratio is rewritten to count them. Reported only where the source
-    // stated that ratio for this bracket: one read from its first note is
-    // reported where it is read, one the converter divided out of a
+  } else if (claim.stated && !claim.cut) {
+    // The source drew a bracket the notes under it do not bear out, so the
+    // ratio is rewritten to state what they do. Reported only where the
+    // source stated that ratio for this bracket: one read from its first note
+    // is reported where it is read, one the converter divided out of a
     // cumulative ratio says nothing about what the source drew, and one the
     // barline cut holds less because the converter cut it.
     warnings.addAt(
       place,
       'inconsistent:tuplet',
-      `A tuplet's written content ${misfits < 0 ? 'falls short of' : 'overruns'} the ` +
-        'ratio the source states for it. The ratio is rewritten to count the notes the ' +
-        'bracket holds.',
+      misfits !== 0
+        ? `A tuplet's written content ${misfits < 0 ? 'falls short of' : 'overruns'} the ` +
+            'ratio the source states for it. The ratio is rewritten to count the notes ' +
+            'the bracket holds.'
+        : `A tuplet's notes take ${mistimed < 0 ? 'less' : 'more'} time than the ratio the ` +
+            'source states for it gives them. The ratio is rewritten to state the time ' +
+            'they take.',
       { ...context, line },
       'tuplet',
     )
@@ -537,8 +548,8 @@ export function settleTuplet(
 }
 
 /**
- * What a closing bracket would need from the silence after it, where silence
- * is what stands between it and the ratio the source drew.
+ * Completes a bracket holding less than the ratio the source stated counts,
+ * from the silence around it, and keeps that ratio. True where it did.
  *
  * Three things have to hold. The source has to have stated the ratio for this
  * bracket, so that keeping it keeps what the source drew: a run the ratio
@@ -552,29 +563,43 @@ export function settleTuplet(
  * A bracket the barline cut is none of these: the rest of it is in the next
  * measure, not in silence.
  */
-export function shortOf(
-  closed: OpenTuplet,
-  entry: RewrittenTuplet,
-  cut: boolean,
-): ShortTuplet | undefined {
-  const { tuplet, held, spent } = entry
-  const missing = subtractFractions(quantityLength(tuplet.inner), held)
-  if (cut || !closed.stated || closed.derived || missing.num <= 0) return undefined
-  if (compareFractions(spent, multiplyFractions(held, closed.ratio)) !== 0) return undefined
-  if (statesRatio(entry.drawn, held, entry.provisional)) return undefined
+function complete(
+  claim: TupletClaim,
+  held: Fraction,
+  sounded: Fraction,
+  voice: VoiceTail,
+): boolean {
+  const { stated, tuplet } = claim
+  if (!stated || claim.derived || claim.cut) return false
+  const ratio = ratioOf(stated.inner, stated.outer)
+  if (compareFractions(claim.spent, multiplyFractions(held, ratio)) !== 0) return false
+  if (statesRatio(tuplet.inner.value, held, sounded)) return false
+  const missing = subtractFractions(quantityLength(stated.inner), held)
+  if (missing.num <= 0) return false
 
-  const silence = multiplyFractions(missing, closed.ratio)
-  const lead = leadOf(closed, silence)
-  return {
-    tuplet,
-    ratio: { inner: tuplet.inner, outer: tuplet.outer },
-    ratioFactor: closed.ratio,
-    lead,
-    before: closed.before,
-    silence: subtractFractions(silence, lead),
-    end: addFractions(closed.openEnd, spent),
-    entry,
+  const silence = multiplyFractions(missing, ratio)
+  const at = voice.content.indexOf(tuplet as SequenceItem)
+  const lead = leadOf(claim, silence, spaceAt(voice.content, skipBefore(voice.content, at)))
+  const after = subtractFractions(silence, lead)
+  const silent = silenceAfter(voice, at)
+  if (compareFractions(silent.time, after) < 0) return false
+
+  takeSilence(claim, voice, lead, after, silent.span, ratio)
+  return true
+}
+
+/**
+ * Where the skip standing straight before a bracket is, or -1 where none
+ * does. A grace group takes none of the measure's time, so one written
+ * between the two leaves the skip standing straight before the bracket still.
+ */
+function skipBefore(content: readonly SequenceItem[], at: number): number {
+  for (let index = at - 1; index >= 0; index -= 1) {
+    const item = content[index]
+    if (item?.kind === 'grace') continue
+    return item?.kind === 'space' ? index : -1
   }
+  return -1
 }
 
 /**
@@ -584,21 +609,121 @@ export function shortOf(
  * holds that much and the bracket is missing that much. Otherwise all of it
  * stands after.
  */
-function leadOf(closed: OpenTuplet, silence: Fraction): Fraction {
+function leadOf(claim: TupletClaim, silence: Fraction, before: Space | undefined): Fraction {
   const none = fraction(0)
-  if (!closed.before) return none
-  const beat = quantityLength(closed.tuplet.outer)
-  const beats = divideFractions(closed.openEnd, beat)
+  if (!before) return none
+  const beat = quantityLength(claim.tuplet.outer)
+  const beats = divideFractions(claim.openEnd, beat)
   const lead = subtractFractions(
-    closed.openEnd,
+    claim.openEnd,
     multiplyFractions(beat, fraction(Math.floor(beats.num / beats.den))),
   )
   if (compareFractions(lead, silence) > 0) return none
-  if (compareFractions(lead, closed.before.spent) > 0) return none
+  if (compareFractions(lead, before.duration) > 0) return none
   return lead
+}
+
+/**
+ * The measure time the voice passes over in silence straight after a bracket,
+ * and how many of the voice's items that silence runs over: the skips written
+ * there, and the measure's tail where nothing sounds after them at all. A
+ * grace group takes none of the measure's time, so it neither gives silence
+ * nor ends it, and the bracket may reach over one.
+ */
+function silenceAfter(voice: VoiceTail, at: number): { time: Fraction; span: number } {
+  let time = fraction(0)
+  let span = 0
+  for (const item of voice.content.slice(at + 1)) {
+    if (item.kind !== 'space' && item.kind !== 'grace') return { time, span }
+    if (item.kind === 'space') time = addFractions(time, item.duration)
+    span += 1
+  }
+  return { time: addFractions(time, subtractFractions(voice.measure, voice.end)), span }
+}
+
+/**
+ * Draws the silence a short bracket needs inside it: `lead` off the skip
+ * before it, then `after` off the skips and the measure's tail beyond it.
+ * Everything taken in is written in the bracket's own frame, which the ratio
+ * the source stated gives it.
+ *
+ * A grace group standing in the span the bracket takes in moves inside with
+ * it, having been drawn where the bracket now runs.
+ */
+function takeSilence(
+  claim: TupletClaim,
+  voice: VoiceTail,
+  lead: Fraction,
+  after: Fraction,
+  span: number,
+  ratio: Fraction,
+): void {
+  const written = (time: Fraction): Draft<Space> => ({
+    kind: 'space',
+    duration: divideFractions(time, ratio),
+  })
+  const { content } = claim.tuplet
+  const at = voice.content.indexOf(claim.tuplet as SequenceItem)
+  const found = skipBefore(voice.content, at)
+  const before = spaceAt(voice.content, found)
+  if (!isZero(lead) && before) {
+    // The grace groups between the skip and the bracket stand in the span the
+    // lead covers, so they move inside the bracket with it.
+    content.unshift(...voice.content.splice(found + 1, at - found - 1))
+    content.unshift(written(lead))
+    const left = subtractFractions(before.duration, lead)
+    if (isZero(left)) voice.content.splice(found, 1)
+    else before.duration = left
+  }
+
+  // The silence after runs over `span` items, every one of them a skip or a
+  // grace group. Each is taken in while the bracket is still short, and what
+  // the bracket does not need is put back where it stood.
+  const from = voice.content.indexOf(claim.tuplet as SequenceItem) + 1
+  const kept: SequenceItem[] = []
+  let taken = fraction(0)
+  for (const item of voice.content.splice(from, span)) {
+    if (compareFractions(taken, after) >= 0) {
+      kept.push(item)
+      continue
+    }
+    if (item.kind !== 'space') {
+      content.push(item)
+      continue
+    }
+    const left = subtractFractions(after, taken)
+    if (compareFractions(item.duration, left) > 0) {
+      kept.push({ kind: 'space', duration: subtractFractions(item.duration, left) })
+      content.push(written(left))
+      taken = after
+      continue
+    }
+    taken = addFractions(taken, item.duration)
+    content.push(written(item.duration))
+  }
+  voice.content.splice(from, 0, ...kept)
+
+  // What the skips did not give comes from the measure's tail, which carries
+  // the voice that much further.
+  const tail = subtractFractions(after, taken)
+  if (!isZero(tail)) {
+    content.push(written(tail))
+    voice.end = addFractions(voice.end, tail)
+  }
+}
+
+/** The space at `at`, where `at` names one. */
+function spaceAt(content: readonly SequenceItem[], at: number): Draft<Space> | undefined {
+  const item = content[at]
+  return item?.kind === 'space' ? item : undefined
 }
 
 /** Whether the tuplet holds at least what its ratio counts. */
 export function tupletFilled(open: OpenTuplet): boolean {
   return compareFractions(writtenLengthOf(open.tuplet.content), countedLengthOf(open)) >= 0
+}
+
+/** The written length a tuplet's ratio counts, for example three eighths. */
+export function countedLengthOf(open: OpenTuplet): Fraction {
+  return quantityLength(open.tuplet.inner)
 }

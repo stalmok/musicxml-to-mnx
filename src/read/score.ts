@@ -1447,13 +1447,14 @@ function readMeasure(
   builder.closeImpliedTuplets(warnings, context, measurePath, element.line)
   state.carriedTupletStops = builder.closeAtBarline(warnings, context, measurePath, element.line)
 
-  // A bracket the silence after it could complete has waited for the measure
-  // to be whole, because a voice silent to the barline is what completes one.
-  // A part stating no time signature runs to the barline the score states.
-  // Measured against the time signature the measure opens with, since one
-  // stated after its start is the next measure's.
+  // Every bracket of the measure has waited for the measure to be whole:
+  // what a bracket writes turns on what it holds, on the frame the brackets
+  // around it write in and on the silence after it. A part stating no time
+  // signature runs to the barline the score states. Measured against the
+  // time signature the measure opens with, since one stated after its start
+  // is the next measure's.
   const inForce = (timeSettled ? time : startTime) ?? scoreTime
-  builder.settleShortTuplets(inForce && fraction(inForce.count, inForce.unit), warnings, context)
+  builder.settleMeasure(inForce && fraction(inForce.count, inForce.unit), warnings, context)
 
   // Every event of the measure is in now, so a hairpin's and an octave
   // shift's stop can each be told which one it covers, whatever order the

@@ -16,7 +16,6 @@ import {
   compareFractions,
   divideFractions,
   fraction,
-  isZero,
   multiplyFractions,
   subtractFractions,
 } from '../fraction.js'
@@ -26,29 +25,16 @@ import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { BeamedEvent } from './beams.js'
 import {
   countedLengthOf,
-  frameRate,
-  quantityLength,
   ratioOf,
   sameCountedValue,
   sameCounts,
-  scaleToContent,
-  settleInside,
-  settleTuplet,
-  shortOf,
-  takeLead,
+  settleClaims,
   tupletFilled,
   tupletLevels,
   unwrapTuplet,
   writtenLengthOf,
 } from './tuplets.js'
-import type {
-  CarriedTupletStop,
-  LeadingSkip,
-  OpenTuplet,
-  RewrittenTuplet,
-  ShortTuplet,
-  TupletStart,
-} from './tuplets.js'
+import type { CarriedTupletStop, OpenTuplet, TupletClaim, TupletStart } from './tuplets.js'
 import type {
   Arpeggio,
   Draft,
@@ -170,13 +156,11 @@ interface VoiceBuilder {
    */
   measureRest: MeasureRestCandidate | undefined
   /**
-   * The bracket that the silence after it could complete, where it closed
-   * needing some. While it waits, only the gaps before grace notes and the
-   * groups themselves are written after it. See ShortTuplet.
+   * The brackets this voice has closed, outermost first in the order the
+   * source closed them. Each waits for the measure to be whole. See
+   * TupletClaim.
    */
-  short: ShortTuplet | undefined
-  /** The brackets no silence completed, waiting only to be reported. */
-  unsettled: RewrittenTuplet[]
+  claims: TupletClaim[]
 }
 
 /**
@@ -516,7 +500,7 @@ export class MeasureBuilder {
     // The sequence it joins may have been silent since it last sounded, and
     // that silence comes before the group.
     innermost(from).pop()
-    this.#fillGap(to, false)
+    this.#fillGap(to)
     innermost(to).push(waiting.group)
     from.graceBeamed = from.graceBeamed.filter((run) => run !== waiting.beams)
     to.graceBeamed.push(waiting.beams)
@@ -565,28 +549,13 @@ export class MeasureBuilder {
    * cursor; MNX has to state it, because a sequence runs without interruption
    * from wherever it starts.
    *
-   * `sounding` is false where what comes next takes none of the measure's
-   * time, which is a grace note.
    */
-  #fillGap(builder: VoiceBuilder, sounding = true): LeadingSkip | undefined {
+  #fillGap(builder: VoiceBuilder): void {
     // A voice that is a rest filling the measure holds no sequence to state
     // one in: it is already silent for the whole measure, and a note written
     // over it is dropped rather than added, which is the only way the cursor
     // runs ahead of such a voice.
     if (builder.fullMeasure) return
-    // A bracket waiting on the silence after it is answered by what the voice
-    // passes over, and what the bracket takes of it is no longer a gap. A
-    // grace note takes none of the measure's time, so the silence before one
-    // is only the silence read so far, not all of it: answering there would
-    // settle the bracket for less silence than the voice goes on to pass
-    // over. Unless the silence since the bracket ended already completes it,
-    // it goes on waiting for the note the group ornaments or for the barline.
-    const short = builder.short
-    const completed =
-      short && compareFractions(subtractFractions(this.#cursor, short.end), short.silence) >= 0
-    if (sounding || completed) {
-      this.#answerShort(builder, this.#cursor)
-    }
     const gap = subtractFractions(this.#cursor, builder.end)
     if (compareFractions(gap, fraction(0)) > 0) {
       // Inside a tuplet everything is written in values the ratio scales, so
@@ -603,73 +572,30 @@ export class MeasureBuilder {
       const around = builder.open.at(-1)
       if (around?.opened === 'tuplet') around.skips.push({ space, spent: gap })
       builder.end = this.#cursor
-      if (!around) return { space, spent: gap, within: builder.content }
     }
-    return undefined
   }
 
   /**
-   * Answers the bracket waiting on the silence after it, where one waits.
-   * `until` is where the voice is known to stay silent to. Enough silence,
-   * and the bracket states what it is missing as a space and keeps the ratio
-   * the source drew. Otherwise it goes back to the reading it would have
-   * taken when it closed, which waits for a collector to report through
-   * rather than for anything more to be read.
+   * Settles every bracket of the measure, the measure being whole.
    *
-   * The gaps before grace notes and the groups themselves are written after
-   * the bracket while it waits. They stand in the time it completes, so they
-   * go inside it, before the space for the rest of what it is missing.
-   */
-  #answerShort(builder: VoiceBuilder, until: Fraction): void {
-    const short = builder.short
-    if (!short) return
-    builder.short = undefined
-
-    if (compareFractions(subtractFractions(until, short.end), short.silence) < 0) {
-      builder.unsettled.push(short.entry)
-      return
-    }
-    if (short.before && !isZero(short.lead)) takeLead(short.before, short.lead)
-    const written = (time: Fraction): Draft<Space> => ({
-      kind: 'space',
-      duration: divideFractions(time, short.ratioFactor),
-    })
-    if (!isZero(short.lead)) short.tuplet.content.unshift(written(short.lead))
-    const { within } = short.entry
-    const waited = within.splice(within.indexOf(short.tuplet) + 1)
-    short.tuplet.content.push(
-      ...waited.map((item) => (item.kind === 'space' ? written(item.duration) : item)),
-    )
-    const rest = subtractFractions(short.silence, subtractFractions(builder.end, short.end))
-    if (!isZero(rest)) short.tuplet.content.push(written(rest))
-    short.tuplet.inner = short.ratio.inner
-    short.tuplet.outer = short.ratio.outer
-    builder.end = addFractions(short.end, short.silence)
-  }
-
-  /**
-   * Answers every bracket still waiting on the silence after it, the measure
-   * being whole, and states the ones no silence completed.
+   * What a bracket writes turns on what it holds once the brackets inside it
+   * are written, on the frame the brackets around it write in, and on the
+   * silence after it, and none of the three is known while it is being read.
    *
-   * A voice that does not sound again between the end of a bracket and the
-   * barline is silent for what the bracket is missing, provided the barline
-   * is far enough away.
    * The barline is where the time signature puts it, or further where the
    * part runs past it. `time` is unset where the part states no time
    * signature, and then how far the part runs is all there is.
    */
-  settleShortTuplets(
+  settleMeasure(
     time: Fraction | undefined,
     warnings: WarningCollector,
     context: WarningContext,
   ): void {
     const measure = time && compareFractions(time, this.#furthest) > 0 ? time : this.#furthest
     for (const builder of this.#allBuilders()) {
-      this.#answerShort(builder, measure)
-      for (const entry of builder.unsettled) {
-        settleTuplet(entry, entry.provisional, warnings, context)
-      }
-      builder.unsettled.length = 0
+      const voice = { content: builder.content, end: builder.end, measure }
+      builder.end = settleClaims(builder.claims, voice, warnings, context)
+      builder.claims.length = 0
     }
   }
 
@@ -919,7 +845,7 @@ export class MeasureBuilder {
 
     // Time this voice has passed over in silence belongs before the brackets,
     // not inside them, where the tuplets' ratios would scale it.
-    const before = this.#fillGap(builder)
+    this.#fillGap(builder)
     // Where this voice has reached, before anything the brackets hold. A
     // bracket that states no ratio compares it with where the voice reaches
     // when it closes, to state the time it took.
@@ -955,12 +881,14 @@ export class MeasureBuilder {
         // A level whose own marker stated its ratio states it already, and
         // rescaling that to the content would overwrite what the source drew.
         derived: derived && starts[index]?.stated === undefined,
-        stated: starts[index]?.stated !== undefined || (!derived && levels.length === 1),
+        stated:
+          starts[index]?.stated !== undefined || (!derived && levels.length === 1)
+            ? { inner: level.inner, outer: level.outer }
+            : undefined,
         openEnd,
-        before: index === 0 ? before : undefined,
         unbracketed: false,
         within,
-        rewritten: [],
+        children: [],
         skips: [],
       })
     }
@@ -995,12 +923,11 @@ export class MeasureBuilder {
       derived: false,
       // The notes state the ratio; where the run ends is the converter's
       // reading of where they stop agreeing with it.
-      stated: false,
+      stated: undefined,
       openEnd: builder.end,
-      before: undefined,
       unbracketed: true,
       within,
-      rewritten: [],
+      children: [],
       skips: [],
     })
   }
@@ -1627,62 +1554,36 @@ export class MeasureBuilder {
       )
       return closed.number
     }
-    const spent = subtractFractions(builder.end, closed.openEnd)
     // Real scores contain brackets whose content does not add up to the
     // stated ratio: a lone quarter under a 3:2 eighth ratio, standing for a
     // triplet quarter. MNX sequences a tuplet by advancing the cursor over
     // its outer and requires the content to come to inner, so such a bracket
     // is rewritten to count the notes it holds, which leaves them sounding
-    // for the time the source gives them. A ratio read from the bracket's
-    // first note speaks for that note alone, and is rewritten whatever it
-    // holds.
-    const misfits = compareFractions(writtenLengthOf(tuplet.content), quantityLength(tuplet.inner))
-    // Where the ratio the source stated counts what the bracket holds, it
-    // stands, and the brackets inside it are written in the frame it opened
-    // with. An ancestor rewritten later moves that frame, as it moves the
-    // written values of the notes beside them.
-    const stands = !closed.derived && misfits === 0
-    settleInside(closed, stands ? undefined : frameRate(closed, spent), warnings, context)
-
-    // Measured again: a bracket dropped inside this one leaves what it held
-    // where it stood, which the stated ratio need no longer count.
-    const held = writtenLengthOf(tuplet.content)
-    if (stands && compareFractions(held, quantityLength(tuplet.inner)) === 0) {
-      return closed.number
-    }
-
-    // The time the voice spent is measure time, while a bracket's outer is
-    // written in the frame of the brackets around it. The ratios still open
-    // are what stands between the two, so they divide out.
-    const entry: RewrittenTuplet = {
+    // for the time the source gives them. Which reading it takes is settled
+    // once the measure is whole: what the bracket holds, the frame the
+    // brackets around it write in and the silence after it are none of them
+    // known here.
+    const claim: TupletClaim = {
       tuplet,
       within: closed.within,
-      drawn: tuplet.inner.value,
-      held,
-      spent,
-      provisional: divideFractions(spent, tupletFactorOf(builder)),
-      drawnOuter: quantityLength(tuplet.outer),
-      misfits,
-      reportable: closed.stated && !cut,
+      stated: closed.stated,
+      derived: closed.derived,
+      unbracketed: closed.unbracketed,
+      cut,
+      openEnd: closed.openEnd,
+      spent: subtractFractions(builder.end, closed.openEnd),
+      frame: tupletFactorOf(builder),
+      children: closed.children,
+      skips: closed.skips,
       place: warnings.reserve(),
       line,
     }
-
-    // A bracket still open around this one has yet to settle the frame it
-    // writes, so the reading waits for it. The ratios divided out above are
-    // that bracket's opening ones, which its own rewriting can leave behind.
+    // A bracket still open around this one holds the claim, so that the two
+    // settle together: this one's outer is written in the frame that one
+    // ends up with.
     const around = tupletFrames(builder).at(-1)
-    if (!around) {
-      const short = shortOf(closed, entry, cut)
-      if (short) builder.short = short
-      else settleTuplet(entry, entry.provisional, warnings, context)
-      return closed.number
-    }
-    // Written as the ratios open now state it while the bracket around it
-    // fills, so that the length this bracket stands for is a length until
-    // then.
-    scaleToContent(tuplet, entry.drawn, entry.held, entry.provisional)
-    around.rewritten.push(entry)
+    if (around) around.children.push(claim)
+    else builder.claims.push(claim)
 
     return closed.number
   }
@@ -1705,7 +1606,7 @@ export class MeasureBuilder {
     // voice has passed over in silence is passed over before the group rather
     // than after it. Filling the gap here keeps the group beside its note
     // instead of stranding it at the point the voice last sounded.
-    this.#fillGap(builder, false)
+    this.#fillGap(builder)
 
     const list = innermost(builder)
     const previous = list.at(-1)
@@ -2002,7 +1903,6 @@ function newVoiceBuilder(openedAt?: number): VoiceBuilder {
     grace: undefined,
     fullMeasure: undefined,
     measureRest: undefined,
-    short: undefined,
-    unsettled: [],
+    claims: [],
   }
 }
