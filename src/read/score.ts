@@ -975,19 +975,30 @@ interface SignatureKind<T> {
   element: 'key' | 'time'
   /** What to call one of these in a report, where "key" alone is too short. */
   name: 'key' | 'time signature'
+  /** Whether a statement says what another says, down to how it is drawn. */
   same: (a: T, b: T | undefined) => boolean
+  /**
+   * Whether two staves are in the same signature. Looser than `same` for a
+   * time signature: 4/4 as a C and 4/4 as numbers are one meter drawn two
+   * ways, which is not the staves disagreeing about the meter.
+   */
+  agrees: (a: T, b: T | undefined) => boolean
 }
+
+const sameFifths = (a: Key, b: Key | undefined): boolean => b !== undefined && a.fifths === b.fifths
 
 const KEY: SignatureKind<Key> = {
   element: 'key',
   name: 'key',
-  same: (a, b) => b !== undefined && a.fifths === b.fifths,
+  same: sameFifths,
+  agrees: sameFifths,
 }
 
 const TIME: SignatureKind<TimeSignature> = {
   element: 'time',
   name: 'time signature',
   same: sameTime,
+  agrees: (a, b) => b !== undefined && sameMeter(a, b),
 }
 
 /**
@@ -1093,7 +1104,7 @@ function agreedAcrossStaves<T>(
   const values = [...inForce.values()]
   const first = values[0]
   if (
-    values.some((value) => (first === undefined ? value !== undefined : !kind.same(first, value)))
+    values.some((value) => (first === undefined ? value !== undefined : !kind.agrees(first, value)))
   ) {
     warnings.addAt(
       place,

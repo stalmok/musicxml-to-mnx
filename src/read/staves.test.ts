@@ -798,6 +798,22 @@ describe('key and time signatures stated per staff', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-time'])
   })
 
+  // The glyph is only how the meter is drawn, so a staff drawn with a C
+  // beside one drawn with numbers is not a disagreement about the meter, as
+  // it is not between parts.
+  test('says nothing where the staves draw the same meter differently', () => {
+    const { warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions><staves>2</staves>' +
+          '<time number="1" symbol="common"><beats>4</beats><beat-type>4</beat-type></time>' +
+          '<time number="2"><beats>4</beats><beat-type>4</beat-type></time></attributes>' +
+          note('C', '1'),
+      ),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
   // The counts agree and the units do not, so the pair says the comparison
   // reads both halves of a time signature, not the count alone.
   test('reports staves that agree on the count and not on the unit', () => {
