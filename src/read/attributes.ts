@@ -80,16 +80,16 @@ const DEFAULT_CLEF_LINES: Record<ClefSign, number> = { G: 2, F: 4, C: 3 }
 /** What one <attributes> block declared. */
 export interface AttributesReading {
   /**
-   * Whether the block stated a key or a time at all. Held apart from the
-   * values: a statement MNX cannot carry, such as senza misura or a
-   * non-traditional key, is a statement with no value, which is not the same
-   * as the block saying nothing.
+   * Every key and time signature the block stated, one per staff it states
+   * one for. Held apart from the values below: a statement MNX cannot carry,
+   * such as senza misura or a non-traditional key, is a statement with no
+   * value, which is not the same as the block saying nothing. What the
+   * staves between them state is settled by the measure, which sees the
+   * other blocks.
    */
-  keyStated: boolean
-  timeStated: boolean
-  /** Whether the key or the time was stated for some staves and not others. */
-  keyPartial: boolean
-  timePartial: boolean
+  keys: readonly StaffSignature<Key>[]
+  times: readonly StaffSignature<TimeSignature>[]
+  /** The first of each the block states that MNX can hold. */
   key: Key | undefined
   time: TimeSignature | undefined
   clefs: Clef[]
@@ -108,6 +108,19 @@ export interface AttributesReading {
    * A list for the same reason the rests are.
    */
   measureRepeats: MeasureRepeatReading[]
+}
+
+/**
+ * A key or time signature one block states, and the staff it states it for.
+ * MusicXML allows one per staff, told apart by a "number" attribute, and a
+ * block written without one speaks for every staff.
+ */
+export interface StaffSignature<T> {
+  /** The staff it is stated for, or nothing where it speaks for every one. */
+  staff: number | undefined
+  /** What it states, or nothing where MNX cannot hold what it states. */
+  value: T | undefined
+  line: number
 }
 
 /**
@@ -240,60 +253,38 @@ export function readAttributes(
   readTransposition(element, state, warnings, context, path)
 
   // MusicXML allows one key and one time signature per staff. MNX states them
-  // for the whole score, so staves that disagree cannot both be carried.
+  // for the whole score, so staves that disagree cannot both be carried. What
+  // the staves between them state is settled by the measure: a block stating
+  // one staff's is only partial until the blocks around it are seen.
   //
   // Read as blocks, not raw children, so that whatever these readers pass over
   // inside a <key>, <time> or <clef> is reported along with the rest of the
   // measure rather than vanishing a level down.
-  const keyBlocks = element.blocks('key')
-  const keyPartial = reportPartialSignature(keyBlocks, 'key', state, warnings, context, path)
-  const keys = keyBlocks
-    .map((found) => readKey(found, warnings, context, path))
-    .filter((key): key is Key => key !== undefined)
-  if (keys.some((other) => other.fifths !== keys[0]?.fifths)) {
-    warnings.add(
-      'unrepresentable:per-staff-key',
-      'The staves of this part are in different keys, and MNX states one key for ' +
-        'the score. The first is the one converted.',
-      { ...context, line: element.line },
-      'key',
-    )
-  }
-
-  const timeBlocks = element.blocks('time')
-  const timePartial = reportPartialSignature(timeBlocks, 'time', state, warnings, context, path)
-  const times = timeBlocks.map((found) => readTime(found, warnings, context, path))
-  const metered = times.filter((time): time is TimeSignature => time !== undefined)
-  if (
-    metered.some((other) => other.count !== metered[0]?.count || other.unit !== metered[0]?.unit)
-  ) {
-    warnings.add(
-      'unrepresentable:per-staff-time',
-      'The staves of this part are in different time signatures, and MNX states one ' +
-        'for the score. The first is the one converted.',
-      { ...context, line: element.line },
-      'time',
-    )
-  }
+  //
+  // MNX states the key the music sounds in. A transposing part writes the key
+  // its player reads, which stands a fixed number of fifths from it, so every
+  // statement is brought back here and the measure settles them as they sound.
+  const keys = statedPerStaff(element.blocks('key'), state, path, (found) => {
+    const written = readKey(found, warnings, context, path)
+    if (!written || !state.transposition) return written
+    return { ...written, fifths: concertFifths(written.fifths, state.transposition) }
+  })
+  const times = statedPerStaff(element.blocks('time'), state, path, (found) =>
+    readTime(found, warnings, context, path),
+  )
+  const metered = times
+    .map((stated) => stated.value)
+    .filter((time): time is TimeSignature => time !== undefined)
 
   // Held on the part so a later measure that restates neither still knows
   // how long it runs. A senza-misura statement clears it: the music is
   // unmetered from here on, whatever was in force before.
   if (times.length > 0) state.time = metered[0]
 
-  // MNX states the key the music sounds in. A transposing part writes the key
-  // its player reads, which stands a fixed number of fifths from it.
-  const written = keys[0]
-  const key =
-    written && state.transposition
-      ? { ...written, fifths: concertFifths(written.fifths, state.transposition) }
-      : written
-
+  const key = keys.map((stated) => stated.value).find((stated) => stated !== undefined)
   return {
-    keyStated: keyBlocks.length > 0,
-    timeStated: times.length > 0,
-    keyPartial,
-    timePartial,
+    keys,
+    times,
     key,
     time: metered[0],
     clefs: element
@@ -324,46 +315,25 @@ interface MeasureStyleReading {
 }
 
 /**
- * Report a key or time signature stated for some staves and not others, and
- * say whether it was. The blocks are compared by content where each staff
- * writes one, but a numbered block with no counterpart for the other staves
- * is a per-staff statement that comparison cannot see, and MNX applies the
- * one signature to the whole score.
+ * What each block of a key or time signature states, and the staff it states
+ * it for. The numbers are read before the values, so a block naming a staff
+ * the part does not have is refused before anything is read out of one.
  */
-function reportPartialSignature(
+function statedPerStaff<T>(
   blocks: readonly ElementReader[],
-  name: 'key' | 'time',
   state: PartState,
-  warnings: WarningCollector,
-  context: WarningContext,
   path: DocumentPath,
-): boolean {
-  if (blocks.length === 0) return false
+  read: (block: ElementReader) => T | undefined,
+): StaffSignature<T>[] {
   const numbers = blocks.map((block) =>
     readAttributeInRange(block.element, 'number', path, 1, state.staves),
   )
-
-  // Every staff the blocks between them state. A block with no number states
-  // them all, so a part whose blocks are all unnumbered covers every staff
-  // and warns about none.
-  const covered = new Set(numbers.flatMap((number) => (number === undefined ? ALL : [number])))
-  for (let staff = 1; staff <= state.staves; staff += 1) {
-    if (!covered.has(ALL) && !covered.has(staff)) {
-      warnings.add(
-        name === 'key' ? 'unrepresentable:per-staff-key' : 'unrepresentable:per-staff-time',
-        `A ${name} signature is stated for one staff and not the others, and MNX ` +
-          'states one for the whole score. The stated one is the one converted.',
-        { ...context, line: blocks[0]?.line ?? 0 },
-        name,
-      )
-      return true
-    }
-  }
-  return false
+  return blocks.map((block, index) => ({
+    staff: numbers[index],
+    value: read(block),
+    line: block.line,
+  }))
 }
-
-// A signature block without a number speaks for every staff.
-const ALL = 0
 
 // The longest pattern MNX states for a measure repeat. MusicXML sets no
 // upper bound, so a longer one has nowhere to go.
@@ -560,17 +530,11 @@ function readTime(
 ): TimeSignature | undefined {
   reportHidden(element.element, 'time', warnings, context)
 
-  // <senza-misura> writes unmetered music, which MNX has no way to state.
-  if (element.child('senza-misura')) {
-    warnings.add(
-      'unrepresentable:senza-misura',
-      'This music is written senza misura, and MNX states meter as a time signature ' +
-        'or nothing. The measure is converted with no time signature.',
-      { ...context, line: element.line },
-      'senza-misura',
-    )
-    return undefined
-  }
+  // <senza-misura> writes unmetered music, which MNX has no way to state, so
+  // it reads as a statement with no value. The measure reports it: whether
+  // the music it covers is converted with a time signature after all depends
+  // on what else the measure states, which is not known here.
+  if (element.child('senza-misura')) return undefined
 
   // A composite meter such as 3+2/8 is written as several beats-and-beat-type
   // pairs. MNX states one count and unit; keeping the first pair would say the

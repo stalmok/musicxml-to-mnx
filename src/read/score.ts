@@ -31,7 +31,7 @@ import type {
   Tempo,
   TimeSignature,
 } from '../model/score.js'
-import type { WarningCollector, WarningContext } from '../warnings.js'
+import type { WarningCollector, WarningContext, WarningPlace } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import {
   attribute,
@@ -42,7 +42,7 @@ import {
   trimmedText,
 } from '../xml/tree.js'
 import { readAttributes, timesInForce } from './attributes.js'
-import type { MeasureRepeatReading } from './attributes.js'
+import type { MeasureRepeatReading, StaffSignature } from './attributes.js'
 import { readBarline, resolveEndings } from './barlines.js'
 import { buildBeams } from './beams.js'
 import { readDirection, readSound } from './directions.js'
@@ -973,15 +973,22 @@ interface LateSignature<T> {
 /** What reports and compares a key or a time signature stated late. */
 interface SignatureKind<T> {
   element: 'key' | 'time'
+  /** What to call one of these in a report, where "key" alone is too short. */
+  name: 'key' | 'time signature'
   same: (a: T, b: T | undefined) => boolean
 }
 
 const KEY: SignatureKind<Key> = {
   element: 'key',
+  name: 'key',
   same: (a, b) => b !== undefined && a.fifths === b.fifths,
 }
 
-const TIME: SignatureKind<TimeSignature> = { element: 'time', same: sameTime }
+const TIME: SignatureKind<TimeSignature> = {
+  element: 'time',
+  name: 'time signature',
+  same: sameTime,
+}
 
 /**
  * The signature a measure opens with: its own, stated at its start, or else
@@ -1048,6 +1055,99 @@ function holdLate<T>(
 }
 
 /**
+ * Reports what the staves of a part state about one signature at one point,
+ * and gives back what they agree on, or nothing where they do not.
+ *
+ * Taken together rather than block by block: MusicXML writes one <key> or
+ * <time> per staff, and a measure may spread them over several <attributes>,
+ * so a block stating one staff's is only partial until the others are seen.
+ * A block with no number speaks for every staff, and a later statement for a
+ * staff replaces the one before it.
+ */
+function agreedAcrossStaves<T>(
+  kind: SignatureKind<T>,
+  statements: readonly StaffSignature<T>[],
+  staves: number,
+  warnings: WarningCollector,
+  at: WarningContext,
+  place: WarningPlace,
+): { value: T | undefined } | undefined {
+  const inForce = new Map<number, T | undefined>()
+  for (const stated of statements) {
+    for (let staff = 1; staff <= staves; staff += 1) {
+      if (stated.staff === undefined || stated.staff === staff) inForce.set(staff, stated.value)
+    }
+  }
+  const code = `unrepresentable:per-staff-${kind.element}` as const
+  if (inForce.size < staves) {
+    warnings.addAt(
+      place,
+      code,
+      `A ${kind.element} signature is stated for one staff and not the others, and MNX ` +
+        'states one for the whole score. The stated one is the one converted.',
+      at,
+      kind.element,
+    )
+    return undefined
+  }
+  const values = [...inForce.values()]
+  const first = values[0]
+  if (
+    values.some((value) => (first === undefined ? value !== undefined : !kind.same(first, value)))
+  ) {
+    warnings.addAt(
+      place,
+      code,
+      `The staves of this part are in different ${kind.name}s, and MNX states one ` +
+        `${kind.name} for the score. The first is the one converted.`,
+      at,
+      kind.element,
+    )
+    return undefined
+  }
+  return { value: first }
+}
+
+/**
+ * Reports what a measure states about one signature where it begins, against
+ * the one converted: the staves may leave one of their own unstated or
+ * disagree, and what they agree on may not be what the measure converts,
+ * which is the first stated there.
+ */
+function settleAtStart<T>(
+  kind: SignatureKind<T>,
+  statements: readonly StaffSignature<T>[],
+  converted: T | undefined,
+  staves: number,
+  warnings: WarningCollector,
+  context: WarningContext,
+  start: StartOfMeasure,
+): void {
+  const at = (line: number) => ({ ...context, line })
+  const agreed = agreedAcrossStaves(
+    kind,
+    statements,
+    staves,
+    warnings,
+    at(start.first),
+    start.place,
+  )
+  if (!agreed) return
+  reportSecondAtStart(kind, converted, agreed.value, warnings, at(start.last), start.place)
+}
+
+/**
+ * Where a measure states a key or a time signature as it begins: the place
+ * the report reads at, the line of the first block stating one and the line
+ * of the last, which is where a second statement is reported.
+ */
+interface StartOfMeasure {
+  place: WarningPlace
+  first: number
+  last: number
+}
+
+/**
  * Reports a key or time signature stated again at the start of a measure,
  * differing from the first one stated there, which stands.
  */
@@ -1057,9 +1157,11 @@ function reportSecondAtStart<T>(
   second: T | undefined,
   warnings: WarningCollector,
   context: WarningContext,
+  place: WarningPlace,
 ): void {
   if (first === undefined ? second === undefined : kind.same(first, second)) return
-  warnings.add(
+  warnings.addAt(
+    place,
     `inconsistent:${kind.element}`,
     `Two different ${kind.element} signatures are stated at the start of this measure. ` +
       'The later one is not converted.',
@@ -1264,6 +1366,22 @@ function readMeasure(
   // Key and time signatures stated after the measure start.
   const lateKeys: LateSignature<Key>[] = []
   const lateTimes: LateSignature<TimeSignature>[] = []
+  // Every key and time signature stated where the measure begins, whichever
+  // block states it, settled once the measure is whole. Each is reported
+  // through the place the first of them was read at, so the report still
+  // reads where the source states it.
+  const startKeys: StaffSignature<Key>[] = []
+  const startTimes: StaffSignature<TimeSignature>[] = []
+  let keyStart: StartOfMeasure | undefined
+  let timeStart: StartOfMeasure | undefined
+  // Every unmetered statement the measure makes, reported once the measure
+  // has settled what it converts.
+  const unmetered: { place: WarningPlace; line: number }[] = []
+  const openedAt = (start: StartOfMeasure | undefined, line: number): StartOfMeasure => ({
+    place: start?.place ?? warnings.reserve(),
+    first: start?.first ?? line,
+    last: line,
+  })
   const dynamics: Dynamic[] = []
   const tempos: Tempo[] = []
   // Every <sound tempo> of the measure, waiting on the score's marks to say
@@ -1312,26 +1430,33 @@ function readMeasure(
         )
         const at = builder.position()
         const place = { ...context, line: found.line }
-        // One stated for some staves only is reported as a per-staff
-        // statement where the block is read.
-        if (reading.keyStated && builder.atMeasureStart()) {
+        for (const stated of reading.times) {
+          if (stated.value === undefined) {
+            unmetered.push({ place: warnings.reserve(), line: stated.line })
+          }
+        }
+        // A statement where the measure begins is held for the settlement
+        // after the loop, which sees every block the measure opens with. One
+        // stated later stands at its own point, where nothing else is said.
+        if (reading.keys.length > 0 && builder.atMeasureStart()) {
+          keyStart = openedAt(keyStart, found.line)
+          startKeys.push(...reading.keys)
           if (!keySettled) key = reading.key
-          else if (!reading.keyPartial) reportSecondAtStart(KEY, key, reading.key, warnings, place)
           keySettled = true
-        } else if (reading.keyStated) {
+        } else if (reading.keys.length > 0) {
+          agreedAcrossStaves(KEY, reading.keys, state.staves, warnings, place, warnings.reserve())
           lateKeys.push({ value: reading.key, at, line: found.line })
         }
-        if (reading.timeStated && builder.atMeasureStart()) {
+        if (reading.times.length > 0 && builder.atMeasureStart()) {
+          timeStart = openedAt(timeStart, found.line)
+          startTimes.push(...reading.times)
           if (!timeSettled) time = reading.time
-          else {
-            if (!reading.timePartial) {
-              reportSecondAtStart(TIME, time, reading.time, warnings, place)
-            }
-            // It changes nothing, so the music after it is read as before.
-            state.time = timeBefore
-          }
+          // A later one changes nothing, so the music after it is read as
+          // before.
+          else state.time = timeBefore
           timeSettled = true
-        } else if (reading.timeStated) {
+        } else if (reading.times.length > 0) {
+          agreedAcrossStaves(TIME, reading.times, state.staves, warnings, place, warnings.reserve())
           lateTimes.push({ value: reading.time, at, line: found.line })
         }
         clefs.push(...reading.clefs)
@@ -1438,6 +1563,11 @@ function readMeasure(
     reader.reportUnread(warnings, context)
   }
 
+  // Settled with the measure whole, so a staff stated in a block of its own
+  // stands beside the staves the blocks around it state.
+  if (keyStart) settleAtStart(KEY, startKeys, key, state.staves, warnings, context, keyStart)
+  if (timeStart) settleAtStart(TIME, startTimes, time, state.staves, warnings, context, timeStart)
+
   // A measure stating none, or one MNX cannot carry, leaves the one before in
   // force.
   key = opening(KEY, state.lateKey, { settled: keySettled, value: key }, warnings)
@@ -1453,6 +1583,23 @@ function readMeasure(
     warnings,
     context,
   )
+
+  // Unmetered music is a loss whatever the measure converts. What it says
+  // depends on that: a measure stating a time signature beside the unmetered
+  // one, or keeping the one it opens with past an unmetered statement made
+  // later, is still converted with a meter the music it covers does not have.
+  for (const { place, line } of unmetered) {
+    warnings.addAt(
+      place,
+      'unrepresentable:senza-misura',
+      'This music is written senza misura, and MNX states meter as a time signature ' +
+        `or nothing. The measure is converted with ${
+          time ? 'the time signature stated for it' : 'no time signature'
+        }.`,
+      { ...context, line },
+      'senza-misura',
+    )
+  }
 
   // A tuplet the source stated as a ratio with no bracket has no stop to
   // close it, so the measure's end is where its run ends.

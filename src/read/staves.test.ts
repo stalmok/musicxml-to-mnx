@@ -32,7 +32,7 @@ const GRAND_STAFF =
 function read(source: string) {
   const warnings = new WarningCollector()
   const score = readScore(parseXmlRoot(source), warnings)
-  return { part: score.parts[0], warnings: warnings.list() }
+  return { part: score.parts[0], score, warnings: warnings.list() }
 }
 
 describe('how many staves a part has', () => {
@@ -592,9 +592,10 @@ describe('key and time signatures stated per staff', () => {
   })
 
   // Each staff states its key in a block of its own, the second after a
-  // <backup> to the start of the measure. The staves disagree, which is not
-  // the source disagreeing with itself.
-  test('reports keys stated for each staff in blocks of their own as per staff', () => {
+  // <backup> to the start of the measure. The blocks are read together, so
+  // the report is the one disagreement between the staves rather than one
+  // per block that states a staff the other does not.
+  test('reports keys stated for each staff in blocks of their own as one disagreement', () => {
     const { warnings } = read(
       measures(
         GRAND_STAFF.replace(
@@ -608,13 +609,11 @@ describe('key and time signatures stated per staff', () => {
       ),
     )
 
-    expect(warnings.map((w) => w.code)).toEqual([
-      'unrepresentable:per-staff-key',
-      'unrepresentable:per-staff-key',
-    ])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-key'])
+    expect(warnings[0]?.message).toContain('different keys')
   })
 
-  test('reports time signatures stated for each staff in blocks of their own as per staff', () => {
+  test('reports time signatures stated for each staff in blocks of their own as one', () => {
     const time = (staff: string, beats: string) =>
       `<time number="${staff}"><beats>${beats}</beats><beat-type>4</beat-type></time>`
     const { warnings } = read(
@@ -627,16 +626,69 @@ describe('key and time signatures stated per staff', () => {
       ),
     )
 
-    expect(warnings.map((w) => w.code)).toEqual([
-      'unrepresentable:per-staff-time',
-      'unrepresentable:per-staff-time',
-    ])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-time'])
+    expect(warnings[0]?.message).toContain('different time signatures')
+  })
+
+  // Nothing is lost: between them the blocks state every staff, and they
+  // state the same key.
+  test('says nothing where blocks of their own give the staves the same key', () => {
+    const { warnings } = read(
+      measures(
+        GRAND_STAFF.replace(
+          '</attributes>',
+          '<key number="1"><fifths>2</fifths></key></attributes>',
+        ) +
+          note('C', '1') +
+          '<backup><duration>4</duration></backup>' +
+          '<attributes><key number="2"><fifths>2</fifths></key></attributes>' +
+          note('D', '2', '2'),
+      ),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  // A key for every staff, restated for one of them as it stands. The second
+  // block states a staff the first already gave the same key.
+  test('says nothing where a numbered key restates the one stated for every staff', () => {
+    const { warnings } = read(
+      measures(
+        GRAND_STAFF.replace('</attributes>', '<key><fifths>0</fifths></key></attributes>') +
+          note('C', '1') +
+          '<backup><duration>4</duration></backup>' +
+          '<attributes><key number="2"><fifths>0</fifths></key></attributes>' +
+          note('D', '2', '2'),
+      ),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  // A numbered block after one for every staff replaces the key on its own
+  // staff, which leaves the staves in different keys.
+  test('reports a numbered key that takes one staff away from the key for every staff', () => {
+    const { score: result, warnings } = read(
+      measures(
+        GRAND_STAFF.replace('</attributes>', '<key><fifths>0</fifths></key></attributes>') +
+          note('C', '1') +
+          '<backup><duration>4</duration></backup>' +
+          '<attributes><key number="2"><fifths>2</fifths></key></attributes>' +
+          note('D', '2', '2'),
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.key).toEqual({ fifths: 0 })
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-key'])
+    expect(warnings[0]?.message).toContain('different keys')
   })
 
   // A block with no number speaks for every staff, so a numbered block before
-  // it is contradicted on its own staff.
+  // it is replaced on its own staff. The staves agree afterwards, and what
+  // they agree on is not what the measure converts, which is the first
+  // stated.
   test('reports a key for every staff that contradicts a numbered one before it', () => {
-    const { warnings } = read(
+    const { score: result, warnings } = read(
       measures(
         GRAND_STAFF.replace(
           '</attributes>',
@@ -649,10 +701,8 @@ describe('key and time signatures stated per staff', () => {
       ),
     )
 
-    expect(warnings.map((w) => w.code)).toEqual([
-      'unrepresentable:per-staff-key',
-      'inconsistent:key',
-    ])
+    expect(result.globalMeasures[0]?.key).toEqual({ fifths: 0 })
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:key'])
   })
 
   test('reports a time signature stated for one staff and not the other', () => {

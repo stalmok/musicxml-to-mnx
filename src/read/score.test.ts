@@ -564,8 +564,33 @@ describe('measure attributes', () => {
 
     expect(result.globalMeasures[0]?.time).toBeUndefined()
     expect(warnings).toEqual([
-      expect.objectContaining({ code: 'unrepresentable:senza-misura', element: 'senza-misura' }),
+      expect.objectContaining({
+        code: 'unrepresentable:senza-misura',
+        element: 'senza-misura',
+        message: expect.stringContaining('converted with no time signature'),
+      }),
     ])
+  })
+
+  // The measure keeps the meter stated before it, so what it says about the
+  // unmetered music is what the measure converts, not what the statement
+  // asked for.
+  test('reports senza misura stated after a meter as a measure that keeps it', () => {
+    const { score: result, warnings } = read(
+      measure(
+        '<attributes><divisions>1</divisions>' +
+          '<time><beats>2</beats><beat-type>4</beat-type></time></attributes>' +
+          '<attributes><time><senza-misura/></time></attributes>' +
+          NOTE,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.time).toEqual({ count: 2, unit: 4, display: undefined })
+    expect(warnings.map((w) => w.code)).toEqual([
+      'inconsistent:time',
+      'unrepresentable:senza-misura',
+    ])
+    expect(warnings[1]?.message).toContain('converted with the time signature stated for it')
   })
 
   test('rejects a number that is not whole, naming the element', () => {
@@ -787,9 +812,15 @@ describe('a time signature stated after the measure start', () => {
       ),
     )
 
+    expect(result.globalMeasures[0]?.time).toEqual({ count: 2, unit: 4 })
     expect(result.globalMeasures[1]?.time).toBeUndefined()
     expect(warnings).toEqual([
-      expect.objectContaining({ code: 'unrepresentable:senza-misura' }),
+      expect.objectContaining({
+        code: 'unrepresentable:senza-misura',
+        // The measure it is written in opens with a meter and keeps it; the
+        // unmetered music starts at the measure after.
+        message: expect.stringContaining('converted with the time signature stated for it'),
+      }),
       expect.objectContaining({
         code: 'unrepresentable:mid-measure-time',
         message: expect.stringContaining('A later one in this measure replaces it'),
