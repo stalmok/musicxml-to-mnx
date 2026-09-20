@@ -381,7 +381,8 @@ function segnoReturnedTo(
  * the next one, so a part that says nothing in the measure where the score
  * changes key is disagreeing all the same. Held only where one side states a
  * key there, so a disagreement is reported once where it starts rather than
- * once per measure it spans.
+ * once per measure it spans, and only where an earlier part has the measure,
+ * since past that the key in force is this part's own.
  */
 function keysInForce(
   target: readonly GlobalMeasure[],
@@ -390,10 +391,10 @@ function keysInForce(
   let inScore: Key | undefined
   let inPart: Key | undefined
   return found.map((measure, index) => {
-    const existing = target[index]?.key
-    inScore = existing ?? inScore
+    const existing = target[index]
+    inScore = existing?.key ?? inScore
     inPart = measure.key ?? inPart
-    if (!(existing ?? measure.key) || !inScore || !inPart) return undefined
+    if (!existing || !(existing.key ?? measure.key) || !inScore || !inPart) return undefined
     return { score: inScore.fifths, part: inPart.fifths }
   })
 }
@@ -515,8 +516,12 @@ function mergeGlobalMeasures(
         'key',
       )
     }
+    // Compared only where an earlier part has the measure, as the key is:
+    // past the last measure they reach, the meter in force is this part's own
+    // and there is no other part to disagree with it.
     if (
-      (existing?.time ?? measure.time) &&
+      existing &&
+      (existing.time ?? measure.time) &&
       scoreTime &&
       partTime &&
       !sameMeter(scoreTime, partTime)

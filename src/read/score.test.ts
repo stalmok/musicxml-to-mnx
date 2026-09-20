@@ -2278,7 +2278,7 @@ describe('several parts', () => {
         [5, undefined],
         [5, undefined, -7],
         [5, undefined, -7],
-        [key(3), ['inconsistent:measure-count', { part: 'P1' }]],
+        [['inconsistent:measure-count', { part: 'P1' }]],
       ],
     ])('contributes %s', (_name, first, second, expected, reported) => {
       const source = score(concert(first, second))
@@ -2403,6 +2403,24 @@ describe('several parts', () => {
     expect(result.globalMeasures[1]?.time).toEqual({ count: 6, unit: 8, display: undefined })
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-time'])
     expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 2 })
+  })
+
+  // Nothing states the score's meter past the last measure of every earlier
+  // part: the meter carried there is the one this part wrote itself, so there
+  // is no other part to disagree with.
+  test('says nothing about a meter change past the measures of a shorter earlier part', () => {
+    const time = (count: string, unit: string) =>
+      `<attributes><time><beats>${count}</beats><beat-type>${unit}</beat-type></time></attributes>`
+    const { score: result, warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${time('3', '4')}${NOTE}</measure></part>` +
+          `<part id="P2"><measure number="1">${time('3', '4')}${NOTE}</measure>` +
+          `<measure number="2">${time('6', '8')}${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(result.globalMeasures[1]?.time).toEqual({ count: 6, unit: 8, display: undefined })
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:measure-count'])
   })
 
   test('reports a part staying in its key while another changes', () => {
