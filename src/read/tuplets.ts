@@ -311,14 +311,6 @@ export function sameCounts(
   return a.inner.multiple === b.inner.multiple && a.outer.multiple === b.outer.multiple
 }
 
-/** Whether two <time-modification> readings count the same note value. */
-export function sameCountedValue(
-  a: { inner: NoteValueQuantity },
-  b: { inner: NoteValueQuantity },
-): boolean {
-  return a.inner.value.base === b.inner.value.base && a.inner.value.dots === b.inner.value.dots
-}
-
 /** How long a count of one note value lasts, for example three eighths. */
 export function quantityLength(quantity: NoteValueQuantity): Fraction {
   return multiplyFractions(fraction(quantity.multiple), lengthOf(quantity.value))
@@ -511,6 +503,13 @@ function rewrite(
   // The length the ratio the source drew gives it, which is what it takes
   // where no pair of note values states the time its notes do.
   const drawnOuter = quantityLength(tuplet.outer)
+  // How the bracket parts from the ratio the source stated: its content does
+  // not come to what the ratio counts, or its notes do not take the time the
+  // ratio gives them.
+  const parts =
+    misfits !== 0
+      ? `its written content ${misfits < 0 ? 'falls short of' : 'overruns'} the ratio`
+      : `its notes take ${mistimed < 0 ? 'less' : 'more'} time than the ratio gives them`
   scaleToContent(tuplet, drawn, held, sounded)
 
   if (compareFractions(held, quantityLength(tuplet.inner)) !== 0) {
@@ -529,9 +528,8 @@ function rewrite(
     warnings.addAt(
       place,
       'unrepresentable:tuplet-ratio',
-      `A tuplet's written content ${misfits < 0 ? 'falls short of' : 'overruns'} its ` +
-        'stated ratio, and no pair of note values states the ratio between the notes ' +
-        'written and the time they take. ' +
+      `A tuplet parts from the ratio the source states for it: ${parts}. No pair of ` +
+        'note values states the ratio between the notes written and the time they take. ' +
         (counts
           ? 'The tuplet counts what it holds and takes the time its stated ratio gives ' +
             'it, which is not the time the source gives its notes.'
@@ -550,13 +548,8 @@ function rewrite(
     warnings.addAt(
       place,
       'inconsistent:tuplet',
-      misfits !== 0
-        ? `A tuplet's written content ${misfits < 0 ? 'falls short of' : 'overruns'} the ` +
-            'ratio the source states for it. The ratio is rewritten to count the notes ' +
-            'the bracket holds.'
-        : `A tuplet's notes take ${mistimed < 0 ? 'less' : 'more'} time than the ratio the ` +
-            'source states for it gives them. The ratio is rewritten to state the time ' +
-            'they take.',
+      `A tuplet parts from the ratio the source states for it: ${parts}. The ratio is ` +
+        'rewritten over the notes the bracket holds and the time they take.',
       { ...context, line },
       'tuplet',
     )
@@ -597,12 +590,7 @@ function complete(
 
   const silence = multiplyFractions(missing, ratio)
   const at = voice.content.indexOf(tuplet as SequenceItem)
-  const lead = leadOf(
-    claim,
-    silence,
-    spaceAt(voice.content, skipBefore(voice.content, at)),
-    voice.measure,
-  )
+  const lead = leadOf(claim, silence, skipBefore(voice.content, at)?.space, voice.measure)
   const after = subtractFractions(silence, lead)
   const silent = silenceAfter(voice, at)
   if (compareFractions(silent.time, after) < 0) return false
@@ -629,17 +617,18 @@ function complete(
 }
 
 /**
- * Where the skip standing straight before a bracket is, or -1 where none
- * does. A grace group takes none of the measure's time, so one written
- * between the two leaves the skip standing straight before the bracket still.
+ * The skip standing straight before a bracket, and where it stands. A grace
+ * group takes none of the measure's time, so one written between the two
+ * leaves the skip standing straight before the bracket still.
  */
-function skipBefore(content: readonly SequenceItem[], at: number): number {
-  for (let index = at - 1; index >= 0; index -= 1) {
-    const item = content[index]
-    if (item?.kind === 'grace') continue
-    return item?.kind === 'space' ? index : -1
-  }
-  return -1
+function skipBefore(
+  content: readonly SequenceItem[],
+  at: number,
+): { at: number; space: Draft<Space> } | undefined {
+  let index = at - 1
+  while (content[index]?.kind === 'grace') index -= 1
+  const item = content[index]
+  return item?.kind === 'space' ? { at: index, space: item } : undefined
 }
 
 /**
@@ -713,16 +702,15 @@ function takeSilence(
   })
   const { content } = claim.tuplet
   const at = voice.content.indexOf(claim.tuplet as SequenceItem)
-  const found = skipBefore(voice.content, at)
-  const before = spaceAt(voice.content, found)
+  const before = skipBefore(voice.content, at)
   if (!isZero(lead) && before) {
     // The grace groups between the skip and the bracket stand in the span the
     // lead covers, so they move inside the bracket with it.
-    content.unshift(...voice.content.splice(found + 1, at - found - 1))
+    content.unshift(...voice.content.splice(before.at + 1, at - before.at - 1))
     content.unshift(written(lead))
-    const left = subtractFractions(before.duration, lead)
-    if (isZero(left)) voice.content.splice(found, 1)
-    else before.duration = left
+    const left = subtractFractions(before.space.duration, lead)
+    if (isZero(left)) voice.content.splice(before.at, 1)
+    else before.space.duration = left
   }
 
   // The silence after runs over `span` items, every one of them a skip or a
@@ -759,12 +747,6 @@ function takeSilence(
     content.push(written(tail))
     voice.end = addFractions(voice.end, tail)
   }
-}
-
-/** The space at `at`, where `at` names one. */
-function spaceAt(content: readonly SequenceItem[], at: number): Draft<Space> | undefined {
-  const item = content[at]
-  return item?.kind === 'space' ? item : undefined
 }
 
 /** Whether the tuplet holds at least what its ratio counts. */

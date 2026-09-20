@@ -503,9 +503,8 @@ export function readNote(
   // A ratio is read only where no bracket the source drew is open, and the
   // close above ends any run this note does not belong in, so what is open
   // here is the run this note joins, or nothing.
-  if (!graceElement && rated) {
-    if (builder.insideImpliedTuplet(voice)) builder.joinImpliedTuplet(voice, rated)
-    else builder.openImpliedTuplet(voice, rated.inner, rated.outer)
+  if (!graceElement && rated && !builder.insideImpliedTuplet(voice)) {
+    builder.openImpliedTuplet(voice, rated.inner, rated.outer)
   }
 
   if (starts.length > 0) {

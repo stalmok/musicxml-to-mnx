@@ -26,7 +26,6 @@ import type { BeamedEvent } from './beams.js'
 import {
   countedLengthOf,
   ratioOf,
-  sameCountedValue,
   sameCounts,
   settleClaims,
   tupletFilled,
@@ -980,22 +979,6 @@ export class MeasureBuilder {
     if (this.impliedTupletEndsAtGap(voice)) return true
     if (!quantities) return true
     return !sameCounts(open.tuplet, quantities) || tupletFilled(open)
-  }
-
-  /**
-   * Adds a note stating `quantities` to the run open in this voice. A ratio
-   * stating no <normal-type> counts the note's own written value, so a run
-   * whose notes are written in different values states no one length. Such a
-   * run says what it holds when it closes, as a bracket stating no ratio does.
-   */
-  joinImpliedTuplet(
-    voice: string | undefined,
-    quantities: { inner: NoteValueQuantity; outer: NoteValueQuantity },
-  ): void {
-    const open = impliedFrame(this.#builderFor(voice))
-    /* v8 ignore next -- the caller asks only where a run is open. */
-    if (!open) return
-    if (!sameCountedValue(open.tuplet, quantities)) open.derived = true
   }
 
   /**

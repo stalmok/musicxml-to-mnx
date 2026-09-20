@@ -3943,7 +3943,30 @@ describe('a bracket the silence after it completes', () => {
     )
 
     expect(stated(content?.[2])?.held).toEqual(['event', 'space'])
-    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:measure-length'])
+    expect(warnings.map((w) => [w.code, w.context])).toEqual([
+      ['inconsistent:measure-length', { part: 'P1', measure: 1, line: 1 }],
+    ])
+  })
+
+  // A bracket holding three eighths in the time of two states what the source
+  // wrote and needs nothing invented. Stretching it back to the 6:4 the
+  // source drew would draw it over silence the source did not.
+  test('counts what the bracket holds where a pair of note values states it', () => {
+    const sixFour = (step: string, bracket = '') =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+      '<duration>4</duration><type>eighth</type>' +
+      '<time-modification><actual-notes>6</actual-notes><normal-notes>4</normal-notes>' +
+      '</time-modification>' +
+      (bracket ? `<notations><tuplet type="${bracket}"/></notations>` : '') +
+      '</note>'
+    const { content, warnings } = timed(sixFour('C', 'start') + sixFour('D') + sixFour('E', 'stop'))
+
+    expect(stated(content?.[0])).toEqual({
+      inner: { value: { base: 'eighth', dots: 0 }, multiple: 3 },
+      outer: { value: { base: 'eighth', dots: 0 }, multiple: 2 },
+      held: ['event', 'event', 'event'],
+    })
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tuplet'])
   })
 
   test('counts what the bracket holds where the silence past the signature falls short', () => {
@@ -4082,6 +4105,46 @@ describe('a bracket the silence after it completes', () => {
       measures(TIMED + shortQuarter + '<forward><duration>4</duration></forward>' + grace),
     ],
   ])('leaves output the schema takes: a bracket %s', (_, source) => {
+    expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
+  })
+})
+
+// A run the ratio alone opens takes the notes that state the same ratio. Two
+// ratios counting different numbers of the same value are different ratios,
+// whatever they count them against.
+describe('a run of notes stating ratios that count differently', () => {
+  const rated = (step: string, units: number, actual: number) =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    `<duration>${String(units)}</duration><type>eighth</type>` +
+    `<time-modification><actual-notes>${String(actual)}</actual-notes>` +
+    '<normal-notes>2</normal-notes></time-modification></note>'
+
+  // Divisions of 24 to a quarter, so an eighth is 12: one under 4:2 lasts 6,
+  // and one under 8:2 lasts 3. Both ratios count two of something in the
+  // space they take, and they count a different number of eighths in it.
+  const source = measures(
+    '<attributes><divisions>24</divisions></attributes>' +
+      rated('C', 6, 4) +
+      rated('D', 6, 4) +
+      rated('E', 3, 8) +
+      rated('F', 3, 8),
+  )
+
+  test('ends the run where the count changes', () => {
+    const { content, warnings } = read(source)
+
+    expect(
+      content?.map((item) =>
+        item.kind === 'tuplet' ? [item.inner, item.content.length] : item.kind,
+      ),
+    ).toEqual([
+      [{ value: { base: 'eighth', dots: 0 }, multiple: 2 }, 2],
+      [{ value: { base: '16th', dots: 0 }, multiple: 4 }, 2],
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  test('leaves output the schema takes', () => {
     expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
   })
 })
@@ -4254,6 +4317,15 @@ describe('a bracket the silence before it completes', () => {
     )
 
     expect(shape(content)).toEqual(['event', ['space', 'event']])
+    expect(warnings).toEqual([])
+  })
+
+  // The beats of an ordinary measure are counted from the barline it begins
+  // on, whatever the cursor does after the bracket.
+  test('counts the lead from the measure start where the cursor runs past the signature', () => {
+    const { content, warnings } = timed(skip(4) + alone('C', 8, 'quarter') + skip(26))
+
+    expect(shape(content)).toEqual([['space', 'event']])
     expect(warnings).toEqual([])
   })
 
