@@ -11,7 +11,7 @@ import type {
 } from '../model/score.js'
 import type { WarningContext } from '../warnings.js'
 import { IdGenerator, SpannerResolver } from './spanners.js'
-import type { CarriedTupletStop } from './voices.js'
+import type { CarriedTupletStop } from './tuplets.js'
 
 /**
  * The lines a staff is drawn with where it says nothing, which is what MNX

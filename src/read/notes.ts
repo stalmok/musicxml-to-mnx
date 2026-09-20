@@ -48,7 +48,7 @@ import { soundingPitch } from './transposition.js'
 import { entriesOf, recogniser } from './tables.js'
 import { tieKey } from './spanners.js'
 import { MeasureBuilder } from './voices.js'
-import type { TupletDisplaySettings } from './voices.js'
+import type { TupletDisplaySettings } from './tuplets.js'
 
 // A recogniser rather than a bare set: it narrows the value it accepts to the
 // model's type, so a validated value reaches the writer without a cast, and
@@ -422,7 +422,7 @@ export function readNote(
         { ...context, line: element.line },
         'tuplet',
       )
-      builder.dropTuplet(chordVoice, attribute(marker, 'number') ?? '1')
+      builder.dropTupletStart(chordVoice, attribute(marker, 'number') ?? '1')
     }
     closeTuplets(builder, chordVoice, chordMarkers, warnings, context, path, element.line)
     return
@@ -579,7 +579,7 @@ export function readNote(
         { ...context, line: element.line },
         'tuplet',
       )
-      builder.dropTuplet(voice, start.number)
+      builder.dropTupletStart(voice, start.number)
       return false
     })
 
