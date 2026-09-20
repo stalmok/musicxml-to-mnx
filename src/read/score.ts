@@ -1067,56 +1067,58 @@ function holdLate<T>(
 
 /**
  * Reports what the staves of a part state about one signature at one point,
- * and gives back what they agree on, or nothing where they do not.
+ * and gives back what they agree on, or nothing where they do not. What each
+ * staff has in force is carried in `inForce`, which these statements update.
  *
  * Taken together rather than block by block: MusicXML writes one <key> or
  * <time> per staff, and a measure may spread them over several <attributes>,
  * so a block stating one staff's is only partial until the others are seen.
  * A block with no number speaks for every staff, and a later statement for a
  * staff replaces the one before it.
+ *
+ * Compared against what the staves carry, not against this point alone: a
+ * measure restating for one staff what every staff already has leaves them
+ * in the same signature, and loses nothing.
  */
 function agreedAcrossStaves<T>(
   kind: SignatureKind<T>,
   statements: readonly StaffSignature<T>[],
   staves: number,
+  inForce: Map<number, T | undefined>,
   warnings: WarningCollector,
   at: WarningContext,
   place: WarningPlace,
 ): { value: T | undefined } | undefined {
-  const inForce = new Map<number, T | undefined>()
-  for (const stated of statements) {
+  const stated = new Set<number>()
+  for (const statement of statements) {
     for (let staff = 1; staff <= staves; staff += 1) {
-      if (stated.staff === undefined || stated.staff === staff) inForce.set(staff, stated.value)
+      if (statement.staff === undefined || statement.staff === staff) {
+        inForce.set(staff, statement.value)
+        stated.add(staff)
+      }
     }
   }
-  const code = `unrepresentable:per-staff-${kind.element}` as const
-  if (inForce.size < staves) {
-    warnings.addAt(
-      place,
-      code,
-      `A ${kind.element} signature is stated for one staff and not the others, and MNX ` +
-        'states one for the whole score. The stated one is the one converted.',
-      at,
-      kind.element,
-    )
-    return undefined
-  }
-  const values = [...inForce.values()]
+  const values = Array.from({ length: staves }, (_unused, index) => inForce.get(index + 1))
   const first = values[0]
   if (
-    values.some((value) => (first === undefined ? value !== undefined : !kind.agrees(first, value)))
-  ) {
-    warnings.addAt(
-      place,
-      code,
-      `The staves of this part are in different ${kind.name}s, and MNX states one ` +
-        `${kind.name} for the score. The first is the one converted.`,
-      at,
-      kind.element,
+    !values.some((value) =>
+      first === undefined ? value !== undefined : !kind.agrees(first, value),
     )
-    return undefined
+  ) {
+    return { value: first }
   }
-  return { value: first }
+  warnings.addAt(
+    place,
+    `unrepresentable:per-staff-${kind.element}`,
+    stated.size < staves
+      ? `A ${kind.element} signature is stated for one staff and not the others, and MNX ` +
+          'states one for the whole score. The stated one is the one converted.'
+      : `The staves of this part are in different ${kind.name}s, and MNX states one ` +
+          `${kind.name} for the score. The first is the one converted.`,
+    at,
+    kind.element,
+  )
+  return undefined
 }
 
 /**
@@ -1130,6 +1132,7 @@ function settleStated<T>(
   group: StatedAt<T>,
   converted: T | undefined,
   staves: number,
+  inForce: Map<number, T | undefined>,
   warnings: WarningCollector,
   context: WarningContext,
 ): void {
@@ -1138,6 +1141,7 @@ function settleStated<T>(
     kind,
     group.statements,
     staves,
+    inForce,
     warnings,
     at(group.first),
     group.place,
@@ -1591,8 +1595,12 @@ function readMeasure(
 
   // Settled with the measure whole, so a staff stated in a block of its own
   // stands beside the staves the blocks around it state.
-  for (const group of keyGroups) settleStated(KEY, group, key, state.staves, warnings, context)
-  for (const group of timeGroups) settleStated(TIME, group, time, state.staves, warnings, context)
+  for (const group of keyGroups) {
+    settleStated(KEY, group, key, state.staves, state.staffKeys, warnings, context)
+  }
+  for (const group of timeGroups) {
+    settleStated(TIME, group, time, state.staves, state.staffTimes, warnings, context)
+  }
 
   // A measure stating none, or one MNX cannot carry, leaves the one before in
   // force.

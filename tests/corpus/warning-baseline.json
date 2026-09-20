@@ -1187,7 +1187,6 @@
     "sound@dynamics": 18,
     "notehead": 17,
     "print-object": 16,
-    "key": 2,
     "staccato": 1,
     "wavy-line": 1,
     "trill-mark": 1,
@@ -5095,8 +5094,7 @@
     "direction@system": 7,
     "print-object": 4,
     "extend": 16,
-    "sound@dynamics": 18,
-    "key": 1
+    "sound@dynamics": 18
   },
   "gray-after-so-long": {
     "midi-device": 2,

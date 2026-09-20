@@ -95,6 +95,17 @@ export interface PartState {
   convertedTime: TimeSignature | undefined
   /** A key signature stated after the start of a measure, held as lateTime is. */
   lateKey: HeldSignature<Key> | undefined
+  /**
+   * The key and time signature each staff of the part has in force, as the
+   * source states them, keyed by staff number. MusicXML states one per staff
+   * and MNX states one for the score, so a measure restating for one staff
+   * what every staff already has loses nothing, and one giving a staff
+   * something of its own is the loss that is reported. A key is held as it
+   * sounds, so a part that changes its transposition still compares like
+   * with like.
+   */
+  staffKeys: Map<number, Key | undefined>
+  staffTimes: Map<number, TimeSignature | undefined>
   /** How many staves the part is written on, once it says. */
   staves: number
   /**
@@ -171,6 +182,8 @@ export function newPartState(
     convertedKey: undefined,
     convertedTime: undefined,
     lateKey: undefined,
+    staffKeys: new Map(),
+    staffTimes: new Map(),
     staves: 1,
     clefs: new Map(),
     staffLines: new Map(),

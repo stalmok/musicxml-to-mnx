@@ -683,6 +683,49 @@ describe('key and time signatures stated per staff', () => {
     expect(warnings[0]?.message).toContain('different keys')
   })
 
+  // The key each staff carries is what it was last given, so a measure
+  // restating for one staff the key every staff already has leaves them in
+  // the same key and loses nothing.
+  test('says nothing where a numbered key restates the one in force on every staff', () => {
+    const { warnings } = read(
+      measures(
+        GRAND_STAFF.replace('</attributes>', '<key><fifths>4</fifths></key></attributes>') +
+          note('C', '1'),
+        '<attributes><key number="2"><fifths>4</fifths></key></attributes>' + note('D', '1'),
+      ),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  test('says nothing where a numbered time signature restates the one in force', () => {
+    const time = (staff: string) => `<time${staff}><beats>3</beats><beat-type>4</beat-type></time>`
+    const { warnings } = read(
+      measures(
+        GRAND_STAFF.replace('</attributes>', `${time('')}</attributes>`) + note('C', '1'),
+        `<attributes>${time(' number="2"')}</attributes>` + note('D', '1'),
+      ),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  // The same shape with a key of its own on the staff: this one really does
+  // leave the other staff behind.
+  test('reports a numbered key that differs from the one in force on the other staff', () => {
+    const { warnings } = read(
+      measures(
+        GRAND_STAFF.replace('</attributes>', '<key><fifths>-2</fifths></key></attributes>') +
+          note('C', '1'),
+        '<attributes><key number="1"><fifths>1</fifths></key></attributes>' + note('D', '1'),
+      ),
+    )
+
+    expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
+      ['unrepresentable:per-staff-key', 2],
+    ])
+  })
+
   // A numbered block states its own staff and no other, so two of three
   // staves stated leaves the third with the key in force.
   test('reports keys stated for two staves of three and not the third', () => {
