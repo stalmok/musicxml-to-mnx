@@ -777,9 +777,14 @@ function adopt(
 /**
  * The ratio the source stated, and then the same counts against narrower
  * values: three halves in the time of two are three quarters in the time of
- * two, a quarter narrower. A source that leaves <normal-type> off states its
- * ratio in the value of the bracket's first note, which says nothing about
- * how wide the bracket it drew is.
+ * two, a quarter narrower.
+ *
+ * Widest first, so the value the source counts in is the one taken wherever
+ * the silence fits it. A narrower one is a reading of the source's counts
+ * over a bracket the source did not draw that wide, which the caller reports.
+ * It is the reading a source that leaves <normal-type> off asks for, since
+ * the value its ratio then counts is the bracket's first note's rather than
+ * anything the source said about the bracket.
  */
 function countings(stated: { inner: NoteValueQuantity; outer: NoteValueQuantity }): {
   inner: NoteValueQuantity
