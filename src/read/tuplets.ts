@@ -377,6 +377,17 @@ export interface MeasureExtent {
   signature: Fraction | undefined
 }
 
+/**
+ * What stands straight after a bracket that the bracket can take in: the
+ * notes of a run the ratio alone opened, or a rest the source drew as one of
+ * the tuplet's own notes and left outside the bracket.
+ */
+interface Adoptable {
+  /** The run the notes come from, unset where the rest is the voice's own. */
+  run: TupletClaim | undefined
+  notes: { item: SequenceItem; time: Fraction }[]
+}
+
 /** No silence at all, for a bracket something of the voice's stands after. */
 const NO_SILENCE = { time: fraction(0), span: 0 }
 
@@ -385,6 +396,8 @@ export interface VoiceTail {
   content: SequenceItem[]
   end: Fraction
   measure: MeasureExtent
+  /** How much of the measure each event this voice holds takes. */
+  spent: ReadonlyMap<SequenceItem, Fraction>
 }
 
 /**
@@ -632,7 +645,20 @@ function complete(
   tuplet.inner = taken.counted.inner
   tuplet.outer = taken.counted.outer
   const reached = voice.end
-  if (adopted) adopt(claim, voice, adopted, taken.moved)
+  adopt(claim, voice, adopted, taken.moved)
+  // A rest of the voice's own is drawn under the bracket where the source
+  // drew it outside, which is a change to what the source drew.
+  if (adopted && !adopted.run && taken.moved > 0) {
+    warnings.addAt(
+      claim.place,
+      'inconsistent:tuplet',
+      'A rest written after a tuplet lasts what its written value lasts under that ' +
+        "tuplet's ratio, and the tuplet holds less than its ratio counts. The rest is " +
+        'drawn inside the bracket, where the source draws it outside.',
+      { ...context, line: claim.line },
+      'tuplet',
+    )
+  }
   takeSilence(claim, voice, taken.lead, taken.left, taken.silent.span, ratio)
   // The cursor can run past the time signature without the voice sounding
   // there: over a trailing <forward> written to hang a direction after the
@@ -667,14 +693,25 @@ function adoptable(
   ratio: Fraction,
   voice: VoiceTail,
   next: TupletClaim | undefined,
-): { run: TupletClaim; notes: { item: SequenceItem; time: Fraction }[] } | undefined {
-  if (!next?.unbracketed) return undefined
-  const at = voice.content.indexOf(claim.tuplet as SequenceItem)
-  if (voice.content[at + 1] !== (next.tuplet as SequenceItem)) return undefined
-  // Its notes have to have sounded at the bracket's ratio, as the bracket's
-  // own do, which is what lets them move inside without changing a time. It
-  // says nothing about the value the run counts its own ratio in: that only
-  // sets how wide each of its notes is, which the fit tests below.
+): Adoptable | undefined {
+  const after = voice.content[voice.content.indexOf(claim.tuplet as SequenceItem) + 1]
+  if (after === undefined) return undefined
+  // A rest the source drew as one of the tuplet's own notes and left outside
+  // the bracket: its written value lasts what it lasts only at the bracket's
+  // ratio. A rest that lasts what it is written as is silence beside the
+  // bracket, not a note of it.
+  if (after.kind === 'event' && after.isRest) {
+    const time = voice.spent.get(after)
+    const drawn = multiplyFractions(writtenLengthOf([after]), ratio)
+    if (!time || compareFractions(time, drawn) !== 0) return undefined
+    return { run: undefined, notes: [{ item: after, time }] }
+  }
+  // A run the ratio alone opened. Its notes have to have sounded at the
+  // bracket's ratio, as the bracket's own do, which is what lets them move
+  // inside without changing a time. It says nothing about the value the run
+  // counts its own ratio in: that only sets how wide each of its notes is,
+  // which the fit tests below.
+  if (!next?.unbracketed || after !== (next.tuplet as SequenceItem)) return undefined
   const held = writtenLengthOf(next.tuplet.content)
   if (compareFractions(next.spent, multiplyFractions(held, ratio)) !== 0) return undefined
   return {
@@ -687,19 +724,24 @@ function adoptable(
 }
 
 /**
- * Moves the first `moved` notes of the run after a bracket inside it. A run
- * the whole of which moves in is left holding nothing, so it goes with them.
+ * Moves the first `moved` items standing after a bracket inside it. A run the
+ * whole of which moves in is left holding nothing, so it goes with them.
  */
 function adopt(
   claim: TupletClaim,
   voice: VoiceTail,
-  adopted: { run: TupletClaim; notes: readonly { item: SequenceItem }[] },
+  adopted: Adoptable | undefined,
   moved: number,
 ): void {
+  if (!adopted || moved === 0) return
   const taken = adopted.notes.slice(0, moved).map((one) => one.item)
   const { run } = adopted
-  run.tuplet.content = run.tuplet.content.filter((item) => !taken.includes(item))
   claim.tuplet.content.push(...taken)
+  if (!run) {
+    voice.content.splice(voice.content.indexOf(taken[0] as SequenceItem), 1)
+    return
+  }
+  run.tuplet.content = run.tuplet.content.filter((item) => !taken.includes(item))
   if (run.tuplet.content.length === 0) {
     voice.content.splice(voice.content.indexOf(run.tuplet as SequenceItem), 1)
   }

@@ -4438,6 +4438,107 @@ describe('a bracket completed by the run of notes after it', () => {
   })
 })
 
+// A bracket short of what its ratio counts is completed by the silence after
+// it. A source that draws that silence as a rest of the tuplet's own and
+// leaves it outside the bracket has written the same music, so it converts
+// the same way: the rest moves inside the bracket.
+describe('a bracket completed by the rest written after it', () => {
+  const TIMED =
+    '<attributes><divisions>12</divisions>' +
+    '<time><beats>2</beats><beat-type>4</beat-type></time></attributes>'
+
+  /** A quarter taking two of the three eighth slots of its own bracket. */
+  const shortQuarter =
+    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>8</duration>' +
+    '<type>quarter</type><time-modification><actual-notes>3</actual-notes>' +
+    '<normal-notes>2</normal-notes><normal-type>eighth</normal-type></time-modification>' +
+    '<notations><tuplet type="start" bracket="no"/><tuplet type="stop"/></notations></note>'
+  const rest = (units: number, type: string) =>
+    `<note><rest/><duration>${String(units)}</duration><type>${type}</type></note>`
+  const quarter =
+    '<note><pitch><step>D</step><octave>4</octave></pitch><duration>12</duration>' +
+    '<type>quarter</type></note>'
+
+  /** An eighth rest lasting a triplet eighth, which is the slot left over. */
+  const tripletRest = rest(4, 'eighth')
+  /** The same music with the rest left implicit, which the cursor skips. */
+  const gap = '<forward><duration>4</duration></forward>'
+
+  function timed(body: string) {
+    return read(measures(TIMED + body))
+  }
+
+  function shape(content: readonly SequenceItem[] | undefined): unknown[] {
+    return (content ?? []).map((item) =>
+      item.kind === 'tuplet'
+        ? [item.inner.multiple, item.outer.multiple, item.content.map((held) => held.kind)]
+        : item.kind,
+    )
+  }
+
+  test('draws the rest inside the bracket', () => {
+    const { content } = timed(shortQuarter + tripletRest + quarter)
+
+    expect(shape(content)).toEqual([[3, 2, ['event', 'event']], 'event'])
+  })
+
+  test('keeps the rest at the value the source drew it with', () => {
+    const { content } = timed(shortQuarter + tripletRest + quarter)
+    const bracket = content?.[0]
+    const held = bracket?.kind === 'tuplet' ? bracket.content[1] : undefined
+
+    expect(held?.kind === 'event' && held.value).toEqual({ base: 'eighth', dots: 0 })
+  })
+
+  test('says the rest is drawn where the source does not draw it', () => {
+    const { warnings } = timed(shortQuarter + tripletRest + quarter)
+    const reported = warnings.find((w) => w.code === 'inconsistent:tuplet')
+
+    expect(reported?.message).toContain('drawn inside the bracket')
+    expect(reported?.context).toEqual({ part: 'P1', measure: 1, line: 1 })
+  })
+
+  // Nothing is drawn inside the bracket where the silence before it is what
+  // completes it, so there is nothing to report either.
+  test('says nothing where the rest after is wider than the bracket is missing', () => {
+    const { content, warnings } = timed(
+      '<forward><duration>4</duration></forward>' + shortQuarter + rest(8, 'quarter'),
+    )
+
+    expect(shape(content)).toEqual([[3, 2, ['space', 'event']], 'event'])
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:duration'])
+  })
+
+  // The rest is drawn and the gap is not, so one holds an event where the
+  // other holds a space. The ratio the bracket takes is the same.
+  test('states the same ratio as the gap the rest stands for', () => {
+    const ratio = (content: readonly SequenceItem[] | undefined) => {
+      const bracket = content?.[0]
+      return bracket?.kind === 'tuplet' ? [bracket.inner, bracket.outer] : undefined
+    }
+    const written = timed(shortQuarter + tripletRest + quarter)
+    const skipped = timed(shortQuarter + gap + quarter)
+
+    expect(ratio(written.content)).toEqual(ratio(skipped.content))
+    expect(skipped.warnings).toEqual([])
+  })
+
+  // A rest that lasts what it is written as is silence beside the bracket,
+  // not a note of the tuplet the source left outside it.
+  test('leaves a rest that lasts what it is written as where it stands', () => {
+    const { content, warnings } = timed(shortQuarter + rest(6, 'eighth'))
+
+    expect(shape(content)).toEqual([[2, 2, ['event']], 'event'])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-ratio'])
+  })
+
+  test('leaves output the schema takes', () => {
+    const source = measures(TIMED + shortQuarter + tripletRest + quarter)
+
+    expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
+  })
+})
+
 // A pickup measure's beats line up with the barline it ends on, not the one
 // it begins on, and it has no silence past its own end. Both bound what a
 // short bracket in one can take.

@@ -166,6 +166,8 @@ interface VoiceBuilder {
    * TupletClaim.
    */
   claims: TupletClaim[]
+  /** How much of the measure each event this voice holds takes. */
+  spent: Map<SequenceItem, Fraction>
 }
 
 /**
@@ -538,6 +540,13 @@ export class MeasureBuilder {
     this.#fillGap(builder)
 
     innermost(builder).push(event)
+    // A bracket completed once the measure is whole can take in a rest
+    // written straight after it, where the source drew that rest as one of
+    // the tuplet's own notes and left it outside the bracket. Telling one
+    // from a rest that lasts what it is written as needs the time the source
+    // gave it, which nothing else keeps. Kept for every event, so that
+    // anything standing in a voice's list has one.
+    builder.spent.set(event, duration)
     builder.grace = undefined
     builder.placed.push({ event, staff })
     this.#lastVoice = voice ?? UNNAMED_VOICE
@@ -592,7 +601,12 @@ export class MeasureBuilder {
    */
   settleMeasure(measure: MeasureExtent, warnings: WarningCollector, context: WarningContext): void {
     for (const builder of this.#allBuilders()) {
-      const voice = { content: builder.content, end: builder.end, measure }
+      const voice = {
+        content: builder.content,
+        end: builder.end,
+        measure,
+        spent: builder.spent,
+      }
       builder.end = settleClaims(builder.claims, voice, warnings, context)
       builder.claims.length = 0
     }
@@ -1903,5 +1917,6 @@ function newVoiceBuilder(openedAt?: number): VoiceBuilder {
     fullMeasure: undefined,
     measureRest: undefined,
     claims: [],
+    spent: new Map(),
   }
 }
