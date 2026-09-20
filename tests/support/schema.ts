@@ -13,6 +13,7 @@ export interface SchemaNode {
   allOf?: readonly SchemaNode[]
   properties?: Record<string, SchemaNode>
   patternProperties?: Record<string, SchemaNode>
+  items?: SchemaNode
   required?: readonly string[]
   enum?: readonly (string | number)[]
   const?: string | number

@@ -100,6 +100,14 @@ describe('the note values a tuplet ratio is counted in', () => {
     expect(schemaDefs['positive-integer']?.maximum).toBeUndefined()
   })
 
+  test('a ratio counts at least one of a value on each side', () => {
+    // A bracket holding nothing that takes any of the measure's time is
+    // reported as a limit of MNX (unrepresentable:tuplet-untimed). That rests
+    // on this: a tuplet counting none of a value is not a tuplet the schema
+    // states.
+    expect(schemaDefs['positive-integer']?.minimum).toBe(1)
+  })
+
   test('every value the converter writes lasts a power of two of a whole note', () => {
     // A quarter sounding a sixth of a whole note is one quarter in the time of
     // two thirds of a quarter, and no power of two counts both sides of that.
@@ -107,6 +115,18 @@ describe('the note values a tuplet ratio is counted in', () => {
       expect(Math.log2(length.num * length.den) % 1).toBe(0)
       expect(length.num === 1 || length.den === 1).toBe(true)
     }
+  })
+})
+
+// A bracket holding nothing that takes any of the measure's time, which is
+// what a bracket over grace notes alone holds, is reported as a limit of MNX
+// rather than a gap here (unrepresentable:tuplet-untimed). Its other half is
+// that a grace group has no room for a tuplet.
+describe('what a grace group holds', () => {
+  test('a grace group holds events and nothing else', () => {
+    expect(resolveRef(schemaDefs['grace']?.properties?.['content']?.items)).toBe(
+      schemaDefs['event'],
+    )
   })
 })
 
