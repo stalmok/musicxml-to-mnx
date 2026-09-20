@@ -377,6 +377,9 @@ export interface MeasureExtent {
   signature: Fraction | undefined
 }
 
+/** No silence at all, for a bracket something of the voice's stands after. */
+const NO_SILENCE = { time: fraction(0), span: 0 }
+
 /** A voice's own item list and where it runs to, for a claim to reach into. */
 export interface VoiceTail {
   content: SequenceItem[]
@@ -399,7 +402,11 @@ export function settleClaims(
   warnings: WarningCollector,
   context: WarningContext,
 ): Fraction {
-  for (const claim of claims) settleClaim(claim, undefined, voice, warnings, context)
+  for (const [index, claim] of claims.entries()) {
+    // A bracket an earlier one took in whole is no longer there to settle.
+    if (!claim.within.includes(claim.tuplet as SequenceItem)) continue
+    settleClaim(claim, undefined, voice, claims[index + 1], warnings, context)
+  }
   return voice.end
 }
 
@@ -418,11 +425,14 @@ function settleClaim(
   claim: TupletClaim,
   rate: Fraction | undefined,
   voice: VoiceTail | undefined,
+  next: TupletClaim | undefined,
   warnings: WarningCollector,
   context: WarningContext,
 ): void {
   const inside = frameOf(claim)
-  for (const child of claim.children) settleClaim(child, inside, undefined, warnings, context)
+  for (const child of claim.children) {
+    settleClaim(child, inside, undefined, undefined, warnings, context)
+  }
   // A skip stands for the measure time the cursor passed over, whatever the
   // frame. Written at the settled rate, it goes on standing for that time.
   if (inside) {
@@ -441,7 +451,7 @@ function settleClaim(
   const mistimed = compareFractions(sounded, quantityLength(claim.tuplet.outer))
   if (!claim.derived && misfits === 0 && mistimed === 0) return
 
-  if (voice && complete(claim, held, sounded, voice, warnings, context)) return
+  if (voice && complete(claim, held, sounded, voice, next, warnings, context)) return
   rewrite(claim, held, misfits, mistimed, sounded, warnings, context)
 }
 
@@ -581,6 +591,7 @@ function complete(
   held: Fraction,
   sounded: Fraction,
   voice: VoiceTail,
+  next: TupletClaim | undefined,
   warnings: WarningCollector,
   context: WarningContext,
 ): boolean {
@@ -592,7 +603,8 @@ function complete(
 
   const at = voice.content.indexOf(tuplet as SequenceItem)
   const before = skipBefore(voice.content, at)
-  const silent = silenceAfter(voice, at)
+  const adopted = adoptable(claim, ratio, voice, next)
+  const run = adopted?.notes ?? []
   const taken = countings(stated).flatMap((counted) => {
     const missing = subtractFractions(quantityLength(counted.inner), held)
     // A narrower value counts less, so once the bracket holds what the ratio
@@ -600,15 +612,28 @@ function complete(
     if (missing.num <= 0) return []
     const silence = multiplyFractions(missing, ratio)
     const lead = leadOf(claim, silence, before?.space, voice.measure, counted.outer)
-    const after = subtractFractions(silence, lead)
-    return compareFractions(silent.time, after) < 0 ? [] : [{ counted, lead, after }]
+    // The notes of the run after the bracket come next, whole notes at a
+    // time, and only while what is left of the bracket has room for one.
+    let left = subtractFractions(silence, lead)
+    let moved = 0
+    for (const note of run) {
+      if (compareFractions(note.time, left) > 0) break
+      left = subtractFractions(left, note.time)
+      moved += 1
+    }
+    // The run stands between the bracket and the silence beyond it, so that
+    // silence is the bracket's only once the whole run has moved in.
+    const silent =
+      adopted && moved < run.length ? NO_SILENCE : silenceAfter(voice, adopted ? at + 1 : at)
+    return compareFractions(silent.time, left) < 0 ? [] : [{ counted, lead, moved, left, silent }]
   })[0]
   if (!taken) return false
 
   tuplet.inner = taken.counted.inner
   tuplet.outer = taken.counted.outer
   const reached = voice.end
-  takeSilence(claim, voice, taken.lead, taken.after, silent.span, ratio)
+  if (adopted) adopt(claim, voice, adopted, taken.moved)
+  takeSilence(claim, voice, taken.lead, taken.left, taken.silent.span, ratio)
   // The cursor can run past the time signature without the voice sounding
   // there: over a trailing <forward> written to hang a direction after the
   // last note, or a <backup> reaching before the measure start. A bracket
@@ -626,6 +651,58 @@ function complete(
     )
   }
   return true
+}
+
+/**
+ * The notes of a run the ratio alone opened standing straight after a
+ * bracket, in the order the source wrote them.
+ *
+ * Such a run states the ratio the bracket states and no bracket of its own,
+ * so its notes already sound at that ratio and a bracket stopped before them
+ * can take them in without changing a time. Empty where no such run stands
+ * there.
+ */
+function adoptable(
+  claim: TupletClaim,
+  ratio: Fraction,
+  voice: VoiceTail,
+  next: TupletClaim | undefined,
+): { run: TupletClaim; notes: { item: SequenceItem; time: Fraction }[] } | undefined {
+  if (!next?.unbracketed) return undefined
+  const at = voice.content.indexOf(claim.tuplet as SequenceItem)
+  if (voice.content[at + 1] !== (next.tuplet as SequenceItem)) return undefined
+  // Its notes have to have sounded at the bracket's ratio, as the bracket's
+  // own do, which is what lets them move inside without changing a time. It
+  // says nothing about the value the run counts its own ratio in: that only
+  // sets how wide each of its notes is, which the fit tests below.
+  const held = writtenLengthOf(next.tuplet.content)
+  if (compareFractions(next.spent, multiplyFractions(held, ratio)) !== 0) return undefined
+  return {
+    run: next,
+    notes: next.tuplet.content.map((item) => ({
+      item,
+      time: multiplyFractions(writtenLengthOf([item]), ratio),
+    })),
+  }
+}
+
+/**
+ * Moves the first `moved` notes of the run after a bracket inside it. A run
+ * the whole of which moves in is left holding nothing, so it goes with them.
+ */
+function adopt(
+  claim: TupletClaim,
+  voice: VoiceTail,
+  adopted: { run: TupletClaim; notes: readonly { item: SequenceItem }[] },
+  moved: number,
+): void {
+  const taken = adopted.notes.slice(0, moved).map((one) => one.item)
+  const { run } = adopted
+  run.tuplet.content = run.tuplet.content.filter((item) => !taken.includes(item))
+  claim.tuplet.content.push(...taken)
+  if (run.tuplet.content.length === 0) {
+    voice.content.splice(voice.content.indexOf(run.tuplet as SequenceItem), 1)
+  }
 }
 
 /**

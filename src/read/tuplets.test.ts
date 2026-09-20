@@ -4275,6 +4275,169 @@ describe('a bracket completed in a value narrower than its ratio states', () => 
   })
 })
 
+// A source can stop a bracket before the notes its ratio counts are all in,
+// and carry on with notes that state the ratio and no bracket. Those notes
+// already sound at the ratio, so the bracket can take them in and the measure
+// keeps the time the source gives it.
+describe('a bracket completed by the run of notes after it', () => {
+  // 2/2 with divisions of 12: a quarter is 12 and the measure 48. Under 3:2
+  // a quarter lasts 8.
+  const TIMED =
+    '<attributes><divisions>12</divisions>' +
+    '<time><beats>2</beats><beat-type>2</beat-type></time></attributes>'
+
+  const rated = (body: string, markers = '', units = 8, actual = 3) =>
+    `<note>${body}<duration>${String(units)}</duration><type>quarter</type>` +
+    `<time-modification><actual-notes>${String(actual)}</actual-notes>` +
+    '<normal-notes>2</normal-notes></time-modification>' +
+    (markers ? `<notations>${markers}</notations>` : '') +
+    '</note>'
+  const tripletRest = (markers = '') => rated('<rest/>', markers)
+  const tripletNote = (step: string, markers = '', units = 8, actual = 3) =>
+    rated(`<pitch><step>${step}</step><octave>5</octave></pitch>`, markers, units, actual)
+  const plainRest = (units: number, type: string) =>
+    `<note><rest/><duration>${String(units)}</duration><type>${type}</type></note>`
+
+  /** The bracket the source drew, stopped after two of its three quarters. */
+  const stoppedEarly = tripletRest('<tuplet type="start"/>') + tripletRest('<tuplet type="stop"/>')
+
+  function timed(body: string) {
+    return read(measures(TIMED + body))
+  }
+
+  function shape(content: readonly SequenceItem[] | undefined): unknown[] {
+    return (content ?? []).map((item) =>
+      item.kind === 'tuplet'
+        ? [item.inner.multiple, item.outer.multiple, item.content.length]
+        : item.kind,
+    )
+  }
+
+  test('takes the note after it inside the bracket', () => {
+    const { content } = timed(plainRest(24, 'half') + stoppedEarly + tripletNote('D'))
+
+    expect(shape(content)).toEqual(['event', [3, 2, 3]])
+  })
+
+  // The stop the source writes on that note names a bracket that is not
+  // running, which is the source disagreeing with itself.
+  test('takes it in where a stop the source wrote closes it', () => {
+    const { content, warnings } = timed(
+      plainRest(24, 'half') + stoppedEarly + tripletNote('D', '<tuplet type="stop"/>'),
+    )
+
+    expect(shape(content)).toEqual(['event', [3, 2, 3]])
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tuplet'])
+  })
+
+  test('takes no more of the run than the bracket is missing', () => {
+    const { content } = timed(
+      plainRest(12, 'quarter') + stoppedEarly + tripletNote('D') + tripletNote('E'),
+    )
+
+    expect(shape(content)).toEqual(['event', [3, 2, 3], [1, 2, 1]])
+  })
+
+  // The run stands between the bracket and the silence beyond it, so the
+  // bracket reaches that silence only once the whole run has moved in.
+  test('takes the silence past the run in once the whole run has moved in', () => {
+    const { content } = timed(
+      tripletRest('<tuplet type="start"/><tuplet type="stop"/>') + tripletNote('D'),
+    )
+    const bracket = content?.[0]
+
+    expect(shape(content)).toEqual([[3, 2, 3]])
+    expect(bracket?.kind === 'tuplet' && bracket.content.map((item) => item.kind)).toEqual([
+      'event',
+      'event',
+      'space',
+    ])
+  })
+
+  // A run stating another ratio sounds at that ratio, not at the bracket's.
+  test('leaves a run stating another ratio where it stands', () => {
+    const { content } = timed(plainRest(24, 'half') + stoppedEarly + tripletNote('D', '', 6, 4))
+
+    expect(shape(content)).toEqual(['event', [2, 2, 2], [2, 1, 1]])
+  })
+
+  // Silence between the two is what the bracket takes in, and the run is no
+  // longer what stands after it.
+  test('leaves a run the bracket does not reach where it stands', () => {
+    const { content } = timed(
+      plainRest(12, 'quarter') +
+        stoppedEarly +
+        '<forward><duration>8</duration></forward>' +
+        tripletNote('D'),
+    )
+
+    expect(shape(content)).toEqual(['event', [3, 2, 3], [1, 2, 1]])
+    const bracket = content?.[1]
+    expect(bracket?.kind === 'tuplet' && bracket.content.map((item) => item.kind)).toEqual([
+      'event',
+      'event',
+      'space',
+    ])
+  })
+
+  // A note that does not sound at the ratio it states would carry its own
+  // disagreement into the bracket.
+  test('leaves a run whose notes do not sound at the ratio where it stands', () => {
+    const { content, warnings } = timed(
+      plainRest(24, 'half') + stoppedEarly + tripletNote('D', '', 6),
+    )
+
+    expect(shape(content)).toEqual(['event', [2, 2, 2], [2, 1, 1]])
+    expect(warnings.map((w) => w.code)).toContain('inconsistent:duration')
+  })
+
+  // A bracket the source drew says where it runs, so it is not a run the
+  // bracket before it may reach into.
+  test('leaves a bracket the source drew standing after it alone', () => {
+    const lone = tripletNote('C', '<tuplet type="start"/><tuplet type="stop"/>')
+    const { content } = timed(
+      lone + tripletNote('D', '<tuplet type="start"/><tuplet type="stop"/>'),
+    )
+
+    expect(shape(content)).toEqual([
+      [1, 2, 1],
+      [3, 2, 2],
+    ])
+  })
+
+  // The bracket is missing less than the run's first note is wide, so no note
+  // moves in and the run goes on standing between it and the silence.
+  test('reaches no silence past a run whose first note does not fit', () => {
+    const eighth = (step: string, markers = '') =>
+      `<note><pitch><step>${step}</step><octave>5</octave></pitch><duration>4</duration>` +
+      '<type>eighth</type><time-modification><actual-notes>3</actual-notes>' +
+      '<normal-notes>2</normal-notes></time-modification>' +
+      (markers ? `<notations>${markers}</notations>` : '') +
+      '</note>'
+    const { content, warnings } = timed(
+      eighth('C', '<tuplet type="start"/>') +
+        eighth('D', '<tuplet type="stop"/>') +
+        tripletNote('E') +
+        tripletNote('F'),
+    )
+
+    expect(shape(content)).toEqual([
+      [2, 2, 2],
+      [2, 2, 2],
+    ])
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:tuplet-ratio',
+      'unrepresentable:tuplet-ratio',
+    ])
+  })
+
+  test('leaves output the schema takes', () => {
+    const source = measures(TIMED + plainRest(24, 'half') + stoppedEarly + tripletNote('D'))
+
+    expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
+  })
+})
+
 // A pickup measure's beats line up with the barline it ends on, not the one
 // it begins on, and it has no silence past its own end. Both bound what a
 // short bracket in one can take.
