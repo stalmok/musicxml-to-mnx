@@ -52,6 +52,17 @@ export function attribute(element: XmlElement, name: string): string | undefined
   return element.attributes[name]
 }
 
+/**
+ * The value of an attribute without accounting for it. For an attribute read
+ * for something other than what it states, where the statement itself is
+ * still a loss the sweep has to report: a pickup measure's implicit="yes"
+ * says its beats line up with the barline at the end, and says that the
+ * measure is excluded from the numbering, which MNX cannot state.
+ */
+export function peekAttribute(element: XmlElement, name: string): string | undefined {
+  return element.attributes[name]
+}
+
 /** The attribute names something has read off this element, if any. */
 export function readAttributeNames(element: XmlElement): ReadonlySet<string> | undefined {
   return attributesRead.get(element)

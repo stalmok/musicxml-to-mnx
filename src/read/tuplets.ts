@@ -368,12 +368,28 @@ export interface TupletClaim {
   line: number
 }
 
+/** The shape of the measure a bracket is settled against. */
+export interface MeasureExtent {
+  /**
+   * Where the beats line up: at the barline the measure begins on, or, in a
+   * pickup, at the barline it ends on.
+   */
+  anchor: 'start' | 'end'
+  /**
+   * How far the measure runs, which bounds the silence a bracket may take:
+   * the time signature, or the part's cursor where that runs further. A
+   * pickup runs to its cursor alone, having no silence past its own end.
+   */
+  length: Fraction
+  /** The time signature alone, unset where the part states none. */
+  signature: Fraction | undefined
+}
+
 /** A voice's own item list and where it runs to, for a claim to reach into. */
 export interface VoiceTail {
   content: SequenceItem[]
   end: Fraction
-  /** How far the measure runs, which bounds the silence a claim may take. */
-  measure: Fraction
+  measure: MeasureExtent
 }
 
 /**
@@ -433,7 +449,7 @@ function settleClaim(
   const mistimed = compareFractions(sounded, quantityLength(claim.tuplet.outer))
   if (!claim.derived && misfits === 0 && mistimed === 0) return
 
-  if (voice && complete(claim, held, sounded, voice)) return
+  if (voice && complete(claim, held, sounded, voice, warnings, context)) return
   rewrite(claim, held, misfits, mistimed, sounded, warnings, context)
 }
 
@@ -568,6 +584,8 @@ function complete(
   held: Fraction,
   sounded: Fraction,
   voice: VoiceTail,
+  warnings: WarningCollector,
+  context: WarningContext,
 ): boolean {
   const { stated, tuplet } = claim
   if (!stated || claim.derived || claim.cut) return false
@@ -579,12 +597,34 @@ function complete(
 
   const silence = multiplyFractions(missing, ratio)
   const at = voice.content.indexOf(tuplet as SequenceItem)
-  const lead = leadOf(claim, silence, spaceAt(voice.content, skipBefore(voice.content, at)))
+  const lead = leadOf(
+    claim,
+    silence,
+    spaceAt(voice.content, skipBefore(voice.content, at)),
+    voice.measure,
+  )
   const after = subtractFractions(silence, lead)
   const silent = silenceAfter(voice, at)
   if (compareFractions(silent.time, after) < 0) return false
 
+  const reached = voice.end
   takeSilence(claim, voice, lead, after, silent.span, ratio)
+  // The cursor can run past the time signature without the voice sounding
+  // there: over a trailing <forward> written to hang a direction after the
+  // last note, or a <backup> reaching before the measure start. A bracket
+  // completed on that silence carries the voice out there.
+  const { signature } = voice.measure
+  const past = (end: Fraction) => signature !== undefined && compareFractions(end, signature) > 0
+  if (past(voice.end) && !past(reached)) {
+    warnings.addAt(
+      claim.place,
+      'inconsistent:measure-length',
+      'A tuplet takes in the silence after it to keep the ratio the source states for it, ' +
+        'and the voice then sounds past the end of the time signature in force.',
+      { ...context, line: claim.line },
+      'tuplet',
+    )
+  }
   return true
 }
 
@@ -609,13 +649,22 @@ function skipBefore(content: readonly SequenceItem[], at: number): number {
  * holds that much and the bracket is missing that much. Otherwise all of it
  * stands after.
  */
-function leadOf(claim: TupletClaim, silence: Fraction, before: Space | undefined): Fraction {
+function leadOf(
+  claim: TupletClaim,
+  silence: Fraction,
+  before: Space | undefined,
+  measure: MeasureExtent,
+): Fraction {
   const none = fraction(0)
   if (!before) return none
   const beat = quantityLength(claim.tuplet.outer)
-  const beats = divideFractions(claim.openEnd, beat)
+  // The barline the beats are counted from: the one the measure begins on,
+  // or, in a pickup, the one it ends on.
+  const from = measure.anchor === 'end' ? measure.length : fraction(0)
+  const over = subtractFractions(claim.openEnd, from)
+  const beats = divideFractions(over, beat)
   const lead = subtractFractions(
-    claim.openEnd,
+    over,
     multiplyFractions(beat, fraction(Math.floor(beats.num / beats.den))),
   )
   if (compareFractions(lead, silence) > 0) return none
@@ -638,7 +687,7 @@ function silenceAfter(voice: VoiceTail, at: number): { time: Fraction; span: num
     if (item.kind === 'space') time = addFractions(time, item.duration)
     span += 1
   }
-  return { time: addFractions(time, subtractFractions(voice.measure, voice.end)), span }
+  return { time: addFractions(time, subtractFractions(voice.measure.length, voice.end)), span }
 }
 
 /**

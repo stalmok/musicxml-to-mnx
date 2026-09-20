@@ -33,7 +33,14 @@ import type {
 } from '../model/score.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
-import { attribute, child, children, requireAttribute, trimmedText } from '../xml/tree.js'
+import {
+  attribute,
+  child,
+  children,
+  peekAttribute,
+  requireAttribute,
+  trimmedText,
+} from '../xml/tree.js'
 import { readAttributes, timesInForce } from './attributes.js'
 import type { MeasureRepeatReading } from './attributes.js'
 import { readBarline, resolveEndings } from './barlines.js'
@@ -1454,7 +1461,17 @@ function readMeasure(
   // time signature the measure opens with, since one stated after its start
   // is the next measure's.
   const inForce = (timeSettled ? time : startTime) ?? scoreTime
-  builder.settleMeasure(inForce && fraction(inForce.count, inForce.unit), warnings, context)
+  const signature = inForce && fraction(inForce.count, inForce.unit)
+  // A pickup measure's beats line up with the barline it ends on, and it has
+  // no silence past its own end. The attribute is still a loss as a statement
+  // about the numbering, which the sweep above reports.
+  const anchor = peekAttribute(element, 'implicit') === 'yes' ? 'end' : 'start'
+  const furthest = builder.furthest()
+  const runs =
+    anchor === 'start' && signature && compareFractions(signature, furthest) > 0
+      ? signature
+      : furthest
+  builder.settleMeasure({ anchor, length: runs, signature }, warnings, context)
 
   // Every event of the measure is in now, so a hairpin's and an octave
   // shift's stop can each be told which one it covers, whatever order the

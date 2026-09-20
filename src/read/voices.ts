@@ -34,7 +34,13 @@ import {
   unwrapTuplet,
   writtenLengthOf,
 } from './tuplets.js'
-import type { CarriedTupletStop, OpenTuplet, TupletClaim, TupletStart } from './tuplets.js'
+import type {
+  CarriedTupletStop,
+  MeasureExtent,
+  OpenTuplet,
+  TupletClaim,
+  TupletStart,
+} from './tuplets.js'
 import type {
   Arpeggio,
   Draft,
@@ -582,16 +588,10 @@ export class MeasureBuilder {
    * are written, on the frame the brackets around it write in, and on the
    * silence after it, and none of the three is known while it is being read.
    *
-   * The barline is where the time signature puts it, or further where the
-   * part runs past it. `time` is unset where the part states no time
-   * signature, and then how far the part runs is all there is.
+   * `measure` is the measure's own shape: where its beats line up, how far it
+   * runs, and the time signature it runs against.
    */
-  settleMeasure(
-    time: Fraction | undefined,
-    warnings: WarningCollector,
-    context: WarningContext,
-  ): void {
-    const measure = time && compareFractions(time, this.#furthest) > 0 ? time : this.#furthest
+  settleMeasure(measure: MeasureExtent, warnings: WarningCollector, context: WarningContext): void {
     for (const builder of this.#allBuilders()) {
       const voice = { content: builder.content, end: builder.end, measure }
       builder.end = settleClaims(builder.claims, voice, warnings, context)

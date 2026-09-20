@@ -276,6 +276,10 @@ export type WarningCode =
   // A part holds a different number of measures from the score, so it stops
   // before the score does or runs past the end of it.
   | 'inconsistent:measure-count'
+  // A voice sounds past the end of the time signature in force. The measure
+  // is as long as its longest voice, so the others rest through what is left
+  // of it, which is not where the source draws the barline.
+  | 'inconsistent:measure-length'
   // The parts of the score number the same measure differently. The first
   // stated is the one converted.
   | 'inconsistent:measure-number'

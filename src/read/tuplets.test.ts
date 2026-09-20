@@ -3670,6 +3670,13 @@ describe('a bracket the silence after it completes', () => {
     `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
     `<duration>${String(units)}</duration><type>${type}</type></note>`
 
+  /** An eighth taking one of the three eighth slots of its own bracket. */
+  const shortEighth =
+    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+    '<type>eighth</type><time-modification><actual-notes>3</actual-notes>' +
+    '<normal-notes>2</normal-notes></time-modification>' +
+    '<notations><tuplet type="start" bracket="no"/><tuplet type="stop"/></notations></note>'
+
   /** A grace note, which takes none of the measure's time. */
   const grace =
     '<note><grace/><pitch><step>G</step><octave>4</octave></pitch><type>eighth</type></note>'
@@ -3924,6 +3931,33 @@ describe('a bracket the silence after it completes', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-ratio'])
   })
 
+  // A trailing <forward> past the time signature is how a source hangs a
+  // direction after the last note. The bracket takes in the silence out
+  // there, so the voice sounds past where the source draws the barline.
+  test('says the voice sounds past its time signature where the silence reaches there', () => {
+    const { content, warnings } = timed(
+      plain('D', 12, 'quarter') +
+        plain('E', 6, 'eighth') +
+        shortEighth +
+        '<forward><duration>8</duration></forward>',
+    )
+
+    expect(stated(content?.[2])?.held).toEqual(['event', 'space'])
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:measure-length'])
+  })
+
+  test('counts what the bracket holds where the silence past the signature falls short', () => {
+    const { content, warnings } = timed(
+      plain('D', 12, 'quarter') +
+        plain('E', 6, 'eighth') +
+        shortEighth +
+        '<forward><duration>2</duration></forward>',
+    )
+
+    expect(stated(content?.[2])?.held).toEqual(['event'])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-ratio'])
+  })
+
   test('states the silence where the measure runs past its time signature', () => {
     const { content, warnings } = timed(overfull)
 
@@ -4048,6 +4082,71 @@ describe('a bracket the silence after it completes', () => {
       measures(TIMED + shortQuarter + '<forward><duration>4</duration></forward>' + grace),
     ],
   ])('leaves output the schema takes: a bracket %s', (_, source) => {
+    expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
+  })
+})
+
+// A pickup measure's beats line up with the barline it ends on, not the one
+// it begins on, and it has no silence past its own end. Both bound what a
+// short bracket in one can take.
+describe('a short bracket in a pickup measure', () => {
+  const FOUR =
+    '<attributes><divisions>12</divisions>' +
+    '<time><beats>4</beats><beat-type>4</beat-type></time></attributes>'
+
+  /** One note under a 3:2 eighth ratio, opening and closing its own bracket. */
+  const alone =
+    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>8</duration>' +
+    '<type>quarter</type><time-modification><actual-notes>3</actual-notes>' +
+    '<normal-notes>2</normal-notes><normal-type>eighth</normal-type></time-modification>' +
+    '<notations><tuplet type="start" bracket="no"/><tuplet type="stop"/></notations></note>'
+
+  function pickup(body: string) {
+    const warnings = new WarningCollector()
+    const source =
+      '<score-partwise><part id="P1"><measure number="1" implicit="yes">' +
+      FOUR +
+      body +
+      '</measure></part></score-partwise>'
+    const score = readScore(parseXmlRoot(source), warnings)
+    return {
+      content: score.parts[0]?.measures[0]?.sequences[0]?.content,
+      // The attribute is a loss as a statement about the numbering, reported
+      // whether or not the anchor is read off it.
+      warnings: warnings.list().filter((w) => w.code !== 'unrepresentable:attribute'),
+    }
+  }
+
+  /** Each item by kind, a bracket as what it holds. */
+  function shape(content: readonly SequenceItem[] | undefined): unknown[] {
+    return (content ?? []).map((item) =>
+      item.kind === 'tuplet' ? item.content.map((held) => held.kind) : item.kind,
+    )
+  }
+
+  test('counts what the bracket holds where the pickup ends with it', () => {
+    const { content, warnings } = pickup(alone)
+
+    expect(shape(content)).toEqual([['event']])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-ratio'])
+  })
+
+  test('takes the silence before the bracket from the barline the pickup ends on', () => {
+    const { content, warnings } = pickup('<forward><duration>10</duration></forward>' + alone)
+
+    expect(shape(content)).toEqual(['space', ['space', 'event']])
+    expect(content?.[0]?.kind === 'space' && content[0].duration).toEqual(fraction(1, 8))
+    expect(warnings).toEqual([])
+  })
+
+  test('leaves output the schema takes', () => {
+    const source =
+      '<score-partwise><part id="P1"><measure number="1" implicit="yes">' +
+      FOUR +
+      '<forward><duration>10</duration></forward>' +
+      alone +
+      '</measure></part></score-partwise>'
+
     expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
   })
 })
