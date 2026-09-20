@@ -590,7 +590,7 @@ describe('measure attributes', () => {
       'inconsistent:time',
       'unrepresentable:senza-misura',
     ])
-    expect(warnings[1]?.message).toContain('converted with the time signature stated for it')
+    expect(warnings[1]?.message).toContain('converted with the time signature in force')
   })
 
   test('rejects a number that is not whole, naming the element', () => {
@@ -819,13 +819,34 @@ describe('a time signature stated after the measure start', () => {
         code: 'unrepresentable:senza-misura',
         // The measure it is written in opens with a meter and keeps it; the
         // unmetered music starts at the measure after.
-        message: expect.stringContaining('converted with the time signature stated for it'),
+        message: expect.stringContaining('converted with the time signature in force'),
       }),
       expect.objectContaining({
         code: 'unrepresentable:mid-measure-time',
         message: expect.stringContaining('A later one in this measure replaces it'),
       }),
     ])
+  })
+
+  // The measure states no meter of its own, so MNX keeps the one before it in
+  // force over it. What the unmetered statement costs is measured against
+  // that, not against the measure's own silence.
+  test('reports senza misura in a measure keeping the meter before it', () => {
+    const { score: result, warnings } = read(
+      part(
+        opening + timed(2) + note(24),
+        note(24) + '<attributes><time><senza-misura/></time></attributes>',
+        note(24),
+      ),
+    )
+
+    expect(result.globalMeasures.map((m) => m.time)).toEqual([
+      { count: 2, unit: 4 },
+      undefined,
+      undefined,
+    ])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:senza-misura'])
+    expect(warnings[0]?.message).toContain('converted with the time signature in force')
   })
 
   test('reports a restatement partway through after one at the end of the measure', () => {

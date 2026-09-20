@@ -1586,15 +1586,17 @@ function readMeasure(
 
   // Unmetered music is a loss whatever the measure converts. What it says
   // depends on that: a measure stating a time signature beside the unmetered
-  // one, or keeping the one it opens with past an unmetered statement made
-  // later, is still converted with a meter the music it covers does not have.
+  // one, and one carrying an unmetered statement past its start, are both
+  // converted with a meter the music they cover does not have. Measured
+  // against the meter in force, not the measure's own statement, because a
+  // measure stating none keeps the one before it.
   for (const { place, line } of unmetered) {
     warnings.addAt(
       place,
       'unrepresentable:senza-misura',
       'This music is written senza misura, and MNX states meter as a time signature ' +
         `or nothing. The measure is converted with ${
-          time ? 'the time signature stated for it' : 'no time signature'
+          state.convertedTime ? 'the time signature in force' : 'no time signature'
         }.`,
       { ...context, line },
       'senza-misura',
