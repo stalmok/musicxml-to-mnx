@@ -683,6 +683,74 @@ describe('key and time signatures stated per staff', () => {
     expect(warnings[0]?.message).toContain('different keys')
   })
 
+  // A numbered block states its own staff and no other, so two of three
+  // staves stated leaves the third with the key in force.
+  test('reports keys stated for two staves of three and not the third', () => {
+    const threeStaves =
+      '<attributes><divisions>4</divisions><staves>3</staves>' +
+      '<key number="1"><fifths>2</fifths></key>' +
+      '<key number="2"><fifths>2</fifths></key></attributes>'
+    const { warnings } = read(measures(threeStaves + note('C', '1')))
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-key'])
+    expect(warnings[0]?.message).toContain('one staff and not the others')
+  })
+
+  // A key MNX cannot state is still a key, and the staff writing it is not in
+  // the key the other staff writes.
+  test('reports a staff in a non-traditional key beside one stating fifths', () => {
+    const { warnings } = read(
+      measures(
+        GRAND_STAFF.replace(
+          '</attributes>',
+          '<key number="1"><key-step>B</key-step><key-alter>-1</key-alter></key>' +
+            '<key number="2"><fifths>2</fifths></key></attributes>',
+        ) + note('C', '1'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:non-traditional-key',
+      'unrepresentable:per-staff-key',
+    ])
+    expect(warnings[1]?.message).toContain('different keys')
+  })
+
+  // A statement made after the measure begins stands at its own point, where
+  // no other block speaks, so it is settled on its own.
+  test('reports a key stated for one staff partway through the measure', () => {
+    const { warnings } = read(
+      measures(
+        GRAND_STAFF +
+          note('C', '1') +
+          '<attributes><key number="2"><fifths>3</fifths></key></attributes>' +
+          note('D', '1'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:per-staff-key',
+      'unrepresentable:mid-measure-key',
+    ])
+  })
+
+  test('reports a time signature stated for one staff partway through the measure', () => {
+    const { warnings } = read(
+      measures(
+        GRAND_STAFF +
+          note('C', '1') +
+          '<attributes><time number="2"><beats>2</beats><beat-type>4</beat-type></time>' +
+          '</attributes>' +
+          note('D', '1'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:per-staff-time',
+      'unrepresentable:mid-measure-time',
+    ])
+  })
+
   // A block with no number speaks for every staff, so a numbered block before
   // it is replaced on its own staff. The staves agree afterwards, and what
   // they agree on is not what the measure converts, which is the first
