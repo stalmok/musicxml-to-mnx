@@ -80,8 +80,8 @@ const DEFAULT_CLEF_LINES: Record<ClefSign, number> = { G: 2, F: 4, C: 3 }
 /** What one <attributes> block declared. */
 export interface AttributesReading {
   /**
-   * Every key and time signature the block stated, one per staff it states
-   * one for. Held apart from the values below: a statement MNX cannot carry,
+   * Every key and time signature the block stated, one for each block it
+   * carries. Held apart from the values below: a statement MNX cannot carry,
    * such as senza misura or a non-traditional key, is a statement with no
    * value, which is not the same as the block saying nothing. What the
    * staves between them state is settled by the measure, which sees the

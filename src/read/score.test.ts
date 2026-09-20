@@ -572,6 +572,22 @@ describe('measure attributes', () => {
     ])
   })
 
+  // Reported where the <time> carrying it stands, not where the measure it
+  // is settled with begins.
+  test('reports senza misura at the line it is written on', () => {
+    const { warnings } = read(
+      measure(
+        '<attributes><divisions>1</divisions></attributes>\n' +
+          '<attributes><time><senza-misura/></time></attributes>' +
+          NOTE,
+      ),
+    )
+
+    expect(warnings.map((w) => [w.code, w.context.line])).toEqual([
+      ['unrepresentable:senza-misura', 2],
+    ])
+  })
+
   // The measure keeps the meter stated before it, so what it says about the
   // unmetered music is what the measure converts, not what the statement
   // asked for.

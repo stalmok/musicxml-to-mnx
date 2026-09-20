@@ -535,7 +535,7 @@ describe('key and time signatures stated per staff', () => {
   })
 
   test('reports staves that disagree, rather than taking the first in silence', () => {
-    const { warnings } = read(
+    const { score: result, warnings } = read(
       measures(
         '<attributes><divisions>4</divisions><staves>2</staves>' +
           '<key number="1"><fifths>2</fifths></key>' +
@@ -544,13 +544,13 @@ describe('key and time signatures stated per staff', () => {
       ),
     )
 
+    expect(result.globalMeasures[0]?.key).toEqual({ fifths: 2 })
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-key'])
     expect(warnings[0]?.message).toContain('one key')
   })
 
-  // A lone numbered block is a statement for one staff that the comparison
-  // above cannot see: there is no second block to disagree with, and MNX
-  // applies the one signature to the whole score.
+  // A lone numbered block gives one staff a key and leaves the other with
+  // what it had, and MNX applies the one signature to the whole score.
   test('reports a key stated for one staff and not the other', () => {
     const { warnings } = read(
       measures(
@@ -577,9 +577,8 @@ describe('key and time signatures stated per staff', () => {
     expect(warnings).toEqual([])
   })
 
-  // Stated for the first staff rather than the second, so the staff left out
-  // is the last one the loop reaches. The pair says the loop covers every
-  // staff, not just the ones before the last.
+  // Stated for the first staff rather than the second, so the pair says the
+  // staves are read whichever of them is left out.
   test('reports a key stated for the first staff and not the second', () => {
     const { warnings } = read(
       measures(
@@ -848,7 +847,7 @@ describe('key and time signatures stated per staff', () => {
   })
 
   test('reports time signatures that disagree between staves', () => {
-    const { warnings } = read(
+    const { score: result, warnings } = read(
       measures(
         '<attributes><divisions>4</divisions><staves>2</staves>' +
           '<time number="1"><beats>4</beats><beat-type>4</beat-type></time>' +
@@ -857,6 +856,7 @@ describe('key and time signatures stated per staff', () => {
       ),
     )
 
+    expect(result.globalMeasures[0]?.time).toEqual({ count: 4, unit: 4, display: undefined })
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-time'])
   })
 
@@ -892,6 +892,66 @@ describe('key and time signatures stated per staff', () => {
     )
 
     expect(warnings).toEqual([])
+  })
+
+  // Reported where the first block stating one stands, which is where the
+  // measure starts saying what it says, not where it stops.
+  test('reports the disagreement at the first block stating a key', () => {
+    const { warnings } = read(
+      measures(
+        '\n' +
+          GRAND_STAFF.replace(
+            '</attributes>',
+            '<key number="1"><fifths>0</fifths></key></attributes>',
+          ) +
+          note('C', '1') +
+          '<backup><duration>4</duration></backup>\n' +
+          '<attributes><key number="2"><fifths>2</fifths></key></attributes>' +
+          note('D', '2', '2'),
+      ),
+    )
+
+    expect(warnings.map((w) => [w.code, w.context.line])).toEqual([
+      ['unrepresentable:per-staff-key', 2],
+    ])
+  })
+
+  // One staff unmetered and the other in a meter: the meter is the one
+  // converted, and it is what the unmetered staff is drawn in.
+  test('reports a staff written senza misura beside one stating a meter', () => {
+    const { score: result, warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions><staves>2</staves>' +
+          '<time number="1"><senza-misura/></time>' +
+          '<time number="2"><beats>3</beats><beat-type>4</beat-type></time></attributes>' +
+          note('C', '1'),
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.time).toEqual({ count: 3, unit: 4, display: undefined })
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:senza-misura',
+      'unrepresentable:per-staff-time',
+    ])
+    expect(warnings[0]?.message).toContain('the time signature in force')
+    expect(warnings[1]?.message).toContain('different time signatures')
+  })
+
+  // A staff number is read before the signature it numbers, so a block
+  // naming a staff the part does not have is refused before anything is read
+  // out of it. The key it carries is one the reader reports on, and nothing
+  // is reported about a block that does not stand.
+  test('refuses a key stated for a staff the part does not have', () => {
+    const warnings = new WarningCollector()
+    const source = measures(
+      GRAND_STAFF.replace(
+        '</attributes>',
+        '<key number="3"><key-step>B</key-step><key-alter>-1</key-alter></key></attributes>',
+      ) + note('C', '1'),
+    )
+
+    expect(() => readScore(parseXmlRoot(source), warnings)).toThrow('outside the range 1 to 2')
+    expect(warnings.list()).toEqual([])
   })
 
   // The counts agree and the units do not, so the pair says the comparison
