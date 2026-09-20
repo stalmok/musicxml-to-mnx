@@ -798,6 +798,24 @@ describe('key and time signatures stated per staff', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-time'])
   })
 
+  // <key> stands before <time> in a block, so the report of the key stands
+  // before the report of the unmetered music, as the source reads.
+  test('reports a key for one staff before the unmetered music beside it', () => {
+    const { warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions><staves>2</staves>' +
+          '<key number="1"><fifths>2</fifths></key>' +
+          '<time><senza-misura/></time></attributes>' +
+          note('C', '1'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:per-staff-key',
+      'unrepresentable:senza-misura',
+    ])
+  })
+
   // The glyph is only how the meter is drawn, so a staff drawn with a C
   // beside one drawn with numbers is not a disagreement about the meter, as
   // it is not between parts.

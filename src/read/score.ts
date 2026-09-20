@@ -1441,11 +1441,6 @@ function readMeasure(
         )
         const at = builder.position()
         const place = { ...context, line: found.line }
-        for (const stated of reading.times) {
-          if (stated.value === undefined) {
-            unmetered.push({ place: warnings.reserve(), line: stated.line })
-          }
-        }
         // A statement where the measure begins is held for the settlement
         // after the loop, which sees every block the measure opens with. One
         // stated later stands at its own point, where nothing else is said.
@@ -1457,6 +1452,14 @@ function readMeasure(
         } else if (reading.keys.length > 0) {
           agreedAcrossStaves(KEY, reading.keys, state.staves, warnings, place, warnings.reserve())
           lateKeys.push({ value: reading.key, at, line: found.line })
+        }
+        // Taken after the key, and before the settlement of the time blocks
+        // around it, so the reports of one block read in the order it
+        // states them.
+        for (const stated of reading.times) {
+          if (stated.value === undefined) {
+            unmetered.push({ place: warnings.reserve(), line: stated.line })
+          }
         }
         if (reading.times.length > 0 && builder.atMeasureStart()) {
           timeStart = openedAt(timeStart, found.line)
