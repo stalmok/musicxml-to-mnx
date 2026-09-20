@@ -571,6 +571,10 @@ function rewrite(
  *
  * A bracket the barline cut is none of these: the rest of it is in the next
  * measure, not in silence.
+ *
+ * What the ratio counts is tried in the value the source stated and then in
+ * narrower ones, so that a bracket wider than the silence around it is still
+ * completed where the same counts a value narrower fit.
  */
 function complete(
   claim: TupletClaim,
@@ -585,18 +589,26 @@ function complete(
   const ratio = ratioOf(stated.inner, stated.outer)
   if (compareFractions(claim.spent, multiplyFractions(held, ratio)) !== 0) return false
   if (statesRatio(tuplet.inner.value, held, sounded)) return false
-  const missing = subtractFractions(quantityLength(stated.inner), held)
-  if (missing.num <= 0) return false
 
-  const silence = multiplyFractions(missing, ratio)
   const at = voice.content.indexOf(tuplet as SequenceItem)
-  const lead = leadOf(claim, silence, skipBefore(voice.content, at)?.space, voice.measure)
-  const after = subtractFractions(silence, lead)
+  const before = skipBefore(voice.content, at)
   const silent = silenceAfter(voice, at)
-  if (compareFractions(silent.time, after) < 0) return false
+  const taken = countings(stated).flatMap((counted) => {
+    const missing = subtractFractions(quantityLength(counted.inner), held)
+    // A narrower value counts less, so once the bracket holds what the ratio
+    // counts, no narrower one leaves anything for the silence to complete.
+    if (missing.num <= 0) return []
+    const silence = multiplyFractions(missing, ratio)
+    const lead = leadOf(claim, silence, before?.space, voice.measure, counted.outer)
+    const after = subtractFractions(silence, lead)
+    return compareFractions(silent.time, after) < 0 ? [] : [{ counted, lead, after }]
+  })[0]
+  if (!taken) return false
 
+  tuplet.inner = taken.counted.inner
+  tuplet.outer = taken.counted.outer
   const reached = voice.end
-  takeSilence(claim, voice, lead, after, silent.span, ratio)
+  takeSilence(claim, voice, taken.lead, taken.after, silent.span, ratio)
   // The cursor can run past the time signature without the voice sounding
   // there: over a trailing <forward> written to hang a direction after the
   // last note, or a <backup> reaching before the measure start. A bracket
@@ -614,6 +626,37 @@ function complete(
     )
   }
   return true
+}
+
+/**
+ * The ratio the source stated, and then the same counts against narrower
+ * values: three halves in the time of two are three quarters in the time of
+ * two, a quarter narrower. A source that leaves <normal-type> off states its
+ * ratio in the value of the bracket's first note, which says nothing about
+ * how wide the bracket it drew is.
+ */
+function countings(stated: { inner: NoteValueQuantity; outer: NoteValueQuantity }): {
+  inner: NoteValueQuantity
+  outer: NoteValueQuantity
+}[] {
+  const counted = []
+  let inner = lengthOf(stated.inner.value)
+  let outer = lengthOf(stated.outer.value)
+  // Halving ends where a side is no longer a value a note is written with,
+  // which is below a 1024th, dots kept.
+  let innerValue = noteValueOf(inner)
+  let outerValue = noteValueOf(outer)
+  while (innerValue && outerValue) {
+    counted.push({
+      inner: { value: innerValue, multiple: stated.inner.multiple },
+      outer: { value: outerValue, multiple: stated.outer.multiple },
+    })
+    inner = multiplyFractions(inner, fraction(1, 2))
+    outer = multiplyFractions(outer, fraction(1, 2))
+    innerValue = noteValueOf(inner)
+    outerValue = noteValueOf(outer)
+  }
+  return counted
 }
 
 /**
@@ -643,10 +686,11 @@ function leadOf(
   silence: Fraction,
   before: Space | undefined,
   measure: MeasureExtent,
+  outer: NoteValueQuantity,
 ): Fraction {
   const none = fraction(0)
   if (!before) return none
-  const beat = quantityLength(claim.tuplet.outer)
+  const beat = quantityLength(outer)
   // The barline the beats are counted from: the one the measure begins on,
   // or, in a pickup, the one it ends on.
   const from = measure.anchor === 'end' ? measure.length : fraction(0)

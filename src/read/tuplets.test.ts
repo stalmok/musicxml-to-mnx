@@ -3969,18 +3969,6 @@ describe('a bracket the silence after it completes', () => {
     expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tuplet'])
   })
 
-  test('counts what the bracket holds where the silence past the signature falls short', () => {
-    const { content, warnings } = timed(
-      plain('D', 12, 'quarter') +
-        plain('E', 6, 'eighth') +
-        shortEighth +
-        '<forward><duration>2</duration></forward>',
-    )
-
-    expect(stated(content?.[2])?.held).toEqual(['event'])
-    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-ratio'])
-  })
-
   test('states the silence where the measure runs past its time signature', () => {
     const { content, warnings } = timed(overfull)
 
@@ -4146,6 +4134,114 @@ describe('a run of notes stating ratios that count differently', () => {
 
   test('leaves output the schema takes', () => {
     expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
+  })
+})
+
+// A ratio states its counts against a note value, and a source that leaves
+// <normal-type> off states them against the value of the bracket's first
+// note. That says nothing about how wide the bracket it drew is: a lone half
+// under 3:2 counts halves, and the same three against two counted in quarters
+// is the same ratio over a bracket a quarter wide.
+describe('a bracket completed in a value narrower than its ratio states', () => {
+  const TIMED =
+    '<attributes><divisions>12</divisions>' +
+    '<time><beats>2</beats><beat-type>4</beat-type></time></attributes>'
+
+  /** A half under a 3:2 with no <normal-type>, so the ratio counts halves. */
+  const lonelyHalf =
+    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>16</duration>' +
+    '<type>half</type><time-modification><actual-notes>3</actual-notes>' +
+    '<normal-notes>2</normal-notes></time-modification>' +
+    '<notations><tuplet type="start"/><tuplet type="stop"/></notations></note>'
+
+  /** An eighth under the same ratio, which counts eighths. */
+  const shortEighth =
+    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+    '<type>eighth</type><time-modification><actual-notes>3</actual-notes>' +
+    '<normal-notes>2</normal-notes></time-modification>' +
+    '<notations><tuplet type="start" bracket="no"/><tuplet type="stop"/></notations></note>'
+
+  const plain = (step: string, units: number, type: string) =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    `<duration>${String(units)}</duration><type>${type}</type></note>`
+
+  function timed(body: string) {
+    return read(measures(TIMED + body))
+  }
+
+  /** The bracket, with what it holds named by kind. */
+  function stated(item: SequenceItem | undefined) {
+    if (item?.kind !== 'tuplet') return undefined
+    return {
+      inner: item.inner,
+      outer: item.outer,
+      held: item.content.map((held) => held.kind),
+    }
+  }
+
+  // Counted in halves the bracket is missing two of them, which is more
+  // silence than a 2/4 measure holds. Counted in quarters it is missing one,
+  // which the silence gives exactly.
+  test('counts the ratio in the value the silence around the bracket fits', () => {
+    const { content, warnings } = timed(lonelyHalf)
+
+    expect(stated(content?.[0])).toEqual({
+      inner: { value: { base: 'quarter', dots: 0 }, multiple: 3 },
+      outer: { value: { base: 'quarter', dots: 0 }, multiple: 2 },
+      held: ['event', 'space'],
+    })
+    expect(warnings).toEqual([])
+  })
+
+  test('keeps the widest value the silence fits', () => {
+    const { content, warnings } = timed(
+      plain('D', 12, 'quarter') +
+        plain('E', 6, 'eighth') +
+        shortEighth +
+        '<forward><duration>2</duration></forward>',
+    )
+
+    expect(stated(content?.[2])).toEqual({
+      inner: { value: { base: '16th', dots: 0 }, multiple: 3 },
+      outer: { value: { base: '16th', dots: 0 }, multiple: 2 },
+      held: ['event', 'space'],
+    })
+    expect(warnings).toEqual([])
+  })
+
+  // In eighths the bracket is missing two of them, and the skip before it
+  // holds a quarter of that. In sixteenths it is missing one, which the skip
+  // gives exactly, and the bracket then starts on its own beat.
+  const lead =
+    plain('D', 6, 'eighth') +
+    '<forward><duration>2</duration></forward>' +
+    shortEighth +
+    plain('E', 12, 'quarter')
+
+  test('takes the silence before the bracket in the narrower value as well', () => {
+    const { content, warnings } = timed(lead)
+
+    expect(stated(content?.[1])).toEqual({
+      inner: { value: { base: '16th', dots: 0 }, multiple: 3 },
+      outer: { value: { base: '16th', dots: 0 }, multiple: 2 },
+      held: ['space', 'event'],
+    })
+    expect(content?.map((item) => item.kind)).toEqual(['event', 'tuplet', 'event'])
+    expect(warnings).toEqual([])
+  })
+
+  test.each([
+    ['at the barline', lonelyHalf],
+    [
+      'by the gap after it',
+      plain('D', 12, 'quarter') +
+        plain('E', 6, 'eighth') +
+        shortEighth +
+        '<forward><duration>2</duration></forward>',
+    ],
+    ['by the gap before it', lead],
+  ])('leaves output the schema takes: a bracket completed %s', (_, body) => {
+    expect(schemaErrors(convertMusicXML(measures(TIMED + body)).mnx)).toEqual([])
   })
 })
 
@@ -4348,7 +4444,7 @@ describe('a bracket the silence before it completes', () => {
 
   test('counts what the bracket holds where the silence before it falls short', () => {
     const { content, warnings } = timed(
-      plain('D', 6, 'eighth') + skip(2) + alone('C', 4, 'eighth') + plain('E', 12, 'quarter'),
+      plain('D', 6, 'eighth') + skip(2) + alone('C', 8, 'quarter') + plain('E', 6, 'eighth'),
     )
 
     expect(shape(content)).toEqual(['event', 'space', ['event'], 'event'])
