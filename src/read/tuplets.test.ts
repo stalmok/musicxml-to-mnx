@@ -1015,13 +1015,37 @@ describe('tuplets', () => {
     ])
   })
 
-  // The note carries no ratio, so nothing opened on it either.
-  test('rejects a stop with no tuplet open', () => {
+  // The note carries no ratio, so nothing opened on it either. A marker that
+  // ends nothing takes none of the measure's time, so the measure still adds
+  // up without it and the file converts.
+  test('passes over a stop with no tuplet open', () => {
     const bare =
-      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>6</duration>' +
       '<type>eighth</type><notations><tuplet type="stop"/></notations></note>'
+    const { content, warnings } = read(measure(bare))
 
-    expect(readFailure(measure(bare)).message).toContain('no tuplet is open')
+    expect(content?.map((item) => item.kind)).toEqual(['event'])
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tuplet'])
+  })
+
+  // A grace note carrying the stop is the same construct, and was refused
+  // where an ordinary note's stop was.
+  test('passes over a stop a grace note carries with no tuplet open', () => {
+    const graceStop =
+      '<note><grace/><pitch><step>G</step><octave>4</octave></pitch><type>eighth</type>' +
+      '<notations><tuplet type="stop"/></notations></note>'
+    const { content, warnings } = read(measure(graceStop + bracketedNote('C')))
+
+    expect(content?.map((item) => item.kind)).toEqual(['grace', 'event'])
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tuplet'])
+  })
+
+  test('leaves output the schema takes where a stop closes nothing', () => {
+    const graceStop =
+      '<note><grace/><pitch><step>G</step><octave>4</octave></pitch><type>eighth</type>' +
+      '<notations><tuplet type="stop"/></notations></note>'
+
+    expect(schemaErrors(convertMusicXML(measure(graceStop + bracketedNote('C'))).mnx)).toEqual([])
   })
 
   // A grace note takes none of the measure's time, so its ratio says nothing
@@ -2125,16 +2149,22 @@ describe('a tuplet marker on a chord member', () => {
       '<notations><tuplet type="stop" number="2"/><tuplet type="stop" number="2"/>' +
       '<tuplet type="stop" number="1"/></notations></note>'
 
-    expect(
-      readFailure(
-        measure(
-          tupletNote('C', 4, 'eighth', 'start') +
-            tupletNote('D', 4, 'eighth') +
-            chordMember('<tuplet type="start" number="2"/>') +
-            twice,
-        ),
-      ).message,
-    ).toContain('A tuplet is closed where no tuplet is open.')
+    const { warnings } = read(
+      measure(
+        tupletNote('C', 4, 'eighth', 'start') +
+          tupletNote('D', 4, 'eighth') +
+          chordMember('<tuplet type="start" number="2"/>') +
+          twice,
+      ),
+    )
+
+    // The second stop of that number closes the bracket the source drew, and
+    // the stop naming that bracket is then the one with nothing to close.
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unsupported:element',
+      'inconsistent:tuplet',
+      'unrepresentable:tuplet-crossing',
+    ])
   })
 
   // A mis-tracked stop is what would nest the brackets wrongly, so the output

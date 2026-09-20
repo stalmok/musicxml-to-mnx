@@ -985,8 +985,12 @@ function closeTuplets(
       }
       continue
     }
+    // A stop with no bracket to close is reported where it is met and takes
+    // no part in the crossing test below: it names no tuplet that ended here.
+    const ended = builder.closeTuplet(voice, warnings, context, path, line)
+    if (ended === undefined) continue
     stated.push(number)
-    closed.push(builder.closeTuplet(voice, warnings, context, path, line))
+    closed.push(ended)
   }
   if (stated.length > 0 && String([...stated].sort()) !== String([...closed].sort())) {
     warnings.add(

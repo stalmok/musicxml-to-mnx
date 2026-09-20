@@ -1002,7 +1002,8 @@ export class MeasureBuilder {
     line: number,
   ): void {
     for (const builder of this.#allBuilders()) {
-      if (impliedFrame(builder)) this.#closeTuplet(builder, warnings, context, path, line, false)
+      const open = impliedFrame(builder)
+      if (open) this.#closeTuplet(builder, open, warnings, context, path, line, false)
     }
   }
 
@@ -1481,32 +1482,47 @@ export class MeasureBuilder {
     context: WarningContext,
     path: DocumentPath,
     line: number,
-  ): string {
-    return this.#closeTuplet(this.#builderFor(voice), warnings, context, path, line, false)
+  ): string | undefined {
+    const builder = this.#builderFor(voice)
+    const closed = builder.open.at(-1)
+    // A stop naming a bracket this voice never opened. A bracket whose start
+    // was dropped and one an earlier measure closed at its barline are both
+    // answered for already, so what is left is a marker the source wrote
+    // where nothing of its can end. It takes none of the measure's time, so
+    // the measure still adds up without it.
+    if (!closed) {
+      warnings.add(
+        'inconsistent:tuplet',
+        'A <tuplet> stops where no tuplet is open, and names no bracket this measure ' +
+          'dropped or carried in. The marker is passed over.',
+        { ...context, line },
+        'tuplet',
+      )
+      return undefined
+    }
+    return this.#closeTuplet(builder, closed, warnings, context, path, line, false)
   }
 
   /**
-   * The same, for a voice already in hand. `cut` marks a close the barline
-   * forced rather than a stop the source wrote, so the bracket holding less
-   * than its ratio counts is the converter's doing and is not reported again.
+   * The same, for a voice and its innermost frame already in hand. `cut`
+   * marks a close the barline forced rather than a stop the source wrote, so
+   * the bracket holding less than its ratio counts is the converter's doing
+   * and is not reported again.
    */
   #closeTuplet(
     builder: VoiceBuilder,
+    closed: OpenBracket,
     warnings: WarningCollector,
     context: WarningContext,
     path: DocumentPath,
     line: number,
     cut: boolean,
   ): string {
-    const closed = builder.open.at(-1)
     // A tremolo edge and a tuplet edge can land on different notes. Popping
     // the tremolo's frame here would lose the notes it holds, so a bracket
     // closing across an open tremolo refuses instead.
-    if (closed?.opened === 'tremolo') {
+    if (closed.opened === 'tremolo') {
       throw new MusicXMLError('A tuplet closes inside a two-note tremolo.', { path, line })
-    }
-    if (!closed) {
-      throw new MusicXMLError('A tuplet is closed where no tuplet is open.', { path, line })
     }
     builder.open.pop()
 
@@ -1716,7 +1732,7 @@ export class MeasureBuilder {
         if (tremoloFrame(builder)) {
           throw new MusicXMLError('A tremolo is opened and never closed.', { path, line })
         }
-        while (builder.open.length > 0) {
+        for (let open = builder.open.at(-1); open; open = builder.open.at(-1)) {
           warnings.add(
             'unrepresentable:tuplet-span',
             'A tuplet bracket runs past the end of the measure, and MNX states a tuplet ' +
@@ -1727,7 +1743,7 @@ export class MeasureBuilder {
           )
           carried.push({
             voice,
-            number: this.#closeTuplet(builder, warnings, context, path, line, true),
+            number: this.#closeTuplet(builder, open, warnings, context, path, line, true),
           })
         }
       }

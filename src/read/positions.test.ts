@@ -61,13 +61,6 @@ const tupletNote = (step: string, markers = ''): string =>
   (markers ? `<notations>${markers}</notations>` : '') +
   '</note>'
 
-/** A note carrying no tuplet ratio, so no tuplet opens on it. */
-const plainNote = (step: string, markers = ''): string =>
-  `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>2</duration>` +
-  '<type>eighth</type>' +
-  (markers ? `<notations>${markers}</notations>` : '') +
-  '</note>'
-
 /** One note of a two-note tremolo: written as a half, lasting a quarter. */
 const tremoloNote = (step: string, type: string, duration = 4, marks = '3'): string =>
   `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
@@ -136,11 +129,6 @@ const REFUSALS: readonly { what: string; body: readonly string[]; at: number }[]
     what: 'a tremolo whose two notes last different times',
     body: [tremoloNote('C', 'start'), tremoloNote('E', 'stop', 8)],
     at: 1,
-  },
-  {
-    what: 'a tuplet closing where none is open',
-    body: [plainNote('C', '<tuplet type="stop"/>')],
-    at: 0,
   },
   {
     what: 'a tuplet closing inside a tremolo',
