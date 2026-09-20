@@ -618,7 +618,7 @@ function complete(
   const before = skipBefore(voice.content, at)
   const adopted = adoptable(claim, ratio, voice, next)
   const run = adopted?.notes ?? []
-  const taken = countings(stated).flatMap((counted) => {
+  const taken = countings(stated).flatMap((counted, narrower) => {
     const missing = subtractFractions(quantityLength(counted.inner), held)
     // A narrower value counts less, so once the bracket holds what the ratio
     // counts, no narrower one leaves anything for the silence to complete.
@@ -638,7 +638,9 @@ function complete(
     // silence is the bracket's only once the whole run has moved in.
     const silent =
       adopted && moved < run.length ? NO_SILENCE : silenceAfter(voice, adopted ? at + 1 : at)
-    return compareFractions(silent.time, left) < 0 ? [] : [{ counted, lead, moved, left, silent }]
+    return compareFractions(silent.time, left) < 0
+      ? []
+      : [{ counted, narrower, lead, moved, left, silent }]
   })[0]
   if (!taken) return false
 
@@ -646,15 +648,30 @@ function complete(
   tuplet.outer = taken.counted.outer
   const reached = voice.end
   adopt(claim, voice, adopted, taken.moved)
-  // A rest of the voice's own is drawn under the bracket where the source
-  // drew it outside, which is a change to what the source drew.
-  if (adopted && !adopted.run && taken.moved > 0) {
+  // Whatever the bracket takes in was drawn outside it, so the bracket ends
+  // up drawn over more than the source draws it over.
+  if (adopted && taken.moved > 0) {
     warnings.addAt(
       claim.place,
       'inconsistent:tuplet',
-      'A rest written after a tuplet lasts what its written value lasts under that ' +
-        "tuplet's ratio, and the tuplet holds less than its ratio counts. The rest is " +
-        'drawn inside the bracket, where the source draws it outside.',
+      'A tuplet holds less than its ratio counts, and what stands after it sounds at that ' +
+        `ratio. ${adopted.run ? 'Those notes are' : 'That rest is'} drawn inside the ` +
+        'bracket, where the source draws ' +
+        `${adopted.run ? 'them' : 'it'} outside.`,
+      { ...context, line: claim.line },
+      'tuplet',
+    )
+  }
+  // The counts the source states are kept, against a note value narrower than
+  // the one it counts them in. The first counting is the one the source
+  // states, so anything past it is narrower.
+  if (taken.narrower > 0) {
+    warnings.addAt(
+      claim.place,
+      'inconsistent:tuplet',
+      'A tuplet holds less than its ratio counts, and the silence around it is less than ' +
+        'that ratio needs in the note value it counts. The same counts are stated in a ' +
+        'narrower note value, which is as wide as the bracket can be here.',
       { ...context, line: claim.line },
       'tuplet',
     )
@@ -734,7 +751,8 @@ function adopt(
   moved: number,
 ): void {
   if (!adopted || moved === 0) return
-  const taken = adopted.notes.slice(0, moved).map((one) => one.item)
+  const moving = adopted.notes.slice(0, moved)
+  const taken = moving.map((one) => one.item)
   const { run } = adopted
   claim.tuplet.content.push(...taken)
   if (!run) {
@@ -744,7 +762,16 @@ function adopt(
   run.tuplet.content = run.tuplet.content.filter((item) => !taken.includes(item))
   if (run.tuplet.content.length === 0) {
     voice.content.splice(voice.content.indexOf(run.tuplet as SequenceItem), 1)
+    return
   }
+  // What is left of the run begins where the bracket now ends, and takes the
+  // time of what it still holds. Settled against the time it took before,
+  // what it holds would be stated over the time of the notes it gave up.
+  const time = moving.reduce((total, one) => addFractions(total, one.time), fraction(0))
+  run.spent = subtractFractions(run.spent, time)
+  run.openEnd = addFractions(run.openEnd, time)
+  // A skip that moved is written in the bracket's frame now, not the run's.
+  run.skips = run.skips.filter((skip) => !taken.includes(skip.space as SequenceItem))
 }
 
 /**

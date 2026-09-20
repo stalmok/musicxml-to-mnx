@@ -4220,7 +4220,14 @@ describe('a bracket completed in a value narrower than its ratio states', () => 
       outer: { value: { base: 'quarter', dots: 0 }, multiple: 2 },
       held: ['event', 'space'],
     })
-    expect(warnings).toEqual([])
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tuplet'])
+  })
+
+  test('says the ratio is counted in a value the source does not count it in', () => {
+    const { warnings } = timed(lonelyHalf)
+
+    expect(warnings[0]?.message).toContain('stated in a narrower note value')
+    expect(warnings[0]?.context).toEqual({ part: 'P1', measure: 1, line: 1 })
   })
 
   test('keeps the widest value the silence fits', () => {
@@ -4236,7 +4243,7 @@ describe('a bracket completed in a value narrower than its ratio states', () => 
       outer: { value: { base: '16th', dots: 0 }, multiple: 2 },
       held: ['event', 'space'],
     })
-    expect(warnings).toEqual([])
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tuplet'])
   })
 
   // In eighths the bracket is missing two of them, and the skip before it
@@ -4257,7 +4264,7 @@ describe('a bracket completed in a value narrower than its ratio states', () => 
       held: ['space', 'event'],
     })
     expect(content?.map((item) => item.kind)).toEqual(['event', 'tuplet', 'event'])
-    expect(warnings).toEqual([])
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tuplet'])
   })
 
   test.each([
@@ -4314,9 +4321,18 @@ describe('a bracket completed by the run of notes after it', () => {
   }
 
   test('takes the note after it inside the bracket', () => {
-    const { content } = timed(plainRest(24, 'half') + stoppedEarly + tripletNote('D'))
+    const { content, warnings } = timed(plainRest(24, 'half') + stoppedEarly + tripletNote('D'))
 
     expect(shape(content)).toEqual(['event', [3, 2, 3]])
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tuplet'])
+  })
+
+  // The bracket ends up drawn over a note the source draws it outside of.
+  test('says the bracket is drawn over the note the source draws outside it', () => {
+    const { warnings } = timed(plainRest(24, 'half') + stoppedEarly + tripletNote('D'))
+
+    expect(warnings[0]?.message).toContain('drawn inside the bracket')
+    expect(warnings[0]?.context).toEqual({ part: 'P1', measure: 1, line: 1 })
   })
 
   // The stop the source writes on that note names a bracket that is not
@@ -4327,15 +4343,24 @@ describe('a bracket completed by the run of notes after it', () => {
     )
 
     expect(shape(content)).toEqual(['event', [3, 2, 3]])
-    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tuplet'])
+    // One for the stop the source wrote where nothing was running, one for
+    // the note the bracket is now drawn over.
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tuplet', 'inconsistent:tuplet'])
   })
 
+  // What the run keeps is settled against the time it still takes, not the
+  // time it took before it gave notes up. One triplet quarter on its own is
+  // a ratio no pair of note values states, which is reported.
   test('takes no more of the run than the bracket is missing', () => {
-    const { content } = timed(
+    const { content, warnings } = timed(
       plainRest(12, 'quarter') + stoppedEarly + tripletNote('D') + tripletNote('E'),
     )
 
     expect(shape(content)).toEqual(['event', [3, 2, 3], [1, 2, 1]])
+    expect(warnings.map((w) => w.code)).toEqual([
+      'inconsistent:tuplet',
+      'unrepresentable:tuplet-ratio',
+    ])
   })
 
   // The run stands between the bracket and the silence beyond it, so the
@@ -4389,6 +4414,35 @@ describe('a bracket completed by the run of notes after it', () => {
 
     expect(shape(content)).toEqual(['event', [2, 2, 2], [2, 1, 1]])
     expect(warnings.map((w) => w.code)).toContain('inconsistent:duration')
+  })
+
+  // A gap inside the run stands in it as a space, written at the run's frame.
+  // The bracket's frame is the same ratio, so the space moves in as it is.
+  // The run settles what it still holds against the time it still takes, and
+  // a space it gave up is no longer its to write.
+  test('takes a skip standing inside the run in with the notes around it', () => {
+    const half =
+      '<note><pitch><step>E</step><octave>5</octave></pitch><duration>16</duration>' +
+      '<type>half</type><time-modification><actual-notes>3</actual-notes>' +
+      '<normal-notes>2</normal-notes></time-modification></note>'
+    const { content, warnings } = timed(
+      tripletNote('C', '<tuplet type="start"/><tuplet type="stop"/>') +
+        tripletNote('D') +
+        '<forward><duration>8</duration></forward>' +
+        half,
+    )
+    const bracket = content?.[0]
+    const space = bracket?.kind === 'tuplet' ? bracket.content[2] : undefined
+
+    expect(shape(content)).toEqual([
+      [3, 2, 3],
+      [2, 2, 1],
+    ])
+    expect(space?.kind === 'space' && space.duration).toEqual(fraction(1, 4))
+    expect(warnings.map((w) => w.code)).toEqual([
+      'inconsistent:tuplet',
+      'unrepresentable:tuplet-ratio',
+    ])
   })
 
   // A bracket the source drew says where it runs, so it is not a run the
@@ -4769,6 +4823,11 @@ describe('a bracket the silence before it completes', () => {
     ['before', skip(4) + alone('C', 8, 'quarter') + plain('D', 12, 'quarter')],
     ['around', skip(4) + alone('C', 4, 'eighth') + skip(4) + plain('D', 12, 'quarter')],
     ['at the barline', plain('D', 12, 'quarter') + skip(4) + alone('C', 8, 'quarter')],
+    [
+      'past a grace note before it',
+      skip(4) + grace + alone('C', 8, 'quarter') + plain('D', 12, 'quarter'),
+    ],
+    ['after a grace note opening the measure', grace + alone('C', 8, 'quarter')],
   ])('leaves output the schema takes: a bracket completed %s', (_, body) => {
     expect(schemaErrors(convertMusicXML(measures(TIMED + body)).mnx)).toEqual([])
   })
