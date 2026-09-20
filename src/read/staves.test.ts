@@ -734,6 +734,25 @@ describe('key and time signatures stated per staff', () => {
     ])
   })
 
+  // Two blocks stating a staff each at one point are one statement of the
+  // score's key there, as they are at the measure start.
+  test('says nothing where blocks at one point past the start cover both staves', () => {
+    const { warnings } = read(
+      measures(
+        GRAND_STAFF +
+          note('C', '1') +
+          '<attributes><key number="1"><fifths>2</fifths></key></attributes>' +
+          note('D', '1') +
+          '<backup><duration>8</duration></backup>' +
+          note('E', '2', '2') +
+          '<attributes><key number="2"><fifths>2</fifths></key></attributes>' +
+          note('F', '2', '2'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:mid-measure-key'])
+  })
+
   test('reports a time signature stated for one staff partway through the measure', () => {
     const { warnings } = read(
       measures(

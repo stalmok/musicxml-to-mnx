@@ -1125,37 +1125,42 @@ function agreedAcrossStaves<T>(
  * disagree, and what they agree on may not be what the measure converts,
  * which is the first stated there.
  */
-function settleAtStart<T>(
+function settleStated<T>(
   kind: SignatureKind<T>,
-  statements: readonly StaffSignature<T>[],
+  group: StatedAt<T>,
   converted: T | undefined,
   staves: number,
   warnings: WarningCollector,
   context: WarningContext,
-  start: StartOfMeasure,
 ): void {
   const at = (line: number) => ({ ...context, line })
   const agreed = agreedAcrossStaves(
     kind,
-    statements,
+    group.statements,
     staves,
     warnings,
-    at(start.first),
-    start.place,
+    at(group.first),
+    group.place,
   )
-  if (!agreed) return
-  reportSecondAtStart(kind, converted, agreed.value, warnings, at(start.last), start.place)
+  // Only what the measure opens with is settled against a converted value:
+  // one stated after the start is carried to the next measure, and what
+  // becomes of it is settled there.
+  if (!agreed || compareFractions(group.at, fraction(0)) !== 0) return
+  reportSecondAtStart(kind, converted, agreed.value, warnings, at(group.last), group.place)
 }
 
 /**
- * Where a measure states a key or a time signature as it begins: the place
- * the report reads at, the line of the first block stating one and the line
- * of the last, which is where a second statement is reported.
+ * What the blocks at one point of a measure state about one signature: the
+ * place the report reads at, the line of the first block stating one, the
+ * line of the last, which is where a second statement is reported, and every
+ * statement they make between them.
  */
-interface StartOfMeasure {
+interface StatedAt<T> {
+  at: Fraction
   place: WarningPlace
   first: number
   last: number
+  statements: StaffSignature<T>[]
 }
 
 /**
@@ -1381,18 +1386,27 @@ function readMeasure(
   // block states it, settled once the measure is whole. Each is reported
   // through the place the first of them was read at, so the report still
   // reads where the source states it.
-  const startKeys: StaffSignature<Key>[] = []
-  const startTimes: StaffSignature<TimeSignature>[] = []
-  let keyStart: StartOfMeasure | undefined
-  let timeStart: StartOfMeasure | undefined
+  const keyGroups: StatedAt<Key>[] = []
+  const timeGroups: StatedAt<TimeSignature>[] = []
   // Every unmetered statement the measure makes, reported once the measure
   // has settled what it converts.
   const unmetered: { place: WarningPlace; line: number }[] = []
-  const openedAt = (start: StartOfMeasure | undefined, line: number): StartOfMeasure => ({
-    place: start?.place ?? warnings.reserve(),
-    first: start?.first ?? line,
-    last: line,
-  })
+  const statedAt = <T>(groups: StatedAt<T>[], at: Fraction, line: number): StatedAt<T> => {
+    const opened = groups.find((group) => compareFractions(group.at, at) === 0)
+    if (opened) {
+      opened.last = line
+      return opened
+    }
+    const group: StatedAt<T> = {
+      at,
+      place: warnings.reserve(),
+      first: line,
+      last: line,
+      statements: [],
+    }
+    groups.push(group)
+    return group
+  }
   const dynamics: Dynamic[] = []
   const tempos: Tempo[] = []
   // Every <sound tempo> of the measure, waiting on the score's marks to say
@@ -1440,18 +1454,16 @@ function readMeasure(
           measurePath,
         )
         const at = builder.position()
-        const place = { ...context, line: found.line }
-        // A statement where the measure begins is held for the settlement
-        // after the loop, which sees every block the measure opens with. One
-        // stated later stands at its own point, where nothing else is said.
-        if (reading.keys.length > 0 && builder.atMeasureStart()) {
-          keyStart = openedAt(keyStart, found.line)
-          startKeys.push(...reading.keys)
-          if (!keySettled) key = reading.key
-          keySettled = true
-        } else if (reading.keys.length > 0) {
-          agreedAcrossStaves(KEY, reading.keys, state.staves, warnings, place, warnings.reserve())
-          lateKeys.push({ value: reading.key, at, line: found.line })
+        // Held for the settlement after the loop, which sees every block
+        // stating one at this point.
+        if (reading.keys.length > 0) {
+          statedAt(keyGroups, at, found.line).statements.push(...reading.keys)
+          if (builder.atMeasureStart()) {
+            if (!keySettled) key = reading.key
+            keySettled = true
+          } else {
+            lateKeys.push({ value: reading.key, at, line: found.line })
+          }
         }
         // Taken after the key, and before the settlement of the time blocks
         // around it, so the reports of one block read in the order it
@@ -1461,17 +1473,17 @@ function readMeasure(
             unmetered.push({ place: warnings.reserve(), line: stated.line })
           }
         }
-        if (reading.times.length > 0 && builder.atMeasureStart()) {
-          timeStart = openedAt(timeStart, found.line)
-          startTimes.push(...reading.times)
-          if (!timeSettled) time = reading.time
-          // A later one changes nothing, so the music after it is read as
-          // before.
-          else state.time = timeBefore
-          timeSettled = true
-        } else if (reading.times.length > 0) {
-          agreedAcrossStaves(TIME, reading.times, state.staves, warnings, place, warnings.reserve())
-          lateTimes.push({ value: reading.time, at, line: found.line })
+        if (reading.times.length > 0) {
+          statedAt(timeGroups, at, found.line).statements.push(...reading.times)
+          if (builder.atMeasureStart()) {
+            if (!timeSettled) time = reading.time
+            // A later one changes nothing, so the music after it is read as
+            // before.
+            else state.time = timeBefore
+            timeSettled = true
+          } else {
+            lateTimes.push({ value: reading.time, at, line: found.line })
+          }
         }
         clefs.push(...reading.clefs)
         staffConfigs.push(...reading.staffConfigs)
@@ -1579,8 +1591,8 @@ function readMeasure(
 
   // Settled with the measure whole, so a staff stated in a block of its own
   // stands beside the staves the blocks around it state.
-  if (keyStart) settleAtStart(KEY, startKeys, key, state.staves, warnings, context, keyStart)
-  if (timeStart) settleAtStart(TIME, startTimes, time, state.staves, warnings, context, timeStart)
+  for (const group of keyGroups) settleStated(KEY, group, key, state.staves, warnings, context)
+  for (const group of timeGroups) settleStated(TIME, group, time, state.staves, warnings, context)
 
   // A measure stating none, or one MNX cannot carry, leaves the one before in
   // force.
