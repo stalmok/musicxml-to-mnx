@@ -1035,6 +1035,54 @@ describe('key and time signatures stated per staff', () => {
     expect(warnings[1]?.message).toContain('different time signatures')
   })
 
+  // A number tells several staves apart, and a part written on one staff has
+  // nothing to tell apart, so a number there names the whole part. The staff
+  // the part gains in a later block is not left unstated by it.
+  test('says nothing where a part gains a staff after stating the key for its only one', () => {
+    const { score: result, warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions><staves>1</staves>' +
+          '<key number="1"><fifths>2</fifths></key></attributes>' +
+          '<attributes><staves>2</staves></attributes>' +
+          note('C', '1'),
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.key).toEqual({ fifths: 2 })
+    expect(warnings).toEqual([])
+  })
+
+  test('says nothing where a part gains a staff after stating its only meter', () => {
+    const { score: result, warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions><staves>1</staves>' +
+          '<time number="1"><beats>4</beats><beat-type>4</beat-type></time></attributes>' +
+          '<attributes><staves>2</staves></attributes>' +
+          note('C', '1'),
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.time).toEqual({ count: 4, unit: 4, display: undefined })
+    expect(warnings).toEqual([])
+  })
+
+  // The key the part stated while it had one staff stands on the staff it
+  // gains, so a later measure restating it for one staff leaves them agreed.
+  test('carries the key of a part with one staff onto the staff it gains', () => {
+    const { part, warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions>' +
+          '<key number="1"><fifths>2</fifths></key></attributes>' +
+          '<attributes><staves>2</staves></attributes>' +
+          note('C', '1'),
+        '<attributes><key number="1"><fifths>2</fifths></key></attributes>' + note('D', '1'),
+      ),
+    )
+
+    expect(part?.staves).toBe(2)
+    expect(warnings).toEqual([])
+  })
+
   // A staff number is read before the signature it numbers, so a block
   // naming a staff the part does not have is refused before anything is read
   // out of it. The key it carries is one the reader reports on, and nothing

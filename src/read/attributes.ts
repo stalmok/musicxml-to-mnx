@@ -329,7 +329,13 @@ function statedPerStaff<T>(
     readAttributeInRange(block.element, 'number', path, 1, state.staves),
   )
   return blocks.map((block, index) => ({
-    staff: numbers[index],
+    // A number tells several staves apart. A part written on one staff has
+    // nothing to tell apart, so a number there states the part's signature,
+    // as it does on a clef and a staff line count. It matters where a later
+    // block gives the part a second staff: the signature stated before that
+    // stands on the staff it gains, and a second statement beside it
+    // contradicts the part rather than narrowing it to a staff.
+    staff: state.staves > 1 ? numbers[index] : undefined,
     value: read(block),
     line: block.line,
   }))

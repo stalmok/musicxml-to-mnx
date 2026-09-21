@@ -953,6 +953,15 @@ describe('a time signature stated after the measure start', () => {
       expect(warnings).toEqual([])
     })
 
+    test('reports a second meter stated for the only staff there is', () => {
+      const numbered =
+        '<attributes><time number="1"><beats>3</beats><beat-type>4</beat-type></time></attributes>'
+      const { score: result, warnings } = read(part(twice(numbered + note(24, 2)), note(24)))
+
+      expect(result.globalMeasures[0]?.time).toEqual({ count: 2, unit: 4 })
+      expect(warnings.map((w) => w.code)).toEqual(['inconsistent:time'])
+    })
+
     // A rest with no written value lasting the measure is the measure's rest,
     // so it shows which time signature the next measure is read against.
     test('reads the next measure against the one converted', () => {
@@ -1396,6 +1405,17 @@ describe('a key signature stated after the measure start', () => {
       const { warnings } = read(part(twice(keyed(2), keyed(2))))
 
       expect(warnings).toEqual([])
+    })
+
+    // A number tells several staves apart, and a part written on one staff
+    // has nothing to tell apart, so a second statement naming staff 1 is a
+    // second statement for the part.
+    test('reports a second one stated for the only staff there is', () => {
+      const numbered = '<attributes><key number="1"><fifths>2</fifths></key></attributes>'
+      const { score: result, warnings } = read(part(twice(keyed(0), numbered), note(24)))
+
+      expect(result.globalMeasures[0]?.key).toEqual({ fifths: 0 })
+      expect(warnings.map((w) => w.code)).toEqual(['inconsistent:key'])
     })
 
     test('reports one following a key MNX cannot carry', () => {
