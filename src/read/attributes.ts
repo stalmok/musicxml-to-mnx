@@ -120,6 +120,12 @@ export interface StaffSignature<T> {
   staff: number | undefined
   /** What it states, or nothing where MNX cannot hold what it states. */
   value: T | undefined
+  /**
+   * How many staves the part had where this was read. A block later in the
+   * measure can raise the count, and a statement speaks only for the staves
+   * that stood when it was made.
+   */
+  staves: number
   line: number
 }
 
@@ -337,6 +343,7 @@ function statedPerStaff<T>(
     // contradicts the part rather than narrowing it to a staff.
     staff: state.staves > 1 ? numbers[index] : undefined,
     value: read(block),
+    staves: state.staves,
     line: block.line,
   }))
 }

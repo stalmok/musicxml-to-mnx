@@ -1083,6 +1083,109 @@ describe('key and time signatures stated per staff', () => {
     expect(warnings).toEqual([])
   })
 
+  // A numbered statement names the staves the part had where it was read. A
+  // staff the part gains after it is not a staff the statement passed over:
+  // it takes the signature the part is in.
+  test('says nothing where a part gains a staff after stating a key for each staff it had', () => {
+    const { score: result, warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions><staves>2</staves>' +
+          '<key number="1"><fifths>2</fifths></key>' +
+          '<key number="2"><fifths>2</fifths></key></attributes>' +
+          '<attributes><staves>3</staves></attributes>' +
+          note('C', '1'),
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.key).toEqual({ fifths: 2 })
+    expect(warnings).toEqual([])
+  })
+
+  test('says nothing where a part gains a staff after stating a meter for each staff it had', () => {
+    const { score: result, warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions><staves>2</staves>' +
+          '<time number="1"><beats>4</beats><beat-type>4</beat-type></time>' +
+          '<time number="2"><beats>4</beats><beat-type>4</beat-type></time></attributes>' +
+          '<attributes><staves>3</staves></attributes>' +
+          note('C', '1'),
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.time).toEqual({ count: 4, unit: 4, display: undefined })
+    expect(warnings).toEqual([])
+  })
+
+  // The staff gained holds the key it took, so a later measure restating that
+  // key for one staff leaves the staves agreed.
+  test('carries the key stated for each staff the part had onto the staff it gains', () => {
+    const { part, warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions><staves>2</staves>' +
+          '<key number="1"><fifths>2</fifths></key>' +
+          '<key number="2"><fifths>2</fifths></key></attributes>' +
+          '<attributes><staves>3</staves></attributes>' +
+          note('C', '1'),
+        '<attributes><key number="1"><fifths>2</fifths></key></attributes>' + note('D', '1'),
+      ),
+    )
+
+    expect(part?.staves).toBe(3)
+    expect(warnings).toEqual([])
+  })
+
+  // The count rises before the keys rather than after them, so the third
+  // staff stands where they are stated and is one they leave unstated.
+  test('reports a key stated for every staff but the one the part already gained', () => {
+    const { warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions><staves>3</staves>' +
+          '<key number="1"><fifths>2</fifths></key>' +
+          '<key number="2"><fifths>2</fifths></key></attributes>' +
+          note('C', '1'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-key'])
+    expect(warnings[0]?.message).toContain('one staff and not the others')
+  })
+
+  // The staves the part had are in different keys, and the one it gains takes
+  // the key that stands for the part, so the disagreement reported is theirs.
+  test('reports the staves a part gaining another is left in different keys on', () => {
+    const { warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions><staves>2</staves>' +
+          '<key number="1"><fifths>2</fifths></key>' +
+          '<key number="2"><fifths>-3</fifths></key></attributes>' +
+          '<attributes><staves>3</staves></attributes>' +
+          note('C', '1'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-key'])
+    expect(warnings[0]?.message).toContain('in different keys')
+  })
+
+  // Two blocks state a key where the measure begins and the second raises the
+  // count, so the staves each of them speaks for differ. The second names
+  // staff 1 alone with staff 3 standing, which leaves staff 3 unstated.
+  test('reports a staff left unstated by the block that gave the part it', () => {
+    const { warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions><staves>2</staves>' +
+          '<key number="1"><fifths>2</fifths></key>' +
+          '<key number="2"><fifths>2</fifths></key></attributes>' +
+          '<attributes><staves>3</staves>' +
+          '<key number="1"><fifths>2</fifths></key></attributes>' +
+          note('C', '1'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-key'])
+    expect(warnings[0]?.message).toContain('one staff and not the others')
+  })
+
   // A staff number is read before the signature it numbers, so a block
   // naming a staff the part does not have is refused before anything is read
   // out of it. The key it carries is one the reader reports on, and nothing

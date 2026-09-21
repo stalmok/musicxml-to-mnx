@@ -1074,7 +1074,8 @@ function holdLate<T>(
  * <time> per staff, and a measure may spread them over several <attributes>,
  * so a block stating one staff's is only partial until the others are seen.
  * A block with no number speaks for every staff, and a later statement for a
- * staff replaces the one before it.
+ * staff replaces the one before it. Every statement is read against the
+ * staves the part had where it was made, not the count the measure ends on.
  *
  * Compared against what the staves carry, not against this point alone: a
  * measure restating for one staff what every staff already has leaves them
@@ -1091,12 +1092,20 @@ function reportAcrossStaves<T>(
 ): void {
   const stated = new Set<number>()
   for (const statement of statements) {
-    for (let staff = 1; staff <= staves; staff += 1) {
+    for (let staff = 1; staff <= statement.staves; staff += 1) {
       if (statement.staff === undefined || statement.staff === staff) {
         inForce.set(staff, statement.value)
         stated.add(staff)
       }
     }
+  }
+  // A staff the part gains after every statement here is not one they left
+  // unstated: it takes the signature the part is in, which is the first
+  // staff's, the one every other staff is compared against.
+  const had = Math.max(...statements.map((statement) => statement.staves))
+  for (let staff = had + 1; staff <= staves; staff += 1) {
+    inForce.set(staff, inForce.get(1))
+    stated.add(staff)
   }
   const values = Array.from({ length: staves }, (_unused, index) => inForce.get(index + 1))
   const first = values[0]
