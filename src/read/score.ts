@@ -1107,14 +1107,20 @@ function reportAcrossStaves<T>(
   ) {
     return
   }
+  // Which of them is converted is left to the reports that settle each
+  // statement. The one converted is the first MNX can state, not the first
+  // stated: a staff written senza misura or in a non-traditional key states
+  // one MNX cannot carry, and a later staff's stands instead.
+  const disagreement =
+    stated.size < staves
+      ? `A ${kind.element} signature is stated for one staff and not the others, and MNX ` +
+        'states one for the whole score.'
+      : `The staves of this part are in different ${kind.name}s, and MNX states one ` +
+        `${kind.name} for the score.`
   warnings.addAt(
     place,
     `unrepresentable:per-staff-${kind.element}`,
-    stated.size < staves
-      ? `A ${kind.element} signature is stated for one staff and not the others, and MNX ` +
-          'states one for the whole score. The stated one is the one converted.'
-      : `The staves of this part are in different ${kind.name}s, and MNX states one ` +
-          `${kind.name} for the score. The first is the one converted.`,
+    `${disagreement} The one converted stands for every staff.`,
     at,
     kind.element,
   )
@@ -1124,7 +1130,7 @@ function reportAcrossStaves<T>(
  * Reports what a measure states about one signature where it begins, against
  * the one converted: the staves may leave one of their own unstated or
  * disagree, and what they state may not be what the measure converts, which
- * is the first stated there.
+ * is the first stated there that MNX can state.
  *
  * The two answer different questions, so both are asked. Staves in different
  * signatures and a point contradicting itself are separate losses, and a

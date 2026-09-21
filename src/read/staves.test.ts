@@ -758,6 +758,51 @@ describe('key and time signatures stated per staff', () => {
     expect(warnings[1]?.message).toContain('different keys')
   })
 
+  // The key converted is the first one MNX can state, which here is the
+  // second stated, so the report says which staves disagree and leaves the
+  // ordinal to the reports that settle each statement.
+  test('converts the staff stating fifths where the first staff states none', () => {
+    const { score: result, warnings } = read(
+      measures(
+        GRAND_STAFF.replace(
+          '</attributes>',
+          '<key number="1"><key-step>B</key-step><key-alter>-1</key-alter></key>' +
+            '<key number="2"><fifths>3</fifths></key></attributes>',
+        ) + note('C', '1'),
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.key).toEqual({ fifths: 3 })
+    expect(warnings[1]?.message).toBe(
+      'The staves of this part are in different keys, and MNX states one key for the ' +
+        'score. The one converted stands for every staff.',
+    )
+  })
+
+  // The stated signature is senza misura, which MNX cannot carry, so the
+  // meter in force is the one converted rather than the stated one.
+  test('reports a staff stated senza misura beside one left metered', () => {
+    const { score: result, warnings } = read(
+      measures(
+        GRAND_STAFF.replace(
+          '</attributes>',
+          '<time><beats>3</beats><beat-type>4</beat-type></time></attributes>',
+        ) + note('C', '1'),
+        '<attributes><time number="1"><senza-misura/></time></attributes>' + note('D', '1'),
+      ),
+    )
+
+    expect(result.globalMeasures[1]?.time).toBeUndefined()
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:senza-misura',
+      'unrepresentable:per-staff-time',
+    ])
+    expect(warnings[1]?.message).toBe(
+      'A time signature is stated for one staff and not the others, and MNX states one ' +
+        'for the whole score. The one converted stands for every staff.',
+    )
+  })
+
   // A statement made after the measure begins stands at its own point, where
   // no other block speaks, so it is settled on its own.
   test('reports a key stated for one staff partway through the measure', () => {
