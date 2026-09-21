@@ -15,27 +15,39 @@ import { schemaErrors } from '../../tests/support/schema.js'
 
 const DIVISIONS = '<attributes><divisions>12</divisions></attributes>'
 
+/** A <tuplet> marker of the type given, numbered where a number is given. */
+function marker(bracket: string, number?: string): string {
+  const numbered = number === undefined ? '' : ` number="${number}"`
+  return `<notations><tuplet type="${bracket}"${numbered}/></notations>`
+}
+
 /**
  * A note lasting `units` divisions, written as `type`, inside a 3:2 tuplet.
  * `bracket` places the start or stop marker.
  */
-function tupletNote(step: string, units: number, type: string, bracket = ''): string {
+function tupletNote(
+  step: string,
+  units: number,
+  type: string,
+  bracket = '',
+  number?: string,
+): string {
   return (
     `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
     `<duration>${String(units)}</duration><type>${type}</type>` +
     '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
     '</time-modification>' +
-    (bracket ? `<notations><tuplet type="${bracket}"/></notations>` : '') +
+    (bracket ? marker(bracket, number) : '') +
     '</note>'
   )
 }
 
 /** A quarter outside any ratio, carrying only the bracket marker given. */
-function bracketedNote(step: string, bracket = ''): string {
+function bracketedNote(step: string, bracket = '', number?: string): string {
   return (
     `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>12</duration>` +
     '<type>quarter</type>' +
-    (bracket ? `<notations><tuplet type="${bracket}"/></notations>` : '') +
+    (bracket ? marker(bracket, number) : '') +
     '</note>'
   )
 }
@@ -982,6 +994,135 @@ describe('tuplets', () => {
     expect(warnings.map((w) => w.code)).toEqual([
       'missing:time-modification',
       'unrepresentable:tuplet-span',
+    ])
+  })
+
+  // The stop names the bracket the source drew around it however the two are
+  // numbered. Taking it for the bracket an earlier barline cut would leave the
+  // drawn one open to that barline, and leave the record standing to swallow a
+  // later stop.
+  test('leaves a stop to a drawn bracket numbered otherwise than the cut one', () => {
+    const { warnings } = read(
+      measures(
+        DIVISIONS +
+          tupletNote('C', 4, 'eighth', 'start', '2') +
+          tupletNote('D', 4, 'eighth') +
+          tupletNote('E', 4, 'eighth'),
+        tupletNote('F', 4, 'eighth', 'start', '1') +
+          tupletNote('G', 4, 'eighth') +
+          tupletNote('A', 4, 'eighth', 'stop', '2'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:tuplet-span',
+      'unrepresentable:tuplet-crossing',
+    ])
+  })
+
+  // A run the ratio alone opened is no bracket of the source's, so a carried
+  // stop is taken over it. This is the shape a cut bracket usually carries on
+  // in: the notes after the barline state the same ratio and nothing else.
+  test('takes a carried stop over a run the ratio alone opened', () => {
+    const { warnings } = read(
+      measures(
+        DIVISIONS +
+          tupletNote('C', 4, 'eighth', 'start', '2') +
+          tupletNote('D', 4, 'eighth') +
+          tupletNote('E', 4, 'eighth'),
+        tupletNote('F', 4, 'eighth') +
+          tupletNote('G', 4, 'eighth', 'stop', '2') +
+          tupletNote('A', 4, 'eighth'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-span'])
+  })
+
+  // A voice may be written as two lines sounding at once, and a bracket open in
+  // either of them is a bracket the stop can name. Reading only the line the
+  // stop is written in would take it for the cut bracket instead.
+  test('leaves a stop to a drawn bracket open in another line of the voice', () => {
+    const { warnings } = read(
+      measures(
+        DIVISIONS +
+          tupletNote('C', 4, 'eighth', 'start', '2') +
+          tupletNote('D', 4, 'eighth') +
+          tupletNote('E', 4, 'eighth'),
+        bracketedNote('F', 'start', '1') +
+          '<backup><duration>12</duration></backup>' +
+          bracketedNote('G', 'stop', '2'),
+      ),
+    )
+
+    // The bracket around notes carrying no ratio states one of its own, and the
+    // voice sounding two notes at once is read as two lines. Between them, the
+    // stop ends nothing and the drawn bracket is cut at the second barline.
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:tuplet-span',
+      'missing:time-modification',
+      'inconsistent:tuplet',
+      'unrepresentable:tuplet-span',
+      'inconsistent:voice',
+    ])
+  })
+
+  // The record is kept per voice: the bracket the barline cut was one voice's,
+  // and a stop another voice writes ends nothing of its own.
+  test('leaves a carried stop to the voice whose bracket was cut', () => {
+    const voiced = (body: string, voice: string): string =>
+      body.replace('</note>', `<voice>${voice}</voice></note>`)
+    const { warnings } = read(
+      measures(
+        DIVISIONS +
+          voiced(tupletNote('C', 4, 'eighth', 'start'), '1') +
+          voiced(tupletNote('D', 4, 'eighth'), '1') +
+          voiced(tupletNote('E', 4, 'eighth'), '1'),
+        voiced(bracketedNote('F', 'stop'), '2'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:tuplet-span',
+      'inconsistent:tuplet',
+    ])
+  })
+
+  // And per number: a stop numbered otherwise than the bracket the barline cut
+  // names no tuplet of the source's that ended, and is reported where it is met.
+  test('leaves a carried stop to the number the cut bracket stated', () => {
+    const { warnings } = read(
+      measures(
+        DIVISIONS +
+          tupletNote('C', 4, 'eighth', 'start', '1') +
+          tupletNote('D', 4, 'eighth') +
+          tupletNote('E', 4, 'eighth'),
+        bracketedNote('F', 'stop', '2'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:tuplet-span',
+      'inconsistent:tuplet',
+    ])
+  })
+
+  // One cut bracket takes one stop. A second stop stating the same number ends
+  // nothing, and is reported as any other stop with no bracket to close.
+  test('takes one carried stop per bracket the barline cut', () => {
+    const { warnings } = read(
+      measures(
+        DIVISIONS +
+          tupletNote('C', 4, 'eighth', 'start') +
+          tupletNote('D', 4, 'eighth') +
+          tupletNote('E', 4, 'eighth'),
+        bracketedNote('F', 'stop') + bracketedNote('G', 'stop'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:tuplet-span',
+      'inconsistent:tuplet',
     ])
   })
 
