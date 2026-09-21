@@ -834,6 +834,59 @@ describe('key and time signatures stated per staff', () => {
     expect(warnings.map((w) => w.code)).toEqual(['inconsistent:key'])
   })
 
+  // Two statements for the same staff contradict each other, and a staff
+  // left unstated beside them loses its own signature. The two are separate
+  // losses, and both are reported.
+  test('reports a staff stated twice beside one left unstated', () => {
+    const { score: result, warnings } = read(
+      measures(
+        GRAND_STAFF + note('C', '1'),
+        '<attributes><key number="1"><fifths>2</fifths></key>' +
+          '<key number="1"><fifths>-3</fifths></key></attributes>' +
+          note('D', '1'),
+      ),
+    )
+
+    expect(result.globalMeasures[1]?.key).toEqual({ fifths: 2 })
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:per-staff-key',
+      'inconsistent:key',
+    ])
+  })
+
+  // A numbered block after one with no number changes a single staff, which
+  // is how a part states one signature and then refines a staff's. The
+  // staves disagree afterwards, and that is the whole of it.
+  test('takes a numbered key after one for every staff as narrowing it, not contradicting it', () => {
+    const { warnings } = read(
+      measures(
+        GRAND_STAFF + note('C', '1'),
+        '<attributes><key><fifths>2</fifths></key>' +
+          '<key number="1"><fifths>-3</fifths></key></attributes>' +
+          note('D', '1'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-key'])
+  })
+
+  test('reports a staff whose time signature is stated twice beside one left unstated', () => {
+    const time = (beats: string) =>
+      `<time number="1"><beats>${beats}</beats><beat-type>4</beat-type></time>`
+    const { score: result, warnings } = read(
+      measures(
+        GRAND_STAFF + note('C', '1'),
+        `<attributes>${time('3')}${time('5')}</attributes>` + note('D', '1'),
+      ),
+    )
+
+    expect(result.globalMeasures[1]?.time).toEqual({ count: 3, unit: 4, display: undefined })
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:per-staff-time',
+      'inconsistent:time',
+    ])
+  })
+
   test('reports a time signature stated for one staff and not the other', () => {
     const { warnings } = read(
       measures(

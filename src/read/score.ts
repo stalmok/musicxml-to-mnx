@@ -1066,9 +1066,9 @@ function holdLate<T>(
 }
 
 /**
- * Reports what the staves of a part state about one signature at one point,
- * and gives back what they agree on, or nothing where they do not. What each
- * staff has in force is carried in `inForce`, which these statements update.
+ * Reports the staves of a part left in different signatures at one point, or
+ * left with one where another has none. What each staff has in force is
+ * carried in `inForce`, which these statements update.
  *
  * Taken together rather than block by block: MusicXML writes one <key> or
  * <time> per staff, and a measure may spread them over several <attributes>,
@@ -1080,7 +1080,7 @@ function holdLate<T>(
  * measure restating for one staff what every staff already has leaves them
  * in the same signature, and loses nothing.
  */
-function agreedAcrossStaves<T>(
+function reportAcrossStaves<T>(
   kind: SignatureKind<T>,
   statements: readonly StaffSignature<T>[],
   staves: number,
@@ -1088,7 +1088,7 @@ function agreedAcrossStaves<T>(
   warnings: WarningCollector,
   at: WarningContext,
   place: WarningPlace,
-): { value: T | undefined } | undefined {
+): void {
   const stated = new Set<number>()
   for (const statement of statements) {
     for (let staff = 1; staff <= staves; staff += 1) {
@@ -1105,7 +1105,7 @@ function agreedAcrossStaves<T>(
       first === undefined ? value !== undefined : !kind.agrees(first, value),
     )
   ) {
-    return { value: first }
+    return
   }
   warnings.addAt(
     place,
@@ -1118,14 +1118,17 @@ function agreedAcrossStaves<T>(
     at,
     kind.element,
   )
-  return undefined
 }
 
 /**
  * Reports what a measure states about one signature where it begins, against
  * the one converted: the staves may leave one of their own unstated or
- * disagree, and what they agree on may not be what the measure converts,
- * which is the first stated there.
+ * disagree, and what they state may not be what the measure converts, which
+ * is the first stated there.
+ *
+ * The two answer different questions, so both are asked. Staves in different
+ * signatures and a point contradicting itself are separate losses, and a
+ * measure can hold one, the other, or both.
  */
 function settleStated<T>(
   kind: SignatureKind<T>,
@@ -1137,7 +1140,7 @@ function settleStated<T>(
   context: WarningContext,
 ): void {
   const at = (line: number) => ({ ...context, line })
-  const agreed = agreedAcrossStaves(
+  reportAcrossStaves(
     kind,
     group.statements,
     staves,
@@ -1149,8 +1152,34 @@ function settleStated<T>(
   // Only what the measure opens with is settled against a converted value:
   // one stated after the start is carried to the next measure, and what
   // becomes of it is settled there.
-  if (!agreed || compareFractions(group.at, fraction(0)) !== 0) return
-  reportSecondAtStart(kind, converted, agreed.value, warnings, at(group.last), group.place)
+  if (compareFractions(group.at, fraction(0)) !== 0) return
+  const restated = restatement(group.statements)
+  if (restated) {
+    reportSecondAtStart(kind, converted, restated.value, warnings, at(group.last), group.place)
+  }
+}
+
+/**
+ * The last statement at one point, where it says again what an earlier one
+ * there already said rather than narrowing it. One speaking for every staff
+ * replaces every statement before it, and one naming a staff replaces the
+ * statement that named the same staff. A statement naming a staff no earlier
+ * one named refines the signature stated for every staff, which is how a
+ * part states one and then changes a single staff's.
+ */
+function restatement<T>(
+  statements: readonly StaffSignature<T>[],
+): { value: T | undefined } | undefined {
+  const named = new Set<number | undefined>()
+  let last: { value: T | undefined } | undefined
+  for (const statement of statements) {
+    last =
+      statement.staff === undefined || named.has(statement.staff)
+        ? { value: statement.value }
+        : undefined
+    named.add(statement.staff)
+  }
+  return last
 }
 
 /**
