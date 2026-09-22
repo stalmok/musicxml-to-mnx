@@ -724,22 +724,29 @@ export function readNote(
   const restFillsMeasure =
     (markedAsTheMeasure && !markedCandidate) || fillsMeasure || unwritableRest !== undefined
 
-  // MNX's rest filling the measure carries no marking, so a marked rest a
-  // note value can write stays an event, as it does for a lyric. Read once
-  // here, and the event takes what was read. Where no note value can write
-  // the rest, the marks stay unread and are reported as a loss.
-  const restMarkings =
-    restFillsMeasure && canBeEvent ? readMarkings(notations, warnings, context) : undefined
+  // MNX's rest filling the measure carries no marking and no stem, so a rest
+  // a note value can write stays an event to keep either, as it does for a
+  // lyric. Read once here, and the event takes what was read. Where no note
+  // value can write the rest, both stay unread and are reported as a loss.
+  const keepsEvent = restFillsMeasure && canBeEvent
+  const restMarkings = keepsEvent ? readMarkings(notations, warnings, context) : undefined
+  const restStem = keepsEvent ? readStemDirection(element, warnings, context) : undefined
   const carriesMarking = restMarkings !== undefined && Object.keys(restMarkings).length > 0
 
   if (
     restFillsMeasure &&
-    !((carriesLyric || carriesSlurEnd || carriesMarking || afterGraceNotes) && canBeEvent)
+    !(
+      (carriesLyric ||
+        carriesSlurEnd ||
+        carriesMarking ||
+        restStem !== undefined ||
+        afterGraceNotes) &&
+      keepsEvent
+    )
   ) {
-    // A rest is not drawn with a stem, and a beam over one alone is not a
-    // beam, so a source stating either says nothing this loses. Written back
-    // as an event, the rest reads its stem as any other rest does.
-    element.skip('stem', 'beam')
+    // A beam over a rest alone is not a beam, so a source stating one says
+    // nothing this loses.
+    element.skip('beam')
 
     // MNX's rest filling the measure states no length, so how long the source
     // drew this one is not carried. Only a rest that reached here on its own
@@ -774,7 +781,7 @@ export function readNote(
       restValue && {
         duration: duration ?? lengthOf(restValue),
         // What a grace note written after the rest takes it back as. A marking,
-        // a lyric or a slur would have kept it an event already.
+        // a stem, a lyric or a slur would have kept it an event already.
         event: () => ({
           kind: 'event',
           id: state.ids.nextEvent(),
@@ -782,7 +789,7 @@ export function readNote(
           value: restValue,
           slurs: [],
           lyrics: new Map(),
-          stemDirection: readStemDirection(element, warnings, context),
+          stemDirection: undefined,
           markings: {},
           fermata,
           notes: [],
@@ -863,7 +870,7 @@ export function readNote(
     value,
     slurs: [],
     lyrics: readLyrics(element, warnings, context),
-    stemDirection: readStemDirection(element, warnings, context),
+    stemDirection: restFillsMeasure ? restStem : readStemDirection(element, warnings, context),
     markings: restMarkings ?? readMarkings(notations, warnings, context),
     fermata: readFermata(notations, warnings, context),
     notes,
