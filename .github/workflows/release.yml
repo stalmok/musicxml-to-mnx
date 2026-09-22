@@ -1,9 +1,9 @@
-# Publish to npm when a version tag (v0.1.0, …) is pushed. The full CI gate
-# set runs first, by CALLING ci.yml, so releases and pushes are guarded by
-# the identical list and a gate added there cannot be forgotten here. The
-# publish job then builds explicitly (install scripts stay blocked) and
-# publishes via npm trusted publishing: the workflow's OIDC token IS the
-# credential, so no npm token secret exists to leak, and provenance
+# Publish to npm when a version tag (v0.1.0, …) is pushed. The CI gate set
+# runs first, by CALLING ci.yml with the vendored corpus added, so releases
+# and pushes are guarded by the same list and a gate added there cannot be
+# forgotten here. The publish job then builds explicitly (install scripts stay
+# blocked) and publishes via npm trusted publishing: the workflow's OIDC token
+# IS the credential, so no npm token secret exists to leak, and provenance
 # attestation is automatic.
 #
 # One-time setup on npmjs.com (package settings → Trusted Publisher):
@@ -26,6 +26,8 @@ permissions:
 jobs:
   gates:
     uses: ./.github/workflows/ci.yml
+    with:
+      corpus: true
 
   publish:
     needs: gates

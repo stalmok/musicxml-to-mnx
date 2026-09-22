@@ -1,8 +1,11 @@
 # Every gate, on every push to main and every pull request: the same checks
 # the pre-commit hook runs, plus the library build and a check that the build
 # ships what the package's exports promise. Also callable as a unit
-# (workflow_call), so the release workflow runs the identical gate set. A gate
+# (workflow_call), so the release workflow runs the same gate set. A gate
 # added here guards releases too, with no second list to forget.
+#
+# The vendored corpus runs only when a caller sets the corpus input, which the
+# release workflow does. Pushes and pull requests skip it for speed.
 #
 # The dependency audit is not here: a new advisory against a dependency a
 # change never touched would redden it. It runs weekly and on demand instead,
@@ -17,6 +20,11 @@ on:
     branches: [main]
   pull_request:
   workflow_call:
+    inputs:
+      corpus:
+        description: Also run the vendored corpus.
+        type: boolean
+        default: false
 
 # Default-deny: jobs get read-only access to the repo and nothing else.
 permissions:
@@ -31,7 +39,7 @@ concurrency:
 jobs:
   checks:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: ${{ inputs.corpus && 40 || 15 }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
@@ -55,10 +63,12 @@ jobs:
       # dev-only dependency reaching the shipped library.
       - run: pnpm deps:check
       - run: pnpm format:check
-      # The full suite, including the vendored corpus that the pre-commit
-      # hook skips for speed. This is where that corpus is gated on every
-      # push to main and every pull request.
+      # The suite with its coverage thresholds. The vendored corpus is added
+      # only when the corpus input is set.
+      - run: pnpm test:precommit
+        if: ${{ !inputs.corpus }}
       - run: pnpm test:coverage
+        if: ${{ inputs.corpus }}
 
       - run: pnpm build
 

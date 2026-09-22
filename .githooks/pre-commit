@@ -5,9 +5,9 @@
 #
 # The test step excludes the vendored corpus, which converts every vendored
 # song on every run and takes minutes; the fast suite still holds coverage
-# above its thresholds. The vendored corpus runs in CI on every push to main
-# and every pull request (pnpm test:coverage), and can be run locally the
-# same way or with pnpm test:corpus.
+# above its thresholds. The vendored corpus runs in CI before each release
+# (pnpm test:coverage), and can be run locally the same way or with
+# pnpm test:corpus.
 #
 # Version-controlled here and activated per clone with:
 #   pnpm hooks:install      # = git config core.hooksPath .githooks
