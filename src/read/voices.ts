@@ -164,8 +164,7 @@ interface VoiceBuilder {
    */
   restAsEvent:
     | {
-        rest: FullMeasureRest
-        value: NoteValue
+        event: () => Event
         duration: Fraction
         at: Fraction
         after: Fraction
@@ -792,7 +791,7 @@ export class MeasureBuilder {
     rest: FullMeasureRest,
     covering: Fraction | undefined,
     staff: number | undefined,
-    asEvent: { value: NoteValue; duration: Fraction } | undefined,
+    asEvent: { event: () => Event; duration: Fraction } | undefined,
     path: DocumentPath,
     line: number,
   ): void {
@@ -833,7 +832,6 @@ export class MeasureBuilder {
     builder.fullMeasure = rest
     builder.restAsEvent = asEvent && {
       ...asEvent,
-      rest,
       at: this.#cursor,
       after: builder.end,
       staff,
@@ -862,17 +860,12 @@ export class MeasureBuilder {
    * Where no note value can write the rest, there is no event to take it back
    * as, and nothing can stand beside it.
    */
-  restoreMeasureRest(
-    voice: string | undefined,
-    asEvent: (rest: FullMeasureRest, value: NoteValue) => Event,
-    path: DocumentPath,
-    line: number,
-  ): boolean {
+  restoreMeasureRest(voice: string | undefined, path: DocumentPath, line: number): boolean {
     const builder = this.#builderFor(voice)
     const restored = builder.restAsEvent
     if (!restored) return false
 
-    const event = asEvent(restored.rest, restored.value)
+    const event = restored.event()
     // The rest is the whole of the voice, so the staff it named is the only
     // entry standing, and the event added below names it instead.
     builder.placed.length = 0

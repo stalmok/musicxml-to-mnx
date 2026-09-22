@@ -293,7 +293,7 @@ export function readNote(
     graceElement &&
     !chordMember &&
     builder.restsMeasure(voice) &&
-    !restoreMeasureRest(builder, voice, state, path, element)
+    !builder.restoreMeasureRest(voice, path, element.line)
   ) {
     throw new MusicXMLError(
       'A grace note stands in a voice that is a rest filling the measure, and no note ' +
@@ -724,9 +724,21 @@ export function readNote(
   const restFillsMeasure =
     (markedAsTheMeasure && !markedCandidate) || fillsMeasure || unwritableRest !== undefined
 
-  if (restFillsMeasure && !((carriesLyric || carriesSlurEnd || afterGraceNotes) && canBeEvent)) {
+  // MNX's rest filling the measure carries no marking, so a marked rest a
+  // note value can write stays an event, as it does for a lyric. Read once
+  // here, and the event takes what was read. Where no note value can write
+  // the rest, the marks stay unread and are reported as a loss.
+  const restMarkings =
+    restFillsMeasure && canBeEvent ? readMarkings(notations, warnings, context) : undefined
+  const carriesMarking = restMarkings !== undefined && Object.keys(restMarkings).length > 0
+
+  if (
+    restFillsMeasure &&
+    !((carriesLyric || carriesSlurEnd || carriesMarking || afterGraceNotes) && canBeEvent)
+  ) {
     // A rest is not drawn with a stem, and a beam over one alone is not a
-    // beam, so a source stating either says nothing this loses.
+    // beam, so a source stating either says nothing this loses. Written back
+    // as an event, the rest reads its stem as any other rest does.
     element.skip('stem', 'beam')
 
     // MNX's rest filling the measure states no length, so how long the source
@@ -747,18 +759,38 @@ export function readNote(
       )
     }
 
+    const fermata = readFermata(notations, warnings, context)
     builder.setFullMeasure(
       voice,
       {
         visualDuration: written,
-        fermata: readFermata(notations, warnings, context),
+        fermata,
         // MNX's full-measure rest carries a staffPosition too, so a display
         // height on one is placed there rather than lost.
         staffPosition,
       },
       duration,
       staff,
-      restValue && { value: restValue, duration: duration ?? lengthOf(restValue) },
+      restValue && {
+        duration: duration ?? lengthOf(restValue),
+        // What a grace note written after the rest takes it back as. A marking,
+        // a lyric or a slur would have kept it an event already.
+        event: () => ({
+          kind: 'event',
+          id: state.ids.nextEvent(),
+          staff: undefined,
+          value: restValue,
+          slurs: [],
+          lyrics: new Map(),
+          stemDirection: readStemDirection(element, warnings, context),
+          markings: {},
+          fermata,
+          notes: [],
+          kitNotes: [],
+          isRest: true,
+          staffPosition,
+        }),
+      },
       path,
       element.line,
     )
@@ -832,7 +864,7 @@ export function readNote(
     slurs: [],
     lyrics: readLyrics(element, warnings, context),
     stemDirection: readStemDirection(element, warnings, context),
-    markings: readMarkings(notations, warnings, context),
+    markings: restMarkings ?? readMarkings(notations, warnings, context),
     fermata: readFermata(notations, warnings, context),
     notes,
     kitNotes,
@@ -912,41 +944,6 @@ export function readNote(
     builder.closeTremolo(voice, tremolo.marks, warnings, context, path, element.line)
   }
   closeTuplets(builder, voice, markers, warnings, context, path, element.line)
-}
-
-/**
- * Writes this voice's measure rest back as an ordinary rest event, so that a
- * grace note written after it can stand beside it, and hands back whether the
- * rest had a note value to be written with. The rest carries no marking, no
- * stem and no beam: the branch that put it on the sequence read none.
- */
-function restoreMeasureRest(
-  builder: MeasureBuilder,
-  voice: string | undefined,
-  state: PartState,
-  path: DocumentPath,
-  element: ElementReader,
-): boolean {
-  return builder.restoreMeasureRest(
-    voice,
-    (rest, value) => ({
-      kind: 'event',
-      id: state.ids.nextEvent(),
-      staff: undefined,
-      value,
-      slurs: [],
-      lyrics: new Map(),
-      stemDirection: undefined,
-      markings: {},
-      fermata: rest.fermata,
-      notes: [],
-      kitNotes: [],
-      isRest: true,
-      staffPosition: rest.staffPosition,
-    }),
-    path,
-    element.line,
-  )
 }
 
 /**
