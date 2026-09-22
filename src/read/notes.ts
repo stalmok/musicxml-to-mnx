@@ -666,9 +666,13 @@ export function readNote(
         c.name === 'slur' && (attribute(c, 'type') === 'start' || attribute(c, 'type') === 'stop'),
     ),
   )
-  const canBeEvent =
-    written !== undefined ||
-    (duration !== undefined && !state.divisionsAssumed && noteValueOf(duration) !== undefined)
+  // The value such a rest is written as where it stays an event, and nothing
+  // where no note value can write it: an irregular measure rests for a length
+  // no value states, and the sequence's own rest is the only place for it.
+  const restValue =
+    written ??
+    (duration !== undefined && !state.divisionsAssumed ? noteValueOf(duration) : undefined)
+  const canBeEvent = restValue !== undefined
 
   // A grace note takes none of the measure's time, so a voice leading into a
   // measure of silence with one rests through it just the same. The sequence
@@ -730,6 +734,7 @@ export function readNote(
       },
       duration,
       staff,
+      restValue && { value: restValue, duration: duration ?? lengthOf(restValue) },
       path,
       element.line,
     )
@@ -816,13 +821,16 @@ export function readNote(
   // group rather than standing in the cursor's path.
   if (graceElement) {
     // MNX states a rest filling the measure on a sequence holding nothing, so
-    // a voice that rests the measure has nowhere to put a grace note. One
-    // written before the rest keeps the rest an event instead, which is what
-    // the measure's own grace notes lead into.
-    if (builder.hasFullMeasure(voice)) {
+    // a voice that rests the measure has nowhere to put a grace note. The
+    // rest goes back to being the event its length is written as, which is
+    // where the same two written the other way round already leave it. An
+    // irregular measure has no such value, so the rest stays the sequence's
+    // own and nothing can stand beside it.
+    if (builder.restsMeasure(voice) && !restoreMeasureRest(builder, voice, state, path, element)) {
       throw new MusicXMLError(
-        'A grace note stands in a voice that is a rest filling the measure. MNX states ' +
-          'such a rest on a sequence that holds nothing, so nothing can hold the grace note.',
+        'A grace note stands in a voice that is a rest filling the measure, and no note ' +
+          'value can write that rest as an event. MNX states such a rest on a sequence ' +
+          'that holds nothing, so nothing can hold the grace note.',
         { path, line: element.line },
       )
     }
@@ -895,6 +903,41 @@ export function readNote(
     builder.closeTremolo(voice, tremolo.marks, warnings, context, path, element.line)
   }
   closeTuplets(builder, voice, markers, warnings, context, path, element.line)
+}
+
+/**
+ * Writes this voice's measure rest back as an ordinary rest event, so that a
+ * grace note written after it can stand beside it, and hands back whether the
+ * rest had a note value to be written with. The rest carries no marking, no
+ * stem and no beam: the branch that put it on the sequence read none.
+ */
+function restoreMeasureRest(
+  builder: MeasureBuilder,
+  voice: string | undefined,
+  state: PartState,
+  path: DocumentPath,
+  element: ElementReader,
+): boolean {
+  return builder.restoreMeasureRest(
+    voice,
+    (rest, value) => ({
+      kind: 'event',
+      id: state.ids.nextEvent(),
+      staff: undefined,
+      value,
+      slurs: [],
+      lyrics: new Map(),
+      stemDirection: undefined,
+      markings: {},
+      fermata: rest.fermata,
+      notes: [],
+      kitNotes: [],
+      isRest: true,
+      staffPosition: rest.staffPosition,
+    }),
+    path,
+    element.line,
+  )
 }
 
 /**

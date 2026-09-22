@@ -156,6 +156,15 @@ interface VoiceBuilder {
   openedAt: number | undefined
   fullMeasure: FullMeasureRest | undefined
   /**
+   * What the rest filling this voice's measure goes back to being where
+   * something that only an event can hold is written after it, and nothing
+   * where no note value can write the rest. `at` is where the rest stands and
+   * `staff` the staff it named. See restoreMeasureRest.
+   */
+  restAsEvent:
+    | { value: NoteValue; duration: Fraction; at: Fraction; staff: number | undefined }
+    | undefined
+  /**
    * A rest that may turn out to be this voice's measure rest, held until the
    * voice is whole. See settleMeasureRests.
    */
@@ -775,6 +784,7 @@ export class MeasureBuilder {
     rest: FullMeasureRest,
     covering: Fraction | undefined,
     staff: number | undefined,
+    asEvent: { value: NoteValue; duration: Fraction } | undefined,
     path: DocumentPath,
     line: number,
   ): void {
@@ -813,8 +823,58 @@ export class MeasureBuilder {
     // names is the staff the sequence sits on.
     builder.placed.push({ event: undefined, staff })
     builder.fullMeasure = rest
+    builder.restAsEvent = asEvent && { ...asEvent, at: this.#cursor, staff }
     // The rest occupies the whole voice, so nothing may follow it there.
     if (covering) builder.end = addFractions(this.#cursor, covering)
+  }
+
+  /** Whether what comes next in this voice is written over its measure rest. */
+  restsMeasure(voice: string | undefined): boolean {
+    return this.#builderFor(voice).fullMeasure !== undefined
+  }
+
+  /**
+   * Writes this voice's measure rest back as the event its length is written
+   * as, and hands back whether it could be.
+   *
+   * MNX states a rest filling the measure on the sequence rather than as an
+   * event in it, and that sequence holds nothing else, so a grace note
+   * written after such a rest has nowhere to stand. Which side of the rest
+   * the grace notes are written on says nothing about the music: either way
+   * the voice rests the measure and the grace notes lead into the next one.
+   * A rest read before them is therefore taken back off the sequence here, so
+   * that both orders convert to the same thing.
+   *
+   * Where no note value can write the rest, there is no event to take it back
+   * as, and nothing can stand beside it.
+   */
+  restoreMeasureRest(
+    voice: string | undefined,
+    asEvent: (rest: FullMeasureRest, value: NoteValue) => Event,
+    path: DocumentPath,
+    line: number,
+  ): boolean {
+    const builder = this.#builderFor(voice)
+    const rest = builder.fullMeasure
+    const restored = builder.restAsEvent
+    if (!rest || !restored) return false
+
+    const event = asEvent(rest, restored.value)
+    // The rest is the whole of the voice, so the staff it named is the only
+    // entry standing, and the event added below names it instead.
+    builder.placed.length = 0
+    builder.fullMeasure = undefined
+    builder.restAsEvent = undefined
+    builder.end = restored.at
+
+    // Written where the rest stands rather than where the cursor has since
+    // reached, which is past the rest: a <forward> or the rest's own length
+    // moved it there.
+    const reached = this.#cursor
+    this.#cursor = restored.at
+    this.addEvent(voice, event, restored.duration, path, line, restored.staff)
+    this.#moveTo(reached)
+    return true
   }
 
   /**
@@ -1915,6 +1975,7 @@ function newVoiceBuilder(openedAt?: number): VoiceBuilder {
     last: undefined,
     grace: undefined,
     fullMeasure: undefined,
+    restAsEvent: undefined,
     measureRest: undefined,
     claims: [],
     spent: new Map(),
