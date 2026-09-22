@@ -1,245 +1,196 @@
 # Architecture
 
-How the converter is put together. For usage and current capability, see the
-README.
+ossia converts MusicXML into MNX through an internal score model.
+The reader handles MusicXML semantics. The writer produces MNX objects.
+See the [README](../README.md) for usage and supported notation.
 
-## Shape
+## Data flow
 
-Two stages, with a shared model between them. MusicXML knowledge stops at the
-reader, and MNX knowledge starts at the writer. That is an import boundary,
-not a knowledge boundary. The reader never sees the MNX types, and the writer
-never sees the XML layer, but the model stays near to MNX on purpose. Its
-enums use the MNX spellings, therefore the writer needs no second table. The
-reader owns the registry of what MNX cannot hold
-(`read/unrepresentable.ts`), because a loss report needs the source line and
-the measure context. Only the reader has these.
-
-```
+```text
 MusicXML string or bytes
-  -> xml/    parse into a light element tree that carries line numbers
-  -> read/   MusicXML semantics into the score model
-  -> write/  score model into MNX JSON
+  -> container.ts  decode XML or extract it from an .mxl archive
+  -> xml/          parse XML and retain source positions
+  -> read/         build the internal score model
+  -> write/        produce MNX from the model
   -> { mnx, warnings }
 ```
 
-Almost all of the difficulty is in the reader, because the two formats do not
-agree about how to write music down. MusicXML encodes time as a cursor, and
-`<backup>` and `<forward>` move that cursor. It spreads one voice across
-elements that interleave. It links spanners by a `number` attribute that the
-reader must match. MNX states the same music directly.
+`convert.ts` runs this pipeline synchronously. It processes the whole document
+in memory. A fatal error returns no partial result.
 
-The split also keeps a moving spec cheap, but not free. MNX has no stable
-1.0. When MNX changes, `write/` and `types/mnx.ts` change first. The
-MNX-spelled enums in the model and the unrepresentable registry in the reader
-change with them, if the change touches what they name.
+## Module boundaries
 
-## Modules
+| Module             | Responsibility                                                     |
+| ------------------ | ------------------------------------------------------------------ |
+| `src/index.ts`     | Export the public conversion API, errors, warnings, and MNX types. |
+| `src/container.ts` | Decode input bytes and select the score from an archive.           |
+| `src/xml/`         | Parse XML and provide typed tree access with source positions.     |
+| `src/read/`        | Interpret MusicXML and build the score model.                      |
+| `src/model/`       | Define the internal score model shared by reader and writer.       |
+| `src/write/`       | Turn the score model into MNX.                                     |
+| `src/types/mnx.ts` | Define the public MNX output types.                                |
+| `src/fraction.ts`  | Provide exact rational arithmetic.                                 |
+| `src/warnings.ts`  | Define warning codes, categories, and collection.                  |
+| `src/errors.ts`    | Define `MusicXMLError` and its location fields.                    |
+| `cli/`             | Handle files and command options through the public API.           |
 
-```
-src/
-  index.ts             the public API
-  convert.ts           the pipeline: container, then read, then write
-  container.ts         gets the XML from a string, bytes, or an .mxl package
-  xml/                 element tree with source line numbers, typed accessors
-  read/                MusicXML semantics, one file for each concern
-    score.ts           reads the score and its parts, and walks a measure
-    part-groups.ts     makes the instrument grouping tree from <part-group>
-    attributes.ts      reads divisions, staves, key, time, clef, and measure
-                       style (multi-measure rests, measure repeats)
-    notes.ts           reads a <note>: pitch, value, ties, slurs, accidentals
-    voices.ts          moves the cursor and makes one sequence for each voice,
-                       and holds what is open around a note: the tuplet and
-                       tremolo brackets, the grace group, the rolled chords,
-                       and what each event said about its beams
-    spanners.ts        joins the two ends of a tie, slur, hairpin, or octave
-                       shift, and makes event ids
-    beams.ts           makes the MNX tree of beams from per-note beam marks
-    barlines.ts        reads barlines, repeat signs, and first and second
-                       endings
-    print.ts           reads the system breaks and page breaks in <print>
-    directions.ts      reads dynamics, hairpins, octave shifts, tempo marks,
-                       segno signs, Fines, and jumps
-    lyrics.ts          reads the words under a note
-    duration.ts        note-value arithmetic, with no XML in it
-    divisions.ts       reads a <duration> in the <divisions> in force
-    noteValues.ts      changes MusicXML note types into the model's
-    numbers.ts         reads a number more strictly than Number() does
-    color.ts           changes MusicXML #RRGGBB and #AARRGGBB into MNX color
-    element.ts         records which children a reader read
-    unrepresentable.ts lists what MNX cannot hold
-    state.ts           holds what a part carries between its measures
-  model/               the score model that both stages share
-  write/               the MNX writer
-  types/mnx.ts         the MNX output types, exported
-  fraction.ts          exact rational arithmetic for timing, never floats
-  warnings.ts          the registry of warning codes
-  errors.ts            MusicXMLError
+[Dependency rules](../.dependency-cruiser.js) enforce these boundaries for
+value imports and type imports:
 
-cli/                   the Node command, outside src to keep the core free of
-                       Node
-  run.ts               converts files and returns an exit code
-  main.ts              connects argv and the console to run()
-```
+- The reader cannot import the writer, MNX types, or input pipeline.
+- The writer cannot import the reader, XML layer, or input pipeline.
+- The model cannot import either stage, XML, MNX types, or the input pipeline.
+- The XML layer and MNX types cannot import the stages, model, or input pipeline.
+- The public API cannot export the internal model.
+- The CLI accesses `src/` through `src/index.ts`.
+- The library cannot import the CLI, Node core modules, or development dependencies.
 
-The command is outside `src/` on purpose. The library core is isomorphic, and
-it must touch no Node global and no DOM global. `tsconfig.json` enforces this
-over `src` alone. The command is a Node program that reads the file system,
-therefore it sits in `cli/`. The test pass type-checks it with the Node
-types. It builds as its own self-contained `cli.js`
-(`vite.cli.config.ts`). Therefore it shares no chunks with the library
-bundle, and it carries the shebang that the library must not have.
+The same checks detect cycles, unresolved imports, and unreachable source files.
+Run `pnpm deps:check` to check the import graph.
+Update this document before changing a stage boundary.
 
-The reader has the most structure, and it is split so that each file answers
-one question. `score.ts` holds the walk and nothing that can move off it,
-because the walk must stay in document order.
+## Internal score model
 
-`notes.ts` and `voices.ts` are one thing in two files. `notes.ts` reads a
-`<note>` and calls the `MeasureBuilder` in `voices.ts` in an order that is the
-contract between them. What opens a bracket is read first, because the notes
-inside land in it: a tuplet start, then a tremolo start, which is why a pair
-inside a tuplet nests the way it is written. The note then joins its voice.
-What points at the event it made is read after: its ties, its slurs, its beam
-markers, and the bracket stops, which is why a tuplet stop finds a bracket to
-close. A chord note takes a third path, joining the event that is already
-there rather than making one.
+The model contains only concepts needed for conversion. It is not part of
+the public API.
 
-Rules in `.dependency-cruiser.js` enforce the stage boundaries
-(`pnpm deps:check`). They are not left to discipline. A crossing is an
-architecture change: change this document first.
+The model uses narrow types for values such as pitch steps, clefs, and time
+units. The reader checks input values before constructing these types.
+The writer relies on those checked values.
 
-That file is the only other place that records the boundaries. This is why
-they are rules and not prose in a second document. It states each rule
-against resolved module paths, therefore an `import type` across a stage line
-counts the same as a value import. It also adds the checks that a per-file
-linter cannot make: no cycles, no file that an entry point cannot reach, no
-core module in the isomorphic library, and no dev-only dependency in what
-ships.
+Some model enums use MNX spellings. This reduces translation in the writer,
+but means schema changes can also require model and reader changes.
+Import separation does not make the model independent of all MNX design choices.
 
-## The model
+## Reader
 
-`model/` exists to decouple the two stages, and for nothing else. It is
-internal, it is never exported, and its scope is conversion. It is not a
-general notation model, and it must not become one. Each concept in it must
-be something that both a reader and a writer need.
+MusicXML represents time with a cursor. Notes advance it, `<backup>` moves it
+back, and `<forward>` moves it ahead. Events from different voices can
+interleave in document order.
 
-Its types are narrow on purpose (`TimeUnit`, `ClefSign`, `Step`). Therefore
-validation is the work of the reader, and the writer emits with no cast. An
-`as` in the writer would stand for an invariant that nothing enforces. That
-is how a non-power-of-two time signature reached the output one time.
+The reader tracks durations with exact fractions of the active divisions.
+It assigns events to voices and staves, and carries state between measures.
+It resolves ties, slurs, and other spans across measures.
+
+The main reader modules are:
+
+| Module                       | Responsibility                                                            |
+| ---------------------------- | ------------------------------------------------------------------------- |
+| `score.ts`                   | Read parts and walk measures in document order.                           |
+| `attributes.ts`              | Read divisions, staves, keys, time signatures, clefs, and measure styles. |
+| `notes.ts`                   | Read notes and their notation.                                            |
+| `voices.ts`                  | Track the cursor and assemble voice events.                               |
+| `spanners.ts`                | Resolve ties, slurs, hairpins, and octave shifts.                         |
+| `beams.ts`                   | Assemble beam groups.                                                     |
+| `directions.ts`              | Read dynamics, tempo marks, and navigation signs.                         |
+| `barlines.ts`                | Read barlines, repeats, and endings.                                      |
+| `part-groups.ts`, `print.ts` | Read staff groups and layout breaks.                                      |
+| `element.ts`                 | Track consumed XML content and report unhandled content.                  |
+| `unrepresentable.ts`         | Record notation that the pinned MNX schema cannot express.                |
+| `state.ts`                   | Hold state shared across measures in a part.                              |
+
+### Note assembly order
+
+`notes.ts` calls `MeasureBuilder` in `voices.ts`. Chord members join an existing
+event through a separate path before group opening. They do not open groups.
+
+For a new event, the call order is:
+
+1. Open tuplets, then tremolo groups.
+2. Add the note to its voice.
+3. Attach notation that refers to the event.
+4. Close tremolo groups, then tuplets.
+
+Preserve this order when changing note handling. Nested groups and chord
+members depend on it.
 
 ## Errors and warnings
 
-There are two levels, and the difference is a contract, not a style.
+A `MusicXMLError` stops conversion. Causes include malformed XML, invalid
+values, and score structures the converter cannot handle.
 
-**Fatal**, a `MusicXMLError` that carries a document path and a source line:
-the input has a broken structure, or the converter cannot convert it
-faithfully. To reject is better than to guess. The reader keeps few
-heuristics. Each heuristic is documented, and it reports a warning when it
-fires.
+The error carries a document path and a source line when available.
+Document-level errors can have an empty path and no line.
+The conversion entry point adds the caller's `documentName`, if supplied.
 
-**Warning**, collected into the result: the input is valid, but the output
-does not carry it. Each warning has a stable code and measure context,
-therefore a pipeline can tell a lossless conversion from a lossy one. To drop
-something silently is a bug by definition.
+Warnings allow conversion to continue. They report omitted notation,
+source inconsistencies, and corrections made by the reader.
+Each warning has a stable code and the available source context.
 
-The prefix of the code splits warnings three ways, and the split is the
-reason the report exists. `unsupported:` is a gap here, which a later release
-can close. `unrepresentable:` is a limit of MNX, which no release closes
-while the output format stays the same. All other prefixes show that the
-source disagrees with itself. A person who decides if a file is worth a
-second conversion after an upgrade needs those three apart. One code for all
-three makes the report unable to answer the question that it was built for.
+`unsupported:` identifies a converter gap. `unrepresentable:` identifies a
+limitation of the pinned MNX schema. Other prefixes identify source problems
+or reported corrections.
 
-An element counts as unrepresentable only on a fact about the vendored
-schema: the schema must have no definition that could hold the element. The
-registry is `read/unrepresentable.ts`. To call a loss permanent when it is
-only unfinished is the worse of the two errors.
+These categories describe the current result. They do not guarantee that a
+future release will produce the same warnings or refuse the same files.
 
-A test checks that fact instead of remembering it. The schema is the oracle
-for the output, and nothing held the beliefs of the converter about MNX to it
-before the converter wrote anything. The registry above, the MNX types, and
-the id pattern that the reader renames parts by are each a copy of something
-in the schema. `tests/schema-conformance.test.ts` compares all three with the
-schema, and each entry in the registry states the fact that it rests on. The
-MNX-spelled enums in the model are a fourth copy, of the types and not of the
-schema. The same test compares them with the types, therefore they reach the
-schema through the types. That comparison is accounted for from both ends.
-Each enum that the model states is paired with an MNX enum, or it says why it
-is not one. Each enum that MNX states is reached by a pairing, or it says why
-the model does not restate it. Both ways of being wrong are otherwise silent.
-A field that the types do not have is never emitted, and the output stays
-legal. A stale registry entry continues to call a loss permanent.
+`read/element.ts` records consumed children and attributes. Unhandled content
+is reported through the warning system. Content handled elsewhere needs an
+explicit exception.
 
-Which of the two a reader claims is not left to the memory of the reader
-either. `read/element.ts` wraps an element and records which children it read.
-It reports whatever is left at the end. The previous arrangement was a set of
-"children handled at this level" kept by hand. That is a claim and not a
-fact, and it drifted. It went on saying that a `<lyric>` was
-carried, long after the path that reads a chord member no longer read one.
-The only entries that a person maintains now are the exceptions, where
-something is genuinely carried in another place and must say so.
+The reader owns the unrepresentable-element registry because it has the XML
+context needed for warnings. Registry entries must have a basis in the
+vendored schema.
 
-Fatal is all or nothing, on purpose. If a document holds something that the
-converter cannot convert, the converter refuses the whole document. It does
-not convert a part of it. The constructs that qualify are the ones that would
-make a measure fail to add up. A score with a wrong bar in it is worse than
-no score: a pipeline can see that it got nothing, and it cannot see that bar
-41 is quietly wrong.
+## Schema and validation
 
-## Dependencies
+The vendored schema defines the accepted MNX output format.
+Every conversion output in tests must validate against it.
+The library does not run schema validation during conversion.
+The CLI provides optional validation through `--validate`.
 
-At run time, the library uses `@rgrove/parse-xml` to parse and `fflate` to
-unpack `.mxl` packages. Neither has dependencies of its own. `ajv` and the
-vendored schema are dev-only for the library. The schema gate runs in the
-test suite. The `--validate` option of the command also uses them, but the
-command builds as a self-contained `cli.js` with `ajv` inside it. Therefore
-no install of the library pays for it.
+`tests/schema-conformance.test.ts` checks:
 
-This parser was chosen over the more widely used `saxes` mainly for safety on
-untrusted input. It never processes DTDs, and it treats an undefined entity
-as a parse error instead of something to resolve. That closes off XXE attacks
-and entity-expansion attacks by construction. The risk is not theoretical:
-each MusicXML file carries a DOCTYPE that points at
-`http://www.musicxml.org/dtds/partwise.dtd`, therefore a parser that resolved
-external references would turn each conversion into a network fetch. The
-parser also has zero dependencies, has active maintenance, and reports the
-character offsets and error positions that the location reports need.
+- The public MNX types against the schema.
+- The unrepresentable-element registry against schema capabilities.
+- Generated-ID constraints against the schema's ID pattern.
+- Model enums against the corresponding MNX enums, with explicit exceptions.
 
-The vendored MNX schema is the conformance oracle. Output with the shape that
-a test expected can still be illegal MNX, and only the schema knows the
-difference.
+Follow the [schema update procedure](../schema/PROVENANCE.md) when changing the pin.
+Review affected types, model values, reader behavior, writer output, and corpus results.
 
-## Performance
+Corpus tests also compare pitches and measure lengths with the source.
+They skip length comparisons for files with `inconsistent:duration` warnings.
+Conversion refusals are distinct from crashes and failed output checks.
 
-Tests guard the conversion time. `tests/performance.test.ts` converts
-generated scores at two sizes along each axis: measures, parts, and notes in
-a measure. The test fails when the time ratio comes near to quadratic. The
-generator behind those scores is itself tested for lossless, schema-valid
-output. `pnpm bench` times each pipeline stage and whole conversions.
+## Runtime and packaging
 
-## Decisions worth remembering
+The core library supports browsers and Node. It uses no Node or DOM globals.
+`tsconfig.json` omits those platform types. Dependency rules also prohibit
+Node core imports in the library.
 
-- **The XML layer does not trim text.** `element.text` is raw. A reader that
-  wants a number or a keyword opts in through `trimmedText()`. Lyric text is
-  meaningful down to the space, and after this layer trims it there is no way
-  to recover it.
-- **Attribute objects have a null prototype**, because attribute names come
-  from the document. With a plain object, an attribute named `constructor`
-  could read back as an inherited function where a string was promised.
-- **`MusicXMLError.path` is a `readonly string[]`**, not a display string,
-  therefore a caller can match a segment without parsing prose.
-- **Type-checking runs two times**: `tsconfig.json` over `src`, and
-  `tsconfig.test.json` over the tests. The tests are Node programs, but the
-  library must touch no Node global and no DOM global. Only the test pass
-  gets those types, which enforces the rule instead of asserting it. Note
-  that `exclude` is inherited through `extends`, therefore the test config
-  clears it. Without that, the tests beside the source get no check from
-  either pass.
-- **`fraction.ts` arrives with the timing work.** Nothing needed rational
-  arithmetic while note values came straight from `<type>`.
+`tsconfig.test.json` adds Node types for tests and the CLI.
+`pnpm typecheck` runs both configurations.
 
-## References
+The library uses `@rgrove/parse-xml` for XML and `fflate` for archive extraction.
+Both remain external dependencies in the builds.
 
-- MNX spec: https://w3c-cg.github.io/mnx/docs/
-- MNX schema: https://github.com/w3c/mnx/blob/main/docs/mnx-schema.json
-- MusicXML spec: https://www.w3.org/2021/06/musicxml40/
+The library builds to `dist/ossia.js`. The CLI builds separately to
+`dist/cli.js`, with its own shebang and no shared application chunks.
+TypeScript declarations are emitted under `dist/types/`.
+
+Ajv is bundled into the CLI for validation. It is not imported by the library,
+but the CLI bundle is included in the installed package.
+
+## Input handling and invariants
+
+- The XML parser does not process DTDs or resolve external entities.
+- Undefined entities cause parse errors.
+- XML text remains untrimmed. Readers use `trimmedText()` for numbers and keywords.
+- Attribute objects have null prototypes.
+- Raw bytes use UTF-8 unless a UTF-16 byte-order mark is present.
+- Archive extraction selects the score named by the container listing.
+- If the listing does not identify an existing entry, a single XML score file can be used instead.
+- Raw input length and selected entries' declared sizes are checked against `100 * 1024 * 1024`.
+
+The length check uses bytes for byte input and archive sizes.
+It uses UTF-16 code units for string input.
+The whole-document pipeline also allocates an XML tree, score model, and MNX output.
+
+## Performance checks
+
+`tests/performance.test.ts` compares conversion times at two sizes for
+measure count, part count, and notes per measure. It checks for excessive
+growth in runtime rather than a fixed conversion speed.
+
+`pnpm bench` measures individual pipeline stages and complete conversions.

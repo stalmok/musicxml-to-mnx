@@ -70,12 +70,12 @@ writes eighteen of the twenty-nine `<technical>` children that MNX has nowhere
 to put, so those no-home registry entries are exercised rather than only
 asserted against the schema.
 
-Three things the converter handles are still uncovered, because no file in any
-corpus available here contains them: a measure repeat, `make-time` on a grace
-note, and a hairpin dying to `niente`. Between them the Lieder corpus, the
-test suite, the MakeMusic sample set, the music21 corpus, a 2,000-file CPDL
-sample and a 20,000-file PDMX sample hold none of the three. The one measure
-repeat found anywhere is in the music21 corpus, which cannot be redistributed.
+The vendored corpus does not cover measure repeats, `make-time` on grace
+notes, or hairpins ending at `niente`.
+
+Earlier searches found one measure repeat in the music21 corpus, but that
+file is not included here. Those searches found no examples of the other two
+features in Lieder, the test suite, MakeMusic, music21, or the CPDL and PDMX samples.
 
 ## Why `.mxl`
 
