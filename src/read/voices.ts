@@ -849,7 +849,7 @@ export class MeasureBuilder {
     if (covering) builder.end = addFractions(this.#cursor, covering)
   }
 
-  /** Whether what comes next in this voice is written over its measure rest. */
+  /** Whether this voice's measure rest stands on the sequence rather than as an event. */
   restsMeasure(voice: string | undefined): boolean {
     return this.#builderFor(voice).fullMeasure !== undefined
   }

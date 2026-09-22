@@ -307,6 +307,21 @@ describe('a voice holding only a rest that fills its measure', () => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 
+  test('reports a stem of none once on a rest a marking keeps an event', () => {
+    const { mnx, warnings } = convertMusicXML(
+      inMeasure(
+        '<note><rest measure="yes"/><duration>4</duration><voice>1</voice><stem>none</stem>' +
+          '<notations><articulations><accent/></articulations></notations></note>',
+      ),
+    )
+
+    expect(mnx.parts[0]?.measures[0]?.sequences[0]?.content).toEqual([
+      { duration: { base: 'quarter' }, rest: {}, markings: { accent: {} } },
+    ])
+    expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:stem-direction'])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
   test('reports a stem of none on a rest left on the sequence', () => {
     const { mnx, warnings } = convertMusicXML(
       inMeasure(
@@ -414,6 +429,48 @@ describe('a rest filling the measure kept as an event', () => {
         ),
       ),
     ).toContain('both a rest that fills the measure and notes in it')
+  })
+
+  // Notes laid over the rest after a <backup> are a second line of the voice,
+  // as they are over the sequence's own rest.
+  test.each(keptRests)('lays notes over a rest with %s into a line of their own', (_, rest) => {
+    const { mnx, warnings } = convertMusicXML(
+      inMeasure(
+        rest +
+          '<backup><duration>4</duration></backup>' +
+          '<note><pitch><step>C</step><octave>5</octave></pitch><duration>4</duration>' +
+          '<voice>1</voice><type>quarter</type></note>',
+      ),
+    )
+
+    expect(
+      mnx.parts[0]?.measures[0]?.sequences.map((sequence) =>
+        sequence.content.flatMap((item) => ('type' in item ? [] : [item.rest !== undefined])),
+      ),
+    ).toEqual([[true], [false]])
+    expect(warnings.map((warning) => warning.code)).toEqual(['inconsistent:voice'])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // A rest that states its value is weighed once the voice is whole, so notes
+  // after it make it an ordinary rest rather than the measure's.
+  test('converts notes after a stemmed rest that states its value', () => {
+    const { mnx, warnings } = convertMusicXML(
+      inMeasure(
+        '<note><rest measure="yes"/><duration>4</duration><voice>1</voice>' +
+          '<type>quarter</type><stem>up</stem></note>' +
+          '<note><pitch><step>C</step><octave>5</octave></pitch><duration>2</duration>' +
+          '<voice>1</voice><type>eighth</type></note>',
+      ),
+    )
+
+    expect(
+      mnx.parts[0]?.measures[0]?.sequences[0]?.content.flatMap((item) =>
+        'type' in item ? [] : [item.duration],
+      ),
+    ).toEqual([{ base: 'quarter' }, { base: 'eighth' }])
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A second rest filling the measure is refused whatever it carries, as it
