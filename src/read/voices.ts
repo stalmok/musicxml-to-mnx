@@ -896,7 +896,11 @@ export class MeasureBuilder {
     return true
   }
 
-  /** Adds a rest filling the measure as an event, which then holds nothing else. */
+  /**
+   * Adds a rest filling the measure as an event, which then holds nothing
+   * else. Grace notes before it take none of the measure's time, so they are
+   * the only thing it can follow.
+   */
   addMeasureRestEvent(
     voice: string | undefined,
     event: Event,
@@ -905,8 +909,15 @@ export class MeasureBuilder {
     line: number,
     staff: number | undefined,
   ): void {
+    const builder = this.#builderFor(voice)
+    if (builder.content.some((item) => item.kind !== 'grace')) {
+      throw new MusicXMLError('A voice has both a rest that fills the measure and notes in it.', {
+        path,
+        line,
+      })
+    }
     this.addEvent(voice, event, duration, path, line, staff)
-    this.#builderFor(voice).restsMeasureAsEvent = true
+    builder.restsMeasureAsEvent = true
   }
 
   /**

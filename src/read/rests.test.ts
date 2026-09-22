@@ -431,6 +431,18 @@ describe('a rest filling the measure kept as an event', () => {
     ).toContain('both a rest that fills the measure and notes in it')
   })
 
+  test.each(keptRests.slice(0, 3))('refuses a rest with %s after a note', (_, rest) => {
+    expect(
+      refusal(
+        inMeasure(
+          '<note><pitch><step>C</step><octave>5</octave></pitch><duration>2</duration>' +
+            '<voice>1</voice><type>eighth</type></note>' +
+            rest,
+        ),
+      ),
+    ).toContain('both a rest that fills the measure and notes in it')
+  })
+
   // Notes laid over the rest after a <backup> are a second line of the voice,
   // as they are over the sequence's own rest.
   test.each(keptRests)('lays notes over a rest with %s into a line of their own', (_, rest) => {
