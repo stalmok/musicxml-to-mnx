@@ -355,6 +355,85 @@ describe('a voice holding only a rest that fills its measure', () => {
   })
 })
 
+// A rest filling the measure that stays an event to keep what it carries
+// still rests the measure, so the voice treats what follows it as it would
+// for the sequence's own rest.
+describe('a rest filling the measure kept as an event', () => {
+  const grace =
+    '<note><grace/><pitch><step>D</step><octave>5</octave></pitch>' +
+    '<type>quarter</type><voice>1</voice></note>'
+  const keptRests = [
+    [
+      'a marking',
+      '<note><rest measure="yes"/><duration>4</duration><voice>1</voice>' +
+        '<notations><articulations><accent/></articulations></notations></note>',
+    ],
+    [
+      'a stem',
+      '<note><rest measure="yes"/><duration>4</duration><voice>1</voice><stem>up</stem></note>',
+    ],
+    [
+      'a lyric',
+      '<note><rest measure="yes"/><duration>4</duration><voice>1</voice>' +
+        '<lyric><text>la</text></lyric></note>',
+    ],
+    [
+      'grace notes after it',
+      '<note><rest measure="yes"/><duration>4</duration><voice>1</voice></note>' + grace,
+    ],
+  ]
+  const shortRest = '<note><rest/><duration>2</duration><voice>1</voice><type>eighth</type></note>'
+
+  test.each(keptRests)('drops an extra rest after a rest with %s, reporting it', (_, rest) => {
+    const { mnx, warnings } = convertMusicXML(inMeasure(rest + shortRest))
+    const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
+
+    expect(sequence?.content.flatMap((item) => ('type' in item ? [] : [item.duration]))).toEqual([
+      { base: 'quarter' },
+    ])
+    expect(warnings.map((warning) => warning.code)).toEqual(['redundant:rest'])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  const refusal = (source: string) => {
+    try {
+      convertMusicXML(source)
+    } catch (error) {
+      return error instanceof Error ? error.message : String(error)
+    }
+    return ''
+  }
+
+  test.each(keptRests)('refuses a note after a rest with %s', (_, rest) => {
+    expect(
+      refusal(
+        inMeasure(
+          rest +
+            '<note><pitch><step>C</step><octave>5</octave></pitch><duration>2</duration>' +
+            '<voice>1</voice><type>eighth</type></note>',
+        ),
+      ),
+    ).toContain('both a rest that fills the measure and notes in it')
+  })
+
+  // A second rest filling the measure is refused whatever it carries, as it
+  // is where neither carries anything.
+  test.each([
+    ['a plain rest', '<note><rest measure="yes"/><duration>4</duration><voice>1</voice></note>'],
+    ...keptRests,
+  ])('refuses a marked rest filling the measure after %s', (_, rest) => {
+    expect(
+      refusal(
+        inMeasure(
+          rest +
+            '<note><rest measure="yes"/><duration>4</duration><voice>1</voice>' +
+            '<notations><articulations><staccato/></articulations></notations></note>',
+        ),
+      ),
+    ).toContain('more than one rest that fills the measure')
+  })
+})
+
 // A <backup> reaching back further than the measure has run is reported where
 // the music after it is written, which for a rest filling the measure is the
 // rest itself.

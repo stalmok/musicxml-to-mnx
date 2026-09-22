@@ -728,7 +728,9 @@ export function readNote(
   // a note value can write stays an event to keep either, as it does for a
   // lyric. Read once here, and the event takes what was read. Where no note
   // value can write the rest, both stay unread and are reported as a loss.
-  const keepsEvent = restFillsMeasure && canBeEvent
+  // A voice rests its measure once, so a second such rest is refused below
+  // whatever it carries.
+  const keepsEvent = restFillsMeasure && canBeEvent && !builder.hasFullMeasure(voice)
   const restMarkings = keepsEvent ? readMarkings(notations, warnings, context) : undefined
   const restStem = keepsEvent ? readStemDirection(element, warnings, context) : undefined
   const carriesMarking = restMarkings !== undefined && Object.keys(restMarkings).length > 0
@@ -926,7 +928,18 @@ export function readNote(
 
   // Where the source states no <duration>, the written value is how long the
   // note lasts.
-  builder.addEvent(voice, event, duration ?? lengthOf(value), path, element.line, staff)
+  if (restFillsMeasure) {
+    builder.addMeasureRestEvent(
+      voice,
+      event,
+      duration ?? lengthOf(value),
+      path,
+      element.line,
+      staff,
+    )
+  } else {
+    builder.addEvent(voice, event, duration ?? lengthOf(value), path, element.line, staff)
+  }
   if (restsWholeMeasure) {
     builder.markMeasureRest(voice, event, () =>
       reportDurationMismatch(element, written, duration, scale, warnings, context),

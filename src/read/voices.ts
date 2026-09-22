@@ -156,6 +156,12 @@ interface VoiceBuilder {
   openedAt: number | undefined
   fullMeasure: FullMeasureRest | undefined
   /**
+   * Whether a rest filling this voice's measure stands in its content as an
+   * event, where it carries something the sequence cannot hold. The voice
+   * rests the measure all the same.
+   */
+  restsMeasureAsEvent: boolean
+  /**
    * What the rest filling this voice's measure goes back to being where
    * something that only an event can hold is written after it, and nothing
    * where no note value can write the rest. `at` is where the rest stands,
@@ -449,7 +455,9 @@ export class MeasureBuilder {
    * first is silence over silence whichever line it would go to.
    */
   hasFullMeasure(voice: string | undefined): boolean {
-    return this.#layersFor(voice).layers.some((layer) => layer.fullMeasure !== undefined)
+    return this.#layersFor(voice).layers.some(
+      (layer) => layer.fullMeasure !== undefined || layer.restsMeasureAsEvent,
+    )
   }
 
   /**
@@ -545,7 +553,8 @@ export class MeasureBuilder {
     line: number,
     staff?: number,
   ): void {
-    if (this.#builderFor(voice).fullMeasure) {
+    const { fullMeasure, restsMeasureAsEvent } = this.#builderFor(voice)
+    if (fullMeasure || restsMeasureAsEvent) {
       throw new MusicXMLError('A voice has both a rest that fills the measure and notes in it.', {
         path,
         line,
@@ -882,8 +891,22 @@ export class MeasureBuilder {
     const reached = this.#cursor
     this.#cursor = restored.at
     this.addEvent(voice, event, restored.duration, path, line, restored.staff)
+    builder.restsMeasureAsEvent = true
     this.#moveTo(reached)
     return true
+  }
+
+  /** Adds a rest filling the measure as an event, which then holds nothing else. */
+  addMeasureRestEvent(
+    voice: string | undefined,
+    event: Event,
+    duration: Fraction,
+    path: DocumentPath,
+    line: number,
+    staff: number | undefined,
+  ): void {
+    this.addEvent(voice, event, duration, path, line, staff)
+    this.#builderFor(voice).restsMeasureAsEvent = true
   }
 
   /**
@@ -1984,6 +2007,7 @@ function newVoiceBuilder(openedAt?: number): VoiceBuilder {
     last: undefined,
     grace: undefined,
     fullMeasure: undefined,
+    restsMeasureAsEvent: false,
     restAsEvent: undefined,
     measureRest: undefined,
     claims: [],
