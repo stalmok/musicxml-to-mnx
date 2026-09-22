@@ -158,11 +158,19 @@ interface VoiceBuilder {
   /**
    * What the rest filling this voice's measure goes back to being where
    * something that only an event can hold is written after it, and nothing
-   * where no note value can write the rest. `at` is where the rest stands and
-   * `staff` the staff it named. See restoreMeasureRest.
+   * where no note value can write the rest. `at` is where the rest stands,
+   * `after` where the voice's content ran out before it, and `staff` the
+   * staff it named. See restoreMeasureRest.
    */
   restAsEvent:
-    | { value: NoteValue; duration: Fraction; at: Fraction; staff: number | undefined }
+    | {
+        rest: FullMeasureRest
+        value: NoteValue
+        duration: Fraction
+        at: Fraction
+        after: Fraction
+        staff: number | undefined
+      }
     | undefined
   /**
    * A rest that may turn out to be this voice's measure rest, held until the
@@ -823,7 +831,13 @@ export class MeasureBuilder {
     // names is the staff the sequence sits on.
     builder.placed.push({ event: undefined, staff })
     builder.fullMeasure = rest
-    builder.restAsEvent = asEvent && { ...asEvent, at: this.#cursor, staff }
+    builder.restAsEvent = asEvent && {
+      ...asEvent,
+      rest,
+      at: this.#cursor,
+      after: builder.end,
+      staff,
+    }
     // The rest occupies the whole voice, so nothing may follow it there.
     if (covering) builder.end = addFractions(this.#cursor, covering)
   }
@@ -855,17 +869,19 @@ export class MeasureBuilder {
     line: number,
   ): boolean {
     const builder = this.#builderFor(voice)
-    const rest = builder.fullMeasure
     const restored = builder.restAsEvent
-    if (!rest || !restored) return false
+    if (!restored) return false
 
-    const event = asEvent(rest, restored.value)
+    const event = asEvent(restored.rest, restored.value)
     // The rest is the whole of the voice, so the staff it named is the only
     // entry standing, and the event added below names it instead.
     builder.placed.length = 0
     builder.fullMeasure = undefined
     builder.restAsEvent = undefined
-    builder.end = restored.at
+    // Wound back to where the voice stood before the rest was written, so
+    // that silence the rest was written after is stated as a space, as it
+    // would have been for a rest that never left the content.
+    builder.end = restored.after
 
     // Written where the rest stands rather than where the cursor has since
     // reached, which is past the rest: a <forward> or the rest's own length

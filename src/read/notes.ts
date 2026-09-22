@@ -277,7 +277,31 @@ export function readNote(
   // nothing and cannot open a sequence on its own account. It is read into
   // the sequence the voice last sounded in and carried to the one its note
   // turns out to take.
-  if (!element.child('chord') && !graceElement) builder.beginNote(voice, element.line)
+  const chordMember = element.child('chord') !== undefined
+  if (!chordMember && !graceElement) builder.beginNote(voice, element.line)
+
+  // MNX states a rest filling the measure on a sequence that holds nothing,
+  // so a voice that rests the measure has nowhere to put a grace note. The
+  // rest comes back off the sequence and is written as the event its length
+  // is written as, which is where the same two written the other way round
+  // already leave it. Taken back before this note opens a bracket of its own,
+  // so that the rest stands outside that bracket, as it does in the source. A
+  // chord member joins the grace note before it, which has asked already. An
+  // irregular measure has no value to write the rest as, so the rest stays
+  // the sequence's own and nothing can stand beside it.
+  if (
+    graceElement &&
+    !chordMember &&
+    builder.restsMeasure(voice) &&
+    !restoreMeasureRest(builder, voice, state, path, element)
+  ) {
+    throw new MusicXMLError(
+      'A grace note stands in a voice that is a rest filling the measure, and no note ' +
+        'value can write that rest as an event. MNX states such a rest on a sequence ' +
+        'that holds nothing, so nothing can hold the grace note.',
+      { path, line: element.line },
+    )
+  }
 
   // Which staff the note names. Read and bounded whatever the part has, so
   // that a note naming a staff before <staves> said the part had one is
@@ -299,7 +323,7 @@ export function readNote(
   // event rather than starting another. It is settled first because it is
   // not an event of its own: it opens no tuplet, and the ratio it repeats
   // belongs to the event it joins.
-  if (element.child('chord')) {
+  if (chordMember) {
     if (restElement) {
       throw new MusicXMLError('A rest cannot be part of a chord.', { path, line: element.line })
     }
@@ -820,21 +844,6 @@ export function readNote(
   // of the measure's time, which is why it carries no <duration>. It joins a
   // group rather than standing in the cursor's path.
   if (graceElement) {
-    // MNX states a rest filling the measure on a sequence holding nothing, so
-    // a voice that rests the measure has nowhere to put a grace note. The
-    // rest goes back to being the event its length is written as, which is
-    // where the same two written the other way round already leave it. An
-    // irregular measure has no such value, so the rest stays the sequence's
-    // own and nothing can stand beside it.
-    if (builder.restsMeasure(voice) && !restoreMeasureRest(builder, voice, state, path, element)) {
-      throw new MusicXMLError(
-        'A grace note stands in a voice that is a rest filling the measure, and no note ' +
-          'value can write that rest as an event. MNX states such a rest on a sequence ' +
-          'that holds nothing, so nothing can hold the grace note.',
-        { path, line: element.line },
-      )
-    }
-
     builder.addGraceNote(
       voice,
       event,

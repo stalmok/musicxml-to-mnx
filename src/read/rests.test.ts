@@ -199,6 +199,24 @@ describe('a voice holding only a rest that fills its measure', () => {
   })
 })
 
+// A <backup> reaching back further than the measure has run is reported where
+// the music after it is written, which for a rest filling the measure is the
+// rest itself.
+describe('a measure rest written after a backup past the measure start', () => {
+  test('reports the reach and writes the rest at the measure start', () => {
+    const { mnx, warnings } = convertMusicXML(
+      inMeasure(
+        '<backup><duration>8</duration></backup>' +
+          '<note><rest measure="yes"/><duration>4</duration><voice>1</voice></note>',
+      ),
+    )
+
+    expect(warnings.map((warning) => warning.code)).toEqual(['inconsistent:backup'])
+    expect(mnx.parts[0]?.measures[0]?.sequences[0]?.fullMeasure).toEqual({})
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+})
+
 // A grace note takes none of the measure's time, so a voice leading into a
 // measure of silence with one rests through it just the same. MNX wants the
 // sequence stating a full-measure rest to hold nothing, so the rest is
@@ -288,6 +306,80 @@ describe('a rest filling a measure a grace note leads into', () => {
         sequence.content.map((item) => ('type' in item ? item.type : 'event')),
       ),
     ).toEqual([['event'], ['grace', 'event']])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // A voice that rests one line of the measure can sound another. The rest
+  // is the first line's, so a grace note in the line the voice is sounding
+  // stands there and leaves the rest where it is.
+  test('leaves a measure rest in another line of the voice alone', () => {
+    const { mnx } = convertMusicXML(
+      inMeasure(
+        measureRest +
+          '<backup><duration>4</duration></backup>' +
+          '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+          '<type>quarter</type><voice>1</voice></note>' +
+          grace,
+      ),
+    )
+
+    expect(
+      mnx.parts[0]?.measures[0]?.sequences.map((sequence) => [
+        sequence.content.map((item) => ('type' in item ? item.type : 'event')),
+        sequence.fullMeasure !== undefined,
+      ]),
+    ).toEqual([
+      [[], true],
+      [['event', 'grace'], false],
+    ])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // A bracket the grace note itself opens starts at the grace note, so the
+  // rest stands outside it. The rest is taken back before the bracket opens,
+  // which is why it does. The same two written the other way round are
+  // refused, because there the bracket does reach the rest.
+  test('leaves the restored rest outside a bracket the grace note opens', () => {
+    const { mnx, warnings } = convertMusicXML(
+      inMeasure(
+        measureRest +
+          '<note><grace/><pitch><step>D</step><octave>5</octave></pitch><type>eighth</type>' +
+          '<voice>1</voice><time-modification><actual-notes>3</actual-notes>' +
+          '<normal-notes>2</normal-notes></time-modification>' +
+          '<notations><tuplet type="start" number="1"/></notations></note>',
+      ),
+    )
+
+    expect(
+      mnx.parts[0]?.measures[0]?.sequences[0]?.content.map((item) =>
+        'type' in item ? item.type : 'event',
+      ),
+    ).toEqual(['event', 'grace'])
+    expect(warnings.map((warning) => warning.code)).toEqual([
+      'unrepresentable:tuplet-span',
+      'unrepresentable:tuplet-untimed',
+    ])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+
+  // A <forward> before the rest is silence the voice passed over, and MNX
+  // states it as a space. The rest is written back where it stands, so the
+  // space before it stands too.
+  test('keeps the silence the source passed over before the rest', () => {
+    const { mnx, warnings } = convertMusicXML(
+      inMeasure(
+        '<forward><duration>2</duration></forward>' +
+          '<note><rest measure="yes"/><duration>2</duration><voice>1</voice></note>' +
+          grace,
+      ),
+    )
+
+    expect(mnx.parts[0]?.measures[0]?.sequences[0]?.content).toEqual([
+      { type: 'space', duration: [1, 8] },
+      { duration: { base: 'eighth' }, rest: {} },
+      expect.objectContaining({ type: 'grace' }),
+    ])
+    expect(warnings).toEqual([])
     expect(schemaErrors(mnx)).toEqual([])
   })
 
