@@ -351,13 +351,19 @@ describe('the encoding a document declares', () => {
   )
 
   // ISO-8859-1 labels are read as windows-1252, as the Encoding Standard reads
-  // them. Node's decoder follows the standard, so it checks every byte.
+  // them. It differs from Latin-1 only at bytes 0x80 to 0x9f, stated here from
+  // the standard's index. TextDecoder is no oracle: Node before 23 decodes
+  // windows-1252 as Latin-1.
   test('reads every byte of ISO-8859-1 as windows-1252 does', () => {
     const every = Array.from({ length: 256 }, (_, byte) => byte)
-    const expected = new TextDecoder('windows-1252').decode(new Uint8Array(every))
+    const high = '€\x81‚ƒ„…†‡ˆ‰Š‹Œ\x8dŽ\x8f\x90‘’“”•–—˜™š›œ\x9džŸ'
+    const expected =
+      String.fromCharCode(...every.slice(0, 0x80)) +
+      high +
+      String.fromCharCode(...every.slice(0xa0))
 
+    expect(high).toHaveLength(32)
     expect(readMusicXML(declared('ISO-8859-1', every))).toContain(`<x>${expected}</x>`)
-    expect(expected[0x80]).toBe('€')
   })
 
   test('reads a label in single quotes', () => {
