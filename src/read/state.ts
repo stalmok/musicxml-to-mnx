@@ -9,6 +9,8 @@ import type {
   TimeSignature,
   Transposition,
 } from '../model/score.js'
+import { fraction } from '../fraction.js'
+import type { Fraction } from '../fraction.js'
 import type { WarningContext } from '../warnings.js'
 import { IdGenerator, SpannerResolver } from './spanners.js'
 import type { CarriedTupletStop } from './tuplets.js'
@@ -73,9 +75,10 @@ export interface PartState {
    */
   divisionsAssumed: boolean
   /**
-   * The time signature in force, which like <divisions> stays until restated.
-   * It changes where the source states one, which can be partway through a
-   * measure.
+   * The time signature the measure being read is measured against, which like
+   * <divisions> stays until restated. Only the measure reader sets it: to the
+   * one stated where the measure begins, and to one stated after the start
+   * once the measure is settled, since that one is the next measure's.
    */
   time: TimeSignature | undefined
   /**
@@ -168,6 +171,14 @@ export interface PartState {
    * this one and reports the change.
    */
   statedTransposition: Transposition | undefined
+}
+
+/**
+ * How long the measure being read runs, as its time signature states.
+ * Unknown where the part has stated none, or states it is unmetered.
+ */
+export function measureLength(state: PartState): Fraction | undefined {
+  return state.time && fraction(state.time.count, state.time.unit)
 }
 
 export function newPartState(

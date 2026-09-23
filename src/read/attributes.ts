@@ -282,11 +282,6 @@ export function readAttributes(
     .map((stated) => stated.value)
     .filter((time): time is TimeSignature => time !== undefined)
 
-  // Held on the part so a later measure that restates neither still knows
-  // how long it runs. A senza-misura statement clears it: the music is
-  // unmetered from here on, whatever was in force before.
-  if (times.length > 0) state.time = metered[0]
-
   const key = keys.map((stated) => stated.value).find((stated) => stated !== undefined)
   return {
     keys,

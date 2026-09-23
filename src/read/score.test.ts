@@ -717,6 +717,32 @@ describe('a time signature stated after the measure start', () => {
     ])
   })
 
+  // A rest with no written value lasting the measure is the measure's rest.
+  // One lasting the late time signature's length is not, since the measure
+  // is still the one it opens with.
+  test('measures a rest after it against the time signature the measure opens with', () => {
+    const rest = (duration: number) =>
+      `<note><rest/><duration>${String(duration)}</duration><voice>2</voice></note>`
+    const { score: result, warnings } = read(
+      part(
+        opening +
+          timed(4) +
+          note(12) +
+          timed(3) +
+          note(36) +
+          '<backup><duration>48</duration></backup>' +
+          rest(36) +
+          rest(12),
+        note(36),
+      ),
+    )
+
+    const resting = result.parts[0]?.measures[0]?.sequences[1]
+    expect(resting?.fullMeasure).toBeUndefined()
+    expect(resting?.content).toHaveLength(2)
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:mid-measure-time'])
+  })
+
   // The cursor is back inside the measure, although every note in it is read.
   test('takes a statement after a <backup> into the measure as partway through', () => {
     const { warnings } = read(

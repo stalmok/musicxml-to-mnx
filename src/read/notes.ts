@@ -43,6 +43,7 @@ import { reportHidden } from './unrepresentable.js'
 import { readLyrics } from './lyrics.js'
 import { noteValueBaseOf, requireNoteValueBase } from './noteValues.js'
 import { readIntegerInRange } from './numbers.js'
+import { measureLength } from './state.js'
 import type { PartState } from './state.js'
 import { soundingPitch } from './transposition.js'
 import { entriesOf, recogniser } from './tables.js'
@@ -632,13 +633,14 @@ export function readNote(
   // signature's business. Some exporters leave measure="yes" off, so a rest
   // with no written value lasting exactly the measure is read the same way;
   // in an irregular measure that length may have no note value at all.
+  const measure = measureLength(state)
   const fillsMeasure =
     restElement !== undefined &&
     written === undefined &&
     duration !== undefined &&
     !state.divisionsAssumed &&
-    state.time !== undefined &&
-    compareFractions(duration, fraction(state.time.count, state.time.unit)) === 0 &&
+    measure !== undefined &&
+    compareFractions(duration, measure) === 0 &&
     // A rest reached after the voice has sounded fills what is left of the
     // measure, not the measure. Exporters write one as a filler behind a note
     // that overruns the barline, and it is a rest like any other.
@@ -823,8 +825,8 @@ export function readNote(
       (restElement !== undefined &&
         graceElement === undefined &&
         !state.divisionsAssumed &&
-        state.time !== undefined &&
-        compareFractions(duration, fraction(state.time.count, state.time.unit)) === 0 &&
+        measure !== undefined &&
+        compareFractions(duration, measure) === 0 &&
         compareFractions(lengthOf(written), duration) !== 0 &&
         // A slur is paired once the part is whole, so whether one reaches this
         // rest is readable here and nowhere later. What the event itself carries

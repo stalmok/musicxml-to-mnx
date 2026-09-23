@@ -31,6 +31,7 @@ import type { ElementReader } from './element.js'
 import { noteValueBaseOf } from './noteValues.js'
 import { readIntegerInRange } from './numbers.js'
 import type { StopWording, WedgeStop } from './spanners.js'
+import { measureLength } from './state.js'
 import type { PartState } from './state.js'
 import { entriesOf, recogniser } from './tables.js'
 import { attributeLoss, elementLoss } from './unrepresentable.js'
@@ -411,8 +412,8 @@ function offsetPosition(
  * this only catches a mark that has plainly left the bar.
  */
 function pastTheEnd(position: Fraction, state: PartState): boolean {
-  if (!state.time) return false
-  return compareFractions(position, fraction(state.time.count, state.time.unit)) > 0
+  const measure = measureLength(state)
+  return measure !== undefined && compareFractions(position, measure) > 0
 }
 
 // How far MusicXML's octave-shift sizes move the music, in octaves, each way

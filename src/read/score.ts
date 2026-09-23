@@ -56,7 +56,7 @@ import type { Fraction } from '../fraction.js'
 import { readNote } from './notes.js'
 import { readPrint } from './print.js'
 import { IdGenerator } from './spanners.js'
-import { newPartState } from './state.js'
+import { measureLength, newPartState } from './state.js'
 import { keyFifthsFlipAt, writtenFifths, writtenFifthsWithFlip } from './transposition.js'
 import { attributeLoss, elementLoss } from './unrepresentable.js'
 import type { HeldSignature, PartState } from './state.js'
@@ -1475,9 +1475,9 @@ function readMeasure(
   let fermata: Fermata | undefined
 
   const builder = new MeasureBuilder(state.carriedTupletStops)
-  // The time signature in force from the measure before, which this measure
-  // keeps unless it states its own at its start.
-  const startTime = state.time
+  // The last time signature stated after the measure start. It is the next
+  // measure's, so the part takes it only once this measure is settled.
+  let nextTime: { value: TimeSignature | undefined } | undefined
 
   // Walked in document order, because MusicXML states a measure as one stream
   // with a cursor running through it: what a <note> means depends on the
@@ -1492,7 +1492,6 @@ function readMeasure(
 
     switch (found.name) {
       case 'attributes': {
-        const timeBefore = state.time
         const reading = readAttributes(
           reader,
           state,
@@ -1524,13 +1523,17 @@ function readMeasure(
         if (reading.times.length > 0) {
           statedAt(timeGroups, at, found.line).statements.push(...reading.times)
           if (builder.atMeasureStart()) {
-            if (!timeSettled) time = reading.time
             // A later one changes nothing, so the music after it is read as
-            // before.
-            else state.time = timeBefore
+            // before. A senza-misura statement clears it: the music is
+            // unmetered from here on, whatever was in force before.
+            if (!timeSettled) {
+              time = reading.time
+              state.time = reading.time
+            }
             timeSettled = true
           } else {
             lateTimes.push({ value: reading.time, at, line: found.line })
+            nextTime = { value: reading.time }
           }
         }
         clefs.push(...reading.clefs)
@@ -1692,8 +1695,7 @@ function readMeasure(
   // signature runs to the barline the score states. Measured against the
   // time signature the measure opens with, since one stated after its start
   // is the next measure's.
-  const inForce = (timeSettled ? time : startTime) ?? scoreTime
-  const signature = inForce && fraction(inForce.count, inForce.unit)
+  const signature = measureLength(state) ?? (scoreTime && fraction(scoreTime.count, scoreTime.unit))
   // A pickup measure's beats line up with the barline it ends on, and it has
   // no silence past its own end. The attribute is still a loss as a statement
   // about the numbering, which the sweep above reports.
@@ -1718,6 +1720,7 @@ function readMeasure(
   // read as that voice's measure rest. After the covers above, which read the
   // rest while it is still an event.
   builder.settleMeasureRests()
+  if (nextTime) state.time = nextTime.value
 
   // Beams are stated over the measure in MNX rather than on the notes, and
   // each voice is beamed on its own.
