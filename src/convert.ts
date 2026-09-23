@@ -36,10 +36,12 @@ export interface ConversionResult {
  *
  * The source is either the XML text, or the bytes of a document or an `.mxl`
  * package, which is told apart by its zip signature and unpacked. Raw bytes
- * are read as UTF-8.
+ * are decoded by their byte-order mark, or else by the encoding their XML
+ * declaration names, or else as UTF-8.
  *
- * @throws {MusicXMLError} if the source is not well-formed, or encodes
- * something that cannot be converted faithfully.
+ * @throws {MusicXMLError} if the source is not well-formed, is bytes in an
+ * encoding this converter does not read, is bytes that break their encoding,
+ * or encodes something that cannot be converted faithfully.
  */
 export function convertMusicXML(
   source: string | Uint8Array,

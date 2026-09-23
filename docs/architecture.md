@@ -204,7 +204,9 @@ but the CLI bundle is included in the installed package.
 - Undefined entities cause parse errors.
 - XML text remains untrimmed. Readers use `trimmedText()` for numbers and keywords.
 - Attribute objects have null prototypes.
-- Raw bytes use UTF-8 unless a UTF-16 byte-order mark is present.
+- Raw bytes follow a byte-order mark (UTF-8 or UTF-16) first, then the encoding in the XML declaration, then UTF-8.
+- The converter reads two declared encodings: UTF-8 and windows-1252. ISO-8859-1 and US-ASCII labels decode as windows-1252, as the Encoding Standard maps them. A UTF-16 label with no byte-order mark decodes as UTF-8.
+- Any other declared encoding causes a `MusicXMLError`. A document read as UTF-8 that is not valid UTF-8 also causes one.
 - Archive extraction selects the score named by the container listing.
 - If the listing does not identify an existing entry, a single XML score file can be used instead.
 - Raw input length and selected entries' declared sizes are checked against `100 * 1024 * 1024`.

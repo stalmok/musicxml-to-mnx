@@ -27,8 +27,8 @@ const SCORE_LIMIT = 100 * 1024 * 1024
 
 /**
  * The MusicXML text to parse. A string is already that. Bytes are an `.mxl`
- * when they start with the zip signature, and a raw document otherwise, which
- * this converter reads as UTF-8.
+ * when they start with the zip signature, and a raw document otherwise, decoded
+ * by its byte-order mark, else its declared encoding, else as UTF-8.
  */
 export function readMusicXML(source: string | Uint8Array): string {
   if (typeof source !== 'string' && isZip(source)) return scoreInside(source)
@@ -144,22 +144,152 @@ function rootFilePath(listing: Uint8Array): string | undefined {
 }
 
 /**
- * Bytes as text: UTF-16 where a byte-order mark says so, UTF-8 otherwise.
- * fflate's UTF-8 decoder is used rather than a `TextDecoder` global, so the
- * core stays free of the platform globals the build forbids it. A leading
- * UTF-8 byte-order mark, which would otherwise reach the parser as a stray
- * character before the prolog, is stripped by that decoder as the encoding
- * spec requires.
+ * Bytes as text. A byte-order mark decides first, then the encoding the XML
+ * declaration names, then UTF-8, which XML assumes when neither is present.
+ * No `TextDecoder` global is used, so the core stays free of the platform
+ * globals the build forbids it.
  */
 function decode(bytes: Uint8Array): string {
-  // A UTF-16 byte-order mark: fflate decodes UTF-8 only, and Finale ships
-  // UTF-16 MusicXML, so it is decoded here by hand. JavaScript strings are
-  // UTF-16 code units already, so pairing bytes is the whole of the work and
-  // surrogate pairs pass through intact.
+  // Finale ships UTF-16 MusicXML, always with a byte-order mark.
   if ((bytes[0] === 0xff && bytes[1] === 0xfe) || (bytes[0] === 0xfe && bytes[1] === 0xff)) {
     return decodeUtf16(bytes, bytes[0] === 0xff)
   }
-  return strFromU8(bytes)
+  // fflate's decoder strips a UTF-8 byte-order mark itself, as the encoding
+  // spec requires.
+  if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
+    checkUtf8(bytes, 3, true)
+    return strFromU8(bytes)
+  }
+
+  const label = declaredLabel(bytes)
+  const encoding = label?.trim().toLowerCase()
+  if (encoding === undefined || UTF8_LABELS.has(encoding) || UTF16_LABELS.has(encoding)) {
+    checkUtf8(bytes, 0, encoding !== undefined)
+    return strFromU8(bytes)
+  }
+  if (WINDOWS_1252_LABELS.has(encoding)) return decodeWindows1252(bytes)
+  throw new MusicXMLError(
+    `The document declares the encoding "${String(label)}", which this converter cannot ` +
+      'decode. Save it as UTF-8.',
+    { path: [] },
+  )
+}
+
+// The labels the Encoding Standard gives each encoding read here. It maps
+// ISO-8859-1 and US-ASCII to windows-1252, as every browser does.
+const UTF8_LABELS: ReadonlySet<string> = new Set([
+  'unicode-1-1-utf-8',
+  'unicode11utf8',
+  'unicode20utf8',
+  'utf-8',
+  'utf8',
+  'x-unicode20utf8',
+])
+const WINDOWS_1252_LABELS: ReadonlySet<string> = new Set([
+  'ansi_x3.4-1968',
+  'ascii',
+  'cp1252',
+  'cp819',
+  'csisolatin1',
+  'ibm819',
+  'iso-8859-1',
+  'iso-ir-100',
+  'iso8859-1',
+  'iso88591',
+  'iso_8859-1',
+  'iso_8859-1:1987',
+  'l1',
+  'latin1',
+  'us-ascii',
+  'windows-1252',
+  'x-cp1252',
+])
+// A UTF-16 label on a document with no byte-order mark: the declaration read
+// as ASCII, so the bytes are not UTF-16. They are read as UTF-8, as an HTML
+// parser reads them.
+const UTF16_LABELS: ReadonlySet<string> = new Set([
+  'csunicode',
+  'iso-10646-ucs-2',
+  'ucs-2',
+  'unicode',
+  'unicodefeff',
+  'unicodefffe',
+  'utf-16',
+  'utf-16be',
+  'utf-16le',
+])
+
+// The declaration must open the document. It is read as ASCII, and its
+// whitespace is XML's four characters only.
+const DECLARATION = /^<\?xml[ \t\r\n][^>]*?[ \t\r\n]encoding[ \t\r\n]*=[ \t\r\n]*(["'])([^"']*)\1/
+const DECLARATION_LENGTH = 256
+
+function declaredLabel(bytes: Uint8Array): string | undefined {
+  return DECLARATION.exec(strFromU8(bytes.subarray(0, DECLARATION_LENGTH), true))?.[2]
+}
+
+/**
+ * Refuses any byte sequence from `start` that UTF-8 does not allow: a stray
+ * or missing continuation byte, an overlong form, a surrogate, or a character
+ * past U+10FFFF.
+ */
+function checkUtf8(bytes: Uint8Array, start: number, declared: boolean): void {
+  let at = start
+  while (at < bytes.length) {
+    const lead = bytes[at] as number
+    if (lead < 0x80) {
+      at++
+      continue
+    }
+    let count: number
+    let min: number
+    if (lead >= 0xc2 && lead <= 0xdf) {
+      count = 1
+      min = 0x80
+    } else if (lead >= 0xe0 && lead <= 0xef) {
+      count = 2
+      min = 0x800
+    } else if (lead >= 0xf0 && lead <= 0xf4) {
+      count = 3
+      min = 0x10000
+    } else {
+      throw invalidUtf8(at, declared)
+    }
+    let point = lead & (0x3f >> count)
+    for (let next = at + 1; next <= at + count; next++) {
+      const byte = bytes[next]
+      if (byte === undefined || (byte & 0xc0) !== 0x80) throw invalidUtf8(at, declared)
+      point = (point << 6) | (byte & 0x3f)
+    }
+    if (point < min || point > 0x10ffff || (point >= 0xd800 && point <= 0xdfff)) {
+      throw invalidUtf8(at, declared)
+    }
+    at += count + 1
+  }
+}
+
+function invalidUtf8(at: number, declared: boolean): MusicXMLError {
+  return new MusicXMLError(
+    declared
+      ? `The document is not valid UTF-8 at byte ${String(at)}.`
+      : `The document is not valid UTF-8 at byte ${String(at)}, and declares no other encoding.`,
+    { path: [] },
+  )
+}
+
+// Where windows-1252 differs from Latin-1: bytes 0x80 to 0x9f. The five bytes
+// windows-1252 leaves undefined keep their Latin-1 control characters, as the
+// Encoding Standard decodes them.
+const WINDOWS_1252_HIGH = [
+  0x20ac, 0x81, 0x201a, 0x192, 0x201e, 0x2026, 0x2020, 0x2021, 0x2c6, 0x2030, 0x160, 0x2039, 0x152,
+  0x8d, 0x17d, 0x8f, 0x90, 0x2018, 0x2019, 0x201c, 0x201d, 0x2022, 0x2013, 0x2014, 0x2dc, 0x2122,
+  0x161, 0x203a, 0x153, 0x9d, 0x17e, 0x178,
+]
+
+function decodeWindows1252(bytes: Uint8Array): string {
+  return strFromU8(bytes, true).replace(/[\x80-\x9f]/g, (character) =>
+    String.fromCharCode(WINDOWS_1252_HIGH[character.charCodeAt(0) - 0x80] as number),
+  )
 }
 
 /** UTF-16 bytes as text, past their byte-order mark. */

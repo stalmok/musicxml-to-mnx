@@ -300,15 +300,16 @@ describe('a UTF-16 document', () => {
   })
 
   // Half a mark is no mark: one byte of a pair, or the two bytes of a pair in
-  // neither order, is a UTF-8 document. Each case is an odd number of bytes,
-  // which UTF-16 would refuse, so reading it at all says which branch ran.
+  // neither order, is read as UTF-8, where neither byte is valid.
   test.each([
-    ['a first byte of 0xff alone', [0xff, 0x3c, 0x78, 0x2f, 0x3e]],
-    ['a first byte of 0xfe alone', [0xfe, 0x3c, 0x78, 0x2f, 0x3e]],
-    ['a second byte of 0xfe alone', [0x3c, 0xfe, 0x78, 0x2f, 0x3e]],
-    ['a second byte of 0xff alone', [0x3c, 0xff, 0x78, 0x2f, 0x3e]],
-  ])('decodes %s as UTF-8', (_name, bytes) => {
-    expect(readMusicXML(new Uint8Array(bytes))).toContain('x/>')
+    ['a first byte of 0xff alone', [0xff, 0x3c, 0x78, 0x2f, 0x3e], 0],
+    ['a first byte of 0xfe alone', [0xfe, 0x3c, 0x78, 0x2f, 0x3e], 0],
+    ['a second byte of 0xfe alone', [0x3c, 0xfe, 0x78, 0x2f, 0x3e], 1],
+    ['a second byte of 0xff alone', [0x3c, 0xff, 0x78, 0x2f, 0x3e], 1],
+  ])('refuses %s as UTF-8', (_name, bytes, at) => {
+    expect(() => readMusicXML(new Uint8Array(bytes))).toThrow(
+      `The document is not valid UTF-8 at byte ${String(at)}, and declares no other encoding.`,
+    )
   })
 
   test('refuses a document ending in the middle of a character', () => {
@@ -321,5 +322,216 @@ describe('a UTF-16 document', () => {
 
     expect(thrown).toBeInstanceOf(MusicXMLError)
     expect((thrown as MusicXMLError).message).toContain('UTF-16')
+  })
+})
+
+describe('the encoding a document declares', () => {
+  function declared(encoding: string, body: number[], quote = '"'): Uint8Array {
+    const head = `<?xml version="1.0" encoding=${quote}${encoding}${quote}?><x>`
+    return new Uint8Array([...strToU8(head), ...body, ...strToU8('</x>')])
+  }
+
+  function refusal(bytes: Uint8Array): MusicXMLError {
+    let thrown: unknown
+    try {
+      readMusicXML(bytes)
+    } catch (error) {
+      thrown = error
+    }
+    expect(thrown).toBeInstanceOf(MusicXMLError)
+    expect((thrown as MusicXMLError).path).toEqual([])
+    return thrown as MusicXMLError
+  }
+
+  test.each(['ISO-8859-1', 'iso-8859-1', 'latin1', 'windows-1252', 'CP1252', 'US-ASCII'])(
+    'decodes %s one byte per character',
+    (encoding) => {
+      expect(readMusicXML(declared(encoding, [0x65, 0x74, 0xe9]))).toContain('<x>eté</x>')
+    },
+  )
+
+  // ISO-8859-1 labels are read as windows-1252, as the Encoding Standard reads
+  // them. Node's decoder follows the standard, so it checks every byte.
+  test('reads every byte of ISO-8859-1 as windows-1252 does', () => {
+    const every = Array.from({ length: 256 }, (_, byte) => byte)
+    const expected = new TextDecoder('windows-1252').decode(new Uint8Array(every))
+
+    expect(readMusicXML(declared('ISO-8859-1', every))).toContain(`<x>${expected}</x>`)
+    expect(expected[0x80]).toBe('€')
+  })
+
+  test('reads a label in single quotes', () => {
+    expect(readMusicXML(declared('ISO-8859-1', [0xe9], "'"))).toContain('<x>é</x>')
+  })
+
+  test('reads a label with space around the equals sign', () => {
+    const head = strToU8('<?xml version="1.0" encoding = "ISO-8859-1"?><x>')
+    expect(readMusicXML(new Uint8Array([...head, 0xe9]))).toContain('<x>é')
+  })
+
+  test.each(['UTF-8', 'utf-8', 'UTF8', ' utf-8 '])('decodes %s as UTF-8', (encoding) => {
+    expect(readMusicXML(declared(encoding, [0xc3, 0xa9]))).toContain('<x>é</x>')
+  })
+
+  // A byte-order mark outranks the declaration, as the XML specification
+  // orders them.
+  test('follows a UTF-8 byte-order mark over the declaration', () => {
+    const bytes = declared('ISO-8859-1', [0xc3, 0xa9])
+    expect(readMusicXML(new Uint8Array([0xef, 0xbb, 0xbf, ...bytes]))).toContain('<x>é</x>')
+  })
+
+  test('decodes the score of an .mxl package by its declaration', () => {
+    const archive = zipSync({ 'score.musicxml': declared('ISO-8859-1', [0xe9]) })
+    expect(readMusicXML(archive)).toContain('<x>é</x>')
+  })
+
+  // A declaration readable as ASCII rules out UTF-16.
+  test.each(['UTF-16', 'utf-16le'])('reads %s with no byte-order mark as UTF-8', (encoding) => {
+    expect(readMusicXML(declared(encoding, [0xc3, 0xa9]))).toContain('<x>é</x>')
+  })
+
+  // An encoding word outside the declaration is ordinary text.
+  test('ignores an encoding named after the declaration', () => {
+    const text = '<?xml version="1.0"?><x encoding="ISO-8859-1">é</x>'
+    expect(readMusicXML(strToU8(text))).toBe(text)
+  })
+
+  test('ignores a declaration that does not open the document', () => {
+    const bytes = new Uint8Array([...strToU8(' '), ...declared('ISO-8859-1', [0xe9])])
+    expect(refusal(bytes).detail).toBe(
+      'The document is not valid UTF-8 at byte 47, and declares no other encoding.',
+    )
+  })
+
+  // XML whitespace is four characters. A no-break space is not one of them.
+  test('ignores a declaration separated by a no-break space', () => {
+    const head = strToU8('<?xml version="1.0"')
+    const tail = strToU8('encoding="ISO-8859-1"?><x/>')
+    expect(refusal(new Uint8Array([...head, 0xa0, ...tail])).detail).toBe(
+      'The document is not valid UTF-8 at byte 19, and declares no other encoding.',
+    )
+  })
+
+  test('refuses a package listing that is not valid UTF-8', () => {
+    const listing = new Uint8Array([...strToU8(container('score.musicxml')), 0xe9])
+    const archive = zipSync({ 'META-INF/container.xml': listing, 'score.musicxml': strToU8(SCORE) })
+    expect(refusal(archive).detail).toContain('not valid UTF-8')
+  })
+
+  test.each(['Shift_JIS', 'ISO-8859-2', ''])('refuses %s, which it cannot decode', (encoding) => {
+    const error = refusal(declared(encoding, [0x41]))
+    expect(error.detail).toContain(`"${encoding}"`)
+  })
+
+  test('names a label as its bytes read in Latin-1', () => {
+    const head = strToU8('<?xml version="1.0" encoding="')
+    const bytes = new Uint8Array([...head, 0xe9, ...strToU8('"?><x/>')])
+    expect(refusal(bytes).detail).toContain('"é"')
+  })
+
+  test('refuses bytes that are not the UTF-8 they declare', () => {
+    expect(refusal(declared('UTF-8', [0xe9])).detail).toBe(
+      'The document is not valid UTF-8 at byte 41.',
+    )
+  })
+
+  test('counts a byte past the byte-order mark from the start of the file', () => {
+    const bytes = new Uint8Array([0xef, 0xbb, 0xbf, ...declared('ISO-8859-1', [0xe9])])
+    expect(refusal(bytes).detail).toBe('The document is not valid UTF-8 at byte 49.')
+  })
+
+  test('leaves a string alone whatever it declares', () => {
+    const text = '<?xml version="1.0" encoding="Shift_JIS"?><x>é</x>'
+    expect(readMusicXML(text)).toBe(text)
+  })
+})
+
+describe('a UTF-8 document', () => {
+  test('keeps characters of two, three and four bytes', () => {
+    const text = '<x>é–𝄞</x>'
+    expect(readMusicXML(strToU8(text))).toBe(text)
+  })
+
+  test('keeps the highest and lowest characters of each length', () => {
+    const text = '<x>\u0000\u007f\u0080\u07ff\u0800\ud7ff\ue000\uffff\u{10000}\u{10ffff}</x>'
+    expect(readMusicXML(strToU8(text))).toBe(text)
+  })
+
+  // Each of these begins with some but not all of the byte-order mark's three
+  // bytes, so none is a mark to strip.
+  test.each([
+    ['U+0EFF', '\u0eff'],
+    ['U+F0BF', '\uf0bf'],
+    ['U+FEC0', '\ufec0'],
+    ['"<¿"', '<¿'],
+  ])('keeps a first character %s that shares bytes with the byte-order mark', (_name, first) => {
+    expect(readMusicXML(strToU8(`${first}<x/>`))).toBe(`${first}<x/>`)
+  })
+
+  test.each([
+    ['EF BB 41', [0xef, 0xbb, 0x41], 0],
+    ['EF 41 BF', [0xef, 0x41, 0xbf], 0],
+    ['41 BB BF', [0x41, 0xbb, 0xbf], 1],
+  ])('refuses %s, which is only part of a byte-order mark', (_name, head, at) => {
+    expect(() => readMusicXML(new Uint8Array([...head, ...strToU8('<x/>')]))).toThrow(
+      `The document is not valid UTF-8 at byte ${String(at)}, and declares no other encoding.`,
+    )
+  })
+
+  // A Latin-1 file with no declaration: its accented letters are not UTF-8.
+  test.each([
+    ['a Latin-1 letter', [0xe9, 0x74, 0xe9]],
+    ['a lone continuation byte', [0x80]],
+    ['a lead byte at the end', [0xc3]],
+    ['a three-byte character cut short', [0xe2, 0x80]],
+    ['a lead byte followed by a non-continuation', [0xc3, 0x41]],
+    ['an overlong two-byte form', [0xc0, 0x80]],
+    ['an overlong three-byte form', [0xe0, 0x80, 0x80]],
+    ['an overlong four-byte form', [0xf0, 0x80, 0x80, 0x80]],
+    ['a surrogate', [0xed, 0xa0, 0x80]],
+    ['the last surrogate', [0xed, 0xbf, 0xbf]],
+    ['two continuation bytes', [0xbf, 0xbf]],
+    ['three continuation bytes', [0x8f, 0xbf, 0xbf]],
+    ['four continuation bytes', [0x81, 0x90, 0x80, 0x80]],
+    ['a character past U+10FFFF', [0xf4, 0x90, 0x80, 0x80]],
+    ['a five-byte lead', [0xf8, 0x80, 0x80, 0x80]],
+    ['a six-byte lead', [0xfc, 0x80, 0x80, 0x80]],
+  ])('refuses %s', (_name, body) => {
+    const bytes = new Uint8Array([...strToU8('<x>'), ...body, ...strToU8('</x>')])
+    let thrown: unknown
+    try {
+      readMusicXML(bytes)
+    } catch (error) {
+      thrown = error
+    }
+
+    expect(thrown).toBeInstanceOf(MusicXMLError)
+    expect((thrown as MusicXMLError).detail).toBe(
+      'The document is not valid UTF-8 at byte 3, and declares no other encoding.',
+    )
+  })
+
+  // Node's strict decoder follows the Unicode rules, so it checks the refusals
+  // over random bytes drawn from the ranges multi-byte characters use.
+  test('refuses exactly what a strict decoder refuses', () => {
+    const strict = new TextDecoder('utf-8', { fatal: true })
+    const pool = [0x3c, 0x41, 0x7f, 0x80, 0x8f, 0x90, 0x9f, 0xa0, 0xbf, 0xc0, 0xc1, 0xc2, 0xdf]
+    pool.push(0xe0, 0xed, 0xee, 0xef, 0xf0, 0xf4, 0xf5, 0xff)
+    let seed = 1
+    for (let run = 0; run < 20000; run++) {
+      const bytes = Uint8Array.from({ length: 1 + (run % 6) }, () => {
+        seed = (seed * 1103515245 + 12345) % 2 ** 31
+        return pool[seed % pool.length] as number
+      })
+      let expected: string | undefined
+      try {
+        expected = strict.decode(bytes)
+      } catch {
+        expected = undefined
+      }
+      const decode = (): string => readMusicXML(new Uint8Array([0x3c, ...bytes]))
+      if (expected === undefined) expect(decode).toThrow(MusicXMLError)
+      else expect(decode()).toBe(`<${expected}`)
+    }
   })
 })

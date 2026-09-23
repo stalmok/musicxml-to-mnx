@@ -97,3 +97,22 @@ describe('the document name', () => {
     expect(frames[0]).not.toContain('errors.ts')
   })
 })
+
+describe('a document given as bytes', () => {
+  test('keeps the text of a document in its declared ISO-8859-1', () => {
+    const text =
+      '<?xml version="1.0" encoding="ISO-8859-1"?><score-partwise>' +
+      '<part-list><score-part id="P1"><part-name>Été</part-name></score-part></part-list>' +
+      '<part id="P1"><measure number="1"><attributes><divisions>1</divisions></attributes>' +
+      NOTE.replace('</note>', '<lyric><text>été</text></lyric></note>') +
+      '</measure></part></score-partwise>'
+    const bytes = Uint8Array.from(text, (character) => character.charCodeAt(0))
+
+    const { mnx, warnings } = convertMusicXML(bytes)
+
+    expect(mnx.parts[0]?.name).toBe('Été')
+    expect(JSON.stringify(mnx)).toContain('"été"')
+    expect(warnings).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
+  })
+})
