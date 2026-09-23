@@ -130,6 +130,9 @@ jobs:
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: ${{ matrix.node }}
+          # Otherwise the packageManager field turns on the pnpm cache, which
+          # runs pnpm on this Node.
+          package-manager-cache: false
 
       # Called directly, because pnpm does not run on this Node. With the
       # build in place, the command's smoke test runs too.
