@@ -1,4 +1,4 @@
-// Writes the neutral score model out as an MNX document. Everything this
+// Writes the score model out as an MNX document. Everything this
 // converter knows about MNX's encoding lives at or above this file.
 //
 // Thin by design: the reader has already resolved MusicXML's ambiguities, so

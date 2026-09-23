@@ -1,4 +1,4 @@
-// Reads a MusicXML document into the neutral score model: the score, its
+// Reads a MusicXML document into the score model: the score, its
 // parts, and the walk through each measure. What a measure holds is read by
 // the modules beside this one.
 //

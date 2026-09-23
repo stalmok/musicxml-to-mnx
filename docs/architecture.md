@@ -41,7 +41,7 @@ value imports and type imports:
 - The writer cannot import the reader, XML layer, or input pipeline.
 - The model cannot import either stage, XML, MNX types, or the input pipeline.
 - The XML layer and MNX types cannot import the stages, model, or input pipeline.
-- The public API cannot export the internal model.
+- `src/index.ts` cannot import the internal model.
 - The CLI accesses `src/` through `src/index.ts`.
 - The library cannot import the CLI, Node core modules, or development dependencies.
 
@@ -52,15 +52,33 @@ Update this document before changing a stage boundary.
 ## Internal score model
 
 The model contains only concepts needed for conversion. It is not part of
-the public API.
+the public API: `src/index.ts` does not export it. The build still emits its
+declarations under `dist/types/model/`, together with the declarations of
+every other internal module.
+
+The model is MNX-shaped, not neutral. It follows the MNX structure closely:
+
+- The score holds `globalMeasures`. They follow MNX's global measure. They also
+  carry multimeasure rests and system and page breaks, which MNX states elsewhere.
+- `Markings` is keyed by marking kind, and the kinds use MNX spellings.
+- A full-measure rest belongs to the sequence, as in MNX.
+- Beams belong to the measure, as in MNX.
+- `GraceType`, `JumpType`, and `Space` follow their MNX definitions.
+  `Transposition` follows MNX closely.
+- A segno color uses MNX's `#RRGGBB` form.
+
+The stage boundary is narrower than a neutral model. It means two things:
+
+- No MusicXML encoding passes the reader. The model holds no divisions,
+  `<backup>` cursors, or spanner `number` attributes.
+- The reader imports no MNX types. It produces the model.
 
 The model uses narrow types for values such as pitch steps, clefs, and time
 units. The reader checks input values before constructing these types.
 The writer relies on those checked values.
 
-Some model enums use MNX spellings. This reduces translation in the writer,
-but means schema changes can also require model and reader changes.
-Import separation does not make the model independent of all MNX design choices.
+Because the model follows MNX, a schema change can require model and reader
+changes as well as writer changes.
 
 ## Reader
 
@@ -72,22 +90,30 @@ The reader tracks durations with exact fractions of the active divisions.
 It assigns events to voices and staves, and carries state between measures.
 It resolves ties, slurs, and other spans across measures.
 
-The main reader modules are:
+The reader modules are:
 
-| Module                       | Responsibility                                                            |
-| ---------------------------- | ------------------------------------------------------------------------- |
-| `score.ts`                   | Read parts and walk measures in document order.                           |
-| `attributes.ts`              | Read divisions, staves, keys, time signatures, clefs, and measure styles. |
-| `notes.ts`                   | Read notes and their notation.                                            |
-| `voices.ts`                  | Track the cursor and assemble voice events.                               |
-| `spanners.ts`                | Resolve ties, slurs, hairpins, and octave shifts.                         |
-| `beams.ts`                   | Assemble beam groups.                                                     |
-| `directions.ts`              | Read dynamics, tempo marks, and navigation signs.                         |
-| `barlines.ts`                | Read barlines, repeats, and endings.                                      |
-| `part-groups.ts`, `print.ts` | Read staff groups and layout breaks.                                      |
-| `element.ts`                 | Track consumed XML content and report unhandled content.                  |
-| `unrepresentable.ts`         | Record notation that the pinned MNX schema cannot express.                |
-| `state.ts`                   | Hold state shared across measures in a part.                              |
+| Module                        | Responsibility                                                                                 |
+| ----------------------------- | ---------------------------------------------------------------------------------------------- |
+| `score.ts`                    | Read parts and walk measures in document order.                                                |
+| `attributes.ts`               | Read divisions, staves, keys, time signatures, clefs, and measure styles.                      |
+| `notes.ts`                    | Read notes and their notation.                                                                 |
+| `voices.ts`                   | Track the cursor and assemble voice events.                                                    |
+| `tuplets.ts`                  | Track tuplet ratios and settle tuplet brackets when the measure is complete.                   |
+| `lyrics.ts`                   | Read lyrics for each verse.                                                                    |
+| `spanners.ts`                 | Resolve ties, slurs, hairpins, and octave shifts. Generate event, note, and kit component IDs. |
+| `beams.ts`                    | Assemble beam groups.                                                                          |
+| `directions.ts`               | Read dynamics, tempo marks, and navigation signs.                                              |
+| `barlines.ts`                 | Read barlines, repeats, and endings.                                                           |
+| `part-groups.ts`, `print.ts`  | Read part groups and layout breaks.                                                            |
+| `transposition.ts`            | Convert written pitches and keys of transposing parts to sounding pitch.                       |
+| `divisions.ts`, `duration.ts` | Read durations in divisions. Convert a duration back to a note value.                          |
+| `noteValues.ts`               | Map MusicXML note-type names to model note values.                                             |
+| `numbers.ts`                  | Read integers strictly and check their ranges.                                                 |
+| `color.ts`                    | Read MusicXML colors into MNX color strings.                                                   |
+| `tables.ts`                   | Provide typed helpers for tables keyed by model unions.                                        |
+| `element.ts`                  | Track consumed XML content and report unhandled content.                                       |
+| `unrepresentable.ts`          | Record notation that the pinned MNX schema cannot express.                                     |
+| `state.ts`                    | Hold state shared across measures in a part.                                                   |
 
 ### Note assembly order
 

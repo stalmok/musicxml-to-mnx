@@ -14,7 +14,7 @@ export default {
   forbidden: [
     // === Stage boundaries ===
     //
-    // MusicXML knowledge stops at the reader and MNX knowledge starts at the
+    // MusicXML knowledge stops at the reader and the MNX types start at the
     // writer. Both stages meet at the model, and neither knows the pipeline
     // that drives them.
     //
@@ -32,7 +32,7 @@ export default {
     {
       name: 'reader-knows-no-mnx',
       comment:
-        'The reader produces the neutral score model, so it must not know the MNX output shape, the pipeline, or the packaging layer.',
+        'The reader produces the score model, so it must not know the MNX output shape, the pipeline, or the packaging layer.',
       severity: 'error',
       from: { path: '^src/read/' },
       to: { path: '^src/(write/|types/|convert\\.ts$|container\\.ts$)' },
@@ -40,7 +40,7 @@ export default {
     {
       name: 'writer-knows-no-musicxml',
       comment:
-        'The writer consumes the neutral score model, so it must not know MusicXML, the XML layer, the pipeline, or the packaging layer.',
+        'The writer consumes the score model, so it must not know MusicXML, the XML layer, the pipeline, or the packaging layer.',
       severity: 'error',
       from: { path: '^src/write/' },
       to: { path: '^src/(read/|xml/|convert\\.ts$|container\\.ts$)' },
@@ -72,7 +72,7 @@ export default {
     {
       name: 'model-is-not-public-api',
       comment:
-        'The model is internal: it decouples the two stages and is never exported, so the public API must not name it.',
+        'The model is internal and src/index.ts does not export it, so the public API must not name it.',
       severity: 'error',
       from: { path: '^src/index\\.ts$' },
       to: { path: '^src/model/' },

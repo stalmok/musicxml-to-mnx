@@ -17,15 +17,15 @@ First consumer is a batch pipeline over the CC0 [OpenScore Lieder corpus](https:
 
 ## Architecture
 
-Two stages through a neutral intermediate model. MusicXML knowledge stops at the reader; MNX knowledge starts at the writer.
+Two stages through an internal, MNX-shaped model. MusicXML knowledge stops at the reader; MNX types start at the writer.
 
 ```
-MusicXML → xml/ (strict parse) → read/ → model/ (neutral IR) → write/ → { mnx, warnings }
+MusicXML → xml/ (strict parse) → read/ → model/ (internal IR) → write/ → { mnx, warnings }
 ```
 
 - `xml/`: a thin layer over `@rgrove/parse-xml`: parse, map character offsets to line numbers, typed tree accessors that throw `MusicXMLError` with position context.
 - `read/`: the hard part. Divisions arithmetic as exact fractions, `<backup>`/`<forward>` cursor handling, voice bucketing, staff assignment, spanner resolution by `number` attribute.
-- `model/`: the neutral score IR. **Internal, never exported.** It exists to decouple the two stages, not to be a notation framework; keep it conversion-scoped.
+- `model/`: the internal score IR. **Internal, never exported.** It follows MNX's structure. It keeps MusicXML encoding out of the writer and MNX types out of the reader. It is not a notation framework; keep it conversion-scoped.
 - `write/`: walks the model and emits MNX. Thin by design.
 
 Stage boundaries are enforced by dependency-cruiser rules in `.dependency-cruiser.js` (`pnpm deps:check`). A crossing is an architecture change: amend `docs/architecture.md` first.

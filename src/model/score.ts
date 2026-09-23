@@ -1,6 +1,6 @@
-// The neutral score model: what the reader understood, in the shape the
-// writer needs. It exists so that MusicXML's encoding decisions stop at the
-// reader and MNX's start at the writer.
+// The score model: what the reader understood, in the shape the
+// writer needs. That shape follows MNX's structure. MusicXML's encoding stops
+// at the reader, and the MNX types start at the writer.
 //
 // Internal by design: it is not exported from the package, and it is scoped
 // to conversion. It is not a general notation model, and should not grow into
