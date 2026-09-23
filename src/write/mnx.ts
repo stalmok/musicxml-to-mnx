@@ -6,6 +6,7 @@
 // than set to null, because MNX distinguishes an absent key from a present one.
 
 import type { Fraction } from '../fraction.js'
+import { LAYOUT_ID, countedId } from '../ids.js'
 import type {
   AccidentalDisplay,
   Arpeggio,
@@ -108,7 +109,7 @@ class MeasureNames {
 
   /** What a measure at this index goes under, named or not. */
   #id(index: number): string {
-    return `m${String(index + 1)}`
+    return countedId('measure', index + 1)
   }
 
   /** The id of the measure at this index, which is written out for it. */
@@ -260,12 +261,6 @@ function writeLayouts(score: Score): MNXSystemLayout[] | undefined {
   const parts = new Map(score.parts.map((part) => [part.id, part]))
   return [{ id: LAYOUT_ID, content: grouping.flatMap((item) => writeGroupingItem(item, parts)) }]
 }
-
-// Named apart from the measure ids ("m1"), the event ids ("ev1") and the note
-// ids ("note1"). A part id passes through from the source, so a source naming
-// a part any of the four would name two things at once; the reader renames
-// such a part, holding GENERATED_ID_PATTERN to what is written here.
-const LAYOUT_ID = 'layout1'
 
 /**
  * The braced group a multi-staff part draws. MusicXML leaves the grand staff

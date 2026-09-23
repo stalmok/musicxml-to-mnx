@@ -3,7 +3,8 @@ import { convertValid } from '../../tests/support/convert.js'
 import { MusicXMLError } from '../errors.js'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
-import { GENERATED_ID_PATTERN, readScore } from './score.js'
+import { GENERATED_ID_PATTERN } from '../ids.js'
+import { readScore } from './score.js'
 
 /** Wraps `body` in the smallest document that can carry it. */
 function score(body: string): string {

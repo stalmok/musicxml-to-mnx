@@ -32,6 +32,7 @@ in memory. A fatal error returns no partial result.
 | `src/fraction.ts`  | Provide exact rational arithmetic.                                 |
 | `src/warnings.ts`  | Define warning codes, categories, and collection.                  |
 | `src/errors.ts`    | Define `MusicXMLError` and its location fields.                    |
+| `src/ids.ts`       | Define MNX's id pattern and the ids the converter generates.       |
 | `cli/`             | Handle files and command options through the public API.           |
 
 [Dependency rules](../.dependency-cruiser.js) enforce these boundaries for

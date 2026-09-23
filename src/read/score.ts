@@ -9,6 +9,7 @@
 
 import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
+import { GENERATED_ID_PATTERN, MNX_ID_PATTERN } from '../ids.js'
 import type {
   BarlineType,
   Clef,
@@ -233,29 +234,6 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
   )
 }
 
-// MNX's id, from the schema's $defs/id: 1 to 256 printable ASCII characters.
-// MusicXML's part id is an xs:ID, which allows more, such as accented letters.
-//
-// Copied rather than read: the schema and ajv are dev-only, and converting a
-// score must not depend on either. Exported so the conformance test can hold
-// this copy to $defs/id.pattern, which is what keeps the copy honest.
-export const MNX_ID_PATTERN = /^[\x21-\x7E]{1,256}$/
-
-/**
- * The ids the converter generates for the things a part id sits beside in an
- * MNX document: events (ev1, ev2, ...), notes (note1, note2, ...) and kit
- * components (kit1, kit2, ...) here in the reader, and measures (m1, m2, ...)
- * and the one layout (layout1) in the writer. MNX gives all of them one id
- * shape, so nothing in the document or its schema tells a part named "ev2"
- * from the event named "ev2", and a consumer resolving a slur target by id
- * can reach the part instead.
- *
- * Stated here rather than shared with the writer, which the reader may not
- * import. A test converts a score carrying all of them and holds each
- * generated id to this pattern.
- */
-export const GENERATED_ID_PATTERN = /^(?:ev|note|m|kit)\d+$|^layout1$/
-
 /**
  * Renames every part id MNX cannot state or the converter generates for
  * something else, in the parts and in the grouping's staves, which are the
@@ -263,7 +241,7 @@ export const GENERATED_ID_PATTERN = /^(?:ev|note|m|kit)\d+$|^layout1$/
  * ... skipping any id a part already holds, so a rename cannot collide: the
  * counter only rises, so no generated name is reached twice, and the set it
  * is held against is read-only for that reason. A generated name is never
- * one of the ids above, which all start ev, note, m or layout.
+ * one GENERATED_ID_PATTERN matches.
  */
 function renameInvalidPartIds(
   score: Score,

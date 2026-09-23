@@ -41,7 +41,7 @@ chore:
 2. Run `pnpm exec vitest run tests/schema-conformance.test.ts`. It holds the
    three places that state something about MNX by hand to this file: the types
    in `src/types/mnx.ts`, the registry of what MNX cannot hold in
-   `src/read/unrepresentable.ts`, and the id pattern in `src/read/score.ts`.
+   `src/read/unrepresentable.ts`, and the id pattern in `src/ids.ts`.
    Every failure is a decision to make, and the test says which.
 3. Update `src/types/mnx.ts` to match any shape change the test reported. A
    field the schema gained and the types lack is never emitted, and the output

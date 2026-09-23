@@ -10,6 +10,7 @@
 // than per measure.
 
 import { compareFractions } from '../fraction.js'
+import { countedId } from '../ids.js'
 import type { Fraction } from '../fraction.js'
 import type {
   CurveSide,
@@ -1127,16 +1128,16 @@ export class IdGenerator {
 
   nextEvent(): string {
     this.#events += 1
-    return `ev${String(this.#events)}`
+    return countedId('event', this.#events)
   }
 
   nextNote(): string {
     this.#notes += 1
-    return `note${String(this.#notes)}`
+    return countedId('note', this.#notes)
   }
 
   nextKitComponent(): string {
     this.#kitComponents += 1
-    return `kit${String(this.#kitComponents)}`
+    return countedId('kitComponent', this.#kitComponents)
   }
 }
