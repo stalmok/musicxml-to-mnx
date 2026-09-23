@@ -185,8 +185,8 @@ Conversion refusals are distinct from crashes and failed output checks.
 The core library supports browsers and Node. It uses no Node or DOM globals.
 `tsconfig.json` omits those platform types. Dependency rules also prohibit
 Node core imports in the library. `tests/isomorphic-artifact.test.ts` runs the
-built library, with its dependencies, in a V8 context that holds only the
-ECMAScript built-ins.
+built library, with its dependencies, in a V8 context that holds no Node or
+browser globals.
 
 CI runs the test suite on Node 24 and on the lowest Node 20 and 22 versions
 that the `engines` field allows. `tests/node-versions.test.ts` checks the CI

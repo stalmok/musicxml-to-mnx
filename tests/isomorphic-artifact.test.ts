@@ -1,17 +1,17 @@
 // The built library, run where there is no Node. The bundle and the two
 // packages it imports are built into one script, and the script runs in a
-// fresh V8 context that holds the ECMAScript built-ins and nothing else: no
-// process, no Buffer, no require, no TextDecoder, no DOM. A browser, a worker
-// and any other runtime give the library at least that much. tsconfig and the
-// import rules keep Node out of the source; this shows the shipped bundle
-// needs nothing from its host. It is skipped until the package is built.
+// fresh V8 context. It holds the ECMAScript built-ins and the few V8 adds
+// (console, WebAssembly, Intl), and nothing a host adds: no process, no
+// Buffer, no require, no TextDecoder, no DOM. tsconfig and the import rules
+// keep Node out of the source; this shows the shipped bundle needs nothing
+// from its host. It is skipped until the package is built, and compares the
+// bundle with itself run under Node, so a stale build still agrees.
 
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { createContext, runInContext } from 'node:vm'
 import { build } from 'vite'
 import { describe, expect, test } from 'vitest'
-import { convertValid } from './support/convert.js'
 import { schemaErrors } from './support/schema.js'
 
 const library = fileURLToPath(new URL('../dist/ossia.js', import.meta.url))
@@ -63,8 +63,9 @@ suite('the built library in a context with no host globals', () => {
       ) as string,
     ) as { mnx: unknown; warnings: unknown }
 
+    const inNode = (await import(library)) as typeof import('../src/index.js')
     expect(schemaErrors(converted.mnx)).toEqual([])
-    expect(converted).toEqual(JSON.parse(JSON.stringify(convertValid(bytes))))
+    expect(converted).toEqual(JSON.parse(JSON.stringify(inNode.convertMusicXML(bytes))))
   })
 
   test('refuses broken input with a MusicXMLError', async () => {

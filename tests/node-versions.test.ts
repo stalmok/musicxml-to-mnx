@@ -11,7 +11,10 @@ const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.ur
 const engines = (JSON.parse(read('package.json')) as { engines: { node: string } }).engines.node
 const ranges = engines.split('||').map((range) => range.trim())
 const checked = read('.nvmrc').trim()
-const matrix = /^\s+node: \[(.*)\]$/m.exec(read('.github/workflows/ci.yml'))?.[1]
+const job = read('.github/workflows/ci.yml')
+  .split(/^ {2}(?=[\w-]+:$)/m)
+  .find((block) => block.startsWith('node-versions:'))
+const matrix = job && /^ +node: \[(.*)\]$/m.exec(job)?.[1]
 
 test('CI runs the lowest version of every range but the one the checks run on', () => {
   const floors = ranges
@@ -19,5 +22,6 @@ test('CI runs the lowest version of every range but the one the checks run on', 
     .map((range) => /^\^(\d+\.\d+\.\d+)$/.exec(range)?.[1] ?? range)
 
   expect(ranges).toContain(`>=${checked}`)
+  expect(job).toContain('node-version: ${{ matrix.node }}')
   expect(matrix?.split(',').map((version) => version.trim().replace(/'/g, ''))).toEqual(floors)
 })
