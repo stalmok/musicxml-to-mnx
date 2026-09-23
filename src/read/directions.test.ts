@@ -1738,6 +1738,19 @@ describe('an offset moving a direction', () => {
     expect(warnings[0]?.message).toContain('outside its measure')
   })
 
+  // A time signature stated partway through the measure is the next
+  // measure's, so the bar still ends where the one it opened with says.
+  test('measures the bar by the time signature it opens with', () => {
+    const later = '<attributes><time><beats>3</beats><beat-type>4</beat-type></time></attributes>'
+    const { positions, warnings } = inTime(quarter + later + dynamic('<offset>8</offset>'))
+
+    expect(positions).toEqual([{ num: 1, den: 4 }])
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unsupported:element',
+      'unrepresentable:mid-measure-time',
+    ])
+  })
+
   // Before any time signature there is no end to have passed, so the same
   // offset is applied rather than refused.
   test('applies an offset past two beats where no time signature is in force', () => {

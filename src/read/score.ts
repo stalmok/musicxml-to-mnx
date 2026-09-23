@@ -1501,9 +1501,9 @@ function readMeasure(
         if (reading.times.length > 0) {
           statedAt(timeGroups, at, found.line).statements.push(...reading.times)
           if (builder.atMeasureStart()) {
-            // A later one changes nothing, so the music after it is read as
-            // before. A senza-misura statement clears it: the music is
-            // unmetered from here on, whatever was in force before.
+            // A second statement at the start changes nothing. A senza-misura
+            // statement clears it: the music is unmetered from here on,
+            // whatever was in force before.
             if (!timeSettled) {
               time = reading.time
               state.time = reading.time
