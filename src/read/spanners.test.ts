@@ -4,6 +4,7 @@
 // ends until their partner turns up, which can be several measures later.
 
 import { describe, expect, test } from 'vitest'
+import { convertValid } from '../../tests/support/convert.js'
 import { fraction } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import { WarningCollector } from '../warnings.js'
@@ -11,8 +12,6 @@ import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
 import { accountsForItself, measureResidue, pairSpans } from './spanners.js'
 import type { SlurEnd, SpanEnd } from './spanners.js'
-import { convertMusicXML } from '../index.js'
-import { schemaErrors } from '../../tests/support/schema.js'
 import type { Event, Note } from '../model/score.js'
 
 const DIVISIONS = '<attributes><divisions>4</divisions></attributes>'
@@ -545,7 +544,7 @@ describe('let-ring and the drawn side', () => {
   })
 
   test('writes let-ring and side onto schema-valid MNX', () => {
-    const { mnx } = convertMusicXML(
+    const { mnx } = convertValid(
       measures(
         DIVISIONS +
           note(
@@ -560,7 +559,6 @@ describe('let-ring and the drawn side', () => {
 
     expect(json).toContain('"lv":true')
     expect(json).toContain('"side":"down"')
-    expect(schemaErrors(mnx)).toEqual([])
   })
 })
 
@@ -1000,7 +998,7 @@ describe('slurs', () => {
   })
 
   test('writes both slur sides onto schema-valid MNX', () => {
-    const { mnx } = convertMusicXML(
+    const { mnx } = convertValid(
       measures(
         DIVISIONS +
           note('C', slur('start', '1', ' orientation="over"')) +
@@ -1010,7 +1008,6 @@ describe('slurs', () => {
 
     expect(JSON.stringify(mnx)).toContain('"side":"up"')
     expect(JSON.stringify(mnx)).toContain('"sideEnd":"down"')
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('reads the line type the slur is drawn with', () => {
@@ -1024,14 +1021,13 @@ describe('slurs', () => {
   })
 
   test('writes the slur line type onto schema-valid MNX', () => {
-    const { mnx } = convertMusicXML(
+    const { mnx } = convertValid(
       measures(
         DIVISIONS + note('C', slur('start', '1', ' line-type="dashed"')) + note('G', slur('stop')),
       ),
     )
 
     expect(JSON.stringify(mnx)).toContain('"lineType":"dashed"')
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('reports a slur the source never ends', () => {
@@ -1059,9 +1055,7 @@ describe('slurs', () => {
     const fullRest =
       '<note><rest measure="yes"/><duration>4</duration><type>quarter</type><voice>1</voice>' +
       '<notations><slur type="stop" number="1"/></notations></note>'
-    const { mnx } = convertMusicXML(measures(DIVISIONS + note('C', slur('start')), fullRest))
-
-    expect(schemaErrors(mnx)).toEqual([])
+    convertValid(measures(DIVISIONS + note('C', slur('start')), fullRest))
   })
 
   // The other endpoint, for the same reason: a slur beginning on the rest is

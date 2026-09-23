@@ -6,6 +6,8 @@
 // it, while a pass over the axis that goes quadratic and comes to dominate
 // the runtime will. For numbers rather than pass/fail, run `pnpm bench`.
 
+/* eslint-disable no-restricted-syntax -- the schema check would be timed with the conversion; tests/generate.test.ts checks the generated output */
+
 import { performance } from 'node:perf_hooks'
 import { expect, test } from 'vitest'
 import { convertMusicXML } from '../src/index.js'

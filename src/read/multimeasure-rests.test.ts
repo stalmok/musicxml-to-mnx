@@ -5,9 +5,8 @@
 // in. The measures it spans stay ordinary measures in both formats.
 
 import { describe, expect, test } from 'vitest'
+import { convertValid } from '../../tests/support/convert.js'
 import { MusicXMLError } from '../errors.js'
-import { convertMusicXML } from '../index.js'
-import { schemaErrors } from '../../tests/support/schema.js'
 
 const REST = '<note><rest measure="yes"/><duration>4</duration></note>'
 const NOTE =
@@ -37,8 +36,7 @@ function part(id: string, measures: readonly { attributes?: string; body: string
 }
 
 function convert(...parts: string[]) {
-  const { mnx, warnings } = convertMusicXML(`<score-partwise>${parts.join('')}</score-partwise>`)
-  return { mnx, warnings }
+  return convertValid(`<score-partwise>${parts.join('')}</score-partwise>`)
 }
 
 const RESTING = [
@@ -60,7 +58,6 @@ describe('a multi-measure rest', () => {
     expect(mnx.parts[0]?.measures).toHaveLength(4)
     expect(mnx.parts[1]?.measures).toHaveLength(4)
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('writes no scores object when the source draws none', () => {
@@ -68,7 +65,6 @@ describe('a multi-measure rest', () => {
 
     expect(mnx.scores).toBeUndefined()
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // Legal MusicXML: a single measure drawn in the multi-measure rest style.
@@ -81,7 +77,6 @@ describe('a multi-measure rest', () => {
       { start: mnx.global.measures[0]?.id, duration: 1 },
     ])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // MusicXML says a positive integer; anything else is a broken document,
@@ -107,7 +102,6 @@ describe('a multi-measure rest', () => {
 
     expect(mnx.scores?.[0]?.multimeasureRests?.[0]?.duration).toBe(3)
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:multimeasure-rest'])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('does not report a count restated per staff', () => {
@@ -142,7 +136,6 @@ describe('a multi-measure rest', () => {
 
     expect(mnx.scores?.[0]?.multimeasureRests?.[0]?.duration).toBe(3)
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-multimeasure-rest'])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A part playing through the passage states no count, which is not a
@@ -171,7 +164,6 @@ describe('a multi-measure rest', () => {
 
     expect(mnx.scores?.[0]?.multimeasureRests?.[0]?.duration).toBe(3)
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:multiple-rest-symbols'])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // Saying use-symbols="no" asks for the default drawing, so nothing is lost.

@@ -4,11 +4,10 @@
 // one note.
 
 import { describe, expect, test } from 'vitest'
+import { convertValid } from '../../tests/support/convert.js'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
-import { convertMusicXML } from '../index.js'
-import { schemaErrors } from '../../tests/support/schema.js'
 
 function read(body: string) {
   const warnings = new WarningCollector()
@@ -123,7 +122,7 @@ describe('a rolled chord', () => {
   // the source states no direction.
   test('writes the arrowhead only where the source states a direction', () => {
     const convert = (body: string) =>
-      convertMusicXML(
+      convertValid(
         '<score-partwise><part id="P1"><measure number="1">' +
           `<attributes><divisions>4</divisions></attributes>${body}</measure></part>` +
           '</score-partwise>',
@@ -135,7 +134,6 @@ describe('a rolled chord', () => {
 
     expect(plain.mnx.parts[0]?.measures[0]?.arpeggios?.[0]?.arrow).toBeUndefined()
     expect(arrowed.mnx.parts[0]?.measures[0]?.arpeggios?.[0]?.arrow).toBe(true)
-    expect(schemaErrors(arrowed.mnx)).toEqual([])
   })
 
   // Two chords sounding together under one number are one roll across both,
@@ -361,7 +359,7 @@ describe('a chord divided into two numbered rolls', () => {
   // Two rolls at one point, over notes of one event, is a shape the output
   // did not hold before, so it is validated rather than only compared.
   test('writes both halves onto schema-valid MNX', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       '<score-partwise><part id="P1"><measure number="1">' +
         '<attributes><divisions>4</divisions></attributes>' +
         head('<arpeggiate number="1"/>') +
@@ -372,7 +370,6 @@ describe('a chord divided into two numbered rolls', () => {
     )
 
     expect(mnx.parts[0]?.measures[0]?.arpeggios).toHaveLength(2)
-    expect(schemaErrors(mnx)).toEqual([])
     expect(warnings).toEqual([])
   })
 
@@ -380,7 +377,7 @@ describe('a chord divided into two numbered rolls', () => {
   // an id. Ids are written only where something points at one, and the schema
   // cannot tell a name that reaches a note from one that reaches nothing.
   test('names the notes each roll runs between', () => {
-    const { mnx } = convertMusicXML(
+    const { mnx } = convertValid(
       '<score-partwise><part id="P1"><measure number="1">' +
         '<attributes><divisions>4</divisions></attributes>' +
         head('<arpeggiate number="1"/>') +
@@ -511,7 +508,7 @@ describe('two chords marked in opposite ways', () => {
   // MNX keeps the two apart: a rolled chord under arpeggios, a chord bracketed
   // as struck together under nonArpeggios.
   test('writes each under its own key', () => {
-    const { mnx } = convertMusicXML(
+    const { mnx } = convertValid(
       '<score-partwise><part id="P1"><measure number="1">' +
         '<attributes><divisions>4</divisions></attributes>' +
         head(ROLL) +
@@ -524,7 +521,6 @@ describe('two chords marked in opposite ways', () => {
 
     expect(measure?.arpeggios?.map((a) => a.span)).toEqual([{ start: 'note1', end: 'note2' }])
     expect(measure?.nonArpeggios?.map((a) => a.span)).toEqual([{ start: 'note3', end: 'note4' }])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 })
 

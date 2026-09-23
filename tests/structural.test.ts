@@ -3,11 +3,10 @@
 // the format allows more than one shape for the same music.
 
 import { describe, expect, test } from 'vitest'
-import { convertMusicXML } from '../src/index.js'
+import { convertValid } from './support/convert.js'
 import type { ConversionWarning, MNXDocument, MNXEvent, MNXSequenceItem } from '../src/index.js'
 import { parseXmlRoot } from '../src/xml/parse.js'
 import type { XmlElement } from '../src/xml/parse.js'
-import { schemaErrors } from './support/schema.js'
 import {
   collectStarts,
   crowdedMeasureRests,
@@ -70,7 +69,7 @@ test('a chord member without a voice counts toward its base note voice', () => {
 
   // The converter reads it the same way, which is what the corpus gate
   // compares.
-  const { mnx } = convertMusicXML(source)
+  const { mnx } = convertValid(source)
   expect(pitchesOf(mnx)).toEqual(inSource)
 })
 
@@ -102,7 +101,7 @@ test('a microtone is read as the whole alteration MNX states, and counted', () =
   expect(inSource).toEqual(['part 1 measure 1: C4(-1) D4 E4 F4(2) G4(1)'])
   expect(sourceMicrotones(root)).toBe(4)
 
-  const { mnx, warnings } = convertMusicXML(source)
+  const { mnx, warnings } = convertValid(source)
   expect(pitchesOf(mnx)).toEqual(inSource)
   expect(warnings.filter((w) => w.code === 'unrepresentable:microtone')).toHaveLength(4)
 })
@@ -134,9 +133,8 @@ test('a backup past the measure start that a forward cancels measures from the s
 
   expect(sourceMeasureLengths(parseXmlRoot(source))).toEqual([[0.25]])
 
-  const { mnx } = convertMusicXML(source)
+  const { mnx } = convertValid(source)
   expect(mnx.parts[0]?.measures[0]?.sequences[0]?.content).toHaveLength(1)
-  expect(schemaErrors(mnx)).toEqual([])
 })
 
 test('a note written before the measure starts counts from the start', () => {
@@ -154,10 +152,9 @@ test('a note written before the measure starts counts from the start', () => {
   expect(sourceMeasureLengths(parseXmlRoot(source))).toEqual([[1]])
 
   // The second voice starts at the measure start, so it holds its note alone.
-  const { mnx } = convertMusicXML(source)
+  const { mnx } = convertValid(source)
   const sequences = mnx.parts[0]?.measures[0]?.sequences
   expect(sequences?.[1]?.content).toHaveLength(1)
-  expect(schemaErrors(mnx)).toEqual([])
 })
 
 // A transposing part is written at the pitch its player reads. MNX states the
@@ -190,9 +187,8 @@ test('a transposing part is compared at the pitch it sounds', () => {
   // A written C sounds a B-flat, and a written E-flat a D-flat.
   expect(inSource).toEqual(['part 1 measure 1: B4(-1) D5(-1)'])
 
-  const { mnx } = convertMusicXML(source)
+  const { mnx } = convertValid(source)
   expect(pitchesOf(mnx)).toEqual(inSource)
-  expect(schemaErrors(mnx)).toEqual([])
 })
 
 // A part changes instrument partway through a measure, which real scores
@@ -224,7 +220,7 @@ test('a transposition stated partway through a measure applies from there', () =
   // The first note is still at concert pitch; the second sounds a B-flat.
   expect(inSource).toEqual(['part 1 measure 1: C5 B4(-1)'])
 
-  const { mnx } = convertMusicXML(source)
+  const { mnx } = convertValid(source)
   expect(pitchesOf(mnx)).toEqual(inSource)
 })
 
@@ -422,7 +418,7 @@ test('a whitespace syllable beside a real one is not a disagreement', () => {
   expect(differingLyricLines(source)).toEqual([])
   // The source states no <divisions>, which is its own report and not this
   // one's subject, so only what the lyrics cost is compared.
-  const { warnings } = convertMusicXML(sourceOf(verse('La') + verse(' ')))
+  const { warnings } = convertValid(sourceOf(verse('La') + verse(' ')))
   expect(warnings.filter((warning) => warning.element !== 'divisions')).toEqual([])
 })
 
@@ -454,7 +450,7 @@ test('an empty syllable beside a written one is not a loss', () => {
   const body = '<lyric number="1"><text></text></lyric>' + verse('word')
 
   expect(differingLyricLines(withLyrics(body))).toEqual([])
-  const { mnx } = convertMusicXML(sourceOf(body))
+  const { mnx } = convertValid(sourceOf(body))
   const event = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
   expect(event).toMatchObject({ lyrics: { lines: { 1: { text: 'word' } } } })
 })
@@ -497,7 +493,7 @@ test('a sequence resting its measure and holding content is named', () => {
 })
 
 test('a sequence resting its measure and holding nothing is not named', () => {
-  const { mnx } = convertMusicXML(
+  const { mnx } = convertValid(
     '<score-partwise><part id="P1"><measure number="1">' +
       '<attributes><divisions>4</divisions><time><beats>4</beats><beat-type>4</beat-type>' +
       '</time></attributes>' +
@@ -541,7 +537,7 @@ test('a voice sounding two notes at once counts as two lines', () => {
   const inSource = sourcePitches(parseXmlRoot(source))
   expect(inSource).toEqual(['part 1 measure 1: C5 | E4'])
 
-  const { mnx } = convertMusicXML(source)
+  const { mnx } = convertValid(source)
   expect(pitchesOf(mnx)).toEqual(inSource)
 })
 
@@ -581,7 +577,7 @@ test('a laid-over line keeps the notes written after it', () => {
   const inSource = sourcePitches(parseXmlRoot(source))
   expect(inSource).toEqual(['part 1 measure 1: C5 | E4 G4'])
 
-  const { mnx } = convertMusicXML(source)
+  const { mnx } = convertValid(source)
   expect(pitchesOf(mnx)).toEqual(inSource)
 })
 
@@ -621,7 +617,7 @@ test('a grace note follows the note it leads into, not where it was written', ()
   const inSource = sourcePitches(parseXmlRoot(source))
   expect(inSource).toEqual(['part 1 measure 1: B4 E4 | C5'])
 
-  const { mnx } = convertMusicXML(source)
+  const { mnx } = convertValid(source)
   expect(pitchesOf(mnx)).toEqual(inSource)
 })
 
@@ -652,7 +648,7 @@ test('a syllable on each of a voice two lines is read on the note that sings it'
   </part>
 </score-partwise>
 `
-  const { mnx } = convertMusicXML(source)
+  const { mnx } = convertValid(source)
 
   expect(lyricPlaces(mnx).sort()).toEqual([
     'part 1 measure 1 at 0.000000000 line 1: Glo',
@@ -771,7 +767,7 @@ describe('the measure length check', () => {
   }
 
   function disagreements(source: string, edit?: (mnx: MNXDocument) => void): string[] {
-    const { mnx, warnings } = convertMusicXML(source)
+    const { mnx, warnings } = convertValid(source)
     edit?.(mnx)
     return measureLengthDisagreements(mnx, parseXmlRoot(source), warnings)
   }
@@ -794,7 +790,7 @@ describe('the measure length check', () => {
   // the barline, and the bracket takes in that silence to keep its ratio.
   test('lets a part written short run on in silence to the barline', () => {
     const source = score(quarter('C') + quarter('D'), shortQuarter)
-    const { mnx } = convertMusicXML(source)
+    const { mnx } = convertValid(source)
     const bracket = mnx.parts[1]?.measures[0]?.sequences[0]?.content[0]
 
     expect(bracket && 'type' in bracket && bracket.type).toBe('tuplet')
@@ -864,7 +860,7 @@ describe('the measure length check', () => {
   // so the bracket takes the time its stated ratio gives it and says so.
   test('passes over the measure a tuplet ratio report names', () => {
     const source = score(shortQuarter + quarter('D'))
-    const { mnx, warnings } = convertMusicXML(source)
+    const { mnx, warnings } = convertValid(source)
 
     expect(warnings.map((w) => w.code)).toContain('unrepresentable:tuplet-ratio')
     expect(measureLengthDisagreements(mnx, parseXmlRoot(source), warnings)).toEqual([])
@@ -886,7 +882,7 @@ describe('the measure length check', () => {
     const source =
       '<score-partwise><part-list><score-part id="P1"><part-name/></score-part></part-list>\n' +
       `<part id="P1"><measure number="1">\n${lines.join('\n')}\n</measure></part></score-partwise>`
-    const { mnx } = convertMusicXML(source)
+    const { mnx } = convertValid(source)
     const lengthen = (voice: number) => {
       const last = mnx.parts[0]?.measures[0]?.sequences[voice]?.content[1] as MNXEvent
       last.duration = { base: 'half' }

@@ -6,11 +6,10 @@
 // emit; the schema pins that the decision is legal MNX.
 
 import { describe, expect, test } from 'vitest'
+import { convertValid } from './support/convert.js'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { convertMusicXML } from '../src/index.js'
-import { schemaErrors } from './support/schema.js'
 import { undefinedKeys } from './support/structural.js'
 
 const fixturesRoot = fileURLToPath(new URL('./fixtures', import.meta.url))
@@ -49,29 +48,27 @@ describe.each(fixtures)('$name', ({ musicXmlPath, goldenPath }) => {
   const source = readFileSync(musicXmlPath, 'utf8')
 
   test('converts to the expected MNX', () => {
-    const { mnx } = convertMusicXML(source)
+    const { mnx } = convertValid(source)
     const golden: unknown = JSON.parse(readFileSync(goldenPath, 'utf8'))
 
     expect(mnx).toEqual(golden)
   })
 
   test('produces MNX that conforms to the spec schema', () => {
-    const { mnx } = convertMusicXML(source)
-
-    expect(schemaErrors(mnx)).toEqual([])
+    convertValid(source)
   })
 
   // An absent key and one set to undefined read as different things in MNX,
   // and nothing else here tells them apart: the golden comparison passes over
   // such a key, and so does the schema.
   test('states no key as undefined', () => {
-    const { mnx } = convertMusicXML(source)
+    const { mnx } = convertValid(source)
 
     expect(undefinedKeys(mnx)).toEqual([])
   })
 
   test('converts without losing anything', () => {
-    const { warnings } = convertMusicXML(source)
+    const { warnings } = convertValid(source)
 
     expect(warnings).toEqual([])
   })
@@ -153,9 +150,8 @@ describe('conversion output the schema has to accept', () => {
   test.each(Object.entries(cases))('%s', (_name, body) => {
     const source = `<score-partwise><part id="P1"><measure number="1">${body}</measure></part></score-partwise>`
 
-    const { mnx } = convertMusicXML(source)
+    const { mnx } = convertValid(source)
 
-    expect(schemaErrors(mnx)).toEqual([])
     expect(undefinedKeys(mnx)).toEqual([])
   })
 })

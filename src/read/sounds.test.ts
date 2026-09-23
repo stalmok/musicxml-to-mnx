@@ -6,8 +6,7 @@
 // is converted; percussion.test.ts holds it to account.
 
 import { describe, expect, test } from 'vitest'
-import { convertMusicXML } from '../index.js'
-import { schemaErrors } from '../../tests/support/schema.js'
+import { convertValid } from '../../tests/support/convert.js'
 
 const MEASURES =
   '<measure number="1"><attributes><divisions>1</divisions></attributes>' +
@@ -15,7 +14,7 @@ const MEASURES =
   '<type>whole</type></note></measure>'
 
 function convert(scorePartContent: string) {
-  return convertMusicXML(
+  return convertValid(
     '<score-partwise><part-list><score-part id="P1">' +
       `<part-name>Voice</part-name>${scorePartContent}` +
       '</score-part></part-list>' +
@@ -32,7 +31,6 @@ describe('instrument sounds', () => {
 
     expect(mnx.global.sounds).toEqual({ 'P1-I1': { name: 'Voice' } })
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // MusicXML allows several instruments in one part, as a drum kit is.
@@ -49,7 +47,6 @@ describe('instrument sounds', () => {
       'P1-I2': { name: 'Alto' },
     })
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // An empty <instrument-name> names nothing, and MNX's sound has an optional
@@ -62,7 +59,6 @@ describe('instrument sounds', () => {
 
     expect(mnx.global.sounds).toEqual({ 'P1-I1': {} })
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('writes no sounds where the list states no instruments', () => {
@@ -85,7 +81,6 @@ describe('instrument sounds', () => {
     expect(mnx.global.sounds).toEqual({ 'P1-I1': { name: 'Voice' } })
     expect(warnings.map((warning) => warning.element)).toEqual(['midi-program'])
     expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:element'])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('reports each playback detail a midi-instrument carries', () => {

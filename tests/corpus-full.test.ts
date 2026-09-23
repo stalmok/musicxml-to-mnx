@@ -65,6 +65,7 @@ function assess(file: string): Outcome {
   let warnings
   try {
     xml = readMusicXML(new Uint8Array(readFileSync(file)))
+    // eslint-disable-next-line no-restricted-syntax -- a refusal is an outcome here, and assess() checks the schema itself
     ;({ mnx, warnings } = convertMusicXML(xml))
   } catch (error) {
     // A MusicXMLError is the converter deliberately refusing input it cannot

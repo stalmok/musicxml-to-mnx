@@ -63,6 +63,7 @@ function refusalText(error: MusicXMLError): string {
  */
 const attempted = songs().map((song) => {
   try {
+    // eslint-disable-next-line no-restricted-syntax -- a refusal is an outcome here, and every song is checked against the schema below
     return { ...song, ...convertMusicXML(song.source), rejected: undefined, crashed: undefined }
   } catch (error) {
     if (error instanceof MusicXMLError) {

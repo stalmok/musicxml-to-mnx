@@ -8,11 +8,10 @@
 // written pitch sits below the sounded one, so the same 8va is a positive 1.
 
 import { describe, expect, test } from 'vitest'
+import { convertValid } from '../../tests/support/convert.js'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
-import { convertMusicXML } from '../index.js'
-import { schemaErrors } from '../../tests/support/schema.js'
 
 const NOTE =
   '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
@@ -96,7 +95,7 @@ describe('which way an octave shift goes', () => {
   })
 
   test('writes the side the shift is drawn on onto schema-valid MNX', () => {
-    const { mnx } = convertMusicXML(
+    const { mnx } = convertValid(
       '<score-partwise><part id="P1"><measure number="1">' +
         '<attributes><divisions>4</divisions></attributes>' +
         '<direction placement="above"><direction-type>' +
@@ -107,7 +106,6 @@ describe('which way an octave shift goes', () => {
     )
 
     expect(JSON.stringify(mnx)).toContain('"orient":"above"')
-    expect(schemaErrors(mnx)).toEqual([])
   })
 })
 
@@ -634,7 +632,7 @@ describe('an octave shift ending where grace notes sit', () => {
   })
 
   test('writes the grace index onto schema-valid MNX', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       '<score-partwise><part id="P1"><measure number="1">' +
         '<attributes><divisions>4</divisions></attributes>' +
         shift('down') +
@@ -650,6 +648,5 @@ describe('an octave shift ending where grace notes sit', () => {
       position: { fraction: [1, 4], graceIndex: 0 },
     })
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 })

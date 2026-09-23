@@ -4,11 +4,10 @@
 // score's measure, because a barline is the whole score's.
 
 import { describe, expect, test } from 'vitest'
+import { convertValid } from '../../tests/support/convert.js'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
-import { convertMusicXML } from '../index.js'
-import { schemaErrors } from '../../tests/support/schema.js'
 
 const NOTE =
   '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
@@ -490,7 +489,7 @@ describe('a segno on the barline', () => {
   })
 
   test('writes a barline segno the spec schema accepts', () => {
-    const { mnx } = convertMusicXML(
+    const { mnx } = convertValid(
       '<score-partwise><part id="P1"><measure number="1">' +
         '<attributes><divisions>4</divisions></attributes>' +
         `${left('<segno color="#FF0000"/>')}${NOTE}` +
@@ -501,7 +500,6 @@ describe('a segno on the barline', () => {
       location: { fraction: [0, 1] },
       color: '#FF0000',
     })
-    expect(schemaErrors(mnx)).toEqual([])
   })
 })
 

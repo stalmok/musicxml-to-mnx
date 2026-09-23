@@ -4,11 +4,10 @@
 // state, like a word or a pedal, is reported.
 
 import { describe, expect, test } from 'vitest'
+import { convertValid } from '../../tests/support/convert.js'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
-import { convertMusicXML } from '../index.js'
-import { schemaErrors } from '../../tests/support/schema.js'
 
 function note(step: string, quarters = 1): string {
   return (
@@ -85,7 +84,7 @@ describe('dynamics', () => {
   })
 
   test('writes the dynamic side onto schema-valid MNX', () => {
-    const { mnx } = convertMusicXML(
+    const { mnx } = convertValid(
       inMeasure(
         '<direction placement="below"><direction-type><dynamics><p/></dynamics>' +
           '</direction-type></direction>' +
@@ -94,7 +93,6 @@ describe('dynamics', () => {
     )
 
     expect(JSON.stringify(mnx)).toContain('"orient":"below"')
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test.each([
@@ -122,12 +120,9 @@ describe('dynamics', () => {
   })
 
   test('writes an extreme dynamic the spec schema accepts', () => {
-    const { mnx } = convertMusicXML(
-      inMeasure(direction('<dynamics><pppp/></dynamics>') + note('C')),
-    )
+    const { mnx } = convertValid(inMeasure(direction('<dynamics><pppp/></dynamics>') + note('C')))
 
     expect(mnx.parts[0]?.measures[0]?.dynamics?.[0]?.value).toBe('pppp')
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // Every dynamic element MusicXML names now converts, so only an element
@@ -215,7 +210,7 @@ describe('dynamics', () => {
   // "z", so a mark without those letters must say so, and a mark with them
   // may leave them to the defaults.
   test('writes an accent dynamic the spec schema accepts', () => {
-    const { mnx } = convertMusicXML(inMeasure(direction('<dynamics><fp/></dynamics>') + note('C')))
+    const { mnx } = convertValid(inMeasure(direction('<dynamics><fp/></dynamics>') + note('C')))
 
     expect(mnx.global.measures[0]).toBeDefined()
     const dynamic = mnx.parts[0]?.measures[0]?.dynamics?.[0]
@@ -228,11 +223,10 @@ describe('dynamics', () => {
       accentSuffix: '',
       glyphs: ['dynamicFortePiano'],
     })
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('leaves the accent letters MNX defaults unstated', () => {
-    const { mnx } = convertMusicXML(inMeasure(direction('<dynamics><sfz/></dynamics>') + note('C')))
+    const { mnx } = convertValid(inMeasure(direction('<dynamics><sfz/></dynamics>') + note('C')))
 
     const dynamic = mnx.parts[0]?.measures[0]?.dynamics?.[0]
     expect(dynamic).toEqual({
@@ -241,11 +235,10 @@ describe('dynamics', () => {
       value: 'f',
       glyphs: ['dynamicSforzato'],
     })
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('states the accent letters that differ from the defaults', () => {
-    const { mnx } = convertMusicXML(inMeasure(direction('<dynamics><sf/></dynamics>') + note('C')))
+    const { mnx } = convertValid(inMeasure(direction('<dynamics><sf/></dynamics>') + note('C')))
 
     const dynamic = mnx.parts[0]?.measures[0]?.dynamics?.[0]
     expect(dynamic).toEqual({
@@ -255,11 +248,10 @@ describe('dynamics', () => {
       accentSuffix: '',
       glyphs: ['dynamicSforzando1'],
     })
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('writes a glyph-only accent with no value', () => {
-    const { mnx } = convertMusicXML(inMeasure(direction('<dynamics><pf/></dynamics>') + note('C')))
+    const { mnx } = convertValid(inMeasure(direction('<dynamics><pf/></dynamics>') + note('C')))
 
     const dynamic = mnx.parts[0]?.measures[0]?.dynamics?.[0]
     expect(dynamic).toEqual({
@@ -267,7 +259,6 @@ describe('dynamics', () => {
       type: 'accent',
       glyphs: ['dynamicPF'],
     })
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // <other-dynamics> is the wording a source wraps a mark in: "più f", "p
@@ -365,7 +356,7 @@ describe('dynamics', () => {
   })
 
   test('writes standalone wording onto schema-valid MNX', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       inMeasure(
         direction('<dynamics><other-dynamics>dolce</other-dynamics></dynamics>') + note('C'),
       ),
@@ -377,7 +368,6 @@ describe('dynamics', () => {
       prefix: 'dolce',
     })
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // The wording beside a wedge in the same <direction-type> qualifies the
@@ -498,7 +488,7 @@ describe('dynamics', () => {
   })
 
   test('writes the closing wording onto schema-valid MNX', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       inMeasure(
         '<direction><direction-type><wedge type="diminuendo"/></direction-type></direction>' +
           note('C') +
@@ -515,7 +505,6 @@ describe('dynamics', () => {
       suffix: 'smorz.',
     })
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A stop that matches no start closes nothing, so the wording beside it
@@ -591,7 +580,7 @@ describe('dynamics', () => {
   })
 
   test('writes wording standing alone onto schema-valid MNX', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       inMeasure(
         '<direction placement="above"><direction-type>' +
           '<wedge type="crescendo"/>' +
@@ -611,7 +600,6 @@ describe('dynamics', () => {
       orient: 'above',
     })
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A source can word both edges of one hairpin. The suffix set where it
@@ -748,7 +736,7 @@ describe('dynamics', () => {
   })
 
   test('writes the hairpin wording onto schema-valid MNX', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       inMeasure(
         '<direction><direction-type>' +
           '<dynamics><other-dynamics>dim. </other-dynamics></dynamics>' +
@@ -764,7 +752,6 @@ describe('dynamics', () => {
       prefix: 'dim.',
     })
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // The wording opens the mark that follows it. Where that mark is one the
@@ -852,7 +839,7 @@ describe('dynamics', () => {
   })
 
   test('writes the wording of a dynamic onto schema-valid MNX', () => {
-    const { mnx } = convertMusicXML(
+    const { mnx } = convertValid(
       inMeasure(
         direction(
           '<dynamics><other-dynamics>più </other-dynamics><f/>' +
@@ -868,7 +855,6 @@ describe('dynamics', () => {
       prefix: 'più',
       suffix: 'sub.',
     })
-    expect(schemaErrors(mnx)).toEqual([])
   })
 })
 
@@ -1085,7 +1071,7 @@ describe('tempo', () => {
   })
 
   test('writes a fractional tempo onto schema-valid MNX', () => {
-    const { mnx } = convertMusicXML(
+    const { mnx } = convertValid(
       inMeasure(
         direction(
           '<metronome><beat-unit>quarter</beat-unit><per-minute>76.5</per-minute></metronome>',
@@ -1094,7 +1080,6 @@ describe('tempo', () => {
     )
 
     expect(JSON.stringify(mnx)).toContain('"bpm":76.5')
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A fraction below one half once rounded to zero and was dropped for it.
@@ -1217,20 +1202,18 @@ describe('segno', () => {
   })
 
   test('writes a segno the spec schema accepts', () => {
-    const { mnx } = convertMusicXML(inMeasure(direction('<segno/>') + note('C')))
+    const { mnx } = convertValid(inMeasure(direction('<segno/>') + note('C')))
 
     expect(mnx.global.measures[0]?.segno).toEqual({ location: { fraction: [0, 1] } })
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('writes a segno with its color the spec schema accepts', () => {
-    const { mnx } = convertMusicXML(inMeasure(direction('<segno color="#FF0000"/>') + note('C')))
+    const { mnx } = convertValid(inMeasure(direction('<segno color="#FF0000"/>') + note('C')))
 
     expect(mnx.global.measures[0]?.segno).toEqual({
       location: { fraction: [0, 1] },
       color: '#FF0000',
     })
-    expect(schemaErrors(mnx)).toEqual([])
   })
 })
 
@@ -1515,27 +1498,24 @@ describe('sound navigation', () => {
   })
 
   test('writes a fine the spec schema accepts', () => {
-    const { mnx } = convertMusicXML(inMeasure('<sound fine="yes"/>' + note('C')))
+    const { mnx } = convertValid(inMeasure('<sound fine="yes"/>' + note('C')))
 
     expect(mnx.global.measures[0]?.fine).toEqual({ location: { fraction: [0, 1] } })
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('writes a jump the spec schema accepts', () => {
-    const { mnx } = convertMusicXML(inMeasure('<sound dalsegno="segno"/>' + note('C')))
+    const { mnx } = convertValid(inMeasure('<sound dalsegno="segno"/>' + note('C')))
 
     expect(mnx.global.measures[0]?.jump).toEqual({ location: { fraction: [0, 1] }, type: 'segno' })
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('writes a dsalfine jump the spec schema accepts', () => {
-    const { mnx } = convertMusicXML(inMeasure('<sound fine="yes" dalsegno="segno"/>' + note('C')))
+    const { mnx } = convertValid(inMeasure('<sound fine="yes" dalsegno="segno"/>' + note('C')))
 
     expect(mnx.global.measures[0]?.jump).toEqual({
       location: { fraction: [0, 1] },
       type: 'dsalfine',
     })
-    expect(schemaErrors(mnx)).toEqual([])
   })
 })
 
@@ -2181,7 +2161,7 @@ describe('hairpins', () => {
   })
 
   test('writes the side a hairpin is drawn on onto schema-valid MNX', () => {
-    const { mnx } = convertMusicXML(
+    const { mnx } = convertValid(
       '<score-partwise><part id="P1"><measure number="1">' +
         '<attributes><divisions>4</divisions></attributes>' +
         placedWedge +
@@ -2191,7 +2171,6 @@ describe('hairpins', () => {
     )
 
     expect(JSON.stringify(mnx)).toContain('"orient":"below"')
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // "continue" marks a point partway along one, which MNX has no need of,
@@ -2237,11 +2216,10 @@ describe('hairpins', () => {
     ])
     expect(warnings.map((w) => w.element)).toEqual(['wedge'])
 
-    const { mnx } = convertMusicXML(
+    convertValid(
       '<score-partwise><part id="P1"><measure number="1">' +
         `<attributes><divisions>4</divisions></attributes>${body}</measure></part></score-partwise>`,
     )
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // MusicXML's document order is not time order: a measure holding two voices
@@ -2284,11 +2262,10 @@ describe('hairpins', () => {
     expect(dynamics[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 7, den: 8 } })
     expect(warnings).toEqual([])
 
-    const { mnx } = convertMusicXML(
+    convertValid(
       '<score-partwise><part id="P1"><measure number="1">' +
         `<attributes><divisions>4</divisions></attributes>${body}</measure></part></score-partwise>`,
     )
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('closes a hairpin that ends exactly where the next one begins', () => {
@@ -2427,7 +2404,7 @@ describe('hairpins', () => {
     })
 
     test('writes the grace index onto schema-valid MNX', () => {
-      const { mnx, warnings } = convertMusicXML(
+      const { mnx, warnings } = convertValid(
         inMeasure(wedge('crescendo') + NOTE + GRACE + wedge('stop') + NOTE),
       )
 
@@ -2436,7 +2413,6 @@ describe('hairpins', () => {
         position: { fraction: [1, 4], graceIndex: 1 },
       })
       expect(warnings).toEqual([])
-      expect(schemaErrors(mnx)).toEqual([])
     })
   })
 })

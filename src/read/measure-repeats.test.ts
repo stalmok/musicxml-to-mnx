@@ -8,9 +8,9 @@
 // content converts as usual.
 
 import { describe, expect, test } from 'vitest'
+import { convertValid } from '../../tests/support/convert.js'
 import { MusicXMLError } from '../errors.js'
 import { convertMusicXML } from '../index.js'
-import { schemaErrors } from '../../tests/support/schema.js'
 
 const NOTE =
   '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
@@ -40,8 +40,7 @@ function part(id: string, measures: readonly { attributes?: string; body: string
 }
 
 function convert(...parts: string[]) {
-  const { mnx, warnings } = convertMusicXML(`<score-partwise>${parts.join('')}</score-partwise>`)
-  return { mnx, warnings }
+  return convertValid(`<score-partwise>${parts.join('')}</score-partwise>`)
 }
 
 function repeats(mnx: ReturnType<typeof convertMusicXML>['mnx'], partIndex = 0) {
@@ -61,7 +60,6 @@ describe('a measure repeat', () => {
 
     expect(repeats(mnx)).toEqual([undefined, { number: 1 }, { number: 1 }, undefined])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('marks only the first measure of each two-measure sign', () => {
@@ -87,7 +85,6 @@ describe('a measure repeat', () => {
       undefined,
     ])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // "Both the start and the stop ... should be specified unless the repeats
@@ -99,7 +96,6 @@ describe('a measure repeat', () => {
 
     expect(repeats(mnx)).toEqual([undefined, { number: 1 }, { number: 1 }])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // The content is positive-integer-or-empty, and a sign saying nothing is
@@ -115,7 +111,6 @@ describe('a measure repeat', () => {
 
     expect(repeats(mnx)).toEqual([undefined, { number: 1 }, undefined])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('keeps converting the notes written under the sign', () => {
@@ -128,7 +123,6 @@ describe('a measure repeat', () => {
     )
 
     expect(mnx.parts[0]?.measures[1]?.sequences[0]?.content).toHaveLength(1)
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('ignores a stop with nothing started', () => {
@@ -138,7 +132,6 @@ describe('a measure repeat', () => {
 
     expect(repeats(mnx)).toEqual([undefined, undefined])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // The slash count changes the glyph, which MNX has no way to ask for.
@@ -155,7 +148,6 @@ describe('a measure repeat', () => {
     expect(warnings.map((warning) => warning.code)).toEqual([
       'unrepresentable:measure-repeat-slashes',
     ])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // One slash is the everyday sign, so the count states nothing the default
@@ -171,7 +163,6 @@ describe('a measure repeat', () => {
 
     expect(repeats(mnx)).toEqual([undefined, { number: 1 }, undefined])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('lets a measure stop one sign and start the next', () => {
@@ -187,7 +178,6 @@ describe('a measure repeat', () => {
 
     expect(repeats(mnx)).toEqual([undefined, { number: 1 }, { number: 2 }, undefined, undefined])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('starts a new sign over one still running', () => {
@@ -203,7 +193,6 @@ describe('a measure repeat', () => {
 
     expect(repeats(mnx)).toEqual([undefined, { number: 2 }, undefined, { number: 1 }, undefined])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // An edge without a number speaks for every staff, so on a one-staff part
@@ -222,7 +211,6 @@ describe('a measure repeat', () => {
 
     expect(repeats(mnx)).toEqual([{ number: 1 }, { number: 1 }, undefined])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('lets every staff restate a running unnumbered sign', () => {
@@ -244,7 +232,6 @@ describe('a measure repeat', () => {
 
     expect(repeats(mnx)).toEqual([{ number: 1 }, { number: 1 }, { number: 1 }, undefined])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // One staff's sign ends while the other staff's runs on. MNX states one
@@ -278,7 +265,6 @@ describe('a measure repeat', () => {
     expect(repeats(mnx)).toEqual([{ number: 1 }, { number: 1 }, undefined, undefined, undefined])
     expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:measure-repeat'])
     expect(warnings[0]?.context).toMatchObject({ part: 'P1', measure: 3 })
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // One staff starts a sign while another staff's sign is mid-flight. The
@@ -307,7 +293,6 @@ describe('a measure repeat', () => {
     expect(repeats(mnx)).toEqual([{ number: 1 }, { number: 1 }, { number: 1 }, undefined])
     expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:measure-repeat'])
     expect(warnings[0]?.context).toMatchObject({ part: 'P1', measure: 3 })
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A start restating one staff's running sign while the other staff's runs
@@ -371,13 +356,12 @@ describe('a measure repeat', () => {
 
     expect(repeats(mnx)).toEqual([{ number: 1 }, undefined, { number: 1 }])
     expect(warnings.map((warning) => warning.context.measure)).toEqual([2])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // The staff whose sign a restart cut is no longer running either, so a
   // stop written for it later closes nothing and says nothing.
   test('leaves no staff running after a restart cuts its sign', () => {
-    const { mnx, warnings } = convert(
+    const { warnings } = convert(
       part('P1', [
         {
           attributes:
@@ -402,7 +386,6 @@ describe('a measure repeat', () => {
     )
 
     expect(warnings.map((warning) => warning.context.measure)).toEqual([2])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // The type attribute is required: without it there is no saying whether
@@ -447,7 +430,6 @@ describe('a measure repeat', () => {
 
     expect(repeats(mnx)).toEqual([{ number: 1 }, undefined])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // MusicXML allows one <measure-style> per staff. MNX states the repeat for
@@ -472,7 +454,6 @@ describe('a measure repeat', () => {
 
     expect(repeats(mnx)?.[3]).toEqual({ number: 1 })
     expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:measure-repeat'])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // MusicXML sets no upper bound on the pattern; MNX states one of four
@@ -484,7 +465,6 @@ describe('a measure repeat', () => {
 
     expect(repeats(mnx)).toEqual([{ number: 4 }, undefined])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('drops a pattern longer than four measures, and says so', () => {
@@ -495,7 +475,6 @@ describe('a measure repeat', () => {
     expect(repeats(mnx)).toEqual([undefined, undefined, undefined])
     expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:measure-repeat'])
     expect(warnings[0]?.context).toMatchObject({ part: 'P1', measure: 2 })
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // The dropped sign still ends whatever was running: the source drew a new
@@ -511,7 +490,6 @@ describe('a measure repeat', () => {
 
     expect(repeats(mnx)).toEqual([{ number: 1 }, undefined, undefined])
     expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:measure-repeat'])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // The dropped sign is the other staff's, so it ends nothing: staff one
@@ -541,7 +519,6 @@ describe('a measure repeat', () => {
       'A measure repeat sign repeats 8 measures, and MNX states a pattern of at most four. ' +
         'The sign is not carried over.',
     ])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A stop for a staff that drew no sign closes nothing, so the other
@@ -566,13 +543,12 @@ describe('a measure repeat', () => {
 
     expect(repeats(mnx)).toEqual([{ number: 1 }, { number: 1 }, { number: 1 }])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // The sign is dropped whole, so the slash count is part of what goes with
   // it rather than a loss of its own.
   test('says nothing of the slashes on a sign it drops', () => {
-    const { mnx, warnings } = convert(
+    const { warnings } = convert(
       part('P1', [
         { body: NOTE },
         { attributes: start('8', ' slashes="3"'), body: NOTE },
@@ -581,6 +557,5 @@ describe('a measure repeat', () => {
     )
 
     expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:measure-repeat'])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 })

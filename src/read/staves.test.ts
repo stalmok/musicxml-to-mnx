@@ -4,11 +4,10 @@
 // of a voice that reaches across to the other hand.
 
 import { describe, expect, test } from 'vitest'
+import { convertValid } from '../../tests/support/convert.js'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
-import { convertMusicXML } from '../index.js'
-import { schemaErrors } from '../../tests/support/schema.js'
 
 function note(step: string, staff: string, voice = '1'): string {
   return (
@@ -1299,7 +1298,7 @@ describe('a chord that straddles the two staves', () => {
   })
 
   test('writes the reaching note staff onto schema-valid MNX', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       measures(GRAND_STAFF + note('C', '1') + chorded('C', '2')),
     )
     const event = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
@@ -1308,7 +1307,6 @@ describe('a chord that straddles the two staves', () => {
       undefined,
       2,
     ])
-    expect(schemaErrors(mnx)).toEqual([])
     expect(warnings).toEqual([])
   })
 
@@ -1523,21 +1521,19 @@ describe('how many lines a staff is drawn with', () => {
   })
 
   test('writes the config into legal MNX', () => {
-    const { mnx, warnings } = convertMusicXML(measures(oneStaff(details('1'))))
+    const { mnx, warnings } = convertValid(measures(oneStaff(details('1'))))
 
     expect(mnx.parts[0]?.measures[0]?.staffConfigs).toEqual([{ config: { lines: 1 } }])
-    expect(schemaErrors(mnx)).toEqual([])
     expect(warnings).toEqual([])
   })
 
   test('writes the staff and the position of a config that states them', () => {
-    const { mnx } = convertMusicXML(
+    const { mnx } = convertValid(
       measures(GRAND_STAFF + note('C', '1') + `<attributes>${details('1', '2')}</attributes>`),
     )
 
     expect(mnx.parts[0]?.measures[0]?.staffConfigs).toEqual([
       { config: { lines: 1 }, position: { fraction: [1, 4] }, staff: 2 },
     ])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 })

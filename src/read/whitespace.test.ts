@@ -7,8 +7,7 @@
 // nothing states that the reader accepts a file laid out this way. This does.
 
 import { describe, expect, test } from 'vitest'
-import { convertMusicXML } from '../index.js'
-import { schemaErrors } from '../../tests/support/schema.js'
+import { convertValid } from '../../tests/support/convert.js'
 
 // Every value here sits on its own line, indented, the way a pretty-printer
 // writes it: the pitch, the note value, the clef, the stem, the syllable and
@@ -140,13 +139,12 @@ const PADDED_MARKS = `<?xml version="1.0" encoding="UTF-8"?>
   </part>
 </score-partwise>`
 
-const converted = convertMusicXML(PRETTY)
+const converted = convertValid(PRETTY)
 const measure = converted.mnx.parts[0]?.measures[0]
 const [note, rest] = measure?.sequences[0]?.content ?? []
 
 describe('a pretty-printed source', () => {
   test('converts to legal MNX with nothing reported lost', () => {
-    expect(schemaErrors(converted.mnx)).toEqual([])
     expect(converted.warnings).toEqual([])
   })
 
@@ -174,7 +172,7 @@ describe('a pretty-printed source', () => {
 })
 
 describe('a mark written with whitespace around its value', () => {
-  const padded = convertMusicXML(PADDED_MARKS)
+  const padded = convertValid(PADDED_MARKS)
   const event = padded.mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
 
   test('draws a tremolo stating no count with three beams, saying nothing', () => {

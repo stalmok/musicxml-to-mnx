@@ -9,8 +9,7 @@
 // reader's own business and is tested beside src/read/.
 
 import { describe, expect, test } from 'vitest'
-import { convertMusicXML } from '../src/index.js'
-import { schemaErrors } from './support/schema.js'
+import { convertValid } from './support/convert.js'
 
 /** One measure of the given notes, with the given `<encoding>` declarations. */
 function convert(body: string, supports = '') {
@@ -18,7 +17,7 @@ function convert(body: string, supports = '') {
     ? `<identification><encoding>${supports}</encoding></identification>`
     : ''
 
-  return convertMusicXML(
+  return convertValid(
     '<score-partwise>' +
       identification +
       '<part id="P1"><measure number="1">' +
@@ -111,7 +110,6 @@ describe('a forced accidental', () => {
     const mnx = convert(note('F', '1', '<accidental cautionary="yes">sharp</accidental>'))
 
     expect(JSON.stringify(mnx)).toContain('"force":true')
-    expect(schemaErrors(mnx)).toEqual([])
   })
 })
 
@@ -133,7 +131,6 @@ describe('the document declaring it states beams', () => {
     )
 
     expect(mnx.mnx.support).toEqual({ useAccidentalDisplay: true, useBeams: true })
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('does not claim it where nothing is beamed', () => {
@@ -152,7 +149,6 @@ describe('the source declaring it states beams', () => {
     const mnx = convert(quarter, '<supports element="beam" type="yes"/>')
 
     expect(mnx.mnx.support).toEqual({ useBeams: true })
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('states the accidental support the source declares with no accidental drawn', () => {

@@ -6,8 +6,7 @@
 // writing any break writes the whole structure.
 
 import { describe, expect, test } from 'vitest'
-import { convertMusicXML } from '../index.js'
-import { schemaErrors } from '../../tests/support/schema.js'
+import { convertValid } from '../../tests/support/convert.js'
 
 const NOTE =
   '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
@@ -27,7 +26,7 @@ function part(id: string, measures: readonly string[]) {
 }
 
 function convert(...parts: string[]) {
-  return convertMusicXML(`<score-partwise>${parts.join('')}</score-partwise>`)
+  return convertValid(`<score-partwise>${parts.join('')}</score-partwise>`)
 }
 
 describe('system and page breaks', () => {
@@ -53,7 +52,6 @@ describe('system and page breaks', () => {
     // no system, so nothing does.
     expect(mnx.global.measures[2]?.id).toBeUndefined()
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('starts a new page where the source turns one', () => {
@@ -71,7 +69,6 @@ describe('system and page breaks', () => {
       },
     ])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // new-system="no" states the absence of a break, which is the default.
@@ -142,7 +139,6 @@ describe('system and page breaks', () => {
 
     expect(mnx.scores?.[0]?.pages).toEqual([{ systems: [{ measure: 'm1' }] }])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('writes the pages beside a multi-measure rest', () => {
@@ -160,6 +156,5 @@ describe('system and page breaks', () => {
       { systems: [{ measure: 'm3' }] },
     ])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 })

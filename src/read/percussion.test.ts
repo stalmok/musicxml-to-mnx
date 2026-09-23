@@ -3,11 +3,10 @@
 // and every note of the part names the component it strikes.
 
 import { describe, expect, test } from 'vitest'
+import { convertValid } from '../../tests/support/convert.js'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
-import { convertMusicXML } from '../index.js'
-import { schemaErrors } from '../../tests/support/schema.js'
 
 const DRUM_KIT =
   '<score-instrument id="P1-I39"><instrument-name>Acoustic Snare</instrument-name>' +
@@ -289,7 +288,7 @@ describe('a rolled chord struck on a kit', () => {
   })
 
   test('writes the roll into legal MNX, naming the kit notes it runs between', () => {
-    const { mnx, warnings } = convertMusicXML(source(ROLLED, DRUM_KIT))
+    const { mnx, warnings } = convertValid(source(ROLLED, DRUM_KIT))
     const event = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
     const notes = event && 'kitNotes' in event ? event.kitNotes : []
 
@@ -302,7 +301,6 @@ describe('a rolled chord struck on a kit', () => {
     ])
     expect(notes.map((note) => note.id)).not.toContain(undefined)
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A rest carries no note either way, and a roll drawn beside one names
@@ -371,7 +369,7 @@ describe('a tie between unpitched notes', () => {
 
 describe('the MNX a percussion part converts to', () => {
   test('names the kit on the part and the component on every note', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       source(struck('C', '5', 'P1-I39') + struck('G', '5', 'P1-I43'), DRUM_KIT),
     )
     const part = mnx.parts[0]
@@ -390,11 +388,10 @@ describe('the MNX a percussion part converts to', () => {
       'P1-I43': { name: 'Closed Hi-Hat', midiNumber: 42 },
     })
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('heads the staff with the percussion clef', () => {
-    const { mnx } = convertMusicXML(source(struck('C', '5', 'P1-I39'), DRUM_KIT))
+    const { mnx } = convertValid(source(struck('C', '5', 'P1-I39'), DRUM_KIT))
 
     expect(mnx.parts[0]?.measures[0]?.clefs).toEqual([
       { clef: { sign: 'G', staffPosition: -2, glyph: 'unpitchedPercussionClef1' } },
@@ -407,9 +404,7 @@ describe('the MNX a percussion part converts to', () => {
     const numbered =
       '<attributes><divisions>1</divisions>' +
       '<clef number="1"><sign>percussion</sign><line>2</line></clef></attributes>'
-    const { mnx, warnings } = convertMusicXML(
-      source(struck('C', '5', 'P1-I39'), DRUM_KIT, numbered),
-    )
+    const { mnx, warnings } = convertValid(source(struck('C', '5', 'P1-I39'), DRUM_KIT, numbered))
 
     expect(mnx.parts[0]?.measures[0]?.clefs).toEqual([
       { clef: { sign: 'G', staffPosition: -2, glyph: 'unpitchedPercussionClef1' } },
@@ -427,13 +422,12 @@ describe('the MNX a percussion part converts to', () => {
     const drawn =
       '<attributes><divisions>1</divisions>' +
       `<clef><sign>percussion</sign><line>${line}</line></clef></attributes>`
-    const { mnx, warnings } = convertMusicXML(source(struck('C', '5', 'P1-I39'), DRUM_KIT, drawn))
+    const { mnx, warnings } = convertValid(source(struck('C', '5', 'P1-I39'), DRUM_KIT, drawn))
 
     expect(mnx.parts[0]?.measures[0]?.clefs).toEqual([
       { clef: { sign: 'G', staffPosition, glyph: 'unpitchedPercussionClef1' } },
     ])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A percussion staff may be drawn on more lines than five, and the middle
@@ -445,12 +439,11 @@ describe('the MNX a percussion part converts to', () => {
       '<attributes><divisions>1</divisions>' +
       '<staff-details><staff-lines>7</staff-lines></staff-details>' +
       '<clef><sign>percussion</sign><line>7</line></clef></attributes>'
-    const { mnx, warnings } = convertMusicXML(source(struck('C', '5', 'P1-I39'), DRUM_KIT, drawn))
+    const { mnx, warnings } = convertValid(source(struck('C', '5', 'P1-I39'), DRUM_KIT, drawn))
 
     expect(mnx.parts[0]?.measures[0]?.clefs?.[0]?.clef.staffPosition).toBe(6)
     expect(mnx.parts[0]?.measures[0]?.staffConfigs).toEqual([{ config: { lines: 7 } }])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // The one line of a one-line staff is its middle, so a clef drawn on it
@@ -460,14 +453,13 @@ describe('the MNX a percussion part converts to', () => {
       '<attributes><divisions>1</divisions>' +
       '<staff-details><staff-lines>1</staff-lines></staff-details>' +
       '<clef><sign>percussion</sign><line>1</line></clef></attributes>'
-    const { mnx, warnings } = convertMusicXML(source(struck('G', '4', 'P1-I39'), DRUM_KIT, drawn))
+    const { mnx, warnings } = convertValid(source(struck('G', '4', 'P1-I39'), DRUM_KIT, drawn))
 
     expect(mnx.parts[0]?.measures[0]?.clefs?.[0]?.clef.staffPosition).toBe(0)
     expect(mnx.parts[0]?.kit).toEqual({
       kit1: { name: 'Acoustic Snare', sound: 'P1-I39', staffPosition: 2 },
     })
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // The glyph places nothing, so the heights on the staff stay where the
@@ -476,8 +468,8 @@ describe('the MNX a percussion part converts to', () => {
     const drawn =
       '<attributes><divisions>1</divisions>' +
       '<clef><sign>percussion</sign><line>4</line></clef></attributes>'
-    const { mnx } = convertMusicXML(source(struck('C', '5', 'P1-I39'), DRUM_KIT, drawn))
-    const pinned = convertMusicXML(source(struck('C', '5', 'P1-I39'), DRUM_KIT)).mnx
+    const { mnx } = convertValid(source(struck('C', '5', 'P1-I39'), DRUM_KIT, drawn))
+    const pinned = convertValid(source(struck('C', '5', 'P1-I39'), DRUM_KIT)).mnx
 
     expect(mnx.parts[0]?.kit).toEqual(pinned.parts[0]?.kit)
   })
@@ -490,12 +482,11 @@ describe('the MNX a percussion part converts to', () => {
       '<type>quarter</type></note>' +
       '<note><chord/><unpitched><display-step>G</display-step><display-octave>5</display-octave>' +
       '</unpitched><duration>1</duration><type>quarter</type><instrument id="P1-I39"/></note>'
-    const { mnx } = convertMusicXML(source(mixed, DRUM_KIT))
+    const { mnx } = convertValid(source(mixed, DRUM_KIT))
     const event = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
 
     expect(event && 'notes' in event ? event.notes?.length : 0).toBe(1)
     expect(event && 'kitNotes' in event ? event.kitNotes?.length : 0).toBe(1)
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // MNX reads the notes inside a roll as the ones whose pitch lies between
@@ -517,7 +508,7 @@ describe('the MNX a percussion part converts to', () => {
     expect(arpeggio?.span).toEqual({ start: event?.notes[0]?.id, end: event?.notes[1]?.id })
     expect(warnings.map((w) => w.code)).toEqual(['unsupported:element'])
     expect(warnings[0]?.element).toBe('arpeggiate')
-    expect(schemaErrors(convertMusicXML(source(rolled, DRUM_KIT)).mnx)).toEqual([])
+    convertValid(source(rolled, DRUM_KIT))
   })
 
   // A bracket marking the chord struck together is not a roll, so the report
@@ -567,14 +558,14 @@ describe('the MNX a percussion part converts to', () => {
   })
 
   test('writes no notes array on an event that only strikes the kit', () => {
-    const { mnx } = convertMusicXML(source(struck('C', '5', 'P1-I39'), DRUM_KIT))
+    const { mnx } = convertValid(source(struck('C', '5', 'P1-I39'), DRUM_KIT))
     const event = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
 
     expect(event).not.toHaveProperty('notes')
   })
 
   test('names the note a tie reaches, so nothing points at an unwritten id', () => {
-    const { mnx } = convertMusicXML(
+    const { mnx } = convertValid(
       source(
         struck('C', '5', 'P1-I39', '<tie type="start"/>') +
           struck('C', '5', 'P1-I39', '<tie type="stop"/>'),
@@ -588,24 +579,22 @@ describe('the MNX a percussion part converts to', () => {
 
     expect(target).toBeDefined()
     expect(second && 'kitNotes' in second ? second.kitNotes?.[0]?.id : undefined).toBe(target)
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('writes a kit with no names where the source sets up no instruments', () => {
-    const { mnx } = convertMusicXML(source(struck('C', '5') + struck('G', '5')))
+    const { mnx } = convertValid(source(struck('C', '5') + struck('G', '5')))
 
     expect(mnx.parts[0]?.kit).toEqual({
       kit1: { staffPosition: 1 },
       kit2: { staffPosition: 5 },
     })
     expect(mnx.global).not.toHaveProperty('sounds')
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A cymbal left to ring is written as a let-ring tie, which has no ending
   // note to name.
   test('writes a let-ring tie on a kit note, with nothing to point at', () => {
-    const { mnx } = convertMusicXML(
+    const { mnx } = convertValid(
       source(struck('C', '5', 'P1-I39', '<tie type="let-ring"/>'), DRUM_KIT),
     )
     const event = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
@@ -613,7 +602,6 @@ describe('the MNX a percussion part converts to', () => {
     expect(event && 'kitNotes' in event ? event.kitNotes?.[0]?.ties : undefined).toEqual([
       { lv: true },
     ])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('states the staff on a kit note that reaches across to the other one', () => {
@@ -630,7 +618,7 @@ describe('the MNX a percussion part converts to', () => {
       '</unpitched><duration>1</duration><type>quarter</type>' +
       '<instrument id="P1-I43"/><staff>2</staff></note>' +
       '</measure></part></score-partwise>'
-    const { mnx } = convertMusicXML(twoStaves)
+    const { mnx } = convertValid(twoStaves)
     const event = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
 
     expect(event && 'kitNotes' in event ? event.kitNotes?.map((n) => n.staff) : []).toEqual([
@@ -640,7 +628,6 @@ describe('the MNX a percussion part converts to', () => {
     // Each staff is headed by its own clef, and with two of them each says
     // which it heads.
     expect(mnx.parts[0]?.measures[0]?.clefs?.map((clef) => clef.staff)).toEqual([1, 2])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A playback detail of a document that is otherwise ordinary music must not
@@ -650,7 +637,7 @@ describe('the MNX a percussion part converts to', () => {
     ['a pitch past the top of the range', '<midi-unpitched>129</midi-unpitched>'],
     ['a pitch that is not a number', '<midi-unpitched>snare</midi-unpitched>'],
   ])('converts the score and reports %s', (_name, unpitched) => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       source(
         struck('C', '5', 'P1-I39'),
         '<score-instrument id="P1-I39"><instrument-name>Snare</instrument-name>' +
@@ -660,11 +647,10 @@ describe('the MNX a percussion part converts to', () => {
 
     expect(mnx.global.sounds).toEqual({ 'P1-I39': { name: 'Snare' } })
     expect(warnings.map((w) => w.element)).toContain('midi-unpitched')
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('reports a midi-instrument that names no score-instrument, rather than dropping it', () => {
-    const { warnings } = convertMusicXML(
+    const { warnings } = convertValid(
       source(
         struck('C', '5'),
         '<midi-instrument id="P1-I39"><midi-unpitched>39</midi-unpitched></midi-instrument>',
@@ -678,7 +664,7 @@ describe('the MNX a percussion part converts to', () => {
   // instrument id is an xs:ID, which allows more than that. A component has to
   // be able to name what plays it, so the instrument is renamed.
   test('renames an instrument id MNX cannot state, and keeps the link to it', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       source(
         struck('C', '5', 'Pä-I1'),
         '<score-instrument id="Pä-I1"><instrument-name>Snare</instrument-name></score-instrument>',
@@ -690,11 +676,10 @@ describe('the MNX a percussion part converts to', () => {
       kit1: { name: 'Snare', sound: 'sound1', staffPosition: 1 },
     })
     expect(warnings.map((w) => w.code)).toContain('unrepresentable:instrument-id')
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('skips over a name another instrument already holds', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       source(
         struck('C', '5', 'Pä-I1') + struck('G', '5', 'sound1'),
         '<score-instrument id="Pä-I1"><instrument-name>Snare</instrument-name></score-instrument>' +
@@ -704,11 +689,10 @@ describe('the MNX a percussion part converts to', () => {
 
     expect(Object.keys(mnx.global.sounds ?? {}).sort()).toEqual(['sound1', 'sound2'])
     expect(warnings.map((w) => w.code)).toContain('unrepresentable:instrument-id')
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('renames an instrument of a part the list gives no id', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       '<score-partwise><part-list><score-part>' +
         '<score-instrument id="Pä-I1"><instrument-name>Snare</instrument-name></score-instrument>' +
         '</score-part></part-list>' +
@@ -718,11 +702,10 @@ describe('the MNX a percussion part converts to', () => {
 
     expect(mnx.global.sounds).toEqual({ sound1: { name: 'Snare' } })
     expect(warnings.map((w) => w.code)).toContain('unrepresentable:instrument-id')
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('writes no kit for a part that strikes none', () => {
-    const { mnx } = convertMusicXML(
+    const { mnx } = convertValid(
       '<score-partwise><part id="P1"><measure number="1">' +
         '<attributes><divisions>1</divisions></attributes>' +
         '<note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration>' +

@@ -4,9 +4,9 @@
 // naming the part it draws.
 
 import { describe, expect, test } from 'vitest'
+import { convertValid } from '../../tests/support/convert.js'
 import { MusicXMLError } from '../errors.js'
 import { convertMusicXML } from '../index.js'
-import { schemaErrors } from '../../tests/support/schema.js'
 
 const NOTE = '<note><pitch><step>C</step><octave>4</octave></pitch><type>whole</type></note>'
 
@@ -31,7 +31,7 @@ function failure(source: string): MusicXMLError {
 
 describe('part groups', () => {
   test('turns a bracket group over two parts into a layout staff group', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
           '<score-part id="P1"><part-name>Soprano</part-name></score-part>' +
@@ -58,14 +58,13 @@ describe('part groups', () => {
     ])
     expect(mnx.parts.map((p) => p.id)).toEqual(['P1', 'P2'])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A renderer that honours a layout resolves part names from it, so a staff
   // that names none draws none. labelref points back at the part, which
   // keeps the name written once.
   test('labels a staff from the short name when the part draws no full name', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
           '<score-part id="P1"><part-name print-object="no">Voice</part-name>' +
@@ -84,11 +83,10 @@ describe('part groups', () => {
       sources: [{ part: 'P1' }],
     })
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('writes no label reference for a part that draws no name at all', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
           '<score-part id="P1"/><score-part id="P2"/>' +
@@ -101,7 +99,6 @@ describe('part groups', () => {
     if (group?.type !== 'group') throw new Error('expected a staff group')
     expect(group.content[0]).toEqual({ type: 'staff', sources: [{ part: 'P1' }] })
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('names the grand-staff group from the short name when no full name draws', () => {
@@ -109,7 +106,7 @@ describe('part groups', () => {
       '<part id="P1"><measure number="1">' +
       '<attributes><staves>2</staves></attributes>' +
       `${NOTE}</measure></part>`
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
           '<score-part id="P1"><part-name print-object="no">Piano</part-name>' +
@@ -132,7 +129,6 @@ describe('part groups', () => {
       ],
     })
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A part that draws both of its names is labelled by the full one; the
@@ -142,7 +138,7 @@ describe('part groups', () => {
       '<part id="P2"><measure number="1">' +
       '<attributes><staves>2</staves></attributes>' +
       `${NOTE}</measure></part>`
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
           '<score-part id="P1"><part-name>Voice</part-name>' +
@@ -172,14 +168,13 @@ describe('part groups', () => {
       ],
     })
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // The fold is for the grand staff a multi-staff part restates; a brace
   // group around a single-staff part states a grouping of its own and
   // stays a group around its one staff.
   test('keeps a brace group around one single-staff part as a group', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<part-group type="start" number="1"><group-symbol>brace</group-symbol></part-group>' +
           '<score-part id="P1"><part-name>Voice</part-name></score-part>' +
@@ -196,7 +191,6 @@ describe('part groups', () => {
       },
     ])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // Where the group states no label of its own, the folded group keeps the
@@ -206,7 +200,7 @@ describe('part groups', () => {
       '<part id="P1"><measure number="1">' +
       '<attributes><staves>2</staves></attributes>' +
       `${NOTE}</measure></part>`
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<part-group type="start" number="1"><group-symbol>brace</group-symbol></part-group>' +
           '<score-part id="P1"><part-name>Piano</part-name></score-part>' +
@@ -228,14 +222,13 @@ describe('part groups', () => {
       },
     ])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // Only a score can name a layout, so a layout no score names is unreachable
   // and the brackets never draw. Written without one, the grouping converted
   // into a dead end with nothing to warn about.
   test('names the layout from a score, so a reader can reach it', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
           '<score-part id="P1"/><score-part id="P2"/>' +
@@ -247,11 +240,10 @@ describe('part groups', () => {
     expect(mnx.scores).toEqual([{ name: 'Score', layout: 'layout1' }])
     expect(mnx.layouts?.[0]?.id).toBe('layout1')
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('writes no score of its own where the source draws no groups', () => {
-    const { mnx } = convertMusicXML(score('<score-part id="P1"/>', part('P1')))
+    const { mnx } = convertValid(score('<score-part id="P1"/>', part('P1')))
 
     expect('scores' in mnx).toBe(false)
   })
@@ -260,7 +252,7 @@ describe('part groups', () => {
   // grouped source that also breaks its systems names the layout on the same
   // entry as the pages rather than writing a second one.
   test('names the layout on the score that already carries the pages', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
           '<score-part id="P1"/><score-part id="P2"/>' +
@@ -276,11 +268,10 @@ describe('part groups', () => {
     expect(mnx.scores?.[0]?.layout).toBe('layout1')
     expect(mnx.scores?.[0]?.pages).toHaveLength(1)
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('carries a brace group name and barline run onto the staff group', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<part-group type="start" number="1"><group-symbol>brace</group-symbol>' +
           '<group-name>Piano</group-name><group-barline>yes</group-barline></part-group>' +
@@ -296,11 +287,10 @@ describe('part groups', () => {
     expect(group.label).toBe('Piano')
     expect(group.barlineStyle).toBe('unified')
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('reports a group stop that nothing opened and keeps the rest', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score('<score-part id="P1"/><part-group type="stop" number="1"/>', part('P1')),
     )
 
@@ -308,11 +298,10 @@ describe('part groups', () => {
     expect(warnings).toEqual([
       expect.objectContaining({ code: 'unclosed:part-group', element: 'part-group' }),
     ])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('runs a group nothing stops to the end of the part list, and says so', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
           '<score-part id="P1"/><score-part id="P2"/>',
@@ -333,11 +322,10 @@ describe('part groups', () => {
     expect(warnings).toEqual([
       expect.objectContaining({ code: 'unclosed:part-group', element: 'part-group' }),
     ])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('nests a group inside another and leaves an ungrouped part outside both', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
           '<score-part id="P1"/>' +
@@ -369,14 +357,13 @@ describe('part groups', () => {
       { type: 'staff', sources: [{ part: 'P4' }] },
     ])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // MNX's staff-symbol enum has no line or square, so the kind is reported
   // and the group is kept with no symbol, which leaves the drawing open
   // rather than claiming the source asked for none.
   test('keeps a line-symbol group but reports the symbol it cannot spell', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<part-group type="start" number="1"><group-symbol>line</group-symbol></part-group>' +
           '<score-part id="P1"/><score-part id="P2"/>' +
@@ -391,14 +378,13 @@ describe('part groups', () => {
     expect(warnings).toEqual([
       expect.objectContaining({ code: 'unrepresentable:group-symbol', element: 'group-symbol' }),
     ])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // The square is the other one MNX cannot spell, and it is a different
   // symbol from the line: a source drawing one gets the same treatment, and
   // reporting only the line would leave the square drawn as none.
   test('keeps a square-symbol group but reports the symbol it cannot spell', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<part-group type="start" number="1"><group-symbol>square</group-symbol></part-group>' +
           '<score-part id="P1"/><score-part id="P2"/>' +
@@ -413,14 +399,13 @@ describe('part groups', () => {
     expect(warnings).toEqual([
       expect.objectContaining({ code: 'unrepresentable:group-symbol', element: 'group-symbol' }),
     ])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // An empty <group-symbol> states no symbol, which is what "none" states,
   // so it draws none and says nothing. Reading it as a symbol MusicXML does
   // not name would report a loss where the source asked for nothing.
   test('reads an empty group-symbol as no symbol, saying nothing', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<part-group type="start" number="1"><group-symbol></group-symbol></part-group>' +
           '<score-part id="P1"/><score-part id="P2"/>' +
@@ -433,7 +418,6 @@ describe('part groups', () => {
     if (group?.type !== 'group') throw new Error('expected a staff group')
     expect(group.symbol).toBe('noSymbol')
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A brace group holding exactly one multi-staff part restates the grand
@@ -444,7 +428,7 @@ describe('part groups', () => {
       '<part id="P1"><measure number="1">' +
       '<attributes><staves>2</staves></attributes>' +
       `${NOTE}</measure></part>`
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<part-group type="start" number="1"><group-symbol>brace</group-symbol></part-group>' +
           '<score-part id="P1"/>' +
@@ -465,7 +449,6 @@ describe('part groups', () => {
       },
     ])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // The fold is for a group holding that part alone. A second member makes
@@ -475,7 +458,7 @@ describe('part groups', () => {
       '<part id="P1"><measure number="1">' +
       '<attributes><staves>2</staves></attributes>' +
       `${NOTE}</measure></part>`
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<part-group type="start" number="1"><group-symbol>brace</group-symbol></part-group>' +
           '<score-part id="P1"/><score-part id="P2"/>' +
@@ -503,7 +486,6 @@ describe('part groups', () => {
       },
     ])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // What the source's group states wins over what the part implies; the
@@ -513,7 +495,7 @@ describe('part groups', () => {
       '<part id="P1"><measure number="1">' +
       '<attributes><staves>2</staves></attributes>' +
       `${NOTE}</measure></part>`
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<part-group type="start" number="1"><group-symbol>brace</group-symbol>' +
           '<group-name>Duo</group-name><group-barline>no</group-barline></part-group>' +
@@ -536,7 +518,6 @@ describe('part groups', () => {
       },
     ])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // The braced group stands in for the part, so it takes the part's name;
@@ -546,7 +527,7 @@ describe('part groups', () => {
       '<part id="P2"><measure number="1">' +
       '<attributes><staves>2</staves></attributes>' +
       `${NOTE}</measure></part>`
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
           '<score-part id="P1"><part-name>Voice</part-name></score-part>' +
@@ -567,7 +548,6 @@ describe('part groups', () => {
       ],
     })
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A braced grand staff is something the part list does not state:
@@ -579,7 +559,7 @@ describe('part groups', () => {
       '<part id="P2"><measure number="1">' +
       '<attributes><staves>2</staves></attributes>' +
       `${NOTE}</measure></part>`
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<score-part id="P1"><part-name>Voice</part-name></score-part>' +
           '<score-part id="P2"><part-name>Piano</part-name></score-part>',
@@ -608,26 +588,24 @@ describe('part groups', () => {
     expect(mnx.scores?.[0]?.layout).toBe('layout1')
     expect(mnx.parts.map((p) => p.id)).toEqual(['P1', 'P2'])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A layout of bare staves states nothing the part list does not, so a
   // score without groups gets none, and its parts stay unnamed by id.
   test('writes no layout and no part ids when the source draws no groups', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score('<score-part id="P1"/><score-part id="P2"/>', part('P1') + part('P2')),
     )
 
     expect('layouts' in mnx).toBe(false)
     expect(mnx.parts.every((p) => !('id' in p))).toBe(true)
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A staff pointing at a part the score does not hold would dangle, so the
   // listed-but-absent part is left out of the layout and reported.
   test('leaves a part the score never writes out of the layout', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
           '<score-part id="P1"/><score-part id="P2"/>' +
@@ -649,13 +627,12 @@ describe('part groups', () => {
         }) as unknown,
       }),
     ])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A group around nothing draws nothing, so it is left out; here that
   // leaves no group at all, and with it goes the layout.
   test('writes no layout when every group ends up empty', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
           '<part-group type="stop" number="1"/>' +
@@ -667,11 +644,10 @@ describe('part groups', () => {
     expect('layouts' in mnx).toBe(false)
     expect(mnx.parts.every((p) => !('id' in p))).toBe(true)
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('drops a group emptied by pruning but keeps the rest of the layout', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
           '<score-part id="P9"/>' +
@@ -696,11 +672,10 @@ describe('part groups', () => {
     expect(warnings).toEqual([
       expect.objectContaining({ code: 'unresolved:part-id', element: 'score-part' }),
     ])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('nests a group whose only member is another group', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
           '<part-group type="start" number="2"><group-symbol>brace</group-symbol></part-group>' +
@@ -717,13 +692,12 @@ describe('part groups', () => {
     expect(outer.content).toHaveLength(1)
     expect(outer.content[0]?.type).toBe('group')
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A part the list never mentions cannot be grouped, so the layout omits
   // it; the id is still written, like every part's once a layout exists.
   test('gives an unlisted part an id even though the layout omits it', () => {
-    const { mnx } = convertMusicXML(
+    const { mnx } = convertValid(
       score(
         '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
           '<score-part id="P1"/><score-part id="P2"/>' +
@@ -735,13 +709,12 @@ describe('part groups', () => {
     expect(mnx.parts.map((p) => p.id)).toEqual(['P1', 'P2', 'P3'])
     const layout = JSON.stringify(mnx.layouts)
     expect(layout).not.toContain('P3')
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // The gate on writing a layout is a surviving group, not the absence of
   // failures: a stop nothing opened is reported while the sound group stays.
   test('keeps the layout when one group survives an orphan stop', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<part-group type="stop" number="7"/>' +
           '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
@@ -755,7 +728,6 @@ describe('part groups', () => {
     expect(warnings).toEqual([
       expect.objectContaining({ code: 'unclosed:part-group', element: 'part-group' }),
     ])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // MusicXML's group-barline values in MNX's: "no" draws each staff its own
@@ -764,7 +736,7 @@ describe('part groups', () => {
     ['no', 'individual'],
     ['Mensurstrich', 'mensurstrich'],
   ])('carries a group-barline of %s as %s', (source, written) => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         `<part-group type="start" number="1"><group-barline>${source}</group-barline></part-group>` +
           '<score-part id="P1"/><score-part id="P2"/>' +
@@ -777,7 +749,6 @@ describe('part groups', () => {
     if (group?.type !== 'group') throw new Error('expected a staff group')
     expect(group.barlineStyle).toBe(written)
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // The type attribute is what pairs the two edges, so an edge without one
@@ -806,7 +777,7 @@ describe('part groups', () => {
   // The part list holds score parts and part groups. Anything else is not an
   // edge of a group: it is read by nothing and reported as a whole.
   test('reports a part-list child that is neither a score part nor a group', () => {
-    const { warnings } = convertMusicXML(score('<score-part id="P1"/><part-order/>', part('P1')))
+    const { warnings } = convertValid(score('<score-part id="P1"/><part-order/>', part('P1')))
 
     expect(warnings.map((one) => ({ code: one.code, element: one.element }))).toEqual([
       { code: 'unsupported:element', element: 'part-order' },
@@ -818,7 +789,7 @@ describe('part groups', () => {
   // is what says so. <group-time>, which draws one time signature across the
   // group's staves, is one of those.
   test('reports what a part group states beside its symbol, name and barline', () => {
-    const { warnings } = convertMusicXML(
+    const { warnings } = convertValid(
       score(
         '<part-group type="start" number="1"><group-symbol>bracket</group-symbol>' +
           '<group-time/></part-group>' +
@@ -835,7 +806,7 @@ describe('part groups', () => {
   // A value outside yes/no/Mensurstrich is invalid input, reported the same
   // way an unrecognized <bar-style> is.
   test('reports a group-barline value it does not recognize', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<part-group type="start" number="1"><group-barline>maybe</group-barline></part-group>' +
           '<score-part id="P1"/><score-part id="P2"/>' +
@@ -850,13 +821,12 @@ describe('part groups', () => {
     expect(warnings).toEqual([
       expect.objectContaining({ code: 'unsupported:element', element: 'group-barline' }),
     ])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A value that is not a symbol MusicXML names is invalid input, not a
   // symbol MNX lacks, and the two read differently in the loss report.
   test('reports a group-symbol value it does not recognize as invalid, not as a format limit', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<part-group type="start" number="1"><group-symbol>squiggle</group-symbol></part-group>' +
           '<score-part id="P1"/><score-part id="P2"/>' +
@@ -871,7 +841,6 @@ describe('part groups', () => {
     expect(warnings).toEqual([
       expect.objectContaining({ code: 'unsupported:element', element: 'group-symbol' }),
     ])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // Two groups can cross: the first stops while the second is still open,
@@ -880,7 +849,7 @@ describe('part groups', () => {
   // to the end of the part list instead, and the overlap is reported once,
   // as a format limit rather than a fault of the source.
   test('reports crossed group edges and runs the crossed group to the end', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
           '<score-part id="P1"/>' +
@@ -917,7 +886,6 @@ describe('part groups', () => {
         context: expect.objectContaining({ line: expect.any(Number) as unknown }),
       }),
     ])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 })
 
@@ -945,7 +913,7 @@ describe('a stop naming a number two open groups carry', () => {
   ].join('\n')
 
   test('crosses the innermost of the two, leaving the outer one unclosed', () => {
-    const { mnx, warnings } = convertMusicXML(CROSSED)
+    const { warnings } = convertValid(CROSSED)
 
     expect(warnings.map((warning) => [warning.code, warning.context.line])).toEqual([
       ['unrepresentable:part-group-overlap', 8],
@@ -953,6 +921,5 @@ describe('a stop naming a number two open groups carry', () => {
       // the stop crossed, and a crossed group is not reported as unclosed.
       ['unclosed:part-group', 2],
     ])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 })

@@ -3,7 +3,7 @@
 // of each of those choices.
 
 import { describe, expect, test } from 'vitest'
-import { schemaErrors } from '../../tests/support/schema.js'
+import { writeValid } from '../../tests/support/convert.js'
 import { fraction } from '../fraction.js'
 import type {
   Ending,
@@ -17,7 +17,6 @@ import type {
   Tuplet,
 } from '../model/score.js'
 import type { MNXEvent } from '../types/mnx.js'
-import { writeMnx } from './mnx.js'
 
 const WHOLE_C: Event = {
   kind: 'event',
@@ -98,7 +97,7 @@ function measureOf(...events: Event[]): Measure {
 }
 
 function firstEvent(score: Score) {
-  const item = writeMnx(score).parts[0]?.measures[0]?.sequences[0]?.content[0]
+  const item = writeValid(score).parts[0]?.measures[0]?.sequences[0]?.content[0]
   return item && 'duration' in item && !('type' in item) ? item : undefined
 }
 
@@ -190,12 +189,12 @@ test.each([
     ),
   ],
 ])('writes MNX the spec schema accepts for %s', (_name, score) => {
-  expect(schemaErrors(writeMnx(score))).toEqual([])
+  writeValid(score)
 })
 
 describe('the document', () => {
   test('declares the MNX version it emits', () => {
-    expect(writeMnx(scoreOf(measureOf(WHOLE_C))).mnx).toEqual({ version: 1 })
+    expect(writeValid(scoreOf(measureOf(WHOLE_C))).mnx).toEqual({ version: 1 })
   })
 })
 
@@ -211,14 +210,14 @@ describe('global measures', () => {
       },
     ])
 
-    expect(writeMnx(score).global.measures[0]).toEqual({
+    expect(writeValid(score).global.measures[0]).toEqual({
       key: { fifths: 2 },
       time: { count: 3, unit: 8 },
     })
   })
 
   test('leaves them out when the score states neither', () => {
-    expect(writeMnx(scoreOf(measureOf(WHOLE_C))).global.measures[0]).toEqual({})
+    expect(writeValid(scoreOf(measureOf(WHOLE_C))).global.measures[0]).toEqual({})
   })
 
   // Common time keeps its count and unit and adds the glyph to draw in their
@@ -233,10 +232,9 @@ describe('global measures', () => {
         ...NO_BARLINE,
       },
     ])
-    const written = writeMnx(score)
+    const written = writeValid(score)
 
     expect(written.global.measures[0]?.time).toEqual({ count: 4, unit: 4, display: 'common' })
-    expect(schemaErrors(written)).toEqual([])
   })
 
   test('writes a tempo at the start of the measure without a location', () => {
@@ -250,7 +248,7 @@ describe('global measures', () => {
       },
     ])
 
-    expect(writeMnx(score).global.measures[0]?.tempos).toEqual([
+    expect(writeValid(score).global.measures[0]?.tempos).toEqual([
       { value: { base: 'quarter' }, bpm: 100 },
     ])
   })
@@ -266,7 +264,9 @@ describe('global measures', () => {
       },
     ])
 
-    expect(writeMnx(score).global.measures[0]?.tempos?.[0]?.location).toEqual({ fraction: [1, 2] })
+    expect(writeValid(score).global.measures[0]?.tempos?.[0]?.location).toEqual({
+      fraction: [1, 2],
+    })
   })
 
   test('writes a dynamic that MNX schema accepts', () => {
@@ -286,7 +286,7 @@ describe('global measures', () => {
       ],
     }
 
-    expect(schemaErrors(writeMnx(scoreOf(measure)))).toEqual([])
+    writeValid(scoreOf(measure))
   })
 })
 
@@ -308,11 +308,11 @@ describe('parts', () => {
       ],
     }
 
-    expect(writeMnx(named).parts[0]?.name).toBe('Flute')
+    expect(writeValid(named).parts[0]?.name).toBe('Flute')
   })
 
   test('leaves the name out when the part is unnamed', () => {
-    expect(writeMnx(scoreOf(measureOf(WHOLE_C))).parts[0]).not.toHaveProperty('name')
+    expect(writeValid(scoreOf(measureOf(WHOLE_C))).parts[0]).not.toHaveProperty('name')
   })
 
   test('writes the short name when there is one', () => {
@@ -332,12 +332,12 @@ describe('parts', () => {
       ],
     }
 
-    expect(writeMnx(abbreviated).parts[0]?.shortName).toBe('Fl.')
-    expect(schemaErrors(writeMnx(abbreviated))).toEqual([])
+    expect(writeValid(abbreviated).parts[0]?.shortName).toBe('Fl.')
+    writeValid(abbreviated)
   })
 
   test('leaves the short name out when the part has none', () => {
-    expect(writeMnx(scoreOf(measureOf(WHOLE_C))).parts[0]).not.toHaveProperty('shortName')
+    expect(writeValid(scoreOf(measureOf(WHOLE_C))).parts[0]).not.toHaveProperty('shortName')
   })
 })
 
@@ -365,7 +365,7 @@ describe('measures', () => {
       ],
     })
 
-    expect(writeMnx(score).parts[0]?.measures[0]?.clefs).toEqual([
+    expect(writeValid(score).parts[0]?.measures[0]?.clefs).toEqual([
       { clef: { sign: 'F', staffPosition: 2 } },
     ])
   })
@@ -402,13 +402,12 @@ describe('measures', () => {
         { voice: undefined, staff: undefined, content: [WHOLE_C], fullMeasure: undefined },
       ],
     })
-    const written = writeMnx(score)
+    const written = writeValid(score)
 
     expect(written.parts[0]?.measures[0]?.clefs).toEqual([
       { clef: { sign: 'G', staffPosition: -2 } },
       { clef: { sign: 'F', staffPosition: 2 }, position: { fraction: [1, 2] } },
     ])
-    expect(schemaErrors(written)).toEqual([])
   })
 
   // A transposed clef states its octave, and asks for the number to be drawn,
@@ -435,16 +434,17 @@ describe('measures', () => {
         { voice: undefined, staff: undefined, content: [WHOLE_C], fullMeasure: undefined },
       ],
     })
-    const written = writeMnx(score)
+    const written = writeValid(score)
 
     expect(written.parts[0]?.measures[0]?.clefs).toEqual([
       { clef: { sign: 'G', staffPosition: -2, octave: -1, showOctave: true } },
     ])
-    expect(schemaErrors(written)).toEqual([])
   })
 
   test('leaves clefs out when the measure has none', () => {
-    expect(writeMnx(scoreOf(measureOf(WHOLE_C))).parts[0]?.measures[0]).not.toHaveProperty('clefs')
+    expect(writeValid(scoreOf(measureOf(WHOLE_C))).parts[0]?.measures[0]).not.toHaveProperty(
+      'clefs',
+    )
   })
 })
 
@@ -514,7 +514,7 @@ describe('ties and slurs', () => {
   }
 
   test('states the tie on the note it starts from', () => {
-    const written = writeMnx(joined()).parts[0]?.measures[0]?.sequences[0]?.content[0]
+    const written = writeValid(joined()).parts[0]?.measures[0]?.sequences[0]?.content[0]
 
     expect(written).toMatchObject({ notes: [{ ties: [{ target: 'note-target' }] }] })
   })
@@ -522,7 +522,7 @@ describe('ties and slurs', () => {
   // The target type is only written where it says something: a tie whose
   // target is the same voice's next note is the ordinary one.
   test('says nothing about the target type of a tie within one voice', () => {
-    const note = writeMnx(joined()).parts[0]?.measures[0]?.sequences[0]?.content[0]
+    const note = writeValid(joined()).parts[0]?.measures[0]?.sequences[0]?.content[0]
 
     expect(JSON.stringify(note)).not.toContain('targetType')
   })
@@ -544,17 +544,16 @@ describe('ties and slurs', () => {
         { voice: undefined, staff: undefined, content: [crossing, target], fullMeasure: undefined },
       ],
     })
-    const document = writeMnx(score)
+    const document = writeValid(score)
     const written = document.parts[0]?.measures[0]?.sequences[0]?.content[0]
 
     expect(written).toMatchObject({
       notes: [{ ties: [{ target: 'note-target', targetType: 'crossVoice' }] }],
     })
-    expect(schemaErrors(document)).toEqual([])
   })
 
   test('states the slur on the event it starts from, with its side', () => {
-    const written = writeMnx(joined()).parts[0]?.measures[0]?.sequences[0]?.content[0]
+    const written = writeValid(joined()).parts[0]?.measures[0]?.sequences[0]?.content[0]
 
     expect(written).toMatchObject({ slurs: [{ target: 'ev-target', side: 'up' }] })
   })
@@ -576,17 +575,16 @@ describe('ties and slurs', () => {
         { voice: undefined, staff: undefined, content: [bending, target], fullMeasure: undefined },
       ],
     })
-    const document = writeMnx(score)
+    const document = writeValid(score)
     const written = document.parts[0]?.measures[0]?.sequences[0]?.content[0]
 
     expect(written).toMatchObject({
       slurs: [{ target: 'ev-target', side: 'up', sideEnd: 'down' }],
     })
-    expect(schemaErrors(document)).toEqual([])
   })
 
   test('names only what something points at', () => {
-    const content = writeMnx(joined()).parts[0]?.measures[0]?.sequences[0]?.content ?? []
+    const content = writeValid(joined()).parts[0]?.measures[0]?.sequences[0]?.content ?? []
     const from = content[0] as MNXEvent
     const to = content[1] as MNXEvent
 
@@ -598,7 +596,7 @@ describe('ties and slurs', () => {
   })
 
   test('writes MNX the spec schema accepts', () => {
-    expect(schemaErrors(writeMnx(joined()))).toEqual([])
+    writeValid(joined())
   })
 })
 
@@ -621,12 +619,12 @@ describe('beams', () => {
   }
 
   test('states the beam over the measure rather than on the notes', () => {
-    expect(writeMnx(beamed()).parts[0]?.measures[0]?.beams).toEqual([{ events: ['ev1', 'ev2'] }])
+    expect(writeValid(beamed()).parts[0]?.measures[0]?.beams).toEqual([{ events: ['ev1', 'ev2'] }])
   })
 
   // A beam names its events, so those events have to be named in turn.
   test('names the events a beam refers to', () => {
-    const content = writeMnx(beamed()).parts[0]?.measures[0]?.sequences[0]?.content ?? []
+    const content = writeValid(beamed()).parts[0]?.measures[0]?.sequences[0]?.content ?? []
 
     expect((content[0] as MNXEvent).id).toBe('ev1')
     expect((content[1] as MNXEvent).id).toBe('ev2')
@@ -660,13 +658,13 @@ describe('beams', () => {
       ],
     })
 
-    expect(writeMnx(score).parts[0]?.measures[0]?.beams).toEqual([
+    expect(writeValid(score).parts[0]?.measures[0]?.beams).toEqual([
       { events: ['ev1', 'ev2'], beams: [{ events: ['ev1'], direction: 'right' }] },
     ])
   })
 
   test('writes MNX the spec schema accepts', () => {
-    expect(schemaErrors(writeMnx(beamed()))).toEqual([])
+    writeValid(beamed())
   })
 })
 
@@ -687,7 +685,7 @@ describe('voices and spaces', () => {
   }
 
   test('writes a space as a duration and a type, not as a note', () => {
-    const written = writeMnx(voicedScore(undefined, [gap, WHOLE_C]))
+    const written = writeValid(voicedScore(undefined, [gap, WHOLE_C]))
 
     expect(written.parts[0]?.measures[0]?.sequences[0]?.content[0]).toEqual({
       type: 'space',
@@ -696,19 +694,19 @@ describe('voices and spaces', () => {
   })
 
   test('names the voice when the source distinguished one', () => {
-    const written = writeMnx(voicedScore('2', [WHOLE_C]))
+    const written = writeValid(voicedScore('2', [WHOLE_C]))
 
     expect(written.parts[0]?.measures[0]?.sequences[0]?.voice).toBe('2')
   })
 
   test('leaves the voice out when the source never named one', () => {
-    const written = writeMnx(voicedScore(undefined, [WHOLE_C]))
+    const written = writeValid(voicedScore(undefined, [WHOLE_C]))
 
     expect(written.parts[0]?.measures[0]?.sequences[0]).not.toHaveProperty('voice')
   })
 
   test('writes MNX the spec schema accepts', () => {
-    expect(schemaErrors(writeMnx(voicedScore('2', [gap, WHOLE_C])))).toEqual([])
+    writeValid(voicedScore('2', [gap, WHOLE_C]))
   })
 })
 
@@ -763,7 +761,7 @@ describe('tuplets and grace groups', () => {
   }
 
   test('states what is played and the space it is played in', () => {
-    const written = writeMnx(itemScore(triplet))
+    const written = writeValid(itemScore(triplet))
 
     expect(written.parts[0]?.measures[0]?.sequences[0]?.content[0]).toMatchObject({
       type: 'tuplet',
@@ -782,7 +780,7 @@ describe('tuplets and grace groups', () => {
       graceType: undefined,
     }
 
-    expect(writeMnx(itemScore(group)).parts[0]?.measures[0]?.sequences[0]?.content[0]).toEqual({
+    expect(writeValid(itemScore(group)).parts[0]?.measures[0]?.sequences[0]?.content[0]).toEqual({
       type: 'grace',
       slash: false,
       content: [{ duration: { base: 'whole' }, notes: [{ pitch: { step: 'C', octave: 4 } }] }],
@@ -796,7 +794,7 @@ describe('tuplets and grace groups', () => {
       slashed: true,
       graceType: undefined,
     }
-    const written = writeMnx(itemScore(group))
+    const written = writeValid(itemScore(group))
 
     expect(written.parts[0]?.measures[0]?.sequences[0]?.content[0]).toHaveProperty('slash', true)
   })
@@ -808,17 +806,16 @@ describe('tuplets and grace groups', () => {
       slashed: false,
       graceType: 'stealPrevious',
     }
-    const written = writeMnx(itemScore(group))
+    const written = writeValid(itemScore(group))
 
     expect(written.parts[0]?.measures[0]?.sequences[0]?.content[0]).toHaveProperty(
       'graceType',
       'stealPrevious',
     )
-    expect(schemaErrors(written)).toEqual([])
   })
 
   test('writes a two-note tremolo as the pair and the space it fills', () => {
-    const written = writeMnx(itemScore(tremolo))
+    const written = writeValid(itemScore(tremolo))
 
     expect(written.parts[0]?.measures[0]?.sequences[0]?.content[0]).toMatchObject({
       type: 'tremolo',
@@ -841,7 +838,7 @@ describe('tuplets and grace groups', () => {
     ],
     ['a two-note tremolo', tremolo],
   ])('writes MNX the spec schema accepts for %s', (_name, item) => {
-    expect(schemaErrors(writeMnx(itemScore(item)))).toEqual([])
+    writeValid(itemScore(item))
   })
 })
 
@@ -860,7 +857,7 @@ describe('full-measure rests', () => {
   }
 
   test('states the rest on the sequence, which then holds no events', () => {
-    const written = writeMnx(
+    const written = writeValid(
       restingScore({ visualDuration: undefined, fermata: undefined, staffPosition: undefined }),
     )
 
@@ -868,7 +865,7 @@ describe('full-measure rests', () => {
   })
 
   test('carries the drawn value when the source gave one', () => {
-    const written = writeMnx(
+    const written = writeValid(
       restingScore({
         visualDuration: { base: 'whole', dots: 0 },
         fermata: undefined,
@@ -882,13 +879,9 @@ describe('full-measure rests', () => {
   })
 
   test('writes MNX the spec schema accepts', () => {
-    expect(
-      schemaErrors(
-        writeMnx(
-          restingScore({ visualDuration: undefined, fermata: undefined, staffPosition: undefined }),
-        ),
-      ),
-    ).toEqual([])
+    writeValid(
+      restingScore({ visualDuration: undefined, fermata: undefined, staffPosition: undefined }),
+    )
   })
 })
 
@@ -969,8 +962,8 @@ describe('endings', () => {
         ending,
       },
     ])
-    expect(schemaErrors(writeMnx(score))).toEqual([])
-    return writeMnx(score).global.measures[0]?.ending
+    writeValid(score)
+    return writeValid(score).global.measures[0]?.ending
   }
 
   test('writes the times where the bracket names any', () => {
@@ -1018,7 +1011,7 @@ describe('fermatas', () => {
       staffPosition: undefined,
     }
     const score = scoreOf(measureOf(event))
-    expect(schemaErrors(writeMnx(score))).toEqual([])
+    writeValid(score)
     return firstEvent(score)?.fermata
   }
 
@@ -1072,7 +1065,7 @@ describe('event markings', () => {
 
   function markingsOf(markings: Event['markings']) {
     const score = scoreOf(measureOf(eventWith(markings)))
-    expect(schemaErrors(writeMnx(score))).toEqual([])
+    writeValid(score)
     return firstEvent(score)?.markings
   }
 
@@ -1143,7 +1136,7 @@ describe('event markings', () => {
   // writer carrying two of one kind and there is nothing here to resolve.
   test('writes no markings at all for an event carrying none', () => {
     const score = scoreOf(measureOf(eventWith({})))
-    expect(schemaErrors(writeMnx(score))).toEqual([])
+    writeValid(score)
     expect(firstEvent(score)).not.toHaveProperty('markings')
   })
 
@@ -1191,7 +1184,7 @@ describe('event lyrics', () => {
       ),
     )
 
-    expect(schemaErrors(writeMnx(score))).toEqual([])
+    writeValid(score)
     expect(firstEvent(score)?.lyrics).toEqual({
       lines: { '1': { text: 'Are' }, '2': { text: 'Am', type: 'start' } },
     })
@@ -1200,7 +1193,7 @@ describe('event lyrics', () => {
   test('leaves the key out altogether for an event that sings nothing', () => {
     const score = scoreOf(measureOf(singing(new Map())))
 
-    expect(schemaErrors(writeMnx(score))).toEqual([])
+    writeValid(score)
     expect(firstEvent(score)).not.toHaveProperty('lyrics')
   })
 })

@@ -4,13 +4,12 @@
 // cover the translation between the two.
 
 import { describe, expect, test } from 'vitest'
+import { convertValid } from '../../tests/support/convert.js'
 import { MusicXMLError } from '../errors.js'
 import { fraction } from '../fraction.js'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
-import { convertMusicXML } from '../index.js'
-import { schemaErrors } from '../../tests/support/schema.js'
 
 const DIVISIONS = '<attributes><divisions>4</divisions></attributes>'
 
@@ -327,9 +326,7 @@ describe('a grace note stating no <type>', () => {
   })
 
   test('converts to MNX the schema accepts', () => {
-    const { mnx } = convertMusicXML(measure(graceNote() + note('C', 1)))
-
-    expect(schemaErrors(mnx)).toEqual([])
+    convertValid(measure(graceNote() + note('C', 1)))
   })
 })
 
@@ -1019,11 +1016,9 @@ describe('the measure cursor', () => {
   })
 
   test('converts a laid-over voice to MNX the schema accepts', () => {
-    const { mnx } = convertMusicXML(
+    convertValid(
       measure(note('C', 2, '1') + '<backup><duration>4</duration></backup>' + note('E', 1, '1')),
     )
-
-    expect(schemaErrors(mnx)).toEqual([])
   })
 })
 

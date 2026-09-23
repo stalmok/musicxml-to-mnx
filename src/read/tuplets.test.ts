@@ -4,14 +4,13 @@
 // wraps the notes in one object carrying the ratio.
 
 import { describe, expect, test } from 'vitest'
+import { convertValid } from '../../tests/support/convert.js'
 import { MusicXMLError } from '../errors.js'
 import { fraction } from '../fraction.js'
 import type { SequenceItem } from '../model/score.js'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
-import { convertMusicXML } from '../index.js'
-import { schemaErrors } from '../../tests/support/schema.js'
 
 const DIVISIONS = '<attributes><divisions>12</divisions></attributes>'
 
@@ -211,24 +210,22 @@ describe('tuplet display', () => {
       '<note><pitch><step>E</step><octave>4</octave></pitch><duration>4</duration><type>eighth</type>' +
       '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>' +
       '<notations><tuplet type="stop" placement="above"/></notations></note>'
-    const { mnx, warnings } = convertMusicXML(measure(placed))
+    const { mnx, warnings } = convertValid(measure(placed))
     const item = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
     if (!item || !('type' in item) || item.type !== 'tuplet') throw new Error('expected a tuplet')
 
     expect(item.orient).toBe('above')
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('writes the display onto schema-valid MNX', () => {
-    const { mnx } = convertMusicXML(measure(displayed))
+    const { mnx } = convertValid(measure(displayed))
     const item = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
     if (!item || !('type' in item) || item.type !== 'tuplet') throw new Error('expected a tuplet')
 
     expect(item.bracket).toBe('no')
     expect(item.showNumber).toBe('noNumber')
     expect(item.showValue).toBe('both')
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // Two tuplets may start on the same note, told apart by number, and each
@@ -262,7 +259,7 @@ describe('tuplet display', () => {
       outerNote('G', '<tuplet type="stop" number="1"/>') +
       '</measure></part></score-partwise>'
 
-    const { mnx } = convertMusicXML(source)
+    const { mnx } = convertValid(source)
     const outer = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
     if (!outer || !('type' in outer) || outer.type !== 'tuplet')
       throw new Error('expected a tuplet')
@@ -276,7 +273,6 @@ describe('tuplet display', () => {
     expect(inner.bracket).toBe('no')
     expect(inner.showNumber).toBe('noNumber')
     expect(inner.orient).toBe('below')
-    expect(schemaErrors(mnx)).toEqual([])
   })
 })
 
@@ -325,7 +321,7 @@ describe('tuplet ratios stated on the start marker', () => {
     '</measure></part></score-partwise>'
 
   test('states each of two tuplets starting on the same note as its own ratio', () => {
-    const { mnx, warnings } = convertMusicXML(doubleStart)
+    const { mnx, warnings } = convertValid(doubleStart)
     const outer = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
     if (!outer || !('type' in outer) || outer.type !== 'tuplet')
       throw new Error('expected a tuplet')
@@ -342,7 +338,6 @@ describe('tuplet ratios stated on the start marker', () => {
         (w) => w.code === 'inconsistent:tuplet' || w.code === 'inconsistent:duration',
       ),
     ).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // One marker is enough: the other level's share is what remains of the
@@ -508,7 +503,7 @@ describe('crossing tuplet numbers', () => {
     '</measure></part></score-partwise>'
 
   test('reports a stop naming a tuplet that is not the innermost open one', () => {
-    const { mnx, warnings } = convertMusicXML(crossed)
+    const { mnx, warnings } = convertValid(crossed)
 
     expect(warnings.map((w) => ({ code: w.code, element: w.element }))).toEqual([
       { code: 'unrepresentable:tuplet-crossing', element: 'tuplet' },
@@ -523,7 +518,6 @@ describe('crossing tuplet numbers', () => {
       throw new Error('expected a tuplet')
     const inner = outer.content[0]
     expect(inner && 'type' in inner && inner.type).toBe('tuplet')
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // Nested tuplets may end on the same note, and MusicXML does not constrain
@@ -541,7 +535,7 @@ describe('crossing tuplet numbers', () => {
       note('E', 2, 9, 4) +
       note('F', 2, 9, 4, stops) +
       '</measure></part></score-partwise>'
-    const { warnings } = convertMusicXML(nested)
+    const { warnings } = convertValid(nested)
 
     expect(warnings).toEqual([])
   })
@@ -1142,14 +1136,13 @@ describe('tuplets', () => {
   })
 
   test('writes a bracket cut at the barline into legal MNX', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { warnings } = convertValid(
       measures(
         DIVISIONS + bracketedNote('C', 'start') + bracketedNote('D'),
         bracketedNote('E', 'stop'),
       ),
     )
 
-    expect(schemaErrors(mnx)).toEqual([])
     expect(warnings.map((w) => w.code)).toEqual([
       'missing:time-modification',
       'unrepresentable:tuplet-span',
@@ -1186,7 +1179,7 @@ describe('tuplets', () => {
       '<note><grace/><pitch><step>G</step><octave>4</octave></pitch><type>eighth</type>' +
       '<notations><tuplet type="stop"/></notations></note>'
 
-    expect(schemaErrors(convertMusicXML(measure(graceStop + bracketedNote('C'))).mnx)).toEqual([])
+    convertValid(measure(graceStop + bracketedNote('C')))
   })
 
   // A grace note takes none of the measure's time, so its ratio says nothing
@@ -1538,9 +1531,7 @@ describe('a bracket the source states no ratio for', () => {
   })
 
   test('writes MNX the spec schema accepts for one', () => {
-    const { mnx } = convertMusicXML(measure(bare('C', 4, 'start') + bare('D', 4, 'stop')))
-
-    expect(schemaErrors(mnx)).toEqual([])
+    convertValid(measure(bare('C', 4, 'start') + bare('D', 4, 'stop')))
   })
 
   // Nothing says how one ratio would divide between two brackets, so the
@@ -1744,7 +1735,7 @@ describe('a bracket rewritten around a skip and a bracket rewritten too', () => 
   })
 
   test('leaves output the schema takes', () => {
-    expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
+    convertValid(source)
   })
 
   // The same reading the skipless bracket gives: three sixteenths in the time
@@ -2059,9 +2050,7 @@ describe('a note inside a tuplet stating no <type>', () => {
         typeless('D', 4) +
         tupletNote('E', 4, 'eighth', 'stop'),
     )
-    const { mnx } = convertMusicXML(source)
-
-    expect(schemaErrors(mnx)).toEqual([])
+    convertValid(source)
   })
 })
 
@@ -2312,7 +2301,7 @@ describe('a tuplet marker on a chord member', () => {
   // is validated rather than only compared.
   test('writes the bracket that is left onto schema-valid MNX', () => {
     const stops = '<tuplet type="stop" number="2"/><tuplet type="stop" number="1"/>'
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       measure(
         tupletNote('C', 4, 'eighth', 'start') +
           tupletNote('D', 4, 'eighth') +
@@ -2327,7 +2316,6 @@ describe('a tuplet marker on a chord member', () => {
 
     expect(outer && 'type' in outer && outer.type).toBe('tuplet')
     expect(warnings.map((w) => w.code)).toEqual(['unsupported:element'])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A source that never nests tuplets numbers every one of them 1, so a
@@ -2401,12 +2389,11 @@ describe('grace notes', () => {
   // document states that: the schema declares no default for slash, so an
   // absent one is unspecified rather than false.
   test('converts a bare grace element to a group stating slash false', () => {
-    const { mnx, warnings } = convertMusicXML(measure(grace('B') + REAL))
+    const { mnx, warnings } = convertValid(measure(grace('B') + REAL))
     const item = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
 
     expect(item).toMatchObject({ type: 'grace', slash: false })
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('marks the group as slashed even when the slash is on a later note', () => {
@@ -2472,13 +2459,12 @@ describe('grace notes', () => {
 
   // The note after the bracket was never inside it, and stays outside it.
   test('leaves the note after such a bracket out of it', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       measure(graceMarked('B', 'start') + graceMarked('C', 'stop') + REAL),
     )
     const items = mnx.parts[0]?.measures?.[0]?.sequences?.[0]?.content
 
     expect(items?.map((item) => item.type)).toEqual(['grace', undefined])
-    expect(schemaErrors(mnx)).toEqual([])
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-untimed'])
   })
 
@@ -3192,7 +3178,7 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
     expect(content).toHaveLength(1)
     expect(content?.[0]?.kind === 'tuplet' && content[0].content).toHaveLength(2)
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-ratio'])
-    expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
+    convertValid(source)
   })
 
   // The refusal a grace note's ratio earns is the same inside such a run as
@@ -3358,9 +3344,7 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
 
   test('converts to MNX the schema accepts', () => {
     const notes = ['C', 'D', 'E', 'F', 'G', 'A'].map((step) => rated(step, 4, 'eighth')).join('')
-    const { mnx } = convertMusicXML(measure(notes))
-
-    expect(schemaErrors(mnx)).toEqual([])
+    convertValid(measure(notes))
   })
 })
 
@@ -3504,11 +3488,8 @@ describe('a tuplet opening on the note that starts a tremolo', () => {
   })
 
   test('writes legal MNX for it', () => {
-    const { mnx, warnings } = convertMusicXML(
-      measure(tremoloPair('<tuplet type="start"/>') + closing),
-    )
+    const { warnings } = convertValid(measure(tremoloPair('<tuplet type="start"/>') + closing))
 
-    expect(schemaErrors(mnx)).toEqual([])
     expect(warnings).toEqual([])
   })
 })
@@ -3602,9 +3583,8 @@ describe('a tuplet stated as a ratio with no bracket, opening on a tremolo', () 
   })
 
   test('writes legal MNX for it', () => {
-    const { mnx, warnings } = convertMusicXML(measure(triplet))
+    const { warnings } = convertValid(measure(triplet))
 
-    expect(schemaErrors(mnx)).toEqual([])
     expect(warnings).toEqual([])
   })
 })
@@ -3642,9 +3622,7 @@ describe('a tuplet in a line laid over its voice', () => {
   })
 
   test('converts to MNX the schema accepts', () => {
-    const { mnx } = convertMusicXML(measure(laidOver))
-
-    expect(schemaErrors(mnx)).toEqual([])
+    convertValid(measure(laidOver))
   })
 })
 
@@ -3695,7 +3673,7 @@ describe('a bracket no pair of note values counts at all', () => {
   })
 
   test('leaves output the schema takes', () => {
-    expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
+    convertValid(source)
   })
 
   test('leaves what stands beside it where it stands', () => {
@@ -3774,7 +3752,7 @@ describe('a bracket dropped inside one whose ratio counted it', () => {
   })
 
   test('leaves output the schema takes', () => {
-    expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
+    convertValid(source)
   })
 })
 
@@ -3816,7 +3794,7 @@ describe('a bracket whose notes take a time its ratio does not give them', () =>
   })
 
   test('leaves output the schema takes', () => {
-    expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
+    convertValid(source)
   })
 })
 
@@ -4264,7 +4242,7 @@ describe('a bracket the silence after it completes', () => {
       measures(TIMED + shortQuarter + '<forward><duration>4</duration></forward>' + grace),
     ],
   ])('leaves output the schema takes: a bracket %s', (_, source) => {
-    expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
+    convertValid(source)
   })
 })
 
@@ -4304,7 +4282,7 @@ describe('a run of notes stating ratios that count differently', () => {
   })
 
   test('leaves output the schema takes', () => {
-    expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
+    convertValid(source)
   })
 })
 
@@ -4419,7 +4397,7 @@ describe('a bracket completed in a value narrower than its ratio states', () => 
     ],
     ['by the gap before it', lead],
   ])('leaves output the schema takes: a bracket completed %s', (_, body) => {
-    expect(schemaErrors(convertMusicXML(measures(TIMED + body)).mnx)).toEqual([])
+    convertValid(measures(TIMED + body))
   })
 })
 
@@ -4629,7 +4607,7 @@ describe('a bracket completed by the run of notes after it', () => {
   test('leaves output the schema takes', () => {
     const source = measures(TIMED + plainRest(24, 'half') + stoppedEarly + tripletNote('D'))
 
-    expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
+    convertValid(source)
   })
 })
 
@@ -4730,7 +4708,7 @@ describe('a bracket completed by the rest written after it', () => {
   test('leaves output the schema takes', () => {
     const source = measures(TIMED + shortQuarter + tripletRest + quarter)
 
-    expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
+    convertValid(source)
   })
 })
 
@@ -4795,7 +4773,7 @@ describe('a short bracket in a pickup measure', () => {
       alone +
       '</measure></part></score-partwise>'
 
-    expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
+    convertValid(source)
   })
 })
 
@@ -4970,6 +4948,6 @@ describe('a bracket the silence before it completes', () => {
     ],
     ['after a grace note opening the measure', grace + alone('C', 8, 'quarter')],
   ])('leaves output the schema takes: a bracket completed %s', (_, body) => {
-    expect(schemaErrors(convertMusicXML(measures(TIMED + body)).mnx)).toEqual([])
+    convertValid(measures(TIMED + body))
   })
 })

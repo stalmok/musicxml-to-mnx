@@ -4,6 +4,7 @@
 // other way round. These cover the arithmetic between the two.
 
 import { describe, expect, test } from 'vitest'
+import { convertValid } from '../../tests/support/convert.js'
 import {
   concertFifths,
   keyFifthsFlipAt,
@@ -14,8 +15,6 @@ import type { TranspositionInterval } from '../model/score.js'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
-import { convertMusicXML } from '../index.js'
-import { schemaErrors } from '../../tests/support/schema.js'
 
 // The spec's own two examples, as MNX states them.
 const B_FLAT_CLARINET: TranspositionInterval = { staffDistance: 1, halfSteps: 2 }
@@ -282,10 +281,9 @@ describe('a part written for a transposing instrument', () => {
   })
 
   test('converts to MNX the schema accepts', () => {
-    const { mnx, warnings } = convertMusicXML(inPart(IN_B_FLAT, NOTE))
+    const { mnx, warnings } = convertValid(inPart(IN_B_FLAT, NOTE))
 
     expect(mnx.parts[0]?.transposition).toEqual({ interval: { staffDistance: 1, halfSteps: 2 } })
-    expect(schemaErrors(mnx)).toEqual([])
     expect(warnings).toEqual([])
   })
 })

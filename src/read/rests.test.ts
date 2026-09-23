@@ -4,11 +4,11 @@
 // clef itself is placed by.
 
 import { describe, expect, test } from 'vitest'
+import { convertValid } from '../../tests/support/convert.js'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
 import { convertMusicXML } from '../index.js'
-import { schemaErrors } from '../../tests/support/schema.js'
 
 const TREBLE = '<clef><sign>G</sign><line>2</line></clef>'
 
@@ -118,11 +118,10 @@ describe('a rest placed on the staff', () => {
   })
 
   test('writes a rest position the spec schema accepts', () => {
-    const { mnx } = convertMusicXML(inMeasure(displayRest('G', 4)))
+    const { mnx } = convertValid(inMeasure(displayRest('G', 4)))
     const event = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
 
     expect(event).toMatchObject({ rest: { staffPosition: -2 } })
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A rest that fills its measure becomes MNX's full-measure rest, which
@@ -142,7 +141,7 @@ describe('a rest placed on the staff', () => {
   })
 
   test('writes a full-measure rest height the spec schema accepts', () => {
-    const { mnx } = convertMusicXML(
+    const { mnx } = convertValid(
       inMeasure(
         '<note><rest measure="yes"><display-step>G</display-step>' +
           '<display-octave>4</display-octave></rest><duration>4</duration></note>',
@@ -150,7 +149,6 @@ describe('a rest placed on the staff', () => {
     )
 
     expect(mnx.parts[0]?.measures[0]?.sequences[0]?.fullMeasure).toEqual({ staffPosition: -2 })
-    expect(schemaErrors(mnx)).toEqual([])
   })
 })
 
@@ -160,7 +158,7 @@ describe('a rest placed on the staff', () => {
 // vendored corpus writes 11,082 of them, and dropping any would drop a rest.
 describe('a voice holding only a rest that fills its measure', () => {
   test('writes the rest on a sequence with no content', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       inMeasure('<note><rest measure="yes"/><duration>4</duration><voice>1</voice></note>'),
     )
 
@@ -168,14 +166,13 @@ describe('a voice holding only a rest that fills its measure', () => {
       { voice: '1', content: [], fullMeasure: {} },
     ])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // The resting voice sits beside a sounding one, which is where leaving the
   // sequence out would be visible: the measure would say the voice is not
   // there rather than that it rests through.
   test('keeps the resting voice beside a sounding one', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       inMeasure(
         '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
           '<type>quarter</type><voice>1</voice></note>' +
@@ -195,14 +192,13 @@ describe('a voice holding only a rest that fills its measure', () => {
       ['2', 0, true],
     ])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // MNX's rest on the sequence carries no marking, and a rest event does. A
   // rest a note value can write stays an event to keep the mark, as it does
   // for a lyric.
   test('keeps a marked rest an event where a note value can write it', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       inMeasure(
         '<note><rest measure="yes"/><duration>4</duration><voice>1</voice>' +
           '<notations><articulations><accent/></articulations></notations></note>',
@@ -215,11 +211,10 @@ describe('a voice holding only a rest that fills its measure', () => {
       expect.objectContaining({ duration: { base: 'quarter' }, markings: { accent: {} } }),
     ])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('keeps both marks of a rest with a fermata and a staccato', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       inMeasure(
         '<note><rest measure="yes"/><duration>4</duration><voice>1</voice>' +
           '<notations><fermata/><articulations><staccato/></articulations></notations></note>',
@@ -232,11 +227,10 @@ describe('a voice holding only a rest that fills its measure', () => {
       expect.objectContaining({ markings: { staccato: {} }, fermata: {} }),
     ])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('keeps a marked rest an event beside another voice', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       inMeasure(
         '<note><pitch><step>C</step><octave>5</octave></pitch><duration>4</duration>' +
           '<type>quarter</type><voice>1</voice></note>' +
@@ -251,7 +245,6 @@ describe('a voice holding only a rest that fills its measure', () => {
     expect(sequence?.fullMeasure).toBeUndefined()
     expect(sequence?.content).toEqual([expect.objectContaining({ markings: { accent: {} } })])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A mark with no MNX marking leaves nothing for the event to keep, so the
@@ -260,7 +253,7 @@ describe('a voice holding only a rest that fills its measure', () => {
     ['fingering', '<technical><fingering>1</fingering></technical>'],
     ['tremolo', '<ornaments><tremolo type="unmeasured">3</tremolo></ornaments>'],
   ])('reports a %s on a rest left on the sequence', (element, notations) => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       inMeasure(
         '<note><rest measure="yes"/><duration>4</duration><voice>1</voice>' +
           `<notations>${notations}</notations></note>`,
@@ -269,7 +262,6 @@ describe('a voice holding only a rest that fills its measure', () => {
 
     expect(mnx.parts[0]?.measures[0]?.sequences[0]?.fullMeasure).toEqual({})
     expect(warnings.map((warning) => warning.element)).toEqual([element])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // MNX's rest on the sequence carries no stem either, so a stem keeps the
@@ -278,7 +270,7 @@ describe('a voice holding only a rest that fills its measure', () => {
     ['states no value', ''],
     ['states its value', '<type>quarter</type>'],
   ])('keeps a stemmed rest an event where the source %s', (_, type) => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       inMeasure(
         `<note><rest measure="yes"/><duration>4</duration><voice>1</voice>${type}` +
           '<stem>down</stem></note>',
@@ -291,11 +283,10 @@ describe('a voice holding only a rest that fills its measure', () => {
       { duration: { base: 'quarter' }, rest: {}, stemDirection: 'down' },
     ])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('leaves a rest under a beam on the sequence', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       inMeasure(
         '<note><rest measure="yes"/><duration>4</duration><voice>1</voice>' +
           '<beam number="1">begin</beam></note>',
@@ -304,11 +295,10 @@ describe('a voice holding only a rest that fills its measure', () => {
 
     expect(mnx.parts[0]?.measures[0]?.sequences[0]?.fullMeasure).toEqual({})
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('reports a stem of none once on a rest a marking keeps an event', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       inMeasure(
         '<note><rest measure="yes"/><duration>4</duration><voice>1</voice><stem>none</stem>' +
           '<notations><articulations><accent/></articulations></notations></note>',
@@ -319,11 +309,10 @@ describe('a voice holding only a rest that fills its measure', () => {
       { duration: { base: 'quarter' }, rest: {}, markings: { accent: {} } },
     ])
     expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:stem-direction'])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('reports a stem of none on a rest left on the sequence', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       inMeasure(
         '<note><rest measure="yes"/><duration>4</duration><voice>1</voice>' +
           '<stem>none</stem></note>',
@@ -332,11 +321,10 @@ describe('a voice holding only a rest that fills its measure', () => {
 
     expect(mnx.parts[0]?.measures[0]?.sequences[0]?.fullMeasure).toEqual({})
     expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:stem-direction'])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('reports the stem of a rest no note value can write', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       '<score-partwise><part id="P1"><measure number="1">' +
         '<attributes><divisions>4</divisions><time><beats>5</beats><beat-type>4</beat-type>' +
         '</time></attributes>' +
@@ -349,11 +337,10 @@ describe('a voice holding only a rest that fills its measure', () => {
     expect(warnings.map((warning) => [warning.code, warning.element])).toEqual([
       ['unsupported:element', 'stem'],
     ])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('reports the marking of a rest no note value can write', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       '<score-partwise><part id="P1"><measure number="1">' +
         '<attributes><divisions>4</divisions><time><beats>5</beats><beat-type>4</beat-type>' +
         '</time></attributes>' +
@@ -366,7 +353,6 @@ describe('a voice holding only a rest that fills its measure', () => {
     expect(warnings.map((warning) => [warning.code, warning.element])).toEqual([
       ['unsupported:element', 'articulations'],
     ])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 })
 
@@ -400,14 +386,13 @@ describe('a rest filling the measure kept as an event', () => {
   const shortRest = '<note><rest/><duration>2</duration><voice>1</voice><type>eighth</type></note>'
 
   test.each(keptRests)('drops an extra rest after a rest with %s, reporting it', (_, rest) => {
-    const { mnx, warnings } = convertMusicXML(inMeasure(rest + shortRest))
+    const { mnx, warnings } = convertValid(inMeasure(rest + shortRest))
     const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
 
     expect(sequence?.content.flatMap((item) => ('type' in item ? [] : [item.duration]))).toEqual([
       { base: 'quarter' },
     ])
     expect(warnings.map((warning) => warning.code)).toEqual(['redundant:rest'])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   const refusal = (source: string) => {
@@ -446,7 +431,7 @@ describe('a rest filling the measure kept as an event', () => {
   // Notes laid over the rest after a <backup> are a second line of the voice,
   // as they are over the sequence's own rest.
   test.each(keptRests)('lays notes over a rest with %s into a line of their own', (_, rest) => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       inMeasure(
         rest +
           '<backup><duration>4</duration></backup>' +
@@ -461,13 +446,12 @@ describe('a rest filling the measure kept as an event', () => {
       ),
     ).toEqual([[true], [false]])
     expect(warnings.map((warning) => warning.code)).toEqual(['inconsistent:voice'])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A rest that states its value is weighed once the voice is whole, so notes
   // after it make it an ordinary rest rather than the measure's.
   test('converts notes after a stemmed rest that states its value', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       inMeasure(
         '<note><rest measure="yes"/><duration>4</duration><voice>1</voice>' +
           '<type>quarter</type><stem>up</stem></note>' +
@@ -482,7 +466,6 @@ describe('a rest filling the measure kept as an event', () => {
       ),
     ).toEqual([{ base: 'quarter' }, { base: 'eighth' }])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A second rest filling the measure is refused whatever it carries, as it
@@ -508,7 +491,7 @@ describe('a rest filling the measure kept as an event', () => {
 // rest itself.
 describe('a measure rest written after a backup past the measure start', () => {
   test('reports the reach and writes the rest at the measure start', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       inMeasure(
         '<backup><duration>8</duration></backup>' +
           '<note><rest measure="yes"/><duration>4</duration><voice>1</voice></note>',
@@ -517,7 +500,6 @@ describe('a measure rest written after a backup past the measure start', () => {
 
     expect(warnings.map((warning) => warning.code)).toEqual(['inconsistent:backup'])
     expect(mnx.parts[0]?.measures[0]?.sequences[0]?.fullMeasure).toEqual({})
-    expect(schemaErrors(mnx)).toEqual([])
   })
 })
 
@@ -536,7 +518,7 @@ describe('a rest filling a measure a grace note leads into', () => {
   const measureRest = '<note><rest measure="yes"/><duration>4</duration><voice>1</voice></note>'
 
   test('writes the rest as an event beside the grace notes', () => {
-    const { mnx, warnings } = convertMusicXML(inMeasure(grace + measureRest))
+    const { mnx, warnings } = convertValid(inMeasure(grace + measureRest))
     const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
 
     expect(sequence?.content.map((item) => ('type' in item ? item.type : 'event'))).toEqual([
@@ -545,11 +527,10 @@ describe('a rest filling a measure a grace note leads into', () => {
     ])
     expect(sequence?.fullMeasure).toBeUndefined()
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('states the rest with the value its length is written as', () => {
-    const { mnx } = convertMusicXML(inMeasure(grace + measureRest))
+    const { mnx } = convertValid(inMeasure(grace + measureRest))
     const event = mnx.parts[0]?.measures[0]?.sequences[0]?.content[1]
 
     expect(event && !('type' in event) && event.duration).toEqual({ base: 'quarter' })
@@ -559,7 +540,7 @@ describe('a rest filling a measure a grace note leads into', () => {
   // Nothing is different where the voice holds no grace note: the rest is
   // still the sequence's own.
   test('leaves a rest with no grace note before it on the sequence', () => {
-    const { mnx } = convertMusicXML(inMeasure(measureRest))
+    const { mnx } = convertValid(inMeasure(measureRest))
 
     expect(mnx.parts[0]?.measures[0]?.sequences[0]?.fullMeasure).toEqual({})
   })
@@ -570,7 +551,7 @@ describe('a rest filling a measure a grace note leads into', () => {
   // read, so a rest already on the sequence goes back to being the event its
   // length is written as.
   test('writes the rest as an event where the grace notes follow it', () => {
-    const { mnx, warnings } = convertMusicXML(inMeasure(measureRest + grace))
+    const { mnx, warnings } = convertValid(inMeasure(measureRest + grace))
     const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
 
     expect(sequence?.content.map((item) => ('type' in item ? item.type : 'event'))).toEqual([
@@ -579,11 +560,10 @@ describe('a rest filling a measure a grace note leads into', () => {
     ])
     expect(sequence?.fullMeasure).toBeUndefined()
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('states the rest that follows the grace notes with its own value', () => {
-    const { mnx } = convertMusicXML(inMeasure(measureRest + grace))
+    const { mnx } = convertValid(inMeasure(measureRest + grace))
     const event = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
 
     expect(event && !('type' in event) && event.duration).toEqual({ base: 'quarter' })
@@ -595,7 +575,7 @@ describe('a rest filling a measure a grace note leads into', () => {
   // and what follows there is a second line of the voice rather than music
   // written after the rest.
   test('writes the restored rest where it stands', () => {
-    const { mnx } = convertMusicXML(
+    const { mnx } = convertValid(
       inMeasure(
         measureRest +
           '<backup><duration>4</duration></backup>' +
@@ -610,14 +590,13 @@ describe('a rest filling a measure a grace note leads into', () => {
         sequence.content.map((item) => ('type' in item ? item.type : 'event')),
       ),
     ).toEqual([['event'], ['grace', 'event']])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A voice that rests one line of the measure can sound another. The rest
   // is the first line's, so a grace note in the line the voice is sounding
   // stands there and leaves the rest where it is.
   test('leaves a measure rest in another line of the voice alone', () => {
-    const { mnx } = convertMusicXML(
+    const { mnx } = convertValid(
       inMeasure(
         measureRest +
           '<backup><duration>4</duration></backup>' +
@@ -636,7 +615,6 @@ describe('a rest filling a measure a grace note leads into', () => {
       [[], true],
       [['event', 'grace'], false],
     ])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A bracket the grace note itself opens starts at the grace note, so the
@@ -644,7 +622,7 @@ describe('a rest filling a measure a grace note leads into', () => {
   // which is why it does. The same two written the other way round are
   // refused, because there the bracket does reach the rest.
   test('leaves the restored rest outside a bracket the grace note opens', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       inMeasure(
         measureRest +
           '<note><grace/><pitch><step>D</step><octave>5</octave></pitch><type>eighth</type>' +
@@ -663,14 +641,13 @@ describe('a rest filling a measure a grace note leads into', () => {
       'unrepresentable:tuplet-span',
       'unrepresentable:tuplet-untimed',
     ])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A <forward> before the rest is silence the voice passed over, and MNX
   // states it as a space. The rest is written back where it stands, so the
   // space before it stands too.
   test('keeps the silence the source passed over before the rest', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       inMeasure(
         '<forward><duration>2</duration></forward>' +
           '<note><rest measure="yes"/><duration>2</duration><voice>1</voice></note>' +
@@ -684,7 +661,6 @@ describe('a rest filling a measure a grace note leads into', () => {
       expect.objectContaining({ type: 'grace' }),
     ])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // Which side of the rest the grace notes are written on says nothing about
@@ -701,23 +677,21 @@ describe('a rest filling a measure a grace note leads into', () => {
     ['marking', 'before', grace + markedRest, 1, [{ staccato: {} }, undefined]],
     ['marking', 'after', markedRest + grace, 0, [{ staccato: {} }, undefined]],
   ])('keeps the %s of the rest with the grace notes %s it', (_, __, body, at, expected) => {
-    const { mnx, warnings } = convertMusicXML(inMeasure(body))
+    const { mnx, warnings } = convertValid(inMeasure(body))
     const event = mnx.parts[0]?.measures[0]?.sequences[0]?.content[at]
 
     expect(event && !('type' in event) && [event.markings ?? {}, event.stemDirection]).toEqual(
       expected,
     )
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('reports a stem of none on the rest the grace notes follow', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { warnings } = convertValid(
       inMeasure(stemmedRest.replace('<stem>up</stem>', '<stem>none</stem>') + grace),
     )
 
     expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:stem-direction'])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // The grace notes stand where the voice last was, and a <forward> moves the
@@ -788,7 +762,7 @@ describe('a rest with no value filling an unmeasured measure', () => {
     `<note><rest/><duration>${String(units)}</duration><voice>1</voice></note>`
 
   test('writes it as the rest of the voice’s measure', () => {
-    const { mnx, warnings } = convertMusicXML(unmeasured(rest(11)))
+    const { mnx, warnings } = convertValid(unmeasured(rest(11)))
 
     expect(mnx.parts[0]?.measures[0]?.sequences).toEqual([
       { voice: '1', content: [], fullMeasure: {} },
@@ -797,11 +771,10 @@ describe('a rest with no value filling an unmeasured measure', () => {
       'unrepresentable:senza-misura',
       'unrepresentable:rest-length',
     ])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('names the length it does not state', () => {
-    const { warnings } = convertMusicXML(unmeasured(rest(11)))
+    const { warnings } = convertValid(unmeasured(rest(11)))
 
     expect(warnings[1]?.message).toContain('11/16 of a whole note')
   })
@@ -809,13 +782,12 @@ describe('a rest with no value filling an unmeasured measure', () => {
   // A length a note value can write needs none of this: the rest is the event
   // it is written as, and how long the measure runs is nobody's guess.
   test('leaves a rest a note value can write as an event', () => {
-    const { mnx, warnings } = convertMusicXML(unmeasured(rest(4)))
+    const { mnx, warnings } = convertValid(unmeasured(rest(4)))
     const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
 
     expect(sequence?.fullMeasure).toBeUndefined()
     expect(sequence?.content).toHaveLength(1)
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:senza-misura'])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A <forward> moves the cursor without the voice sounding, so the rest
@@ -835,7 +807,7 @@ describe('a rest with no value filling an unmeasured measure', () => {
   // for it. One drawn as a whole says what it is, and the two lengths are the
   // source disagreeing with itself.
   test('leaves a rest drawn with a value an event', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       unmeasured('<note><rest/><duration>11</duration><voice>1</voice><type>whole</type></note>'),
     )
     const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
@@ -888,7 +860,7 @@ describe('a rest with no value filling an unmeasured measure', () => {
   // going on the sequence, whatever note values can write: the measure says
   // how long it runs.
   test('says nothing about a rest filling an irregular measure', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       '<score-partwise><part id="P1"><measure number="1">' +
         '<attributes><divisions>4</divisions><time><beats>5</beats><beat-type>4</beat-type>' +
         '</time></attributes>' +
@@ -900,7 +872,6 @@ describe('a rest with no value filling an unmeasured measure', () => {
       { voice: '1', content: [], fullMeasure: {} },
     ])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A measure longer than its time signature says is the source's own
@@ -908,7 +879,7 @@ describe('a rest with no value filling an unmeasured measure', () => {
   // length. There is no event to write it as either, so it rests the measure
   // the same way, and the length is reported.
   test('rests a measure longer than its time signature', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       '<score-partwise><part id="P1"><measure number="1">' +
         '<attributes><divisions>4</divisions><time><beats>4</beats><beat-type>4</beat-type>' +
         '</time></attributes>' +
@@ -921,7 +892,6 @@ describe('a rest with no value filling an unmeasured measure', () => {
     ])
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:rest-length'])
     expect(warnings[0]?.message).toContain('no note value can write that length')
-    expect(schemaErrors(mnx)).toEqual([])
   })
 })
 
@@ -940,19 +910,18 @@ describe('a rest lasting exactly the measure', () => {
     '<voice>1</voice><type>breve</type></note>'
 
   test('rests the measure where it opens the measure', () => {
-    const { mnx, warnings } = convertMusicXML(metered(rest))
+    const { mnx, warnings } = convertValid(metered(rest))
 
     expect(mnx.parts[0]?.measures[0]?.sequences).toEqual([
       { voice: '1', content: [], fullMeasure: {} },
     ])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A <backup> reaching further back than the measure has run writes what
   // follows at the measure start, so the rest after one opens the measure.
   test('rests the measure after a backup that reached past the start', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       metered(
         '<note><pitch><step>C</step><octave>4</octave></pitch><duration>8</duration>' +
           '<voice>1</voice><type>half</type></note>' +
@@ -965,13 +934,12 @@ describe('a rest lasting exactly the measure', () => {
     expect(resting?.fullMeasure).toEqual({})
     expect(resting?.content).toEqual([])
     expect(warnings.map((w) => w.code)).toEqual(['inconsistent:backup'])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A whole rest in 4/4 is drawn as long as it lasts, so nothing about it is
   // left to settle and it converts as the rest it is written as.
   test('leaves a rest drawn as long as the measure an event', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       metered('<note><rest/><duration>16</duration><type>whole</type><voice>1</voice></note>'),
     )
     const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
@@ -979,11 +947,10 @@ describe('a rest lasting exactly the measure', () => {
     expect(sequence?.fullMeasure).toBeUndefined()
     expect(sequence?.content).toHaveLength(1)
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('leaves a rest the voice does not open with an event', () => {
-    const { mnx } = convertMusicXML(metered(overrunning + rest))
+    const { mnx } = convertValid(metered(overrunning + rest))
     const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
 
     expect(sequence?.fullMeasure).toBeUndefined()
@@ -1005,57 +972,51 @@ describe('a rest drawn shorter than the measure it fills', () => {
 
   /** The sequence and warnings of a one-measure conversion, with the MNX held. */
   function convert(source: string) {
-    const { mnx, warnings } = convertMusicXML(source)
+    const { mnx, warnings } = convertValid(source)
     return { mnx, sequences: mnx.parts[0]?.measures[0]?.sequences ?? [], warnings }
   }
 
   /** A rest the reading keeps an event: the codes reported, and the MNX legal. */
   function keptAnEvent(source: string) {
-    const { mnx, sequences, warnings } = convert(source)
+    const { sequences, warnings } = convert(source)
 
     expect(sequences[0]?.fullMeasure).toBeUndefined()
-    expect(schemaErrors(mnx)).toEqual([])
     return warnings.map((w) => w.code)
   }
 
   test('rests the measure, stating the drawn value beside it', () => {
-    const { mnx, sequences, warnings } = convert(inThreeTwo(rest()))
+    const { sequences, warnings } = convert(inThreeTwo(rest()))
 
     expect(sequences[0]?.fullMeasure).toEqual({ visualDuration: { base: 'whole' } })
     expect(sequences[0]?.content).toEqual([])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // MNX's full-measure rest carries a pause and a height of its own, so
   // neither keeps the rest an event.
   test('carries a fermata held over the rest', () => {
-    const { mnx, sequences, warnings } = convert(
-      inThreeTwo(rest('<notations><fermata/></notations>')),
-    )
+    const { sequences, warnings } = convert(inThreeTwo(rest('<notations><fermata/></notations>')))
 
     expect(sequences[0]?.fullMeasure).toEqual({
       visualDuration: { base: 'whole' },
       fermata: {},
     })
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('carries the height the rest is pinned to', () => {
-    const { mnx, sequences, warnings } = convert(
+    const { sequences, warnings } = convert(
       inThreeTwo(rest('', '<display-step>D</display-step><display-octave>5</display-octave>')),
     )
 
     expect(sequences[0]?.fullMeasure).toMatchObject({ staffPosition: 2 })
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // One voice resting a measure the others sound through is the common case,
   // and only that voice's sequence becomes a rest.
   test('rests one voice of a measure the others sound through', () => {
-    const { mnx, sequences, warnings } = convert(
+    const { sequences, warnings } = convert(
       inThreeTwo(
         '<note><rest/><duration>24</duration><type>whole</type><voice>1</voice></note>' +
           '<backup><duration>24</duration></backup>' +
@@ -1068,14 +1029,13 @@ describe('a rest drawn shorter than the measure it fills', () => {
     expect(sequences[1]?.fullMeasure).toBeUndefined()
     expect(sequences[1]?.content).toHaveLength(1)
     expect(warnings.map((w) => w.code)).toEqual(['inconsistent:duration'])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('rests each staff of a part on its own', () => {
     const staffRest = (staff: number) =>
       `<note><rest/><duration>24</duration><type>whole</type><voice>${String(staff)}</voice>` +
       `<staff>${String(staff)}</staff></note>`
-    const { mnx, sequences, warnings } = convert(
+    const { sequences, warnings } = convert(
       inThreeTwo(
         staffRest(1) + '<backup><duration>24</duration></backup>' + staffRest(2),
         '<staves>2</staves>',
@@ -1085,7 +1045,6 @@ describe('a rest drawn shorter than the measure it fills', () => {
     expect(sequences.map((sequence) => sequence.staff)).toEqual([1, 2])
     expect(sequences.every((sequence) => sequence.fullMeasure !== undefined)).toBe(true)
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('reports the drawn value where the rest is not the whole of its voice', () => {
@@ -1110,7 +1069,7 @@ describe('a rest drawn shorter than the measure it fills', () => {
   // With no <divisions> the duration is read against an assumed one, so
   // nothing knows the rest lasts the measure.
   test('leaves a rest an event where nothing said how long a division is', () => {
-    const { warnings } = convertMusicXML(
+    const { warnings } = convertValid(
       '<score-partwise><part id="P1"><measure number="1">' +
         '<attributes><time><beats>3</beats><beat-type>2</beat-type></time>' +
         `${TREBLE}</attributes>${rest()}</measure></part></score-partwise>`,
@@ -1202,33 +1161,30 @@ describe("a rest marked as the measure's standing beside other notes", () => {
     `<duration>${String(duration)}</duration><type>${value}</type><voice>1</voice></note>`
 
   test('keeps the rest an event where the voice has already sounded', () => {
-    const { mnx, warnings } = convertMusicXML(inMeasure(note(8, 'half') + marked))
+    const { mnx, warnings } = convertValid(inMeasure(note(8, 'half') + marked))
     const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
 
     expect(sequence?.fullMeasure).toBeUndefined()
     expect(sequence?.content).toHaveLength(2)
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('keeps the rest an event where notes follow it', () => {
-    const { mnx, warnings } = convertMusicXML(inMeasure(marked + note(4, 'quarter')))
+    const { mnx, warnings } = convertValid(inMeasure(marked + note(4, 'quarter')))
     const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
 
     expect(sequence?.fullMeasure).toBeUndefined()
     expect(sequence?.content).toHaveLength(2)
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('rests the measure where the rest is the whole of the voice', () => {
-    const { mnx, warnings } = convertMusicXML(inMeasure(marked))
+    const { mnx, warnings } = convertValid(inMeasure(marked))
     const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
 
     expect(sequence?.fullMeasure).toEqual({ visualDuration: { base: 'whole' } })
     expect(sequence?.content).toEqual([])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // Without a written value there is no event for the rest to fall back to,

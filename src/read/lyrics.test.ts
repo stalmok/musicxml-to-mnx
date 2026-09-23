@@ -4,11 +4,10 @@
 // the syllable is part of a word.
 
 import { describe, expect, test } from 'vitest'
+import { convertValid } from '../../tests/support/convert.js'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
-import { convertMusicXML } from '../index.js'
-import { schemaErrors } from '../../tests/support/schema.js'
 import type { Event } from '../model/score.js'
 
 function note(step: string, body = ''): string {
@@ -298,7 +297,7 @@ describe('a verse written as several pieces', () => {
 // so a consumer need not infer it from where each verse first appears.
 describe('the order of the verse lines', () => {
   test('states the lines in verse order, not appearance order', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       measure(
         note('C', lyric('la', 'single', '2')) +
           note('D', lyric('one', 'single', '1') + lyric('two', 'single', '2')) +
@@ -308,12 +307,11 @@ describe('the order of the verse lines', () => {
 
     expect(mnx.global.lyrics).toEqual({ lineOrder: ['1', '2', '10'] })
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // Two is the fewest verses that have an order between them.
   test('states the order of two verses', () => {
-    const { mnx } = convertMusicXML(
+    const { mnx } = convertValid(
       measure(note('C', lyric('one', 'single', '1') + lyric('two', 'single', '2'))),
     )
 
@@ -321,13 +319,13 @@ describe('the order of the verse lines', () => {
   })
 
   test('states no order for a single verse, which has none to state', () => {
-    const { mnx } = convertMusicXML(measure(note('C', lyric('la'))))
+    const { mnx } = convertValid(measure(note('C', lyric('la'))))
 
     expect('lyrics' in mnx.global).toBe(false)
   })
 
   test('states no order where nothing sings', () => {
-    const { mnx } = convertMusicXML(measure(note('C')))
+    const { mnx } = convertValid(measure(note('C')))
 
     expect('lyrics' in mnx.global).toBe(false)
   })
@@ -347,13 +345,12 @@ describe('one line stated twice on a note', () => {
   })
 
   test('writes the first onto schema-valid MNX', () => {
-    const { mnx } = convertMusicXML(measure(note('C', lyric('FIRST') + lyric('SECOND'))))
+    const { mnx } = convertValid(measure(note('C', lyric('FIRST') + lyric('SECOND'))))
     const event = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
 
     expect(event && 'lyrics' in event ? event.lyrics?.lines : undefined).toEqual({
       '1': { text: 'FIRST' },
     })
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('carries one and says nothing where the two say the same thing', () => {

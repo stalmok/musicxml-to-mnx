@@ -3,8 +3,8 @@
 // give it, and a source is text or bytes, so neither name is in the document.
 
 import { describe, expect, test } from 'vitest'
+import { convertValid } from '../tests/support/convert.js'
 import { MusicXMLError, convertMusicXML } from './index.js'
-import { schemaErrors } from '../tests/support/schema.js'
 
 const NOTE =
   '<note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration>' +
@@ -20,16 +20,15 @@ const SOURCE =
 
 describe('the score rendering name', () => {
   test('is the name the caller gives', () => {
-    const { mnx, warnings } = convertMusicXML(SOURCE, { scoreName: 'Erlkönig' })
+    const { mnx, warnings } = convertValid(SOURCE, { scoreName: 'Erlkönig' })
 
     expect(mnx.scores?.[0]?.name).toBe('Erlkönig')
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('falls back to a placeholder where the caller names none', () => {
-    expect(convertMusicXML(SOURCE).mnx.scores?.[0]?.name).toBe('Score')
-    expect(convertMusicXML(SOURCE, {}).mnx.scores?.[0]?.name).toBe('Score')
+    expect(convertValid(SOURCE).mnx.scores?.[0]?.name).toBe('Score')
+    expect(convertValid(SOURCE, {}).mnx.scores?.[0]?.name).toBe('Score')
   })
 })
 
@@ -73,11 +72,10 @@ describe('the document name', () => {
   })
 
   test('converts to exactly what it would without a name', () => {
-    const named = convertMusicXML(SOURCE, { documentName: 'song.mxl' })
+    const named = convertValid(SOURCE, { documentName: 'song.mxl' })
 
-    expect(named.mnx).toEqual(convertMusicXML(SOURCE).mnx)
+    expect(named.mnx).toEqual(convertValid(SOURCE).mnx)
     expect(named.warnings).toEqual([])
-    expect(schemaErrors(named.mnx)).toEqual([])
   })
 
   // The refusal is restated to carry the name, so its stack would otherwise
@@ -108,11 +106,10 @@ describe('a document given as bytes', () => {
       '</measure></part></score-partwise>'
     const bytes = Uint8Array.from(text, (character) => character.charCodeAt(0))
 
-    const { mnx, warnings } = convertMusicXML(bytes)
+    const { mnx, warnings } = convertValid(bytes)
 
     expect(mnx.parts[0]?.name).toBe('Été')
     expect(JSON.stringify(mnx)).toContain('"été"')
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 })

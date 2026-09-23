@@ -1,10 +1,9 @@
 import { describe, expect, test } from 'vitest'
+import { convertValid } from '../../tests/support/convert.js'
 import { MusicXMLError } from '../errors.js'
-import { convertMusicXML } from '../index.js'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { GENERATED_ID_PATTERN, readScore } from './score.js'
-import { schemaErrors } from '../../tests/support/schema.js'
 
 /** Wraps `body` in the smallest document that can carry it. */
 function score(body: string): string {
@@ -1144,11 +1143,7 @@ describe('a time signature stated after the measure start', () => {
   })
 
   test('converts to legal MNX', () => {
-    const { mnx } = convertMusicXML(
-      part(opening + timed(2) + note(12) + timed(3) + note(12), note(36)),
-    )
-
-    expect(schemaErrors(mnx)).toEqual([])
+    convertValid(part(opening + timed(2) + note(12) + timed(3) + note(12), note(36)))
   })
 })
 
@@ -1475,11 +1470,7 @@ describe('a key signature stated after the measure start', () => {
   })
 
   test('converts to legal MNX', () => {
-    const { mnx } = convertMusicXML(
-      part(opening + keyed(0) + note(12) + keyed(2) + note(12), note(24)),
-    )
-
-    expect(schemaErrors(mnx)).toEqual([])
+    convertValid(part(opening + keyed(0) + note(12) + keyed(2) + note(12), note(24)))
   })
 })
 
@@ -2110,14 +2101,13 @@ describe('several parts', () => {
     // flip, so the seven sharps the source drew come back from the score's
     // key and the point together.
     test('brings back the signature the source drew', () => {
-      const { mnx } = convertMusicXML(score(keyed('P1', 5) + keyed('P2', -5, B_FLAT)))
+      const { mnx } = convertValid(score(keyed('P1', 5) + keyed('P2', -5, B_FLAT)))
       const flipAt = mnx.parts[1]?.transposition?.keyFifthsFlipAt ?? 0
       const interval = mnx.parts[1]?.transposition?.interval
       const concert = mnx.global.measures[0]?.key?.fifths ?? 0
       const written = concert - 12 * (interval?.staffDistance ?? 0) + 7 * (interval?.halfSteps ?? 0)
 
       expect(written >= flipAt ? written - 12 : written).toBe(-5)
-      expect(schemaErrors(mnx)).toEqual([])
     })
 
     // The score's key is the first stated at a measure, so a measure where
@@ -2189,7 +2179,7 @@ describe('several parts', () => {
       ])
       expect(result.parts[1]?.transposition?.keyFifthsFlipAt).toBe(7)
       expect(warnings).toEqual([])
-      expect(schemaErrors(convertMusicXML(score(respelled)).mnx)).toEqual([])
+      convertValid(score(respelled))
     })
 
     // The ordinary transposing part: it writes the signature its transposition
@@ -2269,7 +2259,7 @@ describe('several parts', () => {
         expect(warnings.map((w) => [w.code, w.context])).toEqual([
           ['unrepresentable:cross-part-key', { part: 'P2', measure: 2 }],
         ])
-        expect(schemaErrors(convertMusicXML(score(flipped)).mnx)).toEqual([])
+        convertValid(score(flipped))
       },
     )
 
@@ -2374,7 +2364,7 @@ describe('several parts', () => {
 
       expect(result.globalMeasures.map((measure) => measure.key?.fifths)).toEqual(expected)
       expect(warnings.map((w) => [w.code, w.context])).toEqual(reported)
-      expect(schemaErrors(convertMusicXML(source).mnx)).toEqual([])
+      convertValid(source)
     })
 
     // One point covers the whole part and its sign picks the direction, so a
@@ -3218,7 +3208,7 @@ const GENERATED_IDS_MEASURES =
 // generated id everywhere the score refers to it, and reported.
 describe('a part id the output cannot carry as it stands', () => {
   test('renames a non-ASCII part id in the parts and the layout alike', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<part-list>' +
           '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
@@ -3249,11 +3239,10 @@ describe('a part id the output cannot carry as it stands', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:part-id'])
     expect(warnings[0]?.message).toContain('Süß')
     expect(warnings[0]?.message).toContain('p1')
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('leaves printable ASCII part ids alone', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<part-list>' +
           '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
@@ -3267,7 +3256,6 @@ describe('a part id the output cannot carry as it stands', () => {
 
     expect(mnx.parts.map((p) => p.id)).toEqual(['P1', 'P2'])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // A part id that reads like an id the converter generates names two things
@@ -3277,7 +3265,7 @@ describe('a part id the output cannot carry as it stands', () => {
   test.each(['ev2', 'note1', 'm1', 'layout1'])(
     'renames the part id "%s", which the converter gives something else',
     (id) => {
-      const { mnx, warnings } = convertMusicXML(
+      const { mnx, warnings } = convertValid(
         score(
           `<part-list><score-part id="${id}"/></part-list>` +
             `<part id="${id}">${GENERATED_IDS_MEASURES}</part>`,
@@ -3290,14 +3278,13 @@ describe('a part id the output cannot carry as it stands', () => {
       // The two reasons a part is renamed read differently, so the report
       // says which one this is.
       expect(warnings[0]?.message).toContain('the converter gives')
-      expect(schemaErrors(mnx)).toEqual([])
     },
   )
 
   // The other half of the same rule: an ordinary source id is left alone, so
   // the shapes the converter reserves stay the only ones renamed.
   test.each(['x1', 'P1', 'measure1', 'event2'])('leaves the part id "%s" alone', (id) => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         `<part-list><score-part id="${id}"/></part-list>` +
           `<part id="${id}">${GENERATED_IDS_MEASURES}</part>`,
@@ -3306,7 +3293,6 @@ describe('a part id the output cannot carry as it stands', () => {
 
     expect(mnx.parts.map((part) => part.id)).toEqual([id])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   // The reader states the shape of the generated ids to keep a part id off
@@ -3314,7 +3300,7 @@ describe('a part id the output cannot carry as it stands', () => {
   // may not import. This holds the reader's copy to what a conversion really
   // writes.
   test('states the shape of every id the converter generates', () => {
-    const { mnx } = convertMusicXML(
+    const { mnx } = convertValid(
       score(
         '<part-list><score-part id="P1"/></part-list>' +
           `<part id="P1">${GENERATED_IDS_MEASURES}</part>`,
@@ -3342,7 +3328,6 @@ describe('a part id the output cannot carry as it stands', () => {
       layout.id === undefined ? [] : [layout.id],
     )
 
-    expect(schemaErrors(mnx)).toEqual([])
     expect(events.length).toBeGreaterThan(0)
     expect(notes.length).toBeGreaterThan(0)
     expect(measures.length).toBeGreaterThan(0)
@@ -3354,7 +3339,7 @@ describe('a part id the output cannot carry as it stands', () => {
   })
 
   test('skips over an id another part already holds', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       score(
         '<part-list>' +
           '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
@@ -3368,7 +3353,6 @@ describe('a part id the output cannot carry as it stands', () => {
 
     expect(mnx.parts.map((p) => p.id)).toEqual(['p2', 'p1'])
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:part-id'])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 })
 
@@ -3377,7 +3361,7 @@ describe('a part id the output cannot carry as it stands', () => {
 // MNX's part.smuflFont.
 describe('the music font', () => {
   test('carries the font family onto every part', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       '<score-partwise><defaults><music-font font-family="Leland"/></defaults>' +
         '<part-list><score-part id="P1"/><score-part id="P2"/></part-list>' +
         '<part id="P1"><measure number="1">' +
@@ -3393,11 +3377,10 @@ describe('the music font', () => {
 
     expect(mnx.parts.map((p) => p.smuflFont)).toEqual(['Leland', 'Leland'])
     expect(warnings).toEqual([])
-    expect(schemaErrors(mnx)).toEqual([])
   })
 
   test('keeps the no-home report for the rest of <defaults>', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       '<score-partwise><defaults><scaling><millimeters>7</millimeters>' +
         '<tenths>40</tenths></scaling><music-font font-family="Leland"/></defaults>' +
         '<part-list><score-part id="P1"/></part-list>' +
@@ -3415,7 +3398,7 @@ describe('the music font', () => {
   })
 
   test('writes no font where the source names none', () => {
-    const { mnx } = convertMusicXML(
+    const { mnx } = convertValid(
       '<score-partwise><part-list><score-part id="P1"/></part-list>' +
         '<part id="P1"><measure number="1">' +
         '<attributes><divisions>1</divisions></attributes>' +
@@ -3441,7 +3424,7 @@ describe('the music font, at its edges', () => {
     '</score-partwise>'
 
   test('writes no font from an element naming no family', () => {
-    const { mnx, warnings } = convertMusicXML(withDefaults('<music-font/>'))
+    const { mnx, warnings } = convertValid(withDefaults('<music-font/>'))
 
     expect(mnx.parts.every((p) => !('smuflFont' in p))).toBe(true)
     expect(warnings).toEqual([])
@@ -3450,7 +3433,7 @@ describe('the music font, at its edges', () => {
   // Font size and style are presentation, which the attribute sweep passes
   // over without a word wherever they appear.
   test('passes over the font attributes beside the family', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       withDefaults('<music-font font-family="Leland" font-size="20.5"/>'),
     )
 
@@ -3462,7 +3445,7 @@ describe('the music font, at its edges', () => {
   // states that is not presentation is a loss, and the sweep over the element
   // is what reports it.
   test('reports an attribute of the music font that is neither read nor presentation', () => {
-    const { mnx, warnings } = convertMusicXML(
+    const { mnx, warnings } = convertValid(
       withDefaults('<music-font font-family="Leland" xml:lang="en"/>'),
     )
 
