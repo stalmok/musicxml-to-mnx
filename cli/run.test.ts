@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
+import { schemaErrors } from '../tests/support/schema.js'
 import { buildValidator, run } from './run.js'
 
 // A one-note score that converts with nothing lost, for the lossless paths.
@@ -47,6 +48,7 @@ describe('converting files', () => {
 
     expect(code).toBe(0)
     const mnx: unknown = JSON.parse(readFileSync(join(dir, 'song.mnx'), 'utf8'))
+    expect(schemaErrors(mnx)).toEqual([])
     expect((mnx as { mnx: { version: number } }).mnx.version).toBe(1)
     // Nothing was lost, so the line names no count.
     expect(lines[0]).toBe(`${file} -> ${join(dir, 'song.mnx')}`)
@@ -59,6 +61,7 @@ describe('converting files', () => {
 
     expect(code).toBe(0)
     const mnx: unknown = JSON.parse(readFileSync(join(dir, 'song.mnx'), 'utf8'))
+    expect(schemaErrors(mnx)).toEqual([])
     expect((mnx as { mnx: { version: number } }).mnx.version).toBe(1)
   })
 
@@ -137,6 +140,7 @@ describe('two inputs that would write to the same file', () => {
         measures: { sequences: { content: { notes?: { pitch: { step: string } }[] }[] }[] }[]
       }[]
     }
+    expect(schemaErrors(mnx)).toEqual([])
     expect(mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]?.notes?.[0]?.pitch.step).toBe('C')
   })
 })
