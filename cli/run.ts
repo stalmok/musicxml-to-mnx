@@ -11,9 +11,9 @@ import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node
 import { basename, dirname, extname, join } from 'node:path'
 import { parseArgs } from 'node:util'
 import { fileURLToPath } from 'node:url'
-import Ajv2020 from 'ajv/dist/2020.js'
 import { convertMusicXML, MusicXMLError } from '../src/index.js'
 import type { ConversionWarning } from '../src/index.js'
+import { compileValidator } from './validate.js'
 
 /** Where the command's human-facing lines go. Injected so the tests can read them. */
 export interface CommandIO {
@@ -218,25 +218,9 @@ function version(): string {
 
 /**
  * A schema check, built only when --validate is given so that the ordinary
- * path never reads the schema. Returns one readable line per error, and
- * nothing when the document conforms.
+ * path never reads the schema.
  */
 export function buildValidator(): (document: unknown) => string[] {
   const schemaPath = join(commandDir(), '..', 'schema', 'mnx-schema.json')
-  const schema = JSON.parse(readFileSync(schemaPath, 'utf8')) as object
-
-  // strict:false to silence the type warnings Ajv logs about the schema's own
-  // keyword placement; the schema is upstream's and is not ours to rewrite.
-  // allErrors so that a rejected document reports every problem, not the first.
-  const validator = new Ajv2020({ strict: false, allErrors: true }).compile(schema)
-
-  return (document) => {
-    if (validator(document)) return []
-    /* v8 ignore next 3 -- the ?? fallbacks guard Ajv edge cases (no errors
-       array, an error with no message) a validation failure does not produce;
-       the mapping itself is exercised by the broken-document test. */
-    return (validator.errors ?? []).map(
-      (error) => `${error.instancePath || '<root>'}: ${error.message ?? 'invalid'}`,
-    )
-  }
+  return compileValidator(JSON.parse(readFileSync(schemaPath, 'utf8')) as object)
 }

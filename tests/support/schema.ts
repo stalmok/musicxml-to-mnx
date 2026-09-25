@@ -4,8 +4,8 @@
 // happily pass on output no MNX reader would accept.
 
 import { readFileSync } from 'node:fs'
-import Ajv2020 from 'ajv/dist/2020.js'
 import type { AnySchema } from 'ajv'
+import { compileValidator } from '../../cli/validate.js'
 
 /** A schema node, as far as the conformance test reads one. */
 export interface SchemaNode {
@@ -46,15 +46,5 @@ export function resolveRef(node: SchemaNode | undefined): SchemaNode | undefined
   return found
 }
 
-// strict:false because the schema uses draft-2020 keywords (unevaluatedProperties,
-// $defs) that Ajv's strict mode flags as unknown in places; the schema is
-// upstream's and is not ours to rewrite.
-const validator = new Ajv2020({ strict: false, allErrors: true }).compile(schema)
-
 /** Empty when the document conforms; otherwise one readable line per error. */
-export function schemaErrors(document: unknown): string[] {
-  if (validator(document)) return []
-  return (validator.errors ?? []).map(
-    (error) => `${error.instancePath || '<root>'}: ${error.message ?? 'invalid'}`,
-  )
-}
+export const schemaErrors = compileValidator(schema)
