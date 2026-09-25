@@ -99,6 +99,7 @@ The reader modules are:
 | `attributes.ts`               | Read divisions, staves, keys, time signatures, clefs, and measure styles.                      |
 | `notes.ts`                    | Read notes and their notation.                                                                 |
 | `voices.ts`                   | Track the cursor and assemble voice events.                                                    |
+| `rests.ts`                    | Decide whether a rest is its voice's measure rest, and in what form.                           |
 | `tuplets.ts`                  | Track tuplet ratios and settle tuplet brackets when the measure is complete.                   |
 | `lyrics.ts`                   | Read lyrics for each verse.                                                                    |
 | `spanners.ts`                 | Resolve ties, slurs, hairpins, and octave shifts. Generate event, note, and kit component IDs. |
@@ -109,7 +110,7 @@ The reader modules are:
 | `transposition.ts`            | Convert written pitches and keys of transposing parts to sounding pitch.                       |
 | `divisions.ts`, `duration.ts` | Read durations in divisions. Convert a duration back to a note value.                          |
 | `noteValues.ts`               | Map MusicXML note-type names to model note values.                                             |
-| `numbers.ts`                  | Read integers strictly and check their ranges.                                                 |
+| `numbers.ts`                  | Read whole and decimal numbers strictly, and check ranges.                                     |
 | `color.ts`                    | Read MusicXML colors into MNX color strings.                                                   |
 | `tables.ts`                   | Provide typed helpers for tables keyed by model unions.                                        |
 | `element.ts`                  | Track consumed XML content and report unhandled content.                                       |
