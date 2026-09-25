@@ -55,9 +55,8 @@ Update this document before changing a stage boundary.
 ## Internal score model
 
 The model contains only concepts needed for conversion. It is not part of
-the public API: `src/index.ts` does not export it. The build still emits its
-declarations under `dist/types/model/`, together with the declarations of
-every other internal module.
+the public API: `src/index.ts` does not export it, and the package does not
+ship its declarations.
 
 The model is MNX-shaped, not neutral. It follows the MNX structure closely:
 
@@ -204,6 +203,10 @@ Both remain external dependencies in the builds.
 The library builds to `dist/ossia.js`. The CLI builds separately to
 `dist/cli.js`, with its own shebang and no shared application chunks.
 TypeScript declarations are emitted under `dist/types/`.
+`scripts/prune-declarations.ts` then removes every declaration that
+`index.d.ts` does not reach, so no internal module is shipped.
+`tests/declarations-artifact.test.ts` checks the shipped set and compiles a
+consumer against it.
 
 Ajv is bundled into the CLI for validation. It is not imported by the library,
 but the CLI bundle is included in the installed package.

@@ -38,7 +38,7 @@
   "packageManager": "pnpm@11.8.0+sha512.c1f5e7c4cb241c8f174b743851d82f42b802324afc8b0f116b96adb15aa06664948dde36960a3ba1079ba5b4b29dd0140135b94b5b5f5263592249d68e555f26",
   "scripts": {
     "prepublishOnly": "pnpm build",
-    "build": "vite build && vite build --config vite.cli.config.ts && tsc -p tsconfig.build.json",
+    "build": "vite build && vite build --config vite.cli.config.ts && tsc -p tsconfig.build.json && node scripts/prune-declarations.ts",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json --noEmit",
     "test": "vitest run",
     "bench": "vitest bench --run",

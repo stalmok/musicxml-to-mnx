@@ -84,12 +84,12 @@ jobs:
           test -s dist/cli.js
           head -1 dist/cli.js | grep -q '^#!/usr/bin/env node'
 
-      # The smoke tests of the built command and the built library skip until
-      # the package is built, so they run here, once dist/ exists, to prove the
-      # shipped artifacts run: the command under Node, and the library with no
-      # host globals at all.
+      # The smoke tests of the built command, library and declarations skip
+      # until the package is built, so they run here, once dist/ exists, to
+      # prove the shipped artifacts work: the command under Node, the library
+      # with no host globals at all, and the declarations compiled by a consumer.
       - name: Exercise the built artifacts
-        run: pnpm exec vitest run tests/cli-artifact.test.ts tests/isomorphic-artifact.test.ts
+        run: pnpm exec vitest run tests/cli-artifact.test.ts tests/isomorphic-artifact.test.ts tests/declarations-artifact.test.ts
 
       # The vendored MNX schema is the conformance oracle for every test in
       # the suite, so its bytes must be the ones PROVENANCE.md attests to. A

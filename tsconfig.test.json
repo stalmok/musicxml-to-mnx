@@ -13,5 +13,5 @@
   "exclude": [],
   // The command lives in cli/ and is a Node program, so it is type-checked
   // here, with Node's types, rather than in the Node-free src pass.
-  "include": ["src", "tests", "cli"]
+  "include": ["src", "tests", "cli", "scripts"]
 }
