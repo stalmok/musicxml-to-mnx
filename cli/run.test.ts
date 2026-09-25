@@ -157,6 +157,51 @@ describe('a report into a directory that does not exist', () => {
   })
 })
 
+describe('an output that cannot be written', () => {
+  test('is reported, the others still convert, and the run fails', async () => {
+    const blocked = input('blocked.xml', LOSSLESS)
+    const good = input('good.xml', LOSSLESS)
+    // A directory where the output file would go.
+    mkdirSync(join(dir, 'blocked.mnx'))
+
+    const code = await run(['to-mnx', blocked, good, '--report', join(dir, 'report.json')], io)
+
+    expect(code).toBe(1)
+    expect(lines[0]).toMatch(/^.*blocked\.xml: could not write .*blocked\.mnx: .*EISDIR/)
+    expect(() => readFileSync(join(dir, 'good.mnx'))).not.toThrow()
+    expect(lines.at(-1)).toBe('Converted 1 of 2, 1 not written.')
+    // The report holds what was written, and nothing for the output that was not.
+    const report = JSON.parse(readFileSync(join(dir, 'report.json'), 'utf8')) as object
+    expect(Object.keys(report)).toEqual([good])
+  })
+
+  test('into an --out that cannot be made is reported for every file', async () => {
+    const one = input('one.xml', LOSSLESS)
+    const two = input('two.xml', LOSSLESS)
+    const file = input('plain-file', '')
+
+    const code = await run(['to-mnx', one, two, '-o', join(file, 'out')], io)
+
+    expect(code).toBe(1)
+    expect(lines.filter((line) => line.includes('could not write'))).toHaveLength(2)
+    expect(lines.at(-1)).toBe('Converted 0 of 2, 2 not written.')
+  })
+})
+
+describe('a report that cannot be written', () => {
+  test('is reported after the outputs are written, and the run fails', async () => {
+    const file = input('song.xml', LOSSLESS)
+    const reportPath = join(dir, 'report.json')
+    mkdirSync(reportPath)
+
+    const code = await run(['to-mnx', file, '--report', reportPath], io)
+
+    expect(code).toBe(1)
+    expect(() => readFileSync(join(dir, 'song.mnx'))).not.toThrow()
+    expect(lines).toContainEqual(expect.stringMatching(/^could not write the report .*EISDIR/))
+  })
+})
+
 describe('a file that cannot be read', () => {
   test('is reported like a refused one, not thrown', async () => {
     const code = await run(['to-mnx', join(dir, 'missing.xml')], io)

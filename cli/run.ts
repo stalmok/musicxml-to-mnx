@@ -109,6 +109,7 @@ export async function run(
   // other.
   const writtenBy = new Map<string, string>()
   let failed = 0
+  let unwritten = 0
   let lossy = 0
   let invalid = 0
 
@@ -136,8 +137,16 @@ export async function run(
     }
     writtenBy.set(outPath, file)
 
-    mkdirSync(outDir, { recursive: true })
-    writeFileSync(outPath, `${JSON.stringify(mnx, null, 2)}\n`)
+    // A disk that is full or a directory that cannot be written to fails this
+    // file alone, as a refused one does.
+    try {
+      mkdirSync(outDir, { recursive: true })
+      writeFileSync(outPath, `${JSON.stringify(mnx, null, 2)}\n`)
+    } catch (error) {
+      io.log(`${file}: could not write ${outPath}: ${String(error)}`)
+      unwritten += 1
+      continue
+    }
 
     report[file] = warnings
     if (warnings.length > 0) lossy += 1
@@ -155,22 +164,29 @@ export async function run(
     io.log(`${file} -> ${outPath}${lost}`)
   }
 
+  let reportFailed = false
   if (values.report !== undefined) {
     // Create the report's directory too, so --report into a path that does not
     // exist yet writes there rather than dying after the outputs are already
     // written.
-    mkdirSync(dirname(values.report), { recursive: true })
-    writeFileSync(values.report, `${JSON.stringify(report, null, 2)}\n`)
+    try {
+      mkdirSync(dirname(values.report), { recursive: true })
+      writeFileSync(values.report, `${JSON.stringify(report, null, 2)}\n`)
+    } catch (error) {
+      io.log(`could not write the report ${values.report}: ${String(error)}`)
+      reportFailed = true
+    }
   }
 
   io.log(
-    `Converted ${String(files.length - failed)} of ${String(files.length)}` +
+    `Converted ${String(files.length - failed - unwritten)} of ${String(files.length)}` +
       (failed > 0 ? `, ${String(failed)} refused` : '') +
+      (unwritten > 0 ? `, ${String(unwritten)} not written` : '') +
       (lossy > 0 ? `, ${String(lossy)} with losses` : '') +
       '.',
   )
 
-  if (failed > 0) return 1
+  if (failed > 0 || unwritten > 0 || reportFailed) return 1
   if (invalid > 0) return 1
   if (values['fail-on-loss'] && lossy > 0) return 1
   return 0
