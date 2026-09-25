@@ -30,6 +30,7 @@ import { divisionsInForce } from './divisions.js'
 import type { ElementReader } from './element.js'
 import { noteValueBaseOf } from './noteValues.js'
 import { parseDecimal, parseWholeNumber, readIntegerInRange } from './numbers.js'
+import type { GraceNotesAt } from './voices.js'
 import type { StopWording, WedgeStop } from './spanners.js'
 import { measureLength } from './state.js'
 import type { PartState } from './state.js'
@@ -186,7 +187,7 @@ const ACCENT_DYNAMICS = new Map<string, AccentDynamic>([
 export function readDirection(
   element: ElementReader,
   position: Fraction,
-  graceNotesAt: (position: Fraction, staff?: number) => number,
+  graceNotesAt: GraceNotesAt,
   measure: number,
   state: PartState,
   warnings: WarningCollector,

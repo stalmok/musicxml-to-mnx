@@ -71,6 +71,12 @@ export interface CoveredEvent {
   graceIndex?: number
 }
 
+/** The last event of the measure before a point, on the staff given or any. */
+export type LastEventBefore = (position: Fraction, staff?: number) => CoveredEvent | undefined
+
+/** How many grace notes stand at a point, on the staff given or any. */
+export type GraceNotesAt = (position: Fraction, staff?: number) => number
+
 /**
  * An event just put in its voice, and where it begins in the measure. A note's
  * notations are read once the cursor has moved past it, and a tie, slur or
@@ -1154,10 +1160,7 @@ export class MeasureBuilder {
    */
   finish(
     opening: Omit<MeasureExtent, 'length'>,
-    settleSpanCovers: (
-      lastEventBefore: (position: Fraction, staff?: number) => CoveredEvent | undefined,
-      graceNotesAt: (position: Fraction, staff?: number) => number,
-    ) => void,
+    settleSpanCovers: (lastEventBefore: LastEventBefore, graceNotesAt: GraceNotesAt) => void,
     /** The components this part strikes, which is where a kit note's height is. */
     kit: ReadonlyMap<string, KitComponent>,
     warnings: WarningCollector,

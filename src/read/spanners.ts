@@ -26,7 +26,7 @@ import type {
   Step,
   TieTarget,
 } from '../model/score.js'
-import type { CoveredEvent } from './voices.js'
+import type { GraceNotesAt, LastEventBefore } from './voices.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 
 /** A tie that has begun, waiting for the note that ends it. */
@@ -1001,8 +1001,8 @@ export class SpannerResolver {
    */
   settleSpanCovers(
     measure: number,
-    lastEventBefore: (position: Fraction, staff?: number) => CoveredEvent | undefined,
-    graceNotesAt: (position: Fraction, staff?: number) => number,
+    lastEventBefore: LastEventBefore,
+    graceNotesAt: GraceNotesAt,
   ): void {
     const overGraceNotes = (end: EndPlace): boolean => {
       if (!end.graceWritten) return false
