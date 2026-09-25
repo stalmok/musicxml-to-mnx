@@ -102,6 +102,17 @@ describe('parseXmlRoot', () => {
     expect((thrown as MusicXMLError).line).toBe(3)
   })
 
+  test("drops the parser's own position from the message", () => {
+    let thrown: unknown
+    try {
+      parseXmlRoot('<a>' + '\n'.repeat(10) + '          <b></c></a>')
+    } catch (e) {
+      thrown = e
+    }
+
+    expect((thrown as MusicXMLError).message).toBe('Missing end tag for element b (line 11)')
+  })
+
   test('rejects an empty document', () => {
     expect(() => parseXmlRoot('')).toThrow(MusicXMLError)
   })
