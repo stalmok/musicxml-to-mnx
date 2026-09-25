@@ -320,6 +320,17 @@ describe('a beam marker at a level that does not exist', () => {
     expect(warnings[0]?.message).toContain('not one of the eight beam levels')
   })
 
+  // MusicXML's beam level is a positive integer, which may carry a plus sign.
+  test('reads a level written with a plus sign', () => {
+    const { beams, warnings } = read(
+      sixteenth('C', '<beam number="+1">begin</beam>') +
+        sixteenth('D', '<beam number="1">end</beam>'),
+    )
+
+    expect(beams.map((beam) => beam.events)).toEqual([['ev1', 'ev2']])
+    expect(warnings).toEqual([])
+  })
+
   test('keeps a marker at the first level', () => {
     const { beams, warnings } = read(
       sixteenth('C', '<beam number="1">begin</beam>') +

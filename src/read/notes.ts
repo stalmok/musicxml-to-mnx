@@ -1705,8 +1705,8 @@ function beamMarkers(
     // closes at the last marker it kept, and comes out short. The report says
     // so, because a reader told only that one level is missing would not look
     // at the beams beside it.
-    const level = Number(stated)
-    if (!/^\d+$/.test(stated) || level < 1 || level > MOST_BEAM_LEVELS) {
+    const level = parseWholeNumber(stated)
+    if (level === undefined || level < 1 || level > MOST_BEAM_LEVELS) {
       warnings.add(
         'unresolved:attribute-value',
         `The "number" of a <beam> is "${stated}", which is not one of the eight beam ` +
