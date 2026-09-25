@@ -630,16 +630,7 @@ export function readNote(
     builder.openTremolo(voice, tremolo.marks, path, element.line)
   }
 
-  const {
-    fillsMeasure: restFillsMeasure,
-    candidate: restsWholeMeasure,
-    unwritableLength: unwritableRest,
-    eventValue: restValue,
-    keepsEvent,
-    carriesLyric,
-    carriesSlurEnd,
-    afterGraceNotes,
-  } = readRest(
+  const restReading = readRest(
     {
       element,
       notations,
@@ -657,20 +648,15 @@ export function readNote(
   // a note value can write stays an event to keep either, as it does for a
   // lyric. Read once here, and the event takes what was read. Where no note
   // value can write the rest, both stay unread and are reported as a loss.
-  const restMarkings = keepsEvent ? readMarkings(notations, warnings, context) : undefined
-  const restStem = keepsEvent ? readStemDirection(element, warnings, context) : undefined
+  const fills = restReading.kind === 'fills' ? restReading : undefined
+  const canStayEvent = fills?.canStayEvent ?? false
+  const restMarkings = canStayEvent ? readMarkings(notations, warnings, context) : undefined
+  const restStem = canStayEvent ? readStemDirection(element, warnings, context) : undefined
   const carriesMarking = restMarkings !== undefined && Object.keys(restMarkings).length > 0
 
   if (
-    restFillsMeasure &&
-    !(
-      (carriesLyric ||
-        carriesSlurEnd ||
-        carriesMarking ||
-        restStem !== undefined ||
-        afterGraceNotes) &&
-      keepsEvent
-    )
+    fills &&
+    !((fills.needsEvent || carriesMarking || restStem !== undefined) && fills.canStayEvent)
   ) {
     // A beam over a rest alone is not a beam, so a source stating one says
     // nothing this loses.
@@ -680,6 +666,7 @@ export function readNote(
     // drew this one is not carried. Only a rest that reached here on its own
     // length reports it: one marked as the measure's, or drawn to what the
     // time signature states, says nothing MNX's measure does not.
+    const { eventValue: restValue, unwritableLength: unwritableRest } = fills
     if (unwritableRest) {
       warnings.add(
         'unrepresentable:rest-length',
@@ -740,7 +727,8 @@ export function readNote(
     ? { factor: fraction(1), by: undefined }
     : { factor: builder.tupletFactor(voice), by: builder.scaledBy(voice) }
 
-  if (written && duration && !restsWholeMeasure) {
+  const candidate = restReading.kind === 'candidate' ? restReading : undefined
+  if (written && duration && !candidate) {
     reportDurationMismatch(element, written, duration, scale, warnings, context)
   }
 
@@ -767,7 +755,7 @@ export function readNote(
     value,
     slurs: [],
     lyrics: readLyrics(element, warnings, context),
-    stemDirection: restFillsMeasure ? restStem : readStemDirection(element, warnings, context),
+    stemDirection: fills ? restStem : readStemDirection(element, warnings, context),
     markings: restMarkings ?? readMarkings(notations, warnings, context),
     fermata: readFermata(notations, warnings, context),
     notes,
@@ -823,7 +811,7 @@ export function readNote(
 
   // Where the source states no <duration>, the written value is how long the
   // note lasts.
-  const placed = restFillsMeasure
+  const placed = fills
     ? builder.addMeasureRestEvent(
         voice,
         event,
@@ -833,8 +821,8 @@ export function readNote(
         staff,
       )
     : builder.addEvent(voice, event, duration ?? lengthOf(value), path, element.line, staff)
-  if (restsWholeMeasure) {
-    const { written: drawn, duration: lasts } = restsWholeMeasure
+  if (candidate) {
+    const { written: drawn, duration: lasts } = candidate
     builder.markMeasureRest(voice, event, () =>
       reportDurationMismatch(element, drawn, lasts, scale, warnings, context),
     )

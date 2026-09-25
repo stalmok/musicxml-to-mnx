@@ -28,49 +28,48 @@ export interface RestNote {
   voice: string | undefined
 }
 
-export interface RestReading {
-  /**
-   * The rest is the voice's measure rest as it stands: on the sequence, or as
-   * an event where it carries something only an event can hold.
-   */
-  fillsMeasure: boolean
-  /**
-   * The rest may be the voice's measure rest, and is held as an ordinary rest
-   * until the voice is whole. It is settled once the measure is whole, in MeasureBuilder.finish. Carries
-   * the written value and the length that disagree, for the reading where it
-   * stays an ordinary rest.
-   */
-  candidate: { written: NoteValue; duration: Fraction } | undefined
-  /**
-   * How long the rest lasts, where no note value can write that length and
-   * that is what makes it the measure's rest.
-   */
-  unwritableLength: Fraction | undefined
-  /**
-   * The value the rest is written as where it stays an event, and nothing
-   * where no note value can write it: an irregular measure rests for a length
-   * no value states, and the sequence's own rest is the only place for it.
-   */
-  eventValue: NoteValue | undefined
-  /**
-   * The rest fills the measure and can stay an event to keep what only an
-   * event holds. A voice rests its measure once, so a second such rest is
-   * refused whatever it carries.
-   */
-  keepsEvent: boolean
-  carriesLyric: boolean
-  /**
-   * A slur starts or ends on the rest. MNX states a slur as a reference to
-   * the event it reaches, and a rest on the sequence is not an event with an
-   * id. A slur only passing over the rest needs no target.
-   */
-  carriesSlurEnd: boolean
-  /**
-   * Grace notes open the voice before the rest. The sequence stating the rest
-   * must hold nothing, so they keep the rest an event.
-   */
-  afterGraceNotes: boolean
-}
+/**
+ * How a <note> stands against its voice's measure.
+ *
+ * - `ordinary`: it is not the measure's rest.
+ * - `candidate`: it may be the measure's rest, and is held as an ordinary rest
+ *   until the voice is whole. MeasureBuilder.finish settles it. It carries the
+ *   written value and the length that disagree, for the reading where it
+ *   stays an ordinary rest.
+ * - `fills`: it is the measure's rest as it stands.
+ */
+export type RestReading =
+  | { kind: 'ordinary' }
+  | { kind: 'candidate'; written: NoteValue; duration: Fraction }
+  | {
+      kind: 'fills'
+      /**
+       * The value the rest is written as where it stays an event, and nothing
+       * where no note value can write it: an irregular measure rests for a
+       * length no value states, and the sequence's own rest is the only place
+       * for it.
+       */
+      eventValue: NoteValue | undefined
+      /**
+       * Whether the rest can stay an event to keep what only an event holds:
+       * a note value writes it, and the voice rests its measure no other way.
+       * A second rest filling the measure is refused whatever it carries.
+       */
+      canStayEvent: boolean
+      /**
+       * Whether it carries something only an event holds, other than a
+       * marking or a stem, which are read where the event is built. MNX's rest
+       * on the sequence has no room for a lyric, and no id for a slur to start
+       * or end on. The sequence stating it must hold nothing, so grace notes
+       * before it keep it an event too.
+       */
+      needsEvent: boolean
+      /**
+       * How long the rest lasts, where no note value can write that length and
+       * that is what makes it the measure's rest.
+       */
+      unwritableLength: Fraction | undefined
+    }
 
 /** Reads how a <note> stands against its voice's measure, as a rest. */
 export function readRest(note: RestNote, state: PartState, builder: MeasureBuilder): RestReading {
@@ -122,8 +121,9 @@ export function readRest(note: RestNote, state: PartState, builder: MeasureBuild
       ? duration
       : undefined
 
-  // The checks read the element directly so that an unkept lyric or slur
-  // stays unread and reported.
+  // A slur only passing over the rest needs no target. The checks read the
+  // element directly so that an unkept lyric or slur stays unread and
+  // reported.
   const carriesLyric = element.element.children.some((c) => c.name === 'lyric')
   const carriesSlurEnd = notations.some((block) =>
     block.element.children.some(
@@ -185,14 +185,14 @@ export function readRest(note: RestNote, state: PartState, builder: MeasureBuild
         // measure. Ruling it out here keeps its report where the rest stands.
         builder.opensMeasure(voice)))
 
-  return {
-    fillsMeasure,
-    candidate: isCandidate ? { written, duration } : undefined,
-    unwritableLength,
-    eventValue,
-    keepsEvent: fillsMeasure && eventValue !== undefined && !builder.restsTheMeasure(voice),
-    carriesLyric,
-    carriesSlurEnd,
-    afterGraceNotes,
+  if (fillsMeasure) {
+    return {
+      kind: 'fills',
+      eventValue,
+      canStayEvent: eventValue !== undefined && !builder.restsTheMeasure(voice),
+      needsEvent: carriesLyric || carriesSlurEnd || afterGraceNotes,
+      unwritableLength,
+    }
   }
+  return isCandidate ? { kind: 'candidate', written, duration } : { kind: 'ordinary' }
 }
