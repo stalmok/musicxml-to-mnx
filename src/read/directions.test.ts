@@ -1911,6 +1911,17 @@ describe('the tempo a <sound> states', () => {
     expect(warnings.map((w) => w.message)).toEqual([soundTempoDropped])
   })
 
+  test('passes over an echo written with spaces around its number', () => {
+    const { warnings } = tempos(
+      '<direction><direction-type><metronome><beat-unit>quarter</beat-unit>' +
+        '<per-minute>120</per-minute></metronome></direction-type>' +
+        '<sound tempo=" 120 "/></direction>' +
+        quarter,
+    )
+
+    expect(warnings).toEqual([])
+  })
+
   // Number() reads each of these as 120, which would pass it over as an echo.
   test.each(['0x78', '1.2e2'])('reports a tempo of "%s" beside a mark of 120', (written) => {
     const { warnings } = tempos(

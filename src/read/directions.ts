@@ -696,7 +696,7 @@ export function readSound(
     if (name === 'tempo') {
       tempo = {
         position,
-        bpm: parseDecimal(attribute(sound.element, 'tempo') ?? ''),
+        bpm: parseDecimal((attribute(sound.element, 'tempo') ?? '').trim()),
         line: sound.line,
         place: warnings.reserve(),
       }
