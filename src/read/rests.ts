@@ -71,6 +71,8 @@ export type RestReading =
       unwritableLength: Fraction | undefined
     }
 
+export type FillsMeasure = Extract<RestReading, { kind: 'fills' }>
+
 /** Reads how a <note> stands against its voice's measure, as a rest. */
 export function readRest(note: RestNote, state: PartState, builder: MeasureBuilder): RestReading {
   const { element, notations, rest, grace, written, duration, voice } = note

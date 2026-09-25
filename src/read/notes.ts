@@ -42,7 +42,7 @@ import type { ElementReader } from './element.js'
 import { reportHidden } from './unrepresentable.js'
 import { readLyrics } from './lyrics.js'
 import { readRest } from './rests.js'
-import type { RestNote, RestReading } from './rests.js'
+import type { FillsMeasure, RestNote } from './rests.js'
 import { noteValueBaseOf, requireNoteValueBase } from './noteValues.js'
 import { parseWholeNumber, readIntegerInRange } from './numbers.js'
 import type { PartState } from './state.js'
@@ -207,7 +207,7 @@ function kitComponent(
   return key
 }
 
-/** What a <note> states, read once and shared by the paths that place it. */
+/** What is read from a <note> once and shared by the paths that place it. */
 interface NoteStatement extends RestNote {
   tieds: readonly XmlElement[]
   /** The <tuplet> markers in a block hidden with print-object="no". */
@@ -702,7 +702,7 @@ function openTupletsAndTremolo(
 /** Places a rest as its voice's rest through the measure, stated on the sequence. */
 function setMeasureRest(
   note: NoteStatement,
-  fills: Extract<RestReading, { kind: 'fills' }>,
+  fills: FillsMeasure,
   state: PartState,
   builder: MeasureBuilder,
   warnings: WarningCollector,
@@ -807,12 +807,12 @@ function readChordMember(
   if (graceElement) {
     attribute(graceElement, 'slash')
     const open = builder.openGraceType(voice)
-    for (const [side, written] of entriesOf(GRACE_TIME_ATTRIBUTES)) {
-      if (attribute(graceElement, written) === undefined) continue
+    for (const [side, named] of entriesOf(GRACE_TIME_ATTRIBUTES)) {
+      if (attribute(graceElement, named) === undefined) continue
       if (open === undefined || open === side) continue
       warnings.add(
         'inconsistent:grace-time',
-        `A note of a grace chord names ${written}, and the chord it joins takes its ` +
+        `A note of a grace chord names ${named}, and the chord it joins takes its ` +
           'time from another side. The side the chord states is the one converted.',
         { ...context, line: graceElement.line },
         'grace',
