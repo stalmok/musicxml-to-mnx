@@ -358,180 +358,7 @@ export function readNote(
     return
   }
 
-  const markers = tupletMarkers(notations)
-  // Held so the notes of a chord that follow can tell a marker restating this
-  // one from a marker of its own.
-  builder.noteTupletMarkers(voice, markers.map(tupletMarkerKey))
-
-  // A tremolo written across two notes gives each of them the value of the
-  // pair while the pair lasts only one of them. The pair is gathered into
-  // one item, which is how MNX states it.
-  const tremolo = multiNoteTremoloOf(notations, warnings, context)
-
-  // A tremolo on a single note carries no <time-modification> and lasts what
-  // it is written as, so only the ornament itself is lost, and that is
-  // reported where <ornaments> is. Across two notes it carries the pair's
-  // 2:1 ratio, which the tremolo item states.
-  const ratio = element.child('time-modification')
-
-  // Whether a bracket the source drew is open. A tuplet the ratio alone
-  // opened is not one: it is the reading below, not something the source
-  // stated the extent of.
-  const insideDrawnBracket = builder.insideBracket(voice) && !builder.insideImpliedTuplet(voice)
-
-  // A grace note takes none of the measure's time, so a ratio on one says
-  // nothing about how long a group is or where it ends, and no bracket is
-  // there to say it either.
-  if (ratio && markers.length === 0 && !insideDrawnBracket && !tremolo && graceElement) {
-    throw new MusicXMLError(
-      'A grace note carries a tuplet ratio but no <tuplet> bracket marks where the tuplet runs.',
-      { path, line: element.line },
-    )
-  }
-
-  const starts = markers.filter((marker) => attribute(marker, 'type') === 'start')
-
-  // MusicXML states a tuplet twice, and the two say different things: the
-  // ratio on every note is what makes it one, and <tuplet> only draws a
-  // bracket around it. A source stating the ratio and drawing nothing still
-  // says how long the group is, as the written value the ratio counts, so a
-  // run of notes carrying the same ratio divides into one group after another
-  // with nothing guessed. Faure's Cantique de Jean Racine is written this way
-  // throughout, 1,056 triplet notes with no bracket anywhere.
-  //
-  // The ratio is read only where it can settle such a run. A start marker
-  // opens a bracket of its own below; inside a bracket the source drew, the
-  // bracket says where the tuplet runs, and a note there need not state a
-  // value at all. A stop marker naming no bracket is passed over further down.
-  //
-  // A note that starts a two-note tremolo states the pair's 2:1 multiplied
-  // into whatever tuplet it stands in, so the ratio is read through the pair:
-  // its share comes out, and what is left says whether a tuplet is there at
-  // all. The note that stops the pair states the same and adds nothing, the
-  // tremolo standing in the run in its place. A pair stating no value to
-  // count states no tuplet either, and is left to be read as the pair it is.
-  const readsRatio =
-    ratio !== undefined &&
-    starts.length === 0 &&
-    !graceElement &&
-    !insideDrawnBracket &&
-    tremolo?.type !== 'stop' &&
-    (!tremolo || ratioCountedValue(ratio, element, path) !== undefined)
-  const stated = readsRatio ? readTupletRatio(ratio, element, path) : undefined
-  const rated = stated && tremolo ? tupletShareOfRatio(stated) : stated
-
-  // Full, or this note does not belong in it either way: the run ends here. A
-  // grace note takes none of the measure's time, so it neither fills a run nor
-  // ends one, and the run it sits in reaches over it. Time the voice passed
-  // over in silence before it is another matter, and ends the run whatever
-  // stands after the skip.
-  const endsRun = graceElement
-    ? builder.impliedTupletEndsAtGap(voice)
-    : builder.impliedTupletEndsBefore(voice, rated)
-  if (endsRun) builder.closeTuplet(voice, warnings, context, path, element.line)
-
-  // A ratio is read only where no bracket the source drew is open, and the
-  // close above ends any run this note does not belong in, so what is open
-  // here is the run this note joins, or nothing.
-  if (!graceElement && rated && !builder.insideImpliedTuplet(voice)) {
-    builder.openImpliedTuplet(voice, rated.inner, rated.outer)
-  }
-
-  if (starts.length > 0) {
-    // A bracket with no ratio beside it is written by real engravers, and the
-    // note itself says what the ratio is: how long it lasts against how it is
-    // written. Ten songs of the Lieder corpus carry one, some as a plain
-    // bracket over notes that play as written, some as a triplet whose
-    // <time-modification> the exporter left out.
-    const derived = ratio ? undefined : impliedTupletRatio(written, duration)
-    if (!ratio && !derived) {
-      throw new MusicXMLError(
-        'A tuplet starts on a note with no <time-modification>, and the note does not ' +
-          'say how long it lasts against how it is written.',
-        { path, line: element.line },
-      )
-    }
-
-    const stated = ratio ? readTupletRatio(ratio, element, path) : derived
-    /* v8 ignore next -- one of the two is set, or the throw above ran. */
-    if (!stated) throw new Error('A tuplet opened with no ratio.')
-    // MusicXML counts a tuplet and a two-note tremolo together, so a note
-    // that opens a bracket and starts a tremolo states the two multiplied.
-    // The tremolo's own half is not the bracket's to hold.
-    const quantities = tremolo?.type === 'start' ? withoutTremoloShare(stated) : stated
-    const opening = starts.map((marker) => ({
-      display: tupletDisplayOf(marker, hiddenTuplets.has(marker)),
-      stated: statedTupletRatio(marker, quantities, path),
-      // A marker that states no number is tuplet 1, as the spec has it.
-      number: attribute(marker, 'number') ?? '1',
-    }))
-
-    // The note states one ratio for however many brackets open on it. Where
-    // several do, only the markers can say how it divides between them, and
-    // <time-modification> is not there to be weighed against them.
-    if (derived && opening.some((start) => !start.stated) && opening.length > 1) {
-      throw new MusicXMLError(
-        'More than one tuplet starts on a note with no <time-modification>, and the ' +
-          'markers do not state how the ratio divides between them.',
-        { path, line: element.line },
-      )
-    }
-    if (derived) {
-      warnings.add(
-        'missing:time-modification',
-        `A tuplet starts with no <time-modification>. The note lasts ${describeRatio(derived)} ` +
-          'of what it is written as, ' +
-          (quantities === derived
-            ? 'so that is the ratio converted.'
-            : `and the two-note tremolo on it takes half of that, so the bracket is ` +
-              `converted as ${describeRatio(quantities)}.`),
-        { ...context, line: element.line },
-        'tuplet',
-      )
-    }
-
-    // MNX states a two-note tremolo as one item holding both notes, so a
-    // bracket around one of them has nowhere to go. MuseScore writes exactly
-    // that: each note of the pair carries a bracket of one in the time of
-    // one, drawn with neither bracket nor number. Such a bracket scales
-    // nothing, so passing it over costs no duration, and the stop that
-    // matches it is passed over with it. A bracket that does scale something
-    // is refused where it opens.
-    const inTremolo = tremolo?.type === 'start' || builder.insideTremolo(voice)
-    const opened = opening.filter((start) => {
-      if (!inTremolo || !scalesNothing(start.stated ?? quantities)) return true
-      warnings.add(
-        'unsupported:element',
-        'A <tuplet> holds one note of a two-note tremolo, which MNX states as one item ' +
-          'holding both notes. The bracket is one in the time of one, so it scales nothing ' +
-          'and is not converted.',
-        { ...context, line: element.line },
-        'tuplet',
-      )
-      builder.dropTupletStart(voice, start.number)
-      return false
-    })
-
-    if (opened.length > 0) {
-      builder.openTuplets(
-        voice,
-        quantities.inner,
-        quantities.outer,
-        opened,
-        warnings,
-        context,
-        path,
-        element.line,
-        derived !== undefined,
-      )
-    }
-  }
-
-  // Opened after any tuplet starting on the same note: the pair may sit
-  // inside a tuplet, and the bracket is the outer grouping.
-  if (tremolo?.type === 'start') {
-    builder.openTremolo(voice, tremolo.marks, path, element.line)
-  }
+  const { markers, tremolo } = openTupletsAndTremolo(note, builder, warnings, context, path)
 
   const restReading = readRest(note, state, builder)
 
@@ -737,6 +564,197 @@ export function readNote(
     builder.closeTremolo(voice, tremolo.marks, warnings, context, path, element.line)
   }
   closeTuplets(builder, voice, markers, warnings, context, path, element.line)
+}
+
+/**
+ * Opens what the note starts around it: the tuplets, drawn or implied by a
+ * run of ratios, and a two-note tremolo. Returns the tuplet markers and the
+ * tremolo, which close once the note is placed.
+ */
+function openTupletsAndTremolo(
+  note: NoteStatement,
+  builder: MeasureBuilder,
+  warnings: WarningCollector,
+  context: WarningContext,
+  path: DocumentPath,
+): { markers: readonly XmlElement[]; tremolo: MultiNoteTremolo | undefined } {
+  const { element, notations, hiddenTuplets, voice, duration, written, grace: graceElement } = note
+  const markers = tupletMarkers(notations)
+  // Held so the notes of a chord that follow can tell a marker restating this
+  // one from a marker of its own.
+  builder.noteTupletMarkers(voice, markers.map(tupletMarkerKey))
+
+  // A tremolo written across two notes gives each of them the value of the
+  // pair while the pair lasts only one of them. The pair is gathered into
+  // one item, which is how MNX states it.
+  const tremolo = multiNoteTremoloOf(notations, warnings, context)
+
+  // A tremolo on a single note carries no <time-modification> and lasts what
+  // it is written as, so only the ornament itself is lost, and that is
+  // reported where <ornaments> is. Across two notes it carries the pair's
+  // 2:1 ratio, which the tremolo item states.
+  const ratio = element.child('time-modification')
+
+  // Whether a bracket the source drew is open. A tuplet the ratio alone
+  // opened is not one: it is the reading below, not something the source
+  // stated the extent of.
+  const insideDrawnBracket = builder.insideBracket(voice) && !builder.insideImpliedTuplet(voice)
+
+  // A grace note takes none of the measure's time, so a ratio on one says
+  // nothing about how long a group is or where it ends, and no bracket is
+  // there to say it either.
+  if (ratio && markers.length === 0 && !insideDrawnBracket && !tremolo && graceElement) {
+    throw new MusicXMLError(
+      'A grace note carries a tuplet ratio but no <tuplet> bracket marks where the tuplet runs.',
+      { path, line: element.line },
+    )
+  }
+
+  const starts = markers.filter((marker) => attribute(marker, 'type') === 'start')
+
+  // MusicXML states a tuplet twice, and the two say different things: the
+  // ratio on every note is what makes it one, and <tuplet> only draws a
+  // bracket around it. A source stating the ratio and drawing nothing still
+  // says how long the group is, as the written value the ratio counts, so a
+  // run of notes carrying the same ratio divides into one group after another
+  // with nothing guessed. Faure's Cantique de Jean Racine is written this way
+  // throughout, 1,056 triplet notes with no bracket anywhere.
+  //
+  // The ratio is read only where it can settle such a run. A start marker
+  // opens a bracket of its own below; inside a bracket the source drew, the
+  // bracket says where the tuplet runs, and a note there need not state a
+  // value at all. A stop marker naming no bracket is passed over further down.
+  //
+  // A note that starts a two-note tremolo states the pair's 2:1 multiplied
+  // into whatever tuplet it stands in, so the ratio is read through the pair:
+  // its share comes out, and what is left says whether a tuplet is there at
+  // all. The note that stops the pair states the same and adds nothing, the
+  // tremolo standing in the run in its place. A pair stating no value to
+  // count states no tuplet either, and is left to be read as the pair it is.
+  const readsRatio =
+    ratio !== undefined &&
+    starts.length === 0 &&
+    !graceElement &&
+    !insideDrawnBracket &&
+    tremolo?.type !== 'stop' &&
+    (!tremolo || ratioCountedValue(ratio, element, path) !== undefined)
+  const stated = readsRatio ? readTupletRatio(ratio, element, path) : undefined
+  const rated = stated && tremolo ? tupletShareOfRatio(stated) : stated
+
+  // Full, or this note does not belong in it either way: the run ends here. A
+  // grace note takes none of the measure's time, so it neither fills a run nor
+  // ends one, and the run it sits in reaches over it. Time the voice passed
+  // over in silence before it is another matter, and ends the run whatever
+  // stands after the skip.
+  const endsRun = graceElement
+    ? builder.impliedTupletEndsAtGap(voice)
+    : builder.impliedTupletEndsBefore(voice, rated)
+  if (endsRun) builder.closeTuplet(voice, warnings, context, path, element.line)
+
+  // A ratio is read only where no bracket the source drew is open, and the
+  // close above ends any run this note does not belong in, so what is open
+  // here is the run this note joins, or nothing.
+  if (!graceElement && rated && !builder.insideImpliedTuplet(voice)) {
+    builder.openImpliedTuplet(voice, rated.inner, rated.outer)
+  }
+
+  if (starts.length > 0) {
+    // A bracket with no ratio beside it is written by real engravers, and the
+    // note itself says what the ratio is: how long it lasts against how it is
+    // written. Ten songs of the Lieder corpus carry one, some as a plain
+    // bracket over notes that play as written, some as a triplet whose
+    // <time-modification> the exporter left out.
+    const derived = ratio ? undefined : impliedTupletRatio(written, duration)
+    if (!ratio && !derived) {
+      throw new MusicXMLError(
+        'A tuplet starts on a note with no <time-modification>, and the note does not ' +
+          'say how long it lasts against how it is written.',
+        { path, line: element.line },
+      )
+    }
+
+    const stated = ratio ? readTupletRatio(ratio, element, path) : derived
+    /* v8 ignore next -- one of the two is set, or the throw above ran. */
+    if (!stated) throw new Error('A tuplet opened with no ratio.')
+    // MusicXML counts a tuplet and a two-note tremolo together, so a note
+    // that opens a bracket and starts a tremolo states the two multiplied.
+    // The tremolo's own half is not the bracket's to hold.
+    const quantities = tremolo?.type === 'start' ? withoutTremoloShare(stated) : stated
+    const opening = starts.map((marker) => ({
+      display: tupletDisplayOf(marker, hiddenTuplets.has(marker)),
+      stated: statedTupletRatio(marker, quantities, path),
+      // A marker that states no number is tuplet 1, as the spec has it.
+      number: attribute(marker, 'number') ?? '1',
+    }))
+
+    // The note states one ratio for however many brackets open on it. Where
+    // several do, only the markers can say how it divides between them, and
+    // <time-modification> is not there to be weighed against them.
+    if (derived && opening.some((start) => !start.stated) && opening.length > 1) {
+      throw new MusicXMLError(
+        'More than one tuplet starts on a note with no <time-modification>, and the ' +
+          'markers do not state how the ratio divides between them.',
+        { path, line: element.line },
+      )
+    }
+    if (derived) {
+      warnings.add(
+        'missing:time-modification',
+        `A tuplet starts with no <time-modification>. The note lasts ${describeRatio(derived)} ` +
+          'of what it is written as, ' +
+          (quantities === derived
+            ? 'so that is the ratio converted.'
+            : `and the two-note tremolo on it takes half of that, so the bracket is ` +
+              `converted as ${describeRatio(quantities)}.`),
+        { ...context, line: element.line },
+        'tuplet',
+      )
+    }
+
+    // MNX states a two-note tremolo as one item holding both notes, so a
+    // bracket around one of them has nowhere to go. MuseScore writes exactly
+    // that: each note of the pair carries a bracket of one in the time of
+    // one, drawn with neither bracket nor number. Such a bracket scales
+    // nothing, so passing it over costs no duration, and the stop that
+    // matches it is passed over with it. A bracket that does scale something
+    // is refused where it opens.
+    const inTremolo = tremolo?.type === 'start' || builder.insideTremolo(voice)
+    const opened = opening.filter((start) => {
+      if (!inTremolo || !scalesNothing(start.stated ?? quantities)) return true
+      warnings.add(
+        'unsupported:element',
+        'A <tuplet> holds one note of a two-note tremolo, which MNX states as one item ' +
+          'holding both notes. The bracket is one in the time of one, so it scales nothing ' +
+          'and is not converted.',
+        { ...context, line: element.line },
+        'tuplet',
+      )
+      builder.dropTupletStart(voice, start.number)
+      return false
+    })
+
+    if (opened.length > 0) {
+      builder.openTuplets(
+        voice,
+        quantities.inner,
+        quantities.outer,
+        opened,
+        warnings,
+        context,
+        path,
+        element.line,
+        derived !== undefined,
+      )
+    }
+  }
+
+  // Opened after any tuplet starting on the same note: the pair may sit
+  // inside a tuplet, and the bracket is the outer grouping.
+  if (tremolo?.type === 'start') {
+    builder.openTremolo(voice, tremolo.marks, path, element.line)
+  }
+
+  return { markers, tremolo }
 }
 
 /** A note carrying <chord>, joined to the event before it. */
@@ -1768,11 +1786,16 @@ function tremoloBeamCount(text: string): number | undefined {
   return marks !== undefined && marks >= 1 && marks <= 8 ? marks : undefined
 }
 
+interface MultiNoteTremolo {
+  type: 'start' | 'stop'
+  marks: number
+}
+
 function multiNoteTremoloOf(
   notations: readonly ElementReader[],
   warnings: WarningCollector,
   context: WarningContext,
-): { type: 'start' | 'stop'; marks: number } | undefined {
+): MultiNoteTremolo | undefined {
   for (const block of notations) {
     for (const ornaments of block.blocks('ornaments')) {
       for (const tremolo of ornaments.children('tremolo')) {
