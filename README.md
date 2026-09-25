@@ -217,7 +217,7 @@ A converted file can still have warnings.
 | [CPDL](https://www.cpdl.org), random sample                                                   | 2,000  | 1,985     |
 
 The regular suite includes 600 vendored Lieder songs and seven feature files.
-CI runs the full Lieder corpus weekly and on demand against its latest state.
+CI runs the vendored songs when the converter changes, and the full Lieder corpus weekly and on demand against its latest state.
 See the [corpus source notes](tests/corpus/PROVENANCE.md) for selection and licensing details.
 
 ## Input handling

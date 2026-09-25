@@ -4,8 +4,9 @@
 # (workflow_call), so the release workflow runs the same gate set. A gate
 # added here guards releases too, with no second list to forget.
 #
-# The vendored corpus runs only when a caller sets the corpus input, which the
-# release workflow does. Pushes and pull requests skip it for speed.
+# The vendored corpus runs here only when a caller sets the corpus input, which
+# the release workflow does. Pushes and pull requests that change what it tests
+# run it in vendored-corpus.yml instead, so it does not slow every push.
 #
 # The dependency audit is not here: a new advisory against a dependency a
 # change never touched would redden it. It runs weekly and on demand instead,
