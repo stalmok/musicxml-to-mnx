@@ -42,7 +42,7 @@ import {
   requireAttribute,
   trimmedText,
 } from '../xml/tree.js'
-import { readAttributes, timesInForce } from './attributes.js'
+import { firstTimeStated, readAttributes } from './attributes.js'
 import type { MeasureRepeatReading, StaffSignature } from './attributes.js'
 import { readBarline, resolveEndings } from './barlines.js'
 import { buildBeams } from './beams.js'
@@ -52,9 +52,10 @@ import { requireDuration } from './divisions.js'
 import { lengthOf } from './duration.js'
 import { drawnName, ElementReader, reportUnreadAttributes } from './element.js'
 import { GroupingBuilder, pruneGrouping } from './part-groups.js'
-import { compareFractions, fraction, negate } from '../fraction.js'
+import { addFractions, compareFractions, fraction, negate } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import { readNote } from './notes.js'
+import { parseWholeNumber } from './numbers.js'
 import { readPrint } from './print.js'
 import { IdGenerator } from './spanners.js'
 import { measureLength, newPartState } from './state.js'
@@ -894,6 +895,61 @@ function scoreTimesInForce(parts: readonly XmlElement[]): (TimeSignature | undef
   return Array.from({ length: longest }, (_, index) =>
     perPart.map((times) => times[index]).find((time) => time !== undefined),
   )
+}
+
+/**
+ * The time signature each measure of a part opens with, read ahead of the
+ * part itself: a part that states none of its own runs to the barline the
+ * other parts state, and those may be read after it. It answers one question
+ * per statement, whether it stands where the measure begins, so its cursor
+ * moves by the rules the measure builder's does. The first statement at the
+ * start stands, and the last one after it opens the next measure. The part
+ * reader reports or refuses whatever here is broken, so nothing here reports
+ * anything, and a value it cannot read counts as nothing.
+ */
+function timesInForce(part: XmlElement): (TimeSignature | undefined)[] {
+  let inForce: TimeSignature | undefined
+  let divisions = 1
+  return children(part, 'measure').map((measure) => {
+    let opens = inForce
+    let settled = false
+    let late = false
+    let cursor = fraction(0)
+    const by = (found: XmlElement) => {
+      const duration = child(found, 'duration')
+      const count = duration && parseWholeNumber(trimmedText(duration))
+      return fraction(count ?? 0, divisions * 4)
+    }
+    for (const found of measure.children) {
+      if (found.name === 'forward') cursor = addFractions(cursor, by(found))
+      else if (found.name === 'backup') cursor = addFractions(cursor, negate(by(found)))
+      else if (found.name === 'note' && !child(found, 'chord')) {
+        // Written out, a note before the measure start stands at the start.
+        if (compareFractions(cursor, fraction(0)) < 0) cursor = fraction(0)
+        cursor = addFractions(cursor, by(found))
+      }
+      if (found.name !== 'attributes') continue
+      const stated = child(found, 'divisions')
+      const count = stated && parseWholeNumber(trimmedText(stated))
+      if (count && count > 0) divisions = count
+      if (!child(found, 'time')) continue
+      let time: TimeSignature | undefined
+      try {
+        time = firstTimeStated(found)
+      } catch (error) {
+        if (!(error instanceof MusicXMLError)) throw error
+      }
+      if (compareFractions(cursor, fraction(0)) > 0) {
+        late = true
+        inForce = time
+      } else if (!settled) {
+        settled = true
+        opens = time
+        if (!late) inForce = time
+      }
+    }
+    return opens
+  })
 }
 
 function readPart(

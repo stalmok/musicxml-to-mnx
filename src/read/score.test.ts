@@ -1156,6 +1156,47 @@ describe('a time signature stated after the measure start', () => {
     expect(warnings.map((w) => w.code)).toEqual(['inconsistent:time', 'inconsistent:backup'])
   })
 
+  test('reads ahead a note written after a <backup> past the start as moving on from the start', () => {
+    const { warnings } = read(
+      untimedBesideNext(timed(2) + note(24) + back(48) + note(24, 2) + timed(3), 24),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:backup'])
+  })
+
+  test('reads ahead a <backup> in the divisions stated before it', () => {
+    const { warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${opening + timed(2) + note(24)}` +
+          `<attributes><divisions>24</divisions></attributes>${back(24) + timed(3)}</measure>` +
+          `<measure number="2">${note(72)}</measure></part>` +
+          `<part id="P2"><measure number="1">${opening + note(24)}</measure>` +
+          `<measure number="2">${note(24) + shortTriplet}</measure></part>`,
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:mid-measure-time'])
+  })
+
+  test('reads ahead past a <divisions> of zero, which the part reader refuses', () => {
+    const zero = '<attributes><divisions>0</divisions></attributes>'
+
+    expect(readFailure(untimedBesideNext(zero + timed(3) + note(36), 36)).message).toMatch(
+      /divisions/,
+    )
+  })
+
+  test('reads ahead a broken time signature as stating none', () => {
+    const composite =
+      '<attributes><time><beats>3</beats><beat-type>4</beat-type>' +
+      '<beats>2</beats><beat-type>4</beat-type></time></attributes>'
+
+    const failure = readFailure(untimedBesideNext(timed(3) + note(36) + composite, 36))
+
+    expect(failure.message).toMatch(/composite time signature/)
+    expect(failure.path).toEqual(['score-partwise', 'part P1', 'measure 1'])
+  })
+
   // An unmetered measure has no barline to measure silence to, so the time
   // signature before it does not complete a bracket in it.
   test('measures a senza misura measure against no time signature', () => {

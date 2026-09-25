@@ -20,7 +20,7 @@ import type {
 import { WarningCollector } from '../warnings.js'
 import type { WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
-import { attribute, child, children, requireChild, trimmedText } from '../xml/tree.js'
+import { attribute, children, requireChild, trimmedText } from '../xml/tree.js'
 import { ElementReader } from './element.js'
 import { readAttributeInRange, readInteger, readIntegerInRange } from './numbers.js'
 import { staffLinesOf, staffPositionOfLine } from './state.js'
@@ -479,55 +479,15 @@ function readKey(
 }
 
 /**
- * The time signature each measure of a part opens with, read ahead of the
- * part itself: a part that states none of its own runs to the barline the
- * other parts state, and those may be read after it. The rules are the ones
- * the part is read by: the first stated where the measure begins stands, and
- * the last stated after that opens the next measure. Whatever a time
- * signature says that is lost or broken is reported, or refused, where the
- * part itself is read, so nothing here reports anything.
+ * The first metered time signature an <attributes> block states, read with
+ * nothing reported. MusicXML allows one <time> per staff in a block, and the
+ * first metered one is the one in force, as where the part is read.
  */
-export function timesInForce(part: XmlElement): (TimeSignature | undefined)[] {
+export function firstTimeStated(block: XmlElement): TimeSignature | undefined {
   const unreported = new WarningCollector()
-  let inForce: TimeSignature | undefined
-  return children(part, 'measure').map((measure) => {
-    let opens = inForce
-    let settled = false
-    let late = false
-    // In divisions as the source counts them. Only whether the cursor stands
-    // at the start matters here.
-    let cursor = 0
-    for (const found of measure.children) {
-      const by = Number(child(found, 'duration')?.text ?? 0)
-      if (found.name === 'forward') cursor += by
-      else if (found.name === 'backup') cursor -= by
-      else if (found.name === 'note' && !child(found, 'chord')) {
-        cursor += by
-      }
-      if (found.name !== 'attributes') continue
-      const times = children(found, 'time')
-      if (times.length === 0) continue
-      let time: TimeSignature | undefined
-      // MusicXML allows one <time> per staff in a block. As where the part
-      // is read, the first metered one is the one in force.
-      try {
-        time = times
-          .map((block) => readTime(new ElementReader(block), unreported, {}, []))
-          .find((read) => read !== undefined)
-      } catch {
-        time = undefined
-      }
-      if (cursor > 0) {
-        late = true
-        inForce = time
-      } else if (!settled) {
-        settled = true
-        opens = time
-        if (!late) inForce = time
-      }
-    }
-    return opens
-  })
+  return children(block, 'time')
+    .map((time) => readTime(new ElementReader(time), unreported, {}, []))
+    .find((read) => read !== undefined)
 }
 
 function readTime(
