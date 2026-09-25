@@ -221,6 +221,7 @@ interface NoteStatement extends RestNote {
 export function readNote(
   element: ElementReader,
   state: PartState,
+  measure: number,
   builder: MeasureBuilder,
   warnings: WarningCollector,
   context: WarningContext,
@@ -354,7 +355,7 @@ export function readNote(
   // not an event of its own: it opens no tuplet, and the ratio it repeats
   // belongs to the event it joins.
   if (chordMember) {
-    readChordMember(note, state, builder, warnings, context, path)
+    readChordMember(note, state, measure, builder, warnings, context, path)
     return
   }
 
@@ -442,6 +443,7 @@ export function readNote(
       voice,
       builder,
       state,
+      measure,
       warnings,
       context,
       tieds,
@@ -494,6 +496,7 @@ export function readNote(
     voice,
     builder,
     state,
+    measure,
     warnings,
     context,
     tieds,
@@ -775,6 +778,7 @@ function setMeasureRest(
 function readChordMember(
   note: NoteStatement,
   state: PartState,
+  measure: number,
   builder: MeasureBuilder,
   warnings: WarningCollector,
   context: WarningContext,
@@ -883,6 +887,7 @@ function readChordMember(
     chordNote,
     tiePairing(chordNote),
     voice,
+    measure,
     placed.start,
     graceElement !== undefined,
     state,
@@ -933,6 +938,7 @@ function readEventSpanners(
   voice: string | undefined,
   builder: MeasureBuilder,
   state: PartState,
+  measure: number,
   warnings: WarningCollector,
   context: WarningContext,
   tieds: readonly XmlElement[],
@@ -948,6 +954,7 @@ function readEventSpanners(
       note,
       tiePairing(note),
       voice,
+      measure,
       placed.start,
       inGraceGroup,
       state,
@@ -956,7 +963,7 @@ function readEventSpanners(
       tieds,
     )
   }
-  readSlurs(notations, placed, voice, state, warnings, context, inGraceGroup)
+  readSlurs(notations, placed, voice, measure, state, warnings, context, inGraceGroup)
   builder.addBeamMarkers(
     voice,
     event.id,
@@ -1534,6 +1541,7 @@ function readTies(
   note: TieTarget,
   pairedBy: string,
   voice: string | undefined,
+  measure: number,
   at: Fraction,
   grace: boolean,
   state: PartState,
@@ -1551,9 +1559,9 @@ function readTies(
   const where = { ...context, line: element.element.line }
   for (const edge of tieEdges(ties, tieds, warnings, context)) {
     if (edge === 'stop') {
-      state.spanners.stopTie(note, pairedBy, voice, state.measure, at, grace, where)
+      state.spanners.stopTie(note, pairedBy, voice, measure, at, grace, where)
     } else {
-      state.spanners.startTie(note, pairedBy, voice, side, state.measure, at, grace, where)
+      state.spanners.startTie(note, pairedBy, voice, side, measure, at, grace, where)
     }
   }
 
@@ -1652,6 +1660,7 @@ function readSlurs(
   notations: readonly ElementReader[],
   { event, start: at }: PlacedEvent,
   voice: string | undefined,
+  measure: number,
   state: PartState,
   warnings: WarningCollector,
   context: WarningContext,
@@ -1670,7 +1679,7 @@ function readSlurs(
     // is recorded with the edge.
     const where = { ...context, line: slur.line }
     if (type === 'stop') {
-      state.spanners.stopSlur(event, number, side, voice, state.measure, at, grace, where)
+      state.spanners.stopSlur(event, number, side, voice, measure, at, grace, where)
     } else if (type === 'start') {
       state.spanners.startSlur(
         event,
@@ -1678,7 +1687,7 @@ function readSlurs(
         side,
         slurLineType(slur),
         voice,
-        state.measure,
+        measure,
         at,
         grace,
         where,

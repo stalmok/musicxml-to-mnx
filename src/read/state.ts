@@ -127,12 +127,6 @@ export interface PartState {
    * where the count changes.
    */
   staffLines: Map<number, number>
-  /**
-   * Which measure of the part is being read, counted from zero. Held because
-   * a slur is written on a note and paired once the whole part is in, so each
-   * end has to record where in the part it stands.
-   */
-  measure: number
   /** Shared across the score, so every id in the document is distinct. */
   ids: IdGenerator
   /** Per part: a tie or slur may span measures, but not parts. */
@@ -201,7 +195,6 @@ export function newPartState(
     staves: 1,
     clefs: new Map(),
     staffLines: new Map(),
-    measure: 0,
     ids,
     spanners: new SpannerResolver(),
     sounds,
