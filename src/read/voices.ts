@@ -213,7 +213,7 @@ interface VoiceLayers {
  *
  * - `none`: it does not, or not yet.
  * - `candidate`: an ordinary rest that may turn out to be the measure's rest,
- *   held until the voice is whole. See settleMeasureRests.
+ *   held until the voice is whole, and settled by finish.
  * - `sequence`: the rest stands on the sequence, which holds nothing else.
  * - `event`: the rest stands in the content as an event, where it carries
  *   something the sequence cannot hold. The voice rests the measure all the
@@ -1851,7 +1851,7 @@ export class MeasureBuilder {
 
   /**
    * Marks the rest just added as one that could be this voice's measure rest,
-   * to be settled by settleMeasureRests once the voice is whole.
+   * to be settled by finish once the voice is whole.
    */
   markMeasureRest(voice: string | undefined, event: Event, reportMismatch: () => void): void {
     this.#builderFor(voice).measureRest = { kind: 'candidate', event, reportMismatch }
