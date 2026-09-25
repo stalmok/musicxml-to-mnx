@@ -2,12 +2,12 @@
 // declarations its public entry reaches, and those must compile on their own,
 // with library checking on. It is skipped until the package is built.
 
-import { existsSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, onTestFinished, test } from 'vitest'
 
 const types = fileURLToPath(new URL('../dist/types', import.meta.url))
 
@@ -34,6 +34,7 @@ suite('the built declarations', () => {
 
   test('compile for a consumer with library checking on', () => {
     const consumer = mkdtempSync(join(tmpdir(), 'ossia-consumer-'))
+    onTestFinished(() => rmSync(consumer, { recursive: true, force: true }))
     const source = join(consumer, 'consumer.ts')
     writeFileSync(
       source,
