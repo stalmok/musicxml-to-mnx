@@ -49,6 +49,7 @@ import { soundingPitch } from './transposition.js'
 import { entriesOf, recogniser } from './tables.js'
 import { tieKey } from './spanners.js'
 import { MeasureBuilder } from './voices.js'
+import type { PlacedEvent } from './voices.js'
 import type { TupletDisplaySettings } from './tuplets.js'
 
 // A recogniser rather than a bare set: it narrows the value it accepts to the
@@ -400,22 +401,23 @@ export function readNote(
       )
     }
     const chordDurationOrNone = writtenMatches ? undefined : duration
+    let placed: PlacedEvent
     if ('pitch' in chordNote) {
-      builder.addChordNote(voice, chordNote, chordDurationOrNone, path, element.line)
+      placed = builder.addChordNote(voice, chordNote, chordDurationOrNone, path, element.line)
       // A roll is drawn across the notes of a chord, so it is the pitched
       // members that say how far it reaches. A kit note has no pitch to order
       // it by, and the chord it sits on is what the roll spans anyway.
-      readArpeggio(notations, voice, builder, chordNote)
+      readArpeggio(notations, placed, builder, chordNote)
     } else {
-      builder.addChordKitNote(voice, chordNote, chordDurationOrNone, path, element.line)
-      readArpeggio(notations, voice, builder, undefined)
+      placed = builder.addChordKitNote(voice, chordNote, chordDurationOrNone, path, element.line)
+      readArpeggio(notations, placed, builder, undefined)
     }
     readTies(
       element,
       chordNote,
       tiePairing(chordNote),
       voice,
-      builder,
+      placed.start,
       graceElement !== undefined,
       state,
       warnings,
@@ -887,7 +889,7 @@ export function readNote(
   // of the measure's time, which is why it carries no <duration>. It joins a
   // group rather than standing in the cursor's path.
   if (graceElement) {
-    builder.addGraceNote(
+    const placed = builder.addGraceNote(
       voice,
       event,
       attribute(graceElement, 'slash') === 'yes',
@@ -897,7 +899,7 @@ export function readNote(
     readEventSpanners(
       element,
       notations,
-      event,
+      placed,
       voice,
       builder,
       state,
@@ -930,18 +932,16 @@ export function readNote(
 
   // Where the source states no <duration>, the written value is how long the
   // note lasts.
-  if (restFillsMeasure) {
-    builder.addMeasureRestEvent(
-      voice,
-      event,
-      duration ?? lengthOf(value),
-      path,
-      element.line,
-      staff,
-    )
-  } else {
-    builder.addEvent(voice, event, duration ?? lengthOf(value), path, element.line, staff)
-  }
+  const placed = restFillsMeasure
+    ? builder.addMeasureRestEvent(
+        voice,
+        event,
+        duration ?? lengthOf(value),
+        path,
+        element.line,
+        staff,
+      )
+    : builder.addEvent(voice, event, duration ?? lengthOf(value), path, element.line, staff)
   if (restsWholeMeasure) {
     builder.markMeasureRest(voice, event, () =>
       reportDurationMismatch(element, written, duration, scale, warnings, context),
@@ -950,7 +950,7 @@ export function readNote(
   readEventSpanners(
     element,
     notations,
-    event,
+    placed,
     voice,
     builder,
     state,
@@ -977,7 +977,7 @@ export function readNote(
 function readEventSpanners(
   element: ElementReader,
   notations: readonly ElementReader[],
-  event: Event,
+  placed: PlacedEvent,
   voice: string | undefined,
   builder: MeasureBuilder,
   state: PartState,
@@ -988,14 +988,15 @@ function readEventSpanners(
 ): void {
   // The event's own note is the one these notations sit on: a chord member's
   // are read where the member is, against the note it added.
-  readArpeggio(notations, voice, builder, event.notes[0])
+  const { event } = placed
+  readArpeggio(notations, placed, builder, event.notes[0])
   for (const note of [...event.notes, ...event.kitNotes]) {
     readTies(
       element,
       note,
       tiePairing(note),
       voice,
-      builder,
+      placed.start,
       inGraceGroup,
       state,
       warnings,
@@ -1003,7 +1004,7 @@ function readEventSpanners(
       tieds,
     )
   }
-  readSlurs(notations, event, voice, builder, state, warnings, context, inGraceGroup)
+  readSlurs(notations, placed, voice, state, warnings, context, inGraceGroup)
   builder.addBeamMarkers(
     voice,
     event.id,
@@ -1431,7 +1432,7 @@ function upOrDown(value: string | undefined): 'up' | 'down' | undefined {
  */
 function readArpeggio(
   notations: readonly ElementReader[],
-  voice: string | undefined,
+  placed: PlacedEvent,
   builder: MeasureBuilder,
   /** The note carrying these notations, or nothing where a rest carries them. */
   note: Note | undefined,
@@ -1445,7 +1446,7 @@ function readArpeggio(
       // one is passed on absent rather than defaulted: a default made every
       // unnumbered mark in the measure claim the same roll.
       builder.markArpeggio(
-        voice,
+        placed,
         note,
         attribute(rolled, 'number'),
         false,
@@ -1461,7 +1462,7 @@ function readArpeggio(
     for (const struck of block.children('non-arpeggiate')) {
       attribute(struck, 'type')
       builder.markArpeggio(
-        voice,
+        placed,
         note,
         attribute(struck, 'number'),
         true,
@@ -1581,7 +1582,7 @@ function readTies(
   note: TieTarget,
   pairedBy: string,
   voice: string | undefined,
-  builder: MeasureBuilder,
+  at: Fraction,
   grace: boolean,
   state: PartState,
   warnings: WarningCollector,
@@ -1590,13 +1591,6 @@ function readTies(
 ): void {
   const ties = element.children('tie')
   const side = startTiedSide(tieds)
-
-  // The note is in its voice by now, so the cursor has moved past it and its
-  // own start is what the pairing orders it by.
-  const at = builder.lastEventStart(voice)
-  /* v8 ignore next 2 -- a note joins its voice before its ties are read, so
-     there is always a place here to pair from. */
-  if (!at) throw new Error('A tie on a note with no place in the measure.')
 
   // A tie is reported once the part is whole, when the elements it was
   // written on are gone, so a line is recorded with the edge. The <note>'s,
@@ -1704,9 +1698,8 @@ function startTiedSide(tieds: readonly XmlElement[]): CurveSide | undefined {
  */
 function readSlurs(
   notations: readonly ElementReader[],
-  event: Event,
+  { event, start: at }: PlacedEvent,
   voice: string | undefined,
-  builder: MeasureBuilder,
   state: PartState,
   warnings: WarningCollector,
   context: WarningContext,
@@ -1714,12 +1707,6 @@ function readSlurs(
 ): void {
   const slurs = notations.flatMap((block) => block.children('slur'))
   if (slurs.length === 0) return
-  // The event is in its voice by now, so the cursor has moved past it and its
-  // own start is what the pairing orders it by.
-  const at = builder.lastEventStart(voice)
-  /* v8 ignore next 2 -- a note joins its voice before its notations are read,
-     so there is always a place here to pair from. */
-  if (!at) throw new Error('A slur on an event with no place in the measure.')
   for (const slur of slurs) {
     const type = attribute(slur, 'type')
     const number = attribute(slur, 'number') ?? '1'

@@ -71,6 +71,16 @@ export interface CoveredEvent {
   graceIndex?: number
 }
 
+/**
+ * An event just put in its voice, and where it begins in the measure. A note's
+ * notations are read once the cursor has moved past it, and a tie, slur or
+ * roll written there belongs at the event's own place.
+ */
+export interface PlacedEvent {
+  event: Event
+  start: Fraction
+}
+
 /** The name a voice goes under when the source does not give it one. */
 const UNNAMED_VOICE = ''
 
@@ -552,7 +562,7 @@ export class MeasureBuilder {
     path: DocumentPath,
     line: number,
     staff?: number,
-  ): void {
+  ): PlacedEvent {
     const { fullMeasure, restsMeasureAsEvent } = this.#builderFor(voice)
     if (fullMeasure || restsMeasureAsEvent) {
       throw new MusicXMLError('A voice has both a rest that fills the measure and notes in it.', {
@@ -575,11 +585,13 @@ export class MeasureBuilder {
     builder.grace = undefined
     builder.placed.push({ event, staff })
     this.#lastVoice = voice ?? UNNAMED_VOICE
-    builder.last = { event, duration, start: this.#cursor }
-    this.#eventStarts.push({ start: this.#cursor, staff, grace: false })
+    const start = this.#cursor
+    builder.last = { event, duration, start }
+    this.#eventStarts.push({ start, staff, grace: false })
     tremoloFrame(builder)?.durations.push(duration)
-    builder.end = addFractions(this.#cursor, duration)
+    builder.end = addFractions(start, duration)
     this.#moveTo(builder.end)
+    return { event, start }
   }
 
   /**
@@ -705,15 +717,6 @@ export class MeasureBuilder {
     return this.#builderFor(voice ?? this.#lastVoice).placed.at(-1)?.staff
   }
 
-  /**
-   * Where the event just added to a voice begins. An event's notations are
-   * read once the cursor has moved past it, and a slur written there belongs
-   * at the event's own place in the measure.
-   */
-  lastEventStart(voice: string | undefined): Fraction | undefined {
-    return this.#builderFor(voice ?? this.#lastVoice).last?.start
-  }
-
   /** The written value of the event a chord note would join. */
   chordValue(voice: string | undefined): NoteValue | undefined {
     return this.#builderFor(voice ?? this.#lastVoice).last?.event.value
@@ -734,9 +737,10 @@ export class MeasureBuilder {
     duration: Fraction | undefined,
     path: DocumentPath,
     line: number,
-  ): void {
-    const event = this.#chordEvent(voice, duration, path, line)
-    event.notes = [...event.notes, note]
+  ): PlacedEvent {
+    const placed = this.#chordEvent(voice, duration, path, line)
+    placed.event.notes = [...placed.event.notes, note]
+    return placed
   }
 
   /** The same, for a note struck on a percussion kit. */
@@ -746,9 +750,10 @@ export class MeasureBuilder {
     duration: Fraction | undefined,
     path: DocumentPath,
     line: number,
-  ): void {
-    const event = this.#chordEvent(voice, duration, path, line)
-    event.kitNotes = [...event.kitNotes, note]
+  ): PlacedEvent {
+    const placed = this.#chordEvent(voice, duration, path, line)
+    placed.event.kitNotes = [...placed.event.kitNotes, note]
+    return placed
   }
 
   /** The event a chord member joins, held to lasting as long as the chord. */
@@ -757,7 +762,7 @@ export class MeasureBuilder {
     duration: Fraction | undefined,
     path: DocumentPath,
     line: number,
-  ): Event {
+  ): PlacedEvent {
     const builder = this.#builderFor(voice ?? this.#lastVoice)
     const previous = builder.last
     if (!previous) {
@@ -787,7 +792,7 @@ export class MeasureBuilder {
       })
     }
 
-    return previous.event
+    return { event: previous.event, start: previous.start }
   }
 
   /**
@@ -908,7 +913,7 @@ export class MeasureBuilder {
     path: DocumentPath,
     line: number,
     staff: number | undefined,
-  ): void {
+  ): PlacedEvent {
     const builder = this.#builderFor(voice)
     if (builder.content.some((item) => item.kind !== 'grace')) {
       throw new MusicXMLError('A voice has both a rest that fills the measure and notes in it.', {
@@ -916,8 +921,9 @@ export class MeasureBuilder {
         line,
       })
     }
-    this.addEvent(voice, event, duration, path, line, staff)
+    const placed = this.addEvent(voice, event, duration, path, line, staff)
     builder.restsMeasureAsEvent = true
+    return placed
   }
 
   /**
@@ -1260,7 +1266,7 @@ export class MeasureBuilder {
    * them on the measure, spanning the notes they run between.
    */
   markArpeggio(
-    voice: string | undefined,
+    { event, start: position }: PlacedEvent,
     /** The note the mark was written on, or nothing where a rest carried it. */
     note: Note | undefined,
     number: string | undefined,
@@ -1270,13 +1276,6 @@ export class MeasureBuilder {
     /** The line the mark is written on, for the report that comes later. */
     line: number,
   ): void {
-    const builder = this.#builderFor(voice ?? this.#lastVoice)
-    const last = builder.last
-    /* v8 ignore next 2 -- a note joins its voice before its notations are
-       read, so there is always an event here to mark. */
-    if (!last) throw new Error('A chord is marked as rolled with no chord to roll.')
-    const { event, start: position } = last
-
     // Every note of a chord carries the mark, so the first one to arrive sets
     // it up and the rest join what it already covers. Marks on one chord are
     // that chord's own roll however the source numbers them: sources number
@@ -1715,7 +1714,7 @@ export class MeasureBuilder {
     slashed: boolean,
     graceType: GraceType | undefined,
     staff?: number,
-  ): void {
+  ): PlacedEvent {
     const builder = this.#builderFor(voice)
     this.#writeAt()
     // A grace note is squeezed in before the note it ornaments, so time the
@@ -1730,8 +1729,9 @@ export class MeasureBuilder {
     this.#lastVoice = voice ?? UNNAMED_VOICE
     // Grace notes have no duration of their own, so a chord note joining one
     // has nothing to agree with.
-    builder.last = { event, duration: undefined, start: this.#cursor }
-    this.#eventStarts.push({ start: this.#cursor, staff, grace: true })
+    const start = this.#cursor
+    builder.last = { event, duration: undefined, start }
+    this.#eventStarts.push({ start, staff, grace: true })
     // Recorded like any other event, so the voice's staff counts it and a
     // grace note reaching across to the other staff says so.
     builder.placed.push({ event, staff })
@@ -1752,7 +1752,7 @@ export class MeasureBuilder {
       previous.content = [...previous.content, event]
       if (slashed) previous.slashed = true
       previous.graceType ??= graceType
-      return
+      return { event, start }
     }
 
     const group: GraceGroup = { kind: 'grace', content: [event], slashed, graceType }
@@ -1762,7 +1762,8 @@ export class MeasureBuilder {
     builder.graceBeamed.push(beams)
     // Held until the note it leads into says which sequence it is in. Its
     // own entry in `placed` is the one just pushed.
-    builder.grace = { group, beams, at: this.#cursor, placedFrom: builder.placed.length - 1 }
+    builder.grace = { group, beams, at: start, placedFrom: builder.placed.length - 1 }
+    return { event, start }
   }
 
   /**
