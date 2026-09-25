@@ -4,6 +4,7 @@
 
 import { describe, expect, expectTypeOf, test } from 'vitest'
 import { convertValid } from '../tests/support/convert.js'
+import { InexactFractionError } from './fraction.js'
 import { MusicXMLError, convertMusicXML } from './index.js'
 import type { ConversionOptions } from './index.js'
 import type { WriterOptions } from './write/mnx.js'
@@ -103,6 +104,40 @@ describe('the document name', () => {
 
     expect(frames[0]).toContain('read/score')
     expect(frames[0]).not.toContain('errors.ts')
+  })
+})
+
+// Two <divisions> values whose product runs past the safe-integer range, so
+// the measure's length cannot be held exactly.
+const INEXACT =
+  '<score-partwise><part id="P1"><measure number="1">' +
+  `<attributes><divisions>100000007</divisions></attributes>${NOTE}` +
+  `<attributes><divisions>100000037</divisions></attributes>${NOTE}` +
+  '</measure></part></score-partwise>'
+
+describe('arithmetic that cannot be exact', () => {
+  function refusal(options?: ConversionOptions): MusicXMLError {
+    let thrown
+    try {
+      convertMusicXML(INEXACT, options)
+    } catch (error) {
+      thrown = error
+    }
+    expect(thrown).toBeInstanceOf(MusicXMLError)
+    return thrown as MusicXMLError
+  }
+
+  test('is a refusal of the document, at no place in it', () => {
+    const thrown = refusal()
+
+    expect(thrown.path).toEqual([])
+    expect(thrown.detail).toMatch(/^Invalid fraction: /)
+    expect(thrown.message).toBe(thrown.detail)
+    expect(thrown.cause).toBeInstanceOf(InexactFractionError)
+  })
+
+  test('names the document it was found in', () => {
+    expect(refusal({ documentName: 'song.mxl' }).document).toBe('song.mxl')
   })
 })
 

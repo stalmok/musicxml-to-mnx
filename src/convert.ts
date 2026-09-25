@@ -2,6 +2,7 @@
 
 import { readMusicXML } from './container.js'
 import { MusicXMLError } from './errors.js'
+import { InexactFractionError } from './fraction.js'
 import { readScore } from './read/score.js'
 import type { MNXDocument } from './types/mnx.js'
 import { WarningCollector } from './warnings.js'
@@ -59,10 +60,18 @@ export function convertMusicXML(
 
     return { mnx: writeMnx(score, options), warnings: warnings.list() }
   } catch (error) {
+    const refusal = asRefusal(error)
     // Named here because this is the only place that knows the name: the
     // container, the parser and the reader all throw, and none of them is
     // told what the source was called.
-    if (name === undefined || !(error instanceof MusicXMLError)) throw error
-    throw error.inDocument(name)
+    if (name === undefined || !(refusal instanceof MusicXMLError)) throw refusal
+    throw refusal.inDocument(name)
   }
+}
+
+// A duration that cannot be held exactly comes from the source's own
+// <divisions> and <duration> values, so it is a refusal of the document.
+function asRefusal(error: unknown): unknown {
+  if (!(error instanceof InexactFractionError)) return error
+  return new MusicXMLError(error.message, { path: [], cause: error })
 }

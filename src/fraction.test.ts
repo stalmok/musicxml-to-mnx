@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
-import { MusicXMLError } from './errors.js'
 import {
+  InexactFractionError,
   addFractions,
   commonMeasure,
   compareFractions,
@@ -36,19 +36,18 @@ describe('fraction', () => {
   })
 
   test('rejects a denominator of zero', () => {
-    expect(() => fraction(1, 0)).toThrow(MusicXMLError)
+    expect(() => fraction(1, 0)).toThrow(InexactFractionError)
     expect(() => fraction(1, 0)).toThrow('Invalid fraction')
   })
 
   // Past 2^53 the arithmetic keeps working on silently rounded values, which
-  // is worse than failing. Reported as a MusicXMLError, not a bare Error, so
-  // the overflow surfaces as unconvertible input rather than a stray crash.
+  // is worse than failing.
   test('rejects a value too large to stay exact', () => {
-    expect(() => fraction(2 ** 53 + 2, 3)).toThrow(MusicXMLError)
+    expect(() => fraction(2 ** 53 + 2, 3)).toThrow(InexactFractionError)
   })
 
   test('rejects a value that is not a whole number', () => {
-    expect(() => fraction(1.5, 2)).toThrow(MusicXMLError)
+    expect(() => fraction(1.5, 2)).toThrow(InexactFractionError)
   })
 })
 
@@ -82,7 +81,7 @@ describe('arithmetic', () => {
   })
 
   test('rejects division by zero', () => {
-    expect(() => divideFractions(fraction(1, 2), fraction(0))).toThrow(MusicXMLError)
+    expect(() => divideFractions(fraction(1, 2), fraction(0))).toThrow(InexactFractionError)
     expect(() => divideFractions(fraction(1, 2), fraction(0))).toThrow('Invalid fraction')
   })
 
@@ -147,7 +146,7 @@ describe('staying within exact arithmetic', () => {
     const a = fraction(3002399751580331, 3)
     const b = fraction(5003999585967218, 5)
 
-    expect(() => subtractFractions(a, b)).toThrow(MusicXMLError)
+    expect(() => subtractFractions(a, b)).toThrow(InexactFractionError)
     expect(() => subtractFractions(a, b)).toThrow('Cannot subtract')
     expect(() => addFractions(a, b)).toThrow('Cannot add')
   })
@@ -207,35 +206,7 @@ describe('comparing without overflowing', () => {
     const huge = fraction(Number.MAX_SAFE_INTEGER, 2)
     const small = fraction(1, Number.MAX_SAFE_INTEGER - 1)
 
-    expect(() => compareFractions(huge, small)).toThrow(MusicXMLError)
+    expect(() => compareFractions(huge, small)).toThrow(InexactFractionError)
     expect(() => compareFractions(huge, small)).toThrow('Cannot compare')
-  })
-
-  // Arithmetic is not a place in the document, so these refusals name none
-  // and their message carries no location at all.
-  test.each([
-    ['a fraction that cannot exist', () => fraction(1, 0)],
-    [
-      'a sum that cannot be exact',
-      () => addFractions(fraction(3002399751580331, 3), fraction(5003999585967218, 5)),
-    ],
-    [
-      'a comparison that cannot be exact',
-      () =>
-        compareFractions(
-          fraction(Number.MAX_SAFE_INTEGER, 2),
-          fraction(1, Number.MAX_SAFE_INTEGER - 1),
-        ),
-    ],
-  ])('names no place in the document for %s', (_name, run) => {
-    let thrown: unknown
-    try {
-      run()
-    } catch (error) {
-      thrown = error
-    }
-
-    expect((thrown as MusicXMLError).path).toEqual([])
-    expect((thrown as MusicXMLError).message).not.toContain(' (')
   })
 })
