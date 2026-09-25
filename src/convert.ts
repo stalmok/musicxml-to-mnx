@@ -7,11 +7,16 @@ import type { MNXDocument } from './types/mnx.js'
 import { WarningCollector } from './warnings.js'
 import type { ConversionWarning } from './warnings.js'
 import { writeMnx } from './write/mnx.js'
-import type { WriterOptions } from './write/mnx.js'
 import { parseXmlRoot } from './xml/parse.js'
 
 /** What a caller can say about the conversion. */
-export interface ConversionOptions extends WriterOptions {
+export interface ConversionOptions {
+  /**
+   * The name of the score rendering the output writes. MNX requires one to be
+   * named, and MusicXML has nothing that answers it: a work's title names the
+   * work, not a rendering of it. Defaults to "Score".
+   */
+  scoreName?: string
   /**
    * What to call the source in any refusal it produces. A source is text or
    * bytes, so the converter cannot know it came from a file; a caller

@@ -89,11 +89,7 @@ const DEFAULT_SCORE_NAME = 'Score'
 
 /** What a caller can say about the document written. */
 export interface WriterOptions {
-  /**
-   * The name of the score rendering the output writes. MNX requires one to be
-   * named, and MusicXML has nothing that answers it: a work's title names the
-   * work, not a rendering of it. Defaults to "Score".
-   */
+  /** See `ConversionOptions.scoreName`. */
   scoreName?: string
 }
 
