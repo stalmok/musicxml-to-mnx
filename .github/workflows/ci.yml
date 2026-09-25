@@ -100,42 +100,27 @@ jobs:
           cd schema
           sha256sum --check SHA256SUMS
 
-  # package.json's engines field claims Node 20 and 22 as well as the Node
-  # the checks run on, so the suite and the built command run on the lowest
-  # version of each. pnpm needs a newer Node than either, so the install and
-  # the build run on .nvmrc's, and the suite on the one under test.
-  # tests/node-versions.test.ts holds this matrix to the engines field.
-  node-versions:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        node: ['20.19.0', '22.13.0']
-    steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
-        with:
-          persist-credentials: false
-
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
-
+      # package.json's engines field claims Node 20 and 22 as well as the Node
+      # the checks run on, so the suite and the built command run on the lowest
+      # version of each. pnpm needs a newer Node than either, so the install and
+      # the build above ran on .nvmrc's. These steps come last, in this job
+      # rather than a job per version, so the install and the build are not
+      # repeated. tests/node-versions.test.ts holds these versions to the
+      # engines field.
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
-          node-version-file: .nvmrc
-          cache: pnpm
-
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm build
-
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
-        with:
-          node-version: ${{ matrix.node }}
+          node-version: '20.19.0'
           # Otherwise the packageManager field turns on the pnpm cache, which
           # runs pnpm on this Node.
           package-manager-cache: false
-
       # Called directly, because pnpm does not run on this Node. With the
       # build in place, the command's smoke test runs too.
+      - run: ./node_modules/.bin/vitest run --exclude '**/corpus.test.ts'
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '22.13.0'
+          package-manager-cache: false
       - run: ./node_modules/.bin/vitest run --exclude '**/corpus.test.ts'
 
   # Blocks a pull request that introduces a dependency with a known

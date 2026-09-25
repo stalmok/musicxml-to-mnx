@@ -1,7 +1,7 @@
 // The Node versions the package claims to run on, held to the versions CI
 // runs it on. package.json's engines field is the claim, .nvmrc the Node the
-// checks run on, and the node-versions job in ci.yml runs the lowest version
-// of every other range.
+// checks run on, and the checks job in ci.yml runs the lowest version of every
+// other range.
 
 import { readFileSync } from 'node:fs'
 import { expect, test } from 'vitest'
@@ -13,8 +13,8 @@ const ranges = engines.split('||').map((range) => range.trim())
 const checked = read('.nvmrc').trim()
 const job = read('.github/workflows/ci.yml')
   .split(/^ {2}(?=[\w-]+:$)/m)
-  .find((block) => block.startsWith('node-versions:'))
-const matrix = job && /^ +node: \[(.*)\]$/m.exec(job)?.[1]
+  .find((block) => block.startsWith('checks:'))
+const versions = [...(job ?? '').matchAll(/^ +node-version: '(.*)'$/gm)].map((match) => match[1])
 
 test('CI runs the lowest version of every range but the one the checks run on', () => {
   const floors = ranges
@@ -22,6 +22,5 @@ test('CI runs the lowest version of every range but the one the checks run on', 
     .map((range) => /^\^(\d+\.\d+\.\d+)$/.exec(range)?.[1] ?? range)
 
   expect(ranges).toContain(`>=${checked}`)
-  expect(job).toContain('node-version: ${{ matrix.node }}')
-  expect(matrix?.split(',').map((version) => version.trim().replace(/'/g, ''))).toEqual(floors)
+  expect(versions).toEqual(floors)
 })
