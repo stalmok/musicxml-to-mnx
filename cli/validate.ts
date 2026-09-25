@@ -9,10 +9,10 @@ import type { AnySchema } from 'ajv'
  * error, and nothing when the document conforms.
  */
 export function compileValidator(schema: AnySchema): (document: unknown) => string[] {
-  // strict:false because the schema uses draft-2020 keywords (unevaluatedProperties,
-  // $defs) that Ajv's strict mode flags as unknown in places; the schema is
-  // upstream's and is not ours to rewrite. allErrors so that a rejected
-  // document reports every problem, not the first.
+  // strict:false because Ajv's strictTypes rejects the schema's own keyword
+  // placement (a "maximum" with no "type"); the schema is upstream's and is not
+  // ours to rewrite. allErrors so that a rejected document reports every
+  // problem, not the first.
   const validator = new Ajv2020({ strict: false, allErrors: true }).compile(schema)
 
   return (document) => {
