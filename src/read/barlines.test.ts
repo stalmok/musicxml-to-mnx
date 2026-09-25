@@ -179,9 +179,9 @@ describe('repeat signs', () => {
   })
 
   test('keeps how many times the passage is played', () => {
-    const { globals } = read(NOTE + right('<repeat direction="backward" times="4"/>'))
+    const { globals } = read(NOTE + right('<repeat direction="backward" times="12"/>'))
 
-    expect(globals[0]?.repeatEnd?.times).toBe(4)
+    expect(globals[0]?.repeatEnd?.times).toBe(12)
   })
 
   // A standard backward repeat is written light-heavy plus the repeat: the
@@ -332,12 +332,12 @@ describe('first and second time endings', () => {
   // MusicXML writes the times as a comma-separated list.
   test('reads every time the bracket covers', () => {
     const { globals } = read(
-      left('<ending number="1, 2, 4" type="start"/>') +
+      left('<ending number="1, 2, 12" type="start"/>') +
         NOTE +
-        right('<ending number="1, 2, 4" type="stop"/>'),
+        right('<ending number="1, 2, 12" type="stop"/>'),
     )
 
-    expect(globals[0]?.ending?.numbers).toEqual([1, 2, 4])
+    expect(globals[0]?.ending?.numbers).toEqual([1, 2, 12])
   })
 
   // "discontinue" is how a final ending running to the end of the piece is
@@ -388,11 +388,12 @@ describe('first and second time endings', () => {
     expect(globals[1]?.ending?.numbers).toEqual([2])
   })
 
-  // "first" fails the shape. "+1" is a safe integer the regex refuses, and
-  // twenty digits is digits that cannot be read back exactly, so each check
-  // rejects a case the others accept. Both formats count the times from 1, so
-  // "0" states no time, and a list holding one states none either.
-  test.each(['first', '+1', '99999999999999999999', '0', '1, 2, 0'])(
+  // "first" fails the shape. "+1" and "1e2" are safe integers to Number() that
+  // the regex refuses, and twenty digits is digits that cannot be read back
+  // exactly, so each check rejects a case the others accept. Both formats
+  // count the times from 1, so "0" states no time, and a list holding one
+  // states none either.
+  test.each(['first', '+1', '1e2', '99999999999999999999', '0', '1, 2, 0'])(
     'reports a number of "%s", which is not a list of times counted from 1',
     (numbers) => {
       const { globals, warnings } = read(
@@ -548,10 +549,10 @@ describe('what a barline can say that MNX cannot', () => {
   // Both formats allow any whole number of repeats, so an odd count is worth
   // reporting rather than refusing a whole score over.
   // "lots" fails both halves of the guard, which is why it said nothing about
-  // either. "+2" is a safe integer the regex refuses, and twenty digits is a
-  // string the regex accepts that cannot be read back exactly, so each half
-  // now rejects a case the other accepts.
-  test.each(['1', '0', 'lots', '+2', '99999999999999999999'])(
+  // either. "+2" and "1e2" are safe integers to Number() that the regex
+  // refuses, and twenty digits is a string the regex accepts that cannot be
+  // read back exactly, so each half now rejects a case the other accepts.
+  test.each(['1', '0', 'lots', '+2', '1e2', '99999999999999999999'])(
     'reports a repeat played "%s" times, keeping the repeat',
     (times) => {
       const { globals, warnings } = read(

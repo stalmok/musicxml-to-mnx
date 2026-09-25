@@ -60,6 +60,14 @@ describe('an unpitched note', () => {
     ])
   })
 
+  test('reads a display octave written with a leading zero', () => {
+    const { part } = read(struck('C', '05', 'P1-I39'), DRUM_KIT)
+
+    expect([...(part?.kit.values() ?? [])]).toEqual([
+      { name: 'Acoustic Snare', staffPosition: 1, sound: 'P1-I39' },
+    ])
+  })
+
   test('is an event with no pitch, naming the component it strikes', () => {
     const { part } = read(struck('C', '5', 'P1-I39'), DRUM_KIT)
     const event = firstEvent(part)
@@ -96,10 +104,11 @@ describe('an unpitched note', () => {
     expect(score.sounds.get('P1-I1')).toEqual({ name: 'Drum', midiNumber })
   })
 
-  test('keeps no sound for an unpitched value outside the range', () => {
+  // Number() reads "1e2" as 100, and the value must be digits alone.
+  test.each(['129', '1e2'])('keeps no sound for an unpitched value of "%s"', (stated) => {
     const instrument =
       '<score-instrument id="P1-I1"><instrument-name>Drum</instrument-name></score-instrument>' +
-      '<midi-instrument id="P1-I1"><midi-unpitched>129</midi-unpitched></midi-instrument>'
+      `<midi-instrument id="P1-I1"><midi-unpitched>${stated}</midi-unpitched></midi-instrument>`
     const { score } = read(struck('C', '5', 'P1-I1'), instrument)
 
     expect(score.sounds.get('P1-I1')).toEqual({ name: 'Drum', midiNumber: undefined })

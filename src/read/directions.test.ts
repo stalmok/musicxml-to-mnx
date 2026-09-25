@@ -1248,7 +1248,7 @@ describe('sound navigation', () => {
   // note sounds for. The number is playback, and the Fine it marks is the
   // notation, so the mark converts and the number is passed over.
   // Every spelling of a decimal XML allows, since the source picks one.
-  test.each(['8', '7.5', '8.', '.5', '+8'])(
+  test.each(['8', '12', '7.5', '8.', '.5', '.25', '+8'])(
     'puts a fine on the measure for a <sound fine> written as "%s"',
     (duration) => {
       const { global, warnings } = read(inMeasure(note('C') + `<sound fine="${duration}"/>`))
@@ -1257,6 +1257,13 @@ describe('sound navigation', () => {
       expect(warnings).toEqual([])
     },
   )
+
+  test('reports a <sound fine> that starts with a duration and goes on', () => {
+    const { global, warnings } = read(inMeasure(note('C') + '<sound fine="8x"/>'))
+
+    expect(global?.fine).toBeUndefined()
+    expect(warnings.map((w) => w.code)).toEqual(['unresolved:attribute-value'])
+  })
 
   // Anything else is a value MusicXML does not define for the attribute.
   // Reading a Fine out of it would mark the piece as ending where the source
