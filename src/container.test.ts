@@ -116,7 +116,7 @@ describe('an .mxl package', () => {
     expect(readMusicXML(archive)).toBe(SCORE)
   })
 
-  test('does not count a file named after a score, with more after the extension', () => {
+  test('falls back to the only score beside a file whose name goes on past .musicxml', () => {
     expect(
       readMusicXML(mxl({ 'score.musicxml': SCORE, 'score.musicxml.orig': 'an earlier copy' })),
     ).toBe(SCORE)

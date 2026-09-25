@@ -10,7 +10,7 @@
   "coverageAnalysis": "perTest",
   "mutate_comment": "Every source file that ships, the command included. cli/main.ts is reachable only from the subprocess test the runner excludes, so it always reads as no coverage.",
   "mutate": ["src/**/*.ts", "!src/**/*.test.ts", "cli/**/*.ts", "!cli/**/*.test.ts"],
-  "mutator_comment": "StringLiteral is excluded because most of its survivors are warning and error text, which no test reads word for word.",
+  "mutator_comment": "StringLiteral is excluded because most of its survivors are warning and error text, which most tests do not read word for word.",
   "mutator": {
     "excludedMutations": ["StringLiteral"]
   },

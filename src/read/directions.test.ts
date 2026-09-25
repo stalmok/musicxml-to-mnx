@@ -1258,7 +1258,7 @@ describe('sound navigation', () => {
     },
   )
 
-  test('reports a <sound fine> that starts with a duration and goes on', () => {
+  test('reports a <sound fine> with text after the duration', () => {
     const { global, warnings } = read(inMeasure(note('C') + '<sound fine="8x"/>'))
 
     expect(global?.fine).toBeUndefined()

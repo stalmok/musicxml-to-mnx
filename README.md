@@ -263,7 +263,7 @@ pnpm build
 `pnpm test:mutation` runs Stryker over all shipped source. A full run takes about an hour.
 
 Before you push a release tag, run `pnpm test:mutation`.
-Kill each new surviving mutant with a test, or record why it is equivalent.
+Kill each surviving mutant with a test, or record it as equivalent, with the reason.
 
 Read the [architecture](docs/architecture.md) and [working conventions](AGENTS.md)
 before changing the converter.
