@@ -732,12 +732,8 @@ export interface GlobalMeasure {
   readonly segno: Segno | undefined
   /** A Fine, where a D.S. or D.C. repeat stops. One per measure. */
   readonly fine: Fine | undefined
-  /**
-   * A jump such as D.S., taken once the measure is played. One per measure.
-   * A D.S. is read as al fine once every part is merged, because the Fine it
-   * jumps to can be drawn by another part.
-   */
-  jump: Jump | undefined
+  /** A jump such as D.S., taken once the measure is played. One per measure. */
+  readonly jump: Jump | undefined
   /**
    * A multi-measure rest starting at this measure, as how many measures it
    * spans, counting this one. The spanned measures stay ordinary measures.

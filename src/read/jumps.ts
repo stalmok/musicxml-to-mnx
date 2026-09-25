@@ -25,7 +25,7 @@ export interface DalSegno {
 /** A score measure while the parts are merged, before jumps are settled. */
 export type ReadGlobalMeasure = Omit<GlobalMeasure, 'segno' | 'jump'> & {
   readonly segno: NamedSegno | undefined
-  jump: DalSegno | undefined
+  readonly jump: DalSegno | undefined
 }
 
 /**
