@@ -12,7 +12,8 @@ import type {
 import { fraction } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type { WarningContext } from '../warnings.js'
-import { IdGenerator, SpannerResolver } from './spanners.js'
+import { IdGenerator } from './idGenerator.js'
+import { SpannerResolver } from './spanners.js'
 import type { CarriedTupletStop } from './tuplets.js'
 
 /**
