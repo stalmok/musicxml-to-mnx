@@ -1667,59 +1667,41 @@ function readMeasure(
     )
   }
 
-  // A tuplet the source stated as a ratio with no bracket has no stop to
-  // close it, so the measure's end is where its run ends.
-  builder.closeImpliedTuplets(warnings, context, measurePath, element.line)
-  state.carriedTupletStops = builder.closeAtBarline(warnings, context, measurePath, element.line)
-
-  // Every bracket of the measure has waited for the measure to be whole:
-  // what a bracket writes turns on what it holds, on the frame the brackets
-  // around it write in and on the silence after it. A part stating no time
-  // signature runs to the barline the score states. Measured against the
-  // time signature the measure opens with, since one stated after its start
-  // is the next measure's.
-  const signature = measureLength(state) ?? (scoreTime && fraction(scoreTime.count, scoreTime.unit))
-  // A pickup measure's beats line up with the barline it ends on, and it has
-  // no silence past its own end. The attribute is still a loss as a statement
-  // about the numbering, which the sweep above reports.
-  const anchor = peekAttribute(element, 'implicit') === 'yes' ? 'end' : 'start'
-  const furthest = builder.furthest()
-  const runs =
-    anchor === 'start' && signature && compareFractions(signature, furthest) > 0
-      ? signature
-      : furthest
-  builder.settleMeasure({ anchor, length: runs, signature }, warnings, context)
-
-  // Every event of the measure is in now, so a hairpin's and an octave
-  // shift's stop can each be told which one it covers, whatever order the
-  // source wrote them in.
-  state.spanners.settleSpanCovers(
-    index,
-    (at, staff) => builder.lastEventBefore(at, staff),
-    (at, staff) => builder.graceNotesAt(at, staff),
+  // A part stating no time signature runs to the barline the score states.
+  // Measured against the time signature the measure opens with, since one
+  // stated after its start is the next measure's. The implicit attribute is
+  // still a loss as a statement about the numbering, which the sweep above
+  // reports.
+  const finished = builder.finish(
+    {
+      anchor: peekAttribute(element, 'implicit') === 'yes' ? 'end' : 'start',
+      signature: measureLength(state) ?? (scoreTime && fraction(scoreTime.count, scoreTime.unit)),
+    },
+    (lastEventBefore, graceNotesAt) => {
+      state.spanners.settleSpanCovers(index, lastEventBefore, graceNotesAt)
+    },
+    state.kit,
+    warnings,
+    context,
+    measurePath,
+    element.line,
   )
-
-  // Each voice is whole now, so a rest standing as the whole of one can be
-  // read as that voice's measure rest. After the covers above, which read the
-  // rest while it is still an event.
-  builder.settleMeasureRests()
+  state.carriedTupletStops = finished.carriedTupletStops
   if (nextTime) state.time = nextTime.value
-
-  // Beams are stated over the measure in MNX rather than on the notes, and
-  // each voice is beamed on its own.
-  const beams = builder.beamedEvents().flatMap((events) => buildBeams(events))
 
   return {
     measure: {
       clefs: dedupeClefs(clefs, warnings, context),
       staffConfigs: dedupeStaffConfigs(staffConfigs, warnings, context),
-      beams,
+      // Beams are stated over the measure in MNX rather than on the notes,
+      // and each voice is beamed on its own.
+      beams: finished.beamedEvents.flatMap((events) => buildBeams(events)),
       dynamics,
-      arpeggios: builder.arpeggios(warnings, context, state.kit),
+      arpeggios: finished.arpeggios,
       // Filled in below, once the whole part has been read.
       ottavas: [],
       measureRepeat: undefined,
-      sequences: builder.sequences(warnings, context),
+      sequences: finished.sequences,
     },
     // Only worth carrying when it differs from where the measure sits;
     // otherwise MNX's implicit numbering already says it.

@@ -81,6 +81,16 @@ export interface PlacedEvent {
   start: Fraction
 }
 
+/** What a measure holds once every pass that waits for it to be whole has run. */
+export interface FinishedMeasure {
+  /** Each voice's events, in order, for its beams to be read from. */
+  beamedEvents: BeamedEvent[][]
+  arpeggios: Arpeggio[]
+  sequences: Sequence[]
+  /** Tuplet stops no bracket here met, handed on to the next measure. */
+  carriedTupletStops: CarriedTupletStop[]
+}
+
 /** The name a voice goes under when the source does not give it one. */
 const UNNAMED_VOICE = ''
 
@@ -636,7 +646,11 @@ export class MeasureBuilder {
    * `measure` is the measure's own shape: where its beats line up, how far it
    * runs, and the time signature it runs against.
    */
-  settleMeasure(measure: MeasureExtent, warnings: WarningCollector, context: WarningContext): void {
+  #settleMeasure(
+    measure: MeasureExtent,
+    warnings: WarningCollector,
+    context: WarningContext,
+  ): void {
     for (const builder of this.#allBuilders()) {
       const voice = {
         content: builder.content,
@@ -661,7 +675,7 @@ export class MeasureBuilder {
    * being what it covers. An event that names no staff is the first staff,
    * which is how MusicXML reads a note that leaves it off.
    */
-  lastEventBefore(position: Fraction, staff?: number): CoveredEvent | undefined {
+  #lastEventBefore(position: Fraction, staff?: number): CoveredEvent | undefined {
     let latest: Fraction | undefined
     for (const event of this.#eventStarts) {
       if (staff !== undefined && (event.staff ?? 1) !== staff) continue
@@ -1115,10 +1129,65 @@ export class MeasureBuilder {
   }
 
   /**
+   * Closes the measure once every element of it is read, running the passes
+   * that wait for the measure to be whole in the order each needs the one
+   * before it.
+   *
+   * Tuplets close first: what a bracket writes turns on what it holds, on the
+   * frame the brackets around it write in, and on the silence after it. Then
+   * every event of the measure is in, so a hairpin's and an octave shift's
+   * stop can each be told which one it covers, whatever order the source
+   * wrote them in. Then a rest standing as the whole of its voice is read as
+   * that voice's measure rest, after the covers, which read the rest while it
+   * is still an event.
+   */
+  finish(
+    opening: Omit<MeasureExtent, 'length'>,
+    settleSpanCovers: (
+      lastEventBefore: (position: Fraction, staff?: number) => CoveredEvent | undefined,
+      graceNotesAt: (position: Fraction, staff?: number) => number,
+    ) => void,
+    /** The components this part strikes, which is where a kit note's height is. */
+    kit: ReadonlyMap<string, KitComponent>,
+    warnings: WarningCollector,
+    context: WarningContext,
+    path: DocumentPath,
+    line: number,
+  ): FinishedMeasure {
+    // A tuplet the source stated as a ratio with no bracket has no stop to
+    // close it, so the measure's end is where its run ends.
+    this.#closeImpliedTuplets(warnings, context, path, line)
+    const carriedTupletStops = this.#closeAtBarline(warnings, context, path, line)
+
+    // A pickup measure's beats line up with the barline it ends on, and it
+    // has no silence past its own end.
+    const furthest = this.furthest()
+    const { anchor, signature } = opening
+    const length =
+      anchor === 'start' && signature && compareFractions(signature, furthest) > 0
+        ? signature
+        : furthest
+    this.#settleMeasure({ anchor, length, signature }, warnings, context)
+
+    settleSpanCovers(
+      (position, staff) => this.#lastEventBefore(position, staff),
+      (position, staff) => this.graceNotesAt(position, staff),
+    )
+    this.#settleMeasureRests()
+
+    return {
+      beamedEvents: this.#beamedEvents(),
+      arpeggios: this.#settleArpeggios(warnings, context, kit),
+      sequences: this.#sequences(warnings, context),
+      carriedTupletStops,
+    }
+  }
+
+  /**
    * Closes any tuplet the ratio alone opened, in every voice. A run of such
    * notes ends where the measure does, whether or not it filled its ratio.
    */
-  closeImpliedTuplets(
+  #closeImpliedTuplets(
     warnings: WarningCollector,
     context: WarningContext,
     path: DocumentPath,
@@ -1331,7 +1400,7 @@ export class MeasureBuilder {
    * rather than by where it sits: a grace chord takes no time, so it begins
    * where the chord it decorates does, and the two are still two chords.
    */
-  arpeggios(
+  #settleArpeggios(
     warnings: WarningCollector,
     context: WarningContext,
     /** The components this part strikes, which is where a kit note's height is. */
@@ -1497,7 +1566,7 @@ export class MeasureBuilder {
   }
 
   /** What every voice said about its beams, voice by voice. */
-  beamedEvents(): BeamedEvent[][] {
+  #beamedEvents(): BeamedEvent[][] {
     const builders = this.#allBuilders()
     return [...builders.map((b) => b.beamed), ...builders.flatMap((b) => b.graceBeamed)]
   }
@@ -1793,7 +1862,7 @@ export class MeasureBuilder {
    * measure rest on the sequence, which carries no marking, no stem, no beam
    * and no roll, and has no id for a slur or a lyric to reach.
    */
-  settleMeasureRests(): void {
+  #settleMeasureRests(): void {
     for (const builder of this.#allBuilders()) {
       const candidate = builder.measureRest
       if (!candidate) continue
@@ -1838,7 +1907,7 @@ export class MeasureBuilder {
    * passed over rather than refusing the file, as one whose start was dropped
    * already is.
    */
-  closeAtBarline(
+  #closeAtBarline(
     warnings: WarningCollector,
     context: WarningContext,
     path: DocumentPath,
@@ -1876,7 +1945,7 @@ export class MeasureBuilder {
    * events that reach across to another say so. Choosing the commonest that
    * way keeps the overrides to the notes that genuinely cross.
    */
-  sequences(warnings: WarningCollector, context: WarningContext): Sequence[] {
+  #sequences(warnings: WarningCollector, context: WarningContext): Sequence[] {
     // A note that names no voice lands in its own bucket. Beside notes that do
     // name a voice, that splits one measure into two lines with no way to know
     // the source meant them apart, so the split is reported rather than silent.
