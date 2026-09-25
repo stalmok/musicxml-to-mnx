@@ -42,7 +42,7 @@ import type { ElementReader } from './element.js'
 import { reportHidden } from './unrepresentable.js'
 import { readLyrics } from './lyrics.js'
 import { noteValueBaseOf, requireNoteValueBase } from './noteValues.js'
-import { readIntegerInRange } from './numbers.js'
+import { parseWholeNumber, readIntegerInRange } from './numbers.js'
 import { measureLength } from './state.js'
 import type { PartState } from './state.js'
 import { soundingPitch } from './transposition.js'
@@ -1857,8 +1857,8 @@ function beamMarkers(
  * reports its own loss; only the reading of the count is shared.
  */
 function tremoloBeamCount(text: string): number | undefined {
-  const marks = text === '' ? 3 : Number(text)
-  return Number.isInteger(marks) && marks >= 1 && marks <= 8 ? marks : undefined
+  const marks = text === '' ? 3 : parseWholeNumber(text)
+  return marks !== undefined && marks >= 1 && marks <= 8 ? marks : undefined
 }
 
 function multiNoteTremoloOf(
@@ -2204,10 +2204,11 @@ function drawnGraceValue(
   warnings: WarningCollector,
   context: WarningContext,
 ): NoteValue {
-  const levels = element
-    .children('beam')
-    .map((beam) => Number(attribute(beam, 'number') ?? '1'))
-    .filter((level) => Number.isInteger(level) && level >= 1 && level <= MOST_BEAM_LEVELS)
+  const levels = element.children('beam').flatMap((beam) => {
+    const level = parseWholeNumber(attribute(beam, 'number') ?? '1')
+    return level !== undefined && level <= MOST_BEAM_LEVELS ? [level] : []
+  })
+  // A level below one draws no beam, and the zero here is what says so.
   const beams = Math.max(0, ...levels)
   const base = valueForBeamCount(beams) ?? 'eighth'
 

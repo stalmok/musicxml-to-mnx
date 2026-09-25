@@ -29,7 +29,7 @@ import { readColor } from './color.js'
 import { divisionsInForce } from './divisions.js'
 import type { ElementReader } from './element.js'
 import { noteValueBaseOf } from './noteValues.js'
-import { readIntegerInRange } from './numbers.js'
+import { parseDecimal, parseWholeNumber, readIntegerInRange } from './numbers.js'
 import type { StopWording, WedgeStop } from './spanners.js'
 import { measureLength } from './state.js'
 import type { PartState } from './state.js'
@@ -70,8 +70,9 @@ export interface SoundTempo {
   position: Fraction
   /**
    * Quarter notes per minute, which is what MusicXML's tempo attribute
-   * counts. Absent where the attribute states no number, which no mark can
-   * then be the echo of.
+   * counts. Absent where the attribute states no number. No mark is the echo
+   * of an absent, zero or negative tempo, because every mark states a
+   * positive one.
    */
   bpm: number | undefined
   line: number
@@ -372,7 +373,8 @@ function offsetPosition(
   if (!offset) return position
 
   const written = trimmedText(offset)
-  if (!/^[+-]?\d+$/.test(written) || !Number.isSafeInteger(Number(written))) {
+  const count = parseWholeNumber(written)
+  if (count === undefined) {
     // MusicXML measures an offset in divisions and allows a fractional one.
     // Rounding it would put the mark somewhere the source did not, so the
     // offset is reported and the mark stays where it was written.
@@ -386,7 +388,7 @@ function offsetPosition(
   }
 
   const divisions = divisionsInForce(state, warnings, context, offset.line)
-  const moved = addFractions(position, fraction(Number(written), divisions * 4))
+  const moved = addFractions(position, fraction(count, divisions * 4))
 
   // MNX states a position within its measure, counting from the start, so
   // there is nowhere to put a mark an offset carries out of it, in either
@@ -692,10 +694,9 @@ export function readSound(
     // accounted for the moment the loop reaches it.
     attribute(sound.element, name)
     if (name === 'tempo') {
-      const written = Number(attribute(sound.element, 'tempo'))
       tempo = {
         position,
-        bpm: Number.isFinite(written) && written > 0 ? written : undefined,
+        bpm: parseDecimal(attribute(sound.element, 'tempo') ?? ''),
         line: sound.line,
         place: warnings.reserve(),
       }
@@ -912,9 +913,6 @@ function reportWordingGlyph(
   }
 }
 
-/** A number as a score writes one: digits, an optional sign, no exponent. */
-const DECIMAL_NUMBER = /^[+-]?(\d+(\.\d*)?|\.\d+)$/
-
 function readMetronome(
   reader: ElementReader,
   position: Fraction,
@@ -1014,8 +1012,8 @@ function readMetronome(
   // Number() would take spellings the source cannot mean as a tempo and hand
   // back a number for them: "0x10" would be sixteen beats per minute and
   // "0b101" five, when both are words this converter has no reading for.
-  const bpm = DECIMAL_NUMBER.test(written) ? Number(written) : Number.NaN
-  if (!Number.isFinite(bpm) || bpm <= 0) {
+  const bpm = parseDecimal(written)
+  if (bpm === undefined || bpm <= 0) {
     warnings.add(
       'unrepresentable:tempo',
       `A <metronome> states its tempo as "${written}", which cannot be expressed in MNX, ` +

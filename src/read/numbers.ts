@@ -12,10 +12,24 @@ import { attribute, trimmedText } from '../xml/tree.js'
 
 const WHOLE_NUMBER = /^[+-]?\d+$/
 
+/** A number as a score writes one: digits, an optional sign, no exponent. */
+const DECIMAL_NUMBER = /^[+-]?(\d+(\.\d*)?|\.\d+)$/
+
+/** The whole number `text` states, or nothing where it states none. */
+export function parseWholeNumber(text: string): number | undefined {
+  const value = Number(text)
+  return WHOLE_NUMBER.test(text) && Number.isSafeInteger(value) ? value : undefined
+}
+
+/** The decimal number `text` states, or nothing where it states none. */
+export function parseDecimal(text: string): number | undefined {
+  return DECIMAL_NUMBER.test(text) ? Number(text) : undefined
+}
+
 export function readInteger(element: XmlElement, path: DocumentPath): number {
   const text = trimmedText(element)
-  const value = Number(text)
-  if (!WHOLE_NUMBER.test(text) || !Number.isSafeInteger(value)) {
+  const value = parseWholeNumber(text)
+  if (value === undefined) {
     throw new MusicXMLError(`<${element.name}> is not a whole number: "${text}".`, {
       path,
       line: element.line,
@@ -39,14 +53,13 @@ export function readAttributeInRange(
   const written = attribute(element, name)
   if (written === undefined) return undefined
 
-  if (!WHOLE_NUMBER.test(written) || !Number.isSafeInteger(Number(written))) {
+  const value = parseWholeNumber(written)
+  if (value === undefined) {
     throw new MusicXMLError(
       `<${element.name}> has a "${name}" of "${written}", which is not a whole number.`,
       { path, line: element.line },
     )
   }
-
-  const value = Number(written)
   if (value < min || value > max) {
     throw new MusicXMLError(
       `<${element.name}> has a "${name}" of ${String(value)}, outside the range ` +

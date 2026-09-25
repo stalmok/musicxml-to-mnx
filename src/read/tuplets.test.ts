@@ -2822,6 +2822,14 @@ describe('two-note tremolos', () => {
     expect(warnings).toEqual([])
   })
 
+  // Number() reads each of these as three.
+  test.each(['0x3', '3e0', '3.0'])('reports a tremolo counting "%s" beams', (marks) => {
+    const { content, warnings } = read(measure(tremoloOf(marks)))
+
+    expect(content?.[0]?.kind === 'event' && content[0].markings).toEqual({})
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:element'])
+  })
+
   test('reports a tremolo counting more beams than MNX draws', () => {
     const { content, warnings } = read(measure(tremoloOf('9')))
 

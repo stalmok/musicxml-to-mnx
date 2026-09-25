@@ -293,6 +293,9 @@ describe('a grace note stating no <type>', () => {
   test.each([
     ['past the deepest a stem carries', '9'],
     ['that is not a whole number', '1.5'],
+    ['written in hexadecimal', '0x2'],
+    ['written with an exponent', '2e0'],
+    ['below the first', '0'],
   ])('ignores a beam level %s', (_name, level) => {
     const { measure: result, warnings } = read(
       measure(graceNote(`<beam number="${level}">begin</beam>`) + note('C', 1)),
