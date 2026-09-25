@@ -174,34 +174,7 @@ interface VoiceBuilder {
    * there: the measure would do, but the note is what the source wrote.
    */
   openedAt: number | undefined
-  fullMeasure: FullMeasureRest | undefined
-  /**
-   * Whether a rest filling this voice's measure stands in its content as an
-   * event, where it carries something the sequence cannot hold. The voice
-   * rests the measure all the same.
-   */
-  restsMeasureAsEvent: boolean
-  /**
-   * What the rest filling this voice's measure goes back to being where
-   * something that only an event can hold is written after it, and nothing
-   * where no note value can write the rest. `at` is where the rest stands,
-   * `after` where the voice's content ran out before it, and `staff` the
-   * staff it named. See restoreMeasureRest.
-   */
-  restAsEvent:
-    | {
-        event: () => Event
-        duration: Fraction
-        at: Fraction
-        after: Fraction
-        staff: number | undefined
-      }
-    | undefined
-  /**
-   * A rest that may turn out to be this voice's measure rest, held until the
-   * voice is whole. See settleMeasureRests.
-   */
-  measureRest: MeasureRestCandidate | undefined
+  measureRest: MeasureRestState
   /**
    * The brackets this voice has closed, outermost first in the order the
    * source closed them. Each waits for the measure to be whole. See
@@ -230,13 +203,58 @@ interface VoiceLayers {
 }
 
 /** A rest standing where its voice's measure rest would stand. */
-interface MeasureRestCandidate {
-  readonly event: Event
-  /**
-   * Reports the written value disagreeing with how long the rest lasts, for
-   * the reading where the rest stays an ordinary event.
-   */
-  readonly reportMismatch: () => void
+/**
+ * Whether a voice rests its measure, and how.
+ *
+ * - `none`: it does not, or not yet.
+ * - `candidate`: an ordinary rest that may turn out to be the measure's rest,
+ *   held until the voice is whole. See settleMeasureRests.
+ * - `sequence`: the rest stands on the sequence, which holds nothing else.
+ * - `event`: the rest stands in the content as an event, where it carries
+ *   something the sequence cannot hold. The voice rests the measure all the
+ *   same.
+ */
+type MeasureRestState =
+  | { kind: 'none' }
+  | {
+      kind: 'candidate'
+      event: Event
+      /**
+       * Reports the written value disagreeing with how long the rest lasts,
+       * for the reading where the rest stays an ordinary event.
+       */
+      reportMismatch: () => void
+    }
+  | {
+      kind: 'sequence'
+      rest: FullMeasureRest
+      /**
+       * What the rest goes back to being where something only an event can
+       * hold is written after it, and nothing where no note value can write
+       * the rest. `at` is where the rest stands, `after` where the voice's
+       * content ran out before it, and `staff` the staff it named. See
+       * restoreMeasureRest.
+       */
+      asEvent:
+        | {
+            event: () => Event
+            duration: Fraction
+            at: Fraction
+            after: Fraction
+            staff: number | undefined
+          }
+        | undefined
+    }
+  | { kind: 'event' }
+
+/** Whether the voice's measure rest is settled, on the sequence or as an event. */
+function restsTheMeasure(builder: VoiceBuilder): boolean {
+  return builder.measureRest.kind === 'sequence' || builder.measureRest.kind === 'event'
+}
+
+/** The rest the voice's sequence states, where it states one. */
+function sequenceRest(builder: VoiceBuilder): FullMeasureRest | undefined {
+  return builder.measureRest.kind === 'sequence' ? builder.measureRest.rest : undefined
 }
 
 /** A chord marked as rolled or struck, held until its notes are all in. */
@@ -475,9 +493,7 @@ export class MeasureBuilder {
    * first is silence over silence whichever line it would go to.
    */
   hasFullMeasure(voice: string | undefined): boolean {
-    return this.#layersFor(voice).layers.some(
-      (layer) => layer.fullMeasure !== undefined || layer.restsMeasureAsEvent,
-    )
+    return this.#layersFor(voice).layers.some(restsTheMeasure)
   }
 
   /**
@@ -573,8 +589,7 @@ export class MeasureBuilder {
     line: number,
     staff?: number,
   ): PlacedEvent {
-    const { fullMeasure, restsMeasureAsEvent } = this.#builderFor(voice)
-    if (fullMeasure || restsMeasureAsEvent) {
+    if (restsTheMeasure(this.#builderFor(voice))) {
       throw new MusicXMLError('A voice has both a rest that fills the measure and notes in it.', {
         path,
         line,
@@ -616,7 +631,7 @@ export class MeasureBuilder {
     // one in: it is already silent for the whole measure, and a note written
     // over it is dropped rather than added, which is the only way the cursor
     // runs ahead of such a voice.
-    if (builder.fullMeasure) return
+    if (builder.measureRest.kind === 'sequence') return
     const gap = subtractFractions(this.#cursor, builder.end)
     if (compareFractions(gap, fraction(0)) > 0) {
       // Inside a tuplet everything is written in values the ratio scales, so
@@ -857,12 +872,10 @@ export class MeasureBuilder {
     // The rest is the whole of this voice in this measure, so the staff it
     // names is the staff the sequence sits on.
     builder.placed.push({ event: undefined, staff })
-    builder.fullMeasure = rest
-    builder.restAsEvent = asEvent && {
-      ...asEvent,
-      at: this.#cursor,
-      after: builder.end,
-      staff,
+    builder.measureRest = {
+      kind: 'sequence',
+      rest,
+      asEvent: asEvent && { ...asEvent, at: this.#cursor, after: builder.end, staff },
     }
     // The rest occupies the whole voice, so nothing may follow it there.
     if (covering) builder.end = addFractions(this.#cursor, covering)
@@ -870,7 +883,7 @@ export class MeasureBuilder {
 
   /** Whether this voice's measure rest stands on the sequence rather than as an event. */
   restsMeasure(voice: string | undefined): boolean {
-    return this.#builderFor(voice).fullMeasure !== undefined
+    return this.#builderFor(voice).measureRest.kind === 'sequence'
   }
 
   /**
@@ -890,15 +903,14 @@ export class MeasureBuilder {
    */
   restoreMeasureRest(voice: string | undefined, path: DocumentPath, line: number): boolean {
     const builder = this.#builderFor(voice)
-    const restored = builder.restAsEvent
+    const restored = builder.measureRest.kind === 'sequence' && builder.measureRest.asEvent
     if (!restored) return false
 
     const event = restored.event()
     // The rest is the whole of the voice, so the staff it named is the only
     // entry standing, and the event added below names it instead.
     builder.placed.length = 0
-    builder.fullMeasure = undefined
-    builder.restAsEvent = undefined
+    builder.measureRest = { kind: 'none' }
     // Wound back to where the voice stood before the rest was written, so
     // that silence the rest was written after is stated as a space, as it
     // would have been for a rest that never left the content.
@@ -910,7 +922,7 @@ export class MeasureBuilder {
     const reached = this.#cursor
     this.#cursor = restored.at
     this.addEvent(voice, event, restored.duration, path, line, restored.staff)
-    builder.restsMeasureAsEvent = true
+    builder.measureRest = { kind: 'event' }
     this.#moveTo(reached)
     return true
   }
@@ -936,7 +948,7 @@ export class MeasureBuilder {
       })
     }
     const placed = this.addEvent(voice, event, duration, path, line, staff)
-    builder.restsMeasureAsEvent = true
+    builder.measureRest = { kind: 'event' }
     return placed
   }
 
@@ -1840,7 +1852,7 @@ export class MeasureBuilder {
    * to be settled by settleMeasureRests once the voice is whole.
    */
   markMeasureRest(voice: string | undefined, event: Event, reportMismatch: () => void): void {
-    this.#builderFor(voice).measureRest = { event, reportMismatch }
+    this.#builderFor(voice).measureRest = { kind: 'candidate', event, reportMismatch }
   }
 
   /**
@@ -1865,7 +1877,7 @@ export class MeasureBuilder {
   #settleMeasureRests(): void {
     for (const builder of this.#allBuilders()) {
       const candidate = builder.measureRest
-      if (!candidate) continue
+      if (candidate.kind !== 'candidate') continue
 
       const { event } = candidate
       const reached =
@@ -1883,10 +1895,14 @@ export class MeasureBuilder {
       // the sequence's own. Its entry keeps naming the event it came from,
       // which nothing writes once the content is empty.
       builder.content.length = 0
-      builder.fullMeasure = {
-        visualDuration: event.value,
-        fermata: event.fermata,
-        staffPosition: event.staffPosition,
+      builder.measureRest = {
+        kind: 'sequence',
+        rest: {
+          visualDuration: event.value,
+          fermata: event.fermata,
+          staffPosition: event.staffPosition,
+        },
+        asEvent: undefined,
       }
     }
   }
@@ -1967,7 +1983,7 @@ export class MeasureBuilder {
         voice,
         layers.layers.filter(
           (builder, index) =>
-            index === 0 || builder.content.length > 0 || builder.fullMeasure !== undefined,
+            index === 0 || builder.content.length > 0 || builder.measureRest.kind === 'sequence',
         ),
       ]),
     )
@@ -2022,7 +2038,7 @@ export class MeasureBuilder {
           // give one musical line a different identity from bar to bar.
           voice: index > 0 ? nameFor(voice, index) : voice === UNNAMED_VOICE ? undefined : voice,
           content: builder.content,
-          fullMeasure: builder.fullMeasure,
+          fullMeasure: sequenceRest(builder),
         }
       }),
     )
@@ -2087,10 +2103,7 @@ function newVoiceBuilder(openedAt?: number): VoiceBuilder {
     end: fraction(0),
     last: undefined,
     grace: undefined,
-    fullMeasure: undefined,
-    restsMeasureAsEvent: false,
-    restAsEvent: undefined,
-    measureRest: undefined,
+    measureRest: { kind: 'none' },
     claims: [],
     spent: new Map(),
   }
