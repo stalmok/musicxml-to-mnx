@@ -42,7 +42,7 @@ import type { ElementReader } from './element.js'
 import { reportHidden } from './unrepresentable.js'
 import { readLyrics } from './lyrics.js'
 import { readRest } from './rests.js'
-import type { RestNote } from './rests.js'
+import type { RestNote, RestReading } from './rests.js'
 import { noteValueBaseOf, requireNoteValueBase } from './noteValues.js'
 import { parseWholeNumber, readIntegerInRange } from './numbers.js'
 import type { PartState } from './state.js'
@@ -376,65 +376,7 @@ export function readNote(
     fills &&
     !((fills.needsEvent || carriesMarking || restStem !== undefined) && fills.canStayEvent)
   ) {
-    // A beam over a rest alone is not a beam, so a source stating one says
-    // nothing this loses.
-    element.skip('beam')
-
-    // MNX's rest filling the measure states no length, so how long the source
-    // drew this one is not carried. Only a rest that reached here on its own
-    // length reports it: one marked as the measure's, or drawn to what the
-    // time signature states, says nothing MNX's measure does not.
-    const { eventValue: restValue, unwritableLength: unwritableRest } = fills
-    if (unwritableRest) {
-      warnings.add(
-        'unrepresentable:rest-length',
-        `A rest lasting ${describeLength(unwritableRest)} is the whole of its voice in ` +
-          (state.time === undefined
-            ? 'a measure written with no time signature. '
-            : 'this measure, and no note value can write that length. ') +
-          'MNX states such a rest on the sequence, which carries no length, so the length ' +
-          'is not converted.',
-        { ...context, line: element.line },
-        'rest',
-      )
-    }
-
-    const fermata = readFermata(notations, warnings, context)
-    builder.setFullMeasure(
-      voice,
-      {
-        visualDuration: written,
-        fermata,
-        // MNX's full-measure rest carries a staffPosition too, so a display
-        // height on one is placed there rather than lost.
-        staffPosition,
-      },
-      duration,
-      staff,
-      restValue && {
-        duration: duration ?? lengthOf(restValue),
-        // What a grace note written after the rest takes it back as. A marking,
-        // a stem, a lyric or a slur would have kept it an event already.
-        event: () => ({
-          kind: 'event',
-          id: state.ids.nextEvent(),
-          staff: undefined,
-          value: restValue,
-          slurs: [],
-          lyrics: new Map(),
-          stemDirection: undefined,
-          markings: {},
-          fermata,
-          notes: [],
-          kitNotes: [],
-          isRest: true,
-          staffPosition,
-        }),
-      },
-      path,
-      element.line,
-    )
-    if (duration) builder.passOver(duration)
+    setMeasureRest(note, fills, state, builder, warnings, context, path)
     return
   }
 
@@ -755,6 +697,78 @@ function openTupletsAndTremolo(
   }
 
   return { markers, tremolo }
+}
+
+/** Places a rest as its voice's rest through the measure, stated on the sequence. */
+function setMeasureRest(
+  note: NoteStatement,
+  fills: Extract<RestReading, { kind: 'fills' }>,
+  state: PartState,
+  builder: MeasureBuilder,
+  warnings: WarningCollector,
+  context: WarningContext,
+  path: DocumentPath,
+): void {
+  const { element, notations, voice, written, duration, staff, staffPosition } = note
+  // A beam over a rest alone is not a beam, so a source stating one says
+  // nothing this loses.
+  element.skip('beam')
+
+  // MNX's rest filling the measure states no length, so how long the source
+  // drew this one is not carried. Only a rest that reached here on its own
+  // length reports it: one marked as the measure's, or drawn to what the
+  // time signature states, says nothing MNX's measure does not.
+  const { eventValue: restValue, unwritableLength: unwritableRest } = fills
+  if (unwritableRest) {
+    warnings.add(
+      'unrepresentable:rest-length',
+      `A rest lasting ${describeLength(unwritableRest)} is the whole of its voice in ` +
+        (state.time === undefined
+          ? 'a measure written with no time signature. '
+          : 'this measure, and no note value can write that length. ') +
+        'MNX states such a rest on the sequence, which carries no length, so the length ' +
+        'is not converted.',
+      { ...context, line: element.line },
+      'rest',
+    )
+  }
+
+  const fermata = readFermata(notations, warnings, context)
+  builder.setFullMeasure(
+    voice,
+    {
+      visualDuration: written,
+      fermata,
+      // MNX's full-measure rest carries a staffPosition too, so a display
+      // height on one is placed there rather than lost.
+      staffPosition,
+    },
+    duration,
+    staff,
+    restValue && {
+      duration: duration ?? lengthOf(restValue),
+      // What a grace note written after the rest takes it back as. A marking,
+      // a stem, a lyric or a slur would have kept it an event already.
+      event: () => ({
+        kind: 'event',
+        id: state.ids.nextEvent(),
+        staff: undefined,
+        value: restValue,
+        slurs: [],
+        lyrics: new Map(),
+        stemDirection: undefined,
+        markings: {},
+        fermata,
+        notes: [],
+        kitNotes: [],
+        isRest: true,
+        staffPosition,
+      }),
+    },
+    path,
+    element.line,
+  )
+  if (duration) builder.passOver(duration)
 }
 
 /** A note carrying <chord>, joined to the event before it. */
