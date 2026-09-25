@@ -13,7 +13,6 @@ import { compareFractions } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type {
   CurveSide,
-  Draft,
   Dynamic,
   Event,
   LineType,
@@ -25,6 +24,7 @@ import type {
   Step,
   TieTarget,
 } from '../model/score.js'
+import type { Draft } from './draft.js'
 import type { GraceNotesAt, LastEventBefore } from './voices.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 

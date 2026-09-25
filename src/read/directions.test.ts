@@ -1285,7 +1285,7 @@ describe('sound navigation', () => {
   test('puts a jump of type segno on the measure for a <sound dalsegno>', () => {
     const { global, warnings } = read(inMeasure(note('C') + '<sound dalsegno="segno"/>'))
 
-    expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'segno', target: 'segno' })
+    expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'segno' })
     expect(warnings).toEqual([])
   })
 
@@ -1308,7 +1308,7 @@ describe('sound navigation', () => {
       ),
     )
 
-    expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'segno', target: 'segno' })
+    expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'segno' })
   })
 
   // MNX states one fine per measure, so a second at another point is reported
@@ -1330,7 +1330,7 @@ describe('sound navigation', () => {
       inMeasure(note('C') + '<sound dalsegno="segno" dynamics="54"/>'),
     )
 
-    expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'segno', target: 'segno' })
+    expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'segno' })
     expect(warnings.map((w) => w.message)).toEqual([
       'The "dynamics" of a <sound> cannot be expressed in MNX.',
     ])
@@ -1410,7 +1410,6 @@ describe('sound navigation', () => {
     expect(global?.jump).toEqual({
       location: { num: 1, den: 4 },
       type: 'dsalfine',
-      target: 'segno',
     })
     expect(warnings).toEqual([])
   })
@@ -1436,7 +1435,6 @@ describe('sound navigation', () => {
     expect(score.globalMeasures[0]?.jump).toEqual({
       location: { num: 1, den: 4 },
       type: 'dsalfine',
-      target: 'segno',
     })
     expect(score.globalMeasures[1]?.fine).toEqual({ location: { num: 1, den: 4 } })
     expect(warnings.list()).toEqual([])
@@ -1447,7 +1445,7 @@ describe('sound navigation', () => {
   test('leaves a jump a plain segno when the score carries no Fine', () => {
     const { global } = read(inMeasure(note('C') + '<sound dalsegno="segno"/>'))
 
-    expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'segno', target: 'segno' })
+    expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'segno' })
   })
 
   // A score can carry two segno signs and a jump back to each. The Fine only

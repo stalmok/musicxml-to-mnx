@@ -42,7 +42,6 @@ import type {
 } from './tuplets.js'
 import type {
   Arpeggio,
-  Draft,
   Event,
   FullMeasureRest,
   GraceGroup,
@@ -59,6 +58,7 @@ import type {
   TieTarget,
   Tuplet,
 } from '../model/score.js'
+import type { Draft } from './draft.js'
 
 /**
  * The event a span ends on: where it begins in the measure, and, where grace

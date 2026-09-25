@@ -467,13 +467,18 @@ describe('a segno on the barline', () => {
 
   // The segno attribute on <barline> names the sign for playback, the same
   // way <sound segno> names one written as a direction. The name is never
-  // written; it only matches a jump to the sign it returns to.
+  // written; it only matches a jump to the sign it returns to. Here it picks
+  // the sign before the Fine, so the jump is a D.S. al Fine.
   test('names the sign from the segno attribute on the barline', () => {
     const { globals, warnings } = read(
       `<barline location="left" segno="verse"><segno/></barline>` + NOTE,
+      NOTE + '<sound fine="yes"/>',
+      `<barline location="left" segno="coda"><segno/></barline>` + NOTE,
+      NOTE + '<sound dalsegno="verse"/>',
     )
 
-    expect(globals[0]?.segno).toEqual({ location: { num: 0, den: 1 }, name: 'verse' })
+    expect(globals[0]?.segno).toEqual({ location: { num: 0, den: 1 } })
+    expect(globals[3]?.jump?.type).toBe('dsalfine')
     expect(warnings).toEqual([])
   })
 

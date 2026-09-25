@@ -22,10 +22,8 @@ import type {
   Key,
   Fine,
   GroupingItem,
-  Jump,
   Measure,
   Part,
-  ResolvedSound,
   Score,
   Segno,
   StaffConfig,
@@ -59,23 +57,25 @@ import { noteValueBaseOf } from './noteValues.js'
 import { parseWholeNumber } from './numbers.js'
 import { readPrint } from './print.js'
 import { IdGenerator } from './idGenerator.js'
+import { settleJumps } from './jumps.js'
+import type { NamedSegno, ReadGlobalMeasure, DalSegno } from './jumps.js'
 import { measureLength, newPartState } from './state.js'
 import { keyFifthsFlipAt, writtenFifths, writtenFifthsWithFlip } from './transposition.js'
 import { attributeLoss, elementLoss } from './unrepresentable.js'
-import type { HeldSignature, PartState } from './state.js'
+import type { HeldSignature, PartState, ResolvedSound } from './state.js'
 import { MeasureBuilder } from './voices.js'
 
 interface PartReading {
   part: Part
   /** What this part declared for each of its measures, by position. */
-  globals: readonly GlobalMeasure[]
+  globals: readonly ReadGlobalMeasure[]
   /** The <sound tempo> statements of each of its measures, by position. */
   soundTempos: readonly (readonly SoundTempo[])[]
 }
 
 interface MeasureReading {
   measure: Measure
-  global: GlobalMeasure
+  global: ReadGlobalMeasure
   /**
    * Held until the part can join it to its other end, with the line the
    * <ending> was written on, so the report names it.
@@ -185,12 +185,12 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
     readPart(element, partList, ids, scoreTimes, warnings, path),
   )
 
-  const globalMeasures: GlobalMeasure[] = []
+  const merged: ReadGlobalMeasure[] = []
   // Held by position rather than by part id, which two parts can share.
   const flips = readings.map((reading) =>
-    mergeGlobalMeasures(globalMeasures, reading.globals, reading.part, warnings),
+    mergeGlobalMeasures(merged, reading.globals, reading.part, warnings),
   )
-  upgradeAlFineJumps(globalMeasures)
+  const globalMeasures = settleJumps(merged)
 
   for (const reading of readings) {
     reportSoundTempos(reading.part.id, reading.soundTempos, globalMeasures, warnings)
@@ -304,55 +304,6 @@ function renameGroupingParts(
 }
 
 /**
- * A dal-segno jump returning to a Fine is a "D.S. al Fine": the player goes
- * back to the segno and stops at the Fine. MusicXML says the al-Fine only
- * through the Fine's presence, not on the <sound dalsegno> attribute, so each
- * jump is read as a plain segno first and settled here once the whole score is
- * known. MNX's jump-type enum holds "dsalfine" for this.
- *
- * A Fine only stops a jump that returns to a sign standing before it: replay
- * from a segno written after the Fine never reaches it, and such a jump is a
- * D.S. al Coda or similar, which MNX's jump-type enum cannot state. Marking
- * one "dsalfine" would say the piece ends somewhere it does not, so a score
- * with several signs is matched sign by sign, by the name MusicXML gives them.
- */
-function upgradeAlFineJumps(measures: GlobalMeasure[]): void {
-  const firstFine = measures.findIndex((measure) => measure.fine !== undefined)
-  if (firstFine === -1) return
-
-  const signs = measures.flatMap((measure, index) =>
-    measure.segno ? [{ index, name: measure.segno.name }] : [],
-  )
-
-  for (const measure of measures) {
-    if (measure.jump?.type !== 'segno') continue
-    const from = segnoReturnedTo(signs, measure.jump.target)
-    // A Fine at or after the sign is reached on the way back through.
-    if (
-      from !== undefined &&
-      measures.findIndex((m, i) => i >= from && m.fine !== undefined) !== -1
-    )
-      measure.jump = { ...measure.jump, type: 'dsalfine' }
-  }
-}
-
-/**
- * Where a jump goes back to, as a measure index. A score drawing one sign
- * settles it whatever either is called, since there is nothing to confuse it
- * with. A score drawing none is taken from its start, which is where a player
- * with no sign to find would go. Past that the name decides, and a name
- * matching no sign leaves the jump alone rather than guessing between them.
- */
-function segnoReturnedTo(
-  signs: readonly { index: number; name: string | undefined }[],
-  target: string | undefined,
-): number | undefined {
-  if (signs.length === 0) return 0
-  if (signs.length === 1) return signs[0]?.index
-  return signs.find((sign) => sign.name === target)?.index
-}
-
-/**
  * The key the score is in and the key a part states, at every measure the
  * part writes, or nothing at a measure where neither states one and where
  * either side is still silent.
@@ -365,8 +316,8 @@ function segnoReturnedTo(
  * since past that the key in force is this part's own.
  */
 function keysInForce(
-  target: readonly GlobalMeasure[],
-  found: readonly GlobalMeasure[],
+  target: readonly ReadGlobalMeasure[],
+  found: readonly ReadGlobalMeasure[],
 ): (KeyPair | undefined)[] {
   let inScore: Key | undefined
   let inPart: Key | undefined
@@ -394,8 +345,8 @@ interface KeyPair {
 // is as long as the longest part, because that list is the score's measure
 // list.
 function mergeGlobalMeasures(
-  target: GlobalMeasure[],
-  found: readonly GlobalMeasure[],
+  target: ReadGlobalMeasure[],
+  found: readonly ReadGlobalMeasure[],
   { id: part, transposition }: Part,
   warnings: WarningCollector,
 ): number | undefined {
@@ -621,7 +572,7 @@ function sameTime(a: TimeSignature, b: TimeSignature | undefined): boolean {
 // compared too: it is never drawn, but it tells one sign from another when a
 // jump is matched to the one it returns to, so parts naming the sign
 // differently disagree about which sign the measure carries.
-function sameSegno(a: Segno, b: Segno): boolean {
+function sameSegno(a: NamedSegno, b: NamedSegno): boolean {
   return (
     compareFractions(a.location, b.location) === 0 &&
     a.glyph === b.glyph &&
@@ -652,10 +603,8 @@ function sameFine(a: Fine, b: Fine): boolean {
   return compareFractions(a.location, b.location) === 0
 }
 
-function sameJump(a: Jump, b: Jump): boolean {
-  return (
-    compareFractions(a.location, b.location) === 0 && a.type === b.type && a.target === b.target
-  )
+function sameJump(a: DalSegno, b: DalSegno): boolean {
+  return compareFractions(a.location, b.location) === 0 && a.target === b.target
 }
 
 /**
@@ -1520,9 +1469,9 @@ function readMeasure(
   // Every <sound tempo> of the measure, waiting on the score's marks to say
   // whether each one echoes a mark or stands alone.
   const soundTempos: SoundTempo[] = []
-  const segnos: Segno[] = []
+  const segnos: NamedSegno[] = []
   const fines: Fine[] = []
-  const jumps: Jump[] = []
+  const jumps: DalSegno[] = []
   const multimeasureRests: number[] = []
   const measureRepeats: MeasureRepeatReading[] = []
   let systemBreak = false

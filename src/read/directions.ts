@@ -16,12 +16,11 @@ import type {
   Dynamic,
   DynamicValue,
   Fine,
-  Jump,
   OttavaAmount,
-  Segno,
   Tempo,
   WedgeType,
 } from '../model/score.js'
+import type { NamedSegno, DalSegno } from './jumps.js'
 import type { WarningCollector, WarningContext, WarningPlace } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, trimmedText } from '../xml/tree.js'
@@ -41,9 +40,9 @@ import { attributeLoss, elementLoss } from './unrepresentable.js'
 export interface DirectionReading {
   dynamics: Dynamic[]
   tempos: Tempo[]
-  segnos: Segno[]
+  segnos: NamedSegno[]
   fines: Fine[]
-  jumps: Jump[]
+  jumps: DalSegno[]
   /** Each <sound tempo> the direction states. */
   soundTempos: SoundTempo[]
 }
@@ -51,7 +50,7 @@ export interface DirectionReading {
 /** The navigation a single <sound> element carries a home for. */
 export interface SoundReading {
   fine: Fine | undefined
-  jump: Jump | undefined
+  jump: DalSegno | undefined
   /**
    * What the source calls the segno drawn in this direction. Not written: it
    * names the sign so a jump can be matched to the one it returns to.
@@ -687,7 +686,7 @@ export function readSound(
   context: WarningContext,
 ): SoundReading {
   let fine: Fine | undefined
-  let jump: Jump | undefined
+  let jump: DalSegno | undefined
   let segnoName: string | undefined
   let tempo: SoundTempo | undefined
   for (const name of Object.keys(sound.element.attributes)) {
@@ -729,7 +728,7 @@ export function readSound(
       // the name is not written; it is kept to find the sign the jump returns
       // to, which is what decides whether a Fine stops it.
       const target = attribute(sound.element, 'dalsegno')
-      jump = { location: position, type: 'segno', ...(target ? { target } : {}) }
+      jump = { location: position, ...(target ? { target } : {}) }
       continue
     }
     if (name === 'segno') {

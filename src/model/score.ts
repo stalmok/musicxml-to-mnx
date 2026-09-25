@@ -21,13 +21,6 @@
 
 import type { Fraction } from '../fraction.js'
 
-/**
- * A model shape while it is still being made: the same fields with the
- * readonly taken off. A builder holds one of these and hands over the
- * finished type, which it is assignable to, so nothing needs a cast.
- */
-export type Draft<T> = { -readonly [K in keyof T]: T[K] }
-
 export type Step = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G'
 
 export type NoteValueBase =
@@ -672,12 +665,6 @@ export interface TimeSignature {
   readonly display: 'common' | 'cut' | undefined
 }
 
-/**
- * Attributes that apply to a measure across every part. There is one of these
- * per measure in the score, whether or not it declares anything: this list is
- * the score's measure list, and each part's measures line up with it by
- * position.
- */
 /** A tempo mark: this many of the given note value per minute. */
 export interface Tempo {
   readonly position: Fraction
@@ -718,6 +705,12 @@ export interface Ending {
   readonly open: boolean
 }
 
+/**
+ * Attributes that apply to a measure across every part. There is one of these
+ * per measure in the score, whether or not it declares anything: this list is
+ * the score's measure list, and each part's measures line up with it by
+ * position.
+ */
 export interface GlobalMeasure {
   readonly key: Key | undefined
   readonly time: TimeSignature | undefined
@@ -764,12 +757,6 @@ export interface Segno {
   readonly glyph: string | undefined
   /** The color it is drawn in, in MNX's "#RRGGBB" form, where the source states one. */
   readonly color: string | undefined
-  /**
-   * What the source calls this sign, where it names one. MNX has no label for
-   * a segno and none is written; it is held only to tell two signs apart when
-   * working out which one a jump returns to.
-   */
-  readonly name?: string
 }
 
 /** A Fine, where a D.S. or D.C. repeat stops. */
@@ -786,21 +773,6 @@ export interface Jump {
   /** Where in the measure it is taken, counting from the start. */
   readonly location: Fraction
   readonly type: JumpType
-  /**
-   * The name of the segno this jump returns to, where the source gives one.
-   * MNX's jump has no target and none is written; it is held only to find the
-   * sign the jump goes back to, which decides whether a Fine stops it.
-   */
-  readonly target?: string
-}
-
-/**
- * What a note's instrument resolves to: the key the score holds its sound
- * under, and the name to draw beside the component it strikes.
- */
-export interface ResolvedSound {
-  readonly key: string
-  readonly name: string | undefined
 }
 
 /** An instrument the part list sets up, as its drawn name and what sounds it. */

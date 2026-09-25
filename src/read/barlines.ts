@@ -12,7 +12,8 @@
 // shape of problem as a tie, and is done a part at a time in score.ts.
 
 import type { Fraction } from '../fraction.js'
-import type { BarlineType, Fermata, GlobalMeasure, RepeatEnd, Segno } from '../model/score.js'
+import type { BarlineType, Fermata, GlobalMeasure, RepeatEnd } from '../model/score.js'
+import type { NamedSegno } from './jumps.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, trimmedText } from '../xml/tree.js'
@@ -61,7 +62,7 @@ export interface BarlineReading {
   endingStop: { open: boolean; line: number } | undefined
   fermata: Fermata | undefined
   /** A segno drawn on the barline, the same sign a direction can carry. */
-  segno: Segno | undefined
+  segno: NamedSegno | undefined
 }
 
 const NOTHING: BarlineReading = {
@@ -131,7 +132,7 @@ function readSegno(
   position: Fraction,
   warnings: WarningCollector,
   context: WarningContext,
-): Segno | undefined {
+): NamedSegno | undefined {
   const segno = element.child('segno')
   if (!segno) return undefined
 

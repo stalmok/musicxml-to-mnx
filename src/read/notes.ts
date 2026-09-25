@@ -14,7 +14,6 @@ import type {
   AccidentalDisplay,
   ClefSign,
   CurveSide,
-  Draft,
   Event,
   Fermata,
   BowDirectionMarking,
@@ -32,6 +31,7 @@ import type {
   TieTarget,
   TupletDisplay,
 } from '../model/score.js'
+import type { Draft } from './draft.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, child, children, requireChild, trimmedText } from '../xml/tree.js'

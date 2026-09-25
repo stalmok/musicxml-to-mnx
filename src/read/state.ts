@@ -1,20 +1,22 @@
 // What the readers of one part share: the running state a measure cannot be
 // read without.
 
-import type {
-  ClefSign,
-  Key,
-  KitComponent,
-  ResolvedSound,
-  TimeSignature,
-  Transposition,
-} from '../model/score.js'
+import type { ClefSign, Key, KitComponent, TimeSignature, Transposition } from '../model/score.js'
 import { fraction } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type { WarningContext } from '../warnings.js'
 import { IdGenerator } from './idGenerator.js'
 import { SpannerResolver } from './spanners.js'
 import type { CarriedTupletStop } from './tuplets.js'
+
+/**
+ * What a note's instrument resolves to: the key the score holds its sound
+ * under, and the name to draw beside the component it strikes.
+ */
+export interface ResolvedSound {
+  readonly key: string
+  readonly name: string | undefined
+}
 
 /**
  * The lines a staff is drawn with where it says nothing, which is what MNX

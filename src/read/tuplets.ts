@@ -23,7 +23,6 @@ import type { Fraction } from '../fraction.js'
 import { lengthOf, noteValueOf } from './duration.js'
 import type { WarningCollector, WarningContext, WarningPlace } from '../warnings.js'
 import type {
-  Draft,
   NoteValue,
   NoteValueQuantity,
   SequenceItem,
@@ -31,6 +30,7 @@ import type {
   Tuplet,
   TupletDisplay,
 } from '../model/score.js'
+import type { Draft } from './draft.js'
 
 /**
  * A tuplet stop the measure that meets it does not close anything with: the

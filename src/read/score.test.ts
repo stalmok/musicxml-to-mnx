@@ -2900,7 +2900,6 @@ describe('several parts', () => {
     expect(result.globalMeasures[0]?.jump).toEqual({
       location: { num: 0, den: 1 },
       type: 'segno',
-      target: 'A',
     })
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-mark'])
     expect(warnings[0]?.element).toBe('jump')
