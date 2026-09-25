@@ -678,6 +678,39 @@ describe('the MNX a percussion part converts to', () => {
     expect(warnings.map((w) => w.code)).toContain('unrepresentable:instrument-id')
   })
 
+  // An instrument id shaped like an id the converter generates would name a
+  // sound and an event, note, component, measure or layout at once.
+  test.each(['ev1', 'note1', 'kit1', 'm1', 'layout1'])(
+    'renames the instrument id "%s", which the converter gives something else',
+    (id) => {
+      const { mnx, warnings } = convertValid(
+        source(
+          struck('C', '5', id),
+          `<score-instrument id="${id}"><instrument-name>Snare</instrument-name></score-instrument>`,
+        ),
+      )
+
+      expect(mnx.global.sounds).toEqual({ sound1: { name: 'Snare' } })
+      expect(mnx.parts[0]?.kit?.kit1?.sound).toBe('sound1')
+      expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:instrument-id'])
+      expect(warnings[0]?.message).toContain(`"${id}"`)
+      expect(warnings[0]?.message).toContain('the converter gives')
+      expect(warnings[0]?.context).toEqual({ part: 'P1', line: 1 })
+    },
+  )
+
+  test.each(['P1-I1', 'event1', 'sound1'])('leaves the instrument id "%s" alone', (id) => {
+    const { mnx, warnings } = convertValid(
+      source(
+        struck('C', '5', id),
+        `<score-instrument id="${id}"><instrument-name>Snare</instrument-name></score-instrument>`,
+      ),
+    )
+
+    expect(Object.keys(mnx.global.sounds ?? {})).toEqual([id])
+    expect(warnings).toEqual([])
+  })
+
   test('skips over a name another instrument already holds', () => {
     const { mnx, warnings } = convertValid(
       source(

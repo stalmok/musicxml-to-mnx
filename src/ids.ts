@@ -1,7 +1,7 @@
 // The ids the converter writes into an MNX document. The reader names events,
 // notes and kit components, and the writer names measures and the layout.
-// MNX gives every id one shape, so a part id from the source can clash with a
-// generated one, and the reader renames such a part against the pattern here.
+// MNX gives every id one shape, so a part or instrument id from the source can
+// clash with a generated one, and the reader renames it against the pattern here.
 
 // MNX's id, from the schema's $defs/id: 1 to 256 printable ASCII characters.
 // MusicXML's part id is an xs:ID, which allows more, such as accented letters.

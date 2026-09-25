@@ -827,15 +827,20 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
 
         for (const [instrumentId, instrumentName] of named) {
           let key = instrumentId
-          if (!MNX_ID_PATTERN.test(key)) {
+          const fits = MNX_ID_PATTERN.test(key)
+          if (!fits || GENERATED_ID_PATTERN.test(key)) {
             do {
               renamed += 1
               key = `sound${String(renamed)}`
             } while (named.has(key))
             warnings.add(
               'unrepresentable:instrument-id',
-              `The instrument id "${instrumentId}" does not fit MNX's id, which is 1 to 256 ` +
-                `printable ASCII characters, so the instrument is renamed ${key}.`,
+              fits
+                ? `The instrument id "${instrumentId}" is shaped like one the converter gives ` +
+                    `an event, note, kit component, measure or layout, and MNX states them all ` +
+                    `the same way, so the instrument is renamed ${key}.`
+                : `The instrument id "${instrumentId}" does not fit MNX's id, which is 1 to 256 ` +
+                    `printable ASCII characters, so the instrument is renamed ${key}.`,
               { ...(id !== undefined ? { part: id } : {}), line: element.line },
               'score-instrument',
             )
