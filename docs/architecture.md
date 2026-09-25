@@ -42,6 +42,8 @@ value imports and type imports:
 - The writer cannot import the reader, XML layer, or input pipeline.
 - The model cannot import either stage, XML, MNX types, or the input pipeline.
 - The XML layer and MNX types cannot import the stages, model, or input pipeline.
+- `errors.ts`, `warnings.ts`, `fraction.ts`, and `ids.ts` cannot import the
+  stages, model, XML layer, MNX types, or input pipeline.
 - `src/index.ts` cannot import the internal model.
 - The CLI accesses `src/` through `src/index.ts`.
 - The library cannot import the CLI, Node core modules, or development dependencies.
