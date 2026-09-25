@@ -36,6 +36,7 @@ import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, child, children, requireChild, trimmedText } from '../xml/tree.js'
 import { beamCountForValue, valueForBeamCount } from './beams.js'
+import type { BeamedEvent } from './beams.js'
 import { readDuration } from './divisions.js'
 import { describeLength, describeValue, lengthOf, noteValueOf } from './duration.js'
 import type { ElementReader } from './element.js'
@@ -447,7 +448,7 @@ export function readNote(
       warnings,
       context,
       tieds,
-      true,
+      placed.beams,
     )
     // A bracket can stop on a grace note, and the stop is read here as it is
     // on any other note. Left unread, the bracket ran on past the group to
@@ -500,7 +501,7 @@ export function readNote(
     warnings,
     context,
     tieds,
-    false,
+    undefined,
   )
 
   // Closed before any tuplet stopping on the same note, because the pair
@@ -942,8 +943,10 @@ function readEventSpanners(
   warnings: WarningCollector,
   context: WarningContext,
   tieds: readonly XmlElement[],
-  inGraceGroup: boolean,
+  /** The run a grace note's group beams within; nothing for any other event. */
+  graceBeams: BeamedEvent[] | undefined,
 ): void {
+  const inGraceGroup = graceBeams !== undefined
   // The event's own note is the one these notations sit on: a chord member's
   // are read where the member is, against the note it added.
   const { event } = placed
@@ -969,7 +972,7 @@ function readEventSpanners(
     event.id,
     beamMarkers(element, warnings, context),
     beamCountForValue(event.value.base),
-    inGraceGroup,
+    graceBeams,
   )
 }
 

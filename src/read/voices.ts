@@ -87,6 +87,11 @@ export interface PlacedEvent {
   start: Fraction
 }
 
+/** A grace note just put in its group, with the run its group beams within. */
+export interface PlacedGraceNote extends PlacedEvent {
+  beams: BeamedEvent[]
+}
+
 /** What a measure holds once every pass that waits for it to be whole has run. */
 export interface FinishedMeasure {
   /** Each voice's events, in order, for its beams to be read from. */
@@ -1327,19 +1332,11 @@ export class MeasureBuilder {
     id: string,
     markers: ReadonlyMap<number, string>,
     beamCount: number,
-    /** Whether the event is a grace note, whose beams run within its group. */
-    inGraceGroup: boolean,
+    /** The run of a grace note's group, which its beams run within. */
+    graceBeams: BeamedEvent[] | undefined,
   ): void {
     if (markers.size === 0) return
-    const builder = this.#builderFor(voice)
-    if (!inGraceGroup) {
-      builder.beamed.push({ id, markers, beamCount })
-      return
-    }
-    const run = builder.graceBeamed.at(-1)
-    /* v8 ignore next -- a grace note joins its group before its beams are
-       read, so a run is always open by the time this is reached. */
-    if (!run) throw new Error('A grace note has no group to beam within.')
+    const run = graceBeams ?? this.#builderFor(voice).beamed
     run.push({ id, markers, beamCount })
   }
 
@@ -1797,7 +1794,7 @@ export class MeasureBuilder {
     slashed: boolean,
     graceType: GraceType | undefined,
     staff?: number,
-  ): PlacedEvent {
+  ): PlacedGraceNote {
     const builder = this.#builderFor(voice)
     this.#writeAt()
     // A grace note is squeezed in before the note it ornaments, so time the
@@ -1807,7 +1804,7 @@ export class MeasureBuilder {
     this.#fillGap(builder)
 
     const list = innermost(builder)
-    const previous = list.at(-1)
+    const open = builder.grace
 
     this.#lastVoice = voice ?? UNNAMED_VOICE
     // Grace notes have no duration of their own, so a chord note joining one
@@ -1827,15 +1824,17 @@ export class MeasureBuilder {
     // run is cut where the side changes. A note naming no side joins whatever
     // is open.
     if (
-      previous?.kind === 'grace' &&
+      open !== undefined &&
+      list.at(-1) === open.group &&
       (graceType === undefined ||
-        previous.graceType === undefined ||
-        previous.graceType === graceType)
+        open.group.graceType === undefined ||
+        open.group.graceType === graceType)
     ) {
-      previous.content = [...previous.content, event]
-      if (slashed) previous.slashed = true
-      previous.graceType ??= graceType
-      return { event, start }
+      const { group } = open
+      group.content = [...group.content, event]
+      if (slashed) group.slashed = true
+      group.graceType ??= graceType
+      return { event, start, beams: open.beams }
     }
 
     const group: GraceGroup = { kind: 'grace', content: [event], slashed, graceType }
@@ -1846,7 +1845,7 @@ export class MeasureBuilder {
     // Held until the note it leads into says which sequence it is in. Its
     // own entry in `placed` is the one just pushed.
     builder.grace = { group, beams, at: start, placedFrom: builder.placed.length - 1 }
-    return { event, start }
+    return { event, start, beams }
   }
 
   /**
