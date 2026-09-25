@@ -1300,21 +1300,18 @@ describe('pairing the two ends of a span', () => {
     kind: 'start' | 'stop',
     position: Fraction,
     covers: Fraction,
-  ): SpanEnd<string> => ({
-    kind,
-    number: '1',
-    measure: 0,
-    position,
-    covers,
-    payload: kind === 'start' ? 'span' : undefined,
-    context: {},
-  })
+  ): SpanEnd<string, undefined> => {
+    const place = { number: '1', measure: 0, position, covers, context: {} }
+    return kind === 'start'
+      ? { ...place, kind, payload: 'span' }
+      : { ...place, kind, stop: undefined }
+  }
 
   test('reports a stop covering a point before its start instead of joining it', () => {
     const joined: string[] = []
     const reported: string[] = []
 
-    pairSpans<string, SpanEnd<string>>(
+    pairSpans<string, undefined>(
       [
         spanEnd('start', fraction(3, 4), fraction(3, 4)),
         spanEnd('stop', fraction(7, 8), fraction(0)),
@@ -1331,7 +1328,7 @@ describe('pairing the two ends of a span', () => {
     const joined: string[] = []
     const reported: string[] = []
 
-    pairSpans<string, SpanEnd<string>>(
+    pairSpans<string, undefined>(
       [
         spanEnd('start', fraction(3, 4), fraction(3, 4)),
         spanEnd('stop', fraction(7, 8), fraction(3, 4)),
@@ -1353,7 +1350,7 @@ describe('pairing the two ends of a span', () => {
     const start = { ...spanEnd('start', fraction(3, 4), fraction(3, 4)), measure: 0 }
     const stop = { ...spanEnd('stop', fraction(0), fraction(0)), measure: 1 }
 
-    pairSpans<string, SpanEnd<string>>(
+    pairSpans<string, undefined>(
       [start, stop],
       (payload) => joined.push(payload),
       (reason) => reported.push(reason),
@@ -1399,7 +1396,7 @@ describe('whether a voice accounts for its own slurs', () => {
     }
     return kind === 'start'
       ? { ...place, kind, payload: { event, side: undefined, lineType: undefined } }
-      : { ...place, kind, payload: undefined, stop: { event, sideEnd: undefined } }
+      : { ...place, kind, stop: { event, sideEnd: undefined } }
   }
 
   const stream = (...kinds: readonly ('start' | 'stop')[]) =>
@@ -1444,21 +1441,25 @@ describe('the order the ends of a span are read in', () => {
     position: Fraction,
     payload = 'span',
     grace?: boolean,
-  ): SpanEnd<string> => ({
-    kind,
-    number: '1',
-    measure,
-    position,
-    covers: position,
-    payload: kind === 'start' ? payload : undefined,
-    context: {},
-    ...(grace === undefined ? {} : { grace }),
-  })
+  ): SpanEnd<string, undefined> => {
+    const place = {
+      number: '1',
+      measure,
+      position,
+      covers: position,
+      context: {},
+      ...(grace === undefined ? {} : { grace }),
+    }
+    return kind === 'start' ? { ...place, kind, payload } : { ...place, kind, stop: undefined }
+  }
 
-  function pair(ends: readonly SpanEnd<string>[], atSamePoint?: 'stop-first' | 'as-written') {
+  function pair(
+    ends: readonly SpanEnd<string, undefined>[],
+    atSamePoint?: 'stop-first' | 'as-written',
+  ) {
     const joined: string[] = []
     const reported: string[] = []
-    pairSpans<string, SpanEnd<string>>(
+    pairSpans<string, undefined>(
       ends,
       (payload) => joined.push(payload),
       (reason) => reported.push(reason),
@@ -1558,7 +1559,7 @@ describe('the order the ends of a span are read in', () => {
   // written: the first closes the last start opened, as any stop does.
   test('keeps two stops at one point in the order they were written', () => {
     const joined: string[] = []
-    pairSpans<string, SpanEnd<string>>(
+    pairSpans<string, undefined>(
       [
         end('start', 0, fraction(0), 'first'),
         end('start', 0, fraction(1, 4), 'second'),

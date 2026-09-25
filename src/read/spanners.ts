@@ -37,9 +37,7 @@ interface OpenTie {
 }
 
 /** One end of a tie, and on a stop the note it is written on. */
-interface TieEnd extends SpanEnd<OpenTie> {
-  stop?: { note: TieTarget }
-}
+type TieEnd = StartEnd<OpenTie> | StopEnd<{ note: TieTarget }>
 
 /** An octave shift that has begun, waiting to learn where it stops. */
 export interface OpenOttava {
@@ -57,30 +55,19 @@ interface OpenSlur {
   lineType: LineType | undefined
 }
 
+/** Where a slur ends. */
+interface SlurStopAt {
+  event: Event
+  /** The side the slur bends to at its close, for an S-shaped one. */
+  sideEnd: CurveSide | undefined
+}
+
 /**
  * One end of a slur: a start carries the slur it opens, and a stop names the
- * event it is written on. Two shapes rather than one, because the pairing a
- * voice does for itself reads the slur straight off its own start, and the
- * split is what states there is one to read. No reader drops a slur start the
- * way it drops a hairpin's, so a start with nothing to join cannot be built.
+ * event it is written on. No reader drops a slur start the way it drops a
+ * hairpin's, so a start with nothing to join cannot be built.
  */
-export type SlurEnd = SlurStart | SlurStop
-
-interface SlurStart extends SpanEnd<OpenSlur> {
-  kind: 'start'
-  payload: OpenSlur
-  stop?: undefined
-}
-
-interface SlurStop extends SpanEnd<OpenSlur> {
-  kind: 'stop'
-  payload: undefined
-  stop: {
-    event: Event
-    /** The side the slur bends to at its close, for an S-shaped one. */
-    sideEnd: CurveSide | undefined
-  }
-}
+export type SlurEnd = StartEnd<OpenSlur> | StopEnd<SlurStopAt>
 
 /**
  * Wording written at a hairpin's closing edge. It waits until the pairing
@@ -103,24 +90,10 @@ export interface WedgeStop {
 }
 
 /** A hairpin end, and on a stop the wording waiting at it. */
-interface WedgeEnd extends SpanEnd<Dynamic> {
-  stop?: WedgeStop
-}
+type WedgeEnd = SpanEnd<Dynamic, WedgeStop>
 
-/**
- * One end of something that spans a stretch of music and is written between
- * the notes rather than on one: a hairpin, an octave shift.
- *
- * These cannot be paired up as they are met, the way ties and slurs are,
- * because MusicXML's document order is not time order: a measure holding two
- * voices is written as one pass per voice with a <backup> between them, so a
- * stop belonging to the first voice is written before a start belonging to
- * the second even though the music has it the other way round. Pairing in
- * document order made a hairpin out of a stop and a start that had nothing to
- * do with each other, one of them 28 measures long.
- */
-export interface SpanEnd<T> {
-  kind: 'start' | 'stop'
+/** Where an end of a span is written, and what it marks, whichever end it is. */
+interface EndPlace {
   /** What the source numbers it, so two open at once can be told apart. */
   number: string
   /** Where in the score: a measure's place in the part, and a point in it. */
@@ -172,17 +145,46 @@ export interface SpanEnd<T> {
    * order the document writes them in.
    */
   grace?: boolean
-  /** Carried on a start, and handed back when its stop is found. */
-  payload: T | undefined
-  /**
-   * A start the reader dropped and already reported. It still takes its place
-   * in pairing, so the stop the source wrote for it is consumed with it, in
-   * silence: reporting that stop as an orphan would say the source never
-   * started the span, when it did.
-   */
-  dropped?: boolean
   context: WarningContext
 }
+
+/** A start, carrying what it opens, handed back when its stop is found. */
+export interface StartEnd<T> extends EndPlace {
+  kind: 'start'
+  payload: T
+  dropped?: undefined
+}
+
+/**
+ * A start the reader dropped and already reported. It still takes its place
+ * in pairing, so the stop the source wrote for it is consumed with it, in
+ * silence: reporting that stop as an orphan would say the source never
+ * started the span, when it did.
+ */
+interface DroppedStartEnd extends EndPlace {
+  kind: 'start'
+  dropped: true
+}
+
+/** A stop, carrying what the join needs from the place it is written. */
+export interface StopEnd<S> extends EndPlace {
+  kind: 'stop'
+  stop: S
+}
+
+/**
+ * One end of something that spans a stretch of music and is written between
+ * the notes rather than on one: a hairpin, an octave shift.
+ *
+ * These cannot be paired up as they are met, the way ties and slurs are,
+ * because MusicXML's document order is not time order: a measure holding two
+ * voices is written as one pass per voice with a <backup> between them, so a
+ * stop belonging to the first voice is written before a start belonging to
+ * the second even though the music has it the other way round. Pairing in
+ * document order made a hairpin out of a stop and a start that had nothing to
+ * do with each other, one of them 28 measures long.
+ */
+export type SpanEnd<T, S> = StartEnd<T> | DroppedStartEnd | StopEnd<S>
 
 /**
  * How two ends falling at one point are ordered.
@@ -215,13 +217,13 @@ export type SamePoint = 'stop-first' | 'as-written'
  * backwards-stop rather than joined: the joined span would end before it
  * starts, which no consumer accepts.
  */
-export function pairSpans<T, E extends SpanEnd<T>>(
-  ends: readonly E[],
-  join: (payload: T, stop: E) => void,
-  report: (reason: 'orphan-stop' | 'unclosed-start' | 'backwards-stop', end: E) => void,
+export function pairSpans<T, S>(
+  ends: readonly SpanEnd<T, S>[],
+  join: (payload: T, stop: StopEnd<S>) => void,
+  report: (reason: 'orphan-stop' | 'unclosed-start' | 'backwards-stop', end: SpanEnd<T, S>) => void,
   atSamePoint: SamePoint = 'stop-first',
 ): void {
-  const open = new Map<string, E[]>()
+  const open = new Map<string, (StartEnd<T> | DroppedStartEnd)[]>()
 
   for (const end of inTimeOrder(ends, atSamePoint)) {
     if (end.kind === 'start') {
@@ -238,9 +240,6 @@ export function pairSpans<T, E extends SpanEnd<T>>(
     waiting.splice(waiting.indexOf(started), 1)
     // The drop was reported where the start was read; the stop goes with it.
     if (started.dropped) continue
-    /* v8 ignore next 2 -- only a start carries a payload, and only a start is
-       ever pushed onto the stack this came off. */
-    if (started.payload === undefined) throw new Error('A span start with nothing to join.')
 
     // The stop's cursor sits past the start, or it would not have paired, but
     // the point it covers can still fall before it, when the two ends
@@ -320,9 +319,11 @@ export function measureResidue(ends: readonly SlurEnd[]): 'unclosed' | 'orphan' 
  * accountsForItself is true: nesting never goes past one deep, so each start
  * closes on the very next stop.
  */
-function ownPairs(ends: readonly SlurEnd[]): { start: SlurStart; stop: SlurStop }[] {
-  const pairs: { start: SlurStart; stop: SlurStop }[] = []
-  let open: SlurStart | undefined
+function ownPairs(
+  ends: readonly SlurEnd[],
+): { start: StartEnd<OpenSlur>; stop: StopEnd<SlurStopAt> }[] {
+  const pairs: { start: StartEnd<OpenSlur>; stop: StopEnd<SlurStopAt> }[] = []
+  let open: StartEnd<OpenSlur> | undefined
   for (const end of inTimeOrder(ends, 'as-written')) {
     if (end.kind === 'start') {
       open = end
@@ -427,10 +428,7 @@ function crossesVoicesInAMeasure(ends: readonly SlurEnd[]): ReadonlySet<string> 
 }
 
 /** The most recently opened start that satisfies the rule, if any does. */
-function findLastOpened<T, E extends SpanEnd<T>>(
-  waiting: readonly E[],
-  keeps: (start: E) => boolean,
-): E | undefined {
+function findLastOpened<E>(waiting: readonly E[], keeps: (start: E) => boolean): E | undefined {
   for (let index = waiting.length - 1; index >= 0; index -= 1) {
     const start = waiting[index]
     if (start && keeps(start)) return start
@@ -450,7 +448,7 @@ function findLastOpened<T, E extends SpanEnd<T>>(
  * the other pairing as it did, since neither reading of the silent end is
  * safe to assume.
  */
-function lastOpenedIn<T, E extends SpanEnd<T>>(waiting: readonly E[], end: E): E | undefined {
+function lastOpenedIn<E extends EndPlace>(waiting: readonly E[], end: EndPlace): E | undefined {
   return (
     findLastOpened(
       waiting,
@@ -482,7 +480,10 @@ function insertAtPosition(dynamics: Dynamic[] | undefined, added: Dynamic): void
  * required to be. It used to rest on the ends being decorated with their
  * position in the array and compared by it, which said the same thing twice.
  */
-function inTimeOrder<T, E extends SpanEnd<T>>(ends: readonly E[], atSamePoint: SamePoint): E[] {
+function inTimeOrder<E extends EndPlace & { kind: 'start' | 'stop' }>(
+  ends: readonly E[],
+  atSamePoint: SamePoint,
+): E[] {
   return [...ends].sort((a, b) => {
     if (a.measure !== b.measure) return a.measure - b.measure
     const byPosition = compareFractions(a.position, b.position)
@@ -578,7 +579,6 @@ export class SpannerResolver {
       voice,
       grace,
       covers: position,
-      payload: undefined,
       context,
       stop: { note },
     })
@@ -609,7 +609,7 @@ export class SpannerResolver {
   #resolveTies(warnings: WarningCollector): void {
     // Two ties of one pitch can be open at once, as when two hands each
     // sustain it, so each pitch holds a stack rather than a single open tie.
-    const open = new Map<string, TieEnd[]>()
+    const open = new Map<string, StartEnd<OpenTie>[]>()
 
     for (const end of inTimeOrder(this.#tieEnds, 'as-written')) {
       if (end.kind === 'start') {
@@ -631,12 +631,6 @@ export class SpannerResolver {
         continue
       }
       waiting.splice(waiting.indexOf(started), 1)
-      /* v8 ignore next 2 -- only a start carries a payload, and only a start
-         is ever pushed onto the stack this came off. */
-      if (started.payload === undefined) throw new Error('A tie start with nothing to join.')
-      /* v8 ignore next 2 -- every stop is pushed with the note it is written
-         on. */
-      if (!end.stop) throw new Error('A tie stop with no note.')
 
       started.payload.note.ties = [
         ...started.payload.note.ties,
@@ -708,7 +702,6 @@ export class SpannerResolver {
       voice,
       grace,
       covers: position,
-      payload: undefined,
       context,
       stop: { event, sideEnd },
     })
@@ -749,10 +742,7 @@ export class SpannerResolver {
       'backwards-stop': 'A slur would end before it starts, and is not carried over.',
       'unclosed-start': 'A slur starts where nothing ends it, and is not carried over.',
     }
-    const join = (open: OpenSlur, end: SlurEnd): void => {
-      /* v8 ignore next 2 -- join hands back a stop, and every stop is
-         pushed with the event it is written on. */
-      if (!end.stop) throw new Error('A slur stop with no event.')
+    const join = (open: OpenSlur, end: StopEnd<SlurStopAt>): void => {
       const sideEnd = end.stop.sideEnd
       open.event.slurs = [
         ...open.event.slurs,
@@ -796,7 +786,7 @@ export class SpannerResolver {
     // Back in the order the document has, because the streams gave their ends
     // up a stream at a time. A grace note begins where the note it ornaments
     // begins, so a slur between the two has both ends at one point.
-    pairSpans<OpenSlur, SlurEnd>(
+    pairSpans<OpenSlur, SlurStopAt>(
       this.#slurEnds.filter((end) => spare.has(end)),
       join,
       (reason, end) => {
@@ -853,7 +843,6 @@ export class SpannerResolver {
       covers: position,
       graceWritten,
       staff,
-      payload: undefined,
       context,
       stop,
     })
@@ -878,7 +867,6 @@ export class SpannerResolver {
       position,
       covers: position,
       staff,
-      payload: undefined,
       dropped: true,
       context,
     })
@@ -915,8 +903,8 @@ export class SpannerResolver {
       'unclosed-start':
         'A hairpin starts where nothing ends it, so how far it runs is not carried over.',
     }
-    const closed = new Map<SpanEnd<Dynamic>, Dynamic>()
-    pairSpans<Dynamic, WedgeEnd>(
+    const closed = new Map<StopEnd<WedgeStop>, Dynamic>()
+    pairSpans<Dynamic, WedgeStop>(
       this.#wedgeEnds,
       (dynamic, stop) => {
         // The grace note the hairpin ends on is stated where the stop covers
@@ -938,8 +926,8 @@ export class SpannerResolver {
     // where the hairpin already carries wording from its starting edge: the
     // source wrote both, so the closing words do not overwrite the opening.
     for (const end of this.#wedgeEnds) {
-      const wording = end.stop?.wording
-      if (!wording) continue
+      if (end.kind !== 'stop' || !end.stop.wording) continue
+      const wording = end.stop.wording
       const hairpin = closed.get(end)
       if (hairpin && hairpin.suffix === undefined) hairpin.suffix = wording.text
       else insertAtPosition(measures[end.measure]?.dynamics, wording.standalone)
@@ -948,7 +936,7 @@ export class SpannerResolver {
   }
 
   // Both ends of every octave shift in the part, paired the same way.
-  readonly #ottavaEnds: SpanEnd<OpenOttava>[] = []
+  readonly #ottavaEnds: SpanEnd<OpenOttava, undefined>[] = []
 
   startOttava(
     open: OpenOttava,
@@ -990,8 +978,8 @@ export class SpannerResolver {
       // it stands as written where the measure holds no event before it.
       covers: cursor,
       graceWritten,
-      payload: undefined,
       context,
+      stop: undefined,
     })
   }
 
@@ -1016,7 +1004,7 @@ export class SpannerResolver {
     lastEventBefore: (position: Fraction, staff?: number) => CoveredEvent | undefined,
     graceNotesAt: (position: Fraction, staff?: number) => number,
   ): void {
-    const overGraceNotes = (end: SpanEnd<unknown>): boolean => {
+    const overGraceNotes = (end: EndPlace): boolean => {
       if (!end.graceWritten) return false
       end.coversGraceIndex = graceNotesAt(end.covers, end.staff) - end.graceWritten + 1
       return true
@@ -1026,8 +1014,9 @@ export class SpannerResolver {
     // measure's own events. A stop of any other measure is settled by the
     // sweep of its own, and settling it again here would move it to an event
     // of a measure it never reached.
-    const stoppingHere = <E extends SpanEnd<unknown>>(ends: readonly E[]): E[] =>
-      ends.filter((end) => end.kind === 'stop' && end.measure === measure)
+    const stoppingHere = <E extends EndPlace & { kind: 'start' | 'stop' }>(
+      ends: readonly E[],
+    ): E[] => ends.filter((end) => end.kind === 'stop' && end.measure === measure)
 
     for (const end of stoppingHere(this.#wedgeEnds)) {
       overGraceNotes(end)
@@ -1067,7 +1056,6 @@ export class SpannerResolver {
       position,
       covers: position,
       staff,
-      payload: undefined,
       dropped: true,
       context,
     })
@@ -1079,7 +1067,7 @@ export class SpannerResolver {
    * it stops, so one the source never closed cannot be written at all.
    */
   #resolveOttavas(measures: readonly Measure[], warnings: WarningCollector): void {
-    pairSpans<OpenOttava, SpanEnd<OpenOttava>>(
+    pairSpans<OpenOttava, undefined>(
       this.#ottavaEnds,
       (open, stop) => {
         // Assigned rather than spread in, for the reason the hairpin's end is.
