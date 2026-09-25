@@ -2,9 +2,11 @@
 // MNX requires the score rendering to be named and MusicXML has no name to
 // give it, and a source is text or bytes, so neither name is in the document.
 
-import { describe, expect, test } from 'vitest'
+import { describe, expect, expectTypeOf, test } from 'vitest'
 import { convertValid } from '../tests/support/convert.js'
 import { MusicXMLError, convertMusicXML } from './index.js'
+import type { ConversionOptions } from './index.js'
+import type { WriterOptions } from './write/mnx.js'
 
 const NOTE =
   '<note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration>' +
@@ -17,6 +19,14 @@ const SOURCE =
   `<measure number="1"><attributes><divisions>1</divisions></attributes>${NOTE}</measure>` +
   `<measure number="2"><print new-system="yes"/>${NOTE}</measure>` +
   '</part></score-partwise>'
+
+describe('the conversion options', () => {
+  test('reach every option the writer takes', () => {
+    expectTypeOf<keyof WriterOptions>().toEqualTypeOf<
+      Exclude<keyof ConversionOptions, 'documentName'>
+    >()
+  })
+})
 
 describe('the score rendering name', () => {
   test('is the name the caller gives', () => {
