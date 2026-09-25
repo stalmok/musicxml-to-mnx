@@ -1178,6 +1178,44 @@ describe('a time signature stated after the measure start', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:mid-measure-time'])
   })
 
+  test('reads ahead a note with no <duration> as lasting its written value', () => {
+    const half =
+      '<note><pitch><step>C</step><octave>4</octave></pitch><voice>1</voice><type>half</type></note>'
+    const { warnings } = read(untimedBesideNext(timed(2) + half + timed(3), 24))
+
+    expect(warnings).toEqual([])
+  })
+
+  test('reads ahead a rest with no <duration> as lasting its written value', () => {
+    const half = '<note><rest/><voice>1</voice><type>half</type></note>'
+    const { warnings } = read(untimedBesideNext(timed(2) + half + timed(3), 24))
+
+    expect(warnings).toEqual([])
+  })
+
+  test("reads ahead a measure's rest with no <duration> as leaving the cursor", () => {
+    const whole = '<note><rest measure="yes"/><voice>1</voice><type>whole</type></note>'
+    const { warnings } = read(untimedBesideNext(timed(2) + whole + timed(3), 24))
+
+    expect(warnings.map((w) => `${w.code} ${String(w.context.part)}`)).toEqual([
+      'inconsistent:time P1',
+      'unrepresentable:tuplet-ratio P2',
+    ])
+  })
+
+  test('reads ahead a grace note stating a <duration> as taking no time', () => {
+    const grace =
+      '<note><grace/><pitch><step>D</step><octave>4</octave></pitch><duration>24</duration>' +
+      '<voice>1</voice><type>eighth</type></note>'
+    const { warnings } = read(untimedBesideNext(timed(2) + grace + timed(3) + note(24), 24))
+
+    expect(warnings.map((w) => `${w.code} ${String(w.context.part)}`)).toEqual([
+      'inconsistent:time P1',
+      'inconsistent:duration P1',
+      'unrepresentable:tuplet-ratio P2',
+    ])
+  })
+
   test('reads ahead past a <divisions> of zero, which the part reader refuses', () => {
     const zero = '<attributes><divisions>0</divisions></attributes>'
 

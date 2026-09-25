@@ -55,6 +55,7 @@ import { GroupingBuilder, pruneGrouping } from './part-groups.js'
 import { addFractions, compareFractions, fraction, negate } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import { readNote } from './notes.js'
+import { noteValueBaseOf } from './noteValues.js'
 import { parseWholeNumber } from './numbers.js'
 import { readPrint } from './print.js'
 import { IdGenerator } from './spanners.js'
@@ -920,13 +921,25 @@ function timesInForce(part: XmlElement): (TimeSignature | undefined)[] {
       const count = duration && parseWholeNumber(trimmedText(duration))
       return fraction(count ?? 0, divisions * 4)
     }
+    // A grace note takes none of the measure's time, whatever it states. A
+    // note stating no <duration> lasts its written value, except a rest
+    // marked as the measure's, which leaves the cursor where it stood.
+    const noteLength = (found: XmlElement) => {
+      if (child(found, 'grace')) return fraction(0)
+      if (child(found, 'duration')) return by(found)
+      const rest = child(found, 'rest')
+      if (rest && attribute(rest, 'measure') === 'yes') return fraction(0)
+      const type = child(found, 'type')
+      const base = type && noteValueBaseOf(type)
+      return base ? lengthOf({ base, dots: children(found, 'dot').length }) : fraction(0)
+    }
     for (const found of measure.children) {
       if (found.name === 'forward') cursor = addFractions(cursor, by(found))
       else if (found.name === 'backup') cursor = addFractions(cursor, negate(by(found)))
       else if (found.name === 'note' && !child(found, 'chord')) {
         // Written out, a note before the measure start stands at the start.
         if (compareFractions(cursor, fraction(0)) < 0) cursor = fraction(0)
-        cursor = addFractions(cursor, by(found))
+        cursor = addFractions(cursor, noteLength(found))
       }
       if (found.name !== 'attributes') continue
       const stated = child(found, 'divisions')
