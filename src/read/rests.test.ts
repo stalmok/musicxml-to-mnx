@@ -168,6 +168,18 @@ describe('a voice holding only a rest that fills its measure', () => {
     expect(warnings).toEqual([])
   })
 
+  // With no length to hold against the voice, the mark is taken as written
+  // rather than weighed once the voice is whole.
+  test('writes a marked rest stating no <duration> on the sequence', () => {
+    const { mnx } = convertValid(
+      inMeasure('<note><rest measure="yes"/><type>whole</type><voice>1</voice></note>'),
+    )
+
+    expect(mnx.parts[0]?.measures[0]?.sequences).toEqual([
+      { voice: '1', content: [], fullMeasure: { visualDuration: { base: 'whole' } } },
+    ])
+  })
+
   // The resting voice sits beside a sounding one, which is where leaving the
   // sequence out would be visible: the measure would say the voice is not
   // there rather than that it rests through.
