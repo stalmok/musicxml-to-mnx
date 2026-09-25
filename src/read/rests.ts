@@ -36,7 +36,7 @@ export interface RestReading {
   fillsMeasure: boolean
   /**
    * The rest may be the voice's measure rest, and is held as an ordinary rest
-   * until the voice is whole. See MeasureBuilder.settleMeasureRests. Carries
+   * until the voice is whole. It is settled once the measure is whole, in MeasureBuilder.finish. Carries
    * the written value and the length that disagree, for the reading where it
    * stays an ordinary rest.
    */
@@ -152,7 +152,7 @@ export function readRest(note: RestNote, state: PartState, builder: MeasureBuild
     duration !== undefined &&
     grace === undefined &&
     !carriesSlurEnd &&
-    !builder.hasFullMeasure(voice)
+    !builder.restsTheMeasure(voice)
 
   const fillsMeasure =
     (markedAsTheMeasure && !markedCandidate) || drawnToTheMeasure || unwritableLength !== undefined
@@ -179,7 +179,7 @@ export function readRest(note: RestNote, state: PartState, builder: MeasureBuild
         !carriesSlurEnd &&
         // A rest written over a rest that already fills the measure is reported
         // and discarded, so it never reaches the settling.
-        !builder.hasFullMeasure(voice) &&
+        !builder.restsTheMeasure(voice) &&
         // A rest the voice has already sounded past cannot be the measure's rest,
         // and the settling would say so, but it would say it at the end of the
         // measure. Ruling it out here keeps its report where the rest stands.
@@ -190,7 +190,7 @@ export function readRest(note: RestNote, state: PartState, builder: MeasureBuild
     candidate: isCandidate ? { written, duration } : undefined,
     unwritableLength,
     eventValue,
-    keepsEvent: fillsMeasure && eventValue !== undefined && !builder.hasFullMeasure(voice),
+    keepsEvent: fillsMeasure && eventValue !== undefined && !builder.restsTheMeasure(voice),
     carriesLyric,
     carriesSlurEnd,
     afterGraceNotes,

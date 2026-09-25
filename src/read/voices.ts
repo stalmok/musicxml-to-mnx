@@ -202,7 +202,6 @@ interface VoiceLayers {
   active: number
 }
 
-/** A rest standing where its voice's measure rest would stand. */
 /**
  * Whether a voice rests its measure, and how.
  *
@@ -248,7 +247,7 @@ type MeasureRestState =
   | { kind: 'event' }
 
 /** Whether the voice's measure rest is settled, on the sequence or as an event. */
-function restsTheMeasure(builder: VoiceBuilder): boolean {
+function restIsSettled(builder: VoiceBuilder): boolean {
   return builder.measureRest.kind === 'sequence' || builder.measureRest.kind === 'event'
 }
 
@@ -492,8 +491,8 @@ export class MeasureBuilder {
    * voice does rather than one of its lines: a second rest written over the
    * first is silence over silence whichever line it would go to.
    */
-  hasFullMeasure(voice: string | undefined): boolean {
-    return this.#layersFor(voice).layers.some(restsTheMeasure)
+  restsTheMeasure(voice: string | undefined): boolean {
+    return this.#layersFor(voice).layers.some(restIsSettled)
   }
 
   /**
@@ -589,7 +588,7 @@ export class MeasureBuilder {
     line: number,
     staff?: number,
   ): PlacedEvent {
-    if (restsTheMeasure(this.#builderFor(voice))) {
+    if (restIsSettled(this.#builderFor(voice))) {
       throw new MusicXMLError('A voice has both a rest that fills the measure and notes in it.', {
         path,
         line,
@@ -839,7 +838,7 @@ export class MeasureBuilder {
     line: number,
   ): void {
     const builder = this.#builderFor(voice)
-    if (this.hasFullMeasure(voice)) {
+    if (this.restsTheMeasure(voice)) {
       throw new MusicXMLError('A voice has more than one rest that fills the measure.', {
         path,
         line,
@@ -882,7 +881,7 @@ export class MeasureBuilder {
   }
 
   /** Whether this voice's measure rest stands on the sequence rather than as an event. */
-  restsMeasure(voice: string | undefined): boolean {
+  restsOnSequence(voice: string | undefined): boolean {
     return this.#builderFor(voice).measureRest.kind === 'sequence'
   }
 

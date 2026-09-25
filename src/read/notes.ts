@@ -294,7 +294,7 @@ export function readNote(
   if (
     graceElement &&
     !chordMember &&
-    builder.restsMeasure(voice) &&
+    builder.restsOnSequence(voice) &&
     !builder.restoreMeasureRest(voice, path, element.line)
   ) {
     throw new MusicXMLError(
@@ -809,7 +809,7 @@ export function readNote(
   // Real scores write an occasional extra rest over a rest that already
   // fills the same voice's measure. Both are silence, so the measure rest
   // stands, the extra is reported, and the cursor still moves past it.
-  if (event.isRest && builder.hasFullMeasure(voice)) {
+  if (event.isRest && builder.restsTheMeasure(voice)) {
     warnings.add(
       'redundant:rest',
       'A rest is written over a rest that already fills the measure in the same ' +
