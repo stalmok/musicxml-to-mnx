@@ -711,6 +711,52 @@ describe('the MNX a percussion part converts to', () => {
     expect(warnings).toEqual([])
   })
 
+  // Sounds are the score's, so a name another part's instrument holds is
+  // taken whichever of the two parts is read first.
+  test.each([
+    ['an earlier', 'sound1', 'ev1'],
+    ['a later', 'ev1', 'sound1'],
+  ])('skips over a name %s part’s instrument holds', (_, first, second) => {
+    const drumPart = (id: string, instrument: string, name: string) => ({
+      list:
+        `<score-part id="${id}"><part-name>Drums</part-name>` +
+        `<score-instrument id="${instrument}"><instrument-name>${name}</instrument-name>` +
+        '</score-instrument></score-part>',
+      part:
+        `<part id="${id}"><measure number="1">${PERCUSSION_CLEF}` +
+        `${struck('C', '5', instrument)}</measure></part>`,
+    })
+    const one = drumPart('P1', first, 'Snare')
+    const two = drumPart('P2', second, 'Bass')
+
+    const { mnx } = convertValid(
+      `<score-partwise><part-list>${one.list}${two.list}</part-list>${one.part}${two.part}` +
+        '</score-partwise>',
+    )
+
+    const sounds = mnx.global.sounds ?? {}
+    expect(
+      Object.values(sounds)
+        .map((sound) => sound.name)
+        .sort(),
+    ).toEqual(['Bass', 'Snare'])
+    const soundOf = (part: number) =>
+      sounds[Object.values(mnx.parts[part]?.kit ?? {})[0]?.sound ?? '']?.name
+    expect([soundOf(0), soundOf(1)]).toEqual(['Snare', 'Bass'])
+  })
+
+  test('refuses an instrument with no id', () => {
+    expect(() =>
+      read(
+        struck('C', '5'),
+        '<score-instrument><instrument-name>Snare</instrument-name></score-instrument>',
+      ),
+    ).toThrow(
+      '<score-instrument> is missing a "id" attribute. ' +
+        '(at score-partwise > part-list > score-instrument, line 1)',
+    )
+  })
+
   test('skips over a name another instrument already holds', () => {
     const { mnx, warnings } = convertValid(
       source(

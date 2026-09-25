@@ -764,8 +764,16 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
   const soundsByInstrument = new Map<string, Map<string, ResolvedSound>>()
   // Generated keys for instrument ids MNX cannot state, running sound1,
   // sound2, ... and skipping any key already taken, so a rename cannot
-  // collide with an id the source wrote.
+  // collide with an id the source wrote. Sounds are the score's, so every
+  // part's instruments are taken, including those of parts not read yet.
   let renamed = 0
+  const instrumentIds = new Set(
+    root
+      .blocks('part-list')
+      .flatMap((list) => children(list.element, 'score-part'))
+      .flatMap((part) => children(part, 'score-instrument'))
+      .flatMap((instrument) => peekAttribute(instrument, 'id') ?? []),
+  )
   const LIST_PATH: DocumentPath = ['score-partwise', 'part-list']
 
   for (const list of root.blocks('part-list')) {
@@ -832,7 +840,7 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
             do {
               renamed += 1
               key = `sound${String(renamed)}`
-            } while (named.has(key))
+            } while (instrumentIds.has(key))
             warnings.add(
               'unrepresentable:instrument-id',
               fits
