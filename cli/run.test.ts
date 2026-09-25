@@ -3,7 +3,7 @@
 // the lines it logged.
 
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { schemaErrors } from '../tests/support/schema.js'
@@ -173,6 +173,28 @@ describe('an output that cannot be written', () => {
     // The report holds what was written, and nothing for the output that was not.
     const report = JSON.parse(readFileSync(join(dir, 'report.json'), 'utf8')) as object
     expect(Object.keys(report)).toEqual([good])
+  })
+
+  test('leaves nothing behind where it was to be written', async () => {
+    const blocked = input('blocked.xml', LOSSLESS)
+    mkdirSync(join(dir, 'blocked.mnx'))
+
+    await run(['to-mnx', blocked], io)
+
+    expect(readdirSync(dir).sort()).toEqual(['blocked.mnx', 'blocked.xml'])
+  })
+
+  // Nothing was written from the first, so the second is not a collision.
+  test('does not block a later input with the same output', async () => {
+    const one = input('one/song.xml', LOSSLESS)
+    const two = input('two/song.xml', LOSSLESS)
+    const out = join(dir, 'out')
+    mkdirSync(join(out, 'song.mnx'), { recursive: true })
+
+    await run(['to-mnx', one, two, '-o', out], io)
+
+    expect(lines.filter((line) => line.includes('could not write'))).toHaveLength(2)
+    expect(lines.some((line) => line.includes('would overwrite'))).toBe(false)
   })
 
   test('into an --out that cannot be made is reported for every file', async () => {

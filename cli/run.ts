@@ -7,7 +7,7 @@
 // The work is a plain function returning an exit code rather than calling
 // process.exit, so the tests drive it in-process and read what it wrote.
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, dirname, extname, join } from 'node:path'
 import { parseArgs } from 'node:util'
 import { fileURLToPath } from 'node:url'
@@ -135,18 +135,26 @@ export async function run(
       failed += 1
       continue
     }
-    writtenBy.set(outPath, file)
-
     // A disk that is full or a directory that cannot be written to fails this
-    // file alone, as a refused one does.
+    // file alone, as a refused one does. Written beside the output and moved
+    // into place, so a write that fails part way leaves no .mnx behind.
+    const partial = `${outPath}.partial`
     try {
       mkdirSync(outDir, { recursive: true })
-      writeFileSync(outPath, `${JSON.stringify(mnx, null, 2)}\n`)
+      writeFileSync(partial, `${JSON.stringify(mnx, null, 2)}\n`)
+      renameSync(partial, outPath)
     } catch (error) {
+      try {
+        rmSync(partial)
+      } catch {
+        // Nothing was written there, or it cannot be removed. The write's own
+        // failure is the one reported.
+      }
       io.log(`${file}: could not write ${outPath}: ${String(error)}`)
       unwritten += 1
       continue
     }
+    writtenBy.set(outPath, file)
 
     report[file] = warnings
     if (warnings.length > 0) lossy += 1
