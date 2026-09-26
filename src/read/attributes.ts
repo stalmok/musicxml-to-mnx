@@ -42,18 +42,16 @@ const isPitchedClefSign = recogniser<PitchedClefSign>({ C: true, F: true, G: tru
 // bass drum on the bottom space and snare on the third, are the treble-clef
 // positions of the steps the source writes.
 //
-// The <line> such a clef states is where its glyph is drawn, not a reference
+// The <line> such a clef states is where the clef is drawn, not a reference
 // pitch: MusicXML states a line to place pitches by for the G, F and C signs
 // only. So it is not read as a G clef's line would be, and a percussion clef
 // drawn on line 3 places its notes exactly where one drawn on line 2 does.
 //
-// A percussion clef is written with MNX's percussion sign. MusicXML 4.0
-// deprecates "none" for print-object="no" and reads its staff as treble, so it
-// is written as a hidden treble clef. TAB and jianpu are not written: a TAB
-// staff's lines are strings and its notes are pitched, and jianpu is numbers
-// rather than a staff. Neither is the treble staff this reads them as, so
-// nothing is written for one and the sign is reported.
-const UNPITCHED_CLEF_SIGNS: ReadonlySet<string> = new Set(['percussion', 'TAB', 'jianpu', 'none'])
+// A percussion clef is written with MNX's percussion sign. TAB and jianpu are
+// not written: a TAB staff's lines are strings and its notes are pitched, and
+// jianpu is numbers rather than a staff. Neither is the treble staff this
+// reads them as, so nothing is written for one and the sign is reported.
+const UNPITCHED_CLEF_SIGNS: ReadonlySet<string> = new Set(['percussion', 'TAB', 'jianpu'])
 const isTimeUnit = recogniser<TimeUnit>({
   1: true,
   2: true,
@@ -655,9 +653,14 @@ function readClef(
   context: WarningContext,
   path: DocumentPath,
 ): Clef | undefined {
-  const hide = attribute(element.element, 'print-object') === 'no'
-
-  const sign = trimmedText(element.child('sign') ?? requireChild(element.element, 'sign', path))
+  const hidden = attribute(element.element, 'print-object') === 'no'
+  const written = trimmedText(element.child('sign') ?? requireChild(element.element, 'sign', path))
+  // MusicXML 4.0 deprecates "none" for print-object="no", and reads the staff
+  // as treble, so it is a hidden treble clef on the treble line whatever line
+  // it names.
+  const none = written === 'none'
+  const sign = none ? 'G' : written
+  const hide = hidden || none
   const pitched = isPitchedClefSign(sign)
   if (!pitched && !UNPITCHED_CLEF_SIGNS.has(sign)) {
     throw new MusicXMLError(`The "${sign}" clef cannot be represented in MNX.`, {
@@ -672,16 +675,16 @@ function readClef(
     // Held in force so that whatever the staff places by <display-step> is
     // still placed, at the height the treble clef gives it. MusicXML reads a
     // height on a percussion staff as if in treble clef with G4 on the second
-    // line, whatever line the glyph below is drawn on.
+    // line, whatever line the clef below is drawn on.
     const named = readAttributeInRange(element.element, 'number', path, 1, state.staves)
     state.clefs.set(named ?? 1, {
       sign: 'G',
       staffPosition: staffPositionOfLine(DEFAULT_CLEF_LINES.G, staffLinesOf(state, named)),
     })
 
-    if (sign === 'percussion' || sign === 'none') {
-      // MNX's staffPosition is the position the clef is drawn at, and neither
-      // clef names a note, so the line the source states is
+    if (sign === 'percussion') {
+      // MNX's staffPosition is the position the clef is drawn at, and a
+      // percussion clef names no note, so the line the source states is
       // carried straight through. The heights on the staff do not move with
       // it: a kit note carries its own, and a rest placed by <display-step>
       // is read against the treble clef held in force above, because
@@ -693,12 +696,12 @@ function readClef(
       // same value.
       const drawnOn = lineElement ? readInteger(lineElement, path) : DEFAULT_CLEF_LINES.G
       return {
-        sign: sign === 'percussion' ? 'P' : 'G',
+        sign: 'P',
         staffPosition: staffPositionOfLine(drawnOn, staffLinesOf(state, named)),
         staff: state.staves > 1 ? named : undefined,
         position,
         octave: undefined,
-        hide: hide || sign === 'none',
+        hide,
       }
     }
 
@@ -715,7 +718,7 @@ function readClef(
   // Read with no range: MusicXML draws a clef outside the lines of its staff
   // by the same value, such as a C clef in the middle of a grand staff, and a
   // staff may be drawn on other than five lines.
-  const line = lineElement ? readInteger(lineElement, path) : DEFAULT_CLEF_LINES[sign]
+  const line = lineElement && !none ? readInteger(lineElement, path) : DEFAULT_CLEF_LINES[sign]
 
   // A clef says which staff it belongs to. Read and bounded whatever the part
   // has, because a clef naming a staff the part does not have would place it
