@@ -405,7 +405,11 @@ export class MeasureBuilder {
   #furthest: Fraction = fraction(0)
   /** The voice of the most recent event, which a chord member joins. */
   #lastVoice: string | undefined
-  #lastDropped = false
+  /**
+   * The voices whose most recent grace note was dropped, which a chord member
+   * joining that note is dropped with.
+   */
+  readonly #droppedGrace = new Set<string>()
   /**
    * The <backup> that carried the cursor before the measure start, held until
    * something is written out there or a <forward> brings the cursor back.
@@ -640,8 +644,7 @@ export class MeasureBuilder {
     builder.spent.set(event, duration)
     builder.grace = undefined
     builder.placed.push({ event, staff })
-    this.#lastVoice = voice ?? UNNAMED_VOICE
-    this.#lastDropped = false
+    this.#wrote(voice)
     const start = this.#cursor
     builder.last = { event, duration, start }
     this.#eventStarts.push({ start, staff, grace: false })
@@ -900,7 +903,6 @@ export class MeasureBuilder {
     }
 
     this.#writeAt()
-    this.#lastDropped = false
 
     // The rest is the whole of this voice in this measure, so the staff it
     // names is the staff the sequence sits on.
@@ -914,17 +916,24 @@ export class MeasureBuilder {
     if (covering) builder.end = addFractions(this.#cursor, covering)
   }
 
-  /**
-   * Records a grace note just dropped, so that a chord member written after
-   * it is dropped with it rather than joining the note before.
-   */
-  dropGraceNote(): void {
-    this.#lastDropped = true
+  /** Records the note just written in this voice, which a chord member joins. */
+  #wrote(voice: string | undefined): void {
+    this.#lastVoice = voice ?? UNNAMED_VOICE
+    this.#droppedGrace.delete(this.#lastVoice)
   }
 
-  /** Whether the note a chord member written now would join was dropped. */
-  chordJoinsDropped(): boolean {
-    return this.#lastDropped
+  /**
+   * Records a grace note dropped from this voice, so that a chord member
+   * joining it is dropped with it.
+   */
+  recordDroppedGrace(voice: string | undefined): void {
+    this.#lastVoice = voice ?? UNNAMED_VOICE
+    this.#droppedGrace.add(this.#lastVoice)
+  }
+
+  /** Whether the note a chord member in this voice would join was dropped. */
+  chordJoinsDropped(voice: string | undefined): boolean {
+    return this.#droppedGrace.has(this.voiceOfChord(voice) ?? UNNAMED_VOICE)
   }
 
   /** Whether this voice's measure rest stands on the sequence rather than as an event. */
@@ -945,7 +954,9 @@ export class MeasureBuilder {
    * that both orders convert to the same thing.
    *
    * Where no note value can write the rest, there is no event to take it back
-   * as, and nothing can stand beside it.
+   * as, and nothing can stand beside it. The caller drops a grace note
+   * written after it. One written before it is already in the voice, and
+   * the rest is refused.
    */
   restoreMeasureRest(voice: string | undefined, path: DocumentPath, line: number): boolean {
     const builder = this.#builderFor(voice)
@@ -1842,8 +1853,7 @@ export class MeasureBuilder {
     const list = innermost(builder)
     const open = builder.grace
 
-    this.#lastVoice = voice ?? UNNAMED_VOICE
-    this.#lastDropped = false
+    this.#wrote(voice)
     // Grace notes have no duration of their own, so a chord note joining one
     // has nothing to agree with.
     const start = this.#cursor

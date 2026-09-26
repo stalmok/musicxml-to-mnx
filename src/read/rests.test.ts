@@ -809,7 +809,9 @@ describe('a rest filling a measure a grace note leads into', () => {
   })
 
   // An irregular measure has no note value to write the rest as, so there is
-  // nothing to make an event of.
+  // nothing to make an event of. Grace notes written before the rest are
+  // already in the voice when the rest is read, and the file is refused.
+  // Grace notes written after it are dropped and reported.
   const irregular = (body: string) =>
     '<score-partwise><part id="P1"><measure number="1">' +
     '<attributes><divisions>4</divisions><time><beats>5</beats><beat-type>4</beat-type>' +
@@ -870,31 +872,104 @@ describe('a rest filling a measure a grace note leads into', () => {
     return ''
   }
 
+  const quarter = (step: string, voice: string) =>
+    `<note><pitch><step>${step}</step><octave>5</octave></pitch><duration>4</duration>` +
+    `<type>quarter</type><voice>${voice}</voice></note>`
+  const graceNote = (step: string, voice: string) =>
+    `<note><grace/><pitch><step>${step}</step><octave>5</octave></pitch>` +
+    `<type>quarter</type><voice>${voice}</voice></note>`
+
   test.each([
     ['opening the measure', graceMember('1') + irregularRest],
     ['straight after the rest', irregularRest + graceMember('1')],
-
     [
       "after another voice's rest",
       irregularRest + grace + backup + irregularRest.replace('>1<', '>2<') + graceMember('2'),
+    ],
+    [
+      "after a backup past another voice's dropped grace note",
+      irregularRest + grace + backup + graceMember('2'),
+    ],
+    [
+      "after a forward past another voice's dropped grace note",
+      irregularRest +
+        grace +
+        backup +
+        '<forward><duration>4</duration></forward>' +
+        graceMember('2'),
     ],
   ])('refuses a grace chord member with nothing to join %s', (_, body) => {
     expect(refusal(body)).toContain('marked as a chord with no note for it to join')
   })
 
-  test('keeps a grace chord member written after a note in another voice', () => {
-    const { warnings } = convertValid(
+  test("joins a grace chord member to its own voice's grace note, not the dropped one", () => {
+    const { mnx, warnings } = convertValid(
+      irregular(
+        '<note><pitch><step>C</step><octave>5</octave></pitch><duration>16</duration>' +
+          '<type>whole</type><voice>2</voice></note>' +
+          graceNote('G', '2') +
+          '<backup><duration>16</duration></backup>' +
+          irregularRest +
+          grace +
+          graceMember('2'),
+      ),
+    )
+    const content = mnx.parts[0]?.measures[0]?.sequences.find((q) => q.voice === '2')?.content
+    const group = content?.find((item) => 'type' in item && item.type === 'grace')
+
+    expect(
+      group && 'type' in group && group.type === 'grace' && group.content[0]?.notes,
+    ).toHaveLength(2)
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:grace-beside-rest'])
+  })
+
+  // A note written over the rest in the same voice opens a line of its own,
+  // and a grace note there is kept.
+  test('joins a grace chord member to a grace note kept in another line of the voice', () => {
+    const { mnx, warnings } = convertValid(
       irregular(
         irregularRest +
           grace +
           backup +
-          '<note><pitch><step>C</step><octave>5</octave></pitch><duration>4</duration>' +
-          '<type>quarter</type><voice>2</voice></note>' +
-          graceMember('2'),
+          quarter('C', '1') +
+          graceNote('G', '1') +
+          graceMember('1') +
+          quarter('D', '1'),
+      ),
+    )
+    const content = mnx.parts[0]?.measures[0]?.sequences[1]?.content
+    const group = content?.find((item) => 'type' in item && item.type === 'grace')
+
+    expect(
+      group && 'type' in group && group.type === 'grace' && group.content[0]?.notes,
+    ).toHaveLength(2)
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:grace-beside-rest',
+      'inconsistent:voice',
+    ])
+  })
+
+  // The slur is lost with the note it starts on, and nothing registered its
+  // start, so its stop is reported as closing nothing.
+  test('reports the stop of a slur starting on a dropped grace note', () => {
+    const { warnings } = convertValid(
+      irregular(
+        irregularRest +
+          '<note><grace/><pitch><step>D</step><octave>5</octave></pitch><type>quarter</type>' +
+          '<voice>1</voice><notations><slur type="start" number="1"/></notations></note>',
+      ).replace(
+        '</measure></part>',
+        '</measure><measure number="2"><note><pitch><step>C</step><octave>5</octave></pitch>' +
+          '<duration>4</duration><type>quarter</type><voice>1</voice>' +
+          '<notations><slur type="stop" number="1"/></notations></note>' +
+          '<forward><duration>16</duration></forward></measure></part>',
       ),
     )
 
-    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:grace-beside-rest'])
+    expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
+      ['unrepresentable:grace-beside-rest', 1],
+      ['unclosed:spanner', 2],
+    ])
   })
 
   test('refuses a chord member that is not a grace note after a dropped grace note', () => {

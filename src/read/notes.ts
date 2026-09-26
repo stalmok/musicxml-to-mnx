@@ -311,7 +311,7 @@ export function readNote(
   // the rest stays the sequence's own and the grace note is dropped and
   // reported, with any chord member joining it.
   const dropped = chordMember
-    ? graceElement !== undefined && builder.chordJoinsDropped()
+    ? graceElement !== undefined && builder.chordJoinsDropped(voice)
     : graceElement !== undefined &&
       builder.restsOnSequence(voice) &&
       !builder.restoreMeasureRest(voice, path, element.line)
@@ -325,10 +325,11 @@ export function readNote(
       'grace',
     )
     // The warning above reports the note whole, so what it carries is not
-    // reported again.
+    // reported again. A slur or tie starting on it is not registered, so its
+    // stop is reported as one that closes nothing.
     element.skip(...element.element.children.map((found) => found.name))
     for (const block of notations) block.skip(...block.element.children.map((found) => found.name))
-    builder.dropGraceNote()
+    if (!chordMember) builder.recordDroppedGrace(voice)
     return
   }
 
