@@ -1580,6 +1580,30 @@ describe("a rest marked as the measure's standing beside other notes", () => {
     expect(warnings).toEqual([])
   })
 
+  // A voice running past its time signature is how the source bars it, and
+  // both events carry over as written, so nothing is lost and nothing is
+  // reported. A plain whole note and a quarter in 4/4 convert the same way.
+  test('keeps both events where a rest carrying a lyric overruns the measure', () => {
+    const withLyric = marked.replace('</note>', '<lyric><text>ah</text></lyric></note>')
+    const quarterRest =
+      '<note><rest/><duration>4</duration><type>quarter</type><voice>1</voice></note>'
+    const { mnx, warnings } = convertValid(
+      inMeasure(
+        '<attributes><time><beats>4</beats><beat-type>4</beat-type></time></attributes>' +
+          withLyric +
+          quarterRest,
+      ),
+    )
+    const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
+
+    expect(sequence?.fullMeasure).toBeUndefined()
+    expect(sequence?.content).toMatchObject([
+      { duration: { base: 'whole' }, rest: {}, lyrics: { lines: { '1': { text: 'ah' } } } },
+      { duration: { base: 'quarter' }, rest: {} },
+    ])
+    expect(warnings).toEqual([])
+  })
+
   test('rests the measure where the rest is the whole of the voice', () => {
     const { mnx, warnings } = convertValid(inMeasure(marked))
     const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
