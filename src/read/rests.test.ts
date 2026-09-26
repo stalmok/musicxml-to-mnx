@@ -842,6 +842,34 @@ describe('a rest filling a measure a grace note leads into', () => {
   })
 })
 
+// A grace note takes none of the measure's time, so a grace rest is never the
+// measure's rest, whatever it is marked as.
+describe('a grace rest marked as the measure rest', () => {
+  const note =
+    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+    '<voice>1</voice><type>quarter</type></note>'
+
+  test.each([
+    ['a stem', '<stem>up</stem>'],
+    ['a written value', '<type>eighth</type>'],
+  ])('converts a grace rest with %s as a grace rest, reporting the mark', (_, body) => {
+    const { mnx, warnings } = convertValid(
+      inMeasure(`<note><grace/><rest measure="yes"/><voice>1</voice>${body}</note>${note}`),
+    )
+    const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
+
+    expect(sequence?.content.map((item) => ('type' in item ? item.type : 'event'))).toEqual([
+      'grace',
+      'event',
+    ])
+    expect(sequence?.fullMeasure).toBeUndefined()
+    expect(warnings.map((w) => [w.code, w.attribute])).toContainEqual([
+      'unsupported:attribute',
+      'measure',
+    ])
+  })
+})
+
 // Chant editions are written senza misura, where no time signature says how
 // long a measure runs. A part resting through such a measure is one rest
 // carrying no <type>, often longer than any note value can write. MNX states

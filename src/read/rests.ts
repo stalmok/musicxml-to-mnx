@@ -98,7 +98,10 @@ export function readRest(note: RestNote, state: PartState, builder: MeasureBuild
     // that overruns the barline, and it is a rest like any other.
     builder.opensMeasure(voice)
 
-  const markedAsTheMeasure = rest !== undefined && attribute(rest, 'measure') === 'yes'
+  // A grace note takes none of the measure's time, so a grace rest is never
+  // the measure's rest. The mark is left unread and reported.
+  const markedAsTheMeasure =
+    rest !== undefined && grace === undefined && attribute(rest, 'measure') === 'yes'
 
   // A rest the source neither marks as the measure's nor draws to the length
   // the time signature states, with no written value, opening its voice, and
@@ -152,7 +155,6 @@ export function readRest(note: RestNote, state: PartState, builder: MeasureBuild
     markedAsTheMeasure &&
     written !== undefined &&
     duration !== undefined &&
-    grace === undefined &&
     !carriesSlurEnd &&
     !builder.restsTheMeasure(voice)
 
