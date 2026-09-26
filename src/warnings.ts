@@ -142,13 +142,14 @@ export const WARNING_CODES = Object.freeze([
   // the part list instead.
   'unrepresentable:part-group-overlap',
   // A part id MNX's id cannot state: an MNX id is 1 to 256 printable ASCII
-  // characters, and MusicXML's part id allows more. Also a part id the
-  // converter gives an event, note, kit component, measure or layout, which
-  // MNX states the same way, so the two would be one id. The part is renamed
-  // to a generated id everywhere the score refers to it.
+  // characters, and MusicXML's part id allows more. Also a part id shaped
+  // like one the converter generates, which MNX states the same way, so the
+  // two would be one id. The part is renamed to a generated id everywhere the
+  // score refers to it.
   'unrepresentable:part-id',
-  // An instrument id MNX's id shape cannot state. The instrument is renamed,
-  // so a kit component can still say what plays it.
+  // An instrument id MNX's id cannot state, or one shaped like an id the
+  // converter generates. The instrument is renamed, so a kit component can
+  // still say what plays it.
   'unrepresentable:instrument-id',
   // A measure states more than one multi-measure rest span, as staves stating
   // different counts do, and MNX states one for the score. The first is the

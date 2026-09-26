@@ -688,7 +688,7 @@ describe('the MNX a percussion part converts to', () => {
   })
 
   // An instrument id shaped like an id the converter generates would name a
-  // sound and an event, note, component, measure or layout at once.
+  // sound and an event, note, kit component, measure or layout at once.
   test.each(['ev1', 'note1', 'kit1', 'm1', 'layout1'])(
     'renames the instrument id "%s", which the converter gives something else',
     (id) => {

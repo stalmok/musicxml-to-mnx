@@ -3393,7 +3393,7 @@ describe('a part id the output cannot carry as it stands', () => {
       // The two reasons a part is renamed read differently, so the report
       // says which one this is.
       expect(warnings[0]?.message).toContain(
-        'the converter gives an event, note, kit component, measure or layout',
+        'the converter gives events, notes, kit components, measures and the layout',
       )
     },
   )

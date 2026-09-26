@@ -1,7 +1,8 @@
 // The ids the converter writes into an MNX document. The reader names events,
 // notes and kit components, and the writer names measures and the layout.
 // MNX gives every id one shape, so a part or instrument id from the source can
-// clash with a generated one, and the reader renames it against the pattern here.
+// clash with a generated one. The reader renames such an id to one built here,
+// which the pattern here never matches.
 
 // MNX's id, from the schema's $defs/id: 1 to 256 printable ASCII characters.
 // MusicXML's part id is an xs:ID, which allows more, such as accented letters.
@@ -40,15 +41,16 @@ export function renamedId(kind: RenamedId, n: number): string {
 /** The id of the one layout the writer states. */
 export const LAYOUT_ID = 'layout1'
 
-const NAMES: Record<CountedId, string> = {
-  event: 'event',
-  note: 'note',
-  kitComponent: 'kit component',
-  measure: 'measure',
+const NAMES: Record<CountedId | 'layout', string> = {
+  event: 'events',
+  note: 'notes',
+  kitComponent: 'kit components',
+  measure: 'measures',
+  layout: 'the layout',
 }
 
-/** What the ids GENERATED_ID_PATTERN matches name, for a warning message. */
-export const GENERATED_ID_KINDS = `${Object.values(NAMES).join(', ')} or layout`
+/** The things GENERATED_ID_PATTERN names, as a warning message lists them. */
+export const GENERATED_ID_KINDS = `${Object.values(NAMES).slice(0, -1).join(', ')} and ${NAMES.layout}`
 
 /** Every id countedId and LAYOUT_ID can give. */
 export const GENERATED_ID_PATTERN = new RegExp(

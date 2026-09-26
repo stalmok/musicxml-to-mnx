@@ -269,7 +269,7 @@ function renameInvalidPartIds(
     warnings.add(
       'unrepresentable:part-id',
       MNX_ID_PATTERN.test(part.id)
-        ? `The part id "${part.id}" is shaped like one the converter gives an ` +
+        ? `The part id "${part.id}" is shaped like the ids the converter gives ` +
             `${GENERATED_ID_KINDS}, and MNX states them all the same way, so the ` +
             `part is renamed ${generated}.`
         : `The part id "${part.id}" does not fit MNX's id, which is 1 to 256 printable ` +
@@ -795,8 +795,8 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
             warnings.add(
               'unrepresentable:instrument-id',
               fits
-                ? `The instrument id "${instrumentId}" is shaped like one the converter gives ` +
-                    `an ${GENERATED_ID_KINDS}, and MNX states them all the same way, so the ` +
+                ? `The instrument id "${instrumentId}" is shaped like the ids the converter ` +
+                    `gives ${GENERATED_ID_KINDS}, and MNX states them all the same way, so the ` +
                     `instrument is renamed ${key}.`
                 : `The instrument id "${instrumentId}" does not fit MNX's id, which is 1 to 256 ` +
                     `printable ASCII characters, so the instrument is renamed ${key}.`,

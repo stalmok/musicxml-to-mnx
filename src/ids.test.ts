@@ -1,8 +1,7 @@
 import { expect, test } from 'vitest'
 import { GENERATED_ID_PATTERN, renamedId } from './ids.js'
 
-// A renamed id that matched the pattern would be renamed again, or clash
-// with an event, note or measure of the same id.
+// A renamed id that matched the pattern could clash with a generated one.
 test.each(['part', 'instrument'] as const)(
   'never gives a %s an id the converter generates',
   (kind) => {
