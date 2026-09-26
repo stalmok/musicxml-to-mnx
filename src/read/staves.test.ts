@@ -394,13 +394,13 @@ describe('a clef sign that places no pitch', () => {
     expect(warnings[0]?.message).toContain('TAB')
   })
 
-  test('writes a percussion clef stating no line on the second line', () => {
+  test('writes a percussion clef stating no line on the middle of the staff', () => {
     const { part, warnings } = read(withSign('percussion'))
 
     expect(part?.measures[0]?.clefs).toEqual([
       {
         sign: 'P',
-        staffPosition: -2,
+        staffPosition: 0,
         staff: undefined,
         position: { num: 0, den: 1 },
         octave: undefined,
@@ -433,6 +433,18 @@ describe('a clef sign that places no pitch', () => {
       },
     ])
     expect(warnings).toEqual([])
+  })
+
+  test('writes a percussion clef stating no line on the one line of a one-line staff', () => {
+    const onOneLine = measures(
+      '<attributes><divisions>4</divisions>' +
+        '<staff-details><staff-lines>1</staff-lines></staff-details>' +
+        '<clef><sign>percussion</sign></clef></attributes>' +
+        note('C', '1'),
+    )
+    const { mnx } = convertValid(onOneLine)
+
+    expect(mnx.parts[0]?.measures[0]?.clefs).toEqual([{ clef: { sign: 'P', staffPosition: 0 } }])
   })
 
   test('draws a percussion clef on the line the source states', () => {

@@ -693,11 +693,13 @@ function readClef(
       //
       // Read with no range: a percussion staff may be drawn on more or fewer
       // than five lines, and MusicXML draws a clef outside the staff by the
-      // same value.
-      const drawnOn = lineElement ? readInteger(lineElement, path) : DEFAULT_CLEF_LINES.G
+      // same value. A clef stating no line is drawn on the middle of the
+      // staff, whatever its line count.
       return {
         sign: 'P',
-        staffPosition: staffPositionOfLine(drawnOn, staffLinesOf(state, named)),
+        staffPosition: lineElement
+          ? staffPositionOfLine(readInteger(lineElement, path), staffLinesOf(state, named))
+          : 0,
         staff: state.staves > 1 ? named : undefined,
         position,
         octave: undefined,
