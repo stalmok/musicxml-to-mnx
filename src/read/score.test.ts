@@ -239,7 +239,7 @@ describe('measure attributes', () => {
       ...NO_BARLINE,
     })
     expect(result.parts[0]?.measures[0]?.clefs).toEqual([
-      { sign: 'F', staffPosition: 2, staff: undefined, position: { num: 0, den: 1 } },
+      { sign: 'F', staffPosition: 2, staff: undefined, position: { num: 0, den: 1 }, hide: false },
     ])
   })
 
@@ -297,7 +297,7 @@ describe('measure attributes', () => {
     const { score: result } = read(measure('<attributes><clef><sign>G</sign></clef></attributes>'))
 
     expect(result.parts[0]?.measures[0]?.clefs).toEqual([
-      { sign: 'G', staffPosition: -2, staff: undefined, position: { num: 0, den: 1 } },
+      { sign: 'G', staffPosition: -2, staff: undefined, position: { num: 0, den: 1 }, hide: false },
     ])
   })
 
@@ -337,8 +337,8 @@ describe('measure attributes', () => {
     )
 
     expect(result.parts[0]?.measures[0]?.clefs).toEqual([
-      { sign: 'G', staffPosition: -2, staff: undefined, position: { num: 0, den: 1 } },
-      { sign: 'F', staffPosition: 2, staff: undefined, position: { num: 1, den: 1 } },
+      { sign: 'G', staffPosition: -2, staff: undefined, position: { num: 0, den: 1 }, hide: false },
+      { sign: 'F', staffPosition: 2, staff: undefined, position: { num: 1, den: 1 }, hide: false },
     ])
   })
 

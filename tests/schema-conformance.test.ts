@@ -244,8 +244,8 @@ const NOT_MODELLED: Readonly<Record<string, { properties: readonly string[]; why
     why: 'Whether a voice is the upper or the lower one. MusicXML states no such thing.',
   },
   MNXClef: {
-    properties: ['color', 'glyph', 'hide'],
-    why: 'The colour a clef is drawn in, a glyph in place of its sign, and a clef that is not drawn.',
+    properties: ['color', 'glyph'],
+    why: 'The colour a clef is drawn in, and a glyph in place of its sign.',
   },
   MNXEventMarkings: {
     properties: ['caesura'],

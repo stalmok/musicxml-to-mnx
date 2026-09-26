@@ -319,6 +319,8 @@ export interface MNXClef {
   octave?: number
   /** Whether the octave number is drawn beside the clef. */
   showOctave?: boolean
+  /** True where the clef is not drawn, and takes no space. */
+  hide?: boolean
 }
 
 export interface MNXPositionedClef {

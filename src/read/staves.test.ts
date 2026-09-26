@@ -61,8 +61,8 @@ describe('clefs', () => {
     const { part } = read(measures(GRAND_STAFF + note('C', '1')))
 
     expect(part?.measures[0]?.clefs).toEqual([
-      { sign: 'G', staffPosition: -2, staff: 1, position: { num: 0, den: 1 } },
-      { sign: 'F', staffPosition: 2, staff: 2, position: { num: 0, den: 1 } },
+      { sign: 'G', staffPosition: -2, staff: 1, position: { num: 0, den: 1 }, hide: false },
+      { sign: 'F', staffPosition: 2, staff: 2, position: { num: 0, den: 1 }, hide: false },
     ])
   })
 
@@ -111,8 +111,8 @@ describe('clefs', () => {
     )
 
     expect(part?.measures[0]?.clefs).toEqual([
-      { sign: 'G', staffPosition: -2, staff: 1, position: { num: 0, den: 1 } },
-      { sign: 'G', staffPosition: -2, staff: 2, position: { num: 0, den: 1 } },
+      { sign: 'G', staffPosition: -2, staff: 1, position: { num: 0, den: 1 }, hide: false },
+      { sign: 'G', staffPosition: -2, staff: 2, position: { num: 0, den: 1 }, hide: false },
     ])
     // The replaced clef is the unrepresentable one; the kept clef's
     // after-barline drawing position is its own, separate loss, with no
@@ -137,7 +137,7 @@ describe('clefs', () => {
     )
 
     expect(part?.measures[0]?.clefs).toEqual([
-      { sign: 'G', staffPosition: -4, staff: undefined, position: { num: 0, den: 1 } },
+      { sign: 'G', staffPosition: -4, staff: undefined, position: { num: 0, den: 1 }, hide: false },
     ])
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:clef'])
   })
@@ -155,7 +155,7 @@ describe('clefs', () => {
     )
 
     expect(part?.measures[0]?.clefs).toEqual([
-      { sign: 'F', staffPosition: -2, staff: undefined, position: { num: 0, den: 1 } },
+      { sign: 'F', staffPosition: -2, staff: undefined, position: { num: 0, den: 1 }, hide: false },
     ])
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:clef'])
   })
@@ -191,9 +191,23 @@ describe('clefs', () => {
     )
 
     expect(part?.measures[0]?.clefs).toEqual([
-      { sign: 'G', staffPosition: -2, staff: undefined, position: { num: 0, den: 1 } },
+      { sign: 'G', staffPosition: -2, staff: undefined, position: { num: 0, den: 1 }, hide: false },
     ])
     expect(warnings).toEqual([])
+  })
+
+  test('reports a drawn clef replaced by the same clef hidden', () => {
+    const { part, warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions>' +
+          '<clef><sign>G</sign><line>2</line></clef>' +
+          '<clef print-object="no"><sign>G</sign><line>2</line></clef></attributes>' +
+          note('C', '1'),
+      ),
+    )
+
+    expect(part?.measures[0]?.clefs[0]?.hide).toBe(true)
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:clef'])
   })
 
   test('keeps two clefs of one staff apart when their positions differ', () => {
@@ -283,9 +297,48 @@ describe('clefs', () => {
   })
 })
 
-// MNX states four clef signs: C, F, G and the percussion clef. A TAB, jianpu
-// or "none" clef has no home there, and the part it heads is otherwise
-// ordinary music, so the sign is reported and the rest of the part converted.
+// MNX states four clef signs: C, F, G and the percussion clef. A TAB or
+// jianpu clef has no home there, and the part it heads is otherwise ordinary
+// music, so the sign is reported and the rest of the part converted.
+describe('a clef hidden with print-object="no"', () => {
+  const hidden = (sign: string, line: string) =>
+    measures(
+      '<attributes><divisions>4</divisions>' +
+        `<clef print-object="no"><sign>${sign}</sign><line>${line}</line></clef></attributes>` +
+        note('C', '1'),
+    )
+
+  test('writes the clef as hidden', () => {
+    const { mnx, warnings } = convertValid(hidden('F', '4'))
+
+    expect(mnx.parts[0]?.measures[0]?.clefs).toEqual([
+      { clef: { sign: 'F', staffPosition: 2, hide: true } },
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  test('writes a hidden percussion clef as hidden', () => {
+    const { mnx, warnings } = convertValid(hidden('percussion', '3'))
+
+    expect(mnx.parts[0]?.measures[0]?.clefs).toEqual([
+      { clef: { sign: 'P', staffPosition: 0, hide: true } },
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  test('leaves hide off a clef that is drawn', () => {
+    const { mnx } = convertValid(
+      measures(
+        '<attributes><divisions>4</divisions>' +
+          '<clef print-object="yes"><sign>G</sign><line>2</line></clef></attributes>' +
+          note('C', '1'),
+      ),
+    )
+
+    expect(mnx.parts[0]?.measures[0]?.clefs).toEqual([{ clef: { sign: 'G', staffPosition: -2 } }])
+  })
+})
+
 describe('a clef whose sign MNX does not state', () => {
   const withSign = (sign: string, line = '') =>
     measures(
@@ -293,7 +346,7 @@ describe('a clef whose sign MNX does not state', () => {
         note('C', '1'),
     )
 
-  test.each(['TAB', 'jianpu', 'none'])('reports a %s clef and converts the part', (sign) => {
+  test.each(['TAB', 'jianpu'])('reports a %s clef and converts the part', (sign) => {
     const { part, warnings } = read(withSign(sign))
 
     expect(part?.measures[0]?.clefs).toEqual([])
@@ -301,6 +354,17 @@ describe('a clef whose sign MNX does not state', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:clef-sign'])
     expect(warnings[0]?.element).toBe('clef')
     expect(warnings[0]?.context.measure).toBe(1)
+  })
+
+  // MusicXML 4.0 deprecates the "none" sign for print-object="no", and reads
+  // the staff as treble.
+  test('writes a "none" clef as a hidden treble clef', () => {
+    const { mnx, warnings } = convertValid(withSign('none'))
+
+    expect(mnx.parts[0]?.measures[0]?.clefs).toEqual([
+      { clef: { sign: 'G', staffPosition: -2, hide: true } },
+    ])
+    expect(warnings).toEqual([])
   })
 
   test('names the sign it could not state', () => {
@@ -319,6 +383,7 @@ describe('a clef whose sign MNX does not state', () => {
         staff: undefined,
         position: { num: 0, den: 1 },
         octave: undefined,
+        hide: false,
       },
     ])
     expect(warnings).toEqual([])
@@ -343,6 +408,7 @@ describe('a clef whose sign MNX does not state', () => {
         staff: undefined,
         position: { num: 0, den: 1 },
         octave: undefined,
+        hide: false,
       },
     ])
     expect(warnings).toEqual([])

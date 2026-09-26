@@ -191,17 +191,6 @@ describe('an element hidden with print-object="no"', () => {
     ).toHaveLength(1)
   })
 
-  test('reports a hidden clef', () => {
-    expect(
-      hidden(
-        measure(
-          note(''),
-          '<divisions>4</divisions><clef print-object="no"><sign>G</sign><line>2</line></clef>',
-        ),
-      ),
-    ).toHaveLength(1)
-  })
-
   test('reports a hidden key signature', () => {
     expect(
       hidden(
@@ -592,7 +581,7 @@ describe('a loss the schema has no home for', () => {
 
   // Whether a direction prints on every system or only the top one of a page.
   // The schema's only visibility properties are an accidental's, a clef's
-  // octave and a tuplet's number and value.
+  // octave, a hidden clef, and a tuplet's number and value.
   test('reports a <direction> system attribute as unrepresentable', () => {
     expect(
       codes(

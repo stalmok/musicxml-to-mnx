@@ -402,6 +402,8 @@ export interface Clef {
    * octave below a plain treble. Undefined where the clef is untransposed.
    */
   readonly octave: number | undefined
+  /** True where the clef is not drawn, and takes no space. */
+  readonly hide: boolean
 }
 
 /**

@@ -230,7 +230,7 @@ export const NO_HOME_ATTRIBUTES: ReadonlySet<string> = new Set([
   'metronome parentheses',
   // Whether an instruction prints on every system or only the top one of a
   // page. The schema's only visibility properties are an accidental's, a
-  // clef's octave and a tuplet's number and value; its system holds a layout,
+  // clef's octave, a hidden clef, and a tuplet's number and value; its system holds a layout,
   // layout changes and a measure.
   'direction system',
   // A pickup or courtesy measure excluded from the numbering. The schema's

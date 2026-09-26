@@ -1905,9 +1905,14 @@ function dedupeStaffConfigs(
   })
 }
 
-/** The drawn sign: where it sits on the staff, and how it is transposed. */
+/** The drawn sign: where it sits on the staff, how it is transposed, and whether it is drawn. */
 function sameClef(a: Clef, b: Clef): boolean {
-  return a.sign === b.sign && a.staffPosition === b.staffPosition && a.octave === b.octave
+  return (
+    a.sign === b.sign &&
+    a.staffPosition === b.staffPosition &&
+    a.octave === b.octave &&
+    a.hide === b.hide
+  )
 }
 
 /**
