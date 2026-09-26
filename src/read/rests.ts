@@ -103,6 +103,8 @@ export function readRest(note: RestNote, state: PartState, builder: MeasureBuild
   const markedAsTheMeasure =
     rest !== undefined && grace === undefined && attribute(rest, 'measure') === 'yes'
 
+  const afterGraceNotes = builder.holdsOnlyGraceNotes(voice) && builder.atMeasureStart()
+
   // A rest the source neither marks as the measure's nor draws to the length
   // the time signature states, with no written value, opening its voice, and
   // lasting a time no note value can write. It is that voice's silence
@@ -113,7 +115,8 @@ export function readRest(note: RestNote, state: PartState, builder: MeasureBuild
   // than the time signature says. Only such a rest takes this path: one a
   // note value can write is the event it is written as. The value weighed is
   // the one a tuplet open around the rest would have it drawn as, which is
-  // what measuredValue would look for.
+  // what measuredValue would look for. Grace notes before it take none of
+  // the measure's time, so the rest still opens the voice.
   const unwritableLength =
     !markedAsTheMeasure &&
     !drawnToTheMeasure &&
@@ -122,7 +125,7 @@ export function readRest(note: RestNote, state: PartState, builder: MeasureBuild
     duration !== undefined &&
     !state.divisionsAssumed &&
     noteValueOf(divideFractions(duration, builder.tupletFactor(voice))) === undefined &&
-    builder.opensMeasure(voice)
+    (builder.opensMeasure(voice) || afterGraceNotes)
       ? duration
       : undefined
 
@@ -139,8 +142,6 @@ export function readRest(note: RestNote, state: PartState, builder: MeasureBuild
   const eventValue =
     written ??
     (duration !== undefined && !state.divisionsAssumed ? noteValueOf(duration) : undefined)
-
-  const afterGraceNotes = builder.holdsOnlyGraceNotes(voice) && builder.atMeasureStart()
 
   // A rest the source marks as the measure's is the measure's rest only where
   // it is the whole of its voice. Sources write one beside other notes too:

@@ -308,29 +308,13 @@ export function readNote(
   // so that the rest stands outside that bracket, as it does in the source. A
   // chord member joins the grace note before it, which has taken the rest
   // back already. An irregular measure has no value to write the rest as, so
-  // the rest stays the sequence's own and the grace note is dropped and
-  // reported, with any chord member joining it.
-  const dropped = chordMember
-    ? graceElement !== undefined && builder.chordJoinsDropped(voice)
-    : graceElement !== undefined &&
-      builder.restsOnSequence(voice) &&
-      !builder.restoreMeasureRest(voice, path, element.line)
-  if (dropped) {
-    warnings.add(
-      'unrepresentable:grace-beside-rest',
-      'A grace note follows a rest that fills the measure, and no note value can write ' +
-        'that rest as an event. MNX states such a rest on a sequence that holds nothing, ' +
-        'so the grace note is not converted.',
-      { ...context, line: element.line },
-      'grace',
-    )
-    // The warning above reports the note whole, so what it carries is not
-    // reported again. A slur or tie starting on it is not registered, so its
-    // stop is reported as one that closes nothing.
-    element.skip(...element.element.children.map((found) => found.name))
-    for (const block of notations) block.skip(...block.element.children.map((found) => found.name))
-    if (!chordMember) builder.recordDroppedGrace(voice)
-    return
+  // it is written as a space.
+  if (
+    graceElement &&
+    !chordMember &&
+    builder.restoreMeasureRest(voice, path, element.line) === 'space'
+  ) {
+    reportRestAsSpace(warnings, context, element.line)
   }
 
   // Which staff the note names. Read and bounded whatever the part has, so
@@ -735,28 +719,35 @@ function setMeasureRest(
   // MNX's rest filling the measure states no length, so how long the source
   // drew this one is not carried. Only a rest that reached here on its own
   // length reports it: one marked as the measure's, or drawn to what the
-  // time signature states, says nothing MNX's measure does not.
+  // time signature states, says nothing MNX's measure does not. Reported
+  // once the measure is whole, and only if the rest is still on the
+  // sequence then: a grace note beside it writes it as a space, which
+  // states the length.
   const { eventValue: restValue, unwritableLength: unwritableRest } = fills
-  if (unwritableRest) {
-    warnings.add(
-      'unrepresentable:rest-length',
-      `A rest lasting ${describeLength(unwritableRest)} is the whole of its voice in ` +
-        (state.time === undefined
-          ? 'a measure written with no time signature. '
-          : 'this measure, and no note value can write that length. ') +
-        'MNX states such a rest on the sequence, which carries no length, so the length ' +
-        'is not converted.',
-      { ...context, line: element.line },
-      'rest',
-    )
-  }
+  const place = warnings.reserve()
+  const reportLength =
+    unwritableRest &&
+    (() => {
+      warnings.addAt(
+        place,
+        'unrepresentable:rest-length',
+        `A rest lasting ${describeLength(unwritableRest)} is the whole of its voice in ` +
+          (state.time === undefined
+            ? 'a measure written with no time signature. '
+            : 'this measure, and no note value can write that length. ') +
+          'MNX states such a rest on the sequence, which carries no length, so the length ' +
+          'is not converted.',
+        { ...context, line: element.line },
+        'rest',
+      )
+    })
 
   // Where the source states no <duration>, the rest lasts the measure. A bar
   // of silence is drawn as a whole rest in any meter, so the written value is
   // what it lasts only where no time signature says how long the measure is.
   const lasts = duration ?? measureLength(state) ?? (written && lengthOf(written))
   const fermata = readFermata(notations, warnings, context)
-  builder.setFullMeasure(
+  const writtenBack = builder.setFullMeasure(
     voice,
     {
       visualDuration: written,
@@ -787,10 +778,24 @@ function setMeasureRest(
         staffPosition,
       }),
     },
+    reportLength,
     path,
     element.line,
   )
+  if (writtenBack === 'space') reportRestAsSpace(warnings, context, element.line)
   if (lasts) builder.passOver(lasts)
+}
+
+function reportRestAsSpace(warnings: WarningCollector, context: WarningContext, line: number) {
+  warnings.add(
+    'unrepresentable:grace-beside-rest',
+    'A grace note stands beside a rest that fills the measure, and no note value can ' +
+      'write that rest as an event. MNX states such a rest on a sequence that holds ' +
+      'nothing, so the rest is converted as a space of its length, and nothing drawn ' +
+      'on it is kept.',
+    { ...context, line },
+    'rest',
+  )
 }
 
 /** A note carrying <chord>, joined to the event before it. */

@@ -809,21 +809,96 @@ describe('a rest filling a measure a grace note leads into', () => {
   })
 
   // An irregular measure has no note value to write the rest as, so there is
-  // nothing to make an event of. Grace notes written before the rest are
-  // already in the voice when the rest is read, and the file is refused.
-  // Grace notes written after it are dropped and reported.
-  const irregular = (body: string) =>
+  // nothing to make an event of. The rest is written as a space of its
+  // length beside the grace notes, on whichever side they are written.
+  const irregular = (
+    body: string,
+    time = '<time><beats>5</beats><beat-type>4</beat-type></time>',
+  ) =>
     '<score-partwise><part id="P1"><measure number="1">' +
-    '<attributes><divisions>4</divisions><time><beats>5</beats><beat-type>4</beat-type>' +
-    '</time></attributes>' +
+    `<attributes><divisions>4</divisions>${time}</attributes>` +
     body +
     '</measure></part></score-partwise>'
   const irregularRest = '<note><rest measure="yes"/><duration>20</duration><voice>1</voice></note>'
+  const kinds = (body: string, time?: string) => {
+    const { mnx, warnings } = convertValid(irregular(body, time))
+    const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
+    return {
+      fullMeasure: sequence?.fullMeasure,
+      content: sequence?.content.map((item) =>
+        'type' in item && item.type === 'space'
+          ? ['space', item.duration]
+          : ['type' in item ? item.type : 'event'],
+      ),
+      warnings: warnings.map((w) => [w.code, w.element, w.context.measure]),
+    }
+  }
+  const space = ['space', [5, 4]]
+  const reported = [['unrepresentable:grace-beside-rest', 'rest', 1]]
 
-  test('refuses where no note value can write the measure', () => {
+  test.each([
+    ['marked', irregularRest, undefined],
+    ['marked with no duration', '<note><rest measure="yes"/><voice>1</voice></note>', undefined],
+    [
+      'drawn to the measure',
+      '<note><rest/><duration>20</duration><voice>1</voice></note>',
+      undefined,
+    ],
+    [
+      'in a measure with no time signature',
+      '<note><rest/><duration>20</duration><voice>1</voice></note>',
+      '',
+    ],
+  ])('writes a rest %s as a space beside the grace notes, in both orders', (_, rest, time) => {
+    expect(kinds(grace + rest, time)).toEqual({
+      fullMeasure: undefined,
+      content: [['grace'], space],
+      warnings: reported,
+    })
+    expect(kinds(rest + grace, time)).toEqual({
+      fullMeasure: undefined,
+      content: [space, ['grace']],
+      warnings: reported,
+    })
+  })
+
+  // The space states the length the rest on the sequence could not, so only
+  // the rest that stays on the sequence reports it lost.
+  test('reports the length of a rest with no time signature only where it stays on the sequence', () => {
+    const bare = '<note><rest/><duration>20</duration><voice>1</voice></note>'
+
+    expect(kinds(bare, '').warnings).toEqual([['unrepresentable:rest-length', 'rest', 1]])
+    expect(kinds(bare + grace, '').warnings).toEqual(reported)
+    expect(convertValid(irregular(bare, '')).warnings[0]?.message).toContain(
+      'a measure written with no time signature',
+    )
+  })
+
+  // The space names no staff, so the rest still says which staff the voice
+  // sits on, and the grace note drawn on the other one says so.
+  test('keeps the voice on the staff the rest was drawn on', () => {
+    const { mnx } = convertValid(
+      irregular(
+        '<note><rest measure="yes"/><duration>20</duration><voice>1</voice><staff>2</staff></note>' +
+          grace.replace('</voice>', '</voice><staff>1</staff>'),
+        '<staves>2</staves><time><beats>5</beats><beat-type>4</beat-type></time>',
+      ),
+    )
+    const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
+    const group = sequence?.content[1]
+
+    expect(sequence?.staff).toBe(2)
+    expect(group && 'type' in group && group.type === 'grace' && group.content[0]?.staff).toBe(1)
+  })
+
+  // A <forward> takes the rest past the grace notes, so it no longer opens
+  // the measure, and a rest filling the measure from there would overfill it.
+  test('refuses where a forward moved the cursor between the grace notes and the rest', () => {
     let thrown = ''
     try {
-      convertMusicXML(irregular(grace + irregularRest))
+      convertMusicXML(
+        irregular(grace + '<forward><duration>4</duration></forward>' + irregularRest),
+      )
     } catch (error) {
       thrown = error instanceof Error ? error.message : String(error)
     }
@@ -831,91 +906,25 @@ describe('a rest filling a measure a grace note leads into', () => {
     expect(thrown).toContain('both a rest that fills the measure and notes in it')
   })
 
-  test('drops grace notes after a rest no note value can write, and reports them', () => {
-    const { mnx, warnings } = convertValid(irregular(irregularRest + grace))
-    const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
+  // Nothing says how long the rest lasts: no <duration>, no time signature
+  // and no written value.
+  test('refuses a rest beside grace notes with no length to write a space of', () => {
+    let thrown = ''
+    try {
+      convertMusicXML(irregular('<note><rest measure="yes"/><voice>1</voice></note>' + grace, ''))
+    } catch (error) {
+      thrown = error instanceof Error ? error.message : String(error)
+    }
 
-    expect(sequence?.fullMeasure).toEqual({})
-    expect(sequence?.content).toEqual([])
-    expect(warnings.map((w) => [w.code, w.element, w.context.measure])).toEqual([
-      ['unrepresentable:grace-beside-rest', 'grace', 1],
-    ])
+    expect(thrown).toContain('neither a note value nor a length says how long that rest lasts')
   })
 
-  test('reports each note of a grace chord after the rest, and nothing it carries', () => {
+  test('joins a grace chord member to the grace note after the rest', () => {
     const member =
       '<note><grace/><chord/><pitch><step>F</step><octave>5</octave></pitch>' +
-      '<type>quarter</type><stem>up</stem>' +
-      '<notations><articulations><accent/></articulations></notations>' +
-      '<lyric><text>la</text></lyric></note>'
+      '<type>quarter</type><voice>1</voice></note>'
     const { mnx, warnings } = convertValid(irregular(irregularRest + grace + member))
-
-    expect(mnx.parts[0]?.measures[0]?.sequences[0]?.content).toEqual([])
-    expect(warnings.map((w) => w.code)).toEqual([
-      'unrepresentable:grace-beside-rest',
-      'unrepresentable:grace-beside-rest',
-    ])
-  })
-
-  // A chord member is dropped only with the grace note it joins. One with
-  // nothing before it to join is a broken source whatever stands in the voice.
-  const graceMember = (voice: string) =>
-    '<note><grace/><chord/><pitch><step>F</step><octave>5</octave></pitch>' +
-    `<type>quarter</type><voice>${voice}</voice></note>`
-  const backup = '<backup><duration>20</duration></backup>'
-  const refusal = (body: string) => {
-    try {
-      convertMusicXML(irregular(body))
-    } catch (error) {
-      return error instanceof Error ? error.message : String(error)
-    }
-    return ''
-  }
-
-  const quarter = (step: string, voice: string) =>
-    `<note><pitch><step>${step}</step><octave>5</octave></pitch><duration>4</duration>` +
-    `<type>quarter</type><voice>${voice}</voice></note>`
-  const graceNote = (step: string, voice: string) =>
-    `<note><grace/><pitch><step>${step}</step><octave>5</octave></pitch>` +
-    `<type>quarter</type><voice>${voice}</voice></note>`
-
-  test.each([
-    ['opening the measure', graceMember('1') + irregularRest],
-    ['straight after the rest', irregularRest + graceMember('1')],
-    [
-      "after another voice's rest",
-      irregularRest + grace + backup + irregularRest.replace('>1<', '>2<') + graceMember('2'),
-    ],
-    [
-      "after a backup past another voice's dropped grace note",
-      irregularRest + grace + backup + graceMember('2'),
-    ],
-    [
-      "after a forward past another voice's dropped grace note",
-      irregularRest +
-        grace +
-        backup +
-        '<forward><duration>4</duration></forward>' +
-        graceMember('2'),
-    ],
-  ])('refuses a grace chord member with nothing to join %s', (_, body) => {
-    expect(refusal(body)).toContain('marked as a chord with no note for it to join')
-  })
-
-  test("joins a grace chord member to its own voice's grace note, not the dropped one", () => {
-    const { mnx, warnings } = convertValid(
-      irregular(
-        '<note><pitch><step>C</step><octave>5</octave></pitch><duration>16</duration>' +
-          '<type>whole</type><voice>2</voice></note>' +
-          graceNote('G', '2') +
-          '<backup><duration>16</duration></backup>' +
-          irregularRest +
-          grace +
-          graceMember('2'),
-      ),
-    )
-    const content = mnx.parts[0]?.measures[0]?.sequences.find((q) => q.voice === '2')?.content
-    const group = content?.find((item) => 'type' in item && item.type === 'grace')
+    const group = mnx.parts[0]?.measures[0]?.sequences[0]?.content[1]
 
     expect(
       group && 'type' in group && group.type === 'grace' && group.content[0]?.notes,
@@ -923,36 +932,8 @@ describe('a rest filling a measure a grace note leads into', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:grace-beside-rest'])
   })
 
-  // A note written over the rest in the same voice opens a line of its own,
-  // and a grace note there is kept.
-  test('joins a grace chord member to a grace note kept in another line of the voice', () => {
+  test('keeps a slur starting on the grace note after the rest', () => {
     const { mnx, warnings } = convertValid(
-      irregular(
-        irregularRest +
-          grace +
-          backup +
-          quarter('C', '1') +
-          graceNote('G', '1') +
-          graceMember('1') +
-          quarter('D', '1'),
-      ),
-    )
-    const content = mnx.parts[0]?.measures[0]?.sequences[1]?.content
-    const group = content?.find((item) => 'type' in item && item.type === 'grace')
-
-    expect(
-      group && 'type' in group && group.type === 'grace' && group.content[0]?.notes,
-    ).toHaveLength(2)
-    expect(warnings.map((w) => w.code)).toEqual([
-      'unrepresentable:grace-beside-rest',
-      'inconsistent:voice',
-    ])
-  })
-
-  // The slur is lost with the note it starts on, and nothing registered its
-  // start, so its stop is reported as closing nothing.
-  test('reports the stop of a slur starting on a dropped grace note', () => {
-    const { warnings } = convertValid(
       irregular(
         irregularRest +
           '<note><grace/><pitch><step>D</step><octave>5</octave></pitch><type>quarter</type>' +
@@ -965,44 +946,24 @@ describe('a rest filling a measure a grace note leads into', () => {
           '<forward><duration>16</duration></forward></measure></part>',
       ),
     )
-
-    expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
-      ['unrepresentable:grace-beside-rest', 1],
-      ['unclosed:spanner', 2],
-    ])
-  })
-
-  test('refuses a chord member that is not a grace note after a dropped grace note', () => {
-    const member =
-      '<note><chord/><pitch><step>F</step><octave>5</octave></pitch><duration>20</duration>' +
-      '<voice>1</voice></note>'
-
-    expect(refusal(irregularRest + grace + member)).toContain(
-      'marked as a chord with no note for it to join',
-    )
-  })
-
-  test('joins a grace chord member to a grace note kept after one was dropped', () => {
-    const second =
-      '<note><grace/><pitch><step>G</step><octave>5</octave></pitch>' +
-      '<type>quarter</type><voice>2</voice></note>'
-    const { mnx, warnings } = convertValid(
-      irregular(
-        irregularRest +
-          grace +
-          backup +
-          second +
-          graceMember('2') +
-          '<note><pitch><step>C</step><octave>5</octave></pitch><duration>4</duration>' +
-          '<type>quarter</type><voice>2</voice></note>',
-      ),
-    )
-    const group = mnx.parts[0]?.measures[0]?.sequences[1]?.content[0]
+    const group = mnx.parts[0]?.measures[0]?.sequences[0]?.content[1]
 
     expect(
-      group && 'type' in group && group.type === 'grace' && group.content[0]?.notes,
-    ).toHaveLength(2)
+      group && 'type' in group && group.type === 'grace' && group.content[0]?.slurs,
+    ).toHaveLength(1)
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:grace-beside-rest'])
+  })
+
+  // The rest is gone, so what was drawn on it goes with it, and the warning
+  // above reports that.
+  test('reports a fermata on the rest written as a space once, as the rest', () => {
+    expect(
+      kinds(
+        '<note><rest measure="yes"/><duration>20</duration><voice>1</voice>' +
+          '<notations><fermata/></notations></note>' +
+          grace,
+      ).warnings,
+    ).toEqual(reported)
   })
 })
 

@@ -221,7 +221,8 @@ interface VoiceLayers {
  *   held until the voice is whole, and settled by finish.
  * - `sequence`: the rest stands on the sequence, which holds nothing else.
  * - `event`: the rest stands in the content as an event, where it carries
- *   something the sequence cannot hold. The voice rests the measure all the
+ *   something the sequence cannot hold, or as a space beside grace notes,
+ *   where no note value can write it. The voice rests the measure all the
  *   same.
  */
 type MeasureRestState =
@@ -239,23 +240,32 @@ type MeasureRestState =
       kind: 'sequence'
       rest: FullMeasureRest
       /**
-       * What the rest goes back to being where something only an event can
-       * hold is written after it, and nothing where no note value can write
-       * the rest. `at` is where the rest stands, `after` where the voice's
-       * content ran out before it, and `staff` the staff it named. See
-       * restoreMeasureRest.
+       * What the rest goes back to being where a grace note is written after
+       * it, and nothing once the voice is whole. See restoreMeasureRest.
        */
-      asEvent:
-        | {
-            event: () => Event
-            duration: Fraction
-            at: Fraction
-            after: Fraction
-            staff: number | undefined
-          }
-        | undefined
+      restore: RestoredRest | undefined
+      /**
+       * Reports how long the rest lasts, where no note value can write that
+       * length. Only the rest on the sequence loses it: a space states it.
+       */
+      reportLength: (() => void) | undefined
     }
   | { kind: 'event' }
+
+/**
+ * A rest filling the measure written back into its voice's content. `asEvent`
+ * is the event a note value writes it as, and nothing where none can: the
+ * rest is then written as a space of what it `lasts`. `at` is where the rest
+ * stands, `after` where the voice's content ran out before it, and `staff`
+ * the staff it named.
+ */
+interface RestoredRest {
+  asEvent: { event: () => Event; duration: Fraction } | undefined
+  lasts: Fraction | undefined
+  at: Fraction
+  after: Fraction
+  staff: number | undefined
+}
 
 /** Whether the voice's measure rest is settled, on the sequence or as an event. */
 function restIsSettled(builder: VoiceBuilder): boolean {
@@ -405,11 +415,6 @@ export class MeasureBuilder {
   #furthest: Fraction = fraction(0)
   /** The voice of the most recent event, which a chord member joins. */
   #lastVoice: string | undefined
-  /**
-   * The voices whose most recent grace note was dropped, which a chord member
-   * joining that note is dropped with.
-   */
-  readonly #droppedGrace = new Set<string>()
   /**
    * The <backup> that carried the cursor before the measure start, held until
    * something is written out there or a <forward> brings the cursor back.
@@ -644,7 +649,7 @@ export class MeasureBuilder {
     builder.spent.set(event, duration)
     builder.grace = undefined
     builder.placed.push({ event, staff })
-    this.#wrote(voice)
+    this.#lastVoice = voice ?? UNNAMED_VOICE
     const start = this.#cursor
     builder.last = { event, duration, start }
     this.#eventStarts.push({ start, staff, grace: false })
@@ -862,7 +867,9 @@ export class MeasureBuilder {
   /**
    * Marks this voice as a rest filling the measure, which then holds nothing
    * else: MNX states the rest on the sequence instead of as an event, so a
-   * voice cannot be both.
+   * voice cannot be both. Grace notes before it are the one exception, and
+   * the rest is written back beside them, as restoreMeasureRest does for
+   * grace notes after it. Hands back how it was written back, if it was.
    */
   setFullMeasure(
     voice: string | undefined,
@@ -870,9 +877,10 @@ export class MeasureBuilder {
     covering: Fraction | undefined,
     staff: number | undefined,
     asEvent: { event: () => Event; duration: Fraction } | undefined,
+    reportLength: (() => void) | undefined,
     path: DocumentPath,
     line: number,
-  ): void {
+  ): 'event' | 'space' | undefined {
     const builder = this.#builderFor(voice)
     if (this.restsTheMeasure(voice)) {
       throw new MusicXMLError('A voice has more than one rest that fills the measure.', {
@@ -895,7 +903,12 @@ export class MeasureBuilder {
         { path, line },
       )
     }
-    if (builder.content.length > 0) {
+    // Grace notes take none of the measure's time, so a rest written at the
+    // measure start after them still fills the measure.
+    if (
+      builder.content.length > 0 &&
+      (!this.holdsOnlyGraceNotes(voice) || !this.atMeasureStart())
+    ) {
       throw new MusicXMLError('A voice has both a rest that fills the measure and notes in it.', {
         path,
         line,
@@ -904,46 +917,24 @@ export class MeasureBuilder {
 
     this.#writeAt()
 
+    const restore = { asEvent, lasts: covering, at: this.#cursor, after: builder.end, staff }
+    if (builder.content.length > 0) {
+      builder.placed.push({ event: undefined, staff })
+      return this.#writeBack(voice, restore, path, line)
+    }
+
     // The rest is the whole of this voice in this measure, so the staff it
     // names is the staff the sequence sits on.
     builder.placed.push({ event: undefined, staff })
-    builder.measureRest = {
-      kind: 'sequence',
-      rest,
-      asEvent: asEvent && { ...asEvent, at: this.#cursor, after: builder.end, staff },
-    }
+    builder.measureRest = { kind: 'sequence', rest, restore, reportLength }
     // The rest occupies the whole voice, so nothing may follow it there.
     if (covering) builder.end = addFractions(this.#cursor, covering)
-  }
-
-  /** Records the note just written in this voice, which a chord member joins. */
-  #wrote(voice: string | undefined): void {
-    this.#lastVoice = voice ?? UNNAMED_VOICE
-    this.#droppedGrace.delete(this.#lastVoice)
+    return undefined
   }
 
   /**
-   * Records a grace note dropped from this voice, so that a chord member
-   * joining it is dropped with it.
-   */
-  recordDroppedGrace(voice: string | undefined): void {
-    this.#lastVoice = voice ?? UNNAMED_VOICE
-    this.#droppedGrace.add(this.#lastVoice)
-  }
-
-  /** Whether the note a chord member in this voice would join was dropped. */
-  chordJoinsDropped(voice: string | undefined): boolean {
-    return this.#droppedGrace.has(this.voiceOfChord(voice) ?? UNNAMED_VOICE)
-  }
-
-  /** Whether this voice's measure rest stands on the sequence rather than as an event. */
-  restsOnSequence(voice: string | undefined): boolean {
-    return this.#builderFor(voice).measureRest.kind === 'sequence'
-  }
-
-  /**
-   * Writes this voice's measure rest back as the event its length is written
-   * as, and hands back whether it could be.
+   * Writes this voice's measure rest back into its content, and hands back
+   * how, where the rest stands on the sequence.
    *
    * MNX states a rest filling the measure on the sequence rather than as an
    * event in it, and that sequence holds nothing else, so a grace note
@@ -952,21 +943,43 @@ export class MeasureBuilder {
    * the voice rests the measure and the grace notes lead into the next one.
    * A rest read before them is therefore taken back off the sequence here, so
    * that both orders convert to the same thing.
-   *
-   * Where no note value can write the rest, there is no event to take it back
-   * as, and nothing can stand beside it. The caller drops a grace note
-   * written after it. One written before it is already in the voice, and
-   * the rest is refused.
    */
-  restoreMeasureRest(voice: string | undefined, path: DocumentPath, line: number): boolean {
+  restoreMeasureRest(
+    voice: string | undefined,
+    path: DocumentPath,
+    line: number,
+  ): 'event' | 'space' | undefined {
     const builder = this.#builderFor(voice)
-    const restored = builder.measureRest.kind === 'sequence' && builder.measureRest.asEvent
-    if (!restored) return false
+    const { measureRest } = builder
+    if (measureRest.kind !== 'sequence' || !measureRest.restore) return undefined
+    // The rest's entry in `placed` stays: it names the staff the rest was
+    // drawn on, which the event written back names too, and a space names
+    // none.
+    return this.#writeBack(voice, measureRest.restore, path, line)
+  }
 
-    const event = restored.event()
-    // The rest is the whole of the voice, so the staff it named is the only
-    // entry standing, and the event added below names it instead.
-    builder.placed.length = 0
+  /**
+   * Writes a rest filling the measure into its voice's content, as the event
+   * a note value writes it as. Where none can, it is written as a space of
+   * the length it lasts: the silence is kept and the rest drawn for it is
+   * not.
+   */
+  #writeBack(
+    voice: string | undefined,
+    restored: RestoredRest,
+    path: DocumentPath,
+    line: number,
+  ): 'event' | 'space' {
+    const builder = this.#builderFor(voice)
+    const { asEvent } = restored
+    const lasts = asEvent?.duration ?? restored.lasts
+    if (!lasts) {
+      throw new MusicXMLError(
+        'A grace note stands beside a rest that fills the measure, and neither a note ' +
+          'value nor a length says how long that rest lasts.',
+        { path, line },
+      )
+    }
     builder.measureRest = { kind: 'none' }
     // Wound back to where the voice stood before the rest was written, so
     // that silence the rest was written after is stated as a space, as it
@@ -978,10 +991,17 @@ export class MeasureBuilder {
     // moved it there.
     const reached = this.#cursor
     this.#cursor = restored.at
-    this.addEvent(voice, event, restored.duration, path, line, restored.staff)
+    if (asEvent) {
+      this.addEvent(voice, asEvent.event(), lasts, path, line, restored.staff)
+    } else {
+      // The rest opens the measure, so there is no gap before it to fill.
+      innermost(builder).push({ kind: 'space', duration: lasts })
+      builder.grace = undefined
+      builder.end = addFractions(restored.at, lasts)
+    }
     builder.measureRest = { kind: 'event' }
     this.#moveTo(reached)
-    return true
+    return asEvent ? 'event' : 'space'
   }
 
   /**
@@ -1853,7 +1873,7 @@ export class MeasureBuilder {
     const list = innermost(builder)
     const open = builder.grace
 
-    this.#wrote(voice)
+    this.#lastVoice = voice ?? UNNAMED_VOICE
     // Grace notes have no duration of their own, so a chord note joining one
     // has nothing to agree with.
     const start = this.#cursor
@@ -1925,6 +1945,9 @@ export class MeasureBuilder {
   #settleMeasureRests(): void {
     for (const builder of this.#allBuilders()) {
       const candidate = builder.measureRest
+      // A rest still on the sequence was never written back as a space, so
+      // the length it carries is lost.
+      if (candidate.kind === 'sequence') candidate.reportLength?.()
       if (candidate.kind !== 'candidate') continue
 
       const { event } = candidate
@@ -1950,7 +1973,8 @@ export class MeasureBuilder {
           fermata: event.fermata,
           staffPosition: event.staffPosition,
         },
-        asEvent: undefined,
+        restore: undefined,
+        reportLength: undefined,
       }
     }
   }
