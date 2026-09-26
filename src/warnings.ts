@@ -177,7 +177,8 @@ export const WARNING_CODES = Object.freeze([
   // A grace note beside a rest filling a measure whose length no note value
   // can write. MNX states such a rest on a sequence that holds nothing, and
   // there is no event to write it as instead, so the rest is written as a
-  // space of its length and nothing drawn on it is kept.
+  // space of its length. The rest, and a fermata or position on it, is not
+  // drawn.
   'unrepresentable:grace-beside-rest',
   // A SMuFL glyph named for a dynamic's wording. A dynamic group's glyphs
   // draw the mark itself, not the words, so the wording goes over as text

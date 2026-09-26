@@ -309,13 +309,9 @@ export function readNote(
   // chord member joins the grace note before it, which has taken the rest
   // back already. An irregular measure has no value to write the rest as, so
   // it is written as a space.
-  if (
-    graceElement &&
-    !chordMember &&
-    builder.restoreMeasureRest(voice, path, element.line) === 'space'
-  ) {
-    reportRestAsSpace(warnings, context, element.line)
-  }
+  const restored =
+    graceElement && !chordMember ? builder.restoreMeasureRest(voice, path, element.line) : undefined
+  if (restored?.written === 'space') reportRestAsSpace(warnings, context, restored.line)
 
   // Which staff the note names. Read and bounded whatever the part has, so
   // that a note naming a staff before <staves> said the part had one is
@@ -791,8 +787,8 @@ function reportRestAsSpace(warnings: WarningCollector, context: WarningContext, 
     'unrepresentable:grace-beside-rest',
     'A grace note stands beside a rest that fills the measure, and no note value can ' +
       'write that rest as an event. MNX states such a rest on a sequence that holds ' +
-      'nothing, so the rest is converted as a space of its length, and nothing drawn ' +
-      'on it is kept.',
+      'nothing, so the rest is converted as a space of its length. The rest is not ' +
+      'drawn, nor a fermata or a position stated on it.',
     { ...context, line },
     'rest',
   )

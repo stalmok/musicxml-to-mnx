@@ -256,8 +256,8 @@ type MeasureRestState =
  * A rest filling the measure written back into its voice's content. `asEvent`
  * is the event a note value writes it as, and nothing where none can: the
  * rest is then written as a space of what it `lasts`. `at` is where the rest
- * stands, `after` where the voice's content ran out before it, and `staff`
- * the staff it named.
+ * stands, `after` where the voice's content ran out before it, `staff` the
+ * staff it named and `line` the line it is written on.
  */
 interface RestoredRest {
   asEvent: { event: () => Event; duration: Fraction } | undefined
@@ -265,6 +265,7 @@ interface RestoredRest {
   at: Fraction
   after: Fraction
   staff: number | undefined
+  line: number
 }
 
 /** Whether the voice's measure rest is settled, on the sequence or as an event. */
@@ -926,15 +927,12 @@ export class MeasureBuilder {
 
     this.#writeAt()
 
-    const restore = { asEvent, lasts: covering, at: this.#cursor, after: builder.end, staff }
-    if (builder.content.length > 0) {
-      builder.placed.push({ event: undefined, staff })
-      return this.#writeBack(voice, restore, path, line)
-    }
-
     // The rest is the whole of this voice in this measure, so the staff it
     // names is the staff the sequence sits on.
     builder.placed.push({ event: undefined, staff })
+    const restore = { asEvent, lasts: covering, at: this.#cursor, after: builder.end, staff, line }
+    if (builder.content.length > 0) return this.#writeBack(voice, restore, path, line)
+
     builder.measureRest = { kind: 'sequence', rest, restore, reportLength }
     // The rest occupies the whole voice, so nothing may follow it there.
     if (covering) builder.end = addFractions(this.#cursor, covering)
@@ -942,8 +940,9 @@ export class MeasureBuilder {
   }
 
   /**
-   * Writes this voice's measure rest back into its content, and hands back
-   * how, where the rest stands on the sequence.
+   * Writes this voice's measure rest back into its content, where the rest
+   * stands on the sequence, and hands back how and the line the rest is
+   * written on.
    *
    * MNX states a rest filling the measure on the sequence rather than as an
    * event in it, and that sequence holds nothing else, so a grace note
@@ -951,20 +950,21 @@ export class MeasureBuilder {
    * the grace notes are written on says nothing about the music: either way
    * the voice rests the measure and the grace notes lead into the next one.
    * A rest read before them is therefore taken back off the sequence here, so
-   * that both orders convert to the same thing.
+   * that both orders keep the rest and the grace notes alike.
    */
   restoreMeasureRest(
     voice: string | undefined,
     path: DocumentPath,
     line: number,
-  ): 'event' | 'space' | undefined {
+  ): { written: 'event' | 'space'; line: number } | undefined {
     const builder = this.#builderFor(voice)
     const { measureRest } = builder
     if (measureRest.kind !== 'sequence' || !measureRest.restore) return undefined
     // The rest's entry in `placed` stays: it names the staff the rest was
     // drawn on, which the event written back names too, and a space names
     // none.
-    return this.#writeBack(voice, measureRest.restore, path, line)
+    const { restore } = measureRest
+    return { written: this.#writeBack(voice, restore, path, line), line: restore.line }
   }
 
   /**
@@ -1003,10 +1003,13 @@ export class MeasureBuilder {
     if (asEvent) {
       this.addEvent(voice, asEvent.event(), lasts, path, line, restored.staff)
     } else {
-      // The rest opens the measure, so there is no gap before it to fill.
+      this.#fillGap(builder)
       innermost(builder).push({ kind: 'space', duration: lasts })
       builder.grace = undefined
       builder.end = addFractions(restored.at, lasts)
+      // A space is not a note, so a chord member after it has nothing to
+      // join, as it would have nothing beside a rest.
+      builder.last = undefined
     }
     builder.measureRest = { kind: 'event' }
     this.#moveTo(reached)

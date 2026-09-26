@@ -61,7 +61,7 @@ export type RestReading =
        * marking or a stem, which are read where the event is built. MNX's rest
        * on the sequence has no room for a lyric, and no id for a slur to start
        * or end on. The sequence stating it must hold nothing, so grace notes
-       * before it keep it an event too.
+       * before it keep it an event too, where a note value can write it.
        */
       needsEvent: boolean
       /**
