@@ -105,6 +105,8 @@ Warning prefixes identify three categories:
 | `unrepresentable:`                                                    | A limitation of the pinned MNX format.     | `isFormatLimit(code)`   |
 | `inconsistent:`, `missing:`, `unresolved:`, `unclosed:`, `redundant:` | A source problem or a reported correction. | `isSourceProblem(code)` |
 
+`WARNING_CODES` lists every warning code.
+
 An empty warning array means no loss was detected.
 It is not an independent proof that the output preserves every source detail.
 

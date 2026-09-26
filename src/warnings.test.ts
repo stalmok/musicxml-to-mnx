@@ -4,6 +4,7 @@ import {
   isConverterGap,
   isFormatLimit,
   isSourceProblem,
+  WARNING_CODES,
   WarningCollector,
 } from './warnings.js'
 
@@ -72,6 +73,23 @@ describe('categoryOf', () => {
     expect(categoryOf('unrepresentable:fermata')).toBe('format-limit')
     expect(categoryOf('unsupported:attribute')).toBe('converter-gap')
     expect(categoryOf('inconsistent:tempo')).toBe('source-problem')
+  })
+})
+
+describe('WARNING_CODES', () => {
+  test('lists each code once', () => {
+    expect(new Set(WARNING_CODES).size).toBe(WARNING_CODES.length)
+    expect(WARNING_CODES).toContain('unsupported:element')
+  })
+
+  test('cannot be changed by a consumer', () => {
+    expect(Object.isFrozen(WARNING_CODES)).toBe(true)
+  })
+
+  test('holds codes of all three kinds', () => {
+    expect(new Set(WARNING_CODES.map(categoryOf))).toEqual(
+      new Set(['format-limit', 'converter-gap', 'source-problem']),
+    )
   })
 })
 

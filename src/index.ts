@@ -9,7 +9,13 @@ export type { ConversionOptions, ConversionResult } from './convert.js'
 export { MusicXMLError } from './errors.js'
 export type { DocumentPath } from './errors.js'
 
-export { categoryOf, isConverterGap, isFormatLimit, isSourceProblem } from './warnings.js'
+export {
+  categoryOf,
+  isConverterGap,
+  isFormatLimit,
+  isSourceProblem,
+  WARNING_CODES,
+} from './warnings.js'
 export type {
   ConversionWarning,
   ConverterGap,

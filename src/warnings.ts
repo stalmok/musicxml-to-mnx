@@ -34,157 +34,157 @@
 // gaps, and what was lost is in the element and attribute fields beside them.
 // So a pipeline gating on "no new losses" keys on the code, element and
 // attribute together, not on the code alone.
-export type WarningCode =
+export const WARNING_CODES = Object.freeze([
   // --- A gap in this converter ------------------------------------------
   // An element carrying notation this converter does not convert yet.
-  | 'unsupported:element'
+  'unsupported:element',
   // An attribute carrying notation this converter does not convert yet,
   // named with the element it sits on.
-  | 'unsupported:attribute'
+  'unsupported:attribute',
 
   // --- A limit of MNX ---------------------------------------------------
   // An element MNX has nowhere to put at all.
-  | 'unrepresentable:element'
+  'unrepresentable:element',
   // A measure labelled with something other than a number, where MNX's
   // measure number is an integer.
-  | 'unrepresentable:measure-label'
+  'unrepresentable:measure-label',
   // The staves of a part are in different keys, or different time signatures,
   // and MNX states one of each for the whole score.
-  | 'unrepresentable:per-staff-key'
+  'unrepresentable:per-staff-key',
   // A part whose staves are transposed by different intervals, or which
   // changes instrument partway. MNX states one transposition for the part.
-  | 'unrepresentable:per-staff-transposition'
-  | 'unrepresentable:transposition-change'
-  | 'unrepresentable:per-staff-time'
+  'unrepresentable:per-staff-transposition',
+  'unrepresentable:transposition-change',
+  'unrepresentable:per-staff-time',
   // The parts of the score state different keys, or different time signatures,
   // in the same measure, and MNX states one of each for the whole score.
-  | 'unrepresentable:cross-part-key'
-  | 'unrepresentable:cross-part-time'
+  'unrepresentable:cross-part-key',
+  'unrepresentable:cross-part-time',
   // The parts of the score close the same measure with different barlines,
   // and MNX states one barline for the whole score's measure.
-  | 'unrepresentable:cross-part-barline'
+  'unrepresentable:cross-part-barline',
   // The parts of the score state different segnos on the same measure, and
   // MNX states one segno for the whole score's measure.
-  | 'unrepresentable:cross-part-segno'
+  'unrepresentable:cross-part-segno',
   // A color with an alpha channel other than fully opaque. MNX's color has no
   // alpha form, so the color is converted opaque and the alpha is not.
-  | 'unrepresentable:color'
+  'unrepresentable:color',
   // The parts of the score state different repeats, endings, fermatas, fines,
   // or jumps on the same measure, and MNX states one of each there. The
   // element field names which mark. Segnos have their own code above.
-  | 'unrepresentable:cross-part-mark'
+  'unrepresentable:cross-part-mark',
   // A stem that neither points up nor down. MNX states only those two.
-  | 'unrepresentable:stem-direction'
+  'unrepresentable:stem-direction',
   // A tempo MNX has no value for: one written as one note value equalling
   // another, one with no beats-per-minute number, and one whose number is
   // not above zero. MNX states a tempo as a note value and a positive count
   // of them per minute.
-  | 'unrepresentable:tempo'
+  'unrepresentable:tempo',
   // A verse whose elided syllables each say how they join their word. MNX
   // states one lyric type for the whole event.
-  | 'unrepresentable:lyric-syllabic'
+  'unrepresentable:lyric-syllabic',
   // A note stating one verse line twice with two different syllables, where
   // MNX keys an event's lyrics by line and holds one of each. The first is
   // the one converted.
-  | 'unrepresentable:lyric-line'
+  'unrepresentable:lyric-line',
   // An event carrying more than one fermata. MNX states one per event.
-  | 'unrepresentable:fermata'
+  'unrepresentable:fermata',
   // An event carrying two marks of one kind. MNX keys them by name.
-  | 'unrepresentable:marking'
+  'unrepresentable:marking',
   // A chord marked both as rolled and as struck together at once.
-  | 'unrepresentable:arpeggio'
+  'unrepresentable:arpeggio',
   // A barline drawn at the opening edge of a measure. MNX states the one that
   // closes a measure.
-  | 'unrepresentable:barline'
+  'unrepresentable:barline',
   // Two clefs written at the same point on the same staff, where MNX draws
   // one. The last declared is the one the following notes obey.
-  | 'unrepresentable:clef'
+  'unrepresentable:clef',
   // Two staff line counts written at the same point on the same staff, where
   // MNX draws the staff one way. The last declared is the one drawn.
-  | 'unrepresentable:staff-config'
+  'unrepresentable:staff-config',
   // A measure marked senza misura is unmetered, and MNX states meter as a
   // time signature or nothing. The measure carries no time signature.
-  | 'unrepresentable:senza-misura'
+  'unrepresentable:senza-misura',
   // A key or time signature stated partway through a measure, or after its
   // notes where no next measure takes it. MNX states one only where a measure
   // begins, so it is converted at the next measure, and not at all where the
   // next measure states its own or there is none.
-  | 'unrepresentable:mid-measure-key'
-  | 'unrepresentable:mid-measure-time'
+  'unrepresentable:mid-measure-key',
+  'unrepresentable:mid-measure-time',
   // A rest filling a measure that states no time signature, whose length no
   // note value can write. MNX states such a rest on the sequence, which
   // carries no length, so the length the source drew is not converted.
-  | 'unrepresentable:rest-length'
+  'unrepresentable:rest-length',
   // A time signature drawn with a symbol other than a common or cut sign,
   // such as a single number or a beat note. MNX draws a C, a cut C, or the
   // numbers, so the numbers are drawn and the other glyphs are not.
-  | 'unrepresentable:time-symbol'
+  'unrepresentable:time-symbol',
   // A time signature stating a second, interchangeable meter. MNX states one
   // count and unit, so the primary meter is converted and the alternative is
   // not.
-  | 'unrepresentable:interchangeable-time'
+  'unrepresentable:interchangeable-time',
   // A clef transposed by more than three octaves, which MNX's ottava amount
   // cannot state. The clef is converted at pitch, without the transposition.
-  | 'unrepresentable:clef-octave'
+  'unrepresentable:clef-octave',
   // A TAB, jianpu or "none" clef, which MNX's three clef signs cannot state
   // and whose staff is not read as a treble staff either. The staff is
   // converted without a clef.
-  | 'unrepresentable:clef-sign'
+  'unrepresentable:clef-sign',
   // A key signature written as individual altered steps rather than a count
   // of fifths, which is all MNX can state. The signature is dropped; the
   // notes still sound right, because each carries its own alteration.
-  | 'unrepresentable:non-traditional-key'
+  'unrepresentable:non-traditional-key',
   // A part group drawn with a symbol MNX's staff-symbol enum lacks (line,
   // square). The group is kept with no symbol stated.
-  | 'unrepresentable:group-symbol'
+  'unrepresentable:group-symbol',
   // Two part groups overlap, which MusicXML allows and an MNX layout, being
   // a tree, cannot hold. The group stopping mid-overlap runs to the end of
   // the part list instead.
-  | 'unrepresentable:part-group-overlap'
+  'unrepresentable:part-group-overlap',
   // A part id MNX's id cannot state: an MNX id is 1 to 256 printable ASCII
   // characters, and MusicXML's part id allows more. Also a part id the
   // converter gives an event, note, kit component, measure or layout, which
   // MNX states the same way, so the two would be one id. The part is renamed
   // to a generated id everywhere the score refers to it.
-  | 'unrepresentable:part-id'
+  'unrepresentable:part-id',
   // An instrument id MNX's id shape cannot state. The instrument is renamed,
   // so a kit component can still say what plays it.
-  | 'unrepresentable:instrument-id'
+  'unrepresentable:instrument-id',
   // A measure states more than one multi-measure rest span, as staves stating
   // different counts do, and MNX states one for the score. The first is the
   // one converted.
-  | 'unrepresentable:multimeasure-rest'
+  'unrepresentable:multimeasure-rest',
   // The parts of the score state different multi-measure rest spans over the
   // same measure, and MNX states one for the score.
-  | 'unrepresentable:cross-part-multimeasure-rest'
+  'unrepresentable:cross-part-multimeasure-rest',
   // A multi-measure rest drawn with the stacked rest symbols rather than the
   // single bar, which MNX has no way to ask for. It is drawn the default way.
-  | 'unrepresentable:multiple-rest-symbols'
+  'unrepresentable:multiple-rest-symbols',
   // A measure states more than one measure repeat, as staves stating
   // different patterns do, and MNX states one for the part's measure. The
   // first is the one converted. Also a pattern longer than the four measures
   // MNX states, which is dropped.
-  | 'unrepresentable:measure-repeat'
+  'unrepresentable:measure-repeat',
   // A measure repeat sign drawn with this many slashes, which MNX has no way
   // to ask for. The repeat is converted and drawn the default way.
-  | 'unrepresentable:measure-repeat-slashes'
+  'unrepresentable:measure-repeat-slashes',
   // How much time a grace note takes from the note beside it. MNX states
   // which side the time comes from and no amount, so the side is converted
   // and the amount is not. Also a note naming both sides, where MNX states
   // one.
-  | 'unrepresentable:grace-time'
+  'unrepresentable:grace-time',
   // A SMuFL glyph named for a dynamic's wording. A dynamic group's glyphs
   // draw the mark itself, not the words, so the wording goes over as text
   // and the glyph choice is lost.
-  | 'unrepresentable:wording-glyph'
+  'unrepresentable:wording-glyph',
   // Tuplets that cross: a stop marker numbered for a tuplet other than the
   // last opened, which MNX's nested tuplets cannot state. The stop is matched
   // to the innermost open tuplet.
-  | 'unrepresentable:tuplet-crossing'
+  'unrepresentable:tuplet-crossing',
   // A tuplet bracket that starts in one measure and stops in a later one,
   // which MNX cannot state: a tuplet is an item inside one measure's
   // sequence. The bracket is drawn as far as the barline.
-  | 'unrepresentable:tuplet-span'
+  'unrepresentable:tuplet-span',
   // A tuplet whose content does not fill its ratio, and whose notes and the
   // time they take no pair of note values counts: a quarter sounding a sixth
   // of a whole note is one quarter in the time of two thirds of a quarter, and
@@ -192,121 +192,124 @@ export type WarningCode =
   // no other way to state one tuplet over the notes a bracket covers, so the
   // bracket is drawn as the source wrote it and takes the time its ratio
   // states rather than the time its notes sound for.
-  | 'unrepresentable:tuplet-ratio'
+  'unrepresentable:tuplet-ratio',
   // A tuplet bracket holding nothing that takes any of the measure's time,
   // which a bracket that opens and closes on grace notes holds. MNX states a
   // tuplet as a written length against the time it is played in, and neither
   // is there to state, so the bracket is dropped and what it held is written
   // as it stands.
-  | 'unrepresentable:tuplet-untimed'
+  'unrepresentable:tuplet-untimed',
   // A <print> detail beyond the system and page breaks, such as a page
   // number or staff spacing, which MNX's pages and systems cannot state.
-  | 'unrepresentable:print-detail'
+  'unrepresentable:print-detail',
   // A note altered by a fraction of a semitone, such as a quarter-tone
   // flat. MNX's alter is a whole number of semitones, so the note is
   // converted altered by the nearest whole one.
-  | 'unrepresentable:microtone'
+  'unrepresentable:microtone',
   // An attribute with no schema definition to hold it, such as the side an
   // augmentation dot is drawn on, named with the element it sits on.
-  | 'unrepresentable:attribute'
+  'unrepresentable:attribute',
 
   // --- The source disagreeing with itself, or omitting what reading it
   //     needs -------------------------------------------------------------
   // The parts and the part list disagree: a part's id has no entry in the
   // list, so its name and any other list detail are unavailable; or the list
   // names a part the score never writes, so no staff of it is drawn.
-  | 'unresolved:part-id'
+  'unresolved:part-id',
   // A note naming an instrument the part list does not set up. The kit
   // component it strikes is kept, without a name or a sound.
-  | 'unresolved:instrument-id'
+  'unresolved:instrument-id',
   // An attribute whose value is not one MusicXML defines for it, so what the
   // source meant by it cannot be read. The attribute is not converted.
-  | 'unresolved:attribute-value'
+  'unresolved:attribute-value',
   // A note's written value and its measured duration disagree, outside a
   // tuplet where they are meant to. The written value is the one converted.
-  | 'inconsistent:duration'
+  'inconsistent:duration',
   // A note of a grace chord names a different side to take its time from
   // than the chord it joins. MNX states one side for the group, and the
   // side the chord already states is the one converted.
-  | 'inconsistent:grace-time'
+  'inconsistent:grace-time',
   // A tuplet whose written content does not add up to its stated ratio. The
   // content is converted as written.
-  | 'inconsistent:tuplet'
+  'inconsistent:tuplet',
   // The two ends of a two-note tremolo count different beams. The start's
   // count is the one converted.
-  | 'inconsistent:tremolo'
+  'inconsistent:tremolo',
   // A <backup> reaches back further than the measure has run, so the two
   // numbers disagree about how long the measure is. The cursor is taken to
   // the start of the measure.
-  | 'inconsistent:backup'
+  'inconsistent:backup',
   // Two barlines close the same measure with different styles. The first is
   // the one converted.
-  | 'inconsistent:barline'
+  'inconsistent:barline',
   // A measure states two different key signatures, or two different time
   // signatures, at its start for the same staves. The later one is not
   // converted.
-  | 'inconsistent:key'
-  | 'inconsistent:time'
+  'inconsistent:key',
+  'inconsistent:time',
   // The parts of the score state different tempos at the same point in a
   // measure. MNX holds a list of them, so this is the parts disagreeing
   // rather than a limit of the format: both would be drawn over one beat.
   // The first stated is the one converted.
-  | 'inconsistent:tempo'
+  'inconsistent:tempo',
   // A voice sounds two notes at once, which one voice does not: closed-score
   // hymnals write two lines in one <voice>, laid over each other with
   // <backup>. Each line is kept as a sequence of its own, and only the first
   // carries the voice's name.
-  | 'inconsistent:voice'
+  'inconsistent:voice',
   // A chord is rolled upwards by one mark and downwards by another. The first
   // is the one converted.
-  | 'inconsistent:arpeggio'
+  'inconsistent:arpeggio',
   // A statement about a staff the part does not have: the part says how many
   // staves it is written on, and the statement names one beyond them. There
   // is no staff for it to be about, so it is not carried over.
-  | 'inconsistent:staff'
+  'inconsistent:staff',
   // A tie or slur has only one of its two ends, so there is nothing to join
   // it to. Real scores contain these, so it is reported rather than refused.
-  | 'unclosed:spanner'
+  'unclosed:spanner',
   // A first or second time bracket with only one of its two ends.
-  | 'unclosed:ending'
+  'unclosed:ending',
   // A part group with only one of its two edges: a stop nothing opened is
   // dropped, and a start nothing stops runs to the end of the part list.
   // Crossed edges are not this; they are 'unrepresentable:part-group-overlap'.
-  | 'unclosed:part-group'
+  'unclosed:part-group',
   // A part holds a different number of measures from the score, so it stops
   // before the score does or runs past the end of it.
-  | 'inconsistent:measure-count'
+  'inconsistent:measure-count',
   // A voice sounds past the end of the time signature in force. The measure
   // is as long as its longest voice, so the others rest through what is left
   // of it, which is not where the source draws the barline.
-  | 'inconsistent:measure-length'
+  'inconsistent:measure-length',
   // The parts of the score number the same measure differently. The first
   // stated is the one converted.
-  | 'inconsistent:measure-number'
+  'inconsistent:measure-number',
   // A duration or offset appears before any <divisions> said how long one
   // is. One division per quarter note is assumed; if that is wrong, the
   // written values disagree with the measured ones and say so.
-  | 'missing:divisions'
+  'missing:divisions',
   // A grace note stating no <type>. It carries no <duration> either, so
   // nothing says the value it is drawn with, and MNX states a value for
   // every event. The beams over it are converted as that value, and an
   // eighth where it carries none.
-  | 'missing:note-type'
+  'missing:note-type',
   // A <tuplet> bracket starts on a note with no <time-modification> beside
   // it, so the source states no ratio for it. The ratio is read from how long
   // the note lasts against how it is written.
-  | 'missing:time-modification'
+  'missing:time-modification',
   // A note omits its <voice> while others in the same measure name theirs.
   // The unnamed notes are kept as a separate line, which may not be the one
   // the source intended.
-  | 'missing:voice'
+  'missing:voice',
   // An unpitched note with no <display-step> and <display-octave> to place it
   // by, or no clef in force to read them against. MNX states where every kit
   // component sits, so it is written on the middle line.
-  | 'missing:display-step'
+  'missing:display-step',
   // A rest written over a rest that already fills the same voice's measure.
   // Both are silence, so the measure rest stands and the extra is dropped.
-  | 'redundant:rest'
+  'redundant:rest',
+] as const)
+
+export type WarningCode = (typeof WARNING_CODES)[number]
 
 /** A loss no release of this converter can close. See isFormatLimit. */
 export type FormatLimit = Extract<WarningCode, `unrepresentable:${string}`>
