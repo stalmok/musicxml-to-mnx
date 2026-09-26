@@ -1848,28 +1848,33 @@ function dedupeClefs(
   warnings: WarningCollector,
   context: WarningContext,
 ): Clef[] {
-  return clefs.filter((clef, index) => {
-    const replacing = clefs.find(
-      (later, at) =>
-        at > index &&
-        later.staff === clef.staff &&
-        compareFractions(later.position, clef.position) === 0,
-    )
-    // Exporters restate the clef a staff already has, which says the same
-    // thing twice and loses nothing by being said once. Only a clef the next
-    // one really replaces is a loss, and reporting the other called a
-    // lossless conversion a permanent limit of the format.
-    if (replacing && !sameClef(replacing, clef)) {
-      warnings.add(
-        'unrepresentable:clef',
-        'Two clefs are written at the same point on the same staff, and MNX draws ' +
-          'one there. The last is the one converted.',
-        context,
-        'clef',
+  const atSamePoint = (one: Clef, other: Clef) =>
+    one.staff === other.staff && compareFractions(one.position, other.position) === 0
+  return clefs
+    .filter((clef, index) => {
+      const replacing = clefs.find((later, at) => at > index && atSamePoint(later, clef))
+      // Exporters restate the clef a staff already has, which says the same
+      // thing twice and loses nothing by being said once. Only a clef the next
+      // one really replaces is a loss, and reporting the other called a
+      // lossless conversion a permanent limit of the format.
+      if (replacing && !sameClef(replacing, clef)) {
+        warnings.add(
+          'unrepresentable:clef',
+          'Two clefs are written at the same point on the same staff, and MNX draws ' +
+            'one there. The last is the one converted.',
+          context,
+          'clef',
+        )
+      }
+      return replacing === undefined
+    })
+    .map((kept) => {
+      // The same clef drawn once and hidden once at a point is drawn there.
+      const drawn = clefs.some(
+        (other) => atSamePoint(other, kept) && sameClef(other, kept) && !other.hide,
       )
-    }
-    return replacing === undefined
-  })
+      return kept.hide && drawn ? { ...kept, hide: false } : kept
+    })
 }
 
 /**
@@ -1905,14 +1910,9 @@ function dedupeStaffConfigs(
   })
 }
 
-/** The drawn sign: where it sits on the staff, how it is transposed, and whether it is drawn. */
+/** The sign, where it sits on the staff, and how it is transposed. */
 function sameClef(a: Clef, b: Clef): boolean {
-  return (
-    a.sign === b.sign &&
-    a.staffPosition === b.staffPosition &&
-    a.octave === b.octave &&
-    a.hide === b.hide
-  )
+  return a.sign === b.sign && a.staffPosition === b.staffPosition && a.octave === b.octave
 }
 
 /**

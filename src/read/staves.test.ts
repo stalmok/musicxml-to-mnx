@@ -196,17 +196,50 @@ describe('clefs', () => {
     expect(warnings).toEqual([])
   })
 
-  test('reports a drawn clef replaced by the same clef hidden', () => {
+  test.each([
+    ['drawn then hidden', '<clef>', '<clef print-object="no">'],
+    ['hidden then drawn', '<clef print-object="no">', '<clef>'],
+  ])('draws the same clef stated %s at one point', (_, first, second) => {
     const { part, warnings } = read(
       measures(
         '<attributes><divisions>4</divisions>' +
-          '<clef><sign>G</sign><line>2</line></clef>' +
+          `${first}<sign>G</sign><line>2</line></clef>` +
+          `${second}<sign>G</sign><line>2</line></clef></attributes>` +
+          note('C', '1'),
+      ),
+    )
+
+    expect(part?.measures[0]?.clefs).toEqual([
+      { sign: 'G', staffPosition: -2, staff: undefined, position: { num: 0, den: 1 }, hide: false },
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  test('hides a clef hidden each time it is stated at one point', () => {
+    const { part, warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions>' +
+          '<clef><sign>none</sign></clef>' +
           '<clef print-object="no"><sign>G</sign><line>2</line></clef></attributes>' +
           note('C', '1'),
       ),
     )
 
     expect(part?.measures[0]?.clefs[0]?.hide).toBe(true)
+    expect(warnings).toEqual([])
+  })
+
+  test('keeps a hidden clef hidden where a different clef is drawn before it at one point', () => {
+    const { part, warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions>' +
+          '<clef><sign>F</sign><line>4</line></clef>' +
+          '<clef print-object="no"><sign>G</sign><line>2</line></clef></attributes>' +
+          note('C', '1'),
+      ),
+    )
+
+    expect(part?.measures[0]?.clefs[0]).toMatchObject({ sign: 'G', hide: true })
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:clef'])
   })
 
