@@ -1218,9 +1218,11 @@ function readCaesura(
   if (text === '') return { marks: undefined, shape: undefined }
   if (text === 'single') return { marks: 1, shape: undefined }
   if (isCaesuraShape(text)) return { marks: undefined, shape: text }
+  // The one warning accounts for the caesura whole, its side included.
+  attribute(found, 'placement')
   warnings.add(
     'unsupported:element',
-    `A <caesura> of "${text}" is not converted yet.`,
+    `A <caesura> of "${text}" names no shape MusicXML defines, and is not converted.`,
     { ...context, line: found.line },
     'caesura',
   )
@@ -1881,11 +1883,6 @@ function beamMarkers(
   return markers
 }
 
-/**
- * The end of a two-note tremolo this note carries, when it does. The
- * element's text counts the beams joining the pair; three where it says
- * nothing, which is how the mark is usually drawn.
- */
 /**
  * The beam count a `<tremolo>` states in its text: three where it states none,
  * which is how the mark is usually drawn, or nothing where the text is not a

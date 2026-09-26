@@ -309,13 +309,15 @@ describe('caesura', () => {
     '<part id="P1"><measure number="1"><attributes><divisions>4</divisions></attributes>' +
     note(articulations(inner)) +
     '</measure></part></score-partwise>'
+  const markingsOf = (mnx: ReturnType<typeof convertValid>['mnx']) => {
+    const item = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
+    return item?.type === undefined ? item?.markings : undefined
+  }
 
   test('writes a caesura with no shape as an empty caesura', () => {
     const { mnx, warnings } = convertValid(score('<caesura/>'))
 
-    expect(mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]).toMatchObject({
-      markings: { caesura: {} },
-    })
+    expect(markingsOf(mnx)).toEqual({ caesura: {} })
     expect(warnings).toEqual([])
   })
 
@@ -330,22 +332,20 @@ describe('caesura', () => {
   test('writes a single caesura as one stroke', () => {
     const { mnx, warnings } = convertValid(score('<caesura>single</caesura>'))
 
-    expect(mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]).toMatchObject({
-      markings: { caesura: { marks: 1 } },
-    })
+    expect(markingsOf(mnx)).toEqual({ caesura: { marks: 1 } })
     expect(warnings).toEqual([])
   })
 
   test('writes the shape of a curved caesura', () => {
     const { mnx } = convertValid(score('<caesura>curved</caesura>'))
 
-    expect(mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]).toMatchObject({
-      markings: { caesura: { shape: 'curved' } },
-    })
+    expect(markingsOf(mnx)).toEqual({ caesura: { shape: 'curved' } })
   })
 
   test('reports a caesura shape it does not know and drops the caesura', () => {
-    const { events, warnings } = read(note(articulations('<caesura>wiggly</caesura>')))
+    const { events, warnings } = read(
+      note(articulations('<caesura placement="above">wiggly</caesura>')),
+    )
 
     expect(events[0]?.markings.caesura).toBeUndefined()
     expect(warnings.map((w) => [w.code, w.element])).toEqual([['unsupported:element', 'caesura']])
