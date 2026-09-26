@@ -52,7 +52,7 @@ import { drawnName, ElementReader, reportUnreadAttributes } from './element.js'
 import { GroupingBuilder, pruneGrouping } from './part-groups.js'
 import { addFractions, compareFractions, fraction, negate } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
-import { readNote, soundingVoices } from './notes.js'
+import { readNote } from './notes.js'
 import { noteValueBaseOf } from './noteValues.js'
 import { parseWholeNumber } from './numbers.js'
 import { readPrint } from './print.js'
@@ -1315,6 +1315,17 @@ function reportSoundTempos(
 function quarterNotesPerMinute(tempo: Tempo): number {
   const beat = lengthOf(tempo.value)
   return (tempo.bpm * beat.num * 4) / beat.den
+}
+
+/**
+ * The voices of a measure that sound a note, rather than only rest. A grace
+ * note counts: a rest beside one in a line laid over the measure rest is
+ * part of that line's music.
+ */
+function soundingVoices(measure: XmlElement): (string | undefined)[] {
+  return children(measure, 'note')
+    .filter((note) => !child(note, 'rest'))
+    .map((note) => child(note, 'voice')?.text.trim())
 }
 
 /**

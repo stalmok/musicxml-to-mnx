@@ -222,13 +222,6 @@ interface NoteStatement extends RestNote {
   staffPosition: number | undefined
 }
 
-/** The voices of a measure that sound a note, rather than only rest. */
-export function soundingVoices(measure: XmlElement): (string | undefined)[] {
-  return children(measure, 'note')
-    .filter((note) => !child(note, 'rest'))
-    .map((note) => child(note, 'voice')?.text.trim())
-}
-
 export function readNote(
   element: ElementReader,
   state: PartState,
