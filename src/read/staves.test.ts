@@ -297,9 +297,6 @@ describe('clefs', () => {
   })
 })
 
-// MNX states four clef signs: C, F, G and the percussion clef. A TAB or
-// jianpu clef has no home there, and the part it heads is otherwise ordinary
-// music, so the sign is reported and the rest of the part converted.
 describe('a clef hidden with print-object="no"', () => {
   const hidden = (sign: string, line: string) =>
     measures(
@@ -339,7 +336,10 @@ describe('a clef hidden with print-object="no"', () => {
   })
 })
 
-describe('a clef whose sign MNX does not state', () => {
+// MNX states four clef signs: C, F, G and the percussion clef. A TAB or
+// jianpu clef has no home there, and the part it heads is otherwise ordinary
+// music, so the sign is reported and the rest of the part converted.
+describe('a clef sign that places no pitch', () => {
   const withSign = (sign: string, line = '') =>
     measures(
       `<attributes><divisions>4</divisions><clef><sign>${sign}</sign>${line}</clef></attributes>` +
@@ -461,10 +461,10 @@ describe('a clef whose sign MNX does not state', () => {
     expect(() => read(withSign('treble'))).toThrow(/"treble"/)
   })
 
-  // Nothing is written for the clef, but the staff still has heights on it: a
-  // rest placed by <display-step> reads against the clef in force. A sign MNX
-  // cannot state is held as the plain treble clef, which is how percussion
-  // parts are written and read.
+  // The staff still has heights on it: a rest placed by <display-step> reads
+  // against the clef in force. Whatever sign is written, the heights are read
+  // against the plain treble clef, which is how percussion parts are written
+  // and read.
   const placed = (clef: string) =>
     read(
       measures(

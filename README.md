@@ -167,15 +167,15 @@ Check the exit code and command output as well.
 Support includes the following notation. Some forms require warnings or
 cause the converter to reject a document.
 
-| Area                 | Supported notation                                                                                            |
-| -------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Notes and rhythm     | Notes, rests, chords, dots, multiple voices, tuplets, nested tuplets, grace groups, and tremolos.             |
-| Staff notation       | Clefs and clef changes, staff line counts, key signatures, time signatures, accidentals, and stem directions. |
-| Connections          | Beams, secondary beams, hooks, ties, slurs, and octave shifts.                                                |
-| Expression           | Dynamics, hairpins, metronome marks, articulations, bow marks, breath marks, fermatas, and rolled chords.     |
-| Structure            | Barlines, repeats, endings, segno signs, Fine, dal segno jumps, measure repeats, and multi-measure rests.     |
-| Parts and layout     | Part names, staff groups, multiple staves, cross-staff events, system breaks, and page breaks.                |
-| Instruments and text | Transposing instruments, instrument names, percussion kits, and lyrics by verse.                              |
+| Area                 | Supported notation                                                                                                  |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Notes and rhythm     | Notes, rests, chords, dots, multiple voices, tuplets, nested tuplets, grace groups, and tremolos.                   |
+| Staff notation       | Clefs and clef changes, staff line counts, key signatures, time signatures, accidentals, and stem directions.       |
+| Connections          | Beams, secondary beams, hooks, ties, slurs, and octave shifts.                                                      |
+| Expression           | Dynamics, hairpins, metronome marks, articulations, bow marks, breath marks, caesuras, fermatas, and rolled chords. |
+| Structure            | Barlines, repeats, endings, segno signs, Fine, dal segno jumps, measure repeats, and multi-measure rests.           |
+| Parts and layout     | Part names, staff groups, multiple staves, cross-staff events, system breaks, and page breaks.                      |
+| Instruments and text | Transposing instruments, instrument names, percussion kits, and lyrics by verse.                                    |
 
 Durations use exact fractions. The reader follows MusicXML's `<backup>` and
 `<forward>` cursor movements. Gaps in a voice become MNX spaces.

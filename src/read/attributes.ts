@@ -33,7 +33,7 @@ import { elementLoss, reportHidden } from './unrepresentable.js'
 // the model's type, so a validated value reaches the writer without a cast
 // and an unvalidated one cannot. Each list and the model's own union are held
 // to each other in both directions.
-const isClefSign = recogniser<PitchedClefSign>({ C: true, F: true, G: true })
+const isPitchedClefSign = recogniser<PitchedClefSign>({ C: true, F: true, G: true })
 
 // The signs MusicXML states beyond the three that place a pitch. The staff each heads
 // has heights on it: a rest or an unpitched note placed by <display-step>
@@ -53,7 +53,7 @@ const isClefSign = recogniser<PitchedClefSign>({ C: true, F: true, G: true })
 // staff's lines are strings and its notes are pitched, and jianpu is numbers
 // rather than a staff. Neither is the treble staff this reads them as, so
 // nothing is written for one and the sign is reported.
-const UNSTATED_CLEF_SIGNS: ReadonlySet<string> = new Set(['percussion', 'TAB', 'jianpu', 'none'])
+const UNPITCHED_CLEF_SIGNS: ReadonlySet<string> = new Set(['percussion', 'TAB', 'jianpu', 'none'])
 const isTimeUnit = recogniser<TimeUnit>({
   1: true,
   2: true,
@@ -658,8 +658,8 @@ function readClef(
   const hide = attribute(element.element, 'print-object') === 'no'
 
   const sign = trimmedText(element.child('sign') ?? requireChild(element.element, 'sign', path))
-  const stated = isClefSign(sign)
-  if (!stated && !UNSTATED_CLEF_SIGNS.has(sign)) {
+  const pitched = isPitchedClefSign(sign)
+  if (!pitched && !UNPITCHED_CLEF_SIGNS.has(sign)) {
     throw new MusicXMLError(`The "${sign}" clef cannot be represented in MNX.`, {
       path,
       line: element.line,
@@ -668,7 +668,7 @@ function readClef(
 
   const lineElement = element.child('line')
 
-  if (!stated) {
+  if (!pitched) {
     // Held in force so that whatever the staff places by <display-step> is
     // still placed, at the height the treble clef gives it. MusicXML reads a
     // height on a percussion staff as if in treble clef with G4 on the second

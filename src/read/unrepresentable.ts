@@ -17,12 +17,12 @@ import type { XmlElement } from '../xml/parse.js'
 import { attribute } from '../xml/tree.js'
 
 /**
- * Report an element the source hides with print-object="no". MNX has no way to
- * mark an element invisible, so it is drawn regardless; the hiding is a loss
+ * Report an element the source hides with print-object="no", where MNX has no
+ * way to mark it invisible, so it is drawn regardless; the hiding is a loss
  * and is reported rather than dropped in silence. Grouped under one
  * "print-object" code so the loss report counts the hiding, whatever carries
- * it. Elements with a home for their invisibility, like a part name, honour it
- * instead and do not call this.
+ * it. Elements with a home for their invisibility, like a part name or a
+ * clef, honour it instead and do not call this.
  */
 export function reportHidden(
   element: XmlElement,
