@@ -68,6 +68,31 @@ describe('an unpitched note', () => {
     ])
   })
 
+  test('reads a display octave written with a plus sign', () => {
+    const { part } = read(struck('C', '+5', 'P1-I39'), DRUM_KIT)
+
+    expect([...(part?.kit.values() ?? [])]).toEqual([
+      { name: 'Acoustic Snare', staffPosition: 1, sound: 'P1-I39' },
+    ])
+  })
+
+  // MusicXML counts octaves from 0 to 9. C5 is one step above the middle line.
+  test.each([
+    ['0', -34],
+    ['9', 29],
+  ])('places a note on a display octave of %s', (octave, staffPosition) => {
+    const { part } = read(struck('C', octave, 'P1-I39'), DRUM_KIT)
+
+    expect([...(part?.kit.values() ?? [])]).toMatchObject([{ staffPosition }])
+  })
+
+  test.each(['-1', '10'])('places no note on a display octave of %s', (octave) => {
+    const { part, warnings } = read(struck('C', octave, 'P1-I39'), DRUM_KIT)
+
+    expect([...(part?.kit.values() ?? [])]).toMatchObject([{ staffPosition: 0 }])
+    expect(warnings.map((w) => w.code)).toContain('missing:display-step')
+  })
+
   test('is an event with no pitch, naming the component it strikes', () => {
     const { part } = read(struck('C', '5', 'P1-I39'), DRUM_KIT)
     const event = firstEvent(part)
@@ -95,6 +120,7 @@ describe('an unpitched note', () => {
     ['the lowest', '1', 0],
     ['the highest', '128', 127],
     ['one written across lines', '\n  39\n', 38],
+    ['one written with a plus sign', '+39', 38],
   ])('keeps %s unpitched value', (_name, stated, midiNumber) => {
     const instrument =
       '<score-instrument id="P1-I1"><instrument-name>Drum</instrument-name></score-instrument>' +

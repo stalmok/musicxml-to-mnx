@@ -94,11 +94,13 @@ function displayStaffPosition(
   const octaveElement = child(element, 'display-octave')
 
   const step = stepElement?.text.trim().toUpperCase() ?? ''
-  const octaveText = octaveElement?.text.trim() ?? ''
+  const octave = parseWholeNumber(octaveElement?.text.trim() ?? '')
   const clef = state.clefs.get(staff ?? 1)
-  if (!isStep(step) || !/^-?\d+$/.test(octaveText) || clef === undefined) return undefined
+  if (!isStep(step) || octave === undefined || octave < 0 || octave > 9 || clef === undefined) {
+    return undefined
+  }
 
-  return clef.staffPosition + (diatonicIndex(step, Number(octaveText)) - CLEF_REFERENCE[clef.sign])
+  return clef.staffPosition + (diatonicIndex(step, octave) - CLEF_REFERENCE[clef.sign])
 }
 
 /** A rest's height, with the loss reported where the source states one it cannot place. */

@@ -778,10 +778,10 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
           if (midiId === undefined || !named.has(midiId)) continue
           const stated = child(midi.element, 'midi-unpitched')?.text.trim() ?? ''
           // MusicXML numbers these from 1 and MIDI from 0.
-          const pitch = /^\d+$/.test(stated) ? Number(stated) - 1 : undefined
-          if (pitch === undefined || pitch < 0 || pitch > 127) continue
+          const pitch = parseWholeNumber(stated)
+          if (pitch === undefined || pitch < 1 || pitch > 128) continue
           midi.child('midi-unpitched')
-          midiPitches.set(midiId, pitch)
+          midiPitches.set(midiId, pitch - 1)
         }
 
         for (const [instrumentId, instrumentName] of named) {

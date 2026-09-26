@@ -22,6 +22,7 @@ import type { ElementReader } from './element.js'
 import { entriesOf } from './tables.js'
 import { reportHidden } from './unrepresentable.js'
 import { readFermataAt } from './notes.js'
+import { parseWholeNumber } from './numbers.js'
 
 // MusicXML's bar styles, in MNX's spelling. The two describe the same lines;
 // only the names differ, MusicXML naming the two strokes and MNX the result.
@@ -252,8 +253,8 @@ function readTimes(
   const written = attribute(repeat, 'times')
   if (written === undefined) return undefined
 
-  const times = Number(written)
-  if (!/^\d+$/.test(written) || !Number.isSafeInteger(times) || times < 2) {
+  const times = parseWholeNumber(written)
+  if (times === undefined || times < 2) {
     warnings.add(
       'unsupported:element',
       `A <repeat> is played "${written}" times, which is not a count of two or more, ` +

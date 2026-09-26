@@ -552,12 +552,9 @@ describe('what a barline can say that MNX cannot', () => {
   })
 
   // Both formats allow any whole number of repeats, so an odd count is worth
-  // reporting rather than refusing a whole score over.
-  // "lots" fails both halves of the guard, which is why it said nothing about
-  // either. "+2" and "1e2" are safe integers to Number() that the regex
-  // refuses, and twenty digits is a string the regex accepts that cannot be
-  // read back exactly, so each half now rejects a case the other accepts.
-  test.each(['1', '0', 'lots', '+2', '1e2', '99999999999999999999'])(
+  // reporting rather than refusing a whole score over. Twenty digits cannot be
+  // read back exactly.
+  test.each(['1', '0', 'lots', '1e2', '99999999999999999999'])(
     'reports a repeat played "%s" times, keeping the repeat',
     (times) => {
       const { globals, warnings } = read(
@@ -568,4 +565,12 @@ describe('what a barline can say that MNX cannot', () => {
       expect(warnings.map((w) => w.element)).toEqual(['repeat'])
     },
   )
+
+  // The count is an xs:nonNegativeInteger, which allows a leading plus sign.
+  test('reads a repeat count written with a plus sign', () => {
+    const { globals, warnings } = read(NOTE + right('<repeat direction="backward" times="+2"/>'))
+
+    expect(globals[0]?.repeatEnd).toEqual({ times: 2 })
+    expect(warnings).toEqual([])
+  })
 })
