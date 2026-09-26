@@ -44,8 +44,8 @@ export function parseXmlRoot(source: string): XmlElement {
   } catch (cause) {
     // Deliberately broad. Besides the parser's own errors, a document nested
     // tens of thousands of elements deep exhausts the stack inside the parser,
-    // a RangeError, which callers should still receive as a rejected
-    // document rather than as a crash escaping the library.
+    // which callers should still receive as a rejected document rather than
+    // as a crash escaping the library.
     throw parseFailure(cause)
   }
 }
@@ -81,17 +81,14 @@ function convertElement(element: SourceElement, starts: readonly number[]): XmlE
   }
 }
 
-// The parser's message already names the position; strip its parenthetical so
+// The parser's message names the position and then quotes the document
+// around it. Keep only the summary line and strip its parenthetical, so
 // MusicXMLError can render the location in this project's own format.
 function parseFailure(cause: unknown): MusicXMLError {
   /* v8 ignore next -- everything the parser throws is an Error; the fallback
      only keeps a stray non-Error throw from surfacing as "undefined". */
   const raw = cause instanceof Error ? cause.message : String(cause)
-  // A stack overflow is a RangeError in V8 and JavaScriptCore, and an
-  // InternalError in Firefox. The parser's own message names the position;
-  // strip its parenthetical, and keep only the summary line, so MusicXMLError
-  // renders the location itself.
-  const summary = /call stack|too much recursion/i.test(raw)
+  const summary = overflowed(cause)
     ? 'The document is nested too deeply to read.'
     : raw
         .split('\n', 1)
@@ -103,6 +100,16 @@ function parseFailure(cause: unknown): MusicXMLError {
     cause,
     ...(typeof line === 'number' ? { line } : {}),
   })
+}
+
+// A stack overflow is a RangeError in V8 and JavaScriptCore, and an
+// InternalError in Firefox. Each class has other causes too.
+function overflowed(cause: unknown): boolean {
+  return (
+    cause instanceof Error &&
+    (cause.name === 'RangeError' || cause.name === 'InternalError') &&
+    /call stack|too much recursion/i.test(cause.message)
+  )
 }
 
 // Offsets to line numbers: the parser reports character offsets, but a person

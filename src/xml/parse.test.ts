@@ -208,6 +208,11 @@ describe('parseXmlRoot resists hostile documents', () => {
     )
   })
 
+  // The parser's message quotes the document around the error.
+  test('keeps the parser message for a document whose text reads like an overflow', () => {
+    expect(() => parseXmlRoot('<words>call stack<a></b></words>')).toThrow('Missing end tag')
+  })
+
   test('still resolves the five entities XML itself defines', () => {
     const root = parseXmlRoot('<credit-words>Bach &amp; Sons &lt;1750&gt;</credit-words>')
 
