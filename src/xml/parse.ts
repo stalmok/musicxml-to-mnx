@@ -87,6 +87,10 @@ function parseFailure(cause: unknown): MusicXMLError {
   /* v8 ignore next -- everything the parser throws is an Error; the fallback
      only keeps a stray non-Error throw from surfacing as "undefined". */
   const raw = cause instanceof Error ? cause.message : String(cause)
+  // V8 and JavaScriptCore throw a RangeError, and Firefox an InternalError.
+  if (/call stack|too much recursion/i.test(raw)) {
+    return new MusicXMLError('The document is nested too deeply to read.', { path: [], cause })
+  }
   // The parser's own message names the position; strip its parenthetical, and
   // keep only the summary line, so MusicXMLError renders the location itself.
   const summary = raw

@@ -203,6 +203,9 @@ describe('parseXmlRoot resists hostile documents', () => {
     const bomb = '<a>'.repeat(depth) + '</a>'.repeat(depth)
 
     expect(() => parseXmlRoot(bomb)).toThrow(MusicXMLError)
+    expect(() => parseXmlRoot(bomb)).toThrow(
+      expect.objectContaining({ message: 'The document is nested too deeply to read.', path: [] }),
+    )
   })
 
   test('still resolves the five entities XML itself defines', () => {
