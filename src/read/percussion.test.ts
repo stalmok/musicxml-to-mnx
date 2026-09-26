@@ -90,7 +90,7 @@ describe('an unpitched note', () => {
     const { part, warnings } = read(struck('C', octave, 'P1-I39'), DRUM_KIT)
 
     expect([...(part?.kit.values() ?? [])]).toMatchObject([{ staffPosition: 0 }])
-    expect(warnings.map((w) => w.code)).toContain('missing:display-step')
+    expect(warnings.map((w) => w.code)).toEqual(['missing:display-step'])
   })
 
   test('is an event with no pitch, naming the component it strikes', () => {

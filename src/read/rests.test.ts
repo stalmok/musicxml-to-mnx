@@ -849,10 +849,11 @@ describe('a grace rest marked as the measure rest', () => {
     '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
     '<voice>1</voice><type>quarter</type></note>'
 
+  const lostMark = ['unsupported:attribute', 'measure']
   test.each([
-    ['a stem', '<stem>up</stem>'],
-    ['a written value', '<type>eighth</type>'],
-  ])('converts a grace rest with %s as a grace rest, reporting the mark', (_, body) => {
+    ['a stem', '<stem>up</stem>', [['missing:note-type', undefined], lostMark]],
+    ['a written value', '<type>eighth</type>', [lostMark]],
+  ])('converts a grace rest with %s as a grace rest, reporting the mark', (_, body, lost) => {
     const { mnx, warnings } = convertValid(
       inMeasure(`<note><grace/><rest measure="yes"/><voice>1</voice>${body}</note>${note}`),
     )
@@ -863,10 +864,20 @@ describe('a grace rest marked as the measure rest', () => {
       'event',
     ])
     expect(sequence?.fullMeasure).toBeUndefined()
-    expect(warnings.map((w) => [w.code, w.attribute])).toContainEqual([
-      'unsupported:attribute',
-      'measure',
-    ])
+    expect(warnings.map((w) => [w.code, w.attribute])).toEqual(lost)
+  })
+
+  // A grace note states no <duration>. One that does states nothing the
+  // measure takes from it.
+  test('leaves the voice without a measure rest where the grace rest states a duration', () => {
+    const { mnx } = convertValid(
+      inMeasure(
+        '<note><grace/><rest measure="yes"/><duration>16</duration><voice>1</voice>' +
+          '<type>whole</type></note>',
+      ),
+    )
+
+    expect(mnx.parts[0]?.measures[0]?.sequences[0]?.fullMeasure).toBeUndefined()
   })
 })
 
