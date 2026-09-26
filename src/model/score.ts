@@ -166,7 +166,7 @@ export interface KitNote extends TieTarget {
 /** A mark that states nothing beyond which side of the notes it is drawn on. */
 export interface Marking {
   /** Which side of the notes it is drawn on, where the source says. */
-  readonly orient: 'above' | 'below' | undefined
+  readonly placement: 'above' | 'below' | undefined
 }
 
 /** A strong accent, which states which way its wedge points. */
@@ -235,7 +235,7 @@ export interface Fermata {
   /** Which way it faces, where the source says. */
   readonly pointing: 'up' | 'down' | undefined
   /** Which side of the notes it is drawn on, where the source says. */
-  readonly orient: 'above' | 'below' | undefined
+  readonly placement: 'above' | 'below' | undefined
 }
 
 export interface Event {
@@ -317,7 +317,7 @@ export interface Tuplet {
   /** Whether the tuplet note value is drawn. Absent lets the renderer decide. */
   readonly showValue?: TupletDisplay
   /** Which side of the notes it is drawn on. Absent lets the renderer decide. */
-  readonly orient?: 'above' | 'below'
+  readonly placement?: 'above' | 'below'
 }
 
 /**
@@ -513,7 +513,7 @@ export interface Dynamic {
   /** Which staff it belongs under, where the part has more than one. */
   readonly staff: number | undefined
   /** Which side of the staff it is drawn on, where the source states it. */
-  readonly orient?: 'above' | 'below'
+  readonly placement?: 'above' | 'below'
 }
 
 /**
@@ -554,7 +554,7 @@ export interface Ottava {
   /** Which staff it applies to, where the part has more than one. */
   readonly staff: number | undefined
   /** Which side of the staff it is drawn on, where the source states it. */
-  readonly orient?: 'above' | 'below'
+  readonly placement?: 'above' | 'below'
 }
 
 export interface Measure {

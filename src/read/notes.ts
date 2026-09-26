@@ -1029,7 +1029,7 @@ function closeTuplets(
   const closed: string[] = []
   for (const marker of markers) {
     if (attribute(marker, 'type') !== 'stop') continue
-    // A stop's placement restates the start's, which the tuplet's orient
+    // A stop's placement restates the start's, which the tuplet's placement
     // already carries, so it is read only for the record.
     attribute(marker, 'placement')
     // A marker that states no number is tuplet 1, as the spec has it.
@@ -1232,15 +1232,15 @@ function readMarkings(
             continue
           }
 
-          const orient = placementOf(found)
+          const placement = placementOf(found)
           if (kind === 'strongAccent') {
             // Which way the wedge of a strong accent points.
-            markings.strongAccent = { orient, pointing: upOrDown(attribute(found, 'type')) }
+            markings.strongAccent = { placement, pointing: upOrDown(attribute(found, 'type')) }
           } else if (kind === 'breath') {
             // A breath mark names its glyph as its text: a comma, a tick.
-            markings.breath = { orient, symbol: trimmedText(found) || undefined }
+            markings.breath = { placement, symbol: trimmedText(found) || undefined }
           } else {
-            markings[kind] = { orient }
+            markings[kind] = { placement }
           }
         }
       }
@@ -1269,7 +1269,7 @@ function readMarkings(
           )
           continue
         }
-        markings.bowDirection = { orient: placementOf(found), direction }
+        markings.bowDirection = { placement: placementOf(found), direction }
       }
     }
 
@@ -1319,7 +1319,7 @@ function readMarkings(
           continue
         }
 
-        markings.tremolo = { orient: placementOf(found), marks }
+        markings.tremolo = { placement: placementOf(found), marks }
       }
     }
   }
@@ -1408,7 +1408,7 @@ export function readFermataAt(
   return {
     symbol,
     pointing: type === 'upright' ? 'up' : type === 'inverted' ? 'down' : undefined,
-    orient: placementOf(first),
+    placement: placementOf(first),
   }
 }
 
@@ -1950,9 +1950,9 @@ function tupletDisplayOf(start: XmlElement, hidden: boolean): TupletDisplaySetti
   const bracket = attribute(start, 'bracket')
   if (bracket === 'yes' || bracket === 'no') settings.bracket = bracket
 
-  // MusicXML's placement is MNX's orient, both above or below.
+  // MusicXML and MNX both name the side placement, above or below.
   const placement = attribute(start, 'placement')
-  if (placement === 'above' || placement === 'below') settings.orient = placement
+  if (placement === 'above' || placement === 'below') settings.placement = placement
 
   const showNumber = attribute(start, 'show-number')
   const number = showNumber === undefined ? undefined : TUPLET_DISPLAY.get(showNumber)

@@ -588,7 +588,7 @@ function writeMeasure(
             end: writeSpanEnd(ottava.end, names),
             value: ottava.value,
             ...(ottava.staff !== undefined ? { staff: ottava.staff } : {}),
-            ...(ottava.orient !== undefined ? { orient: ottava.orient } : {}),
+            ...(ottava.placement !== undefined ? { placement: ottava.placement } : {}),
           })),
         }
       : {}),
@@ -654,7 +654,7 @@ function writeDynamic(dynamic: Dynamic, names: MeasureNames): MNXDynamic {
     ...(dynamic.wedge ? { wedgeType: dynamic.wedge } : {}),
     ...(dynamic.end ? { end: writeSpanEnd(dynamic.end, names) } : {}),
     ...(dynamic.staff !== undefined ? { staff: dynamic.staff } : {}),
-    ...(dynamic.orient ? { orient: dynamic.orient } : {}),
+    ...(dynamic.placement ? { placement: dynamic.placement } : {}),
   }
 }
 
@@ -741,7 +741,7 @@ function writeItem(item: SequenceItem, referenced: ReadonlySet<string>): MNXSequ
         ...(item.bracket !== undefined ? { bracket: item.bracket } : {}),
         ...(item.showNumber !== undefined ? { showNumber: item.showNumber } : {}),
         ...(item.showValue !== undefined ? { showValue: item.showValue } : {}),
-        ...(item.orient !== undefined ? { orient: item.orient } : {}),
+        ...(item.placement !== undefined ? { placement: item.placement } : {}),
       }
 
     case 'grace':
@@ -816,7 +816,7 @@ function hasMarking(markings: Markings): boolean {
 
 /** Which side a mark sits on, as MNX states it: left off where unstated. */
 function writeMarking(marking: Marking): MNXMarking {
-  return marking.orient ? { orient: marking.orient } : {}
+  return marking.placement ? { placement: marking.placement } : {}
 }
 
 /**
@@ -868,7 +868,7 @@ function writeFermata(fermata: Fermata): MNXFermata {
   return {
     ...(fermata.symbol ? { symbol: fermata.symbol } : {}),
     ...(fermata.pointing ? { pointing: fermata.pointing } : {}),
-    ...(fermata.orient ? { orient: fermata.orient } : {}),
+    ...(fermata.placement ? { placement: fermata.placement } : {}),
   }
 }
 

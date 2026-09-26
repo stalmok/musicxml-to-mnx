@@ -180,12 +180,12 @@ describe('tuplet display', () => {
     expect(tuplet?.kind === 'tuplet' && tuplet.bracket).toBeUndefined()
     expect(tuplet?.kind === 'tuplet' && tuplet.showNumber).toBeUndefined()
     expect(tuplet?.kind === 'tuplet' && tuplet.showValue).toBeUndefined()
-    expect(tuplet?.kind === 'tuplet' && tuplet.orient).toBeUndefined()
+    expect(tuplet?.kind === 'tuplet' && tuplet.placement).toBeUndefined()
   })
 
-  // MusicXML says which side of the notes the bracket is drawn on with
-  // placement; MNX states it as the tuplet's orient.
-  test('carries the placement onto the tuplet as its orient', () => {
+  // MusicXML and MNX both state the side of the notes the bracket is drawn on
+  // as placement.
+  test('carries the placement onto the tuplet', () => {
     const placed =
       '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><type>eighth</type>' +
       '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>' +
@@ -195,13 +195,13 @@ describe('tuplet display', () => {
     const { content, warnings } = read(measure(placed))
     const tuplet = content?.[0]
 
-    expect(tuplet?.kind === 'tuplet' && tuplet.orient).toBe('below')
+    expect(tuplet?.kind === 'tuplet' && tuplet.placement).toBe('below')
     expect(warnings).toEqual([])
   })
 
   // A stop marker's placement restates the start's, which the tuplet's
-  // orient already carries, so nothing is lost and nothing is reported.
-  test('writes the orient onto schema-valid MNX, reading the placement the stop restates', () => {
+  // placement already carries, so nothing is lost and nothing is reported.
+  test('writes the placement onto schema-valid MNX, reading the placement the stop restates', () => {
     const placed =
       '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><type>eighth</type>' +
       '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>' +
@@ -214,7 +214,7 @@ describe('tuplet display', () => {
     const item = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
     if (!item || !('type' in item) || item.type !== 'tuplet') throw new Error('expected a tuplet')
 
-    expect(item.orient).toBe('above')
+    expect(item.placement).toBe('above')
     expect(warnings).toEqual([])
   })
 
@@ -269,10 +269,10 @@ describe('tuplet display', () => {
 
     expect(outer.bracket).toBe('yes')
     expect(outer.showNumber).toBe('both')
-    expect(outer.orient).toBe('above')
+    expect(outer.placement).toBe('above')
     expect(inner.bracket).toBe('no')
     expect(inner.showNumber).toBe('noNumber')
-    expect(inner.orient).toBe('below')
+    expect(inner.placement).toBe('below')
   })
 })
 
@@ -1212,7 +1212,7 @@ describe('tuplets', () => {
 
     expect(content?.[0]?.kind === 'event' && content[0].value).toEqual({ base: 'half', dots: 0 })
     expect(content?.[0]?.kind === 'event' && content[0].markings).toEqual({
-      tremolo: { orient: undefined, marks: 3 },
+      tremolo: { placement: undefined, marks: 3 },
     })
     expect(warnings).toEqual([])
   })
@@ -2789,7 +2789,7 @@ describe('two-note tremolos', () => {
     const { content, warnings } = read(measure(bare))
 
     expect(content?.[0]?.kind === 'event' && content[0].markings.tremolo).toEqual({
-      orient: undefined,
+      placement: undefined,
       marks: 3,
     })
     expect(warnings).toEqual([])

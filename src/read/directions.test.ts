@@ -80,7 +80,7 @@ describe('dynamics', () => {
       ),
     )
 
-    expect(measure?.dynamics[0]?.orient).toBe('above')
+    expect(measure?.dynamics[0]?.placement).toBe('above')
   })
 
   test('writes the dynamic side onto schema-valid MNX', () => {
@@ -92,7 +92,7 @@ describe('dynamics', () => {
       ),
     )
 
-    expect(JSON.stringify(mnx)).toContain('"orient":"below"')
+    expect(JSON.stringify(mnx)).toContain('"placement":"below"')
   })
 
   test.each([
@@ -597,7 +597,7 @@ describe('dynamics', () => {
     expect(mnx.parts[0]?.measures[0]?.dynamics?.[1]).toMatchObject({
       type: 'immediate',
       prefix: 'cresc.',
-      orient: 'above',
+      placement: 'above',
     })
     expect(warnings).toEqual([])
   })
@@ -803,7 +803,7 @@ describe('dynamics', () => {
       ),
     )
 
-    expect(measure?.dynamics[0]?.orient).toBe('above')
+    expect(measure?.dynamics[0]?.placement).toBe('above')
     expect(measure?.dynamics[0]?.accent?.glyphs).toEqual(['dynamicSforzato'])
   })
 
@@ -2198,7 +2198,7 @@ describe('hairpins', () => {
   test('reads the side a hairpin is drawn on', () => {
     const { dynamics } = readMeasures(placedWedge + NOTE + wedge('stop'))
 
-    expect(dynamics[0]?.[0]?.orient).toBe('below')
+    expect(dynamics[0]?.[0]?.placement).toBe('below')
   })
 
   test('writes the side a hairpin is drawn on onto schema-valid MNX', () => {
@@ -2211,7 +2211,7 @@ describe('hairpins', () => {
         '</measure></part></score-partwise>',
     )
 
-    expect(JSON.stringify(mnx)).toContain('"orient":"below"')
+    expect(JSON.stringify(mnx)).toContain('"placement":"below"')
   })
 
   // "continue" marks a point partway along one, which MNX has no need of,

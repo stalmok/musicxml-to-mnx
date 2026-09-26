@@ -1016,16 +1016,16 @@ describe('fermatas', () => {
   }
 
   test('writes everything the source stated', () => {
-    expect(fermataOf({ symbol: 'angled', pointing: 'down', orient: 'below' })).toEqual({
+    expect(fermataOf({ symbol: 'angled', pointing: 'down', placement: 'below' })).toEqual({
       symbol: 'angled',
       pointing: 'down',
-      orient: 'below',
+      placement: 'below',
     })
   })
 
   // An empty object is how MNX states a fermata with nothing said about it.
   test('writes an empty object where the source said only that it is there', () => {
-    expect(fermataOf({ symbol: undefined, pointing: undefined, orient: undefined })).toEqual({})
+    expect(fermataOf({ symbol: undefined, pointing: undefined, placement: undefined })).toEqual({})
   })
 
   test('leaves the key out altogether where there is no fermata', () => {
@@ -1035,7 +1035,7 @@ describe('fermatas', () => {
 
 // MNX keys the marks on an event by name, and allows a mark no property
 // beyond the ones it names for that mark, so the two that carry more than an
-// orientation are written out rather than folded in with the rest.
+// placement are written out rather than folded in with the rest.
 describe('event markings', () => {
   function eventWith(markings: Event['markings']): Event {
     return {
@@ -1070,33 +1070,35 @@ describe('event markings', () => {
   }
 
   test('writes a strong accent with both where it points and which side', () => {
-    expect(markingsOf({ strongAccent: { orient: 'above', pointing: 'up' } })).toEqual({
-      strongAccent: { orient: 'above', pointing: 'up' },
+    expect(markingsOf({ strongAccent: { placement: 'above', pointing: 'up' } })).toEqual({
+      strongAccent: { placement: 'above', pointing: 'up' },
     })
   })
 
   test('writes a breath mark with both its glyph and which side', () => {
-    expect(markingsOf({ breath: { orient: 'below', symbol: 'comma' } })).toEqual({
-      breath: { orient: 'below', symbol: 'comma' },
+    expect(markingsOf({ breath: { placement: 'below', symbol: 'comma' } })).toEqual({
+      breath: { placement: 'below', symbol: 'comma' },
     })
   })
 
   test('leaves out a pointing a strong accent does not state', () => {
-    expect(markingsOf({ strongAccent: { orient: undefined, pointing: undefined } })).toEqual({
+    expect(markingsOf({ strongAccent: { placement: undefined, pointing: undefined } })).toEqual({
       strongAccent: {},
     })
   })
 
   test('leaves out a glyph a breath mark does not name', () => {
-    expect(markingsOf({ breath: { orient: undefined, symbol: undefined } })).toEqual({ breath: {} })
+    expect(markingsOf({ breath: { placement: undefined, symbol: undefined } })).toEqual({
+      breath: {},
+    })
   })
 
   test('writes a plain mark as an empty object, which is how MNX states it', () => {
-    expect(markingsOf({ staccato: { orient: undefined } })).toEqual({ staccato: {} })
+    expect(markingsOf({ staccato: { placement: undefined } })).toEqual({ staccato: {} })
   })
 
   test('writes every plain mark under the name MNX gives it', () => {
-    const side = { orient: 'above' } as const
+    const side = { placement: 'above' } as const
     expect(
       markingsOf({
         accent: side,
@@ -1121,14 +1123,14 @@ describe('event markings', () => {
   })
 
   test('writes a bow mark with the way the bow travels', () => {
-    expect(markingsOf({ bowDirection: { orient: 'above', direction: 'down' } })).toEqual({
-      bowDirection: { orient: 'above', direction: 'down' },
+    expect(markingsOf({ bowDirection: { placement: 'above', direction: 'down' } })).toEqual({
+      bowDirection: { placement: 'above', direction: 'down' },
     })
   })
 
   test('writes a tremolo with how many beams it is drawn with', () => {
-    expect(markingsOf({ tremolo: { orient: 'above', marks: 2 } })).toEqual({
-      tremolo: { orient: 'above', marks: 2 },
+    expect(markingsOf({ tremolo: { placement: 'above', marks: 2 } })).toEqual({
+      tremolo: { placement: 'above', marks: 2 },
     })
   })
 
@@ -1147,18 +1149,18 @@ describe('event markings', () => {
   // compiler refuses this object until it holds every kind the model does.
   test('writes every kind the model can hold', () => {
     const everyKind = {
-      accent: { orient: undefined },
-      staccato: { orient: undefined },
-      staccatissimo: { orient: undefined },
-      tenuto: { orient: undefined },
-      spiccato: { orient: undefined },
-      stress: { orient: undefined },
-      unstress: { orient: undefined },
-      softAccent: { orient: undefined },
-      strongAccent: { orient: undefined, pointing: undefined },
-      bowDirection: { orient: undefined, direction: 'up' as const },
-      breath: { orient: undefined, symbol: undefined },
-      tremolo: { orient: undefined, marks: 3 },
+      accent: { placement: undefined },
+      staccato: { placement: undefined },
+      staccatissimo: { placement: undefined },
+      tenuto: { placement: undefined },
+      spiccato: { placement: undefined },
+      stress: { placement: undefined },
+      unstress: { placement: undefined },
+      softAccent: { placement: undefined },
+      strongAccent: { placement: undefined, pointing: undefined },
+      bowDirection: { placement: undefined, direction: 'up' as const },
+      breath: { placement: undefined, symbol: undefined },
+      tremolo: { placement: undefined, marks: 3 },
     } satisfies Required<Markings>
 
     expect(Object.keys(markingsOf(everyKind) ?? {}).sort()).toEqual(Object.keys(everyKind).sort())

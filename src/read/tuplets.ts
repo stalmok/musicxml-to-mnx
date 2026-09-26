@@ -47,7 +47,7 @@ export interface TupletDisplaySettings {
   bracket?: 'yes' | 'no'
   showNumber?: TupletDisplay
   showValue?: TupletDisplay
-  orient?: 'above' | 'below'
+  placement?: 'above' | 'below'
 }
 
 /** One tuplet start read from a note: how it is drawn, the ratio its start

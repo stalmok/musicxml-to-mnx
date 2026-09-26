@@ -33,7 +33,8 @@ export type MNXNoteValueBase =
 
 export type MNXStep = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G'
 
-export type MNXClefSign = 'C' | 'F' | 'G'
+/** P is the percussion clef. */
+export type MNXClefSign = 'C' | 'F' | 'G' | 'P'
 
 /** The denominator of a time signature: a power of two up to 128. */
 export type MNXTimeSignatureUnit = 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128
@@ -45,7 +46,7 @@ export interface MNXPitch {
 }
 
 /** Which way a curve bends away from the notes it joins. */
-export type MNXCurveSide = 'up' | 'down'
+export type MNXCurveSide = 'up' | 'down' | 'auto'
 
 /** How a syllable joins the word it is part of. */
 export type MNXLyricLineType = 'start' | 'middle' | 'end' | 'whole'
@@ -113,17 +114,17 @@ export interface MNXNoteValue {
 }
 
 /** Which side of the notes a mark is drawn on. */
-export type MNXOrientation = 'above' | 'below' | 'auto'
+export type MNXPlacement = 'above' | 'below' | 'auto'
 
 /**
  * The same, for a mark that can also sit between two staves of one part, as a
  * piano dynamic written between the hands does.
  */
-export type MNXMultiStaffOrientation = MNXOrientation | 'between'
+export type MNXMultiStaffPlacement = MNXPlacement | 'between'
 
 /** A mark written on an event, such as a staccato dot or an accent. */
 export interface MNXMarking {
-  orient?: MNXOrientation
+  placement?: MNXPlacement
 }
 
 export interface MNXStrongAccent extends MNXMarking {
@@ -160,7 +161,7 @@ export interface MNXEventMarkings {
 export interface MNXSingleNoteTremolo {
   /** How many beams the tremolo is drawn with. */
   marks: number
-  orient?: MNXOrientation
+  placement?: MNXPlacement
 }
 
 export type MNXFermataSymbol =
@@ -187,7 +188,7 @@ export interface MNXFermata {
   symbol?: MNXFermataSymbol
   duration?: MNXFermataDuration
   pointing?: 'up' | 'down' | 'auto'
-  orient?: MNXOrientation
+  placement?: MNXPlacement
 }
 
 export interface MNXEvent {
@@ -273,7 +274,7 @@ export interface MNXTuplet {
   /** Whether the tuplet note value is drawn. */
   showValue?: MNXTupletDisplaySetting
   /** Which side of the notes it is drawn on. */
-  orient?: MNXOrientation
+  placement?: MNXPlacement
 }
 
 /** Where a grace group takes its time from. */
@@ -399,7 +400,7 @@ export interface MNXDynamic {
   /** Which staff of the part it sits under, where it has more than one. */
   staff?: number
   /** Which side of the staff it is drawn on. */
-  orient?: MNXMultiStaffOrientation
+  placement?: MNXMultiStaffPlacement
 }
 
 /** The ids of the two notes a mark runs between. */
@@ -432,7 +433,7 @@ export interface MNXOttava {
   end: MNXMeasureRhythmicPosition
   value: MNXOttavaAmount
   staff?: number
-  orient?: MNXOrientation
+  placement?: MNXPlacement
 }
 
 /** A simile sign here: repeat the previous `number` measures. */

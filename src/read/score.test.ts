@@ -3093,7 +3093,7 @@ describe('two parts disagreeing on one field of a mark', () => {
       ),
     )
 
-    expect(result.globalMeasures[0]?.fermata?.orient).toBe('above')
+    expect(result.globalMeasures[0]?.fermata?.placement).toBe('above')
     expect(warnings.map((w) => w.element)).toEqual(['fermata'])
   })
 

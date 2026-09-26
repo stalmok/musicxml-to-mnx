@@ -91,7 +91,7 @@ describe('which way an octave shift goes', () => {
         shift('stop'),
     )
 
-    expect(ottavas[0]?.[0]?.orient).toBe('above')
+    expect(ottavas[0]?.[0]?.placement).toBe('above')
   })
 
   test('writes the side the shift is drawn on onto schema-valid MNX', () => {
@@ -105,7 +105,7 @@ describe('which way an octave shift goes', () => {
         '</measure></part></score-partwise>',
     )
 
-    expect(JSON.stringify(mnx)).toContain('"orient":"above"')
+    expect(JSON.stringify(mnx)).toContain('"placement":"above"')
   })
 })
 

@@ -596,7 +596,7 @@ function sameEnding(a: Ending, b: Ending): boolean {
 }
 
 function sameFermata(a: Fermata, b: Fermata): boolean {
-  return a.symbol === b.symbol && a.pointing === b.pointing && a.orient === b.orient
+  return a.symbol === b.symbol && a.pointing === b.pointing && a.placement === b.placement
 }
 
 function sameFine(a: Fine, b: Fine): boolean {

@@ -135,7 +135,7 @@ describe('what a grace group holds', () => {
 /**
  * Every exported MNX* interface, with the properties it declares, whether each
  * is optional, and the members of any string-literal union. Inherited
- * properties come with it, so MNXStrongAccent carries MNXMarking's orient.
+ * properties come with it, so MNXStrongAccent carries MNXMarking's placement.
  *
  * Read through the compiler rather than by parsing text, because the types use
  * `extends` and named aliases, and both have to be resolved to compare
@@ -200,7 +200,7 @@ const DEFINITION_OF: Readonly<Record<string, string | undefined>> = {
   MNXPartTransposition: 'part-transposition',
   // A shared base for the marking types rather than a definition of its own.
   // The schema spells each mark out (accent, staccato, ...), and every one of
-  // them is a bare orient, which MNXEventMarkings' properties already reach.
+  // them is a bare placement, which MNXEventMarkings' properties already reach.
   MNXMarking: undefined,
 }
 
@@ -223,10 +223,6 @@ const NOT_MODELLED: Readonly<Record<string, { properties: readonly string[]; why
     properties: ['perform', 'written'],
     why: 'Playback, and a written pitch differing from the sounding one.',
   },
-  MNXEvent: {
-    properties: ['orient'],
-    why: 'The side an event is drawn on.',
-  },
   MNXSlur: {
     properties: ['endNote', 'startNote'],
     why: 'A slur pinned to particular notes of the two chords it joins.',
@@ -243,8 +239,18 @@ const NOT_MODELLED: Readonly<Record<string, { properties: readonly string[]; why
     properties: ['individualDuration'],
     why: 'The value each note of the pair is played at, as against the value they are written with.',
   },
-  MNXSequence: { properties: ['orient'], why: 'The side a whole voice is drawn on.' },
-  MNXClef: { properties: ['color'], why: 'The colour a clef is drawn in.' },
+  MNXSequence: {
+    properties: ['directionHint'],
+    why: 'Whether a voice is the upper or the lower one. MusicXML states no such thing.',
+  },
+  MNXClef: {
+    properties: ['color', 'hide'],
+    why: 'The colour a clef is drawn in, and a clef that is not drawn.',
+  },
+  MNXEventMarkings: {
+    properties: ['caesura'],
+    why: 'A caesura, which the reader does not read yet.',
+  },
   MNXDynamic: {
     properties: ['relativeValue', 'staffEnd', 'visuallyContinues', 'voice'],
     why: 'Relative dynamics, a hairpin ending on another staff, a continued hairpin, and the voice a mark belongs to.',
@@ -589,15 +595,15 @@ const MNX_SPELLING: Readonly<Record<string, string>> = {
   'TimeSignature.display': 'MNXTime.display',
   'Lyric.type': 'MNXLyricLineType',
   GraceType: 'MNXGraceType',
-  'Marking.orient': 'MNXOrientation',
+  'Marking.placement': 'MNXPlacement',
   'StrongAccentMarking.pointing': 'MNXStrongAccent.pointing',
   'BowDirectionMarking.direction': 'MNXBowDirection.direction',
-  'Fermata.orient': 'MNXOrientation',
+  'Fermata.placement': 'MNXPlacement',
   'Fermata.pointing': 'MNXFermata.pointing',
-  'Tuplet.orient': 'MNXOrientation',
+  'Tuplet.placement': 'MNXPlacement',
   'Tuplet.bracket': 'MNXTuplet.bracket',
-  'Dynamic.orient': 'MNXMultiStaffOrientation',
-  'Ottava.orient': 'MNXOrientation',
+  'Dynamic.placement': 'MNXMultiStaffPlacement',
+  'Ottava.placement': 'MNXPlacement',
   'Arpeggio.direction': 'MNXArpeggio.direction',
   'Beam.direction': 'MNXBeamHookDirection',
 }
@@ -625,20 +631,25 @@ const NARROWER: Readonly<Record<string, { missing: readonly string[]; why: strin
     missing: ['2048th', '4096th', 'duplexMaxima'],
     why: 'No MusicXML <type> spells any of the three, so the reader cannot produce one.',
   },
+  ClefSign: {
+    missing: ['P'],
+    why: 'The reader writes a percussion clef as a G sign under the percussion glyph.',
+  },
+  CurveSide: { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
   'Lyric.type': {
     missing: ['whole'],
     why: 'A syllable that is a whole word states no type at all.',
   },
-  'Marking.orient': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
-  'Fermata.orient': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
-  'Tuplet.orient': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
-  'Ottava.orient': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
+  'Marking.placement': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
+  'Fermata.placement': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
+  'Tuplet.placement': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
+  'Ottava.placement': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
   'StrongAccentMarking.pointing': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
   'Fermata.pointing': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
   'Tuplet.bracket': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
   'Arpeggio.direction': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
   'Beam.direction': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
-  'Dynamic.orient': {
+  'Dynamic.placement': {
     missing: ['auto', 'between'],
     why: `${UNSTATED_IS_UNDEFINED} A dynamic written between two staves of one part is not read.`,
   },

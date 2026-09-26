@@ -1105,7 +1105,7 @@ export class MeasureBuilder {
       if (display.bracket !== undefined) tuplet.bracket = display.bracket
       if (display.showNumber !== undefined) tuplet.showNumber = display.showNumber
       if (display.showValue !== undefined) tuplet.showValue = display.showValue
-      if (display.orient !== undefined) tuplet.orient = display.orient
+      if (display.placement !== undefined) tuplet.placement = display.placement
 
       const within = innermost(builder)
       within.push(tuplet)

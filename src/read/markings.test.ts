@@ -59,19 +59,19 @@ describe('articulations', () => {
   test('keeps which side of the notes a mark is drawn on', () => {
     const { events } = read(note(articulations('<accent placement="above"/>')))
 
-    expect(events[0]?.markings.accent?.orient).toBe('above')
+    expect(events[0]?.markings.accent?.placement).toBe('above')
   })
 
   test('leaves the side unset where the source does not say', () => {
     const { events } = read(note(articulations('<accent/>')))
 
-    expect(events[0]?.markings.accent?.orient).toBeUndefined()
+    expect(events[0]?.markings.accent?.placement).toBeUndefined()
   })
 
   test('keeps which way a strong accent points', () => {
     const { events } = read(note(articulations('<strong-accent type="down"/>')))
 
-    expect(events[0]?.markings.strongAccent).toEqual({ orient: undefined, pointing: 'down' })
+    expect(events[0]?.markings.strongAccent).toEqual({ placement: undefined, pointing: 'down' })
   })
 
   // MusicXML's strong-accent type says which way the wedge points, and allows
@@ -79,7 +79,7 @@ describe('articulations', () => {
   test('states no pointing for a strong accent that does not say which way', () => {
     const { events } = read(note(articulations('<strong-accent/>')))
 
-    expect(events[0]?.markings.strongAccent).toEqual({ orient: undefined, pointing: undefined })
+    expect(events[0]?.markings.strongAccent).toEqual({ placement: undefined, pointing: undefined })
   })
 
   // MusicXML files a breath mark among the articulations, and names its glyph
@@ -87,7 +87,7 @@ describe('articulations', () => {
   test('reads a breath mark and the glyph it is drawn with', () => {
     const { events } = read(note(articulations('<breath-mark>comma</breath-mark>')))
 
-    expect(events[0]?.markings.breath).toEqual({ orient: undefined, symbol: 'comma' })
+    expect(events[0]?.markings.breath).toEqual({ placement: undefined, symbol: 'comma' })
   })
 
   test('states no glyph for a breath mark that names none', () => {
@@ -154,14 +154,14 @@ describe('bow direction', () => {
   ])('reads <%s> as travelling %s', (written, direction) => {
     const { events, warnings } = read(note(technical(`<${written}/>`)))
 
-    expect(events[0]?.markings.bowDirection).toEqual({ orient: undefined, direction })
+    expect(events[0]?.markings.bowDirection).toEqual({ placement: undefined, direction })
     expect(warnings).toEqual([])
   })
 
   test('keeps which side of the notes the mark is drawn on', () => {
     const { events } = read(note(technical('<up-bow placement="below"/>')))
 
-    expect(events[0]?.markings.bowDirection?.orient).toBe('below')
+    expect(events[0]?.markings.bowDirection?.placement).toBe('below')
   })
 
   // MNX states one direction, so a note bowed both ways has said two things.
@@ -199,7 +199,7 @@ describe('fermatas', () => {
     expect(events[0]?.fermata).toEqual({
       symbol: undefined,
       pointing: undefined,
-      orient: undefined,
+      placement: undefined,
     })
     expect(warnings).toEqual([])
   })
@@ -207,7 +207,7 @@ describe('fermatas', () => {
   test('reads which way it faces and which side it is drawn on', () => {
     const { events } = read(note('<fermata type="inverted" placement="below"/>'))
 
-    expect(events[0]?.fermata).toMatchObject({ pointing: 'down', orient: 'below' })
+    expect(events[0]?.fermata).toMatchObject({ pointing: 'down', placement: 'below' })
   })
 
   test('reads an upright one as pointing up', () => {
@@ -266,7 +266,7 @@ describe('two marks of one kind', () => {
       note(articulations('<accent placement="above"/><accent placement="below"/>')),
     )
 
-    expect(events[0]?.markings.accent?.orient).toBe('above')
+    expect(events[0]?.markings.accent?.placement).toBe('above')
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:marking'])
   })
 

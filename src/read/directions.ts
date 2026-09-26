@@ -211,7 +211,7 @@ export function readDirection(
 
   // Which side of the staff the direction is drawn on. MNX states it on the
   // dynamic and the octave shift; without it the renderer has to guess.
-  const orient = orientOf(element.element)
+  const placement = placementOf(element.element)
 
   const at = offsetPosition(element, position, state, warnings, context)
 
@@ -243,7 +243,7 @@ export function readDirection(
           // Read plainly: readDynamics reports every child of a <dynamics>
           // it does not know, so the sweep has nothing left to say.
           directionType.children('dynamics')
-          const marks = readDynamics(found, at, staff, orient, wording, warnings, context)
+          const marks = readDynamics(found, at, staff, placement, wording, warnings, context)
           reading.dynamics.push(...marks)
           const last = marks[marks.length - 1]
           if (last) lastMark = { kind: 'mark', mark: last }
@@ -262,7 +262,7 @@ export function readDirection(
             graceAtCursor,
             measure,
             staff,
-            orient,
+            placement,
             state,
             warnings,
             context,
@@ -277,7 +277,7 @@ export function readDirection(
             overGrace,
             measure,
             staff,
-            orient,
+            placement,
             state,
             warnings,
             context,
@@ -293,7 +293,7 @@ export function readDirection(
             // after the stop closes the same stop.
             const suffix = wording.take()
             if (suffix !== undefined) {
-              wedge.stop.wording = stopWording(suffix.text, at, staff, orient)
+              wedge.stop.wording = stopWording(suffix.text, at, staff, placement)
             }
             lastMark = { kind: 'stop', stop: wedge.stop }
           }
@@ -331,7 +331,7 @@ export function readDirection(
     // qualifying a level the source never wrote.
     const trailing = wording.take()
     if (trailing !== undefined) {
-      const group = suffixOrStandalone(lastMark, trailing.text, at, staff, orient)
+      const group = suffixOrStandalone(lastMark, trailing.text, at, staff, placement)
       if (group) reading.dynamics.push(group)
     }
   }
@@ -448,7 +448,7 @@ function readOctaveShift(
   graceAtCursor: number,
   measure: number,
   staff: number | undefined,
-  orient: 'above' | 'below' | undefined,
+  placement: 'above' | 'below' | undefined,
   state: PartState,
   warnings: WarningCollector,
   context: WarningContext,
@@ -491,7 +491,7 @@ function readOctaveShift(
 
   const value = shift[type]
   state.spanners.startOttava(
-    { measure, position, value, staff, ...(orient !== undefined ? { orient } : {}) },
+    { measure, position, value, staff, ...(placement !== undefined ? { placement } : {}) },
     number,
     measure,
     position,
@@ -533,7 +533,7 @@ function readWedge(
   overGrace: number,
   measure: number,
   staff: number | undefined,
-  orient: 'above' | 'below' | undefined,
+  placement: 'above' | 'below' | undefined,
   state: PartState,
   warnings: WarningCollector,
   context: WarningContext,
@@ -583,7 +583,7 @@ function readWedge(
     wedge,
     end: undefined,
     staff,
-    ...(orient !== undefined ? { orient } : {}),
+    ...(placement !== undefined ? { placement } : {}),
   }
   state.spanners.startWedge(hairpin, number, measure, position, where)
   return { edge: 'start', hairpin }
@@ -608,17 +608,17 @@ function suffixOrStandalone(
   text: string,
   position: Fraction,
   staff: number | undefined,
-  orient: 'above' | 'below' | undefined,
+  placement: 'above' | 'below' | undefined,
 ): Dynamic | undefined {
   if (target?.kind === 'mark') {
     target.mark.suffix = text
     return undefined
   }
   if (target?.kind === 'stop' && target.stop.wording === undefined) {
-    target.stop.wording = stopWording(text, position, staff, orient)
+    target.stop.wording = stopWording(text, position, staff, placement)
     return undefined
   }
-  return standaloneWording(text, position, staff, orient)
+  return standaloneWording(text, position, staff, placement)
 }
 
 /**
@@ -629,9 +629,9 @@ function stopWording(
   text: string,
   position: Fraction,
   staff: number | undefined,
-  orient: 'above' | 'below' | undefined,
+  placement: 'above' | 'below' | undefined,
 ): StopWording {
-  return { text, standalone: standaloneWording(text, position, staff, orient) }
+  return { text, standalone: standaloneWording(text, position, staff, placement) }
 }
 
 /**
@@ -643,7 +643,7 @@ function standaloneWording(
   text: string,
   position: Fraction,
   staff: number | undefined,
-  orient: 'above' | 'below' | undefined,
+  placement: 'above' | 'below' | undefined,
 ): Dynamic {
   return {
     position,
@@ -652,7 +652,7 @@ function standaloneWording(
     end: undefined,
     staff,
     prefix: text,
-    ...(orient !== undefined ? { orient } : {}),
+    ...(placement !== undefined ? { placement } : {}),
   }
 }
 
@@ -757,7 +757,7 @@ export function readSound(
 // The <direction-type> children a reader takes something from. Their
 // attributes are swept after the reader has run; anything else is reported
 // as a whole element, its attributes covered by that report.
-function orientOf(element: XmlElement): 'above' | 'below' | undefined {
+function placementOf(element: XmlElement): 'above' | 'below' | undefined {
   const placement = attribute(element, 'placement')
   return placement === 'above' || placement === 'below' ? placement : undefined
 }
@@ -802,7 +802,7 @@ function readDynamics(
   element: XmlElement,
   position: Fraction,
   staff: number | undefined,
-  orient: 'above' | 'below' | undefined,
+  placement: 'above' | 'below' | undefined,
   wording: PendingWording,
   warnings: WarningCollector,
   context: WarningContext,
@@ -826,7 +826,7 @@ function readDynamics(
         end: undefined,
         staff,
         ...(prefix !== undefined ? { prefix: prefix.text } : {}),
-        ...(orient !== undefined ? { orient } : {}),
+        ...(placement !== undefined ? { placement } : {}),
       })
     } else if (accent) {
       const prefix = wording.take()
@@ -843,7 +843,7 @@ function readDynamics(
           glyphs: [accent.glyph],
         },
         ...(prefix !== undefined ? { prefix: prefix.text } : {}),
-        ...(orient !== undefined ? { orient } : {}),
+        ...(placement !== undefined ? { placement } : {}),
       })
     } else {
       warnings.add(

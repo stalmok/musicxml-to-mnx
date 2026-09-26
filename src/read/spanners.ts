@@ -44,7 +44,7 @@ export interface OpenOttava {
   position: Fraction
   value: OttavaAmount
   staff: number | undefined
-  orient?: 'above' | 'below'
+  placement?: 'above' | 'below'
 }
 
 /** A slur that has begun, waiting to learn which event ends it. */
@@ -1078,7 +1078,7 @@ export class SpannerResolver {
           value: open.value,
           staff: open.staff,
         }
-        if (open.orient !== undefined) ottava.orient = open.orient
+        if (open.placement !== undefined) ottava.placement = open.placement
         measures[open.measure]?.ottavas.push(ottava)
       },
       (reason, end) => {
