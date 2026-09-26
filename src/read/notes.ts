@@ -221,6 +221,13 @@ interface NoteStatement extends RestNote {
   staffPosition: number | undefined
 }
 
+/** The voices of a measure that sound a note, rather than only rest. */
+export function soundingVoices(measure: XmlElement): (string | undefined)[] {
+  return children(measure, 'note')
+    .filter((note) => !child(note, 'rest'))
+    .map((note) => child(note, 'voice')?.text.trim())
+}
+
 export function readNote(
   element: ElementReader,
   state: PartState,
@@ -463,7 +470,7 @@ export function readNote(
   // Real scores write an occasional extra rest over a rest that already
   // fills the same voice's measure. Both are silence, so the measure rest
   // stands, the extra is reported, and the cursor still moves past it.
-  if (event.isRest && builder.restsTheMeasure(voice)) {
+  if (event.isRest && builder.restIsRedundant(voice)) {
     warnings.add(
       'redundant:rest',
       'A rest is written over a rest that already fills the measure in the same ' +

@@ -52,7 +52,7 @@ import { drawnName, ElementReader, reportUnreadAttributes } from './element.js'
 import { GroupingBuilder, pruneGrouping } from './part-groups.js'
 import { addFractions, compareFractions, fraction, negate } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
-import { readNote } from './notes.js'
+import { readNote, soundingVoices } from './notes.js'
 import { noteValueBaseOf } from './noteValues.js'
 import { parseWholeNumber } from './numbers.js'
 import { readPrint } from './print.js'
@@ -1481,7 +1481,7 @@ function readMeasure(
   let endingStop: { open: boolean; line: number } | undefined
   let fermata: Fermata | undefined
 
-  const builder = new MeasureBuilder(state.carriedTupletStops)
+  const builder = new MeasureBuilder(state.carriedTupletStops, soundingVoices(element))
   // The last time signature stated after the measure start. It is the next
   // measure's, so the part takes it only once this measure is settled.
   let nextTime: { value: TimeSignature | undefined } | undefined

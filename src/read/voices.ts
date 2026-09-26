@@ -411,8 +411,15 @@ export class MeasureBuilder {
    */
   #reached: { warnings: WarningCollector; context: WarningContext; line: number } | undefined
 
-  constructor(carriedStops: readonly CarriedTupletStop[] = []) {
+  /** The voices that sound a note somewhere in the measure, rather than only rest. */
+  readonly #soundingVoices: ReadonlySet<string>
+
+  constructor(
+    carriedStops: readonly CarriedTupletStop[],
+    soundingVoices: Iterable<string | undefined>,
+  ) {
     this.#carriedStops = [...carriedStops]
+    this.#soundingVoices = new Set([...soundingVoices].map((voice) => voice ?? UNNAMED_VOICE))
   }
 
   /**
@@ -504,6 +511,19 @@ export class MeasureBuilder {
    */
   restsTheMeasure(voice: string | undefined): boolean {
     return this.#layersFor(voice).layers.some(restIsSettled)
+  }
+
+  /**
+   * Whether a rest written at the cursor is silence over the voice's measure
+   * rest. A rest in the line that rests the measure is. A rest in a line laid
+   * over it is only where the voice sounds no note in the measure: where it
+   * does, the rest is part of that line's music.
+   */
+  restIsRedundant(voice: string | undefined): boolean {
+    if (!this.restsTheMeasure(voice)) return false
+    return (
+      restIsSettled(this.#builderFor(voice)) || !this.#soundingVoices.has(voice ?? UNNAMED_VOICE)
+    )
   }
 
   /**

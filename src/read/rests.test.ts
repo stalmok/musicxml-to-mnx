@@ -498,6 +498,88 @@ describe('a rest filling the measure kept as an event', () => {
   })
 })
 
+// A voice can rest its measure in one line and sing in another laid over it.
+// A rest among that line's notes is part of its music, not silence over the
+// measure rest.
+describe('a rest in a line laid over a measure rest', () => {
+  const measureRest = (body = '') =>
+    `<note><rest measure="yes"/><duration>16</duration><voice>1</voice>${body}</note>` +
+    '<backup><duration>16</duration></backup>'
+  const halfRest = '<note><rest/><duration>8</duration><voice>1</voice><type>half</type></note>'
+  const halfNote =
+    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>8</duration>' +
+    '<voice>1</voice><type>half</type></note>'
+  const secondLine = (source: string) => {
+    const { mnx, warnings } = convertValid(inMeasure(source))
+    const content = mnx.parts[0]?.measures[0]?.sequences[1]?.content ?? []
+    return {
+      kinds: content.map((item) => ('type' in item ? item.type : 'rest' in item ? 'rest' : 'note')),
+      codes: warnings.map((warning) => warning.code),
+    }
+  }
+
+  test.each([
+    ['on the sequence, before the note', measureRest() + halfRest + halfNote, ['rest', 'note']],
+    ['on the sequence, after the note', measureRest() + halfNote + halfRest, ['note', 'rest']],
+    [
+      'kept as an event for its lyric',
+      measureRest('<lyric><text>la</text></lyric>') + halfRest + halfNote,
+      ['rest', 'note'],
+    ],
+    [
+      'in a voice named with spaces around it',
+      (measureRest() + halfRest + halfNote).replaceAll('<voice>1</voice>', '<voice> 1 </voice>'),
+      ['rest', 'note'],
+    ],
+    [
+      'in a voice with no name',
+      (measureRest() + halfRest + halfNote).replaceAll('<voice>1</voice>', ''),
+      ['rest', 'note'],
+    ],
+  ])('keeps the rest beside a measure rest %s', (_, source, kinds) => {
+    expect(secondLine(source)).toEqual({ kinds, codes: ['inconsistent:voice'] })
+  })
+
+  // Written straight after the measure rest, with no <backup>, the rest falls
+  // in the line that rests the measure, whatever the other line sings.
+  test('drops a rest after the measure rest in its own line', () => {
+    const source =
+      '<note><rest measure="yes"/><duration>16</duration><voice>1</voice></note>' +
+      halfRest +
+      '<backup><duration>24</duration></backup>' +
+      halfNote
+
+    expect(secondLine(source)).toEqual({
+      kinds: ['note'],
+      codes: ['redundant:rest', 'inconsistent:voice'],
+    })
+  })
+
+  // Another voice sounding a note says nothing about this one.
+  test('drops a rest over the measure rest where only another voice sounds', () => {
+    const otherVoice = halfNote.replace('<voice>1</voice>', '<voice>2</voice>')
+    const { mnx, warnings } = convertValid(inMeasure(measureRest() + halfRest + otherVoice))
+
+    expect(mnx.parts[0]?.measures[0]?.sequences.map((sequence) => sequence.voice)).toEqual([
+      '1',
+      '2',
+    ])
+    expect(warnings.map((warning) => warning.code)).toEqual(['redundant:rest'])
+  })
+
+  // A grace note sounds too, and ornaments the rest after it.
+  test('keeps the rests around a grace note laid over the measure rest', () => {
+    const grace =
+      '<note><grace/><pitch><step>D</step><octave>5</octave></pitch>' +
+      '<voice>1</voice><type>eighth</type></note>'
+
+    expect(secondLine(measureRest() + halfRest + grace + halfRest)).toEqual({
+      kinds: ['rest', 'grace', 'rest'],
+      codes: ['inconsistent:voice'],
+    })
+  })
+})
+
 // A <backup> reaching back further than the measure has run is reported where
 // the music after it is written, which for a rest filling the measure is the
 // rest itself.
