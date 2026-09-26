@@ -35,7 +35,8 @@ export default tseslint.config(
           message:
             'Call convertValid or writeValid from tests/support/convert.ts, which check the output against the MNX schema.',
         },
-        // The call check matches the function by name, so a test keeps it.
+        // The call check matches the functions by name, so a test uses no
+        // other name for them and reaches them only by calling them.
         {
           selector:
             'ImportSpecifier[imported.name="convertMusicXML"][local.name!="convertMusicXML"], ImportSpecifier[imported.name="writeMnx"][local.name!="writeMnx"]',
@@ -43,8 +44,8 @@ export default tseslint.config(
         },
         {
           selector:
-            'ImportDeclaration[source.value=/(^|\\/)(index|convert)\\.js$|(^\\.|write)\\/mnx\\.js$/] > ImportNamespaceSpecifier',
-          message: 'Import convertMusicXML and writeMnx by name, not through a namespace.',
+            'Identifier[name=/^(convertMusicXML|writeMnx)$/]:not(CallExpression > Identifier.callee, ImportSpecifier > Identifier, TSTypeQuery > Identifier)',
+          message: 'Call convertMusicXML and writeMnx directly, so the schema check sees the call.',
         },
       ],
     },

@@ -65,6 +65,8 @@ suite('the built library in a context with no host globals', () => {
 
     const inNode = (await import(library)) as typeof import('../src/index.js')
     expect(schemaErrors(converted.mnx)).toEqual([])
+    // Equal to the output checked against the schema above.
+    // eslint-disable-next-line no-restricted-syntax
     expect(converted).toEqual(JSON.parse(JSON.stringify(inNode.convertMusicXML(bytes))))
   })
 
