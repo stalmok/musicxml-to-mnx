@@ -113,6 +113,11 @@ export class ElementReader {
     return found
   }
 
+  /** Accounts for one child, found on `element` directly and read there. */
+  read(found: XmlElement): void {
+    this.#read.add(found)
+  }
+
   /**
    * Readers over every child of this name, for elements that hold notation of
    * their own. Their unread children are reported along with this one's.

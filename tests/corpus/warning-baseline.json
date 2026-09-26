@@ -3710,9 +3710,8 @@
     "cue": 15,
     "print-object": 9,
     "stem": 1,
-    "technical": 2,
     "pedal": 4,
-    "fingering": 2
+    "fingering": 4
   },
   "elgar-1-the-torch": {
     "midi-device": 2,
@@ -5320,9 +5319,8 @@
     "direction@system": 1,
     "extend": 1,
     "sound@dynamics": 2,
-    "technical": 2,
     "print-object": 1,
-    "fingering": 9
+    "fingering": 11
   },
   "greger-3-ihr-gartchen": {
     "midi-device": 2,
@@ -6474,9 +6472,8 @@
     "sound@dynamics": 37,
     "pedal": 16,
     "note": 375,
-    "technical": 1,
     "time": 2,
-    "fingering": 66
+    "fingering": 69
   },
   "jaell-4-le-bonheur-s-effeuille-et-passe": {
     "midi-device": 2,

@@ -31,6 +31,7 @@ import type {
   Pitch,
   Step,
   TieTarget,
+  TremoloMarking,
   TupletDisplay,
 } from '../model/score.js'
 import type { Draft } from './draft.js'
@@ -920,6 +921,7 @@ function readChordMember(
     placed = builder.addChordKitNote(voice, chordNote, chordDurationOrNone, path, element.line)
     readArpeggio(notations, placed, builder, undefined)
   }
+  readRestatedMarkings(notations, placed.event.markings, warnings, context)
   readTies(
     element,
     chordNote,
@@ -1235,10 +1237,122 @@ const BOW_DIRECTION_OF = new Map<string, BowDirectionMarking['direction']>(
 )
 
 /**
- * The marks written on this event. Read in a fixed order rather than the
- * source's, because MNX keys them by name, so a note carries at most one of
- * each and the order they were written in is not part of what it says.
+ * One mark written on a note: its kind, the element stating it, and the
+ * block the element sits in, which accounts for it once it is read. The
+ * marking is undefined where the element states one MNX cannot hold, which
+ * is reported as it is found.
  */
+type WrittenMark = {
+  readonly [K in MarkingKind]: { readonly kind: K; readonly marking: Markings[K] }
+}[MarkingKind] & { readonly found: XmlElement; readonly block: ElementReader }
+
+/**
+ * The marks written on a note, each read off its element. Read in a fixed
+ * order rather than the source's, because MNX keys them by name, so a note
+ * carries at most one of each and the order they were written in is not part
+ * of what it says. The bow marks are the exception, below.
+ */
+function* writtenMarks(
+  notations: readonly ElementReader[],
+  warnings: WarningCollector,
+  context: WarningContext,
+): Generator<WrittenMark> {
+  for (const block of notations) {
+    for (const articulations of block.blocks('articulations')) {
+      for (const [kind, written] of entriesOf(ARTICULATIONS)) {
+        for (const found of children(articulations.element, written)) {
+          const placement = placementOf(found)
+          const mark = { found, block: articulations }
+          if (kind === 'strongAccent') {
+            // Which way the wedge of a strong accent points.
+            const pointing = upOrDown(attribute(found, 'type'))
+            yield { ...mark, kind, marking: { placement, pointing } }
+          } else if (kind === 'breath') {
+            // A breath mark names its glyph as its text: a comma, a tick.
+            yield { ...mark, kind, marking: { placement, symbol: trimmedText(found) || undefined } }
+          } else {
+            yield { ...mark, kind, marking: { placement } }
+          }
+        }
+      }
+
+      for (const found of children(articulations.element, 'caesura')) {
+        const marking = readCaesura(found, warnings, context)
+        yield { kind: 'caesura', marking, found, block: articulations }
+      }
+    }
+
+    // MusicXML files the bow marks under <technical>, away from the
+    // articulations; MNX states them beside the rest of the marks. The other
+    // playing instructions there stay unread, which is what reports them.
+    // Two elements share the one MNX key, unlike the articulations above, so
+    // they are read in the order the source wrote them, which is what says
+    // which mark is kept.
+    for (const technical of block.blocks('technical')) {
+      for (const found of technical.element.children) {
+        const direction = BOW_DIRECTION_OF.get(found.name)
+        if (direction === undefined) continue
+        const marking = { placement: placementOf(found), direction }
+        yield { kind: 'bowDirection', marking, found, block: technical }
+      }
+    }
+
+    // A tremolo on one note is drawn as beams across its stem, and MNX
+    // states it with the other marks. One written across two notes is a
+    // pair of events rather than a mark, gathered where the note is read,
+    // so its start and stop markers are passed over here.
+    for (const ornaments of block.blocks('ornaments')) {
+      for (const found of children(ornaments.element, 'tremolo')) {
+        const type = attribute(found, 'type') ?? 'single'
+        if (type === 'start' || type === 'stop') continue
+        const marking = readSingleTremolo(found, type, warnings, context)
+        yield { kind: 'tremolo', marking, found, block: ornaments }
+      }
+    }
+  }
+}
+
+/**
+ * A tremolo on one note, from the beams its text counts. A mark MNX cannot
+ * state is reported and gives nothing.
+ */
+function readSingleTremolo(
+  found: XmlElement,
+  type: string,
+  warnings: WarningCollector,
+  context: WarningContext,
+): TremoloMarking | undefined {
+  const placement = placementOf(found)
+  // An unmeasured tremolo has no beam count, and MNX states a tremolo as a
+  // count of beams.
+  if (type !== 'single') {
+    warnings.add(
+      'unrepresentable:element',
+      `A tremolo of type "${type}" cannot be stated in MNX, which counts beams.`,
+      { ...context, line: found.line },
+      'tremolo',
+    )
+    return undefined
+  }
+
+  const text = trimmedText(found)
+  // Zero beams write an unmeasured tremolo, and MNX counts from one. Anything
+  // else out of range is not a tremolo a stem can carry, so the single-note
+  // mark is dropped rather than degraded.
+  const marks = tremoloBeamCount(text)
+  if (marks === undefined) {
+    warnings.add(
+      'unrepresentable:element',
+      `A tremolo drawn with ${text} beams cannot be stated in MNX, which counts from one.`,
+      { ...context, line: found.line },
+      'tremolo',
+    )
+    return undefined
+  }
+  return { placement, marks }
+}
+
+/** The marks written on this event. */
 function readMarkings(
   notations: readonly ElementReader[],
   warnings: WarningCollector,
@@ -1248,135 +1362,56 @@ function readMarkings(
   // is read, and the event takes the finished set.
   const markings: Draft<Markings> = {}
 
-  for (const block of notations) {
-    for (const articulations of block.blocks('articulations')) {
-      for (const [kind, written] of entriesOf(ARTICULATIONS)) {
-        for (const found of articulations.children(written)) {
-          // MNX keys the marks by name, and so does the model, so a second of
-          // the same kind has nowhere to go. The first is the one converted,
-          // as it is for a second fermata. The one warning accounts for the
-          // rejected mark whole, its side and pointing included.
-          if (markings[kind] !== undefined) {
-            attribute(found, 'placement')
-            attribute(found, 'type')
-            warnings.add(
-              'unrepresentable:marking',
-              `An event carries more than one <${written}>, and MNX states one of each ` +
-                'kind. The first is the one converted.',
-              { ...context, line: found.line },
-              written,
-            )
-            continue
-          }
-
-          const placement = placementOf(found)
-          if (kind === 'strongAccent') {
-            // Which way the wedge of a strong accent points.
-            markings.strongAccent = { placement, pointing: upOrDown(attribute(found, 'type')) }
-          } else if (kind === 'breath') {
-            // A breath mark names its glyph as its text: a comma, a tick.
-            markings.breath = { placement, symbol: trimmedText(found) || undefined }
-          } else {
-            markings[kind] = { placement }
-          }
-        }
-      }
-
-      for (const found of articulations.children('caesura')) {
-        if (markings.caesura !== undefined) {
-          attribute(found, 'placement')
-          warnings.add(
-            'unrepresentable:marking',
-            'An event carries more than one <caesura>, and MNX states one of each kind. ' +
-              'The first is the one converted.',
-            { ...context, line: found.line },
-            'caesura',
-          )
-          continue
-        }
-        const caesura = readCaesura(found, warnings, context)
-        if (caesura) markings.caesura = caesura
-      }
-    }
-
-    // MusicXML files the bow marks under <technical>, away from the
-    // articulations; MNX states them beside the rest of the marks. The other
-    // playing instructions there stay unread, which is what reports them.
-    for (const technical of block.blocks('technical')) {
-      // Two elements share the one MNX key, unlike the articulations above,
-      // so which the source wrote first is what says which mark is kept.
-      // Both names are asked for up front, which is what accounts for them,
-      // and the block's own children give the order they were written in.
-      for (const written of Object.values(BOW_DIRECTIONS)) technical.children(written)
-      for (const found of technical.element.children) {
-        const direction = BOW_DIRECTION_OF.get(found.name)
-        if (direction === undefined) continue
-        if (markings.bowDirection !== undefined) {
-          attribute(found, 'placement')
-          warnings.add(
-            'unrepresentable:marking',
-            'An event carries more than one bow mark, and MNX states one direction. ' +
-              'The first is the one converted.',
-            { ...context, line: found.line },
-            found.name,
-          )
-          continue
-        }
-        markings.bowDirection = { placement: placementOf(found), direction }
-      }
-    }
-
-    // A tremolo on one note is drawn as beams across its stem, and MNX
-    // states it with the other marks. One written across two notes is a
-    // pair of events rather than a mark, gathered where the note is read,
-    // so its start and stop markers are passed over here.
-    for (const ornaments of block.blocks('ornaments')) {
-      for (const found of ornaments.children('tremolo')) {
-        const type = attribute(found, 'type') ?? 'single'
-        if (type === 'start' || type === 'stop') continue
-        // An unmeasured tremolo has no beam count, and MNX states a tremolo
-        // as a count of beams.
-        if (type !== 'single') {
-          warnings.add(
-            'unrepresentable:element',
-            `A tremolo of type "${type}" cannot be stated in MNX, which counts beams.`,
-            { ...context, line: found.line },
-            'tremolo',
-          )
-          continue
-        }
-
-        const text = trimmedText(found)
-        // Zero beams write an unmeasured tremolo, and MNX counts from one.
-        // Anything else out of range is not a tremolo a stem can carry, so the
-        // single-note mark is dropped rather than degraded.
-        const marks = tremoloBeamCount(text)
-        if (marks === undefined) {
-          warnings.add(
-            'unrepresentable:element',
-            `A tremolo drawn with ${text} beams cannot be stated in MNX, which counts ` +
-              'from one.',
-            { ...context, line: found.line },
-            'tremolo',
-          )
-          continue
-        }
-        if (markings.tremolo !== undefined) {
-          warnings.add(
-            'unrepresentable:marking',
-            'An event carries more than one <tremolo>, and MNX states one of each ' +
+  for (const { kind, marking, found, block } of writtenMarks(notations, warnings, context)) {
+    block.read(found)
+    if (marking === undefined) continue
+    // MNX keys the marks by name, and so does the model, so a second of the
+    // same kind has nowhere to go. The first is the one converted, as it is
+    // for a second fermata. The one warning accounts for the rejected mark
+    // whole, its side included, which a caesura does not otherwise read.
+    if (markings[kind] !== undefined) {
+      attribute(found, 'placement')
+      warnings.add(
+        'unrepresentable:marking',
+        kind === 'bowDirection'
+          ? 'An event carries more than one bow mark, and MNX states one direction. ' +
+              'The first is the one converted.'
+          : `An event carries more than one <${found.name}>, and MNX states one of each ` +
               'kind. The first is the one converted.',
-            { ...context, line: found.line },
-            'tremolo',
-          )
-          continue
-        }
-
-        markings.tremolo = { placement: placementOf(found), marks }
-      }
+        { ...context, line: found.line },
+        found.name,
+      )
+      continue
     }
+    Object.assign(markings, { [kind]: marking })
   }
   return markings
+}
+
+/**
+ * The marks a note of a chord restates. MNX states the marks on the event,
+ * and exporters write a mark on a chord by writing it on every note, so a
+ * mark the same as the one the chord's own note carries is read. One the
+ * chord's own note does not carry, or carries another way, stays unread,
+ * which is what reports it.
+ */
+function readRestatedMarkings(
+  notations: readonly ElementReader[],
+  chord: Markings,
+  warnings: WarningCollector,
+  context: WarningContext,
+): void {
+  for (const { kind, marking, found, block } of writtenMarks(notations, warnings, context)) {
+    // A mark MNX cannot state was reported as it was read.
+    if (marking === undefined || sameMarking(chord[kind], marking)) block.read(found)
+  }
+}
+
+// Two marks of one kind state the same properties, each a plain value.
+function sameMarking(one: object | undefined, other: object): boolean {
+  if (one === undefined) return false
+  const values = new Map<string, unknown>(Object.entries(one))
+  return Object.entries(other).every(([key, value]) => values.get(key) === value)
 }
 
 // MusicXML's fermata shapes, in MNX's spelling. The two agree apart from the
