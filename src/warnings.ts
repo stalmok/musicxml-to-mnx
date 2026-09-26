@@ -143,9 +143,9 @@ export type WarningCode =
   | 'unrepresentable:part-group-overlap'
   // A part id MNX's id cannot state: an MNX id is 1 to 256 printable ASCII
   // characters, and MusicXML's part id allows more. Also a part id the
-  // converter gives an event, note, measure or layout, which MNX states the
-  // same way, so the two would be one id. The part is renamed to a generated
-  // id everywhere the score refers to it.
+  // converter gives an event, note, kit component, measure or layout, which
+  // MNX states the same way, so the two would be one id. The part is renamed
+  // to a generated id everywhere the score refers to it.
   | 'unrepresentable:part-id'
   // An instrument id MNX's id shape cannot state. The instrument is renamed,
   // so a kit component can still say what plays it.

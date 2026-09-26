@@ -28,6 +28,16 @@ export function countedId(kind: CountedId, n: number): string {
 /** The id of the one layout the writer states. */
 export const LAYOUT_ID = 'layout1'
 
+const NAMES: Record<CountedId, string> = {
+  event: 'event',
+  note: 'note',
+  kitComponent: 'kit component',
+  measure: 'measure',
+}
+
+/** What the ids GENERATED_ID_PATTERN matches name, for a warning message. */
+export const GENERATED_ID_KINDS = `${Object.values(NAMES).join(', ')} or layout`
+
 /** Every id countedId and LAYOUT_ID can give. */
 export const GENERATED_ID_PATTERN = new RegExp(
   `^(?:${Object.values(PREFIXES).join('|')})\\d+$|^${LAYOUT_ID}$`,

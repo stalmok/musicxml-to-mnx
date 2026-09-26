@@ -3377,7 +3377,7 @@ describe('a part id the output cannot carry as it stands', () => {
   // at once: MNX states every id the same way, so nothing in the document
   // tells the part from the event, and a consumer resolving a slur target by
   // id can reach the part instead.
-  test.each(['ev2', 'note1', 'm1', 'layout1'])(
+  test.each(['ev2', 'note1', 'kit1', 'm1', 'layout1'])(
     'renames the part id "%s", which the converter gives something else',
     (id) => {
       const { mnx, warnings } = convertValid(
@@ -3392,7 +3392,9 @@ describe('a part id the output cannot carry as it stands', () => {
       expect(warnings[0]?.message).toContain(id)
       // The two reasons a part is renamed read differently, so the report
       // says which one this is.
-      expect(warnings[0]?.message).toContain('the converter gives')
+      expect(warnings[0]?.message).toContain(
+        'the converter gives an event, note, kit component, measure or layout',
+      )
     },
   )
 

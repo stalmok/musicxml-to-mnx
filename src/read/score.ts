@@ -9,7 +9,7 @@
 
 import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
-import { GENERATED_ID_PATTERN, MNX_ID_PATTERN } from '../ids.js'
+import { GENERATED_ID_KINDS, GENERATED_ID_PATTERN, MNX_ID_PATTERN } from '../ids.js'
 import type {
   BarlineType,
   Clef,
@@ -269,8 +269,8 @@ function renameInvalidPartIds(
     warnings.add(
       'unrepresentable:part-id',
       MNX_ID_PATTERN.test(part.id)
-        ? `The part id "${part.id}" is shaped like one the converter gives an event, ` +
-            `note, measure or layout, and MNX states them all the same way, so the ` +
+        ? `The part id "${part.id}" is shaped like one the converter gives an ` +
+            `${GENERATED_ID_KINDS}, and MNX states them all the same way, so the ` +
             `part is renamed ${generated}.`
         : `The part id "${part.id}" does not fit MNX's id, which is 1 to 256 printable ` +
             `ASCII characters, so the part is renamed ${generated}.`,
@@ -796,8 +796,8 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
               'unrepresentable:instrument-id',
               fits
                 ? `The instrument id "${instrumentId}" is shaped like one the converter gives ` +
-                    `an event, note, kit component, measure or layout, and MNX states them all ` +
-                    `the same way, so the instrument is renamed ${key}.`
+                    `an ${GENERATED_ID_KINDS}, and MNX states them all the same way, so the ` +
+                    `instrument is renamed ${key}.`
                 : `The instrument id "${instrumentId}" does not fit MNX's id, which is 1 to 256 ` +
                     `printable ASCII characters, so the instrument is renamed ${key}.`,
               { ...(id !== undefined ? { part: id } : {}), line: element.line },
