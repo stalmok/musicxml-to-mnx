@@ -251,6 +251,40 @@ describe('grace notes', () => {
     expect(result?.sequences[1]?.content.map((item) => item.kind)).toEqual(['grace'])
     expect(warnings.map((w) => w.code)).toEqual(['inconsistent:backup'])
   })
+
+  // A note of a chord sounds with the note it joins, so a chord cannot be
+  // part grace note and part full note. The chord's own note decides, and
+  // the member marked the other way is reported.
+  const chordMember = (grace: boolean) =>
+    `<note>${grace ? '<grace/>' : ''}<chord/><pitch><step>F</step><octave>4</octave></pitch>` +
+    `${grace ? '' : '<duration>4</duration>'}<type>eighth</type><voice>1</voice></note>`
+
+  test.each([
+    ['a grace note joining a full note', note('C', 1) + chordMember(true), 'event', 'full note'],
+    [
+      'a full note joining a grace note',
+      GRACE + chordMember(false) + note('C', 1),
+      'grace',
+      'grace note of',
+    ],
+  ])('reports %s, and converts it as a note of that chord', (_, body, kind, converted) => {
+    const { measure: result, warnings } = read(measure(body))
+    const item = result?.sequences[0]?.content[0]
+    const event = item?.kind === 'grace' ? item.content[0] : item
+
+    expect(item?.kind).toBe(kind)
+    expect(event?.kind === 'event' && event.notes.map((n) => n.pitch.step)).toHaveLength(2)
+    expect(warnings.map((w) => [w.code, w.element, w.context])).toEqual([
+      ['inconsistent:grace', 'chord', { part: 'P1', measure: 1, line: 1 }],
+    ])
+    expect(warnings[0]?.message).toContain(`converted as a ${converted}`)
+  })
+
+  test('reports nothing where every note of a chord agrees', () => {
+    const { warnings } = read(measure(GRACE + chordMember(true) + note('C', 1)))
+
+    expect(warnings).toEqual([])
+  })
 })
 
 // A grace note carries no <duration>, so where it states no <type> nothing

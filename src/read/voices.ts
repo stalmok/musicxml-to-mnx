@@ -791,6 +791,15 @@ export class MeasureBuilder {
     return this.#builderFor(voice ?? this.#lastVoice).last?.event.value
   }
 
+  /**
+   * Whether the event a chord note would join is a grace note, and nothing
+   * where there is no event to join.
+   */
+  chordIsGrace(voice: string | undefined): boolean | undefined {
+    const last = this.#builderFor(voice ?? this.#lastVoice).last
+    return last && last.duration === undefined
+  }
+
   /** How long the event a chord note would join lasts. */
   chordDuration(voice: string | undefined): Fraction | undefined {
     return this.#builderFor(voice ?? this.#lastVoice).last?.duration

@@ -848,6 +848,22 @@ function readChordMember(
     }
   }
 
+  // A chord cannot be part grace note and part full note. The note the chord
+  // opened with decides, and a member marked the other way is reported.
+  const joinsGrace = builder.chordIsGrace(voice)
+  if (joinsGrace === (graceElement === undefined)) {
+    warnings.add(
+      'inconsistent:grace',
+      joinsGrace
+        ? 'A note of a chord states no <grace>, and the grace note it joins does. It is ' +
+            'converted as a grace note of that chord.'
+        : 'A note of a chord is a grace note, and the note it joins is not. It is ' +
+            'converted as a full note of that chord.',
+      { ...context, line: element.line },
+      'chord',
+    )
+  }
+
   // MNX states the staff on the event and, where a note of a chord reaches
   // across to the other hand, on that note. A chord straddling the two
   // staves is ordinary piano writing, so only the note that differs from

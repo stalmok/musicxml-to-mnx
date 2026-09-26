@@ -235,6 +235,10 @@ export const WARNING_CODES = Object.freeze([
   // than the chord it joins. MNX states one side for the group, and the
   // side the chord already states is the one converted.
   'inconsistent:grace-time',
+  // A note of a chord marked as a grace note where the note it joins is not,
+  // or the other way round. The chord's own note decides, and the member is
+  // converted as a note of that chord.
+  'inconsistent:grace',
   // A tuplet whose written content does not add up to its stated ratio. The
   // content is converted as written.
   'inconsistent:tuplet',
