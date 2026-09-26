@@ -517,11 +517,14 @@ describe('a clef sign that places no pitch', () => {
     expect(warnings).toEqual([])
   })
 
-  test('refuses a percussion clef drawn on a line that is not a number', () => {
-    expect(() => read(withSign('percussion', '<line>middle</line>'))).toThrow(
-      /<line> is not a whole number/,
-    )
-  })
+  test.each(['percussion', 'none'])(
+    'refuses a %s clef stating a line that is not a number',
+    (sign) => {
+      expect(() => read(withSign(sign, '<line>middle</line>'))).toThrow(
+        /<line> is not a whole number/,
+      )
+    },
+  )
 
   test('refuses a sign MusicXML does not state either', () => {
     expect(() => read(withSign('treble'))).toThrow(/"treble"/)

@@ -720,7 +720,8 @@ function readClef(
   // Read with no range: MusicXML draws a clef outside the lines of its staff
   // by the same value, such as a C clef in the middle of a grand staff, and a
   // staff may be drawn on other than five lines.
-  const line = lineElement && !none ? readInteger(lineElement, path) : DEFAULT_CLEF_LINES[sign]
+  const stated = lineElement ? readInteger(lineElement, path) : undefined
+  const line = stated !== undefined && !none ? stated : DEFAULT_CLEF_LINES[sign]
 
   // A clef says which staff it belongs to. Read and bounded whatever the part
   // has, because a clef naming a staff the part does not have would place it
