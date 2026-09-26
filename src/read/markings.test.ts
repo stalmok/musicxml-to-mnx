@@ -170,7 +170,10 @@ describe('bow direction', () => {
     expect(warnings.map((w) => [w.code, w.element])).toEqual([
       ['unrepresentable:marking', reported],
     ])
-    expect(warnings[0]?.message).toContain('more than one bow mark')
+    expect(warnings[0]?.message).toBe(
+      'An event carries more than one bow mark, and MNX states one direction. ' +
+        'The first is the one converted.',
+    )
   })
 
   // The rest of <technical> is playing instruction the converter does not
@@ -263,7 +266,10 @@ describe('two marks of one kind', () => {
 
     expect(events[0]?.markings.accent?.placement).toBe('above')
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:marking'])
-    expect(warnings[0]?.message).toContain('more than one <accent>')
+    expect(warnings[0]?.message).toBe(
+      'An event carries more than one <accent>, and MNX states one of each kind. ' +
+        'The first is the one converted.',
+    )
   })
 
   // The one warning accounts for the rejected mark whole, its side and the
@@ -381,10 +387,13 @@ describe('caesura', () => {
 // Exporters write a mark on a chord by writing it on every note of it. MNX
 // states the marks on the event, so the chord states each once.
 describe('marks on the notes of a chord', () => {
-  const chord = (first: string, member: string) =>
-    note(first) +
-    '<note><chord/><pitch><step>E</step><octave>4</octave></pitch><duration>4</duration>' +
-    `<type>quarter</type><notations>${member}</notations></note>`
+  const member = (notations: string, sound = '<pitch><step>E</step><octave>4</octave></pitch>') =>
+    `<note><chord/>${sound}<duration>4</duration><type>quarter</type>` +
+    `<notations>${notations}</notations></note>`
+  const chord = (first: string, other: string) => note(first) + member(other)
+  const differs = (element: string) =>
+    `A note of a chord carries a <${element}> another way than the note it joins. MNX ` +
+    "states the marks on the event, and the chord's own are the ones converted."
 
   test.each([
     ['an articulation', articulations('<staccato placement="above"/>')],
@@ -415,37 +424,124 @@ describe('marks on the notes of a chord', () => {
     expect(warnings).toEqual([])
   })
 
+  test('reads the mark from whichever <notations> block holds it', () => {
+    const { warnings } = read(
+      note(articulations('<accent/>')) +
+        member(
+          `<technical><fingering>2</fingering></technical></notations><notations>${articulations('<accent/>')}`,
+        ),
+    )
+
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([
+      ['unrepresentable:element', 'fingering'],
+    ])
+  })
+
+  test('reads the mark on a note of a kit chord', () => {
+    const marks = articulations('<accent/>')
+    const unpitched =
+      '<unpitched><display-step>C</display-step><display-octave>5</display-octave></unpitched>'
+    const { events, warnings } = read(
+      '<attributes><clef><sign>percussion</sign></clef></attributes>' +
+        `<note>${unpitched}<duration>4</duration><type>quarter</type><notations>${marks}</notations></note>` +
+        member(marks, unpitched.replace('C', 'E')),
+    )
+
+    expect(events[0]?.markings).toEqual({ accent: { placement: undefined } })
+    expect(warnings).toEqual([])
+  })
+
+  test('reports a mark only the other note carries', () => {
+    const { events, warnings } = read(chord('', articulations('<staccato placement="below"/>')))
+
+    expect(events[0]?.markings).toEqual({})
+    expect(warnings.map((w) => [w.code, w.element, w.message])).toEqual([
+      [
+        'inconsistent:marking',
+        'staccato',
+        'A note of a chord carries a <staccato> the note it joins does not. MNX states the ' +
+          "marks on the event, and the chord's own are the ones converted.",
+      ],
+    ])
+    expect(warnings[0]?.context.measure).toBe(1)
+  })
+
+  // The chord's own tremolo cannot be stated, so the chord carries none.
+  test('reports a mark the other note carries where the chord’s own was not converted', () => {
+    const { warnings } = read(
+      chord(
+        '<ornaments><tremolo type="single">9</tremolo></ornaments>',
+        '<ornaments><tremolo type="single">3</tremolo></ornaments>',
+      ),
+    )
+
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([
+      ['unrepresentable:element', 'tremolo'],
+      ['inconsistent:marking', 'tremolo'],
+    ])
+  })
+
   test.each([
-    ['only the other note carries', '', articulations('<staccato/>'), 'staccato'],
     [
-      'the other note draws on another side',
+      'draws on another side',
       articulations('<staccato placement="above"/>'),
       articulations('<staccato placement="below"/>'),
       'staccato',
     ],
     [
-      'the other note points another way',
+      'points another way',
       articulations('<strong-accent type="up"/>'),
-      articulations('<strong-accent type="down"/>'),
+      articulations('<strong-accent type="down" placement="above"/>'),
       'strong-accent',
     ],
     [
-      'the other note draws with another glyph',
+      'draws with another glyph',
       articulations('<breath-mark>comma</breath-mark>'),
       articulations('<breath-mark>tick</breath-mark>'),
       'breath-mark',
     ],
     [
-      'the other note bows the other way',
+      'draws with another shape',
+      articulations('<caesura>thick</caesura>'),
+      articulations('<caesura placement="above">short</caesura>'),
+      'caesura',
+    ],
+    [
+      'bows the other way',
       '<technical><up-bow/></technical>',
       '<technical><down-bow/></technical>',
       'down-bow',
     ],
-  ])('reports a mark %s', (_, first, member, element) => {
-    const { events, warnings } = read(chord(first, member))
+  ])('reports a mark the other note %s', (_, first, other, element) => {
+    const { events, warnings } = read(chord(first, other))
 
     expect(events[0]?.markings).toEqual(read(note(first)).events[0]?.markings)
-    expect(warnings.map((w) => [w.code, w.element])).toEqual([['unsupported:element', element]])
+    expect(warnings.map((w) => [w.code, w.element, w.message])).toEqual([
+      ['inconsistent:marking', element, differs(element)],
+    ])
+  })
+
+  test('reports a second of one kind on the other note', () => {
+    const { warnings } = read(
+      chord(
+        articulations('<staccato/>'),
+        `${articulations('<staccato/>')}</notations><notations>${articulations('<staccato/>')}`,
+      ),
+    )
+
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([
+      ['unrepresentable:marking', 'staccato'],
+    ])
+  })
+
+  test('says nothing of a second the chord’s own note carries', () => {
+    const { warnings } = read(
+      chord(articulations('<staccato/><staccato/>'), articulations('<staccato/>')),
+    )
+
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([
+      ['unrepresentable:marking', 'staccato'],
+    ])
   })
 
   test('reports what else the other note carries beside a restated mark', () => {
@@ -457,19 +553,33 @@ describe('marks on the notes of a chord', () => {
       ),
     )
 
-    expect(warnings.map((w) => w.element)).toEqual(['doit', 'fingering'])
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([
+      ['unsupported:element', 'doit'],
+      ['unrepresentable:element', 'fingering'],
+    ])
   })
 
-  test.each([['<tremolo type="single">9</tremolo>'], ['<tremolo type="unmeasured"/>']])(
-    'reports %s once on each note',
-    (inner) => {
-      const tremolo = `<ornaments>${inner}</ornaments>`
-      const { warnings } = read(chord(tremolo, tremolo))
+  // MNX's caesura states no side, and each note states one.
+  test('reports the side of a restated caesura on each note', () => {
+    const caesura = articulations('<caesura placement="above"/>')
+    const { warnings } = read(chord(caesura, caesura))
 
-      expect(warnings.map((w) => [w.code, w.element, w.context.measure])).toEqual([
-        ['unrepresentable:element', 'tremolo', 1],
-        ['unrepresentable:element', 'tremolo', 1],
-      ])
-    },
-  )
+    expect(warnings.map((w) => [w.code, w.attribute])).toEqual([
+      ['unrepresentable:attribute', 'placement'],
+      ['unrepresentable:attribute', 'placement'],
+    ])
+  })
+
+  test.each([
+    ['<tremolo type="single">9</tremolo>'],
+    ['<tremolo type="unmeasured" placement="above"/>'],
+  ])('reports %s once on each note', (inner) => {
+    const tremolo = `<ornaments>${inner}</ornaments>`
+    const { warnings } = read(chord(tremolo, tremolo))
+
+    expect(warnings.map((w) => [w.code, w.element, w.context.measure])).toEqual([
+      ['unrepresentable:element', 'tremolo', 1],
+      ['unrepresentable:element', 'tremolo', 1],
+    ])
+  })
 })

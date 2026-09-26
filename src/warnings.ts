@@ -239,6 +239,10 @@ export const WARNING_CODES = Object.freeze([
   // or the other way round. The chord's own note decides, and the member is
   // converted as a note of that chord.
   'inconsistent:grace',
+  // A note of a chord carries a mark the note it joins does not, or carries
+  // it another way. MNX states the marks on the event, and the marks of the
+  // chord's own note are the ones converted.
+  'inconsistent:marking',
   // A tuplet whose written content does not add up to its stated ratio. The
   // content is converted as written.
   'inconsistent:tuplet',

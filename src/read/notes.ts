@@ -921,7 +921,7 @@ function readChordMember(
     placed = builder.addChordKitNote(voice, chordNote, chordDurationOrNone, path, element.line)
     readArpeggio(notations, placed, builder, undefined)
   }
-  readRestatedMarkings(notations, placed.event.markings, warnings, context)
+  readChordMemberMarkings(notations, placed.event.markings, warnings, context)
   readTies(
     element,
     chordNote,
@@ -1362,7 +1362,8 @@ function readMarkings(
   // is read, and the event takes the finished set.
   const markings: Draft<Markings> = {}
 
-  for (const { kind, marking, found, block } of writtenMarks(notations, warnings, context)) {
+  for (const mark of writtenMarks(notations, warnings, context)) {
+    const { kind, marking, found, block } = mark
     block.read(found)
     if (marking === undefined) continue
     // MNX keys the marks by name, and so does the model, so a second of the
@@ -1370,46 +1371,84 @@ function readMarkings(
     // for a second fermata. The one warning accounts for the rejected mark
     // whole, its side included, which a caesura does not otherwise read.
     if (markings[kind] !== undefined) {
-      attribute(found, 'placement')
-      warnings.add(
-        'unrepresentable:marking',
-        kind === 'bowDirection'
-          ? 'An event carries more than one bow mark, and MNX states one direction. ' +
-              'The first is the one converted.'
-          : `An event carries more than one <${found.name}>, and MNX states one of each ` +
-              'kind. The first is the one converted.',
-        { ...context, line: found.line },
-        found.name,
-      )
+      reportSecondMark(kind, found, warnings, context)
       continue
     }
-    Object.assign(markings, { [kind]: marking })
+    setMarking(markings, mark)
   }
   return markings
 }
 
+function reportSecondMark(
+  kind: MarkingKind,
+  found: XmlElement,
+  warnings: WarningCollector,
+  context: WarningContext,
+): void {
+  attribute(found, 'placement')
+  warnings.add(
+    'unrepresentable:marking',
+    kind === 'bowDirection'
+      ? 'An event carries more than one bow mark, and MNX states one direction. ' +
+          'The first is the one converted.'
+      : `An event carries more than one <${found.name}>, and MNX states one of each ` +
+          'kind. The first is the one converted.',
+    { ...context, line: found.line },
+    found.name,
+  )
+}
+
+// Taking the mark whole keeps its kind and its marking together.
+function setMarking<K extends MarkingKind>(
+  markings: Draft<Markings>,
+  mark: { readonly kind: K; readonly marking: Markings[K] },
+): void {
+  markings[mark.kind] = mark.marking
+}
+
 /**
- * The marks a note of a chord restates. MNX states the marks on the event,
- * and exporters write a mark on a chord by writing it on every note, so a
- * mark the same as the one the chord's own note carries is read. One the
- * chord's own note does not carry, or carries another way, stays unread,
- * which is what reports it.
+ * The marks written on a note of a chord, against the marks of the event it
+ * joins. A mark the same as the chord's own is read; any other is reported.
  */
-function readRestatedMarkings(
+function readChordMemberMarkings(
   notations: readonly ElementReader[],
   chord: Markings,
   warnings: WarningCollector,
   context: WarningContext,
 ): void {
+  const read = new Set<MarkingKind>()
   for (const { kind, marking, found, block } of writtenMarks(notations, warnings, context)) {
+    block.read(found)
     // A mark MNX cannot state was reported as it was read.
-    if (marking === undefined || sameMarking(chord[kind], marking)) block.read(found)
+    if (marking === undefined) continue
+    // A note of a chord states one of each kind, as any note does.
+    if (read.has(kind)) {
+      reportSecondMark(kind, found, warnings, context)
+      continue
+    }
+    read.add(kind)
+    // A restated caesura's side stays unread, so a side the chord's own note
+    // does not state is still reported.
+    const stated = chord[kind]
+    if (stated !== undefined && sameMarking(stated, marking)) continue
+    attribute(found, 'placement')
+    warnings.add(
+      'inconsistent:marking',
+      (stated === undefined
+        ? `A note of a chord carries a <${found.name}> the note it joins does not.`
+        : `A note of a chord carries a <${found.name}> another way than the note it joins.`) +
+        " MNX states the marks on the event, and the chord's own are the ones converted.",
+      { ...context, line: found.line },
+      found.name,
+    )
   }
 }
 
-// Two marks of one kind state the same properties, each a plain value.
-function sameMarking(one: object | undefined, other: object): boolean {
-  if (one === undefined) return false
+// Every marking states each of its properties, each a plain value.
+function sameMarking<K extends MarkingKind>(
+  one: NonNullable<Markings[K]>,
+  other: NonNullable<Markings[K]>,
+): boolean {
   const values = new Map<string, unknown>(Object.entries(one))
   return Object.entries(other).every(([key, value]) => values.get(key) === value)
 }
