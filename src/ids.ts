@@ -25,6 +25,18 @@ export function countedId(kind: CountedId, n: number): string {
   return `${PREFIXES[kind]}${String(n)}`
 }
 
+const RENAME_PREFIXES = {
+  part: 'p',
+  instrument: 'sound',
+} as const
+
+export type RenamedId = keyof typeof RENAME_PREFIXES
+
+/** The nth id given to a part or instrument whose source id is renamed. */
+export function renamedId(kind: RenamedId, n: number): string {
+  return `${RENAME_PREFIXES[kind]}${String(n)}`
+}
+
 /** The id of the one layout the writer states. */
 export const LAYOUT_ID = 'layout1'
 

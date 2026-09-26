@@ -9,7 +9,7 @@
 
 import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
-import { GENERATED_ID_KINDS, GENERATED_ID_PATTERN, MNX_ID_PATTERN } from '../ids.js'
+import { GENERATED_ID_KINDS, GENERATED_ID_PATTERN, MNX_ID_PATTERN, renamedId } from '../ids.js'
 import type {
   BarlineType,
   Clef,
@@ -262,7 +262,7 @@ function renameInvalidPartIds(
     let generated: string
     do {
       counter += 1
-      generated = `p${String(counter)}`
+      generated = renamedId('part', counter)
     } while (taken.has(generated))
     renames.set(part.id, generated)
     const line = lines.get(part.id)
@@ -790,7 +790,7 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
           if (!fits || GENERATED_ID_PATTERN.test(key)) {
             do {
               renamed += 1
-              key = `sound${String(renamed)}`
+              key = renamedId('instrument', renamed)
             } while (instrumentIds.has(key))
             warnings.add(
               'unrepresentable:instrument-id',
