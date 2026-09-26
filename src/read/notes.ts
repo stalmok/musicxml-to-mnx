@@ -46,6 +46,7 @@ import { readRest } from './rests.js'
 import type { FillsMeasure, RestNote } from './rests.js'
 import { noteValueBaseOf, requireNoteValueBase } from './noteValues.js'
 import { parseWholeNumber, readIntegerInRange } from './numbers.js'
+import { measureLength } from './state.js'
 import type { PartState } from './state.js'
 import { soundingPitch } from './transposition.js'
 import { entriesOf, recogniser } from './tables.js'
@@ -488,7 +489,7 @@ export function readNote(
     ? builder.addMeasureRestEvent(
         voice,
         event,
-        duration ?? lengthOf(value),
+        duration ?? measureLength(state) ?? lengthOf(value),
         path,
         element.line,
         staff,
@@ -747,9 +748,10 @@ function setMeasureRest(
     )
   }
 
-  // Where the source states no <duration>, the written value is how long the
-  // rest lasts, as it is for any other note.
-  const lasts = duration ?? (written && lengthOf(written))
+  // Where the source states no <duration>, the rest lasts the measure. A bar
+  // of silence is drawn as a whole rest in any meter, so the written value is
+  // what it lasts only where no time signature says how long the measure is.
+  const lasts = duration ?? measureLength(state) ?? (written && lengthOf(written))
   const fermata = readFermata(notations, warnings, context)
   builder.setFullMeasure(
     voice,

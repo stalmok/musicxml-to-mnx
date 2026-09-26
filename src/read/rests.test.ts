@@ -891,6 +891,31 @@ describe('a measure rest with no duration', () => {
       convertValid(inMeasure(stated + after + voiceTwo)).mnx,
     )
   })
+
+  // A bar of silence is drawn as a whole rest in any meter, so the rest lasts
+  // the measure the time signature states, not the whole it is drawn as.
+  const inThreeFour = (body: string) =>
+    '<score-partwise><part id="P1"><measure number="1">' +
+    '<attributes><divisions>4</divisions><time><beats>3</beats><beat-type>4</beat-type>' +
+    `</time>${TREBLE}</attributes>${body}</measure></part></score-partwise>`
+  const wholeRest = (body = '') =>
+    `<note><rest measure="yes"/><voice>1</voice><type>whole</type>${body}</note>`
+  const threeQuarters =
+    '<backup><duration>12</duration></backup>' +
+    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>12</duration>' +
+    '<voice>2</voice><type>half</type><dot/></note>'
+
+  test.each([
+    ['on the sequence', wholeRest(), ''],
+    ['kept as an event for its lyric', wholeRest('<lyric><text>la</text></lyric>'), ''],
+    ['followed by a grace note', wholeRest(), grace],
+  ])('lasts the measure in 3/4, %s', (_, measureRest, after) => {
+    const withDuration = measureRest.replace('<voice>', '<duration>12</duration><voice>')
+
+    expect(convertValid(inThreeFour(measureRest + after + threeQuarters)).mnx).toEqual(
+      convertValid(inThreeFour(withDuration + after + threeQuarters)).mnx,
+    )
+  })
 })
 
 // Chant editions are written senza misura, where no time signature says how

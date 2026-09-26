@@ -1193,11 +1193,35 @@ describe('a time signature stated after the measure start', () => {
     expect(warnings).toEqual([])
   })
 
-  test("reads ahead a measure's rest with no <duration> as lasting its written value", () => {
-    const half = '<note><rest measure="yes"/><voice>1</voice><type>half</type></note>'
-    const { warnings } = read(untimedBesideNext(timed(2) + half + timed(3), 24))
+  // A bar of silence is drawn as a whole rest in any meter, so a rest marked
+  // as the measure's lasts what the time signature states. A rest not marked
+  // lasts the whole it is drawn as. A <backup> of the measure's length after
+  // it tells the two apart.
+  test.each([
+    ['a rest marked as the measure', ' measure="yes"', '<duration>36</duration>'],
+    ['a rest not marked', '', '<duration>48</duration>'],
+  ])('reads ahead %s with no <duration> as the reader does', (_, mark, duration) => {
+    const whole = (stated: string) =>
+      `<note><rest${mark}/>${stated}<voice>1</voice><type>whole</type></note>`
+    const first = (stated: string) =>
+      read(untimedBesideNext(timed(3) + whole(stated) + back(36) + timed(2), 36))
+    const stated = first(duration)
+    const unstated = first('')
 
-    expect(warnings).toEqual([])
+    expect(unstated.score.globalMeasures).toEqual(stated.score.globalMeasures)
+    expect(unstated.warnings.map((w) => w.code)).toEqual(stated.warnings.map((w) => w.code))
+  })
+
+  // With no time signature in force, the written value is all there is.
+  test("reads ahead a measure's rest with no <duration> and no time as its written value", () => {
+    const half = (duration: string) =>
+      `<note><rest measure="yes"/>${duration}<voice>1</voice><type>half</type></note>`
+    const first = (duration: string) => read(untimedBesideNext(half(duration) + timed(3), 24))
+    const stated = first('<duration>24</duration>')
+    const unstated = first('')
+
+    expect(unstated.score.globalMeasures).toEqual(stated.score.globalMeasures)
+    expect(unstated.warnings.map((w) => w.code)).toEqual(stated.warnings.map((w) => w.code))
   })
 
   // The reader drops an extra rest over the measure rest, and still passes

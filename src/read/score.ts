@@ -871,10 +871,16 @@ function timesInForce(part: XmlElement): (TimeSignature | undefined)[] {
       return fraction(count ?? 0, divisions * 4)
     }
     // A grace note takes none of the measure's time, whatever it states. A
-    // note stating no <duration> lasts its written value.
+    // note stating no <duration> lasts its written value, except a rest marked
+    // as the measure's, which lasts the measure where a time signature says
+    // how long that is.
     const noteLength = (found: XmlElement) => {
       if (child(found, 'grace')) return fraction(0)
       if (child(found, 'duration')) return by(found)
+      const rest = child(found, 'rest')
+      if (rest && opens && attribute(rest, 'measure') === 'yes') {
+        return fraction(opens.count, opens.unit)
+      }
       const type = child(found, 'type')
       const base = type && noteValueBaseOf(type)
       return base ? lengthOf({ base, dots: children(found, 'dot').length }) : fraction(0)
