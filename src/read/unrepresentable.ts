@@ -85,9 +85,9 @@ export const NO_HOME_IN_MNX: ReadonlySet<string> = new Set([
   // A slide between two notes. The schema's only note-to-note line is a slur.
   'slide',
   // How a note is played on the instrument, beyond which way the bow travels.
-  // The schema's event-markings are accent, bow direction, breath, soft
-  // accent, spiccato, staccatissimo, staccato, stress, strong accent, tenuto,
-  // tremolo and unstress, and nothing anywhere else holds a fingering, a
+  // The schema's event-markings are accent, bow direction, breath, caesura,
+  // soft accent, spiccato, staccatissimo, staccato, stress, strong accent,
+  // tenuto, tremolo and unstress, and nothing anywhere else holds a fingering, a
   // string, a fret, a mute or a way of plucking. Up-bow and down-bow are the
   // two <technical> children that do have a home, and are converted.
   'harmonic',
@@ -209,8 +209,9 @@ export const NO_HOME_ATTRIBUTES: ReadonlySet<string> = new Set([
   'sound soft-pedal',
   'sound sostenuto-pedal',
   // Plucked rather than bowed. The schema's event-markings are accent, bow
-  // direction, breath, soft accent, spiccato, staccatissimo, staccato,
-  // stress, strong accent, tenuto, tremolo and unstress; nothing plucks.
+  // direction, breath, caesura, soft accent, spiccato, staccatissimo,
+  // staccato, stress, strong accent, tenuto, tremolo and unstress; nothing
+  // plucks.
   'sound pizzicato',
   // What the source calls the segno drawn beside it, so a jump can name the
   // sign it goes back to. The schema's segno states a location, a colour and
@@ -220,6 +221,9 @@ export const NO_HOME_ATTRIBUTES: ReadonlySet<string> = new Set([
   // tablature at all, which is why <staff-tuning>, <capo>, <fret> and
   // <string> are on the element list above.
   'staff-details show-frets',
+  // The side a caesura is drawn on. The schema's caesura states a stroke
+  // count and a shape.
+  'caesura placement',
   // A clef drawn after the barline it changes at. The schema's clef states
   // its sign and position, and nothing about where it is drawn.
   'clef after-barline',

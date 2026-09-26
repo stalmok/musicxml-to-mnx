@@ -155,6 +155,17 @@ export interface MNXEventMarkings {
   bowDirection?: MNXBowDirection
   breath?: MNXBreathMark
   tremolo?: MNXSingleNoteTremolo
+  caesura?: MNXCaesura
+}
+
+export type MNXCaesuraShape = 'normal' | 'thick' | 'short' | 'curved'
+
+/** A break in the sound after the event, drawn as strokes. It states no side. */
+export interface MNXCaesura {
+  /** How many strokes it is drawn with, 1 or 2. Absent means 2. */
+  marks?: number
+  /** Absent means normal. */
+  shape?: MNXCaesuraShape
 }
 
 /** A tremolo on one note, drawn as beams across its stem. */

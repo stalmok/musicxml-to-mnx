@@ -5436,8 +5436,7 @@
     "direction@system": 3,
     "sound@dynamics": 36,
     "extend": 8,
-    "print-object": 2,
-    "caesura": 1
+    "print-object": 2
   },
   "gurney-3-under-the-greenwood-tree": {
     "midi-device": 2,
@@ -6122,7 +6121,7 @@
     "extend": 33,
     "dashes": 12,
     "pedal": 76,
-    "print-object": 17,
+    "print-object": 16,
     "dot@placement": 3,
     "tie": 4
   },
@@ -11802,8 +11801,7 @@
     "scoop": 1,
     "plop": 1,
     "doit": 1,
-    "falloff": 1,
-    "caesura": 1
+    "falloff": 1
   },
   "32ab-Notations3": {
     "identification": 1,

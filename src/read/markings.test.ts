@@ -4,6 +4,7 @@
 // each and the order the source wrote them in says nothing.
 
 import { describe, expect, test } from 'vitest'
+import { convertValid } from '../../tests/support/convert.js'
 import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
@@ -98,17 +99,10 @@ describe('articulations', () => {
 
   // Every one of these is a real articulation MNX has no place for.
   test('reports the marks event-markings has no room for', () => {
-    const { events, warnings } = read(
-      note(articulations('<caesura/><detached-legato/><doit/><falloff/>')),
-    )
+    const { events, warnings } = read(note(articulations('<detached-legato/><doit/><falloff/>')))
 
     expect(events[0]?.markings).toEqual({})
-    expect(warnings.map((w) => w.element)).toEqual([
-      'caesura',
-      'detached-legato',
-      'doit',
-      'falloff',
-    ])
+    expect(warnings.map((w) => w.element)).toEqual(['detached-legato', 'doit', 'falloff'])
   })
 
   // Exporters put a tie in one <notations> and an articulation in another.
@@ -306,5 +300,78 @@ describe('a fermata over a rest filling the measure', () => {
       pointing: 'up',
     })
     expect(warnings.list()).toEqual([])
+  })
+})
+
+describe('caesura', () => {
+  const score = (inner: string) =>
+    '<score-partwise><part-list><score-part id="P1"><part-name>A</part-name></score-part></part-list>' +
+    '<part id="P1"><measure number="1"><attributes><divisions>4</divisions></attributes>' +
+    note(articulations(inner)) +
+    '</measure></part></score-partwise>'
+
+  test('writes a caesura with no shape as an empty caesura', () => {
+    const { mnx, warnings } = convertValid(score('<caesura/>'))
+
+    expect(mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]).toMatchObject({
+      markings: { caesura: {} },
+    })
+    expect(warnings).toEqual([])
+  })
+
+  test.each(['normal', 'thick', 'short', 'curved'])('reads a %s caesura as its shape', (shape) => {
+    const { events, warnings } = read(note(articulations(`<caesura>${shape}</caesura>`)))
+
+    expect(events[0]?.markings.caesura).toEqual({ marks: undefined, shape })
+    expect(warnings).toEqual([])
+  })
+
+  // MNX draws two strokes unless told otherwise.
+  test('writes a single caesura as one stroke', () => {
+    const { mnx, warnings } = convertValid(score('<caesura>single</caesura>'))
+
+    expect(mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]).toMatchObject({
+      markings: { caesura: { marks: 1 } },
+    })
+    expect(warnings).toEqual([])
+  })
+
+  test('writes the shape of a curved caesura', () => {
+    const { mnx } = convertValid(score('<caesura>curved</caesura>'))
+
+    expect(mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]).toMatchObject({
+      markings: { caesura: { shape: 'curved' } },
+    })
+  })
+
+  test('reports a caesura shape it does not know and drops the caesura', () => {
+    const { events, warnings } = read(note(articulations('<caesura>wiggly</caesura>')))
+
+    expect(events[0]?.markings.caesura).toBeUndefined()
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([['unsupported:element', 'caesura']])
+    expect(warnings[0]?.message).toContain('wiggly')
+    expect(warnings[0]?.context.measure).toBe(1)
+  })
+
+  // MNX's caesura states no side.
+  test('reports the side a caesura is placed on', () => {
+    const { events, warnings } = read(note(articulations('<caesura placement="above"/>')))
+
+    expect(events[0]?.markings.caesura).toEqual({ marks: undefined, shape: undefined })
+    expect(warnings.map((w) => [w.code, w.attribute])).toEqual([
+      ['unrepresentable:attribute', 'placement'],
+    ])
+  })
+
+  test('keeps the first of two caesuras and reports the second', () => {
+    const { events, warnings } = read(
+      note(articulations('<caesura>thick</caesura><caesura placement="above">short</caesura>')),
+    )
+
+    expect(events[0]?.markings.caesura).toEqual({ marks: undefined, shape: 'thick' })
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([
+      ['unrepresentable:marking', 'caesura'],
+    ])
+    expect(warnings[0]?.context.measure).toBe(1)
   })
 })

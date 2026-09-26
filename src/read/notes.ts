@@ -22,6 +22,8 @@ import type {
   KitNote,
   LineType,
   MarkingKind,
+  CaesuraMarking,
+  CaesuraShape,
   Markings,
   Note,
   NoteValue,
@@ -1072,14 +1074,18 @@ function closeTuplets(
   }
 }
 
-// MusicXML's <articulations> children, in MNX's spelling. Everything else it
-// allows there, from a caesura to a falloff, has no home in event-markings and
-// stays unread, which is what reports it. A tremolo is not one of them: it is
+// MusicXML's <articulations> children, in MNX's spelling. A caesura is read
+// apart, because it states no side. Everything else MusicXML allows there,
+// from a doit to a falloff, has no home in event-markings and stays unread,
+// which is what reports it. A tremolo is not one of them: it is
 // written among the ornaments, and read below with the beam count it needs.
 // Keyed by the mark rather than by the element, so the compiler demands an
 // entry for every kind the model holds: a kind added there with no spelling
 // here would simply never be read.
-const ARTICULATIONS: Record<Exclude<MarkingKind, 'tremolo' | 'bowDirection'>, string> = {
+const ARTICULATIONS: Record<
+  Exclude<MarkingKind, 'tremolo' | 'bowDirection' | 'caesura'>,
+  string
+> = {
   accent: 'accent',
   staccato: 'staccato',
   staccatissimo: 'staccatissimo',
@@ -1192,6 +1198,35 @@ const BOW_DIRECTIONS: Record<BowDirectionMarking['direction'], string> = {
   down: 'down-bow',
 }
 
+const isCaesuraShape = recogniser<CaesuraShape>({
+  normal: true,
+  thick: true,
+  short: true,
+  curved: true,
+})
+
+/**
+ * A caesura, from the shape MusicXML names as its text. MusicXML's "single"
+ * is one stroke; MNX draws two unless told otherwise.
+ */
+function readCaesura(
+  found: XmlElement,
+  warnings: WarningCollector,
+  context: WarningContext,
+): CaesuraMarking | undefined {
+  const text = trimmedText(found)
+  if (text === '') return { marks: undefined, shape: undefined }
+  if (text === 'single') return { marks: 1, shape: undefined }
+  if (isCaesuraShape(text)) return { marks: undefined, shape: text }
+  warnings.add(
+    'unsupported:element',
+    `A <caesura> of "${text}" is not converted yet.`,
+    { ...context, line: found.line },
+    'caesura',
+  )
+  return undefined
+}
+
 // The same table the way it is read: MusicXML's element to the direction.
 const BOW_DIRECTION_OF = new Map<string, BowDirectionMarking['direction']>(
   entriesOf(BOW_DIRECTIONS).map(([direction, written]) => [written, direction]),
@@ -1243,6 +1278,22 @@ function readMarkings(
             markings[kind] = { placement }
           }
         }
+      }
+
+      for (const found of articulations.children('caesura')) {
+        if (markings.caesura !== undefined) {
+          attribute(found, 'placement')
+          warnings.add(
+            'unrepresentable:marking',
+            'An event carries more than one <caesura>, and MNX states one of each kind. ' +
+              'The first is the one converted.',
+            { ...context, line: found.line },
+            'caesura',
+          )
+          continue
+        }
+        const caesura = readCaesura(found, warnings, context)
+        if (caesura) markings.caesura = caesura
       }
     }
 

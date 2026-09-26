@@ -194,6 +194,15 @@ export interface TremoloMarking extends Marking {
   readonly marks: number
 }
 
+export type CaesuraShape = 'normal' | 'thick' | 'short' | 'curved'
+
+/** A caesura. MNX states no side for it, so it is not a Marking. */
+export interface CaesuraMarking {
+  /** How many strokes it is drawn with, where the source says one. */
+  readonly marks: 1 | undefined
+  readonly shape: CaesuraShape | undefined
+}
+
 /**
  * The marks written on an event: how it is attacked, and how long it is held.
  * Keyed by kind, the way MNX keys them, so an event carries at most one of
@@ -215,6 +224,7 @@ export interface Markings {
   readonly bowDirection?: BowDirectionMarking
   readonly breath?: BreathMarking
   readonly tremolo?: TremoloMarking
+  readonly caesura?: CaesuraMarking
 }
 
 export type MarkingKind = keyof Markings

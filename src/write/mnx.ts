@@ -823,12 +823,12 @@ function writeMarking(marking: Marking): MNXMarking {
  * The marks on an event, as MNX keys them: by name, so a note carries at most
  * one of each. The model is keyed the same way, so this is a transcription
  * rather than a merge, and nothing here can replace a mark already written.
- * Four of them hold more than which side they sit on, and each is written out
- * rather than folded into the others, because MNX allows no property on a mark
+ * Four of them hold more than which side they sit on, and a caesura states no
+ * side. Each is written out rather than folded into the others, because MNX allows no property on a mark
  * beyond the ones it names for that mark.
  */
 function writeMarkings(markings: Markings): MNXEventMarkings {
-  const { strongAccent, bowDirection, breath, tremolo } = markings
+  const { strongAccent, bowDirection, breath, tremolo, caesura } = markings
   const written: MNXEventMarkings = {}
 
   // The eight that state nothing beyond which side they sit on.
@@ -860,6 +860,13 @@ function writeMarkings(markings: Markings): MNXEventMarkings {
   // MNX states no tremolo without a beam count, and the model states none
   // either, so there is nothing to check for here.
   if (tremolo) written.tremolo = { ...writeMarking(tremolo), marks: tremolo.marks }
+  // A caesura states no side.
+  if (caesura) {
+    written.caesura = {
+      ...(caesura.marks ? { marks: caesura.marks } : {}),
+      ...(caesura.shape ? { shape: caesura.shape } : {}),
+    }
+  }
 
   return written
 }

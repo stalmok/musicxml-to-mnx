@@ -1142,6 +1142,18 @@ describe('event markings', () => {
     expect(firstEvent(score)).not.toHaveProperty('markings')
   })
 
+  test('writes a caesura with only what the source states', () => {
+    expect(markingsOf({ caesura: { marks: 1, shape: undefined } })).toEqual({
+      caesura: { marks: 1 },
+    })
+    expect(markingsOf({ caesura: { marks: undefined, shape: 'thick' } })).toEqual({
+      caesura: { shape: 'thick' },
+    })
+    expect(markingsOf({ caesura: { marks: undefined, shape: undefined } })).toEqual({
+      caesura: {},
+    })
+  })
+
   // The writer names each mark in a line of its own, and a kind the model
   // gains with no line there would be dropped where nothing can see it:
   // markings holds only optional properties, so an event that lost one still
@@ -1161,6 +1173,7 @@ describe('event markings', () => {
       bowDirection: { placement: undefined, direction: 'up' as const },
       breath: { placement: undefined, symbol: undefined },
       tremolo: { placement: undefined, marks: 3 },
+      caesura: { marks: undefined, shape: undefined },
     } satisfies Required<Markings>
 
     expect(Object.keys(markingsOf(everyKind) ?? {}).sort()).toEqual(Object.keys(everyKind).sort())

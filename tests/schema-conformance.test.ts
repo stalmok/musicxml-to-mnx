@@ -247,10 +247,6 @@ const NOT_MODELLED: Readonly<Record<string, { properties: readonly string[]; why
     properties: ['color', 'glyph'],
     why: 'The colour a clef is drawn in, and a glyph in place of its sign.',
   },
-  MNXEventMarkings: {
-    properties: ['caesura'],
-    why: 'A caesura, which the reader does not read yet.',
-  },
   MNXDynamic: {
     properties: ['relativeValue', 'staffEnd', 'visuallyContinues', 'voice'],
     why: 'Relative dynamics, a hairpin ending on another staff, a continued hairpin, and the voice a mark belongs to.',
@@ -465,6 +461,7 @@ const ATTRIBUTE_HOMES: Readonly<Record<string, string>> = {
   'sound pizzicato': 'event-markings',
   'sound segno': 'segno',
   'clef after-barline': 'clef',
+  'caesura placement': 'caesura',
   'tied line-type': 'tie',
   'metronome parentheses': 'tempo',
   'direction system': 'system',
@@ -596,6 +593,7 @@ const MNX_SPELLING: Readonly<Record<string, string>> = {
   'TimeSignature.display': 'MNXTime.display',
   'Lyric.type': 'MNXLyricLineType',
   GraceType: 'MNXGraceType',
+  CaesuraShape: 'MNXCaesuraShape',
   'Marking.placement': 'MNXPlacement',
   'StrongAccentMarking.pointing': 'MNXStrongAccent.pointing',
   'BowDirectionMarking.direction': 'MNXBowDirection.direction',
@@ -612,6 +610,7 @@ const MNX_SPELLING: Readonly<Record<string, string>> = {
 /** A model enum MNX states as something other than a value, with what it is. */
 const NOT_AN_MNX_ENUM: Readonly<Record<string, string>> = {
   MarkingKind: 'MNX gives each mark a property of its own on event markings.',
+  'CaesuraMarking.marks': 'MNX states the stroke count as an integer from 1 to 2.',
   'Event.kind': SEQUENCE_ITEM_TAG,
   'Space.kind': SEQUENCE_ITEM_TAG,
   'Tuplet.kind': SEQUENCE_ITEM_TAG,
