@@ -747,6 +747,9 @@ function setMeasureRest(
     )
   }
 
+  // Where the source states no <duration>, the written value is how long the
+  // rest lasts, as it is for any other note.
+  const lasts = duration ?? (written && lengthOf(written))
   const fermata = readFermata(notations, warnings, context)
   builder.setFullMeasure(
     voice,
@@ -757,10 +760,10 @@ function setMeasureRest(
       // height on one is placed there rather than lost.
       staffPosition,
     },
-    duration,
+    lasts,
     staff,
     restValue && {
-      duration: duration ?? lengthOf(restValue),
+      duration: lasts ?? lengthOf(restValue),
       // What a grace note written after the rest takes it back as. A marking,
       // a stem, a lyric or a slur would have kept it an event already.
       event: () => ({
@@ -782,7 +785,7 @@ function setMeasureRest(
     path,
     element.line,
   )
-  if (duration) builder.passOver(duration)
+  if (lasts) builder.passOver(lasts)
 }
 
 /** A note carrying <chord>, joined to the event before it. */

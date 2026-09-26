@@ -870,6 +870,29 @@ describe('a grace rest marked as the measure rest', () => {
   })
 })
 
+// MusicXML requires a <duration> on every note that is not a grace note. A
+// measure rest without one lasts its written value, as any other note does.
+describe('a measure rest with no duration', () => {
+  const rest = '<note><rest measure="yes"/><voice>1</voice><type>quarter</type></note>'
+  const grace =
+    '<note><grace/><pitch><step>D</step><octave>5</octave></pitch>' +
+    '<type>eighth</type><voice>1</voice></note>'
+
+  const voiceTwo =
+    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+    '<voice>2</voice><type>quarter</type></note>'
+  const stated = rest.replace('<voice>', '<duration>4</duration><voice>')
+
+  test.each([
+    ['alone', ''],
+    ['followed by a grace note', grace],
+  ])('converts as the same rest with a duration, %s', (_, after) => {
+    expect(convertValid(inMeasure(rest + after + voiceTwo)).mnx).toEqual(
+      convertValid(inMeasure(stated + after + voiceTwo)).mnx,
+    )
+  })
+})
+
 // Chant editions are written senza misura, where no time signature says how
 // long a measure runs. A part resting through such a measure is one rest
 // carrying no <type>, often longer than any note value can write. MNX states

@@ -1193,14 +1193,11 @@ describe('a time signature stated after the measure start', () => {
     expect(warnings).toEqual([])
   })
 
-  test("reads ahead a measure's rest with no <duration> as leaving the cursor", () => {
-    const whole = '<note><rest measure="yes"/><voice>1</voice><type>whole</type></note>'
-    const { warnings } = read(untimedBesideNext(timed(2) + whole + timed(3), 24))
+  test("reads ahead a measure's rest with no <duration> as lasting its written value", () => {
+    const half = '<note><rest measure="yes"/><voice>1</voice><type>half</type></note>'
+    const { warnings } = read(untimedBesideNext(timed(2) + half + timed(3), 24))
 
-    expect(warnings.map((w) => `${w.code} ${String(w.context.part)}`)).toEqual([
-      'inconsistent:time P1',
-      'unrepresentable:tuplet-ratio P2',
-    ])
+    expect(warnings).toEqual([])
   })
 
   test('reads ahead a grace note stating a <duration> as taking no time', () => {
