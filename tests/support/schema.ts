@@ -46,5 +46,14 @@ export function resolveRef(node: SchemaNode | undefined): SchemaNode | undefined
   return found
 }
 
-/** Empty when the document conforms; otherwise one readable line per error. */
-export const schemaErrors = compileValidator(schema)
+let validator: ((document: unknown) => string[]) | undefined
+
+/**
+ * Empty when the document conforms; otherwise one readable line per error.
+ * Compiled on first use, so a validator that fails to compile fails a test
+ * rather than the import of every test file.
+ */
+export function schemaErrors(document: unknown): string[] {
+  validator ??= compileValidator(schema)
+  return validator(document)
+}
