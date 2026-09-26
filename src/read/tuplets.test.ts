@@ -183,8 +183,6 @@ describe('tuplet display', () => {
     expect(tuplet?.kind === 'tuplet' && tuplet.placement).toBeUndefined()
   })
 
-  // MusicXML and MNX both state the side of the notes the bracket is drawn on
-  // as placement.
   test('carries the placement onto the tuplet', () => {
     const placed =
       '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><type>eighth</type>' +
@@ -201,7 +199,7 @@ describe('tuplet display', () => {
 
   // A stop marker's placement restates the start's, which the tuplet's
   // placement already carries, so nothing is lost and nothing is reported.
-  test('writes the placement onto schema-valid MNX, reading the placement the stop restates', () => {
+  test("writes the tuplet's placement onto schema-valid MNX, reading the one the stop restates", () => {
     const placed =
       '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><type>eighth</type>' +
       '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>' +

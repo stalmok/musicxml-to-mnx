@@ -1950,7 +1950,6 @@ function tupletDisplayOf(start: XmlElement, hidden: boolean): TupletDisplaySetti
   const bracket = attribute(start, 'bracket')
   if (bracket === 'yes' || bracket === 'no') settings.bracket = bracket
 
-  // MusicXML and MNX both name the side placement, above or below.
   const placement = attribute(start, 'placement')
   if (placement === 'above' || placement === 'below') settings.placement = placement
 

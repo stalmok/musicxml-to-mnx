@@ -1034,7 +1034,7 @@ describe('fermatas', () => {
 })
 
 // MNX keys the marks on an event by name, and allows a mark no property
-// beyond the ones it names for that mark, so the two that carry more than an
+// beyond the ones it names for that mark, so the two that carry more than a
 // placement are written out rather than folded in with the rest.
 describe('event markings', () => {
   function eventWith(markings: Event['markings']): Event {
