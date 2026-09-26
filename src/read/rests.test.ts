@@ -809,8 +809,7 @@ describe('a rest filling a measure a grace note leads into', () => {
   })
 
   // An irregular measure has no note value to write the rest as, so there is
-  // nothing to make an event of and the refusal stands, whichever side of the
-  // rest the grace notes are written on.
+  // nothing to make an event of.
   const irregular = (body: string) =>
     '<score-partwise><part id="P1"><measure number="1">' +
     '<attributes><divisions>4</divisions><time><beats>5</beats><beat-type>4</beat-type>' +
@@ -830,15 +829,105 @@ describe('a rest filling a measure a grace note leads into', () => {
     expect(thrown).toContain('both a rest that fills the measure and notes in it')
   })
 
-  test('refuses grace notes after a rest no note value can write', () => {
-    let thrown = ''
-    try {
-      convertMusicXML(irregular(irregularRest + grace))
-    } catch (error) {
-      thrown = error instanceof Error ? error.message : String(error)
-    }
+  test('drops grace notes after a rest no note value can write, and reports them', () => {
+    const { mnx, warnings } = convertValid(irregular(irregularRest + grace))
+    const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
 
-    expect(thrown).toContain('no note value can write that rest as an event')
+    expect(sequence?.fullMeasure).toEqual({})
+    expect(sequence?.content).toEqual([])
+    expect(warnings.map((w) => [w.code, w.element, w.context.measure])).toEqual([
+      ['unrepresentable:grace-beside-rest', 'grace', 1],
+    ])
+  })
+
+  test('reports each note of a grace chord after the rest, and nothing it carries', () => {
+    const member =
+      '<note><grace/><chord/><pitch><step>F</step><octave>5</octave></pitch>' +
+      '<type>quarter</type><stem>up</stem>' +
+      '<notations><articulations><accent/></articulations></notations>' +
+      '<lyric><text>la</text></lyric></note>'
+    const { mnx, warnings } = convertValid(irregular(irregularRest + grace + member))
+
+    expect(mnx.parts[0]?.measures[0]?.sequences[0]?.content).toEqual([])
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:grace-beside-rest',
+      'unrepresentable:grace-beside-rest',
+    ])
+  })
+
+  // A chord member is dropped only with the grace note it joins. One with
+  // nothing before it to join is a broken source whatever stands in the voice.
+  const graceMember = (voice: string) =>
+    '<note><grace/><chord/><pitch><step>F</step><octave>5</octave></pitch>' +
+    `<type>quarter</type><voice>${voice}</voice></note>`
+  const backup = '<backup><duration>20</duration></backup>'
+  const refusal = (body: string) => {
+    try {
+      convertMusicXML(irregular(body))
+    } catch (error) {
+      return error instanceof Error ? error.message : String(error)
+    }
+    return ''
+  }
+
+  test.each([
+    ['opening the measure', graceMember('1') + irregularRest],
+    ['straight after the rest', irregularRest + graceMember('1')],
+
+    [
+      "after another voice's rest",
+      irregularRest + grace + backup + irregularRest.replace('>1<', '>2<') + graceMember('2'),
+    ],
+  ])('refuses a grace chord member with nothing to join %s', (_, body) => {
+    expect(refusal(body)).toContain('marked as a chord with no note for it to join')
+  })
+
+  test('keeps a grace chord member written after a note in another voice', () => {
+    const { warnings } = convertValid(
+      irregular(
+        irregularRest +
+          grace +
+          backup +
+          '<note><pitch><step>C</step><octave>5</octave></pitch><duration>4</duration>' +
+          '<type>quarter</type><voice>2</voice></note>' +
+          graceMember('2'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:grace-beside-rest'])
+  })
+
+  test('refuses a chord member that is not a grace note after a dropped grace note', () => {
+    const member =
+      '<note><chord/><pitch><step>F</step><octave>5</octave></pitch><duration>20</duration>' +
+      '<voice>1</voice></note>'
+
+    expect(refusal(irregularRest + grace + member)).toContain(
+      'marked as a chord with no note for it to join',
+    )
+  })
+
+  test('joins a grace chord member to a grace note kept after one was dropped', () => {
+    const second =
+      '<note><grace/><pitch><step>G</step><octave>5</octave></pitch>' +
+      '<type>quarter</type><voice>2</voice></note>'
+    const { mnx, warnings } = convertValid(
+      irregular(
+        irregularRest +
+          grace +
+          backup +
+          second +
+          graceMember('2') +
+          '<note><pitch><step>C</step><octave>5</octave></pitch><duration>4</duration>' +
+          '<type>quarter</type><voice>2</voice></note>',
+      ),
+    )
+    const group = mnx.parts[0]?.measures[0]?.sequences[1]?.content[0]
+
+    expect(
+      group && 'type' in group && group.type === 'grace' && group.content[0]?.notes,
+    ).toHaveLength(2)
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:grace-beside-rest'])
   })
 })
 

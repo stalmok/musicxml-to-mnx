@@ -306,21 +306,30 @@ export function readNote(
   // is written as, which is where the same two written the other way round
   // already leave it. Taken back before this note opens a bracket of its own,
   // so that the rest stands outside that bracket, as it does in the source. A
-  // chord member joins the grace note before it, which has asked already. An
-  // irregular measure has no value to write the rest as, so the rest stays
-  // the sequence's own and nothing can stand beside it.
-  if (
-    graceElement &&
-    !chordMember &&
-    builder.restsOnSequence(voice) &&
-    !builder.restoreMeasureRest(voice, path, element.line)
-  ) {
-    throw new MusicXMLError(
-      'A grace note stands in a voice that is a rest filling the measure, and no note ' +
-        'value can write that rest as an event. MNX states such a rest on a sequence ' +
-        'that holds nothing, so nothing can hold the grace note.',
-      { path, line: element.line },
+  // chord member joins the grace note before it, which has taken the rest
+  // back already. An irregular measure has no value to write the rest as, so
+  // the rest stays the sequence's own and the grace note is dropped and
+  // reported, with any chord member joining it.
+  const dropped = chordMember
+    ? graceElement !== undefined && builder.chordJoinsDropped()
+    : graceElement !== undefined &&
+      builder.restsOnSequence(voice) &&
+      !builder.restoreMeasureRest(voice, path, element.line)
+  if (dropped) {
+    warnings.add(
+      'unrepresentable:grace-beside-rest',
+      'A grace note follows a rest that fills the measure, and no note value can write ' +
+        'that rest as an event. MNX states such a rest on a sequence that holds nothing, ' +
+        'so the grace note is not converted.',
+      { ...context, line: element.line },
+      'grace',
     )
+    // The warning above reports the note whole, so what it carries is not
+    // reported again.
+    element.skip(...element.element.children.map((found) => found.name))
+    for (const block of notations) block.skip(...block.element.children.map((found) => found.name))
+    builder.dropGraceNote()
+    return
   }
 
   // Which staff the note names. Read and bounded whatever the part has, so

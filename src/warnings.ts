@@ -174,6 +174,10 @@ export const WARNING_CODES = Object.freeze([
   // and the amount is not. Also a note naming both sides, where MNX states
   // one.
   'unrepresentable:grace-time',
+  // A grace note after a rest filling a measure whose length no note value
+  // can write. MNX states such a rest on a sequence that holds nothing, and
+  // there is no event to write it as instead, so the grace note is dropped.
+  'unrepresentable:grace-beside-rest',
   // A SMuFL glyph named for a dynamic's wording. A dynamic group's glyphs
   // draw the mark itself, not the words, so the wording goes over as text
   // and the glyph choice is lost.

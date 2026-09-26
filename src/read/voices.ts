@@ -405,6 +405,7 @@ export class MeasureBuilder {
   #furthest: Fraction = fraction(0)
   /** The voice of the most recent event, which a chord member joins. */
   #lastVoice: string | undefined
+  #lastDropped = false
   /**
    * The <backup> that carried the cursor before the measure start, held until
    * something is written out there or a <forward> brings the cursor back.
@@ -640,6 +641,7 @@ export class MeasureBuilder {
     builder.grace = undefined
     builder.placed.push({ event, staff })
     this.#lastVoice = voice ?? UNNAMED_VOICE
+    this.#lastDropped = false
     const start = this.#cursor
     builder.last = { event, duration, start }
     this.#eventStarts.push({ start, staff, grace: false })
@@ -898,6 +900,7 @@ export class MeasureBuilder {
     }
 
     this.#writeAt()
+    this.#lastDropped = false
 
     // The rest is the whole of this voice in this measure, so the staff it
     // names is the staff the sequence sits on.
@@ -909,6 +912,19 @@ export class MeasureBuilder {
     }
     // The rest occupies the whole voice, so nothing may follow it there.
     if (covering) builder.end = addFractions(this.#cursor, covering)
+  }
+
+  /**
+   * Records a grace note just dropped, so that a chord member written after
+   * it is dropped with it rather than joining the note before.
+   */
+  dropGraceNote(): void {
+    this.#lastDropped = true
+  }
+
+  /** Whether the note a chord member written now would join was dropped. */
+  chordJoinsDropped(): boolean {
+    return this.#lastDropped
   }
 
   /** Whether this voice's measure rest stands on the sequence rather than as an event. */
@@ -1827,6 +1843,7 @@ export class MeasureBuilder {
     const open = builder.grace
 
     this.#lastVoice = voice ?? UNNAMED_VOICE
+    this.#lastDropped = false
     // Grace notes have no duration of their own, so a chord note joining one
     // has nothing to agree with.
     const start = this.#cursor
