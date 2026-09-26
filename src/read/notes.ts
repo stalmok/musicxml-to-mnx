@@ -478,7 +478,7 @@ export function readNote(
       { ...context, line: element.line },
       'rest',
     )
-    if (duration) builder.passOver(duration)
+    builder.passOver(duration ?? lengthOf(value))
     return
   }
 

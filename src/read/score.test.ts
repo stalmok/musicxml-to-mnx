@@ -1200,6 +1200,27 @@ describe('a time signature stated after the measure start', () => {
     expect(warnings).toEqual([])
   })
 
+  // The reader drops an extra rest over the measure rest, and still passes
+  // over it from the measure start. The read-ahead counts it the same way.
+  test('reads ahead a dropped extra rest with no <duration> as the reader passes over it', () => {
+    const measureRest = '<note><rest measure="yes"/><duration>24</duration><voice>1</voice></note>'
+    const extra = (duration: string) =>
+      `<note><rest/>${duration}<voice>1</voice><type>quarter</type></note>`
+    const forward = '<forward><duration>12</duration></forward>'
+    const first = (duration: string) =>
+      read(
+        untimedBesideNext(
+          timed(2) + measureRest + back(48) + extra(duration) + forward + timed(3),
+          24,
+        ),
+      )
+    const stated = first('<duration>12</duration>')
+    const unstated = first('')
+
+    expect(unstated.score.globalMeasures).toEqual(stated.score.globalMeasures)
+    expect(unstated.warnings.map((w) => w.code)).toEqual(stated.warnings.map((w) => w.code))
+  })
+
   test('reads ahead a grace note stating a <duration> as taking no time', () => {
     const grace =
       '<note><grace/><pitch><step>D</step><octave>4</octave></pitch><duration>24</duration>' +
@@ -1866,7 +1887,7 @@ describe('whole-measure rests', () => {
     expect(warnings.map((w) => w.code).sort()).toEqual(['inconsistent:backup', 'redundant:rest'])
   })
 
-  // Without a duration nothing moves the cursor, and the drop is the same.
+  // Without a duration the rest lasts its written value, and the drop is the same.
   test('drops an extra rest that states no duration', () => {
     const { score: result, warnings } = read(
       measure(
