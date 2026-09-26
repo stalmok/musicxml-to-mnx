@@ -236,6 +236,21 @@ describe('grace notes', () => {
     // The event that follows is the real note, at its full value.
     expect(content?.[1]?.kind === 'event' && content[1].notes[0]?.pitch.step).toBe('C')
   })
+
+  // The grace note is the last thing written, so no note after it settles
+  // where the voice starts.
+  test('is written at the measure start after a backup reaching past it', () => {
+    const { measure: result, warnings } = read(
+      measure(
+        note('C', 4) +
+          '<backup><duration>20</duration></backup>' +
+          GRACE.replace('<voice>1</voice>', '<voice>2</voice>'),
+      ),
+    )
+
+    expect(result?.sequences[1]?.content.map((item) => item.kind)).toEqual(['grace'])
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:backup'])
+  })
 })
 
 // A grace note carries no <duration>, so where it states no <type> nothing
