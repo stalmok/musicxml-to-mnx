@@ -824,8 +824,8 @@ function writeMarking(marking: Marking): MNXMarking {
  * one of each. The model is keyed the same way, so this is a transcription
  * rather than a merge, and nothing here can replace a mark already written.
  * Four of them hold more than which side they sit on, and a caesura states no
- * side. Each is written out rather than folded into the others, because MNX allows no property on a mark
- * beyond the ones it names for that mark.
+ * side. Each is written out rather than folded into the others, because MNX
+ * allows no property on a mark beyond the ones it names for that mark.
  */
 function writeMarkings(markings: Markings): MNXEventMarkings {
   const { strongAccent, bowDirection, breath, tremolo, caesura } = markings

@@ -35,12 +35,12 @@ import { elementLoss, reportHidden } from './unrepresentable.js'
 // to each other in both directions.
 const isPitchedClefSign = recogniser<PitchedClefSign>({ C: true, F: true, G: true })
 
-// The signs MusicXML states beyond the three that place a pitch. The staff each heads
-// has heights on it: a rest or an unpitched note placed by <display-step>
-// reads against the clef in force. Each is held as the plain treble clef,
-// which is how a percussion staff is written and read: the drumset positions,
-// bass drum on the bottom space and snare on the third, are the treble-clef
-// positions of the steps the source writes.
+// The signs MusicXML states beyond the three that place a pitch. The staff
+// each heads has heights on it: a rest or an unpitched note placed by
+// <display-step> reads against the clef in force. Each is held in force as
+// the plain treble clef, which is how a percussion staff is read: the drumset
+// positions, bass drum on the bottom space and snare on the third, are the
+// treble-clef positions of the steps the source writes.
 //
 // The <line> such a clef states is where the clef is drawn, not a reference
 // pitch: MusicXML states a line to place pitches by for the G, F and C signs

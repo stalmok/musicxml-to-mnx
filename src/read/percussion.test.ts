@@ -491,7 +491,7 @@ describe('the MNX a percussion part converts to', () => {
     expect(warnings).toEqual([])
   })
 
-  // The glyph places nothing, so the heights on the staff stay where the
+  // A percussion clef places no pitch, so the heights on the staff stay where the
   // source writes them wherever the clef is drawn.
   test('leaves the staff heights where they are wherever the clef is drawn', () => {
     const drawn =

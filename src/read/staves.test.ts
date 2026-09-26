@@ -371,8 +371,9 @@ describe('a clef hidden with print-object="no"', () => {
 
 // MNX states four clef signs: C, F, G and the percussion clef. A TAB or
 // jianpu clef has no home there, and the part it heads is otherwise ordinary
-// music, so the sign is reported and the rest of the part converted.
-describe('a clef sign that places no pitch', () => {
+// music, so the sign is reported and the rest of the part converted. A
+// "none" clef is read as a hidden treble clef.
+describe('the percussion, TAB, jianpu and "none" clef signs', () => {
   const withSign = (sign: string, line = '') =>
     measures(
       `<attributes><divisions>4</divisions><clef><sign>${sign}</sign>${line}</clef></attributes>` +
