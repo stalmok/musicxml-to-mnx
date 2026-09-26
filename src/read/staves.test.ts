@@ -241,6 +241,7 @@ describe('clefs', () => {
     expect(part?.measures[0]?.clefs[0]?.sign).toBe('G')
     expect(part?.measures[0]?.clefs[0]?.octave).toBeUndefined()
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:clef-octave'])
+    expect(warnings[0]?.context.measure).toBe(1)
   })
 
   // Three octaves either way is the last transposition MNX states, so both
@@ -282,11 +283,9 @@ describe('clefs', () => {
   })
 })
 
-// MNX states three clef signs, C, F and G. A TAB, jianpu or "none" clef has
-// no home there, and the part it heads is otherwise ordinary music, so the
-// sign is reported and the rest of the part converted. A percussion clef is
-// written as the treble clef the staff is read against, drawn with the glyph
-// MNX's clef carries for exactly this.
+// MNX states four clef signs: C, F, G and the percussion clef. A TAB, jianpu
+// or "none" clef has no home there, and the part it heads is otherwise
+// ordinary music, so the sign is reported and the rest of the part converted.
 describe('a clef whose sign MNX does not state', () => {
   const withSign = (sign: string, line = '') =>
     measures(
@@ -301,6 +300,7 @@ describe('a clef whose sign MNX does not state', () => {
     expect(part?.measures[0]?.sequences[0]?.content).toHaveLength(1)
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:clef-sign'])
     expect(warnings[0]?.element).toBe('clef')
+    expect(warnings[0]?.context.measure).toBe(1)
   })
 
   test('names the sign it could not state', () => {
@@ -309,17 +309,16 @@ describe('a clef whose sign MNX does not state', () => {
     expect(warnings[0]?.message).toContain('TAB')
   })
 
-  test('writes a percussion clef stating no line as the treble clef with the glyph', () => {
+  test('writes a percussion clef stating no line on the second line', () => {
     const { part, warnings } = read(withSign('percussion'))
 
     expect(part?.measures[0]?.clefs).toEqual([
       {
-        sign: 'G',
+        sign: 'P',
         staffPosition: -2,
         staff: undefined,
         position: { num: 0, den: 1 },
         octave: undefined,
-        glyph: 'unpitchedPercussionClef1',
       },
     ])
     expect(warnings).toEqual([])
@@ -334,17 +333,16 @@ describe('a clef whose sign MNX does not state', () => {
     expect(warnings).toEqual([])
   })
 
-  test('writes a percussion clef as the treble clef with the percussion glyph', () => {
+  test('writes a percussion clef with the percussion sign', () => {
     const { part, warnings } = read(withSign('percussion', '<line>2</line>'))
 
     expect(part?.measures[0]?.clefs).toEqual([
       {
-        sign: 'G',
+        sign: 'P',
         staffPosition: -2,
         staff: undefined,
         position: { num: 0, den: 1 },
         octave: undefined,
-        glyph: 'unpitchedPercussionClef1',
       },
     ])
     expect(warnings).toEqual([])

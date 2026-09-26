@@ -428,9 +428,7 @@ describe('the MNX a percussion part converts to', () => {
   test('heads the staff with the percussion clef', () => {
     const { mnx } = convertValid(source(struck('C', '5', 'P1-I39'), DRUM_KIT))
 
-    expect(mnx.parts[0]?.measures[0]?.clefs).toEqual([
-      { clef: { sign: 'G', staffPosition: -2, glyph: 'unpitchedPercussionClef1' } },
-    ])
+    expect(mnx.parts[0]?.measures[0]?.clefs).toEqual([{ clef: { sign: 'P', staffPosition: -2 } }])
   })
 
   // MNX states the staff only where a part has more than one, so a clef
@@ -441,14 +439,12 @@ describe('the MNX a percussion part converts to', () => {
       '<clef number="1"><sign>percussion</sign><line>2</line></clef></attributes>'
     const { mnx, warnings } = convertValid(source(struck('C', '5', 'P1-I39'), DRUM_KIT, numbered))
 
-    expect(mnx.parts[0]?.measures[0]?.clefs).toEqual([
-      { clef: { sign: 'G', staffPosition: -2, glyph: 'unpitchedPercussionClef1' } },
-    ])
+    expect(mnx.parts[0]?.measures[0]?.clefs).toEqual([{ clef: { sign: 'P', staffPosition: -2 } }])
     expect(warnings).toEqual([])
   })
 
-  // MNX's staffPosition is where the clef is drawn, and the glyph names no
-  // note, so the line the source draws the clef on is carried as it is.
+  // MNX's staffPosition is where the clef is drawn, and a percussion clef
+  // names no note, so the line the source draws the clef on is carried as it is.
   test.each([
     ['1', -4],
     ['3', 0],
@@ -459,9 +455,7 @@ describe('the MNX a percussion part converts to', () => {
       `<clef><sign>percussion</sign><line>${line}</line></clef></attributes>`
     const { mnx, warnings } = convertValid(source(struck('C', '5', 'P1-I39'), DRUM_KIT, drawn))
 
-    expect(mnx.parts[0]?.measures[0]?.clefs).toEqual([
-      { clef: { sign: 'G', staffPosition, glyph: 'unpitchedPercussionClef1' } },
-    ])
+    expect(mnx.parts[0]?.measures[0]?.clefs).toEqual([{ clef: { sign: 'P', staffPosition } }])
     expect(warnings).toEqual([])
   })
 

@@ -1,7 +1,13 @@
 // What the readers of one part share: the running state a measure cannot be
 // read without.
 
-import type { ClefSign, Key, KitComponent, TimeSignature, Transposition } from '../model/score.js'
+import type {
+  PitchedClefSign,
+  Key,
+  KitComponent,
+  TimeSignature,
+  Transposition,
+} from '../model/score.js'
 import { fraction } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type { WarningContext } from '../warnings.js'
@@ -49,7 +55,7 @@ export function staffPositionOfLine(line: number, lines: number): number {
  * frame the clef itself was written in.
  */
 export interface ClefInForce {
-  sign: ClefSign
+  sign: PitchedClefSign
   staffPosition: number
 }
 

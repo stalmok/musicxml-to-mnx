@@ -39,7 +39,11 @@ export type NoteValueBase =
   | '512th'
   | '1024th'
 
-export type ClefSign = 'C' | 'F' | 'G'
+/** The clef signs that place a pitch on a line. */
+export type PitchedClefSign = 'C' | 'F' | 'G'
+
+/** P is the percussion clef, which places no pitch. */
+export type ClefSign = PitchedClefSign | 'P'
 
 export interface Pitch {
   readonly step: Step
@@ -398,11 +402,6 @@ export interface Clef {
    * octave below a plain treble. Undefined where the clef is untransposed.
    */
   readonly octave: number | undefined
-  /**
-   * The SMuFL glyph drawn in place of the sign's own, where the source draws
-   * a clef MNX has no sign for. Undefined where the sign draws itself.
-   */
-  readonly glyph: string | undefined
 }
 
 /**

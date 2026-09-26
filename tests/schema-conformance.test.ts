@@ -244,8 +244,8 @@ const NOT_MODELLED: Readonly<Record<string, { properties: readonly string[]; why
     why: 'Whether a voice is the upper or the lower one. MusicXML states no such thing.',
   },
   MNXClef: {
-    properties: ['color', 'hide'],
-    why: 'The colour a clef is drawn in, and a clef that is not drawn.',
+    properties: ['color', 'glyph', 'hide'],
+    why: 'The colour a clef is drawn in, a glyph in place of its sign, and a clef that is not drawn.',
   },
   MNXEventMarkings: {
     properties: ['caesura'],
@@ -576,6 +576,7 @@ const MNX_SPELLING: Readonly<Record<string, string>> = {
   Step: 'MNXStep',
   NoteValueBase: 'MNXNoteValueBase',
   ClefSign: 'MNXClefSign',
+  PitchedClefSign: 'MNXClefSign',
   CurveSide: 'MNXCurveSide',
   LineType: 'MNXLineType',
   FermataSymbol: 'MNXFermataSymbol',
@@ -631,9 +632,9 @@ const NARROWER: Readonly<Record<string, { missing: readonly string[]; why: strin
     missing: ['2048th', '4096th', 'duplexMaxima'],
     why: 'No MusicXML <type> spells any of the three, so the reader cannot produce one.',
   },
-  ClefSign: {
+  PitchedClefSign: {
     missing: ['P'],
-    why: 'The reader writes a percussion clef as a G sign under the percussion glyph.',
+    why: 'The signs a pitch is read against. A percussion clef places no pitch.',
   },
   CurveSide: { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
   'Lyric.type': {

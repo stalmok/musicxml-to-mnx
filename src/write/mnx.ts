@@ -686,7 +686,6 @@ function writeClef(clef: Clef): MNXPositionedClef {
     clef: {
       sign: clef.sign,
       staffPosition: clef.staffPosition,
-      ...(clef.glyph !== undefined ? { glyph: clef.glyph } : {}),
       // A transposed clef states its octave and asks for the number to be
       // drawn, as MusicXML always draws the 8 or 15 of a clef-octave-change.
       ...(clef.octave !== undefined ? { octave: clef.octave, showOctave: true } : {}),

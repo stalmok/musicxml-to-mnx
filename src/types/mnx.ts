@@ -319,8 +319,6 @@ export interface MNXClef {
   octave?: number
   /** Whether the octave number is drawn beside the clef. */
   showOctave?: boolean
-  /** The SMuFL glyph drawn in place of the sign's own, by name. */
-  glyph?: string
 }
 
 export interface MNXPositionedClef {

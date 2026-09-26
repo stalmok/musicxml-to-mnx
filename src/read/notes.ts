@@ -12,7 +12,7 @@ import { compareFractions, divideFractions, fraction, multiplyFractions } from '
 import type { Fraction } from '../fraction.js'
 import type {
   AccidentalDisplay,
-  ClefSign,
+  PitchedClefSign,
   CurveSide,
   Event,
   Fermata,
@@ -66,7 +66,7 @@ const STEP_ORDER: Record<Step, number> = { C: 0, D: 1, E: 2, F: 3, G: 4, A: 5, B
 
 // The diatonic index of the pitch each clef sign places on its line: G4 for a
 // G clef, F3 for an F clef, C4 for a C clef.
-const CLEF_REFERENCE: Record<ClefSign, number> = {
+const CLEF_REFERENCE: Record<PitchedClefSign, number> = {
   G: 4 * 7 + STEP_ORDER.G,
   F: 3 * 7 + STEP_ORDER.F,
   C: 4 * 7 + STEP_ORDER.C,
