@@ -181,8 +181,8 @@ export function readRest(note: RestNote, state: PartState, builder: MeasureBuild
         // rest is readable here and nowhere later. What the event itself carries
         // is weighed where the reading is settled.
         !carriesSlurEnd &&
-        // A rest written over a rest that already fills the measure is reported
-        // and discarded, so it never reaches the settling.
+        // A rest written over a rest that already fills the measure is never
+        // the measure's rest.
         !builder.restsTheMeasure(voice) &&
         // A rest the voice has already sounded past cannot be the measure's rest,
         // and the settling would say so, but it would say it at the end of the

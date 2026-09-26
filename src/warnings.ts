@@ -301,12 +301,14 @@ export const WARNING_CODES = Object.freeze([
   // The unnamed notes are kept as a separate line, which may not be the one
   // the source intended.
   'missing:voice',
-  // An unpitched note with no <display-step> and <display-octave> to place it
-  // by, or no clef in force to read them against. MNX states where every kit
+  // An unpitched note with no usable <display-step> and <display-octave> to
+  // place it by, or no clef in force to read them against. MNX states where every kit
   // component sits, so it is written on the middle line.
   'missing:display-step',
   // A rest written over a rest that already fills the same voice's measure.
-  // Both are silence, so the measure rest stands and the extra is dropped.
+  // Both are silence, so the measure rest stands and the extra is dropped. A
+  // rest in another line of the voice, where the voice sounds a note in the
+  // measure, is part of that line's music and is kept.
   'redundant:rest',
 ] as const)
 

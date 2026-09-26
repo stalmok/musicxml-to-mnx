@@ -506,8 +506,8 @@ export class MeasureBuilder {
   /**
    * Whether any line of this voice is already a rest filling the measure.
    * Asked across all of them, because resting the measure is something the
-   * voice does rather than one of its lines: a second rest written over the
-   * first is silence over silence whichever line it would go to.
+   * voice does rather than one of its lines. Whether a rest written over it
+   * is dropped is restIsRedundant's question.
    */
   restsTheMeasure(voice: string | undefined): boolean {
     return this.#layersFor(voice).layers.some(restIsSettled)

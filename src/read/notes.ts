@@ -182,7 +182,7 @@ function kitComponent(
   if (position === undefined) {
     warnings.add(
       'missing:display-step',
-      'An unpitched note gives no <display-step> and <display-octave> to place it by, or ' +
+      'An unpitched note gives no usable <display-step> and <display-octave> to place it by, or ' +
         'no clef is in force to read them against. It is written on the middle line.',
       { ...context, line: element.line },
       'unpitched',
