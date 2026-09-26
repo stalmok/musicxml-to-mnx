@@ -1848,8 +1848,11 @@ function dedupeClefs(
   warnings: WarningCollector,
   context: WarningContext,
 ): Clef[] {
+  // A clef naming no staff draws the first, so the two ways of naming staff 1
+  // are the same staff.
+  const staffOf = (clef: Clef) => clef.staff ?? 1
   const atSamePoint = (one: Clef, other: Clef) =>
-    one.staff === other.staff && compareFractions(one.position, other.position) === 0
+    staffOf(one) === staffOf(other) && compareFractions(one.position, other.position) === 0
   return clefs
     .filter((clef, index) => {
       const replacing = clefs.find((later, at) => at > index && atSamePoint(later, clef))

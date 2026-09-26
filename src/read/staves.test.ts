@@ -123,6 +123,41 @@ describe('clefs', () => {
     ])
   })
 
+  // A clef naming no staff draws the first, so the two ways of naming staff 1
+  // are the same staff.
+  test('counts an unnumbered clef and a numbered one as the same staff', () => {
+    const { part, warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions><staves>2</staves>' +
+          '<clef><sign>G</sign><line>2</line></clef>' +
+          '<clef number="1"><sign>F</sign><line>4</line></clef>' +
+          '<clef number="2"><sign>F</sign><line>4</line></clef></attributes>' +
+          note('C', '1'),
+      ),
+    )
+
+    expect(part?.measures[0]?.clefs).toEqual([
+      { sign: 'F', staffPosition: 2, staff: 1, position: { num: 0, den: 1 }, hide: false },
+      { sign: 'F', staffPosition: 2, staff: 2, position: { num: 0, den: 1 }, hide: false },
+    ])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:clef'])
+  })
+
+  test('says nothing where a numbered clef restates an unnumbered one on staff 1', () => {
+    const { part, warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions><staves>2</staves>' +
+          '<clef><sign>G</sign><line>2</line></clef>' +
+          '<clef number="1"><sign>G</sign><line>2</line></clef>' +
+          '<clef number="2"><sign>F</sign><line>4</line></clef></attributes>' +
+          note('C', '1'),
+      ),
+    )
+
+    expect(part?.measures[0]?.clefs.map((clef) => clef.staff)).toEqual([1, 2])
+    expect(warnings).toEqual([])
+  })
+
   // The sign alone does not say which clef it is. A G clef on the first line
   // is a French violin clef and a G clef on the second is a treble; the two
   // put every note a step apart.
