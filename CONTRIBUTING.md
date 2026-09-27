@@ -15,8 +15,8 @@ Read the [architecture](docs/architecture.md) and the
 section lists the setup and the checks.
 
 Run `pnpm hooks:install` once per clone. The pre-commit hook runs the type
-check, lint, the import-graph check, the format check and the test suite. All
-must pass.
+check, lint, the import-graph check, the format check and the test suite
+without the vendored corpus. All must pass.
 
 A pull request must:
 
@@ -28,9 +28,12 @@ A pull request must:
 - Keep test coverage at 98% or more.
 - Run `pnpm test:corpus` if it changes the reader, the model or the writer.
 
+Run `pnpm audit` after you install or update a package, and resolve its
+findings before you commit.
+
 Keep each commit to one logical change.
 
-## Licence
+## License
 
 By contributing, you agree that your contribution is licensed under the
-[MIT Licence](LICENSE).
+[MIT License](LICENSE).
