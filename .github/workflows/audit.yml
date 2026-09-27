@@ -3,7 +3,7 @@
 # dependency the change never touched, which is noise, not a fault in the
 # change. Weekly it still surfaces a new advisory promptly, and on demand a
 # maintainer runs it before tagging a release. Installing or updating a package
-# locally still runs `pnpm audit` there and then (see CLAUDE.md), so a change
+# locally still runs `pnpm audit` there and then (see CONTRIBUTING.md), so a change
 # that introduces a vulnerable dependency is caught before it is committed.
 #
 # Actions are pinned to commit SHAs, matching the repo's supply-chain posture.
