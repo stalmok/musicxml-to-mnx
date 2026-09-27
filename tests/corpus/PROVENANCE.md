@@ -1,22 +1,12 @@
 # Vendored corpus
 
-Six hundred published songs and seven feature files, converted on every test
-run. Every check in `tests/corpus.test.ts` runs over both.
+Six hundred published songs and seven feature files. Every check in
+`tests/corpus.test.ts` runs over both.
 
-They are here because the bugs that mattered were all found by running against
-real music rather than by the unit tests: a grace note taking time it does not
-have, a chord member arriving after its tuplet closed, a note carrying two
-`<notations>` blocks, spanner numbering scoped to the wrong thing. None of
-those shapes appears in a hand-written fixture unless you already know to
-write it.
-
-A large sample rather than a handful because a small one kept being the
-problem. Two readings of slur numbering resolved three songs identically and
-disagreed only on a fourth, and the file that settled it was not among the
-three. Each time the count has grown, real music the smaller sample never held
-has surfaced fresh defects: growing to six hundred found a lyric written twice
-on one note that the converter collapsed, and confirmed two spanner and beam
-fixes on shapes the two hundred never contained.
+Real music holds combinations that hand-written fixtures do not. Defects found
+this way include a grace note taking time it does not have, a chord member
+arriving after its tuplet closed, a note carrying two `<notations>` blocks, and
+spanner numbering scoped to the wrong thing.
 
 ## Source and licence
 
@@ -49,18 +39,11 @@ its encodings carry whatever terms their encoders set.
 
 ## Why the feature files are here
 
-The six hundred are real music, and that is the point of them: every defect
-that mattered was found in a combination no hand-written fixture would hold.
-What real music cannot do is contain notation nobody wrote. Lieder is voice
-and piano throughout, so no song in the upstream corpus of 1,462 contains a
-single up-bow, down-bow, spiccato, stress, unstress, lyric elision, unpitched
-note or `<transpose>`, and none states how much time a grace note takes. The
-converter handles all of them, and the six hundred could not tell if any of it
-broke.
-
-The suite is not real music, and it is not a substitute for the six hundred.
-It is the smallest set of files that exercises what real music of one kind
-never will. One file per feature, so a failure names what broke:
+Lieder is voice and piano throughout. No song in the upstream corpus of 1,462
+contains an up-bow, down-bow, spiccato, stress, unstress, lyric elision,
+unpitched note or `<transpose>`, and none states how much time a grace note
+takes. The feature files cover that notation, one file per feature, so a
+failure names what broke:
 
 | File                                   | What it holds that the songs do not                                  |
 | -------------------------------------- | -------------------------------------------------------------------- |
@@ -72,10 +55,9 @@ never will. One file per feature, so a failure names what broke:
 | `72b-TransposingInstruments-Full.xml`  | Nine transposing parts of eleven, one octave-displaced               |
 | `73a-Percussion.xml`                   | Unpitched notes on percussion staves                                 |
 
-`32ab-Notations3.xml` earns its place twice over: besides the two bow marks it
-writes eighteen of the twenty-nine `<technical>` children that MNX has nowhere
-to put, so those no-home registry entries are exercised rather than only
-asserted against the schema.
+`32ab-Notations3.xml` also writes eighteen of the twenty-nine `<technical>`
+children that MNX cannot hold, so the tests exercise those registry entries,
+not only compare them with the schema.
 
 The vendored corpus does not cover measure repeats, `make-time` on grace
 notes, or hairpins ending at `niente`.
@@ -89,8 +71,7 @@ features in Lieder, the test suite, MakeMusic, music21, or the CPDL and PDMX sam
 `.mxl` is the standard compressed MusicXML container, and it is what the
 corpus publishes. The XML inside is around twenty times larger: six hundred
 songs come to around ten megabytes this way, against two hundred uncompressed.
-The
-files are byte-for-byte as retrieved, so they are excluded from formatting,
+The files are byte-for-byte as retrieved, so they are excluded from formatting,
 and `tests/support/corpus.ts` reads the score out of each container.
 
 ## How they were chosen
@@ -121,30 +102,28 @@ the rest of the suite missed:
 | `schumann-im-wunderschoenen-monat-mai`   | Robert Schumann, Op. 48 No. 1 | Ties and slurs running between the pianist's two hands, which settled that spanner numbering is scoped to the part rather than the voice. |
 | `schubert-der-lindenbaum`                | Schubert, D. 911 No. 5        | Chord members inside tuplets, and notes carrying two `<notations>` blocks.                                                                |
 
-The feature files are kept as the `.xml` their suite publishes, uncompressed:
-they come to sixty kilobytes together, and a diff that shows the up-bow is
-worth more than the saving.
+The feature files are kept as the `.xml` their suite publishes, uncompressed,
+so a diff shows each change. They come to sixty kilobytes together.
 
 ## What these files get wrong, and what is refused
 
 MuseScore's MusicXML export renumbers slurs on the way out, and a few come out
-crossed: a `stop` whose `start` was never written. Checked against the
-MuseScore sources, where every slur carries an explicit id: all 21 in the
-Clara Schumann pair up correctly, so the transcriptions are sound and the
-export is not. A handful of ties and slurs therefore cannot be joined, and are
-reported rather than guessed at. The warning baseline records how many.
+crossed: a `stop` whose `start` was never written. In the MuseScore sources,
+every slur carries an explicit id, and all 21 in the Clara Schumann song pair
+up correctly. The defect is in the export, not the transcription. The
+converter reports these ties and slurs and does not guess. The warning
+baseline records how many.
 
-Every one of the six hundred converts: the songs the converter refuses were
-skipped when the corpus was chosen, and the corpus test pins that none is
-refused, so one starting to be rejected is a change somebody chose.
+Every one of the six hundred converts. Songs the converter refuses were
+skipped when the corpus was chosen, and the corpus test fails if any song is
+refused.
 
 Some write a measure longer than its time signature, such as five quarters in
-a 3/4 bar. That is the source's own doing, and carrying it over faithfully is
-correct, which is why the measure and direction checks are made against the
-source rather than against the time signature.
+a 3/4 bar. The converter keeps it as written, so the measure and direction
+checks compare against the source, not against the time signature.
 
 Some write a note whose value disagrees with its duration, a dotted half
 lasting two beats. The converter carries the written value and reports it as
 `inconsistent:duration`. Its measures then sound as the written values do,
 not as the durations add up, so the length and direction checks skip those
-songs; the pitch and schema checks still hold them to account.
+songs. The pitch and schema checks still run.

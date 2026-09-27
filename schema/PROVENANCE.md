@@ -14,16 +14,13 @@
 ## Why it's vendored rather than fetched
 
 MNX has no stable 1.0, and its schema changes as the Community Group settles
-open questions. Pinning a specific commit means a conversion produced by a
-given release of this package is checked against the exact rules that release
-was written for. A spec change can never silently invalidate old output or
-turn a green test suite red without a deliberate version bump.
+open questions. The pin checks each release against the schema it was written
+for. A schema change reaches this package only through a new release.
 
 ## Integrity
 
 `SHA256SUMS` records the checksum, and CI runs `sha256sum --check SHA256SUMS`
-on every push. The schema is the conformance oracle for the entire test suite,
-so a silent edit to it would weaken every gate at once.
+on every push.
 
 Verify locally:
 
@@ -33,8 +30,7 @@ cd schema && sha256sum --check SHA256SUMS
 
 ## Updating the pin
 
-Moving to a newer spec snapshot is a deliberate release, not a maintenance
-chore:
+Moving to a newer spec snapshot is a release:
 
 1. Download the new `docs/mnx-schema.json` and update this file's commit,
    date, and checksum, then regenerate `SHA256SUMS`.
@@ -42,24 +38,21 @@ chore:
    three places that state something about MNX by hand to this file: the types
    in `src/types/mnx.ts`, the registry of what MNX cannot hold in
    `src/read/unrepresentable.ts`, and the id pattern in `src/ids.ts`.
-   Every failure is a decision to make, and the test says which.
-3. Update `src/types/mnx.ts` to match any shape change the test reported. A
-   field the schema gained and the types lack is never emitted, and the output
-   stays legal, so nothing else catches it.
+   Each failure names the decision to make.
+3. Update `src/types/mnx.ts` to match any shape change the test reported. No
+   other check finds a field the schema gained and the types lack.
 4. Run the same test again. Its fourth comparison is the model's MNX-spelled
    enums in `src/model/score.ts` against the types, so it has nothing to report
    until step 3 has moved the types. Carry each value the model states too into
-   the model, or record the difference as deliberate, which is what the test
-   asks for. A whole enum MNX has gained is reported the same way: pair it with
-   a model enum, or state why the model does not restate it.
+   the model, or record the difference as deliberate. A whole enum MNX has
+   gained is reported the same way: pair it with a model enum, or state why
+   the model does not restate it.
 5. Move any entry the test reported out of `src/read/unrepresentable.ts` and
-   into whatever now carries it. An element MNX has since gained a home for is
-   a gap in this converter, not a limit of the format, and reporting it as
-   permanent is the worse of the two errors.
-6. Regenerate fixture goldens and review every diff, because a changed golden is a
-   changed wire format, not a formality.
+   into whatever now carries it. An element MNX can now hold is a gap in this
+   converter, not a limit of the format.
+6. Regenerate fixture goldens and review every diff. A changed golden is a
+   changed wire format.
 7. Re-run the corpus gate and record any movement in the warning baseline.
 8. State the type changes in the version's
    [GitHub release](https://github.com/stalmok/musicxml-to-mnx/releases) notes. The package exports every type
-   in `src/types/mnx.ts`, so a shape the schema changed is a breaking change
-   for anyone who names it.
+   in `src/types/mnx.ts`, so a changed type is a breaking change.
