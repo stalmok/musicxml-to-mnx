@@ -16,7 +16,7 @@ The API and output types can change.
 npm install musicxml-to-mnx
 ```
 
-The package supports Node `^20.19.0 || ^22.13.0 || >=24`.
+The package supports Node `^22.13.0 || >=24`.
 The library also runs in browsers.
 
 ## Use

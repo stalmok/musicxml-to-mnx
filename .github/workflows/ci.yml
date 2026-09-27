@@ -108,27 +108,20 @@ jobs:
           cd schema
           sha256sum --check SHA256SUMS
 
-      # package.json's engines field claims Node 20 and 22 as well as the Node
-      # the checks run on, so the suite and the built command run on the lowest
-      # version of each. pnpm needs a newer Node than either, so the install and
-      # the build above ran on .nvmrc's. These steps come last, in this job
-      # rather than a job per version, so the install and the build are not
-      # repeated. tests/node-versions.test.ts holds these versions to the
-      # engines field.
+      # package.json's engines field claims Node 22 as well as the Node the
+      # checks run on, so the suite and the built command run on the lowest
+      # Node 22 version. pnpm needs a newer Node, so the install and the build
+      # above ran on .nvmrc's. These steps come last, in this job rather than a
+      # job of their own, so the install and the build are not repeated.
+      # tests/node-versions.test.ts holds this version to the engines field.
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
-          node-version: '20.19.0'
+          node-version: '22.13.0'
           # Otherwise the packageManager field turns on the pnpm cache, which
           # runs pnpm on this Node.
           package-manager-cache: false
       # Called directly, because pnpm does not run on this Node. With the
       # build in place, the command's smoke test runs too.
-      - run: ./node_modules/.bin/vitest run --exclude '**/corpus.test.ts'
-
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
-        with:
-          node-version: '22.13.0'
-          package-manager-cache: false
       - run: ./node_modules/.bin/vitest run --exclude '**/corpus.test.ts'
 
   # Blocks a pull request that introduces a dependency with a known

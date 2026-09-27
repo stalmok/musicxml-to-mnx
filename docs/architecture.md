@@ -193,7 +193,7 @@ Node core imports in the library. `tests/isomorphic-artifact.test.ts` runs the
 built library, with its dependencies, in a V8 context that holds no Node or
 browser globals.
 
-CI runs the test suite on Node 24 and on the lowest Node 20 and 22 versions
+CI runs the test suite on Node 24 and on the lowest Node 22 version
 that the `engines` field allows. `tests/node-versions.test.ts` checks the CI
 versions against the `engines` field.
 
