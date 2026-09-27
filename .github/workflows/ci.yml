@@ -87,6 +87,11 @@ jobs:
           head -1 dist/cli.js | grep -q '^#!/usr/bin/env node'
           test -s dist/THIRD_PARTY_NOTICES.txt
           node --input-type=module -e "await import('musicxml-to-mnx/schema/mnx-schema.json', { with: { type: 'json' } })"
+          # The files above resolve from the checkout. The package must ship them too.
+          npm pack --dry-run --json > "$RUNNER_TEMP/pack.json"
+          for file in dist/musicxml-to-mnx.js dist/types/index.d.ts dist/cli.js dist/THIRD_PARTY_NOTICES.txt schema/mnx-schema.json schema/PROVENANCE.md LICENSE; do
+            jq -e --arg file "$file" '.[0].files | any(.path == $file)' "$RUNNER_TEMP/pack.json" > /dev/null || { echo "the package does not ship $file"; exit 1; }
+          done
           # npm publish rewrites what it finds invalid in package.json, and
           # removes a bin entry whose path it does not accept.
           npm pkg fix
