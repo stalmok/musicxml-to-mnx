@@ -3,9 +3,14 @@
   "version": "0.1.0",
   "description": "Convert MusicXML to MNX, the W3C JSON music notation format.",
   "license": "MIT",
+  "author": "Kestutis Stalmok",
+  "homepage": "https://github.com/stalmok/musicxml-to-mnx#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/stalmok/musicxml-to-mnx.git"
+  },
+  "bugs": {
+    "url": "https://github.com/stalmok/musicxml-to-mnx/issues"
   },
   "type": "module",
   "main": "./dist/musicxml-to-mnx.js",
