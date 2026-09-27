@@ -1,11 +1,10 @@
 # The full-corpus gate: every OpenScore Lieder file through the converter,
 # held to the same source-independent checks the vendored corpus gets, over
-# the whole corpus rather than a sample. It fetches ~1,500 files and takes minutes,
-# so it does not run per push. It runs weekly, catching a regression against
-# real music between releases, and on demand, so a maintainer runs it before
-# tagging a release as part of the deliberate release process.
+# the whole corpus rather than a sample. It fetches ~1,500 files and takes
+# minutes, so it does not run per push. It runs weekly and on demand. Run it
+# before you tag a release.
 #
-# Actions are pinned to commit SHAs, matching the repo's supply-chain posture.
+# Actions are pinned to commit SHAs.
 name: Corpus
 
 on:
@@ -40,8 +39,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       # The CC0 corpus, shallow so only the current tree comes down, not its
-      # history. A pinned commit would be more reproducible, but the point of
-      # this gate is to meet the corpus as it stands, so it tracks the tip.
+      # history. It tracks the tip, not a pinned commit, so the gate tests the
+      # corpus as it stands.
       - name: Fetch the OpenScore Lieder corpus
         run: git clone --depth 1 https://github.com/OpenScore/Lieder.git corpus-full
 

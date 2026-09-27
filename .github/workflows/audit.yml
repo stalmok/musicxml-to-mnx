@@ -1,12 +1,9 @@
-# The dependency audit, on a schedule rather than per push. Run on every push
-# it reddened unrelated changes whenever a new advisory landed against a
-# dependency the change never touched, which is noise, not a fault in the
-# change. Weekly it still surfaces a new advisory promptly, and on demand a
-# maintainer runs it before tagging a release. Installing or updating a package
-# locally still runs `pnpm audit` there and then (see CONTRIBUTING.md), so a change
-# that introduces a vulnerable dependency is caught before it is committed.
+# The dependency audit, weekly and on demand. It does not run per push,
+# because a new advisory against a dependency a change did not touch would
+# fail that change. Run it on demand before you tag a release. Contributors
+# run `pnpm audit` after they install or update a package (see CONTRIBUTING.md).
 #
-# Actions are pinned to commit SHAs, matching the repo's supply-chain posture.
+# Actions are pinned to commit SHAs.
 name: Audit
 
 on:

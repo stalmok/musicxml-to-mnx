@@ -1,10 +1,9 @@
 # The vendored corpus, on every push to main and every pull request that
 # changes what it tests: the converter, the schema, the checks, the songs, or
-# the dependencies. ci.yml skips it because it takes minutes; this workflow
-# finds a reader or writer regression at the commit that caused it, not at
-# the release tag.
+# the dependencies. ci.yml skips it because it takes minutes. This workflow
+# finds a reader or writer regression at the commit that caused it.
 #
-# Actions are pinned to commit SHAs, matching the repo's supply-chain posture.
+# Actions are pinned to commit SHAs.
 name: Vendored corpus
 
 on:

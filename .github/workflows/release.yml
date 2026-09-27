@@ -1,10 +1,9 @@
 # Publish to npm when a version tag (v0.1.0, …) is pushed. The CI gate set
-# runs first, by CALLING ci.yml with the vendored corpus added, so releases
-# and pushes are guarded by the same list and a gate added there cannot be
-# forgotten here. The pack job then builds explicitly (install scripts stay
-# blocked) and packs the tarball. The publish job stages that tarball via npm
+# runs first, by calling ci.yml with the vendored corpus added, so releases
+# and pushes run the same gates. The pack job then builds explicitly (install
+# scripts stay blocked) and packs the tarball. The publish job stages that tarball via npm
 # trusted publishing: the workflow's OIDC token is the credential, so no npm
-# token secret exists to leak, and provenance attestation is automatic. The
+# token secret exists to leak, and npm attests the build automatically. The
 # publish job installs nothing and uses no cache, so no dependency code runs
 # where the OIDC token can be requested. A staged version is not public until a
 # maintainer approves it with 2FA, on npmjs.com (Staged Packages tab) or with
@@ -51,7 +50,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # The tag must match package.json, so a mismatched release fails loudly.
+      # The tag must match the version in package.json.
       - name: Check tag matches package version
         run: |
           pkg="v$(node -p "require('./package.json').version")"

@@ -2,8 +2,8 @@
 # === Supply-chain hardening ===
 
 # Block dependency lifecycle/build scripts. Empty allowlist = no dependency may
-# run install/postinstall scripts, the cheapest defence against a compromised
-# release executing code at install time. Add a package here only after
+# run install/postinstall scripts, so a compromised release cannot execute
+# code at install time. Add a package here only after
 # auditing why it needs a build step.
 onlyBuiltDependencies: []
 
@@ -22,11 +22,8 @@ engineStrict: true
 minimumReleaseAge: 1440
 
 # Force a patched transitive dependency ahead of its parent picking it up.
-# Both advisories below have widened their range once since this file first
-# pinned past them, and each time the pin went quietly stale: an override
-# names an exact version, so it cannot follow a range that grows. `pnpm audit`
-# is what catches that, which is why it runs weekly rather than only on a
-# change to this file.
+# An override names an exact version, so it does not follow an advisory range
+# that grows. The weekly `pnpm audit` finds an override that is out of date.
 #
 # fast-uri <3.1.5, pulled in by ajv (dev-only, and bundled into the command's
 # --validate), is GHSA-v2hh-gcrm-f6hx: host confusion via a backslash authority
