@@ -8,7 +8,7 @@
 //
 //   src/types/mnx.ts             these are MNX's fields and enums
 //   src/read/unrepresentable.ts  these elements have nowhere to go in MNX
-//   src/read/score.ts            an MNX id looks like this
+//   src/ids.ts                   an MNX id looks like this
 //
 // A fourth, the model's enums in src/model/score.ts, is a copy of the types
 // rather than of the schema, because the model is spelled the way MNX spells
