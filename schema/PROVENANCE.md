@@ -2,14 +2,14 @@
 
 `mnx-schema.json` is the official MNX JSON Schema, copied here unmodified.
 
-|                |                                                                                                                                                                                             |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Source         | https://github.com/w3c/mnx, `docs/mnx-schema.json`                                                                                                                                          |
-| Pinned commit  | `7dd6d0316fd9bd19327e79f622e729dcfe790012` ("Changed slur-side to have an 'auto' option and expanded docs", 2026-09-22)                                                                     |
-| Retrieved      | 2026-09-26                                                                                                                                                                                  |
-| SHA-256        | `eccb5eafbc02c19b55a118d057d44755fa1a2971c9168ddb0915922bafc9d2c5`                                                                                                                          |
-| Schema dialect | JSON Schema draft 2020-12                                                                                                                                                                   |
-| Licence        | The MNX specification is published by the W3C Music Notation Community Group under the [W3C Community Final Specification Agreement](https://www.w3.org/community/about/agreements/final/). |
+|                |                                                                                                                                                                                                      |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Source         | https://github.com/w3c/mnx, `docs/mnx-schema.json`                                                                                                                                                   |
+| Pinned commit  | `7dd6d0316fd9bd19327e79f622e729dcfe790012` ("Changed slur-side to have an 'auto' option and expanded docs", 2026-09-22)                                                                              |
+| Retrieved      | 2026-09-26                                                                                                                                                                                           |
+| SHA-256        | `eccb5eafbc02c19b55a118d057d44755fa1a2971c9168ddb0915922bafc9d2c5`                                                                                                                                   |
+| Schema dialect | JSON Schema draft 2020-12                                                                                                                                                                            |
+| Licence        | The MNX specification is a draft published by the W3C Music Notation Community Group under the [W3C Community Contributor License Agreement (CLA)](https://www.w3.org/community/about/process/cla/). |
 
 ## Why it's vendored rather than fetched
 
