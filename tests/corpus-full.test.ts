@@ -4,11 +4,11 @@
 // the output to the same source-independent checks the vendored corpus test
 // applies to its songs, over the whole of the OpenScore Lieder corpus rather
 // than a sample. It is not run per commit: it fetches ~1,500 files and takes
-// minutes, so it stays skipped unless OSSIA_CORPUS points at a directory of
-// scores, which the corpus workflow sets after cloning the corpus and a
-// maintainer sets before a release.
+// minutes, so it stays skipped unless MUSICXML_TO_MNX_CORPUS points at a
+// directory of scores, which the corpus workflow sets after cloning the corpus
+// and a maintainer sets before a release.
 //
-//   OSSIA_CORPUS=<dir> [OSSIA_CORPUS_REPORT=<file.json>] pnpm corpus-gate
+//   MUSICXML_TO_MNX_CORPUS=<dir> [MUSICXML_TO_MNX_CORPUS_REPORT=<file.json>] pnpm corpus-gate
 //
 // It fails on a crash, on output the schema rejects, or on output whose notes
 // or measure lengths disagree with the source. A file the converter refuses
@@ -34,7 +34,7 @@ import {
   underfilledTuplets,
 } from './support/structural.js'
 
-const corpusDir = process.env.OSSIA_CORPUS
+const corpusDir = process.env.MUSICXML_TO_MNX_CORPUS
 
 interface Failure {
   file: string
@@ -211,9 +211,9 @@ gate('the full corpus', () => {
   ]
   console.log(lines.join('\n'))
 
-  if (process.env.OSSIA_CORPUS_REPORT !== undefined) {
+  if (process.env.MUSICXML_TO_MNX_CORPUS_REPORT !== undefined) {
     writeFileSync(
-      process.env.OSSIA_CORPUS_REPORT,
+      process.env.MUSICXML_TO_MNX_CORPUS_REPORT,
       `${JSON.stringify(
         {
           total: files.length,
