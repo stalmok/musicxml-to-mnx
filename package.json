@@ -20,7 +20,8 @@
   },
   "files": [
     "dist",
-    "schema/mnx-schema.json"
+    "schema/mnx-schema.json",
+    "schema/PROVENANCE.md"
   ],
   "sideEffects": false,
   "keywords": [
