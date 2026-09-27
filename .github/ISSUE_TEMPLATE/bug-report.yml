@@ -1,0 +1,45 @@
+name: Bug report
+description: A MusicXML file that converts wrongly, fails to convert, or crashes the converter.
+labels: [bug]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What goes wrong
+      description: What you expected, and what the converter did instead. Name the measure, staff and voice if you can.
+    validations:
+      required: true
+  - type: textarea
+    id: input
+    attributes:
+      label: Input file
+      description: Attach the MusicXML or .mxl file, or a smaller file that shows the same problem. Zip it if GitHub refuses the extension. Attach only files you have the right to share.
+    validations:
+      required: true
+  - type: textarea
+    id: call
+    attributes:
+      label: Command or API call
+      description: The exact command line, or the convertMusicXML call with its options.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Warnings and errors
+      description: The warnings the conversion returned (--report writes them as JSON), or the full error message.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: musicxml-to-mnx version
+      description: The output of musicxml-to-mnx --version, or the version in your lockfile.
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node or browser version
+      placeholder: Node 24.9.0

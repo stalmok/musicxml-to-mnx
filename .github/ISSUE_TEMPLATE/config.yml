@@ -1,0 +1,4 @@
+contact_links:
+  - name: Report a vulnerability
+    url: https://github.com/stalmok/musicxml-to-mnx/security/advisories/new
+    about: Report security problems privately, not in a public issue.
