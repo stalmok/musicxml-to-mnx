@@ -240,6 +240,11 @@ Conversion still requires memory for the XML tree, internal model, and output.
 
 Output types target the vendored schema at `schema/mnx-schema.json`.
 The [schema source notes](schema/PROVENANCE.md) record its commit and checksum.
+The package exports the schema, so you can validate output against the same pin:
+
+```js
+import schema from 'musicxml-to-mnx/schema/mnx-schema.json' with { type: 'json' }
+```
 
 Every conversion output in tests must validate against that schema.
 The package exports the MNX output types, including `MNXDocument`.

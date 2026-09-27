@@ -16,7 +16,8 @@
       "types": "./dist/types/index.d.ts",
       "import": "./dist/musicxml-to-mnx.js",
       "default": "./dist/musicxml-to-mnx.js"
-    }
+    },
+    "./schema/mnx-schema.json": "./schema/mnx-schema.json"
   },
   "files": [
     "dist",
