@@ -74,7 +74,8 @@ jobs:
       - run: pnpm build
 
       # The build must ship what the package's exports promise: the library
-      # bundle, its type entry, the command with its shebang, and the schema.
+      # bundle, its type entry, the command with its shebang and the licences of
+      # the code it inlines, and the schema.
       - name: Check the build's shipped files
         # Explicit bash: adds pipefail to the default -e, so a future edit that
         # pipes a check cannot swallow its failure.
@@ -84,6 +85,7 @@ jobs:
           test -s dist/types/index.d.ts
           test -s dist/cli.js
           head -1 dist/cli.js | grep -q '^#!/usr/bin/env node'
+          test -s dist/THIRD_PARTY_NOTICES.txt
           node --input-type=module -e "await import('musicxml-to-mnx/schema/mnx-schema.json', { with: { type: 'json' } })"
           # npm publish rewrites what it finds invalid in package.json, and
           # removes a bin entry whose path it does not accept.

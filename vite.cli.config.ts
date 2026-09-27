@@ -1,9 +1,12 @@
 import { defineConfig } from 'vite'
+import { thirdPartyNoticesPlugin } from './scripts/third-party-notices.ts'
 
 // The `musicxml-to-mnx` command, built as its own self-contained file so it shares no
 // chunks with the library bundle. Run after the library build with
 // emptyOutDir off, so it adds cli.js beside musicxml-to-mnx.js rather than wiping it.
 export default defineConfig({
+  // Ajv and its dependencies are inlined, and their licences require the notice.
+  plugins: [thirdPartyNoticesPlugin('THIRD_PARTY_NOTICES.txt')],
   build: {
     lib: {
       entry: 'cli/main.ts',
