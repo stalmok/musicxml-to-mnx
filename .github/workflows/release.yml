@@ -2,15 +2,15 @@
 # runs first, by CALLING ci.yml with the vendored corpus added, so releases
 # and pushes are guarded by the same list and a gate added there cannot be
 # forgotten here. The publish job then builds explicitly (install scripts stay
-# blocked) and publishes via npm trusted publishing: the workflow's OIDC token
-# IS the credential, so no npm token secret exists to leak, and provenance
-# attestation is automatic.
+# blocked) and stages the version via npm trusted publishing: the workflow's
+# OIDC token is the credential, so no npm token secret exists to leak, and
+# provenance attestation is automatic. A staged version is not public until a
+# maintainer approves it with 2FA, on npmjs.com (Staged Packages tab) or with
+# `npm stage approve <stage-id>`.
 #
 # One-time setup on npmjs.com (package settings → Trusted Publisher):
-#   GitHub Actions / stalmok / musicxml-to-mnx / release.yml
-# If the very first publish of the package can't be configured ahead of time,
-# bootstrap once with a short-lived granular token, add the trusted publisher,
-# then revoke the token.
+#   GitHub Actions / stalmok / musicxml-to-mnx / release.yml / npm-publish,
+#   with "Allow npm publish" unchecked, so CI can only stage.
 name: Release
 
 on:
@@ -33,16 +33,9 @@ jobs:
     needs: gates
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # BOOTSTRAP: the first publish uses an NPM_TOKEN secret, because trusted
-    # publishing cannot be configured on npmjs.com until the package exists.
-    # id-token:write is deliberately absent — with it, npm 11.5+ attempts the
-    # OIDC exchange and fails when no trusted publisher is set up yet, even with
-    # a token present. After this release, configure the trusted publisher,
-    # revoke the token, and restore id-token:write + provenance below.
     permissions:
       contents: read
-    # A second pair of eyes on every release, and where the NPM_TOKEN secret
-    # lives: configure required reviewers on the environment.
+      id-token: write
     environment: npm-publish
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
@@ -51,8 +44,9 @@ jobs:
 
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
 
-      # Node 24 bundles npm ≥ 11.5.1, the minimum for trusted publishing.
-      # .nvmrc pins 24, so the version file serves here too.
+      # .nvmrc pins Node 24, whose current releases bundle npm 11.19.
+      # Staged publishing needs npm 11.15.0 or later; an older npm fails
+      # the publish step with an unknown command.
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version-file: .nvmrc
@@ -69,9 +63,5 @@ jobs:
 
       - run: pnpm build
 
-      # npm (not pnpm) publish. BOOTSTRAP: authenticated by the NPM_TOKEN
-      # secret. setup-node wrote an .npmrc that reads this variable. Once
-      # trusted publishing is configured, drop the env and add --provenance.
-      - run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # npm, not pnpm, stages the version.
+      - run: npm stage publish
