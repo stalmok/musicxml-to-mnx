@@ -50,8 +50,8 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "deps:check": "depcruise src cli tests --output-type err-long",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format": "prettier --write . --ignore-path .gitignore --ignore-path .prettierignore --ignore-path .git/info/exclude",
+    "format:check": "prettier --check . --ignore-path .gitignore --ignore-path .prettierignore --ignore-path .git/info/exclude",
     "hooks:install": "git config core.hooksPath .githooks",
     "corpus-gate": "vitest run tests/corpus-full.test.ts"
   },

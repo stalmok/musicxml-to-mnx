@@ -8,10 +8,6 @@ pnpm-lock.yaml
 .*/
 !.github/
 
-# Local scratchpad and session-tool state (gitignored), not source to format
-plan.md
-CLAUDE.local.md
-
 # Vendored scores, kept byte-for-byte as retrieved (see tests/corpus/PROVENANCE.md)
 tests/corpus/*.mxl
 tests/corpus/features/
