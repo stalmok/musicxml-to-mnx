@@ -1,7 +1,7 @@
 # musicxml-to-mnx
 
 Convert [MusicXML](https://www.w3.org/2021/06/musicxml40/) to
-[MNX](https://w3c-cg.github.io/mnx/docs/), the JSON music notation format from
+[MNX](https://mnx.formats.music/docs/), the JSON music notation format from
 the W3C Music Notation Community Group.
 
 musicxml-to-mnx is a TypeScript library for browsers and Node, with a Node command-line

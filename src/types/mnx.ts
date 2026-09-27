@@ -1,6 +1,6 @@
 // The MNX wire format, as far as this converter emits it. Hand-written
 // against the vendored schema (schema/mnx-schema.json, pinned to a specific
-// w3c/mnx commit). That file, not this one, is the authority, and the test
+// w3c-cg/mnx commit). That file, not this one, is the authority, and the test
 // suite validates every emitted document against it.
 //
 // Only what we currently produce is modelled here; the format is much larger.

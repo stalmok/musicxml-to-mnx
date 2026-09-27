@@ -4,7 +4,7 @@
 
 |                |                                                                                                                                                                                                      |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Source         | https://github.com/w3c/mnx, `docs/mnx-schema.json`                                                                                                                                                   |
+| Source         | https://github.com/w3c-cg/mnx, `docs/mnx-schema.json`                                                                                                                                                |
 | Pinned commit  | `7dd6d0316fd9bd19327e79f622e729dcfe790012` ("Changed slur-side to have an 'auto' option and expanded docs", 2026-09-22)                                                                              |
 | Retrieved      | 2026-09-26                                                                                                                                                                                           |
 | SHA-256        | `eccb5eafbc02c19b55a118d057d44755fa1a2971c9168ddb0915922bafc9d2c5`                                                                                                                                   |

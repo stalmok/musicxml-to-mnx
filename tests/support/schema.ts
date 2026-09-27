@@ -1,5 +1,5 @@
 // The conformance oracle: the vendored MNX schema, pinned to a specific
-// w3c/mnx commit (see schema/PROVENANCE.md). Every document the converter
+// w3c-cg/mnx commit (see schema/PROVENANCE.md). Every document the converter
 // produces in a test is checked against it. Shape assertions alone would
 // happily pass on output no MNX reader would accept.
 

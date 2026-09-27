@@ -42,11 +42,11 @@ Stage boundaries are enforced by dependency-cruiser rules in `.dependency-cruise
 
 ## MNX output
 
-The authoritative wire format is the vendored schema at `schema/mnx-schema.json`, pinned to a specific w3c/mnx commit (see `schema/PROVENANCE.md`). `src/types/mnx.ts` is hand-written to match it. MNX has no stable 1.0, so when the pin moves, that is a deliberate release: re-pin, regenerate goldens, rerun the corpus gate.
+The authoritative wire format is the vendored schema at `schema/mnx-schema.json`, pinned to a specific w3c-cg/mnx commit (see `schema/PROVENANCE.md`). `src/types/mnx.ts` is hand-written to match it. MNX has no stable 1.0, so when the pin moves, that is a deliberate release: re-pin, regenerate goldens, rerun the corpus gate.
 
 ## Reference
 
-- MNX spec: https://w3c-cg.github.io/mnx/docs/
-- MNX schema: https://github.com/w3c/mnx/blob/main/docs/mnx-schema.json
+- MNX spec: https://mnx.formats.music/docs/
+- MNX schema: https://github.com/w3c-cg/mnx/blob/main/docs/mnx-schema.json
 - MusicXML spec: https://www.w3.org/2021/06/musicxml40/
 - Architecture and design rationale: `docs/architecture.md`
