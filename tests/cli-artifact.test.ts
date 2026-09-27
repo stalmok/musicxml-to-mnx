@@ -19,7 +19,7 @@ const suite = built ? describe : describe.skip
 
 let dir: string
 beforeAll(() => {
-  dir = mkdtempSync(join(tmpdir(), 'ossia-artifact-'))
+  dir = mkdtempSync(join(tmpdir(), 'musicxml-to-mnx-artifact-'))
 })
 afterAll(() => {
   if (dir) rmSync(dir, { recursive: true, force: true })

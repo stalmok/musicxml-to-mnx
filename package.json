@@ -5,7 +5,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/stalmok/ossia.git"
+    "url": "git+https://github.com/stalmok/musicxml-to-mnx.git"
   },
   "type": "module",
   "main": "./dist/musicxml-to-mnx.js",

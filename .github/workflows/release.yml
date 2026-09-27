@@ -7,7 +7,7 @@
 # attestation is automatic.
 #
 # One-time setup on npmjs.com (package settings → Trusted Publisher):
-#   GitHub Actions / stalmok / ossia / release.yml
+#   GitHub Actions / stalmok / musicxml-to-mnx / release.yml
 # If the very first publish of the package can't be configured ahead of time,
 # bootstrap once with a short-lived granular token, add the trusted publisher,
 # then revoke the token.

@@ -5,7 +5,7 @@ import { describe, expect, onTestFinished, test } from 'vitest'
 import { pruneDeclarations } from '../scripts/prune-declarations.js'
 
 function tree(files: Record<string, string>): string {
-  const root = mkdtempSync(join(tmpdir(), 'ossia-declarations-'))
+  const root = mkdtempSync(join(tmpdir(), 'musicxml-to-mnx-declarations-'))
   onTestFinished(() => rmSync(root, { recursive: true, force: true }))
   for (const [path, text] of Object.entries(files)) {
     mkdirSync(dirname(join(root, path)), { recursive: true })

@@ -33,7 +33,7 @@ suite('the built declarations', () => {
   })
 
   test('compile for a consumer with library checking on', () => {
-    const consumer = mkdtempSync(join(tmpdir(), 'ossia-consumer-'))
+    const consumer = mkdtempSync(join(tmpdir(), 'musicxml-to-mnx-consumer-'))
     onTestFinished(() => rmSync(consumer, { recursive: true, force: true }))
     const source = join(consumer, 'consumer.ts')
     writeFileSync(

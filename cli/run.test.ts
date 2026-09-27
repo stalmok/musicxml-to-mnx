@@ -24,7 +24,7 @@ const lines: string[] = []
 const io = { log: (line: string) => lines.push(line) }
 
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), 'ossia-cli-'))
+  dir = mkdtempSync(join(tmpdir(), 'musicxml-to-mnx-cli-'))
   lines.length = 0
 })
 

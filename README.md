@@ -1,10 +1,10 @@
-# ossia
+# musicxml-to-mnx
 
 Convert [MusicXML](https://www.w3.org/2021/06/musicxml40/) to
 [MNX](https://w3c-cg.github.io/mnx/docs/), the JSON music notation format from
 the W3C Music Notation Community Group.
 
-ossia is a TypeScript library for browsers and Node, with a Node command-line
+musicxml-to-mnx is a TypeScript library for browsers and Node, with a Node command-line
 interface. It reads XML documents and compressed `.mxl` files.
 
 **Pre-1.0:** MNX is a draft. Output follows a pinned schema snapshot.

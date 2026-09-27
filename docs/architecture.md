@@ -1,6 +1,6 @@
 # Architecture
 
-ossia converts MusicXML into MNX through an internal score model.
+musicxml-to-mnx converts MusicXML into MNX through an internal score model.
 The reader handles MusicXML semantics. The writer produces MNX objects.
 See the [README](../README.md) for usage and supported notation.
 
