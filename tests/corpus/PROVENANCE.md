@@ -27,13 +27,20 @@ Transcribed by OpenScore volunteers and moderated by a professional
 proofreading team, from public-domain editions on IMSLP.
 
 `SOURCES.json` records the composer, work, and upstream path of each song.
+Every song is byte-for-byte the file at that path in upstream commit
+[`6b2dc542ce2e8aa4b78c8ee62103b210efc07015`](https://github.com/OpenScore/Lieder/tree/6b2dc542ce2e8aa4b78c8ee62103b210efc07015)
+(2026-04-07). Later commits renumber some song folders, so the paths hold at
+that commit only.
 
 The seven files in `features/` come from the [Unofficial MusicXML Test
 Suite](https://github.com/cuthbertLab/musicxmlTestSuite), released under the
 **MIT Licence**, which is reproduced in `features/LICENSE` as that licence
 requires. Originally by Reinhold Kainhofer for the GNU LilyPond project,
 developed since by Michael Scott Asato Cuthbert. They keep their upstream file
-names, so that what each one is can be checked against the suite.
+names, so that what each one is can be checked against the suite. Each is
+byte-for-byte the file in `xmlFiles/` at upstream commit
+[`b2e6a1627b8574c9714e1fd0a8a5b1921e10f8f3`](https://github.com/cuthbertLab/musicxmlTestSuite/tree/b2e6a1627b8574c9714e1fd0a8a5b1921e10f8f3)
+(2026-07-05). Later commits change them.
 
 The two licences differ, so the two sets are kept apart on disk. Nothing here
 may be added from a source without a redistribution grant: the MakeMusic
