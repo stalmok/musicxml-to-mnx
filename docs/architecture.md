@@ -203,7 +203,7 @@ versions against the `engines` field.
 The library uses `@rgrove/parse-xml` for XML and `fflate` for archive extraction.
 Both remain external dependencies in the builds.
 
-The library builds to `dist/ossia.js`. The CLI builds separately to
+The library builds to `dist/musicxml-to-mnx.js`. The CLI builds separately to
 `dist/cli.js`, with its own shebang and no shared application chunks.
 TypeScript declarations are emitted under `dist/types/`.
 `scripts/prune-declarations.ts` then removes every declaration that

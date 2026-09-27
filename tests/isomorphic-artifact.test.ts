@@ -14,7 +14,7 @@ import { build } from 'vite'
 import { describe, expect, test } from 'vitest'
 import { schemaErrors } from './support/schema.js'
 
-const library = fileURLToPath(new URL('../dist/ossia.js', import.meta.url))
+const library = fileURLToPath(new URL('../dist/musicxml-to-mnx.js', import.meta.url))
 const song = fileURLToPath(new URL('./corpus/abbott-think-of-today.mxl', import.meta.url))
 
 const built = existsSync(library)
@@ -26,7 +26,7 @@ async function bundle(): Promise<string> {
     logLevel: 'silent',
     build: {
       write: false,
-      lib: { entry: library, formats: ['iife'], name: 'ossia' },
+      lib: { entry: library, formats: ['iife'], name: 'musicxmlToMnx' },
     },
   })
   const [first] = Array.isArray(output) ? output : [output]
@@ -58,7 +58,7 @@ suite('the built library in a context with no host globals', () => {
     // realm's Uint8Array, as it would in a browser.
     const converted = JSON.parse(
       runInContext(
-        'JSON.stringify(ossia.convertMusicXML(Uint8Array.from(bytes)))',
+        'JSON.stringify(musicxmlToMnx.convertMusicXML(Uint8Array.from(bytes)))',
         context,
       ) as string,
     ) as { mnx: unknown; warnings: unknown }
@@ -76,8 +76,8 @@ suite('the built library in a context with no host globals', () => {
 
     expect(
       runInContext(
-        `try { ossia.convertMusicXML('<score-partwise') } catch (error) {
-          error instanceof ossia.MusicXMLError ? 'refused' : String(error)
+        `try { musicxmlToMnx.convertMusicXML('<score-partwise') } catch (error) {
+          error instanceof musicxmlToMnx.MusicXMLError ? 'refused' : String(error)
         }`,
         context,
       ),

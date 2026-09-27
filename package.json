@@ -8,14 +8,14 @@
     "url": "git+https://github.com/stalmok/ossia.git"
   },
   "type": "module",
-  "main": "./dist/ossia.js",
-  "module": "./dist/ossia.js",
+  "main": "./dist/musicxml-to-mnx.js",
+  "module": "./dist/musicxml-to-mnx.js",
   "types": "./dist/types/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/types/index.d.ts",
-      "import": "./dist/ossia.js",
-      "default": "./dist/ossia.js"
+      "import": "./dist/musicxml-to-mnx.js",
+      "default": "./dist/musicxml-to-mnx.js"
     }
   },
   "files": [
