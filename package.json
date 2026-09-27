@@ -1,5 +1,5 @@
 {
-  "name": "ossia",
+  "name": "musicxml-to-mnx",
   "version": "0.1.0",
   "description": "Convert MusicXML to MNX, the W3C JSON music notation format.",
   "license": "MIT",
@@ -27,7 +27,7 @@
     "musicxml",
     "mnx",
     "music",
-    "notation",
+    "music-notation",
     "converter",
     "sheet-music",
     "score"

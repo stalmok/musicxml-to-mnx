@@ -13,7 +13,7 @@ The API and output types can change.
 ## Install
 
 ```bash
-npm install ossia
+npm install musicxml-to-mnx
 ```
 
 The package supports Node `^20.19.0 || ^22.13.0 || >=24`.
@@ -22,7 +22,7 @@ The library also runs in browsers.
 ## Use
 
 ```ts
-import { convertMusicXML } from 'ossia'
+import { convertMusicXML } from 'musicxml-to-mnx'
 
 const { mnx, warnings } = convertMusicXML(musicXmlSource)
 
@@ -38,7 +38,7 @@ A Node `Buffer` is also accepted:
 
 ```ts
 import { readFileSync } from 'node:fs'
-import { convertMusicXML } from 'ossia'
+import { convertMusicXML } from 'musicxml-to-mnx'
 
 const { mnx, warnings } = convertMusicXML(readFileSync('song.mxl'))
 ```
@@ -67,7 +67,7 @@ Malformed input and unsupported score structures can cause a `MusicXMLError`.
 For example, the converter rejects `score-timewise` documents.
 
 ```ts
-import { convertMusicXML, MusicXMLError } from 'ossia'
+import { convertMusicXML, MusicXMLError } from 'musicxml-to-mnx'
 
 try {
   const result = convertMusicXML(source)
@@ -113,7 +113,7 @@ It is not an independent proof that the output preserves every source detail.
 Converter gaps can help prioritize files for another conversion:
 
 ```ts
-import { isConverterGap } from 'ossia'
+import { isConverterGap } from 'musicxml-to-mnx'
 
 const hasConverterGap = warnings.some((warning) => isConverterGap(warning.code))
 ```
