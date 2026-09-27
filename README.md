@@ -83,7 +83,7 @@ try {
 `detail` contains the error message without its location.
 
 When conversion can continue, warnings report omitted notation and source
-problems. Silent notation loss is a bug.
+problems. Report notation lost without a warning as a bug.
 
 Each `ConversionWarning` has these fields:
 
@@ -189,8 +189,6 @@ Important limits include:
 - Transposition changes within a part and differing staff transpositions produce warnings.
 - Grace-note time amounts produce warnings. Grace notes with an unbracketed tuplet ratio cause a refusal.
 - Composite meters such as `3+2/8` cause a refusal.
-
-Use warnings to assess the result for a particular score.
 
 ## Testing with real scores
 
