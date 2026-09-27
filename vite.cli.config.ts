@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite'
 
-// The `ossia` command, built as its own self-contained file so it shares no
+// The `musicxml-to-mnx` command, built as its own self-contained file so it shares no
 // chunks with the library bundle. Run after the library build with
 // emptyOutDir off, so it adds cli.js beside ossia.js rather than wiping it.
 export default defineConfig({

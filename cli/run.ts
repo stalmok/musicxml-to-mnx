@@ -1,4 +1,4 @@
-// The `ossia` command: convert MusicXML files to MNX.
+// The `musicxml-to-mnx` command: convert MusicXML files to MNX.
 //
 // This lives outside src/ on purpose. The library core is isomorphic and may
 // touch neither Node nor DOM globals, which tsconfig.json enforces over src
@@ -29,7 +29,7 @@ const OPTIONS = {
   version: { type: 'boolean', short: 'v' },
 } as const
 
-const HELP = `Usage: ossia <files...> [options]
+const HELP = `Usage: musicxml-to-mnx <files...> [options]
 
 Convert MusicXML (.musicxml, .xml, .mxl) to MNX. Each <basename>.mnx is
 written beside its input, or into the directory given by --out.

@@ -126,19 +126,19 @@ Generic codes such as `unsupported:element` cover more than one kind of notation
 
 ## Command line
 
-The package provides an `ossia` command. With a local installation, use
-`npx ossia` or `pnpm exec ossia`:
+The package provides a `musicxml-to-mnx` command. Run it with `npx` or
+`pnpm exec`:
 
 ```bash
-npx ossia song.mxl
-npx ossia scores/*.musicxml -o out/
-npx ossia song.mxl --validate --report losses.json
-npx ossia scores/*.mxl --fail-on-loss
+npx musicxml-to-mnx song.mxl
+npx musicxml-to-mnx scores/*.musicxml -o out/
+npx musicxml-to-mnx song.mxl --validate --report losses.json
+npx musicxml-to-mnx scores/*.mxl --fail-on-loss
 ```
 
 The command reads `.musicxml`, `.xml`, and `.mxl` files.
 It writes `<basename>.mnx` beside each input, or into the directory set by `-o`.
-`ossia to-mnx` is equivalent to `ossia`.
+`musicxml-to-mnx to-mnx` is equivalent to `musicxml-to-mnx`.
 
 | Option                    | Effect                                                           |
 | ------------------------- | ---------------------------------------------------------------- |
