@@ -84,6 +84,10 @@ jobs:
           test -s dist/types/index.d.ts
           test -s dist/cli.js
           head -1 dist/cli.js | grep -q '^#!/usr/bin/env node'
+          # npm publish rewrites what it finds invalid in package.json, and
+          # removes a bin entry whose path it does not accept.
+          npm pkg fix
+          git diff --exit-code package.json
 
       # The smoke tests of the built command, library and declarations skip
       # until the package is built, so they run here, once dist/ exists, to
