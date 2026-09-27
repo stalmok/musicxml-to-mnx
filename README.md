@@ -43,10 +43,11 @@ import { convertMusicXML } from 'musicxml-to-mnx'
 const { mnx, warnings } = convertMusicXML(readFileSync('song.mxl'))
 ```
 
-Byte input can contain UTF-8 XML, UTF-16 XML with a byte-order mark, XML that
-declares ISO-8859-1 or windows-1252, or an `.mxl` archive. Other declared
-encodings, and a document read as UTF-8 that is not valid UTF-8, throw a
-`MusicXMLError`.
+Byte input can contain UTF-8 XML, UTF-16 XML with a byte-order mark, or an
+`.mxl` archive. XML that declares ISO-8859-1, US-ASCII or windows-1252 decodes
+as windows-1252. XML that declares UTF-16 but has no byte-order mark decodes as
+UTF-8. Other declared encodings, and a document read as UTF-8 that is not valid
+UTF-8, throw a `MusicXMLError`.
 
 Use `scoreName` to name the MNX score rendering. Its default is `"Score"`.
 Use `documentName` to identify the source in error messages:
