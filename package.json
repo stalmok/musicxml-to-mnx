@@ -57,8 +57,8 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "deps:check": "depcruise src cli tests --output-type err-long",
-    "format": "prettier --write . --ignore-path .gitignore --ignore-path .prettierignore --ignore-path .git/info/exclude",
-    "format:check": "prettier --check . --ignore-path .gitignore --ignore-path .prettierignore --ignore-path .git/info/exclude",
+    "format": "node scripts/prettier.ts --write .",
+    "format:check": "node scripts/prettier.ts --check .",
     "hooks:install": "git config core.hooksPath .githooks",
     "corpus-gate": "vitest run tests/corpus-full.test.ts"
   },
