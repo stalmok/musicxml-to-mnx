@@ -52,6 +52,7 @@ export const summary = [mnx.mnx.version, warnings.length, MusicXMLError.name]
       strict: true,
       noEmit: true,
       skipLibCheck: false,
+      skipDefaultLibCheck: true,
       target: ts.ScriptTarget.ES2022,
       module: ts.ModuleKind.ESNext,
       moduleResolution: ts.ModuleResolutionKind.Bundler,
