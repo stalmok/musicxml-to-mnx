@@ -58,7 +58,10 @@ jobs:
 
       - run: pnpm build
 
-      - run: npm pack --pack-destination "$RUNNER_TEMP/package"
+      # npm pack does not create the destination directory.
+      - run: |
+          mkdir -p "$RUNNER_TEMP/package"
+          npm pack --pack-destination "$RUNNER_TEMP/package"
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
