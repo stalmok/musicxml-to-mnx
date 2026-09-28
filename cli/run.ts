@@ -1,11 +1,10 @@
 // The `musicxml-to-mnx` command: convert MusicXML files to MNX.
 //
-// This lives outside src/ on purpose. The library core is isomorphic and may
-// touch neither Node nor DOM globals, which tsconfig.json enforces over src
-// alone; the command is a Node program and reaches for the filesystem freely.
+// It is outside src/ because the library core is isomorphic and must not use
+// Node or DOM globals. tsconfig.json enforces that over src only.
 //
-// The work is a plain function returning an exit code rather than calling
-// process.exit, so the tests drive it in-process and read what it wrote.
+// run() returns an exit code and does not call process.exit, so the tests
+// run it in-process.
 
 import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, dirname, extname, join } from 'node:path'
@@ -15,7 +14,7 @@ import { convertMusicXML, MusicXMLError } from '../src/index.js'
 import type { ConversionWarning } from '../src/index.js'
 import { compileValidator } from './validate.js'
 
-/** Where the command's human-facing lines go. Injected so the tests can read them. */
+/** Where the command's output lines go. The tests inject their own. */
 export interface CommandIO {
   log: (line: string) => void
 }
@@ -47,7 +46,7 @@ Options:
 
 type Parsed = ReturnType<typeof parseArgs<{ options: typeof OPTIONS; allowPositionals: true }>>
 
-/** parseArgs, but a malformed command line comes back as a message to show. */
+/** parseArgs, but a malformed command line returns a message to show. */
 function parseCommandLine(argv: readonly string[]): Parsed | { error: string } {
   try {
     return parseArgs({ args: [...argv], options: OPTIONS, allowPositionals: true })
@@ -61,9 +60,8 @@ function parseCommandLine(argv: readonly string[]): Parsed | { error: string } {
 export async function run(
   argv: readonly string[],
   io: CommandIO,
-  // A real run builds the check from the vendored schema. The tests pass their
-  // own, because a conversion never produces invalid MNX and the reporting for
-  // one would otherwise be unreachable.
+  // The tests pass their own check, because a conversion never produces
+  // invalid MNX.
   makeValidator: () => (document: unknown) => string[] = buildValidator,
 ): Promise<number> {
   const parsed = parseCommandLine(argv)
@@ -88,8 +86,7 @@ export async function run(
     return 2
   }
   // Conversion to MNX is the default, so the positionals are files unless the
-  // first names a direction. Anything else is taken as a file, and a name that
-  // is not one is reported as the file it failed to read.
+  // first names a direction. Any other name is taken as a file.
   if (positionals[0] === 'to-musicxml') {
     io.log('The reverse direction (to-musicxml) is not available yet.')
     return 2
@@ -101,12 +98,9 @@ export async function run(
     return 2
   }
 
-  // Built only when asked for, so the ordinary path never touches the schema.
   const validate = values.validate ? makeValidator() : undefined
   const report: Record<string, readonly ConversionWarning[]> = {}
-  // What has been written where, so two inputs with the same name written into
-  // one --out directory are caught rather than one silently overwriting the
-  // other.
+  // Catches two inputs with the same name written into one --out directory.
   const writtenBy = new Map<string, string>()
   let failed = 0
   let unwritten = 0
@@ -119,8 +113,7 @@ export async function run(
     try {
       ;({ mnx, warnings } = convertMusicXML(new Uint8Array(readFileSync(file))))
     } catch (error) {
-      // A file the converter refuses is reported and the rest go on, so one
-      // bad file in a batch does not stop the others.
+      // A refused file is reported, and the other files go on.
       io.log(`${file}: ${error instanceof MusicXMLError ? error.message : String(error)}`)
       failed += 1
       continue
@@ -135,9 +128,9 @@ export async function run(
       failed += 1
       continue
     }
-    // A disk that is full or a directory that cannot be written to fails this
-    // file alone, as a refused one does. Written beside the output and moved
-    // into place, so a write that fails part way leaves no .mnx behind.
+    // A failed write fails this file alone, as a refused file does. The file
+    // is written beside the output and moved into place, so a write that fails
+    // part way leaves no .mnx behind.
     const partial = `${outPath}.partial`
     try {
       mkdirSync(outDir, { recursive: true })
@@ -159,8 +152,7 @@ export async function run(
     report[file] = warnings
     if (warnings.length > 0) lossy += 1
 
-    // A conversion emitting invalid MNX is a bug in the converter, so this is a
-    // regression guard rather than a path real input reaches.
+    // Invalid MNX here is a bug in the converter.
     const errors = validate?.(mnx) ?? []
     if (errors.length > 0) {
       io.log(`${file}: the output is not valid MNX:`)
@@ -174,9 +166,8 @@ export async function run(
 
   let reportFailed = false
   if (values.report !== undefined) {
-    // Create the report's directory too, so --report into a path that does not
-    // exist yet writes there rather than dying after the outputs are already
-    // written.
+    // Creates the report's directory, so --report into a new path does not
+    // fail after the outputs are written.
     try {
       mkdirSync(dirname(values.report), { recursive: true })
       writeFileSync(values.report, `${JSON.stringify(report, null, 2)}\n`)
@@ -201,9 +192,8 @@ export async function run(
 }
 
 /**
- * The directory the built command sits in. Its own path is taken apart rather
- * than a `new URL('…', import.meta.url)`, which the bundler would rewrite into
- * an inlined asset and so read the wrong thing at run time.
+ * The directory of the built command. A `new URL('…', import.meta.url)` would
+ * be rewritten by the bundler into an inlined asset.
  */
 function commandDir(): string {
   return dirname(fileURLToPath(import.meta.url))
@@ -216,10 +206,7 @@ function version(): string {
   return pkg.version
 }
 
-/**
- * A schema check, built only when --validate is given so that the ordinary
- * path never reads the schema.
- */
+/** A schema check, built only when --validate is given. */
 export function buildValidator(): (document: unknown) => string[] {
   const schemaPath = join(commandDir(), '..', 'schema', 'mnx-schema.json')
   return compileValidator(JSON.parse(readFileSync(schemaPath, 'utf8')) as object)

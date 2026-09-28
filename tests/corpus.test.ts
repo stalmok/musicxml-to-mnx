@@ -1,21 +1,15 @@
-// Real songs, converted on every run.
+// Real songs, converted on every run. The unit tests cover one construct at a
+// time. Real music has combinations: a chord member inside a tuplet, a grace
+// note in the cursor's path, a note with two <notations> blocks.
 //
-// This is the gate that has actually found things. The unit tests exercise
-// one construct at a time, and every defect that reached them lived in a
-// combination: a chord member inside a tuplet, a grace note in the cursor's
-// path, a note carrying two <notations> blocks. Published music is full of
-// those, and none of them appears in a hand-written fixture unless you
-// already know to write it.
-//
-// Four checks, in increasing order of how much they can tell you:
+// Four checks, from weakest to strongest:
 //   1. it converts at all
 //   2. the output is legal MNX
 //   3. the arithmetic works out, measure by measure
 //   4. the notes and the time still match the source
 //
-// The fourth is the strongest, because it reads the source independently of
-// the converter's own reading of it. The other three can all pass on output
-// that says the wrong thing about the music.
+// The fourth reads the source apart from the converter. The other three can
+// pass on output that is wrong about the music.
 
 import { describe, expect, test } from 'vitest'
 import { MusicXMLError, convertMusicXML } from '../src/index.js'
@@ -44,7 +38,7 @@ import {
 import baseline from './corpus/warning-baseline.json' with { type: 'json' }
 
 /**
- * What a refusal says, without the location, which moves whenever a file is
+ * What a refusal says, without the location, which changes when a file is
  * re-exported.
  */
 function refusalText(error: MusicXMLError): string {
@@ -52,14 +46,11 @@ function refusalText(error: MusicXMLError): string {
 }
 
 /**
- * Converted once each, up front. Every check below reads the same result,
- * rather than converting the same song six times over.
+ * Each song is converted once, and every check below reads the result.
  *
- * A MusicXMLError is a refusal the converter chose; anything else is a crash,
- * and the two are held apart because a crash recorded as a refusal reads as a
- * song the converter decided against. A run once reported one refusal more
- * than the tree refuses, on a machine short of memory, and an allocation
- * failure inside a conversion would have looked exactly like that.
+ * A MusicXMLError is a refusal. Anything else is a crash, which is kept apart
+ * from the refusals, so that an allocation failure does not read as a refused
+ * song.
  */
 const attempted = songs().map((song) => {
   try {
@@ -81,21 +72,16 @@ const converted = attempted.filter(
   (song) => song.rejected === undefined && song.crashed === undefined,
 )
 
-// A warning is only worth having if a reader can find what it is about. Every
-// one names the line the element was written on, except where the mark has
-// already been read into the model and the element it came from is gone: the
-// four below work on model objects and name the measure and stop there.
-// Three are settled once the parts are merged; the clef is settled inside one
-// part, and is the one of the four that could carry a line, by holding it on
-// the model's clef the way an ending's edge now holds one.
+// Every warning names the line of its element, except where the element is
+// already read into the model. The four below work on model objects and name
+// only the measure. Three are settled once the parts are merged. The clef is
+// settled inside one part, and could carry a line if the model's clef held
+// one, as an ending's edge does.
 //
-// The list is held both ways, by the per-song check below and by the whole-
-// corpus one beside it: a report that names no line and is not listed fails,
-// and so does an entry the corpus no longer reaches, which is the shrink
-// worth hearing about. Other reports in score.ts are lineless for the same
-// reason and are deliberately not listed, because no vendored song reaches
-// them; one that starts to will fail here, and be added with its reason or
-// given a line.
+// The per-song check below fails on a warning with no line that is not
+// listed. The whole-corpus check fails on a listed code the corpus no longer
+// reaches. Other warnings in score.ts have no line for the same reason, but
+// no vendored song reaches them, so they are not listed.
 const REPORTED_WITHOUT_A_LINE: ReadonlySet<string> = new Set([
   'unrepresentable:cross-part-key',
   'unrepresentable:cross-part-time',
@@ -103,9 +89,7 @@ const REPORTED_WITHOUT_A_LINE: ReadonlySet<string> = new Set([
   'unrepresentable:clef',
 ])
 
-// The other half of the rule above. The per-song check lets a code stay in
-// the list after it stops being reached, or after it grows a line; this says
-// the list is exactly what the corpus reports without one.
+// The list must equal the codes the corpus reports without a line.
 test('reports no line only for the losses recorded as having none', () => {
   const found = new Set<string>()
   for (const song of converted) {
@@ -122,12 +106,8 @@ test('the whole corpus is present', () => {
   expect(attempted.length).toBeGreaterThan(150)
 })
 
-// A song is refused only where converting it would mean handing back music
-// the source did not write. Which songs those are is pinned here, so that one
-// starting or ceasing to convert is a change somebody chose.
 // A crash is not a refusal. Nothing in the corpus may throw anything but a
-// MusicXMLError, and one that does names itself here rather than joining the
-// refusals, where it would read as a song the converter decided against.
+// MusicXMLError.
 test('converts every song without crashing', () => {
   const crashed = attempted
     .filter((song) => song.crashed !== undefined)
@@ -136,6 +116,8 @@ test('converts every song without crashing', () => {
   expect(crashed).toEqual([])
 })
 
+// A song is refused only where converting it would give music the source did
+// not write. The refused songs are listed here, so that a change is visible.
 test('refuses only the songs it is known to refuse', () => {
   const refused = attempted
     .filter((song) => song.rejected !== undefined)
@@ -145,19 +127,15 @@ test('refuses only the songs it is known to refuse', () => {
 })
 
 /**
- * Every hairpin in the source, paired the way the music has them rather than
- * the way the document writes them: by measure, then by where in the measure
- * the cursor had reached, with a stop closing the most recently opened of its
- * number on its own staff. Read straight from the XML, so it disagrees with
- * the converter when the converter is wrong.
+ * Every hairpin in the source, paired in time order, not document order: by
+ * measure, then by cursor position, with a stop closing the most recently
+ * opened hairpin of its number on its own staff. Read from the XML apart from
+ * the converter.
  *
- * The staff belongs in the pairing because 17 songs of the corpus hold both
- * hands' hairpins numbered 1 at once. On the number alone, a stop on one hand
- * closes the other hand's hairpin: in brahms-1-gestillte-sehnsucht the left
- * hand's crescendo, opened partway through measure 7, was closed by the right
- * hand's stop half a beat later, and the right hand's diminuendo ran on to
- * the left hand's stop a measure further. Pairing on the staff as well moves
- * the end of 20 hairpins, across 9 of the songs.
+ * The staff is part of the pairing because some songs have both hands'
+ * hairpins numbered 1 at the same time. On the number alone, a stop on one
+ * hand closes the other hand's hairpin (brahms-1-gestillte-sehnsucht,
+ * measure 7).
  */
 function sourceHairpins(root: XmlElement): string[] {
   const paired: string[] = []
@@ -234,8 +212,8 @@ function sourceHairpins(root: XmlElement): string[] {
           (a.kind === b.kind ? a.order - b.order : a.kind === 'stop' ? -1 : 1),
       )
 
-      // Paired with a stack per number, then reported in the order the starts
-      // appear in the score, which is the order the converted list is in.
+      // Paired with a stack per number, then reported in the order of the
+      // starts in the score, which is the order of the converted list.
       const open = new Map<string, End[]>()
       const closed = new Map<number, End>()
       for (const end of inTime) {
@@ -243,9 +221,9 @@ function sourceHairpins(root: XmlElement): string[] {
           open.set(end.number, [...(open.get(end.number) ?? []), end])
           continue
         }
-        // The last one opened on the stop's own staff, or failing that the
-        // last one opened at all, since a source that names the staff on one
-        // end and not the other means the end that names it.
+        // The last one opened on the stop's own staff, or else the last one
+        // opened. A source that names the staff on one end only means that
+        // end's staff.
         const waiting = open.get(end.number) ?? []
         const sameStaff = waiting.map((one) => one.staff).lastIndexOf(end.staff)
         const started = waiting.splice(sameStaff < 0 ? waiting.length - 1 : sameStaff, 1)[0]
@@ -267,21 +245,19 @@ function sourceHairpins(root: XmlElement): string[] {
 }
 
 /**
- * Every octave shift in the source, paired the way the music has them: the
- * same walk sourceHairpins does, over <octave-shift> instead of <wedge>. Both
- * spanners pair through one stack in the converter, so the crossed pairing the
- * hairpin oracle caught was live here with nothing able to see it.
+ * Every octave shift in the source, paired in time order: the same walk as
+ * sourceHairpins, over <octave-shift> instead of <wedge>. Both spanners pair
+ * through one stack in the converter.
  *
  * Each is reported as the octaves MNX states, the measure and point it starts
- * at, and the measure it ends in. MNX requires a shift to say where it stops,
- * so one the source never closes is written nowhere and is left out here too.
+ * at, and the measure it ends in. MNX requires a shift to state where it
+ * stops, so a shift the source never closes is left out.
  */
 function sourceOttavaSpans(root: XmlElement): string[] {
-  // The octaves MNX states for each MusicXML size and direction. Written out
-  // here rather than read from the converter, which is the point of an oracle:
-  // MusicXML's type is which way the notes were moved to draw them, and MNX's
-  // value is how far the drawn pitch sits below the sounded one, so 8va is a
-  // shift "down" and a value of 1.
+  // The octaves MNX states for each MusicXML size and direction. MusicXML's
+  // type is which way the notes were moved to draw them. MNX's value is how
+  // far the drawn pitch is below the sounded one. So 8va is a shift "down"
+  // and a value of 1.
   const octaves = new Map<string, Record<string, number>>([
     ['8', { down: 1, up: -1 }],
     ['15', { down: 2, up: -2 }],
@@ -371,8 +347,8 @@ function sourceOttavaSpans(root: XmlElement): string[] {
           open.set(end.number, [...(open.get(end.number) ?? []), end])
           continue
         }
-        // The last one opened on the stop's own staff, or failing that the
-        // last one opened at all, exactly as a hairpin pairs.
+        // The last one opened on the stop's own staff, or else the last one
+        // opened, as a hairpin pairs.
         const waiting = open.get(end.number) ?? []
         const sameStaff = waiting.map((one) => one.staff).lastIndexOf(end.staff)
         const started = waiting.splice(sameStaff < 0 ? waiting.length - 1 : sameStaff, 1)[0]
@@ -390,9 +366,9 @@ function sourceOttavaSpans(root: XmlElement): string[] {
 }
 
 /**
- * Every <other-dynamics> wording in the source, trimmed the way the reader
- * trims it, in document order. Whitespace-only ones are left out: they draw
- * nothing, so there is nothing for the output to carry.
+ * Every <other-dynamics> wording in the source, trimmed as the reader trims
+ * it, in document order. Whitespace-only wordings draw nothing and are left
+ * out.
  */
 function sourceWordings(root: XmlElement): string[] {
   const found: string[] = []
@@ -409,11 +385,8 @@ function sourceWordings(root: XmlElement): string[] {
 
 /**
  * Every id the document defines, and every id it points at. A tie, slur, beam,
- * arpeggio or span end names an event, note or measure by id, and the writer
- * emits an id only where something points at it. A reference with no definition
- * therefore means the writer pointed at an id from a place its id survey does
- * not know to name, so the id was never written. Collected by field name, so a
- * new kind of reference is caught the moment it reuses one of them.
+ * arpeggio or span end names an event, note or measure by id. Collected by
+ * field name, so a new kind of reference that reuses a field is caught.
  */
 function idReferences(document: unknown): { defined: Set<string>; referenced: Set<string> } {
   const defined = new Set<string>()
@@ -454,11 +427,8 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     expect(schemaErrors(mnx)).toEqual([])
   })
 
-  // Nothing else compares a warning's position: every assertion in the suite
-  // compares the message and the code, so a report could name no line in
-  // every file the reader has and the suite would stay green. The line is
-  // held to the document's length rather than to the element it names, so
-  // this catches a report with no line and not one with the wrong line.
+  // Holds every warning's line to the document's length, not to its element,
+  // so it catches a missing line but not a wrong one.
   test('names where in the source every loss came from', () => {
     const lines = source.split('\n').length
     const measures = mnx.global.measures.length
@@ -476,25 +446,22 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     expect([...new Set(wrong)]).toEqual([])
   })
 
-  // MNX reads an absent key and one set to undefined as different things, and
-  // the writer builds every optional key conditionally. Nothing else here
-  // tells the two apart: the schema passes over such a key, a comparison
-  // passes over it, and JSON.stringify drops it, so the emitted text is the
-  // same and the document a consumer reads is not.
+  // The writer builds every optional key conditionally. The schema, a deep
+  // comparison and JSON.stringify all ignore a key set to undefined, but a
+  // consumer that reads the object sees the key as present.
   test('states no key as undefined', () => {
     expect(undefinedKeys(mnx)).toEqual([])
   })
 
   // MNX states a rest filling the measure on the sequence, whose content must
-  // then be empty. The schema does not carry that rule, so a sequence saying
-  // both passes validation and says two things at once.
+  // then be empty. The schema does not check this.
   test('holds nothing in a sequence that rests its measure', () => {
     expect(crowdedMeasureRests(mnx)).toEqual([])
   })
 
   // The writer names an event, note or measure only where something points at
-  // it, off a survey of where ids are pointed from. A reference with no
-  // definition means that survey missed a place, so the id was never written.
+  // it. A reference with no definition means the writer missed a place that
+  // points at an id.
   test('names every id it points at', () => {
     const { defined, referenced } = idReferences(mnx)
     const dangling = [...referenced].filter((id) => !defined.has(id))
@@ -502,20 +469,15 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     expect(dangling).toEqual([])
   })
 
-  // A voice may legitimately stop before the barline, so being short is fine.
-  // Running past the end is not: it means time was invented.
+  // A voice may stop before the barline, but it must not run past the end.
   //
-  // Measured against the source's own measure rather than the time signature,
-  // because real scores contain measures that do not match it. One song here
-  // writes five quarters in a 3/4 bar, and the converter carrying that over
-  // faithfully is right.
+  // Measured against the source's own measure, not the time signature. One
+  // song here writes five quarters in a 3/4 bar, and the converter keeps them.
   test('never writes a voice past the end of its measure', () => {
-    // A note whose written value exceeds its measured duration is carried as
-    // the written value and reported as inconsistent:duration. Its voice then
-    // sounds longer than the source's durations add up to, without any time
-    // being invented, so this check would be comparing against the wrong
-    // thing, just as the exact-length check below is. The pitch and schema
-    // checks still hold the song to account.
+    // A note whose written value exceeds its duration keeps the written value
+    // and is reported as inconsistent:duration. Its voice then sounds longer
+    // than the source's durations add up to, so this check does not apply, as
+    // for the exact-length check below.
     if (warnings.some((warning) => warning.code === 'inconsistent:duration')) return
 
     const lengths = sourceMeasureLengths(parseXmlRoot(source))
@@ -541,10 +503,8 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     expect(overfull.slice(0, 5)).toEqual([])
   })
 
-  // A beam, tie or slur names what it joins, and MNX writes an id only where
-  // something names it. A reference with no named event behind it is a broken
-  // document that the schema cannot see, since it checks the shape of an id
-  // and not whether it leads anywhere.
+  // A beam, tie or slur names what it joins. The schema checks the shape of
+  // an id, not whether it leads anywhere.
   test('every reference leads to something named', () => {
     const named = new Set<string>()
     const collect = (items: readonly MNXSequenceItem[]): void => {
@@ -582,7 +542,7 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
         if ('slurs' in item) referenced.push(...(item.slurs ?? []).map((slur) => slur.target))
         if ('notes' in item) {
           for (const note of item.notes ?? []) {
-            // A let-ring tie has no target, so there is nothing to reference.
+            // A let-ring tie has no target.
             referenced.push(
               ...(note.ties ?? []).flatMap((tie) => (tie.target !== undefined ? [tie.target] : [])),
             )
@@ -608,10 +568,8 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     expect(referenced.filter((id) => !named.has(id)).slice(0, 5)).toEqual([])
   })
 
-  // Each part's measures line up with the global measure list by position, so
-  // a part holding a different number of them falls silent partway through the
-  // score or runs past its end. The schema types a part's measures as a plain
-  // list, so a short one is a well-formed document saying the wrong thing.
+  // Each part's measures line up with the global measure list by position.
+  // The schema cannot check that the counts match.
   test('gives every part as many measures as the score has', () => {
     const expected = mnx.global.measures.length
     const uneven = mnx.parts
@@ -625,14 +583,10 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   // A hairpin points at the measure it stops in, by id. The schema checks the
   // shape of an id and not whether it leads anywhere.
   //
-  // The pairing itself is read back out of the source here, following the
-  // cursor by hand, because pairing the two ends in the order the document
-  // writes them is wrong: a measure holding two voices is written as one pass
-  // per voice with a <backup> between them, so a stop belonging to the first
-  // voice is written before a start belonging to the second. Doing it that way
-  // made six hairpins out of ends that had nothing to do with each other, one
-  // of them 28 measures long, and every one of them ran forwards to a measure
-  // that existed, so nothing short of this noticed.
+  // The pairing is read from the source by following the cursor. Document
+  // order is wrong: a measure with two voices is written one voice at a time
+  // with a <backup> between them, so a stop of the first voice comes before a
+  // start of the second.
   test('pairs every hairpin the way the source does', () => {
     const named = new Map<string, number>()
     mnx.global.measures.forEach((measure, index) => {
@@ -656,15 +610,10 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     expect(converted).toEqual(sourceHairpins(parseXmlRoot(source)))
   })
 
-  // The wording a source wraps a dynamic in becomes that mark's prefix or
-  // suffix. Read back out of the source, because the unit tests only exercise
-  // blocks somebody thought to write down, and 851 of these are spread across
-  // the corpus in shapes nobody chose.
-  //
-  // Each wording has to turn up in the output or in a warning. Substring
-  // rather than equality, because several wordings standing before one mark
-  // are joined into a single prefix, and this check should not have an opinion
-  // about how they are joined.
+  // The wording around a dynamic becomes that mark's prefix or suffix. Each
+  // wording in the source must be in the output or in a warning. A substring
+  // match, because several wordings before one mark are joined into one
+  // prefix.
   test('carries or reports every dynamic wording the source writes', () => {
     const carried: string[] = []
     for (const part of mnx.parts) {
@@ -675,8 +624,7 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
         }
       }
     }
-    // The wording a warning names, not the whole sentence around it, so that
-    // an unrelated message mentioning the same letters cannot cover a loss.
+    // Only the quoted wording in a warning counts, not the whole message.
     const reported = warnings.flatMap((warning) =>
       [...warning.message.matchAll(/"([^"]*)"/g)].map((m) => m[1] ?? ''),
     )
@@ -686,16 +634,12 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     )
 
     expect(lost).toEqual([])
-    // A wording carried as an empty string says nothing and draws nothing.
     expect(carried.filter((text) => text === '')).toEqual([])
   })
 
-  // The pairing itself, against the source rather than against itself. The
-  // check below sees only that a shift runs forwards to a measure that exists,
-  // which a shift paired with the wrong end does too: pairing on the staff
-  // moved the extent of shifts in two of the corpus's songs, and nothing here
-  // could tell. The hairpin oracle caught exactly that for hairpins, and both
-  // spanners pair through one stack.
+  // The pairing, against the source. The check below sees only that a shift
+  // runs forwards to a measure that exists, which a shift paired with the
+  // wrong end also does.
   test('pairs every octave shift the way the source does', () => {
     const named = new Map<string, number>()
     mnx.global.measures.forEach((measure, index) => {
@@ -717,18 +661,14 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
       })
     })
 
-    // Sorted, unlike the hairpin comparison above, which holds the order
-    // too. A shift's string carries the point it starts at as well as its
-    // measure, so two shifts of one part are already told apart by it, and
-    // the converted list is in the order the pairing closed them rather than
-    // the order the source writes their starts.
+    // Sorted, unlike the hairpin comparison above. A shift's string holds its
+    // start point as well as its measure, so it is unique within a part. The
+    // converted list is in the order the pairing closed the shifts.
     expect(converted.sort()).toEqual(sourceOttavaSpans(parseXmlRoot(source)).sort())
   })
 
-  // An octave shift runs from its position to its end, both of which are
-  // places in the score. The schema can check neither that the end names a
-  // measure that exists nor that it comes after the start, and a shift that
-  // ran backwards would silently draw an 8va over the wrong music.
+  // The schema cannot check that a shift's end names a measure that exists,
+  // or that it comes after the start.
   test('runs every octave shift forwards, to a measure that exists', () => {
     const named = new Map<string, number>()
     mnx.global.measures.forEach((measure, index) => {
@@ -763,17 +703,13 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     expect(wrong.slice(0, 5)).toEqual([])
   })
 
-  // A shift's ends name places where an event actually begins, because MNX
-  // states them as the first and last events the shift covers. Walking into
-  // the tuplets matters: one of the corpus's shifts starts partway through a
-  // cadenza run, and a check that treated a tuplet as one lump said the shift
-  // began where nothing did.
+  // MNX states a shift's ends as the first and last events it covers, so each
+  // end must be where an event begins. The check walks into tuplets, because
+  // one shift in the corpus starts partway through a cadenza run.
   test('starts every octave shift on an event', () => {
-    // A shift's start is the cursor position the source wrote it at, measured
-    // by duration. Where a note's written value disagrees with its duration,
-    // the events are placed by their written values, so the two diverge and a
-    // shift can begin between events without anything being wrong. Skipped for
-    // the same reason the length checks are; the pitch and schema checks hold.
+    // A shift's start is the cursor position, measured by duration. Where a
+    // note's written value disagrees with its duration, the events are placed
+    // by their written values, so a correct shift can begin between events.
     if (warnings.some((warning) => warning.code === 'inconsistent:duration')) return
 
     const stray: string[] = []
@@ -800,14 +736,10 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     expect(stray.slice(0, 5)).toEqual([])
   })
 
-  // The other end, held to the same rule. A shift's end is the last event it
-  // covers, and the reader moves it back off the point the stop was written
-  // at to reach one. An end between events would name a place nothing begins,
-  // which the schema reads as legal and a renderer would draw over nothing.
+  // A shift's end is the last event it covers. The reader moves it back from
+  // the point of the stop to reach one.
   test('ends every octave shift on an event', () => {
-    // Skipped for the reason the start check is: where a note's written value
-    // disagrees with its duration, the events are placed by their written
-    // values and a shift can end between them with nothing wrong.
+    // Skipped for the same reason as the start check.
     if (warnings.some((warning) => warning.code === 'inconsistent:duration')) return
 
     const named = new Map<string, number>()
@@ -841,15 +773,15 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     expect(stray.slice(0, 5)).toEqual([])
   })
 
-  // A layout can state less than the part list does and stay legal MNX: a
-  // staff with no label reference suppresses its part's name, and a
-  // multi-staff part written as bare sibling staves loses its grand staff.
+  // A layout can state less than the part list and stay legal MNX: a staff
+  // with no label reference hides its part's name, and a multi-staff part
+  // written as bare sibling staves loses its grand staff.
   test('keeps part names and grand staves stated in the layout', () => {
     expect(layoutLosses(mnx)).toEqual([])
   })
 
-  // A staff number that names a staff the part does not have would place
-  // music nowhere. The schema types it as a bare integer, so it cannot tell.
+  // The schema types a staff number as a bare integer, so it cannot check
+  // that the part has that staff.
   test('never names a staff the part does not have', () => {
     const stray: string[] = []
 
@@ -863,9 +795,8 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
         }
       }
 
-      // Walked rather than scanned one level deep: an event inside a tuplet
-      // or a grace group states its staff the same way, and a note of a
-      // chord that reaches across to the other hand states its own.
+      // Walked in depth: an event inside a tuplet or a grace group states its
+      // staff, and a cross-staff chord note states its own.
       const walk = (items: readonly MNXSequenceItem[], where: string): void => {
         for (const item of items) {
           if ('content' in item && Array.isArray(item.content)) walk(item.content, where)
@@ -889,28 +820,22 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     expect(stray.slice(0, 5)).toEqual([])
   })
 
-  // The words are the point of a song, so losing or mangling one is not a
-  // detail. Compared by the place each syllable is sung and the verse line
-  // it belongs to, because the source interleaves the voices of a measure
-  // through its cursor, lists a note's verses in any order, and writes a
-  // voice's two laid-over lines as one voice while MNX states them as two
-  // sequences. Where a syllable is sung is the one thing both sides read the
-  // same way, and a syllable moved to another note shows in it.
+  // Compared by the place each syllable is sung and its verse line. The
+  // source interleaves the voices of a measure through its cursor, lists a
+  // note's verses in any order, and writes a voice's two laid-over lines as
+  // one voice, where MNX has two sequences.
   test('keeps every lyric syllable the source wrote, on the note that sings it', () => {
     expect(lyricPlaces(mnx).sort()).toEqual(sourceLyricPlaces(parseXmlRoot(source)).sort())
   })
 
-  // The check above keeps one text per line per note, so a note stating one
-  // line twice with two different texts would pass it while half of what it
-  // says is dropped. No vendored song does that today; one that started to
-  // would be a loss to look at rather than to keep quiet about.
+  // The check above keeps one text per line per note, so it cannot see a
+  // note that states one line twice with different texts.
   test('states no lyric line twice on one note with different words', () => {
     expect(differingLyricLines(parseXmlRoot(source))).toEqual([])
   })
 
-  // MusicXML draws an accidental exactly where it writes an <accidental>, so
-  // the count of shown accidentals in the output must match the count in the
-  // source. The schema types accidentalDisplay but cannot count.
+  // MusicXML draws an accidental where it writes an <accidental>, so the
+  // output must show the same number of accidentals as the source.
   test('shows exactly the accidentals the source draws', () => {
     let shown = 0
     const walk = (items: readonly MNXSequenceItem[]): void => {
@@ -946,9 +871,8 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     expect(shown).toBe(inSource)
   })
 
-  // A dynamic or tempo sits at a point in its measure, so its position cannot
-  // run past the measure's length. The schema types the position but cannot
-  // bound it.
+  // The position of a dynamic or tempo cannot run past the measure's length.
+  // The schema cannot check this.
   test('never places a direction past the end of its measure', () => {
     const stray: string[] = []
     const lengths = sourceMeasureLengths(parseXmlRoot(source))
@@ -957,13 +881,9 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     mnx.parts.forEach((part, partIndex) => {
       part.measures.forEach((measure, index) => {
         time = mnx.global.measures[index]?.time ?? time
-        // A direction sits at a cursor position, which advances by the notes'
-        // measured durations, so the measure reaches at least that far, and at
-        // least its time signature. Its source length is that measured extent,
-        // which also holds where the source overfills the bar or where the
-        // converter carried a written value shorter than the duration it
-        // measured. Bounding by the time signature alone would flag a direction
-        // in such a measure as past its end.
+        // A direction is at a cursor position, which advances by the notes'
+        // durations. The bound is the larger of the source's measured length
+        // and the time signature, because a source can overfill the bar.
         const barLength = Math.max(time.count / time.unit, lengths[partIndex]?.[index] ?? 0)
         for (const dynamic of measure.dynamics ?? []) {
           const at = dynamic.position.fraction[0] / dynamic.position.fraction[1]
@@ -983,22 +903,17 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     expect(pitchesOf(mnx)).toEqual(sourcePitches(parseXmlRoot(source)))
   })
 
-  // MNX advances the sequence cursor over a tuplet's outer and states that
-  // its content must come to inner. The schema checks the shape of a ratio
-  // and not the arithmetic, so nothing else here sees a tuplet holding
-  // something other than what it counts. A ratio no pair of note values
-  // writes is reported and the notes are written without it, so no tuplet
-  // reaches the output holding less than it counts.
+  // MNX advances the sequence cursor by a tuplet's outer, and its content must
+  // come to inner. The schema checks the shape of a ratio, not the
+  // arithmetic.
   test('fills every tuplet it writes', () => {
     expect([...underfilledTuplets(mnx)]).toEqual([])
   })
 
   test('sounds for as long as the source does, measure by measure', () => {
-    // Where a note's written value disagrees with its measured duration, the
-    // converter carries the written value and reports it as inconsistent:
-    // duration. Its measures then sound as the written values do, not as the
-    // source's durations add up, so this check would be comparing against the
-    // wrong thing. The pitch and schema checks still hold the song to account.
+    // Where a note's written value disagrees with its duration, the converter
+    // keeps the written value and warns inconsistent:duration. Its measures
+    // then add up by written values, so this check does not apply.
     const inconsistent = warnings.some((warning) => warning.code === 'inconsistent:duration')
 
     const disagreements = inconsistent
@@ -1008,18 +923,14 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     expect(disagreements.slice(0, 5)).toEqual([])
   })
 
-  // A slur whose two ends sit in one voice is unambiguous in the source: a
-  // measure is written one voice at a time, so within a voice the document's
-  // order is the music's. Every one of those has to come out joining the same
-  // two places. This reads the source on its own, because the pairing is
-  // exactly what the converter has to work out, and a slur pointing at the
-  // wrong note is legal MNX that no other check here can see.
+  // A slur with both ends in one voice is unambiguous in the source: a
+  // measure is written one voice at a time, so within a voice the document
+  // order is the time order. A slur that points at the wrong note is still
+  // legal MNX.
   test('joins every slur the source states within one voice', () => {
-    // Where a written value disagrees with its duration the converter carries
-    // the written value, so the events sit where the writing puts them and
-    // the source's own durations are no longer the yardstick, exactly as for
-    // the measure lengths above. Nine songs are passed over here, and their
-    // slurs are held to account by nothing else.
+    // Skipped where a written value disagrees with its duration, as for the
+    // measure lengths above. Nine songs are skipped here, and no other check
+    // covers their slurs.
     if (warnings.some((warning) => warning.code === 'inconsistent:duration')) return
 
     const stated = sourceSlurSpans(parseXmlRoot(source))
@@ -1029,14 +940,11 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     expect(missing.slice(0, 5)).toEqual([])
   })
 
-  // Losses may only shrink. A rise means something stopped being converted
-  // that used to be; a fall means the baseline is due an update.
+  // Losses may only shrink. A fall means the baseline needs an update.
   test('loses no more than the recorded baseline', () => {
-    // Grouped by the element lost, which the warning states as a field. It
-    // used to be dug back out of the message with a regular expression, which
-    // made the baseline turn on how a sentence happened to be worded. An
-    // attribute loss is keyed as element@attribute, apart from its element's
-    // own losses, so one cannot regress inside a drop in the other.
+    // Grouped by the element lost. An attribute loss is keyed as
+    // element@attribute, apart from its element's own losses, so a rise in
+    // one cannot hide inside a fall in the other.
     const counts: Record<string, number> = {}
     for (const warning of warnings) {
       const key =

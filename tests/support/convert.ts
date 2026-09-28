@@ -1,8 +1,7 @@
-// The entry points tests use to convert and to write. Every document a test
-// converts or writes is checked against the vendored schema here, so an
-// assertion on its shape always sits on top of a legal document. ESLint holds
-// tests to these two functions: a direct call to the converter or the writer
-// is an error outside this file, except where a test expects it to throw.
+// Tests convert and write through these two functions, which check every
+// output against the vendored schema. ESLint rejects a direct call to the
+// converter or the writer outside this file, except where a test expects it to
+// throw.
 
 import { expect } from 'vitest'
 import { convertMusicXML } from '../../src/index.js'

@@ -1,10 +1,9 @@
-// Benchmarks, run with `pnpm bench`. Three groups:
-//   1. the pipeline stages one by one, on the same mid-sized song, so a
-//      change can be traced to the stage it slowed down
+// Run with `pnpm bench`. Three groups:
+//   1. each pipeline stage on the same mid-sized song
 //   2. whole conversions of real songs, smallest to largest
-//   3. whole conversions of generated scores past corpus size
+//   3. whole conversions of generated scores larger than the corpus
 //
-// The pass/fail complexity guards live in performance.test.ts.
+// The pass/fail complexity guards are in performance.test.ts.
 
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -19,8 +18,7 @@ import { parseXmlRoot } from '../src/xml/parse.js'
 import { generateScore } from './support/generate.js'
 import { songs } from './support/corpus.js'
 
-// The corpus sorted by size, so the picks track the corpus rather than
-// hard-coding file names that a corpus refresh would break.
+// Picks songs by size so that no file name is hard-coded.
 const bySize = songs().sort((a, b) => a.source.length - b.source.length)
 const smallest = bySize.at(0)
 const median = bySize.at(Math.floor(bySize.length / 2))

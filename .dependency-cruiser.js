@@ -1,13 +1,10 @@
-// The import graph, checked. This is where the architecture's stage
-// boundaries are stated: docs/architecture.md explains them in prose, and
-// these rules are the copy a build can fail on. Crossing one is an
-// architecture change, so amend that document first.
+// The import graph rules. They state the stage boundaries that
+// docs/architecture.md explains. Crossing one is an architecture change, so
+// amend that document first.
 //
-// Boundaries used to be `no-restricted-imports` in eslint.config.js. They are
-// here instead, stated once, because these rules match resolved module paths
-// rather than the text of an import, and because a graph tool sees what a
-// per-file linter cannot: cycles, files nothing imports, and a dev-only
-// dependency reaching the shipped library.
+// These rules match resolved module paths, not the text of an import. They
+// also catch what a per-file linter cannot: cycles, files nothing imports, and
+// a dev-only dependency in the shipped library.
 
 /** @type {import('dependency-cruiser').IConfiguration} */
 export default {
@@ -18,17 +15,14 @@ export default {
     // writer. Both stages meet at the model, and neither knows the pipeline
     // that drives them.
     //
-    // A unit test beside its source is held to the same line as the source.
-    // These rules used to exempt every *.test.ts, inherited whole from the
-    // ESLint config they replaced, and the only two files using the exemption
-    // were asserting on converted MNX from inside the reader's folder. Those
-    // assertions are end to end and live in tests/support-block.test.ts now,
-    // where they go through the public API. A test that needs both stages is
-    // an end-to-end test and belongs in tests/.
+    // A unit test beside its source is held to the same stage boundaries as
+    // the source, except the barrel rule.
+    // A test that needs both stages is an end-to-end test and belongs in
+    // tests/.
     //
-    // The two rules further down about what ships keep the exemption, because
-    // a test genuinely differs there: it imports vitest, a devDependency, and
-    // reads fixtures through Node core modules. Neither is shipped.
+    // The two rules below about what ships exempt tests, because a test
+    // imports vitest, a devDependency, and reads fixtures through Node core
+    // modules. Neither is shipped.
     {
       name: 'reader-knows-no-mnx',
       comment:
@@ -107,8 +101,7 @@ export default {
     // === The isomorphic core ===
     //
     // tsconfig.json withholds Node's and the DOM's types from src, which
-    // stops a global. An `import` of a core module is the other way in, and
-    // this is what stops that one.
+    // stops a global. This rule stops an `import` of a core module.
     {
       name: 'core-is-not-isomorphic',
       comment:
@@ -208,8 +201,7 @@ export default {
   ],
 
   options: {
-    // node_modules is a dependency, not a subject: record what is imported
-    // from it without walking into it.
+    // Record what is imported from node_modules without walking into it.
     doNotFollow: { path: 'node_modules' },
     exclude: { path: '^(dist|coverage)/' },
 
@@ -217,8 +209,7 @@ export default {
     // (moduleResolution: Bundler with verbatimModuleSyntax), so the resolver
     // needs the compiler's own view to follow them.
     tsConfig: { fileName: 'tsconfig.test.json' },
-    // Type-only imports are still imports for a boundary rule: `import type`
-    // across a stage line is the same architecture change as a value import.
+    // `import type` across a stage boundary counts as a crossing.
     tsPreCompilationDeps: true,
 
     enhancedResolveOptions: {

@@ -1,5 +1,4 @@
-// The generator behind the performance tests: its output converts, the
-// result is legal MNX, and the conversion is lossless.
+// The generator for the performance tests.
 
 import { describe, expect, test } from 'vitest'
 import { convertValid } from './support/convert.js'
@@ -16,13 +15,11 @@ describe('generated scores', () => {
       expect(mnx.parts[0]?.measures).toHaveLength(5)
 
       // A chord note joins the event of the note it follows, so the measure
-      // holds exactly notesPerMeasure events, and every fourth one carries
-      // two notes.
+      // holds notesPerMeasure events, and every fourth one carries two notes.
       const firstMeasure = mnx.parts[0]?.measures?.[0]
 
-      // Each measure carries a hairpin worded at its closing edge, which puts
-      // the pairing of spans and the wording that waits for it on the path the
-      // performance tests measure.
+      // Each measure has a hairpin with its wording at the closing edge. This
+      // puts span pairing and pending wording on the measured path.
       expect(firstMeasure?.dynamics).toHaveLength(1)
       expect(firstMeasure?.dynamics?.[0]).toMatchObject({ type: 'gradual', suffix: 'cresc.' })
 

@@ -1,21 +1,18 @@
 // The full-corpus gate.
 //
-// Runs every MusicXML file under a directory through the converter and holds
-// the output to the same source-independent checks the vendored corpus test
-// applies to its songs, over the whole of the OpenScore Lieder corpus rather
-// than a sample. It is not run per commit: it fetches ~1,500 files and takes
-// minutes, so it stays skipped unless MUSICXML_TO_MNX_CORPUS points at a
-// directory of scores, which the corpus workflow sets after cloning the corpus
-// and a maintainer sets before a release.
+// Converts every MusicXML file under a directory and applies the
+// source-independent checks of the vendored corpus test, over the whole
+// OpenScore Lieder corpus. It has about 1,500 files and takes minutes, so it
+// is skipped unless MUSICXML_TO_MNX_CORPUS names a directory of scores. The
+// corpus workflow sets it after it clones the corpus, and a maintainer sets it
+// before a release.
 //
 //   MUSICXML_TO_MNX_CORPUS=<dir> [MUSICXML_TO_MNX_CORPUS_REPORT=<file.json>] pnpm corpus-gate
 //
 // It fails on a crash, on output the schema rejects, or on output whose notes
-// or measure lengths disagree with the source. A file the converter refuses
-// with a MusicXMLError is a deliberate rejection, not a crash, so it is
-// reported by reason rather than failed. The warnings are aggregated by the
-// element lost, which is the feedback worth handing the Community Group: how
-// much of a real corpus each unconvertible construct accounts for.
+// or measure lengths disagree with the source. A file refused with a
+// MusicXMLError is reported by reason, not failed. The warnings are counted
+// by the element lost.
 
 import { describe, expect, test } from 'vitest'
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs'
@@ -58,7 +55,7 @@ function inputsUnder(dir: string): string[] {
   return found.sort()
 }
 
-/** One file, converted once and held to every check. */
+/** Converts one file once and applies every check. */
 function assess(file: string): Outcome {
   let xml: string
   let mnx
@@ -68,11 +65,10 @@ function assess(file: string): Outcome {
     // eslint-disable-next-line no-restricted-syntax -- a refusal is an outcome here, and assess() checks the schema itself
     ;({ mnx, warnings } = convertMusicXML(xml))
   } catch (error) {
-    // A MusicXMLError is the converter deliberately refusing input it cannot
-    // convert faithfully, which is not a failure of the gate; anything else
-    // escaping is a crash, which is.
+    // A MusicXMLError is a refusal of input the converter cannot convert
+    // faithfully. Any other error is a crash.
     if (error instanceof MusicXMLError) {
-      // Grouped without the location, which moves whenever a file is
+      // Grouped without the location, which changes when a file is
       // re-exported.
       return { kind: 'refused', reason: error.detail }
     }
@@ -80,12 +76,10 @@ function assess(file: string): Outcome {
     return { kind: 'failed', failure: { file, kind: 'crash', detail } }
   }
 
-  // Where a note's written value disagrees with its measured duration, the
-  // converter deliberately carries the written value and says so with an
-  // inconsistent:duration warning. Its measures then sound as the written
-  // values do, not as the source's durations add up, so the length check
-  // below, which reads those durations, would compare against the wrong
-  // thing. The pitch and schema checks still hold that file to account.
+  // Where a note's written value disagrees with its duration, the converter
+  // keeps the written value and warns inconsistent:duration. Its measures then
+  // add up by written values, so the length check below, which reads the
+  // durations, does not apply. The pitch and schema checks still apply.
   const inconsistent = warnings.some((warning) => warning.code === 'inconsistent:duration')
 
   const failure = firstFailure(file, xml, mnx, warnings, inconsistent)
@@ -105,8 +99,8 @@ function firstFailure(
   const schema = schemaErrors(mnx)
   if (schema.length > 0) return { file, kind: 'schema', detail: schema.slice(0, 3).join('; ') }
 
-  // MNX requires the content of a sequence stating a rest that fills the
-  // measure to be empty, which the schema itself does not carry.
+  // MNX requires a sequence with a rest that fills the measure to have empty
+  // content. The schema does not check this.
   const crowded = crowdedMeasureRests(mnx)
   if (crowded.length > 0) {
     return {
@@ -118,10 +112,9 @@ function firstFailure(
 
   const root = parseXmlRoot(xml)
 
-  // MNX advances the sequence cursor over a tuplet's outer and states that its
-  // content must come to inner, which the schema cannot check. A ratio no pair
-  // of note values writes is reported and the notes are written without it, so
-  // no tuplet reaches the output holding less than it counts.
+  // MNX advances the sequence cursor by a tuplet's outer, and its content must
+  // come to inner. The schema cannot check this. A ratio that no pair of note
+  // values writes is reported, and the notes are written without the tuplet.
   const underfilled = [...underfilledTuplets(mnx)]
   if (underfilled.length > 0) {
     return {
@@ -146,8 +139,8 @@ function firstFailure(
   }
 
   // MNX states a whole number of semitones, so the source pitches above are
-  // read at the whole alteration a microtone converts to. Each one converted
-  // that way must be reported.
+  // read at the whole alteration a microtone converts to. Each such
+  // conversion must be reported.
   const microtones = sourceMicrotones(root)
   const reported = warnings.filter((w) => w.code === 'unrepresentable:microtone').length
   if (reported !== microtones) {
@@ -170,13 +163,10 @@ function largestFirst(counts: ReadonlyMap<string, number>): [string, number][] {
   return [...counts].sort((a, b) => b[1] - a[1])
 }
 
-// Skipped unless a corpus directory is given, so an ordinary test run does not
-// try to convert files that are not there.
 const gate = corpusDir ? describe : describe.skip
 
 gate('the full corpus', () => {
-  // Guarded, so the body walking a directory cannot throw when there is none
-  // to walk and the whole block is skipped.
+  // A skipped block still runs its body, so the walk needs a directory.
   const files = corpusDir ? inputsUnder(corpusDir) : []
 
   const failures: Failure[] = []
@@ -196,9 +186,8 @@ gate('the full corpus', () => {
     }
   }
 
-  // Printed rather than asserted: how a real corpus divides into converted,
-  // deliberately refused, and lost-by-element is the feedback worth reading,
-  // and the report file carries the same for a machine.
+  // Printed, not asserted: how many files converted, how many were refused,
+  // and what was lost by element. The report file holds the same data.
   const refused = [...refusals.values()].reduce((sum, count) => sum + count, 0)
   const lines = [
     `${String(files.length)} files: ${String(converted)} converted, ${String(refused)} refused, ${String(failures.length)} failed.`,
@@ -232,10 +221,9 @@ gate('the full corpus', () => {
     expect(files.length).toBeGreaterThan(0)
   })
 
-  // Every file either converts to output that matches the source, or is
-  // refused for a stated reason. Nothing crashes, produces illegal MNX, or
-  // hands back different notes or a different length from what the source
-  // wrote. The first several failures are shown; the report file has them all.
+  // Every file converts to output that matches the source, or is refused for
+  // a stated reason. The first several failures are shown. The report file
+  // has them all.
   test('converts the whole corpus without a crash or a mismatch', () => {
     expect(failures.slice(0, 20)).toEqual([])
   })

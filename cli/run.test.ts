@@ -1,6 +1,5 @@
-// The `musicxml-to-mnx` command, driven in-process: run() does the work and returns an
-// exit code, so a test can hand it arguments, then read the files it wrote and
-// the lines it logged.
+// The `musicxml-to-mnx` command, run in-process. run() returns an exit code,
+// so a test can read the files it wrote and the lines it logged.
 
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
@@ -9,14 +8,14 @@ import { dirname, join } from 'node:path'
 import { schemaErrors } from '../tests/support/schema.js'
 import { buildValidator, run } from './run.js'
 
-// A one-note score that converts with nothing lost, for the lossless paths.
+// A one-note score that converts with nothing lost.
 const LOSSLESS =
   '<score-partwise><part-list><score-part id="P1"><part-name>P</part-name></score-part>' +
   '</part-list><part id="P1"><measure number="1"><attributes><divisions>1</divisions>' +
   '</attributes><note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration>' +
   '<type>quarter</type></note></measure></part></score-partwise>'
 
-// The same, plus a <harmony> the converter does not carry, for the lossy paths.
+// The same, plus a <harmony> the converter does not carry.
 const LOSSY = LOSSLESS.replace('<note>', '<harmony/><note>')
 
 let dir: string
@@ -32,7 +31,6 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true })
 })
 
-/** Writes an input file into the temp dir, making its parent, and returns its path. */
 function input(name: string, xml: string): string {
   const path = join(dir, name)
   mkdirSync(dirname(path), { recursive: true })
@@ -50,7 +48,6 @@ describe('converting files', () => {
     const mnx: unknown = JSON.parse(readFileSync(join(dir, 'song.mnx'), 'utf8'))
     expect(schemaErrors(mnx)).toEqual([])
     expect((mnx as { mnx: { version: number } }).mnx.version).toBe(1)
-    // Nothing was lost, so the line names no count.
     expect(lines[0]).toBe(`${file} -> ${join(dir, 'song.mnx')}`)
   })
 
@@ -117,7 +114,6 @@ describe('a file the converter refuses', () => {
     expect(lines.some((line) => line.includes('bad.xml') && line.includes('score-partwise'))).toBe(
       true,
     )
-    // The good one was still written.
     expect(() => readFileSync(join(dir, 'good.mnx'))).not.toThrow()
     expect(lines.at(-1)).toBe('Converted 1 of 2, 1 refused.')
   })
@@ -134,7 +130,7 @@ describe('two inputs that would write to the same file', () => {
 
     expect(code).toBe(1)
     expect(lines.some((line) => line.includes('would overwrite'))).toBe(true)
-    // The first write stands; the second is skipped, not silently applied.
+    // The first write stands, and the second is skipped.
     const mnx = JSON.parse(readFileSync(join(out, 'song.mnx'), 'utf8')) as {
       parts: {
         measures: { sequences: { content: { notes?: { pitch: { step: string } }[] }[] }[] }[]
@@ -170,7 +166,6 @@ describe('an output that cannot be written', () => {
     expect(lines[0]).toMatch(/^.*blocked\.xml: could not write .*blocked\.mnx: .*EISDIR/)
     expect(() => readFileSync(join(dir, 'good.mnx'))).not.toThrow()
     expect(lines.at(-1)).toBe('Converted 1 of 2, 1 not written.')
-    // The report holds what was written, and nothing for the output that was not.
     const report = JSON.parse(readFileSync(join(dir, 'report.json'), 'utf8')) as object
     expect(Object.keys(report)).toEqual([good])
   })
@@ -253,7 +248,6 @@ describe('reporting losses', () => {
     const code = await run(['to-mnx', file, '-o', dir, '--fail-on-loss'], io)
 
     expect(code).toBe(1)
-    // The count of what was lost is on the file's own line.
     expect(lines[0]).toBe(`${file} -> ${join(dir, 'song.mnx')} (1 lost)`)
     expect(lines.at(-1)).toBe('Converted 1 of 1, 1 with losses.')
   })
@@ -275,8 +269,8 @@ describe('checking the output against the schema', () => {
     expect(lines.some((line) => line.includes('not valid MNX'))).toBe(false)
   })
 
-  // A conversion never produces invalid MNX, so the reporting and the exit code
-  // that follow from one are driven with a check that rejects.
+  // A conversion never produces invalid MNX, so this test uses a check that
+  // rejects.
   test('--validate reports every error and fails the run', async () => {
     const file = input('song.xml', LOSSLESS)
     const reject = () => () => ['/parts: must be an array', '/global: must be an object']
@@ -293,8 +287,6 @@ describe('checking the output against the schema', () => {
     ])
   })
 
-  // The validator itself is tested here, because a conversion never produces
-  // invalid MNX for the command to catch.
   test('the validator accepts a real document and rejects a broken one', async () => {
     const file = input('song.xml', LOSSLESS)
     await run(['to-mnx', file, '-o', dir], io)
@@ -303,8 +295,6 @@ describe('checking the output against the schema', () => {
     const validate = buildValidator()
     expect(validate(mnx)).toEqual([])
 
-    // A document missing two required properties reports both, each with the
-    // place it went wrong and the reason, not just the first.
     const errors = validate({ mnx: { version: 1 } })
     expect(errors).toEqual([
       "<root>: must have required property 'global'",

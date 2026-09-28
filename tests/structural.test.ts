@@ -1,6 +1,6 @@
-// The source-side readers behind the corpus checks. They read the XML
-// independently of the converter, so their own readings need pinning where
-// the format allows more than one shape for the same music.
+// The source-side readers behind the corpus checks. They read the XML apart
+// from the converter. These tests fix their readings where the format allows
+// more than one shape for the same music.
 
 import { describe, expect, test } from 'vitest'
 import { convertValid } from './support/convert.js'
@@ -23,8 +23,8 @@ import {
   sourcePitches,
 } from './support/structural.js'
 
-// Sibelius states no <voice> on chord members. The chord member belongs to
-// the voice of the note it is chorded with, not to a voice of its own.
+// Sibelius states no <voice> on chord members. A chord member belongs to the
+// voice of its base note.
 test('a chord member without a voice counts toward its base note voice', () => {
   const source = `<?xml version="1.0" encoding="UTF-8"?>
 <score-partwise version="3.0">
@@ -67,14 +67,13 @@ test('a chord member without a voice counts toward its base note voice', () => {
   const inSource = sourcePitches(parseXmlRoot(source))
   expect(inSource).toEqual(['part 1 measure 1: C5 D5 | G4 B4 A4'])
 
-  // The converter reads it the same way, which is what the corpus gate
-  // compares.
+  // The converter reads it the same way.
   const { mnx } = convertValid(source)
   expect(pitchesOf(mnx)).toEqual(inSource)
 })
 
-// MNX states a whole number of semitones, so a microtone converts as the
-// nearest whole alteration, a half-way one as the smaller, and is reported.
+// MNX states a whole number of semitones, so a microtone converts to the
+// nearest whole alteration, a half-way one to the smaller, and is reported.
 test('a microtone is read as the whole alteration MNX states, and counted', () => {
   const note = (step: string, alter: string) =>
     `<note><pitch><step>${step}</step><alter>${alter}</alter><octave>4</octave></pitch>` +
@@ -106,9 +105,9 @@ test('a microtone is read as the whole alteration MNX states, and counted', () =
   expect(warnings.filter((w) => w.code === 'unrepresentable:microtone')).toHaveLength(4)
 })
 
-// A <backup> can reach further back than the measure has run. Nothing sounds
-// before a measure starts, so a note written out there is written at the
-// start, and a <forward> that brings the cursor back cancels the reach.
+// A <backup> can go back past the start of the measure. A note written there
+// is written at the start, and a <forward> that brings the cursor back
+// cancels the overshoot.
 function backupMeasure(body: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <score-partwise version="3.0">
@@ -138,10 +137,10 @@ test('a backup past the measure start that a forward cancels measures from the s
 })
 
 test('a note written before the measure starts counts from the start', () => {
-  // The second voice writes a whole note where the backup left the cursor a
-  // whole note before the measure. Measured from where the source put the
-  // cursor it would end a quarter in; measured from the start, where the
-  // converter writes it, the measure sounds for a whole note.
+  // The backup leaves the cursor a whole note before the measure, and the
+  // second voice writes a whole note there. Measured from the source's cursor,
+  // it ends a quarter in. Measured from the start, where the converter writes
+  // it, the measure sounds for a whole note.
   const source = backupMeasure(
     QUARTER +
       '<backup><duration>4</duration></backup>' +
@@ -158,8 +157,8 @@ test('a note written before the measure starts counts from the start', () => {
 })
 
 // A transposing part is written at the pitch its player reads. MNX states the
-// pitch the instrument sounds, so the source-side reader applies the source's
-// own <transpose> before comparing.
+// pitch the instrument sounds, so the source-side reader applies <transpose>
+// before it compares.
 test('a transposing part is compared at the pitch it sounds', () => {
   const source = `<?xml version="1.0" encoding="UTF-8"?>
 <score-partwise version="3.0">
@@ -191,9 +190,9 @@ test('a transposing part is compared at the pitch it sounds', () => {
   expect(pitchesOf(mnx)).toEqual(inSource)
 })
 
-// A part changes instrument partway through a measure, which real scores
-// write as "muta in A" or "To Piccolo". Both sides read the notes before the
-// change at the instrument that was playing them.
+// A part changes instrument partway through a measure ("muta in A", "To
+// Piccolo"). Both sides read the notes before the change at the instrument
+// that played them.
 test('a transposition stated partway through a measure applies from there', () => {
   const source = `<?xml version="1.0" encoding="UTF-8"?>
 <score-partwise version="3.0">
@@ -224,10 +223,10 @@ test('a transposition stated partway through a measure applies from there', () =
   expect(pitchesOf(mnx)).toEqual(inSource)
 })
 
-// The layout checks. A layout can state less than the part list does and
-// stay legal MNX: a staff with no label reference suppresses its part's
-// name, and a multi-staff part left as bare sibling staves loses its grand
-// staff. The schema cannot see either, so the corpus gate walks the layout.
+// The layout checks. A layout can state less than the part list and stay
+// legal MNX: a staff with no label reference hides its part's name, and a
+// multi-staff part left as bare sibling staves loses its grand staff. The
+// schema cannot see either.
 
 function layoutDocument(
   content: NonNullable<MNXDocument['layouts']>[number]['content'],
@@ -360,8 +359,7 @@ test('a document of single staves needs no layout', () => {
   ).toEqual([])
 })
 
-// A multi-staff part needs a layout to state its grand staff, so a document
-// holding one and no layout has already lost the brace.
+// A multi-staff part needs a layout to state its grand staff.
 test('a multi-staff part with no layout at all is a loss', () => {
   expect(
     layoutLosses({
@@ -372,11 +370,9 @@ test('a multi-staff part with no layout at all is a loss', () => {
   ).toEqual(['part P1: multi-staff with no layout'])
 })
 
-// A note carrying <lyric number="1"> twice states one line twice, and MNX
-// states one lyric per line per event. The corpus check kept the last of the
-// two, which agreed with the converter dropping the first, so a real loss
-// would have passed. Comparing the texts is what makes the check say
-// anything: two saying the same thing lose nothing, two differing lose one.
+// A note with <lyric number="1"> twice states one line twice, and MNX states
+// one lyric per line per event. The check compares the texts: two that are
+// the same lose nothing, two that differ lose one.
 function verse(text: string, number = '1'): string {
   return `<lyric number="${number}"><text>${text}</text></lyric>`
 }
@@ -408,23 +404,20 @@ test('two lyrics on different lines are two verses, not a loss', () => {
   expect(differingLyricLines(withLyrics(verse('one') + verse('two', '2')))).toEqual([])
 })
 
-// A syllable that is nothing but whitespace draws nothing, so the reader
-// states no verse for it. Compared as one, it would read as a line's second
-// verse disagreeing with its first, and fault the converter for a loss the
-// converter does not make: it converts the line once and says nothing.
+// A syllable of only whitespace draws nothing, so the reader states no verse
+// for it and it cannot disagree with the line's other verse.
 test('a whitespace syllable beside a real one is not a disagreement', () => {
   const source = withLyrics(verse('La') + verse(' '))
 
   expect(differingLyricLines(source)).toEqual([])
-  // The source states no <divisions>, which is its own report and not this
-  // one's subject, so only what the lyrics cost is compared.
+  // The source states no <divisions>, which has its own warning, so only the
+  // lyric warnings are compared.
   const { warnings } = convertValid(sourceOf(verse('La') + verse(' ')))
   expect(warnings.filter((warning) => warning.element !== 'divisions')).toEqual([])
 })
 
-// The syllabic says how the syllable joins its word, and MNX states one for
-// the event, so two that agree on the words and not on the syllabic still
-// lose one of the two. The reader reports that; the check has to see it.
+// The syllabic says how the syllable joins its word, and MNX states one per
+// event. Two lyrics with the same words and a different syllabic lose one.
 test('two lyrics on one line differing only in the syllabic is a loss', () => {
   const syllable = (spelling: string) =>
     `<lyric number="1"><syllabic>${spelling}</syllabic><text>sing</text></lyric>`
@@ -434,8 +427,6 @@ test('two lyrics on one line differing only in the syllabic is a loss', () => {
   ])
 })
 
-// A syllable standing on its own is written either way, and both say the
-// same thing.
 test('a syllabic of single and no syllabic at all say the same thing', () => {
   const single = '<lyric number="1"><syllabic>single</syllabic><text>la</text></lyric>'
 
@@ -443,9 +434,7 @@ test('a syllabic of single and no syllabic at all say the same thing', () => {
 })
 
 // An empty <text> draws nothing, so the reader states no verse for it and
-// the words of the lyric beside it are the line's. Counted as a verse, it
-// would read as a disagreement and fault the converter for a loss it does
-// not make.
+// the words of the lyric beside it are the line's.
 test('an empty syllable beside a written one is not a loss', () => {
   const body = '<lyric number="1"><text></text></lyric>' + verse('word')
 
@@ -455,18 +444,17 @@ test('an empty syllable beside a written one is not a loss', () => {
   expect(event).toMatchObject({ lyrics: { lines: { 1: { text: 'word' } } } })
 })
 
-// A lyric with no <text> at all is a melisma marker rather than a verse, and
-// the reader passes over it, so it states nothing to disagree with.
+// A lyric with no <text> is a melisma marker, not a verse, and the reader
+// skips it.
 test('a lyric with no text at all states no verse to lose', () => {
   expect(
     differingLyricLines(withLyrics('<lyric number="1"><extend/></lyric>' + verse('word'))),
   ).toEqual([])
 })
 
-// The rule MNX states in prose and the schema does not carry: a sequence that
-// states a rest filling its measure holds nothing else. The check reads a
-// document built by hand, because the converter refuses every source that
-// would produce one.
+// MNX states in prose, not in the schema, that a sequence with a rest filling
+// its measure holds nothing else. The document is built by hand, because the
+// converter refuses every source that would produce one.
 test('a sequence resting its measure and holding content is named', () => {
   const document = {
     mnx: { version: 1 },
@@ -506,8 +494,7 @@ test('a sequence resting its measure and holding nothing is not named', () => {
 
 // Closed-score hymnals write two lines in one <voice>, laid over each other
 // with <backup>. The converter states each as its own sequence, so the
-// source-side reading has to group them the same way: grouping strictly by
-// <voice> would read one line where the music has two.
+// source-side reading groups them the same way.
 test('a voice sounding two notes at once counts as two lines', () => {
   const source = `<?xml version="1.0" encoding="UTF-8"?>
 <score-partwise version="3.0">
@@ -541,9 +528,9 @@ test('a voice sounding two notes at once counts as two lines', () => {
   expect(pitchesOf(mnx)).toEqual(inSource)
 })
 
-// A run written as one run stays in one line, so the reading follows the
-// line the voice last sounded in wherever it has room rather than returning
-// to the first the moment that one is free.
+// A run written as one run stays in one line. The reading follows the line
+// the voice last sounded in while that line has room, and does not go back to
+// the first line when it is free.
 test('a laid-over line keeps the notes written after it', () => {
   const source = `<?xml version="1.0" encoding="UTF-8"?>
 <score-partwise version="3.0">
@@ -581,9 +568,9 @@ test('a laid-over line keeps the notes written after it', () => {
   expect(pitchesOf(mnx)).toEqual(inSource)
 })
 
-// A grace note takes none of the measure's time, so it overlaps nothing and
-// opens no line of its own. It belongs to the note it leads into, which a
-// <forward> can put in a different line from the one it was written after.
+// A grace note takes none of the measure's time, so it opens no line of its
+// own. It belongs to the note it leads into, which a <forward> can put in a
+// different line from the one it was written after.
 test('a grace note follows the note it leads into, not where it was written', () => {
   const source = `<?xml version="1.0" encoding="UTF-8"?>
 <score-partwise version="3.0">
@@ -621,9 +608,9 @@ test('a grace note follows the note it leads into, not where it was written', ()
   expect(pitchesOf(mnx)).toEqual(inSource)
 })
 
-// Lyrics are compared by the note each syllable is sung on, because a voice
-// that sounds two lines at once is one <voice> in the source and two
-// sequences in MNX, so the two sides have no grouping in common.
+// Lyrics are compared by the note each syllable is sung on. A voice that
+// sounds two lines at once is one <voice> in the source and two sequences in
+// MNX.
 test('a syllable on each of a voice two lines is read on the note that sings it', () => {
   const sung = (step: string, duration: number, type: string, text: string): string =>
     `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
@@ -658,10 +645,10 @@ test('a syllable on each of a voice two lines is read on the note that sings it'
 })
 
 // MNX advances the sequence cursor by a tuplet's outer and requires its
-// content to fill inner. A tuplet holding less than its ratio counts still
-// occupies its whole outer, so the check has to measure it that way: scaling
-// the content by the ratio instead reproduces the converter's own arithmetic,
-// and the two agree with each other whatever the source said.
+// content to fill inner. A tuplet that holds less than its ratio counts still
+// takes its whole outer, so the check measures it that way. Scaling the
+// content by the ratio would repeat the converter's own arithmetic, so a
+// tuplet whose content disagrees with its ratio would never show.
 const quarter = { base: 'quarter' as const, dots: 0 }
 const eighth = { base: 'eighth' as const, dots: 0 }
 const note = (duration: { base: 'quarter' | 'eighth'; dots: number }): MNXEvent => ({
@@ -702,8 +689,8 @@ test('a tuplet holding what its ratio counts is not', () => {
   expect(holdsUnderfilledTuplet([filled, note(quarter)])).toBe(false)
 })
 
-// A nested tuplet and a tremolo stand in their parent for the space they take,
-// and each is walked into for one of its own.
+// A nested tuplet or a tremolo counts in its parent for the time it takes,
+// and the check also walks into it.
 test('a tuplet is measured by its outer where it stands inside another', () => {
   const nested: MNXSequenceItem = {
     type: 'tuplet',
@@ -787,7 +774,7 @@ describe('the measure length check', () => {
   })
 
   // The other part fills the measure, so the part written short is silent to
-  // the barline, and the bracket takes in that silence to keep its ratio.
+  // the barline. The bracket takes in that silence to keep its ratio.
   test('lets a part written short run on in silence to the barline', () => {
     const source = score(quarter('C') + quarter('D'), shortQuarter)
     const { mnx } = convertValid(source)
@@ -857,7 +844,7 @@ describe('the measure length check', () => {
   })
 
   // No pair of note values states a quarter sounding a sixth of a whole note,
-  // so the bracket takes the time its stated ratio gives it and says so.
+  // so the bracket takes the time its stated ratio gives it, with a warning.
   test('passes over the measure a tuplet ratio report names', () => {
     const source = score(shortQuarter + quarter('D'))
     const { mnx, warnings } = convertValid(source)
@@ -867,9 +854,9 @@ describe('the measure length check', () => {
     expect(measureLengthDisagreements(mnx, parseXmlRoot(source), [])).toHaveLength(1)
   })
 
-  // A bracket no pair of note values counts at all is dropped, and its notes
-  // take the time they are written as, so the voice the report names may
-  // hold no tuplet.
+  // A bracket that no pair of note values counts is dropped, and its notes
+  // take their written time, so the voice the warning names may hold no
+  // tuplet.
   test('passes over the voice a tuplet ratio report names, whatever it holds', () => {
     const lines = [
       TIMED,

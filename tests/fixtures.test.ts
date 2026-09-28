@@ -1,9 +1,6 @@
-// Every fixture is a MusicXML file paired with the MNX it must produce.
-// Adding a pair under tests/fixtures/ registers it here automatically.
-//
-// Two gates per fixture: the output equals its golden, and the output
-// conforms to the vendored MNX schema. The golden pins what we decided to
-// emit; the schema pins that the decision is legal MNX.
+// Every fixture is a MusicXML file paired with the MNX it must produce. A pair
+// added under tests/fixtures/ is registered here. The output must equal its
+// golden and conform to the vendored MNX schema.
 
 import { describe, expect, test } from 'vitest'
 import { convertValid } from './support/convert.js'
@@ -58,9 +55,7 @@ describe.each(fixtures)('$name', ({ musicXmlPath, goldenPath }) => {
     convertValid(source)
   })
 
-  // An absent key and one set to undefined read as different things in MNX,
-  // and nothing else here tells them apart: the golden comparison passes over
-  // such a key, and so does the schema.
+  // The golden comparison and the schema both ignore a key set to undefined.
   test('states no key as undefined', () => {
     const { mnx } = convertValid(source)
 
@@ -74,10 +69,9 @@ describe.each(fixtures)('$name', ({ musicXmlPath, goldenPath }) => {
   })
 })
 
-// The fixture above is one voice in one measure. Real music is not, and the
-// shapes that only appear in harder music (spaces, several sequences, chords,
-// a rest filling the measure) would otherwise never be schema-checked as
-// conversion output.
+// The fixture above is one voice in one measure. These cases schema-check the
+// shapes it lacks: spaces, several sequences, chords, a rest filling the
+// measure.
 describe('conversion output the schema has to accept', () => {
   const cases: Record<string, string> = {
     'two voices, one entering late':

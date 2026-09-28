@@ -1,11 +1,10 @@
-// The built library, run where there is no Node. The bundle and the two
-// packages it imports are built into one script, and the script runs in a
-// fresh V8 context. It holds the ECMAScript built-ins and the few V8 adds
-// (console, WebAssembly, Intl), and nothing a host adds: no process, no
-// Buffer, no require, no TextDecoder, no DOM. tsconfig and the import rules
-// keep Node out of the source; this shows the shipped bundle needs nothing
-// from its host. It is skipped until the package is built, and compares the
-// bundle with itself run under Node, so a stale build still agrees.
+// Runs the built library with no Node. The bundle and the two packages it
+// imports are built into one script, which runs in a fresh V8 context. The
+// context has the ECMAScript built-ins and the few that V8 adds (console,
+// WebAssembly, Intl), and nothing a host adds: no process, Buffer, require,
+// TextDecoder or DOM. It is skipped until the package is built. It compares
+// the bundle with the same bundle run under Node, so a stale build still
+// agrees.
 
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -54,8 +53,8 @@ suite('the built library in a context with no host globals', () => {
     const context = createContext({ bytes: [...bytes] })
     runInContext(await bundled(), context)
 
-    // The bytes are made inside the context, so the library sees its own
-    // realm's Uint8Array, as it would in a browser.
+    // Makes the bytes inside the context, so the library sees its own realm's
+    // Uint8Array, as in a browser.
     const converted = JSON.parse(
       runInContext(
         'JSON.stringify(musicxmlToMnx.convertMusicXML(Uint8Array.from(bytes)))',

@@ -1,30 +1,27 @@
-// Flat config. Basic, non-type-checked TypeScript linting: fast and
-// dependency-light. tsc (pnpm typecheck) owns type correctness; ESLint owns
-// lint-level code smells; Prettier owns formatting; dependency-cruiser
-// (pnpm deps:check) owns the import graph, stage boundaries included.
+// Non-type-checked TypeScript linting. tsc (pnpm typecheck) owns type
+// correctness, Prettier owns formatting, and dependency-cruiser
+// (pnpm deps:check) owns the import graph.
 
 import js from '@eslint/js'
 import tseslint from 'typescript-eslint'
 import prettier from 'eslint-config-prettier'
 
 export default tseslint.config(
-  // Hidden directories hold tooling and local state, never library source.
   { ignores: ['dist', 'node_modules', 'coverage', '**/.*'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
     rules: {
-      // tsc owns unused-symbol checking via noUnusedLocals + noUnusedParameters
-      // (which honour the _-prefix convention), so this rule stays off to avoid
-      // double-reporting the same smell.
+      // tsc checks unused symbols with noUnusedLocals and noUnusedParameters,
+      // which honour the _-prefix convention.
       '@typescript-eslint/no-unused-vars': 'off',
     },
   },
   {
-    // Every conversion output in a test is held to the schema. The helpers in
-    // tests/support/convert.ts do that on every call, so a test calls them.
-    // A call a test expects to throw has no output to check, and stays direct:
-    // inside expect(() => ...).toThrow(), or as a statement in a try block.
+    // Tests convert and write through the helpers in tests/support/convert.ts,
+    // which check every output against the schema. A call that a test expects
+    // to throw stays direct: inside expect(() => ...).toThrow(), or as a
+    // statement in a try block.
     files: ['**/*.test.ts'],
     rules: {
       'no-restricted-syntax': [
@@ -35,8 +32,8 @@ export default tseslint.config(
           message:
             'Call convertValid or writeValid from tests/support/convert.ts, which check the output against the MNX schema.',
         },
-        // The call check matches the functions by name, so a test uses no
-        // other name for them and reaches them only by calling them.
+        // The call check matches the functions by name, so a test must not
+        // rename them or use them other than by a call.
         {
           selector:
             'ImportSpecifier[imported.name="convertMusicXML"][local.name!="convertMusicXML"], ImportSpecifier[imported.name="writeMnx"][local.name!="writeMnx"]',

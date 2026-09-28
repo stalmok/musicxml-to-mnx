@@ -1,6 +1,5 @@
 // Keeps the declaration files the public entry reaches and removes the rest.
-// tsc emits a declaration for every module in the program, internal stages
-// included, and the package would otherwise ship them all.
+// tsc emits a declaration for every module, internal stages included.
 
 import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
@@ -31,7 +30,7 @@ export function pruneDeclarations(directory: string): void {
     }
   }
 
-  /** Removes every declaration not kept, and returns whether the directory is left empty. */
+  /** Returns whether the directory is left empty. */
   function prune(directory: string): boolean {
     let empty = true
     for (const entry of readdirSync(directory, { withFileTypes: true })) {

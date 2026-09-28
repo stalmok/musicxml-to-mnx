@@ -1,7 +1,6 @@
-// The built command, run as a real subprocess. The in-process tests in
-// cli/run.test.ts cover the logic; this proves the shipped artifact itself
-// (its shebang, its entry wiring, its exit code) actually runs, which nothing
-// importing run() can show. It is skipped until the package is built.
+// Runs the built command as a subprocess to check its shebang, entry wiring
+// and exit code. cli/run.test.ts covers the logic. It is skipped until the
+// package is built.
 
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
@@ -13,7 +12,6 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 const cli = fileURLToPath(new URL('../dist/cli.js', import.meta.url))
 const song = fileURLToPath(new URL('./corpus/abbott-think-of-today.mxl', import.meta.url))
 
-// Nothing here runs unless `pnpm build` has produced the command.
 const built = existsSync(cli)
 const suite = built ? describe : describe.skip
 
@@ -25,7 +23,6 @@ afterAll(() => {
   if (dir) rmSync(dir, { recursive: true, force: true })
 })
 
-/** Runs the built command, returning its exit code and combined output. */
 function runBuilt(args: readonly string[]): { code: number; output: string } {
   const result = spawnSync('node', [cli, ...args], { encoding: 'utf8' })
   return { code: result.status ?? 1, output: `${result.stdout}${result.stderr}` }

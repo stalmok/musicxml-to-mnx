@@ -1,6 +1,5 @@
-// The Node versions the package claims to run on, held to the versions CI
-// runs it on. package.json's engines field is the claim, .nvmrc the Node the
-// checks run on, and the checks job in ci.yml runs the lowest version of every
+// Holds the engines field in package.json to the Node versions CI runs: .nvmrc
+// for the checks, and the ci.yml checks job for the lowest version of every
 // other range.
 
 import { readFileSync } from 'node:fs'

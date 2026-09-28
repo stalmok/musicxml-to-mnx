@@ -1,6 +1,5 @@
-// Runs prettier with the clone's local excludes as a third ignore file, so
-// files kept out of git locally stay out of the format check too. In a
-// worktree .git is a file, so git names the path.
+// Adds the clone's local excludes as a third ignore file. In a worktree .git
+// is a file, so git names the path.
 
 import { execFileSync, spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'

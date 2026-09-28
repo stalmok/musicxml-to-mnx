@@ -1,13 +1,8 @@
-// The MNX types in src/types/mnx.ts are hand-written against the vendored
-// schema, and the corpus validates everything the writer emits against it. What
-// that does not reach is the surface the types declare but the writer does not
-// yet produce: a tie targetType other than crossVoice, a relative dynamic, the
-// useBeams support flag, the far ends of the note-value scale.
-//
-// These fixtures exercise that surface. Each is typed as an MNXDocument, so
-// TypeScript holds it to the declared shape, and schemaErrors holds the
-// declared shape to MNX. A type that names a value the schema forbids fails
-// here, rather than waiting for the day a writer change starts emitting it.
+// Covers the parts of src/types/mnx.ts that the writer does not produce yet: a
+// tie targetType other than crossVoice, a relative dynamic, the useBeams
+// support flag, the far ends of the note-value scale. Each fixture is typed as
+// an MNXDocument, so TypeScript holds it to the declared shape, and
+// schemaErrors holds that shape to the schema.
 
 import { describe, expect, test } from 'vitest'
 import { schemaErrors } from './support/schema.js'
@@ -22,10 +17,7 @@ import type {
   MNXTieTargetType,
 } from '../src/index.js'
 
-/**
- * A minimal document the schema accepts, with hooks for the parts a fixture
- * varies. One part, one voice, one quarter note on middle C.
- */
+/** One part, one voice, one quarter note on middle C. */
 function documentWith(parts: {
   support?: MNXSupport
   ties?: MNXTie[]
@@ -86,19 +78,15 @@ describe('the type surface the writer does not yet emit is still legal MNX', () 
     },
   )
 
-  // Every other sequence item states its kind and an event may. The writer
-  // leaves it off, so a document stating it is legal MNX the types have to
-  // accept for a consumer to switch on the kind at all.
+  // Every other sequence item states its kind, and an event may. The writer
+  // leaves it off, but the types must accept it.
   test('the event discriminant', () => {
     expect(schemaErrors(documentWith({ eventType: 'event' }))).toEqual([])
   })
 
-  // Walking a sequence is the first thing a consumer does with a document,
-  // and telling the items apart means switching on the kind. This compiles
-  // only while every item states one and an event's is its own value, so a
-  // regression there fails the typecheck rather than waiting on a consumer.
-  // An event's kind is optional, so the one it leaves off is the default arm
-  // rather than a case of its own.
+  // This compiles only while every item states its kind and an event's kind
+  // is its own value. An event's kind is optional, so the event is the
+  // default arm.
   test('a sequence item can be told apart by its kind', () => {
     const kindOf = (item: MNXSequenceItem): string => {
       switch (item.type) {

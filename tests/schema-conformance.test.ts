@@ -1,29 +1,22 @@
-// Holds what the converter believes about MNX to what the vendored schema
-// says.
-//
-// The schema is the oracle for the output, and tests/support/schema.ts checks
-// every emitted document against it. That reaches nothing the converter
-// believes about MNX before it emits anything, and three places state such
-// beliefs by hand:
+// Compares what the converter states about MNX by hand with the vendored
+// schema. tests/support/schema.ts checks only the emitted documents. Three
+// places state MNX facts by hand:
 //
 //   src/types/mnx.ts             these are MNX's fields and enums
 //   src/read/unrepresentable.ts  these elements have nowhere to go in MNX
 //   src/ids.ts                   an MNX id looks like this
 //
-// A fourth, the model's enums in src/model/score.ts, is a copy of the types
-// rather than of the schema, because the model is spelled the way MNX spells
-// things. It is compared with the types at the end of this file, and reaches
-// the schema through them.
+// A fourth, the model's enums in src/model/score.ts, copies the types, because
+// the model uses MNX's spelling. It is compared with the types at the end of
+// this file.
 //
-// Both ways of being wrong are silent. A field the types lack cannot be
-// emitted, and the output stays legal because the field is optional, so no
-// test fails. A registry entry naming something the schema has since gained
-// goes on reporting a permanent format limit forever. Neither reaches the loss
-// report, which is driven by the input: it knows what MusicXML it did not
-// read, and has no notion of an MNX slot it never fills.
+// Neither kind of drift shows elsewhere. A field the types lack is never
+// emitted, and the output stays legal because the field is optional. A
+// registry entry for something the schema has since gained goes on reporting
+// a permanent format limit. The loss report is driven by the input, so it
+// cannot see either.
 //
-// Run this after moving the schema pin. It is what makes "update the types to
-// match" a step that fails when it is skipped.
+// Run this after moving the schema pin.
 
 import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
@@ -36,19 +29,17 @@ import type { SchemaNode } from './support/schema.js'
 
 describe('the id pattern the reader renames parts by', () => {
   test('matches the schema it was copied from', () => {
-    // src/read/score.ts holds a copy rather than reading the schema, because
-    // the schema and ajv are dev-only and a conversion must not need either.
-    // This is what keeps the copy honest.
+    // src/ids.ts holds a copy, because the schema and ajv are dev-only and a
+    // conversion must not need either.
     expect(MNX_ID_PATTERN.source).toBe(schemaDefs['id']?.pattern)
   })
 })
 
 describe('the instrument id a sound is keyed by', () => {
-  // The reader renames a part id MNX cannot state. The other string a source
-  // supplies to the same space is the <score-instrument> id, which the writer
-  // passes straight into global.sounds as a key, unchecked. Three facts make
-  // that safe, and each is the schema's. When one stops holding, the
-  // instrument id needs the renaming the part id gets.
+  // The reader renames a part id MNX cannot state. The writer passes the
+  // <score-instrument> id into global.sounds as a key, unchecked. These three
+  // schema facts make that safe. When one stops holding, the instrument id
+  // needs the renaming the part id gets.
 
   test('the schema puts no shape on a sounds key', () => {
     // Any instrument id is a legal key, including one with accented letters,
@@ -66,9 +57,8 @@ describe('the instrument id a sound is keyed by', () => {
 })
 
 // A tuplet whose ratio no pair of note values states is reported as a limit of
-// MNX rather than a gap here (unrepresentable:tuplet-ratio). That rests on
-// what the schema says a ratio is counted in, so each part of it is checked
-// rather than believed.
+// MNX (unrepresentable:tuplet-ratio). That rests on what the schema says a
+// ratio is counted in.
 describe('the note values a tuplet ratio is counted in', () => {
   const named = schemaDefs['note-value-base']?.enum ?? []
 
@@ -95,16 +85,15 @@ describe('the note values a tuplet ratio is counted in', () => {
   })
 
   test('the schema puts no bound on how many of a value a ratio counts', () => {
-    // The reader states whatever count the notes come to, rather than giving
-    // up past some figure of its own.
+    // The reader states whatever count the notes come to, with no limit of
+    // its own.
     expect(schemaDefs['positive-integer']?.maximum).toBeUndefined()
   })
 
   test('a ratio counts at least one of a value on each side', () => {
     // A bracket holding nothing that takes any of the measure's time is
     // reported as a limit of MNX (unrepresentable:tuplet-untimed). That rests
-    // on this: a tuplet counting none of a value is not a tuplet the schema
-    // states.
+    // on this minimum.
     expect(schemaDefs['positive-integer']?.minimum).toBe(1)
   })
 
@@ -118,10 +107,9 @@ describe('the note values a tuplet ratio is counted in', () => {
   })
 })
 
-// A bracket holding nothing that takes any of the measure's time, which is
-// what a bracket over grace notes alone holds, is reported as a limit of MNX
-// rather than a gap here (unrepresentable:tuplet-untimed). Its other half is
-// that a grace group has no room for a tuplet.
+// A bracket over grace notes alone takes none of the measure's time, and is
+// reported as a limit of MNX (unrepresentable:tuplet-untimed). That also rests
+// on a grace group having no room for a tuplet.
 describe('what a grace group holds', () => {
   test('a grace group holds events and nothing else', () => {
     expect(resolveRef(schemaDefs['grace']?.properties?.['content']?.items)).toBe(
@@ -134,13 +122,11 @@ describe('what a grace group holds', () => {
 
 /**
  * Every exported MNX* interface, with the properties it declares, whether each
- * is optional, and the members of any string-literal union. Inherited
- * properties come with it, so MNXStrongAccent carries MNXMarking's placement.
+ * is optional, and the members of any literal union. Inherited properties are
+ * included, so MNXStrongAccent carries MNXMarking's placement.
  *
- * Read through the compiler rather than by parsing text, because the types use
- * `extends` and named aliases, and both have to be resolved to compare
- * anything. TypeScript is already a devDependency, so this costs no new
- * package.
+ * Read through the compiler, because the types use `extends` and named
+ * aliases, which must be resolved.
  */
 function readMnxTypes(): Map<string, Map<string, { optional: boolean; union: string[] | null }>> {
   const file = fileURLToPath(new URL('../src/types/mnx.ts', import.meta.url))
@@ -166,9 +152,8 @@ function readMnxTypes(): Map<string, Map<string, { optional: boolean; union: str
       // Undefined is how an optional property reads; the union is about the
       // values it can hold.
       const stated = parts.filter((part) => (part.flags & ts.TypeFlags.Undefined) === 0)
-      // Numbers as well as text: an octave shift's amount and a time
-      // signature's unit are both enumerated by the schema as numbers, and
-      // reading only text left the pair of them compared against nothing.
+      // Numbers as well as text: the schema enumerates an octave shift's
+      // amount and a time signature's unit as numbers.
       const literals = stated.filter((part) => part.isStringLiteral() || part.isNumberLiteral())
       properties.set(property.getName(), {
         optional: (property.flags & ts.SymbolFlags.Optional) !== 0,
@@ -198,25 +183,22 @@ const DEFINITION_OF: Readonly<Record<string, string | undefined>> = {
   MNXLyricLine: 'event-lyric-line',
   MNXSingleNoteTremolo: 'tremolo-single',
   MNXPartTransposition: 'part-transposition',
-  // A shared base for the marking types rather than a definition of its own.
-  // The schema spells each mark out (accent, staccato, ...), and every one of
-  // them is a bare placement, which MNXEventMarkings' properties already reach.
+  // A shared base for the marking types. The schema spells each mark out
+  // (accent, staccato, ...) as a bare placement, which MNXEventMarkings'
+  // properties already reach.
   MNXMarking: undefined,
 }
 
 /**
  * The three properties $defs/global-attrs gives nearly every object. They are
  * checked once, below, and left out of the per-type comparison: id is written
- * only where something points at a node, and neither _c nor _x is modelled at
- * all. Listing that per type would bury the real differences under sixty
- * repetitions of the same decision.
+ * only where something points at a node, and _c and _x are not modelled.
  */
 const GLOBAL_ATTRIBUTES = ['id', '_c', '_x']
 
 /**
- * Schema properties the types deliberately do not model, with the reason.
- * Every entry is a thing the writer cannot currently produce. An entry here is
- * a decision; a difference not here is a drift, and fails.
+ * Schema properties the types do not model, with the reason. The writer
+ * cannot produce any of them yet. A difference not listed here fails.
  */
 const NOT_MODELLED: Readonly<Record<string, { properties: readonly string[]; why: string }>> = {
   MNXNote: {
@@ -286,9 +268,7 @@ function schemaProperties(definition: SchemaNode): string[] {
 }
 
 /**
- * The values a property may hold, where the schema enumerates them. Read as
- * text whether the schema states them as text or as numbers, which is how the
- * two sides are compared.
+ * The values a property may hold, where the schema enumerates them, as text.
  */
 function schemaUnion(definition: SchemaNode, property: string): string[] | null {
   const resolved = resolveRef(definition.properties?.[property])
@@ -311,8 +291,8 @@ describe('the hand-written MNX types against the schema', () => {
   })
 
   test('the properties every object inherits are still the three that are left out', () => {
-    // If MNX adds a fourth, the per-type comparison starts reporting it
-    // everywhere, and this says why before that happens.
+    // If MNX adds a fourth, the per-type comparison reports it for every
+    // type. This test names the cause.
     expect(Object.keys(schemaDefs['global-attrs']?.properties ?? {}).sort()).toEqual(
       [...GLOBAL_ATTRIBUTES].sort(),
     )
@@ -331,14 +311,12 @@ describe('the hand-written MNX types against the schema', () => {
     const modelled = [...properties.keys()].filter((one) => !GLOBAL_ATTRIBUTES.includes(one))
     const allowed = NOT_MODELLED[name]?.properties ?? []
 
-    // Schema properties the types lack. Anything not allowlisted is drift, and
-    // it is invisible without this: an unmodelled optional field just never
-    // gets written, and the output stays legal.
+    // Schema properties the types lack and the allowlist does not name.
     expect(
       stated.filter((one) => !modelled.includes(one) && !allowed.includes(one)).sort(),
     ).toEqual([])
-    // Types the schema has no room for. The schema gate catches these once
-    // something emits them; this catches them on the day they are declared.
+    // Properties the schema has no room for, caught before anything emits
+    // them.
     expect(modelled.filter((one) => !stated.includes(one)).sort()).toEqual([])
     // An allowlist entry for a property the schema no longer has is stale.
     expect(allowed.filter((one) => !stated.includes(one)).sort()).toEqual([])
@@ -371,8 +349,8 @@ describe('the hand-written MNX types against the schema', () => {
       if (stated === null) continue
       const extra = union.filter((value) => !stated.includes(value))
       const missing = stated.filter((value) => !union.includes(value))
-      // Wider than the schema means the types permit output no MNX reader
-      // accepts. Narrower means a legal document a consumer cannot describe.
+      // A wider type permits output that is not legal MNX. A narrower one
+      // cannot describe some legal documents.
       if (extra.length > 0) wider.push(`${property}: ${extra.join(', ')}`)
       if (missing.length > 0) narrower.push(`${property}: ${missing.join(', ')}`)
     }
@@ -393,8 +371,8 @@ function kebab(name: string): string {
 
 /**
  * Every name the schema uses, normalised, against the definitions that use it.
- * A MusicXML name is hyphenated and an MNX one is camelCase, so dropping
- * everything but letters and digits lets key-octave meet keyOctave.
+ * A MusicXML name is hyphenated and an MNX one is camelCase, so only letters
+ * and digits are kept: key-octave matches keyOctave.
  */
 function schemaNames(): Map<string, Set<string>> {
   const found = new Map<string, Set<string>>()
@@ -422,10 +400,9 @@ function usedBy(name: string): string[] {
 }
 
 /**
- * The definitions allowed to carry an element name that the schema does use.
- * An entry here says the name collides but the meaning does not, so it stays
- * on the no-home list. Anything else on that list must be a name the schema
- * does not use at all.
+ * Element names on the no-home list that the schema also uses, with a
+ * different meaning, and the definitions that use them. Every other name on
+ * that list must be absent from the schema.
  */
 const ELEMENT_COLLISIONS: Readonly<Record<string, readonly string[]>> = {
   // MusicXML's <bracket> is a line drawn over a passage. The schema's brackets
@@ -433,7 +410,7 @@ const ELEMENT_COLLISIONS: Readonly<Record<string, readonly string[]>> = {
   // passage.
   bracket: ['staff-symbol', 'tuplet'],
   // MusicXML's <system-layout> is page spacing. MNX's system-layout is the
-  // arrangement of staves in a system. The names meet; the meanings do not.
+  // arrangement of staves in a system.
   'system-layout': ['system-layout'],
   // MusicXML's <string> is the string a note is played on. The schema's
   // string is the JSON text type every other definition is built from.
@@ -448,9 +425,9 @@ const ELEMENT_COLLISIONS: Readonly<Record<string, readonly string[]>> = {
 }
 
 /**
- * Where each attribute on the no-home list would live if it had a home, so the
- * fact is that this definition has no such property. The few whose comment
- * makes a claim about the whole schema instead are listed after it.
+ * The definition that would hold each attribute on the no-home list. The test
+ * checks that the definition has no such property. Attributes with no home
+ * anywhere in the schema are listed after it.
  */
 const ATTRIBUTE_HOMES: Readonly<Record<string, string>> = {
   'dot placement': 'note-value',
@@ -470,15 +447,15 @@ const ATTRIBUTE_HOMES: Readonly<Record<string, string>> = {
 
 /** Attributes whose comment claims the schema has no such concept anywhere. */
 const ATTRIBUTES_NOWHERE: Readonly<Record<string, readonly string[]>> = {
-  // No cue and no size concept anywhere.
+  // No cue and no size concept.
   'type size': ['size', 'cue'],
   // The same fact the <pedal> element rests on.
   'sound damper-pedal': ['pedal'],
   'sound soft-pedal': ['pedal'],
   'sound sostenuto-pedal': ['pedal'],
-  // The same fact <staff-tuning>, <capo> and <fret> rest on: no tablature
-  // anywhere. <string> is left out, because the schema's "string" is the JSON
-  // type, which is what ELEMENT_COLLISIONS records for that entry.
+  // The same fact <staff-tuning>, <capo> and <fret> rest on: no tablature.
+  // <string> is left out, because the schema's "string" is the JSON type, as
+  // ELEMENT_COLLISIONS records.
   'staff-details show-frets': ['tablature', 'tuning', 'fret', 'capo'],
 }
 
@@ -487,9 +464,8 @@ const ATTRIBUTES_NEEDING_A_JUMP = ['sound dacapo', 'sound tocoda', 'sound coda']
 
 describe('the registry of what MNX cannot hold, against the schema', () => {
   test.each([...NO_HOME_IN_MNX])('the schema has nowhere for <%s>', (element) => {
-    // The bar the registry sets itself: no definition in the schema could hold
-    // it. A name the schema has gained is a converter gap, not a format limit,
-    // and calling it permanent is the worse of the two errors.
+    // No definition in the schema could hold it. A name the schema has gained
+    // is a converter gap, not a format limit.
     expect(usedBy(element)).toEqual([...(ELEMENT_COLLISIONS[element] ?? [])].sort())
   })
 
@@ -535,22 +511,17 @@ describe('the registry of what MNX cannot hold, against the schema', () => {
 
 // --- The model's enums against the MNX ones they are spelled from -----------
 //
-// The model is MNX-spelled on purpose (docs/architecture.md): its enums use
-// MNX's words so the writer needs no second table. That makes each of them a
-// copy, and this is what compares the two.
+// The model's enums use MNX's words (docs/architecture.md), so the writer
+// needs no second table. Each is a copy of an MNX enum.
 //
-// One direction is already checked: the writer assigns a model value into an
-// MNX field, so a model enum gaining a member MNX lacks does not compile. The
-// other direction reaches nothing. MNX gaining a member the model lacks is a
-// value the converter can never produce, and every document it writes stays
-// legal, so no test fails and the loss report says nothing, because the loss
-// is at the output end and the report is driven by the input.
+// The writer assigns a model value into an MNX field, so a model enum with a
+// member MNX lacks does not compile. The other direction needs this test: an
+// MNX member the model lacks is a value the converter never produces, and the
+// output stays legal.
 //
-// Both inventories are accounted for in full. Every enum the model states is
-// paired with an MNX one or says why it is not one, and every enum MNX states
-// is reached by a pairing or says why the model does not restate it. Without
-// the second half, an MNX vocabulary the converter never produces is not a
-// decision anyone wrote down; it just sits there reading as an oversight.
+// Every enum the model states is paired with an MNX one or says why not.
+// Every enum MNX states is reached by a pairing or says why the model does not
+// restate it.
 
 /** The model's own tag for a sequence item, which MNX states as a type. */
 const SEQUENCE_ITEM_TAG =
@@ -565,9 +536,8 @@ const UNSTATED_IS_UNDEFINED =
   'MNX names a value auto for what the source did not state; the model leaves it undefined, so the writer omits the field and a renderer decides.'
 
 /**
- * Each model enum, against the MNX type it is spelled from. Either side may
- * be written inline on an interface rather than named, and is Interface.property
- * where it is.
+ * Each model enum, against the MNX type it is spelled from. An enum written
+ * inline on an interface is named Interface.property.
  */
 const MNX_SPELLING: Readonly<Record<string, string>> = {
   Step: 'MNXStep',
@@ -619,12 +589,8 @@ const NOT_AN_MNX_ENUM: Readonly<Record<string, string>> = {
 }
 
 /**
- * Where the model deliberately states fewer values than MNX, and why. An
- * entry is a decision; a difference not here is drift, and fails.
- *
- * Most of them are the same decision: MNX names a value "auto" for a thing
- * the source did not state, and the model leaves it undefined instead, so the
- * writer omits the field and a renderer decides.
+ * Where the model states fewer values than MNX, and why. A difference not
+ * listed here fails.
  */
 const NARROWER: Readonly<Record<string, { missing: readonly string[]; why: string }>> = {
   NoteValueBase: {
@@ -660,16 +626,13 @@ const NARROWER: Readonly<Record<string, { missing: readonly string[]; why: strin
 }
 
 /**
- * Every union of literal values a file states, by name, whether it is written
- * as a named alias or inline on an interface property. An inline one is named
- * Interface.property. Read through the compiler for the same reason the
- * interfaces above are: a union states its members through named aliases, and
- * they have to be resolved to compare.
+ * Every union of literal values a file states, by name, as a named alias or
+ * inline on an interface property. An inline one is named Interface.property.
+ * Read through the compiler, because a union can state its members through
+ * named aliases.
  *
  * A property whose type is a named alias is left out, because the alias is
- * already here under its own name and listing both would state one decision
- * twice. The unions this reaches that nothing else does are the ones written
- * out where they are used.
+ * already listed under its own name.
  */
 function readUnions(path: string): Map<string, string[]> {
   const file = fileURLToPath(new URL(path, import.meta.url))
@@ -728,10 +691,9 @@ const modelUnions = readUnions('../src/model/score.ts')
 const mnxUnions = readUnions('../src/types/mnx.ts')
 
 /**
- * An MNX enum the model does not restate, with the reason. Every entry is a
- * vocabulary the converter never chooses from: either the writer settles the
- * value itself, or nothing in MusicXML says which member to pick. An entry
- * here is a decision; an unpaired enum not here is unaccounted for, and fails.
+ * An MNX enum the model does not restate, with the reason. Either the writer
+ * sets the value itself, or nothing in MusicXML says which member to pick. An
+ * unpaired enum not listed here fails.
  */
 const NOT_RESTATED: Readonly<Record<string, string>> = {
   MNXTieTargetType: `The model states a tie's crossVoice as a boolean, and the writer spells the one member it can produce from that. A tie into an arpeggio or across a jump is not read.`,
@@ -758,10 +720,9 @@ describe("the model's enums against the MNX ones they are spelled from", () => {
   })
 
   test('every enum MNX states is reached by a pairing, or says why not', () => {
-    // The other half of the same accounting. An MNX vocabulary no pairing
-    // reaches is output the converter never produces, which nothing else
-    // reports: the schema gate only sees what is emitted, and the loss report
-    // is driven by the input.
+    // An MNX enum no pairing reaches is output the converter never produces.
+    // The schema check sees only what is emitted, and the loss report is
+    // driven by the input.
     const paired = new Set(Object.values(MNX_SPELLING))
     expect(
       [...mnxUnions.keys()].filter((name) => !paired.has(name) && !(name in NOT_RESTATED)),
@@ -780,8 +741,7 @@ describe("the model's enums against the MNX ones they are spelled from", () => {
   test('every reason names an enum MNX still states and no pairing reaches', () => {
     const paired = new Set(Object.values(MNX_SPELLING))
     expect(Object.keys(NOT_RESTATED).filter((name) => !mnxUnions.has(name))).toEqual([])
-    // A reason kept beside a pairing states one decision twice, and the two
-    // would go on to disagree.
+    // A reason beside a pairing would state one decision twice.
     expect(Object.keys(NOT_RESTATED).filter((name) => paired.has(name))).toEqual([])
   })
 
@@ -795,14 +755,12 @@ describe("the model's enums against the MNX ones they are spelled from", () => {
     expect(spelled, `the MNX types state no ${mnx}`).toBeDefined()
     const deliberate = NARROWER[model]?.missing ?? []
 
-    // Values MNX states and the model does not. Nothing else reports one: it
-    // is output the converter can never produce, and what it does produce
-    // stays legal.
+    // Values MNX states and the model does not.
     expect(
       (spelled ?? []).filter((one) => !stated.includes(one) && !deliberate.includes(one)),
     ).toEqual([])
-    // Values the model states and MNX does not. The writer catches these where
-    // it assigns one into the other; this names the enum rather than the field.
+    // Values the model states and MNX does not. The compiler catches these in
+    // the writer too; this names the enum rather than the field.
     expect(stated.filter((one) => !(spelled ?? []).includes(one))).toEqual([])
     // A stated difference MNX has dropped, or that the model has since gained.
     expect(

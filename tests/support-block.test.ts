@@ -1,17 +1,14 @@
-// MNX's support block says once, for the whole document, which notations the
-// document's own notation is complete for: the accidentals it draws and the
-// beams it groups. A consumer reads it to know whether to lay those out by
-// rule or use what the document wrote.
+// MNX's support block states, for the whole document, whether the document
+// writes out its accidentals and its beams. A consumer reads it to know
+// whether to lay those out by rule or use what the document wrote.
 //
-// The block is a fact about a converted document, and nothing shorter than a
-// conversion produces one, so these go through the public API rather than
-// calling the reader and the writer separately. What the model carries is the
-// reader's own business and is tested beside src/read/.
+// Only a whole conversion produces the block, so these tests use the public
+// API. The reader's model is tested beside src/read/.
 
 import { describe, expect, test } from 'vitest'
 import { convertValid } from './support/convert.js'
 
-/** One measure of the given notes, with the given `<encoding>` declarations. */
+/** One measure of the given notes, with the given `<encoding>` supports. */
 function convert(body: string, supports = '') {
   const identification = supports
     ? `<identification><encoding>${supports}</encoding></identification>`
@@ -45,10 +42,8 @@ const quarter =
   '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
   '<type>quarter</type></note>'
 
-// Whether the document draws its accidentals is a fact about the whole of it,
-// so it is read off the finished score rather than accumulated while it is
-// built. That keeps it a property of what was converted rather than of the
-// order the reader happened to visit things in.
+// Whether the document draws its accidentals is read off the finished score,
+// not collected while the reader builds it.
 describe('the document declaring it states accidentals', () => {
   test('says so once any note draws an accidental', () => {
     const mnx = convert(note('G', '1', '<accidental>sharp</accidental>'))
@@ -72,8 +67,8 @@ describe('the document declaring it states accidentals', () => {
     expect(mnx.mnx.support).toEqual({ useAccidentalDisplay: true })
   })
 
-  // The notes a tuplet or a two-note tremolo holds stand inside it rather than
-  // beside it, so looking no deeper than the sequence would miss them.
+  // The notes of a tuplet or a two-note tremolo are inside it, one level
+  // below the sequence.
   test('finds one drawn inside a tuplet', () => {
     // Two eighths in the time of three, so each lasts three divisions.
     const duplet = (step: string, marker: string, accidental = '') =>
@@ -102,9 +97,8 @@ describe('the document declaring it states accidentals', () => {
   })
 })
 
-// A cautionary or editorial accidental is shown though the rules would not
-// require it, which is exactly what MNX's accidental-display `force` means.
-// The support block above is what promises a consumer the flag is there.
+// A cautionary or editorial accidental is shown though the rules do not
+// require it. That is what MNX's accidental-display `force` means.
 describe('a forced accidental', () => {
   test('reaches the output as schema-valid MNX', () => {
     const mnx = convert(note('F', '1', '<accidental cautionary="yes">sharp</accidental>'))
@@ -114,8 +108,7 @@ describe('a forced accidental', () => {
 })
 
 // Where the source says nothing about its own beams, whether the document
-// states them is read off the finished score, like the accidentals, so a
-// consumer knows to use the beams written rather than beam by rule.
+// states them is read off the finished score, like the accidentals.
 describe('the document declaring it states beams', () => {
   test('says so once any measure carries a beam', () => {
     const mnx = convert(eighth('C', 'begin') + eighth('D', 'end'))
@@ -140,10 +133,8 @@ describe('the document declaring it states beams', () => {
   })
 })
 
-// The source states in <encoding><supports> whether the beams in the file are
-// the whole of them, and that is a different fact from whether the file holds
-// a beam: a score that beams nothing on purpose declares the support and
-// carries no beam. The declaration is what the support block restates.
+// <encoding><supports> states whether the beams in the file are all of them.
+// A score that beams nothing on purpose declares the support and has no beam.
 describe('the source declaring it states beams', () => {
   test('states the support where the source declares it and beams nothing', () => {
     const mnx = convert(quarter, '<supports element="beam" type="yes"/>')
@@ -157,8 +148,8 @@ describe('the source declaring it states beams', () => {
     expect(mnx.mnx.support).toEqual({ useAccidentalDisplay: true })
   })
 
-  // A "no", and a declaration narrowed to one attribute, are statements MNX's
-  // support block cannot make, so the document falls back to what it wrote.
+  // MNX's support block cannot state a "no" or a declaration narrowed to one
+  // attribute, so the document falls back to what it wrote.
   test('leaves the support to what was written for a declaration of "no"', () => {
     const mnx = convert(quarter, '<supports element="beam" type="no"/>')
 
@@ -174,8 +165,6 @@ describe('the source declaring it states beams', () => {
     expect(mnx.mnx.support).toBeUndefined()
   })
 
-  // The declaration is <supports> and nothing else. Another element of
-  // <encoding> carrying the same attributes states nothing about beams.
   test('reads no declaration from an element that is not <supports>', () => {
     const mnx = convert(quarter, '<supported element="beam" type="yes"/>')
 

@@ -1,15 +1,11 @@
-// Reading the vendored scores.
+// Reads the two vendored sets, the songs and the feature files. Every check in
+// the corpus test applies to both.
 //
-// Two sets, read together, because every check in the corpus test applies to
-// both. The songs are stored as `.mxl`, the standard compressed MusicXML
-// container, which is what the corpus publishes and is around twenty times
-// smaller than the XML inside it. The unpacking is the library's own, so the
-// corpus tests read the bytes the same way a consumer would and exercise that
-// path against real packages.
+// The songs are stored as `.mxl`, the compressed MusicXML container that the
+// corpus publishes. The library's own unpacking reads them.
 //
 // The feature files are stored as the `.xml` their suite publishes, small
-// enough to read in a diff, so that what each one is there to exercise can be
-// seen rather than taken on trust. See tests/corpus/PROVENANCE.md.
+// enough to read in a diff. See tests/corpus/PROVENANCE.md.
 
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'

@@ -1,5 +1,4 @@
-// Collects the licence text of every package a bundle inlines, so the bundle
-// ships the notices those licences require.
+// Collects the licence text of every package a bundle inlines.
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, relative, sep } from 'node:path'

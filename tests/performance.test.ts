@@ -1,10 +1,8 @@
 // Conversion time must scale linearly with the size of the score.
 //
 // Each test converts a generated score at two sizes along one axis and
-// bounds the time ratio. Each bound sits a few times above the observed
-// linear ratio and below the quadratic one, so machine noise cannot trip
-// it, while a pass over the axis that goes quadratic and comes to dominate
-// the runtime will. For numbers rather than pass/fail, run `pnpm bench`.
+// bounds the time ratio. Each bound is a few times above the observed linear
+// ratio and below the quadratic one. For numbers, run `pnpm bench`.
 
 /* eslint-disable no-restricted-syntax -- the schema check would be timed with the conversion; tests/generate.test.ts checks the generated output */
 
@@ -14,9 +12,8 @@ import { convertMusicXML } from '../src/index.js'
 import { generateScore } from './support/generate.js'
 
 /**
- * Times both conversions and returns the large-to-small ratio of their best
- * runs. The runs alternate between the two sources, so load from test files
- * running in other workers slows both sides rather than skewing the ratio.
+ * Returns the large-to-small ratio of the best runs. The runs alternate
+ * between the two sources, so load from other workers slows both sides.
  */
 function timeRatio(small: string, large: string): number {
   convertMusicXML(small)
@@ -38,8 +35,8 @@ test('time scales linearly with measure count', () => {
   const small = generateScore({ parts: 1, measures: 100, notesPerMeasure: 8 })
   const large = generateScore({ parts: 1, measures: 800, notesPerMeasure: 8 })
 
-  // 8x the measures: observed 8x to 10x, which moves with the machine and
-  // the run. A quadratic pass multiplies that by 8.
+  // 8x the measures: observed 8x to 10x. A quadratic pass multiplies that
+  // by 8.
   expect(timeRatio(small, large)).toBeLessThan(24)
 }, 60_000)
 
@@ -47,9 +44,8 @@ test('time scales linearly with part count', () => {
   const small = generateScore({ parts: 1, measures: 100, notesPerMeasure: 8 })
   const large = generateScore({ parts: 8, measures: 100, notesPerMeasure: 8 })
 
-  // 8x the parts: observed 6x to 10x, which moves with the machine and the
-  // run. Measured on its own, time per part is flat from 2 parts to 16. A
-  // quadratic pass multiplies the ratio by 8.
+  // 8x the parts: observed 6x to 10x. Time per part is flat from 2 parts to
+  // 16. A quadratic pass multiplies the ratio by 8.
   expect(timeRatio(small, large)).toBeLessThan(24)
 }, 60_000)
 
@@ -57,18 +53,16 @@ test('time scales linearly with notes per measure', () => {
   const sparse = generateScore({ parts: 1, measures: 100, notesPerMeasure: 4 })
   const dense = generateScore({ parts: 1, measures: 100, notesPerMeasure: 16 })
 
-  // 4x the density: observed 3.5x to 4.2x; a quadratic pass multiplies that
-  // by 4, to ~14x, so this bound must stay under it.
+  // 4x the density: observed 3.5x to 4.2x. A quadratic pass multiplies that
+  // by 4, to about 14x.
   expect(timeRatio(sparse, dense)).toBeLessThan(10)
 }, 60_000)
 
 test('a large score converts in bounded time', () => {
-  // Four parts, a thousand measures, 40,000 notes: an order of magnitude
-  // past the longest corpus songs. Observed around 2s plain and 6.5s under
-  // coverage instrumentation on a dev machine; CI runners are slower and run
-  // the other test files in parallel. The bound leaves room for all of that
-  // but not for a complexity regression, which would take minutes at this
-  // size.
+  // Four parts, a thousand measures, 40,000 notes: about ten times the longest
+  // corpus songs. Observed about 2s plain and 6.5s under coverage on a dev
+  // machine. CI runners are slower and run other test files in parallel. A
+  // complexity regression would take minutes at this size.
   const source = generateScore({ parts: 4, measures: 1000, notesPerMeasure: 8 })
 
   const start = performance.now()

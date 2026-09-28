@@ -1,15 +1,14 @@
 #!/bin/sh
-# Pre-commit gate: typecheck, lint, formatting, and the test suite (with its
-# coverage thresholds) must all pass before a commit is created. Mirrors the
-# manual workflow in AGENTS.md so broken code can't slip through.
+# Pre-commit gate: typecheck, lint, the import graph check, formatting, and the
+# test suite with its coverage thresholds must all pass. Mirrors the workflow
+# in AGENTS.md.
 #
-# The test step excludes the vendored corpus, which converts every vendored
-# song on every run and takes minutes; the fast suite still holds coverage
-# above its thresholds. The vendored corpus runs in CI on pushes and pull
-# requests that change what it tests, and before each release. Run it locally
-# with pnpm test:coverage or pnpm test:corpus.
+# The test step excludes the vendored corpus, which takes minutes. The fast
+# suite still holds coverage above its thresholds. CI runs the vendored corpus
+# on pushes and pull requests that change what it tests, and before each
+# release. Run it locally with pnpm test:coverage or pnpm test:corpus.
 #
-# Version-controlled here and activated per clone with:
+# Activate once per clone with:
 #   pnpm hooks:install      # = git config core.hooksPath .githooks
 set -e
 

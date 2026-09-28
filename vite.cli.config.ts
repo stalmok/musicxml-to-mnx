@@ -1,9 +1,9 @@
 import { defineConfig } from 'vite'
 import { thirdPartyNoticesPlugin } from './scripts/third-party-notices.ts'
 
-// The `musicxml-to-mnx` command, built as its own self-contained file so it shares no
-// chunks with the library bundle. Run after the library build with
-// emptyOutDir off, so it adds cli.js beside musicxml-to-mnx.js rather than wiping it.
+// The `musicxml-to-mnx` command, built as a self-contained file that shares no
+// chunks with the library bundle. It runs after the library build and adds
+// cli.js beside musicxml-to-mnx.js.
 export default defineConfig({
   // Ajv and its dependencies are inlined, and their licences require the notice.
   plugins: [thirdPartyNoticesPlugin('THIRD_PARTY_NOTICES.txt')],
@@ -16,18 +16,17 @@ export default defineConfig({
     // Do not wipe the library build that ran first.
     emptyOutDir: false,
     rollupOptions: {
-      // The runtime dependencies and Node's built-ins stay external. Ajv,
-      // reached only by --validate, is bundled in, so it stays a dev
-      // dependency rather than one every install of the library pays for.
+      // The runtime dependencies and Node's built-ins stay external. Ajv is
+      // used only by --validate. It is bundled in so that it stays a dev
+      // dependency of the library.
       external: ['@rgrove/parse-xml', 'fflate', /^node:/],
       output: {
-        // A shebang so the file runs directly. The library must never carry
-        // one, which is why the two builds are separate.
+        // The library must not have a shebang, so the two builds are separate.
         banner: '#!/usr/bin/env node',
       },
     },
-    // No sourcemaps in the published bundles: they roughly triple the tarball,
-    // and local development runs against src, not dist.
+    // Sourcemaps roughly triple the tarball, and local development runs
+    // against src.
     sourcemap: false,
   },
 })

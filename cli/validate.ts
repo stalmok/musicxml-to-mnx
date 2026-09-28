@@ -1,5 +1,4 @@
-// The schema check, shared by the command's --validate and the test suite, so
-// both judge a document by the same Ajv settings and report it the same way.
+// The schema check that the command's --validate and the test suite share.
 
 import Ajv2020 from 'ajv/dist/2020.js'
 import type { AnySchema } from 'ajv'
@@ -9,10 +8,9 @@ import type { AnySchema } from 'ajv'
  * error, and nothing when the document conforms.
  */
 export function compileValidator(schema: AnySchema): (document: unknown) => string[] {
-  // strict:false because Ajv's strictTypes rejects the schema's own keyword
-  // placement (a "maximum" with no "type"); the schema is upstream's and is not
-  // ours to rewrite. allErrors so that a rejected document reports every
-  // problem, not the first.
+  // strict:false because Ajv's strictTypes rejects the upstream schema's
+  // keyword placement (a "maximum" with no "type"). allErrors reports every
+  // problem, not only the first.
   const validator = new Ajv2020({ strict: false, allErrors: true }).compile(schema)
 
   return (document) => {

@@ -1,6 +1,6 @@
-// The built declarations, as a consumer sees them. The package ships only the
-// declarations its public entry reaches, and those must compile on their own,
-// with library checking on. It is skipped until the package is built.
+// The package ships only the declarations its public entry reaches. They must
+// compile on their own with library checking on. It is skipped until the
+// package is built.
 
 import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
