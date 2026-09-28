@@ -211,8 +211,9 @@ TypeScript declarations are emitted under `dist/types/`.
 `tests/declarations-artifact.test.ts` checks the shipped set and compiles a
 consumer against it.
 
-Ajv is bundled into the CLI for validation. It is not imported by the library,
-but the CLI bundle is included in the installed package.
+The CLI's `--validate` runs a validator that Ajv generates from the vendored
+schema at build time (`scripts/mnx-validator.ts`). The tests run the same
+generated validator. Ajv itself is not bundled.
 
 ## Input handling and invariants
 

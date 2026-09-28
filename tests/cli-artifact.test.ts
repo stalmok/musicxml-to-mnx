@@ -56,14 +56,4 @@ suite('the built command', () => {
     expect(code).toBe(0)
     expect(output.trim()).toMatch(/^\d+\.\d+\.\d+/)
   })
-
-  test('ships the licence of the code it inlines', () => {
-    const notices = readFileSync(
-      fileURLToPath(new URL('../dist/THIRD_PARTY_NOTICES.txt', import.meta.url)),
-      'utf8',
-    )
-
-    expect(notices).toMatch(/^ajv \d+\.\d+\.\d+ \(MIT\)$/m)
-    expect(notices).toMatch(/^fast-uri \d+\.\d+\.\d+ \(BSD-3-Clause\)$/m)
-  })
 })

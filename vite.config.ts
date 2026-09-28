@@ -1,6 +1,8 @@
 import { defineConfig } from 'vitest/config'
+import { mnxValidatorPlugin } from './scripts/mnx-validator.ts'
 
 export default defineConfig({
+  plugins: [mnxValidatorPlugin()],
   build: {
     // One self-contained ESM entry. vite.cli.config.ts builds the Node command
     // separately, so the two share no chunks. `pnpm build` also emits the .d.ts

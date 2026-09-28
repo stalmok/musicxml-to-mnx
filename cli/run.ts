@@ -12,7 +12,7 @@ import { parseArgs } from 'node:util'
 import { fileURLToPath } from 'node:url'
 import { convertMusicXML, MusicXMLError } from '../src/index.js'
 import type { ConversionWarning } from '../src/index.js'
-import { compileValidator } from './validate.js'
+import { schemaErrors } from './validate.js'
 
 /** Where the command's output lines go. The tests inject their own. */
 export interface CommandIO {
@@ -62,7 +62,7 @@ export async function run(
   io: CommandIO,
   // The tests pass their own check, because a conversion never produces
   // invalid MNX.
-  makeValidator: () => (document: unknown) => string[] = buildValidator,
+  check: (document: unknown) => string[] = schemaErrors,
 ): Promise<number> {
   const parsed = parseCommandLine(argv)
   if ('error' in parsed) {
@@ -98,7 +98,7 @@ export async function run(
     return 2
   }
 
-  const validate = values.validate ? makeValidator() : undefined
+  const validate = values.validate ? check : undefined
   const report: Record<string, readonly ConversionWarning[]> = {}
   // Catches two inputs with the same name written into one --out directory.
   const writtenBy = new Map<string, string>()
@@ -204,10 +204,4 @@ function version(): string {
   const manifest = join(commandDir(), '..', 'package.json')
   const pkg = JSON.parse(readFileSync(manifest, 'utf8')) as { version: string }
   return pkg.version
-}
-
-/** A schema check, built only when --validate is given. */
-export function buildValidator(): (document: unknown) => string[] {
-  const schemaPath = join(commandDir(), '..', 'schema', 'mnx-schema.json')
-  return compileValidator(JSON.parse(readFileSync(schemaPath, 'utf8')) as object)
 }

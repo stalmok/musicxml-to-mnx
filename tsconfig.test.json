@@ -5,7 +5,9 @@
   // proves src stays free of Node and DOM APIs.
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "types": ["node"]
+    "types": ["node"],
+    // Vite plugins supply this module at build and test time.
+    "paths": { "virtual:mnx-validator": ["./cli/mnx-validator.d.ts"] }
   },
   // `exclude` is inherited through `extends`, so it has to be cleared here,
   // otherwise the base config's exclusion of src/**/*.test.ts would leave the

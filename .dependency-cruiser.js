@@ -113,7 +113,7 @@ export default {
     {
       name: 'library-ships-no-dev-dependency',
       comment:
-        'A devDependency is absent from an install of the package, so the shipped library must not import one. ajv is dev-only and belongs to the test suite and the command, which bundles it.',
+        'A devDependency is absent from an install of the package, so the shipped library must not import one. ajv is dev-only. It generates the schema validator at build and test time.',
       severity: 'error',
       from: { path: '^src/', pathNot: '\\.test\\.ts$' },
       to: { dependencyTypes: ['npm-dev'] },

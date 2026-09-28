@@ -6,7 +6,7 @@ import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSyn
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { schemaErrors } from '../tests/support/schema.js'
-import { buildValidator, run } from './run.js'
+import { run } from './run.js'
 
 // A one-note score that converts with nothing lost.
 const LOSSLESS =
@@ -273,7 +273,7 @@ describe('checking the output against the schema', () => {
   // rejects.
   test('--validate reports every error and fails the run', async () => {
     const file = input('song.xml', LOSSLESS)
-    const reject = () => () => ['/parts: must be an array', '/global: must be an object']
+    const reject = () => ['/parts: must be an array', '/global: must be an object']
 
     const code = await run(['to-mnx', file, '-o', dir, '--validate'], io, reject)
 
@@ -292,10 +292,9 @@ describe('checking the output against the schema', () => {
     await run(['to-mnx', file, '-o', dir], io)
     const mnx: unknown = JSON.parse(readFileSync(join(dir, 'song.mnx'), 'utf8'))
 
-    const validate = buildValidator()
-    expect(validate(mnx)).toEqual([])
+    expect(schemaErrors(mnx)).toEqual([])
 
-    const errors = validate({ mnx: { version: 1 } })
+    const errors = schemaErrors({ mnx: { version: 1 } })
     expect(errors).toEqual([
       "<root>: must have required property 'global'",
       "<root>: must have required property 'parts'",
