@@ -214,7 +214,7 @@ describe('an element hidden with print-object="no"', () => {
   })
 
   // An empty block hides nothing. The attribute is read, not left for the
-  // sweep, which would report it as an unconverted loss.
+  // sweep, which would report it as a loss.
   test('says nothing about an empty hidden notations block', () => {
     expect(read(measure(note('<notations print-object="no"/>'))).warnings).toEqual([])
   })
@@ -541,7 +541,7 @@ describe('a loss the schema has no home for', () => {
   })
 
   // A hidden staff whose details also restyle it is two losses at once, and
-  // each keeps its own verdict.
+  // each is reported on its own.
   test('reports a hidden restyled staff as both losses', () => {
     expect(
       codes(

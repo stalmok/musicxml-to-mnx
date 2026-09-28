@@ -8,8 +8,7 @@ import {
   WarningCollector,
 } from './warnings.js'
 
-// A gap in this converter may close in a later release. A limit of MNX will
-// not.
+// A converter gap may close in a later release. A format limit will not.
 describe('isFormatLimit', () => {
   test('is true for a loss MNX has nowhere to put', () => {
     expect(isFormatLimit('unrepresentable:element')).toBe(true)

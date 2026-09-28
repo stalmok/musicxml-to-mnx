@@ -168,7 +168,7 @@ describe('a voice holding only a rest that fills its measure', () => {
   })
 
   // With no length to hold against the voice, the mark is taken as written
-  // rather than weighed once the voice is whole.
+  // rather than checked once the voice is whole.
   test('writes a marked rest stating no <duration> on the sequence', () => {
     const { mnx } = convertValid(
       inMeasure('<note><rest measure="yes"/><type>whole</type><voice>1</voice></note>'),
@@ -458,7 +458,7 @@ describe('a rest filling the measure kept as an event', () => {
     expect(warnings.map((warning) => warning.code)).toEqual(['inconsistent:voice'])
   })
 
-  // A rest that states its value is weighed once the voice is whole, so notes
+  // A rest that states its value is checked once the voice is whole, so notes
   // after it make it an ordinary rest rather than the measure's.
   test('converts notes after a stemmed rest that states its value', () => {
     const { mnx, warnings } = convertValid(
@@ -496,9 +496,9 @@ describe('a rest filling the measure kept as an event', () => {
   })
 })
 
-// A voice can rest its measure in one line and sing in another laid over it.
-// A rest among that line's notes is part of its music, not silence over the
-// measure rest.
+// A voice can rest its measure in one sequence and sing in another laid over
+// it. A rest among that sequence's notes is part of its music, not silence
+// over the measure rest.
 describe('a rest in a line laid over a measure rest', () => {
   const measureRest = (body = '') =>
     `<note><rest measure="yes"/><duration>16</duration><voice>1</voice>${body}</note>` +
@@ -707,10 +707,10 @@ describe('a rest filling a measure a grace note leads into', () => {
     ])
   })
 
-  // A bracket the grace note itself opens starts at the grace note, so the
-  // rest stands outside it, because the rest is taken back before the bracket
-  // opens. The same two written the other way round are refused, because
-  // there the bracket reaches the rest.
+  // A bracket the grace note itself opens starts at the grace note, so the rest
+  // stands outside it, because the rest moves off the sequence before the
+  // bracket opens. The same two written the other way round are refused,
+  // because there the bracket reaches the rest.
   test('leaves the restored rest outside a bracket the grace note opens', () => {
     const { mnx, warnings } = convertValid(
       inMeasure(

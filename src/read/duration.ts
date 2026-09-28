@@ -3,7 +3,7 @@
 // MusicXML states a note's length twice: once as what is drawn (<type> plus
 // <dot>s) and once as elapsed time (<duration>, counted in <divisions>).
 // Usually only the first is needed, but a whole-measure rest is written with
-// no <type> at all, so its value has to be recovered from the second.
+// no <type>, so its value has to be recovered from the second.
 
 import { compareFractions, fraction, multiplyFractions } from '../fraction.js'
 import type { Fraction } from '../fraction.js'

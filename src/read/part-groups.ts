@@ -108,8 +108,8 @@ export class GroupingBuilder {
    * a single group says nothing a plain part list does not, so none is kept.
    */
   finish(warnings: WarningCollector): readonly GroupingItem[] {
-    // A group whose stop never arrives runs to the end of the list. Innermost
-    // first, so nesting survives the close.
+    // A group with no stop runs to the end of the list. Groups close
+    // innermost first, so the nesting stays correct.
     for (let closed = this.#open.pop(); closed; closed = this.#open.pop()) {
       if (!closed.crossed) {
         warnings.add(
@@ -129,7 +129,7 @@ export class GroupingBuilder {
 /**
  * The grouping with only parts the score wrote, so no staff of a layout
  * points at a part that does not exist, and without groups left empty, which
- * would draw a bracket around nothing. With no group left at all, the whole
+ * would draw a bracket around nothing. With no group left, the whole
  * grouping goes: a layout of bare staves states nothing the part list does
  * not.
  */

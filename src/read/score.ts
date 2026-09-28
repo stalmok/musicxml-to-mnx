@@ -102,7 +102,7 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
     } else if (root.name.includes(':')) {
       // The parser does not resolve XML namespaces, so a prefix stays on the
       // element name and no reader will match it. Name the prefix rather than
-      // report a <score-partwise> document as merely missing.
+      // report a <score-partwise> document as missing.
       message =
         `This document's root is <${root.name}>, an element with an XML namespace ` +
         'prefix. Namespaces are not resolved, so the prefix must be removed for the ' +
@@ -329,8 +329,8 @@ function keysInForce(
 interface KeyPair {
   /** The fifths the score sounds in. */
   score: number
-  /** The fifths this part sounds in, which is what it writes taken back
-   * through its transposition. */
+  /** The fifths this part sounds in, which is the key it writes with its
+   * transposition applied. */
   part: number
 }
 
@@ -652,7 +652,7 @@ function sameTempo(a: Tempo, b: Tempo): boolean {
 }
 
 /**
- * The part list, read once. `names` holds only the names actually drawn, while
+ * The part list, read once. `names` holds only the names drawn, while
  * `listed` holds every part id the list introduces, named or not, so a part
  * whose name is hidden or absent is still known to be listed.
  */
@@ -1886,7 +1886,7 @@ function sameClef(a: Clef, b: Clef): boolean {
 
 /**
  * The number the score gives the measure, when it is one. Scores label split
- * measures "3a" and pickups "0"; the former has nowhere to go in MNX.
+ * measures "3a" and pickups "0"; the former has no home in MNX.
  */
 function readMeasureLabel(
   element: XmlElement,

@@ -226,7 +226,7 @@ describe('the place a warning names', () => {
     expect(reported?.context.line).toBe(FIRST_BODY_LINE + at)
   })
 
-  // A tuplet whose content disagrees with its stated ratio is weighed where
+  // A tuplet whose content disagrees with its stated ratio is checked where
   // the bracket closes.
   test('points at the note a tuplet closes on', () => {
     const reported = warningsOf(
@@ -238,7 +238,7 @@ describe('the place a warning names', () => {
     expect(reported?.context.line).toBe(FIRST_BODY_LINE + 1)
   })
 
-  // A start marker stating its own ratio is weighed against the notes' own
+  // A start marker stating its own ratio is compared with the notes' own
   // <time-modification>, on the note the bracket opens on.
   test('points at the note a bracket states a disagreeing ratio on', () => {
     const fiveInFour =

@@ -104,15 +104,15 @@ export function readRest(note: RestNote, state: PartState, builder: MeasureBuild
 
   const afterGraceNotes = builder.holdsOnlyGraceNotes(voice) && builder.atMeasureStart()
 
-  // A rest with no written value that opens its voice, is neither marked as
-  // the measure's nor drawn to the time signature's length, and lasts a time
-  // no note value can write. It is that voice's silence through the measure,
-  // and MNX's rest on the sequence is the only place for it. Chant editions
-  // written senza misura rest whole parts this way, and so do hidden parts in
-  // early-music engravings: one bare rest per measure, in a bar longer than
-  // the time signature says. A rest a note value can write stays that event.
-  // The value tested is the one an open tuplet would draw the rest as, as
-  // measuredValue does. Grace notes before it take none of the measure's
+  // This rest has no written value and opens its voice. It is not marked as the
+  // measure's rest, is not drawn to the time signature's length, and lasts a
+  // time no note value can write. It is that voice's silence through the
+  // measure, and MNX's rest on the sequence is the only place for it. Chant
+  // editions written senza misura rest whole parts this way, and so do hidden
+  // parts in early-music engravings: one bare rest per measure, in a bar longer
+  // than the time signature says. A rest a note value can write stays that
+  // event. The value tested is the one an open tuplet would draw the rest as,
+  // as measuredValue does. Grace notes before it take none of the measure's
   // time, so the rest still opens the voice.
   const unwritableLength =
     !markedAsTheMeasure &&
@@ -173,7 +173,7 @@ export function readRest(note: RestNote, state: PartState, builder: MeasureBuild
         compareFractions(lengthOf(written), duration) !== 0 &&
         // A slur is paired only once the part is whole, so whether one reaches
         // this rest can be read here and nowhere later. What the event carries
-        // is weighed where the reading is settled.
+        // is checked where the reading is settled.
         !carriesSlurEnd &&
         // A rest written over a rest that already fills the measure is never
         // the measure's rest.

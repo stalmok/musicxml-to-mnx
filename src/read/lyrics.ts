@@ -17,7 +17,7 @@ import type { ElementReader } from './element.js'
 import { reportHidden } from './unrepresentable.js'
 
 // MusicXML's syllabic values, in MNX's spelling. A syllable standing on its
-// own carries no type in MNX, so "single", and no syllabic at all, map to
+// own carries no type in MNX, so "single", and no syllabic, map to
 // nothing. Anything outside these is not a syllabic value.
 const LYRIC_TYPES = new Map<string, 'start' | 'middle' | 'end' | undefined>([
   ['single', undefined],

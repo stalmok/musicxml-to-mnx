@@ -3,7 +3,7 @@
 // MusicXML writes a measure as a single stream with a cursor. Notes advance
 // it, <backup> rewinds it so another voice can be written over the same span,
 // <forward> skips ahead, and <chord> attaches a note to the one before it
-// without moving at all. MNX instead states each voice separately, and each
+// without moving. MNX instead states each voice separately, and each
 // sequence runs without interruption from wherever it begins.
 //
 // So the reader has to follow the cursor, sort what it finds into voices, and
@@ -141,7 +141,7 @@ interface VoiceBuilder {
    */
   placed: { event: Event | undefined; staff: number | undefined }[]
   /**
-   * The brackets this voice is inside, outermost first. Notes land in the
+   * The brackets this voice is inside, outermost first. Notes go into the
    * innermost one's list, or in `content` where none is open. No bracket
    * opens inside a tremolo, so a tremolo is always the innermost.
    */
@@ -289,12 +289,12 @@ interface MarkedArpeggio {
   notes: Note[]
   position: Fraction
   /**
-   * What the source numbers it, where it numbers it at all. Two chords
+   * The number the source gives it, if any. Two chords
    * sounding together under the same number are one arpeggio rolled across
    * both, which is how a pianist's two hands are rolled as one gesture;
    * different numbers are two separate rolls. A marker stating no number
-   * joins nothing beyond its own chord, because the number is what makes the
-   * claim.
+   * joins nothing beyond its own chord, because only a number joins two
+   * chords.
    */
   number: string | undefined
   struck: boolean
@@ -335,7 +335,7 @@ function kitOrder(
     .flatMap(([component]) => notes.filter((note) => note.component === component))
 }
 
-/** The staff a voice is mostly on, or nothing when it names no staff at all. */
+/** The staff a voice is mostly on, or nothing when it names no staff. */
 function commonestStaff(staves: readonly (number | undefined)[]): number | undefined {
   const counts = new Map<number, number>()
   for (const staff of staves) {
@@ -355,7 +355,7 @@ function commonestStaff(staves: readonly (number | undefined)[]): number | undef
 }
 
 /**
- * The list a note added now would land in: the innermost bracket's, or the
+ * The list a note added now would go into: the innermost bracket's, or the
  * voice's own where no bracket is open.
  */
 function innermost(builder: VoiceBuilder): SequenceItem[] {
@@ -459,7 +459,7 @@ export class MeasureBuilder {
    * the measure start. Taking the cursor to the start on the <backup> alone
    * would put everything after the <forward> that much later. The
    * <backup> that reached out is held rather than reported, so that a reach
-   * a <forward> cancels is reported not at all and a reach several
+   * a <forward> cancels is not reported and a reach several
    * <forward>s cancel is reported once.
    */
   shift(by: Fraction, warnings: WarningCollector, context: WarningContext, line: number): void {
@@ -895,7 +895,7 @@ export class MeasureBuilder {
     }
     // MNX states such a rest on the sequence, where a bracket cannot reach
     // it, so a tuplet or a tremolo open around it is its own refusal. It is
-    // weighed before the content check below, because a tuplet's own item is
+    // checked before the content check below, because a tuplet's own item is
     // already in the content and would otherwise refuse the rest as notes
     // that are not there.
     const opened = builder.open.at(-1)
@@ -944,7 +944,7 @@ export class MeasureBuilder {
    * written after such a rest has nowhere to stand. Which side of the rest
    * the grace notes are written on says nothing about the music: either way
    * the voice rests the measure and the grace notes lead into the next one.
-   * A rest read before them is therefore taken back off the sequence here, so
+   * A rest read before them therefore moves off the sequence here, so
    * that both orders keep the rest and the grace notes alike.
    */
   restoreMeasureRest(
@@ -1489,7 +1489,7 @@ export class MeasureBuilder {
     /** The components this part strikes, which is where a kit note's height is. */
     kit: ReadonlyMap<string, KitComponent>,
   ): Arpeggio[] {
-    // Marks on one chord are weighed together first, whatever they are
+    // Marks on one chord are compared together first, whatever they are
     // numbered, so a chord marked rolled on one note and struck on another is
     // seen as one chord.
     const kept: MarkedArpeggio[] = []
@@ -1579,7 +1579,7 @@ export class MeasureBuilder {
       // against the clef drawing it. MNX reads the notes a mark covers as the
       // ones whose pitch lies between its ends, so a kit note left out of the
       // span is left out of the mark. Reported here rather than above, where
-      // the mark may still turn out not to be carried at all.
+      // the mark may still turn out not to be carried.
       if (notes.length > 0 && kitNotes.length > 0) {
         warnings.add(
           'unsupported:element',
@@ -1694,8 +1694,8 @@ export class MeasureBuilder {
    * one whose start was dropped where it could not be drawn, or one an earlier
    * measure closed at its barline. A bracket of that number standing open is
    * what the stop closes instead: the source numbers every tuplet 1 unless it
-   * nests them, so a dropped start and an open bracket share a number as a
-   * matter of course, and taking the stop from the open bracket would leave it
+   * nests them, so a dropped start and an open bracket often share a number,
+   * and taking the stop from the open bracket would leave it
    * open to the end of the measure.
    *
    * The record is consumed, so a second stop stating the number closes an
@@ -1720,7 +1720,7 @@ export class MeasureBuilder {
     // A bracket cut at a barline is usually carried on by notes that state
     // the same ratio, which opens such a run. Without this test, the stop that
     // ends the source's bracket would close the run, and the record of the
-    // cut bracket would stay for the rest of the part and swallow a later,
+    // cut bracket would stay for the rest of the part and match a later,
     // unrelated stop.
     const drawn = this.#layersFor(voice).layers.some((layer) =>
       tupletFrames(layer).some((open) => !open.unbracketed),
@@ -1738,7 +1738,7 @@ export class MeasureBuilder {
 
   /**
    * Closes the innermost open tuplet in this voice, handing back the number
-   * its start marker stated so the caller can weigh the note's stops as a
+   * its start marker stated so the caller can check the note's stops as a
    * batch: which stop is written first on a note is not constrained, so a
    * crossing shows only when the note's stated numbers and the closed ones
    * disagree as sets.
@@ -1785,7 +1785,7 @@ export class MeasureBuilder {
     line: number,
     cut: boolean,
   ): string {
-    // A tremolo edge and a tuplet edge can land on different notes. Popping
+    // A tremolo edge and a tuplet edge can fall on different notes. Popping
     // the tremolo's frame here would lose the notes it holds, so a bracket
     // closing across an open tremolo refuses instead.
     if (closed.opened === 'tremolo') {
@@ -1797,7 +1797,7 @@ export class MeasureBuilder {
     // A run the ratio alone opened on a note that turned out not to be an
     // event holds nothing. It stands for no tuplet the source wrote, so it
     // goes rather than being drawn empty. Such a run opens only where no other
-    // bracket is, and everything written while it is open lands inside it, so
+    // bracket is, and everything written while it is open goes inside it, so
     // it is the last item this voice holds.
     if (closed.unbracketed && tuplet.content.length === 0) {
       builder.content.pop()
@@ -2030,14 +2030,15 @@ export class MeasureBuilder {
   /**
    * The sequences, in the order their voices first appeared.
    *
-   * A voice belongs to the staff it spends most of its time on, and only the
+   * A voice belongs to the staff that holds most of its time, and only the
    * events that reach across to another say so. Choosing the commonest that
    * way keeps the overrides to the notes that cross.
    */
   #sequences(warnings: WarningCollector, context: WarningContext): Sequence[] {
-    // A note that names no voice lands in its own bucket. Beside notes that do
-    // name a voice, that splits one measure into two lines with no way to know
-    // the source meant them apart, so the split is reported rather than silent.
+    // A note that names no voice goes into its own bucket. Beside notes that do
+    // name a voice, that splits one measure into two sequences with no way to
+    // know the source meant them apart, so the split is reported rather than
+    // silent.
     if (this.#voices.size > 1 && this.#voices.has(UNNAMED_VOICE)) {
       warnings.add(
         'missing:voice',
@@ -2076,13 +2077,13 @@ export class MeasureBuilder {
       )
     }
 
-    // MNX lets no two sequences of a measure share a voice name, and a line
-    // laid over a voice has none of its own: the source named one voice for
-    // both. Naming both by it would state that two lines are one, and
-    // leaving every laid-over line unnamed leaves two of them in a measure
-    // that nothing can tell apart. Each takes a name of its own, built from
-    // the voice it was laid over and the line it is, and stepped on past any
-    // name the measure already uses.
+    // MNX lets no two sequences of a measure share a voice name, and a
+    // sequence laid over a voice has none of its own: the source named one
+    // voice for both. Naming both by it would state that two sequences are
+    // one, and leaving every laid-over sequence unnamed leaves two of them in
+    // a measure that nothing can tell apart. Each takes a name of its own,
+    // built from the voice it was laid over and its place among that voice's
+    // sequences, and stepped on past any name the measure already uses.
     const taken = new Set(this.#voices.keys())
     const nameFor = (voice: string, index: number): string => {
       const base = voice === UNNAMED_VOICE ? '' : voice

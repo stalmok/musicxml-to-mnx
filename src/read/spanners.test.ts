@@ -164,7 +164,7 @@ describe('ties', () => {
   })
 
   // One letter two octaves apart is two different sounds. Sources write such a
-  // stray pair in error. Both ends keep warning.
+  // stray pair in error. Both ends are reported.
   test('keeps two octaves of one letter apart', () => {
     const low =
       '<note><pitch><step>C</step><octave>4</octave></pitch>' +
@@ -784,10 +784,10 @@ describe('slurs', () => {
   })
 
   // A voice's own ends left over in a measure say nothing about whether its
-  // slurs cross into another voice: a slur spanning two measures always
-  // leaves a start over in the one and a stop over in the other, so a voice
-  // reading its own residue would call every such slur a crossing and hand it
-  // to the pass across the part, where a stray end beside it wins.
+  // slurs cross into another voice: a slur spanning two measures always leaves
+  // a start over in the one and a stop over in the other, so a voice reading
+  // its own leftover ends would call every such slur a crossing and hand it to
+  // the pass across the part, where a stray end beside it wins.
   test('weighs another voice against a pair, not the voice the pair is in', () => {
     const warnings = new WarningCollector()
     const score = readScore(
@@ -1408,7 +1408,7 @@ describe('whether a voice accounts for its own slurs', () => {
   })
 
   // What one measure of one voice leaves over, which another voice's pair is
-  // weighed against: a start over on one side, a stop over on the other.
+  // compared with: a start over on one side, a stop over on the other.
   test.each([
     ['nothing over', ['start', 'stop'], 'none'],
     ['a start over', ['start'], 'unclosed'],
@@ -1458,7 +1458,7 @@ describe('the order the ends of a span are read in', () => {
     return { joined, reported }
   }
 
-  // Two ends alike in every way the comparator weighs are separated by the
+  // Two ends alike in every way the comparator checks are separated by the
   // order the document writes them in, and by nothing else. Two spans of one
   // number opening at one point stack, so which of them a later stop closes
   // is that order's to decide.

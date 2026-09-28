@@ -189,7 +189,7 @@ function readBarStyle(
   }
 
   // MNX states one barline per measure, which is the one closing it. A line
-  // drawn at the opening edge has nowhere to go, and is not the same thing as
+  // drawn at the opening edge has no home, and is not the same thing as
   // the previous measure's closing line.
   //
   // A heavy-light there is how a repeat start is drawn, and MNX's repeatStart

@@ -171,8 +171,9 @@ export function readAttributes(
       const count = readIntegerInRange(lines, path, 0, Number.MAX_SAFE_INTEGER)
       const staff = named ?? 1
       if (staff > state.staves) {
-        // Reported, not refused. Carried with no staff stated, a count for
-        // staff 7 of a one-staff part would redraw its one staff.
+        // Reported, not refused. If it were carried over with no staff
+        // number, a count for staff 7 of a one-staff part would redraw its
+        // only staff.
         warnings.add(
           'inconsistent:staff',
           `A staff line count is stated for staff ${String(staff)}, and this part is ` +
@@ -288,10 +289,10 @@ function statedPerStaff<T>(
     readAttributeInRange(block.element, 'number', path, 1, state.staves),
   )
   return blocks.map((block, index) => ({
-    // On a one-staff part a number states the part's signature, as on a
-    // clef. If a later block adds a second staff, the earlier signature
-    // stands on it too, and a second statement beside it contradicts the
-    // part.
+    // On a one-staff part, a number states the signature of the whole part.
+    // A clef number works the same way. A later block can add a second
+    // staff. The earlier signature then applies to that staff too. A second
+    // signature stated beside it contradicts the part.
     staff: state.staves > 1 ? numbers[index] : undefined,
     value: read(block),
     staves: state.staves,
@@ -300,7 +301,7 @@ function statedPerStaff<T>(
 }
 
 // The longest pattern MNX states for a measure repeat. MusicXML sets no
-// upper bound, so a longer one has nowhere to go.
+// upper bound, so a longer one has no home in MNX.
 const LONGEST_MNX_REPEAT = 4
 
 /**

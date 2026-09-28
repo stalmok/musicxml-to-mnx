@@ -324,8 +324,7 @@ describe('clefs', () => {
     expect(warnings[0]?.context.measure).toBe(1)
   })
 
-  // MNX states up to three octaves either way. Both edges and just outside
-  // each are tested.
+  // MNX states up to three octaves either way.
   const transposed = (change: string) =>
     '<attributes><divisions>4</divisions>' +
     `<clef><sign>G</sign><line>2</line><clef-octave-change>${change}</clef-octave-change></clef>` +
@@ -650,8 +649,8 @@ describe('a voice that reaches across to the other staff', () => {
   })
 
   // A grace group waits where it stands until the note it ornaments says which
-  // line it belongs to, and the staff its notes are on moves with it: left
-  // behind, it would count towards the staff of the line it came from.
+  // sequence it belongs to, and the staff its notes are on moves with it: left
+  // behind, it would count towards the staff of the sequence it came from.
   test('counts a carried grace group towards the line it ends up in', () => {
     const graceOn = (step: string, staff: string) =>
       `<note><grace/><pitch><step>${step}</step><octave>4</octave></pitch>` +
@@ -742,8 +741,6 @@ describe('key and time signatures stated per staff', () => {
     expect(warnings).toEqual([])
   })
 
-  // Stated for the first staff and not the second. With the test above, this
-  // checks both staves.
   test('reports a key stated for the first staff and not the second', () => {
     const { warnings } = read(
       measures(
@@ -1488,7 +1485,7 @@ describe('a chord that straddles the two staves', () => {
 
 // Sibelius leaves <voice> off a chord member, and the member belongs to the
 // voice of the event it joins. Read as the unnamed voice, the member has no
-// chord to weigh itself against: it states a staff of its own where it shares
+// chord to compare itself with: it states a staff of its own where it shares
 // the event's, and a roll on it has no chord to roll.
 describe('a chord member that states no voice', () => {
   const member = (step: string, staff: string, extra = '') =>
@@ -1562,7 +1559,7 @@ describe('how many lines a staff is drawn with', () => {
   })
 
   // Nothing names a staff MNX already draws with five lines, so the count is
-  // carried by writing no config at all.
+  // carried by writing no config.
   test.each(['5', '05'])('writes no config for a staff of %s lines', (written) => {
     const { part } = read(measures(oneStaff(details(written))))
 
@@ -1630,7 +1627,7 @@ describe('how many lines a staff is drawn with', () => {
   })
 
   // MusicXML states the count as a non-negative number, so only a negative
-  // one is no count at all. A staff drawn on more lines than any this
+  // one is no count. A staff drawn on more lines than any this
   // converter expects is still a staff.
   test('draws a staff on however many lines the source states', () => {
     const { part } = read(measures(oneStaff(details('99'))))
@@ -1638,8 +1635,9 @@ describe('how many lines a staff is drawn with', () => {
     expect(part?.measures[0]?.staffConfigs[0]?.lines).toBe(99)
   })
 
-  // A count for a staff the part is not written on is about no staff at all.
-  // Carried with no staff stated, it would redraw the one staff the part has.
+  // A count for a staff the part is not written on is about no staff.
+  // If it were carried over with no staff number, it would redraw the only
+  // staff the part has.
   test('reports a count for a staff the part does not have', () => {
     const { part, warnings } = read(measures(oneStaff(details('1', '7'))))
 

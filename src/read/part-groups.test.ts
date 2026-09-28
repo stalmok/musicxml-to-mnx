@@ -624,7 +624,7 @@ describe('part groups', () => {
   })
 
   // A group around nothing draws nothing, so it is left out; here that
-  // leaves no group at all, and with it goes the layout.
+  // leaves no group, and with it goes the layout.
   test('writes no layout when every group ends up empty', () => {
     const { mnx, warnings } = convertValid(
       score(
@@ -880,8 +880,9 @@ describe('part groups', () => {
 })
 
 // Two groups open under one number, which MusicXML does not resolve. A stop
-// then names that number, and the group it crosses is the innermost one. The
-// outer one is still open when the stop arrives.
+// then names that number while a third group is still open inside both. The
+// stop goes to the inner of the two, so that group crosses the third. The
+// outer one stays open.
 //
 // The report shows which of the two is picked. A crossed group runs to the
 // end of the part list and is not reported as unclosed. The group left over

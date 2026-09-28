@@ -1380,7 +1380,7 @@ describe('sound navigation', () => {
   })
 
   // MNX's jump-type has only "segno" and "dsalfine", so the D.C. and coda
-  // navigation a <sound> carries has nowhere to go.
+  // navigation a <sound> carries has no home.
   test('reports the D.C. and coda navigation of a <sound>, which MNX cannot state', () => {
     const { warnings } = read(
       inMeasure(note('C') + '<sound dacapo="yes"/>' + note('D') + '<sound tocoda="coda"/>'),
@@ -1843,7 +1843,7 @@ describe('the tempo a <sound> states', () => {
     expect(warnings.map((w) => w.message)).toContain(soundTempoDropped)
   })
 
-  // The verdict on the tempo waits until every part is read, and the report
+  // The decision on the tempo waits until every part is read, and the report
   // reads in document order, so it is reported at the place the <sound> kept:
   // beside the playback the same element carries, in the order written.
   test('reports the other playback it carries besides a dropped tempo', () => {

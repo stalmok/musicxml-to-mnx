@@ -61,8 +61,7 @@ test('time scales linearly with notes per measure', () => {
 test('a large score converts in bounded time', () => {
   // Four parts, a thousand measures, 40,000 notes: about ten times the longest
   // corpus songs. Observed about 2s plain and 6.5s under coverage on a dev
-  // machine. CI runners are slower and run other test files in parallel. A
-  // complexity regression would take minutes at this size.
+  // machine. CI runners are slower and run other test files in parallel.
   const source = generateScore({ parts: 4, measures: 1000, notesPerMeasure: 8 })
 
   const start = performance.now()

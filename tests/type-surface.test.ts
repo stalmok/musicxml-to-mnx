@@ -86,7 +86,7 @@ describe('the type surface the writer does not yet emit is still legal MNX', () 
 
   // This compiles only while every item states its kind and an event's kind
   // is its own value. An event's kind is optional, so the event is the
-  // default arm.
+  // default case.
   test('a sequence item can be told apart by its kind', () => {
     const kindOf = (item: MNXSequenceItem): string => {
       switch (item.type) {

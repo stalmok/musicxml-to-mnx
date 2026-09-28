@@ -63,7 +63,7 @@ describe('the line closing a measure', () => {
   })
 
   // MNX states the line that closes a measure, so one drawn at the opening
-  // edge has nowhere to go.
+  // edge has no home.
   test('reports a bar style drawn at the opening edge', () => {
     const { globals, warnings } = read(left('<bar-style>heavy</bar-style>') + NOTE)
 
@@ -128,7 +128,7 @@ describe('the line closing a measure', () => {
 
 describe('repeat signs', () => {
   // A heavy-light at the opening edge is how a repeat start draws, and is
-  // not restated. Any other style there has nowhere to go and is reported.
+  // not restated. Any other style there has no home and is reported.
   test('reports an opening style a repeat start does not draw', () => {
     const { globals, warnings } = read(
       left('<bar-style>dotted</bar-style><repeat direction="forward"/>') + NOTE,
@@ -152,7 +152,6 @@ describe('repeat signs', () => {
     expect(globals[0]?.repeatEnd).toEqual({ times: undefined })
   })
 
-  // Each of the three ways of not opening a repeat is tested here.
   test('opens no repeat on a measure carrying no barline at all', () => {
     const { globals } = read(NOTE)
 
@@ -180,7 +179,7 @@ describe('repeat signs', () => {
 
   // A standard backward repeat is written light-heavy plus the repeat. The
   // light-heavy is how the closing sign draws, and repeatEnd already draws
-  // it. A consumer honouring both would draw the thin-thick twice.
+  // it. A consumer honouring both would draw the light-heavy twice.
   test('keeps only the repeat where light-heavy is how it draws', () => {
     const { globals, warnings } = read(
       NOTE + right('<bar-style>light-heavy</bar-style><repeat direction="backward"/>'),
@@ -217,7 +216,7 @@ describe('repeat signs', () => {
   })
 
   // A backward repeat at the opening edge is legal MusicXML but has no
-  // musical meaning. The style there still has nowhere to go.
+  // musical meaning. The style there still has no home in MNX.
   test('still reports an opening-edge style beside a backward repeat', () => {
     const { globals, warnings } = read(
       left('<bar-style>light-heavy</bar-style><repeat direction="backward"/>') + NOTE,
@@ -246,7 +245,7 @@ describe('repeat signs', () => {
   })
 
   // The style is passed over only because the repeat start redraws it. With
-  // no repeat beside it, a heavy-light at the opening edge has nowhere to go.
+  // no repeat beside it, a heavy-light at the opening edge has no home in MNX.
   test('reports a heavy-light opening edge with no repeat start beside it', () => {
     const { globals, warnings } = read(left('<bar-style>heavy-light</bar-style>') + NOTE)
 
@@ -394,7 +393,7 @@ describe('first and second time endings', () => {
     },
   )
 
-  // MusicXML lets an ending state no number at all, and writes the stop with
+  // MusicXML lets an ending state no number, and writes the stop with
   // an empty one.
   test('reads an ending that numbers no times', () => {
     const { globals, warnings } = read(

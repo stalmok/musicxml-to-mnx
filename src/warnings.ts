@@ -2,16 +2,15 @@
 // carry into MNX is reported here, not dropped.
 //
 // Every warning falls into one of three kinds, and the code's prefix says
-// which. A gap in the converter may close in a later release; a limit of MNX
-// will not.
+// which. A converter gap may close in a later release. A format limit will
+// not.
 //
-//   a gap here          unsupported:*      MNX can state it; this converter
+//   a converter gap     unsupported:*      MNX can state it; this converter
 //                                          does not carry it over yet, and a
 //                                          later release may.
-//   a limit of MNX      unrepresentable:*  there is nowhere in the output
-//                                          format to put it, so no release
-//                                          will carry it while the format
-//                                          stays as it is.
+//   a format limit      unrepresentable:*  it has no home in MNX, so no
+//                                          release will carry it while the
+//                                          format stays as it is.
 //   a source problem    inconsistent:*     the source disagreeing with
 //                       missing:*          itself, or omitting or leaving
 //                       unresolved:*       open what reading it needs, and
@@ -31,15 +30,15 @@
 // and attribute fields name what was lost. To detect new losses, key on the
 // code, element and attribute together.
 export const WARNING_CODES = Object.freeze([
-  // --- A gap in this converter ------------------------------------------
+  // --- A converter gap --------------------------------------------------
   // An element carrying notation this converter does not convert yet.
   'unsupported:element',
   // An attribute carrying notation this converter does not convert yet,
   // named with the element it sits on.
   'unsupported:attribute',
 
-  // --- A limit of MNX ---------------------------------------------------
-  // An element MNX has nowhere to put at all.
+  // --- A format limit ---------------------------------------------------
+  // An element with no home in MNX.
   'unrepresentable:element',
   // A measure labelled with something other than a number, where MNX's
   // measure number is an integer.
@@ -103,7 +102,7 @@ export const WARNING_CODES = Object.freeze([
   'unrepresentable:senza-misura',
   // A key or time signature stated partway through a measure, or after its
   // notes where no next measure takes it. MNX states one only where a measure
-  // begins, so it is converted at the next measure, and not at all where the
+  // begins, so it is converted at the next measure, and not converted where the
   // next measure states its own or there is none.
   'unrepresentable:mid-measure-key',
   'unrepresentable:mid-measure-time',

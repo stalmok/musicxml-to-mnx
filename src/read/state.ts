@@ -109,7 +109,7 @@ export interface PartState {
    * source states them, keyed by staff number. MusicXML states one per staff
    * and MNX states one for the score, so only a staff given one of its own is
    * reported as a loss. A key is held as it sounds, so a part that changes its
-   * transposition still compares like with like.
+   * transposition still compares sounding keys.
    */
   staffKeys: Map<number, Key | undefined>
   staffTimes: Map<number, TimeSignature | undefined>

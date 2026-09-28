@@ -813,10 +813,10 @@ describe('tuplets', () => {
 
   // A skip is written at the ratios open when it is filled, so its length is
   // the converter's reading and not the source's. Where the bracket is
-  // rewritten over what it holds, the frame it writes moves, and a skip left
-  // at its filled length would stand for a time the source never skipped. The
-  // rate is read off the notes, which carry lengths of their own, and the skip
-  // is written at that rate: here the notes are drawn as quarters and last an
+  // rewritten over what it holds, the frame it writes moves, and a skip left at
+  // its filled length would stand for a time the source never skipped. The
+  // frame is read off the notes, which carry lengths of their own, and the skip
+  // is written in that frame: here the notes are drawn as quarters and last an
   // eighth each, so the bracket writes two written values per eighth of time,
   // and the skipped eighth is a quarter of written space.
   test('writes a skip at the rate the bracket it sits in settles on', () => {
@@ -989,7 +989,7 @@ describe('tuplets', () => {
 
   // The stop names the bracket the source drew around it however the two are
   // numbered. Taking it for the bracket an earlier barline cut would leave the
-  // drawn one open to that barline, and leave the record standing to swallow a
+  // drawn one open to that barline, and leave the record standing to match a
   // later stop.
   test('leaves a stop to a drawn bracket numbered otherwise than the cut one', () => {
     const { warnings } = read(
@@ -1473,7 +1473,6 @@ describe('a bracket the source states no ratio for', () => {
   })
 
   // Thirty-two either side is the largest count a derived ratio may reach.
-  // Both edges and one past each are tested.
   describe('the largest ratio a note may imply', () => {
     const bracketed = (divisions: number, type: string, duration: number) =>
       '<score-partwise><part id="P1"><measure number="1">' +
@@ -1680,7 +1679,7 @@ describe('a bracket rewritten inside a bracket that is rewritten too', () => {
 
 // The same, with a skip among what the outer bracket holds. The skip was
 // written at the ratios open when it was filled, so it says nothing about the
-// frame the outer ends up with. Reading the rate off it would pull the
+// frame the outer ends up with. Reading the frame off it would pull the
 // bracket inside back toward the ratio the outer opened with.
 describe('a bracket rewritten around a skip and a bracket rewritten too', () => {
   const outerNote = (step: string, bracket: string) =>
@@ -1732,7 +1731,7 @@ describe('a bracket rewritten around a skip and a bracket rewritten too', () => 
   })
 
   // The same reading the skipless bracket gives: three sixteenths in the time
-  // of two. Counting the skip as a witness would leave the outer spending seven
+  // of two. Counting the skip would give the outer seven
   // written sixteenths for every six of time. No pair of note values states
   // that over what this bracket holds, so the bracket keeps the three
   // sixteenths the opening ratio gave it, with nothing reported.
@@ -1760,7 +1759,7 @@ describe('a bracket rewritten around a skip and a bracket rewritten too', () => 
 })
 
 // A bracket holding nothing but another bracket says nothing about how much
-// written length it spends for each unit of time, so the bracket inside it
+// written length it uses for each unit of time, so the bracket inside it
 // keeps the frame it was written in when it closed.
 describe('a bracket whose whole content is one other bracket', () => {
   // Divisions of 12 to a quarter, so an eighth is 6. Both brackets open on
@@ -1808,7 +1807,7 @@ describe('a bracket whose whole content is one other bracket', () => {
   })
 })
 
-// A note inside a tuplet is weighed against its written value scaled by the
+// A note inside a tuplet is compared with its written value scaled by the
 // ratio around it, and the report names that scaled length.
 describe('a note inside a tuplet lasting the wrong time', () => {
   test('names the length the ratio wants, not the written one twice', () => {
@@ -1865,8 +1864,8 @@ describe('a note inside a tuplet lasting the wrong time', () => {
 
 // A <note> stating no <type> is measured from its <duration>, which is the
 // time it sounds. Inside a tuplet or a tremolo that time is the written value
-// scaled by the ratio, so the ratio is taken back out before the value is
-// read.
+// scaled by the ratio, so the duration is divided by the ratio before the
+// value is read.
 describe('a note inside a tuplet stating no <type>', () => {
   const typeless = (step: string, units: number) =>
     `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
@@ -1945,7 +1944,7 @@ describe('a note inside a tuplet stating no <type>', () => {
   })
 
   // Some exporters write a <duration> on a grace note even though it takes
-  // no time. No ratio scaled that duration, so none is taken back out of it.
+  // no time. No ratio scaled that duration, so it is not divided by one.
   test('reads a grace note’s own duration inside a bracket unscaled', () => {
     const graceInside =
       '<note><grace/><pitch><step>D</step><octave>4</octave></pitch><duration>6</duration>' +
@@ -1967,7 +1966,7 @@ describe('a note inside a tuplet stating no <type>', () => {
     expect(warnings).toEqual([])
   })
 
-  // The same duration is weighed against the written value here as the value
+  // The same duration is compared with the written value here as the value
   // is read from there: unscaled, because the ratio scales nothing a grace
   // note carries.
   test('weighs a grace note’s own duration against its value unscaled', () => {
@@ -2126,8 +2125,8 @@ describe('a tuplet marker on a chord member', () => {
     expect(content?.[0]?.kind === 'tuplet' && content[0].content).toHaveLength(3)
   })
 
-  // Sibelius leaves <voice> off a chord member, so the marker is weighed
-  // against the chord it joins rather than against the unnamed voice.
+  // Sibelius leaves <voice> off a chord member, so the marker is compared
+  // with the chord it joins rather than against the unnamed voice.
   test('passes over a restatement on a member that states no voice', () => {
     const voiced = (step: string, markers = ''): string =>
       `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>4</duration>` +
@@ -2149,7 +2148,7 @@ describe('a tuplet marker on a chord member', () => {
     expect(content?.map((item) => item.kind)).toEqual(['tuplet'])
   })
 
-  // A marker is weighed by its type and its number together. A member stating
+  // A marker is compared by its type and its number together. A member stating
   // a different number states a bracket of its own, whatever the chord's
   // marker is.
   const numbered = (step: string, type: string, number: string) =>
@@ -2211,8 +2210,8 @@ describe('a tuplet marker on a chord member', () => {
   })
 
   // The record of a dropped start outlives the brackets around it, so a stop
-  // naming it is swallowed even after every bracket has closed. Read as an
-  // ordinary stop it would close a bracket nothing had opened.
+  // naming it is matched and dropped even after every bracket has closed. Read
+  // as an ordinary stop it would close a bracket nothing had opened.
   test('swallows the stop of a dropped start after every bracket has closed', () => {
     const after =
       '<note><pitch><step>G</step><octave>4</octave></pitch><duration>12</duration>' +
@@ -2304,8 +2303,8 @@ describe('a tuplet marker on a chord member', () => {
   })
 
   // A source that never nests tuplets numbers every one of them 1, so a
-  // dropped start and the bracket around it share a number as a matter of
-  // course. The bracket's own stop closes the bracket. Taking it for the
+  // dropped start and the bracket around it share a number. The
+  // bracket's own stop closes the bracket. Taking it for the
   // dropped start would leave the bracket open.
   test('leaves the open bracket its own stop where both are numbered alike', () => {
     const { content, warnings } = read(
@@ -2669,8 +2668,8 @@ describe('two-note tremolos', () => {
   // MuseScore writes a two-note tremolo's own pair as a degenerate bracket on
   // each note: eight sixteenths in the time of eight sixteenths, drawn with
   // neither bracket nor number. MNX holds the pair as one item, so the
-  // bracket has nowhere to go, and it scales nothing, so passing it over
-  // costs no duration.
+  // bracket has no home, and it scales nothing, so passing it over
+  // adds no duration.
   test('passes over a bracket of one in the time of one around a tremolo note', () => {
     const degenerate = (step: string, edge: string): string =>
       `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
@@ -2691,7 +2690,7 @@ describe('two-note tremolos', () => {
     expect(warnings[0]?.message).toContain('one note of a two-note tremolo')
   })
 
-  // An unmeasured tremolo names no beam count at all.
+  // An unmeasured tremolo names no beam count.
   test('reports an unmeasured tremolo, which MNX cannot state', () => {
     const unmeasured =
       '<note><pitch><step>C</step><octave>4</octave></pitch><duration>24</duration>' +
@@ -2789,8 +2788,7 @@ describe('two-note tremolos', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:element'])
   })
 
-  // MNX counts a tremolo's beams from one to eight. Both edges and just
-  // outside each are tested.
+  // MNX counts a tremolo's beams from one to eight.
   const tremoloOf = (marks: string) =>
     '<note><pitch><step>C</step><octave>4</octave></pitch><duration>24</duration>' +
     '<type>half</type>' +
@@ -3133,8 +3131,9 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
     '</time-modification><notations><tuplet type="stop"/></notations></note>'
 
   // Sources write stop markers with no start anywhere, some on every triplet
-  // note. Such a marker has no bracket of its own to close, and where it
-  // stands at the end of what the ratio counts the two say the same thing.
+  // note. Such a marker has no bracket of its own to close. Where such a
+  // marker stands at the end of what the ratio counts, the marker and the
+  // ratio say the same thing.
   test('passes over a stop marker standing where the ratio ends the run', () => {
     const { content, warnings } = read(
       measure(rated('C', 4, 'eighth') + rated('D', 4, 'eighth') + stopping('E', 4, 'eighth')),
@@ -3202,7 +3201,7 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
   })
 
   // A run opens on the note's ratio, before the note turns out not to be an
-  // event at all. It stands for no tuplet the source wrote.
+  // event. It stands for no tuplet the source wrote.
   test('draws no tuplet for a run that holds nothing', () => {
     const measureRest = '<note><rest measure="yes"/><duration>48</duration></note>'
     const over =
@@ -3483,7 +3482,7 @@ describe('a tuplet opening on the note that starts a tremolo', () => {
 
 // A source that draws no bracket says the tuplet is there in the ratio alone,
 // and that ratio counts the tremolo as well. The pair's own share has to come
-// out of it before what is left can say whether a tuplet is there at all.
+// out of it before what is left can say whether a tuplet is there.
 describe('a tuplet stated as a ratio with no bracket, opening on a tremolo', () => {
   // A triplet of quarters whose first quarter is a two-note tremolo, with no
   // <tuplet> anywhere. Each note of the pair is written as a quarter and
@@ -3576,9 +3575,9 @@ describe('a tuplet stated as a ratio with no bracket, opening on a tremolo', () 
   })
 })
 
-// A tuplet in a line laid over its voice belongs to that line. The bracket
-// is opened before the note is written, and must still end up in the note's
-// line.
+// A tuplet in a sequence laid over its voice belongs to that sequence. The
+// bracket is opened before the note is written, and must still end up in the
+// note's sequence.
 describe('a tuplet in a line laid over its voice', () => {
   /** A triplet eighth of voice 1, so that the whole run is one voice. */
   const voiced = (step: string, bracket = ''): string =>
@@ -3615,7 +3614,7 @@ describe('a tuplet in a line laid over its voice', () => {
 // A bracket states what it holds against the time it takes, and where no pair
 // of note values counts that it takes the time its own ratio gives it
 // instead. Where no pair of them counts that either, MNX can state no ratio
-// over the content at all: a tuplet's content must come to its inner, and
+// over the content: a tuplet's content must come to its inner, and
 // nothing writes an inner it comes to. The bracket is dropped and what it
 // held stands where it stood.
 describe('a bracket no pair of note values counts at all', () => {

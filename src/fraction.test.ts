@@ -137,8 +137,8 @@ describe('staying within exact arithmetic', () => {
   })
 
   // Two numerators that each run past the safe integer range and almost
-  // cancel. A check on the sum only gives 2/15 where the exact difference is
-  // 1/15.
+  // cancel. If only the result is checked, it is 2/15 and looks exact. The
+  // exact difference is 1/15.
   test('refuses rather than guess where a numerator cannot be scaled exactly', () => {
     const a = fraction(3002399751580331, 3)
     const b = fraction(5003999585967218, 5)

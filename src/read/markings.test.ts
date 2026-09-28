@@ -255,7 +255,7 @@ describe('fermatas', () => {
 })
 
 // MNX keys the marks on an event by name, so a second of the same kind has
-// nowhere to go.
+// no home.
 describe('two marks of one kind', () => {
   test('keeps the first and reports the rest', () => {
     const { events, warnings } = read(

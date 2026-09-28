@@ -3,13 +3,13 @@
 // note in the cursor's path, a note with two <notations> blocks.
 //
 // Four checks, from weakest to strongest:
-//   1. it converts at all
+//   1. it converts
 //   2. the output is legal MNX
 //   3. the arithmetic works out, measure by measure
 //   4. the notes and the time still match the source
 //
-// The fourth reads the source apart from the converter. The other three can
-// pass on output that is wrong about the music.
+// The fourth reads the source independently of the converter. The other three
+// can pass on output that is wrong about the music.
 
 import { describe, expect, test } from 'vitest'
 import { MusicXMLError, convertMusicXML } from '../src/index.js'
@@ -129,8 +129,8 @@ test('refuses only the songs it is known to refuse', () => {
 /**
  * Every hairpin in the source, paired in time order, not document order: by
  * measure, then by cursor position, with a stop closing the most recently
- * opened hairpin of its number on its own staff. Read from the XML apart from
- * the converter.
+ * opened hairpin of its number on its own staff. Read from the XML
+ * independently of the converter.
  *
  * The staff is part of the pairing because some songs have both hands'
  * hairpins numbered 1 at the same time. On the number alone, a stop on one
@@ -943,8 +943,7 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   // Losses may only shrink. A fall means the baseline needs an update.
   test('loses no more than the recorded baseline', () => {
     // Grouped by the element lost. An attribute loss is keyed as
-    // element@attribute, apart from its element's own losses, so a rise in
-    // one cannot hide inside a fall in the other.
+    // element@attribute, separate from its element's own losses.
     const counts: Record<string, number> = {}
     for (const warning of warnings) {
       const key =

@@ -3,7 +3,7 @@
 // places state MNX facts by hand:
 //
 //   src/types/mnx.ts             these are MNX's fields and enums
-//   src/read/unrepresentable.ts  these elements have nowhere to go in MNX
+//   src/read/unrepresentable.ts  these elements have no home in MNX
 //   src/ids.ts                   an MNX id looks like this
 //
 // A fourth, the model's enums in src/model/score.ts, copies the types, because
@@ -56,8 +56,8 @@ describe('the instrument id a sound is keyed by', () => {
   })
 })
 
-// A tuplet whose ratio no pair of note values states is reported as a limit of
-// MNX (unrepresentable:tuplet-ratio). That rests on what the schema says a
+// A tuplet whose ratio no pair of note values states is reported as a format
+// limit (unrepresentable:tuplet-ratio). That rests on what the schema says a
 // ratio is counted in.
 describe('the note values a tuplet ratio is counted in', () => {
   const named = schemaDefs['note-value-base']?.enum ?? []
@@ -92,7 +92,7 @@ describe('the note values a tuplet ratio is counted in', () => {
 
   test('a ratio counts at least one of a value on each side', () => {
     // A bracket holding nothing that takes any of the measure's time is
-    // reported as a limit of MNX (unrepresentable:tuplet-untimed). That rests
+    // reported as a format limit (unrepresentable:tuplet-untimed). That rests
     // on this minimum.
     expect(schemaDefs['positive-integer']?.minimum).toBe(1)
   })
@@ -108,7 +108,7 @@ describe('the note values a tuplet ratio is counted in', () => {
 })
 
 // A bracket over grace notes alone takes none of the measure's time, and is
-// reported as a limit of MNX (unrepresentable:tuplet-untimed). That also rests
+// reported as a format limit (unrepresentable:tuplet-untimed). That also rests
 // on a grace group having no room for a tuplet.
 describe('what a grace group holds', () => {
   test('a grace group holds events and nothing else', () => {
@@ -504,7 +504,7 @@ describe('the registry of what MNX cannot hold, against the schema', () => {
 
   test.each(ATTRIBUTES_NEEDING_A_JUMP)('%s would need a jump type the schema lacks', () => {
     // MNX jumps to a segno or plays to a Fine, and names nothing else, so a
-    // da capo, a to-coda and a coda have nowhere to go.
+    // da capo, a to-coda and a coda have no home in MNX.
     expect(schemaDefs['jump-type']?.enum).toEqual(['dsalfine', 'segno'])
   })
 })

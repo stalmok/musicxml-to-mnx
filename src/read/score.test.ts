@@ -454,7 +454,8 @@ describe('measure attributes', () => {
 
   // The assumption is checkable only against a written value: a wrong guess
   // shows as an inconsistent:duration warning. A note with no <type> offers
-  // nothing to check, and a wrong guess would be a silently wrong length.
+  // nothing to check, and a wrong guess would give a wrong length with no
+  // warning.
   test('refuses an untyped duration under an assumed divisions', () => {
     expect(readFailure(measure('<note><rest/><duration>2</duration></note>')).message).toContain(
       'no <divisions> ever said',
@@ -1853,7 +1854,7 @@ describe('whole-measure rests', () => {
 
   // Some exporters leave measure="yes" off: a rest with no written value
   // lasting exactly the measure is the same statement. In 5/16 that length
-  // has no note value at all, so reading it as an ordinary rest would fail.
+  // has no note value, so reading it as an ordinary rest would fail.
   test('treats an untyped rest lasting the whole measure as one', () => {
     const { score: result } = read(
       measure(
@@ -2177,7 +2178,7 @@ describe('the global measure list', () => {
   })
 
   // MNX numbers a measure with a whole number of zero or more, so a negative
-  // label has nowhere to go, like a lettered one.
+  // label has no home, like a lettered one.
   test('reports a negative measure label rather than writing it', () => {
     const { score: result, warnings } = read(
       score(`<part id="P1"><measure number="-1">${NOTE}</measure></part>`),
@@ -2779,7 +2780,7 @@ describe('several parts', () => {
 
   // The number is the label the score writes over the measure, so parts
   // giving the same measure different labels is the source disagreeing with
-  // itself, not a limit of MNX.
+  // itself, not a format limit.
   test('reports parts numbering the same measure differently', () => {
     const { score: result, warnings } = read(
       score(
@@ -2796,7 +2797,7 @@ describe('several parts', () => {
     expect(warnings[0]?.message).toContain('numbered 0 by an earlier part and 5 by this one')
   })
 
-  // A part labelling the measure by its position states no label at all, so
+  // A part labelling the measure by its position states no label, so
   // there is nothing for it to disagree with.
   test('says nothing where one part labels the measure by its position', () => {
     const { score: result, warnings } = read(

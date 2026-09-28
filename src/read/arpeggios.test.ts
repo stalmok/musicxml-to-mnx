@@ -311,7 +311,7 @@ describe('a chord marked both ways at once', () => {
   })
 })
 
-// Marks on one chord are weighed together whatever their numbers, so a roll
+// Marks on one chord are compared together whatever their numbers, so a roll
 // and a bracket are not both written over the same notes.
 describe('a chord marked both ways under different numbers', () => {
   test('keeps the first and says the other is lost', () => {
@@ -414,7 +414,7 @@ describe('a chord divided into two numbered rolls', () => {
   })
 })
 
-// A chord's marks are weighed against each other, and only two directions
+// A chord's marks are compared with each other, and only two directions
 // that disagree are a roll going both ways. Any other pairing is one roll,
 // drawn the one way, with the arrowhead either mark asks for.
 describe('a chord whose marks agree', () => {
@@ -438,7 +438,7 @@ describe('a chord whose marks agree', () => {
 
 // Two chords sounding together under one number are one roll across both. A
 // contradiction on one chord is a contradiction in the roll, and the other
-// chord cannot outvote it.
+// chord does not cancel it.
 describe('a roll across two chords where one of them disagrees with itself', () => {
   const inVoice = (voice: string, step: string, octave: number, marks: string) =>
     `<note><pitch><step>${step}</step><octave>${String(octave)}</octave></pitch>` +
@@ -476,7 +476,7 @@ describe('a roll across two chords where one of them disagrees with itself', () 
   })
 })
 
-// Marks are weighed against the marks of their own chord. Weighed against
+// Marks are compared with the marks of their own chord. Compared with
 // the first chord in the measure, a rolled chord and a struck one side by
 // side would each read as the other's contradiction.
 describe('two chords marked in opposite ways', () => {

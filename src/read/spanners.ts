@@ -99,7 +99,7 @@ interface EndPlace {
   /** Where it is written, which is what puts the ends in order. */
   position: Fraction
   /**
-   * The place it actually marks. The two differ for the stop of an octave
+   * The place it marks. The two differ for the stop of an octave
    * shift: MNX states the end as the place of the last event covered, and
    * MusicXML writes the stop after that event. Ordering must still use where
    * the stop was written, or it would sort before the start it belongs to.
@@ -324,11 +324,11 @@ function ownPairs(
 
 /**
  * The voice-and-number streams that are not treated as a voice's own, even
- * where accountsForItself says they balance. A stream is excluded when
- * another voice's residue of the same number confirms a crossing at both ends
- * of one of its pairs: an orphan stop in the measure of the pair's start or
- * the one after, and an unclosed start in the measure of the pair's stop or
- * the one before.
+ * where accountsForItself says they balance. A stream is excluded when another
+ * voice's leftover ends of the same number confirm a crossing at both ends of
+ * one of its pairs: an orphan stop in the measure of the pair's start or the
+ * one after, and an unclosed start in the measure of the pair's stop or the one
+ * before.
  *
  * Two separate cross-voice slurs reusing a number can leave a stream with one
  * start and one stop of its own that are not one slur. Such a stream goes to
@@ -352,8 +352,8 @@ function crossesVoicesInAMeasure(ends: readonly SlurEnd[]): ReadonlySet<string> 
       byVoice.set(voice, [...(byVoice.get(voice) ?? []), end])
     }
 
-    // Every other voice's residue for this number, at the measure it falls
-    // in, so a pair's own boundaries can be checked against it directly.
+    // Every other voice's leftover ends for this number, at the measure it
+    // falls in, so a pair's own boundaries can be checked against it directly.
     const residueAt = new Map<string, Map<number, 'unclosed' | 'orphan' | 'both'>>()
     for (const [voice, voiceEnds] of byVoice) {
       const byMeasure = new Map<number, SlurEnd[]>()
@@ -413,7 +413,7 @@ function findLastOpened<E>(waiting: readonly E[], keeps: (start: E) => boolean):
 
 /**
  * The start a stop closes: the last one opened where the stop was written, or
- * failing that the last one opened at all.
+ * failing that the last one opened.
  *
  * "Where" is the voice for a tie or a slur, and the staff for a hairpin or an
  * octave shift, each of which states the one the other leaves unset. The
@@ -699,7 +699,7 @@ export class SpannerResolver {
           target: end.stop.event.id,
           side: open.side,
           // MNX's sideEnd is for an S-shaped slur that ends bending the other
-          // way; a stop merely restating the start's side adds nothing.
+          // way. A stop that restates the start's side adds nothing.
           ...(sideEnd !== undefined && sideEnd !== open.side ? { sideEnd } : {}),
           ...(open.lineType !== undefined ? { lineType: open.lineType } : {}),
         },
@@ -970,8 +970,9 @@ export class SpannerResolver {
 
     // Only an octave shift moves back off the point its stop was written at.
     //
-    // Failing an event on the staff the stop names, the last on any staff. A
-    // source can name a staff that holds only a whole-measure rest, which MNX
+    // The stop moves to the last event before it on the staff it names. If
+    // that staff has no event, the stop moves to the last event on any staff.
+    // A source can name a staff that holds only a whole-measure rest, which MNX
     // writes as the measure's own, not as an event. Left where it was
     // written, such a stop would end on the barline, where no event begins.
     for (const end of stoppingHere(this.#ottavaEnds)) {
@@ -1006,13 +1007,14 @@ export class SpannerResolver {
   /**
    * Joins every octave shift in the part, putting each finished one on the
    * measure it begins in. Unlike a hairpin, MNX requires a shift to say where
-   * it stops, so one the source never closed cannot be written at all.
+   * it stops, so one the source never closed cannot be written.
    */
   #resolveOttavas(measures: readonly Measure[], warnings: WarningCollector): void {
     pairSpans<OpenOttava, undefined>(
       this.#ottavaEnds,
       (open, stop) => {
-        // Assigned, not spread in, for the reason the hairpin's end is.
+        // Assigned, not spread in, so the compiler tells an absent key from an
+        // undefined one.
         const end: Draft<SpanStop> = { measure: stop.measure, position: stop.covers }
         if (stop.coversGraceIndex !== undefined) end.graceIndex = stop.coversGraceIndex
         const ottava: Draft<Ottava> = {

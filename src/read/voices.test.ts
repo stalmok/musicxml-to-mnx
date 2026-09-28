@@ -182,7 +182,7 @@ describe('chords', () => {
 
   // The written values agree on the note but not on its dots, which is a
   // disagreement like any other: the member is not the value the chord is
-  // written as, so its duration is the one weighed against the chord's.
+  // written as, so its duration is the one compared with the chord's.
   test('rejects a chord member written with the same note but fewer dots', () => {
     expect(
       readFailure(
@@ -834,8 +834,8 @@ describe('the measure cursor', () => {
   })
 
   // MNX lets no two sequences of a measure share a voice name, and naming a
-  // laid-over line after the voice it was written in would claim two lines
-  // are one.
+  // laid-over sequence after the voice it was written in would state that two
+  // sequences are one.
   test('names the laid-over sequence after the voice and the line it is', () => {
     const { measure: result } = read(
       measure(note('C', 2, '1') + '<backup><duration>4</duration></backup>' + note('E', 1, '1')),
@@ -863,7 +863,7 @@ describe('the measure cursor', () => {
   })
 
   // A name the measure already uses is stepped past, so the source naming a
-  // voice "1.2" does not collide with the line laid over voice 1.
+  // voice "1.2" does not collide with the sequence laid over voice 1.
   test('steps past a name the measure already uses', () => {
     const { measure: result } = read(
       measure(
@@ -951,7 +951,7 @@ describe('the measure cursor', () => {
     )
   })
 
-  // Notes that name no voice are one line of their own, and lay over each
+  // Notes that name no voice are one sequence of their own, and lay over each
   // other the same way. The report has no name to give, so it says so.
   test('names the unnamed voice in the report', () => {
     const bare = (step: string, quarters: number) =>
@@ -966,8 +966,8 @@ describe('the measure cursor', () => {
     )
   })
 
-  // A beam, a bracket and a grace note all belong to one line. They must not
-  // reach for the line the voice sounded in before.
+  // A beam, a bracket and a grace note all belong to one sequence. They must
+  // not reach for the sequence the voice sounded in before.
   test('keeps a beam over a laid-over line whole', () => {
     const eighth = (step: string, beam = '') =>
       `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>2</duration>` +
@@ -1023,7 +1023,7 @@ describe('the measure cursor', () => {
   })
 
   // The beams over a grace group move with it, so the group is beamed once, in
-  // the line it ends up in, rather than twice or not at all.
+  // the sequence it ends up in, rather than twice or never.
   test('carries the beams over a grace group into the line it moves to', () => {
     const graced = (step: string, marker: string) =>
       `<note><grace/><pitch><step>${step}</step><octave>4</octave></pitch>` +

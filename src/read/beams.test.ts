@@ -260,7 +260,7 @@ describe('a beam marker at a level that does not exist', () => {
     ])
   })
 
-  // MNX draws levels 1 to 8. Both edges are tested.
+  // MNX draws levels 1 to 8.
   test('keeps a marker at the eighth level, which is the last one there is', () => {
     const deep = (step: string, marker: string) => {
       const levels = [1, 2, 3, 4, 5, 6, 7, 8]

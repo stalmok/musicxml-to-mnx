@@ -1,6 +1,6 @@
-// The source-side readers behind the corpus checks. They read the XML apart
-// from the converter. These tests fix their readings where the format allows
-// more than one shape for the same music.
+// The source-side readers behind the corpus checks. They read the XML
+// independently of the converter. These tests pin their readings where the
+// format allows more than one shape for the same music.
 
 import { describe, expect, test } from 'vitest'
 import { convertValid } from './support/convert.js'

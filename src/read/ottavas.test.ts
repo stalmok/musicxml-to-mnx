@@ -141,7 +141,7 @@ describe('where an octave shift runs', () => {
   })
 
   // MNX requires a shift to say where it stops, so unlike a hairpin, one the
-  // source never closed cannot be written at all.
+  // source never closed cannot be written.
   test('drops one that nothing closes, and says so', () => {
     const { ottavas, warnings } = read(shift('down') + NOTE)
 

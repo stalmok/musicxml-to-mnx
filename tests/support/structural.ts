@@ -3,9 +3,9 @@
 // can be compared. Nothing here uses the converter's own reader.
 //
 // One reading is shared, and is marked where it is: how a voice that sounds
-// two lines at once divides into them. MusicXML states the two in one
-// <voice>, so both sides divide them the same way. Every pitch, its line's
-// order, and the note each syllable is sung on are still checked. The
+// two sequences at once divides into them. MusicXML states the two in one
+// <voice>, so both sides divide them the same way. Every pitch, its order in
+// its sequence, and the note each syllable is sung on are still checked. The
 // division itself is not.
 //
 // Used by the vendored corpus test and the full-corpus gate.
@@ -22,8 +22,8 @@ import type {
 } from '../../src/index.js'
 import type { XmlElement } from '../../src/xml/parse.js'
 
-// How long a written note value lasts, as a fraction of a whole note. Kept
-// apart from the converter's own arithmetic.
+// How long a written note value lasts, as a fraction of a whole note.
+// Independent of the converter's own arithmetic.
 const BASE_LENGTHS: Record<string, number> = {
   maxima: 8,
   longa: 4,
@@ -698,7 +698,7 @@ function placedEvents(document: MNXDocument): PlacedEvent[] {
 }
 
 function place(part: number, measure: number, at: number): string {
-  // Cursor arithmetic on one side can go back to the measure start and land
+  // Cursor arithmetic on one side can go back to the measure start and end
   // just below zero, which prints with a minus sign. Rounding makes the two
   // sides agree.
   const rounded = Math.round(at * 1e9) / 1e9

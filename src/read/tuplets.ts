@@ -153,7 +153,7 @@ export function scaleToContent(
 /**
  * The value both sides are counted in: the one the bracket opened with where
  * that counts them both whole, else the same halved, and failing that the
- * largest value that counts them both at all.
+ * largest value that counts them both.
  *
  * The value the bracket opened with comes first so that what the source wrote
  * stands where it can: six in the time of four is not three in the time of
@@ -384,7 +384,7 @@ interface Adoptable {
   notes: { item: SequenceItem; time: Fraction }[]
 }
 
-/** No silence at all, for a bracket something of the voice's stands after. */
+/** No silence, for a bracket something of the voice's stands after. */
 const NO_SILENCE = { time: fraction(0), span: 0 }
 
 /** A voice's own item list and where it runs to, for a claim to reach into. */
@@ -424,8 +424,8 @@ export function settleClaims(
  *
  * A bracket's written statement needs its children's written outers, and a
  * child's outer needs the frame the bracket ends up writing in. That frame is
- * fixed by the content that does not wait, so one descent does both: fix the
- * frame, hand it down, then measure what the bracket holds.
+ * fixed by the content that does not wait, so one recursive pass does both: fix
+ * the frame, hand it down, then measure what the bracket holds.
  *
  * `rate` is the frame the bracket around it writes in, unset for a bracket
  * standing in the voice's own list or one whose parent's frame says nothing.
@@ -443,7 +443,7 @@ function settleClaim(
     settleClaim(child, inside, undefined, undefined, warnings, context)
   }
   // A skip stands for the measure time the cursor passed over, whatever the
-  // frame. Written at the settled rate, it goes on standing for that time.
+  // frame. Written in the settled frame, it goes on standing for that time.
   if (inside) {
     for (const skip of claim.skips) skip.space.duration = multiplyFractions(skip.spent, inside)
   }
@@ -465,17 +465,17 @@ function settleClaim(
 }
 
 /**
- * How much written length a bracket spends for each unit of measure time,
+ * How much written length a bracket uses for each unit of measure time,
  * read off the content that does not wait for it.
  *
  * Everything a bracket holds but a bracket of its own and a skip is already
  * written at a length the source gave it, and the time those took is the rest
- * of the bracket's own, which together give the rate. Undefined where it
- * holds nothing else, or where what it holds took no time, and the rate says
+ * of the bracket's own, which together give the frame. Undefined where it
+ * holds nothing else, or where what it holds took no time, and the frame says
  * nothing.
  *
  * A skip is none of them. Its written length came from the ratios open when
- * it was filled rather than from the source, so it witnesses the frame the
+ * it was filled rather than from the source, so it shows the frame the
  * bracket opened with and not the one it ends up with.
  */
 function frameOf(claim: TupletClaim): Fraction | undefined {
@@ -541,7 +541,7 @@ function rewrite(
     // instead, and states that over what it holds.
     scaleToContent(tuplet, drawn, held, drawnOuter)
     const counts = compareFractions(held, quantityLength(tuplet.inner)) === 0
-    // A bracket no pair of note values counts at all cannot be drawn: what it
+    // A bracket no pair of note values counts cannot be drawn: what it
     // holds takes its place, written as it stands.
     if (!counts) unwrapTuplet(claim.within, tuplet)
     warnings.addAt(
@@ -854,7 +854,7 @@ function leadOf(
 /**
  * The measure time the voice passes over in silence straight after a bracket,
  * and how many of the voice's items that silence runs over: the skips written
- * there, and the measure's tail where nothing sounds after them at all. A
+ * there, and the measure's tail where nothing sounds after them. A
  * grace group takes none of the measure's time, so it neither gives silence
  * nor ends it, and the bracket may reach over one.
  */

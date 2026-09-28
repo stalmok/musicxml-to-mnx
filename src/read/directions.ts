@@ -77,7 +77,7 @@ export interface SoundTempo {
   bpm: number | undefined
   line: number
   /**
-   * The place kept in the report for the decision. The verdict is settled
+   * The place kept in the report for the decision. The decision is made
    * once every part is read, and reporting it there would put it after every
    * loss read since; this holds its spot where the <sound> is written.
    */
@@ -219,7 +219,7 @@ export function readDirection(
   // its end from the cursor whatever an <offset> says, so it counts them
   // either way. A hairpin is drawn where the offset puts it, and grace notes
   // are counted only where that is the cursor: the source says nothing about
-  // which grace note an offset lands beside, so none is named.
+  // which grace note an offset falls beside, so none is named.
   const graceAtCursor = graceNotesAt(position, staff)
   const overGrace = compareFractions(at, position) === 0 ? graceAtCursor : 0
 
@@ -230,7 +230,7 @@ export function readDirection(
     const wording = new PendingWording()
     let lastMark: SuffixTarget | undefined
     for (const found of directionType.element.children) {
-      // Each arm accounts for the child it handles. A type read plainly has
+      // Each case accounts for the child it handles. A type read plainly has
       // its attributes swept with the other read children. A <metronome> has
       // a reader of its own, and the sweep reports what that reader skips. An
       // unhandled type is reported whole below.
@@ -788,7 +788,7 @@ function readDynamics(
   for (const mark of element.children) {
     const accent = ACCENT_DYNAMICS.get(mark.name)
     if (mark.name === 'other-dynamics') {
-      // The glyph is reported before the text is weighed: an element naming a
+      // The glyph is reported before the text is read: an element naming a
       // glyph and holding no text still says something the output cannot.
       reportWordingGlyph(mark, trimmedText(mark), warnings, context)
       if (trimmedText(mark) === '') continue
@@ -855,7 +855,7 @@ function readDynamics(
  * The two cases are different kinds of loss. A glyph with no text is the
  * mark itself, and a group with no level can state glyphs, so a later
  * release may carry it: a converter gap. A glyph named for words that also
- * convert has no home at all, because the schema nowhere states how the
+ * convert has no home, because the schema nowhere states how the
  * wording is drawn: a format limit.
  */
 function reportWordingGlyph(
@@ -915,7 +915,7 @@ function readMetronome(
 
   // MusicXML can also state a metronome as one note value equalling another,
   // a metrical modulation. MNX states a tempo as a note value and a count of
-  // them per minute, and that form carries no number at all, so there is
+  // them per minute, and that form carries no number, so there is
   // nothing to put there.
   if (!perMinute || !beatUnit) {
     warnings.add(

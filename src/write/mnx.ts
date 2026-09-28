@@ -435,7 +435,7 @@ function writeGlobalMeasure(measure: GlobalMeasure, id: string | undefined): MNX
       : {}),
     ...(measure.tempos.length > 0 ? { tempos: measure.tempos.map(writeTempo) } : {}),
     ...(measure.barline ? { barline: { type: measure.barline } } : {}),
-    // Opening a repeat is stated by the key being there at all.
+    // Opening a repeat is stated by the key being there.
     ...(measure.repeatStart ? { repeatStart: {} } : {}),
     ...(measure.repeatEnd
       ? {
@@ -788,7 +788,7 @@ function writeEvent(event: Event, referenced: ReadonlySet<string>): MNXEvent {
   }
 }
 
-/** True where the event carries any mark at all. */
+/** True where the event carries any mark. */
 function hasMarking(markings: Markings): boolean {
   return Object.values(markings).some((marking) => marking !== undefined)
 }

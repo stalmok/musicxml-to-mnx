@@ -44,7 +44,7 @@ export function recogniser<Union extends string | number>(
   // hasOwn reads a number as the string key an object holds it under, which
   // is what a numeric vocabulary such as a time signature's unit needs.
   //
-  // The narrowed type meets Spelled because tsc weighs the predicate before
+  // The narrowed type meets Spelled because tsc checks the predicate before
   // it knows the union. Every member of a union of text is text, so for each
   // union this is called with the intersection is the union itself.
   return (value: Spelled<Union>): value is Union & Spelled<Union> => Object.hasOwn(words, value)

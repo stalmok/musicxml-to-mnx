@@ -1,4 +1,4 @@
-// MusicXML elements MNX has nowhere to put.
+// MusicXML elements with no home in MNX.
 //
 // An element is listed only where the vendored schema has no definition that
 // could hold it. Everything else is a gap in this converter and is reported
@@ -143,7 +143,7 @@ export const NO_HOME_IN_MNX: ReadonlySet<string> = new Set([
   'credit',
   // The composer, the rights and the encoding notes. The schema has no
   // header for any of them. The supports declarations inside its <encoding>
-  // are read apart before this verdict applies: their accidental and beam
+  // are read apart before this decision applies: their accidental and beam
   // halves are the schema's support flags, which the writer restates.
   'identification',
   // Page size, scaling and margins. The schema's layouts state no dimensions.
@@ -211,7 +211,7 @@ export const NO_HOME_ATTRIBUTES: ReadonlySet<string> = new Set([
   // a glyph, and has no label.
   'sound segno',
   // Whether a tablature staff draws its fret numbers. The schema has no
-  // tablature at all, which is why <staff-tuning>, <capo>, <fret> and
+  // tablature, which is why <staff-tuning>, <capo>, <fret> and
   // <string> are on the element list above.
   'staff-details show-frets',
   // The side a caesura is drawn on. The schema's caesura states a stroke

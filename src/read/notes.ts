@@ -298,11 +298,11 @@ export function readNote(
 
   // MNX states a rest filling the measure on a sequence that holds nothing,
   // so a voice that rests the measure has nowhere to put a grace note. The
-  // rest comes back off the sequence as an event of its written length, as it
-  // would with the grace note written first. It is taken back before this
-  // note opens a bracket, so the rest stays outside that bracket, as in the
-  // source. A chord member joins the grace note before it, which has taken
-  // the rest back already. An irregular measure has no value to write the
+  // rest moves off the sequence and becomes an event of its written length, as
+  // it would with the grace note written first. It moves before this note
+  // opens a bracket, so the rest stays outside that bracket, as in the
+  // source. A chord member joins the grace note before it, which has moved
+  // the rest already. An irregular measure has no value to write the
   // rest as, so it is written as a space.
   const restored =
     graceElement && !chordMember ? builder.restoreMeasureRest(voice, path, element.line) : undefined
@@ -557,12 +557,12 @@ function openTupletsAndTremolo(
   // The ratio is read only where it can settle such a run. A start marker
   // opens a bracket of its own below; inside a bracket the source drew, the
   // bracket says where the tuplet runs, and a note there need not state a
-  // value at all. A stop marker naming no bracket is passed over further down.
+  // value. A stop marker naming no bracket is passed over further down.
   //
   // A note that starts a two-note tremolo states the pair's 2:1 multiplied
   // into whatever tuplet it stands in, so the ratio is read through the pair:
-  // its share comes out, and what is left says whether a tuplet is there at
-  // all. The note that stops the pair states the same and adds nothing, the
+  // its share comes out, and what is left says whether a tuplet is there.
+  // The note that stops the pair states the same and adds nothing, the
   // tremolo standing in the run in its place. A pair stating no value to
   // count states no tuplet either, and is left to be read as the pair it is.
   const readsRatio =
@@ -622,7 +622,7 @@ function openTupletsAndTremolo(
 
     // The note states one ratio for however many brackets open on it. Where
     // several do, only the markers can say how it divides between them, and
-    // <time-modification> is not there to be weighed against them.
+    // <time-modification> is not there to be compared with them.
     if (derived && opening.some((start) => !start.stated) && opening.length > 1) {
       throw new MusicXMLError(
         'More than one tuplet starts on a note with no <time-modification>, and the ' +
@@ -645,10 +645,10 @@ function openTupletsAndTremolo(
     }
 
     // MNX states a two-note tremolo as one item holding both notes, so a
-    // bracket around one of them has nowhere to go. MuseScore writes that:
+    // bracket around one of them has no home. MuseScore writes that:
     // each note of the pair carries a bracket of one in the time of one,
     // drawn with neither bracket nor number. Such a bracket scales nothing,
-    // so passing it over costs no duration, and the stop that matches it is
+    // so passing it over adds no duration, and the stop that matches it is
     // passed over with it. A bracket that does scale something is refused
     // where it opens.
     const inTremolo = tremolo?.type === 'start' || builder.insideTremolo(voice)
@@ -1014,7 +1014,7 @@ function closeTuplets(
   line: number,
 ): void {
   // Which stop is written first inside <notations> is not constrained, so
-  // the note's stops are weighed as a batch: each closes the innermost open
+  // the note's stops are checked as a batch: each closes the innermost open
   // tuplet, and only when the numbers the stops state disagree with the
   // numbers of the tuplets closed, as sets, has the source stated tuplets
   // that cross, which MNX's nested tuplets cannot.
@@ -1354,7 +1354,7 @@ function readMarkings(
     block.read(found)
     if (marking === undefined) continue
     // MNX keys the marks by name, and so does the model, so a second of the
-    // same kind has nowhere to go. The first is the one converted, as it is
+    // same kind has no home. The first is the one converted, as it is
     // for a second fermata. The one warning accounts for the rejected mark
     // whole, its side included, which a caesura does not otherwise read.
     if (markings[kind] !== undefined) {
@@ -1597,7 +1597,7 @@ function readStemDirection(
   if (direction === 'up' || direction === 'down') return direction
 
   // MNX's stem direction is up or down and nothing else, so "none" and
-  // "double" have nowhere to go.
+  // "double" have no home.
   warnings.add(
     'unrepresentable:stem-direction',
     `A <stem> of "${direction}" cannot be expressed in MNX, which states only up or down.`,
@@ -2063,8 +2063,8 @@ function tupletDisplayOf(start: XmlElement, hidden: boolean): TupletDisplaySetti
   const value = showType === undefined ? undefined : TUPLET_DISPLAY.get(showType)
   if (value !== undefined) settings.showValue = value
 
-  // A marker inside a hidden <notations> block draws nothing at all, so the
-  // hiding outweighs any display attribute stated within it.
+  // A marker inside a hidden <notations> block draws nothing, so the
+  // hiding overrides any display attribute stated within it.
   if (hidden) {
     settings.bracket = 'no'
     settings.showNumber = 'noNumber'
@@ -2376,7 +2376,7 @@ function reportDurationMismatch(
   const wanted = multiplyFractions(lengthOf(written), scale.factor)
   if (compareFractions(wanted, duration) === 0) return
 
-  // The ratio is what the written value is weighed against, so inside a
+  // The ratio is what the written value is compared with, so inside a
   // tuplet or a tremolo the message names the length that ratio wants, and
   // which of the two states it. Naming the written value alone would give
   // "written as an eighth but lasts an eighth", the same length twice.
