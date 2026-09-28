@@ -20,7 +20,7 @@ pnpm format:check
 pnpm test:precommit
 ```
 
-The pre-commit hook runs the same checks. Enable it once per clone with `pnpm hooks:install`. `test:precommit` runs the whole suite without the vendored corpus and holds the coverage thresholds.
+The pre-commit hook runs the same checks. Enable it once per clone with `pnpm hooks:install`. `test:precommit` runs the whole suite without the vendored corpus and the performance tests, and holds the coverage thresholds. Run `pnpm test:perf` before you commit a change to the reader, the model or the writer.
 
 There are two corpus runs:
 

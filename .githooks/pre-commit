@@ -3,10 +3,12 @@
 # test suite with its coverage thresholds must all pass. Mirrors the workflow
 # in AGENTS.md.
 #
-# The test step excludes the vendored corpus, which takes minutes. The fast
-# suite still holds coverage above its thresholds. CI runs the vendored corpus
-# on pushes and pull requests that change what it tests, and before each
-# release. Run it locally with pnpm test:coverage or pnpm test:corpus.
+# The test step excludes the vendored corpus, which takes minutes, and the
+# performance tests, which take about half a minute. The fast suite still holds
+# coverage above its thresholds. CI runs the performance tests on every run, and
+# the vendored corpus on pushes and pull requests that change what it tests, and
+# before each release. Run them locally with pnpm test:perf, pnpm test:corpus or
+# pnpm test:coverage.
 #
 # Activate once per clone with:
 #   pnpm hooks:install      # = git config core.hooksPath .githooks

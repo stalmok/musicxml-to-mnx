@@ -67,6 +67,8 @@ jobs:
       # only when the corpus input is set.
       - run: pnpm test:precommit
         if: ${{ !inputs.corpus }}
+      - run: pnpm test:perf
+        if: ${{ !inputs.corpus }}
       - run: pnpm test:coverage
         if: ${{ inputs.corpus }}
 
