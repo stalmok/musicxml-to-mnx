@@ -63,8 +63,8 @@ jobs:
       # dev-only dependency reaching the shipped library.
       - run: pnpm deps:check
       - run: pnpm format:check
-      # The suite with its coverage thresholds. The vendored corpus is added
-      # only when the corpus input is set.
+      # The suite with its coverage thresholds, without the performance tests.
+      # The vendored corpus is added only when the corpus input is set.
       - run: pnpm test:precommit
         if: ${{ !inputs.corpus }}
       - run: pnpm test:coverage
@@ -73,8 +73,7 @@ jobs:
       - run: pnpm build
 
       # The build must ship what the package's exports promise: the library
-      # bundle, its type entry, the command with its shebang and the licences of
-      # the code it inlines, and the schema.
+      # bundle, its type entry, the command with its shebang, and the schema.
       - name: Check the build's shipped files
         # Explicit bash: adds pipefail to the default -e, so a future edit that
         # pipes a check cannot swallow its failure.
@@ -122,7 +121,8 @@ jobs:
           # runs pnpm on this Node.
           package-manager-cache: false
       # Called directly, because pnpm does not run on this Node. With the
-      # build in place, the command's smoke test runs too.
+      # build in place, the command's smoke test runs too. On a push or a pull
+      # request, this is the only step that runs the performance tests.
       - run: ./node_modules/.bin/vitest run --exclude '**/corpus.test.ts'
 
   # Blocks a pull request that introduces a dependency with a known
