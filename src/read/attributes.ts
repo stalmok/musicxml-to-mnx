@@ -29,28 +29,22 @@ import { recogniser } from './tables.js'
 import { concertFifths } from './transposition.js'
 import { elementLoss, reportHidden } from './unrepresentable.js'
 
-// Recognisers rather than bare sets: each one narrows the value it accepts to
-// the model's type, so a validated value reaches the writer without a cast
-// and an unvalidated one cannot. Each list and the model's own union are held
-// to each other in both directions.
+// A recogniser narrows the value it accepts to the model's type, so a
+// validated value reaches the writer without a cast. Each list and the model's
+// union are checked against each other in both directions.
 const isPitchedClefSign = recogniser<PitchedClefSign>({ C: true, F: true, G: true })
 
-// The signs MusicXML states beyond the three that place a pitch. The staff
-// each heads has heights on it: a rest or an unpitched note placed by
-// <display-step> reads against the clef in force. Each is held in force as
-// the plain treble clef, which is how a percussion staff is read: the drumset
-// positions, bass drum on the bottom space and snare on the third, are the
-// treble-clef positions of the steps the source writes.
+// The clef signs that place no pitch. A rest or an unpitched note placed by
+// <display-step> reads against the clef in force, so each is held in force as
+// the treble clef. That is how a percussion staff is read: bass drum on the
+// bottom space and snare on the third are treble-clef positions.
 //
-// The <line> such a clef states is where the clef is drawn, not a reference
-// pitch: MusicXML states a line to place pitches by for the G, F and C signs
-// only. So it is not read as a G clef's line would be, and a percussion clef
-// drawn on line 3 places its notes exactly where one drawn on line 2 does.
+// The <line> such a clef states is where the clef is drawn. MusicXML places
+// pitches by the line for the G, F and C signs only.
 //
-// A percussion clef is written with MNX's percussion sign. TAB and jianpu are
-// not written: a TAB staff's lines are strings and its notes are pitched, and
-// jianpu is numbers rather than a staff. Neither is the treble staff this
-// reads them as, so nothing is written for one and the sign is reported.
+// A percussion clef is written with MNX's percussion sign. A TAB staff's lines
+// are strings and its notes are pitched, and jianpu uses numbers in place of a
+// staff. Neither is written, and the sign is reported.
 const UNPITCHED_CLEF_SIGNS: ReadonlySet<string> = new Set(['percussion', 'TAB', 'jianpu'])
 const isTimeUnit = recogniser<TimeUnit>({
   1: true,
@@ -63,20 +57,15 @@ const isTimeUnit = recogniser<TimeUnit>({
   128: true,
 })
 
-// The line a clef sits on when it doesn't say, per MusicXML's defaults. A
-// record keyed by the sign type, not a Map, so every sign is required to have
-// one and the lookup cannot come back empty.
+// The line a clef sits on when it states none, per MusicXML's defaults.
 const DEFAULT_CLEF_LINES: Record<PitchedClefSign, number> = { G: 2, F: 4, C: 3 }
 
 /** What one <attributes> block declared. */
 export interface AttributesReading {
   /**
-   * Every key and time signature the block stated, one for each block it
-   * carries. Held apart from the values below: a statement MNX cannot carry,
-   * such as senza misura or a non-traditional key, is a statement with no
-   * value, which is not the same as the block saying nothing. What the
-   * staves between them state is settled by the measure, which sees the
-   * other blocks.
+   * Every key and time signature the block states. A statement MNX cannot
+   * carry, such as senza misura or a non-traditional key, has no value, which
+   * differs from no statement. The measure settles what the staves state.
    */
   keys: readonly StaffSignature<Key>[]
   times: readonly StaffSignature<TimeSignature>[]
@@ -87,16 +76,14 @@ export interface AttributesReading {
   /** The staves this block starts drawing with a line count of their own. */
   staffConfigs: StaffConfig[]
   /**
-   * Every multi-measure rest span this block stated, as a count of measures
-   * starting at this one. A list rather than one value, because a block may
-   * state it once per staff and the measure has to see them all to know
-   * whether they agree.
+   * Every multi-measure rest span this block states, as a count of measures
+   * starting at this one. A block may state one per staff, and the measure
+   * checks whether they agree.
    */
   multimeasureRests: number[]
   /**
-   * Every measure repeat edge this block stated: the pattern length of a
-   * sign starting here, or a stop naming this the first measure without one.
-   * A list for the same reason the rests are.
+   * Every measure repeat edge this block states: the pattern length of a sign
+   * starting here, or a stop naming this the first measure without one.
    */
   measureRepeats: MeasureRepeatReading[]
 }
@@ -155,22 +142,17 @@ export function readAttributes(
     state.staves = readIntegerInRange(stavesElement, path, 1, 16)
   }
 
-  // <staff-details> carries statements with different verdicts, so each is
-  // read on its own and the sweep reports the rest by name. Hiding a staff
-  // with print-object="no" is score structure with a home in MNX's layouts,
-  // not built yet, so it reports as a gap; its print-spacing rides on the
-  // hiding. The line count is converted into the measure's staffConfigs. The
-  // size has no home, except where it states the default; the tablature
-  // tuning and the rest have no home and keep saying so. The number
-  // attribute names the staff a statement is about, and an element stating
-  // nothing loses nothing. MusicXML allows one <staff-details> per staff,
-  // which is why every one is read, and one <staff-lines> in each.
+  // Each statement in <staff-details> is read on its own, and the sweep
+  // reports the rest by name. A staff hidden with print-object="no" has a home
+  // in MNX's layouts that is not built yet; its print-spacing goes with it.
+  // The line count goes into the measure's staffConfigs. The size has no home
+  // unless it states the default. MusicXML allows one <staff-details> per
+  // staff, and one <staff-lines> in each.
   const staffConfigs: StaffConfig[] = []
   for (const details of element.blocks('staff-details')) {
-    // Read as the staff number it is, not bounded to the staves this part
-    // states: MusicXML numbers a staff with any positive integer, and a
-    // number naming a staff the part does not have still says something
-    // about a staff.
+    // Not bounded to the part's staves: MusicXML numbers a staff with any
+    // positive integer. A line count for a staff past the part's staves is
+    // reported below.
     const named = readAttributeInRange(details.element, 'number', path, 1, Number.MAX_SAFE_INTEGER)
     if (attribute(details.element, 'print-object') === 'no') {
       attribute(details.element, 'print-spacing')
@@ -181,20 +163,16 @@ export function readAttributes(
         'staff-details',
       )
     }
-    // Read as the count it is, so that "05" states the same five lines "5"
-    // does. MusicXML states it as a non-negative number and MNX draws a staff
-    // on none, so only a negative count is no count at all. MNX holds a
-    // config in force until another replaces it, so a count is carried only
-    // where it changes what the staff is already drawn with.
+    // MusicXML states a non-negative count, and MNX can draw a staff with no
+    // lines. MNX holds a config in force until another replaces it, so a
+    // count is carried only where it changes.
     const lines = details.child('staff-lines')
     if (lines) {
       const count = readIntegerInRange(lines, path, 0, Number.MAX_SAFE_INTEGER)
       const staff = named ?? 1
       if (staff > state.staves) {
-        // There is no staff to draw that way. Reported rather than refused,
-        // and rather than drawn on a staff the count does not name: a count
-        // for staff 7 of a one-staff part, carried with no staff stated,
-        // would redraw the one staff the part has.
+        // Reported, not refused. Carried with no staff stated, a count for
+        // staff 7 of a one-staff part would redraw its one staff.
         warnings.add(
           'inconsistent:staff',
           `A staff line count is stated for staff ${String(staff)}, and this part is ` +
@@ -203,11 +181,9 @@ export function readAttributes(
           'staff-lines',
         )
       } else if (staffLinesOf(state, staff) !== count) {
-        // A height is measured from the middle of the staff, and the middle
-        // moves with the count, so a staff that changes it redraws everything
-        // on it. The clef in force holds the position it was written at and
-        // the heights read against it follow, so the notes stay where they
-        // were drawn. Restating the clef where the count changes would move
+        // A height is measured from the middle of the staff, which moves with
+        // the count. The clef in force keeps the position it was written at,
+        // so the notes keep their heights. Restating the clef here would move
         // them, and is not built.
         if (state.clefs.has(staff)) {
           warnings.add(
@@ -221,18 +197,15 @@ export function readAttributes(
         state.staffLines.set(staff, count)
         staffConfigs.push({
           lines: count,
-          // Only worth stating where the part has more than one staff, as a
-          // clef is.
+          // Stated only where the part has more than one staff, as for a clef.
           staff: state.staves > 1 ? named : undefined,
           position,
         })
       }
     }
-    // <staff-size> is a percentage of the work's default scaling, so 100
-    // states that default and loses nothing. It is a decimal, so "100.0"
-    // states the same size "100" does, and anything else is reported rather
-    // than reinterpreted. MusicXML allows one per <staff-details>; its
-    // scaling attribute is a separate loss the sweep reports.
+    // <staff-size> is a percentage of the default scaling, so 100 loses
+    // nothing. MusicXML allows one per <staff-details>. The sweep reports its
+    // scaling attribute.
     const size = details.child('staff-size')
     if (size && !DEFAULT_STAFF_SIZE.test(trimmedText(size))) {
       const loss = elementLoss('staff-size')
@@ -249,18 +222,15 @@ export function readAttributes(
   // and MNX states the key the music sounds in.
   readTransposition(element, state, warnings, context, path)
 
-  // MusicXML allows one key and one time signature per staff. MNX states them
-  // for the whole score, so staves that disagree cannot both be carried. What
-  // the staves between them state is settled by the measure: a block stating
-  // one staff's is only partial until the blocks around it are seen.
+  // MusicXML allows one key and one time signature per staff, and MNX states
+  // them for the whole score. The measure settles what the staves state,
+  // because it sees the other blocks.
   //
-  // Read as blocks, not raw children, so that whatever these readers pass over
-  // inside a <key>, <time> or <clef> is reported along with the rest of the
-  // measure rather than vanishing a level down.
+  // Read as blocks, so the sweep reports what these readers skip inside a
+  // <key>, <time> or <clef>.
   //
-  // MNX states the key the music sounds in. A transposing part writes the key
-  // its player reads, which stands a fixed number of fifths from it, so every
-  // statement is brought back here and the measure settles them as they sound.
+  // A transposing part writes the key its player reads. Each key is moved
+  // here to the key the music sounds in.
   const keys = statedPerStaff(element.blocks('key'), state, path, (found) => {
     const written = readKey(found, warnings, context, path)
     if (!written || !state.transposition) return written
@@ -284,10 +254,7 @@ export function readAttributes(
       .map((found) => readClef(found, state, position, warnings, context, path))
       .filter((clef) => clef !== undefined),
     staffConfigs,
-    // MusicXML allows one <measure-style> per staff, told apart by a
-    // "number" attribute, so every block is read. Which staff states the
-    // rest or repeat does not matter here: the measure only has to see them
-    // all to know whether they agree.
+    // MusicXML allows one <measure-style> per staff, so every block is read.
     ...element
       .blocks('measure-style')
       .map((found) => readMeasureStyle(found, state, warnings, context, path))
@@ -321,12 +288,10 @@ function statedPerStaff<T>(
     readAttributeInRange(block.element, 'number', path, 1, state.staves),
   )
   return blocks.map((block, index) => ({
-    // A number tells several staves apart. A part written on one staff has
-    // nothing to tell apart, so a number there states the part's signature,
-    // as it does on a clef and a staff line count. It matters where a later
-    // block gives the part a second staff: the signature stated before that
-    // stands on the staff it gains, and a second statement beside it
-    // contradicts the part rather than narrowing it to a staff.
+    // On a one-staff part a number states the part's signature, as on a
+    // clef. If a later block adds a second staff, the earlier signature
+    // stands on it too, and a second statement beside it contradicts the
+    // part.
     staff: state.staves > 1 ? numbers[index] : undefined,
     value: read(block),
     staves: state.staves,
@@ -354,14 +319,12 @@ function readMeasureStyle(
   const reading: MeasureStyleReading = { multimeasureRests: [], measureRepeats: [] }
 
   // The staff this block speaks for, or every staff of the part without a
-  // number. Bounded like a clef's, because a style naming a staff the part
-  // does not have belongs nowhere.
+  // number. Bounded like a clef's.
   const named = readAttributeInRange(element.element, 'number', path, 1, state.staves)
   const staves =
     named !== undefined ? [named] : Array.from({ length: state.staves }, (_, i) => i + 1)
 
-  // A <measure-style> holds one choice of child, so taking the first of each
-  // with child() is right.
+  // MusicXML allows one child in a <measure-style>, so child() is correct.
   const rest = element.child('multiple-rest')
   if (rest) {
     // use-symbols="yes" asks for the stacked rest symbols rather than the
@@ -376,8 +339,8 @@ function readMeasureStyle(
       )
     }
 
-    // MusicXML says a positive integer. The upper bound only rules out a
-    // corrupt file: no score rests for a hundred thousand measures.
+    // MusicXML states a positive integer. The upper bound rejects a corrupt
+    // file.
     reading.multimeasureRests.push(readIntegerInRange(rest, path, 1, 100_000))
   }
 
@@ -393,9 +356,8 @@ function readMeasureStyle(
     if (edge === 'stop') {
       for (const staff of staves) reading.measureRepeats.push({ edge: 'stop', staff })
     } else {
-      // The content is a positive integer or empty, and a sign saying
-      // nothing is the everyday one-measure sign. The upper bound only
-      // rules out a corrupt file: no pattern repeats a thousand measures.
+      // The content is a positive integer or empty, and an empty sign is the
+      // one-measure sign. The upper bound rejects a corrupt file.
       const measures = trimmedText(repeat) === '' ? 1 : readIntegerInRange(repeat, path, 1, 1000)
 
       // The slash count changes the glyph, which MNX has no way to ask for.
@@ -464,8 +426,8 @@ function readKey(
   // signature, a per-accidental <key-octave>) has no home in MNX's
   // fifths-only key, and is reported by the unread-child sweep.
 
-  // Seven accidentals is the practical limit; beyond eleven a key signature
-  // cannot be written at all, so anything larger is a corrupt file.
+  // Beyond eleven fifths a key signature cannot be written, so a larger
+  // value is a corrupt file.
   return { fifths: readIntegerInRange(fifths, path, -11, 11) }
 }
 
@@ -489,16 +451,14 @@ function readTime(
 ): TimeSignature | undefined {
   reportHidden(element.element, 'time', warnings, context)
 
-  // <senza-misura> writes unmetered music, which MNX has no way to state, so
-  // it reads as a statement with no value. The measure reports it: whether
-  // the music it covers is converted with a time signature after all depends
-  // on what else the measure states, which is not known here.
+  // <senza-misura> writes unmetered music, which MNX cannot state, so it
+  // reads as a statement with no value. The measure reports it, because the
+  // result depends on what else the measure states.
   if (element.child('senza-misura')) return undefined
 
   // A composite meter such as 3+2/8 is written as several beats-and-beat-type
-  // pairs. MNX states one count and unit; keeping the first pair would say the
-  // measure is shorter than it sounds, so it is refused rather than converted
-  // to a meter it does not have.
+  // pairs. MNX states one count and unit, and the first pair alone would make
+  // the measure too short, so it is refused.
   const beatsElements = element.children('beats')
   if (beatsElements.length > 1) {
     throw new MusicXMLError(
@@ -572,9 +532,8 @@ function readTimeDisplay(
  *
  * MusicXML writes one <transpose> per staff, told apart by a "number"
  * attribute, and MNX states one for the part. A part whose staves disagree,
- * or which changes instrument partway, keeps the first and reports the rest;
- * the pitches themselves follow whatever is in force, because a pitch stated
- * at the wrong instrument is a wrong note rather than a lost detail.
+ * or which changes instrument partway, keeps the first and reports the rest.
+ * The pitches follow the transposition in force, so each note sounds right.
  */
 function readTransposition(
   element: ElementReader,
@@ -683,18 +642,15 @@ function readClef(
     })
 
     if (sign === 'percussion') {
-      // MNX's staffPosition is the position the clef is drawn at, and a
-      // percussion clef names no note, so the line the source states is
-      // carried straight through. The heights on the staff do not move with
-      // it: a kit note carries its own, and a rest placed by <display-step>
-      // is read against the treble clef held in force above, because
-      // MusicXML states a line to place pitches by for the G, F and C signs
-      // only.
+      // MNX's staffPosition is where the clef is drawn, and a percussion clef
+      // names no note, so the source's line is carried through. The heights
+      // on the staff do not move with it: a kit note carries its own, and a
+      // rest placed by <display-step> reads against the treble clef held in force
+      // above.
       //
-      // Read with no range: a percussion staff may be drawn on more or fewer
-      // than five lines, and MusicXML draws a clef outside the staff by the
-      // same value. A clef stating no line is drawn on the middle of the
-      // staff, whatever its line count.
+      // Read with no range: a percussion staff may have more or fewer than
+      // five lines, and a clef may sit outside the staff. A clef with no line
+      // is drawn on the middle of the staff.
       return {
         sign: 'P',
         staffPosition: lineElement
@@ -723,18 +679,16 @@ function readClef(
   const stated = lineElement ? readInteger(lineElement, path) : undefined
   const line = stated !== undefined && !none ? stated : DEFAULT_CLEF_LINES[sign]
 
-  // A clef says which staff it belongs to. Read and bounded whatever the part
-  // has, because a clef naming a staff the part does not have would place it
-  // nowhere, and a bare Number() here once let "oops" through as a NaN staff.
-  // It is only worth stating where the part has more than one staff.
+  // Bounded to the part's staves, because a clef on a staff the part does not
+  // have belongs nowhere. The staff is stated only where the part has more
+  // than one.
   const named = readAttributeInRange(element.element, 'number', path, 1, state.staves)
   const staff = state.staves > 1 ? named : undefined
 
   // A clef may be transposed for drawing, as a treble-8 sits an octave lower.
-  // MNX carries the amount as an ottava, which reaches three octaves either
-  // way; a change of zero is no transposition. A larger change is valid
-  // MusicXML with no home in MNX, so the clef is drawn at pitch and the loss
-  // is reported rather than the file refused.
+  // MNX carries the amount as an ottava of at most three octaves either way.
+  // A larger change is valid MusicXML with no home in MNX, so the clef is
+  // drawn at pitch and the loss is reported.
   const octaveElement = element.child('clef-octave-change')
   const change = octaveElement ? readInteger(octaveElement, path) : 0
   let octave: number | undefined

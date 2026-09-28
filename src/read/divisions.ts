@@ -1,8 +1,8 @@
 // Reading a <duration>, which MusicXML counts in the <divisions> in force.
 //
 // <divisions> says how many units make a quarter note, is stated in an
-// <attributes> block, and stays in force until restated, which is why this
-// needs the part's running state rather than the element alone.
+// <attributes> block, and stays in force until restated, so this reads the
+// part's running state.
 
 import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
@@ -14,14 +14,11 @@ import { readIntegerInRange } from './numbers.js'
 import type { PartState } from './state.js'
 
 /**
- * The divisions in force. A file may state durations without ever saying how
- * many divisions make a quarter note; the spec names no default, but every
- * such file reads correctly at the customary one per quarter, so that is
- * assumed and reported. The assumption is checkable only against a written
- * note value: where one is stated, a wrong assumption shows as
- * inconsistent:duration warnings, and a note without one is refused rather
- * than guessed at. Held on the state, so the assumption is made and reported
- * once per part.
+ * The divisions in force. A file may state durations with no <divisions>. The
+ * spec names no default, so the customary one per quarter is assumed and
+ * reported. Where a note states a <type>, a wrong assumption shows as
+ * inconsistent:duration warnings, and a note without one is refused. Held on
+ * the state, so the assumption is reported once per part.
  */
 export function divisionsInForce(
   state: PartState,

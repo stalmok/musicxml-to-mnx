@@ -181,8 +181,8 @@ interface VoiceBuilder {
   grace: { group: GraceGroup; beams: BeamedEvent[]; at: Fraction; placedFrom: number } | undefined
   /**
    * The line of the note that opened this sequence, where it is a line laid
-   * over the voice rather than the voice's first. The split is reported
-   * there: the measure would do, but the note is what the source wrote.
+   * over the voice rather than the voice's first. The split is reported at
+   * that note.
    */
   openedAt: number | undefined
   measureRest: MeasureRestState
@@ -292,10 +292,9 @@ interface MarkedArpeggio {
    * What the source numbers it, where it numbers it at all. Two chords
    * sounding together under the same number are one arpeggio rolled across
    * both, which is how a pianist's two hands are rolled as one gesture;
-   * different numbers are two separate rolls. Eleven of the corpus's are the
-   * cross-staff kind. A marker stating no number joins nothing beyond its own
-   * chord: the number is what makes the claim, and reading a default as one
-   * ran a roll across both hands that neither voice asked for.
+   * different numbers are two separate rolls. A marker stating no number
+   * joins nothing beyond its own chord, because the number is what makes the
+   * claim.
    */
   number: string | undefined
   struck: boolean
@@ -336,7 +335,6 @@ function kitOrder(
     .flatMap(([component]) => notes.filter((note) => note.component === component))
 }
 
-/** The staff a voice is mostly on, or nothing when it names no staff at all. */
 /** The staff a voice is mostly on, or nothing when it names no staff at all. */
 function commonestStaff(staves: readonly (number | undefined)[]): number | undefined {
   const counts = new Map<number, number>()
@@ -453,14 +451,13 @@ export class MeasureBuilder {
    *
    * A <backup> reaching past the start of the measure is how exporters return
    * to the start of a measure a voice has not filled: the source backs up by
-   * the whole measure's length whatever that voice wrote. Refusing the
-   * document over it lost three songs of the Lieder corpus, so whatever is
-   * written out there is written at the start instead.
+   * the whole measure's length whatever that voice wrote. Whatever is written
+   * out there is written at the start instead.
    *
    * The cursor itself is left where the source put it, because a <forward>
    * can bring it back: sources write the pair to reach a point they draw at
-   * the measure start, and taking the cursor to the start on the <backup>
-   * alone made the <forward> carry everything after it that much later. The
+   * the measure start. Taking the cursor to the start on the <backup> alone
+   * would put everything after the <forward> that much later. The
    * <backup> that reached out is held rather than reported, so that a reach
    * a <forward> cancels is reported not at all and a reach several
    * <forward>s cancel is reported once.
@@ -478,7 +475,7 @@ export class MeasureBuilder {
    * The cursor where something is about to be written, and where it then
    * stays: writing at the measure start settles what a <backup> reaching
    * past it meant, and no later <forward> can take that back. The reach is
-   * reported here, because this is where it costs the source something.
+   * reported here.
    */
   #writeAt(): void {
     if (compareFractions(this.#cursor, fraction(0)) >= 0) return
@@ -665,7 +662,6 @@ export class MeasureBuilder {
    * since it last sounded. MusicXML leaves such a gap implicit by moving its
    * cursor; MNX has to state it, because a sequence runs without interruption
    * from wherever it starts.
-   *
    */
   #fillGap(builder: VoiceBuilder): void {
     // A voice that is a rest filling the measure holds no sequence to state
@@ -693,11 +689,10 @@ export class MeasureBuilder {
   }
 
   /**
-   * Settles every bracket of the measure, the measure being whole.
-   *
-   * What a bracket writes turns on what it holds once the brackets inside it
-   * are written, on the frame the brackets around it write in, and on the
-   * silence after it, and none of the three is known while it is being read.
+   * Settles every bracket of the measure, the measure being whole. What a
+   * bracket writes turns on what it holds once the brackets inside it are
+   * written, on the frame the brackets around it write in, and on the silence
+   * after it.
    *
    * `measure` is the measure's own shape: where its beats line up, how far it
    * runs, and the time signature it runs against.
@@ -1093,9 +1088,8 @@ export class MeasureBuilder {
       // A setting the source states is set; one it does not is left off the
       // tuplet, rather than set to undefined, because MNX reads an absent
       // key as the renderer's choice. Written as assignments rather than as
-      // conditional spreads so that the compiler holds the difference: a
-      // spread of { bracket: undefined } into a tuplet type-checks, and each
-      // of these four did.
+      // conditional spreads, because a spread of { bracket: undefined } into a
+      // tuplet type-checks.
       const tuplet: Draft<Tuplet> = {
         kind: 'tuplet',
         inner: level.inner,
@@ -1298,7 +1292,7 @@ export class MeasureBuilder {
   }
 
   /**
-   * How much of its written value a note in this voice really lasts, given
+   * How much of its written value a note in this voice lasts, given
    * every tuplet currently open around it: 2/3 inside a triplet, and the
    * ratios multiply where tuplets nest. Inside a two-note tremolo each note
    * is written with the value of the pair, so it lasts half of it.
@@ -1336,10 +1330,9 @@ export class MeasureBuilder {
   }
 
   /**
-   * Closes the tremolo: exactly two notes of one written value, together
-   * occupying twice their measured duration. Anything else is a tremolo this
-   * converter cannot make sense of, and refusing is better than emitting a
-   * measure that does not add up.
+   * Closes the tremolo: two notes of one written value, together occupying
+   * twice their measured duration. Anything else is refused, because the
+   * measure would not add up.
    */
   closeTremolo(
     voice: string | undefined,
@@ -1437,9 +1430,9 @@ export class MeasureBuilder {
   ): void {
     // Every note of a chord carries the mark, so the first one to arrive sets
     // it up and the rest join what it already covers. Marks on one chord are
-    // that chord's own roll however the source numbers them: sources number
-    // one note and leave the next bare, and taking those apart drew the roll
-    // twice. Only two stated numbers that differ are two rolls.
+    // that chord's own roll however the source numbers them, because sources
+    // number one note and leave the next bare. Only two stated numbers that
+    // differ are two rolls.
     const existing = this.#arpeggios.find(
       (found) =>
         found.event === event &&
@@ -1497,9 +1490,8 @@ export class MeasureBuilder {
     kit: ReadonlyMap<string, KitComponent>,
   ): Arpeggio[] {
     // Marks on one chord are weighed together first, whatever they are
-    // numbered. Numbering them differently otherwise put them in groups that
-    // could not see each other, and a chord marked rolled by one and struck
-    // by the other came out as both, drawn over the same notes.
+    // numbered, so a chord marked rolled on one note and struck on another is
+    // seen as one chord.
     const kept: MarkedArpeggio[] = []
     for (const marked of this.#arpeggios) {
       const first = kept.find((one) => one.event === marked.event)
@@ -1725,11 +1717,11 @@ export class MeasureBuilder {
     // the ratio alone opened is not one: the source drew no bracket for it,
     // and it ends by its own count rather than on a stop.
     //
-    // The test matters twice over. A bracket cut at a barline is usually
-    // carried on by notes that state the same ratio, which opens such a run,
-    // so without it the stop that ends the source's bracket closes the run
-    // instead and the record of the cut bracket is left standing for the rest
-    // of the part, to swallow some later stop that means something else.
+    // A bracket cut at a barline is usually carried on by notes that state
+    // the same ratio, which opens such a run. Without this test, the stop that
+    // ends the source's bracket would close the run, and the record of the
+    // cut bracket would stay for the rest of the part and swallow a later,
+    // unrelated stop.
     const drawn = this.#layersFor(voice).layers.some((layer) =>
       tupletFrames(layer).some((open) => !open.unbracketed),
     )
@@ -1828,15 +1820,13 @@ export class MeasureBuilder {
       )
       return closed.number
     }
-    // Real scores contain brackets whose content does not add up to the
+    // Sources contain brackets whose content does not add up to the
     // stated ratio: a lone quarter under a 3:2 eighth ratio, standing for a
     // triplet quarter. MNX sequences a tuplet by advancing the cursor over
     // its outer and requires the content to come to inner, so such a bracket
     // is rewritten to count the notes it holds, which leaves them sounding
     // for the time the source gives them. Which reading it takes is settled
-    // once the measure is whole: what the bracket holds, the frame the
-    // brackets around it write in and the silence after it are none of them
-    // known here.
+    // once the measure is whole.
     const claim: TupletClaim = {
       tuplet,
       within: closed.within,
@@ -1876,10 +1866,9 @@ export class MeasureBuilder {
   ): PlacedGraceNote {
     const builder = this.#builderFor(voice)
     this.#writeAt()
-    // A grace note is squeezed in before the note it ornaments, so time the
-    // voice has passed over in silence is passed over before the group rather
-    // than after it. Filling the gap here keeps the group beside its note
-    // instead of stranding it at the point the voice last sounded.
+    // A grace note is drawn before the note it ornaments, so time the voice
+    // has passed over in silence goes before the group. This keeps the group
+    // beside its note, not at the point the voice last sounded.
     this.#fillGap(builder)
 
     const list = innermost(builder)
@@ -1942,10 +1931,10 @@ export class MeasureBuilder {
    * 3/2 measure rests with a whole rest lasting a dotted whole. Where the
    * exporter leaves measure="yes" off, taking the written value as the rest's
    * length leaves the measure short. MNX has the full-measure rest's
-   * visualDuration for exactly this: the rest lasts the measure, and the
-   * value drawn is stated beside it.
+   * visualDuration for this: the rest lasts the measure, and the value drawn
+   * is stated beside it.
    *
-   * Settled here rather than at the note, because a rest lasting exactly the
+   * Settled here rather than at the note, because a rest lasting the whole
    * measure is not the measure's rest wherever it stands: sources write one
    * beside other notes, and the voice has to be whole before the two can be
    * told apart.
@@ -2043,7 +2032,7 @@ export class MeasureBuilder {
    *
    * A voice belongs to the staff it spends most of its time on, and only the
    * events that reach across to another say so. Choosing the commonest that
-   * way keeps the overrides to the notes that genuinely cross.
+   * way keeps the overrides to the notes that cross.
    */
   #sequences(warnings: WarningCollector, context: WarningContext): Sequence[] {
     // A note that names no voice lands in its own bucket. Beside notes that do

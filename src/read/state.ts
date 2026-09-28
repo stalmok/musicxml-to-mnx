@@ -40,8 +40,7 @@ export function staffLinesOf(state: PartState, staff: number | undefined): numbe
  * MNX staff position it is drawn at, counted in half spaces from the middle
  * of the staff. The middle of a five-line staff is its third line; of a
  * one-line staff, the line itself; of a two-line staff, the space between
- * the two. So the middle moves with the count, and a staff drawn on other
- * than five lines places everything on it differently.
+ * the two. So the middle moves with the count.
  */
 export function staffPositionOfLine(line: number, lines: number): number {
   return 2 * line - lines - 1
@@ -49,10 +48,9 @@ export function staffPositionOfLine(line: number, lines: number): number {
 
 /**
  * The clef in force on a staff: its sign, and the staff position its
- * reference pitch sits at. The position rather than the MusicXML line,
- * because the two are the same thing only on a staff of a given line count,
- * and holding the position keeps every height read against this clef in the
- * frame the clef itself was written in.
+ * reference pitch sits at. The position, not the MusicXML line, because the
+ * two match only for a given line count. Heights read against this clef stay
+ * in the frame it was written in.
  */
 export interface ClefInForce {
   sign: PitchedClefSign
@@ -79,8 +77,7 @@ export interface PartState {
   /**
    * Whether the divisions in force are an assumption rather than something
    * the file stated. A written note value can be checked against an assumed
-   * duration; a note with no written value cannot, so it is refused rather
-   * than guessed at.
+   * duration; a note with no written value cannot, so it is refused.
    */
   divisionsAssumed: boolean
   /**
@@ -110,11 +107,9 @@ export interface PartState {
   /**
    * The key and time signature each staff of the part has in force, as the
    * source states them, keyed by staff number. MusicXML states one per staff
-   * and MNX states one for the score, so a measure restating for one staff
-   * what every staff already has loses nothing, and one giving a staff
-   * something of its own is the loss that is reported. A key is held as it
-   * sounds, so a part that changes its transposition still compares like
-   * with like.
+   * and MNX states one for the score, so only a staff given one of its own is
+   * reported as a loss. A key is held as it sounds, so a part that changes its
+   * transposition still compares like with like.
    */
   staffKeys: Map<number, Key | undefined>
   staffTimes: Map<number, TimeSignature | undefined>

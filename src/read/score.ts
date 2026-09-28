@@ -121,9 +121,9 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
 
   // <defaults> is page geometry with no home in MNX, except its
   // <music-font>: the family names the SMuFL font the score is engraved in,
-  // which is MNX's part.smuflFont. The family is carried; anything else in
-  // the element keeps the no-home verdict, reported only where it is there
-  // to lose. MusicXML allows one <defaults> and one <music-font> in it.
+  // which is MNX's part.smuflFont. The family is carried, and anything else
+  // in the element is reported as having no home. MusicXML allows one
+  // <defaults> and one <music-font> in it.
   let musicFont: string | undefined
   for (const defaults of reader.children('defaults')) {
     for (const font of children(defaults, 'music-font')) {
@@ -139,11 +139,9 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
   // <identification> holds the composer, the rights and the encoding notes,
   // and the schema has no header for any of them. The one part with a home
   // is <encoding><supports>: a whole "yes" for accidentals or beams is the
-  // schema's support flag, and it is carried, so those are consumed as
-  // accounted. A "no", or a declaration narrowed to one attribute, is a
-  // statement the writer cannot make, and counts as the rest, which is
-  // reported where there is one. MusicXML allows one <encoding> and any
-  // number of <supports> in it.
+  // schema's support flag, and is carried. A "no", or a declaration narrowed
+  // to one attribute, cannot be written, and is reported with the rest.
+  // MusicXML allows one <encoding> and any number of <supports> in it.
   let declaresBeams = false
   let declaresAccidentals = false
   for (const identification of reader.children('identification')) {
@@ -197,10 +195,9 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
   }
 
   // The global list is the score's measure list, and every part's measures
-  // line up with it by position. A part with fewer of them stops before the
-  // score does, which nothing downstream can see: MNX gives a part a plain
-  // list of measures, so a short one is a well-formed document that says the
-  // part falls silent partway through.
+  // line up with it by position. MNX gives a part a plain list of measures,
+  // so a short part is valid MNX that falls silent partway through. It is
+  // reported here.
   for (const reading of readings) {
     const found = reading.part.measures.length
     if (found !== globalMeasures.length) {
@@ -240,10 +237,9 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
  * Renames every part id MNX cannot state or the converter generates for
  * something else, in the parts and in the grouping's staves, which are the
  * only places the model refers to a part by id. Generated names run p1, p2,
- * ... skipping any id a part already holds, so a rename cannot collide: the
- * counter only rises, so no generated name is reached twice, and the set it
- * is held against is read-only for that reason. A generated name is never
- * one GENERATED_ID_PATTERN matches.
+ * ... skipping any id a part already holds. The counter only rises, so no
+ * generated name is reached twice. A generated name is never one
+ * GENERATED_ID_PATTERN matches.
  */
 function renameInvalidPartIds(
   score: Score,
@@ -429,9 +425,8 @@ function mergeGlobalMeasures(
     const existing = target[index]
     scoreTime = existing?.time ?? scoreTime
     partTime = measure.time ?? partTime
-    // The measure's position, as every other report names it. A source that
-    // labels it otherwise still labels one measure of a part, and two reports
-    // naming the same measure two ways cannot be held together.
+    // The measure's position, as every other report names it, not the
+    // source's label.
     const context = { part, measure: index + 1 }
     const pair = keys[index]
     if (
@@ -608,17 +603,13 @@ function sameJump(a: DalSegno, b: DalSegno): boolean {
 }
 
 /**
- * A tempo belongs to the score rather than to a part, but MusicXML has to
- * write it inside one, and exporters routinely write the same mark into every
- * part. Taking them all would state one tempo several times over, which a
- * renderer would draw several times over; taking only the first part's would
- * lose a mark that only a later part states. So each is kept once.
+ * A tempo belongs to the score, but MusicXML writes it inside a part, and
+ * exporters often write the same mark into every part. Each mark is kept
+ * once, whichever part states it.
  *
- * Two tempos at one point are the exception. MNX holds a list, so both would
- * be written and both drawn over the same beat, and a player would have to
- * pick one. That is the parts disagreeing about what the score does, so the
- * first is kept and the disagreement reported, as for every other mark the
- * parts share.
+ * MNX holds a list, so two different tempos at one point would both be drawn
+ * over the same beat. The first is kept and the disagreement reported, as for
+ * every other mark the parts share.
  */
 function mergeTempos(
   existing: readonly Tempo[],
@@ -631,12 +622,8 @@ function mergeTempos(
     if (merged.some((other) => sameTempo(other, tempo))) continue
     const at = merged.findIndex((other) => compareFractions(other.position, tempo.position) === 0)
     if (at >= 0) {
-      // Every part is merged into the same list, so a mark already there is
-      // an earlier part's where it came from the list this part was merged
-      // into, and this part's own where it came from this part's marks. Both
-      // are a disagreement about one beat; only the wording differs, and the
-      // report is no use if it sends a reader looking for a second part that
-      // is not there.
+      // A mark below existing.length is an earlier part's, and one at or past
+      // it is this part's own. Only the wording of the report differs.
       const acrossParts = at < existing.length
       warnings.add(
         'inconsistent:tempo',
@@ -665,12 +652,6 @@ function sameTempo(a: Tempo, b: Tempo): boolean {
 }
 
 /**
- * The name each part goes under. The part list holds a good deal more than
- * that, from a part's abbreviation to the brace grouping two of them
- * together, and every bit of it that is not read here is reported: it used to
- * be skipped wholesale on the strength of the name being read.
- */
-/**
  * The part list, read once. `names` holds only the names actually drawn, while
  * `listed` holds every part id the list introduces, named or not, so a part
  * whose name is hidden or absent is still known to be listed.
@@ -697,13 +678,8 @@ interface PartList {
 }
 
 /**
- * The drawn text of a named element, or undefined where the source gives none.
- * An empty element states no name, and one hidden with print-object="no" is
- * one the source chose not to draw; MNX's part.name and part.shortName are both
- * optional, so either is omitted rather than drawn.
- *
- * A <score-part> holds at most one <part-name> and one <part-abbreviation>, so
- * taking the first with child() is right.
+ * Reads the part list: each part's names and instrument setup, and the part
+ * group edges. Everything not read here is reported.
  */
 function readPartNames(root: ElementReader, warnings: WarningCollector): PartList {
   const names = new Map<string, string>()
@@ -768,10 +744,9 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
         // by name. A block naming no <score-instrument> sets up nothing a
         // note can name, so it is left unread and reported whole.
         //
-        // Read without refusing anything: a block naming no instrument, or a
-        // pitch outside what MIDI counts, is a playback detail of a document
-        // that is otherwise ordinary music. Whatever is not taken here is left
-        // unread and reported by the sweep.
+        // Nothing here is refused: a block naming no instrument, or a pitch
+        // outside MIDI's range, is a playback detail. Whatever is not taken
+        // here is reported by the sweep.
         const midiPitches = new Map<string, number>()
         for (const midi of scorePart.blocks('midi-instrument')) {
           const midiId = attribute(midi.element, 'id')
@@ -943,10 +918,8 @@ function readPart(
   const readings = children(element, 'measure').map((measureElement, index) =>
     readMeasure(measureElement, index, id, state, scoreTimes[index], warnings, partPath),
   )
-  // Hairpins and octave shifts are paired once the whole part is in, because
-  // each is written between the notes and the document's order is not the
-  // music's; whatever is still open once the part ends is reported in the same
-  // step, so nothing left open is dropped in silence.
+  // Spans are paired once the whole part is in, because the document's order
+  // is not the music's. What stays open is reported in the same step.
   state.spanners.finish(
     readings.map((reading) => reading.measure),
     warnings,
@@ -1270,15 +1243,13 @@ function reportLate<T>(
  *
  * Decided here, once every part has been read, because the mark can be
  * written after the <sound> that echoes it and can be drawn by another part.
- * Deciding it as each <sound> was read reported both as losses they are not.
  *
  * The two tempos are compared as quarter notes per minute, which is what
  * MusicXML's tempo attribute counts. A mark of a dotted quarter at 72 and a
- * <sound tempo> of 108 are one statement; one of 110 is another, and saying
- * so is what keeps a second playback tempo at one point from vanishing.
+ * <sound tempo> of 108 are one statement; one of 110 is another.
  *
- * The report reads in document order, so each is reported at the place the
- * <sound> kept as it was read rather than here at the end.
+ * Each is reported at the place the <sound> reserved, so the report stays in
+ * document order.
  */
 function reportSoundTempos(
   partId: string,
@@ -1621,12 +1592,10 @@ function readMeasure(
         break
       }
 
-      // A <sound> is playback, so nothing it carries reaches the output. A
-      // <sound tempo> at the same point as a <metronome> the score draws is
-      // that mark's playback echo, and is passed over in silence; a bare one
-      // is reported like any other playback the output cannot hold. Which it
-      // is waits for the end of the measure, because the mark can be written
-      // after the <sound> that echoes it.
+      // A <sound tempo> at the same point and tempo as a <metronome> the score
+      // draws is that mark's playback echo, and is not reported. Any other is. Which
+      // it is waits until every part is read, because the mark can be written
+      // after the <sound> or by another part.
       case 'sound': {
         const reading = readSound(reader, builder.position(), warnings, context)
         if (reading.fine) fines.push(reading.fine)
@@ -1748,12 +1717,11 @@ function readMeasure(
       time,
       tempos,
       number: stated !== position ? stated : undefined,
-      // A light-heavy beside a backward repeat is how the closing sign
-      // draws, and repeatEnd already says to draw it, so stating final too
-      // would assert a barline the source never states. Settled here rather
-      // than per <barline>, because a source can split the style and the
-      // repeat across two elements at the one edge. Any other style beside
-      // the repeat is the source's own statement and stays.
+      // A light-heavy beside a backward repeat is how the closing sign is
+      // drawn, and repeatEnd already draws it, so final is not stated too.
+      // Settled here, not per <barline>, because a source can split the style
+      // and the repeat across two elements at one edge. Any other style
+      // beside the repeat stays.
       barline: repeatEnd !== undefined && barline === 'final' ? undefined : barline,
       repeatStart,
       repeatEnd,
@@ -1856,10 +1824,8 @@ function dedupeClefs(
   return clefs
     .filter((clef, index) => {
       const replacing = clefs.find((later, at) => at > index && atSamePoint(later, clef))
-      // Exporters restate the clef a staff already has, which says the same
-      // thing twice and loses nothing by being said once. Only a clef the next
-      // one really replaces is a loss, and reporting the other called a
-      // lossless conversion a permanent limit of the format.
+      // Exporters restate the clef a staff already has, which loses nothing.
+      // Only a clef the next one replaces is a loss.
       if (replacing && !sameClef(replacing, clef)) {
         warnings.add(
           'unrepresentable:clef',

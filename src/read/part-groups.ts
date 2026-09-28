@@ -48,9 +48,8 @@ export class GroupingBuilder {
   /** A <part-group> edge, in document order. */
   edge(group: ElementReader, warnings: WarningCollector, path: DocumentPath): void {
     const element = group.element
-    // A group can nest inside another, told apart by number, like other
-    // paired markers. The type is what pairs the edges, so an edge without
-    // one, or with one that names neither edge, is structurally broken.
+    // The type pairs the edges, so an edge without one, or with one that
+    // names neither edge, is structurally broken.
     const type = requireAttribute(element, 'type', path)
     const number = attribute(element, 'number') ?? '1'
     if (type === 'start') {
@@ -109,9 +108,8 @@ export class GroupingBuilder {
    * a single group says nothing a plain part list does not, so none is kept.
    */
   finish(warnings: WarningCollector): readonly GroupingItem[] {
-    // A group whose stop never arrives runs to the end of the list, which is
-    // what a reader drawing the source would do. Innermost first, so nesting
-    // survives the close.
+    // A group whose stop never arrives runs to the end of the list. Innermost
+    // first, so nesting survives the close.
     for (let closed = this.#open.pop(); closed; closed = this.#open.pop()) {
       if (!closed.crossed) {
         warnings.add(
@@ -165,8 +163,7 @@ function prunedItems(
       return []
     }
     const content = prunedItems(item.content, written, lines, warnings)
-    // A group around nothing draws nothing, so nothing drawable is lost by
-    // leaving it out.
+    // A group around nothing draws nothing, so leaving it out loses nothing.
     if (content.length === 0) return []
     return [{ ...item, content }]
   })
@@ -186,7 +183,7 @@ function closedGroup(open: OpenPartGroup): GroupingItem {
 /**
  * The symbol a group is drawn with. MusicXML's default is "none", which MNX
  * spells "noSymbol". A <part-group> holds at most one <group-symbol>, so
- * taking the first with child() is right.
+ * child() is correct.
  */
 function groupSymbolOf(group: ElementReader, warnings: WarningCollector): PartGroup['symbol'] {
   const element = group.child('group-symbol')
@@ -218,7 +215,7 @@ function groupSymbolOf(group: ElementReader, warnings: WarningCollector): PartGr
 
 /**
  * How barlines run through the group. A <part-group> holds at most one
- * <group-barline>, so taking the first with child() is right.
+ * <group-barline>, so child() is correct.
  */
 function groupBarlineOf(
   group: ElementReader,

@@ -60,8 +60,8 @@ export interface TupletStart {
 }
 
 /**
- * A tuplet bracket currently open: the list its notes land in, how much of
- * its written value a note inside really lasts (2/3 inside a triplet), and
+ * A tuplet bracket currently open: the list its notes go in, how much of
+ * its written value a note inside lasts (2/3 inside a triplet), and
  * the number its start marker gave it, for its stop to be checked against.
  */
 export interface OpenTuplet {
@@ -80,9 +80,8 @@ export interface OpenTuplet {
   /**
    * The ratio the source stated for this level: its own marker gave it, or
    * one level opened and the note's <time-modification> is all of it. Unset
-   * where the converter worked it out instead, by reading it off the first
-   * note or by dividing a cumulative ratio between levels, which leaves a
-   * level with whatever the others did not take. Such a ratio says nothing
+   * where the converter worked it out, by reading it off the first note or by
+   * dividing a cumulative ratio between levels. Such a ratio says nothing
    * about what the source drew over the bracket.
    */
   stated: { inner: NoteValueQuantity; outer: NoteValueQuantity } | undefined
@@ -223,14 +222,14 @@ interface TupletLevel {
  * The ratio each tuplet level opening on one note states, outermost first.
  *
  * A note's <time-modification> is cumulative: inside nested tuplets it states
- * the combined ratio of every level, not each one's own. Where every share is
- * known - each start marker states its ratio, or all but one do and the last
- * takes what remains - the markers are used, provided they multiply out to
- * what the <time-modification> requires. Otherwise each level is recovered by
- * division: the outermost open level keeps the cumulative ratio exactly as
- * the source writes it, and each further level divides out what is already
- * open. That division cannot split the cumulative ratio between two levels
- * opening on the same note, which is what the markers are for.
+ * the combined ratio of every level. Where every share is known (each start
+ * marker states its ratio, or all but one do and the last takes what
+ * remains), the markers are used, provided they multiply out to what the
+ * <time-modification> requires. Otherwise each level is recovered by
+ * division: the outermost open level keeps the cumulative ratio as the source
+ * writes it, and each further level divides out what is already open. That
+ * division cannot split the cumulative ratio between two levels opening on
+ * the same note, which is what the markers are for.
  *
  * The notes' durations follow the <time-modification>, so it governs timing.
  * Markers whose stated ratios do not multiply out to it disagree with the
@@ -319,11 +318,8 @@ export function quantityLength(quantity: NoteValueQuantity): Fraction {
 /**
  * A bracket the read has closed, and what the read saw of it.
  *
- * What the bracket writes is not decided here. It turns on what the bracket
- * holds once the brackets inside it are written, on the frame the brackets
- * around it end up writing in, and on the silence after it, and none of the
- * three is known while the bracket is being read. So every field is a fact
- * the read observed, and nothing derived is stored.
+ * What the bracket writes is settled once the measure is whole, so every
+ * field is a fact the read observed, and nothing derived is stored.
  */
 export interface TupletClaim {
   tuplet: Draft<Tuplet>
@@ -648,8 +644,7 @@ function complete(
   tuplet.outer = taken.counted.outer
   const reached = voice.end
   adopt(claim, voice, adopted, taken.moved)
-  // Whatever the bracket takes in was drawn outside it, so the bracket ends
-  // up drawn over more than the source draws it over.
+  // Whatever the bracket takes in was drawn outside it in the source.
   if (adopted && taken.moved > 0) {
     warnings.addAt(
       claim.place,

@@ -84,9 +84,7 @@ export interface SoundTempo {
   place: WarningPlace
 }
 
-// The plain dynamic marks MNX states as a value. A recogniser rather than a
-// bare set, so this list and the model's own union are held to each other and
-// the mark it accepts reaches the writer without a cast.
+// The plain dynamic marks MNX states as a value.
 const isDynamicValue = recogniser<DynamicValue>({
   pppppp: true,
   ppppp: true,
@@ -150,8 +148,8 @@ const ACCENT_DYNAMICS = new Map<string, AccentDynamic>([
     { glyph: 'dynamicSforzatoFF', value: 'ff', residualValue: undefined, prefix: 's', suffix: 'z' },
   ],
   // pf (poco forte / piano-forte) has no settled reading of its two letters,
-  // and the accent prefixes MNX names stop at s and r, so its glyph alone is
-  // carried rather than a fabricated spelling.
+  // and the accent prefixes MNX names stop at s and r, so only its glyph is
+  // carried.
   [
     'pf',
     {
@@ -202,15 +200,15 @@ export function readDirection(
     soundTempos: [],
   }
 
-  // A direction says which staff it belongs under. A tempo is the score's, so
-  // it has no use for one, but a dynamic sits under a particular hand and MNX
-  // states the staff on it. Only worth carrying where there is a choice.
+  // A direction says which staff it belongs under. A tempo is the score's,
+  // but MNX states the staff on a dynamic. Stated only where the part has more
+  // than one staff.
   const staffElement = element.child('staff')
   const named = staffElement ? readIntegerInRange(staffElement, path, 1, state.staves) : undefined
   const staff = state.staves > 1 ? named : undefined
 
   // Which side of the staff the direction is drawn on. MNX states it on the
-  // dynamic and the octave shift; without it the renderer has to guess.
+  // dynamic and the octave shift.
   const placement = placementOf(element.element)
 
   const at = offsetPosition(element, position, state, warnings, context)
@@ -232,12 +230,10 @@ export function readDirection(
     const wording = new PendingWording()
     let lastMark: SuffixTarget | undefined
     for (const found of directionType.element.children) {
-      // Each arm accounts for the child it handles, so that the sweep at the
-      // top says what became of every one of them. A type read plainly has
-      // its attributes swept with the other read children; a <metronome> is
-      // read through a reader of its own, so the sweep reports the children
-      // that reader passed over; an unhandled type is reported whole below,
-      // which accounts for it in place of reading it.
+      // Each arm accounts for the child it handles. A type read plainly has
+      // its attributes swept with the other read children. A <metronome> has
+      // a reader of its own, and the sweep reports what that reader skips. An
+      // unhandled type is reported whole below.
       switch (found.name) {
         case 'dynamics': {
           // Read plainly: readDynamics reports every child of a <dynamics>
@@ -327,8 +323,7 @@ export function readDirection(
 
     // Wording left over closes the mark before it. With no mark to close, it
     // stands alone: MNX requires only a position and a type of a dynamic
-    // group, so the words are carried on a group with no level rather than
-    // qualifying a level the source never wrote.
+    // group, so the words are carried on a group with no level.
     const trailing = wording.take()
     if (trailing !== undefined) {
       const group = suffixOrStandalone(lastMark, trailing.text, at, staff, placement)
@@ -357,10 +352,9 @@ export function readDirection(
 }
 
 /**
- * Where the direction actually belongs, which is where the cursor has reached
- * plus whatever <offset> says. The offset is routinely negative: a mark
- * written after the note it sits under is pulled back on to it, and nine of
- * the corpus's thirteen offsets do exactly that.
+ * Where the direction belongs: where the cursor has reached, plus whatever
+ * <offset> says. The offset is often negative, to pull a mark written after
+ * its note back on to it.
  */
 function offsetPosition(
   element: ElementReader,
@@ -390,10 +384,9 @@ function offsetPosition(
   const divisions = divisionsInForce(state, warnings, context, offset.line)
   const moved = addFractions(position, fraction(count, divisions * 4))
 
-  // MNX states a position within its measure, counting from the start, so
-  // there is nowhere to put a mark an offset carries out of it, in either
-  // direction. Carrying one over would need it moved into the neighbouring
-  // measure, which is not something this converter does yet.
+  // MNX states a position within its measure, counting from the start, so a
+  // mark an offset carries out of it has nowhere to go. Moving it into the
+  // next or previous measure is not built yet.
   if (compareFractions(moved, fraction(0)) < 0 || pastTheEnd(moved, state)) {
     warnings.add(
       'unsupported:element',
@@ -409,9 +402,9 @@ function offsetPosition(
 
 /**
  * Whether a position runs past the end of the measure, as far as the time
- * signature in force says. Unknowable before any time signature is stated,
- * and real music does contain measures that do not match the one in force, so
- * this only catches a mark that has plainly left the bar.
+ * signature in force says. Unknowable before any time signature is stated.
+ * A measure does not always match its time signature, so this catches only a
+ * mark past the stated length.
  */
 function pastTheEnd(position: Fraction, state: PartState): boolean {
   const measure = measureLength(state)
@@ -420,9 +413,9 @@ function pastTheEnd(position: Fraction, state: PartState): boolean {
 
 // How far MusicXML's octave-shift sizes move the music, in octaves, each way
 // the shift can go. The numbers are the ones written on the page: 8va is one
-// octave, 15ma two. MNX states the other direction as a negative amount, so
-// both are written out here, keyed by the type MusicXML wrote, rather than
-// negated at the call site where the result would leave the model's union.
+// octave, 15ma two. MNX states the other direction as a negative amount.
+// Both are written out, not negated at the call site, so each value stays in
+// the model's union.
 const SHIFT_SIZES = new Map<string, Record<'up' | 'down', OttavaAmount>>([
   ['8', { down: 1, up: -1 }],
   ['15', { down: 2, up: -2 }],
@@ -433,13 +426,12 @@ const SHIFT_SIZES = new Map<string, Record<'up' | 'down', OttavaAmount>>([
  * An octave shift: a stretch drawn an octave or more from where it sounds, to
  * keep it off the ledger lines.
  *
- * The sign is the one place this is easy to get backwards, and the two specs
- * say it in opposite terms. MusicXML's type is which way the notes were moved
- * to get them onto the staff, so 8va, where the music sounds higher than it
- * is drawn, is written as a shift "down". MNX's value is how far the written
- * pitch sits below the sounded one, so the same 8va is a positive 1. Both
- * formats put the sounding pitch on the notes themselves, so nothing is
- * transposed either way; this says only how the passage is drawn.
+ * The two specs state the sign in opposite terms. MusicXML's type is which
+ * way the notes were moved to get them onto the staff, so 8va, where the
+ * music sounds higher than it is drawn, is a shift "down". MNX's value is
+ * how far the written pitch sits below the sounded one, so the same 8va is a
+ * positive 1. Both formats put the sounding pitch on the notes, so nothing is
+ * transposed; this says only how the passage is drawn.
  */
 function readOctaveShift(
   found: XmlElement,
@@ -500,8 +492,7 @@ function readOctaveShift(
 }
 
 // MusicXML's wedge types, in MNX's. A hairpin opening to the right gets
-// louder; one closing gets softer. Keyed by the model's own word, so a hairpin
-// shape the model gains and this table lacks does not compile.
+// louder; one closing gets softer.
 const MUSICXML_WEDGES: Record<WedgeType, string> = {
   increasing: 'crescendo',
   decreasing: 'diminuendo',
@@ -522,7 +513,7 @@ type WedgeReading = { edge: 'start'; hairpin: Dynamic } | { edge: 'stop'; stop: 
 /**
  * A hairpin: a dynamic that grows or fades from here to somewhere later,
  * often several measures away. MusicXML marks both ends and numbers them so
- * they can be matched, exactly as it does a slur, and MNX states the pair
+ * they can be matched, as it does a slur, and MNX states the pair
  * once, on the end where it begins. A stop hands back the stop itself, which
  * wording written there can qualify. A wedge that converts to nothing reads
  * as nothing.
@@ -635,9 +626,8 @@ function stopWording(
 }
 
 /**
- * Wording with no mark to qualify, carried as a dynamic group of its own:
- * MNX requires only a position and a type of one, so the words are drawn
- * where the source drew them and no level the source never wrote is stated.
+ * Wording with no mark to qualify, carried as a dynamic group of its own.
+ * MNX requires only a position and a type of one, so no level is stated.
  */
 function standaloneWording(
   text: string,
@@ -656,29 +646,23 @@ function standaloneWording(
   }
 }
 
-/**
- * A <sound> is mostly a playback element, and most of what it carries reaches
- * nothing in the output. Its tempo is playback rather than notation: MNX's
- * tempo object is always drawn, so emitting one from a <sound> would fabricate
- * a metronome the source never displayed. A <metronome> beside it is the drawn
- * mark, and the <sound tempo> only echoes it for playback, so that echo is
- * passed over without a word. A bare <sound tempo> with no metronome is
- * reported as a converter gap rather than a format limit: the schema does hold
- * a tempo, and what stops this one being written is the decision above, not the
- * absence of anywhere to put it. Which of the two it is comes back as the
- * tempo for the caller to settle, because the mark it echoes can be written
- * after the <sound> and can be drawn by another part. A velocity or a pan
- * position has no such home, and says so.
- *
- * Two attributes are notation MNX does hold: <sound fine> is a Fine, and
- * <sound dalsegno> a dal-segno jump. Both go on the score's measure at the
- * point the <sound> is written, and the rest is reported as before.
- */
 // How long the final note of a movement sounds, in divisions. MusicXML writes
 // it as a decimal, and XML's decimal allows every one of "8", "8.5", "8." and
 // ".5", with a leading plus. A duration is never negative, so no minus.
 const FINAL_NOTE_DURATION = /^\+?(\d+(\.\d*)?|\.\d+)$/
 
+/**
+ * A <sound> is mostly playback. Its tempo is playback, not notation: MNX's
+ * tempo is always drawn, so a tempo written from a <sound> would draw a mark
+ * the source did not. A <sound tempo> at the same point and tempo as a drawn
+ * <metronome> echoes the mark and is not reported. Any other is reported as a
+ * converter gap, because the schema does hold a tempo. The tempo comes back
+ * for the caller to settle, because the mark can be written after the <sound>
+ * or by another part. A velocity or a pan position has no home, and is reported as such.
+ *
+ * <sound fine> is a Fine and <sound dalsegno> a dal-segno jump. Both go on
+ * the score's measure where the <sound> is written. The rest is reported.
+ */
 export function readSound(
   sound: ElementReader,
   position: Fraction,
@@ -704,11 +688,8 @@ export function readSound(
     }
     if (name === 'fine') {
       // MusicXML writes the fine as "yes", or as the divisions the final note
-      // sounds for. The number is playback and the Fine it marks is the
-      // notation, so both mark the Fine and the number is passed over. The
-      // presence of the attribute is not the mark on its own: a value the
-      // format does not define says nothing about where the piece ends, and
-      // writing a Fine from it would end the piece where the source did not.
+      // sounds for. Either marks the Fine, and the number is playback. Any
+      // other value is reported, not read as a Fine.
       const written = (attribute(sound.element, 'fine') ?? '').trim()
       if (written === 'yes' || FINAL_NOTE_DURATION.test(written)) {
         fine = { location: position }
@@ -737,9 +718,8 @@ export function readSound(
       // from another when matching a jump to the one it goes back to.
       segnoName = attribute(sound.element, 'segno')
     }
-    // Classified as the attribute it is. Classifying it by element name gave a
-    // <sound dynamics> the verdict of the <dynamics> element, which does have
-    // a home, so a playback velocity read as a converter gap.
+    // Classified by attribute name, not element name: <sound dynamics> is a
+    // playback velocity with no home, unlike the <dynamics> element.
     const loss = attributeLoss('sound', name)
     warnings.add(
       loss.code,
@@ -754,9 +734,6 @@ export function readSound(
 
 // The side a direction is drawn on, from its placement. MusicXML's above and
 // below are the words MNX states, so a known one passes straight through.
-// The <direction-type> children a reader takes something from. Their
-// attributes are swept after the reader has run; anything else is reported
-// as a whole element, its attributes covered by that report.
 function placementOf(element: XmlElement): 'above' | 'below' | undefined {
   const placement = attribute(element, 'placement')
   return placement === 'above' || placement === 'below' ? placement : undefined
@@ -769,8 +746,7 @@ function placementOf(element: XmlElement): 'above' | 'below' | undefined {
  * the whole <direction-type> until the mark it opens arrives and becomes
  * that mark's prefix. Anything still held once the marks run out closes the
  * last one instead, as its suffix, or is carried standing alone. The line of
- * each piece is held with it, so a report points at the wording rather than
- * at the block around it.
+ * each piece is held with it, so a report points at the wording.
  *
  * Pieces are held as written and trimmed only once joined, so that the
  * source's own spacing decides where the words run together: "sempre " and
@@ -852,9 +828,7 @@ function readDynamics(
         { ...context, line: mark.line },
         mark.name,
       )
-      // The wording opened this mark, so it goes with it. Passing it on to
-      // the next mark would draw the words against something the source never
-      // stood them in front of.
+      // The wording opened this mark, so it goes with it.
       const orphaned = wording.take()
       if (orphaned)
         warnings.add(
@@ -875,8 +849,8 @@ function readDynamics(
 
 /**
  * Report the glyph a source names for its wording. MNX states glyphs for the
- * dynamic mark itself, so putting one there would redraw the mark rather than
- * the words; the wording goes over as text and the glyph is said out loud.
+ * dynamic mark itself, so putting one there would redraw the mark, not the
+ * words. The wording goes over as text and the glyph is reported.
  *
  * The two cases are different kinds of loss. A glyph with no text is the
  * mark itself, and a group with no level can state glyphs, so a later
@@ -921,11 +895,9 @@ function readMetronome(
 ): Tempo[] {
   const element = reader.element
   // MusicXML allows several <beat-unit> children: a second one states the
-  // tempo as one note value equalling another. Both are read, so the sweep
-  // does not report a child this reader did weigh. Every part of the mark is
-  // read here rather than where it is used, because a mark that is dropped is
-  // dropped whole, and a part of it left unread would be reported a second
-  // time, as a converter gap, by the sweep.
+  // tempo as one note value equalling another. Every part of the mark is read
+  // here, because a dropped mark is dropped whole, and the sweep would report
+  // an unread part a second time.
   const perMinute = reader.children('per-minute')[0]
   const beatUnit = reader.children('beat-unit')[0]
   const tied = reader.children('beat-unit-tied')
@@ -956,11 +928,9 @@ function readMetronome(
     return dropWholeMark()
   }
 
-  // A beat unit that is not a note value is written by real exporters, which
-  // leave the element empty where the mark carries no note glyph. The tempo is
-  // all such a mark states, and nothing reads it but the mark itself, so it is
-  // a reported drop rather than a refusal, as every other part of a metronome
-  // the converter cannot read already is.
+  // A <beat-unit> that is not a note value, such as the empty one some
+  // exporters write where the mark has no note glyph, drops the mark. It is
+  // reported, not refused.
   const base = noteValueBaseOf(beatUnit)
   if (!base) {
     warnings.add(
@@ -975,8 +945,8 @@ function readMetronome(
 
   // A beat unit tied to another states a compound beat, such as a quarter
   // tied to an eighth. MNX states a tempo's beat as one note value with dots,
-  // which cannot spell every tie, and reading the first unit alone would put
-  // a tempo in the output a third away from the one the source wrote.
+  // which cannot spell every tie, and the first unit alone would state the
+  // wrong tempo.
   if (tied.length > 0) {
     warnings.add(
       'unrepresentable:tempo',
@@ -989,8 +959,8 @@ function readMetronome(
   }
 
   // An empty <per-minute> is valid: it prints the beat-unit glyph alone, with
-  // the number supplied as adjacent text. MNX's tempo needs a bpm, so there is
-  // nothing to carry, but it is a reported drop rather than a refusal.
+  // the number supplied as adjacent text. MNX's tempo needs a bpm, so the
+  // mark is dropped and reported.
   const written = trimmedText(perMinute)
   if (written === '') {
     warnings.add(
@@ -1003,15 +973,11 @@ function readMetronome(
     return dropWholeMark()
   }
 
-  // MusicXML's per-minute is a string, so it can be a descriptive word such as
-  // "fast" rather than a number. MNX states a tempo as a positive number of
-  // beats per minute, so a non-numeric one, and zero itself, are reported
-  // drops rather than refusals.
+  // MusicXML's per-minute is a string, so it can be a word such as "fast".
+  // MNX states a tempo as a positive number of beats per minute, so a
+  // non-numeric or zero one is dropped and reported.
   //
-  // Read as a plain decimal number, which is what a score states a tempo in.
-  // Number() would take spellings the source cannot mean as a tempo and hand
-  // back a number for them: "0x10" would be sixteen beats per minute and
-  // "0b101" five, when both are words this converter has no reading for.
+  // Read as a plain decimal. Number() would read "0x10" as sixteen.
   const bpm = parseDecimal(written)
   if (bpm === undefined || bpm <= 0) {
     warnings.add(

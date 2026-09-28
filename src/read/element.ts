@@ -1,15 +1,8 @@
-// An element, plus a record of which of its children were actually read.
+// An element, plus a record of which of its children were read.
 //
-// The loss report used to work from a hand-kept list of the children each
-// level handles. A list like that is a claim rather than a fact, and it drifts:
-// it went on saying a <lyric> was carried over long after the path that reads
-// a chord member stopped reading one, so the words under a chord vanished
-// without a word in the report.
-//
-// This is told what was read by the act of reading it. A path that skips
-// something reports it without anyone having to remember, and the only entries
-// that have to be maintained by hand are the exceptions, where something is
-// genuinely accounted for elsewhere and each one has to say why.
+// The loss report comes from what was read, not from a hand-kept list, so a
+// path that skips a child reports it. The only hand-kept entries are skip()
+// calls, for a child accounted for elsewhere, and each one says why.
 
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
@@ -18,9 +11,7 @@ import { attributeLoss, elementLoss } from './unrepresentable.js'
 
 // Attributes that state where or how something is drawn rather than what it
 // is: positions, curve geometry, fonts, spacing, identity, and the format
-// version. The sweep passes these over without a word, because they are
-// presentation rather than notation, and reporting them would bury every
-// real loss under thousands of coordinates.
+// version. The sweep does not report them.
 const PRESENTATION_ATTRIBUTES: ReadonlySet<string> = new Set([
   'default-x',
   'default-y',
@@ -46,11 +37,8 @@ const PRESENTATION_ATTRIBUTES: ReadonlySet<string> = new Set([
 
 /**
  * Report the notation-bearing attributes nothing read off this element.
- * Reading one through the tree accessor is what accounts for it, so a path
- * that skips an attribute reports it without anyone having to remember,
- * exactly as with children. Categorized as a converter gap by default; an
- * attribute known to have no MNX home keeps its own targeted warning at the
- * reader that decides that.
+ * Reading one through the tree accessor accounts for it. An attribute is a
+ * converter gap unless NO_HOME_ATTRIBUTES lists it.
  */
 export function reportUnreadAttributes(
   element: XmlElement,
@@ -186,8 +174,8 @@ export class ElementReader {
 /**
  * The drawn text of a named child element, or undefined where the source
  * gives none. An empty element states no name, and one hidden with
- * print-object="no" is one the source chose not to draw; the MNX homes these
- * feed are optional, so either is omitted rather than drawn.
+ * print-object="no" is not drawn. The MNX properties these feed are optional,
+ * so either is omitted.
  *
  * Takes the first child of the name; callers use it for elements MusicXML
  * allows at most once (<part-name>, <group-name>).

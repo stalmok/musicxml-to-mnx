@@ -10,12 +10,9 @@ import type { Fraction } from '../fraction.js'
 import type { NoteValue, NoteValueBase } from '../model/score.js'
 import { entriesOf } from './tables.js'
 
-// Every note value, as a fraction of a whole note. Keyed by the model's own
-// value, so a value the model gains and this table lacks does not compile.
-//
-// Exported so the conformance test can hold it to the vendored schema: which
-// values MNX names, and that each of them lasts a power of two of a whole
-// note, which is what makes a ratio no pair of them states a limit of MNX.
+// Every note value, as a fraction of a whole note. Exported for the
+// conformance test, which checks it against the vendored schema: the values
+// MNX names, and that each lasts a power of two of a whole note.
 export const BASE_VALUES: Record<NoteValueBase, Fraction> = {
   maxima: fraction(8),
   longa: fraction(4),
@@ -36,12 +33,7 @@ export const BASE_VALUES: Record<NoteValueBase, Fraction> = {
 // Beyond three, dots stop appearing in real music.
 const MAX_DOTS = 3
 
-/**
- * The note value that lasts exactly this long, or undefined when no written
- * value does. A duration of 1/12 of a whole note is a triplet eighth, which
- * needs a tuplet rather than a note value, and guessing one here would invent
- * a rhythm the source never wrote.
- */
+/** How long a note value lasts, as a fraction of a whole note. */
 export function lengthOf(value: NoteValue): Fraction {
   return multiplyFractions(
     BASE_VALUES[value.base],
@@ -52,8 +44,7 @@ export function lengthOf(value: NoteValue): Fraction {
 /** How a note value reads in a sentence, for example "a double-dotted half". */
 export function describeValue(value: NoteValue): string {
   const prefix = ['', 'dotted ', 'double-dotted ', 'triple-dotted '][value.dots]
-  // Past three dots there is no word for it, and nothing writes them anyway,
-  // so say the count rather than inventing one.
+  // Past three dots there is no word, so the count is stated.
   if (prefix === undefined) return `a ${value.base} with ${String(value.dots)} dots`
 
   const name = `${prefix}${value.base}`
@@ -67,6 +58,11 @@ export function describeLength(duration: Fraction): string {
   return `${String(duration.num)}/${String(duration.den)} of a whole note`
 }
 
+/**
+ * The note value that lasts this long, or undefined when no written value
+ * does. A duration of 1/12 of a whole note is a triplet eighth, which needs a
+ * tuplet, not a note value.
+ */
 export function noteValueOf(duration: Fraction): NoteValue | undefined {
   if (compareFractions(duration, fraction(0)) <= 0) return undefined
 

@@ -45,9 +45,8 @@ export type RestReading =
       kind: 'fills'
       /**
        * The value the rest is written as where it stays an event, and nothing
-       * where no note value can write it: an irregular measure rests for a
-       * length no value states, and the sequence's own rest is the only place
-       * for it.
+       * where no note value can write it: an irregular measure can rest for a
+       * length no value states.
        */
       eventValue: NoteValue | undefined
       /**
@@ -60,8 +59,8 @@ export type RestReading =
        * Whether it carries something only an event holds, other than a
        * marking or a stem, which are read where the event is built. MNX's rest
        * on the sequence has no room for a lyric, and no id for a slur to start
-       * or end on. The sequence stating it must hold nothing, so grace notes
-       * before it keep it an event too, where a note value can write it.
+       * or end on. The sequence stating it must hold nothing else, so grace
+       * notes before it also keep it an event, where a note value can write it.
        */
       needsEvent: boolean
       /**
@@ -84,18 +83,18 @@ export function readRest(note: RestNote, state: PartState, builder: MeasureBuild
     measure !== undefined &&
     compareFractions(duration, measure) === 0
 
-  // A rest marked as filling the measure is not an event with a length: MNX
-  // states it on the sequence, and how long the measure runs is the time
-  // signature's business. Some exporters leave measure="yes" off, so a rest
-  // with no written value lasting exactly the measure is read the same way;
-  // in an irregular measure that length may have no note value at all.
+  // A rest marked as filling the measure has no length of its own: MNX states
+  // it on the sequence, and the time signature sets the measure's length. Some
+  // exporters leave measure="yes" off, so a rest with no written value lasting
+  // the whole measure is read the same way. In an irregular measure that
+  // length may have no note value.
   const drawnToTheMeasure =
     rest !== undefined &&
     written === undefined &&
     lastsTheMeasure &&
     // A rest reached after the voice has sounded fills what is left of the
-    // measure, not the measure. Exporters write one as a filler behind a note
-    // that overruns the barline, and it is a rest like any other.
+    // measure. Exporters write one as a filler behind a note that overruns the
+    // barline, and it is an ordinary rest.
     builder.opensMeasure(voice)
 
   // A grace note takes none of the measure's time, so a grace rest is never
@@ -105,18 +104,16 @@ export function readRest(note: RestNote, state: PartState, builder: MeasureBuild
 
   const afterGraceNotes = builder.holdsOnlyGraceNotes(voice) && builder.atMeasureStart()
 
-  // A rest the source neither marks as the measure's nor draws to the length
-  // the time signature states, with no written value, opening its voice, and
-  // lasting a time no note value can write. It is that voice's silence
-  // through the measure, and there is no event to write it as, so MNX's rest
-  // on the sequence is the only place for it. Chant editions written senza
-  // misura rest whole parts that way, and so do the hidden parts that
-  // early-music engravings carry: one bare rest per measure, in a bar longer
-  // than the time signature says. Only such a rest takes this path: one a
-  // note value can write is the event it is written as. The value weighed is
-  // the one a tuplet open around the rest would have it drawn as, which is
-  // what measuredValue would look for. Grace notes before it take none of
-  // the measure's time, so the rest still opens the voice.
+  // A rest with no written value that opens its voice, is neither marked as
+  // the measure's nor drawn to the time signature's length, and lasts a time
+  // no note value can write. It is that voice's silence through the measure,
+  // and MNX's rest on the sequence is the only place for it. Chant editions
+  // written senza misura rest whole parts this way, and so do hidden parts in
+  // early-music engravings: one bare rest per measure, in a bar longer than
+  // the time signature says. A rest a note value can write stays that event.
+  // The value tested is the one an open tuplet would draw the rest as, as
+  // measuredValue does. Grace notes before it take none of the measure's
+  // time, so the rest still opens the voice.
   const unwritableLength =
     !markedAsTheMeasure &&
     !drawnToTheMeasure &&
@@ -144,14 +141,12 @@ export function readRest(note: RestNote, state: PartState, builder: MeasureBuild
     (duration !== undefined && !state.divisionsAssumed ? noteValueOf(duration) : undefined)
 
   // A rest the source marks as the measure's is the measure's rest only where
-  // it is the whole of its voice. Sources write one beside other notes too:
-  // early-music editions bar their parts at different lengths and pad a voice
-  // with a marked whole rest, before the notes it sings or after them. Where
-  // the source states the value the rest is drawn as, the rest can stand as
-  // an ordinary event, so which reading holds is settled once the voice is
-  // whole, as it is for a rest that only looks like the measure's. Without
-  // that value there is no event to fall back to, and the mark is taken as
-  // written.
+  // it is the whole of its voice. Early-music editions bar their parts at
+  // different lengths and pad a voice with a marked whole rest, before or
+  // after its notes. Where the source states the rest's written value, the
+  // rest can stand as an ordinary event, so the reading is settled once the
+  // voice is whole. Without that value there is no event to fall back to, and
+  // the mark is taken as written.
   const markedCandidate =
     markedAsTheMeasure &&
     written !== undefined &&
@@ -162,14 +157,12 @@ export function readRest(note: RestNote, state: PartState, builder: MeasureBuild
   const fillsMeasure =
     (markedAsTheMeasure && !markedCandidate) || drawnToTheMeasure || unwritableLength !== undefined
 
-  // A bar of silence is drawn with a whole rest whatever the meter says, so a
-  // rest opening a voice can state a written value shorter than the measure
-  // it fills. Where the exporter leaves measure="yes" off, that value is the
-  // only statement of the length, and reading it as one leaves the measure
-  // short. Whether this is the measure's rest is not settled here: one
-  // lasting exactly the measure can stand beside other notes, so the voice
-  // has to be whole first. Anything the rest carries that only an event can
-  // hold keeps it one.
+  // A bar of silence is drawn with a whole rest whatever the meter, so a rest
+  // opening a voice can state a written value shorter than the measure it
+  // fills. Where measure="yes" is left off, reading that value as the length
+  // leaves the measure short. A rest lasting the whole measure can stand
+  // beside other notes, so the reading is settled once the voice is whole.
+  // Anything the rest carries that only an event can hold keeps it an event.
   const isCandidate =
     written !== undefined &&
     duration !== undefined &&
@@ -178,16 +171,16 @@ export function readRest(note: RestNote, state: PartState, builder: MeasureBuild
         grace === undefined &&
         lastsTheMeasure &&
         compareFractions(lengthOf(written), duration) !== 0 &&
-        // A slur is paired once the part is whole, so whether one reaches this
-        // rest is readable here and nowhere later. What the event itself carries
+        // A slur is paired only once the part is whole, so whether one reaches
+        // this rest can be read here and nowhere later. What the event carries
         // is weighed where the reading is settled.
         !carriesSlurEnd &&
         // A rest written over a rest that already fills the measure is never
         // the measure's rest.
         !builder.restsTheMeasure(voice) &&
-        // A rest the voice has already sounded past cannot be the measure's rest,
-        // and the settling would say so, but it would say it at the end of the
-        // measure. Ruling it out here keeps its report where the rest stands.
+        // A rest the voice has already sounded past cannot be the measure's
+        // rest. Ruling it out here, not when the measure is settled, keeps its
+        // report where the rest stands.
         builder.opensMeasure(voice)))
 
   if (fillsMeasure) {

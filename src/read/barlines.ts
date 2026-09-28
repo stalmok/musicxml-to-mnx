@@ -6,10 +6,9 @@
 // rather than the part's, because a barline is the whole score's: every part
 // is cut at the same place.
 //
-// An ending is the awkward one. MusicXML marks where it starts and where it
-// stops, several measures apart; MNX states it once, on the measure where it
-// starts, as how many measures it runs for. Joining those two up is the same
-// shape of problem as a tie, and is done a part at a time in score.ts.
+// MusicXML marks where an ending starts and where it stops, several measures
+// apart. MNX states it once, on the measure where it starts, as how many
+// measures it runs for. resolveEndings joins the two, one part at a time.
 
 import type { Fraction } from '../fraction.js'
 import type { BarlineType, Fermata, GlobalMeasure, RepeatEnd } from '../model/score.js'
@@ -24,11 +23,8 @@ import { reportHidden } from './unrepresentable.js'
 import { readFermataAt } from './notes.js'
 import { parseWholeNumber } from './numbers.js'
 
-// MusicXML's bar styles, in MNX's spelling. The two describe the same lines;
-// only the names differ, MusicXML naming the two strokes and MNX the result.
-// Keyed by the model's own line, so a line the model gains and this table
-// lacks does not compile: a line with no spelling here is one no source could
-// ever be read as drawing.
+// MusicXML's bar styles, in MNX's spelling. MusicXML names the two strokes
+// and MNX names the result.
 const MUSICXML_SPELLINGS: Record<BarlineType, string> = {
   regular: 'regular',
   dotted: 'dotted',
@@ -102,7 +98,7 @@ export function readBarline(
   }
 
   // The repeat is read first, because a bar style at the opening edge is
-  // usually just how a repeat start is drawn.
+  // usually how a repeat start is drawn.
   const repeat = readRepeat(element, warnings, context)
 
   return {
@@ -122,7 +118,7 @@ export function readBarline(
  * It is the same sign, at the measure edge the barline sits on, so it takes
  * the cursor's position there: the start of the measure at the opening edge,
  * the end at the closing one. MusicXML allows at most one <segno> per
- * <barline>, so child() takes the only one there can be.
+ * <barline>, so child() is correct.
  *
  * The segno attribute on <barline> names the sign for playback, the same way
  * <sound segno> names one written as a direction, so it is carried the same
@@ -196,10 +192,9 @@ function readBarStyle(
   // drawn at the opening edge has nowhere to go, and is not the same thing as
   // the previous measure's closing line.
   //
-  // Except that a heavy-light there is how a repeat start is drawn, and MNX's
-  // repeatStart already says to draw one, so nothing is lost. Every one of
-  // the corpus's thirty-seven is of that kind. Any other style beside the
-  // repeat is the source's own statement and falls to the report below.
+  // A heavy-light there is how a repeat start is drawn, and MNX's repeatStart
+  // already draws one, so nothing is lost. Any other style beside the repeat
+  // is reported below.
   if (atStart && repeatStart && type === 'heavyLight') return undefined
 
   if (atStart) {
@@ -241,9 +236,7 @@ function readRepeat(
 
 /**
  * How many times the passage is played, where the source counts them. Both
- * formats allow any whole number, so an odd one is reported rather than
- * refused: a playback count that reads strangely is not worth rejecting a
- * whole score over.
+ * formats allow any whole number, so an odd one is reported, not refused.
  */
 function readTimes(
   repeat: XmlElement,
@@ -326,9 +319,8 @@ function endingNumbers(
   for (const part of written.split(',')) {
     const trimmed = part.trim()
     if (trimmed === '') continue
-    // Both formats count the times from 1, so a zero states no time. A list
-    // holding one is not a list either format can state, and which times the
-    // bracket really covers is not something to guess at.
+    // Both formats count the times from 1, so a zero states no time. Such a
+    // list is reported, not guessed at.
     if (!/^\d+$/.test(trimmed) || !Number.isSafeInteger(Number(trimmed)) || Number(trimmed) < 1) {
       warnings.add(
         'unsupported:element',

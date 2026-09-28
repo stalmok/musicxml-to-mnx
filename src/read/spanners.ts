@@ -5,9 +5,8 @@
 // states the connection once, on the end where it begins, pointing at the id
 // of the end where it finishes.
 //
-// So the open ends have to be held until their partner turns up, which is
-// routinely several measures later. That is why this is kept per part rather
-// than per measure.
+// The open ends are held until their partner is read, often several measures
+// later, so this is kept per part.
 
 import { compareFractions } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
@@ -133,9 +132,7 @@ interface EndPlace {
    * its own voice: an exporter that numbers each hand from 1 has both hands
    * holding a hairpin numbered 1 at once. An octave shift's stop also uses it
    * to read its end from its own staff's events. Left unset where the source
-   * says nothing, which is not read as the first staff: a source that names
-   * the staff on the start and leaves it off the stop means the start's, and
-   * neither reading is safe to assume.
+   * states none, which is not read as the first staff.
    */
   staff?: number | undefined
   /**
@@ -156,9 +153,8 @@ export interface StartEnd<T> extends EndPlace {
 
 /**
  * A start the reader dropped and already reported. It still takes its place
- * in pairing, so the stop the source wrote for it is consumed with it, in
- * silence: reporting that stop as an orphan would say the source never
- * started the span, when it did.
+ * in pairing, so the stop the source wrote for it is consumed with it, not
+ * reported as an orphan.
  */
 interface DroppedStartEnd extends EndPlace {
   kind: 'start'
@@ -179,9 +175,7 @@ export interface StopEnd<S> extends EndPlace {
  * because MusicXML's document order is not time order: a measure holding two
  * voices is written as one pass per voice with a <backup> between them, so a
  * stop belonging to the first voice is written before a start belonging to
- * the second even though the music has it the other way round. Pairing in
- * document order made a hairpin out of a stop and a start that had nothing to
- * do with each other, one of them 28 measures long.
+ * the second even though the music has it the other way round.
  */
 export type SpanEnd<T, S> = StartEnd<T> | DroppedStartEnd | StopEnd<S>
 
@@ -202,19 +196,14 @@ export type SamePoint = 'stop-first' | 'as-written'
  * they were read in.
  *
  * Several may carry the same number at once, so each number holds a stack. A
- * stop closes the most recently opened start written where it was, meaning
- * the same voice and the same staff, and where that has none open, the most
- * recently opened of any. Both halves matter. Without the first, two voices
- * each holding a slur numbered 1 over the same beats close into each other
- * and the hands are sewn together, and two hands each holding a hairpin
- * numbered 1 do the same. Without the fallback, a voice that opens a slur
- * another voice closes takes a partner of its own from measures away, and
- * the two ends the music meant for each other are both reported as
- * unmatched. lastOpenedIn below states which half applies to what.
+ * stop closes the most recently opened start in the same voice and staff,
+ * and where that has none open, the most recently opened of any. The first
+ * rule keeps two voices or two hands, each holding a span numbered 1, from
+ * closing into each other. The fallback lets a span one voice opens close in
+ * another. lastOpenedIn below states which rule applies to what.
  *
  * A stop whose covered point falls before its start is reported as a
- * backwards-stop rather than joined: the joined span would end before it
- * starts, which no consumer accepts.
+ * backwards-stop, not joined.
  */
 export function pairSpans<T, S>(
   ends: readonly SpanEnd<T, S>[],
@@ -266,10 +255,8 @@ export function pairSpans<T, S>(
  * a stream is the voice's own, because a measure is written one voice at a
  * time, so within a voice the document's order is the music's.
  *
- * Exported for the test that pins its answers. Reading it through a score
- * cannot: a stream this calls not its own goes to the pass across the part,
- * which hands back what it cannot pair and prefers a stop's own voice, so it
- * mostly reaches the same joins by a longer road.
+ * Exported for its own test. A test through a whole score cannot see its
+ * answers, because the pass across the part mostly reaches the same joins.
  */
 export function accountsForItself(ends: readonly SlurEnd[]): boolean {
   let open = 0
@@ -293,8 +280,7 @@ export function accountsForItself(ends: readonly SlurEnd[]): boolean {
  * written one voice at a time, so this is the same reading as
  * accountsForItself, narrowed to what happens inside a single measure.
  *
- * Exported for the test that pins its four answers, for the reason
- * accountsForItself is.
+ * Exported for its own test, as accountsForItself is.
  */
 export function measureResidue(ends: readonly SlurEnd[]): 'unclosed' | 'orphan' | 'both' | 'none' {
   let open = 0
@@ -337,30 +323,20 @@ function ownPairs(
 }
 
 /**
- * The voice-and-number streams that must not be treated as a voice's own,
- * even where accountsForItself says they balance, because the pair it would
- * join is one a different voice's residue confirms from both sides: an
- * unclosed start of the same number in another voice, in the same measure as
- * this pair's start or the one right after, and separately an orphan stop of
- * the same number in another voice, in the same measure as this pair's stop
- * or the one right before. That is the source stating a slur crossing voices
- * right there, on both the measure this pair opens in and the measure it
- * closes in, which a coincidence touches at most one side of.
+ * The voice-and-number streams that are not treated as a voice's own, even
+ * where accountsForItself says they balance. A stream is excluded when
+ * another voice's residue of the same number confirms a crossing at both ends
+ * of one of its pairs: an orphan stop in the measure of the pair's start or
+ * the one after, and an unclosed start in the measure of the pair's stop or
+ * the one before.
  *
- * A stream a whole-part count finds balanced can still be one of these: two
- * separate cross-voice slurs reusing its number can leave it with exactly
- * one start and one stop of its own, which is no more the same slur than two
- * unrelated notes are the same note for sharing a pitch. Such a stream's
- * balance beyond the measure is coincidence, not a slur anyone wrote, so it
- * goes to the pass across the part with every other stream that cannot
- * account for itself.
+ * Two separate cross-voice slurs reusing a number can leave a stream with one
+ * start and one stop of its own that are not one slur. Such a stream goes to
+ * the pass across the part.
  *
- * Confirmed from both sides rather than one: a voice's own slur runs past a
- * stray, unrelated end in another voice often enough that one-sided evidence
- * throws it to the pass across the part too, and there the nearer stray
- * wins over the farther partner the voice actually states. Requiring both
- * sides keeps that voice's own reading, because a stray end at only one
- * boundary of the pair does not also explain the other.
+ * Both ends are required, because a voice's own slur often runs past a stray
+ * end in another voice. One-sided evidence would send it to the pass across
+ * the part, where the nearer stray end would win over its real partner.
  */
 function crossesVoicesInAMeasure(ends: readonly SlurEnd[]): ReadonlySet<string> {
   const byNumber = new Map<string, SlurEnd[]>()
@@ -440,12 +416,8 @@ function findLastOpened<E>(waiting: readonly E[], keeps: (start: E) => boolean):
  * failing that the last one opened at all.
  *
  * "Where" is the voice for a tie or a slur, and the staff for a hairpin or an
- * octave shift, each of which states the one the other leaves unset. An
- * exporter that numbers each hand from 1 has both hands holding a hairpin
- * numbered 1 at once, and on the number alone each closes on the other hand's
- * stop. The fallback keeps a source that names the staff on one end and not
- * the other pairing as it did, since neither reading of the silent end is
- * safe to assume.
+ * octave shift, each of which states the one the other leaves unset. The
+ * fallback pairs a source that names the staff on one end only.
  */
 function lastOpenedIn<E extends EndPlace>(waiting: readonly E[], end: EndPlace): E | undefined {
   return (
@@ -476,8 +448,7 @@ function insertAtPosition(dynamics: Dynamic[] | undefined, added: Dynamic): void
  * Two ends this calls equal keep the order the document wrote them in, which
  * is what decides which start a stop closes when several of one number open
  * at one point. That rests on Array.prototype.sort being stable, which it is
- * required to be. It used to rest on the ends being decorated with their
- * position in the array and compared by it, which said the same thing twice.
+ * required to be.
  */
 function inTimeOrder<E extends EndPlace & { kind: 'start' | 'stop' }>(
   ends: readonly E[],
@@ -496,16 +467,13 @@ function inTimeOrder<E extends EndPlace & { kind: 'start' | 'stop' }>(
   })
 }
 
-// Ties are matched on pitch across the part, not within a voice. A tie
-// routinely runs between voices, which MNX itself allows for with a
-// crossVoice target type, and piano writing is full of them: the seed corpus
-// fails to resolve 30 of 108 ties when the voice is part of the match,
-// against 4 when it is not.
+// Ties are matched on pitch across the part, not within a voice. A tie often
+// runs between voices, which MNX allows with a crossVoice target.
 //
-// Matched on the sounding pitch rather than the written spelling, because a
-// tie can end on a respelling of the same sound: the corpus ties G sharp to
-// A flat, and B sharp crosses the octave boundary to C. A pair that
-// disagrees on the sound stays unmatched and keeps warning.
+// Matched on the sounding pitch, not the written spelling, because a tie can
+// end on a respelling of the same sound: G sharp to A flat, or B sharp to C
+// across the octave boundary. A pair that disagrees on the sound stays
+// unmatched and is reported.
 const STEP_SEMITONES: Record<Step, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }
 
 export function tieKey(pitch: Pitch): string {
@@ -513,14 +481,9 @@ export function tieKey(pitch: Pitch): string {
 }
 
 // Slurs are matched on the number the source gives them, across the whole
-// part rather than within a voice. In piano writing a slur routinely runs
-// from one hand to the other, which is a different voice and a different
-// staff, and scoping the number to a voice breaks every one of those.
-//
-// Measured across the seed corpus: 24 of 343 slurs fail to resolve when the
-// number is scoped to a voice, against 12 when it is scoped to the part.
-// Allowing several slurs to share a number, and closing the most recently
-// opened one, accounts for most of the rest.
+// part. In piano writing a slur often runs from one hand to the other, which
+// is a different voice and a different staff. Several slurs may share a
+// number, and a stop closes the most recently opened one.
 
 export class SpannerResolver {
   // Both ends of every tie in the part, paired once all of them are in.
@@ -586,24 +549,18 @@ export class SpannerResolver {
   /**
    * Joins every tie in the part, once both ends of all of them are in.
    *
-   * Paired in time order rather than as the ends are met, for the same
-   * reason the slurs are: a measure holding two voices is written one voice
-   * at a time with a <backup> between them, so a stop belonging to the first
-   * voice is written before the start belonging to the second even though
-   * the music has it the other way round.
+   * Paired in time order, not as the ends are met, for the reason the slurs
+   * are.
    *
    * A stop takes the most recent open start of its own voice, so two hands
-   * each sustaining one pitch pair within a hand rather than across. That
-   * pair is the source's own statement, and it holds at any distance: real
-   * scores tie a note to its pitch's next sounding measures away, across
-   * rests, and the corpus carries one such tie.
+   * each sustaining one pitch pair within a hand. That pair is the source's
+   * own statement, and it holds at any distance: a score can tie a note to
+   * its pitch's next sounding measures away, across rests.
    *
-   * A stop with no same-voice start falls back to the most recent open
-   * start of any voice, which is the cross-voice tie MNX marks. That pair
-   * is this reader's inference, so it reaches back one measure at most: a
-   * cross-voice tie joins two notes sounding into each other, and a note
-   * never crosses a barline. A start further back is stale, and pairing
-   * with it would invent a tie the source never states.
+   * A stop with no same-voice start falls back to the most recent open start
+   * of any voice, which is the cross-voice tie MNX marks. That pair is
+   * inferred, so it reaches back one measure at most: a cross-voice tie joins
+   * two notes sounding into each other, and a note never crosses a barline.
    */
   #resolveTies(warnings: WarningCollector): void {
     // Two ties of one pitch can be open at once, as when two hands each
@@ -709,28 +666,21 @@ export class SpannerResolver {
   /**
    * Joins every slur in the part, once both ends of all of them are in.
    *
-   * Paired in time order rather than as the ends are met, because a measure
-   * holding two voices is written as one pass per voice with a <backup>
-   * between them. A slur running from the second voice to the first therefore
-   * has its stop written before its start. Paired as met, that stop closed
-   * whichever slur was open from an earlier measure, and every later slur of
-   * the same number shifted along with it.
+   * Paired in time order, not as the ends are met, because a measure holding
+   * two voices is written one voice at a time with a <backup> between them.
+   * A slur from the second voice to the first has its stop written before its
+   * start.
    *
    * A voice keeps its own slurs of one number only where its ends account for
-   * each other: it opens each before closing it and leaves none over, and no
-   * other voice leaves a complementary end of that number over in the same
-   * measure (see crossesVoicesInAMeasure). A measure is written one voice at
-   * a time, so such a stream is that voice's beyond doubt, and exporters
-   * reuse one number in every voice.
+   * each other: it opens each before closing it, leaves none over, and no
+   * other voice confirms a crossing (see crossesVoicesInAMeasure). A measure
+   * is written one voice at a time, so such a stream is that voice's own.
+   * Exporters reuse one number in every voice.
    *
    * Everything else joins one stream for the whole part. A voice that leaves
-   * an end over is a voice whose slur runs into another, and pairing it
-   * through to the end on its own put no bound on how far its partner could
-   * be: one voice took a same-voice stop 178 measures on over the stop in the
-   * next measure, and both ends the music meant for each other were reported
-   * as unmatched. Across the vendored corpus that shape carries 31 slurs the
-   * voice-first pairing lost, and drops the spans of five measures or more
-   * from 124 to 84.
+   * an end over has a slur that runs into another voice. Paired on its own,
+   * it could take a same-voice stop any distance away over the cross-voice
+   * stop in the next measure.
    */
   #resolveSlurs(warnings: WarningCollector): void {
     // A slur's two ends mark the very points they are written on, so no stop
@@ -873,11 +823,8 @@ export class SpannerResolver {
 
   /**
    * Pairs every span that waits until the whole part is read: the hairpins,
-   * the octave shifts, the slurs, and the ties. One entry point on purpose:
-   * all four share the rule that nothing left open once the part ends may be
-   * dropped in silence, and as separate calls a caller could pair the spans
-   * yet never report what stayed unpaired, because each pair step reports
-   * its own leftovers rather than leaving them to one flush at the end.
+   * the octave shifts, the slurs, and the ties. One entry point, so a caller
+   * cannot pair the spans and skip the report of what stays unpaired.
    */
   finish(measures: readonly Measure[], warnings: WarningCollector): void {
     this.#resolveWedges(measures, warnings)
@@ -890,10 +837,10 @@ export class SpannerResolver {
   #resolveWedges(measures: readonly Measure[], warnings: WarningCollector): void {
     // MNX allows a gradual mark with no end, so of the three failures only
     // the orphan stop drops anything whole: a hairpin whose stop is missing
-    // or unusable keeps its mark, and what is lost is how far it runs. Today
-    // a hairpin's stop covers the very point where it is written, so no stop
-    // covers a point before its start; the backwards message is here for
-    // when the two diverge, as an octave shift's do.
+    // or unusable keeps its mark, and loses how far it runs. A hairpin's stop
+    // covers the point where it is written, so no stop covers a point before
+    // its start; the backwards message is for when the two differ, as an
+    // octave shift's do.
     const messages = {
       'orphan-stop': 'A hairpin stops where none had started, and is not carried over.',
       'backwards-stop':
@@ -908,8 +855,8 @@ export class SpannerResolver {
       (dynamic, stop) => {
         // The grace note the hairpin ends on is stated where the stop covers
         // one, and the key left off where it does not: MNX reads an absent
-        // key as the beat itself. Assigned rather than spread in, so that the
-        // compiler holds the difference between the two.
+        // key as the beat itself. Assigned, not spread in, so the compiler
+        // tells an absent key from an undefined one.
         const end: Draft<SpanStop> = { measure: stop.measure, position: stop.covers }
         if (stop.coversGraceIndex !== undefined) end.graceIndex = stop.coversGraceIndex
         dynamic.end = end
@@ -1023,14 +970,10 @@ export class SpannerResolver {
 
     // Only an octave shift moves back off the point its stop was written at.
     //
-    // Failing an event on the staff the stop names, the last on any staff.
-    // A source can name a staff that holds nothing here: poldowski-l-heure-
-    // exquise stops two shifts on staff 2 over a measure whose staff 2 is one
-    // whole-measure rest, and MNX writes such a rest as the measure's own
-    // rather than as an event. Leaving the stop where it was written ended
-    // those shifts on the bar line, which is a place no event begins. The
-    // fallback is the one the pairing already makes for the same reason: a
-    // source naming the staff on one end only means the end that names it.
+    // Failing an event on the staff the stop names, the last on any staff. A
+    // source can name a staff that holds only a whole-measure rest, which MNX
+    // writes as the measure's own, not as an event. Left where it was
+    // written, such a stop would end on the barline, where no event begins.
     for (const end of stoppingHere(this.#ottavaEnds)) {
       if (overGraceNotes(end)) continue
       const covered = lastEventBefore(end.covers, end.staff) ?? lastEventBefore(end.covers)
@@ -1069,7 +1012,7 @@ export class SpannerResolver {
     pairSpans<OpenOttava, undefined>(
       this.#ottavaEnds,
       (open, stop) => {
-        // Assigned rather than spread in, for the reason the hairpin's end is.
+        // Assigned, not spread in, for the reason the hairpin's end is.
         const end: Draft<SpanStop> = { measure: stop.measure, position: stop.covers }
         if (stop.coversGraceIndex !== undefined) end.graceIndex = stop.coversGraceIndex
         const ottava: Draft<Ottava> = {

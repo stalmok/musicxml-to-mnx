@@ -1,16 +1,13 @@
 // MusicXML elements MNX has nowhere to put.
 //
-// The bar for entry is a fact about the vendored schema, not an impression:
-// there must be no definition in it that could hold the element, so that no
-// amount of work here would carry it over. Everything else is a gap in this
-// converter and is reported as one, even where nobody intends to close it
-// soon. Getting that the wrong way round would tell a reader that something
-// is permanently lost when it is only unfinished.
+// An element is listed only where the vendored schema has no definition that
+// could hold it. Everything else is a gap in this converter and is reported
+// as one.
 //
 // A pedal mark qualifies: the schema has no pedal anywhere. Articulations,
-// hairpins, octave shifts, barlines, endings, arpeggios and fermatas all do
-// not, because it has event-markings, wedge-type, ottava, barline, ending,
-// arpeggio and fermata waiting for them.
+// hairpins, octave shifts, barlines, endings, arpeggios and fermatas do not,
+// because it has event-markings, wedge-type, ottava, barline, ending,
+// arpeggio and fermata for them.
 
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
@@ -18,11 +15,9 @@ import { attribute } from '../xml/tree.js'
 
 /**
  * Report an element the source hides with print-object="no", where MNX has no
- * way to mark it invisible, so it is drawn regardless; the hiding is a loss
- * and is reported rather than dropped in silence. Grouped under one
- * "print-object" code so the loss report counts the hiding, whatever carries
- * it. Elements with a home for their invisibility, like a part name or a
- * clef, honour it instead and do not call this.
+ * way to mark it invisible, so it is drawn. Grouped under one "print-object"
+ * code, whatever carries it. Elements with a home for their invisibility, such
+ * as a part name or a clef, honour it and do not call this.
  */
 export function reportHidden(
   element: XmlElement,
@@ -44,9 +39,8 @@ export function reportHidden(
   )
 }
 
-// Exported so the conformance test can hold each entry to the schema fact its
-// comment states. Every entry here is a claim about the vendored schema, and a
-// claim nothing checks goes stale the first time the pin moves.
+// Exported for the conformance test, which checks each entry against the
+// schema fact its comment states.
 export const NO_HOME_IN_MNX: ReadonlySet<string> = new Set([
   // Sustain, sostenuto and una corda. The schema has no pedalling of any kind.
   'pedal',
@@ -181,9 +175,8 @@ export const NO_HOME_IN_MNX: ReadonlySet<string> = new Set([
 ])
 
 // Attributes with no schema definition to hold them, keyed as
-// "element attribute". The bar is the same as for elements. Anything else
-// the sweep reports is a converter gap by default; a gray case stays there
-// until it is decided against the schema.
+// "element attribute". The rule is the same as for elements. Anything else
+// the sweep reports is a converter gap.
 export const NO_HOME_ATTRIBUTES: ReadonlySet<string> = new Set([
   // The side an augmentation dot is drawn on. The schema's note value is a
   // base and a count of dots, and nothing about how they are drawn.

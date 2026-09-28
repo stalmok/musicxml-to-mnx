@@ -5,9 +5,9 @@
 // is the eighth-note beam, level 2 the sixteenth, and so on. A note beamed to
 // only one neighbour carries a hook instead, pointing forward or back.
 //
-// MNX states the same thing the other way round, as a tree over the measure:
-// an outer beam listing the events it runs over, nested beams for the
-// secondary levels, and a beam of one event with a direction for a hook.
+// MNX states it as a tree over the measure: an outer beam listing the events
+// it runs over, nested beams for the secondary levels, and a beam of one event
+// with a direction for a hook.
 
 import type { Beam, NoteValueBase } from '../model/score.js'
 import { entriesOf } from './tables.js'
@@ -17,17 +17,14 @@ export interface BeamedEvent {
   id: string
   markers: ReadonlyMap<number, string>
   /**
-   * How many beams the note's own value calls for: an eighth one, a 16th two,
-   * a 32nd three, and so on. A dropped inner beam matters only where the note
-   * needs it, so this tells the two apart.
+   * How many beams the note's value calls for: an eighth one, a 16th two. An
+   * inner beam that closes on this event alone is kept only up to this level.
    */
   beamCount: number
 }
 
-// How many beams each note value is drawn with. A Record rather than a Map,
-// so a value the model gains and this table lacks does not compile: read
-// through a lookup that defaults to zero, such a value would quietly report a
-// note as beamed with nothing.
+// How many beams each note value is drawn with. A Record, so a note value
+// added to the model does not compile until it is added here.
 const BEAM_COUNTS: Record<NoteValueBase, number> = {
   maxima: 0,
   longa: 0,
@@ -50,9 +47,9 @@ export function beamCountForValue(base: NoteValueBase): number {
   return BEAM_COUNTS[base]
 }
 
-// The table read the other way round, for a note whose beams are all that
-// says what it is drawn with. Only the values a beam is drawn on are in it,
-// so each count names one value.
+// The table read the other way round, for a note whose beams are the only
+// sign of its value. Only beamed values are in it, so each count names one
+// value.
 const VALUE_FOR_BEAMS = new Map<number, NoteValueBase>(
   entriesOf(BEAM_COUNTS)
     .filter(([, count]) => count > 0)
@@ -65,7 +62,6 @@ export function valueForBeamCount(count: number): NoteValueBase | undefined {
 }
 
 const HOOK_DIRECTIONS = new Map<string, 'left' | 'right'>([
-  // A forward hook points ahead, to the right of its note.
   ['forward hook', 'right'],
   ['backward hook', 'left'],
 ])
@@ -74,9 +70,8 @@ const HOOK_DIRECTIONS = new Map<string, 'left' | 'right'>([
  * The beams over one measure of one voice, outermost first.
  *
  * A run at a given level starts where a beam begins and closes where it ends.
- * A run the measure never closes is kept anyway, so the notes under it are
- * not lost; a beam left with one event under it is dropped, because a beam
- * over a single note is a flag rather than a beam.
+ * A run the measure never closes is kept. A primary run over one event is
+ * dropped, because a beam over a single note is a flag.
  */
 export function buildBeams(events: readonly BeamedEvent[]): Beam[] {
   return beamsAtLevel(events, 1)
@@ -96,16 +91,15 @@ function beamsAtLevel(events: readonly BeamedEvent[], level: number): Beam[] {
       })
     } else if (only !== undefined && level > 1 && only.beamCount >= level) {
       // A single event left at an inner level always came from a begin, since
-      // a continue or end only extends a run already open. Where the note's
-      // value needs this beam, a begin with nothing to carry it is a partial
-      // beam pointing forward, which MNX states as a one-event beam drawn to
-      // the right. This is the shape a repeated begin (two begins with no end
-      // between) leaves the first note in; dropping it would put the note in
-      // the outer beam with no inner one, which is internally inconsistent.
+      // a continue or end only extends an open run. Where the note's value
+      // needs this beam, it is a partial beam pointing forward: a one-event
+      // beam drawn to the right. A repeated begin (two begins with no end
+      // between) leaves the first note in this shape.
       beams.push({ events: [only.id], beams: [], direction: 'right' })
     }
-    // A single event whose value does not need this beam is a stray marker,
-    // dropped without a word: the note is drawn correctly without it.
+    // A single event whose value does not need this beam is a stray marker.
+    // It is dropped with no warning, because the note is drawn correctly
+    // without it.
     run = []
   }
 
@@ -114,10 +108,9 @@ function beamsAtLevel(events: readonly BeamedEvent[], level: number): Beam[] {
 
     const hook = marker === undefined ? undefined : HOOK_DIRECTIONS.get(marker)
     if (hook) {
-      // A hook belongs to the level it is written at, beside whatever runs
-      // there rather than inside them. A note may carry hooks at several
-      // levels at once, as a 32nd beside a double-dotted eighth does, and
-      // the deeper ones nest inside this one.
+      // A hook belongs to the level it is written at, beside the runs there.
+      // A note may carry hooks at several levels, as a 32nd beside a
+      // double-dotted eighth does, and the deeper ones nest inside this one.
       beams.push({ events: [event.id], beams: beamsAtLevel([event], level + 1), direction: hook })
       continue
     }
@@ -126,7 +119,7 @@ function beamsAtLevel(events: readonly BeamedEvent[], level: number): Beam[] {
       close()
       run = [event]
     } else if (marker === 'continue' || marker === 'end') {
-      // An end with no beginning is not a beam, and nothing is invented for it.
+      // An end with no begin is not a beam.
       if (run.length > 0) run.push(event)
       if (marker === 'end') close()
     } else {

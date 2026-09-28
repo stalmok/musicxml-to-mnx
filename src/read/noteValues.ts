@@ -12,10 +12,7 @@ import type { XmlElement } from '../xml/parse.js'
 import { trimmedText } from '../xml/tree.js'
 import { entriesOf } from './tables.js'
 
-// MusicXML's word for every note value the model states. Keyed by the model's
-// own value, so a value the model gains and this table lacks does not compile,
-// which is the direction that matters: a value with no spelling here is one
-// the reader would never read.
+// MusicXML's word for every note value the model states.
 const MUSICXML_SPELLINGS: Record<NoteValueBase, string> = {
   maxima: 'maxima',
   longa: 'long',

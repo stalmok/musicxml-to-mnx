@@ -1,10 +1,9 @@
 // Reading a <note>: what sounds, for how long, and everything written on it.
 //
-// This is where most of MusicXML's encoding decisions are met. A <note> is not
-// always an event of its own: one carrying <chord> joins the note before it,
-// and one carrying <grace> is squeezed in beside the beat. Both are settled
-// first, because what follows only applies to a note that stands in the
-// cursor's path.
+// A <note> is not always an event of its own: one carrying <chord> joins the
+// note before it, and one carrying <grace> takes none of the measure's time.
+// Both are settled first, because what follows applies only to a note that
+// stands in the cursor's path.
 
 import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
@@ -58,9 +57,8 @@ import { MeasureBuilder } from './voices.js'
 import type { PlacedEvent } from './voices.js'
 import type { TupletDisplaySettings } from './tuplets.js'
 
-// A recogniser rather than a bare set: it narrows the value it accepts to the
-// model's type, so a validated value reaches the writer without a cast, and
-// the list and the model's Step are held to each other in both directions.
+// A recogniser narrows the value to the model's Step, so no cast is needed,
+// and the list and Step are checked against each other in both directions.
 const isStep = recogniser<Step>({ A: true, B: true, C: true, D: true, E: true, F: true, G: true })
 
 // The diatonic order of a step within its octave, counting from C, since staff
@@ -84,10 +82,9 @@ function diatonicIndex(step: Step, octave: number): number {
  * The height a <display-step>/<display-octave> pair states, in steps from the
  * middle of the staff. The clef in force holds the position its reference
  * pitch sits at, and each diatonic step from there is one more step of
- * height. Undefined where the pair is incomplete or no clef is in force to
- * read it against; what to do about that is the caller's, because a rest
- * without a height is drawn at its default one and an unpitched note without
- * one has nowhere to sit.
+ * height. Undefined where the pair is incomplete or no clef is in force. The
+ * caller decides what follows: a rest without a height is drawn at its
+ * default, and an unpitched note without one has nowhere to sit.
  */
 function displayStaffPosition(
   element: XmlElement,
@@ -142,9 +139,8 @@ const UNPLACED_KIT_COMPONENT = 0
  * first time a note strikes it.
  *
  * MNX names a component once, on the part, and MusicXML tells one from
- * another by the <instrument> each note names. A source naming none has only
- * the height the note is written at, which is what a reader of the page has
- * too, so that is what stands in for the instrument.
+ * another by the <instrument> each note names. Where a source names none, the
+ * height the note is written at stands in for the instrument.
  */
 function kitComponent(
   element: ElementReader,
@@ -170,13 +166,11 @@ function kitComponent(
 
   const position = displayStaffPosition(unpitchedElement, staff, state)
   const named = instruments[0] ? attribute(instruments[0], 'id') : undefined
-  // A component is an instrument written at a height, not an instrument. MNX
-  // places a component once and every note struck on it sits there, so two
-  // notes strike the same one when they agree on both. Keying by the
-  // instrument alone collapsed a part that names one instrument for the whole
-  // drumset onto a single line; keying by the height alone merged two drums a
-  // source tells apart by instrument. Where a source names no instrument, the
-  // height is all it gives and all a reader of the page has.
+  // A component is an instrument written at a height. MNX places a component
+  // once and every note struck on it sits there, so two notes strike the same
+  // one only when they agree on both. A part can name one instrument for the
+  // whole drumset, and a source can tell two drums apart by instrument alone.
+  // Where a source names no instrument, the height is all it gives.
   const source = `${named ?? ''}@${String(position ?? UNPLACED_KIT_COMPONENT)}`
 
   const existing = state.kitKeys.get(source)
@@ -260,13 +254,12 @@ export function readNote(
 
   const notations = element.blocks('notations')
   // A <notations> block hidden with print-object="no" still has its slur,
-  // fermata and the rest drawn, because MNX cannot mark them invisible.
-  // Report the hiding rather than drop it in silence, naming what the block
-  // holds. The one exception is a block holding only <tuplet> markers: a
-  // hidden tuplet notation is the tuplet drawn with no bracket, no number
-  // and no value, and MNX's display settings state all three, so the hiding
-  // converts instead. That is the standard way a source numbers only the
-  // first tuplet of a run.
+  // fermata and the rest drawn, because MNX cannot mark them invisible. The
+  // hiding is reported, naming what the block holds. The exception is a block
+  // holding only <tuplet> markers: a hidden tuplet notation is the tuplet
+  // drawn with no bracket, number or value, which MNX's display settings
+  // state, so the hiding converts. Sources use this to number only the first
+  // tuplet of a run.
   const hiddenTuplets = new Set<XmlElement>()
   for (const block of notations) {
     // An empty block hides nothing, so there is nothing to lose.
@@ -305,21 +298,20 @@ export function readNote(
 
   // MNX states a rest filling the measure on a sequence that holds nothing,
   // so a voice that rests the measure has nowhere to put a grace note. The
-  // rest comes back off the sequence and is written as the event its length
-  // is written as, which is where the same two written the other way round
-  // already leave it. Taken back before this note opens a bracket of its own,
-  // so that the rest stands outside that bracket, as it does in the source. A
-  // chord member joins the grace note before it, which has taken the rest
-  // back already. An irregular measure has no value to write the rest as, so
-  // it is written as a space.
+  // rest comes back off the sequence as an event of its written length, as it
+  // would with the grace note written first. It is taken back before this
+  // note opens a bracket, so the rest stays outside that bracket, as in the
+  // source. A chord member joins the grace note before it, which has taken
+  // the rest back already. An irregular measure has no value to write the
+  // rest as, so it is written as a space.
   const restored =
     graceElement && !chordMember ? builder.restoreMeasureRest(voice, path, element.line) : undefined
   if (restored?.written === 'space') reportRestAsSpace(warnings, context, restored.line)
 
-  // Which staff the note names. Read and bounded whatever the part has, so
-  // that a note naming a staff before <staves> said the part had one is
-  // rejected rather than quietly placed on the first. It is only worth
-  // stating where the part has more than one staff to choose between.
+  // Which staff the note names. It is range-checked even in a one-staff part,
+  // so a note naming a staff that <staves> has not declared is rejected, not
+  // placed on the first. It is stated only where the part has more than one
+  // staff.
   const staffElement = element.child('staff')
   const named = staffElement ? readIntegerInRange(staffElement, path, 1, state.staves) : undefined
   const staff = state.staves > 1 ? named : undefined
@@ -448,14 +440,14 @@ export function readNote(
       placed.beams,
     )
     // A bracket can stop on a grace note, and the stop is read here as it is
-    // on any other note. Left unread, the bracket ran on past the group to
-    // whatever sounded next and took that in.
+    // on any other note. Left unread, the bracket would run on past the group
+    // and take in whatever sounded next.
     closeTuplets(builder, voice, markers, warnings, context, path, element.line)
     return
   }
 
-  // Real scores write an occasional extra rest over a rest that already
-  // fills the same voice's measure. Both are silence, so the measure rest
+  // Sources sometimes write an extra rest over a rest that already fills the
+  // same voice's measure. Both are silence, so the measure rest
   // stands, the extra is reported, and the cursor still moves past it.
   if (event.isRest && builder.restIsRedundant(voice)) {
     warnings.add(
@@ -555,13 +547,12 @@ function openTupletsAndTremolo(
 
   const starts = markers.filter((marker) => attribute(marker, 'type') === 'start')
 
-  // MusicXML states a tuplet twice, and the two say different things: the
-  // ratio on every note is what makes it one, and <tuplet> only draws a
-  // bracket around it. A source stating the ratio and drawing nothing still
-  // says how long the group is, as the written value the ratio counts, so a
-  // run of notes carrying the same ratio divides into one group after another
-  // with nothing guessed. Faure's Cantique de Jean Racine is written this way
-  // throughout, 1,056 triplet notes with no bracket anywhere.
+  // MusicXML states a tuplet twice: the ratio on every note is what makes it
+  // one, and <tuplet> only draws a bracket around it. A source stating the
+  // ratio and drawing nothing still says how long the group is, as the
+  // written value the ratio counts, so a run of notes carrying the same ratio
+  // divides into one group after another with nothing guessed. Faure's
+  // Cantique de Jean Racine is written this way throughout.
   //
   // The ratio is read only where it can settle such a run. A start marker
   // opens a bracket of its own below; inside a bracket the source drew, the
@@ -602,11 +593,10 @@ function openTupletsAndTremolo(
   }
 
   if (starts.length > 0) {
-    // A bracket with no ratio beside it is written by real engravers, and the
-    // note itself says what the ratio is: how long it lasts against how it is
-    // written. Ten songs of the Lieder corpus carry one, some as a plain
-    // bracket over notes that play as written, some as a triplet whose
-    // <time-modification> the exporter left out.
+    // Sources write a bracket with no ratio beside it, and the note itself
+    // says what the ratio is: how long it lasts against how it is written.
+    // Some write a plain bracket over notes that play as written, some a
+    // triplet whose <time-modification> the exporter left out.
     const derived = ratio ? undefined : impliedTupletRatio(written, duration)
     if (!ratio && !derived) {
       throw new MusicXMLError(
@@ -655,12 +645,12 @@ function openTupletsAndTremolo(
     }
 
     // MNX states a two-note tremolo as one item holding both notes, so a
-    // bracket around one of them has nowhere to go. MuseScore writes exactly
-    // that: each note of the pair carries a bracket of one in the time of
-    // one, drawn with neither bracket nor number. Such a bracket scales
-    // nothing, so passing it over costs no duration, and the stop that
-    // matches it is passed over with it. A bracket that does scale something
-    // is refused where it opens.
+    // bracket around one of them has nowhere to go. MuseScore writes that:
+    // each note of the pair carries a bracket of one in the time of one,
+    // drawn with neither bracket nor number. Such a bracket scales nothing,
+    // so passing it over costs no duration, and the stop that matches it is
+    // passed over with it. A bracket that does scale something is refused
+    // where it opens.
     const inTremolo = tremolo?.type === 'start' || builder.insideTremolo(voice)
     const opened = opening.filter((start) => {
       if (!inTremolo || !scalesNothing(start.stated ?? quantities)) return true
@@ -938,10 +928,9 @@ function readChordMember(
   // A bracket runs around a whole chord, and exporters draw it by writing
   // the same marker on every note of that chord. Such a marker restates the
   // one the chord's own note carried, and the bracket it names is already
-  // open or already closed, so it is passed over rather than read again:
-  // read again, the stop closed a second bracket that nothing opened and
-  // refused the document. Sibelius leaves <voice> off a chord member, so
-  // the chord's voice is the one asked, not the member's.
+  // open or closed, so it is passed over. Read again, its stop would close a
+  // bracket nothing opened. Sibelius leaves <voice> off a
+  // chord member, so the chord's voice is the one asked, not the member's.
   const chordVoice = builder.voiceOfChord(voice)
   const chordMarkers = tupletMarkers(notations).filter(
     (marker) => !builder.restatesTupletMarker(chordVoice, tupletMarkerKey(marker)),
@@ -1079,11 +1068,9 @@ function closeTuplets(
 // MusicXML's <articulations> children, in MNX's spelling. A caesura is read
 // apart, because it states no side. Everything else MusicXML allows there,
 // from a doit to a falloff, has no home in event-markings and stays unread,
-// which is what reports it. A tremolo is not one of them: it is
-// written among the ornaments, and read below with the beam count it needs.
-// Keyed by the mark rather than by the element, so the compiler demands an
-// entry for every kind the model holds: a kind added there with no spelling
-// here would simply never be read.
+// which is what reports it. A tremolo is not one of them: it is written
+// among the ornaments, and read below with the beam count it needs. Keyed by
+// the mark, so the compiler demands an entry for every kind the model holds.
 const ARTICULATIONS: Record<
   Exclude<MarkingKind, 'tremolo' | 'bowDirection' | 'caesura'>,
   string
@@ -1567,8 +1554,8 @@ function readArpeggio(
       // rolls from the lowest note up when it states none.
       const direction = upOrDown(attribute(rolled, 'direction'))
       // The number is what joins one chord's mark to another's, so an absent
-      // one is passed on absent rather than defaulted: a default made every
-      // unnumbered mark in the measure claim the same roll.
+      // one is passed on absent: a default would make every unnumbered mark in
+      // the measure claim the same roll.
       builder.markArpeggio(
         placed,
         note,
@@ -1676,7 +1663,7 @@ function tiePairing(note: Note | KitNote): string {
 
 /**
  * How a note's accidental is drawn, or nothing where the source draws none.
- * MusicXML draws an accidental exactly where it writes an <accidental>, so its
+ * MusicXML draws an accidental where it writes an <accidental>, so its
  * presence is what marks the note; a note with an alter but no <accidental> is
  * covered by the key or a note before it.
  */
@@ -1795,7 +1782,7 @@ function tieEdges(
   // Every stop before every start, whichever order the document writes them
   // in. A note is the middle of a chain only one way round: it ends the tie
   // before it and then starts the next. Taken as written, a note stating its
-  // start first closed that very tie and came out tied to itself.
+  // start first would close that tie and be tied to itself.
   return [...Array<'stop'>(stops).fill('stop'), ...Array<'start'>(starts).fill('start')]
 }
 
@@ -1803,7 +1790,7 @@ function tieEdges(
 // side, on the note it starts from, so the start's statement is the tie's:
 // a side stated on a stop is read and dropped, with the read accounting for
 // the attributes. A "continue" starts the next tie of a chain, so its side is
-// that tie's, exactly as a start's is.
+// that tie's, as a start's is.
 function startTiedSide(tieds: readonly XmlElement[]): CurveSide | undefined {
   let side: CurveSide | undefined
   for (const tied of tieds) {
@@ -1908,8 +1895,8 @@ function beamMarkers(
   const markers = new Map<number, string>()
   for (const beam of element.children('beam')) {
     // A fanned beam draws an accelerando or ritardando by spreading the beams.
-    // MNX has no home for it in this pin, and <beam> has no children for the
-    // loss net to catch, so it is reported here rather than dropped silently.
+    // MNX has no home for it in this schema pin, and <beam> has no children
+    // for the unread-element sweep to catch, so it is reported here.
     const fan = attribute(beam, 'fan')
     if (fan !== undefined && fan !== 'none') {
       warnings.add(
@@ -1929,16 +1916,11 @@ function beamMarkers(
       continue
     }
 
-    // A level outside the eight a stem can carry says nothing a beam can be
-    // drawn from, and the measure adds up without it: how a note is beamed is
-    // drawing, not duration. So the marker is dropped and reported, as a
-    // fanned beam above is, rather than the document being refused over it.
-    //
-    // The marker said where a beam begins or ends, so the beams around it are
-    // drawn as if it had never been written: a run whose end was written here
-    // closes at the last marker it kept, and comes out short. The report says
-    // so, because a reader told only that one level is missing would not look
-    // at the beams beside it.
+    // A level outside the eight a stem can carry draws no beam, and the
+    // measure adds up without it, so the marker is dropped and reported, not
+    // refused. The beams around it are drawn as if it were never written: a
+    // run whose end was written here closes at the last marker it kept, and
+    // comes out short. The report says so.
     const level = parseWholeNumber(stated)
     if (level === undefined || level < 1 || level > MOST_BEAM_LEVELS) {
       warnings.add(
@@ -2043,11 +2025,9 @@ function tupletMarkers(notations: readonly ElementReader[]): readonly XmlElement
   return notations.flatMap((block) => block.children('tuplet'))
 }
 
-// MusicXML's show-number/show-type values in MNX's. "actual" is the played
-// count, which MNX calls the inner one.
-// What MusicXML's show-number and show-type say, in MNX's spelling. Keyed by
-// the model's own word, so a setting the model gains and this table lacks does
-// not compile.
+// What MusicXML's show-number and show-type say, in MNX's spelling. "actual"
+// is the played count, which MNX calls the inner one. Keyed by the model's own
+// word, so a setting the model gains and this table lacks does not compile.
 const MUSICXML_TUPLET_DISPLAY: Record<TupletDisplay, string> = {
   both: 'both',
   inner: 'actual',
@@ -2159,8 +2139,7 @@ const MOST_A_TUPLET_COUNTS = 32
  *
  * Nothing is read where the note does not say both how it is written and how
  * long it lasts, or where the ratio needs numbers larger than MusicXML would
- * write in a <time-modification>: there is no reading to be had, and the
- * caller refuses the document rather than inventing one.
+ * write in a <time-modification>. The caller then refuses the document.
  */
 function impliedTupletRatio(
   written: NoteValue | undefined,
@@ -2169,9 +2148,8 @@ function impliedTupletRatio(
   if (!written || !duration || duration.num <= 0) return undefined
 
   const ratio = divideFractions(lengthOf(written), duration)
-  // A tuplet nobody would write is not a reading of the bracket; it is the
-  // note's duration disagreeing with its written value, which the caller
-  // refuses over rather than dressing up as a ratio the source meant.
+  // A ratio this large is the note's duration disagreeing with its written
+  // value, not a tuplet. The caller refuses it.
   if (ratio.num > MOST_A_TUPLET_COUNTS || ratio.den > MOST_A_TUPLET_COUNTS) return undefined
   return {
     inner: { value: written, multiple: ratio.num },
@@ -2212,9 +2190,9 @@ function tupletShareOfRatio(quantities: {
 }
 
 /**
- * Whether a tuplet's ratio plays its notes in exactly the time they are
- * written as. Both sides may count different values, so the two are compared
- * as lengths rather than as counts.
+ * Whether a tuplet's ratio plays its notes in the time they are written as.
+ * Both sides may count different values, so the two are compared as lengths
+ * rather than as counts.
  */
 function scalesNothing(quantities: {
   inner: NoteValueQuantity
@@ -2355,8 +2333,7 @@ function measuredValue(
   }
 
   // The duration was measured in assumed divisions, and with no written value
-  // there is nothing to check the assumption against. A wrong guess here
-  // would be a silently wrong note length.
+  // there is nothing to check the assumption against.
   if (state.divisionsAssumed) {
     throw new MusicXMLError(
       'A <note> has no <type>, and no <divisions> ever said how long its <duration> is.',
@@ -2401,9 +2378,8 @@ function reportDurationMismatch(
 
   // The ratio is what the written value is weighed against, so inside a
   // tuplet or a tremolo the message names the length that ratio wants, and
-  // which of the two states it. Naming the written value alone read as
-  // "written as an eighth but lasts an eighth", the same length twice, which
-  // reads as a fault in the converter rather than in the source.
+  // which of the two states it. Naming the written value alone would give
+  // "written as an eighth but lasts an eighth", the same length twice.
   warnings.add(
     'inconsistent:duration',
     scaledBy
@@ -2439,7 +2415,7 @@ function readPitch(
 }
 
 // A decimal as MusicXML writes one, which is what <alter> counts semitones
-// in. Deliberately stricter than Number(), for the reason readInteger is.
+// in. Stricter than Number(), for the same reason as readInteger.
 const DECIMAL_SEMITONES = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/
 
 /**

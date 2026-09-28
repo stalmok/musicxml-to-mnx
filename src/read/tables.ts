@@ -1,13 +1,12 @@
 // Reader tables, held to the model unions they restate.
 //
-// A table whose keys are a model union is written Record<Union, T>: the
-// compiler then demands an entry for every member and refuses one for
-// anything else, so the table cannot fall behind the union it restates.
-// Walking such a table needs its key type back, which the standard library
-// does not give, because Object.entries widens every key to string.
+// A table whose keys are a model union is written Record<Union, T>, so the
+// compiler demands an entry for every member and refuses any other key.
+// Object.entries widens every key to string, so entriesOf() gives the key
+// type back.
 //
-// A list of the words a source may write for a union is the same problem in
-// a shape Record cannot state, and recogniser() is that shape.
+// recogniser() does the same for a list of the words a source may write for
+// a union.
 
 /**
  * A record's entries, keeping the record's own key type.
@@ -32,19 +31,12 @@ type Spelled<Union> = Union extends string ? string : number
 /**
  * A predicate for the whole of a model union, from the words that spell it.
  *
- * The model states a vocabulary as a union, and the reader has to decide
- * whether the word a source wrote is one of them. A bare set cannot say so:
- * nothing connects a set's contents to a union, so the two drift apart in
- * both directions, and the call site casts whatever the set accepted.
+ * The words are given as a table keyed by the union, so the compiler demands
+ * a key for every member and refuses any other key. The predicate narrows to
+ * the union, so the call site needs no cast.
  *
- * The words are given as a table keyed by the union, which is the one shape
- * the compiler checks both ways: it demands a key for every member and
- * refuses a key that is not one. The predicate narrows to the union, so the
- * call site needs no cast.
- *
- * One word cannot be spelled this way: __proto__ sets an object's prototype
- * rather than holding a key, so a vocabulary containing it would reject it.
- * Neither format spells anything that way.
+ * __proto__ cannot be spelled this way, because it sets an object's
+ * prototype. Neither format uses that word.
  */
 export function recogniser<Union extends string | number>(
   words: Readonly<Record<Union, true>>,

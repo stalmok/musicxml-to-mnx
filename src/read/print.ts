@@ -12,9 +12,8 @@ export interface PrintReading {
   pageBreak: boolean
 }
 
-// The attributes a <print> may carry besides the two breaks. Warned here by
-// name, because the loss net tracks children and a <print> states these as
-// attributes alone.
+// The attributes a <print> may carry besides the two breaks. Reported here
+// as having no home in MNX; the sweep would report them as a converter gap.
 const UNCARRIED_PRINT_ATTRIBUTES = ['page-number', 'blank-page', 'staff-spacing'] as const
 
 /**
