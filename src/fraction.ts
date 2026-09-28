@@ -1,12 +1,12 @@
-// Exact rational arithmetic for durations. MusicXML measures time in its own
+// Exact rational arithmetic for durations. MusicXML measures time in
 // <divisions> units and MNX in note values, so converting between them means
 // dividing, and the results do not stay binary: a triplet eighth is 1/12 of a
-// whole note. Accumulating those as floats would make "does this measure add
-// up" and "where does this voice start" unreliable, so nothing here uses one.
+// whole note. Floats would make measure-fill and voice-start checks
+// unreliable, so nothing here uses one.
 //
-// A value past the safe-integer range cannot be held exactly, and this refuses
-// rather than round. It throws an InexactFractionError, which names no input
-// format: the conversion restates it as a MusicXMLError on the way out.
+// A value past the safe-integer range cannot be held exactly. This throws an
+// InexactFractionError rather than round, and the conversion restates it as a
+// MusicXMLError.
 
 declare const normalised: unique symbol
 
@@ -21,10 +21,10 @@ export interface Fraction {
   readonly num: number
   readonly den: number
   /**
-   * Type-only, and never present at runtime. A Fraction is in lowest terms
-   * with the sign on the numerator, which is what lets two equal values be
-   * compared field by field, and only this module normalises. The brand is
-   * how the compiler says so: a hand-built { num: 2, den: 4 } is not one.
+   * Type-only, never present at runtime. A Fraction is in lowest terms with
+   * the sign on the numerator, so equal values compare field by field. Only
+   * this module builds one; a hand-built { num: 2, den: 4 } does not
+   * type-check.
    */
   readonly [normalised]: true
 }
@@ -40,12 +40,10 @@ function greatestCommonDivisor(a: number, b: number): number {
 
 /**
  * Builds a normalised fraction: lowest terms, with the sign on the numerator.
- * All arithmetic goes through here, so two equal values always have equal
- * parts and can be compared field by field.
+ * All arithmetic goes through here, so equal values have equal parts.
  *
- * The two casts are the only places the brand is claimed, and this is where
- * the claim is earned: the value returned is in lowest terms, and a zero or
- * unsafe denominator has already been refused.
+ * The two casts are the only places that claim the brand. The value is in
+ * lowest terms, and a zero denominator or an unsafe part is already refused.
  */
 export function fraction(num: number, den = 1): Fraction {
   if (den === 0 || !Number.isSafeInteger(num) || !Number.isSafeInteger(den)) {
@@ -61,10 +59,9 @@ export function fraction(num: number, den = 1): Fraction {
     : ({ num, den } as Fraction)
 }
 
-// Each of these reduces before it multiplies. Doing it the other way round
-// builds products that overflow the safe-integer range on values the result
-// itself sits well inside: two <divisions> values in one measure is legal
-// MusicXML, and each contributes a denominator.
+// Each of these reduces before it multiplies. Multiplying first can overflow
+// the safe-integer range when the result itself is small: two <divisions>
+// values in one measure is legal MusicXML, and each gives a denominator.
 
 export function addFractions(a: Fraction, b: Fraction): Fraction {
   const common = greatestCommonDivisor(a.den, b.den)
@@ -87,11 +84,10 @@ export function subtractFractions(a: Fraction, b: Fraction): Fraction {
 }
 
 /**
- * Refuses a pair whose scaled numerators cannot be held exactly. Checked
- * before the two are combined, not after: two that each run past the safe
- * integer range can all but cancel, leaving a small result that fraction()
- * takes for an exact one. compareFractions checks its two sides for the same
- * reason.
+ * Refuses a pair whose scaled numerators cannot be held exactly. The check
+ * comes before they are combined: two that each run past the safe-integer
+ * range can almost cancel, and fraction() would take the small result as
+ * exact. compareFractions checks its two sides for the same reason.
  */
 function requireExactNumerators(
   left: number,
@@ -126,8 +122,8 @@ export function divideFractions(a: Fraction, b: Fraction): Fraction {
 /**
  * The largest value that counts both a and b a whole number of times: the
  * greatest common divisor of the numerators over the least common multiple of
- * the denominators. Zero where either side is zero, since no value counts
- * zero a whole number of times and something else too.
+ * the denominators. Zero where either side is zero, since no nonzero value
+ * counts zero a whole number of times.
  */
 export function commonMeasure(a: Fraction, b: Fraction): Fraction {
   if (a.num === 0 || b.num === 0) return fraction(0)
@@ -142,13 +138,9 @@ export function negate(value: Fraction): Fraction {
 /**
  * Negative when a is the smaller, zero when they are equal, else positive.
  *
- * Reduces before it multiplies, like the arithmetic above, and for the same
- * reason: two <divisions> values in one measure give denominators whose plain
- * product runs past the safe-integer range on values the comparison itself
- * sits nowhere near. It also compares the two sides rather than subtracting
- * them, because the difference can overflow where neither side does, and a
- * silently wrong sign here is worse than a wrong number anywhere else: it is
- * what decides whether a measure is full and whether a voice runs backwards.
+ * Reduces before it multiplies, like the arithmetic above. It compares the
+ * two sides rather than subtracting them, because the difference can overflow
+ * where neither side does.
  */
 export function compareFractions(a: Fraction, b: Fraction): number {
   const common = greatestCommonDivisor(a.den, b.den)

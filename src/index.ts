@@ -1,7 +1,5 @@
-// Public exports. Consumers import only from here.
-//
-// The score model in src/model/ is deliberately absent: it is an internal
-// boundary between the reader and the writer, not API.
+// Public exports. Consumers import only from here. The score model in
+// src/model/ is internal and not exported.
 
 export { convertMusicXML } from './convert.js'
 export type { ConversionOptions, ConversionResult } from './convert.js'
@@ -26,7 +24,6 @@ export type {
   WarningContext,
 } from './warnings.js'
 
-// The whole output vocabulary, not a selection: a consumer holding an
-// MNXDocument needs to be able to name any node inside it, both to write
-// helpers over one and to have their own declaration files compile.
+// Every MNX type, so a consumer can name any node in an MNXDocument and its
+// own declaration files compile.
 export type * from './types/mnx.js'

@@ -16,7 +16,7 @@ import { WarningCollector } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
 
-// The spec's own two examples, as MNX states them.
+// The MNX spec's two examples.
 const B_FLAT_CLARINET: TranspositionInterval = { staffDistance: 1, halfSteps: 2 }
 const PICCOLO: TranspositionInterval = { staffDistance: -7, halfSteps: -12 }
 
@@ -244,8 +244,7 @@ describe('a part written for a transposing instrument', () => {
     expect(part?.transposition).toEqual({ staffDistance: 0, halfSteps: 2 })
   })
 
-  // MusicXML requires <chromatic>, and there is nothing to read the interval
-  // from without it.
+  // Without <chromatic> there is no interval to read.
   test('refuses a transpose stating no half steps', () => {
     expect(() => read(inPart('<transpose><diatonic>-1</diatonic></transpose>', NOTE))).toThrow(
       /chromatic/,
@@ -391,9 +390,8 @@ describe('a part stating more than one transposition', () => {
   })
 })
 
-// A score with a transposing part in it writes two different key signatures
-// for the same music, and used to report them as parts in different keys.
-// Converted to the key each sounds in, they agree.
+// A score with a transposing part in it writes two key signatures for the
+// same music. Converted to the key each sounds in, they agree.
 describe('a score holding both a transposing part and a concert one', () => {
   test('states one key, and reports no disagreement', () => {
     const warnings = new WarningCollector()

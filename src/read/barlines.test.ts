@@ -13,10 +13,8 @@ const NOTE =
   '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
   '<type>quarter</type></note>'
 
-// Each measure is written on its own line, so a warning naming a line names
-// which measure's element it came from. Written as one line, every element in
-// the document sat on line 1 and an assertion on the line said only that
-// there was one.
+// Each measure is written on its own line, so a warning's line names the
+// measure element it came from.
 function read(...bodies: string[]) {
   const warnings = new WarningCollector()
   const measures = bodies
@@ -130,8 +128,7 @@ describe('the line closing a measure', () => {
 
 describe('repeat signs', () => {
   // A heavy-light at the opening edge is how a repeat start draws, and is
-  // not restated. Any other style there is the source's own statement, with
-  // nowhere to go, and says so like any opening style.
+  // not restated. Any other style there has nowhere to go and is reported.
   test('reports an opening style a repeat start does not draw', () => {
     const { globals, warnings } = read(
       left('<bar-style>dotted</bar-style><repeat direction="forward"/>') + NOTE,
@@ -155,10 +152,7 @@ describe('repeat signs', () => {
     expect(globals[0]?.repeatEnd).toEqual({ times: undefined })
   })
 
-  // Nothing said that a barline which is not a repeat start does not open
-  // one, so the reader could have opened a repeat on every measure and the
-  // suite would have stayed green. Each of the three ways of not opening one
-  // is stated here.
+  // Each of the three ways of not opening a repeat is tested here.
   test('opens no repeat on a measure carrying no barline at all', () => {
     const { globals } = read(NOTE)
 
@@ -184,10 +178,9 @@ describe('repeat signs', () => {
     expect(globals[0]?.repeatEnd?.times).toBe(12)
   })
 
-  // A standard backward repeat is written light-heavy plus the repeat: the
-  // light-heavy is how the closing sign draws, and repeatEnd already says
-  // to draw it. Stating final too asserts a barline the source never
-  // states, and a consumer honouring both draws the thin-thick twice.
+  // A standard backward repeat is written light-heavy plus the repeat. The
+  // light-heavy is how the closing sign draws, and repeatEnd already draws
+  // it. A consumer honouring both would draw the thin-thick twice.
   test('keeps only the repeat where light-heavy is how it draws', () => {
     const { globals, warnings } = read(
       NOTE + right('<bar-style>light-heavy</bar-style><repeat direction="backward"/>'),
@@ -223,9 +216,8 @@ describe('repeat signs', () => {
     expect(warnings).toEqual([])
   })
 
-  // A backward repeat at the opening edge is a statement the format allows
-  // and the music cannot mean. The style there still has nowhere to go, and
-  // still says so.
+  // A backward repeat at the opening edge is legal MusicXML but has no
+  // musical meaning. The style there still has nowhere to go.
   test('still reports an opening-edge style beside a backward repeat', () => {
     const { globals, warnings } = read(
       left('<bar-style>light-heavy</bar-style><repeat direction="backward"/>') + NOTE,
@@ -254,8 +246,7 @@ describe('repeat signs', () => {
   })
 
   // The style is passed over only because the repeat start redraws it. With
-  // no repeat beside it, a heavy-light at the opening edge is the source's
-  // own statement, with nowhere to go, and says so like any opening style.
+  // no repeat beside it, a heavy-light at the opening edge has nowhere to go.
   test('reports a heavy-light opening edge with no repeat start beside it', () => {
     const { globals, warnings } = read(left('<bar-style>heavy-light</bar-style>') + NOTE)
 
@@ -286,8 +277,7 @@ describe('a mark on the opening edge of a measure', () => {
 })
 
 describe('a repeat sign', () => {
-  // MusicXML's repeat runs forward or backward. Anything else names no sign
-  // this converter draws, and the report says which word was written.
+  // MusicXML's repeat runs forward or backward.
   test('reports a repeat in a direction it does not know, and names it', () => {
     const { warnings } = read(NOTE + right('<repeat direction="sideways"/>'))
 
@@ -353,10 +343,8 @@ describe('first and second time endings', () => {
   })
 
   // A bracket is joined to its other end once the part is whole, so these
-  // three are reported long after the <ending> is gone. Each names the
-  // measure the loss is in and the line the bracket's edge was written on,
-  // which is the only thing that sends a reader to it. No vendored song
-  // carries a broken bracket, so nothing else states it.
+  // three are reported after the <ending> is read. Each names the measure the
+  // loss is in and the line the bracket's edge was written on.
   test('reports an ending that stops where none had started', () => {
     const { globals, warnings } = read(NOTE + right('<ending number="1" type="stop"/>'))
 
@@ -388,11 +376,10 @@ describe('first and second time endings', () => {
     expect(globals[1]?.ending?.numbers).toEqual([2])
   })
 
-  // "first" fails the shape. "+1" and "1e2" are safe integers to Number() that
-  // the regex refuses, and twenty digits is digits that cannot be read back
-  // exactly, so each check rejects a case the others accept. Both formats
-  // count the times from 1, so "0" states no time, and a list holding one
-  // states none either.
+  // "first" fails the shape. "+1" and "1e2" are safe integers to Number()
+  // that the regex refuses. Twenty digits cannot be read back exactly. Each
+  // check rejects a case the others accept. Both formats count the times from
+  // 1, so "0" states no time, and a list that holds "0" states none.
   test.each(['first', '+1', '1e2', '99999999999999999999', '0', '1, 2, 0'])(
     'reports a number of "%s", which is not a list of times counted from 1',
     (numbers) => {
@@ -432,11 +419,9 @@ describe('first and second time endings', () => {
   })
 })
 
-// MusicXML writes the same <fermata> over a note and over a barline, and MNX
-// reads it the same way in both places.
-// MusicXML also lets the sign a D.S. jumps back to sit on the barline itself
-// rather than between the notes as a direction. It is the same sign, so it
-// goes on the score's measure the same way.
+// MusicXML lets the sign a D.S. jumps back to sit on the barline instead of
+// between the notes as a direction. It is the same sign, so it goes on the
+// score's measure the same way.
 describe('a segno on the barline', () => {
   test('puts a segno on the opening barline at the start of the measure', () => {
     const { globals, warnings } = read(left('<segno/>') + NOTE)
@@ -530,8 +515,6 @@ describe('what a barline can say that MNX cannot', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:barline'])
   })
 
-  // The one warning accounts for the whole partway barline, so a segno on it
-  // is neither converted nor reported a second time.
   test('reports a partway barline carrying a segno once, converting none of it', () => {
     const { globals, warnings } = read(
       NOTE + '<barline location="middle"><segno/></barline>' + NOTE,
@@ -541,9 +524,9 @@ describe('what a barline can say that MNX cannot', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:barline'])
   })
 
-  // A fermata at the opening edge is held over the barline closing the measure
-  // before, and moving it there would be a guess about what the source meant.
-  // The one warning accounts for the whole mark, the way it faces included.
+  // A fermata at the opening edge is held over the barline that closes the
+  // measure before. Moving it there would be a guess. The one warning covers
+  // the whole mark, its facing included.
   test('reports a fermata written at the start of a measure', () => {
     const { globals, warnings } = read(left('<fermata type="upright"/>') + NOTE)
 
@@ -551,9 +534,9 @@ describe('what a barline can say that MNX cannot', () => {
     expect(warnings.map((w) => w.element)).toEqual(['fermata'])
   })
 
-  // Both formats allow any whole number of repeats, so an odd count is worth
-  // reporting rather than refusing a whole score over. Twenty digits cannot be
-  // read back exactly.
+  // Both formats allow any whole number of repeats, so an odd count is
+  // reported and the score is not refused. Twenty digits cannot be read back
+  // exactly.
   test.each(['1', '0', 'lots', '1e2', '99999999999999999999'])(
     'reports a repeat played "%s" times, keeping the repeat',
     (times) => {

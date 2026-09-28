@@ -1,12 +1,9 @@
 // The loss report. Anything MusicXML expresses that this converter does not
-// carry into MNX is reported here rather than dropped. A pipeline can then
-// gate on "zero warnings" and have that mean something.
+// carry into MNX is reported here, not dropped.
 //
 // Every warning falls into one of three kinds, and the code's prefix says
-// which. That distinction is the point of the report rather than a detail: a
-// gap in the converter may close in a later release, a limit of MNX will not,
-// and anyone deciding whether a file is worth reconverting later has to be
-// able to tell them apart without reading the prose.
+// which. A gap in the converter may close in a later release; a limit of MNX
+// will not.
 //
 //   a gap here          unsupported:*      MNX can state it; this converter
 //                                          does not carry it over yet, and a
@@ -29,11 +26,10 @@
 // Stable, machine-readable codes. A code's meaning must never change once
 // released; add a new one instead.
 //
-// The code is not the whole identity of a loss. 'unsupported:element' and
-// 'unsupported:attribute' are catch-alls covering most of this converter's
-// gaps, and what was lost is in the element and attribute fields beside them.
-// So a pipeline gating on "no new losses" keys on the code, element and
-// attribute together, not on the code alone.
+// The code alone does not identify a loss. 'unsupported:element' and
+// 'unsupported:attribute' cover most of this converter's gaps, and the element
+// and attribute fields name what was lost. To detect new losses, key on the
+// code, element and attribute together.
 export const WARNING_CODES = Object.freeze([
   // --- A gap in this converter ------------------------------------------
   // An element carrying notation this converter does not convert yet.
@@ -262,9 +258,8 @@ export const WARNING_CODES = Object.freeze([
   'inconsistent:key',
   'inconsistent:time',
   // The parts of the score state different tempos at the same point in a
-  // measure. MNX holds a list of them, so this is the parts disagreeing
-  // rather than a limit of the format: both would be drawn over one beat.
-  // The first stated is the one converted.
+  // measure. MNX holds a list of tempos, so this is not a limit of the format:
+  // both would be drawn over one beat. The first stated is the one converted.
   'inconsistent:tempo',
   // A voice sounds two notes at once, which one voice does not: closed-score
   // hymnals write two lines in one <voice>, laid over each other with
@@ -298,8 +293,8 @@ export const WARNING_CODES = Object.freeze([
   // stated is the one converted.
   'inconsistent:measure-number',
   // A duration or offset appears before any <divisions> said how long one
-  // is. One division per quarter note is assumed; if that is wrong, the
-  // written values disagree with the measured ones and say so.
+  // is. One division per quarter note is assumed; if that is wrong,
+  // 'inconsistent:duration' warnings follow.
   'missing:divisions',
   // A grace note stating no <type>. It carries no <duration> either, so
   // nothing says the value it is drawn with, and MNX states a value for
@@ -315,8 +310,8 @@ export const WARNING_CODES = Object.freeze([
   // the source intended.
   'missing:voice',
   // An unpitched note with no usable <display-step> and <display-octave> to
-  // place it by, or no clef in force to read them against. MNX states where every kit
-  // component sits, so it is written on the middle line.
+  // place it by, or no clef in force to read them against. MNX states where
+  // every kit component sits, so it is written on the middle line.
   'missing:display-step',
   // A rest written over a rest that already fills the same voice's measure.
   // Both are silence, so the measure rest stands and the extra is dropped. A
@@ -333,9 +328,8 @@ export type FormatLimit = Extract<WarningCode, `unrepresentable:${string}`>
 /** A loss a later release of this converter may close. See isConverterGap. */
 export type ConverterGap = Extract<WarningCode, `unsupported:${string}`>
 
-// The prefixes the source's own problems are written with. Listed rather
-// than left as "whatever the other two are not", so that a new prefix is
-// classified deliberately instead of falling in here.
+// The prefixes of the source's own problems. Listed, so a new prefix must be
+// classified and does not fall in here by default.
 type SourceProblemPrefix = 'inconsistent' | 'missing' | 'unresolved' | 'unclosed' | 'redundant'
 
 /** The source's own problem, which no release changes. See isSourceProblem. */
@@ -345,9 +339,8 @@ export type SourceProblem = Extract<WarningCode, `${SourceProblemPrefix}:${strin
 export type WarningCategory = 'format-limit' | 'converter-gap' | 'source-problem'
 
 /**
- * True for a loss no release of this converter can close, short of MNX itself
- * gaining somewhere to put it. The prefix is the contract; this saves every
- * consumer writing the same string test.
+ * True for a loss no release of this converter can close unless MNX itself
+ * changes. The `unrepresentable:` prefix is the contract.
  */
 export function isFormatLimit(code: WarningCode): code is FormatLimit {
   return code.startsWith('unrepresentable:')
@@ -355,8 +348,7 @@ export function isFormatLimit(code: WarningCode): code is FormatLimit {
 
 /**
  * True for a loss a later release of this converter may close: MNX can hold
- * it, but this converter does not carry it over yet. The mirror of
- * isFormatLimit.
+ * it, but this converter does not carry it over yet.
  */
 export function isConverterGap(code: WarningCode): code is ConverterGap {
   return code.startsWith('unsupported:')
@@ -371,10 +363,8 @@ export function isSourceProblem(code: WarningCode): code is SourceProblem {
   return Object.hasOwn(SOURCE_PROBLEM_PREFIXES, code.slice(0, code.indexOf(':')))
 }
 
-// Keyed by the union rather than listed, so a prefix the union gains and this
-// table lacks does not compile. A list of the same five would let the two
-// drift: categoryOf would call the new prefix a source problem while
-// isSourceProblem, which consumers hold, called it none.
+// Keyed by the union, so a prefix the union gains and this table lacks does
+// not compile.
 const SOURCE_PROBLEM_PREFIXES: Record<SourceProblemPrefix, true> = {
   inconsistent: true,
   missing: true,
@@ -384,10 +374,8 @@ const SOURCE_PROBLEM_PREFIXES: Record<SourceProblemPrefix, true> = {
 }
 
 /**
- * Which of the three kinds a code names. Every code names one, and the
- * compiler holds the three to covering the union: a new prefix in none of
- * them fails at the call below rather than reading as a source problem
- * because it is in neither of the other two.
+ * Which of the three kinds a code names. Every code names one; a new prefix
+ * in none of them does not compile.
  */
 export function categoryOf(code: WarningCode): WarningCategory {
   if (isFormatLimit(code)) return 'format-limit'
@@ -395,9 +383,8 @@ export function categoryOf(code: WarningCode): WarningCategory {
   return nameSourceProblem(code)
 }
 
-// Takes what the two categories above leave. That parameter type is the
-// total-split check: a code carrying a fourth prefix is not a SourceProblem,
-// and does not compile here.
+// Takes what the two categories above leave. A code with a fourth prefix is
+// not a SourceProblem, so it does not compile here.
 function nameSourceProblem(_code: SourceProblem): WarningCategory {
   return 'source-problem'
 }
@@ -418,14 +405,13 @@ export interface ConversionWarning {
   readonly message: string
   /**
    * The MusicXML element the loss is about, without its angle brackets, where
-   * it is about one. A field rather than something to be recovered from the
-   * message, because grouping a report by what was lost is the first thing
-   * anyone does with it, and the message is prose written for a person.
+   * it is about one. Group a report by this field, not by the message, which
+   * is prose for a person.
    */
   readonly element: string | undefined
   /**
    * The attribute the loss is about, where it is about one, beside the
-   * element carrying it. A field for the same reason the element is one.
+   * element carrying it.
    */
   readonly attribute: string | undefined
   readonly context: WarningContext
@@ -452,12 +438,10 @@ export class WarningCollector {
   }
 
   /**
-   * Keeps this point in the report for a decision that cannot be made yet.
-   * Whether a loss it is about is a loss at all can depend on what a later
-   * part writes, and the report reads in document order, so reporting it
-   * where the decision is made would put it after everything read since.
-   * Take a place where the element is, report through it later, and the
-   * report still reads in the order the source does.
+   * Keeps this point in the report for a decision that cannot be made yet,
+   * such as one that depends on what a later part writes. Take a place where
+   * the element is read and report through it later with addAt, so the report
+   * stays in document order.
    */
   reserve(): WarningPlace {
     return this.#next++
@@ -476,9 +460,8 @@ export class WarningCollector {
   }
 
   /**
-   * A copy, so the report cannot be mutated from outside, in document order.
-   * The sort is stable, so two reported through one place keep the order they
-   * were added in.
+   * A copy of the report, in document order. The sort is stable, so two
+   * warnings reported through one place keep the order they were added in.
    */
   list(): readonly ConversionWarning[] {
     return [...this.#warnings].sort((a, b) => a.place - b.place).map((entry) => entry.warning)

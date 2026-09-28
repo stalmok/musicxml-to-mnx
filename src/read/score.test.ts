@@ -77,7 +77,7 @@ describe('the document element', () => {
   })
 
   // The parser does not resolve namespaces, so a prefix stays on the name and
-  // the plain "found <mx:score-partwise>" message is a puzzle. Name the cause.
+  // the plain "found <mx:score-partwise>" message does not explain it.
   test('rejects a namespace-prefixed document, explaining the prefix', () => {
     const message = readFailure('<mx:score-partwise version="4.0"/>').message
 
@@ -359,9 +359,8 @@ describe('measure attributes', () => {
   })
 
   // A composite meter such as 3+2/8 is written as several beats-and-beat-type
-  // pairs. MNX states one count and unit; keeping the first pair would say the
-  // measure is shorter than it sounds, so the file is refused rather than
-  // converted to a meter it does not have.
+  // pairs. MNX states one count and unit. Keeping the first pair would say the
+  // measure is shorter than it sounds, so the file is refused.
   test('refuses a composite time signature written as several pairs', () => {
     expect(
       readFailure(
@@ -482,7 +481,7 @@ describe('measure attributes', () => {
 
   // MNX states a key as a count of fifths and nothing else. A mode, the
   // courtesy naturals of a cancelled key, and a per-accidental octave all have
-  // no home there, so each is reported rather than dropped without a word.
+  // no home there, so each is reported.
   test('reports a key mode, which MNX cannot state', () => {
     const { warnings } = read(
       measure('<attributes><key><fifths>2</fifths><mode>minor</mode></key></attributes>'),
@@ -529,7 +528,7 @@ describe('measure attributes', () => {
 
   // The first statement in a measure is the one it shows, and a statement
   // MNX cannot carry is still a statement: a later block in the same measure
-  // may not fill in what an earlier one deliberately left empty.
+  // may not fill in what an earlier one left empty.
   test('does not let a later time signature overwrite senza misura', () => {
     const { score: result } = read(
       measure(
@@ -615,8 +614,7 @@ describe('measure attributes', () => {
     ).toContain('<fifths> is not a whole number: "two"')
   })
 
-  // Number() would read these as 16 and 1000. Quietly reinterpreting a
-  // score's digits is exactly the guessing this converter refuses to do.
+  // Number() would read these as 16, 1000, 5 and 15.
   test.each(['0x10', '1e3', '0b101', '0o17'])('rejects "%s" as a number', (written) => {
     expect(
       readFailure(measure(`<attributes><key><fifths>${written}</fifths></key></attributes>`))
@@ -1789,10 +1787,10 @@ describe('durations', () => {
     expect(warnings).toEqual([])
   })
 
-  // A tuplet's written value is deliberately longer than it sounds, so
-  // converting it as an ordinary note would emit a measure that does not add
-  // up. The ratio the note carries puts it in a tuplet, which counts what it
-  // holds and keeps the space the ratio gives it, and the loss is reported.
+  // A tuplet's written value is longer than it sounds, so converting it as an
+  // ordinary note would write a measure that does not add up. The ratio the
+  // note carries puts it in a tuplet, which counts what it holds and keeps the
+  // space the ratio gives it, and the loss is reported.
   test('puts a note carrying a ratio inside a tuplet', () => {
     const { score, warnings } = read(
       measure(
@@ -1837,8 +1835,8 @@ describe('whole-measure rests', () => {
     })
   })
 
-  // Rare, but a measure rest need not state how long it lasts, because the
-  // time signature already says. Nothing then moves the cursor.
+  // A measure rest need not state how long it lasts, because the time
+  // signature says. Nothing then moves the cursor.
   test('does not need a duration to be understood', () => {
     const { score: result } = read(measure('<note><rest measure="yes"/></note>'))
 
@@ -1870,7 +1868,7 @@ describe('whole-measure rests', () => {
     expect(sequence?.content).toEqual([])
   })
 
-  // Real scores write an occasional extra rest over the measure rest in the
+  // Scores sometimes write an extra rest over the measure rest in the
   // same voice. Both are silence, so the measure rest stands and the extra
   // is reported.
   test('drops an extra rest written over a measure rest, reporting it', () => {
@@ -1925,11 +1923,9 @@ describe('whole-measure rests', () => {
     expect(warnings.map((w) => w.code)).toEqual(['redundant:rest'])
   })
 
-  // A pitched note over a measure rest is a real contradiction, not a
-  // redundancy.
   // A voice whose measure rest is one line and whose notes are another is
-  // the closed-score dialect again: the rest stays the sequence's own, and
-  // the notes laid over it become a sequence beside it.
+  // closed-score writing: the rest stays the sequence's own, and the notes
+  // laid over it become a sequence beside it.
   test('lays a note written over a measure rest into a sequence of its own', () => {
     const { score: result, warnings } = read(
       measure(
@@ -2016,9 +2012,9 @@ describe('reporting what is not converted', () => {
     ])
   })
 
-  // The concrete attribute case that motivated the sweep: a pickup measure's
-  // implicit="yes" says the measure is unnumbered. MNX's measure number is a
-  // plain integer override, with no way to state a measure unnumbered.
+  // A pickup measure's implicit="yes" says the measure is unnumbered. MNX's
+  // measure number is a plain integer override, with no way to state a
+  // measure unnumbered.
   test('reports a measure attribute nothing reads', () => {
     const { warnings } = read(
       score(
@@ -2069,11 +2065,11 @@ describe('reporting what is not converted', () => {
     expect(warnings.map((w) => w.message)).toEqual(['<notehead> cannot be expressed in MNX.'])
   })
 
-  // <notations> holds a mixture, and some of it is converted now. Reporting
-  // the block wholesale would claim a slur was dropped when it was carried
-  // over, so what is inside it is reported instead. The same holds one level
-  // down: an <ornaments> whose tremolo is converted reports only what is
-  // actually passed over.
+  // <notations> holds a mixture, and some of it is converted. Reporting the
+  // block as a whole would claim a slur was dropped when it was carried over,
+  // so what is inside it is reported instead. The same holds one level down:
+  // an <ornaments> whose tremolo is converted reports only what is passed
+  // over.
   test('reports what a notations block holds, not the block itself', () => {
     const { warnings } = read(
       measure(
@@ -2140,8 +2136,8 @@ describe('the global measure list', () => {
   })
 
   // A pickup is numbered 0, which shifts every later measure's number one
-  // below its position, so all of them have to be carried, not just the
-  // pickup itself.
+  // below its position, so all of them have to be carried, not only the
+  // pickup.
   test('keeps measure numbers that do not match their positions', () => {
     const { score: result } = read(
       score(
@@ -2622,8 +2618,8 @@ describe('several parts', () => {
   })
 
   // A time signature stays in force until the next one, so a part that says
-  // nothing in the measure where another part changes meter is disagreeing
-  // just as much as one that states its own.
+  // nothing in the measure where another part changes meter disagrees as much
+  // as one that states its own.
   test('reports a part staying in its meter while another changes', () => {
     const time = (count: string, unit: string) =>
       `<attributes><time><beats>${count}</beats><beat-type>${unit}</beat-type></time></attributes>`
@@ -2965,10 +2961,8 @@ describe('several parts', () => {
 })
 
 // Each predicate that decides whether two parts state the same mark compares
-// several fields at once. The tests above differ in one field each, which
-// leaves the rest saying nothing: two parts disagreeing on an ending's hook
-// or a jump's kind would fold into one and nobody would hear about it. Each
-// test here differs in exactly one field the tests above leave alone.
+// several fields at once. Each test here differs in one field the tests above
+// leave alone.
 describe('two parts disagreeing on one field of a mark', () => {
   // A segno's position in the measure, not the sign itself.
   test('reports a segno drawn at different points in the measure', () => {
@@ -3034,8 +3028,7 @@ describe('two parts disagreeing on one field of a mark', () => {
   })
 
   // Two brackets over the same count of times, agreeing on the first and not
-  // on the rest. Every number is compared, not just the one that happens to
-  // match.
+  // on the rest. Every number is compared.
   test('reports an ending whose later numbers differ', () => {
     const bracketed = (numbers: string) =>
       `<barline location="left"><ending number="${numbers}" type="start"/></barline>` +
@@ -3167,8 +3160,7 @@ describe('a tempo stated by more than one part', () => {
     expect(result.globalMeasures[0]?.tempos).toEqual([
       { position: { num: 0, den: 1 }, value: { base: 'quarter', dots: 0 }, bpm: 96 },
     ])
-    // The second part restates the mark rather than contradicting it, so
-    // nothing is reported: a mark kept once is not a mark dropped.
+    // The second part restates the mark, so nothing is reported.
     expect(warnings).toEqual([])
   })
 
@@ -3206,16 +3198,15 @@ describe('a tempo stated by more than one part', () => {
     expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tempo'])
     expect(warnings[0]?.element).toBe('metronome')
     expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 1 })
-    // Named as a disagreement between parts, not within one: a report that
-    // sends a reader looking for a second part that is not there is no use.
+    // Named as a disagreement between parts, not within one.
     expect(warnings[0]?.message).toBe(
       'The parts of this score state different tempos at the same point in this measure. ' +
         'The first stated is the one converted.',
     )
   })
 
-  // One part writing two marks at one point is the same disagreement with
-  // nobody else involved, so the report says so rather than naming parts.
+  // One part writing two marks at one point is the same disagreement with no
+  // other part involved, so the report names no parts.
   test('reports one part stating two different tempos at the same point', () => {
     const slower = metronome.replace('96', '60')
     const { score: result, warnings } = read(
@@ -3454,10 +3445,8 @@ describe('a part id the output cannot carry as it stands', () => {
     expect(warnings).toEqual([])
   })
 
-  // The reader states the shape of the generated ids to keep a part id off
-  // them, and two of the four are generated in the writer, which the reader
-  // may not import. This holds the reader's copy to what a conversion really
-  // writes.
+  // src/ids.ts builds GENERATED_ID_PATTERN from the prefixes countedId and
+  // LAYOUT_ID use. This checks it against every id a conversion writes.
   test('states the shape of every id the converter generates', () => {
     const { mnx } = convertValid(
       score(
@@ -3590,7 +3579,7 @@ describe('the music font, at its edges', () => {
   })
 
   // Font size and style are presentation, which the attribute sweep passes
-  // over without a word wherever they appear.
+  // over.
   test('passes over the font attributes beside the family', () => {
     const { mnx, warnings } = convertValid(
       withDefaults('<music-font font-family="Leland" font-size="20.5"/>'),
@@ -3601,8 +3590,8 @@ describe('the music font, at its edges', () => {
   })
 
   // The family is the only thing read off the element, so anything else it
-  // states that is not presentation is a loss, and the sweep over the element
-  // is what reports it.
+  // states that is not presentation is a loss, and the unread sweep reports
+  // it.
   test('reports an attribute of the music font that is neither read nor presentation', () => {
     const { mnx, warnings } = convertValid(
       withDefaults('<music-font font-family="Leland" xml:lang="en"/>'),

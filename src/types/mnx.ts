@@ -1,16 +1,12 @@
 // The MNX wire format, as far as this converter emits it. Hand-written
-// against the vendored schema (schema/mnx-schema.json, pinned to a specific
-// w3c-cg/mnx commit). That file, not this one, is the authority, and the test
-// suite validates every emitted document against it.
+// against the vendored schema (schema/mnx-schema.json), which is the
+// authority. The test suite validates every emitted document against it.
 //
-// Only what we currently produce is modelled here; the format is much larger.
-// That caveat is stated again on MNXDocument, because a file comment does not
-// reach the emitted declarations a consumer reads.
+// Only what the converter produces is modelled here. MNXDocument states this
+// too, because a file comment does not reach the emitted declarations.
 //
-// Every name is MNX-prefixed, including the plain ones. These are exported
-// wholesale from the package, and `Step`, `ClefSign` and `NoteValueBase` are
-// names any notation program is likely to want for itself; taking them in a
-// consumer's namespace to describe our wire format would be rude.
+// Every name has the MNX prefix. The package exports them all, and plain names
+// such as `Step` or `ClefSign` would clash with a consumer's own.
 
 export type MNXNoteValueBase =
   | 'duplexMaxima'
@@ -204,10 +200,8 @@ export interface MNXFermata {
 
 export interface MNXEvent {
   /**
-   * What kind of sequence item this is. Every other kind states one, so a
-   * consumer can switch on it to tell them apart; this converter leaves it
-   * off, because an item with no kind is an event and writing it says nothing
-   * a reader does not already have.
+   * What kind of sequence item this is. Every other kind states one. This
+   * converter leaves it off, because an item with no type is an event.
    */
   type?: 'event'
   /** Present only where something refers to this event. */
@@ -717,19 +711,22 @@ export interface MNXFormat {
 
 /**
  * An MNX document, as far as this converter emits it. The format is much
- * larger: only what the converter currently produces is modelled here, so a
- * document from another tool can carry properties these types do not name.
- * The vendored schema (schema/mnx-schema.json) is the authority.
+ * larger: only what the converter produces is modelled here, so a document
+ * from another tool can carry properties these types do not name. The
+ * vendored schema (schema/mnx-schema.json) is the authority.
  */
 export interface MNXDocument {
   mnx: MNXFormat
   global: MNXGlobal
-  /** Written only when the source draws instrument groups. */
+  /**
+   * Written only when the source draws instrument groups or a part has more
+   * than one staff.
+   */
   layouts?: MNXSystemLayout[]
   parts: MNXPart[]
   /**
-   * Written only when the source draws instrument groups, draws a
-   * multi-measure rest, or states a system or page break.
+   * Written only when the document has a layout, or the source draws a
+   * multi-measure rest or states a system or page break.
    */
   scores?: MNXScore[]
 }

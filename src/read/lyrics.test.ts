@@ -135,9 +135,9 @@ describe('lyrics', () => {
     expect(events[0]?.lyrics.size).toBe(0)
   })
 
-  // MNX's event lyric states a text and a type, and nothing about visibility,
-  // so a hidden lyric is reported the way every hidden element is: under the
-  // "print-object" code, not as an unread attribute.
+  // MNX's event lyric states a text and a type, and nothing about visibility.
+  // A hidden lyric is reported under the "print-object" code, like every
+  // hidden element.
   test('reports a lyric hidden with print-object="no", and draws it anyway', () => {
     const { events, warnings } = read(
       measure(note('C', '<lyric number="1" print-object="no"><text>Ah</text></lyric>')),
@@ -195,10 +195,9 @@ describe('stem direction', () => {
   })
 })
 
-// A verse is not always one <text>. Where two syllables are sung on one note,
-// which French sets constantly, MusicXML writes each as its own <text> with
-// the elision character between them. Taking only the first lost half the word,
-// silently: fourteen lyrics in the vendored corpus do it.
+// A verse is not always one <text>. Where two syllables are sung on one
+// note, as is common in French, MusicXML writes each as its own <text> with
+// the elision character between them.
 describe('a verse written as several pieces', () => {
   test('joins the pieces with whatever the source put between them', () => {
     const { events, warnings } = read(
@@ -215,8 +214,8 @@ describe('a verse written as several pieces', () => {
     expect(warnings).toEqual([])
   })
 
-  // Some exporters write the pieces with no <elision> at all, and the corpus
-  // contains fourteen of those. Nothing is invented to sit between them.
+  // Some exporters write the pieces with no <elision>. Nothing is added
+  // between them.
   test('joins them with nothing where the source states no elision', () => {
     const { events } = read(
       measure(
@@ -231,9 +230,9 @@ describe('a verse written as several pieces', () => {
   })
 
   // A pretty-printer writes each <text> on its own indented line, so the
-  // pieces arrive with the line break inside them. Nobody sings a line break,
-  // and hensel-1-sehnsucht writes the same verse both ways: "2." and
-  // "\u00a0\u00a0Horch!" run together, while "1." carries the break.
+  // pieces arrive with the line break inside them. hensel-1-sehnsucht writes
+  // the same verse both ways: "2." and "\u00a0\u00a0Horch!" run together,
+  // while "1." carries the break.
   test('drops a line break the source only wrote to lay the pieces out', () => {
     const { events } = read(
       measure(
@@ -248,8 +247,8 @@ describe('a verse written as several pieces', () => {
     expect(events[0]?.lyrics.get('1')?.text).toBe('1.\u00a0\u00a0Fern')
   })
 
-  // A no-break space is never layout: it is the source drawing an indent, and
-  // trimming each piece would take it and join "y" and "a" as "ya".
+  // A no-break space is an indent the source draws. Trimming each piece would
+  // remove it and join "y" and "a" as "ya".
   test('keeps a no-break space the line break was written around', () => {
     const { events } = read(
       measure(note('C', '<lyric number="1"><text>y\n</text><text>\u00a0\u00a0a</text></lyric>')),
@@ -309,7 +308,6 @@ describe('the order of the verse lines', () => {
     expect(warnings).toEqual([])
   })
 
-  // Two is the fewest verses that have an order between them.
   test('states the order of two verses', () => {
     const { mnx } = convertValid(
       measure(note('C', lyric('one', 'single', '1') + lyric('two', 'single', '2'))),
@@ -332,9 +330,8 @@ describe('the order of the verse lines', () => {
 })
 
 // MNX keys an event's lyrics by line, so two on one line collapse to one.
-// A source does write the same <lyric number="1"> twice on one note, and
-// where the two say the same thing nothing is lost. Where they differ, one
-// of them is dropped and the drop has to be reported.
+// Sources do write the same <lyric number="1"> twice on one note. Where the
+// two differ, one is dropped and reported.
 describe('one line stated twice on a note', () => {
   test('carries the first and reports the second where they differ', () => {
     const { events, warnings } = read(measure(note('C', lyric('FIRST') + lyric('SECOND'))))

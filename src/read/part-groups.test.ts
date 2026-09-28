@@ -61,8 +61,8 @@ describe('part groups', () => {
   })
 
   // A renderer that honours a layout resolves part names from it, so a staff
-  // that names none draws none. labelref points back at the part, which
-  // keeps the name written once.
+  // that names none draws none. labelref points back at the part, so the name
+  // is written once.
   test('labels a staff from the short name when the part draws no full name', () => {
     const { mnx, warnings } = convertValid(
       score(
@@ -224,9 +224,8 @@ describe('part groups', () => {
     expect(warnings).toEqual([])
   })
 
-  // Only a score can name a layout, so a layout no score names is unreachable
-  // and the brackets never draw. Written without one, the grouping converted
-  // into a dead end with nothing to warn about.
+  // Only a score can name a layout. A layout no score names is unreachable,
+  // and its brackets never draw.
   test('names the layout from a score, so a reader can reach it', () => {
     const { mnx, warnings } = convertValid(
       score(
@@ -250,7 +249,7 @@ describe('part groups', () => {
 
   // One score carries everything this converter states on a rendering, so a
   // grouped source that also breaks its systems names the layout on the same
-  // entry as the pages rather than writing a second one.
+  // entry as the pages.
   test('names the layout on the score that already carries the pages', () => {
     const { mnx, warnings } = convertValid(
       score(
@@ -360,8 +359,7 @@ describe('part groups', () => {
   })
 
   // MNX's staff-symbol enum has no line or square, so the kind is reported
-  // and the group is kept with no symbol, which leaves the drawing open
-  // rather than claiming the source asked for none.
+  // and the group is kept with no symbol.
   test('keeps a line-symbol group but reports the symbol it cannot spell', () => {
     const { mnx, warnings } = convertValid(
       score(
@@ -380,9 +378,7 @@ describe('part groups', () => {
     ])
   })
 
-  // The square is the other one MNX cannot spell, and it is a different
-  // symbol from the line: a source drawing one gets the same treatment, and
-  // reporting only the line would leave the square drawn as none.
+  // The square is the other symbol MNX cannot spell.
   test('keeps a square-symbol group but reports the symbol it cannot spell', () => {
     const { mnx, warnings } = convertValid(
       score(
@@ -401,9 +397,7 @@ describe('part groups', () => {
     ])
   })
 
-  // An empty <group-symbol> states no symbol, which is what "none" states,
-  // so it draws none and says nothing. Reading it as a symbol MusicXML does
-  // not name would report a loss where the source asked for nothing.
+  // An empty <group-symbol> states no symbol, the same as "none".
   test('reads an empty group-symbol as no symbol, saying nothing', () => {
     const { mnx, warnings } = convertValid(
       score(
@@ -552,8 +546,8 @@ describe('part groups', () => {
 
   // A braced grand staff is something the part list does not state:
   // parts[i].staves says two staves, and nothing says they are one braced
-  // instrument with connected barlines. So a multi-staff part warrants a
-  // layout even where the source draws no groups.
+  // instrument with connected barlines. So a multi-staff part gets a layout
+  // even where the source draws no groups.
   test('states the grand staff of a piano the source never groups', () => {
     const pianoPart =
       '<part id="P2"><measure number="1">' +
@@ -751,15 +745,13 @@ describe('part groups', () => {
     expect(warnings).toEqual([])
   })
 
-  // The type attribute is what pairs the two edges, so an edge without one
-  // is structurally broken input, refused rather than guessed at.
+  // The type attribute pairs the two edges, so an edge without one is
+  // structurally broken input.
   test('refuses a part-group with no type', () => {
     const source = score('<part-group number="1"/><score-part id="P1"/>', part('P1'))
 
     expect(() => convertMusicXML(source)).toThrow(MusicXMLError)
     expect(() => convertMusicXML(source)).toThrow('missing a "type" attribute')
-    // The refusal says where in the document it was found, which is the only
-    // thing pointing a reader at the entry to fix.
     expect(failure(source).path).toEqual(['score-partwise', 'part-list', 'part-group'])
   })
 
@@ -785,9 +777,9 @@ describe('part groups', () => {
   })
 
   // Everything in a <part-group> that is not the symbol, the name or the
-  // barline has no home in an MNX staff group, and the sweep over the element
-  // is what says so. <group-time>, which draws one time signature across the
-  // group's staves, is one of those.
+  // barline has no home in an MNX staff group, and the unread sweep reports
+  // it. <group-time>, which draws one time signature across the group's
+  // staves, is one of those.
   test('reports what a part group states beside its symbol, name and barline', () => {
     const { warnings } = convertValid(
       score(
@@ -823,8 +815,6 @@ describe('part groups', () => {
     ])
   })
 
-  // A value that is not a symbol MusicXML names is invalid input, not a
-  // symbol MNX lacks, and the two read differently in the loss report.
   test('reports a group-symbol value it does not recognize as invalid, not as a format limit', () => {
     const { mnx, warnings } = convertValid(
       score(
@@ -843,11 +833,11 @@ describe('part groups', () => {
     ])
   })
 
-  // Two groups can cross: the first stops while the second is still open,
-  // which MusicXML allows (the number attribute exists to tell overlapping
-  // groups apart) but MNX's layout tree cannot hold. The crossed group runs
-  // to the end of the part list instead, and the overlap is reported once,
-  // as a format limit rather than a fault of the source.
+  // Two groups can cross: the first stops while the second is still open.
+  // MusicXML allows this (the number attribute tells overlapping groups
+  // apart), but MNX's layout tree cannot hold it. The crossed group runs to
+  // the end of the part list, and the overlap is reported once, as a format
+  // limit.
   test('reports crossed group edges and runs the crossed group to the end', () => {
     const { mnx, warnings } = convertValid(
       score(
@@ -889,15 +879,14 @@ describe('part groups', () => {
   })
 })
 
-// Two groups open under one number, which the format leaves to the reader to
-// sort out. A stop then names a number two open groups carry, and the one it
-// crosses is the innermost of them: the outer one is still standing when the
-// stop arrives, so it is not what the stop was closing.
+// Two groups open under one number, which MusicXML does not resolve. A stop
+// then names that number, and the group it crosses is the innermost one. The
+// outer one is still open when the stop arrives.
 //
-// Which of the two is picked shows in what is reported. A crossed group runs
-// to the end of the part list on purpose, so it is not reported as one nobody
-// closed; the group left over is. Each part-list entry is written on its own
-// line, so the line the report names says which group it is about.
+// The report shows which of the two is picked. A crossed group runs to the
+// end of the part list and is not reported as unclosed. The group left over
+// is. Each part-list entry is on its own line, so the reported line names the
+// group.
 describe('a stop naming a number two open groups carry', () => {
   const CROSSED = [
     '<score-partwise version="4.0"><part-list>',

@@ -1,6 +1,6 @@
-// The public entry point, and what a caller can say about the conversion:
-// MNX requires the score rendering to be named and MusicXML has no name to
-// give it, and a source is text or bytes, so neither name is in the document.
+// The public entry point and its options. MNX requires a name for the score
+// rendering, and MusicXML has none. A source is text or bytes, so it does not
+// carry a document name either.
 
 import { describe, expect, expectTypeOf, test } from 'vitest'
 import { convertValid } from '../tests/support/convert.js'
@@ -13,8 +13,7 @@ const NOTE =
   '<note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration>' +
   '<type>quarter</type></note>'
 
-// A break is what makes the writer state a score rendering at all: a document
-// with nothing to say about its layout writes no scores block to name.
+// The writer emits a scores block only when the source has a layout break.
 const SOURCE =
   '<score-partwise><part id="P1">' +
   `<measure number="1"><attributes><divisions>1</divisions></attributes>${NOTE}</measure>` +
@@ -75,8 +74,7 @@ describe('the document name', () => {
   })
 
   test('does not dress a crash up as a refusal of the document', () => {
-    // A caller passing neither text nor bytes: the failure is theirs, and
-    // relabelling it would say the document was refused when it was not.
+    // The caller passes neither text nor bytes. The document was not refused.
     expect(() => convertMusicXML(undefined as never, { documentName: 'song.mxl' })).toThrow(
       TypeError,
     )
@@ -89,8 +87,7 @@ describe('the document name', () => {
     expect(named.warnings).toEqual([])
   })
 
-  // The refusal is restated to carry the name, so its stack would otherwise
-  // point at the restating rather than at the reader that refused.
+  // The refusal is restated to carry the name.
   test('keeps the stack of the reader that refused, not of the naming', () => {
     let thrown
     try {
@@ -107,8 +104,8 @@ describe('the document name', () => {
   })
 })
 
-// Two <divisions> values whose product runs past the safe-integer range, so
-// the measure's length cannot be held exactly.
+// Two <divisions> values whose product is past the safe-integer range, so the
+// measure's length cannot be exact.
 const INEXACT =
   '<score-partwise><part id="P1"><measure number="1">' +
   `<attributes><divisions>100000007</divisions></attributes>${NOTE}` +

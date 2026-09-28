@@ -1,11 +1,11 @@
 // An octave shift: a stretch of music drawn an octave or more from where it
 // sounds, to keep it off the ledger lines.
 //
-// The sign is the one thing here that is easy to get backwards, and the two
-// specifications say it in opposite terms. MusicXML's type is which way the
-// notes were moved to get them onto the staff, so 8va, where the music sounds
-// higher than it is drawn, is a shift "down". MNX's value is how far the
-// written pitch sits below the sounded one, so the same 8va is a positive 1.
+// The two specifications state the sign in opposite terms. MusicXML's type
+// is which way the notes were moved to get them onto the staff, so 8va, where
+// the music sounds higher than it is drawn, is a shift "down". MNX's value is
+// how far the written pitch sits below the sounded one, so the same 8va is a
+// positive 1.
 
 import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
@@ -158,9 +158,8 @@ describe('where an octave shift runs', () => {
   })
 
   // A stop with no start before it, then a start nothing stops, both in one
-  // part. Joining them by number alone would span backwards, ending before it
-  // begins: valid against the schema but refused downstream. Each end is
-  // instead reported on its own, and no shift is written.
+  // part. Joining them by number alone would end the shift before it begins.
+  // Each end is reported on its own, and no shift is written.
   test('does not join a stop to a start that comes after it', () => {
     const { ottavas, warnings } = read(shift('stop') + NOTE + shift('down') + NOTE)
 
@@ -173,8 +172,8 @@ describe('where an octave shift runs', () => {
     ])
   })
 
-  // The same trap as a hairpin: a measure with two voices is written one
-  // voice at a time, so a stop can be written before the start it belongs to.
+  // As with a hairpin, a measure with two voices is written one voice at a
+  // time, so a stop can be written before the start it belongs to.
   test('pairs the ends the music has together, not the ones written together', () => {
     // Voice 1 fills the measure with two quarters; voice 2, written after the
     // backup, is a half note. Both lines name their voice, so neither trips the
@@ -239,8 +238,7 @@ describe('where an octave shift runs', () => {
   })
 
   // Which event a stop covers is settled once its own measure is whole, and
-  // only then: settled again against a later measure, the shift would end on
-  // an event it never reached.
+  // not again against a later measure.
   test('keeps the event its stop covers when later measures follow', () => {
     const { ottavas, warnings } = read(
       shift('down') + NOTE,
@@ -298,10 +296,9 @@ describe('where an octave shift runs', () => {
   })
 
   // A named staff that holds nothing here. MNX writes a whole-measure rest as
-  // the measure's own rather than as an event, so a staff carrying only one
-  // has no event for the stop to land on, and poldowski-l-heure-exquise stops
-  // two shifts exactly there. Leaving the stop where it was written ended
-  // them on the bar line, where nothing begins.
+  // the measure's own, not as an event, so a staff that holds only one has no
+  // event for the stop to end on. poldowski-l-heure-exquise stops two shifts
+  // there.
   test('ends on the other staff where its own holds no event', () => {
     const { ottavas, warnings } = read(
       '<attributes><divisions>4</divisions><staves>2</staves></attributes>' +
@@ -322,9 +319,9 @@ describe('where an octave shift runs', () => {
     expect(warnings).toEqual([])
   })
 
-  // Both hands hold a shift numbered 1 at once, which is what an exporter
-  // that numbers each hand from 1 writes. On the number alone each closes on
-  // the other hand's stop, and both get the wrong extent.
+  // Both hands hold a shift numbered 1 at once, as an exporter that numbers
+  // each hand from 1 writes. Paired on the number alone, each would close on
+  // the other hand's stop.
   test('pairs a shift with the stop on its own staff', () => {
     const hands =
       '<note><voice>1</voice><pitch><step>C</step><octave>4</octave></pitch>' +
@@ -407,7 +404,7 @@ describe('where an octave shift runs', () => {
   // The stop's cursor can sit past the start while the last event it covers
   // falls before it: one event early in the measure, then a gap the start and
   // stop both fall in with nothing between them. The end would then precede the
-  // start, which no consumer accepts, so the shift is dropped and reported.
+  // start, so the shift is dropped and reported.
   test('drops a shift whose stop covers an event before the start', () => {
     const forward = (by: number) => `<forward><duration>${String(by)}</duration></forward>`
     // Only event is the quarter at 0. Start at 3/4, stop at 7/8: the last event
@@ -428,8 +425,8 @@ describe('where an octave shift runs', () => {
     expect(warnings.map((w) => w.element)).toEqual(['octave-shift'])
   })
 
-  // The source did start the shift; the reader dropped it. Its stop is not an
-  // orphan, so one warning per lost shift, at the start that was dropped.
+  // The source did start the shift, and the reader dropped it. Its stop is not
+  // an orphan, so there is one warning per lost shift, at the dropped start.
   test('warns once for a dropped shift, not again at its stop', () => {
     const { ottavas, warnings } = read(shift('down', '9') + NOTE + shift('stop'))
 
@@ -546,7 +543,7 @@ describe('an octave shift ending where grace notes sit', () => {
 
   // A shift belongs to one staff, and the grace notes of the other hand sit
   // at the same point without being what it covers. Counted together, the
-  // shift ends on a grace note the other hand wrote.
+  // shift would end on a grace note the other hand wrote.
   test('counts the grace notes of its own staff, not the other hand', () => {
     const graceOn = (staff: number, step: string) =>
       `<note><grace/><pitch><step>${step}</step><octave>5</octave></pitch>` +

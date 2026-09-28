@@ -97,7 +97,6 @@ describe('articulations', () => {
     expect(events[0]?.markings.breath?.symbol).toBeUndefined()
   })
 
-  // Every one of these is a real articulation MNX has no place for.
   test('reports the marks event-markings has no room for', () => {
     const { events, warnings } = read(note(articulations('<detached-legato/><doit/><falloff/>')))
 
@@ -158,8 +157,8 @@ describe('bow direction', () => {
     expect(events[0]?.markings.bowDirection?.placement).toBe('below')
   })
 
-  // MNX states one direction, so a note bowed both ways has said two things.
-  // The two elements share the one key, so document order is what decides.
+  // MNX states one bow direction. Where a note states both, document order
+  // decides.
   test.each([
     ['<up-bow/><down-bow placement="above"/>', 'up', 'down-bow'],
     ['<down-bow/><up-bow placement="above"/>', 'down', 'up-bow'],
@@ -176,8 +175,7 @@ describe('bow direction', () => {
     )
   })
 
-  // The rest of <technical> is playing instruction the converter does not
-  // carry over, and reading the bow marks must not stop it being reported.
+  // The rest of <technical> is not converted.
   test('goes on reporting the other playing instructions beside it', () => {
     const { events, warnings } = read(
       note(technical('<up-bow/><harmonic/><fingering>3</fingering>')),
@@ -237,9 +235,9 @@ describe('fermatas', () => {
     expect(warnings.map((w) => w.element)).toEqual(['fermata'])
   })
 
-  // MusicXML allows one per staff of a part; MNX states one per event. The
-  // one warning accounts for the rejected mark whole, so the facing and the
-  // side it states are read with it rather than reported a second time.
+  // MusicXML allows one per staff of a part, and MNX states one per event.
+  // The one warning covers the whole rejected mark, so its facing and side
+  // are not reported again.
   test('reports an event carrying more than one, keeping the first', () => {
     const { events, warnings } = read(
       note('<fermata type="upright"/><fermata type="inverted" placement="below"/>'),
@@ -257,7 +255,7 @@ describe('fermatas', () => {
 })
 
 // MNX keys the marks on an event by name, so a second of the same kind has
-// nowhere to go, exactly as a second fermata has none.
+// nowhere to go.
 describe('two marks of one kind', () => {
   test('keeps the first and reports the rest', () => {
     const { events, warnings } = read(
@@ -272,8 +270,6 @@ describe('two marks of one kind', () => {
     )
   })
 
-  // The one warning accounts for the rejected mark whole, its side and the
-  // way it points included, so neither is reported a second time.
   test('says nothing more about the side and the facing of the mark it rejects', () => {
     const { warnings } = read(
       note(
@@ -288,8 +284,8 @@ describe('two marks of one kind', () => {
   })
 })
 
-// Most fermatas in real music sit over a rest that fills the measure, which
-// MNX states on the sequence rather than as an event.
+// Most fermatas sit over a rest that fills the measure. MNX states that rest
+// on the sequence, not as an event.
 describe('a fermata over a rest filling the measure', () => {
   test('states it on the rest', () => {
     const warnings = new WarningCollector()

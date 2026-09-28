@@ -1,7 +1,6 @@
-// What these helpers are for is a compile error, so most of this file is
-// written for tsc rather than for the runner: a @ts-expect-error that stops
-// being an error fails `pnpm typecheck` as an unused directive. That is what
-// holds the guarantee in place after the one-off check that first proved it.
+// Most of these checks are compile errors, so `pnpm typecheck` runs them, not
+// the test runner. A @ts-expect-error that stops being an error fails the type
+// check as an unused directive.
 
 import { describe, expect, test } from 'vitest'
 import { entriesOf, recogniser } from './tables.js'

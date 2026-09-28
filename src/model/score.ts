@@ -2,9 +2,8 @@
 // writer needs. That shape follows MNX's structure. MusicXML's encoding stops
 // at the reader, and the MNX types start at the writer.
 //
-// Internal by design: it is not exported from the package, and it is scoped
-// to conversion. It is not a general notation model, and should not grow into
-// one.
+// Internal: not exported from the package, and scoped to conversion. It is not
+// a general notation model.
 //
 // Two axes say what is still open, and each is read on its own.
 //
@@ -80,11 +79,9 @@ export interface Tie {
 
 /**
  * A syllable of a lyric under an event. The type says how the syllable joins
- * the word, and is left off where it stands alone. The verse line it is sung
- * on is the key it is held under rather than a field, because an event sings
- * each line at most once: MNX keys an event's lyrics by line, so a second
- * syllable on one line has nowhere to go, and holding them in a list let the
- * writer overwrite the first without a word.
+ * the word, and is left off where it stands alone. The verse line is the map
+ * key, not a field: MNX keys an event's lyrics by line, so an event holds at
+ * most one syllable per line.
  */
 export interface Lyric {
   readonly text: string
@@ -205,11 +202,10 @@ export interface CaesuraMarking {
 
 /**
  * The marks written on an event: how it is attacked, and how long it is held.
- * Keyed by kind, the way MNX keys them, so an event carries at most one of
- * each and the writer's assignment cannot replace a mark already written. The
- * reader resolves a source writing two of one kind, where it still has the
- * measure to report it against. The kinds are spelled the way MNX spells them
- * so the writer needs no second table.
+ * Keyed by kind, as MNX keys them, so an event carries at most one of each.
+ * The reader resolves a source that writes two of one kind, where it still has
+ * the measure to report against. The kinds use the MNX spelling, so the writer
+ * needs no second table.
  */
 export interface Markings {
   readonly accent?: Marking
@@ -310,7 +306,7 @@ export type TupletDisplay = 'noNumber' | 'inner' | 'both'
 /**
  * Notes played in the time of a different number of them. The events inside
  * keep the values they are written with; the ratio says how much time they
- * actually occupy.
+ * occupy.
  */
 export interface Tuplet {
   readonly kind: 'tuplet'
@@ -382,7 +378,7 @@ export type SequenceItem = Event | Space | Tuplet | GraceGroup | MultiNoteTremol
  * is how MNX states it: the sequence holds no events at all.
  */
 export interface FullMeasureRest {
-  /** The value actually drawn, when the source says which one. */
+  /** The value drawn, when the source says which one. */
   readonly visualDuration: NoteValue | undefined
   /** A pause held over the rest, which is where most fermatas are written. */
   readonly fermata: Fermata | undefined
@@ -661,8 +657,8 @@ export interface Key {
 
 /**
  * A time signature's lower number names a note value, so only a power of two
- * can appear there. Narrow on purpose: it makes validating it the reader's
- * job, and lets the writer emit it without a cast.
+ * can appear there. Narrow, so the reader validates it and the writer emits it
+ * without a cast.
  */
 export type TimeUnit = 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128
 

@@ -97,9 +97,8 @@ describe('noteValueOf', () => {
     expect(noteValueOf(fraction(3, 8))).toEqual({ base: 'quarter', dots: 1 })
   })
 
-  // A triplet eighth is 1/12 of a whole note, which no combination of a note
-  // value and dots can write. It needs a tuplet, so it is not this function's
-  // to guess at.
+  // A triplet eighth is 1/12 of a whole note. No note value with dots can
+  // write it. It needs a tuplet.
   test('does not invent a value for a duration no note value can write', () => {
     expect(noteValueOf(fraction(1, 12))).toBeUndefined()
   })

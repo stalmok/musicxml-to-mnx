@@ -71,7 +71,6 @@ describe('system and page breaks', () => {
     expect(warnings).toEqual([])
   })
 
-  // new-system="no" states the absence of a break, which is the default.
   test('reads a break written as no as no break', () => {
     const { mnx, warnings } = convert(part('P1', ['', '<print new-system="no"/>']))
 
@@ -79,8 +78,8 @@ describe('system and page breaks', () => {
     expect(warnings).toEqual([])
   })
 
-  // Breaks are usually written into one part only, and they belong to the
-  // whole score: a break any part states is the score's.
+  // Breaks are usually written into one part only. A break in any part
+  // applies to the whole score.
   test('takes the break from whichever part states it', () => {
     const { mnx, warnings } = convert(
       part('P1', ['', '']),
@@ -132,8 +131,8 @@ describe('system and page breaks', () => {
     expect(warnings.map((warning) => warning.element)).toEqual(['system-layout'])
   })
 
-  // A page break on the first measure starts the structure where it already
-  // starts, so no empty page is written before it.
+  // The first page starts at the first measure, so a page break there adds
+  // no empty page.
   test('starts cleanly on a page break at the first measure', () => {
     const { mnx, warnings } = convert(part('P1', ['<print new-page="yes"/>', '']))
 

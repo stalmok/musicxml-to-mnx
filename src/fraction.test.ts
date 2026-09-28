@@ -21,8 +21,7 @@ describe('fraction', () => {
   })
 
   // The brand that stops a hand-built fraction type-checking is a declared
-  // symbol key, never a value. A real one would reach the writer's output and
-  // every deep comparison in the suite.
+  // symbol key with no runtime value.
   test('carries the two numbers and nothing else at runtime', () => {
     expect(Reflect.ownKeys(fraction(6, 8))).toEqual(['num', 'den'])
   })
@@ -40,8 +39,7 @@ describe('fraction', () => {
     expect(() => fraction(1, 0)).toThrow('Invalid fraction')
   })
 
-  // Past 2^53 the arithmetic keeps working on silently rounded values, which
-  // is worse than failing.
+  // Past 2^53 the arithmetic would work on rounded values.
   test('rejects a value too large to stay exact', () => {
     expect(() => fraction(2 ** 53 + 2, 3)).toThrow(InexactFractionError)
   })
@@ -96,8 +94,8 @@ describe('arithmetic', () => {
     expect(commonMeasure(fraction(3, 8), fraction(0))).toEqual({ num: 0, den: 1 })
   })
 
-  // The reason this module exists: a triplet eighth is 1/12 of a whole note,
-  // and three of them have to come to exactly one quarter.
+  // A triplet eighth is 1/12 of a whole note, and three of them must come to
+  // one quarter.
   test('keeps triplets exact where floats would drift', () => {
     const tripletEighth = fraction(1, 12)
     const total = addFractions(addFractions(tripletEighth, tripletEighth), tripletEighth)
@@ -106,10 +104,9 @@ describe('arithmetic', () => {
   })
 })
 
-// Denominators are reduced against each other before multiplying, not after,
-// so ordinary music does not run into the safe-integer limit. Two <divisions>
-// values in one measure is legal MusicXML, and each one contributes a
-// denominator.
+// Denominators are reduced against each other before multiplying, so ordinary
+// music stays under the safe-integer limit. A measure can have two
+// <divisions> values, and each one contributes a denominator.
 describe('staying within exact arithmetic', () => {
   test('adds fractions whose denominators multiply past the safe limit', () => {
     const a = fraction(1, 2 ** 26)
@@ -139,9 +136,9 @@ describe('staying within exact arithmetic', () => {
     expect(divideFractions(a, a)).toEqual({ num: 1, den: 1 })
   })
 
-  // Two numerators that each run past the safe integer range and all but
-  // cancel. Checking only the sum leaves a small wrong answer looking exact:
-  // this pair gives 2/15 where the exact difference is 1/15.
+  // Two numerators that each run past the safe integer range and almost
+  // cancel. A check on the sum only gives 2/15 where the exact difference is
+  // 1/15.
   test('refuses rather than guess where a numerator cannot be scaled exactly', () => {
     const a = fraction(3002399751580331, 3)
     const b = fraction(5003999585967218, 5)
@@ -151,9 +148,9 @@ describe('staying within exact arithmetic', () => {
     expect(() => addFractions(a, b)).toThrow('Cannot add')
   })
 
-  // Both scaled numerators are checked, not just one: a pair where only one
-  // side runs past the range is refused by name rather than reaching the
-  // reduction, which would refuse it as an impossible fraction instead.
+  // Both scaled numerators are checked. If only one side runs past the range,
+  // the pair is refused here, not later by the reduction as an impossible
+  // fraction.
   test.each([
     ['the first side', () => addFractions(fraction(Number.MAX_SAFE_INTEGER, 3), fraction(1, 2))],
     ['the second side', () => addFractions(fraction(1, 2), fraction(Number.MAX_SAFE_INTEGER, 3))],
@@ -187,10 +184,9 @@ describe('comparison', () => {
   })
 })
 
-// Two <divisions> values in one measure is legal MusicXML, and each
-// contributes a denominator, so the products a comparison builds run far past
-// the values being compared. Getting the sign wrong here would silently
-// decide that a full measure is not full.
+// A measure can have two <divisions> values, and each contributes a
+// denominator, so the products a comparison builds run far past the values
+// being compared.
 describe('comparing without overflowing', () => {
   test('gets the sign right where the plain cross product would not', () => {
     const a = fraction(1, 2 ** 26 + 1)

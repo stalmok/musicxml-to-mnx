@@ -2,8 +2,8 @@
 // carries, whether a beam begins, continues or ends there. MNX states them
 // the other way round, as a tree over the measure: an outer beam listing its
 // events, nested beams for the secondary levels, and a single-event beam with
-// a direction for a hook. What the document then declares once, in its
-// support block, is tested in tests/support-block.test.ts.
+// a direction for a hook. The support block is tested in
+// tests/support-block.test.ts.
 
 import { describe, expect, test } from 'vitest'
 import { WarningCollector } from '../warnings.js'
@@ -30,9 +30,6 @@ function event(id: string, levels: string, beamCount?: number): BeamedEvent {
 }
 
 describe('a single beam', () => {
-  // An event carrying no marker at this level is not in the run, and closes
-  // it. Nothing said so: the beam could have run straight through the event
-  // and joined what came after it to what came before.
   test('closes a run at an event carrying no marker at that level', () => {
     const beams = buildBeams([
       event('ev1', '1:begin'),
@@ -112,10 +109,10 @@ describe('secondary beams', () => {
     expect(second?.beams[0]?.events).toEqual(['ev1', 'ev2'])
   })
 
-  // A malformed source begins level 2 twice with no end between. The first note
-  // is left alone at level 2, and dropping it would put a 16th in the level-1
-  // beam with no level-2 beam of its own, which is internally inconsistent. It
-  // becomes a forward hook instead, since a lone begin is a partial beam.
+  // A malformed source begins level 2 twice with no end between. Dropping the
+  // first note's level-2 marker would put a 16th in the level-1 beam with no
+  // level-2 beam of its own. A lone begin is a partial beam, so it becomes a
+  // forward hook.
   test('draws a repeated begin as a forward hook on the first note', () => {
     const beams = buildBeams([
       event('ev1', '1:begin; 2:begin'),
@@ -130,9 +127,8 @@ describe('secondary beams', () => {
     ])
   })
 
-  // The same lone begin at level 2, but on a note whose value needs only one
-  // beam: the level-2 marker is stray, so it is dropped and the note keeps just
-  // its outer beam.
+  // The same lone begin at level 2, on a note whose value needs only one
+  // beam. The level-2 marker is stray, so it is dropped.
   test('drops a stray inner marker a note does not need', () => {
     const beams = buildBeams([
       event('ev1', '1:begin; 2:begin', 1),
@@ -203,15 +199,10 @@ describe('beams the measure does not finish', () => {
     expect(buildBeams([event('ev1', '1:end')])).toEqual([])
   })
 
-  // A continue with no beginning is not a beam either, and it must not open
-  // one: the end after it would then join two notes the source never beamed.
   test('ignores a continue with no beginning, so the end after it joins nothing', () => {
     expect(buildBeams([event('ev1', '1:continue'), event('ev2', '1:end')])).toEqual([])
   })
 
-  // An end closes its run there and then. Left open, it would swallow the
-  // markers after it: a continue with no beginning of its own would extend
-  // the beam that had already ended.
   test('closes at its end, so a later continue does not extend it', () => {
     const beams = buildBeams([
       event('ev1', '1:begin'),
@@ -230,9 +221,7 @@ describe('beams the measure does not finish', () => {
 })
 
 // A level outside the eight a stem can carry cannot be drawn, so the marker
-// is dropped. The marker still said something about the beam at its level,
-// and the beam beside it is drawn as if it had never been written: a run
-// whose end is dropped closes at the last marker before it.
+// is dropped. A run whose end is dropped closes at the last marker before it.
 describe('a beam marker at a level that does not exist', () => {
   function sixteenth(step: string, beams: string): string {
     return (
@@ -260,8 +249,8 @@ describe('a beam marker at a level that does not exist', () => {
         sixteenth('E', '<beam number="1">end</beam><beam number="9">end</beam>'),
     )
 
-    // The outer beam runs over all three; the inner one stops where the last
-    // marker it kept left it, which is what the report is about.
+    // The outer beam runs over all three. The inner one stops at the last
+    // marker it kept.
     expect(beams.map((beam) => beam.events)).toEqual([['ev1', 'ev2', 'ev3']])
     expect(beams[0]?.beams.map((beam) => beam.events)).toEqual([['ev1', 'ev2']])
     expect(warnings.map((w) => w.message)).toEqual([
@@ -271,9 +260,7 @@ describe('a beam marker at a level that does not exist', () => {
     ])
   })
 
-  // The eighth level is the last one MNX draws, and the first is the first.
-  // Both edges are stated, because a range asserted at one end only could
-  // have the other move by one and nothing would notice.
+  // MNX draws levels 1 to 8. Both edges are tested.
   test('keeps a marker at the eighth level, which is the last one there is', () => {
     const deep = (step: string, marker: string) => {
       const levels = [1, 2, 3, 4, 5, 6, 7, 8]
@@ -297,9 +284,7 @@ describe('a beam marker at a level that does not exist', () => {
     expect(warnings.list()).toEqual([])
   })
 
-  // MusicXML's beam number defaults to 1, so a <beam> stating none is a
-  // first-level marker. Every fixture elsewhere numbers its beams, so nothing
-  // said that an unnumbered one beams anything at all.
+  // MusicXML's beam number defaults to 1.
   test('reads a beam stating no number as the first level', () => {
     const { beams, warnings } = read(
       sixteenth('C', '<beam>begin</beam>') + sixteenth('D', '<beam>end</beam>'),
@@ -342,10 +327,9 @@ describe('a beam marker at a level that does not exist', () => {
   })
 })
 
-// Grace notes beam among themselves. Their markers are read as their own run,
-// because a grace group sitting between two beamed notes would otherwise open
-// a beam in the middle of theirs and leave the outer one with nothing to
-// close it.
+// Grace notes beam among themselves, so their markers are read as their own
+// run. Otherwise a grace group between two beamed notes would open a beam in
+// the middle of theirs and leave the outer one with nothing to close it.
 describe('beaming grace notes', () => {
   function graceNote(step: string, marker: string): string {
     return (
@@ -388,8 +372,8 @@ describe('beaming grace notes', () => {
     expect(warnings).toEqual([])
   })
 
-  // The case that makes the separate run necessary: read as one stream, the
-  // grace group's begin would cut the outer beam in half.
+  // Read as one stream, the grace group's begin would cut the outer beam in
+  // half.
   test('leaves a beam whole when a grace group interrupts it', () => {
     const { beams } = beamsOf(
       mainNote('D', 'begin') +

@@ -8,9 +8,8 @@ import {
   WarningCollector,
 } from './warnings.js'
 
-// The two prefixes are the report's whole point: a gap here may close in a
-// later release, a limit of MNX will not, and a pipeline choosing what to
-// reconvert has to be able to tell them apart.
+// A gap in this converter may close in a later release. A limit of MNX will
+// not.
 describe('isFormatLimit', () => {
   test('is true for a loss MNX has nowhere to put', () => {
     expect(isFormatLimit('unrepresentable:element')).toBe(true)
@@ -27,8 +26,6 @@ describe('isFormatLimit', () => {
   })
 })
 
-// The mirror of isFormatLimit: a gap a later release may close, told apart
-// from a limit of MNX no release will, and from the source's own problems.
 describe('isConverterGap', () => {
   test('is true for a gap this converter may later close', () => {
     expect(isConverterGap('unsupported:element')).toBe(true)
@@ -44,9 +41,8 @@ describe('isConverterGap', () => {
   })
 })
 
-// The third kind, listed by its own prefixes rather than left as whatever the
-// other two are not. That is what makes the split total: categoryOf will not
-// compile if a new prefix belongs to none of the three.
+// The third kind has its own prefixes, so categoryOf does not compile if a new
+// prefix belongs to none of the three.
 describe('isSourceProblem', () => {
   test('is true for the source disagreeing with itself', () => {
     expect(isSourceProblem('inconsistent:duration')).toBe(true)
@@ -61,8 +57,6 @@ describe('isSourceProblem', () => {
     expect(isSourceProblem('unsupported:element')).toBe(false)
   })
 
-  // The prefix is the whole word before the colon, so a longer name starting
-  // with one of the five is not one of them.
   test('is false for a code whose prefix only starts with one of the five', () => {
     expect(isSourceProblem('unresolvedxx:whatever' as 'unresolved:part-id')).toBe(false)
   })
@@ -145,9 +139,8 @@ describe('WarningCollector', () => {
   })
 })
 
-// A decision the reader cannot make until every part is read still belongs in
-// the report where the element it is about was written. A place kept there is
-// how the report stays in document order.
+// A warning the reader can only decide after every part is read goes in the
+// report at the place of its element, so the report stays in document order.
 describe('a place kept for a decision made later', () => {
   test('reports through a place where it was taken, not where it was added', () => {
     const warnings = new WarningCollector()

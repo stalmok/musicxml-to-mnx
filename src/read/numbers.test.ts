@@ -1,12 +1,10 @@
 // Reading numbers out of the document. Stricter than Number(), which reads
-// "0x10" as 16 and "1e3" as 1000: reinterpreting a score's digits is the kind
-// of guessing this converter exists to avoid.
+// "0x10" as 16 and "1e3" as 1000.
 //
-// Each guard here is two tests wide. A rejection resting on a regex and a
-// safe-integer check is stated once for a string only the regex rejects and
-// once for a string only the safe-integer check rejects, and a range is
-// stated at both of its edges and just outside each. Tested at one end only,
-// the other end could move and nothing would notice.
+// Each guard has two tests. A rejection that rests on a regex and a
+// safe-integer check has one string only the regex rejects and one only the
+// safe-integer check rejects. A range is tested at both edges and just
+// outside each.
 
 import { describe, expect, test } from 'vitest'
 import { MusicXMLError } from '../errors.js'
@@ -28,15 +26,15 @@ describe('a whole number written as an element', () => {
     expect(readInteger(element('<offset>-4</offset>'), PATH)).toBe(-4)
   })
 
-  // Number() reads these; the regex is what stops them being salvaged.
+  // Number() reads these. The regex rejects them.
   test.each(['0x10', '1e3', '2.5', '', 'four'])('refuses "%s", which is not digits', (written) => {
     expect(() => readInteger(element(`<divisions>${written}</divisions>`), PATH)).toThrow(
       MusicXMLError,
     )
   })
 
-  // Digits all the way, so the regex accepts it. Past 2^53 the value read
-  // back is not the value written, which is the safe-integer check's own job.
+  // The regex accepts these digits. Past 2^53 the value read back is not the
+  // value written, so the safe-integer check rejects it.
   test('refuses digits too large to be read back exactly', () => {
     expect(() => readInteger(element('<divisions>99999999999999999999</divisions>'), PATH)).toThrow(
       '<divisions> is not a whole number: "99999999999999999999".',

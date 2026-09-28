@@ -1,7 +1,6 @@
-// Accessors for the parsed element tree. The `require*` variants turn an
-// absent element or attribute into a MusicXMLError naming what was missing,
-// where it was expected, and the line, so a reader can state what it needs
-// and let the failure explain itself.
+// Accessors for the parsed element tree. The `require*` variants throw a
+// MusicXMLError that names the missing element or attribute, its path and its
+// line.
 
 import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
@@ -12,10 +11,8 @@ export function child(element: XmlElement, name: string): XmlElement | undefined
 }
 
 /**
- * An element's text with surrounding whitespace removed, which is what a
- * reader wants for a number or a keyword, where the source's indentation is
- * not part of the value. Text whose spacing matters (lyrics) should read
- * `element.text`.
+ * An element's text without surrounding whitespace, for a number or a
+ * keyword. Text whose spacing matters (lyrics) reads `element.text`.
  */
 export function trimmedText(element: XmlElement): string {
   return element.text.trim()
@@ -36,10 +33,9 @@ export function requireChild(element: XmlElement, name: string, path: DocumentPa
   return found
 }
 
-// Which attributes have been read off each element. The read is the record,
-// exactly as ElementReader records children: a reader that takes an attribute
-// accounts for it by the act of taking it, and the sweep in read/element.ts
-// reports the notation-bearing ones nothing took.
+// The attributes read off each element. Reading an attribute records it, as
+// ElementReader records children. The sweep in read/element.ts reports the
+// notation-bearing attributes that nothing read.
 const attributesRead = new WeakMap<XmlElement, Set<string>>()
 
 export function attribute(element: XmlElement, name: string): string | undefined {
@@ -53,11 +49,11 @@ export function attribute(element: XmlElement, name: string): string | undefined
 }
 
 /**
- * The value of an attribute without accounting for it. For an attribute read
- * for something other than what it states, where the statement itself is
- * still a loss the sweep has to report: a pickup measure's implicit="yes"
- * says its beats line up with the barline at the end, and says that the
- * measure is excluded from the numbering, which MNX cannot state.
+ * The value of an attribute, without recording it as read. For an attribute
+ * used for something other than what it states, where the sweep must still
+ * report what it states: a pickup measure's implicit="yes" says its beats
+ * line up with the barline at the end, and also that the measure is excluded
+ * from the numbering, which MNX cannot state.
  */
 export function peekAttribute(element: XmlElement, name: string): string | undefined {
   return element.attributes[name]

@@ -27,9 +27,8 @@ describe('parseXmlRoot', () => {
     expect(root.children[0]?.text).toBe('C')
   })
 
-  // Left exactly as written: readers that want a number or a keyword trim it,
-  // but lyric text is meaningful to the space and cannot be recovered once
-  // this layer has trimmed it.
+  // Readers that want a number or a keyword trim the text. Lyric text keeps
+  // its spaces.
   test('keeps text exactly as written, whitespace and all', () => {
     const root = parseXmlRoot('<divisions>\n  24\n</divisions>')
 
@@ -58,8 +57,8 @@ describe('parseXmlRoot', () => {
     expect(root.children[1]?.line).toBe(4)
   })
 
-  // A lyric or a credit whose text would otherwise need escaping is written
-  // as a CDATA section, which the parser reports as its own kind of node.
+  // Text that would need escaping can be a CDATA section, which the parser
+  // reports as its own kind of node.
   test('reads a CDATA section as text', () => {
     const root = parseXmlRoot('<credit-words><![CDATA[Bach & Sons <1750>]]></credit-words>')
 
@@ -117,8 +116,6 @@ describe('parseXmlRoot', () => {
     expect(() => parseXmlRoot('')).toThrow(MusicXMLError)
   })
 
-  // The wrapped error keeps the parser's own error as its cause, so a stack
-  // trace still reaches what actually went wrong.
   test('keeps the underlying parser error as the cause', () => {
     let thrown: unknown
     try {
@@ -131,19 +128,17 @@ describe('parseXmlRoot', () => {
   })
 })
 
-// MusicXML files carry a DOCTYPE pointing at an external DTD over HTTP, and
-// arrive from untrusted places (uploads, downloaded corpora). A parser that
-// resolved external entities would turn every conversion into a file-read and
-// server-side request primitive.
+// MusicXML files carry a DOCTYPE that points at an external DTD over HTTP, and
+// can come from untrusted places. The parser must not resolve external
+// entities.
 describe('parseXmlRoot resists hostile documents', () => {
   test('does not resolve an external entity referencing a local file', () => {
     const xxe =
       '<!DOCTYPE root [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>\n' + '<root>&xxe;</root>'
 
-    // The parser treats the external entity as undefined rather than reading
-    // the file, so it rejects the reference outright, naming the entity it
-    // would not define. Asserting the rejection names the entity keeps this
-    // from passing on a throw that had nothing to do with the entity.
+    // The parser treats the external entity as undefined and rejects the
+    // reference by name. The name in the assertion ties the throw to the
+    // entity.
     let thrown: unknown
     try {
       parseXmlRoot(xxe)
@@ -160,9 +155,7 @@ describe('parseXmlRoot resists hostile documents', () => {
       '<!DOCTYPE root [<!ENTITY probe SYSTEM "http://127.0.0.1:1/probe">]>\n' +
       '<root>&probe;</root>'
 
-    // Rejected as an undefined entity, never fetched: the same guarantee as
-    // the file case, and named the same way so the assertion cannot pass on an
-    // unrelated failure.
+    // Rejected as an undefined entity and not fetched, as in the file case.
     let thrown: unknown
     try {
       parseXmlRoot(ssrf)
@@ -195,9 +188,8 @@ describe('parseXmlRoot resists hostile documents', () => {
     expect((text ?? '').length).toBeLessThan(1000)
   })
 
-  // Nesting this deep exhausts the stack inside the parser. What matters is
-  // that it surfaces as a rejected document rather than an error escaping the
-  // library, so callers need no defensive try/catch of their own.
+  // Nesting this deep exhausts the stack inside the parser. It must come out
+  // as a rejected document, not as an error that escapes the library.
   test('rejects a document nested deep enough to overflow the stack', () => {
     const depth = 50_000
     const bomb = '<a>'.repeat(depth) + '</a>'.repeat(depth)

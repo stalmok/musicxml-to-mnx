@@ -13,16 +13,14 @@ import { parseXmlRoot } from './xml/parse.js'
 /** What a caller can say about the conversion. */
 export interface ConversionOptions {
   /**
-   * The name of the score rendering the output writes. MNX requires one to be
-   * named, and MusicXML has nothing that answers it: a work's title names the
-   * work, not a rendering of it. Defaults to "Score".
+   * The name of the MNX score the output writes. MNX requires one, and
+   * MusicXML has no equivalent: a work's title names the work, not a score of
+   * it. Defaults to "Score".
    */
   scoreName?: string
   /**
-   * What to call the source in any refusal it produces. A source is text or
-   * bytes, so the converter cannot know it came from a file; a caller
-   * converting more than one names them here rather than adding the name to
-   * the message afterwards.
+   * The source name to put in a `MusicXMLError`. The converter gets text or
+   * bytes, so it does not know the file name.
    */
   documentName?: string
 }
@@ -61,9 +59,8 @@ export function convertMusicXML(
     return { mnx: writeMnx(score, options), warnings: warnings.list() }
   } catch (error) {
     const refusal = asRefusal(error)
-    // Named here because this is the only place that knows the name: the
-    // container, the parser and the reader all throw, and none of them is
-    // told what the source was called.
+    // The container, the parser and the reader do not know the document name,
+    // so it is added here.
     if (name === undefined || !(refusal instanceof MusicXMLError)) throw refusal
     throw refusal.inDocument(name)
   }

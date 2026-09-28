@@ -267,8 +267,8 @@ describe('a measure repeat', () => {
     expect(warnings[0]?.context).toMatchObject({ part: 'P1', measure: 3 })
   })
 
-  // One staff starts a sign while another staff's sign is mid-flight. The
-  // walk restarts for the part, and the running sign's loss is reported.
+  // One staff starts a sign while another staff's sign runs. The walk
+  // restarts for the part, and the running sign's loss is reported.
   test('reports a staff starting a sign while another staff runs', () => {
     const { mnx, warnings } = convert(
       part('P1', [
@@ -296,8 +296,7 @@ describe('a measure repeat', () => {
   })
 
   // A start restating one staff's running sign while the other staff's runs
-  // on cuts the staff that was not restated. The report names the restart,
-  // not a stop: nothing stopped here.
+  // on cuts the staff that was not restated. The report names the restart.
   test('reports a restart that cuts the staff it does not restate', () => {
     const { warnings } = convert(
       part('P1', [
@@ -388,8 +387,8 @@ describe('a measure repeat', () => {
     expect(warnings.map((warning) => warning.context.measure)).toEqual([2])
   })
 
-  // The type attribute is required: without it there is no saying whether
-  // the sign starts or stops here, so the file is broken.
+  // MusicXML requires the type attribute. Without it, nothing says whether
+  // the sign starts or stops here.
   test('refuses a measure-repeat with no type', () => {
     expect(() =>
       convert(
@@ -477,8 +476,8 @@ describe('a measure repeat', () => {
     expect(warnings[0]?.context).toMatchObject({ part: 'P1', measure: 2 })
   })
 
-  // The dropped sign still ends whatever was running: the source drew a new
-  // sign here, so the old one certainly stopped.
+  // The dropped sign still ends whatever was running, because the source drew
+  // a new sign here.
   test('ends a running sign at a pattern it cannot carry', () => {
     const { mnx, warnings } = convert(
       part('P1', [

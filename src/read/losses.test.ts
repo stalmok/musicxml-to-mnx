@@ -1,10 +1,5 @@
-// What each reader passes over is reported, whichever path it took.
-//
-// The loss report used to work from a hand-kept list of the children each
-// level handles, and the list drifted away from the code: it went on claiming
-// a <lyric> was carried over long after the path that reads a chord member
-// stopped reading one. These are the paths that drifted, plus the exceptions
-// that are genuinely accounted for elsewhere and must stay quiet.
+// What each reader passes over is reported, whichever path it took. The
+// exceptions below are accounted for elsewhere and are not reported.
 
 import { describe, expect, test } from 'vitest'
 import { WarningCollector } from '../warnings.js'
@@ -129,9 +124,9 @@ describe('a grace note', () => {
 })
 
 describe('a beam', () => {
-  // A fanned beam (accelerando or ritardando) has no home in this pin, and
-  // <beam> carries no children for the loss net to catch, so the fan is
-  // reported explicitly rather than dropped in silence.
+  // A fanned beam (accelerando or ritardando) has no home in the schema, and
+  // <beam> has no children for the unread sweep to catch, so the fan is
+  // reported explicitly.
   test('reports the fan on it, which is not carried over', () => {
     expect(
       lost(
@@ -143,8 +138,7 @@ describe('a beam', () => {
     ).toEqual(['beam'])
   })
 
-  // MusicXML's default. It draws the beam the ordinary way, so there is
-  // nothing to report and nothing to carry.
+  // "none" is MusicXML's default.
   test('says nothing about a beam fanned as "none", which draws the plain beam', () => {
     expect(
       lost(
@@ -167,8 +161,8 @@ describe('a beam', () => {
 
 describe('an element hidden with print-object="no"', () => {
   // MNX has no way to mark an element invisible, so a hidden one is drawn
-  // regardless. The hiding is a loss, reported under one "print-object" code
-  // whatever carries it, rather than dropped in silence.
+  // anyway. The hiding is reported under one "print-object" code, whatever
+  // carries it.
   const hidden = (source: string) =>
     read(source).warnings.filter((warning) => warning.element === 'print-object')
 
@@ -219,9 +213,8 @@ describe('an element hidden with print-object="no"', () => {
     ).toHaveLength(1)
   })
 
-  // An empty block hides nothing, so there is nothing to lose. The attribute
-  // is read rather than left for the sweep, which would otherwise report it
-  // as an unconverted loss it is not.
+  // An empty block hides nothing. The attribute is read, not left for the
+  // sweep, which would report it as an unconverted loss.
   test('says nothing about an empty hidden notations block', () => {
     expect(read(measure(note('<notations print-object="no"/>'))).warnings).toEqual([])
   })
@@ -271,9 +264,8 @@ describe('a direction', () => {
 
 describe('a rest placed on the staff', () => {
   // <display-step>/<display-octave> fix a rest's height, read against the clef
-  // in force. Where the measure states no clef, there is nothing to place the
-  // height against, so it is reported rather than guessed. (Converting it,
-  // where a clef is in force, is covered in rests.test.ts.)
+  // in force. Where the measure states no clef, it is reported. Converting it
+  // where a clef is in force is tested in rests.test.ts.
   test('reports a display position it cannot place without a clef', () => {
     expect(
       lost(
@@ -324,9 +316,8 @@ describe('a rest that fills the measure', () => {
     expect(warnings).toEqual([])
   })
 
-  // Where the measure's length is one no note value can write, the rest cannot
-  // become an event, so it stays a full-measure rest and the lyric it carries
-  // is reported rather than the file refused for want of a value.
+  // Where no note value can write the measure's length, the rest cannot become
+  // an event. It stays a full-measure rest, and its lyric is reported.
   test('reports a lyric on a full-measure rest whose length no note value writes', () => {
     const { score, warnings } = read(
       measure(
@@ -362,17 +353,15 @@ describe('a cursor move', () => {
   })
 })
 
-// A loss the pin has no home for reads "cannot be expressed in MNX"; a loss
-// this converter has not carried over yet reads "is not converted yet". These
-// three read as gaps though the schema has nowhere to hold them.
+// A loss the schema has no home for reads "cannot be expressed in MNX". A
+// loss this converter does not convert yet reads "is not converted yet".
 describe('a loss the schema has no home for', () => {
   const codes = (source: string) =>
     read(source).warnings.map((warning) => `${warning.code} ${warning.message}`)
 
-  // <identification>'s one part with a home is <encoding><supports>: the
+  // <identification>'s one part with a home is <encoding><supports>. Its
   // accidental and beam declarations are the schema's support flags, which
-  // the writer restates. Those are consumed as accounted; the composer, the
-  // rights and everything else have no home.
+  // the writer restates. The composer, the rights and the rest have no home.
   const identified = (body: string) =>
     `<score-partwise><identification>${body}</identification>` +
     '<part id="P1"><measure number="1">' +
@@ -464,8 +453,7 @@ describe('a loss the schema has no home for', () => {
     ).toEqual(['unrepresentable:element A <bracket> direction cannot be expressed in MNX.'])
   })
 
-  // A staff drawn at 70 percent is a visible loss, and the schema's
-  // staff-config states a line count and nothing else.
+  // The schema's staff-config states a line count and nothing else.
   test('reports <staff-size> as unrepresentable', () => {
     expect(
       codes(
@@ -521,9 +509,8 @@ describe('a loss the schema has no home for', () => {
     ])
   })
 
-  // A line count is converted into the measure's staffConfigs, so it is not a
-  // loss at all. Five lines is what MNX draws a staff with when no config
-  // names it, so a source stating five is carried by writing nothing.
+  // A line count is converted into the measure's staffConfigs. MNX draws five
+  // lines where no config names the staff, so a count of five writes nothing.
   test.each(['1', '5', '05'])('says nothing about a staff stated with %s lines', (written) => {
     expect(
       codes(
@@ -597,8 +584,7 @@ describe('a loss the schema has no home for', () => {
   })
 })
 
-// The part list holds a good deal more than the names read out of it, and it
-// used to be skipped wholesale on the strength of the name being read.
+// The part list holds more than the names read from it.
 describe('the part list', () => {
   test('reports what it holds besides the name, against the part it describes', () => {
     const warnings = new WarningCollector()

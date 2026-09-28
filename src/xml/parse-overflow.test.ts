@@ -1,8 +1,8 @@
 import { expect, test, vi } from 'vitest'
 import { parseXmlRoot } from './parse.js'
 
-// Node cannot raise the error another engine throws on a stack overflow, so
-// the parser throws them here.
+// Node cannot raise the errors other engines throw on a stack overflow, so the
+// mocked parser throws them.
 const thrown = vi.hoisted(() => ({ error: new Error() }))
 
 vi.mock('@rgrove/parse-xml', async (original) => ({

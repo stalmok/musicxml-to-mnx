@@ -7,19 +7,18 @@ import type { XmlElement as SourceElement, XmlText } from '@rgrove/parse-xml'
 import { MusicXMLError } from '../errors.js'
 
 /**
- * An element of the source document. Deliberately smaller than the parser's
- * own node type: element children and direct text only, plus the line to
- * report problems against.
+ * An element of the source document. Smaller than the parser's node type:
+ * element children and direct text only, plus the line to report problems
+ * against.
  */
 export interface XmlElement {
   readonly name: string
   readonly attributes: Readonly<Record<string, string>>
   readonly children: readonly XmlElement[]
   /**
-   * Direct text content, exactly as written. Element children contribute
-   * nothing to it. Left untrimmed on purpose: a reader that wants a number or
-   * a keyword trims it, but lyric text is meaningful to the space, and once
-   * this layer has trimmed it there is no way to get it back.
+   * Direct text content as written, without the text of element children.
+   * Not trimmed, because spaces in lyric text are significant. A number or a
+   * keyword reads `trimmedText`.
    */
   readonly text: string
   /** 1-based line in the source document. */
@@ -28,10 +27,9 @@ export interface XmlElement {
 
 export function parseXmlRoot(source: string): XmlElement {
   try {
-    // Two parser defaults do the security work here and must not be relaxed:
-    // DTDs are never processed, so an external DTD reference (which every
-    // MusicXML file carries) is never fetched; and undefined entities are a
-    // parse error rather than something to resolve, which is what closes off
+    // Two parser defaults give the security and must stay: DTDs are not
+    // processed, so the external DTD every MusicXML file references is never
+    // fetched; and an undefined entity is a parse error, which blocks
     // entity-expansion and external-entity attacks.
     const document = parseXml(source, { includeOffsets: true })
     const root = document.root
@@ -42,10 +40,9 @@ export function parseXmlRoot(source: string): XmlElement {
     }
     return convertElement(root, lineStarts(source))
   } catch (cause) {
-    // Deliberately broad. Besides the parser's own errors, a document nested
-    // tens of thousands of elements deep exhausts the stack inside the parser,
-    // which callers should still receive as a rejected document rather than
-    // as a crash escaping the library.
+    // Catches everything. Besides the parser's own errors, a document nested
+    // tens of thousands of elements deep overflows the stack in the parser, and
+    // the caller must get that as a MusicXMLError.
     throw parseFailure(cause)
   }
 }
@@ -59,11 +56,9 @@ function convertElement(element: SourceElement, starts: readonly number[]): XmlE
     if (child.type === XmlNode.TYPE_ELEMENT) {
       children.push(convertElement(child as SourceElement, starts))
     } else if (child.type === XmlNode.TYPE_TEXT) {
-      // Direct text only. The parser's own `text` getter concatenates every
-      // descendant's text, which would silently merge a <lyric>'s <syllabic>
-      // and <text> children into one string. A CDATA section is text here too:
-      // the parser folds one into the text around it unless asked to keep it
-      // separate, which nothing above this layer would want.
+      // Direct text only. The parser's `text` getter joins all descendant
+      // text, which would merge a <lyric>'s <syllabic> and <text> into one
+      // string. The parser folds a CDATA section into the text around it.
       text += (child as XmlText).text
     }
     // Comments and processing instructions carry no notation.
@@ -71,9 +66,8 @@ function convertElement(element: SourceElement, starts: readonly number[]): XmlE
 
   return {
     name: element.name,
-    // A null prototype: attribute names come from the document, so a
-    // spread-into-{} would let one named "constructor" or "toString" be read
-    // back as an inherited function where a string was promised.
+    // A null prototype, so a lookup of an attribute the element lacks, such as
+    // "constructor" or "toString", gives undefined, not an inherited function.
     attributes: Object.assign(Object.create(null) as Record<string, string>, element.attributes),
     children,
     text,
@@ -112,9 +106,8 @@ function overflowed(cause: unknown): boolean {
   )
 }
 
-// Offsets to line numbers: the parser reports character offsets, but a person
-// reading an error wants a line. Computed once per document, then binary
-// searched per element.
+// The parser reports character offsets. Line starts are computed once per
+// document, then binary searched per element.
 function lineStarts(source: string): number[] {
   const starts = [0]
   for (let i = 0; i < source.length; i++) {

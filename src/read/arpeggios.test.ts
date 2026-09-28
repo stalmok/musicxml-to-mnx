@@ -49,8 +49,7 @@ describe('a rolled chord', () => {
     expect(warnings).toEqual([])
   })
 
-  // Every note of the chord carries the mark, and the corpus writes it that
-  // way throughout. One arpeggio comes out of them, not one per note.
+  // Sources mark every note of the chord.
   test('states one roll however many notes carry the mark', () => {
     const { measure } = read(head(ROLL) + member('E', ROLL) + member('G', ROLL))
 
@@ -61,14 +60,13 @@ describe('a rolled chord', () => {
     const { measure } = read(head() + member('E', ROLL) + member('G'))
 
     expect(measure?.arpeggios).toHaveLength(1)
-    // The span still covers the chord, because that is what is drawn.
+    // The span still covers the chord.
     expect(measure?.arpeggios[0]?.span).toEqual({ start: 'note1', end: 'note3' })
   })
 
-  // The span runs between the lowest note and the highest, which is where
-  // the roll is drawn from and to, not between the first note written and
-  // the last. Sources write a chord's notes bottom up, so only one written
-  // the other way round shows the difference.
+  // The span runs between the lowest note and the highest, not between the
+  // first note written and the last. Sources write a chord's notes bottom up,
+  // so only a chord written top down shows the difference.
   test('spans the lowest note to the highest, whatever order they are written', () => {
     const descending = (step: string, octave: number, chord: boolean) =>
       `<note>${chord ? '<chord/>' : ''}<pitch><step>${step}</step>` +
@@ -82,9 +80,8 @@ describe('a rolled chord', () => {
     expect(measure?.arpeggios[0]?.span).toEqual({ start: 'note3', end: 'note1' })
   })
 
-  // Which note is higher is a matter of where it sits on the staff, so the
-  // octave counts seven steps. A chord crossing the octave boundary is what
-  // tells that apart from counting the octave as anything else.
+  // Which note is higher depends on where it sits on the staff, so an octave
+  // counts seven steps. A chord across the octave boundary tests this.
   test('orders a chord that crosses the octave boundary', () => {
     const at = (step: string, octave: number, chord: boolean) =>
       `<note>${chord ? '<chord/>' : ''}<pitch><step>${step}</step>` +
@@ -117,9 +114,8 @@ describe('a rolled chord', () => {
     expect(arrowed?.arpeggios[0]?.arrow).toBe(true)
   })
 
-  // The written side of the same fact: an arrowhead is the presence of the
-  // key, and its absence is the ordinary drawing, so nothing is written where
-  // the source states no direction.
+  // In MNX the key's presence draws an arrowhead, and its absence is the
+  // ordinary drawing.
   test('writes the arrowhead only where the source states a direction', () => {
     const convert = (body: string) =>
       convertValid(
@@ -164,9 +160,7 @@ describe('a rolled chord', () => {
     expect(measure?.arpeggios).toHaveLength(2)
   })
 
-  // A marker stating no number says nothing about another voice's chord.
-  // Reading two of them as one roll ran a single gesture across both hands of
-  // a grand staff, which neither voice asked for.
+  // A marker with no number does not join a chord in another voice.
   test('keeps two chords in different voices apart where neither states a number', () => {
     const { measure, warnings } = read(
       '<note><pitch><step>C</step><octave>3</octave></pitch><duration>4</duration>' +
@@ -306,9 +300,7 @@ describe('a chord marked both ways at once', () => {
   })
 
   // Sources number one note of a chord and leave the next bare. Both marks
-  // are still the one roll drawn beside that chord, so they are read as one:
-  // taken apart, they drew the same roll twice and the contradiction between
-  // them went unreported.
+  // are the one roll drawn beside that chord, so they are read as one.
   test('keeps the first where one mark is numbered and the other is bare', () => {
     const { measure, warnings } = read(
       head('<non-arpeggiate number="1" type="bottom"/>') + member('E', ROLL),
@@ -319,9 +311,8 @@ describe('a chord marked both ways at once', () => {
   })
 })
 
-// Numbering the two marks differently used to put them in separate groups,
-// where neither could see the other: the output carried a roll and a bracket
-// over the same notes, contradicting each other with nothing said.
+// Marks on one chord are weighed together whatever their numbers, so a roll
+// and a bracket are not both written over the same notes.
 describe('a chord marked both ways under different numbers', () => {
   test('keeps the first and says the other is lost', () => {
     const { measure, warnings } = read(
@@ -337,9 +328,8 @@ describe('a chord marked both ways under different numbers', () => {
 })
 
 // A pianist rolls the lower half of a chord and the upper half separately,
-// and the source says so by numbering the two halves differently. Each roll
-// spans the notes that carried its own mark; both used to span the whole
-// chord, so a renderer drew each roll over every note.
+// and the source numbers the two halves differently. Each roll spans the
+// notes that carry its own mark.
 describe('a chord divided into two numbered rolls', () => {
   test('spans each roll over the notes that carried its mark', () => {
     const { measure, warnings } = read(
@@ -356,8 +346,6 @@ describe('a chord divided into two numbered rolls', () => {
     expect(warnings).toEqual([])
   })
 
-  // Two rolls at one point, over notes of one event, is a shape the output
-  // did not hold before, so it is validated rather than only compared.
   test('writes both halves onto schema-valid MNX', () => {
     const { mnx, warnings } = convertValid(
       '<score-partwise><part id="P1"><measure number="1">' +
@@ -373,9 +361,9 @@ describe('a chord divided into two numbered rolls', () => {
     expect(warnings).toEqual([])
   })
 
-  // A roll names the two notes it runs between, so the notes it names carry
-  // an id. Ids are written only where something points at one, and the schema
-  // cannot tell a name that reaches a note from one that reaches nothing.
+  // A roll names the two notes it runs between, so those notes carry an id.
+  // Ids are written only where something points at one. The schema cannot
+  // tell a name that reaches a note from one that reaches nothing.
   test('names the notes each roll runs between', () => {
     const { mnx } = convertValid(
       '<score-partwise><part id="P1"><measure number="1">' +
@@ -394,10 +382,10 @@ describe('a chord divided into two numbered rolls', () => {
     expect(measure?.arpeggios?.flatMap((one) => [one.span.start, one.span.end])).toEqual(ids)
   })
 
-  // Where one half holds a single note, the roll spans that note to itself:
-  // the source numbered one note of the chord and left its neighbour bare,
-  // and the bare mark joins the first roll it can. Written down because it is
-  // a guess, not because it is the only reading.
+  // Where one half holds a single note, the roll spans that note to itself.
+  // The source numbered one note of the chord and left its neighbour bare,
+  // and the bare mark joins the first roll it can. This is a guess, not the
+  // only reading.
   test('spans a half of one note to itself', () => {
     const { measure } = read(
       head('<arpeggiate number="1"/>') +
@@ -448,10 +436,9 @@ describe('a chord whose marks agree', () => {
   })
 })
 
-// Two chords sounding together under one number are one roll across both, so
-// what either of them says about it is said about the roll: a contradiction
-// on one chord is a contradiction in the roll, not something the chord beside
-// it can outvote.
+// Two chords sounding together under one number are one roll across both. A
+// contradiction on one chord is a contradiction in the roll, and the other
+// chord cannot outvote it.
 describe('a roll across two chords where one of them disagrees with itself', () => {
   const inVoice = (voice: string, step: string, octave: number, marks: string) =>
     `<note><pitch><step>${step}</step><octave>${String(octave)}</octave></pitch>` +
@@ -490,8 +477,8 @@ describe('a roll across two chords where one of them disagrees with itself', () 
 })
 
 // Marks are weighed against the marks of their own chord. Weighed against
-// whatever chord came first in the measure, a rolled chord and a struck one
-// standing side by side each read as the other's contradiction.
+// the first chord in the measure, a rolled chord and a struck one side by
+// side would each read as the other's contradiction.
 describe('two chords marked in opposite ways', () => {
   test('keeps a rolled chord and a struck one in one measure', () => {
     const { measure, warnings } = read(
@@ -524,8 +511,7 @@ describe('two chords marked in opposite ways', () => {
   })
 })
 
-// One roll cannot go both ways. The mark that loses used to be dropped with
-// nothing said, once the two were read as one roll.
+// One roll cannot go both ways.
 describe('a chord rolled both ways at once', () => {
   test('keeps the first direction and reports the other', () => {
     const { measure, warnings } = read(

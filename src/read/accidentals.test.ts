@@ -1,8 +1,7 @@
-// MusicXML draws an accidental only where it writes an <accidental> element;
-// a note with an alter but none is covered by the key or a note before it.
-// MNX states this the same way round, marking the notes whose accidental
-// shows. What the document then declares once, in its support block, is a
-// fact about the whole conversion and is tested in tests/support-block.test.ts.
+// MusicXML draws an accidental only where it writes an <accidental> element.
+// A note with an alter and no <accidental> takes it from the key or an
+// earlier note. MNX also marks only the notes whose accidental shows. The
+// support block is tested in tests/support-block.test.ts.
 
 import { describe, expect, test } from 'vitest'
 import { WarningCollector } from '../warnings.js'
@@ -77,8 +76,8 @@ describe('an enclosed accidental', () => {
   })
 })
 
-// A cautionary or editorial accidental is shown though the rules would not
-// require it, which is exactly what MNX's accidental-display `force` means.
+// A cautionary or editorial accidental shows where the rules do not require
+// it. MNX's accidental-display `force` states this.
 describe('a forced accidental', () => {
   test('forces a cautionary accidental', () => {
     const { notes } = read(score(note('F', '1', '<accidental cautionary="yes">sharp</accidental>')))
@@ -115,10 +114,9 @@ describe('a chord note', () => {
   })
 })
 
-// MusicXML counts an alteration in semitones, written as a decimal so a
-// microtone can state a quarter of one. MNX's alter is a whole number of
-// them, so the note takes the nearest, and a half-way alteration takes the
-// smaller.
+// MusicXML states an alteration in semitones as a decimal, so a microtone
+// can be a quarter of one. MNX's alter is a whole number of semitones. The
+// note takes the nearest, and a half-way alteration takes the smaller.
 describe('an altered note', () => {
   test.each([
     ['0.5', 0],
@@ -134,8 +132,7 @@ describe('an altered note', () => {
     expect(warnings[0]?.message).toContain(`altered by ${written} semitones`)
   })
 
-  // MNX states alter as a plain integer with no range, so an alteration
-  // beyond a double sharp goes over as readily as a sharp.
+  // MNX's alter is an integer with no range.
   test('converts a triple sharp', () => {
     const { notes, warnings } = read(score(note('C', '3', '')))
 

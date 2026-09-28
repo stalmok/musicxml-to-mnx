@@ -125,7 +125,7 @@ describe('dynamics', () => {
     expect(mnx.parts[0]?.measures[0]?.dynamics?.[0]?.value).toBe('pppp')
   })
 
-  // Every dynamic element MusicXML names now converts, so only an element
+  // Every dynamic element MusicXML names converts, so only an element
   // from outside the format reaches the report.
   test('reports a dynamic mark it does not know', () => {
     const { measure, warnings } = read(
@@ -163,8 +163,8 @@ describe('dynamics', () => {
   })
 
   // pf (poco forte / piano-forte) has no single settled reading of its two
-  // letters, and the accent prefixes MNX names stop at s and r, so its glyph
-  // alone is carried, not a fabricated spelling.
+  // letters, and the accent prefixes MNX names stop at s and r, so only its
+  // glyph is carried.
   test('reads pf as its glyph alone', () => {
     const { measure, warnings } = read(
       inMeasure(direction('<dynamics><pf/></dynamics>') + note('C')),
@@ -508,7 +508,7 @@ describe('dynamics', () => {
   })
 
   // A stop that matches no start closes nothing, so the wording beside it
-  // stands alone as before, and the stray stop is reported as before.
+  // stands alone, and the stray stop is reported.
   test('keeps wording beside a stray stop standing alone', () => {
     const { measure, warnings } = read(
       inMeasure(
@@ -774,9 +774,9 @@ describe('dynamics', () => {
   })
 
   // An element naming a glyph and holding no text is a mark drawn as that
-  // glyph alone, which is notation, not an empty element to pass over. A
-  // converter gap rather than a format limit: a group with no level can
-  // state glyphs, so a later release may carry it.
+  // glyph alone, which is notation, not an empty element to pass over. It is
+  // a converter gap, not a format limit: a group with no level can state
+  // glyphs.
   test('reports a wording drawn only as a glyph', () => {
     const { measure, warnings } = read(
       inMeasure(
@@ -818,8 +818,8 @@ describe('dynamics', () => {
 
   // The glyph a source names for its wording is not the group's glyph: that
   // one draws the mark itself, and overwriting it would redraw the dynamic.
-  // A format limit rather than a converter gap: the schema has nowhere to
-  // state how the words are drawn, so no release closes it.
+  // It is a format limit: the schema has nowhere to state how the words are
+  // drawn.
   test('reports the glyph named for a wording', () => {
     const { measure, warnings } = read(
       inMeasure(
@@ -947,9 +947,7 @@ describe('tempo', () => {
     expect(warnings.map((w) => w.code)).toContain('unrepresentable:tempo')
   })
 
-  // Real exporters leave <beat-unit> empty where the mark carries no note
-  // glyph: 44 of a 20,000-file PDMX sample do, and used to lose the whole file
-  // over a tempo marking.
+  // Exporters leave <beat-unit> empty where the mark carries no note glyph.
   test.each(['triangle', ''])('reports rather than refuses a beat unit of "%s"', (written) => {
     const { global, warnings } = read(
       inMeasure(
@@ -966,7 +964,7 @@ describe('tempo', () => {
 
   // MusicXML's per-minute is a string that can be a descriptive word such as
   // "fast" rather than a number. MNX states a tempo as beats per minute, so
-  // there is nothing to carry, but a valid marking must not refuse the file.
+  // there is nothing to carry. The marking is valid, so the file converts.
   test('reports rather than refuses a per-minute given as descriptive text', () => {
     const { global, warnings } = read(
       inMeasure(
@@ -1034,8 +1032,8 @@ describe('tempo', () => {
   })
 
   // An empty <per-minute> prints the beat-unit glyph alone, with the number
-  // supplied as adjacent text. It is valid, and refusing the whole file over
-  // it would be wrong; MNX has no numeric tempo to carry, so it is dropped.
+  // supplied as adjacent text. It is valid, so the file converts. MNX has no
+  // number to carry, so the mark is dropped.
   test('reports rather than refuses a metronome with an empty per-minute', () => {
     const { global, warnings } = read(
       inMeasure(
@@ -1082,7 +1080,6 @@ describe('tempo', () => {
     expect(JSON.stringify(mnx)).toContain('"bpm":76.5')
   })
 
-  // A fraction below one half once rounded to zero and was dropped for it.
   test('carries a per-minute below one half', () => {
     const { global, warnings } = read(
       inMeasure(
@@ -1296,9 +1293,8 @@ describe('sound navigation', () => {
   })
 
   // A <sound> is written either on its own or inside a <direction>, which is
-  // where an exporter puts it beside the words that draw the instruction.
-  // Nothing stated that the second reaches the measure: every fixture wrote
-  // the <sound> on its own, and the two go by different paths.
+  // where an exporter puts it beside the words that draw the instruction. The
+  // two go by different paths.
   test('takes the jump from a <sound dalsegno> written inside a <direction>', () => {
     const { global } = read(
       inMeasure(
@@ -1337,8 +1333,8 @@ describe('sound navigation', () => {
   })
 
   // A <sound dynamics> is a playback velocity, and the schema's perform
-  // options hold nothing. It used to be classified by the <dynamics> element
-  // of the same name, which does have a home, so the loss read as a gap.
+  // options hold nothing. The <dynamics> element of the same name does have a
+  // home.
   test('reports a <sound dynamics> as a velocity MNX cannot state', () => {
     const { warnings } = read(inMeasure(note('C') + '<sound dynamics="71"/>'))
 
@@ -1384,7 +1380,7 @@ describe('sound navigation', () => {
   })
 
   // MNX's jump-type has only "segno" and "dsalfine", so the D.C. and coda
-  // navigation a <sound> carries has nowhere to go in any release.
+  // navigation a <sound> carries has nowhere to go.
   test('reports the D.C. and coda navigation of a <sound>, which MNX cannot state', () => {
     const { warnings } = read(
       inMeasure(note('C') + '<sound dacapo="yes"/>' + note('D') + '<sound tocoda="coda"/>'),
@@ -1674,10 +1670,9 @@ describe('an offset moving a direction', () => {
     expect(warnings.list().map((w) => w.code)).toContain('missing:divisions')
   })
 
-  // MusicXML allows a fractional offset. Rounding one would put the mark
-  // somewhere the source did not. "2.5" fails both halves of the guard, so it
-  // said nothing about either: "2.0" is a safe integer the regex refuses, and
-  // twenty digits is digits the regex accepts that cannot be read back
+  // MusicXML allows a fractional offset, and rounding one would move the
+  // mark. "2.5" fails both halves of the guard. "2.0" is a safe integer the
+  // regex refuses. Twenty digits pass the regex but cannot be read back
   // exactly.
   test.each(['2.5', '2.0', '99999999999999999999'])(
     'leaves the mark where it was where the offset is "%s"',
@@ -1711,8 +1706,7 @@ describe('an offset moving a direction', () => {
   }
 
   // The start of the measure is inside it, not before it. The guard is
-  // stated there as well as below it, or its edge could move by one with
-  // nothing noticing.
+  // tested there as well as below it.
   test('applies an offset that reaches exactly the start of the bar', () => {
     const { positions, warnings } = inTime(quarter + dynamic('<offset>-4</offset>'))
 
@@ -1767,9 +1761,9 @@ describe('an offset moving a direction', () => {
 })
 
 // <sound> is a playback element. A tempo it states is playback, not notation:
-// MNX's tempo object is always drawn, so emitting one from a <sound> would
-// fabricate a metronome the source never displayed. A <metronome> beside it is
-// the drawn mark, and the <sound tempo> only echoes it for playback.
+// MNX's tempo object is always drawn, so writing one from a <sound> would draw
+// a metronome mark the source does not show. A <metronome> beside it is the
+// drawn mark, and the <sound tempo> only echoes it for playback.
 describe('the tempo a <sound> states', () => {
   function tempos(body: string) {
     const warnings = new WarningCollector()
@@ -1808,8 +1802,7 @@ describe('the tempo a <sound> states', () => {
     expect(warnings.map((w) => w.message)).toContain(soundTempoDropped)
   })
 
-  // The two say the same thing, and the metronome is the one that is drawn, so
-  // the sound's echo is passed over without a word.
+  // The two say the same thing, and the metronome is the one that is drawn.
   test('passes over one that only restates a <metronome> beside it', () => {
     const { tempos: found, warnings } = tempos(
       '<direction><direction-type><metronome><beat-unit>half</beat-unit>' +
@@ -1940,8 +1933,7 @@ describe('the tempo a <sound> states', () => {
   })
 
   // A mark is the score's, drawn once, and every part carries the playback
-  // echo of it. Reading part by part reported every part after the one that
-  // draws it.
+  // echo of it.
   test('passes over one echoing a mark another part draws', () => {
     const warnings = new WarningCollector()
     const measure = (body: string) =>
@@ -1965,7 +1957,6 @@ describe('the tempo a <sound> states', () => {
   })
 
   // A source is free to write the playback echo before the mark it echoes.
-  // Deciding as each <sound> was read called every such echo a loss.
   test('passes over one written before the <metronome> it echoes', () => {
     const { tempos: found, warnings } = tempos(
       '<direction><sound tempo="120"/></direction>' +
@@ -2011,8 +2002,8 @@ describe('the tempo a <sound> states', () => {
 
 // A hairpin grows or fades from here to somewhere later, often several
 // measures away. MusicXML marks both ends and numbers them so they can be
-// matched, exactly as it does a slur; MNX states the pair once, on the end
-// where it begins, pointing at the measure where it stops.
+// matched, as it does a slur. MNX states the pair once, on the end where it
+// begins, pointing at the measure where it stops.
 describe('hairpins', () => {
   const NOTE =
     '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
@@ -2063,7 +2054,7 @@ describe('hairpins', () => {
   })
 
   // Several may be open at once, so each number holds a stack and a stop
-  // closes the most recently opened, exactly as a slur does.
+  // closes the most recently opened, as a slur does.
   test('matches each hairpin to the stop that carries its number', () => {
     const { dynamics, warnings } = readMeasures(
       wedge('crescendo', '1') + wedge('diminuendo', '2') + NOTE,
@@ -2074,9 +2065,9 @@ describe('hairpins', () => {
     expect(warnings).toEqual([])
   })
 
-  // Both hands hold a hairpin numbered 1 at once, which is what an exporter
-  // that numbers each hand from 1 writes. On the number alone each is joined
-  // to the other hand's stop, and both get the wrong extent.
+  // Both hands hold a hairpin numbered 1 at once, as an exporter that numbers
+  // each hand from 1 writes. Paired on the number alone, each would join the
+  // other hand's stop.
   const staffWedge = (type: string, staff: string) =>
     `<direction><direction-type><wedge type="${type}" number="1"/></direction-type>` +
     `<staff>${staff}</staff></direction>`
@@ -2128,7 +2119,7 @@ describe('hairpins', () => {
   // A hairpin the reader dropped still takes its place in the pairing, so the
   // stop the source wrote for it is consumed with it. It has to take that
   // place on its own staff: otherwise the other hand's stop closes on it, and
-  // the hairpin that hand really opened is ended by the wrong stop.
+  // the hairpin that hand opened ends at the wrong stop.
   test('pairs a stop with the dropped start on its own staff', () => {
     const { dynamics, warnings } = readTwoStaves(
       staffWedge('sideways', '1') + staffWedge('crescendo', '2'),
@@ -2232,8 +2223,9 @@ describe('hairpins', () => {
     expect(warnings[0]?.message).toContain('not converted yet')
   })
 
-  // The source did start the hairpin; the reader dropped it. Its stop is not
-  // an orphan, so one warning per lost hairpin, at the start that was dropped.
+  // The source did start the hairpin, and the reader dropped it. Its stop is
+  // not an orphan, so there is one warning per lost hairpin, at the dropped
+  // start.
   // A stop itself is never of unknown type: its type is the word "stop", so an
   // unknown type can only open a span.
   test('warns once for a dropped wedge, not again at its stop', () => {
@@ -2266,8 +2258,7 @@ describe('hairpins', () => {
   // MusicXML's document order is not time order: a measure holding two voices
   // is written as one pass per voice with a <backup> between them, so a stop
   // belonging to the first voice is written before a start belonging to the
-  // second. Pairing in document order made a hairpin out of two ends that had
-  // nothing to do with each other.
+  // second. Pairing in document order would join two unrelated ends.
   test('pairs the ends the music has together, not the ones written together', () => {
     const voiceOne =
       '<note><voice>1</voice><pitch><step>C</step><octave>4</octave></pitch>' +
@@ -2290,10 +2281,10 @@ describe('hairpins', () => {
     expect(warnings).toEqual([])
   })
 
-  // The shape that made an octave shift run backwards: start and stop both
-  // arrive through a forward, past the only event. A hairpin ends where its
-  // stop is written, not at the last event before it, so this pair still runs
-  // forwards and is kept.
+  // The shape that would make an octave shift run backwards: start and stop
+  // both arrive through a forward, past the only event. A hairpin ends where
+  // its stop is written, not at the last event before it, so this pair still
+  // runs forwards and is kept.
   test('keeps a hairpin whose ends arrive through a forward past the only event', () => {
     const forward = (by: number) => `<forward><duration>${String(by)}</duration></forward>`
     const body = NOTE + forward(8) + wedge('crescendo') + forward(2) + wedge('stop')

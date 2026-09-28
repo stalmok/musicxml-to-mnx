@@ -1,7 +1,6 @@
-// Thrown for MusicXML input the converter cannot honestly convert: malformed
-// structure, or values the format does not allow. Input that is valid but
-// merely unconvertible produces a warning instead (see warnings.ts). Losing
-// notation is reportable, not fatal.
+// Thrown for MusicXML input the converter cannot convert: malformed
+// structure, or values the format does not allow. Valid input with notation
+// the output cannot carry produces a warning instead (see warnings.ts).
 
 // Where in the document the problem was found, as the trail of elements
 // leading to it, for example ['part P1', 'measure 3', 'note']. Empty for
@@ -14,16 +13,14 @@ export function formatPath(path: DocumentPath): string {
 
 export interface ErrorLocation {
   /**
-   * Required, so that a refusal cannot be thrown without saying where it was
-   * found. Empty is the answer for a document-level failure, and stating it
-   * is what makes that a decision rather than an omission.
+   * Required, so every refusal states where it was found. Empty for a
+   * document-level failure.
    */
   path: DocumentPath
   line?: number
   /**
-   * The document the problem was found in. Nothing inside the converter knows
-   * it: a source is text or bytes, not a file. The caller names it, and the
-   * conversion attaches it on the way out.
+   * The document the problem was found in. The caller names it with the
+   * `documentName` option, and `convertMusicXML` adds it.
    */
   document?: string
   /** The lower-level failure this one wraps, kept for debugging. */
@@ -44,10 +41,8 @@ export class MusicXMLError extends Error {
   readonly line: number | undefined
   readonly document: string | undefined
   /**
-   * The message without the location, which is what a caller grouping
-   * refusals compares: the same refusal moves line and file between exports.
-   * Held as a field so that reading it is not a matter of splitting `message`
-   * back apart on the punctuation this file happens to write.
+   * The message without the location. Compare it to group the same refusal
+   * across documents, where the line and the file differ.
    */
   readonly detail: string
 

@@ -1,6 +1,5 @@
-// The reader that records what it read. Exercised directly here, because two
-// of its guarantees are about the reader itself rather than about any one
-// element: that asking twice reports once, and that a nested block's leftovers
+// The reader that records what it read. Two of its guarantees are about the
+// reader itself: asking twice reports once, and a nested block's leftovers
 // come out with its parent's.
 
 import { describe, expect, test } from 'vitest'
@@ -30,10 +29,9 @@ describe('reportUnread', () => {
     ])
   })
 
-  // child() takes the first of a name and is meant for a name MusicXML allows
-  // only one of. A second one is either malformed input or a name that should
-  // have been read with children(); either way it is a loss, not something to
-  // pass over on the strength of the first having been read.
+  // child() takes the first of a name and is for a name MusicXML allows only
+  // one of. A second one is malformed input or a name that needs children().
+  // Either way it is a loss.
   test('reports a repeat of a child that child() took only the first of', () => {
     const element = reader('<pitch/><pitch/>')
     element.child('pitch')
@@ -65,8 +63,7 @@ describe('blocks', () => {
     expect(reported(element)).toEqual(['<fermata> is not converted yet.'])
   })
 
-  // Two readers over one element would report its leftovers twice, which would
-  // make the loss report depend on how many times a caller happened to ask.
+  // Two readers over one element would report its leftovers twice.
   test('hands back the same readers when asked a second time', () => {
     const element = reader('<notations><fermata/></notations>')
     const first = element.blocks('notations')
@@ -102,10 +99,9 @@ describe('skip', () => {
   })
 })
 
-// The same record, for attributes: reading one through the tree accessor is
-// what accounts for it, and the sweep names the notation-bearing ones nothing
-// read. Presentation attributes (positions, fonts, identity) say how things
-// are drawn rather than what they are, and are passed over without a word.
+// The same record, for attributes. Reading one through the tree accessor
+// accounts for it, and the sweep names the notation attributes nothing read.
+// Presentation attributes (positions, fonts, identity) are passed over.
 describe('the attribute sweep', () => {
   // implicit="yes" excludes a pickup or courtesy measure from the numbering,
   // and MNX's measure number is a plain integer override with no way to
@@ -146,16 +142,14 @@ describe('the attribute sweep', () => {
     ])
   })
 
-  // An unread child is reported wholesale; naming its attributes on top
-  // would report the same loss twice.
+  // An unread child is reported as a whole, so its attributes are not named
+  // again.
   test('leaves the attributes of an unread child to its own report', () => {
     const element = reader('<tie type="start"/>')
 
     expect(reported(element)).toEqual(['<tie> is not converted yet.'])
   })
 
-  // An attribute with no schema definition to hold it is a format limit,
-  // like an element with no home, and reports as one.
   test('reports an attribute with no home as a format limit', () => {
     const element = new ElementReader(parseXmlRoot('<dot placement="above"/>'))
     const warnings = new WarningCollector()
@@ -167,9 +161,8 @@ describe('the attribute sweep', () => {
     )
   })
 
-  // The attribute is a field beside the element, for the same reason the
-  // element is one: a report is grouped by what was lost, and an attribute
-  // loss hiding inside its element's bucket could mask a regression.
+  // A report is grouped by what was lost, so an attribute loss has its own
+  // field beside the element.
   test('names the attribute as a field beside the element', () => {
     const element = new ElementReader(parseXmlRoot('<measure implicit="yes"/>'))
     const warnings = new WarningCollector()
@@ -191,10 +184,7 @@ describe('the attribute sweep', () => {
     ])
   })
 
-  // A namespace declaration is XML plumbing rather than notation, so it is
-  // passed over. The test is worth having because the sweep reports every
-  // other attribute it does not recognise, this one included if it looked
-  // anywhere but at the start of the name.
+  // A namespace declaration is not notation.
   test('passes over a namespace declaration', () => {
     const element = new ElementReader(
       parseXmlRoot('<score-partwise xmlns:xlink="http://www.w3.org/1999/xlink"/>'),

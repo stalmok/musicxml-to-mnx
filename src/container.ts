@@ -1,16 +1,13 @@
-// Getting the MusicXML out of whatever a caller hands us.
+// Reads the MusicXML text from a string or bytes.
 //
-// MusicXML travels two ways. Raw, it is an XML document. Packed, it is an
-// `.mxl`: a zip holding the score alongside a `META-INF/container.xml` that
-// names which file inside is the score to read, since a package may carry
-// more than one. A caller passing bytes does not say which they have, so the
-// zip magic number is what tells them apart.
+// MusicXML comes raw, as an XML document, or packed, as an `.mxl`: a zip that
+// holds the score and a `META-INF/container.xml` that names the score file,
+// since a package may hold more than one. The zip signature tells bytes of the
+// two apart.
 //
-// The unpacking is careful with a hostile package, because this runs on
-// untrusted input like the rest of the reader. It decompresses only the
-// listing and the one score it names, never the other entries, so a package
-// cannot force a large decompression by hiding a bomb beside the score; and it
-// refuses a score that decompresses past a sane limit.
+// The input is untrusted. Only the listing and the score it names are
+// decompressed, never the other entries, and a score that decompresses past a
+// size limit is refused.
 
 import { strFromU8, unzipSync } from 'fflate'
 import type { UnzipFileInfo } from 'fflate'
@@ -22,7 +19,6 @@ import { parseXmlRoot } from './xml/parse.js'
 const ZIP_SIGNATURE = [0x50, 0x4b, 0x03, 0x04]
 
 // A score's XML is a few megabytes at most, even for a large orchestral work.
-// Anything claiming to decompress past this is not a score a person wrote.
 const SCORE_LIMIT = 100 * 1024 * 1024
 
 /**
@@ -32,10 +28,8 @@ const SCORE_LIMIT = 100 * 1024 * 1024
  */
 export function readMusicXML(source: string | Uint8Array): string {
   if (typeof source !== 'string' && isZip(source)) return scoreInside(source)
-  // Raw text or bytes carry no per-entry size field the way a package does,
-  // so their own length is the bound. Without this the package path is capped
-  // and the raw path is not, which is the same decompression-bomb size a
-  // package is refused for, only unpacked already.
+  // Raw text or bytes have no per-entry size field, so their own length is held
+  // to the limit a package entry has.
   if (source.length > SCORE_LIMIT) {
     throw new MusicXMLError(
       `The MusicXML document is ${String(source.length)} bytes, over the ` +
@@ -50,14 +44,9 @@ function isZip(bytes: Uint8Array): boolean {
   return ZIP_SIGNATURE.every((byte, index) => bytes[index] === byte)
 }
 
-/**
- * The score inside an `.mxl`. The package's own `container.xml` names it,
- * because a package may hold several files and only its listing says which is
- * the score rather than, say, a cover image or a second movement.
- */
+/** The score inside an `.mxl`, as the package's `container.xml` names it. */
 function scoreInside(archive: Uint8Array): string {
-  // Learn the whole file listing while decompressing only the tiny
-  // container.xml. The other entries, which may be large, are left packed.
+  // Collect every entry name, but decompress only container.xml.
   const names: string[] = []
   const meta = extract(archive, (name) => {
     names.push(name)
@@ -67,9 +56,8 @@ function scoreInside(archive: Uint8Array): string {
   const listing = meta['META-INF/container.xml']
   const named = listing ? rootFilePath(listing) : undefined
 
-  // The score is the file the listing names, or, where there is no usable
-  // listing, the one score in the package, which is unambiguous when there is
-  // exactly one.
+  // The score is the file the listing names. With no usable listing, it is the
+  // only .xml or .musicxml file outside META-INF.
   const scores = names.filter(
     (name) => !name.startsWith('META-INF/') && /\.(musicxml|xml)$/i.test(name),
   )
@@ -125,29 +113,24 @@ function extract(
 }
 
 /**
- * The path the package's listing gives for its score, or nothing when the
- * listing does not name one. The listing is itself XML, so it is read with the
- * same parser as everything else, which keeps it safe against the
- * external-entity tricks a hand-rolled reader would reopen.
+ * The score path the listing gives, or undefined when it names none. The
+ * listing is XML, so it goes through the same parser as the score, which does
+ * not resolve external entities.
  */
 function rootFilePath(listing: Uint8Array): string | undefined {
   const root = parseXmlRoot(decode(listing))
-  // A container that carries no <rootfiles> names nothing; the caller then
-  // falls back to the one score in the package.
+  // With no <rootfiles>, the caller falls back to the one score in the package.
   const rootfiles = child(root, 'rootfiles')
   if (!rootfiles) return undefined
 
-  // The first rootfile is the primary score; the rest, where a package states
-  // any, are alternatives this converter does not choose between. The path is
-  // always an attribute, never a child element.
+  // The first rootfile is the primary score; any others are alternatives.
   return children(rootfiles, 'rootfile')[0]?.attributes['full-path']
 }
 
 /**
  * Bytes as text. A byte-order mark decides first, then the encoding the XML
- * declaration names, then UTF-8, which XML assumes when neither is present.
- * No `TextDecoder` global is used, so the core stays free of the platform
- * globals the build forbids it.
+ * declaration names, then UTF-8, the XML default. It does not use the
+ * `TextDecoder` global, which the build forbids in the core.
  */
 function decode(bytes: Uint8Array): string {
   // Finale ships UTF-16 MusicXML, always with a byte-order mark.

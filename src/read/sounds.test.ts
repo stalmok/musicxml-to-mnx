@@ -1,9 +1,8 @@
-// The part list's instrument setup. A <score-instrument> names what plays a
-// part, and MNX states it in global.sounds, keyed by the source's instrument
-// id where MNX can state it. The rest of a <midi-instrument> has no home: the
-// schema's sound states midiNumber as a MIDI pitch, backing a percussion kit,
-// not as the patch a <midi-program> names. <midi-unpitched> is that pitch and
-// is converted; percussion.test.ts holds it to account.
+// A <score-instrument> names what plays a part. MNX states it in
+// global.sounds, keyed by the source's instrument id where MNX can state it.
+// The schema's sound states midiNumber as the MIDI pitch of a percussion
+// sound, not a <midi-program> patch, so the rest of a <midi-instrument> has
+// no home. <midi-unpitched> is that pitch and is tested in percussion.test.ts.
 
 import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
@@ -49,9 +48,6 @@ describe('instrument sounds', () => {
     expect(warnings).toEqual([])
   })
 
-  // An empty <instrument-name> names nothing, and MNX's sound has an optional
-  // name, so the sound is written without one rather than with an empty
-  // string.
   test('writes the sound with no name where the name is empty', () => {
     const { mnx, warnings } = convert(
       '<score-instrument id="P1-I1"><instrument-name/></score-instrument>',
@@ -69,8 +65,7 @@ describe('instrument sounds', () => {
   })
 
   // A <midi-program> names a patch. The schema's sound has only midiNumber,
-  // which its docs define as a MIDI pitch backing a percussion kit, so the
-  // program has no home and is reported, not miswritten as a pitch.
+  // which its docs define as the MIDI pitch of a percussion sound.
   test('reports the MIDI program rather than writing it as a pitch', () => {
     const { mnx, warnings } = convert(
       '<score-instrument id="P1-I1"><instrument-name>Voice</instrument-name>' +

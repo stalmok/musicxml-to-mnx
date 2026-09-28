@@ -163,8 +163,8 @@ describe('ties', () => {
     expect(warnings).toEqual([])
   })
 
-  // One letter two octaves apart is two different sounds, and the corpus
-  // carries such a stray pair as a source error. Both ends keep warning.
+  // One letter two octaves apart is two different sounds. Sources write such a
+  // stray pair in error. Both ends keep warning.
   test('keeps two octaves of one letter apart', () => {
     const low =
       '<note><pitch><step>C</step><octave>4</octave></pitch>' +
@@ -224,8 +224,7 @@ describe('ties', () => {
 
   // A tie joins a note to the next sounding of its pitch, and a note never
   // crosses a barline, so both ends of a real tie sit in one measure or in
-  // adjacent ones. A stop further away than that belongs to nothing, and
-  // pairing it with a stale start would invent a tie the source never wrote.
+  // adjacent ones. A stop further away than that belongs to nothing.
   test('reports a far-off stop rather than tying it to a stale start', () => {
     const { notes, warnings } = readAllVoices(
       measures(DIVISIONS + note('A', tied('start')), note('G'), note('A', tied('stop'), '2')),
@@ -256,8 +255,8 @@ describe('ties', () => {
   })
 
   // A same-voice stop is the source's own pairing and holds at any
-  // distance. Real scores tie a note to its pitch's next sounding measures
-  // away, across rests, and the corpus carries one such tie.
+  // distance. Scores tie a note to the next sounding of its pitch measures
+  // away, across rests.
   test('keeps a tie its own voice states across an intervening measure', () => {
     const { notes, warnings } = readAllVoices(
       measures(DIVISIONS + note('A', tied('start')), note('G'), note('A', tied('stop'))),
@@ -318,8 +317,7 @@ describe('ties', () => {
 })
 
 // <tie> is the sound of a tie and <tied> is the notation, so a note that is
-// not sounded, such as a cue, correctly states the tie in <tied> alone. Read
-// from <tie> only, the whole chain was dropped without a word.
+// not sounded, such as a cue, states the tie in <tied> alone.
 describe('a tie stated only as <tied>', () => {
   const tiedOnly = (type: string) => `<notations><tied type="${type}"/></notations>`
 
@@ -373,8 +371,8 @@ describe('a tie stated only as <tied>', () => {
 
   // <notations> puts no order on its children, so a note in the middle of a
   // chain can state its start before its stop. Taken as written, that start
-  // was the most recent one open when the stop arrived, so the note came out
-  // tied to itself and the chain stitched past it.
+  // would be the most recent one open when the stop arrives, and the note
+  // would tie to itself.
   test('ends the tie before it and then starts the next, however they are written', () => {
     const startFirst = '<notations><tied type="start"/><tied type="stop"/></notations>'
     const { notes, warnings } = read(
@@ -432,8 +430,7 @@ describe('a tie stated only as <tied>', () => {
 })
 
 // <tied> is the visual side of a tie. Most of it repeats <tie>, but let-ring
-// and the drawn side live only there, so the reader must read it rather than
-// skip it.
+// and the drawn side are stated only there.
 describe('let-ring and the drawn side', () => {
   test('reads a let-ring <tied> as an lv tie with no target', () => {
     const { notes, warnings } = read(
@@ -447,8 +444,7 @@ describe('let-ring and the drawn side', () => {
   })
 
   // MNX's tie states one side, on the note the tie starts from, so a note
-  // whose edges state two sides gives the tie the first. The last would be
-  // just as arbitrary, and nothing said which it was.
+  // whose edges state two sides gives the tie the first.
   test('takes the first side its edges state, not the last', () => {
     const { notes } = read(
       measures(
@@ -627,7 +623,7 @@ describe('slurs', () => {
   // Exporters number a slur within the voice they write it in, so two voices
   // sounding at once each hold their own slur numbered 1. Paired as one
   // stream in time order, the first voice's stop would close the second
-  // voice's start, and the two hands would be sewn together.
+  // voice's start.
   test('keeps two voices holding one slur number apart', () => {
     const warnings = new WarningCollector()
     const score = readScore(
@@ -683,9 +679,8 @@ describe('slurs', () => {
 
   // Where a voice's ends do not account for each other, the slur runs into
   // another voice, and the stop takes the most recent start of any voice:
-  // the nearest partner it can have. Kept to its own voice, this start took
-  // the stop four measures on over the one written beside it, and both ends
-  // the music meant for each other were reported as unmatched.
+  // the nearest partner it can have. Kept to its own voice, this start would
+  // take the stop four measures on instead of the one written beside it.
   test('joins the near partner in another voice, not the far one in its own', () => {
     const warnings = new WarningCollector()
     const score = readScore(
@@ -718,7 +713,7 @@ describe('slurs', () => {
 
   // Where both voices leave an end over, both pair across the part, and each
   // stop still takes the open start of its own voice. Taking the most recent
-  // start of any voice instead sews the two hands together.
+  // start of any voice would join the two hands.
   test('keeps two voices apart in the pass across the part', () => {
     const warnings = new WarningCollector()
     const both = (body: string) =>
@@ -748,13 +743,11 @@ describe('slurs', () => {
     ])
   })
 
-  // A voice's own stream can balance by coincidence rather than by writing
-  // one slur through. Here voice 1's number 2 holds one start and one stop,
-  // so counting alone says it accounts for itself, but the start really
-  // slurs into voice 2 in the same measure, and the stop really continues a
-  // slur voice 2 starts two measures later. Pairing the voice's own two ends
-  // invents an 18-measure span nobody wrote and drops both real slurs; here
-  // it would invent a 3-measure span instead, which is enough to prove it.
+  // A voice's own stream can balance by coincidence. Here voice 1's number 2
+  // holds one start and one stop, so counting alone says it accounts for
+  // itself. But the start slurs into voice 2 in the same measure, and the
+  // stop ends a slur voice 2 starts two measures later. Pairing the voice's
+  // own two ends would invent a 3-measure span and drop both real slurs.
   test('does not pair two ends of one number that only balance by coincidence', () => {
     const warnings = new WarningCollector()
     const score = readScore(
@@ -1038,7 +1031,7 @@ describe('slurs', () => {
 
   // A slur may reach a measure-filling rest. The sequence-level full-measure
   // rest is not an event with an id, so a rest carrying a slur end stays a
-  // plain event, exactly as a lyric-bearing one does, giving the slur a target.
+  // plain event, as a rest with a lyric does, giving the slur a target.
   test('ends a slur on a measure-filling rest, which stays an event to carry it', () => {
     const fullRest =
       '<note><rest measure="yes"/><duration>4</duration><type>quarter</type><voice>1</voice>' +
@@ -1116,9 +1109,8 @@ describe('the ends a spanner is keyed by', () => {
   })
 
   // Two hands can each sustain the same pitch at once, so two ties of one
-  // pitch are open together. Keyed by pitch alone, the second start used to
-  // overwrite the first, dropping it with no warning. Each must resolve, and
-  // to its own voice's note rather than the other hand's.
+  // pitch are open together. Keyed by pitch alone, the second start would
+  // overwrite the first. Each resolves to its own voice's note.
   test('joins two ties of the same pitch open at once in different voices', () => {
     const voiced = (voice: string, body: string) =>
       `<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>` +
@@ -1164,8 +1156,8 @@ describe('the ends a spanner is keyed by', () => {
   })
 
   // In piano writing a slur routinely runs from one hand to the other, which
-  // is a different voice and a different staff. Scoping the number to a voice
-  // breaks every one of those, so it is scoped to the part.
+  // is a different voice and a different staff, so the number is scoped to the
+  // part, not the voice.
   test('joins a slur that runs from one voice into another', () => {
     const voiced = (step: string, voice: string, body: string) =>
       `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>4</duration>` +
@@ -1363,10 +1355,9 @@ describe('pairing the two ends of a span', () => {
 
 // Whether a voice's slurs of one number are that voice's own, and what a
 // measure of them leaves over, decide whether the voice keeps its own pairing
-// or joins the pass across the part. Read through a score the two answers
-// mostly wash out: the pass hands back what it cannot pair and prefers a
-// stop's own voice, so a misread stream reaches the same joins by a longer
-// road. They are asked here directly, so each answer is stated once.
+// or joins the pass across the part. Through a whole score, a wrong answer
+// mostly reaches the same joins, because the pass hands back what it cannot
+// pair and prefers a stop's own voice. These tests ask each question directly.
 describe('whether a voice accounts for its own slurs', () => {
   // A start carries the slur it opens and a stop names the event it ends on.
   // Neither answer below reads either one, so one bare event stands for both.
@@ -1431,9 +1422,8 @@ describe('whether a voice accounts for its own slurs', () => {
   })
 })
 
-// Which end is read first decides which start a stop closes, so the order the
-// ends are put in is part of what the pairing means. Each rule below is one
-// the comparator states, and each is stated here as the outcome it produces.
+// Which end is read first decides which start a stop closes. Each test below
+// states one comparator rule by the outcome it produces.
 describe('the order the ends of a span are read in', () => {
   const end = (
     kind: 'start' | 'stop',
@@ -1487,9 +1477,8 @@ describe('the order the ends of a span are read in', () => {
   })
 
   // The measure comes first, before anything inside it. The ends are handed
-  // over out of order here, which the reader itself does not do: the rule is
-  // the comparator's, so nothing about the order they arrive in should
-  // decide which start a stop closes.
+  // over out of order here, which the reader does not do, to test the
+  // comparator on its own.
   test('reads an earlier measure before a later one, whatever order they arrive in', () => {
     expect(pair([end('stop', 3, fraction(0)), end('start', 1, fraction(0))])).toEqual({
       joined: ['span'],

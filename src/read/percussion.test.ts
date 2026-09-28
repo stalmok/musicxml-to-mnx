@@ -167,9 +167,8 @@ describe('an unpitched note', () => {
   })
 })
 
-// Older exporters write no <score-instrument> and no <instrument> on a note.
-// The height on the staff is then all a reader has, and it is what the page
-// gives a player too.
+// Older exporters write no <score-instrument> and no <instrument> on a note,
+// so the height on the staff is all a reader has.
 // A component is an instrument written at a height. A source that names one
 // instrument for the whole drumset tells its drums apart by height alone, and
 // keying by the instrument would draw every one of them on the same line.
@@ -557,7 +556,6 @@ describe('the MNX a percussion part converts to', () => {
     expect(warnings[0]?.message).toContain('struck together')
   })
 
-  // Nothing was carried at all, so nothing may be said to have been.
   test('says nothing was carried where the bracket holds one note', () => {
     const half =
       '<note><pitch><step>C</step><octave>5</octave></pitch><duration>1</duration>' +
@@ -659,8 +657,8 @@ describe('the MNX a percussion part converts to', () => {
     expect(mnx.parts[0]?.measures[0]?.clefs?.map((clef) => clef.staff)).toEqual([1, 2])
   })
 
-  // A playback detail of a document that is otherwise ordinary music must not
-  // refuse it. What is not taken is left unread and reported by the sweep.
+  // A playback detail does not refuse the document. What is not read is
+  // reported by the unread sweep.
   test.each([
     ['a pitch outside what MIDI counts', '<midi-unpitched>0</midi-unpitched>'],
     ['a pitch past the top of the range', '<midi-unpitched>129</midi-unpitched>'],

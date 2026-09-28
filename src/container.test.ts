@@ -1,4 +1,4 @@
-// Getting the MusicXML out of a string, raw bytes, or an .mxl package.
+// Reads the MusicXML from a string, raw bytes, or an .mxl package.
 
 import { describe, expect, test } from 'vitest'
 import { strToU8, zipSync } from 'fflate'
@@ -24,18 +24,17 @@ function mxl(files: Record<string, string>): Uint8Array {
   return zipSync(entries)
 }
 
-// Where a zip states an entry's uncompressed size and its compression method:
-// once in the local header before the entry's data, once in the central
-// directory at the end of the file. Both carry the entry's name, so either is
-// found by scanning for its signature and then the name inside it.
+// A zip states an entry's uncompressed size and its compression method twice:
+// in the local header before the entry's data, and in the central directory
+// at the end of the file. Both hold the entry's name, so a scan for the
+// signature and then the name finds either one.
 const LOCAL = { signature: [0x50, 0x4b, 0x03, 0x04], nameAt: 30, sizeAt: 22, methodAt: 8 }
 const CENTRAL = { signature: [0x50, 0x4b, 0x01, 0x02], nameAt: 46, sizeAt: 24, methodAt: 10 }
 
 /**
  * The zip with one entry's declared uncompressed size forged to `size`, its
- * data left tiny. A decompression bomb is only dangerous for the size it
- * claims, and the reader refuses it on that claim before inflating anything,
- * so forging the claim tests the guard without a 100 MB allocation.
+ * data left tiny. The reader refuses on the declared size before it inflates
+ * anything, so this tests the guard without a 100 MB allocation.
  */
 function withForgedSize(zip: Uint8Array, name: string, size: number): Uint8Array {
   const field = Uint8Array.from([0, 8, 16, 24], (shift) => (size >>> shift) & 0xff)
@@ -69,7 +68,7 @@ describe('a string', () => {
 
 describe('raw bytes', () => {
   test('are decoded as UTF-8', () => {
-    // A character above the ASCII range, to prove it is decoded, not sliced.
+    // A character above the ASCII range, so the bytes must be decoded.
     const withAccent = SCORE.replace('P1', 'Pä')
     expect(readMusicXML(strToU8(withAccent))).toBe(withAccent)
   })
@@ -101,8 +100,7 @@ describe('an .mxl package', () => {
     expect(readMusicXML(archive)).toContain('P1')
   })
 
-  // A real package always lists its score, but an exporter that omits the
-  // listing still leaves exactly one score to read.
+  // Some exporters omit the listing, but the package still holds one score.
   test('falls back to the only score where there is no container', () => {
     expect(readMusicXML(mxl({ 'score.musicxml': SCORE }))).toBe(SCORE)
   })
@@ -170,10 +168,8 @@ describe('an .mxl package', () => {
     expect((thrown as MusicXMLError).message).toContain('could not be unzipped')
   })
 
-  // A score that is itself a decompression bomb is refused by its declared
-  // size before it inflates. The declaration is forged rather than a real
-  // 100 MB entry, so the test is light: the point is that the size is checked
-  // before anything is decompressed, which is exactly what forging it proves.
+  // A score that is a decompression bomb is refused by its declared size
+  // before it inflates.
   test('refuses a score that decompresses past the limit', () => {
     const archive = withForgedSize(mxl({ 'big.musicxml': SCORE }), 'big.musicxml', LIMIT + 1)
 
@@ -188,8 +184,7 @@ describe('an .mxl package', () => {
     expect((thrown as MusicXMLError).message).toContain('over the')
   })
 
-  // Raw input carries no per-entry size field to check, so its own length is
-  // the bound. Without it the zip path is capped and the raw path is not.
+  // Raw input has no per-entry size field, so its own length is the bound.
   test('refuses raw bytes past the limit', () => {
     const huge = new Uint8Array(LIMIT + 1)
 
@@ -204,7 +199,6 @@ describe('an .mxl package', () => {
     expect((thrown as MusicXMLError).message).toContain('over the')
   })
 
-  // The limit is a limit, not a bound: a document exactly that long is read.
   test('accepts a document exactly at the limit', () => {
     expect(readMusicXML('a'.repeat(LIMIT))).toHaveLength(LIMIT)
   })
@@ -217,9 +211,8 @@ describe('an .mxl package', () => {
     expect(readMusicXML(strToU8(text))).toBe(text)
   })
 
-  // The listing and the one score it names are decompressed; every other
-  // entry stays packed, so an entry nothing can decompress is no obstacle,
-  // and a bomb hidden beside the score is never inflated.
+  // Only the listing and the score it names are decompressed. An entry that
+  // cannot be decompressed, or a bomb beside the score, is never inflated.
   test('leaves every other entry in a package packed', () => {
     const archive = withUnreadableEntry(
       mxl({
@@ -249,9 +242,8 @@ describe('an .mxl package', () => {
   })
 })
 
-// Each of these refusals is of the document or the package as a whole: there
-// is no element inside it to name, and stating the empty path is what makes
-// that a decision rather than an omission.
+// Each of these refuses the document or the package as a whole, so the path
+// is empty.
 describe('a refusal with no place inside the document', () => {
   test.each([
     ['bytes past the limit', () => new Uint8Array(LIMIT + 1)],
@@ -278,8 +270,7 @@ describe('a refusal with no place inside the document', () => {
   })
 })
 
-// Finale ships UTF-16 MusicXML, so a byte-order mark means decoding it, not
-// refusing it.
+// Finale writes UTF-16 MusicXML, so a UTF-16 byte-order mark is decoded.
 describe('a UTF-16 document', () => {
   function utf16(text: string, littleEndian: boolean): Uint8Array {
     const bytes = new Uint8Array(2 + text.length * 2)
@@ -299,14 +290,13 @@ describe('a UTF-16 document', () => {
     expect(readMusicXML(utf16(SCORE, littleEndian))).toBe(SCORE)
   })
 
-  // A character outside the basic plane is two units in both encodings, and
-  // must survive the pairing.
+  // A character outside the basic plane is two units in both byte orders.
   test('keeps a character written as a surrogate pair', () => {
     expect(readMusicXML(utf16('<x>𝄞</x>', true))).toBe('<x>𝄞</x>')
   })
 
-  // Half a mark is no mark: one byte of a pair, or the two bytes of a pair in
-  // neither order, is read as UTF-8, where neither byte is valid.
+  // One byte of a mark, or two bytes in neither order, is not a mark. It is
+  // read as UTF-8, where neither byte is valid.
   test.each([
     ['a first byte of 0xff alone', [0xff, 0x3c, 0x78, 0x2f, 0x3e], 0],
     ['a first byte of 0xfe alone', [0xfe, 0x3c, 0x78, 0x2f, 0x3e], 0],
@@ -356,10 +346,10 @@ describe('the encoding a document declares', () => {
     },
   )
 
-  // ISO-8859-1 labels are read as windows-1252, as the Encoding Standard reads
-  // them. It differs from Latin-1 only at bytes 0x80 to 0x9f, stated here from
-  // the standard's index. TextDecoder is no oracle: Node before 23 decodes
-  // windows-1252 as Latin-1.
+  // The Encoding Standard reads ISO-8859-1 labels as windows-1252. It differs
+  // from Latin-1 only at bytes 0x80 to 0x9f, copied here from the standard's
+  // index. Node before 23 decodes windows-1252 as Latin-1, so TextDecoder
+  // cannot be the reference.
   test('reads every byte of ISO-8859-1 as windows-1252 does', () => {
     const every = Array.from({ length: 256 }, (_, byte) => byte)
     const high = '€\x81‚ƒ„…†‡ˆ‰Š‹Œ\x8dŽ\x8f\x90‘’“”•–—˜™š›œ\x9džŸ'
@@ -385,8 +375,7 @@ describe('the encoding a document declares', () => {
     expect(readMusicXML(declared(encoding, [0xc3, 0xa9]))).toContain('<x>é</x>')
   })
 
-  // A byte-order mark outranks the declaration, as the XML specification
-  // orders them.
+  // As in the XML specification, a byte-order mark outranks the declaration.
   test('follows a UTF-8 byte-order mark over the declaration', () => {
     const bytes = declared('ISO-8859-1', [0xc3, 0xa9])
     expect(readMusicXML(new Uint8Array([0xef, 0xbb, 0xbf, ...bytes]))).toContain('<x>é</x>')
@@ -470,7 +459,7 @@ describe('a UTF-8 document', () => {
   })
 
   // Each of these begins with some but not all of the byte-order mark's three
-  // bytes, so none is a mark to strip.
+  // bytes.
   test.each([
     ['U+0EFF', '\u0eff'],
     ['U+F0BF', '\uf0bf'],
@@ -523,8 +512,8 @@ describe('a UTF-8 document', () => {
     )
   })
 
-  // Node's strict decoder follows the Unicode rules, so it checks the refusals
-  // over random bytes drawn from the ranges multi-byte characters use.
+  // Node's strict decoder follows the Unicode rules. It is the reference over
+  // random bytes from the ranges that multi-byte characters use.
   test('refuses exactly what a strict decoder refuses', () => {
     const strict = new TextDecoder('utf-8', { fatal: true })
     const pool = [0x3c, 0x41, 0x7f, 0x80, 0x8f, 0x90, 0x9f, 0xa0, 0xbf, 0xc0, 0xc1, 0xc2, 0xdf]

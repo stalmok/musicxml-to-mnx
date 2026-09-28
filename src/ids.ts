@@ -1,15 +1,14 @@
 // The ids the converter writes into an MNX document. The reader names events,
 // notes and kit components, and the writer names measures and the layout.
-// MNX gives every id one shape, so a part or instrument id from the source can
-// clash with a generated one. The reader renames such an id to one built here,
-// which the pattern here never matches.
+// A part or instrument id from the source can clash with a generated one. The
+// reader then renames it with renamedId, which GENERATED_ID_PATTERN never
+// matches.
 
 // MNX's id, from the schema's $defs/id: 1 to 256 printable ASCII characters.
 // MusicXML's part id is an xs:ID, which allows more, such as accented letters.
 //
-// Copied rather than read: the schema and ajv are dev-only, and converting a
-// score must not depend on either. The conformance test holds this copy to
-// $defs/id.pattern.
+// A copy, because the schema and ajv are dev-only. The conformance test holds
+// it to $defs/id.pattern.
 export const MNX_ID_PATTERN = /^[\x21-\x7E]{1,256}$/
 
 const PREFIXES = {

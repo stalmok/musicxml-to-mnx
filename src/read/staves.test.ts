@@ -212,9 +212,7 @@ describe('clefs', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:clef'])
   })
 
-  // Restating the same clef at the same point loses nothing: the two say the
-  // same thing, so the second is dropped without a word. Reporting it called
-  // a lossless conversion a permanent limit of the format.
+  // Restating the same clef at the same point loses nothing.
   test('says nothing where a staff restates the clef it already has', () => {
     const { part, warnings } = read(
       measures(
@@ -326,8 +324,8 @@ describe('clefs', () => {
     expect(warnings[0]?.context.measure).toBe(1)
   })
 
-  // Three octaves either way is the last transposition MNX states, so both
-  // edges are stated and so is just outside each.
+  // MNX states up to three octaves either way. Both edges and just outside
+  // each are tested.
   const transposed = (change: string) =>
     '<attributes><divisions>4</divisions>' +
     `<clef><sign>G</sign><line>2</line><clef-octave-change>${change}</clef-octave-change></clef>` +
@@ -348,9 +346,8 @@ describe('clefs', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:clef-octave'])
   })
 
-  // A clef's "number" names the staff it belongs to, which is only worth
-  // stating where the part has more than one. A one-staff part stating it
-  // says nothing the part does not already say.
+  // A clef's "number" names its staff. MNX states the staff only where the
+  // part has more than one.
   test('states no staff on a clef of a one-staff part, number or no number', () => {
     const { part, warnings } = read(
       measures(
@@ -640,7 +637,7 @@ describe('a voice that reaches across to the other staff', () => {
   // A voice split evenly between the two hands belongs to the staff it was on
   // first, which is where the source began writing it. Either answer states
   // the same music, since every event that differs from the voice's staff
-  // says so, but one of them has to be settled or the choice drifts.
+  // says so.
   test('gives an even split to the staff the voice began on', () => {
     const { part } = read(measures(GRAND_STAFF + note('C', '2') + note('D', '1')))
     const sequence = part?.measures[0]?.sequences[0]
@@ -745,8 +742,8 @@ describe('key and time signatures stated per staff', () => {
     expect(warnings).toEqual([])
   })
 
-  // Stated for the first staff rather than the second, so the pair says the
-  // staves are read whichever of them is left out.
+  // Stated for the first staff and not the second. With the test above, this
+  // checks both staves.
   test('reports a key stated for the first staff and not the second', () => {
     const { warnings } = read(
       measures(
@@ -877,8 +874,8 @@ describe('key and time signatures stated per staff', () => {
     expect(warnings).toEqual([])
   })
 
-  // The same shape with a key of its own on the staff: this one really does
-  // leave the other staff behind.
+  // The same shape with a key of its own on the staff, which leaves the other
+  // staff behind.
   test('reports a numbered key that differs from the one in force on the other staff', () => {
     const { warnings } = read(
       measures(
@@ -1069,7 +1066,7 @@ describe('key and time signatures stated per staff', () => {
 
   // A numbered block after one with no number changes a single staff, which
   // is how a part states one signature and then refines a staff's. The
-  // staves disagree afterwards, and that is the whole of it.
+  // staves disagree afterwards, and that is the only report.
   test('takes a numbered key after one for every staff as narrowing it, not contradicting it', () => {
     const { warnings } = read(
       measures(
@@ -1371,8 +1368,8 @@ describe('key and time signatures stated per staff', () => {
     expect(warnings.list()).toEqual([])
   })
 
-  // The counts agree and the units do not, so the pair says the comparison
-  // reads both halves of a time signature, not the count alone.
+  // The counts agree and the units do not, so the comparison must read both
+  // halves of a time signature.
   test('reports staves that agree on the count and not on the unit', () => {
     const { warnings } = read(
       measures(
@@ -1389,10 +1386,8 @@ describe('key and time signatures stated per staff', () => {
 
 // A staff number that names a staff the part does not have places the music
 // nowhere, and MNX's schema types it as a bare integer, so nothing downstream
-// catches it. Every one is bounded here, whatever the part's staff count,
-// because the count is only known once <staves> has been met: reading the
-// number only when the part already has more than one staff let a note that
-// came first be placed on the first staff without a word.
+// catches it. Every staff number is checked, whatever the part's staff
+// count. A part that has not stated <staves> has one staff.
 describe('a staff number the part does not have', () => {
   test('rejects a clef whose number is not a whole number', () => {
     let thrown = ''

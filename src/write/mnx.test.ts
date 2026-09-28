@@ -1,6 +1,5 @@
-// MNX distinguishes an absent key from a present one, so what the writer
-// leaves out is as much a decision as what it puts in. These cover both sides
-// of each of those choices.
+// MNX distinguishes an absent key from a present one, so these tests cover
+// what the writer leaves out as well as what it writes.
 
 import { describe, expect, test } from 'vitest'
 import { writeValid } from '../../tests/support/convert.js'
@@ -43,8 +42,8 @@ const WHOLE_C: Event = {
 }
 
 // Everything a global measure can state beyond a key, a time and a tempo.
-// Spread into the literals below so that adding a field to the model does not
-// mean editing every one of them.
+// Spread into the literals below, so a new model field does not mean editing
+// each one.
 const NO_BARLINE = {
   barline: undefined,
   repeatStart: false,
@@ -101,8 +100,7 @@ function firstEvent(score: Score) {
   return item && 'duration' in item && !('type' in item) ? item : undefined
 }
 
-// Asserting on shape alone would happily pass output no MNX reader accepts,
-// so every score these tests build is also put to the spec schema.
+// Every score these tests build is also checked against the schema.
 test.each([
   ['a plain note', scoreOf(measureOf(WHOLE_C))],
   [
@@ -370,8 +368,8 @@ describe('measures', () => {
     ])
   })
 
-  // A clef at the start of the measure needs no position; one partway
-  // through states where it falls, or it would claim the start as well.
+  // A clef at the start of the measure needs no position. A clef partway
+  // through states where it falls.
   test('gives a mid-measure clef change its position', () => {
     const score = scoreOf({
       clefs: [
@@ -410,8 +408,7 @@ describe('measures', () => {
     ])
   })
 
-  // A transposed clef states its octave, and asks for the number to be drawn,
-  // so a reader shows the 8 that says the part sounds an octave away.
+  // A transposed clef states its octave and asks for the 8 to be drawn.
   test('writes a clef octave change and shows it', () => {
     const score = scoreOf({
       clefs: [
@@ -449,8 +446,8 @@ describe('measures', () => {
 })
 
 describe('ties and slurs', () => {
-  // An id exists so that a tie or slur can point at something. Anything
-  // nothing points at should not be named.
+  // An id exists so that a tie or slur can point at something. What nothing
+  // points at gets no id.
   const target: Event = {
     kind: 'event',
     id: 'ev-target',
@@ -519,8 +516,8 @@ describe('ties and slurs', () => {
     expect(written).toMatchObject({ notes: [{ ties: [{ target: 'note-target' }] }] })
   })
 
-  // The target type is only written where it says something: a tie whose
-  // target is the same voice's next note is the ordinary one.
+  // A tie to the same voice's next note is the ordinary one and states no
+  // target type.
   test('says nothing about the target type of a tie within one voice', () => {
     const note = writeValid(joined()).parts[0]?.measures[0]?.sequences[0]?.content[0]
 
@@ -559,7 +556,7 @@ describe('ties and slurs', () => {
   })
 
   // An S-shaped slur ends bending the other way, which the model carries as
-  // sideEnd; it is written only where the model states it.
+  // sideEnd.
   test('writes the side a slur ends on where it differs from its side', () => {
     const bending = structuredClone(start)
     bending.slurs = [{ target: 'ev-target', side: 'up', sideEnd: 'down' }]
@@ -622,7 +619,6 @@ describe('beams', () => {
     expect(writeValid(beamed()).parts[0]?.measures[0]?.beams).toEqual([{ events: ['ev1', 'ev2'] }])
   })
 
-  // A beam names its events, so those events have to be named in turn.
   test('names the events a beam refers to', () => {
     const content = writeValid(beamed()).parts[0]?.measures[0]?.sequences[0]?.content ?? []
 
@@ -738,8 +734,8 @@ describe('tuplets and grace groups', () => {
     ],
   }
 
-  // A tremolo written across two notes: each is written at its full value
-  // while the pair together occupies the space one of them would.
+  // A tremolo across two notes: each note has its full value, and the pair
+  // takes the time of one of them.
   const tremolo = {
     kind: 'multiNoteTremolo',
     marks: 3,
@@ -1033,9 +1029,8 @@ describe('fermatas', () => {
   })
 })
 
-// MNX keys the marks on an event by name, and allows a mark no property
-// beyond the ones it names for that mark, so the two that carry more than a
-// placement are written out rather than folded in with the rest.
+// MNX keys the marks on an event by name and allows each mark only its own
+// properties, so the two marks with more than a placement are written apart.
 describe('event markings', () => {
   function eventWith(markings: Event['markings']): Event {
     return {
@@ -1134,8 +1129,6 @@ describe('event markings', () => {
     })
   })
 
-  // The model keys the marks the way MNX does, so an event cannot reach the
-  // writer carrying two of one kind and there is nothing here to resolve.
   test('writes no markings at all for an event carrying none', () => {
     const score = scoreOf(measureOf(eventWith({})))
     writeValid(score)
@@ -1154,11 +1147,9 @@ describe('event markings', () => {
     })
   })
 
-  // The writer names each mark in a line of its own, and a kind the model
-  // gains with no line there would be dropped where nothing can see it:
-  // markings holds only optional properties, so an event that lost one still
-  // validates against the schema. Required<Markings> is what fails first: the
-  // compiler refuses this object until it holds every kind the model does.
+  // The writer names each mark in its own line. markings holds only optional
+  // properties, so the schema cannot catch a dropped kind. Required<Markings>
+  // makes the compiler refuse this object until it holds every kind.
   test('writes every kind the model can hold', () => {
     const everyKind = {
       accent: { placement: undefined },
@@ -1180,8 +1171,7 @@ describe('event markings', () => {
   })
 })
 
-// MNX keys an event's lyrics by verse line and holds one of each, and so does
-// the model, so the writer transcribes them and cannot drop a line.
+// MNX and the model both key an event's lyrics by verse line.
 describe('event lyrics', () => {
   function singing(lyrics: Event['lyrics']): Event {
     return { ...WHOLE_C, id: 'ev1', lyrics }

@@ -212,8 +212,8 @@ describe('chords', () => {
 
 // A grace note is drawn small beside the note it ornaments and takes no time
 // of its own.
-// What matters here is that it stays out of the cursor's path; what it
-// converts to is covered in tuplets.test.ts.
+// These tests check that it stays out of the cursor's path. What it converts
+// to is tested in tuplets.test.ts.
 describe('grace notes', () => {
   const GRACE =
     '<note><grace/><pitch><step>D</step><octave>4</octave></pitch><type>eighth</type>' +
@@ -751,9 +751,8 @@ describe('the measure cursor', () => {
   })
 
   // Exporters return to the start of a measure a voice has not filled by
-  // backing up the whole measure's length, whatever that voice wrote. Taking
-  // the cursor to the start is what such a source means, and the document
-  // used to be refused over it.
+  // backing up the whole measure's length, whatever that voice wrote. Such a
+  // source means to take the cursor to the start.
   test('takes a backup past the start of the measure to the start', () => {
     const { measure: result, warnings } = read(
       measure(note('C', 1, '1') + '<backup><duration>16</duration></backup>' + note('G', 2, '2')),
@@ -845,8 +844,6 @@ describe('the measure cursor', () => {
     expect(result?.sequences.map((s) => s.voice)).toEqual(['1', '1.2'])
   })
 
-  // Two voices splitting in one measure used to leave two sequences with no
-  // name, which nothing can tell apart.
   test('gives every sequence of a measure a name of its own', () => {
     const { measure: result } = read(
       measure(
@@ -881,8 +878,8 @@ describe('the measure cursor', () => {
   })
 
   // A run written as one run stays in one sequence. Sending it back to the
-  // first sequence the moment that one has room would split a beam, a
-  // bracket or a chord between two sequences, which is to draw neither.
+  // first sequence as soon as that one has room would split a beam, a bracket
+  // or a chord between two sequences.
   test('keeps writing in the sequence the voice last sounded in', () => {
     const { measure: result } = read(
       measure(
@@ -969,9 +966,8 @@ describe('the measure cursor', () => {
     )
   })
 
-  // A beam, a bracket and a grace note all belong to one line. Settling the
-  // sequence only once the note is written left them reaching for the line
-  // the voice sounded in before, which is a different line.
+  // A beam, a bracket and a grace note all belong to one line. They must not
+  // reach for the line the voice sounded in before.
   test('keeps a beam over a laid-over line whole', () => {
     const eighth = (step: string, beam = '') =>
       `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>2</duration>` +
@@ -1076,9 +1072,9 @@ describe('the measure cursor', () => {
 
 // MNX states a rest that fills the measure on the sequence rather than as an
 // event, so a voice cannot hold both. The two ways that happens are different
-// mistakes, and used to share a message that named only one of them. Each
-// rest here states no value it is drawn as: one that does can stand as an
-// ordinary rest instead, and is read as one.
+// mistakes, and each has its own message. Each rest here states no value it
+// is drawn as: one that does can stand as an ordinary rest instead, and is
+// read as one.
 describe('a rest filling a measure that already holds something', () => {
   test('names the notes it clashes with, not a second rest', () => {
     let thrown = ''
@@ -1121,9 +1117,8 @@ describe('a rest filling a measure that already holds something', () => {
     '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
     '</time-modification><notations><tuplet type="start"/></notations></note>'
 
-  // A bracket around such a rest is a third mistake again: the rest is stated
-  // on the sequence, where a tuplet cannot reach it. The refusal used to
-  // describe notes that are not there.
+  // A bracket around such a rest is a third mistake: the rest is stated on
+  // the sequence, where a tuplet cannot reach it.
   test('names the bracket around it, not notes it does not hold', () => {
     const rest = '<note><rest measure="yes"/><duration>16</duration></note>'
 
@@ -1147,8 +1142,7 @@ describe('a rest filling a measure that already holds something', () => {
   })
 
   // With two brackets open, the innermost is the one that cannot hold the
-  // rest, and the one the refusal names. Every fixture above opens one, so
-  // nothing said which of several is picked.
+  // rest, and the refusal names it.
   test('names the innermost of two brackets open around it', () => {
     const tremolo =
       '<note><pitch><step>D</step><octave>4</octave></pitch><duration>2</duration>' +

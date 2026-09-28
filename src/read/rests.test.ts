@@ -102,9 +102,9 @@ describe('a rest placed on the staff', () => {
     expect(warnings).toEqual([])
   })
 
-  // A height needs both halves to place. A rest stating one of them is not a
-  // plain rest, so it is reported rather than passed over: the source meant
-  // to put it somewhere, and where is what cannot be worked out.
+  // A height needs both halves to place. A rest that states only one is
+  // reported, because the source meant to place it and the place cannot be
+  // worked out.
   test.each([
     ['a step and no octave', '<display-step>G</display-step>'],
     ['an octave and no step', '<display-octave>4</display-octave>'],
@@ -153,9 +153,8 @@ describe('a rest placed on the staff', () => {
 })
 
 // MNX states a rest that fills a measure on the sequence, not as an event in
-// it, so the voice's sequence is where that rest is written. A sequence whose
-// content is empty is therefore the rest itself, not one left over: the
-// vendored corpus writes 11,082 of them, and dropping any would drop a rest.
+// it, so the voice's sequence is where that rest is written. A sequence with
+// empty content is therefore the rest itself.
 describe('a voice holding only a rest that fills its measure', () => {
   test('writes the rest on a sequence with no content', () => {
     const { mnx, warnings } = convertValid(
@@ -180,9 +179,8 @@ describe('a voice holding only a rest that fills its measure', () => {
     ])
   })
 
-  // The resting voice sits beside a sounding one, which is where leaving the
-  // sequence out would be visible: the measure would say the voice is not
-  // there rather than that it rests through.
+  // The resting voice sits beside a sounding one. Without the sequence, the
+  // measure would say the voice is not there, not that it rests.
   test('keeps the resting voice beside a sounding one', () => {
     const { mnx, warnings } = convertValid(
       inMeasure(
@@ -598,13 +596,11 @@ describe('a measure rest written after a backup past the measure start', () => {
 })
 
 // A grace note takes none of the measure's time, so a voice leading into a
-// measure of silence with one rests through it just the same. MNX wants the
-// sequence stating a full-measure rest to hold nothing, so the rest is
-// written as the event its length has a value for and the grace notes stand
-// beside it. Real editions write the pair: an editorial grace note over a
-// resting bar opens three CPDL scores. Which side of the rest the grace notes
-// are written on says nothing about the music, so both orders convert to the
-// same thing.
+// measure of silence with one still rests through it. MNX wants the sequence
+// stating a full-measure rest to hold nothing, so the rest is written as the
+// event its length has a value for and the grace notes stand beside it. Which
+// side of the rest the grace notes are written on says nothing about the
+// music, so both orders convert to the same thing.
 describe('a rest filling a measure a grace note leads into', () => {
   const grace =
     '<note><grace/><pitch><step>D</step><octave>5</octave></pitch>' +
@@ -712,9 +708,9 @@ describe('a rest filling a measure a grace note leads into', () => {
   })
 
   // A bracket the grace note itself opens starts at the grace note, so the
-  // rest stands outside it. The rest is taken back before the bracket opens,
-  // which is why it does. The same two written the other way round are
-  // refused, because there the bracket does reach the rest.
+  // rest stands outside it, because the rest is taken back before the bracket
+  // opens. The same two written the other way round are refused, because
+  // there the bracket reaches the rest.
   test('leaves the restored rest outside a bracket the grace note opens', () => {
     const { mnx, warnings } = convertValid(
       inMeasure(
@@ -1182,7 +1178,7 @@ describe('a rest with no value filling an unmeasured measure', () => {
   })
 
   // A length a note value can write needs none of this: the rest is the event
-  // it is written as, and how long the measure runs is nobody's guess.
+  // it is written as.
   test('leaves a rest a note value can write as an event', () => {
     const { mnx, warnings } = convertValid(unmeasured(rest(4)))
     const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
@@ -1221,8 +1217,8 @@ describe('a rest with no value filling an unmeasured measure', () => {
     ])
   })
 
-  // With no <divisions> anywhere, how long the duration runs is a guess, and
-  // a guessed length is not one to rest a measure on.
+  // With no <divisions> anywhere, the length of the duration is a guess, so it
+  // cannot rest a measure.
   test('refuses where no divisions said how long the duration is', () => {
     let thrown = ''
     try {
@@ -1550,8 +1546,8 @@ describe('a rest drawn shorter than the measure it fills', () => {
 
 // A rest the source marks as the measure's is the measure's rest only where
 // it is the whole of its voice. Early-music editions bar their parts at
-// different lengths and pad a voice with a marked whole rest beside the notes
-// it sings; ten CPDL scores write one, some before the notes and some after.
+// different lengths and pad a voice with a marked whole rest before or after
+// the notes it sings.
 // Where the source states the value the rest is drawn as, the rest can stand
 // as an ordinary event, so which reading holds waits until the voice is whole.
 describe("a rest marked as the measure's standing beside other notes", () => {

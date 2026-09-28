@@ -1,10 +1,7 @@
-// Pretty-printed MusicXML writes an element's text on its own line, indented,
-// so the text a reader gets carries the surrounding whitespace. Every value
-// the reader compares against a recogniser has to be trimmed first, or the
-// comparison fails and the value reads as unknown.
-//
-// The fixtures elsewhere all write element text with nothing around it, so
-// nothing states that the reader accepts a file laid out this way. This does.
+// Pretty-printed MusicXML writes an element's text on its own line,
+// indented, so the text carries the surrounding whitespace. The reader must
+// trim every value it compares against a recogniser. The other test fixtures
+// write element text with no whitespace around it.
 
 import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
@@ -91,12 +88,11 @@ const PRETTY = `<?xml version="1.0" encoding="UTF-8"?>
   </part>
 </score-partwise>`
 
-// A tremolo counts its beams in the element's text, and a <sound fine> says
-// where the piece ends in an attribute. Both are compared against a
-// recogniser, and both are written here with whitespace around them: the
-// attribute because a source is free to pad one, the element because a
-// pretty-printer does. A tremolo stating no count is drawn with three beams,
-// and one holding nothing but a line break states no count.
+// A tremolo states its beam count in the element text, and <sound fine>
+// states where the piece ends in an attribute. Both are compared against a
+// recogniser, and both have whitespace around them here. A tremolo with no
+// count has three beams, and one that holds only a line break states no
+// count.
 const PADDED_MARKS = `<?xml version="1.0" encoding="UTF-8"?>
 <score-partwise version="4.0">
   <part id="P1">

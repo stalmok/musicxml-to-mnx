@@ -79,8 +79,7 @@ describe('a multi-measure rest', () => {
     expect(warnings).toEqual([])
   })
 
-  // MusicXML says a positive integer; anything else is a broken document,
-  // refused the way every unreadable number is.
+  // MusicXML requires a positive integer.
   test.each([['0'], ['-2'], ['three']])('refuses a count of "%s"', (count) => {
     expect(() =>
       convert(part('P1', [{ attributes: multipleRest(count), body: REST }, { body: NOTE }])),
@@ -138,8 +137,8 @@ describe('a multi-measure rest', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-multimeasure-rest'])
   })
 
-  // A part playing through the passage states no count, which is not a
-  // disagreement about the count: only two parts stating different ones are.
+  // A part that states no count does not disagree. Only two parts that state
+  // different counts do.
   test('does not report a part that states no count at all', () => {
     const { mnx, warnings } = convert(
       part('P1', RESTING),

@@ -90,9 +90,8 @@ describe('MusicXMLError', () => {
       expect(original.inDocument('song.mxl').stack).toBe(original.stack)
     })
 
-    // Every engine this runs on gives an Error a stack, so this says what
-    // happens on one that does not rather than describing anything seen: the
-    // restated refusal keeps the stack it was built with.
+    // Every engine this runs on gives an Error a stack. This covers an engine
+    // that does not.
     test('restates a refusal with no stack', () => {
       const original = new MusicXMLError('Bad note', { path: [] })
       delete (original as { stack?: string }).stack

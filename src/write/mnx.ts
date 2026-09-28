@@ -1,9 +1,9 @@
 // Writes the score model out as an MNX document. Everything this
 // converter knows about MNX's encoding lives at or above this file.
 //
-// Thin by design: the reader has already resolved MusicXML's ambiguities, so
-// this is a walk with a few shape decisions. Optional keys are omitted rather
-// than set to null, because MNX distinguishes an absent key from a present one.
+// The reader has already resolved MusicXML's ambiguities, so this is a walk
+// with a few shape decisions. Optional keys are omitted, not set to null,
+// because MNX distinguishes an absent key from a present one.
 
 import type { Fraction } from '../fraction.js'
 import { LAYOUT_ID, countedId } from '../ids.js'
@@ -94,11 +94,10 @@ export interface WriterOptions {
 }
 
 /**
- * The ids measures go under. MNX writes a measure's id on the measure
- * itself, in the global block, and everything else points at it, so asking
- * for one is what makes it written: a rest, a system, a hairpin or an octave
- * shift names the measure it reaches, and the global block then writes the
- * ids that were named. Nothing can point at a measure left unnamed.
+ * The measure ids. MNX states a measure's id on the global measure, and a
+ * multi-measure rest, a system, a hairpin or an octave shift points at it.
+ * Asking for an id with `of` marks it, and the global block writes only the
+ * marked ids.
  */
 class MeasureNames {
   readonly #named = new Set<number>()
@@ -114,9 +113,8 @@ class MeasureNames {
     return this.#id(index)
   }
 
-  /** The id to write on this measure, where anything named it. Reads the
-   * record rather than adding to it, so writing the global block early would
-   * write no ids rather than quietly write the wrong ones. */
+  /** The id to write on this measure, where anything named it. It does not
+   * add to the record, so the global block must be written last. */
   written(index: number): string | undefined {
     return this.#named.has(index) ? this.#id(index) : undefined
   }
@@ -126,11 +124,10 @@ export function writeMnx(score: Score, options: WriterOptions = {}): MNXDocument
   const survey = surveyScore(score)
   const layouts = writeLayouts(score)
 
-  // What the source declared, where it declared anything: the accidentals it
-  // draws, or the beams it writes, are the whole of them, so a reader marks
-  // no others and beams by no rule of its own. The declaration holds for a
-  // score that beams nothing on purpose, which is why it is not read off the
-  // output. A source that declared nothing is taken at what it wrote.
+  // A source can declare that the accidentals it draws, or the beams it
+  // writes, are all of them, so a renderer adds none. The declaration holds
+  // for a score that beams nothing, so it wins over what the survey finds.
+  // Without one, the flag follows what the source wrote.
   const useAccidentalDisplay = score.declaresAccidentals ?? survey.drawsAccidentals
   const useBeams = score.declaresBeams ?? survey.writesBeams
 
@@ -177,14 +174,12 @@ export function writeMnx(score: Score, options: WriterOptions = {}): MNXDocument
 }
 
 /**
- * The scores object: one rendering, written when the source draws a
- * multi-measure rest, states a system or page break, or groups its parts,
- * because those are the only things this converter states on it. Same
- * principle as layouts: written only when it says something.
+ * The scores object: one score, written when the source draws a
+ * multi-measure rest or states a system or page break, or when the document
+ * has a layout. Those are the only things this converter states on it.
  *
  * A score is the only thing that can name a layout, so a document with a
- * layout needs one whether or not it has anything else to say. Without it the
- * grouping is written and then unreachable, and the brackets never draw.
+ * layout needs one even with nothing else to say.
  */
 function writeScores(
   score: Score,
@@ -217,11 +212,8 @@ function writeScores(
 
   if (rests.length === 0 && pages.length === 0 && layout === undefined) return {}
 
-  // MNX requires a score rendering to be named. The model has no name to
-  // give: the source's work and movement titles are not converted (they are a
-  // separate gap, and keep warning), and a work's title names the work rather
-  // than a rendering of it. So the caller's name is used, and a placeholder
-  // where the caller states none.
+  // MNX requires a score name. A work's title names the work, not a score of
+  // it, so the caller's name is used, else a placeholder.
   return {
     scores: [
       {
@@ -235,16 +227,14 @@ function writeScores(
 }
 
 /**
- * The instrument grouping as a layout: one system-layout whose content nests
- * staff groups around staves. Written when the source draws groups, and also
- * when any part has more than one staff, because the braced grand staff is
- * something the part list does not state: parts[i].staves says two staves,
- * and nothing says they are one braced instrument with connected barlines.
- * A layout of bare single staves states nothing the part list does not, so
- * a score with neither gets none.
+ * The instrument grouping as a layout: one system layout whose content nests
+ * staff groups around staves. Written when the source draws groups, or when
+ * any part has more than one staff: parts[i].staves says two staves, but only
+ * a layout says they are one braced instrument with connected barlines. A
+ * score with neither gets no layout.
  *
- * The id is what a score names the layout by, and only a named layout is
- * reachable. One layout is written, so one fixed id names it.
+ * A score names the layout by its id. One layout is written, so one fixed id
+ * names it.
  */
 function writeLayouts(score: Score): MNXSystemLayout[] | undefined {
   const grouping: readonly GroupingItem[] =
@@ -260,11 +250,9 @@ function writeLayouts(score: Score): MNXSystemLayout[] | undefined {
 
 /**
  * The braced group a multi-staff part draws. MusicXML leaves the grand staff
- * implicit; MNX states it, so the staves go inside a braced group carrying
- * the part's name. The barlines are stated too: the schema declares no
- * default, so an absent barlineStyle says nothing, and a consumer is free to
- * draw each staff its own barline. "instrument" is the grand staff's rule,
- * connecting the staves of one part.
+ * implicit; MNX states it, as a braced group with the part's name. The
+ * barline style is stated because the schema declares no default for it.
+ * "instrument" connects the staves of one part.
  */
 function writeGrandStaff(part: Part, id: string): MNXStaffGroup {
   return {
@@ -294,9 +282,8 @@ function writeGroupingItem(
     if (part === undefined) throw new Error('A layout staff points at a part the score lacks.')
     if (part.staves > 1) return [writeGrandStaff(part, item.part)]
 
-    // A renderer that honours a layout resolves labels from it, so each
-    // staff points back at its part's name. labelref rather than label
-    // keeps the name written once, on the part.
+    // A renderer reads staff labels from the layout, so each staff points at
+    // its part's name with labelref. The name stays written once, on the part.
     const labelref =
       part.name !== undefined ? 'name' : part.shortName !== undefined ? 'shortName' : undefined
     return [
@@ -307,10 +294,10 @@ function writeGroupingItem(
       },
     ]
   }
-  // A brace group holding exactly one multi-staff part restates the grand
-  // staff the part gets on its own, and nested, a renderer draws two braces
-  // side by side. The two fold into one group: the source's label and
-  // barline run where it states them, the part's where it does not.
+  // A brace group holding one multi-staff part restates the part's own grand
+  // staff, and nested, a renderer draws two braces. The two fold into one
+  // group, with the source group's label and barline style where it states
+  // them.
   const only = item.content.length === 1 ? item.content[0] : undefined
   if (item.symbol === 'brace' && only?.kind === 'part') {
     const part = parts.get(only.part)
@@ -337,11 +324,9 @@ function writeGroupingItem(
 }
 
 /**
- * The two things about a document that can only be known once all of it has
- * been seen: which ids something points at, and whether any accidental is
- * drawn. Both are read off the finished model in one walk rather than
- * accumulated while it is built, so nothing has to be threaded through the
- * reader to be true by the time the writer asks.
+ * What can only be known once the whole document is seen: which ids something
+ * points at, whether any accidental is drawn or any beam written, and which
+ * verse lines are sung. Read off the finished model in one walk.
  */
 function surveyScore(score: Score): {
   referenced: ReadonlySet<string>
@@ -349,8 +334,7 @@ function surveyScore(score: Score): {
   writesBeams: boolean
   lyricLines: ReadonlySet<string>
 } {
-  // Ids exist so that a tie or slur can point at something. Writing them on
-  // everything else would be noise, so only the targets are named.
+  // Only the ids that something points at are written.
   const referenced = new Set<string>()
   let drawsAccidentals = false
   let writesBeams = false
@@ -403,10 +387,9 @@ function surveyScore(score: Score): {
 }
 
 /**
- * The verse lines in order, written only when there is more than one: the
- * order of a single line says nothing. The source numbers its verses, so
- * the numbering orders them; left to first appearance, a later-numbered
- * verse whose first syllable comes early would stack in the wrong place.
+ * The verse lines in order, written only when there is more than one. They
+ * sort by the source's verse number, not by first appearance, because a
+ * later verse can start earlier in the score.
  */
 function writeLyricLines(lines: ReadonlySet<string>): Partial<Pick<MNXGlobal, 'lyrics'>> {
   if (lines.size < 2) return {}
@@ -437,7 +420,7 @@ function writeSounds(score: Score): Partial<Pick<MNXGlobal, 'sounds'>> {
 function writeGlobalMeasure(measure: GlobalMeasure, id: string | undefined): MNXGlobalMeasure {
   return {
     // Written only where something points at this measure, as a hairpin's end
-    // does. Naming every measure would be noise.
+    // does.
     ...(id !== undefined ? { id } : {}),
     ...(measure.number !== undefined ? { number: measure.number } : {}),
     ...(measure.key ? { key: { fifths: measure.key.fifths } } : {}),
@@ -518,7 +501,7 @@ function writePart(
     ...(withId ? { id: part.id } : {}),
     ...(part.name !== undefined ? { name: part.name } : {}),
     ...(part.shortName !== undefined ? { shortName: part.shortName } : {}),
-    // One staff is the default, so saying so adds nothing.
+    // One staff is the default.
     ...(part.staves > 1 ? { staves: part.staves } : {}),
     // MusicXML names the notation font once for the score, MNX per part, so
     // the one font goes on every part.
@@ -575,8 +558,8 @@ function writeMeasure(
     ...(measure.dynamics.length > 0
       ? { dynamics: measure.dynamics.map((dynamic) => writeDynamic(dynamic, names)) }
       : {}),
-    // MNX keeps the two apart: a rolled chord and one bracketed as struck
-    // together are opposite instructions, so they are separate lists.
+    // MNX states rolled chords and chords bracketed as struck together in
+    // separate lists.
     ...writeArpeggios(measure.arpeggios),
     ...(measure.measureRepeat !== undefined
       ? { measureRepeat: { number: measure.measureRepeat } }
@@ -609,8 +592,7 @@ function writeArpeggios(
             position: writePosition(arpeggio.position),
             span: { ...arpeggio.span },
             direction: arpeggio.direction,
-            // An arrowhead is the ordinary absence, so only its presence is
-            // stated.
+            // No arrowhead is the default, so only its presence is stated.
             ...(arpeggio.arrow ? { arrow: true } : {}),
           })),
         }
@@ -627,14 +609,11 @@ function writeArpeggios(
 }
 
 /**
- * A dynamic mark. A hairpin is what makes one gradual rather than immediate,
- * and it points at the measure it stops in, which is why measures carry ids;
- * an accent is drawn from its combined glyph, with its spelling stated as the
- * attack value and the letters around it, and a two-stage one adding the
- * level it settles to as the residual. MNX reads an unstated accent letter as
- * the "s" and "z" of sfz, so only a letter that differs from those defaults
- * is written. The wording a source wraps the mark in goes over as the prefix
- * and suffix drawn around it.
+ * A dynamic mark. A hairpin is gradual, and its end names the measure it
+ * stops in. An accent states its glyphs, its attack value and the letters
+ * around it, and a two-stage accent adds the level it settles to as the
+ * residual. MNX reads an unstated accent letter as the "s" and "z" of sfz, so
+ * only a letter that differs is written.
  */
 function writeDynamic(dynamic: Dynamic, names: MeasureNames): MNXDynamic {
   return {
@@ -750,8 +729,8 @@ function writeItem(item: SequenceItem, referenced: ReadonlySet<string>): MNXSequ
         // Stated both ways, because MNX reads an absent slash as a slash.
         slash: item.slashed,
         // Left out where the source says nothing. MNX then reads the group as
-        // taking its time from the note before, which is its default for an
-        // unstated one, and MusicXML states no default of its own to carry.
+        // taking its time from the note before, its default. MusicXML states
+        // no default of its own.
         ...(item.graceType !== undefined ? { graceType: item.graceType } : {}),
         content: item.content.map((event) => writeEvent(event, referenced)),
       }
@@ -820,12 +799,10 @@ function writeMarking(marking: Marking): MNXMarking {
 }
 
 /**
- * The marks on an event, as MNX keys them: by name, so a note carries at most
- * one of each. The model is keyed the same way, so this is a transcription
- * rather than a merge, and nothing here can replace a mark already written.
- * Four of them hold more than which side they sit on, and a caesura states no
- * side. Each is written out rather than folded into the others, because MNX
- * allows no property on a mark beyond the ones it names for that mark.
+ * The marks on an event, keyed by name in both the model and MNX. Four of
+ * them hold more than which side they sit on, and a caesura states no side.
+ * Each is written out separately, because MNX allows no property on a mark
+ * beyond the ones it names for that mark.
  */
 function writeMarkings(markings: Markings): MNXEventMarkings {
   const { strongAccent, bowDirection, breath, tremolo, caesura } = markings
@@ -857,8 +834,7 @@ function writeMarkings(markings: Markings): MNXEventMarkings {
       ...(breath.symbol ? { symbol: breath.symbol } : {}),
     }
   }
-  // MNX states no tremolo without a beam count, and the model states none
-  // either, so there is nothing to check for here.
+  // MNX states no tremolo without a beam count, and neither does the model.
   if (tremolo) written.tremolo = { ...writeMarking(tremolo), marks: tremolo.marks }
   // A caesura states no side.
   if (caesura) {
@@ -879,8 +855,8 @@ function writeFermata(fermata: Fermata): MNXFermata {
   }
 }
 
-// The model is keyed by line exactly as MNX is, so nothing here can replace a
-// line already written.
+// The model is keyed by line as MNX is, so nothing here can replace a line
+// already written.
 function writeLyrics(lyrics: ReadonlyMap<string, Lyric>): MNXLyrics {
   const lines: Record<string, MNXLyricLine> = {}
   for (const [line, lyric] of lyrics) {
@@ -945,7 +921,7 @@ function writePitch(pitch: Pitch): MNXPitch {
   return {
     step: pitch.step,
     octave: pitch.octave,
-    // Zero is the default, so writing it would be noise.
+    // Zero is the default.
     ...(pitch.alter !== 0 ? { alter: pitch.alter } : {}),
   }
 }

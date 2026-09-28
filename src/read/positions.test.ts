@@ -1,13 +1,10 @@
 // Where the reader says a problem is.
 //
-// A refusal states the document path and the source line; a warning states
-// the part, the measure and the line it came from. That is the documented
-// guarantee, and nothing held the reader to it: a mutation run emptied the
-// location at every throw and warn site in this directory and no test failed.
-// The messages were compared, the places they name were not.
+// A refusal states the document path and the source line. A warning states
+// the part, the measure and the line it came from.
 //
 // Each source below writes one element per line, so a reported line names
-// which element the reader was reading rather than the whole document.
+// the element the reader was reading.
 
 import { describe, expect, test } from 'vitest'
 import { MusicXMLError } from '../errors.js'
@@ -16,7 +13,7 @@ import type { ConversionWarning } from '../warnings.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readScore } from './score.js'
 
-/** The line the first body element of `score` lands on. */
+/** The line the first body element of `score` is on. */
 const FIRST_BODY_LINE = 5
 
 function score(...body: readonly string[]): string {
@@ -35,9 +32,9 @@ function score(...body: readonly string[]): string {
 /** The line the <measure> itself is on, which is where the measure as a whole is read. */
 const MEASURE_LINE = 3
 
-// A report counts the measure's place in the part, while the path names the
-// number the source wrote on it. The measure above is the first, and is
-// labelled 7, so the two differ and each test says which it means.
+// A report counts the measure's place in the part, and the path names the
+// number the source wrote on it. The measure above is the first and is
+// labelled 7, so each test says which it means.
 const MEASURE_POSITION = 1
 
 const note = (step: string, duration: number, type = 'quarter', extra = ''): string =>
@@ -287,8 +284,8 @@ describe('the place a warning names', () => {
     expect(reported?.context.measure).toBe(MEASURE_POSITION)
   })
 
-  // A note naming no voice beside notes that do is a report about the measure
-  // rather than about any one line of it, so it carries the measure alone.
+  // A note that names no voice beside notes that do is reported against the
+  // whole measure.
   test('names the measure where the report is about the whole of it', () => {
     const reported = warningsOf(
       score(
