@@ -518,21 +518,29 @@ describe('a UTF-8 document', () => {
     const strict = new TextDecoder('utf-8', { fatal: true })
     const pool = [0x3c, 0x41, 0x7f, 0x80, 0x8f, 0x90, 0x9f, 0xa0, 0xbf, 0xc0, 0xc1, 0xc2, 0xdf]
     pool.push(0xe0, 0xed, 0xee, 0xef, 0xf0, 0xf4, 0xf5, 0xff)
+    const disagreements: { bytes: number[]; strict: string; read: string }[] = []
     let seed = 1
     for (let run = 0; run < 20000; run++) {
       const bytes = Uint8Array.from({ length: 1 + (run % 6) }, () => {
         seed = (seed * 1103515245 + 12345) % 2 ** 31
         return pool[seed % pool.length] as number
       })
-      let expected: string | undefined
+      let expected: string
       try {
-        expected = strict.decode(bytes)
+        expected = `<${strict.decode(bytes)}`
       } catch {
-        expected = undefined
+        expected = 'refused'
       }
-      const decode = (): string => readMusicXML(new Uint8Array([0x3c, ...bytes]))
-      if (expected === undefined) expect(decode).toThrow(MusicXMLError)
-      else expect(decode()).toBe(`<${expected}`)
+      let actual: string
+      try {
+        actual = readMusicXML(new Uint8Array([0x3c, ...bytes]))
+      } catch (error) {
+        actual = error instanceof MusicXMLError ? 'refused' : String(error)
+      }
+      if (actual !== expected)
+        disagreements.push({ bytes: [...bytes], strict: expected, read: actual })
     }
+
+    expect(disagreements).toEqual([])
   })
 })
