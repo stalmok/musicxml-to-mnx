@@ -3,8 +3,9 @@
 # and pushes run the same gates. The pack job then builds explicitly (install
 # scripts stay blocked) and packs the tarball. The publish job stages that tarball via npm
 # trusted publishing: the workflow's OIDC token is the credential, so no npm
-# token secret exists to leak, and npm attests the build automatically. The
-# publish job installs nothing and uses no cache, so no dependency code runs
+# token secret exists to leak. npm attests the build only when the GitHub
+# repository is public; from a private repository it stages with no
+# attestation. The publish job installs nothing and uses no cache, so no dependency code runs
 # where the OIDC token can be requested. A staged version is not public until a
 # maintainer approves it with 2FA, on npmjs.com (Staged Packages tab) or with
 # `npm stage approve <stage-id>`.
