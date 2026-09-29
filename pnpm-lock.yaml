@@ -14,8 +14,8 @@ importers:
   .:
     dependencies:
       '@rgrove/parse-xml':
-        specifier: 4.2.2
-        version: 4.2.2
+        specifier: 5.0.0
+        version: 5.0.0
       fflate:
         specifier: 0.8.3
         version: 0.8.3
@@ -483,9 +483,9 @@ packages:
   '@oxc-project/types@0.147.0':
     resolution: {integrity: sha512-IJ3s6ltHLp45S0bh7phkX+gJO7A1Wuz2EaqpAhb8WjqDwbzMiWKHhyyT42tskaWjEYXtHtVCPpnBJVT9+dcRLg==}
 
-  '@rgrove/parse-xml@4.2.2':
-    resolution: {integrity: sha512-KJpwSfVwrZ1Ab9KU4oRwG0VefGpveSt/w/j1m6YkJkB5KhdDbN/7BS0ojcLCzrG3/YGFhtfFHKVBkrms6w8Org==}
-    engines: {node: '>=14.0.0'}
+  '@rgrove/parse-xml@5.0.0':
+    resolution: {integrity: sha512-SgHFyisNAkS2ZbM8SCriUm1N0bxLiz0POKvpDeAtrnLrXaYG1PawNwu1rSjmE/vcVHbZzYWNgVP6xkep6R4uXg==}
+    engines: {node: '>=22.12.0'}
 
   '@rolldown/binding-android-arm-eabi@1.2.6':
     resolution: {integrity: sha512-b+jTcARdTiFLI6jB4a5XjTm0RWd6KcRfQj/I2356fxUZemiho9zQLxo0RtCuMDAyKcLo6cEltkgbQp6d1+sjjQ==}
@@ -2177,7 +2177,7 @@ snapshots:
 
   '@oxc-project/types@0.147.0': {}
 
-  '@rgrove/parse-xml@4.2.2': {}
+  '@rgrove/parse-xml@5.0.0': {}
 
   '@rolldown/binding-android-arm-eabi@1.2.6':
     optional: true

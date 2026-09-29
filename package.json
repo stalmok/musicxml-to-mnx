@@ -64,7 +64,7 @@
     "corpus-gate": "vitest run tests/corpus-full.test.ts"
   },
   "dependencies": {
-    "@rgrove/parse-xml": "4.2.2",
+    "@rgrove/parse-xml": "5.0.0",
     "fflate": "0.8.3"
   },
   "devDependencies": {
