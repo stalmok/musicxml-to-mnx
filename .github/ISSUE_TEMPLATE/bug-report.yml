@@ -35,7 +35,7 @@ body:
     attributes:
       label: musicxml-to-mnx version
       description: The output of musicxml-to-mnx --version, or the version in your lockfile.
-      placeholder: 0.1.1
+      placeholder: 0.1.2
     validations:
       required: true
   - type: input
