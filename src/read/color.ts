@@ -31,15 +31,17 @@ export function readColor(
       `A color of "${written}" has an alpha channel, and MNX's color has no alpha ` +
         'form. The color is converted opaque.',
       { ...context, line: element.line },
+      element.name,
       'color',
     )
     return opaque
   }
 
   warnings.add(
-    'unsupported:element',
+    'unresolved:attribute-value',
     `A color of "${written}" is not a MusicXML color, and is not carried over.`,
     { ...context, line: element.line },
+    element.name,
     'color',
   )
   return undefined

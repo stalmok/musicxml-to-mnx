@@ -3,11 +3,10 @@
 // on the score's measure, since tempo is the whole score's. What MNX cannot
 // state, like a word or a pedal, is reported.
 
+import { readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
 import { WarningCollector } from '../warnings.js'
-import { parseXmlRoot } from '../xml/parse.js'
-import { readScore } from './score.js'
 
 function note(step: string, quarters = 1): string {
   return (
@@ -30,7 +29,7 @@ function inMeasure(body: string): string {
 
 function read(source: string) {
   const warnings = new WarningCollector()
-  const score = readScore(parseXmlRoot(source), warnings)
+  const score = readValid(source, warnings)
   return {
     measure: score.parts[0]?.measures[0],
     global: score.globalMeasures[0],
@@ -1175,16 +1174,18 @@ describe('segno', () => {
     )
 
     expect(global?.segno?.color).toBe('#FF0000')
-    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:color'])
-    expect(warnings[0]?.element).toBe('color')
+    expect(warnings.map((w) => [w.code, w.element, w.attribute])).toEqual([
+      ['unrepresentable:color', 'segno', 'color'],
+    ])
   })
 
   test('reports a color that is not a MusicXML color, converting none', () => {
     const { global, warnings } = read(inMeasure(direction('<segno color="red"/>') + note('C')))
 
     expect(global?.segno?.color).toBeUndefined()
-    expect(warnings.map((w) => w.code)).toEqual(['unsupported:element'])
-    expect(warnings[0]?.element).toBe('color')
+    expect(warnings.map((w) => [w.code, w.element, w.attribute])).toEqual([
+      ['unresolved:attribute-value', 'segno', 'color'],
+    ])
   })
 
   // MNX draws one segno per measure, so a second at another point is reported
@@ -1446,17 +1447,15 @@ describe('sound navigation', () => {
   // Fine it returns to in a later measure still make a D.S. al Fine.
   test('upgrades a jump to dsalfine when a later measure carries a Fine', () => {
     const warnings = new WarningCollector()
-    const score = readScore(
-      parseXmlRoot(
-        '<score-partwise><part id="P1">' +
-          '<measure number="1"><attributes><divisions>4</divisions></attributes>' +
-          note('C') +
-          '<sound dalsegno="segno"/></measure>' +
-          '<measure number="2">' +
-          note('C') +
-          '<sound fine="yes"/></measure>' +
-          '</part></score-partwise>',
-      ),
+    const score = readValid(
+      '<score-partwise><part id="P1">' +
+        '<measure number="1"><attributes><divisions>4</divisions></attributes>' +
+        note('C') +
+        '<sound dalsegno="segno"/></measure>' +
+        '<measure number="2">' +
+        note('C') +
+        '<sound fine="yes"/></measure>' +
+        '</part></score-partwise>',
       warnings,
     )
 
@@ -1482,24 +1481,22 @@ describe('sound navigation', () => {
   // Naming the sign is how a source keeps the two apart.
   test('leaves a jump back to a segno written after the Fine a plain segno', () => {
     const warnings = new WarningCollector()
-    const score = readScore(
-      parseXmlRoot(
-        '<score-partwise><part id="P1">' +
-          '<measure number="1"><attributes><divisions>4</divisions></attributes>' +
-          '<direction><direction-type><segno/></direction-type>' +
-          '<sound segno="first"/></direction>' +
-          note('C') +
-          '</measure>' +
-          `<measure number="2">${note('C')}<sound fine="yes"/></measure>` +
-          '<measure number="3">' +
-          '<direction><direction-type><segno/></direction-type>' +
-          '<sound segno="second"/></direction>' +
-          note('C') +
-          '</measure>' +
-          `<measure number="4">${note('C')}<sound dalsegno="second"/></measure>` +
-          `<measure number="5">${note('C')}<sound dalsegno="first"/></measure>` +
-          '</part></score-partwise>',
-      ),
+    const score = readValid(
+      '<score-partwise><part id="P1">' +
+        '<measure number="1"><attributes><divisions>4</divisions></attributes>' +
+        '<direction><direction-type><segno/></direction-type>' +
+        '<sound segno="first"/></direction>' +
+        note('C') +
+        '</measure>' +
+        `<measure number="2">${note('C')}<sound fine="yes"/></measure>` +
+        '<measure number="3">' +
+        '<direction><direction-type><segno/></direction-type>' +
+        '<sound segno="second"/></direction>' +
+        note('C') +
+        '</measure>' +
+        `<measure number="4">${note('C')}<sound dalsegno="second"/></measure>` +
+        `<measure number="5">${note('C')}<sound dalsegno="first"/></measure>` +
+        '</part></score-partwise>',
       warnings,
     )
 
@@ -1513,17 +1510,15 @@ describe('sound navigation', () => {
   // whatever either is called.
   test('upgrades a jump against the only segno whatever it is named', () => {
     const warnings = new WarningCollector()
-    const score = readScore(
-      parseXmlRoot(
-        '<score-partwise><part id="P1">' +
-          '<measure number="1"><attributes><divisions>4</divisions></attributes>' +
-          '<direction><direction-type><segno/></direction-type></direction>' +
-          note('C') +
-          '</measure>' +
-          `<measure number="2">${note('C')}<sound fine="yes"/></measure>` +
-          `<measure number="3">${note('C')}<sound dalsegno="whatever"/></measure>` +
-          '</part></score-partwise>',
-      ),
+    const score = readValid(
+      '<score-partwise><part id="P1">' +
+        '<measure number="1"><attributes><divisions>4</divisions></attributes>' +
+        '<direction><direction-type><segno/></direction-type></direction>' +
+        note('C') +
+        '</measure>' +
+        `<measure number="2">${note('C')}<sound fine="yes"/></measure>` +
+        `<measure number="3">${note('C')}<sound dalsegno="whatever"/></measure>` +
+        '</part></score-partwise>',
       warnings,
     )
 
@@ -1592,10 +1587,8 @@ describe('which staff a direction belongs under', () => {
 
   function dynamicsOf(body: string) {
     const warnings = new WarningCollector()
-    const score = readScore(
-      parseXmlRoot(
-        `<score-partwise><part id="P1"><measure number="1">${body}</measure></part></score-partwise>`,
-      ),
+    const score = readValid(
+      `<score-partwise><part id="P1"><measure number="1">${body}</measure></part></score-partwise>`,
       warnings,
     )
     return { dynamics: score.parts[0]?.measures[0]?.dynamics ?? [], warnings: warnings.list() }
@@ -1643,11 +1636,9 @@ describe('which staff a direction belongs under', () => {
 describe('an offset moving a direction', () => {
   function at(body: string) {
     const warnings = new WarningCollector()
-    const score = readScore(
-      parseXmlRoot(
-        '<score-partwise><part id="P1"><measure number="1">' +
-          `<attributes><divisions>4</divisions></attributes>${body}</measure></part></score-partwise>`,
-      ),
+    const score = readValid(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        `<attributes><divisions>4</divisions></attributes>${body}</measure></part></score-partwise>`,
       warnings,
     )
     return {
@@ -1691,11 +1682,9 @@ describe('an offset moving a direction', () => {
   // a quarter note, the customary one per quarter is assumed and reported.
   test('assumes one division per quarter for an offset before any <divisions>', () => {
     const warnings = new WarningCollector()
-    readScore(
-      parseXmlRoot(
-        '<score-partwise><part id="P1"><measure number="1">' +
-          `${dynamic('<offset>2</offset>')}</measure></part></score-partwise>`,
-      ),
+    readValid(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        `${dynamic('<offset>2</offset>')}</measure></part></score-partwise>`,
       warnings,
     )
 
@@ -1722,13 +1711,11 @@ describe('an offset moving a direction', () => {
   // says, because there is nothing to say it has left the measure.
   function inTime(body: string) {
     const warnings = new WarningCollector()
-    const score = readScore(
-      parseXmlRoot(
-        '<score-partwise><part id="P1"><measure number="1">' +
-          '<attributes><divisions>4</divisions>' +
-          '<time><beats>2</beats><beat-type>4</beat-type></time></attributes>' +
-          `${body}</measure></part></score-partwise>`,
-      ),
+    const score = readValid(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        '<attributes><divisions>4</divisions>' +
+        '<time><beats>2</beats><beat-type>4</beat-type></time></attributes>' +
+        `${body}</measure></part></score-partwise>`,
       warnings,
     )
     return {
@@ -1799,11 +1786,9 @@ describe('an offset moving a direction', () => {
 describe('the tempo a <sound> states', () => {
   function tempos(body: string) {
     const warnings = new WarningCollector()
-    const score = readScore(
-      parseXmlRoot(
-        '<score-partwise><part id="P1"><measure number="1">' +
-          `<attributes><divisions>4</divisions></attributes>${body}</measure></part></score-partwise>`,
-      ),
+    const score = readValid(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        `<attributes><divisions>4</divisions></attributes>${body}</measure></part></score-partwise>`,
       warnings,
     )
     return { tempos: score.globalMeasures[0]?.tempos ?? [], warnings: warnings.list() }
@@ -1970,18 +1955,16 @@ describe('the tempo a <sound> states', () => {
     const warnings = new WarningCollector()
     const measure = (body: string) =>
       `<measure number="1"><attributes><divisions>4</divisions></attributes>${body}</measure>`
-    readScore(
-      parseXmlRoot(
-        '<score-partwise><part-list><score-part id="P1"/><score-part id="P2"/></part-list>' +
-          `<part id="P1">${measure(
-            '<direction><direction-type><metronome><beat-unit>quarter</beat-unit>' +
-              '<per-minute>63</per-minute></metronome></direction-type>' +
-              '<sound tempo="63"/></direction>' +
-              quarter,
-          )}</part>` +
-          `<part id="P2">${measure('<sound tempo="63"/>' + quarter)}</part>` +
-          '</score-partwise>',
-      ),
+    readValid(
+      '<score-partwise><part-list><score-part id="P1"/><score-part id="P2"/></part-list>' +
+        `<part id="P1">${measure(
+          '<direction><direction-type><metronome><beat-unit>quarter</beat-unit>' +
+            '<per-minute>63</per-minute></metronome></direction-type>' +
+            '<sound tempo="63"/></direction>' +
+            quarter,
+        )}</part>` +
+        `<part id="P2">${measure('<sound tempo="63"/>' + quarter)}</part>` +
+        '</score-partwise>',
       warnings,
     )
 
@@ -2054,8 +2037,8 @@ describe('hairpins', () => {
           `${body}</measure>`,
       )
       .join('')
-    const score = readScore(
-      parseXmlRoot(`<score-partwise><part id="P1">${measures}</part></score-partwise>`),
+    const score = readValid(
+      `<score-partwise><part id="P1">${measures}</part></score-partwise>`,
       warnings,
     )
     return {
@@ -2125,8 +2108,8 @@ describe('hairpins', () => {
           `${body}${bothHands}</measure>`,
       )
       .join('')
-    const score = readScore(
-      parseXmlRoot(`<score-partwise><part id="P1">${measures}</part></score-partwise>`),
+    const score = readValid(
+      `<score-partwise><part id="P1">${measures}</part></score-partwise>`,
       warnings,
     )
     return {
