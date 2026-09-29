@@ -1347,7 +1347,7 @@ describe('sound navigation', () => {
     )
 
     expect(global?.fine).toEqual({ location: { num: 0, den: 1 } })
-    expect(warnings.map((w) => w.element)).toEqual(['fine'])
+    expect(warnings.map((w) => [w.element, w.attribute])).toEqual([['sound', 'fine']])
     expect(warnings[0]?.message).toContain('more than one fine')
   })
 

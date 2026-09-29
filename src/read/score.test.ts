@@ -2836,7 +2836,9 @@ describe('several parts', () => {
     )
 
     expect(result.globalMeasures[0]?.repeatEnd).toEqual({ times: 2 })
-    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-mark'])
+    expect(warnings.map((w) => [w.code, w.element, w.attribute])).toEqual([
+      ['unrepresentable:cross-part-mark', 'repeat', undefined],
+    ])
     expect(warnings[0]?.element).toBe('repeat')
     expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 1 })
   })
@@ -2853,7 +2855,9 @@ describe('several parts', () => {
     )
 
     expect(result.globalMeasures[0]?.ending).toEqual({ duration: 1, numbers: [1], open: false })
-    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-mark'])
+    expect(warnings.map((w) => [w.code, w.element, w.attribute])).toEqual([
+      ['unrepresentable:cross-part-mark', 'ending', undefined],
+    ])
     expect(warnings[0]?.element).toBe('ending')
   })
 
@@ -2868,7 +2872,9 @@ describe('several parts', () => {
     )
 
     expect(result.globalMeasures[0]?.fermata?.symbol).toBe('angled')
-    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-mark'])
+    expect(warnings.map((w) => [w.code, w.element, w.attribute])).toEqual([
+      ['unrepresentable:cross-part-mark', 'fermata', undefined],
+    ])
     expect(warnings[0]?.element).toBe('fermata')
   })
 
@@ -2926,8 +2932,9 @@ describe('several parts', () => {
     )
 
     expect(result.globalMeasures[0]?.fine).toEqual({ location: { num: 0, den: 1 } })
-    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-mark'])
-    expect(warnings[0]?.element).toBe('fine')
+    expect(warnings.map((w) => [w.code, w.element, w.attribute])).toEqual([
+      ['unrepresentable:cross-part-mark', 'sound', 'fine'],
+    ])
   })
 
   test('reports parts jumping back to differently named segnos', () => {
@@ -2942,8 +2949,9 @@ describe('several parts', () => {
       location: { num: 0, den: 1 },
       type: 'segno',
     })
-    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-mark'])
-    expect(warnings[0]?.element).toBe('jump')
+    expect(warnings.map((w) => [w.code, w.element, w.attribute])).toEqual([
+      ['unrepresentable:cross-part-mark', 'sound', 'dalsegno'],
+    ])
   })
 
   test('says nothing where the parts restate the same marks', () => {
@@ -3111,7 +3119,7 @@ describe('two parts disagreeing on one field of a mark', () => {
       ),
     )
 
-    expect(warnings.map((w) => w.element)).toEqual(['jump'])
+    expect(warnings.map((w) => [w.element, w.attribute])).toEqual([['sound', 'dalsegno']])
   })
 
   // The meter itself: 3/4 against 4/4 differs in the count, 4/4 against 4/2

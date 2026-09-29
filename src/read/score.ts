@@ -405,8 +405,10 @@ function mergeGlobalMeasures(
   // score's measure: parts stating different ones disagree about the one
   // mark, so that is reported. Each is compared by content where two parts
   // both state one; a part restating an equal one says nothing new.
+  // `source` is the element and attribute the mark is read from.
   const reportDifferingMark = <T>(
     name: string,
+    source: readonly [string, string?],
     inScore: T | undefined,
     inPart: T | undefined,
     same: (a: T, b: T) => boolean,
@@ -418,7 +420,7 @@ function mergeGlobalMeasures(
       `The parts of this score state different ${name}s on this measure, and MNX ` +
         'states one there. The first stated is the one converted.',
       context,
-      name,
+      ...source,
     )
   }
   found.forEach((measure, index) => {
@@ -518,11 +520,32 @@ function mergeGlobalMeasures(
         'measure',
       )
     }
-    reportDifferingMark('repeat', existing?.repeatEnd, measure.repeatEnd, sameRepeatEnd, context)
-    reportDifferingMark('ending', existing?.ending, measure.ending, sameEnding, context)
-    reportDifferingMark('fermata', existing?.fermata, measure.fermata, sameFermata, context)
-    reportDifferingMark('fine', existing?.fine, measure.fine, sameFine, context)
-    reportDifferingMark('jump', existing?.jump, measure.jump, sameJump, context)
+    reportDifferingMark(
+      'repeat',
+      ['repeat'],
+      existing?.repeatEnd,
+      measure.repeatEnd,
+      sameRepeatEnd,
+      context,
+    )
+    reportDifferingMark('ending', ['ending'], existing?.ending, measure.ending, sameEnding, context)
+    reportDifferingMark(
+      'fermata',
+      ['fermata'],
+      existing?.fermata,
+      measure.fermata,
+      sameFermata,
+      context,
+    )
+    reportDifferingMark('fine', ['sound', 'fine'], existing?.fine, measure.fine, sameFine, context)
+    reportDifferingMark(
+      'jump',
+      ['sound', 'dalsegno'],
+      existing?.jump,
+      measure.jump,
+      sameJump,
+      context,
+    )
     target[index] = {
       key: existing?.key ?? contributed[index],
       time: existing?.time ?? measure.time,
@@ -1729,9 +1752,9 @@ function readMeasure(
       // Filled in by the part, once the ending's other end has been met.
       ending: undefined,
       fermata,
-      segno: onePerMeasure(segnos, 'segno', warnings, context, drawnDifferently),
-      fine: onePerMeasure(fines, 'fine', warnings, context),
-      jump: onePerMeasure(jumps, 'jump', warnings, context),
+      segno: onePerMeasure(segnos, 'segno', ['segno'], warnings, context, drawnDifferently),
+      fine: onePerMeasure(fines, 'fine', ['sound', 'fine'], warnings, context),
+      jump: onePerMeasure(jumps, 'jump', ['sound', 'dalsegno'], warnings, context),
       multimeasureRest: oneMultimeasureRest(multimeasureRests, warnings, context),
       systemBreak,
       pageBreak,
@@ -1752,6 +1775,7 @@ function readMeasure(
 function onePerMeasure<T extends { location: Fraction }>(
   marks: readonly T[],
   name: string,
+  source: readonly [string, string?],
   warnings: WarningCollector,
   context: WarningContext,
   differs?: (first: T, other: T) => boolean,
@@ -1765,7 +1789,7 @@ function onePerMeasure<T extends { location: Fraction }>(
         `A measure carries more than one ${name}, and MNX states one per measure. ` +
           'The first is the one converted.',
         context,
-        name,
+        ...source,
       )
     }
   }
