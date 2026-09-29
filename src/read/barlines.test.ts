@@ -3,11 +3,10 @@
 // <barline> at the left or right edge of a measure; MNX states them on the
 // score's measure, because a barline is the whole score's.
 
+import { readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
 import { WarningCollector } from '../warnings.js'
-import { parseXmlRoot } from '../xml/parse.js'
-import { readScore } from './score.js'
 
 const NOTE =
   '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
@@ -25,8 +24,8 @@ function read(...bodies: string[]) {
         `${body}</measure>`,
     )
     .join('\n')
-  const score = readScore(
-    parseXmlRoot(`<score-partwise><part id="P1">\n${measures}\n</part></score-partwise>`),
+  const score = readValid(
+    `<score-partwise><part id="P1">\n${measures}\n</part></score-partwise>`,
     warnings,
   )
   return { globals: score.globalMeasures, warnings: warnings.list() }

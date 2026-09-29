@@ -3,11 +3,10 @@
 // count on the part, the staff on each voice, and an override on the events
 // of a voice that reaches across to the other hand.
 
+import { readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
 import { WarningCollector } from '../warnings.js'
-import { parseXmlRoot } from '../xml/parse.js'
-import { readScore } from './score.js'
 
 function note(step: string, staff: string, voice = '1'): string {
   return (
@@ -30,7 +29,7 @@ const GRAND_STAFF =
 
 function read(source: string) {
   const warnings = new WarningCollector()
-  const score = readScore(parseXmlRoot(source), warnings)
+  const score = readValid(source, warnings)
   return { part: score.parts[0], score, warnings: warnings.list() }
 }
 
@@ -1361,7 +1360,7 @@ describe('key and time signatures stated per staff', () => {
       ) + note('C', '1'),
     )
 
-    expect(() => readScore(parseXmlRoot(source), warnings)).toThrow('outside the range 1 to 2')
+    expect(() => readValid(source, warnings)).toThrow('outside the range 1 to 2')
     expect(warnings.list()).toEqual([])
   })
 

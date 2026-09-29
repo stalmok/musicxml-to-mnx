@@ -3,13 +3,12 @@
 // reference to the one where it ends. Resolving that means holding the open
 // ends until their partner turns up, which can be several measures later.
 
+import { readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
 import { fraction } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import { WarningCollector } from '../warnings.js'
-import { parseXmlRoot } from '../xml/parse.js'
-import { readScore } from './score.js'
 import { accountsForItself, measureResidue, pairSpans } from './spanners.js'
 import type { SlurEnd, SpanEnd } from './spanners.js'
 import type { Event, Note } from '../model/score.js'
@@ -40,7 +39,7 @@ function measures(...bodies: string[]): string {
 
 function read(source: string) {
   const warnings = new WarningCollector()
-  const score = readScore(parseXmlRoot(source), warnings)
+  const score = readValid(source, warnings)
   const events = (score.parts[0]?.measures ?? []).flatMap(
     (measure) =>
       measure.sequences[0]?.content.filter((item): item is Event => item.kind === 'event') ?? [],
@@ -51,7 +50,7 @@ function read(source: string) {
 /** Every note of every voice, with grace groups walked into. */
 function readAllVoices(source: string) {
   const warnings = new WarningCollector()
-  const score = readScore(parseXmlRoot(source), warnings)
+  const score = readValid(source, warnings)
   const events = (score.parts[0]?.measures ?? []).flatMap((measure) =>
     measure.sequences.flatMap((sequence) =>
       sequence.content.flatMap((item): Event[] => {
@@ -627,16 +626,14 @@ describe('slurs', () => {
   // the start first. The pairing follows the music.
   test('joins a slur whose stop is written before its start', () => {
     const warnings = new WarningCollector()
-    const score = readScore(
-      parseXmlRoot(
-        measures(
-          DIVISIONS +
-            note('C', '', '1') +
-            note('D', slur('stop'), '1') +
-            '<backup><duration>8</duration></backup>' +
-            note('G', slur('start'), '2') +
-            note('A', '', '2'),
-        ),
+    const score = readValid(
+      measures(
+        DIVISIONS +
+          note('C', '', '1') +
+          note('D', slur('stop'), '1') +
+          '<backup><duration>8</duration></backup>' +
+          note('G', slur('start'), '2') +
+          note('A', '', '2'),
       ),
       warnings,
     )
@@ -655,16 +652,14 @@ describe('slurs', () => {
   // voice's start.
   test('keeps two voices holding one slur number apart', () => {
     const warnings = new WarningCollector()
-    const score = readScore(
-      parseXmlRoot(
-        measures(
-          DIVISIONS +
-            note('C', slur('start'), '1') +
-            note('D', slur('stop'), '1') +
-            '<backup><duration>8</duration></backup>' +
-            note('E', slur('start'), '2') +
-            note('F', slur('stop'), '2'),
-        ),
+    const score = readValid(
+      measures(
+        DIVISIONS +
+          note('C', slur('start'), '1') +
+          note('D', slur('stop'), '1') +
+          '<backup><duration>8</duration></backup>' +
+          note('E', slur('start'), '2') +
+          note('F', slur('stop'), '2'),
       ),
       warnings,
     )
@@ -682,16 +677,14 @@ describe('slurs', () => {
   // where another voice writes a stray stop nearer than the voice's own.
   test("keeps a voice's own slur over a nearer stray stop beside it", () => {
     const warnings = new WarningCollector()
-    const score = readScore(
-      parseXmlRoot(
-        measures(
-          DIVISIONS +
-            note('C', slur('start'), '1') +
-            '<backup><duration>4</duration></backup>' +
-            note('G', '', '2'),
-          note('A', slur('stop'), '2'),
-          note('D', slur('stop'), '1'),
-        ),
+    const score = readValid(
+      measures(
+        DIVISIONS +
+          note('C', slur('start'), '1') +
+          '<backup><duration>4</duration></backup>' +
+          note('G', '', '2'),
+        note('A', slur('stop'), '2'),
+        note('D', slur('stop'), '1'),
       ),
       warnings,
     )
@@ -712,17 +705,15 @@ describe('slurs', () => {
   // take the stop four measures on instead of the one written beside it.
   test('joins the near partner in another voice, not the far one in its own', () => {
     const warnings = new WarningCollector()
-    const score = readScore(
-      parseXmlRoot(
-        measures(
-          DIVISIONS +
-            note('C', slur('start'), '1') +
-            '<backup><duration>4</duration></backup>' +
-            note('G', slur('stop'), '2'),
-          note('D', '', '1'),
-          note('E', slur('start'), '1') + note('F', slur('stop'), '1'),
-          note('A', slur('stop'), '1'),
-        ),
+    const score = readValid(
+      measures(
+        DIVISIONS +
+          note('C', slur('start'), '1') +
+          '<backup><duration>4</duration></backup>' +
+          note('G', slur('stop'), '2'),
+        note('D', '', '1'),
+        note('E', slur('start'), '1') + note('F', slur('stop'), '1'),
+        note('A', slur('stop'), '1'),
       ),
       warnings,
     )
@@ -747,15 +738,13 @@ describe('slurs', () => {
     const warnings = new WarningCollector()
     const both = (body: string) =>
       note('C', body, '1') + '<backup><duration>4</duration></backup>' + note('G', body, '2')
-    const score = readScore(
-      parseXmlRoot(
-        measures(
-          DIVISIONS + both(slur('start')),
-          both(slur('stop')),
-          // A second stop in each voice, which neither voice can account for,
-          // so both streams pair across the part rather than on their own.
-          both(slur('stop')),
-        ),
+    const score = readValid(
+      measures(
+        DIVISIONS + both(slur('start')),
+        both(slur('stop')),
+        // A second stop in each voice, which neither voice can account for,
+        // so both streams pair across the part rather than on their own.
+        both(slur('stop')),
       ),
       warnings,
     )
@@ -779,18 +768,16 @@ describe('slurs', () => {
   // own two ends would invent a 3-measure span and drop both real slurs.
   test('does not pair two ends of one number that only balance by coincidence', () => {
     const warnings = new WarningCollector()
-    const score = readScore(
-      parseXmlRoot(
-        measures(
-          DIVISIONS +
-            note('B', slur('start', '1') + slur('start', '2'), '1') +
-            note('C', slur('stop', '1'), '1') +
-            '<backup><duration>8</duration></backup>' +
-            note('D', slur('start', '1'), '2') +
-            note('E', slur('stop', '2') + slur('stop', '1'), '2'),
-          note('F', slur('start', '2'), '2'),
-          note('G', slur('stop', '2'), '1'),
-        ),
+    const score = readValid(
+      measures(
+        DIVISIONS +
+          note('B', slur('start', '1') + slur('start', '2'), '1') +
+          note('C', slur('stop', '1'), '1') +
+          '<backup><duration>8</duration></backup>' +
+          note('D', slur('start', '1'), '2') +
+          note('E', slur('stop', '2') + slur('stop', '1'), '2'),
+        note('F', slur('start', '2'), '2'),
+        note('G', slur('stop', '2'), '1'),
       ),
       warnings,
     )
@@ -819,19 +806,17 @@ describe('slurs', () => {
   // the pass across the part, where a stray end beside it wins.
   test('weighs another voice against a pair, not the voice the pair is in', () => {
     const warnings = new WarningCollector()
-    const score = readScore(
-      parseXmlRoot(
-        measures(
-          // Voice 1 opens the slur; voice 2 leaves a stray stop beside it.
-          DIVISIONS +
-            note('C', slur('start'), '1') +
-            '<backup><duration>4</duration></backup>' +
-            note('G', slur('stop'), '2'),
-          // Voice 1 closes it and opens another in the same measure, which is
-          // what leaves it an end over at both edges.
-          note('D', slur('stop'), '1') + note('E', slur('start'), '1'),
-          note('F', slur('stop'), '1'),
-        ),
+    const score = readValid(
+      measures(
+        // Voice 1 opens the slur; voice 2 leaves a stray stop beside it.
+        DIVISIONS +
+          note('C', slur('start'), '1') +
+          '<backup><duration>4</duration></backup>' +
+          note('G', slur('stop'), '2'),
+        // Voice 1 closes it and opens another in the same measure, which is
+        // what leaves it an end over at both edges.
+        note('D', slur('stop'), '1') + note('E', slur('start'), '1'),
+        note('F', slur('stop'), '1'),
       ),
       warnings,
     )
@@ -855,20 +840,18 @@ describe('slurs', () => {
   // finds nothing, and the pair is read as the voice's own.
   test('confirms a crossing at the start from the measure after it', () => {
     const warnings = new WarningCollector()
-    const score = readScore(
-      parseXmlRoot(
-        measures(
-          DIVISIONS + note('C', '', '1'),
-          note('D', slur('start'), '1'),
-          // Voice 2 writes a stop where voice 1's slur has not reached yet,
-          // and opens one of its own after it: an end left over on each side,
-          // in the measure after voice 1's start.
-          note('A', slur('stop'), '2') +
-            note('B', slur('start'), '2') +
-            '<backup><duration>8</duration></backup>' +
-            '<note><rest/><duration>4</duration><type>quarter</type><voice>1</voice></note>' +
-            note('E', slur('stop'), '1'),
-        ),
+    const score = readValid(
+      measures(
+        DIVISIONS + note('C', '', '1'),
+        note('D', slur('start'), '1'),
+        // Voice 2 writes a stop where voice 1's slur has not reached yet,
+        // and opens one of its own after it: an end left over on each side,
+        // in the measure after voice 1's start.
+        note('A', slur('stop'), '2') +
+          note('B', slur('start'), '2') +
+          '<backup><duration>8</duration></backup>' +
+          '<note><rest/><duration>4</duration><type>quarter</type><voice>1</voice></note>' +
+          note('E', slur('stop'), '1'),
       ),
       warnings,
     )
@@ -891,15 +874,13 @@ describe('slurs', () => {
   // both ends at one point, and the document says which end is which.
   test('joins a slur from a grace note to the note it ornaments', () => {
     const warnings = new WarningCollector()
-    const score = readScore(
-      parseXmlRoot(
-        measures(
-          DIVISIONS +
-            '<note><grace/><pitch><step>B</step><octave>3</octave></pitch>' +
-            '<type>eighth</type><voice>1</voice>' +
-            '<notations><slur type="start" number="1"/></notations></note>' +
-            note('C', slur('stop')),
-        ),
+    const score = readValid(
+      measures(
+        DIVISIONS +
+          '<note><grace/><pitch><step>B</step><octave>3</octave></pitch>' +
+          '<type>eighth</type><voice>1</voice>' +
+          '<notations><slur type="start" number="1"/></notations></note>' +
+          note('C', slur('stop')),
       ),
       warnings,
     )
@@ -918,17 +899,15 @@ describe('slurs', () => {
   // written that way round.
   test('joins a slur from a grace note into another voice at the same point', () => {
     const warnings = new WarningCollector()
-    const score = readScore(
-      parseXmlRoot(
-        measures(
-          DIVISIONS +
-            note('C', slur('stop'), '1') +
-            '<backup><duration>4</duration></backup>' +
-            '<note><grace/><pitch><step>F</step><octave>2</octave></pitch>' +
-            '<type>eighth</type><voice>2</voice>' +
-            '<notations><slur type="start" number="1"/></notations></note>' +
-            note('G', '', '2'),
-        ),
+    const score = readValid(
+      measures(
+        DIVISIONS +
+          note('C', slur('stop'), '1') +
+          '<backup><duration>4</duration></backup>' +
+          '<note><grace/><pitch><step>F</step><octave>2</octave></pitch>' +
+          '<type>eighth</type><voice>2</voice>' +
+          '<notations><slur type="start" number="1"/></notations></note>' +
+          note('G', '', '2'),
       ),
       warnings,
     )
@@ -1101,10 +1080,8 @@ describe('slurs', () => {
       '<note><rest measure="yes"/><duration>4</duration><type>quarter</type><voice>1</voice>' +
       '<notations><slur type="continue" number="1"/></notations></note>'
     const warnings = new WarningCollector()
-    const score = readScore(
-      parseXmlRoot(
-        measures(DIVISIONS + note('C', slur('start')), contRest, note('G', slur('stop'))),
-      ),
+    const score = readValid(
+      measures(DIVISIONS + note('C', slur('start')), contRest, note('G', slur('stop'))),
       warnings,
     )
     const second = score.parts[0]?.measures[1]?.sequences[0]
@@ -1122,14 +1099,12 @@ describe('the ends a spanner is keyed by', () => {
       `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>4</duration>` +
       `<type>quarter</type><voice>${voice}</voice>${body}</note>`
     const collector = new WarningCollector()
-    readScore(
-      parseXmlRoot(
-        measures(
-          DIVISIONS +
-            voiced('C', '1', tied('start')) +
-            '<backup><duration>4</duration></backup>' +
-            voiced('C', '2', tied('stop')),
-        ),
+    readValid(
+      measures(
+        DIVISIONS +
+          voiced('C', '1', tied('start')) +
+          '<backup><duration>4</duration></backup>' +
+          voiced('C', '2', tied('stop')),
       ),
       collector,
     )
@@ -1146,12 +1121,10 @@ describe('the ends a spanner is keyed by', () => {
       `<type>quarter</type><voice>${voice}</voice>${body}</note>`
     const backup = '<backup><duration>4</duration></backup>'
     const collector = new WarningCollector()
-    const score = readScore(
-      parseXmlRoot(
-        measures(
-          DIVISIONS + voiced('1', tied('start')) + backup + voiced('2', tied('start')),
-          voiced('1', tied('stop')) + backup + voiced('2', tied('stop')),
-        ),
+    const score = readValid(
+      measures(
+        DIVISIONS + voiced('1', tied('start')) + backup + voiced('2', tied('start')),
+        voiced('1', tied('stop')) + backup + voiced('2', tied('stop')),
       ),
       collector,
     )
@@ -1193,14 +1166,12 @@ describe('the ends a spanner is keyed by', () => {
       `<type>quarter</type><voice>${voice}</voice>${body}</note>`
     const warnings = (() => {
       const collector = new WarningCollector()
-      readScore(
-        parseXmlRoot(
-          measures(
-            DIVISIONS +
-              voiced('C', '1', slur('start')) +
-              '<backup><duration>4</duration></backup>' +
-              voiced('G', '2', slur('stop')),
-          ),
+      readValid(
+        measures(
+          DIVISIONS +
+            voiced('C', '1', slur('start')) +
+            '<backup><duration>4</duration></backup>' +
+            voiced('G', '2', slur('stop')),
         ),
         collector,
       )

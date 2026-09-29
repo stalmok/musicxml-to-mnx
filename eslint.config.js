@@ -18,8 +18,8 @@ export default tseslint.config(
     },
   },
   {
-    // Tests convert and write through the helpers in tests/support/convert.ts,
-    // which check every output against the schema. A call that a test expects
+    // Tests convert, write and read through the helpers in tests/support,
+    // which check what each produces. A call that a test expects
     // to throw stays direct: inside expect(() => ...).toThrow(), or as a
     // statement in a try block.
     files: ['**/*.test.ts'],
@@ -28,21 +28,22 @@ export default tseslint.config(
         'error',
         {
           selector:
-            'CallExpression[callee.name=/^(convertMusicXML|writeMnx)$/]:not(CallExpression[callee.property.name=/^toThrow/] > MemberExpression.callee > CallExpression.object[callee.name="expect"] > ArrowFunctionExpression > CallExpression, TryStatement > BlockStatement.block > ExpressionStatement > CallExpression)',
+            'CallExpression[callee.name=/^(convertMusicXML|writeMnx|readScore)$/]:not(CallExpression[callee.property.name=/^toThrow/] > MemberExpression.callee > CallExpression.object[callee.name="expect"] > ArrowFunctionExpression > CallExpression, TryStatement > BlockStatement.block > ExpressionStatement > CallExpression)',
           message:
-            'Call convertValid or writeValid from tests/support/convert.ts, which check the output against the MNX schema.',
+            'Call convertValid or writeValid from tests/support/convert.ts, or readValid from tests/support/read.ts, which check what they produce.',
         },
         // The call check matches the functions by name, so a test must not
         // rename them or use them other than by a call.
         {
           selector:
-            'ImportSpecifier[imported.name="convertMusicXML"][local.name!="convertMusicXML"], ImportSpecifier[imported.name="writeMnx"][local.name!="writeMnx"]',
-          message: 'Import convertMusicXML and writeMnx under their own names.',
+            'ImportSpecifier[imported.name="convertMusicXML"][local.name!="convertMusicXML"], ImportSpecifier[imported.name="writeMnx"][local.name!="writeMnx"], ImportSpecifier[imported.name="readScore"][local.name!="readScore"]',
+          message: 'Import convertMusicXML, writeMnx and readScore under their own names.',
         },
         {
           selector:
-            'Identifier[name=/^(convertMusicXML|writeMnx)$/]:not(CallExpression > Identifier.callee, ImportSpecifier > Identifier, TSTypeQuery > Identifier)',
-          message: 'Call convertMusicXML and writeMnx directly, so the schema check sees the call.',
+            'Identifier[name=/^(convertMusicXML|writeMnx|readScore)$/]:not(CallExpression > Identifier.callee, ImportSpecifier > Identifier, TSTypeQuery > Identifier)',
+          message:
+            'Call convertMusicXML, writeMnx and readScore directly, so the lint check sees the call.',
         },
       ],
     },

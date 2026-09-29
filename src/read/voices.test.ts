@@ -3,13 +3,12 @@
 // note to the one before it. MNX states each voice as its own sequence. These
 // cover the translation between the two.
 
+import { readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
 import { MusicXMLError } from '../errors.js'
 import { fraction } from '../fraction.js'
 import { WarningCollector } from '../warnings.js'
-import { parseXmlRoot } from '../xml/parse.js'
-import { readScore } from './score.js'
 
 const DIVISIONS = '<attributes><divisions>4</divisions></attributes>'
 
@@ -27,7 +26,7 @@ function measure(body: string): string {
 
 function read(source: string) {
   const warnings = new WarningCollector()
-  const result = readScore(parseXmlRoot(source), warnings)
+  const result = readValid(source, warnings)
   return { measure: result.parts[0]?.measures[0], warnings: warnings.list() }
 }
 

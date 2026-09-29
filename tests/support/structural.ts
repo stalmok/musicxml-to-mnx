@@ -1303,27 +1303,39 @@ export function undefinedKeys(value: unknown, path = 'mnx'): string[] {
 }
 
 /**
- * Every loss naming an element the source does not hold, or an attribute no
- * element of that name carries. A missing:* loss names what the source leaves
- * out, so it is not held to the source.
+ * Every loss naming an element the source does not hold at the line it
+ * reports, or an attribute no element of that name carries. A report may
+ * point at the element, at a child it read, or at the element holding it, so
+ * the element starting on that line, its ancestors and its descendants all
+ * count. missing:divisions names what the source leaves out, so it is not
+ * held to the source.
  */
 export function unsourcedLosses(
   root: XmlElement,
   warnings: readonly ConversionWarning[],
 ): string[] {
   const attributes = new Map<string, Set<string>>()
-  const walk = (element: XmlElement): void => {
+  const lines = new Set<string>()
+  // Returns the names at and below the element, so each line records the
+  // elements that hold it and the ones it holds.
+  const walk = (element: XmlElement, around: readonly string[]): Set<string> => {
     const held = attributes.get(element.name) ?? new Set<string>()
     for (const name of Object.keys(element.attributes)) held.add(name)
     attributes.set(element.name, held)
-    for (const child of element.children) walk(child)
+    const within = [...around, element.name]
+    const below = new Set([element.name])
+    for (const child of element.children) for (const name of walk(child, within)) below.add(name)
+    for (const name of [...within, ...below]) lines.add(`${name}:${String(element.line)}`)
+    return below
   }
-  walk(root)
+  walk(root, [])
 
   return warnings
     .filter((warning) => {
-      if (warning.code.startsWith('missing:')) return false
+      if (warning.code === 'missing:divisions') return false
       if (warning.element === undefined) return warning.attribute !== undefined
+      const { line } = warning.context
+      if (line !== undefined && !lines.has(`${warning.element}:${String(line)}`)) return true
       const held = attributes.get(warning.element)
       return !held || (warning.attribute !== undefined && !held.has(warning.attribute))
     })

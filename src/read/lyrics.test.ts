@@ -3,11 +3,10 @@
 // MNX states the lyric on the event, keyed by verse, with a line type where
 // the syllable is part of a word.
 
+import { readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
 import { WarningCollector } from '../warnings.js'
-import { parseXmlRoot } from '../xml/parse.js'
-import { readScore } from './score.js'
 import type { Event } from '../model/score.js'
 
 function note(step: string, body = ''): string {
@@ -31,7 +30,7 @@ function measure(body: string): string {
 
 function read(source: string) {
   const warnings = new WarningCollector()
-  const score = readScore(parseXmlRoot(source), warnings)
+  const score = readValid(source, warnings)
   const events = (score.parts[0]?.measures[0]?.sequences[0]?.content ?? []).filter(
     (item): item is Event => item.kind === 'event',
   )

@@ -3,20 +3,17 @@
 // them as a set keyed by name on the event, so a note carries at most one of
 // each and the order the source wrote them in says nothing.
 
+import { readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
 import { WarningCollector } from '../warnings.js'
-import { parseXmlRoot } from '../xml/parse.js'
-import { readScore } from './score.js'
 import type { Event } from '../model/score.js'
 
 function read(body: string) {
   const warnings = new WarningCollector()
-  const score = readScore(
-    parseXmlRoot(
-      '<score-partwise><part id="P1"><measure number="1">' +
-        `<attributes><divisions>4</divisions></attributes>${body}</measure></part></score-partwise>`,
-    ),
+  const score = readValid(
+    '<score-partwise><part id="P1"><measure number="1">' +
+      `<attributes><divisions>4</divisions></attributes>${body}</measure></part></score-partwise>`,
     warnings,
   )
   const content = score.parts[0]?.measures[0]?.sequences[0]?.content ?? []
@@ -115,15 +112,13 @@ describe('articulations', () => {
 
   test('reads them on a grace note too', () => {
     const warnings = new WarningCollector()
-    const score = readScore(
-      parseXmlRoot(
-        '<score-partwise><part id="P1"><measure number="1">' +
-          '<attributes><divisions>4</divisions></attributes>' +
-          '<note><grace/><pitch><step>B</step><octave>4</octave></pitch><type>eighth</type>' +
-          `<notations>${articulations('<staccato/>')}</notations></note>` +
-          note() +
-          '</measure></part></score-partwise>',
-      ),
+    const score = readValid(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        '<attributes><divisions>4</divisions></attributes>' +
+        '<note><grace/><pitch><step>B</step><octave>4</octave></pitch><type>eighth</type>' +
+        `<notations>${articulations('<staccato/>')}</notations></note>` +
+        note() +
+        '</measure></part></score-partwise>',
       warnings,
     )
 
@@ -289,14 +284,12 @@ describe('two marks of one kind', () => {
 describe('a fermata over a rest filling the measure', () => {
   test('states it on the rest', () => {
     const warnings = new WarningCollector()
-    const score = readScore(
-      parseXmlRoot(
-        '<score-partwise><part id="P1"><measure number="1">' +
-          '<attributes><divisions>4</divisions></attributes>' +
-          '<note><rest measure="yes"/><duration>16</duration>' +
-          '<notations><fermata type="upright"/></notations></note>' +
-          '</measure></part></score-partwise>',
-      ),
+    const score = readValid(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        '<attributes><divisions>4</divisions></attributes>' +
+        '<note><rest measure="yes"/><duration>16</duration>' +
+        '<notations><fermata type="upright"/></notations></note>' +
+        '</measure></part></score-partwise>',
       warnings,
     )
 

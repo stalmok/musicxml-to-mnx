@@ -29,13 +29,14 @@ import {
   sourceMicrotones,
   sourcePitches,
   underfilledTuplets,
+  unsourcedLosses,
 } from './support/structural.js'
 
 const corpusDir = process.env.MUSICXML_TO_MNX_CORPUS
 
 interface Failure {
   file: string
-  kind: 'crash' | 'schema' | 'pitches' | 'lengths'
+  kind: 'crash' | 'schema' | 'pitches' | 'warnings' | 'lengths'
   detail: string
 }
 
@@ -150,6 +151,10 @@ function firstFailure(
       detail: `${String(reported)} microtones reported against ${String(microtones)} in the source`,
     }
   }
+
+  const unsourced = unsourcedLosses(root, warnings)[0]
+  if (unsourced)
+    return { file, kind: 'warnings', detail: `names what the source lacks: ${unsourced}` }
 
   if (skipLengths) return undefined
 

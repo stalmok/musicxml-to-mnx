@@ -2,11 +2,10 @@
 // instrument struck at it. MNX names each instrument once, on the part's kit,
 // and every note of the part names the component it strikes.
 
+import { readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
 import { WarningCollector } from '../warnings.js'
-import { parseXmlRoot } from '../xml/parse.js'
-import { readScore } from './score.js'
 
 const DRUM_KIT =
   '<score-instrument id="P1-I39"><instrument-name>Acoustic Snare</instrument-name>' +
@@ -40,7 +39,7 @@ function source(body: string, instruments = '', attributes = PERCUSSION_CLEF): s
 
 function read(body: string, instruments = '') {
   const warnings = new WarningCollector()
-  const score = readScore(parseXmlRoot(source(body, instruments)), warnings)
+  const score = readValid(source(body, instruments), warnings)
   return { score, part: score.parts[0], warnings: warnings.list() }
 }
 
@@ -248,18 +247,16 @@ describe('a note naming an instrument the part list does not set up', () => {
 describe('a note naming an instrument set up by another part', () => {
   test('resolves nothing and reports the id', () => {
     const warnings = new WarningCollector()
-    const score = readScore(
-      parseXmlRoot(
-        '<score-partwise><part-list>' +
-          `<score-part id="P1"><part-name>Drums</part-name>${DRUM_KIT}</score-part>` +
-          '<score-part id="P2"><part-name>Blocks</part-name></score-part>' +
-          '</part-list>' +
-          `<part id="P1"><measure number="1">${PERCUSSION_CLEF}` +
-          `${struck('C', '5', 'P1-I39')}</measure></part>` +
-          `<part id="P2"><measure number="1">${PERCUSSION_CLEF}` +
-          `${struck('C', '5', 'P1-I39')}</measure></part>` +
-          '</score-partwise>',
-      ),
+    const score = readValid(
+      '<score-partwise><part-list>' +
+        `<score-part id="P1"><part-name>Drums</part-name>${DRUM_KIT}</score-part>` +
+        '<score-part id="P2"><part-name>Blocks</part-name></score-part>' +
+        '</part-list>' +
+        `<part id="P1"><measure number="1">${PERCUSSION_CLEF}` +
+        `${struck('C', '5', 'P1-I39')}</measure></part>` +
+        `<part id="P2"><measure number="1">${PERCUSSION_CLEF}` +
+        `${struck('C', '5', 'P1-I39')}</measure></part>` +
+        '</score-partwise>',
       warnings,
     )
     const reported = warnings.list()

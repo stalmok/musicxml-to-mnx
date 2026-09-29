@@ -7,11 +7,10 @@
 // how far the written pitch sits below the sounded one, so the same 8va is a
 // positive 1.
 
+import { readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
 import { WarningCollector } from '../warnings.js'
-import { parseXmlRoot } from '../xml/parse.js'
-import { readScore } from './score.js'
 
 const NOTE =
   '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
@@ -27,8 +26,8 @@ function read(...bodies: string[]) {
         `${body}</measure>`,
     )
     .join('')
-  const score = readScore(
-    parseXmlRoot(`<score-partwise><part id="P1">${measures}</part></score-partwise>`),
+  const score = readValid(
+    `<score-partwise><part id="P1">${measures}</part></score-partwise>`,
     warnings,
   )
   return {

@@ -1,10 +1,9 @@
 import { describe, expect, test } from 'vitest'
+import { readValid } from '../../tests/support/read.js'
 import { convertValid } from '../../tests/support/convert.js'
 import { MusicXMLError } from '../errors.js'
 import { WarningCollector } from '../warnings.js'
-import { parseXmlRoot } from '../xml/parse.js'
 import { GENERATED_ID_PATTERN } from '../ids.js'
-import { readScore } from './score.js'
 
 /** Wraps `body` in the smallest document that can carry it. */
 function score(body: string): string {
@@ -25,7 +24,7 @@ const QUARTER =
 
 function read(source: string) {
   const warnings = new WarningCollector()
-  const result = readScore(parseXmlRoot(source), warnings)
+  const result = readValid(source, warnings)
   return { score: result, warnings: warnings.list() }
 }
 

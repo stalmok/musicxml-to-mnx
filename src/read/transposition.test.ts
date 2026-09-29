@@ -3,6 +3,7 @@
 // the written one; MusicXML states the written pitch and the interval the
 // other way round. These cover the arithmetic between the two.
 
+import { readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
 import {
@@ -13,8 +14,6 @@ import {
 } from './transposition.js'
 import type { TranspositionInterval } from '../model/score.js'
 import { WarningCollector } from '../warnings.js'
-import { parseXmlRoot } from '../xml/parse.js'
-import { readScore } from './score.js'
 
 // The MNX spec's two examples.
 const B_FLAT_CLARINET: TranspositionInterval = { staffDistance: 1, halfSteps: 2 }
@@ -214,7 +213,7 @@ const NOTE =
 
 function read(source: string) {
   const warnings = new WarningCollector()
-  const score = readScore(parseXmlRoot(source), warnings)
+  const score = readValid(source, warnings)
   return { score, part: score.parts[0], warnings: warnings.list() }
 }
 
@@ -334,16 +333,14 @@ describe('a part stating more than one transposition', () => {
 
   test('reports a part that changes instrument partway', () => {
     const warnings = new WarningCollector()
-    const score = readScore(
-      parseXmlRoot(
-        '<score-partwise><part id="P1">' +
-          `<measure number="1"><attributes><divisions>4</divisions>${IN_B_FLAT}</attributes>` +
-          `${NOTE}</measure>` +
-          '<measure number="2"><attributes>' +
-          '<transpose><diatonic>-2</diatonic><chromatic>-3</chromatic></transpose>' +
-          `</attributes>${NOTE}</measure>` +
-          '</part></score-partwise>',
-      ),
+    const score = readValid(
+      '<score-partwise><part id="P1">' +
+        `<measure number="1"><attributes><divisions>4</divisions>${IN_B_FLAT}</attributes>` +
+        `${NOTE}</measure>` +
+        '<measure number="2"><attributes>' +
+        '<transpose><diatonic>-2</diatonic><chromatic>-3</chromatic></transpose>' +
+        `</attributes>${NOTE}</measure>` +
+        '</part></score-partwise>',
       warnings,
     )
     const second = score.parts[0]?.measures[1]?.sequences[0]?.content[0]
@@ -362,14 +359,12 @@ describe('a part stating more than one transposition', () => {
   // A restatement of the same interval is not a change.
   test('says nothing where a later measure restates the same interval', () => {
     const warnings = new WarningCollector()
-    readScore(
-      parseXmlRoot(
-        '<score-partwise><part id="P1">' +
-          `<measure number="1"><attributes><divisions>4</divisions>${IN_B_FLAT}</attributes>` +
-          `${NOTE}</measure>` +
-          `<measure number="2"><attributes>${IN_B_FLAT}</attributes>${NOTE}</measure>` +
-          '</part></score-partwise>',
-      ),
+    readValid(
+      '<score-partwise><part id="P1">' +
+        `<measure number="1"><attributes><divisions>4</divisions>${IN_B_FLAT}</attributes>` +
+        `${NOTE}</measure>` +
+        `<measure number="2"><attributes>${IN_B_FLAT}</attributes>${NOTE}</measure>` +
+        '</part></score-partwise>',
       warnings,
     )
 
@@ -395,18 +390,16 @@ describe('a part stating more than one transposition', () => {
 describe('a score holding both a transposing part and a concert one', () => {
   test('states one key, and reports no disagreement', () => {
     const warnings = new WarningCollector()
-    const score = readScore(
-      parseXmlRoot(
-        '<score-partwise><part-list>' +
-          '<score-part id="P1"><part-name>Flute</part-name></score-part>' +
-          '<score-part id="P2"><part-name>Clarinet</part-name></score-part>' +
-          '</part-list>' +
-          '<part id="P1"><measure number="1"><attributes><divisions>4</divisions>' +
-          `<key><fifths>0</fifths></key></attributes>${NOTE}</measure></part>` +
-          '<part id="P2"><measure number="1"><attributes><divisions>4</divisions>' +
-          `<key><fifths>2</fifths></key>${IN_B_FLAT}</attributes>${NOTE}</measure></part>` +
-          '</score-partwise>',
-      ),
+    const score = readValid(
+      '<score-partwise><part-list>' +
+        '<score-part id="P1"><part-name>Flute</part-name></score-part>' +
+        '<score-part id="P2"><part-name>Clarinet</part-name></score-part>' +
+        '</part-list>' +
+        '<part id="P1"><measure number="1"><attributes><divisions>4</divisions>' +
+        `<key><fifths>0</fifths></key></attributes>${NOTE}</measure></part>` +
+        '<part id="P2"><measure number="1"><attributes><divisions>4</divisions>' +
+        `<key><fifths>2</fifths></key>${IN_B_FLAT}</attributes>${NOTE}</measure></part>` +
+        '</score-partwise>',
       warnings,
     )
 

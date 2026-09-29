@@ -3,14 +3,13 @@
 // (<time-modification>) and once as a bracket around them (<tuplet>). MNX
 // wraps the notes in one object carrying the ratio.
 
+import { readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
 import { MusicXMLError } from '../errors.js'
 import { fraction } from '../fraction.js'
 import type { SequenceItem } from '../model/score.js'
 import { WarningCollector } from '../warnings.js'
-import { parseXmlRoot } from '../xml/parse.js'
-import { readScore } from './score.js'
 
 const DIVISIONS = '<attributes><divisions>12</divisions></attributes>'
 
@@ -86,7 +85,7 @@ function measures(...bodies: string[]): string {
 
 function read(source: string) {
   const warnings = new WarningCollector()
-  const result = readScore(parseXmlRoot(source), warnings)
+  const result = readValid(source, warnings)
   return { content: result.parts[0]?.measures[0]?.sequences[0]?.content, warnings: warnings.list() }
 }
 
@@ -734,8 +733,8 @@ describe('tuplets', () => {
       (bracket ? `<notations><tuplet type="${bracket}"/></notations>` : '') +
       '</note>'
     const warnings = new WarningCollector()
-    const result = readScore(
-      parseXmlRoot(measure(other + late('C', 'start') + late('D') + late('E', 'stop'))),
+    const result = readValid(
+      measure(other + late('C', 'start') + late('D') + late('E', 'stop')),
       warnings,
     )
     const content = result.parts[0]?.measures[0]?.sequences[1]?.content
@@ -3670,7 +3669,7 @@ describe('a tuplet in a line laid over its voice', () => {
 
   test('holds its notes in the line they were written in', () => {
     const warnings = new WarningCollector()
-    const result = readScore(parseXmlRoot(measure(laidOver)), warnings)
+    const result = readValid(measure(laidOver), warnings)
     const sequences = result.parts[0]?.measures[0]?.sequences
 
     expect(sequences).toHaveLength(2)
@@ -4190,7 +4189,7 @@ describe('a bracket the silence after it completes', () => {
   // to the barline, not a measure of its own that ends with the bracket.
   test('states the silence in a part that stops before the others', () => {
     const warnings = new WarningCollector()
-    const score = readScore(parseXmlRoot(shortPart), warnings)
+    const score = readValid(shortPart, warnings)
 
     expect(stated(score.parts[1]?.measures[0]?.sequences[0]?.content[0])?.held).toEqual([
       'event',
@@ -4203,7 +4202,7 @@ describe('a bracket the silence after it completes', () => {
   // is all there is to say how long the measure runs.
   test('states the silence in a part that states no time signature', () => {
     const warnings = new WarningCollector()
-    const score = readScore(parseXmlRoot(untimedPart), warnings)
+    const score = readValid(untimedPart, warnings)
     const brackets = score.parts.map((part) => stated(part.measures[0]?.sequences[0]?.content[0]))
 
     expect(brackets[1]).toEqual(brackets[0])
@@ -4221,7 +4220,7 @@ describe('a bracket the silence after it completes', () => {
     'states the silence in a part with no time signature written %s one that states it',
     (_, source, untimed) => {
       const warnings = new WarningCollector()
-      const score = readScore(parseXmlRoot(source), warnings)
+      const score = readValid(source, warnings)
       const bracket = score.parts[untimed]?.measures[0]?.sequences[0]?.content[0]
 
       expect(stated(bracket)?.held).toEqual(['event', 'space'])
@@ -4791,7 +4790,7 @@ describe('a short bracket in a pickup measure', () => {
       FOUR +
       body +
       '</measure></part></score-partwise>'
-    const score = readScore(parseXmlRoot(source), warnings)
+    const score = readValid(source, warnings)
     return {
       content: score.parts[0]?.measures[0]?.sequences[0]?.content,
       // The attribute is a loss as a statement about the numbering, reported

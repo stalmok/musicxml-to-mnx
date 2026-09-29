@@ -3,19 +3,16 @@
 // because it is drawn as a line beside the chord rather than as a mark on any
 // one note.
 
+import { readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
 import { WarningCollector } from '../warnings.js'
-import { parseXmlRoot } from '../xml/parse.js'
-import { readScore } from './score.js'
 
 function read(body: string) {
   const warnings = new WarningCollector()
-  const score = readScore(
-    parseXmlRoot(
-      '<score-partwise><part id="P1"><measure number="1">' +
-        `<attributes><divisions>4</divisions></attributes>${body}</measure></part></score-partwise>`,
-    ),
+  const score = readValid(
+    '<score-partwise><part id="P1"><measure number="1">' +
+      `<attributes><divisions>4</divisions></attributes>${body}</measure></part></score-partwise>`,
     warnings,
   )
   return { measure: score.parts[0]?.measures[0], warnings: warnings.list() }

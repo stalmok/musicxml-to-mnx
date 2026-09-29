@@ -3,10 +3,9 @@
 // earlier note. MNX also marks only the notes whose accidental shows. The
 // support block is tested in tests/support-block.test.ts.
 
+import { readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { WarningCollector } from '../warnings.js'
-import { parseXmlRoot } from '../xml/parse.js'
-import { readScore } from './score.js'
 import type { Note } from '../model/score.js'
 
 function note(step: string, alter: string, body: string): string {
@@ -27,7 +26,7 @@ function score(body: string): string {
 
 function read(source: string) {
   const warnings = new WarningCollector()
-  const result = readScore(parseXmlRoot(source), warnings)
+  const result = readValid(source, warnings)
   const notes = (result.parts[0]?.measures[0]?.sequences[0]?.content ?? []).flatMap((item) =>
     item.kind === 'event' ? item.notes : [],
   )

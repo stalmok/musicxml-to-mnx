@@ -6,12 +6,11 @@
 // Each source below writes one element per line, so a reported line names
 // the element the reader was reading.
 
+import { readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { MusicXMLError } from '../errors.js'
 import { WarningCollector } from '../warnings.js'
 import type { ConversionWarning } from '../warnings.js'
-import { parseXmlRoot } from '../xml/parse.js'
-import { readScore } from './score.js'
 
 /** The line the first body element of `score` is on. */
 const FIRST_BODY_LINE = 5
@@ -68,7 +67,7 @@ const tremoloNote = (step: string, type: string, duration = 4, marks = '3'): str
 
 function refusal(source: string): MusicXMLError {
   try {
-    readScore(parseXmlRoot(source), new WarningCollector())
+    readValid(source, new WarningCollector())
   } catch (error) {
     if (error instanceof MusicXMLError) return error
     throw error
@@ -78,7 +77,7 @@ function refusal(source: string): MusicXMLError {
 
 function warningsOf(source: string): readonly ConversionWarning[] {
   const warnings = new WarningCollector()
-  readScore(parseXmlRoot(source), warnings)
+  readValid(source, warnings)
   return warnings.list()
 }
 

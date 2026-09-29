@@ -1,10 +1,9 @@
 // What each reader passes over is reported, whichever path it took. The
 // exceptions below are accounted for elsewhere and are not reported.
 
+import { readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { WarningCollector } from '../warnings.js'
-import { parseXmlRoot } from '../xml/parse.js'
-import { readScore } from './score.js'
 
 function measure(body: string, attributes = '<divisions>4</divisions>'): string {
   return (
@@ -24,7 +23,7 @@ function note(body: string, step = 'C'): string {
 /** The elements reported as unconverted, in the order they were found. */
 function lost(source: string): string[] {
   const warnings = new WarningCollector()
-  readScore(parseXmlRoot(source), warnings)
+  readValid(source, warnings)
   return warnings
     .list()
     .map((warning) => /<([a-z-]+)>/.exec(warning.message)?.[1])
@@ -33,7 +32,7 @@ function lost(source: string): string[] {
 
 function read(source: string) {
   const warnings = new WarningCollector()
-  const score = readScore(parseXmlRoot(source), warnings)
+  const score = readValid(source, warnings)
   return { score, warnings: warnings.list() }
 }
 
@@ -597,18 +596,16 @@ describe('a loss the schema has no home for', () => {
 describe('the part list', () => {
   test('reports what it holds besides the name, against the part it describes', () => {
     const warnings = new WarningCollector()
-    readScore(
-      parseXmlRoot(
-        '<score-partwise><part-list>' +
-          '<part-group type="start"><group-symbol>brace</group-symbol></part-group>' +
-          '<score-part id="P1"><part-name>Piano</part-name>' +
-          '<part-abbreviation>Pno.</part-abbreviation></score-part>' +
-          '</part-list>' +
-          '<part id="P1"><measure number="1">' +
-          '<attributes><divisions>4</divisions></attributes>' +
-          note('') +
-          '</measure></part></score-partwise>',
-      ),
+    readValid(
+      '<score-partwise><part-list>' +
+        '<part-group type="start"><group-symbol>brace</group-symbol></part-group>' +
+        '<score-part id="P1"><part-name>Piano</part-name>' +
+        '<part-abbreviation>Pno.</part-abbreviation></score-part>' +
+        '</part-list>' +
+        '<part id="P1"><measure number="1">' +
+        '<attributes><divisions>4</divisions></attributes>' +
+        note('') +
+        '</measure></part></score-partwise>',
       warnings,
     )
 

@@ -21,6 +21,7 @@ import {
   sourceMeasureLengths,
   sourceMicrotones,
   sourcePitches,
+  unsourcedLosses,
 } from './support/structural.js'
 
 // Sibelius states no <voice> on chord members. A chord member belongs to the
@@ -909,5 +910,62 @@ describe('the measure length check', () => {
     expect(disagreements(source, lengthened)).toEqual([
       'part 1 measure 1: voice 2 runs 0.75 against 0.5 in the source',
     ])
+  })
+})
+
+describe('the elements and attributes a warning names', () => {
+  const source = [
+    '<score-partwise>',
+    '<part id="P1"><measure number="1">',
+    '<note>',
+    '<pitch><step>C</step><octave>4</octave></pitch>',
+    '<tie type="start"/>',
+    '</note>',
+    '<note print-object="no"><rest/></note>',
+    '</measure></part>',
+    '</score-partwise>',
+  ].join('\n')
+  const lost = (element: string | undefined, line: number | undefined, attribute?: string) =>
+    unsourcedLosses(parseXmlRoot(source), [
+      {
+        code: 'unsupported:element',
+        message: '',
+        element,
+        attribute,
+        context: line === undefined ? {} : { line },
+      },
+    ])
+
+  test('accepts the element on the line, one it holds, and one holding it', () => {
+    expect(lost('note', 3)).toEqual([])
+    expect(lost('tie', 3)).toEqual([])
+    expect(lost('note', 5)).toEqual([])
+  })
+
+  test('names an element the source does not hold', () => {
+    expect(lost('tied', undefined)).toEqual(['unsupported:element tied@'])
+  })
+
+  test('names an element the source holds only elsewhere', () => {
+    expect(lost('tie', 7)).toEqual(['unsupported:element tie@'])
+  })
+
+  test('names an attribute no element of that name carries', () => {
+    expect(lost('note', 7, 'print-object')).toEqual([])
+    expect(lost('rest', 7, 'print-object')).toEqual(['unsupported:element rest@print-object'])
+  })
+
+  test('names an attribute given with no element', () => {
+    expect(lost(undefined, undefined, 'id')).toEqual(['unsupported:element @id'])
+  })
+
+  test('holds every missing loss but the missing divisions to the source', () => {
+    const named = (code: ConversionWarning['code']) =>
+      unsourcedLosses(parseXmlRoot(source), [
+        { code, message: '', element: 'divisions', attribute: undefined, context: {} },
+      ])
+
+    expect(named('missing:divisions')).toEqual([])
+    expect(named('missing:voice')).toEqual(['missing:voice divisions@'])
   })
 })

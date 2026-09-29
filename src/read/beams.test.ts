@@ -5,10 +5,9 @@
 // a direction for a hook. The support block is tested in
 // tests/support-block.test.ts.
 
+import { readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { WarningCollector } from '../warnings.js'
-import { parseXmlRoot } from '../xml/parse.js'
-import { readScore } from './score.js'
 import { buildBeams } from './beams.js'
 import type { BeamedEvent } from './beams.js'
 
@@ -232,11 +231,9 @@ describe('a beam marker at a level that does not exist', () => {
 
   function read(body: string) {
     const warnings = new WarningCollector()
-    const score = readScore(
-      parseXmlRoot(
-        '<score-partwise><part id="P1"><measure number="1">' +
-          `<attributes><divisions>4</divisions></attributes>${body}</measure></part></score-partwise>`,
-      ),
+    const score = readValid(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        `<attributes><divisions>4</divisions></attributes>${body}</measure></part></score-partwise>`,
       warnings,
     )
     return { beams: score.parts[0]?.measures[0]?.beams ?? [], warnings: warnings.list() }
@@ -272,12 +269,10 @@ describe('a beam marker at a level that does not exist', () => {
       )
     }
     const warnings = new WarningCollector()
-    readScore(
-      parseXmlRoot(
-        '<score-partwise><part id="P1"><measure number="1">' +
-          '<attributes><divisions>256</divisions></attributes>' +
-          `${deep('C', 'begin')}${deep('D', 'end')}</measure></part></score-partwise>`,
-      ),
+    readValid(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        '<attributes><divisions>256</divisions></attributes>' +
+        `${deep('C', 'begin')}${deep('D', 'end')}</measure></part></score-partwise>`,
       warnings,
     )
 
@@ -347,11 +342,9 @@ describe('beaming grace notes', () => {
 
   function beamsOf(body: string) {
     const warnings = new WarningCollector()
-    const score = readScore(
-      parseXmlRoot(
-        '<score-partwise><part id="P1"><measure number="1">' +
-          `<attributes><divisions>4</divisions></attributes>${body}</measure></part></score-partwise>`,
-      ),
+    const score = readValid(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        `<attributes><divisions>4</divisions></attributes>${body}</measure></part></score-partwise>`,
       warnings,
     )
     return { beams: score.parts[0]?.measures[0]?.beams ?? [], warnings: warnings.list() }
