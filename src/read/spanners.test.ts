@@ -592,6 +592,24 @@ describe('slurs', () => {
     expect(second.slurs[0]?.target).toBe(fourth.id)
   })
 
+  // An edge that writes no number is number 1.
+  test.each([
+    ['<slur type="start"/>', '<slur type="stop" number="1"/>'],
+    ['<slur type="start" number="1"/>', '<slur type="stop"/>'],
+  ])('joins %s to %s', (start, stop) => {
+    const { events, warnings } = read(
+      measures(
+        DIVISIONS +
+          note('C', `<notations>${start}</notations>`) +
+          note('D', `<notations>${stop}</notations>`),
+      ),
+    )
+    const [first, second] = events as [Event, Event]
+
+    expect(first.slurs[0]?.target).toBe(second.id)
+    expect(warnings).toEqual([])
+  })
+
   // A measure holding two voices is written as one pass per voice with a
   // <backup> between them. A slur that runs from the second voice to the first
   // therefore has its stop written before its start, although the music has

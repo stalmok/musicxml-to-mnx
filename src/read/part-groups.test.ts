@@ -60,6 +60,26 @@ describe('part groups', () => {
     expect(warnings).toEqual([])
   })
 
+  // An edge that writes no number is number 1.
+  test.each([
+    ['<part-group type="start">', '<part-group type="stop" number="1"/>'],
+    ['<part-group type="start" number="1">', '<part-group type="stop"/>'],
+  ])('joins %s to %s', (start, stop) => {
+    const { mnx, warnings } = convertValid(
+      score(
+        `${start}<group-symbol>bracket</group-symbol></part-group>` +
+          '<score-part id="P1"/><score-part id="P2"/>' +
+          stop +
+          '<score-part id="P3"/>',
+        part('P1') + part('P2') + part('P3'),
+      ),
+    )
+
+    const group = mnx.layouts?.[0]?.content[0]
+    expect(group?.type === 'group' && group.content).toHaveLength(2)
+    expect(warnings).toEqual([])
+  })
+
   // A renderer that honours a layout resolves part names from it, so a staff
   // that names none draws none. labelref points back at the part, so the name
   // is written once.

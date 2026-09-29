@@ -370,6 +370,23 @@ describe('dynamics', () => {
     expect(warnings).toEqual([])
   })
 
+  // An edge that writes no number is number 1.
+  test.each([
+    ['<wedge type="crescendo"/>', '<wedge type="stop" number="1"/>'],
+    ['<wedge type="crescendo" number="1"/>', '<wedge type="stop"/>'],
+  ])('joins %s to %s', (start, stop) => {
+    const { measure, warnings } = read(
+      inMeasure(
+        `<direction><direction-type>${start}</direction-type></direction>` +
+          note('C') +
+          `<direction><direction-type>${stop}</direction-type></direction>`,
+      ),
+    )
+
+    expect(measure?.dynamics[0]?.end).toEqual({ measure: 0, position: { num: 1, den: 4 } })
+    expect(warnings).toEqual([])
+  })
+
   // The wording beside a wedge in the same <direction-type> qualifies the
   // hairpin: "cresc." is the crescendo's own wording, and MNX puts a prefix
   // on a gradual group like on any other.
