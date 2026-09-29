@@ -1156,6 +1156,16 @@ describe('a rest filling a measure a grace note leads into', () => {
       })
     })
 
+    test('closes a slur and opens the next where the rest writes the start first', () => {
+      expect(convert(slurNote('start'), slurRest('start', 'stop'), slurNote('stop'))).toEqual({
+        slurs: [],
+        warnings: [
+          ['unrepresentable:element', 'slur', 2],
+          ['unrepresentable:element', 'slur', 2],
+        ],
+      })
+    })
+
     test('closes the slur a note before it opens', () => {
       expect(convert(slurNote('start'), slurRest('stop'))).toEqual({
         slurs: [],

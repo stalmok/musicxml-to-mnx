@@ -1181,6 +1181,22 @@ describe('the ends a spanner is keyed by', () => {
     expect(warnings.filter((w) => w.code === 'unclosed:spanner')).toEqual([])
   })
 
+  // A slur cannot start and end on one note, so the stop closes the slur
+  // opened before the note, whichever order the document writes the two in.
+  test.each([
+    ['one <notations>', `<notations><slur type="start"/><slur type="stop"/></notations>`],
+    ['two <notations>', slur('start') + slur('stop')],
+  ])('ends a slur and starts the next on a note writing the start first, in %s', (_, middle) => {
+    const { events, warnings } = read(
+      measures(DIVISIONS + note('C', slur('start')) + note('D', middle) + note('E', slur('stop'))),
+    )
+    const [first, second, third] = events as [Event, Event, Event]
+
+    expect(first.slurs).toEqual([{ target: second.id, side: undefined }])
+    expect(second.slurs).toEqual([{ target: third.id, side: undefined }])
+    expect(warnings).toEqual([])
+  })
+
   test('closes the most recently opened slur when two share a number', () => {
     const { events } = read(
       measures(

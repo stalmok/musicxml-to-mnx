@@ -841,14 +841,16 @@ function reportCarriedByUnwritableRest(
   )
   // A slur passing over the rest needs nothing of it.
   const slurEnds = notations.flatMap((block) =>
-    children(block.element, 'slur').flatMap((slur) => {
+    children(block.element, 'slur').filter((slur) => {
       const type = attribute(slur, 'type')
-      if (type !== 'start' && type !== 'stop') return []
+      if (type !== 'start' && type !== 'stop') return false
       block.read(slur)
-      dropSlurEnd(type, slur)
-      return [slur]
+      return true
     }),
   )
+  for (const slur of stopsFirst(slurEnds)) {
+    dropSlurEnd(attribute(slur, 'type') === 'stop' ? 'stop' : 'start', slur)
+  }
   // A note has at most one <stem>.
   const stem = element.child('stem')
   const carried = [...(stem ? [stem] : []), ...marks, ...slurEnds, ...element.children('lyric')]
@@ -1917,6 +1919,16 @@ function startTiedSide(tieds: readonly XmlElement[]): CurveSide | undefined {
 }
 
 /**
+ * A note's slur edges with every stop before every start, whichever order the
+ * document writes them in. A slur cannot start and end on one note, so a stop
+ * closes a slur opened before the note, as a tie's does.
+ */
+function stopsFirst(slurs: readonly XmlElement[]): XmlElement[] {
+  const isStop = (slur: XmlElement) => attribute(slur, 'type') === 'stop'
+  return [...slurs.filter(isStop), ...slurs.filter((slur) => !isStop(slur))]
+}
+
+/**
  * Slurs are matched by the number the source gives them, across the part.
  *
  * Each end records where it stands, because the pairing runs once the whole
@@ -1935,7 +1947,7 @@ function readSlurs(
 ): void {
   const slurs = notations.flatMap((block) => block.children('slur'))
   if (slurs.length === 0) return
-  for (const slur of slurs) {
+  for (const slur of stopsFirst(slurs)) {
     const type = attribute(slur, 'type')
     const number = attribute(slur, 'number') ?? '1'
     // Every edge is read for its side, so the attributes are accounted for
