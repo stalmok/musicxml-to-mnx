@@ -1696,14 +1696,16 @@ export class MeasureBuilder {
    * what the stop closes instead: the source numbers every tuplet 1 unless it
    * nests them, so a dropped start and an open bracket often share a number,
    * and taking the stop from the open bracket would leave it
-   * open to the end of the measure.
+   * open to the end of the measure. A run the ratio alone opened is not a
+   * bracket, and no stop the source wrote is its own.
    *
    * The record is consumed, so a second stop stating the number closes an
    * open bracket as any other stop does.
    */
   closesDroppedTuplet(voice: string | undefined, number: string): boolean {
     const builder = this.#builderFor(voice)
-    if (tupletFrames(builder).some((open) => open.number === number)) return false
+    const named = (open: OpenTuplet) => !open.unbracketed && open.number === number
+    if (tupletFrames(builder).some(named)) return false
 
     const at = builder.droppedTuplets.lastIndexOf(number)
     if (at >= 0) {

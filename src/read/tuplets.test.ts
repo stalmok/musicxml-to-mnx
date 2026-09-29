@@ -2263,6 +2263,29 @@ describe('a tuplet marker on a chord member', () => {
     expect(warnings.map((one) => one.code)).toEqual(['unsupported:element'])
   })
 
+  // A run the ratio alone opens has no bracket in the source, so a stop
+  // written inside it belongs to the start the chord member dropped.
+  test('drops the stop of a dropped start inside a run with no bracket', () => {
+    const rated = (step: string, markers = '') =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>4</duration>` +
+      '<type>eighth</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+      '</time-modification>' +
+      (markers ? `<notations>${markers}</notations>` : '') +
+      '</note>'
+    const { content, warnings } = read(
+      measure(
+        rated('C') +
+          chordMember('<tuplet type="start"/>') +
+          rated('D', '<tuplet type="stop"/>') +
+          rated('E'),
+      ),
+    )
+
+    expect(warnings.map((one) => one.code)).toEqual(['unsupported:element'])
+    expect(content?.map((item) => item.kind === 'tuplet' && item.content.length)).toEqual([3])
+  })
+
   test('drops the stop that matches a start dropped on a chord member', () => {
     const stops = '<tuplet type="stop" number="2"/><tuplet type="stop" number="1"/>'
     const stopsBoth =
