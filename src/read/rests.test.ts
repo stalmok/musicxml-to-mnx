@@ -3,11 +3,10 @@
 // rest.staffPosition, staff steps from the middle line, the same count the
 // clef itself is placed by.
 
+import { readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
 import { WarningCollector } from '../warnings.js'
-import { parseXmlRoot } from '../xml/parse.js'
-import { readScore } from './score.js'
 import { convertMusicXML } from '../index.js'
 
 const TREBLE = '<clef><sign>G</sign><line>2</line></clef>'
@@ -30,7 +29,7 @@ function displayRest(step: string, octave: number): string {
 
 function firstEvent(source: string) {
   const warnings = new WarningCollector()
-  const score = readScore(parseXmlRoot(source), warnings)
+  const score = readValid(source, warnings)
   const item = score.parts[0]?.measures[0]?.sequences[0]?.content[0]
   return { item, warnings: warnings.list() }
 }
@@ -75,14 +74,12 @@ describe('a rest placed on the staff', () => {
 
   test('follows a clef that changes partway through the measure', () => {
     const warnings = new WarningCollector()
-    const score = readScore(
-      parseXmlRoot(
-        inMeasure(
-          '<note><pitch><step>C</step><octave>4</octave></pitch>' +
-            '<duration>4</duration><type>quarter</type></note>' +
-            '<attributes><clef><sign>F</sign><line>4</line></clef></attributes>' +
-            displayRest('D', 3),
-        ),
+    const score = readValid(
+      inMeasure(
+        '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+          '<duration>4</duration><type>quarter</type></note>' +
+          '<attributes><clef><sign>F</sign><line>4</line></clef></attributes>' +
+          displayRest('D', 3),
       ),
       warnings,
     )
@@ -106,15 +103,15 @@ describe('a rest placed on the staff', () => {
   // reported, because the source meant to place it and the place cannot be
   // worked out.
   test.each([
-    ['a step and no octave', '<display-step>G</display-step>'],
-    ['an octave and no step', '<display-octave>4</display-octave>'],
-  ])('reports a rest stating %s', (_what, half) => {
+    ['a step and no octave', '<display-step>G</display-step>', 'display-step'],
+    ['an octave and no step', '<display-octave>4</display-octave>', 'display-octave'],
+  ])('reports a rest stating %s', (_what, half, stated) => {
     const { item, warnings } = firstEvent(
       inMeasure(`<note><rest>${half}</rest><duration>4</duration><type>quarter</type></note>`),
     )
 
     expect(item).toMatchObject({ isRest: true, staffPosition: undefined })
-    expect(warnings.map((w) => w.element)).toEqual(['display-step'])
+    expect(warnings.map((w) => w.element)).toEqual([stated])
   })
 
   test('writes a rest position the spec schema accepts', () => {
@@ -132,7 +129,7 @@ describe('a rest placed on the staff', () => {
         '<display-octave>4</display-octave></rest><duration>4</duration></note>',
     )
     const warnings = new WarningCollector()
-    const score = readScore(parseXmlRoot(source), warnings)
+    const score = readValid(source, warnings)
 
     expect(score.parts[0]?.measures[0]?.sequences[0]?.fullMeasure).toMatchObject({
       staffPosition: -2,

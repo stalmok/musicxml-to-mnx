@@ -114,9 +114,8 @@ function restStaffPosition(
   context: WarningContext,
 ): number | undefined {
   // A rest stating neither is drawn at its default height, which is not a loss.
-  if (!child(restElement, 'display-step') && !child(restElement, 'display-octave')) {
-    return undefined
-  }
+  const stated = child(restElement, 'display-step') ?? child(restElement, 'display-octave')
+  if (!stated) return undefined
 
   const position = displayStaffPosition(restElement, staff, state)
   if (position === undefined) {
@@ -125,7 +124,7 @@ function restStaffPosition(
       "A rest's staff position, given by <display-step> and <display-octave>, needs " +
         'both and a clef in force to place, which this measure does not give.',
       { ...context, line: restElement.line },
-      'display-step',
+      stated.name,
     )
   }
   return position
