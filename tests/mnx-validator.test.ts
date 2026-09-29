@@ -98,6 +98,18 @@ describe('the generated validator', () => {
     )
   })
 
+  // Ajv writes the schema into the code, so its text holds whatever the
+  // schema's strings do.
+  test('compiles a schema whose text mentions require', () => {
+    const dir = workspace(join(ROOT, 'node_modules', '.cache'))
+    writeFileSync(
+      join(dir, 'schema.json'),
+      JSON.stringify({ description: 'require(x)', enum: ['require("ajv/dist/runtime/equal")'] }),
+    )
+
+    expect(validatorCode(join(dir, 'schema.json'))).toContain('require(x)')
+  })
+
   test('imports each helper once', () => {
     const code = esmValidatorCode(
       'const a = require("ajv/dist/runtime/equal").default;' +

@@ -26,7 +26,8 @@ export function esmValidatorCode(code: string): string {
     bindings.set(module, binding)
     return `(${binding}.default.default ?? ${binding}.default)`
   })
-  if (body.includes('require(')) {
+  // A string of the schema, written into the code, escapes its quotes.
+  if (body.includes('require("')) {
     throw new Error('The generated validator loads a module that is not an Ajv runtime helper.')
   }
   const imports = [...bindings].map(
