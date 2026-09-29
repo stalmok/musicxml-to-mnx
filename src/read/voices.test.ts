@@ -321,11 +321,12 @@ describe('a grace note stating no <type>', () => {
   // <beam> states no number for the first level, which is where a beam over
   // a grace note is usually drawn.
   test('reads a beam that states no level as the first one', () => {
-    const { measure: result } = read(
+    const { measure: result, warnings } = read(
       measure(graceNote('<beam>begin</beam>') + graceNote('<beam>end</beam>') + note('C', 1)),
     )
 
     expect(valueOf(result)).toEqual({ base: 'eighth', dots: 0 })
+    expect(warnings[0]?.message).toContain('which its beams draw')
   })
 
   // Eight beams is as many as a stem carries.
@@ -499,6 +500,20 @@ describe('where a grace group takes its time from', () => {
     expect(groupOf(result)?.graceType).toBe('stealPrevious')
     expect(groupOf(result)?.content).toHaveLength(2)
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:grace-time'])
+  })
+
+  // <beam> states no number for the first level.
+  test('keeps a note in the group a beam stating no level joins it to', () => {
+    const { measure: result } = read(
+      measure(
+        graceNote('steal-time-previous="20"', 'D', '<beam>begin</beam>') +
+          graceNote('steal-time-following="33"', 'E', '<beam>end</beam>') +
+          note('C', 1),
+      ),
+    )
+
+    expect(groupOf(result)?.graceType).toBe('stealPrevious')
+    expect(groupOf(result)?.content).toHaveLength(2)
   })
 
   test('takes the side from a note beamed into a group that states none', () => {

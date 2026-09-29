@@ -2158,6 +2158,21 @@ describe('a tuplet marker on a chord member', () => {
     '</time-modification>' +
     `<notations><tuplet type="${type}" number="${number}"/></notations></note>`
 
+  // A marker that states no number is tuplet 1.
+  test('passes over a restatement that leaves out the number 1', () => {
+    const { content, warnings } = read(
+      measure(
+        numbered('C', 'start', '1') +
+          chordMember('<tuplet type="start"/>') +
+          tupletNote('D', 4, 'eighth') +
+          numbered('E', 'stop', '1'),
+      ),
+    )
+
+    expect(warnings).toEqual([])
+    expect(content?.map((item) => item.kind)).toEqual(['tuplet'])
+  })
+
   test('reports a start whose number differs from the marker the chord carries', () => {
     const { warnings } = read(
       measure(
@@ -2222,6 +2237,24 @@ describe('a tuplet marker on a chord member', () => {
           chordMember('<tuplet type="start" number="2"/>') +
           tupletNote('D', 4, 'eighth') +
           numbered('E', 'stop', '1') +
+          after,
+      ),
+    )
+
+    expect(content?.map((item) => item.kind)).toEqual(['tuplet', 'event'])
+    expect(warnings.map((one) => one.code)).toEqual(['unsupported:element'])
+  })
+
+  test('swallows a stop numbered 1 after a dropped start that states no number', () => {
+    const after =
+      '<note><pitch><step>G</step><octave>4</octave></pitch><duration>12</duration>' +
+      '<type>quarter</type><notations><tuplet type="stop" number="1"/></notations></note>'
+    const { content, warnings } = read(
+      measure(
+        numbered('C', 'start', '2') +
+          chordMember('<tuplet type="start"/>') +
+          tupletNote('D', 4, 'eighth') +
+          numbered('E', 'stop', '2') +
           after,
       ),
     )
