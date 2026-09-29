@@ -92,6 +92,11 @@ export interface OpenTuplet {
    * ratio counts is what says where the tuplet ends.
    */
   unbracketed: boolean
+  /**
+   * The line of the note it opened on. A run with no bracket has no stop, so
+   * it is reported here.
+   */
+  openLine: number
   /** The list this bracket sits in, for dropping it from where it stands. */
   within: SequenceItem[]
   /** The brackets that closed inside this one, for its claim to carry. */

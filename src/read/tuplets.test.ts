@@ -3213,6 +3213,20 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
     expect(warnings[0]?.element).toBe('tuplet')
   })
 
+  // A run with no bracket has no stop, so it is reported where it opened,
+  // not at the note that ends it.
+  test('reports a run it cannot draw at its first note', () => {
+    const plain =
+      '<note><pitch><step>E</step><octave>4</octave></pitch><duration>12</duration>' +
+      '<type>quarter</type></note>'
+    const source = measure(['', rated('C', 4, 'eighth'), rated('D', 4, 'eighth'), plain].join('\n'))
+    const { warnings } = read(source)
+
+    expect(warnings.map((w) => [w.code, w.context.line])).toEqual([
+      ['unrepresentable:tuplet-ratio', 2],
+    ])
+  })
+
   test('closes a group the measure ends inside rather than refusing', () => {
     const source = measure(rated('C', 4, 'eighth') + rated('D', 4, 'eighth'))
     const { content, warnings } = read(source)

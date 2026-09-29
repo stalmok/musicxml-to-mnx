@@ -1118,6 +1118,7 @@ export class MeasureBuilder {
             : undefined,
         openEnd,
         unbracketed: false,
+        openLine: line,
         within,
         children: [],
         skips: [],
@@ -1134,6 +1135,7 @@ export class MeasureBuilder {
     voice: string | undefined,
     inner: NoteValueQuantity,
     outer: NoteValueQuantity,
+    line: number,
   ): void {
     const builder = this.#builderFor(voice)
     // Time this voice passed over in silence belongs before the tuplet, not
@@ -1157,6 +1159,7 @@ export class MeasureBuilder {
       stated: undefined,
       openEnd: builder.end,
       unbracketed: true,
+      openLine: line,
       within,
       children: [],
       skips: [],
@@ -1794,6 +1797,8 @@ export class MeasureBuilder {
       throw new MusicXMLError('A tuplet closes inside a two-note tremolo.', { path, line })
     }
     builder.open.pop()
+    // A run with no bracket has no stop, so it is reported where it opened.
+    const at = closed.unbracketed ? closed.openLine : line
 
     const { tuplet } = closed
     // A run the ratio alone opened on a note that turned out not to be an
@@ -1817,7 +1822,7 @@ export class MeasureBuilder {
           'over grace notes alone does. MNX states a tuplet as a written length against the ' +
           'time it is played in, so the bracket is not converted and what it holds is ' +
           'written as it stands.',
-        { ...context, line },
+        { ...context, line: at },
         'tuplet',
       )
       return closed.number
@@ -1842,7 +1847,7 @@ export class MeasureBuilder {
       children: closed.children,
       skips: closed.skips,
       place: warnings.reserve(),
-      line,
+      line: at,
     }
     // A bracket still open around this one holds the claim, so that the two
     // settle together: this one's outer is written in the frame that one

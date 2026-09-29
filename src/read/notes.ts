@@ -590,7 +590,7 @@ function openTupletsAndTremolo(
   // close above ends any run this note does not belong in, so what is open
   // here is the run this note joins, or nothing.
   if (!graceElement && rated && !builder.insideImpliedTuplet(voice)) {
-    builder.openImpliedTuplet(voice, rated.inner, rated.outer)
+    builder.openImpliedTuplet(voice, rated.inner, rated.outer, element.line)
   }
 
   if (starts.length > 0) {
