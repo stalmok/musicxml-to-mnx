@@ -183,13 +183,7 @@ export type MNXFermataSymbol =
 
 /** How long a fermata holds, where a document says. */
 export type MNXFermataDuration =
-  | 'auto'
-  | 'none'
-  | 'veryLong'
-  | 'long'
-  | 'normal'
-  | 'short'
-  | 'veryShort'
+  'auto' | 'none' | 'veryLong' | 'long' | 'normal' | 'short' | 'veryShort'
 
 export interface MNXFermata {
   symbol?: MNXFermataSymbol
