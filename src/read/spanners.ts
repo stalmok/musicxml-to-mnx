@@ -66,10 +66,12 @@ interface SlurStopAt {
 
 /**
  * One end of a slur: a start carries the slur it opens, and a stop names the
- * event it is written on. No reader drops a slur start the way it drops a
- * hairpin's, so a start with nothing to join cannot be built.
+ * event it is written on. An end on a rest no note value writes has no event
+ * to name, and is dropped.
  */
-export type SlurEnd = StartEnd<OpenSlur> | StopEnd<SlurStopAt>
+export type SlurEnd = SpanEnd<OpenSlur, SlurStopAt> | DroppedStopEnd
+type SlurStart = Extract<SlurEnd, { kind: 'start' }>
+type SlurStop = Extract<SlurEnd, { kind: 'stop' }>
 
 /**
  * Wording written at a hairpin's closing edge. It waits until the pairing
@@ -169,6 +171,16 @@ interface DroppedStartEnd extends EndPlace {
 export interface StopEnd<S> extends EndPlace {
   kind: 'stop'
   stop: S
+  dropped?: undefined
+}
+
+/**
+ * A stop the reader dropped and already reported. It still closes the start
+ * it pairs with, so that start takes no later stop.
+ */
+interface DroppedStopEnd extends EndPlace {
+  kind: 'stop'
+  dropped: true
 }
 
 /**
@@ -210,7 +222,7 @@ export type SamePoint = 'stop-first' | 'as-written'
  * backwards-stop, not joined.
  */
 export function pairSpans<T, S>(
-  ends: readonly SpanEnd<T, S>[],
+  ends: readonly (SpanEnd<T, S> | DroppedStopEnd)[],
   join: (payload: T, stop: StopEnd<S>) => void,
   report: (reason: 'orphan-stop' | 'unclosed-start' | 'backwards-stop', end: SpanEnd<T, S>) => void,
   atSamePoint: SamePoint = 'stop-first',
@@ -226,12 +238,12 @@ export function pairSpans<T, S>(
     const waiting = open.get(end.number) ?? []
     const started = lastOpenedIn(waiting, end)
     if (!started) {
-      report('orphan-stop', end)
+      if (!end.dropped) report('orphan-stop', end)
       continue
     }
     waiting.splice(waiting.indexOf(started), 1)
-    // The drop was reported where the start was read; the stop goes with it.
-    if (started.dropped) continue
+    // The drop was reported where the end was read; the other end goes with it.
+    if (started.dropped || end.dropped) continue
 
     // The stop's cursor sits past the start, or it would not have paired, but
     // the point it covers can still fall before it, when the two ends
@@ -308,11 +320,9 @@ export function measureResidue(ends: readonly SlurEnd[]): 'unclosed' | 'orphan' 
  * accountsForItself is true: nesting never goes past one deep, so each start
  * closes on the very next stop.
  */
-function ownPairs(
-  ends: readonly SlurEnd[],
-): { start: StartEnd<OpenSlur>; stop: StopEnd<SlurStopAt> }[] {
-  const pairs: { start: StartEnd<OpenSlur>; stop: StopEnd<SlurStopAt> }[] = []
-  let open: StartEnd<OpenSlur> | undefined
+function ownPairs(ends: readonly SlurEnd[]): { start: SlurStart; stop: SlurStop }[] {
+  const pairs: { start: SlurStart; stop: SlurStop }[] = []
+  let open: SlurStart | undefined
   for (const end of inTimeOrder(ends, 'as-written')) {
     if (end.kind === 'start') {
       open = end
@@ -670,6 +680,30 @@ export class SpannerResolver {
   }
 
   /**
+   * Notes a slur end the reader dropped and already reported, so it still
+   * closes or opens its slur in pairing.
+   */
+  dropSlurEnd(
+    kind: 'start' | 'stop',
+    number: string,
+    voice: string | undefined,
+    measure: number,
+    position: Fraction,
+    context: WarningContext,
+  ): void {
+    this.#slurEnds.push({
+      kind,
+      number,
+      measure,
+      position,
+      voice,
+      covers: position,
+      dropped: true,
+      context,
+    })
+  }
+
+  /**
    * Joins every slur in the part, once both ends of all of them are in.
    *
    * Paired in time order, not as the ends are met, because a measure holding
@@ -735,7 +769,10 @@ export class SpannerResolver {
     // leaves none over, so ownPairs reads its pairs straight off it. There is
     // nothing left over for the pass across the part, and nothing to report.
     for (const ends of ownEnds) {
-      for (const pair of ownPairs(ends)) join(pair.start.payload, pair.stop)
+      for (const { start, stop } of ownPairs(ends)) {
+        // The drop was reported where the end was read.
+        if (!start.dropped && !stop.dropped) join(start.payload, stop)
+      }
     }
 
     // Back in the order the document has, because the streams gave their ends

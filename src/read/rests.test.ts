@@ -1112,6 +1112,75 @@ describe('a rest filling a measure a grace note leads into', () => {
     ])
   })
 
+  // The slur end is lost with the rest, but it still ends or begins its slur,
+  // so no other end in the part pairs with one it closed or opened.
+  describe('a slur end on the rest', () => {
+    const slurNote = (type: string) =>
+      '<note><pitch><step>C</step><octave>5</octave></pitch><duration>4</duration>' +
+      '<type>quarter</type><voice>1</voice>' +
+      `<notations><slur type="${type}" number="1"/></notations></note>` +
+      '<forward><duration>16</duration></forward>'
+    const slurRest = (...types: string[]) =>
+      irregularRest.replace(
+        '</note>',
+        `<notations>${types.map((type) => `<slur type="${type}" number="1"/>`).join('')}` +
+          '</notations></note>',
+      )
+    const measures = (...bodies: string[]) =>
+      irregular(bodies[0] ?? '').replace(
+        '</measure></part>',
+        bodies
+          .slice(1)
+          .map((body, index) => `</measure><measure number="${String(index + 2)}">${body}`)
+          .join('') + '</measure></part>',
+      )
+    const convert = (...bodies: string[]) => {
+      const { mnx, warnings } = convertValid(measures(...bodies))
+      return {
+        slurs: mnx.parts[0]?.measures.flatMap((measure) =>
+          measure.sequences.flatMap((sequence) =>
+            sequence.content.flatMap((item) => ('slurs' in item ? (item.slurs ?? []) : [])),
+          ),
+        ),
+        warnings: warnings.map((w) => [w.code, w.element, w.context.measure]),
+      }
+    }
+
+    test('closes a slur and opens the next, writing neither', () => {
+      expect(convert(slurNote('start'), slurRest('stop', 'start'), slurNote('stop'))).toEqual({
+        slurs: [],
+        warnings: [
+          ['unrepresentable:element', 'slur', 2],
+          ['unrepresentable:element', 'slur', 2],
+        ],
+      })
+    })
+
+    test('closes the slur a note before it opens', () => {
+      expect(convert(slurNote('start'), slurRest('stop'))).toEqual({
+        slurs: [],
+        warnings: [['unrepresentable:element', 'slur', 2]],
+      })
+    })
+
+    test('opens the slur a note after it closes', () => {
+      expect(convert(slurRest('start'), slurNote('stop'))).toEqual({
+        slurs: [],
+        warnings: [['unrepresentable:element', 'slur', 1]],
+      })
+    })
+
+    test('leaves a later stop with no start as an orphan', () => {
+      expect(convert(slurNote('start'), slurRest('stop'), slurNote('stop'))).toEqual({
+        slurs: [],
+        warnings: [
+          ['unrepresentable:element', 'slur', 2],
+          ['unclosed:spanner', 'slur', 3],
+        ],
+      })
+    })
+  })
+
   // A hidden rest is time with nothing drawn in it, which is what a space is.
   const hidden = (inner = '') =>
     '<note print-object="no"><rest measure="yes"/><duration>20</duration><voice>1</voice>' +

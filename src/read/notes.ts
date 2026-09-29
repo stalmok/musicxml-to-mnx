@@ -378,7 +378,7 @@ export function readNote(
     fills &&
     !((fills.needsEvent || carriesMarking || restStem !== undefined) && fills.canStayEvent)
   ) {
-    setMeasureRest(note, fills, state, builder, warnings, context, path)
+    setMeasureRest(note, fills, state, builder, measureIndex, warnings, context, path)
     return
   }
   if (restElement) reportHiddenNote()
@@ -709,6 +709,7 @@ function setMeasureRest(
   fills: FillsMeasure,
   state: PartState,
   builder: MeasureBuilder,
+  measureIndex: number,
   warnings: WarningCollector,
   context: WarningContext,
   path: DocumentPath,
@@ -717,7 +718,13 @@ function setMeasureRest(
   // A beam over a rest alone is not a beam, so a source stating one says
   // nothing this loses.
   element.skip('beam')
-  if (!fills.canStayEvent) reportCarriedByUnwritableRest(element, notations, warnings, context)
+  if (!fills.canStayEvent) {
+    const at = builder.position()
+    reportCarriedByUnwritableRest(element, notations, warnings, context, (type, slur) => {
+      const number = attribute(slur, 'number') ?? '1'
+      state.spanners.dropSlurEnd(type, number, voice, measureIndex, at, context)
+    })
+  }
 
   // MNX's rest filling the measure states no length, so how long the source
   // drew this one is not carried. Only a rest that reached here on its own
@@ -822,6 +829,7 @@ function reportCarriedByUnwritableRest(
   notations: readonly ElementReader[],
   warnings: WarningCollector,
   context: WarningContext,
+  dropSlurEnd: (type: 'start' | 'stop', slur: XmlElement) => void,
 ): void {
   const marks = [...writtenMarks(notations, warnings, context)].flatMap(
     ({ marking, found, block }) => {
@@ -837,6 +845,7 @@ function reportCarriedByUnwritableRest(
       const type = attribute(slur, 'type')
       if (type !== 'start' && type !== 'stop') return []
       block.read(slur)
+      dropSlurEnd(type, slur)
       return [slur]
     }),
   )
