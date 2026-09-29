@@ -717,6 +717,7 @@ function setMeasureRest(
   // A beam over a rest alone is not a beam, so a source stating one says
   // nothing this loses.
   element.skip('beam')
+  if (!fills.canStayEvent) reportCarriedByUnwritableRest(element, notations, warnings, context)
 
   // MNX's rest filling the measure states no length, so how long the source
   // drew this one is not carried. Only a rest that reached here on its own
@@ -809,6 +810,51 @@ function setMeasureRest(
     element.line,
   )
   if (lasts) builder.passOver(lasts)
+}
+
+/**
+ * Reports what only an event holds on a rest no note value writes as one.
+ * MNX states that rest on the sequence, or as a space beside grace notes,
+ * and neither carries a stem, a mark, a slur end or a lyric.
+ */
+function reportCarriedByUnwritableRest(
+  element: ElementReader,
+  notations: readonly ElementReader[],
+  warnings: WarningCollector,
+  context: WarningContext,
+): void {
+  const marks = [...writtenMarks(notations, warnings, context)].flatMap(
+    ({ marking, found, block }) => {
+      // A mark MNX cannot state was reported as it was read.
+      if (marking === undefined) return []
+      block.read(found)
+      return [found]
+    },
+  )
+  // A slur passing over the rest needs nothing of it.
+  const slurEnds = notations.flatMap((block) =>
+    children(block.element, 'slur').flatMap((slur) => {
+      const type = attribute(slur, 'type')
+      if (type !== 'start' && type !== 'stop') return []
+      block.read(slur)
+      return [slur]
+    }),
+  )
+  // A note has at most one <stem>.
+  const stem = element.child('stem')
+  const carried = [...(stem ? [stem] : []), ...marks, ...slurEnds, ...element.children('lyric')]
+  for (const found of carried) {
+    // The one warning accounts for the element whole.
+    for (const name of Object.keys(found.attributes)) attribute(found, name)
+    warnings.add(
+      'unrepresentable:element',
+      `A <${found.name}> on a rest that fills the measure is not converted. No note value ` +
+        'writes the rest as an event, and neither the rest MNX states on the sequence nor a ' +
+        'space written for it carries one.',
+      { ...context, line: found.line },
+      found.name,
+    )
+  }
 }
 
 /** A note carrying <chord>, joined to the event before it. */

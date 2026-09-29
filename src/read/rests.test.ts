@@ -342,7 +342,7 @@ describe('a voice holding only a rest that fills its measure', () => {
 
     expect(mnx.parts[0]?.measures[0]?.sequences[0]?.fullMeasure).toEqual({})
     expect(warnings.map((warning) => [warning.code, warning.element])).toEqual([
-      ['unsupported:element', 'stem'],
+      ['unrepresentable:element', 'stem'],
     ])
   })
 
@@ -358,7 +358,7 @@ describe('a voice holding only a rest that fills its measure', () => {
 
     expect(mnx.parts[0]?.measures[0]?.sequences[0]?.fullMeasure).toEqual({})
     expect(warnings.map((warning) => [warning.code, warning.element])).toEqual([
-      ['unsupported:element', 'articulations'],
+      ['unrepresentable:element', 'accent'],
     ])
   })
 })
@@ -1053,6 +1053,63 @@ describe('a rest filling a measure a grace note leads into', () => {
 
     expect(warnings.map((w) => [w.code, w.element, w.context.measure])).toEqual(reported)
     expect(warnings[0]?.message).toContain('nor a fermata or a position stated on it')
+  })
+
+  // Neither MNX's rest on the sequence nor a space carries what only an event
+  // holds, and no note value writes the rest as an event.
+  test.each([
+    ['a stem', '<stem>up</stem>', 'stem'],
+    [
+      'a mark',
+      '<notations><articulations><staccato placement="above"/></articulations></notations>',
+      'staccato',
+    ],
+    ['a slur', '<notations><slur type="start" number="1" placement="above"/></notations>', 'slur'],
+    ['the end of a slur', '<notations><slur type="stop" number="1"/></notations>', 'slur'],
+    ['a lyric', '<lyric number="1"><syllabic>single</syllabic><text>la</text></lyric>', 'lyric'],
+  ])('reports %s on the rest as having no home', (_, inner, element) => {
+    const rest = irregularRest.replace('</note>', `${inner}</note>`)
+    const carried = ['unrepresentable:element', element, 1]
+
+    expect(kinds(rest).warnings).toEqual([carried])
+    expect(kinds(grace + rest).warnings).toEqual([carried, ...reported])
+    expect(kinds(rest + grace).warnings).toEqual([carried, ...reported])
+  })
+
+  test('says why what the rest carries has no home', () => {
+    const { warnings } = convertValid(
+      irregular(irregularRest.replace('</note>', '<stem>up</stem></note>')),
+    )
+
+    expect(warnings[0]?.message).toBe(
+      'A <stem> on a rest that fills the measure is not converted. No note value writes the ' +
+        'rest as an event, and neither the rest MNX states on the sequence nor a space ' +
+        'written for it carries one.',
+    )
+  })
+
+  test('reports a mark MNX cannot state once', () => {
+    const rest = irregularRest.replace(
+      '</note>',
+      '<notations><ornaments><tremolo type="single">9</tremolo></ornaments></notations></note>',
+    )
+
+    expect(kinds(rest).warnings).toEqual([['unrepresentable:element', 'tremolo', 1]])
+  })
+
+  // A slur passing over the rest needs nothing of it.
+  test('reports only what the rest carries beside what it cannot', () => {
+    const rest = irregularRest.replace(
+      '</note>',
+      '<notations><articulations><staccato/><doit/></articulations>' +
+        '<slur type="continue" number="1"/></notations></note>',
+    )
+
+    expect(kinds(rest).warnings).toEqual([
+      ['unrepresentable:element', 'staccato', 1],
+      ['unsupported:element', 'slur', 1],
+      ['unsupported:element', 'doit', 1],
+    ])
   })
 
   // A hidden rest is time with nothing drawn in it, which is what a space is.
