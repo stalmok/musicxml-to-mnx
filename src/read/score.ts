@@ -910,7 +910,8 @@ function readPart(
       'unresolved:part-id',
       `The part list has no entry for part ${id}.`,
       { part: id, line: element.line },
-      'score-part',
+      'part',
+      'id',
     )
   }
 

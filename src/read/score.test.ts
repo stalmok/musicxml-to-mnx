@@ -215,6 +215,7 @@ describe('parts', () => {
     )
 
     expect(warnings.map((w) => w.message)).toEqual(['The part list has no entry for part P9.'])
+    expect(warnings.map((w) => [w.element, w.attribute])).toEqual([['part', 'id']])
   })
 })
 
