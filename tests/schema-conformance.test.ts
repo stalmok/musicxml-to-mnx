@@ -445,6 +445,8 @@ const ATTRIBUTE_HOMES: Readonly<Record<string, string>> = {
   'measure implicit': 'measure-global',
 }
 
+const HIDING = ['visible', 'invisible', 'hidden', 'print-object']
+
 /** Attributes whose comment claims the schema has no such concept anywhere. */
 const ATTRIBUTES_NOWHERE: Readonly<Record<string, readonly string[]>> = {
   // No cue and no size concept.
@@ -453,6 +455,13 @@ const ATTRIBUTES_NOWHERE: Readonly<Record<string, readonly string[]>> = {
   'sound damper-pedal': ['pedal'],
   'sound soft-pedal': ['pedal'],
   'sound sostenuto-pedal': ['pedal'],
+  // No visibility of any kind.
+  'note print-object': HIDING,
+  'notations print-object': HIDING,
+  'key print-object': HIDING,
+  'time print-object': HIDING,
+  'ending print-object': HIDING,
+  'lyric print-object': HIDING,
   // The same fact <staff-tuning>, <capo> and <fret> rest on: no tablature.
   // <string> is left out, because the schema's "string" is the JSON type, as
   // ELEMENT_COLLISIONS records.

@@ -14,9 +14,9 @@ import type { XmlElement } from '../xml/parse.js'
 import { attribute } from '../xml/tree.js'
 
 /**
- * Report an element the source hides with print-object="no", where MNX has no
- * way to mark it invisible, so it is drawn. Elements with a home for their
- * invisibility, such as a part name or a clef, honour it and do not call this.
+ * Report an element the source hides with print-object="no", which is drawn
+ * anyway. Elements with a home for their invisibility, such as a part name or
+ * a clef, honour it and do not call this.
  */
 export function reportHidden(
   element: XmlElement,
@@ -25,10 +25,15 @@ export function reportHidden(
   holds?: string,
 ): void {
   if (attribute(element, 'print-object') !== 'no') return
+  const rest = element.name === 'note' && element.children.some((one) => one.name === 'rest')
+  // A hidden rest is time with nothing drawn in it, which a space holds.
+  const code = rest ? 'unsupported:attribute' : attributeLoss(element.name, 'print-object').code
   warnings.add(
-    'unrepresentable:attribute',
-    `A <${element.name}> hidden with print-object="no" is drawn anyway, because MNX cannot ` +
-      'mark it invisible.' +
+    code,
+    `A <${element.name}> hidden with print-object="no" is drawn anyway` +
+      (rest
+        ? '. Writing it as a space is not converted yet.'
+        : ', because MNX cannot mark it invisible.') +
       // Named so a consumer can tell what kind of notation the hiding
       // covers without reading the source.
       (holds !== undefined ? ` The block holds <${holds}>.` : ''),
@@ -200,6 +205,14 @@ export const NO_HOME_ATTRIBUTES: ReadonlySet<string> = new Set([
   'sound damper-pedal',
   'sound soft-pedal',
   'sound sostenuto-pedal',
+  // An element hidden with print-object="no". The schema has no visibility
+  // of any kind. A hidden rest is not listed: a space holds it.
+  'note print-object',
+  'notations print-object',
+  'key print-object',
+  'time print-object',
+  'ending print-object',
+  'lyric print-object',
   // Plucked rather than bowed. The schema's event-markings are accent, bow
   // direction, breath, caesura, soft accent, spiccato, staccatissimo,
   // staccato, stress, strong accent, tenuto, tremolo and unstress; nothing

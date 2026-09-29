@@ -169,11 +169,18 @@ describe('an element hidden with print-object="no"', () => {
       .map((warning) => [warning.code, warning.element])
 
   test('reports a hidden note', () => {
+    expect(hidden(measure(note('').replace('<note>', '<note print-object="no">')))).toEqual([
+      ['unrepresentable:attribute', 'note'],
+    ])
+  })
+
+  // A hidden rest is time with nothing drawn in it, which a space holds.
+  test('reports a hidden rest as not converted yet', () => {
     expect(
       hidden(
         measure('<note print-object="no"><rest/><duration>4</duration><type>quarter</type></note>'),
       ),
-    ).toEqual([['unrepresentable:attribute', 'note']])
+    ).toEqual([['unsupported:attribute', 'note']])
   })
 
   test('reports a hidden time signature', () => {
