@@ -53,6 +53,7 @@ import type { PartState } from './state.js'
 import { soundingPitch } from './transposition.js'
 import { entriesOf, recogniser } from './tables.js'
 import { tieKey } from './spanners.js'
+import type { TieElement } from './spanners.js'
 import { MeasureBuilder } from './voices.js'
 import type { PlacedEvent } from './voices.js'
 import type { TupletDisplaySettings } from './tuplets.js'
@@ -1709,11 +1710,12 @@ function readTies(
   // because an edge comes from <tie>, from <tied>, or from both, and the note
   // they sit on is the one thing that names all three.
   const where = { ...context, line: element.element.line }
-  for (const edge of tieEdges(ties, tieds, warnings, context)) {
+  const { stated, edges } = tieEdges(ties, tieds, warnings, context)
+  for (const edge of edges) {
     if (edge === 'stop') {
-      state.spanners.stopTie(note, pairedBy, voice, measureIndex, at, grace, where)
+      state.spanners.stopTie(note, pairedBy, voice, measureIndex, at, grace, stated, where)
     } else {
-      state.spanners.startTie(note, pairedBy, voice, side, measureIndex, at, grace, where)
+      state.spanners.startTie(note, pairedBy, voice, side, measureIndex, at, grace, stated, where)
     }
   }
 
@@ -1739,7 +1741,7 @@ function tieEdges(
   tieds: readonly XmlElement[],
   warnings: WarningCollector,
   context: WarningContext,
-): ('start' | 'stop')[] {
+): { stated: TieElement; edges: ('start' | 'stop')[] } {
   let starts = 0
   let stops = 0
   for (const tie of ties) {
@@ -1758,7 +1760,8 @@ function tieEdges(
 
   // Read from <tied> only where no <tie> stated an edge. A note whose only
   // <tie> is a let-ring still states its drawn tie in <tied>.
-  if (starts === 0 && stops === 0) {
+  const stated = starts === 0 && stops === 0 ? 'tied' : 'tie'
+  if (stated === 'tied') {
     for (const tied of tieds) {
       const type = attribute(tied, 'type')
       // A "continue" is the middle of a chain, which <tie> writes as a stop
@@ -1783,7 +1786,10 @@ function tieEdges(
   // in. A note is the middle of a chain only one way round: it ends the tie
   // before it and then starts the next. Taken as written, a note stating its
   // start first would close that tie and be tied to itself.
-  return [...Array<'stop'>(stops).fill('stop'), ...Array<'start'>(starts).fill('start')]
+  return {
+    stated,
+    edges: [...Array<'stop'>(stops).fill('stop'), ...Array<'start'>(starts).fill('start')],
+  }
 }
 
 // The side a tie is drawn on, from its <tied> edges. MNX's tie states one

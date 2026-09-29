@@ -32,10 +32,14 @@ interface OpenTie {
   note: TieTarget
   /** The side the tie is drawn on, where the start states it. */
   side: CurveSide | undefined
+  stated: TieElement
 }
 
+/** The element a tie's edge is written with. */
+export type TieElement = 'tie' | 'tied'
+
 /** One end of a tie, and on a stop the note it is written on. */
-type TieEnd = StartEnd<OpenTie> | StopEnd<{ note: TieTarget }>
+type TieEnd = StartEnd<OpenTie> | StopEnd<{ note: TieTarget; stated: TieElement }>
 
 /** An octave shift that has begun, waiting to learn where it stops. */
 export interface OpenOttava {
@@ -508,6 +512,7 @@ export class SpannerResolver {
     measure: number,
     position: Fraction,
     grace: boolean,
+    stated: TieElement,
     context: WarningContext,
   ): void {
     this.#tieEnds.push({
@@ -518,7 +523,7 @@ export class SpannerResolver {
       voice,
       grace,
       covers: position,
-      payload: { note, side },
+      payload: { note, side, stated },
       context,
     })
   }
@@ -531,6 +536,7 @@ export class SpannerResolver {
     measure: number,
     position: Fraction,
     grace: boolean,
+    stated: TieElement,
     context: WarningContext,
   ): void {
     this.#tieEnds.push({
@@ -542,7 +548,7 @@ export class SpannerResolver {
       grace,
       covers: position,
       context,
-      stop: { note },
+      stop: { note, stated },
     })
   }
 
@@ -582,7 +588,7 @@ export class SpannerResolver {
           'unclosed:spanner',
           'A tie ends on a note where none had started, and is not carried over.',
           end.context,
-          'tie',
+          end.stop.stated,
         )
         continue
       }
@@ -607,7 +613,7 @@ export class SpannerResolver {
           'unclosed:spanner',
           'A tie starts on a note that nothing ties to, and is not carried over.',
           start.context,
-          'tie',
+          start.payload.stated,
         )
       }
     }

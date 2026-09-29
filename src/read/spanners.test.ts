@@ -331,6 +331,17 @@ describe('a tie stated only as <tied>', () => {
     expect(second?.ties).toEqual([])
   })
 
+  test('names <tied> where an edge of its own finds no other', () => {
+    const { warnings } = read(
+      measures(DIVISIONS + note('C', tiedOnly('start')) + note('D', tiedOnly('stop'))),
+    )
+
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([
+      ['unclosed:spanner', 'tied'],
+      ['unclosed:spanner', 'tied'],
+    ])
+  })
+
   // MusicXML writes the middle of a chain as one "continue", where <tie>
   // writes a stop and a start.
   test('follows a chain through a note that continues it', () => {
