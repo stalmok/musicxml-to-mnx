@@ -227,7 +227,7 @@ describe('fermatas', () => {
     const { events, warnings } = read(note('<fermata>wibble</fermata>'))
 
     expect(events[0]?.fermata?.symbol).toBeUndefined()
-    expect(warnings.map((w) => w.element)).toEqual(['fermata'])
+    expect(warnings.map((w) => [w.element, w.context.measure])).toEqual([['fermata', 1]])
   })
 
   // MusicXML allows one per staff of a part, and MNX states one per event.
@@ -569,6 +569,43 @@ describe('marks on the notes of a chord', () => {
     expect(warnings.map((w) => [w.code, w.element, w.context.measure])).toEqual([
       ['unrepresentable:element', 'tremolo', 1],
       ['unrepresentable:element', 'tremolo', 1],
+    ])
+  })
+})
+
+// MNX states the fermata on the event, and exporters write one over a chord
+// by writing it on every note of it.
+describe('a fermata on the notes of a chord', () => {
+  const chord = (first: string, other: string) =>
+    note(first) +
+    '<note><chord/><pitch><step>E</step><octave>4</octave></pitch><duration>4</duration>' +
+    `<type>quarter</type><notations>${other}</notations></note>`
+
+  test.each([
+    ['one that says only that it is there', '<fermata/>'],
+    ['a shaped one', '<fermata>angled</fermata>'],
+    ['one facing down on a side', '<fermata type="inverted" placement="below">square</fermata>'],
+  ])('reads %s every note carries as the chord’s own', (_, fermata) => {
+    const { events, warnings } = read(chord(fermata, fermata))
+
+    expect(events[0]?.fermata).toEqual(read(note(fermata)).events[0]?.fermata)
+    expect(warnings).toEqual([])
+  })
+
+  test.each([
+    ['only the other note carries', '', '<fermata/>'],
+    ['the other note draws with another shape', '<fermata/>', '<fermata>square</fermata>'],
+    ['the other note faces another way', '<fermata/>', '<fermata type="inverted"/>'],
+    ['the other note draws on another side', '<fermata/>', '<fermata placement="below"/>'],
+    ['the other note draws with a shape MNX lacks', '<fermata>x</fermata>', '<fermata>y</fermata>'],
+    ['the other note draws a second', '<fermata/>', '<fermata/><fermata/>'],
+  ])('reports a fermata %s', (_, first, other) => {
+    const { events, warnings } = read(chord(first, other))
+    const own = read(note(first))
+
+    expect(events[0]?.fermata).toEqual(own.events[0]?.fermata)
+    expect(warnings.slice(own.warnings.length).map((w) => [w.code, w.element])).toEqual([
+      ['unsupported:element', 'fermata'],
     ])
   })
 })

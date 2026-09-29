@@ -912,6 +912,7 @@ function readChordMember(
     readArpeggio(notations, placed, builder, undefined)
   }
   readChordMemberMarkings(notations, placed.event.markings, warnings, context)
+  readChordMemberFermata(notations, placed.event.fermata)
   readTies(
     element,
     chordNote,
@@ -1507,8 +1508,7 @@ export function readFermataAt(
   }
 
   const shape = trimmedText(first)
-  const symbol = FERMATA_SYMBOLS.get(shape)
-  if (shape !== '' && !symbol) {
+  if (shape !== '' && !FERMATA_SYMBOLS.has(shape)) {
     warnings.add(
       'unsupported:element',
       `A <fermata> of "${shape}" is not converted yet.`,
@@ -1516,13 +1516,42 @@ export function readFermataAt(
       'fermata',
     )
   }
+  return fermataOf(first)
+}
 
+function fermataOf(found: XmlElement): Fermata {
   // MusicXML says which way it faces with "upright" and "inverted".
-  const type = attribute(first, 'type')
+  const type = attribute(found, 'type')
   return {
-    symbol,
+    symbol: FERMATA_SYMBOLS.get(trimmedText(found)),
     pointing: type === 'upright' ? 'up' : type === 'inverted' ? 'down' : undefined,
-    placement: placementOf(first),
+    placement: placementOf(found),
+  }
+}
+
+/**
+ * The fermata written on a note of a chord, against the event's. The first,
+ * where it is the same as the chord's own, is read; any other is reported.
+ */
+function readChordMemberFermata(
+  notations: readonly ElementReader[],
+  chord: Fermata | undefined,
+): void {
+  for (const block of notations) {
+    const first = children(block.element, 'fermata')[0]
+    if (!first) continue
+    // A shape MNX lacks is not converted, so it restates nothing.
+    const shape = trimmedText(first)
+    if (!chord || (shape !== '' && !FERMATA_SYMBOLS.has(shape))) return
+    const fermata = fermataOf(first)
+    if (
+      fermata.symbol === chord.symbol &&
+      fermata.pointing === chord.pointing &&
+      fermata.placement === chord.placement
+    ) {
+      block.read(first)
+    }
+    return
   }
 }
 
