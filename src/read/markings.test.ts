@@ -592,6 +592,14 @@ describe('a fermata on the notes of a chord', () => {
     expect(warnings).toEqual([])
   })
 
+  // An empty <fermata> states no shape, which MNX reads as normal.
+  test.each([
+    ['<fermata/>', '<fermata>normal</fermata>'],
+    ['<fermata>normal</fermata>', '<fermata/>'],
+  ])('reads %s restated as %s', (first, other) => {
+    expect(read(chord(first, other)).warnings).toEqual([])
+  })
+
   test.each([
     ['only the other note carries', '', '<fermata/>'],
     ['the other note draws with another shape', '<fermata/>', '<fermata>square</fermata>'],

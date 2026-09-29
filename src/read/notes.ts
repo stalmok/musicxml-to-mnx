@@ -1616,7 +1616,8 @@ function readChordMemberFermata(
     if (!chord || (shape !== '' && !FERMATA_SYMBOLS.has(shape))) return
     const fermata = fermataOf(first)
     if (
-      fermata.symbol === chord.symbol &&
+      // A fermata stating no shape is a normal one.
+      (fermata.symbol ?? 'normal') === (chord.symbol ?? 'normal') &&
       fermata.pointing === chord.pointing &&
       fermata.placement === chord.placement
     ) {
