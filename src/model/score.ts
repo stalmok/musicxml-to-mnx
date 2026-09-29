@@ -638,8 +638,7 @@ export interface Part {
  * a tree, in score order.
  */
 export type GroupingItem =
-  | ({ readonly kind: 'group' } & PartGroup)
-  | { readonly kind: 'part'; readonly part: string }
+  ({ readonly kind: 'group' } & PartGroup) | { readonly kind: 'part'; readonly part: string }
 
 export interface PartGroup {
   /** Undefined where the source's symbol kind has no MNX spelling. */

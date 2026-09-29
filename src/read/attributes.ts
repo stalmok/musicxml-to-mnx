@@ -113,8 +113,7 @@ export interface StaffSignature<T> {
  * speaks for every staff of the part, and is read as one edge per staff.
  */
 export type MeasureRepeatReading =
-  | { edge: 'start'; measures: number; staff: number }
-  | { edge: 'stop'; staff: number }
+  { edge: 'start'; measures: number; staff: number } | { edge: 'stop'; staff: number }
 
 // The one <staff-size> that states the default: a hundred percent of the
 // work's scaling, written with or without a fraction. Matched as text rather
