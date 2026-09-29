@@ -169,7 +169,7 @@ describe('tuplet display', () => {
     const tuplet = content?.[0]
 
     expect(tuplet?.kind === 'tuplet' && tuplet.bracket).toBeUndefined()
-    expect(warnings.map((w) => w.element)).toEqual(['print-object'])
+    expect(warnings.map((w) => [w.element, w.attribute])).toEqual([['notations', 'print-object']])
     expect(warnings[0]?.message).toContain('The block holds <tuplet>.')
   })
 

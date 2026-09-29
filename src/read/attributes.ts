@@ -402,7 +402,7 @@ function readKey(
   context: WarningContext,
   path: DocumentPath,
 ): Key | undefined {
-  reportHidden(element.element, 'key', warnings, context)
+  reportHidden(element.element, warnings, context)
 
   // A key without <fifths> is non-traditional, spelled as individual altered
   // steps, which MNX has no way to state. The notes still sound right,
@@ -449,7 +449,7 @@ function readTime(
   context: WarningContext,
   path: DocumentPath,
 ): TimeSignature | undefined {
-  reportHidden(element.element, 'time', warnings, context)
+  reportHidden(element.element, warnings, context)
 
   // <senza-misura> writes unmetered music, which MNX cannot state, so it
   // reads as a statement with no value. The measure reports it, because the

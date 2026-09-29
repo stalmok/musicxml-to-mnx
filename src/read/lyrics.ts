@@ -87,7 +87,7 @@ function readVerse(
 
   // MNX's event lyric states a text and a type, and nothing about
   // visibility, so a hidden lyric is drawn and the hiding reported.
-  reportHidden(lyric.element, 'lyric', warnings, context)
+  reportHidden(lyric.element, warnings, context)
 
   const syllabics = lyric.children('syllabic')
   if (syllabics.length > 1) {

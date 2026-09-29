@@ -146,11 +146,12 @@ describe('lyrics', () => {
     expect(events[0]?.lyrics).toEqual(new Map([['1', { text: 'Ah', type: undefined }]]))
     expect(warnings).toMatchObject([
       {
-        code: 'unsupported:element',
+        code: 'unrepresentable:attribute',
         message:
           'A <lyric> hidden with print-object="no" is drawn anyway, because MNX cannot ' +
           'mark it invisible.',
-        element: 'print-object',
+        element: 'lyric',
+        attribute: 'print-object',
       },
     ])
   })

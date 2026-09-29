@@ -250,7 +250,7 @@ export function readNote(
     })
   }
 
-  reportHidden(element.element, 'note', warnings, context)
+  reportHidden(element.element, warnings, context)
 
   const notations = element.blocks('notations')
   // A <notations> block hidden with print-object="no" still has its slur,
@@ -274,7 +274,7 @@ export function readNote(
       for (const marker of block.element.children) hiddenTuplets.add(marker)
       continue
     }
-    reportHidden(block.element, 'notations', warnings, context, block.element.children[0]?.name)
+    reportHidden(block.element, warnings, context, block.element.children[0]?.name)
   }
   // <tied> is the visual side of a tie. Most of it repeats <tie>, but let-ring
   // and the drawn side live only on it, so it is read rather than skipped.

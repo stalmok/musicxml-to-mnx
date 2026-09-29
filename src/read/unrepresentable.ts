@@ -15,26 +15,25 @@ import { attribute } from '../xml/tree.js'
 
 /**
  * Report an element the source hides with print-object="no", where MNX has no
- * way to mark it invisible, so it is drawn. Grouped under one "print-object"
- * code, whatever carries it. Elements with a home for their invisibility, such
- * as a part name or a clef, honour it and do not call this.
+ * way to mark it invisible, so it is drawn. Elements with a home for their
+ * invisibility, such as a part name or a clef, honour it and do not call this.
  */
 export function reportHidden(
   element: XmlElement,
-  carrier: string,
   warnings: WarningCollector,
   context: WarningContext,
   holds?: string,
 ): void {
   if (attribute(element, 'print-object') !== 'no') return
   warnings.add(
-    'unsupported:element',
-    `A <${carrier}> hidden with print-object="no" is drawn anyway, because MNX cannot ` +
+    'unrepresentable:attribute',
+    `A <${element.name}> hidden with print-object="no" is drawn anyway, because MNX cannot ` +
       'mark it invisible.' +
       // Named so a consumer can tell what kind of notation the hiding
       // covers without reading the source.
       (holds !== undefined ? ` The block holds <${holds}>.` : ''),
     { ...context, line: element.line },
+    element.name,
     'print-object',
   )
 }

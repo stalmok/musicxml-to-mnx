@@ -271,7 +271,7 @@ function readEnding(
   const ending = element.child('ending')
   if (!ending) return { endingStart: undefined, endingStop: undefined }
 
-  reportHidden(ending, 'ending', warnings, context)
+  reportHidden(ending, warnings, context)
 
   // Which times the bracket covers. Only the start's numbers reach MNX: a
   // stop restates the numbers of the bracket it closes, and an unknown type

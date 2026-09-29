@@ -161,17 +161,19 @@ describe('a beam', () => {
 
 describe('an element hidden with print-object="no"', () => {
   // MNX has no way to mark an element invisible, so a hidden one is drawn
-  // anyway. The hiding is reported under one "print-object" code, whatever
-  // carries it.
+  // anyway. The hiding is reported as a loss of the attribute on the element
+  // that carries it.
   const hidden = (source: string) =>
-    read(source).warnings.filter((warning) => warning.element === 'print-object')
+    read(source)
+      .warnings.filter((warning) => warning.attribute === 'print-object')
+      .map((warning) => [warning.code, warning.element])
 
   test('reports a hidden note', () => {
     expect(
       hidden(
         measure('<note print-object="no"><rest/><duration>4</duration><type>quarter</type></note>'),
       ),
-    ).toHaveLength(1)
+    ).toEqual([['unrepresentable:attribute', 'note']])
   })
 
   test('reports a hidden time signature', () => {
@@ -182,7 +184,7 @@ describe('an element hidden with print-object="no"', () => {
           '<divisions>4</divisions><time print-object="no"><beats>4</beats><beat-type>4</beat-type></time>',
         ),
       ),
-    ).toHaveLength(1)
+    ).toEqual([['unrepresentable:attribute', 'time']])
   })
 
   test('reports a hidden key signature', () => {
@@ -193,7 +195,7 @@ describe('an element hidden with print-object="no"', () => {
           '<divisions>4</divisions><key print-object="no"><fifths>2</fifths></key>',
         ),
       ),
-    ).toHaveLength(1)
+    ).toEqual([['unrepresentable:attribute', 'key']])
   })
 
   test('reports a hidden ending', () => {
@@ -204,13 +206,13 @@ describe('an element hidden with print-object="no"', () => {
             '<barline location="right"><ending number="1" type="stop" print-object="no"/></barline>',
         ),
       ),
-    ).toHaveLength(1)
+    ).toEqual([['unrepresentable:attribute', 'ending']])
   })
 
   test('reports a hidden notations block', () => {
-    expect(
-      hidden(measure(note('<notations print-object="no"><fermata/></notations>'))),
-    ).toHaveLength(1)
+    expect(hidden(measure(note('<notations print-object="no"><fermata/></notations>')))).toEqual([
+      ['unrepresentable:attribute', 'notations'],
+    ])
   })
 
   // An empty block hides nothing. The attribute is read, not left for the
