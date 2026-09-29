@@ -523,6 +523,7 @@ function openTupletsAndTremolo(
   // pair while the pair lasts only one of them. The pair is gathered into
   // one item, which is how MNX states it.
   const tremolo = multiNoteTremoloOf(notations, warnings, context)
+  builder.noteTremoloMarker(voice, tremolo?.key)
 
   // A tremolo on a single note carries no <time-modification> and lasts what
   // it is written as, so only the ornament itself is lost, and that is
@@ -933,6 +934,7 @@ function readChordMember(
   // bracket nothing opened. Sibelius leaves <voice> off a
   // chord member, so the chord's voice is the one asked, not the member's.
   const chordVoice = builder.voiceOfChord(voice)
+  readChordMemberTremolo(notations, chordVoice, builder)
   const chordMarkers = tupletMarkers(notations).filter(
     (marker) => !builder.restatesTupletMarker(chordVoice, tupletMarkerKey(marker)),
   )
@@ -1988,6 +1990,8 @@ function tremoloBeamCount(text: string): number | undefined {
 interface MultiNoteTremolo {
   type: 'start' | 'stop'
   marks: number
+  /** The marker as written, for a note of the chord to restate. */
+  key: string
 }
 
 function multiNoteTremoloOf(
@@ -2027,11 +2031,35 @@ function multiNoteTremoloOf(
           )
           marks = 3
         }
-        return { type, marks }
+        return { type, marks, key: tremoloMarkerKey(tremolo) }
       }
     }
   }
   return undefined
+}
+
+function tremoloMarkerKey(marker: XmlElement): string {
+  return `${attribute(marker, 'type') ?? ''} ${attribute(marker, 'placement') ?? ''} ${marker.text.trim()}`
+}
+
+/**
+ * The two-note tremolo markers written on a note of a chord. One the same as
+ * the chord's own is read; any other is reported.
+ */
+function readChordMemberTremolo(
+  notations: readonly ElementReader[],
+  voice: string | undefined,
+  builder: MeasureBuilder,
+): void {
+  for (const block of notations) {
+    for (const ornaments of block.blocks('ornaments')) {
+      for (const tremolo of children(ornaments.element, 'tremolo')) {
+        if (builder.restatesTremoloMarker(voice, tremoloMarkerKey(tremolo))) {
+          ornaments.read(tremolo)
+        }
+      }
+    }
+  }
 }
 
 /**

@@ -158,6 +158,8 @@ interface VoiceBuilder {
    * is drawing the chord's bracket, not naming a bracket of its own.
    */
   eventTupletMarkers: readonly string[]
+  /** The two-note tremolo marker the most recent event's own note carried. */
+  eventTremoloMarker: string | undefined
   content: SequenceItem[]
   /** Where this voice's content runs out, measured from the measure start. */
   end: Fraction
@@ -1684,6 +1686,16 @@ export class MeasureBuilder {
     return this.#builderFor(voice).eventTupletMarkers.includes(marker)
   }
 
+  /** Holds the two-note tremolo marker the event's own note carried, for its chord. */
+  noteTremoloMarker(voice: string | undefined, marker: string | undefined): void {
+    this.#builderFor(voice).eventTremoloMarker = marker
+  }
+
+  /** Whether a chord member's two-note tremolo marker restates the chord's own. */
+  restatesTremoloMarker(voice: string | undefined, marker: string): boolean {
+    return this.#builderFor(voice).eventTremoloMarker === marker
+  }
+
   /**
    * Records a tuplet this voice never opened, by the number its start marker
    * stated, so the stop that matches it can be dropped with it.
@@ -2180,6 +2192,7 @@ function newVoiceBuilder(openedAt?: number): VoiceBuilder {
     open: [],
     droppedTuplets: [],
     eventTupletMarkers: [],
+    eventTremoloMarker: undefined,
     content: [],
     end: fraction(0),
     last: undefined,

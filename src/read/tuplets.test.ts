@@ -2619,6 +2619,70 @@ describe('two-note tremolos', () => {
     ).toEqual([2, 2])
   })
 
+  // Exporters draw the tremolo on a chord by writing it on every note of it.
+  test('reads the marker every note of a chord carries as the chord’s own', () => {
+    const member = (step: string, type: string, marks?: string) =>
+      tremoloNote(step, type, marks).replace('<note>', '<note><chord/>')
+    const { content, warnings } = read(
+      measure(
+        tremoloNote('C', 'start') +
+          member('G', 'start') +
+          tremoloNote('E', 'stop') +
+          member('B', 'stop'),
+      ),
+    )
+
+    const item = content?.[0]
+    expect(
+      item?.kind === 'multiNoteTremolo' && item.content.map((event) => event.notes.length),
+    ).toEqual([2, 2])
+    expect(warnings).toEqual([])
+  })
+
+  test('reads a restated marker written with space around its count', () => {
+    const member = tremoloNote('G', 'start', ' 3 ').replace('<note>', '<note><chord/>')
+    const { warnings } = read(
+      measure(tremoloNote('C', 'start') + member + tremoloNote('E', 'stop')),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  test('reports a marker on a note of the chord drawn on the other side', () => {
+    const drawn = (step: string, side: string) =>
+      tremoloNote(step, 'start').replace('type="start"', `type="start" placement="${side}"`)
+    const { warnings } = read(
+      measure(
+        drawn('C', 'above') +
+          drawn('G', 'below').replace('<note>', '<note><chord/>') +
+          tremoloNote('E', 'stop'),
+      ),
+    )
+
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([
+      ['unrepresentable:element', 'tremolo'],
+      ['unsupported:element', 'tremolo'],
+    ])
+  })
+
+  test.each([
+    ['counts other beams', '<tremolo type="start">2</tremolo>'],
+    ['is drawn on a side', '<tremolo type="start" placement="above">3</tremolo>'],
+    ['is the other end', '<tremolo type="stop">3</tremolo>'],
+  ])('reports a marker on a note of the chord that %s', (_, marker) => {
+    const member =
+      '<note><chord/><pitch><step>G</step><octave>4</octave></pitch>' +
+      '<duration>12</duration><type>half</type>' +
+      '<time-modification><actual-notes>2</actual-notes><normal-notes>1</normal-notes>' +
+      `</time-modification><notations><ornaments>${marker}</ornaments></notations></note>`
+    const { content, warnings } = read(
+      measure(tremoloNote('C', 'start') + member + tremoloNote('E', 'stop')),
+    )
+
+    expect(content?.[0]?.kind).toBe('multiNoteTremolo')
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([['unsupported:element', 'tremolo']])
+  })
+
   test('rejects a tremolo that stops where none is open', () => {
     expect(readFailure(measure(tremoloNote('C', 'stop'))).message).toContain(
       'stops where none is open',
