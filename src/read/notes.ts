@@ -217,6 +217,10 @@ interface NoteStatement extends RestNote {
   unpitched: XmlElement | undefined
   staff: number | undefined
   staffPosition: number | undefined
+  /** Whether the note is hidden with print-object="no". */
+  hidden: boolean
+  /** Reports the note hidden, in the place the note was read. */
+  reportHidden: () => void
 }
 
 export function readNote(
@@ -250,7 +254,14 @@ export function readNote(
     })
   }
 
-  reportHidden(element.element, warnings, context)
+  // A hidden rest written as a space beside grace notes loses nothing drawn.
+  // That is settled only once the rest is placed, so its report keeps this
+  // place until then.
+  const hiddenPlace = warnings.reserve()
+  const hidden = attribute(element.element, 'print-object') === 'no'
+  const reportHiddenNote = () =>
+    reportHidden(element.element, warnings, context, undefined, hiddenPlace)
+  if (!restElement) reportHiddenNote()
 
   const notations = element.blocks('notations')
   // A <notations> block hidden with print-object="no" still has its slur,
@@ -304,9 +315,7 @@ export function readNote(
   // source. A chord member joins the grace note before it, which has moved
   // the rest already. An irregular measure has no value to write the
   // rest as, so it is written as a space.
-  const restored =
-    graceElement && !chordMember ? builder.restoreMeasureRest(voice, path, element.line) : undefined
-  if (restored?.written === 'space') reportRestAsSpace(warnings, context, restored.line)
+  if (graceElement && !chordMember) builder.restoreMeasureRest(voice, path, element.line)
 
   // Which staff the note names. It is range-checked even in a one-staff part,
   // so a note naming a staff that <staves> has not declared is rejected, not
@@ -338,6 +347,8 @@ export function readNote(
     unpitched: unpitchedElement,
     staff,
     staffPosition,
+    hidden,
+    reportHidden: reportHiddenNote,
   }
 
   // A note carrying <chord> sounds with the one before it, so it joins that
@@ -370,6 +381,7 @@ export function readNote(
     setMeasureRest(note, fills, state, builder, warnings, context, path)
     return
   }
+  if (restElement) reportHiddenNote()
 
   // What the tuplets and tremolos open around this note scale its written
   // value by. A grace note takes none of the measure's time, so none of them
@@ -715,9 +727,8 @@ function setMeasureRest(
   // states the length.
   const { eventValue: restValue, unwritableLength: unwritableRest } = fills
   const place = warnings.reserve()
-  const reportLength =
-    unwritableRest &&
-    (() => {
+  const reportLength = () => {
+    if (unwritableRest) {
       warnings.addAt(
         place,
         'unrepresentable:rest-length',
@@ -730,14 +741,20 @@ function setMeasureRest(
         { ...context, line: element.line },
         'rest',
       )
-    })
+    }
+  }
+
+  // A rest no note value writes is written as a space beside grace notes, and
+  // a hidden one then loses nothing drawn. So its hiding, like its length, is
+  // reported only where it stays on the sequence.
+  if (restValue) note.reportHidden()
 
   // Where the source states no <duration>, the rest lasts the measure. A bar
   // of silence is drawn as a whole rest in any meter, so the written value is
   // what it lasts only where no time signature says how long the measure is.
   const lasts = duration ?? measureLength(state) ?? (written && lengthOf(written))
   const fermata = readFermata(notations, warnings, context)
-  const writtenBack = builder.setFullMeasure(
+  builder.setFullMeasure(
     voice,
     {
       visualDuration: written,
@@ -768,24 +785,30 @@ function setMeasureRest(
         staffPosition,
       }),
     },
-    reportLength,
+    {
+      onSequence: () => {
+        if (!restValue) note.reportHidden()
+        reportLength()
+      },
+      // A hidden rest is time with nothing drawn in it, which is what a space
+      // is, unless a fermata is drawn over it.
+      asSpace: () => {
+        if (note.hidden && !fermata) return
+        warnings.add(
+          'unrepresentable:grace-beside-rest',
+          'A grace note stands beside a rest that fills the measure, and no note value ' +
+            'can write that rest as an event. MNX states such a rest on a sequence that ' +
+            'holds nothing, so the rest is converted as a space of its length. The rest ' +
+            'is not drawn, nor a fermata or a position stated on it.',
+          { ...context, line: element.line },
+          'rest',
+        )
+      },
+    },
     path,
     element.line,
   )
-  if (writtenBack === 'space') reportRestAsSpace(warnings, context, element.line)
   if (lasts) builder.passOver(lasts)
-}
-
-function reportRestAsSpace(warnings: WarningCollector, context: WarningContext, line: number) {
-  warnings.add(
-    'unrepresentable:grace-beside-rest',
-    'A grace note stands beside a rest that fills the measure, and no note value can ' +
-      'write that rest as an event. MNX states such a rest on a sequence that holds ' +
-      'nothing, so the rest is converted as a space of its length. The rest is not ' +
-      'drawn, nor a fermata or a position stated on it.',
-    { ...context, line },
-    'rest',
-  )
 }
 
 /** A note carrying <chord>, joined to the event before it. */

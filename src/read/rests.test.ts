@@ -1054,6 +1054,47 @@ describe('a rest filling a measure a grace note leads into', () => {
     expect(warnings.map((w) => [w.code, w.element, w.context.measure])).toEqual(reported)
     expect(warnings[0]?.message).toContain('nor a fermata or a position stated on it')
   })
+
+  // A hidden rest is time with nothing drawn in it, which is what a space is.
+  const hidden = (inner = '') =>
+    '<note print-object="no"><rest measure="yes"/><duration>20</duration><voice>1</voice>' +
+    `${inner}</note>`
+  const hiddenReported = [['unsupported:attribute', 'note', 1]]
+
+  test.each([
+    ['before', grace + hidden()],
+    ['after', hidden() + grace],
+  ])('writes a hidden rest as a space with nothing lost, with grace notes %s it', (_, body) => {
+    expect(kinds(body).warnings).toEqual([])
+  })
+
+  test('reports a fermata over a hidden rest written as a space', () => {
+    expect(kinds(hidden('<notations><fermata/></notations>') + grace).warnings).toEqual(reported)
+  })
+
+  test.each([
+    ['no note value writes', undefined],
+    ['a note value writes', '<time><beats>4</beats><beat-type>4</beat-type></time>'],
+  ])('reports a hidden rest %s that stays on the sequence as drawn', (_, time) => {
+    const rest = time === undefined ? hidden() : hidden().replace('20', '16')
+
+    expect(kinds(rest, time).warnings).toEqual(hiddenReported)
+  })
+
+  // A note value writes a whole rest in 4/4, so the rest goes back as an event,
+  // which is drawn.
+  test.each([
+    ['before', grace + hidden().replace('20', '16')],
+    ['after', hidden().replace('20', '16') + grace],
+  ])('reports a hidden rest written as an event, with grace notes %s it', (_, body) => {
+    const { content, warnings } = kinds(
+      body,
+      '<time><beats>4</beats><beat-type>4</beat-type></time>',
+    )
+
+    expect(content).toContainEqual(['event'])
+    expect(warnings).toEqual(hiddenReported)
+  })
 })
 
 // A grace note takes none of the measure's time, so a grace rest is never the

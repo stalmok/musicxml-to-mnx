@@ -9,7 +9,7 @@
 // because it has event-markings, wedge-type, ottava, barline, ending,
 // arpeggio and fermata for them.
 
-import type { WarningCollector, WarningContext } from '../warnings.js'
+import type { WarningCollector, WarningContext, WarningPlace } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute } from '../xml/tree.js'
 
@@ -23,12 +23,14 @@ export function reportHidden(
   warnings: WarningCollector,
   context: WarningContext,
   holds?: string,
+  place: WarningPlace = warnings.reserve(),
 ): void {
   if (attribute(element, 'print-object') !== 'no') return
   const rest = element.name === 'note' && element.children.some((one) => one.name === 'rest')
   // A hidden rest is time with nothing drawn in it, which a space holds.
   const code = rest ? 'unsupported:attribute' : attributeLoss(element.name, 'print-object').code
-  warnings.add(
+  warnings.addAt(
+    place,
     code,
     `A <${element.name}> hidden with print-object="no" is drawn anyway` +
       (rest

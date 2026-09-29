@@ -172,7 +172,7 @@ export const WARNING_CODES = Object.freeze([
   // can write. MNX states such a rest on a sequence that holds nothing, and
   // there is no event to write it as instead, so the rest is written as a
   // space of its length. The rest, and a fermata or position on it, is not
-  // drawn.
+  // drawn. A hidden rest with no fermata loses nothing, and is not reported.
   'unrepresentable:grace-beside-rest',
   // A SMuFL glyph named for a dynamic's wording. A dynamic group's glyphs
   // draw the mark itself, not the words, so the wording goes over as text

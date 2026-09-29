@@ -247,10 +247,10 @@ type MeasureRestState =
        */
       restore: RestoredRest | undefined
       /**
-       * Reports how long the rest lasts, where no note value can write that
-       * length. Only the rest on the sequence loses it: a space states it.
+       * Reports what only the rest on the sequence loses, such as a length no
+       * note value can write. A space written for the rest states the length.
        */
-      reportLength: (() => void) | undefined
+      reportOnSequence: (() => void) | undefined
     }
   | { kind: 'event' }
 
@@ -267,7 +267,8 @@ interface RestoredRest {
   at: Fraction
   after: Fraction
   staff: number | undefined
-  line: number
+  /** Reports the rest written as a space, where no note value writes it. */
+  reportAsSpace: () => void
 }
 
 /** Whether the voice's measure rest is settled, on the sequence or as an event. */
@@ -876,7 +877,7 @@ export class MeasureBuilder {
    * else: MNX states the rest on the sequence instead of as an event, so a
    * voice cannot be both. Grace notes before it are the one exception, and
    * the rest is written back beside them, as restoreMeasureRest does for
-   * grace notes after it. Hands back how it was written back, if it was.
+   * grace notes after it.
    */
   setFullMeasure(
     voice: string | undefined,
@@ -884,10 +885,10 @@ export class MeasureBuilder {
     covering: Fraction | undefined,
     staff: number | undefined,
     asEvent: { event: () => Event; duration: Fraction } | undefined,
-    reportLength: (() => void) | undefined,
+    reports: { onSequence: () => void; asSpace: () => void },
     path: DocumentPath,
     line: number,
-  ): 'event' | 'space' | undefined {
+  ): void {
     const builder = this.#builderFor(voice)
     if (this.restsTheMeasure(voice)) {
       throw new MusicXMLError('A voice has more than one rest that fills the measure.', {
@@ -927,10 +928,25 @@ export class MeasureBuilder {
     // The rest is the whole of this voice in this measure, so the staff it
     // names is the staff the sequence sits on.
     builder.placed.push({ event: undefined, staff })
-    const restore = { asEvent, lasts: covering, at: this.#cursor, after: builder.end, staff, line }
-    if (builder.content.length > 0) return this.#writeBack(voice, restore, path, line)
+    const restore = {
+      asEvent,
+      lasts: covering,
+      at: this.#cursor,
+      after: builder.end,
+      staff,
+      reportAsSpace: reports.asSpace,
+    }
+    if (builder.content.length > 0) {
+      this.#writeBack(voice, restore, path, line)
+      return
+    }
 
-    builder.measureRest = { kind: 'sequence', rest, restore, reportLength }
+    builder.measureRest = {
+      kind: 'sequence',
+      rest,
+      restore,
+      reportOnSequence: reports.onSequence,
+    }
     // The rest occupies the whole voice, so nothing may follow it there.
     if (covering) builder.end = addFractions(this.#cursor, covering)
     return undefined
@@ -938,8 +954,7 @@ export class MeasureBuilder {
 
   /**
    * Writes this voice's measure rest back into its content, where the rest
-   * stands on the sequence, and hands back how and the line the rest is
-   * written on.
+   * stands on the sequence.
    *
    * MNX states a rest filling the measure on the sequence rather than as an
    * event in it, and that sequence holds nothing else, so a grace note
@@ -949,19 +964,14 @@ export class MeasureBuilder {
    * A rest read before them therefore moves off the sequence here, so
    * that both orders keep the rest and the grace notes alike.
    */
-  restoreMeasureRest(
-    voice: string | undefined,
-    path: DocumentPath,
-    line: number,
-  ): { written: 'event' | 'space'; line: number } | undefined {
+  restoreMeasureRest(voice: string | undefined, path: DocumentPath, line: number): void {
     const builder = this.#builderFor(voice)
     const { measureRest } = builder
-    if (measureRest.kind !== 'sequence' || !measureRest.restore) return undefined
+    if (measureRest.kind !== 'sequence' || !measureRest.restore) return
     // The rest's entry in `placed` stays: it names the staff the rest was
     // drawn on, which the event written back names too, and a space names
     // none.
-    const { restore } = measureRest
-    return { written: this.#writeBack(voice, restore, path, line), line: restore.line }
+    this.#writeBack(voice, measureRest.restore, path, line)
   }
 
   /**
@@ -975,7 +985,7 @@ export class MeasureBuilder {
     restored: RestoredRest,
     path: DocumentPath,
     line: number,
-  ): 'event' | 'space' {
+  ): void {
     const builder = this.#builderFor(voice)
     const { asEvent } = restored
     const lasts = asEvent?.duration ?? restored.lasts
@@ -1007,10 +1017,10 @@ export class MeasureBuilder {
       // A space is not a note, so a chord member after it has nothing to
       // join, as it would have nothing beside a rest.
       builder.last = undefined
+      restored.reportAsSpace()
     }
     builder.measureRest = { kind: 'event' }
     this.#moveTo(reached)
-    return asEvent ? 'event' : 'space'
   }
 
   /**
@@ -1966,8 +1976,8 @@ export class MeasureBuilder {
     for (const builder of this.#allBuilders()) {
       const candidate = builder.measureRest
       // A rest still on the sequence was never written back as a space, so
-      // the length it carries is lost.
-      if (candidate.kind === 'sequence') candidate.reportLength?.()
+      // what only a space keeps is lost.
+      if (candidate.kind === 'sequence') candidate.reportOnSequence?.()
       if (candidate.kind !== 'candidate') continue
 
       const { event } = candidate
@@ -1994,7 +2004,7 @@ export class MeasureBuilder {
           staffPosition: event.staffPosition,
         },
         restore: undefined,
-        reportLength: undefined,
+        reportOnSequence: undefined,
       }
     }
   }
