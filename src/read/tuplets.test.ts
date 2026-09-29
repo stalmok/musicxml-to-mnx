@@ -1439,6 +1439,30 @@ describe('a bracket the source states no ratio for', () => {
       expect(warnings.map((w) => w.code)).not.toContain('unrepresentable:tuplet-ratio')
     })
 
+    test('counts the dotted value a <normal-dot> states', () => {
+      const dotted = (step: string, markers = '') =>
+        `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+        '<duration>9</duration><type>quarter</type><dot/>' +
+        '<time-modification><actual-notes>4</actual-notes><normal-notes>3</normal-notes>' +
+        '<normal-type>quarter</normal-type><normal-dot/></time-modification>' +
+        (markers ? `<notations>${markers}</notations>` : '') +
+        '</note>'
+      const { content, warnings } = at(
+        8,
+        dotted('C', '<tuplet type="start"/>') +
+          dotted('D') +
+          dotted('E') +
+          dotted('F', '<tuplet type="stop"/>'),
+      )
+      const tuplet = content?.[0]
+
+      expect(tuplet?.kind === 'tuplet' && [tuplet.inner, tuplet.outer]).toEqual([
+        { value: { base: 'quarter', dots: 1 }, multiple: 4 },
+        { value: { base: 'quarter', dots: 1 }, multiple: 3 },
+      ])
+      expect(warnings).toEqual([])
+    })
+
     // A bracket opening on a dotted value counts in dotted values as it
     // halves, so content no dotted value counts falls to the largest value
     // that counts both sides. Four quarters in the time of three dotted

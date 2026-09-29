@@ -158,6 +158,16 @@ describe('a beam', () => {
   })
 })
 
+// Where an element is drawn is presentation, not notation.
+test('reports nothing for the attributes that place an element', () => {
+  const placed = note('').replace(
+    '<note>',
+    '<note default-x="10" default-y="-20" relative-x="1" relative-y="2">',
+  )
+
+  expect(lost(measure(placed))).toEqual([])
+})
+
 describe('an element hidden with print-object="no"', () => {
   // MNX has no way to mark an element invisible, so a hidden one is drawn
   // anyway. The hiding is reported as a loss of the attribute on the element

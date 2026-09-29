@@ -501,6 +501,20 @@ describe('where a grace group takes its time from', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:grace-time'])
   })
 
+  test('keeps a note in the group its continuing beam joins it to', () => {
+    const { measure: result } = read(
+      measure(
+        graceNote('steal-time-previous="20"', 'D', '<beam number="1">begin</beam>') +
+          graceNote('steal-time-following="33"', 'E', '<beam number="1">continue</beam>') +
+          graceNote('', 'F', '<beam number="1">end</beam>') +
+          note('C', 1),
+      ),
+    )
+
+    expect(groupOf(result)?.graceType).toBe('stealPrevious')
+    expect(groupOf(result)?.content).toHaveLength(3)
+  })
+
   // <beam> states no number for the first level.
   test('keeps a note in the group a beam stating no level joins it to', () => {
     const { measure: result } = read(
