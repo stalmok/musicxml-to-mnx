@@ -213,7 +213,9 @@ consumer against it.
 
 The CLI's `--validate` runs a validator that Ajv generates from the vendored
 schema at build time (`scripts/mnx-validator.ts`). The tests run the same
-generated validator. Ajv itself is not bundled.
+generated validator. Ajv itself is not bundled. Some schema keywords need one
+of Ajv's runtime helpers. The command bundle inlines each helper the schema
+needs, and the build writes its licence to `THIRD_PARTY_NOTICES.txt`.
 
 ## Input handling and invariants
 
