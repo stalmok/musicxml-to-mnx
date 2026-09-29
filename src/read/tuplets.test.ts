@@ -2639,6 +2639,19 @@ describe('two-note tremolos', () => {
     expect(warnings).toEqual([])
   })
 
+  // An empty marker draws the usual three beams.
+  test.each([
+    ['', '3'],
+    ['3', ''],
+  ])('reads a restated marker counting "%s" where the chord’s counts "%s"', (member, own) => {
+    const chord = tremoloNote('G', 'start', member).replace('<note>', '<note><chord/>')
+    const { warnings } = read(
+      measure(tremoloNote('C', 'start', own) + chord + tremoloNote('E', 'stop')),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
   test('reads a restated marker written with space around its count', () => {
     const member = tremoloNote('G', 'start', ' 3 ').replace('<note>', '<note><chord/>')
     const { warnings } = read(

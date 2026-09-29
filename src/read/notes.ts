@@ -2109,7 +2109,10 @@ function multiNoteTremoloOf(
 }
 
 function tremoloMarkerKey(marker: XmlElement): string {
-  return `${attribute(marker, 'type') ?? ''} ${attribute(marker, 'placement') ?? ''} ${marker.text.trim()}`
+  // An empty marker counts three beams, as a marker stating three does.
+  const text = marker.text.trim()
+  const marks = tremoloBeamCount(text) ?? text
+  return `${attribute(marker, 'type') ?? ''} ${attribute(marker, 'placement') ?? ''} ${String(marks)}`
 }
 
 /**
