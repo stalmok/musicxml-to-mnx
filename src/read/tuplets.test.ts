@@ -3164,6 +3164,8 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
     expect(content).toHaveLength(1)
     expect(content?.[0]?.kind === 'tuplet' && content[0].content).toHaveLength(2)
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-ratio'])
+    // No <tuplet> is written, so the loss is about the ratio's own element.
+    expect(warnings[0]?.element).toBe('time-modification')
     convertValid(source)
   })
 

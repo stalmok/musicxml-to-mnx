@@ -555,7 +555,7 @@ function rewrite(
           : 'No pair of them counts what it holds against that ratio either, so the ' +
             'tuplet is not converted and its notes are written as they stand.'),
       { ...context, line },
-      'tuplet',
+      claim.unbracketed ? 'time-modification' : 'tuplet',
     )
   } else if (claim.stated && !claim.cut) {
     // The source drew a bracket the notes under it do not bear out, so the
