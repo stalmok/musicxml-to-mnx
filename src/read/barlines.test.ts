@@ -514,6 +514,18 @@ describe('what a barline can say that MNX cannot', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:barline'])
   })
 
+  test('reports a partway barline once, whatever it holds', () => {
+    const { globals, warnings } = read(
+      NOTE +
+        '<barline location="middle"><bar-style>light-heavy</bar-style><segno/><fermata/>' +
+        '<ending number="1" type="stop"/><repeat direction="backward"/></barline>' +
+        NOTE,
+    )
+
+    expect(globals[0]).toMatchObject({ barline: undefined, segno: undefined, repeatEnd: undefined })
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:barline'])
+  })
+
   test('reports a partway barline carrying a segno once, converting none of it', () => {
     const { globals, warnings } = read(
       NOTE + '<barline location="middle"><segno/></barline>' + NOTE,

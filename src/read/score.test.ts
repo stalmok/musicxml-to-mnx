@@ -1472,7 +1472,8 @@ describe('a key signature stated after the measure start', () => {
         opening +
           keyed(0) +
           note(24) +
-          '<attributes><key><key-step>F</key-step><key-alter>1</key-alter></key></attributes>' +
+          '<attributes><key><key-step>F</key-step><key-alter>1</key-alter>' +
+          '<key-accidental>sharp</key-accidental></key></attributes>' +
           keyed(2),
         note(24),
       ),

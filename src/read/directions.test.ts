@@ -947,6 +947,21 @@ describe('tempo', () => {
     expect(warnings.map((w) => w.code)).toContain('unrepresentable:tempo')
   })
 
+  test('reports a metronome stated as one note equalling another, once', () => {
+    const { global, warnings } = read(
+      inMeasure(
+        direction(
+          '<metronome><metronome-note><metronome-type>quarter</metronome-type></metronome-note>' +
+            '<metronome-relation>equals</metronome-relation>' +
+            '<metronome-note><metronome-type>eighth</metronome-type></metronome-note></metronome>',
+        ) + note('C'),
+      ),
+    )
+
+    expect(global?.tempos).toEqual([])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tempo'])
+  })
+
   // Exporters leave <beat-unit> empty where the mark carries no note glyph.
   test.each(['triangle', ''])('reports rather than refuses a beat unit of "%s"', (written) => {
     const { global, warnings } = read(
