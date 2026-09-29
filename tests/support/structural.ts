@@ -1301,3 +1301,31 @@ export function undefinedKeys(value: unknown, path = 'mnx'): string[] {
     held === undefined ? [`${path}.${key}`] : undefinedKeys(held, `${path}.${key}`),
   )
 }
+
+/**
+ * Every loss naming an element the source does not hold, or an attribute no
+ * element of that name carries. A missing:* loss names what the source leaves
+ * out, so it is not held to the source.
+ */
+export function unsourcedLosses(
+  root: XmlElement,
+  warnings: readonly ConversionWarning[],
+): string[] {
+  const attributes = new Map<string, Set<string>>()
+  const walk = (element: XmlElement): void => {
+    const held = attributes.get(element.name) ?? new Set<string>()
+    for (const name of Object.keys(element.attributes)) held.add(name)
+    attributes.set(element.name, held)
+    for (const child of element.children) walk(child)
+  }
+  walk(root)
+
+  return warnings
+    .filter((warning) => {
+      if (warning.code.startsWith('missing:')) return false
+      if (warning.element === undefined) return warning.attribute !== undefined
+      const held = attributes.get(warning.element)
+      return !held || (warning.attribute !== undefined && !held.has(warning.attribute))
+    })
+    .map((warning) => `${warning.code} ${warning.element ?? ''}@${warning.attribute ?? ''}`)
+}

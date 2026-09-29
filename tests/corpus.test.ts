@@ -34,6 +34,7 @@ import {
   underfilledTuplets,
   crowdedMeasureRests,
   undefinedKeys,
+  unsourcedLosses,
 } from './support/structural.js'
 import baseline from './corpus/warning-baseline.json' with { type: 'json' }
 
@@ -444,6 +445,10 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
       .map((warning) => `${warning.code} / ${warning.element ?? ''}`)
 
     expect([...new Set(wrong)]).toEqual([])
+  })
+
+  test('names only elements and attributes the source holds', () => {
+    expect([...new Set(unsourcedLosses(parseXmlRoot(source), warnings))]).toEqual([])
   })
 
   // The writer builds every optional key conditionally. The schema, a deep
