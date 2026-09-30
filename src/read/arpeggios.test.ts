@@ -308,6 +308,20 @@ describe('a chord marked both ways at once', () => {
   })
 })
 
+describe('a rest carrying a mark that runs between notes', () => {
+  test.each([
+    ['rolled', '<arpeggiate/>', 'arpeggiate', 'A rest is marked as rolled'],
+    ['struck together', '<non-arpeggiate type="bottom"/>', 'non-arpeggiate', 'A rest is bracketed'],
+  ])('names the mark on a rest %s', (_what, mark, element, wording) => {
+    const { warnings } = read(
+      `<note><rest/><duration>4</duration><type>quarter</type><notations>${mark}</notations></note>`,
+    )
+
+    expect(warnings.map((w) => w.element)).toEqual([element])
+    expect(warnings[0]?.message).toContain(wording)
+  })
+})
+
 // The warning names the mark that is not converted.
 describe('the mark a chord marked both ways reports', () => {
   test.each([

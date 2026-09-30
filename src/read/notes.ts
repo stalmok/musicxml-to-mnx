@@ -318,6 +318,7 @@ export function readNote(
   // the sequence the voice last sounded in and carried to the one its note
   // turns out to take.
   const chordMember = element.child('chord') !== undefined
+  if (!chordMember && voice === undefined) builder.namesNoVoice(element.element)
   if (!chordMember && !graceElement) builder.beginNote(voice, element.element)
 
   // MNX states a rest filling the measure on a sequence that holds nothing,

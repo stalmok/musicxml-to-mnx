@@ -306,27 +306,28 @@ describe('the place a warning names', () => {
   // A bracket still open at the barline is closed there, which is found once
   // the measure is whole. The report points at the <tuplet> that opened it.
   test('points at the start marker for a tuplet cut at the barline', () => {
-    const reported = warningsOf(score(tupletNote('C', '<tuplet type="start"/>'))).find(
+    const reported = warningsOf(score(tupletNote('C', '\n<tuplet type="start"/>'))).find(
       (warning) => warning.code === 'unrepresentable:tuplet-span',
     )
 
     expect(reported?.context.part).toBe('P1')
     expect(reported?.context.measure).toBe(MEASURE_POSITION)
-    expect(reported?.context.line).toBe(FIRST_BODY_LINE)
+    expect(reported?.context.line).toBe(FIRST_BODY_LINE + 1)
   })
 
-  // A roll is drawn beside a chord rather than on a note, so its report names
-  // the measure it is in and no line of its own.
-  test('names the measure for a roll marked on a rest', () => {
+  // A roll on a rest is reported once the measure is whole, at its
+  // <arpeggiate>.
+  test('points at the mark for a roll on a rest', () => {
     const reported = warningsOf(
       score(
-        '<note><rest/><duration>4</duration><type>quarter</type>' +
-          '<notations><arpeggiate/></notations></note>',
+        '<note><rest/><duration>4</duration><type>quarter</type><notations>',
+        '<arpeggiate/></notations></note>',
       ),
     ).find((warning) => warning.element === 'arpeggiate')
 
     expect(reported?.context.part).toBe('P1')
     expect(reported?.context.measure).toBe(MEASURE_POSITION)
+    expect(reported?.context.line).toBe(FIRST_BODY_LINE + 1)
   })
 
   // A note that names no voice beside notes that do is reported at the first
@@ -344,6 +345,18 @@ describe('the place a warning names', () => {
     expect(reported?.context.part).toBe('P1')
     expect(reported?.context.measure).toBe(MEASURE_POSITION)
     expect(reported?.context.line).toBe(FIRST_BODY_LINE + 2)
+  })
+
+  test('points at a grace note that names no voice', () => {
+    const reported = warningsOf(
+      score(
+        '<note><grace/><pitch><step>D</step><octave>4</octave></pitch><type>eighth</type></note>',
+        '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+          '<type>quarter</type><voice>1</voice></note>',
+      ),
+    ).find((warning) => warning.code === 'missing:voice')
+
+    expect([reported?.element, reported?.context.line]).toEqual(['note', FIRST_BODY_LINE])
   })
 })
 

@@ -576,9 +576,17 @@ export class MeasureBuilder {
    * note they were written against stands, and belong to the sequence it
    * went to.
    */
+  /**
+   * Notes a note that names no voice, grace notes included, for the report
+   * where others in the measure name one. A chord member takes its chord's
+   * voice, so it is not one.
+   */
+  namesNoVoice(note: XmlElement): void {
+    this.#unnamedNote ??= note
+  }
+
   beginNote(voice: string | undefined, note: XmlElement): void {
     this.#writeAt()
-    if (voice === undefined) this.#unnamedNote ??= note
     const layers = this.#layersFor(voice)
     const before = layers.layers[layers.active] as VoiceBuilder
     const taken = this.#layerAt(voice, note)
@@ -1567,8 +1575,10 @@ export class MeasureBuilder {
         // none to name.
         warnings.add(
           'unsupported:element',
-          'A rest is marked as rolled, and a roll runs between notes, so it is not ' +
-            'carried over.',
+          (first.struck
+            ? 'A rest is bracketed as struck together, and a bracket runs between notes, '
+            : 'A rest is marked as rolled, and a roll runs between notes, ') +
+            'so it is not carried over.',
           context,
           first.element,
         )
