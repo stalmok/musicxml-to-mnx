@@ -8,7 +8,7 @@ import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
 import { MusicXMLError } from '../errors.js'
 import { fraction } from '../fraction.js'
-import { WarningCollector } from '../warnings.js'
+import { WarningCollector } from './collector.js'
 
 const DIVISIONS = '<attributes><divisions>4</divisions></attributes>'
 

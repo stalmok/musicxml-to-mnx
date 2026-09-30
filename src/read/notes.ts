@@ -34,7 +34,8 @@ import type {
   TupletDisplay,
 } from '../model/score.js'
 import type { Draft } from './draft.js'
-import type { WarningCollector, WarningContext, WarningPlace } from '../warnings.js'
+import type { WarningContext } from '../warnings.js'
+import type { WarningCollector, WarningPlace } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, child, children, descendants, requireChild, trimmedText } from '../xml/tree.js'
 import { beamCountForValue, valueForBeamCount } from './beams.js'

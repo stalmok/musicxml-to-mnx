@@ -5,7 +5,7 @@
 import { readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
-import { WarningCollector } from '../warnings.js'
+import { WarningCollector } from './collector.js'
 
 const DRUM_KIT =
   '<score-instrument id="P1-I39"><instrument-name>Acoustic Snare</instrument-name>' +

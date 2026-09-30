@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { readValid } from '../../tests/support/read.js'
 import { convertValid } from '../../tests/support/convert.js'
 import { MusicXMLError } from '../errors.js'
-import { WarningCollector } from '../warnings.js'
+import { WarningCollector } from './collector.js'
 import { GENERATED_ID_PATTERN } from '../ids.js'
 
 /** Wraps `body` in the smallest document that can carry it. */

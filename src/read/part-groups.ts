@@ -6,7 +6,7 @@
 import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
 import type { GroupingItem, PartGroup } from '../model/score.js'
-import type { WarningCollector } from '../warnings.js'
+import type { WarningCollector } from './collector.js'
 import { attribute, requireAttribute, trimmedText } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
 import { drawnName } from './element.js'

@@ -21,7 +21,8 @@ import type {
   WedgeType,
 } from '../model/score.js'
 import type { NamedSegno, DalSegno } from './jumps.js'
-import type { WarningCollector, WarningContext, WarningPlace } from '../warnings.js'
+import type { WarningContext } from '../warnings.js'
+import type { WarningCollector, WarningPlace } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, trimmedText } from '../xml/tree.js'
 import { readColor } from './color.js'

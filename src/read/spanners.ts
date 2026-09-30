@@ -25,7 +25,8 @@ import type {
 } from '../model/score.js'
 import type { Draft } from './draft.js'
 import type { GraceNotesAt, LastEventBefore } from './voices.js'
-import type { WarningCollector, WarningContext } from '../warnings.js'
+import type { WarningContext } from '../warnings.js'
+import type { WarningCollector } from './collector.js'
 
 /** A tie that has begun, waiting for the note that ends it. */
 interface OpenTie {

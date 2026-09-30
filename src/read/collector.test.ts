@@ -1,0 +1,113 @@
+import { describe, expect, test } from 'vitest'
+import { WarningCollector } from './collector.js'
+
+describe('WarningCollector', () => {
+  test('starts with nothing reported', () => {
+    expect(new WarningCollector().list()).toEqual([])
+  })
+
+  test('records a warning with its code, message, and context', () => {
+    const warnings = new WarningCollector()
+
+    warnings.add(
+      'unsupported:element',
+      'The <pedal> element is not converted.',
+      { part: 'P1', measure: 4, line: 88 },
+      'pedal',
+    )
+
+    expect(warnings.list()).toEqual([
+      {
+        code: 'unsupported:element',
+        message: 'The <pedal> element is not converted.',
+        element: 'pedal',
+        context: { part: 'P1', measure: 4, line: 88 },
+      },
+    ])
+  })
+
+  test('leaves the element unset where the loss is not about one', () => {
+    const warnings = new WarningCollector()
+    warnings.add('inconsistent:duration', 'a note disagrees with itself', {})
+
+    expect(warnings.list()[0]?.element).toBeUndefined()
+  })
+
+  test('keeps warnings in the order they were reported', () => {
+    const warnings = new WarningCollector()
+
+    warnings.add('unsupported:element', 'first', {})
+    warnings.add('unsupported:element', 'second', {})
+
+    expect(warnings.list().map((w) => w.message)).toEqual(['first', 'second'])
+  })
+
+  test('hands out a copy, so a caller cannot corrupt the report', () => {
+    const warnings = new WarningCollector()
+    warnings.add('unsupported:element', 'reported', {})
+
+    const list = warnings.list() as ReturnType<WarningCollector['list']>[number][]
+    list.length = 0
+
+    expect(warnings.list()).toHaveLength(1)
+  })
+})
+
+// A warning the reader can only decide after every part is read goes in the
+// report at the place of its element, so the report stays in document order.
+describe('a place kept for a decision made later', () => {
+  test('reports through a place where it was taken, not where it was added', () => {
+    const warnings = new WarningCollector()
+
+    warnings.add('unsupported:element', 'first', {})
+    const place = warnings.reserve()
+    warnings.add('unsupported:element', 'third', {})
+    warnings.addAt(place, 'unsupported:element', 'second', {})
+
+    expect(warnings.list().map((w) => w.message)).toEqual(['first', 'second', 'third'])
+  })
+
+  test('keeps two reported through one place in the order they were added', () => {
+    const warnings = new WarningCollector()
+
+    const place = warnings.reserve()
+    warnings.add('unsupported:element', 'last', {})
+    warnings.addAt(place, 'unsupported:element', 'first', {})
+    warnings.addAt(place, 'unsupported:element', 'second', {})
+
+    expect(warnings.list().map((w) => w.message)).toEqual(['first', 'second', 'last'])
+  })
+
+  test('leaves a place nothing was reported through out of the report', () => {
+    const warnings = new WarningCollector()
+
+    warnings.reserve()
+    warnings.add('unsupported:element', 'only', {})
+
+    expect(warnings.list().map((w) => w.message)).toEqual(['only'])
+  })
+
+  test('records the same fields a warning reported in place carries', () => {
+    const warnings = new WarningCollector()
+
+    const place = warnings.reserve()
+    warnings.addAt(
+      place,
+      'unsupported:attribute',
+      'The "tempo" of a <sound> is not converted yet.',
+      { part: 'P1', measure: 2, line: 9 },
+      'sound',
+      'tempo',
+    )
+
+    expect(warnings.list()).toEqual([
+      {
+        code: 'unsupported:attribute',
+        message: 'The "tempo" of a <sound> is not converted yet.',
+        element: 'sound',
+        attribute: 'tempo',
+        context: { part: 'P1', measure: 2, line: 9 },
+      },
+    ])
+  })
+})

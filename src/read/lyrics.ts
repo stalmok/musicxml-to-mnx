@@ -11,7 +11,8 @@
 // written.
 
 import type { Lyric } from '../model/score.js'
-import type { WarningCollector, WarningContext } from '../warnings.js'
+import type { WarningContext } from '../warnings.js'
+import type { WarningCollector } from './collector.js'
 import { attribute } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
 import { reportHidden } from './unrepresentable.js'

@@ -17,7 +17,7 @@ import type {
   TimeUnit,
   Transposition,
 } from '../model/score.js'
-import { WarningCollector } from '../warnings.js'
+import { WarningCollector } from './collector.js'
 import type { WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, children, requireChild, trimmedText } from '../xml/tree.js'

@@ -7,7 +7,7 @@
 
 import { readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
-import { WarningCollector } from '../warnings.js'
+import { WarningCollector } from './collector.js'
 import { buildBeams } from './beams.js'
 import type { BeamedEvent } from './beams.js'
 

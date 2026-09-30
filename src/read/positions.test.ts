@@ -9,7 +9,7 @@
 import { readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { MusicXMLError } from '../errors.js'
-import { WarningCollector } from '../warnings.js'
+import { WarningCollector } from './collector.js'
 import type { ConversionWarning } from '../warnings.js'
 
 /** The line the first body element of `score` is on. */

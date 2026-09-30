@@ -4,7 +4,8 @@
 // path that skips a child reports it. The only hand-kept entries are skip()
 // calls, for a child accounted for elsewhere, and each one says why.
 
-import type { WarningCollector, WarningContext } from '../warnings.js'
+import type { WarningContext } from '../warnings.js'
+import type { WarningCollector } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, child, children, readAttributeNames } from '../xml/tree.js'
 import { attributeLoss, elementLoss } from './unrepresentable.js'

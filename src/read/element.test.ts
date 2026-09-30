@@ -3,7 +3,7 @@
 // come out with its parent's.
 
 import { describe, expect, test } from 'vitest'
-import { WarningCollector } from '../warnings.js'
+import { WarningCollector } from './collector.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { attribute } from '../xml/tree.js'
 import { ElementReader } from './element.js'

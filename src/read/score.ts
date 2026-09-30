@@ -30,7 +30,8 @@ import type {
   Tempo,
   TimeSignature,
 } from '../model/score.js'
-import type { WarningCollector, WarningContext, WarningPlace } from '../warnings.js'
+import type { WarningContext } from '../warnings.js'
+import type { WarningCollector, WarningPlace } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
 import {
   attribute,

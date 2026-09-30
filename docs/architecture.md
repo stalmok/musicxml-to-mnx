@@ -25,12 +25,12 @@ in memory. A fatal error returns no partial result.
 | `src/index.ts`     | Export the public conversion API, errors, warnings, and MNX types. |
 | `src/container.ts` | Decode input bytes and select the score from an archive.           |
 | `src/xml/`         | Parse XML and provide typed tree access with source positions.     |
-| `src/read/`        | Interpret MusicXML and build the score model.                      |
+| `src/read/`        | Interpret MusicXML, build the score model, and collect warnings.   |
 | `src/model/`       | Define the internal score model shared by reader and writer.       |
 | `src/write/`       | Turn the score model into MNX.                                     |
 | `src/types/mnx.ts` | Define the public MNX output types.                                |
 | `src/fraction.ts`  | Provide exact rational arithmetic.                                 |
-| `src/warnings.ts`  | Define warning codes, categories, and collection.                  |
+| `src/warnings.ts`  | Define warning codes, categories, and the warning shape.           |
 | `src/errors.ts`    | Define `MusicXMLError` and its location fields.                    |
 | `src/ids.ts`       | Define MNX's id pattern and the ids the converter generates.       |
 | `cli/`             | Handle files and command options through the public API.           |

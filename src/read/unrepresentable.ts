@@ -9,7 +9,8 @@
 // because it has event-markings, wedge-type, ottava, barline, ending,
 // arpeggio and fermata for them.
 
-import type { WarningCollector, WarningContext, WarningPlace } from '../warnings.js'
+import type { WarningContext } from '../warnings.js'
+import type { WarningCollector, WarningPlace } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute } from '../xml/tree.js'
 

@@ -3,7 +3,8 @@
 // systems; most of the rest of the element is spacing and numbering with no
 // home there.
 
-import type { WarningCollector, WarningContext } from '../warnings.js'
+import type { WarningContext } from '../warnings.js'
+import type { WarningCollector } from './collector.js'
 import { attribute } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
 

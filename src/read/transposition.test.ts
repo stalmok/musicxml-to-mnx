@@ -13,7 +13,7 @@ import {
   writtenFifthsWithFlip,
 } from './transposition.js'
 import type { TranspositionInterval } from '../model/score.js'
-import { WarningCollector } from '../warnings.js'
+import { WarningCollector } from './collector.js'
 
 // The MNX spec's two examples.
 const B_FLAT_CLARINET: TranspositionInterval = { staffDistance: 1, halfSteps: 2 }

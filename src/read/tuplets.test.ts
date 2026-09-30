@@ -9,7 +9,7 @@ import { convertValid } from '../../tests/support/convert.js'
 import { MusicXMLError } from '../errors.js'
 import { fraction } from '../fraction.js'
 import type { SequenceItem } from '../model/score.js'
-import { WarningCollector } from '../warnings.js'
+import { WarningCollector } from './collector.js'
 
 const DIVISIONS = '<attributes><divisions>12</divisions></attributes>'
 

@@ -3,7 +3,7 @@
 
 import { readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
-import { WarningCollector } from '../warnings.js'
+import { WarningCollector } from './collector.js'
 
 function measure(body: string, attributes = '<divisions>4</divisions>'): string {
   return (

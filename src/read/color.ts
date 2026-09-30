@@ -5,7 +5,8 @@
 // form is carried as written, a fully opaque alpha says nothing and is
 // dropped, and any other alpha is reported and the color converted opaque.
 
-import type { WarningCollector, WarningContext } from '../warnings.js'
+import type { WarningContext } from '../warnings.js'
+import type { WarningCollector } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute } from '../xml/tree.js'
 

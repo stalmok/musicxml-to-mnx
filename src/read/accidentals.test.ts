@@ -5,7 +5,7 @@
 
 import { readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
-import { WarningCollector } from '../warnings.js'
+import { WarningCollector } from './collector.js'
 import type { Note } from '../model/score.js'
 
 function note(step: string, alter: string, body: string): string {

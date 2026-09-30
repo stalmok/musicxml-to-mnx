@@ -21,7 +21,8 @@ import {
 } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import { describeLength, noteValueOf } from './duration.js'
-import type { WarningCollector, WarningContext } from '../warnings.js'
+import type { WarningContext } from '../warnings.js'
+import type { WarningCollector } from './collector.js'
 import type { BeamedEvent } from './beams.js'
 import {
   countedLengthOf,

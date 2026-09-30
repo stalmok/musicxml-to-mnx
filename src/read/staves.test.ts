@@ -6,7 +6,7 @@
 import { readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
-import { WarningCollector } from '../warnings.js'
+import { WarningCollector } from './collector.js'
 
 function note(step: string, staff: string, voice = '1'): string {
   return (

@@ -21,7 +21,8 @@ import {
 } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import { lengthOf, noteValueOf } from './duration.js'
-import type { WarningCollector, WarningContext, WarningPlace } from '../warnings.js'
+import type { WarningContext } from '../warnings.js'
+import type { WarningCollector, WarningPlace } from './collector.js'
 import type {
   NoteValue,
   NoteValueQuantity,
