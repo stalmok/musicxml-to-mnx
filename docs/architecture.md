@@ -148,6 +148,7 @@ The conversion entry point adds the caller's `documentName`, if supplied.
 Warnings allow conversion to continue. They report omitted notation,
 source inconsistencies, and corrections made by the reader.
 Each warning has a stable code and the available source context.
+A warning about an element takes its element name and line from that element.
 
 `unsupported:` identifies a converter gap. `unrepresentable:` identifies a
 limitation of the pinned MNX schema. Other prefixes identify source problems

@@ -265,6 +265,18 @@ describe('two marks of one kind', () => {
     )
   })
 
+  // The one warning covers the second mark whole, so an attribute of its own
+  // is not reported beside it.
+  test('says nothing more about any attribute of the mark it rejects', () => {
+    const { warnings } = read(
+      note(articulations('<accent/><accent color="#FF0000" placement="below"/>')),
+    )
+
+    expect(warnings.map((w) => [w.code, w.attribute])).toEqual([
+      ['unrepresentable:marking', undefined],
+    ])
+  })
+
   test('says nothing more about the side and the facing of the mark it rejects', () => {
     const { warnings } = read(
       note(
