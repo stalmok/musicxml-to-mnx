@@ -63,53 +63,6 @@ export interface TupletStart {
 }
 
 /**
- * A tuplet bracket currently open: the list its notes go in, how much of
- * its written value a note inside lasts (2/3 inside a triplet), and
- * the number its start marker gave it, for its stop to be checked against.
- */
-export interface OpenTuplet {
-  opened: 'tuplet'
-  list: SequenceItem[]
-  /** Still a draft: a bracket stating no ratio of its own states one when it
-   * closes, against what it turned out to hold. */
-  tuplet: Draft<Tuplet>
-  ratio: Fraction
-  number: string
-  /**
-   * True where the ratio was read from the bracket's first note rather than
-   * stated, so the bracket states what it holds once it closes.
-   */
-  derived: boolean
-  /**
-   * The ratio the source stated for this level: its own marker gave it, or
-   * one level opened and the note's <time-modification> is all of it. Unset
-   * where the converter worked it out, by reading it off the first note or by
-   * dividing a cumulative ratio between levels. Such a ratio says nothing
-   * about what the source drew over the bracket.
-   */
-  stated: { inner: NoteValueQuantity; outer: NoteValueQuantity } | undefined
-  /** Where this voice's content ran to when the bracket opened. */
-  openEnd: Fraction
-  /**
-   * True where the source stated the ratio and drew no bracket, so what the
-   * ratio counts is what says where the tuplet ends.
-   */
-  unbracketed: boolean
-  /**
-   * The <tuplet> that opened it, or for a run with no bracket the
-   * <time-modification> of its first note. A run with no bracket has no
-   * stop, so it is reported here.
-   */
-  element: XmlElement
-  /** The list this bracket sits in, for dropping it from where it stands. */
-  within: SequenceItem[]
-  /** The brackets that closed inside this one, for its claim to carry. */
-  children: TupletClaim[]
-  /** The skips filled directly inside this one, waiting for its frame. */
-  skips: OpenSkip[]
-}
-
-/**
  * A skip filled inside a bracket. Its written length is the converter's
  * reading of the measure time it stands for, taken at the ratios open when it
  * was filled, so it moves with the frame the bracket ends up with.
@@ -954,14 +907,4 @@ function takeSilence(
     content.push(written(tail))
     voice.end = addFractions(voice.end, tail)
   }
-}
-
-/** Whether the tuplet holds at least what its ratio counts. */
-export function tupletFilled(open: OpenTuplet): boolean {
-  return compareFractions(writtenLengthOf(open.tuplet.content), countedLengthOf(open)) >= 0
-}
-
-/** The written length a tuplet's ratio counts, for example three eighths. */
-export function countedLengthOf(open: OpenTuplet): Fraction {
-  return quantityLength(open.tuplet.inner)
 }

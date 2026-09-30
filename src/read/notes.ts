@@ -392,7 +392,7 @@ export function readNote(
   // scales the <duration> an exporter writes on one.
   const scale = graceElement
     ? { factor: fraction(1), by: undefined }
-    : { factor: builder.tupletFactor(voice), by: builder.scaledBy(voice) }
+    : { factor: builder.noteFactor(voice), by: builder.scaledBy(voice) }
 
   const candidate = restReading.kind === 'candidate' ? restReading : undefined
   // A rest that may be the measure's reports a mismatch only once the voice
@@ -544,7 +544,7 @@ function openTupletsAndTremolo(
   const markers = tupletMarkers(notations)
   // Held so the notes of a chord that follow can tell a marker restating this
   // one from a marker of its own.
-  builder.noteTupletMarkers(voice, markers.map(tupletMarkerKey))
+  builder.holdTupletMarkers(voice, markers.map(tupletMarkerKey))
 
   // A tremolo written across two notes gives each of them the value of the
   // pair while the pair lasts only one of them. The pair is gathered into

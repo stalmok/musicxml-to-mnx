@@ -123,7 +123,7 @@ export function readRest(note: RestNote, state: PartState, builder: MeasureBuild
     written === undefined &&
     duration !== undefined &&
     !state.divisionsAssumed &&
-    noteValueOf(divideFractions(duration, builder.tupletFactor(voice))) === undefined &&
+    noteValueOf(divideFractions(duration, builder.noteFactor(voice))) === undefined &&
     (builder.opensMeasure(voice) || afterGraceNotes)
       ? duration
       : undefined

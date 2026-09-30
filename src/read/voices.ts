@@ -16,7 +16,6 @@ import {
   compareFractions,
   divideFractions,
   fraction,
-  multiplyFractions,
   subtractFractions,
 } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
@@ -24,23 +23,8 @@ import { describeLength, noteValueOf } from './duration.js'
 import type { ReportContext, WarningCollector } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
 import type { BeamedEvent } from './beams.js'
-import {
-  countedLengthOf,
-  ratioOf,
-  sameCounts,
-  settleClaims,
-  tupletFilled,
-  tupletLevels,
-  unwrapTuplet,
-  writtenLengthOf,
-} from './tuplets.js'
-import type {
-  CarriedTupletStop,
-  MeasureExtent,
-  OpenTuplet,
-  TupletClaim,
-  TupletStart,
-} from './tuplets.js'
+import type { CarriedTupletStop, MeasureExtent, TupletStart } from './tuplets.js'
+import { TupletTracker } from './tupletTracker.js'
 import type {
   Arpeggio,
   Event,
@@ -57,9 +41,7 @@ import type {
   SequenceItem,
   Space,
   TieTarget,
-  Tuplet,
 } from '../model/score.js'
-import type { Draft } from './draft.js'
 
 /**
  * The event a span ends on: where it begins in the measure, and, where grace
@@ -106,25 +88,6 @@ export interface FinishedMeasure {
 /** The name a voice goes under when the source does not give it one. */
 const UNNAMED_VOICE = ''
 
-/**
- * A two-note tremolo currently being gathered: the notes it holds are kept
- * apart from the content, and join it as one item once it closes.
- */
-interface OpenTremolo {
-  opened: 'tremolo'
-  list: SequenceItem[]
-  marks: number
-  durations: Fraction[]
-}
-
-/**
- * One bracket the voice is inside. A tuplet and a tremolo each gather what
- * is written in them, and each carries what it needs to close, so closing
- * one while the other is open cannot pop the wrong frame and lose what it
- * held.
- */
-type OpenBracket = OpenTuplet | OpenTremolo
-
 interface VoiceBuilder {
   /** What each event said about its beams, in the order they were read. */
   beamed: BeamedEvent[]
@@ -142,23 +105,10 @@ interface VoiceBuilder {
    */
   placed: { event: Event | undefined; staff: number | undefined }[]
   /**
-   * The brackets this voice is inside, outermost first. Notes go into the
-   * innermost one's list, or in `content` where none is open. No bracket
-   * opens inside a tremolo, so a tremolo is always the innermost.
+   * The tuplets and the tremolo open around the next note, and the tuplets
+   * closed in this measure, waiting for it to be whole.
    */
-  open: OpenBracket[]
-  /**
-   * The numbers of tuplets whose start marker was read but never opened,
-   * because it was written where no bracket can begin. The stop matching one
-   * is dropped with it, rather than closing the bracket around it.
-   */
-  droppedTuplets: string[]
-  /**
-   * What the most recent event's own note said about tuplets, as the type and
-   * number of each marker it carried. A chord member repeating one of these
-   * is drawing the chord's bracket, not naming a bracket of its own.
-   */
-  eventTupletMarkers: readonly string[]
+  tuplets: TupletTracker
   /** The two-note tremolo marker the most recent event's own note carried. */
   eventTremoloMarker: string | undefined
   content: SequenceItem[]
@@ -190,12 +140,6 @@ interface VoiceBuilder {
   measureRest: MeasureRest | undefined
   /** The rest the sequence states, set once the measure is whole. */
   fullMeasure: FullMeasureRest | undefined
-  /**
-   * The brackets this voice has closed, outermost first in the order the
-   * source closed them. Each waits for the measure to be whole. See
-   * TupletClaim.
-   */
-  claims: TupletClaim[]
   /** How much of the measure each event this voice holds takes. */
   spent: Map<SequenceItem, Fraction>
 }
@@ -348,41 +292,6 @@ function commonestStaff(staves: readonly (number | undefined)[]): number | undef
     }
   }
   return commonest
-}
-
-/**
- * The list a note added now would go into: the innermost bracket's, or the
- * voice's own where no bracket is open.
- */
-function innermost(builder: VoiceBuilder): SequenceItem[] {
-  return builder.open.at(-1)?.list ?? builder.content
-}
-
-/** The tuplet the ratio alone opened, where the voice is inside one. */
-function impliedFrame(builder: VoiceBuilder): OpenTuplet | undefined {
-  const open = builder.open.at(-1)
-  return open?.opened === 'tuplet' && open.unbracketed ? open : undefined
-}
-
-/** The tuplets open around a note, outermost first. */
-function tupletFrames(builder: VoiceBuilder): OpenTuplet[] {
-  return builder.open.filter((frame) => frame.opened === 'tuplet')
-}
-
-/**
- * The tremolo being gathered, when one is. No bracket opens inside a tremolo,
- * so it is the innermost frame whenever there is one.
- */
-function tremoloFrame(builder: VoiceBuilder): OpenTremolo | undefined {
-  const frame = builder.open.at(-1)
-  return frame?.opened === 'tremolo' ? frame : undefined
-}
-
-/** How much of its written value a note lasts, given the tuplets around it. */
-function tupletFactorOf(builder: VoiceBuilder): Fraction {
-  return tupletFrames(builder)
-    .map((open) => open.ratio)
-    .reduce(multiplyFractions, fraction(1))
 }
 
 /**
@@ -609,9 +518,9 @@ export class MeasureBuilder {
     // bracket of its own, so nothing has been written since the group was.
     // The sequence it joins may have been silent since it last sounded, and
     // that silence comes before the group.
-    innermost(from).pop()
+    from.tuplets.list().pop()
     this.#fillGap(to)
-    innermost(to).push(waiting.group)
+    to.tuplets.list().push(waiting.group)
     from.graceBeamed = from.graceBeamed.filter((run) => run !== waiting.beams)
     to.graceBeamed.push(waiting.beams)
     to.placed.push(...from.placed.splice(waiting.placedFrom))
@@ -642,7 +551,7 @@ export class MeasureBuilder {
     const builder = this.#builderFor(voice)
     this.#fillGap(builder)
 
-    innermost(builder).push(event)
+    builder.tuplets.list().push(event)
     // A bracket completed once the measure is whole can take in a rest
     // written straight after it, where the source drew that rest as one of
     // the tuplet's own notes and left it outside the bracket. Telling one
@@ -656,7 +565,7 @@ export class MeasureBuilder {
     const start = this.#cursor
     builder.last = { event, duration, start }
     this.#eventStarts.push({ start, staff, grace: false })
-    tremoloFrame(builder)?.durations.push(duration)
+    builder.tuplets.addTremoloNote(duration)
     builder.end = addFractions(start, duration)
     this.#moveTo(builder.end)
     return { event, start }
@@ -671,19 +580,7 @@ export class MeasureBuilder {
   #fillGap(builder: VoiceBuilder): void {
     const gap = subtractFractions(this.#cursor, builder.end)
     if (compareFractions(gap, fraction(0)) > 0) {
-      // Inside a tuplet everything is written in values the ratio scales, so
-      // a gap there is stated in written units: a skipped triplet eighth is
-      // written as an eighth even though it lasts a twelfth of a whole note.
-      const space: Draft<Space> = {
-        kind: 'space',
-        duration: divideFractions(gap, tupletFactorOf(builder)),
-      }
-      innermost(builder).push(space)
-      // A bracket rewritten when it closes moves the frame this length was
-      // taken in, so the skip waits for it. A tremolo is the innermost frame
-      // whenever there is one, and states what it holds itself.
-      const around = builder.open.at(-1)
-      if (around?.opened === 'tuplet') around.skips.push({ space, spent: gap })
+      builder.tuplets.addSkip(gap)
       builder.end = this.#cursor
     }
   }
@@ -705,8 +602,7 @@ export class MeasureBuilder {
         measure,
         spent: builder.spent,
       }
-      builder.end = settleClaims(builder.claims, voice, warnings, context)
-      builder.claims.length = 0
+      builder.end = builder.tuplets.settle(voice, warnings, context)
     }
   }
 
@@ -769,7 +665,9 @@ export class MeasureBuilder {
    * so this is what a member of it has to agree with.
    */
   openGraceType(voice: string | undefined): GraceType | undefined {
-    const last = innermost(this.#builderFor(voice ?? this.#lastVoice)).at(-1)
+    const last = this.#builderFor(voice ?? this.#lastVoice)
+      .tuplets.list()
+      .at(-1)
     return last?.kind === 'grace' ? last.graceType : undefined
   }
 
@@ -894,11 +792,11 @@ export class MeasureBuilder {
     // checked before the content check below, because a tuplet's own item is
     // already in the content and would otherwise refuse the rest as notes
     // that are not there.
-    const opened = builder.open.at(-1)
+    const opened = builder.tuplets.scaledBy()
     if (opened) {
       throw new MusicXMLError(
         `A rest that fills the measure is inside ${
-          opened.opened === 'tuplet' ? 'a <tuplet>' : 'a two-note tremolo'
+          opened === 'tuplet' ? 'a <tuplet>' : 'a two-note tremolo'
         }. MNX states such a rest on the sequence rather than as an event, so nothing ` +
           'can hold it.',
         { path, line },
@@ -993,70 +891,20 @@ export class MeasureBuilder {
     derived: boolean,
   ): void {
     const builder = this.#builderFor(voice)
-    // A tremolo holds exactly its two notes, so no bracket may open inside
-    // one.
-    if (tremoloFrame(builder)) {
-      throw new MusicXMLError('A tuplet starts inside a two-note tremolo.', { path, line })
-    }
-
-    const levels = tupletLevels(
-      tupletFrames(builder).map((open) => open.ratio),
-      inner,
-      outer,
-      starts,
-      warnings,
-      context,
-    )
-
     // Time this voice has passed over in silence belongs before the brackets,
     // not inside them, where the tuplets' ratios would scale it.
     this.#fillGap(builder)
-    // Where this voice has reached, before anything the brackets hold. A
-    // bracket that states no ratio compares it with where the voice reaches
-    // when it closes, to state the time it took.
-    const openEnd = builder.end
-    for (const [index, level] of levels.entries()) {
-      const { display } = level
-      const content: SequenceItem[] = []
-      // A setting the source states is set; one it does not is left off the
-      // tuplet, rather than set to undefined, because MNX reads an absent
-      // key as the renderer's choice. Written as assignments rather than as
-      // conditional spreads, because a spread of { bracket: undefined } into a
-      // tuplet type-checks.
-      const tuplet: Draft<Tuplet> = {
-        kind: 'tuplet',
-        inner: level.inner,
-        outer: level.outer,
-        content,
-      }
-      if (display.bracket !== undefined) tuplet.bracket = display.bracket
-      if (display.showNumber !== undefined) tuplet.showNumber = display.showNumber
-      if (display.showValue !== undefined) tuplet.showValue = display.showValue
-      if (display.placement !== undefined) tuplet.placement = display.placement
-
-      const within = innermost(builder)
-      within.push(tuplet)
-      builder.open.push({
-        opened: 'tuplet',
-        list: content,
-        tuplet,
-        ratio: ratioOf(level.inner, level.outer),
-        number: level.number,
-        // A level whose own marker stated its ratio states it already, and
-        // rescaling that to the content would overwrite what the source drew.
-        derived: derived && starts[index]?.stated === undefined,
-        stated:
-          starts[index]?.stated !== undefined || (!derived && levels.length === 1)
-            ? { inner: level.inner, outer: level.outer }
-            : undefined,
-        openEnd,
-        unbracketed: false,
-        element: level.element,
-        within,
-        children: [],
-        skips: [],
-      })
-    }
+    builder.tuplets.openTuplets(
+      inner,
+      outer,
+      starts,
+      derived,
+      builder.end,
+      warnings,
+      context,
+      path,
+      line,
+    )
   }
 
   /**
@@ -1074,89 +922,46 @@ export class MeasureBuilder {
     // Time this voice passed over in silence belongs before the tuplet, not
     // inside it, where the ratio would scale it.
     this.#fillGap(builder)
-
-    const content: SequenceItem[] = []
-    const tuplet: Draft<Tuplet> = { kind: 'tuplet', inner, outer, content }
-    const within = innermost(builder)
-    within.push(tuplet)
-    builder.open.push({
-      opened: 'tuplet',
-      list: content,
-      tuplet,
-      ratio: ratioOf(inner, outer),
-      // No marker numbered it, and no stop of its own closes it.
-      number: '1',
-      derived: false,
-      // The notes state the ratio; where the run ends is the converter's
-      // reading of where they stop agreeing with it.
-      stated: undefined,
-      openEnd: builder.end,
-      unbracketed: true,
-      element: ratio,
-      within,
-      children: [],
-      skips: [],
-    })
+    builder.tuplets.openImplied(inner, outer, ratio, builder.end)
   }
 
   /** Whether this voice is inside a tuplet stated as a ratio with no bracket. */
   insideImpliedTuplet(voice: string | undefined): boolean {
-    return impliedFrame(this.#builderFor(voice)) !== undefined
+    return this.#builderFor(voice).tuplets.insideImplied()
   }
 
   /** Whether a two-note tremolo is open in this voice. */
   insideTremolo(voice: string | undefined): boolean {
-    return tremoloFrame(this.#builderFor(voice)) !== undefined
+    return this.#builderFor(voice).tuplets.insideTremolo()
   }
 
   /**
    * Whether the tuplet the ratio alone opened in this voice ends at time the
-   * voice has passed over in silence. A skip inside such a run stands in it
-   * as a space, the way a rest written there would, so a skip the ratio still
-   * counts room for leaves the run open. One that carries the run past what
-   * its ratio counts cannot be inside it, because the run is gathered from
-   * what follows the ratio and nothing the source drew bounds it. False where
-   * no such tuplet is open.
+   * voice has passed over in silence. False where no such tuplet is open.
    */
   impliedTupletEndsAtGap(voice: string | undefined): boolean {
     const builder = this.#builderFor(voice)
-    const open = impliedFrame(builder)
-    if (!open) return false
-    const gap = subtractFractions(this.#cursor, builder.end)
-    if (compareFractions(gap, fraction(0)) <= 0) return false
-    // Stated in the run's written units, as everything inside it is.
-    const held = addFractions(
-      writtenLengthOf(open.tuplet.content),
-      divideFractions(gap, tupletFactorOf(builder)),
-    )
-    return compareFractions(held, countedLengthOf(open)) > 0
+    return builder.tuplets.impliedEndsAtGap(this.#cursor, builder.end)
   }
 
   /**
    * Whether the tuplet the ratio alone opened in this voice ends before a note
-   * stating `quantities`. It takes the note while the note states the same
-   * counts and the tuplet holds less than what its first note's ratio counts.
-   * False where no such tuplet is open.
+   * stating `quantities`. False where no such tuplet is open.
    */
   impliedTupletEndsBefore(
     voice: string | undefined,
     quantities: { inner: NoteValueQuantity; outer: NoteValueQuantity } | undefined,
   ): boolean {
-    const open = impliedFrame(this.#builderFor(voice))
-    if (!open) return false
-    if (this.impliedTupletEndsAtGap(voice)) return true
-    if (!quantities) return true
-    return !sameCounts(open.tuplet, quantities) || tupletFilled(open)
+    const builder = this.#builderFor(voice)
+    return builder.tuplets.impliedEndsBefore(this.#cursor, builder.end, quantities)
   }
 
   /**
    * Whether the tuplet the ratio alone opened in this voice holds all its
-   * ratio counts, so a stop marker written here agrees with where the ratio
-   * ends it. False where no such tuplet is open.
+   * ratio counts. False where no such tuplet is open.
    */
   impliedTupletFilled(voice: string | undefined): boolean {
-    const open = impliedFrame(this.#builderFor(voice))
-    return open !== undefined && tupletFilled(open)
+    return this.#builderFor(voice).tuplets.impliedFilled()
   }
 
   /**
@@ -1226,8 +1031,7 @@ export class MeasureBuilder {
     line: number,
   ): void {
     for (const builder of this.#allBuilders()) {
-      const open = impliedFrame(builder)
-      if (open) this.#closeTuplet(builder, open, warnings, context, path, line, false)
+      builder.tuplets.closeImplied(builder.end, warnings, context, path, line)
     }
   }
 
@@ -1237,21 +1041,16 @@ export class MeasureBuilder {
    * ratios multiply where tuplets nest. Inside a two-note tremolo each note
    * is written with the value of the pair, so it lasts half of it.
    */
-  tupletFactor(voice: string | undefined): Fraction {
-    const builder = this.#builderFor(voice)
-    const factor = tupletFactorOf(builder)
-    return tremoloFrame(builder) ? multiplyFractions(factor, fraction(1, 2)) : factor
+  noteFactor(voice: string | undefined): Fraction {
+    return this.#builderFor(voice).tuplets.noteFactor()
   }
 
   /**
    * What is open around a note in this voice scaling its written value, for a
-   * report to name. The tremolo is the nearer of the two where both are open,
-   * since no bracket opens inside one.
+   * report to name.
    */
   scaledBy(voice: string | undefined): 'tuplet' | 'tremolo' | undefined {
-    const builder = this.#builderFor(voice)
-    if (tremoloFrame(builder)) return 'tremolo'
-    return tupletFrames(builder).length > 0 ? 'tuplet' : undefined
+    return this.#builderFor(voice).tuplets.scaledBy()
   }
 
   /**
@@ -1260,13 +1059,9 @@ export class MeasureBuilder {
    */
   openTremolo(voice: string | undefined, marks: number, path: DocumentPath, line: number): void {
     const builder = this.#builderFor(voice)
-    if (tremoloFrame(builder)) {
-      throw new MusicXMLError('A tremolo starts inside another tremolo.', { path, line })
-    }
-
     // Time this voice has passed over in silence belongs before the tremolo.
     this.#fillGap(builder)
-    builder.open.push({ opened: 'tremolo', list: [], marks, durations: [] })
+    builder.tuplets.openTremolo(marks, path, line)
   }
 
   /**
@@ -1284,10 +1079,7 @@ export class MeasureBuilder {
   ): void {
     const { marks } = marker
     const builder = this.#builderFor(voice)
-    const pending = tremoloFrame(builder)
-    if (!pending) {
-      throw new MusicXMLError('A tremolo stops where none is open.', { path, line })
-    }
+    const pending = builder.tuplets.closeTremolo(path, line)
 
     // Both ends count the beams joining the pair, and there is one pair to
     // draw.
@@ -1300,10 +1092,6 @@ export class MeasureBuilder {
         marker.element,
       )
     }
-
-    // With no bracket able to open inside a tremolo, its frame is on top
-    // whenever one is open.
-    builder.open.pop()
 
     const content = pending.list
     const events = content.filter((item): item is Event => item.kind === 'event')
@@ -1323,7 +1111,7 @@ export class MeasureBuilder {
     // a pair of written halves occupies two quarters. Inside a tuplet
     // everything is stated in written values the ratio scales, so the
     // measured duration is unscaled back into them first.
-    const unit = noteValueOf(divideFractions(first, tupletFactorOf(builder)))
+    const unit = noteValueOf(divideFractions(first, builder.tuplets.tupletFactor()))
     if (!unit) {
       throw new MusicXMLError(
         `A note of a tremolo lasts ${describeLength(first)}, which no note value can write.`,
@@ -1331,7 +1119,7 @@ export class MeasureBuilder {
       )
     }
 
-    innermost(builder).push({
+    builder.tuplets.list().push({
       kind: 'multiNoteTremolo',
       marks: pending.marks,
       outer: { value: unit, multiple: 2 },
@@ -1605,7 +1393,7 @@ export class MeasureBuilder {
 
   /** Whether a tuplet or a tremolo is open around a note in this voice. */
   insideBracket(voice: string | undefined): boolean {
-    return this.#builderFor(voice).open.length > 0
+    return this.#builderFor(voice).tuplets.insideBracket()
   }
 
   /**
@@ -1618,17 +1406,13 @@ export class MeasureBuilder {
   }
 
   /** Holds what the event's own note said about tuplets, for its chord. */
-  noteTupletMarkers(voice: string | undefined, markers: readonly string[]): void {
-    this.#builderFor(voice).eventTupletMarkers = markers
+  holdTupletMarkers(voice: string | undefined, markers: readonly string[]): void {
+    this.#builderFor(voice).tuplets.holdEventMarkers(markers)
   }
 
-  /**
-   * Whether a chord member's marker restates one the chord's own note
-   * carried. Every note of a chord is written with the bracket around the
-   * chord, and that bracket is one bracket.
-   */
+  /** Whether a chord member's marker restates one the chord's own note carried. */
   restatesTupletMarker(voice: string | undefined, marker: string): boolean {
-    return this.#builderFor(voice).eventTupletMarkers.includes(marker)
+    return this.#builderFor(voice).tuplets.restatesMarker(marker)
   }
 
   /** Holds the two-note tremolo marker the event's own note carried, for its chord. */
@@ -1646,7 +1430,7 @@ export class MeasureBuilder {
    * stated, so the stop that matches it can be dropped with it.
    */
   dropTupletStart(voice: string | undefined, number: string): void {
-    this.#builderFor(voice).droppedTuplets.push(number)
+    this.#builderFor(voice).tuplets.dropStart(number)
   }
 
   /**
@@ -1663,15 +1447,7 @@ export class MeasureBuilder {
    * open bracket as any other stop does.
    */
   closesDroppedTuplet(voice: string | undefined, number: string): boolean {
-    const builder = this.#builderFor(voice)
-    const named = (open: OpenTuplet) => !open.unbracketed && open.number === number
-    if (tupletFrames(builder).some(named)) return false
-
-    const at = builder.droppedTuplets.lastIndexOf(number)
-    if (at >= 0) {
-      builder.droppedTuplets.splice(at, 1)
-      return true
-    }
+    if (this.#builderFor(voice).tuplets.takesDroppedStart(number)) return true
 
     // A stop written inside a bracket the source drew names that bracket,
     // however the source numbers the two, so a carried stop is taken only
@@ -1684,9 +1460,7 @@ export class MeasureBuilder {
     // ends the source's bracket would close the run, and the record of the
     // cut bracket would stay for the rest of the part and match a later,
     // unrelated stop.
-    const drawn = this.#layersFor(voice).layers.some((layer) =>
-      tupletFrames(layer).some((open) => !open.unbracketed),
-    )
+    const drawn = this.#layersFor(voice).layers.some((layer) => layer.tuplets.insideDrawnBracket())
     if (drawn) return false
 
     const carried = this.#carriedStops.findIndex(
@@ -1700,10 +1474,8 @@ export class MeasureBuilder {
 
   /**
    * Closes the innermost open tuplet in this voice, handing back the number
-   * its start marker stated so the caller can check the note's stops as a
-   * batch: which stop is written first on a note is not constrained, so a
-   * crossing shows only when the note's stated numbers and the closed ones
-   * disagree as sets. `stop` is the <tuplet> marker closing it.
+   * its start marker stated, or nothing where no tuplet is open. `stop` is
+   * the <tuplet> marker closing it.
    */
   closeTuplet(
     voice: string | undefined,
@@ -1714,23 +1486,7 @@ export class MeasureBuilder {
     stop: XmlElement,
   ): string | undefined {
     const builder = this.#builderFor(voice)
-    const closed = builder.open.at(-1)
-    // A stop naming a bracket this voice never opened. A bracket whose start
-    // was dropped and one an earlier measure closed at its barline are both
-    // answered for already, so what is left is a marker the source wrote
-    // where nothing of its can end. It takes none of the measure's time, so
-    // the measure still adds up without it.
-    if (!closed) {
-      warnings.add(
-        'inconsistent:tuplet',
-        'A <tuplet> stops where no tuplet is open, and names no bracket this measure ' +
-          'dropped or carried in. The marker is passed over.',
-        context,
-        stop,
-      )
-      return undefined
-    }
-    return this.#closeTuplet(builder, closed, warnings, context, path, line, false, stop)
+    return builder.tuplets.closeTuplet(builder.end, warnings, context, path, line, stop)
   }
 
   /** Closes the run the ratio alone opened in this voice, where one is open. */
@@ -1742,94 +1498,7 @@ export class MeasureBuilder {
     line: number,
   ): void {
     const builder = this.#builderFor(voice)
-    const open = impliedFrame(builder)
-    if (open) this.#closeTuplet(builder, open, warnings, context, path, line, false)
-  }
-
-  /**
-   * The same, for a voice and its innermost frame already in hand. `cut`
-   * marks a close the barline forced rather than a stop the source wrote, so
-   * the bracket holding less than its ratio counts is the converter's doing
-   * and is not reported again.
-   */
-  #closeTuplet(
-    builder: VoiceBuilder,
-    closed: OpenBracket,
-    warnings: WarningCollector,
-    context: ReportContext,
-    path: DocumentPath,
-    line: number,
-    cut: boolean,
-    stop?: XmlElement,
-  ): string {
-    // A tremolo edge and a tuplet edge can fall on different notes. Popping
-    // the tremolo's frame here would lose the notes it holds, so a bracket
-    // closing across an open tremolo refuses instead.
-    if (closed.opened === 'tremolo') {
-      throw new MusicXMLError('A tuplet closes inside a two-note tremolo.', { path, line })
-    }
-    builder.open.pop()
-    // A run with no bracket has no stop, so it is reported where it opened,
-    // and so is a bracket the barline closes.
-    const at = stop ?? closed.element
-
-    const { tuplet } = closed
-    // A run the ratio alone opened on a note that turned out not to be an
-    // event holds nothing. It stands for no tuplet the source wrote, so it
-    // goes rather than being drawn empty. Such a run opens only where no other
-    // bracket is, and everything written while it is open goes inside it, so
-    // it is the last item this voice holds.
-    if (closed.unbracketed && tuplet.content.length === 0) {
-      builder.content.pop()
-      return closed.number
-    }
-    // A bracket that holds nothing taking any of the measure's time, which is
-    // what a bracket opening and closing on grace notes holds. MNX states a
-    // tuplet as a written length against the time it is played in, and a
-    // grace note gives neither, so there is no tuplet to write.
-    if (writtenLengthOf(tuplet.content).num === 0) {
-      unwrapTuplet(closed.within, tuplet)
-      warnings.add(
-        'unrepresentable:tuplet-untimed',
-        "A tuplet bracket holds nothing that takes any of the measure's time, as a bracket " +
-          'over grace notes alone does. MNX states a tuplet as a written length against the ' +
-          'time it is played in, so the bracket is not converted and what it holds is ' +
-          'written as it stands.',
-        context,
-        at,
-      )
-      return closed.number
-    }
-    // Sources contain brackets whose content does not add up to the
-    // stated ratio: a lone quarter under a 3:2 eighth ratio, standing for a
-    // triplet quarter. MNX sequences a tuplet by advancing the cursor over
-    // its outer and requires the content to come to inner, so such a bracket
-    // is rewritten to count the notes it holds, which leaves them sounding
-    // for the time the source gives them. Which reading it takes is settled
-    // once the measure is whole.
-    const claim: TupletClaim = {
-      tuplet,
-      within: closed.within,
-      stated: closed.stated,
-      derived: closed.derived,
-      unbracketed: closed.unbracketed,
-      cut,
-      openEnd: closed.openEnd,
-      spent: subtractFractions(builder.end, closed.openEnd),
-      frame: tupletFactorOf(builder),
-      children: closed.children,
-      skips: closed.skips,
-      place: warnings.reserve(),
-      element: at,
-    }
-    // A bracket still open around this one holds the claim, so that the two
-    // settle together: this one's outer is written in the frame that one
-    // ends up with.
-    const around = tupletFrames(builder).at(-1)
-    if (around) around.children.push(claim)
-    else builder.claims.push(claim)
-
-    return closed.number
+    builder.tuplets.closeImplied(builder.end, warnings, context, path, line)
   }
 
   /**
@@ -1851,7 +1520,7 @@ export class MeasureBuilder {
     // beside its note, not at the point the voice last sounded.
     this.#fillGap(builder)
 
-    const list = innermost(builder)
+    const list = builder.tuplets.list()
     const open = builder.grace
 
     this.#lastVoice = voice ?? UNNAMED_VOICE
@@ -1999,13 +1668,6 @@ export class MeasureBuilder {
    * Settles what the measure leaves open at its barline, and hands back the
    * stops the measures after it will meet with nothing to close.
    *
-   * A tremolo holds exactly its two notes, so one left open is a source the
-   * reader can make no sense of and the document is refused.
-   *
-   * A <tuplet> bracket may start in one measure and stop in the next, and MNX
-   * states a tuplet inside one measure's sequence, so a bracket still open
-   * here is closed at the barline and the loss reported.
-   *
    * A stop carried in and not met here is handed on with them. The source may
    * write it any number of measures later, and a stop that closes nothing is
    * passed over rather than refusing the file, as one whose start was dropped
@@ -2020,28 +1682,8 @@ export class MeasureBuilder {
     const carried = [...this.#carriedStops]
     for (const [voice, layers] of this.#voices) {
       for (const builder of layers.layers) {
-        if (tremoloFrame(builder)) {
-          throw new MusicXMLError('A tremolo is opened and never closed.', { path, line })
-        }
-        // Every frame left is a bracket: a tremolo left open is refused above.
-        for (
-          let open = builder.open.at(-1);
-          open?.opened === 'tuplet';
-          open = builder.open.at(-1)
-        ) {
-          warnings.add(
-            'unrepresentable:tuplet-span',
-            'A tuplet bracket runs past the end of the measure, and MNX states a tuplet ' +
-              'inside one measure. It is drawn as far as the barline, over the notes of ' +
-              'it that this measure holds.',
-            context,
-            open.element,
-          )
-          carried.push({
-            voice,
-            number: this.#closeTuplet(builder, open, warnings, context, path, line, true),
-          })
-        }
+        const numbers = builder.tuplets.closeAtBarline(builder.end, warnings, context, path, line)
+        carried.push(...numbers.map((number) => ({ voice, number })))
       }
     }
     return carried
@@ -2186,22 +1828,21 @@ export class MeasureBuilder {
 }
 
 function newVoiceBuilder(openedAt?: XmlElement): VoiceBuilder {
+  // One array: the tracker puts what no bracket holds in the voice's own list.
+  const content: SequenceItem[] = []
   return {
     openedAt,
     beamed: [],
     graceBeamed: [],
     placed: [],
-    open: [],
-    droppedTuplets: [],
-    eventTupletMarkers: [],
+    tuplets: new TupletTracker(content),
     eventTremoloMarker: undefined,
-    content: [],
+    content,
     end: fraction(0),
     last: undefined,
     grace: undefined,
     measureRest: undefined,
     fullMeasure: undefined,
-    claims: [],
     spent: new Map(),
   }
 }
