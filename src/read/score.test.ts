@@ -3399,6 +3399,19 @@ describe('a part id the output cannot carry as it stands', () => {
     expect(warnings[0]?.message).toContain('p1')
   })
 
+  test('reports the rename at the part, not at its entry in the part list', () => {
+    const { warnings } = convertValid(
+      score(
+        '<part-list>\n<score-part id="Süß"/>\n</part-list>\n' +
+          `<part id="Süß"><measure number="1">${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(warnings.map((w) => [w.code, w.element, w.context.line])).toEqual([
+      ['unrepresentable:part-id', 'part', 4],
+    ])
+  })
+
   test('leaves printable ASCII part ids alone', () => {
     const { mnx, warnings } = convertValid(
       score(

@@ -7,6 +7,7 @@ import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
 import type { GroupingItem, PartGroup } from '../model/score.js'
 import type { WarningCollector } from './collector.js'
+import type { XmlElement } from '../xml/parse.js'
 import { attribute, requireAttribute, trimmedText } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
 import { drawnName } from './element.js'
@@ -18,8 +19,8 @@ interface OpenPartGroup {
   label: string | undefined
   barlineStyle: PartGroup['barlineStyle']
   content: GroupingItem[]
-  /** Where the start edge is written, for reporting a stop that never comes. */
-  line: number
+  /** The start edge, for reporting a stop that never comes. */
+  element: XmlElement
   /** Set once a crossing stop was reported, so the close is not reported twice. */
   crossed?: boolean
 }
@@ -59,10 +60,10 @@ export class GroupingBuilder {
         label: drawnName(group, 'group-name'),
         barlineStyle: groupBarlineOf(group, warnings),
         content: [],
-        line: element.line,
+        element,
       })
     } else if (type === 'stop') {
-      this.#stop(number, element.line, warnings)
+      this.#stop(number, element, warnings)
     } else {
       throw new MusicXMLError(`A <part-group> type must be "start" or "stop", found "${type}".`, {
         path: [...path, 'part-group'],
@@ -71,7 +72,7 @@ export class GroupingBuilder {
     }
   }
 
-  #stop(number: string, line: number, warnings: WarningCollector): void {
+  #stop(number: string, element: XmlElement, warnings: WarningCollector): void {
     if (this.#open.at(-1)?.number === number) {
       const closed = this.#open.pop()
       if (closed) {
@@ -90,15 +91,15 @@ export class GroupingBuilder {
         'unrepresentable:part-group-overlap',
         'The edges of two part groups cross, which an MNX layout cannot hold. The ' +
           'one stopping here runs to the end of the part list instead.',
-        { line },
-        'part-group',
+        {},
+        element,
       )
     } else {
       warnings.add(
         'unclosed:part-group',
         'A part group stops where none had started, and draws nothing.',
-        { line },
-        'part-group',
+        {},
+        element,
       )
     }
   }
@@ -115,8 +116,8 @@ export class GroupingBuilder {
         warnings.add(
           'unclosed:part-group',
           'A part group starts where nothing stops it, and runs to the end of the part list.',
-          { line: closed.line },
-          'part-group',
+          {},
+          closed.element,
         )
       }
       this.#place(closedGroup(closed))
@@ -136,33 +137,32 @@ export class GroupingBuilder {
 export function pruneGrouping(
   items: readonly GroupingItem[],
   written: ReadonlySet<string>,
-  lines: ReadonlyMap<string, number>,
+  scoreParts: ReadonlyMap<string, XmlElement>,
   warnings: WarningCollector,
 ): readonly GroupingItem[] {
-  const pruned = prunedItems(items, written, lines, warnings)
+  const pruned = prunedItems(items, written, scoreParts, warnings)
   return pruned.some((item) => item.kind === 'group') ? pruned : []
 }
 
 function prunedItems(
   items: readonly GroupingItem[],
   written: ReadonlySet<string>,
-  lines: ReadonlyMap<string, number>,
+  scoreParts: ReadonlyMap<string, XmlElement>,
   warnings: WarningCollector,
 ): GroupingItem[] {
   return items.flatMap((item): GroupingItem[] => {
     if (item.kind === 'part') {
       if (written.has(item.part)) return [item]
-      const line = lines.get(item.part)
       warnings.add(
         'unresolved:part-id',
         `The part list names part ${item.part}, but the score never writes it, ` +
           'so no staff of it is drawn.',
-        { part: item.part, ...(line !== undefined ? { line } : {}) },
-        'score-part',
+        { part: item.part },
+        scoreParts.get(item.part),
       )
       return []
     }
-    const content = prunedItems(item.content, written, lines, warnings)
+    const content = prunedItems(item.content, written, scoreParts, warnings)
     // A group around nothing draws nothing, so leaving it out loses nothing.
     if (content.length === 0) return []
     return [{ ...item, content }]
@@ -187,7 +187,8 @@ function closedGroup(open: OpenPartGroup): GroupingItem {
  */
 function groupSymbolOf(group: ElementReader, warnings: WarningCollector): PartGroup['symbol'] {
   const element = group.child('group-symbol')
-  const text = element ? trimmedText(element) : 'none'
+  if (!element) return 'noSymbol'
+  const text = trimmedText(element)
   if (text === 'bracket' || text === 'brace') return text
   if (text === 'none' || text === '') return 'noSymbol'
   if (text === 'line' || text === 'square') {
@@ -197,8 +198,8 @@ function groupSymbolOf(group: ElementReader, warnings: WarningCollector): PartGr
       'unrepresentable:group-symbol',
       `A part group is drawn with a "${text}" symbol, which MNX cannot state. ` +
         'The group is kept with no symbol.',
-      { line: element?.line ?? group.element.line },
-      'group-symbol',
+      {},
+      element,
     )
     return undefined
   }
@@ -207,8 +208,8 @@ function groupSymbolOf(group: ElementReader, warnings: WarningCollector): PartGr
   warnings.add(
     'unsupported:element',
     `A <group-symbol> of "${text}" is not converted yet.`,
-    { line: element?.line ?? group.element.line },
-    'group-symbol',
+    {},
+    element,
   )
   return undefined
 }
@@ -230,8 +231,8 @@ function groupBarlineOf(
   warnings.add(
     'unsupported:element',
     `A <group-barline> of "${text}" is not converted yet.`,
-    { line: element.line },
-    'group-barline',
+    {},
+    element,
   )
   return undefined
 }

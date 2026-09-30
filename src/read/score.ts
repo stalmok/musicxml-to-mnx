@@ -223,13 +223,13 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
     {
       globalMeasures,
       parts,
-      grouping: pruneGrouping(partList.grouping, written, partList.lines, warnings),
+      grouping: pruneGrouping(partList.grouping, written, partList.scoreParts, warnings),
       sounds: partList.sounds,
       ...(musicFont !== undefined ? { musicFont } : {}),
       ...(declaresBeams ? { declaresBeams } : {}),
       ...(declaresAccidentals ? { declaresAccidentals } : {}),
     },
-    partList.lines,
+    partElements,
     warnings,
   )
 }
@@ -244,25 +244,26 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
  */
 function renameInvalidPartIds(
   score: Score,
-  lines: ReadonlyMap<string, number>,
+  partElements: readonly XmlElement[],
   warnings: WarningCollector,
 ): Score {
-  const failing = score.parts.filter(
-    (part) => !MNX_ID_PATTERN.test(part.id) || GENERATED_ID_PATTERN.test(part.id),
+  const failing = score.parts.flatMap((part, index) =>
+    !MNX_ID_PATTERN.test(part.id) || GENERATED_ID_PATTERN.test(part.id)
+      ? [{ part, element: partElements[index] }]
+      : [],
   )
   if (failing.length === 0) return score
 
   const taken: ReadonlySet<string> = new Set(score.parts.map((part) => part.id))
   const renames = new Map<string, string>()
   let counter = 0
-  for (const part of failing) {
+  for (const { part, element } of failing) {
     let generated: string
     do {
       counter += 1
       generated = renamedId('part', counter)
     } while (taken.has(generated))
     renames.set(part.id, generated)
-    const line = lines.get(part.id)
     warnings.add(
       'unrepresentable:part-id',
       MNX_ID_PATTERN.test(part.id)
@@ -271,8 +272,8 @@ function renameInvalidPartIds(
             `part is renamed ${generated}.`
         : `The part id "${part.id}" does not fit MNX's id, which is 1 to 256 printable ` +
             `ASCII characters, so the part is renamed ${generated}.`,
-      { part: part.id, ...(line !== undefined ? { line } : {}) },
-      'part',
+      { part: part.id },
+      element,
     )
   }
 
@@ -684,8 +685,8 @@ interface PartList {
   names: ReadonlyMap<string, string>
   shortNames: ReadonlyMap<string, string>
   listed: ReadonlySet<string>
-  /** Where each <score-part> is written, for warnings about its entry. */
-  lines: ReadonlyMap<string, number>
+  /** Each <score-part> by its id, for warnings about its entry. */
+  scoreParts: ReadonlyMap<string, XmlElement>
   /** The instrument grouping the list draws, empty where it draws none. */
   grouping: readonly GroupingItem[]
   /** The instrument setup the list states, keyed by what the score holds it under. */
@@ -709,7 +710,7 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
   const names = new Map<string, string>()
   const shortNames = new Map<string, string>()
   const listed = new Set<string>()
-  const lines = new Map<string, number>()
+  const scoreParts = new Map<string, XmlElement>()
   const grouping = new GroupingBuilder()
   const sounds = new Map<string, InstrumentSound>()
   const soundsByInstrument = new Map<string, Map<string, ResolvedSound>>()
@@ -739,7 +740,7 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
         const id = attribute(element, 'id')
         if (id !== undefined) {
           listed.add(id)
-          lines.set(id, element.line)
+          scoreParts.set(id, element)
           grouping.part(id)
         }
 
@@ -827,7 +828,7 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
     names,
     shortNames,
     listed,
-    lines,
+    scoreParts,
     grouping: grouping.finish(warnings),
     sounds,
     soundsByInstrument,
