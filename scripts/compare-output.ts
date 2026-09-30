@@ -33,6 +33,13 @@ import { Worker, isMainThread, parentPort, workerData } from 'node:worker_thread
 
 const SCORE_EXTENSIONS = ['.mxl', '.musicxml', '.xml']
 
+// With no limit each worker's heap grows until the collector runs, and eight
+// workers took 7 GB over 20,000 files. The largest score tried, 27 MB of
+// MusicXML, needs between 512 and 768 MB. A worker at this limit takes about
+// 1.1 GB in all, so each one started needs 1.5 GB free.
+const WORKER_HEAP_MB = 1024
+const WORKER_MEMORY_BYTES = 1.5 * 1024 ** 3
+
 export interface CompareOptions {
   /** Compare the MNX alone, and not the warnings. */
   mnxOnly?: boolean
@@ -180,7 +187,14 @@ function compareInWorkers(
   files: readonly string[],
   options: CompareOptions,
 ): Promise<FileDifference[]> {
-  const count = Math.max(1, Math.min(availableParallelism(), files.length))
+  const count = Math.max(
+    1,
+    Math.min(
+      availableParallelism(),
+      files.length,
+      Math.floor(process.availableMemory() / WORKER_MEMORY_BYTES),
+    ),
+  )
   const shares = Array.from({ length: count }, (_, share) =>
     files.filter((_file, index) => index % count === share),
   )
@@ -195,7 +209,10 @@ function compareInWorkers(
             files: share,
             options,
           }
-          const worker = new Worker(new URL(import.meta.url), { workerData: task })
+          const worker = new Worker(new URL(import.meta.url), {
+            workerData: task,
+            resourceLimits: { maxOldGenerationSizeMb: WORKER_HEAP_MB },
+          })
           worker.once('message', done)
           worker.once('error', fail)
           // After a message this settles nothing.
