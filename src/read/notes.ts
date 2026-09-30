@@ -321,16 +321,6 @@ export function readNote(
   if (!chordMember && voice === undefined) builder.namesNoVoice(element.element)
   if (!chordMember && !graceElement) builder.beginNote(voice, element.element)
 
-  // MNX states a rest filling the measure on a sequence that holds nothing,
-  // so a voice that rests the measure has nowhere to put a grace note. The
-  // rest moves off the sequence and becomes an event of its written length, as
-  // it would with the grace note written first. It moves before this note
-  // opens a bracket, so the rest stays outside that bracket, as in the
-  // source. A chord member joins the grace note before it, which has moved
-  // the rest already. An irregular measure has no value to write the
-  // rest as, so it is written as a space.
-  if (graceElement && !chordMember) builder.restoreMeasureRest(voice, path, element.line)
-
   // Which staff the note names. It is range-checked even in a one-staff part,
   // so a note naming a staff that <staves> has not declared is rejected, not
   // placed on the first. It is stated only where the part has more than one
@@ -511,9 +501,10 @@ export function readNote(
     : builder.addEvent(voice, event, duration ?? lengthOf(value), path, element.line, staff)
   if (candidate) {
     const { written: drawn, duration: lasts } = candidate
-    builder.markMeasureRest(voice, event, () =>
-      reportDurationMismatch(element, drawn, lasts, scale, warnings, context, mismatchPlace),
-    )
+    builder.markMeasureRest(voice, event, {
+      event: () =>
+        reportDurationMismatch(element, drawn, lasts, scale, warnings, context, mismatchPlace),
+    })
   }
   readEventSpanners(
     element,
@@ -729,7 +720,7 @@ function openTupletsAndTremolo(
   return { markers, tremolo }
 }
 
-/** Places a rest as its voice's rest through the measure, stated on the sequence. */
+/** Places a rest as its voice's rest through the measure. */
 function setMeasureRest(
   note: NoteStatement,
   fills: FillsMeasure,
@@ -752,31 +743,8 @@ function setMeasureRest(
     })
   }
 
-  // MNX's rest filling the measure states no length, so how long the source
-  // drew this one is not carried. Only a rest that reached here on its own
-  // length reports it: one marked as the measure's, or drawn to what the
-  // time signature states, says nothing MNX's measure does not. Reported
-  // once the measure is whole, and only if the rest is still on the
-  // sequence then: a grace note beside it writes it as a space, which
-  // states the length, and reports the space through the same place.
   const { eventValue: restValue, unwritableLength: unwritableRest } = fills
   const place = warnings.reserve()
-  const reportLength = () => {
-    if (unwritableRest) {
-      warnings.addAt(
-        place,
-        'unrepresentable:rest-length',
-        `A rest lasting ${describeLength(unwritableRest)} is the whole of its voice in ` +
-          (state.time === undefined
-            ? 'a measure written with no time signature. '
-            : 'this measure, and no note value can write that length. ') +
-          'MNX states such a rest on the sequence, which carries no length, so the length ' +
-          'is not converted.',
-        context,
-        fills.rest,
-      )
-    }
-  }
 
   // A rest no note value writes is written as a space beside grace notes, and
   // a hidden one then loses nothing drawn. So its hiding, like its length, is
@@ -802,11 +770,10 @@ function setMeasureRest(
     },
     lasts,
     staff,
-    restValue && {
-      duration: lasts ?? lengthOf(restValue),
-      // What a grace note written after the rest takes it back as. A marking,
-      // a stem, a lyric or a slur would have kept it an event already.
-      event: () => ({
+    // What grace notes beside the rest write it as. A marking, a stem, a
+    // lyric or a slur would have kept it an event already.
+    restValue &&
+      (() => ({
         kind: 'event',
         id: state.ids.nextEvent(),
         staff: undefined,
@@ -820,16 +787,34 @@ function setMeasureRest(
         kitNotes: [],
         isRest: true,
         staffPosition,
-      }),
-    },
+      })),
     {
-      onSequence: () => {
+      sequence: () => {
         if (!restValue) note.reportHidden(hiddenDrawn)
-        reportLength()
+        // MNX's rest filling the measure states no length, so how long the
+        // source drew this one is not carried. Only a rest that reached here
+        // on its own length reports it: one marked as the measure's, or drawn
+        // to what the time signature states, says nothing MNX's measure does
+        // not. A space written for the rest beside grace notes states the
+        // length.
+        if (unwritableRest) {
+          warnings.addAt(
+            place,
+            'unrepresentable:rest-length',
+            `A rest lasting ${describeLength(unwritableRest)} is the whole of its voice in ` +
+              (state.time === undefined
+                ? 'a measure written with no time signature. '
+                : 'this measure, and no note value can write that length. ') +
+              'MNX states such a rest on the sequence, which carries no length, so the ' +
+              'length is not converted.',
+            context,
+            fills.rest,
+          )
+        }
       },
-      // A hidden rest is time with nothing drawn in it, which is what a space
-      // is, unless a fermata is drawn over it.
-      asSpace: () => {
+      space: () => {
+        // A hidden rest is time with nothing drawn in it, which is what a
+        // space is, unless a fermata is drawn over it.
         if (note.hidden && !fermata) return
         warnings.addAt(
           place,
@@ -846,7 +831,6 @@ function setMeasureRest(
     path,
     element.line,
   )
-  if (lasts) builder.passOver(lasts)
 }
 
 /**

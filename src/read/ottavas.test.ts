@@ -318,6 +318,28 @@ describe('where an octave shift runs', () => {
     expect(warnings).toEqual([])
   })
 
+  // A grace note beside the rest writes it as an event, which the stop ends
+  // on as it would on any other.
+  test('ends on a measure rest that a grace note writes as an event', () => {
+    const { ottavas, warnings } = read(
+      '<attributes><divisions>4</divisions><staves>2</staves></attributes>' +
+        shift('down', '8', '<staff>2</staff>') +
+        '<note><voice>1</voice><pitch><step>C</step><octave>4</octave></pitch>' +
+        '<duration>4</duration><type>quarter</type><staff>1</staff></note>' +
+        '<note><voice>1</voice><pitch><step>D</step><octave>4</octave></pitch>' +
+        '<duration>4</duration><type>quarter</type><staff>1</staff></note>' +
+        '<backup><duration>8</duration></backup>' +
+        '<note><rest measure="yes"/><voice>5</voice><duration>8</duration>' +
+        '<staff>2</staff></note>' +
+        shift('stop', '8', '<staff>2</staff>') +
+        '<note><grace/><voice>5</voice><pitch><step>E</step><octave>3</octave></pitch>' +
+        '<type>eighth</type><staff>2</staff></note>',
+    )
+
+    expect(ottavas[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 0, den: 1 } })
+    expect(warnings).toEqual([])
+  })
+
   // Both hands hold a shift numbered 1 at once, as an exporter that numbers
   // each hand from 1 writes. Paired on the number alone, each would close on
   // the other hand's stop.

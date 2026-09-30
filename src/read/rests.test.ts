@@ -637,10 +637,8 @@ describe('a rest filling a measure a grace note leads into', () => {
   })
 
   // A grace note over a resting bar is as often written after the rest as
-  // before it, and leads into the next measure's downbeat either way. Which
-  // side of the rest it is written on is settled while the rest is being
-  // read, so a rest already on the sequence goes back to being the event its
-  // length is written as.
+  // before it, and leads into the next measure's downbeat either way, so the
+  // rest is written as the same event in both orders.
   test('writes the rest as an event where the grace notes follow it', () => {
     const { mnx, warnings } = convertValid(inMeasure(measureRest + grace))
     const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
@@ -661,11 +659,10 @@ describe('a rest filling a measure a grace note leads into', () => {
     expect(event && !('type' in event) && event.rest).toEqual({})
   })
 
-  // The rest goes back to where it stands, not to where the cursor has since
-  // reached. A <backup> written over it takes the voice to the measure start,
+  // A <backup> written over the rest takes the voice to the measure start,
   // and what follows there is a second line of the voice rather than music
-  // written after the rest.
-  test('writes the restored rest where it stands', () => {
+  // written after the rest. A grace note there leads into that line's note.
+  test('leaves the rest alone where the grace note leads into another line', () => {
     const { mnx } = convertValid(
       inMeasure(
         measureRest +
@@ -677,10 +674,14 @@ describe('a rest filling a measure a grace note leads into', () => {
     )
 
     expect(
-      mnx.parts[0]?.measures[0]?.sequences.map((sequence) =>
+      mnx.parts[0]?.measures[0]?.sequences.map((sequence) => [
         sequence.content.map((item) => ('type' in item ? item.type : 'event')),
-      ),
-    ).toEqual([['event'], ['grace', 'event']])
+        sequence.fullMeasure !== undefined,
+      ]),
+    ).toEqual([
+      [[], true],
+      [['grace', 'event'], false],
+    ])
   })
 
   // A voice that rests one line of the measure can sound another. The rest
@@ -709,10 +710,9 @@ describe('a rest filling a measure a grace note leads into', () => {
   })
 
   // A bracket the grace note itself opens starts at the grace note, so the rest
-  // stands outside it, because the rest moves off the sequence before the
-  // bracket opens. The same two written the other way round are refused,
-  // because there the bracket reaches the rest.
-  test('leaves the restored rest outside a bracket the grace note opens', () => {
+  // written before it stands outside it. The same two written the other way
+  // round are refused, because there the bracket reaches the rest.
+  test('leaves the rest outside a bracket the grace note opens', () => {
     const { mnx, warnings } = convertValid(
       inMeasure(
         measureRest +
@@ -734,9 +734,95 @@ describe('a rest filling a measure a grace note leads into', () => {
     ])
   })
 
+  // The rest counts once toward the staff the voice sits on, whichever side
+  // of it the grace notes stand, so two grace notes on the other staff
+  // outweigh it in both orders.
+  test.each([
+    ['before', 1],
+    ['after', 0],
+  ])('places the voice by the grace notes %s the rest', (order, at) => {
+    const staves =
+      '<staves>2</staves><clef number="1"><sign>G</sign><line>2</line></clef>' +
+      '<clef number="2"><sign>F</sign><line>4</line></clef>'
+    const onStaff2 = grace.replace('</voice>', '</voice><staff>2</staff>')
+    const rest = measureRest.replace('</voice>', '</voice><staff>1</staff>')
+    const graces = onStaff2 + onStaff2
+    const { mnx } = convertValid(
+      inMeasure(order === 'before' ? graces + rest : rest + graces, staves),
+    )
+    const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
+    const event = sequence?.content[at]
+
+    expect(sequence?.staff).toBe(2)
+    expect(event && !('type' in event) && event.staff).toBe(1)
+  })
+
+  // The grace note leads into a rest the voice drops as silence over its
+  // measure rest, so it stays in the line that rests the measure, and the
+  // rest there is written as an event.
+  test('writes the rest as an event where a grace note is carried back beside it', () => {
+    const { mnx, warnings } = convertValid(
+      inMeasure(
+        measureRest +
+          '<backup><duration>4</duration></backup>' +
+          '<note><pitch><step>C</step><octave>4</octave></pitch><duration>8</duration>' +
+          '<type>half</type><voice>1</voice></note>' +
+          '<backup><duration>4</duration></backup>' +
+          grace +
+          '<note><rest/><duration>2</duration><voice>1</voice><type>eighth</type></note>',
+      ),
+    )
+
+    expect(
+      mnx.parts[0]?.measures[0]?.sequences.map((sequence) => [
+        sequence.content.map((item) => ('type' in item ? item.type : 'event')),
+        sequence.fullMeasure,
+      ]),
+    ).toEqual([
+      [['event', 'grace'], undefined],
+      [['event'], undefined],
+    ])
+    expect(warnings.map((warning) => warning.code)).toEqual([
+      'redundant:rest',
+      'inconsistent:voice',
+    ])
+  })
+
+  // The rest takes its form before the bracket after it settles. Standing as
+  // a space of its length until then, it would be silence the bracket takes
+  // in as its own.
+  test('keeps the rest out of the silence before a bracket the grace note opens', () => {
+    const tupletGrace = (type: string) =>
+      '<note><grace/><pitch><step>D</step><octave>5</octave></pitch><type>eighth</type>' +
+      '<voice>1</voice><time-modification><actual-notes>3</actual-notes>' +
+      `<normal-notes>2</normal-notes></time-modification><notations><tuplet type="${type}"/>` +
+      '</notations></note>'
+    const { mnx } = convertValid(
+      '<score-partwise><part id="P1"><measure number="1"><attributes><divisions>12</divisions>' +
+        '<time><beats>2</beats><beat-type>4</beat-type></time>' +
+        `${TREBLE}</attributes>` +
+        '<note><rest measure="yes"/><duration>6</duration><voice>1</voice></note>' +
+        tupletGrace('start') +
+        '<forward><duration>4</duration></forward>' +
+        tupletGrace('stop') +
+        '</measure></part></score-partwise>',
+    )
+
+    const content = mnx.parts[0]?.measures[0]?.sequences[0]?.content
+    expect(content?.[0]).toEqual({ duration: { base: 'eighth' }, rest: {} })
+    const tuplet = content?.[1]
+    expect(tuplet && 'type' in tuplet && tuplet.type === 'tuplet' && tuplet.content).toEqual([
+      expect.objectContaining({ type: 'grace' }),
+      { type: 'space', duration: [1, 8] },
+      expect.objectContaining({ type: 'grace' }),
+      { type: 'space', duration: [1, 4] },
+    ])
+    expect(content).toHaveLength(2)
+  })
+
   // A <forward> before the rest is silence the voice passed over, and MNX
-  // states it as a space. The rest is written back where it stands, so the
-  // space before it stands too.
+  // states it as a space. The rest is written where it stands, so the space
+  // before it stands too.
   test('keeps the silence the source passed over before the rest', () => {
     const { mnx, warnings } = convertValid(
       inMeasure(
@@ -939,6 +1025,32 @@ describe('a rest filling a measure a grace note leads into', () => {
     })
   })
 
+  // A grace note after a <backup> over the rest leads into another line, so
+  // the rest stays on the sequence. Marked as the measure's, it loses no
+  // length there.
+  test('leaves a rest no note value writes on the sequence beside another line', () => {
+    const { mnx, warnings } = convertValid(
+      irregular(
+        irregularRest +
+          '<backup><duration>20</duration></backup>' +
+          grace +
+          '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+          '<type>quarter</type><voice>1</voice></note>',
+      ),
+    )
+
+    expect(
+      mnx.parts[0]?.measures[0]?.sequences.map((sequence) => [
+        sequence.content.map((item) => ('type' in item ? item.type : 'event')),
+        sequence.fullMeasure,
+      ]),
+    ).toEqual([
+      [[], {}],
+      [['grace', 'event'], undefined],
+    ])
+    expect(warnings.map((warning) => warning.code)).toEqual(['inconsistent:voice'])
+  })
+
   // A <forward> takes the rest past the grace notes, so it no longer opens
   // the measure, and a rest filling the measure from there would overfill it.
   test('refuses where a forward moved the cursor between the grace notes and the rest', () => {
@@ -973,6 +1085,22 @@ describe('a rest filling a measure a grace note leads into', () => {
     expect(refusal(body, '')).toContain(
       'neither a note value nor a length says how long that rest lasts',
     )
+  })
+
+  // The refusal is about the rest, so it names the rest's line whichever
+  // side the grace notes are written on.
+  test.each([
+    ['before', grace + '\n' + noLength, 2],
+    ['after', noLength + '\n' + grace, 1],
+  ])('names the line of the rest with no length, with grace notes %s it', (_, body, line) => {
+    let thrown: unknown
+    try {
+      convertMusicXML(irregular(body, ''))
+    } catch (error) {
+      thrown = error
+    }
+
+    expect(thrown).toMatchObject({ line })
   })
 
   const graceMember =
@@ -1259,8 +1387,8 @@ describe('a rest filling a measure a grace note leads into', () => {
     expect(kinds(rest, time).warnings).toEqual(hiddenReported)
   })
 
-  // A note value writes a whole rest in 4/4, so the rest goes back as an event,
-  // which is drawn.
+  // A note value writes a whole rest in 4/4, so the rest is written as an
+  // event, which is drawn.
   test.each([
     ['before', grace + hidden().replace('20', '16')],
     ['after', hidden().replace('20', '16') + grace],

@@ -1,8 +1,10 @@
 import { countedId } from '../ids.js'
 
 /**
- * Deterministic ids, in document order, so that converting the same file
- * twice gives byte-for-byte the same output.
+ * Deterministic ids, so that converting the same file twice gives
+ * byte-for-byte the same output. They follow document order, except that a
+ * rest filling the measure written as an event takes its id once the
+ * measure is whole.
  */
 export class IdGenerator {
   #events = 0
