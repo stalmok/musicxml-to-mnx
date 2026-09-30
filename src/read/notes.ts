@@ -34,7 +34,7 @@ import type {
   TupletDisplay,
 } from '../model/score.js'
 import type { Draft } from './draft.js'
-import type { WarningCollector, WarningContext } from '../warnings.js'
+import type { WarningCollector, WarningContext, WarningPlace } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, child, children, descendants, requireChild, trimmedText } from '../xml/tree.js'
 import { beamCountForValue, valueForBeamCount } from './beams.js'
@@ -219,8 +219,12 @@ interface NoteStatement extends RestNote {
   staffPosition: number | undefined
   /** Whether the note is hidden with print-object="no". */
   hidden: boolean
-  /** Reports the note hidden, in the place the note was read. */
-  reportHidden: () => void
+  /**
+   * Reports the note and its <notations> blocks hidden, each in the place it
+   * was read. Given an element name, only a block holding one is reported,
+   * naming it: the rest of the block is not converted, so none of it is drawn.
+   */
+  reportHidden: (drawn?: string) => void
 }
 
 export function readNote(
@@ -259,9 +263,6 @@ export function readNote(
   // place until then.
   const hiddenPlace = warnings.reserve()
   const hidden = attribute(element.element, 'print-object') === 'no'
-  const reportHiddenNote = () =>
-    reportHidden(element.element, warnings, context, undefined, hiddenPlace)
-  if (!restElement) reportHiddenNote()
 
   const notations = element.blocks('notations')
   // A <notations> block hidden with print-object="no" still has its slur,
@@ -270,8 +271,10 @@ export function readNote(
   // holding only <tuplet> markers: a hidden tuplet notation is the tuplet
   // drawn with no bracket, number or value, which MNX's display settings
   // state, so the hiding converts. Sources use this to number only the first
-  // tuplet of a run.
+  // tuplet of a run. A block on a rest is settled once the rest is placed,
+  // as the rest's own hiding is.
   const hiddenTuplets = new Set<XmlElement>()
+  const hiddenBlocks: { block: XmlElement; place: WarningPlace }[] = []
   for (const block of notations) {
     // An empty block hides nothing, so there is nothing to lose.
     if (block.element.children.length === 0) {
@@ -285,8 +288,18 @@ export function readNote(
       for (const marker of block.element.children) hiddenTuplets.add(marker)
       continue
     }
-    reportHidden(block.element, warnings, context, block.element.children[0]?.name)
+    if (attribute(block.element, 'print-object') === 'no') {
+      hiddenBlocks.push({ block: block.element, place: warnings.reserve() })
+    }
   }
+  const reportHiddenNote = (drawn?: string) => {
+    reportHidden(element.element, warnings, context, undefined, hiddenPlace)
+    for (const { block, place } of hiddenBlocks) {
+      if (drawn !== undefined && !child(block, drawn)) continue
+      reportHidden(block, warnings, context, drawn ?? block.children[0]?.name, place)
+    }
+  }
+  if (!restElement) reportHiddenNote()
   // <tied> is the visual side of a tie. Most of it repeats <tie>, but let-ring
   // and the drawn side live only on it, so it is read rather than skipped.
   const tieds = notations.flatMap((block) => block.children('tied'))
@@ -727,7 +740,7 @@ function setMeasureRest(
   element.skip('beam')
   if (!fills.canStayEvent) {
     const at = builder.position()
-    reportCarriedByUnwritableRest(element, notations, warnings, context, (type, slur) => {
+    reportCarriedByUnwritableRest(note, warnings, context, (type, slur) => {
       const number = attribute(slur, 'number') ?? '1'
       state.spanners.dropSlurEnd(type, number, voice, measureIndex, at, context)
     })
@@ -761,8 +774,11 @@ function setMeasureRest(
 
   // A rest no note value writes is written as a space beside grace notes, and
   // a hidden one then loses nothing drawn. So its hiding, like its length, is
-  // reported only where it stays on the sequence.
-  if (restValue) note.reportHidden()
+  // reported only where it stays on the sequence. Where the rest cannot stay
+  // an event, only its fermata is converted, so only a hidden block holding
+  // one is drawn anyway.
+  const drawn = fills.canStayEvent ? undefined : 'fermata'
+  if (restValue) note.reportHidden(drawn)
 
   // Where the source states no <duration>, the rest lasts the measure. A bar
   // of silence is drawn as a whole rest in any meter, so the written value is
@@ -802,7 +818,7 @@ function setMeasureRest(
     },
     {
       onSequence: () => {
-        if (!restValue) note.reportHidden()
+        if (!restValue) note.reportHidden(drawn)
         reportLength()
       },
       // A hidden rest is time with nothing drawn in it, which is what a space
@@ -829,24 +845,26 @@ function setMeasureRest(
 /**
  * Reports what only an event holds on a rest no note value writes as one.
  * MNX states that rest on the sequence, or as a space beside grace notes,
- * and neither carries a stem, a mark, a slur end or a lyric.
+ * and neither carries a stem, a mark, a slur end or a lyric. What the source
+ * does not draw loses nothing drawn, so it is read and not reported.
  */
 function reportCarriedByUnwritableRest(
-  element: ElementReader,
-  notations: readonly ElementReader[],
+  { element, notations, hidden }: NoteStatement,
   warnings: WarningCollector,
   context: WarningContext,
   dropSlurEnd: (type: 'start' | 'stop', slur: XmlElement) => void,
 ): void {
-  const marks = [...writtenMarks(notations, warnings, context)].flatMap(
-    ({ marking, found, block }) => {
+  const marks = notations.flatMap((block) => {
+    const shown = attribute(block.element, 'print-object') !== 'no'
+    return [...writtenMarks([block], warnings, context)].flatMap(({ marking, found, block }) => {
       // A mark MNX cannot state was reported as it was read.
       if (marking === undefined) return []
       block.read(found)
-      return [found]
-    },
-  )
-  // A slur passing over the rest needs nothing of it.
+      return [{ found, shown }]
+    })
+  })
+  // A slur passing over the rest needs nothing of it. A slur end in a hidden
+  // block still closes or opens its slur, so its loss reaches the other end.
   const slurEnds = notations.flatMap((block) =>
     children(block.element, 'slur').filter((slur) => {
       const type = attribute(slur, 'type')
@@ -858,17 +876,22 @@ function reportCarriedByUnwritableRest(
   for (const slur of stopsFirst(slurEnds)) {
     dropSlurEnd(attribute(slur, 'type') === 'stop' ? 'stop' : 'start', slur)
   }
-  // A note has at most one <stem>.
-  const carried = new Set([
-    element.child('stem'),
-    ...marks,
-    ...slurEnds,
-    ...element.children('lyric'),
+  // A note has at most one <stem>. A rest is drawn with no stem, and a hidden
+  // one with nothing, so neither draws one it states.
+  const stem = element.child('stem')
+  // Each element the rest carries, and whether the source draws it.
+  const carried = new Map<XmlElement | undefined, boolean>([
+    [stem, !hidden && stem?.text.trim() !== 'none'],
+    ...marks.map(({ found, shown }) => [found, shown] as const),
+    ...slurEnds.map((slur) => [slur, true] as const),
+    ...element.children('lyric').map((lyric) => [lyric, true] as const),
   ])
   for (const found of descendants(element.element)) {
-    if (!carried.has(found)) continue
-    // The one warning accounts for the element whole.
+    const drawn = carried.get(found)
+    if (drawn === undefined) continue
+    // Reading it, or the one warning, accounts for the element whole.
     for (const name of Object.keys(found.attributes)) attribute(found, name)
+    if (!drawn) continue
     warnings.add(
       'unrepresentable:element',
       `A <${found.name}> on a rest that fills the measure is not converted. No note value ` +
@@ -1759,6 +1782,8 @@ function readStemDirection(
 
   const direction = stem.text.trim()
   if (direction === 'up' || direction === 'down') return direction
+  // A rest is drawn with no stem, so a stem of none on one states nothing.
+  if (direction === 'none' && element.child('rest')) return undefined
 
   // MNX's stem direction is up or down and nothing else, so "none" and
   // "double" have no home.

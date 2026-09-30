@@ -304,7 +304,8 @@ describe('a voice holding only a rest that fills its measure', () => {
     expect(warnings).toEqual([])
   })
 
-  test('reports a stem of none once on a rest a marking keeps an event', () => {
+  // A rest is drawn with no stem, so a stem of none on one states nothing.
+  test('reads a stem of none on a rest a marking keeps an event as losing nothing', () => {
     const { mnx, warnings } = convertValid(
       inMeasure(
         '<note><rest measure="yes"/><duration>4</duration><voice>1</voice><stem>none</stem>' +
@@ -315,19 +316,22 @@ describe('a voice holding only a rest that fills its measure', () => {
     expect(mnx.parts[0]?.measures[0]?.sequences[0]?.content).toEqual([
       { duration: { base: 'quarter' }, rest: {}, markings: { accent: {} } },
     ])
-    expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:stem-direction'])
+    expect(warnings).toEqual([])
   })
 
-  test('reports a stem of none on a rest left on the sequence', () => {
+  test.each([
+    ['none', []],
+    ['double', ['unrepresentable:stem-direction']],
+  ])('leaves a rest with a stem of %s on the sequence', (stem, lost) => {
     const { mnx, warnings } = convertValid(
       inMeasure(
         '<note><rest measure="yes"/><duration>4</duration><voice>1</voice>' +
-          '<stem>none</stem></note>',
+          `<stem>${stem}</stem></note>`,
       ),
     )
 
     expect(mnx.parts[0]?.measures[0]?.sequences[0]?.fullMeasure).toEqual({})
-    expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:stem-direction'])
+    expect(warnings.map((warning) => warning.code)).toEqual(lost)
   })
 
   test('reports the stem of a rest no note value can write', () => {
@@ -773,12 +777,12 @@ describe('a rest filling a measure a grace note leads into', () => {
     expect(warnings).toEqual([])
   })
 
-  test('reports a stem of none on the rest the grace notes follow', () => {
+  test('reads a stem of none on the rest the grace notes follow as losing nothing', () => {
     const { warnings } = convertValid(
       inMeasure(stemmedRest.replace('<stem>up</stem>', '<stem>none</stem>') + grace),
     )
 
-    expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:stem-direction'])
+    expect(warnings).toEqual([])
   })
 
   // The grace notes stand where the voice last was, and a <forward> moves the
@@ -1112,6 +1116,15 @@ describe('a rest filling a measure a grace note leads into', () => {
     ])
   })
 
+  test('leaves what the rest does not carry to be reported as any note’s is', () => {
+    const rest = irregularRest.replace('<rest measure="yes"/>', '<rest measure="yes" wibble="1"/>')
+
+    expect(kinds(rest.replace('</note>', '<stem>up</stem></note>')).warnings).toEqual([
+      ['unrepresentable:element', 'stem', 1],
+      ['unsupported:attribute', 'rest', 1],
+    ])
+  })
+
   test('reports what the rest carries in the order the source writes it', () => {
     const rest = irregularRest.replace(
       '</note>',
@@ -1248,6 +1261,68 @@ describe('a rest filling a measure a grace note leads into', () => {
 
     expect(content).toContainEqual(['event'])
     expect(warnings).toEqual(hiddenReported)
+  })
+
+  // A rest is drawn with no stem, and a hidden one with nothing at all, so
+  // neither loses a stem it states.
+  test.each([
+    [
+      'a stem of none',
+      irregularRest.replace('</note>', '<stem default-y="-20"> none </stem></note>'),
+      [],
+    ],
+    ['a hidden stem', hidden('<stem default-y="10">up</stem>'), hiddenReported],
+  ])('reads %s on the rest as losing nothing', (_, rest, lost) => {
+    expect(kinds(rest).warnings).toEqual(lost)
+    expect(kinds(rest + grace).warnings).toEqual(rest.includes('print-object') ? [] : reported)
+  })
+
+  // Only the <notations> block is hidden, so the marks in it are drawn.
+  test('reports a mark in a shown block on a hidden rest', () => {
+    const rest = hidden('<notations><articulations><accent/></articulations></notations>')
+
+    expect(kinds(rest + grace).warnings).toEqual([['unrepresentable:element', 'accent', 1]])
+  })
+
+  // A mark in a hidden block is not drawn, so losing it loses nothing drawn,
+  // and saying the block is drawn anyway would be wrong.
+  const hiddenBlock = (inner: string) =>
+    irregularRest.replace('</note>', `<notations print-object="no">${inner}</notations></note>`)
+  const blockDrawn = ['unrepresentable:attribute', 'notations', 1]
+
+  test('reads a mark in a hidden block on the rest as losing nothing', () => {
+    const rest = hiddenBlock('<articulations><accent placement="above"/></articulations>')
+
+    expect(kinds(rest).warnings).toEqual([])
+    expect(kinds(rest + grace).warnings).toEqual(reported)
+  })
+
+  // A fermata is converted over the rest on the sequence, so the block hiding
+  // it is drawn anyway. As a space, the rest carries no fermata at all.
+  test('reports a hidden block as drawn only where it holds a fermata the rest keeps', () => {
+    const rest = hiddenBlock('<articulations><accent/></articulations><fermata/>')
+    const { warnings } = convertValid(irregular(rest))
+
+    expect(warnings.map((w) => [w.code, w.element, w.context.measure])).toEqual([blockDrawn])
+    expect(warnings[0]?.message).toContain('The block holds <fermata>.')
+    expect(kinds(rest + grace).warnings).toEqual(reported)
+  })
+
+  // The slur end still closes or opens its slur, so its loss reaches the
+  // other end, which is drawn.
+  test('reports a slur end in a hidden block on the rest', () => {
+    const rest = hiddenBlock('<slur type="start" number="1"/>')
+
+    expect(kinds(rest).warnings).toEqual([['unrepresentable:element', 'slur', 1]])
+  })
+
+  test('reports a hidden block on a rest a note value writes as drawn', () => {
+    const rest = hiddenBlock('<articulations><accent/></articulations>').replace('20', '16')
+
+    expect(kinds(rest, '<time><beats>4</beats><beat-type>4</beat-type></time>')).toMatchObject({
+      content: [['event']],
+      warnings: [blockDrawn],
+    })
   })
 })
 
