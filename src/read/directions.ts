@@ -76,7 +76,7 @@ export interface SoundTempo {
    * positive one.
    */
   bpm: number | undefined
-  line: number
+  element: XmlElement
   /**
    * The place kept in the report for the decision. The decision is made
    * once every part is read, and reporting it there would put it after every
@@ -312,12 +312,7 @@ export function readDirection(
           // Accounted for by the warning below, which names the whole of it.
           directionType.skip(found.name)
           const loss = elementLoss(found.name)
-          warnings.add(
-            loss.code,
-            `A <${found.name}> direction ${loss.ending}`,
-            { ...context, line: found.line },
-            found.name,
-          )
+          warnings.add(loss.code, `A <${found.name}> direction ${loss.ending}`, context, found)
         }
       }
     }
@@ -376,8 +371,8 @@ function offsetPosition(
     warnings.add(
       'unsupported:element',
       `An <offset> of "${written}" is not a whole number of divisions, and is not applied.`,
-      { ...context, line: offset.line },
-      'offset',
+      context,
+      offset,
     )
     return position
   }
@@ -392,8 +387,8 @@ function offsetPosition(
     warnings.add(
       'unsupported:element',
       `An <offset> of ${written} carries the mark outside its measure, and is not applied.`,
-      { ...context, line: offset.line },
-      'offset',
+      context,
+      offset,
     )
     return position
   }
@@ -682,7 +677,7 @@ export function readSound(
       tempo = {
         position,
         bpm: parseDecimal((attribute(sound.element, 'tempo') ?? '').trim()),
-        line: sound.line,
+        element: sound.element,
         place: warnings.reserve(),
       }
       continue
@@ -699,8 +694,8 @@ export function readSound(
       warnings.add(
         'unresolved:attribute-value',
         `The "fine" of a <sound> is "${written}", which is neither "yes" nor a duration.`,
-        { ...context, line: sound.line },
-        'sound',
+        context,
+        sound.element,
         'fine',
       )
       continue
@@ -725,8 +720,8 @@ export function readSound(
     warnings.add(
       loss.code,
       `The "${name}" of a <sound> ${loss.ending}`,
-      { ...context, line: sound.line },
-      'sound',
+      context,
+      sound.element,
       name,
     )
   }
@@ -746,21 +741,21 @@ function placementOf(element: XmlElement): 'above' | 'below' | undefined {
  * blocks or beside the <wedge> the words qualify, so the text is held for
  * the whole <direction-type> until the mark it opens arrives and becomes
  * that mark's prefix. Anything still held once the marks run out closes the
- * last one instead, as its suffix, or is carried standing alone. The line of
- * each piece is held with it, so a report points at the wording.
+ * last one instead, as its suffix, or is carried standing alone. The element
+ * of each piece is held with it, so a report points at the wording.
  *
  * Pieces are held as written and trimmed only once joined, so that the
  * source's own spacing decides where the words run together: "sempre " and
  * "più " make "sempre più", while "s" and "morz." make "smorz.".
  */
 class PendingWording {
-  #pieces: { text: string; line: number }[] = []
+  #pieces: XmlElement[] = []
 
-  push(text: string, line: number): void {
-    this.#pieces.push({ text, line })
+  push(piece: XmlElement): void {
+    this.#pieces.push(piece)
   }
 
-  take(): { text: string; line: number } | undefined {
+  take(): { text: string; element: XmlElement } | undefined {
     const first = this.#pieces[0]
     if (first === undefined) return undefined
     const held = {
@@ -768,7 +763,7 @@ class PendingWording {
         .map((piece) => piece.text)
         .join('')
         .trim(),
-      line: first.line,
+      element: first,
     }
     this.#pieces = []
     return held
@@ -793,7 +788,7 @@ function readDynamics(
       // glyph and holding no text still says something the output cannot.
       reportWordingGlyph(mark, trimmedText(mark), warnings, context)
       if (trimmedText(mark) === '') continue
-      wording.push(mark.text, mark.line)
+      wording.push(mark)
     } else if (isDynamicValue(mark.name)) {
       const prefix = wording.take()
       dynamics.push({
@@ -826,8 +821,8 @@ function readDynamics(
       warnings.add(
         'unsupported:element',
         `A dynamic of "${mark.name}" is not converted yet.`,
-        { ...context, line: mark.line },
-        mark.name,
+        context,
+        mark,
       )
       // The wording opened this mark, so it goes with it.
       const orphaned = wording.take()
@@ -836,8 +831,8 @@ function readDynamics(
           'unsupported:element',
           `A dynamic wording of "${orphaned.text}" is not converted yet, because the ` +
             `"${mark.name}" it qualifies is not.`,
-          { ...context, line: orphaned.line },
-          'other-dynamics',
+          context,
+          orphaned.element,
         )
     }
   }
@@ -872,8 +867,8 @@ function reportWordingGlyph(
       'unsupported:element',
       `A dynamic drawn only as the glyph "${glyph}" is not converted yet, because MNX ` +
         'states a glyph for the dynamic mark, not for its wording.',
-      { ...context, line: element.line },
-      'other-dynamics',
+      context,
+      element,
       'smufl',
     )
   } else {
@@ -881,8 +876,8 @@ function reportWordingGlyph(
       'unrepresentable:wording-glyph',
       `The glyph named for the dynamic wording "${wording}" is drawn as text instead, ` +
         'because MNX states a glyph for the dynamic mark, not for its wording.',
-      { ...context, line: element.line },
-      'other-dynamics',
+      context,
+      element,
       'smufl',
     )
   }
@@ -923,8 +918,8 @@ function readMetronome(
       'unrepresentable:tempo',
       'A <metronome> written as one note value equalling another cannot be expressed ' +
         'in MNX, which states a tempo as beats per minute.',
-      { ...context, line: element.line },
-      'metronome',
+      context,
+      element,
     )
     return dropWholeMark()
   }
@@ -938,8 +933,8 @@ function readMetronome(
       'unrepresentable:tempo',
       `A <metronome> states a beat unit of "${trimmedText(beatUnit)}", which is not a note ` +
         'value, so the mark cannot be expressed in MNX.',
-      { ...context, line: beatUnit.line },
-      'metronome',
+      context,
+      element,
     )
     return dropWholeMark()
   }
@@ -953,8 +948,8 @@ function readMetronome(
       'unrepresentable:tempo',
       'A <metronome> whose beat unit is tied to another cannot be expressed in MNX, ' +
         'which states a tempo as one note value and a count of them per minute.',
-      { ...context, line: element.line },
-      'metronome',
+      context,
+      element,
     )
     return dropWholeMark()
   }
@@ -968,8 +963,8 @@ function readMetronome(
       'unrepresentable:tempo',
       'A <metronome> with no beats-per-minute number cannot be expressed in MNX, ' +
         'which states a tempo as beats per minute.',
-      { ...context, line: perMinute.line },
-      'metronome',
+      context,
+      element,
     )
     return dropWholeMark()
   }
@@ -985,8 +980,8 @@ function readMetronome(
       'unrepresentable:tempo',
       `A <metronome> states its tempo as "${written}", which cannot be expressed in MNX, ` +
         'which states a tempo as a positive number of beats per minute.',
-      { ...context, line: perMinute.line },
-      'metronome',
+      context,
+      element,
     )
     return dropWholeMark()
   }

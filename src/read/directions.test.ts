@@ -1084,6 +1084,18 @@ describe('tempo', () => {
     )
   })
 
+  // The mark is dropped whole, so each reason is reported at the <metronome>,
+  // whichever child gives it.
+  test.each([
+    ['an empty per-minute', '<beat-unit>quarter</beat-unit>\n<per-minute></per-minute>'],
+    ['a per-minute of zero', '<beat-unit>quarter</beat-unit>\n<per-minute>0</per-minute>'],
+    ['a beat unit that is no note value', '\n<beat-unit></beat-unit><per-minute>60</per-minute>'],
+  ])('reports a metronome with %s at the metronome', (_what, body) => {
+    const { warnings } = read(inMeasure(direction(`<metronome>${body}</metronome>`) + note('C')))
+
+    expect(warnings.map((w) => [w.element, w.context.line])).toEqual([['metronome', 1]])
+  })
+
   // MNX states beats per minute as a number, so a source that writes a
   // fraction of one is carried as it stands.
   test('carries a fractional per-minute as it is written', () => {

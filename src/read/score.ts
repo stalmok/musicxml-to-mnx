@@ -1297,8 +1297,8 @@ function reportSoundTempos(
         sound.place,
         loss.code,
         `The "tempo" of a <sound> ${loss.ending}`,
-        { part: partId, measure: index + 1, line: sound.line },
-        'sound',
+        { part: partId, measure: index + 1 },
+        sound.element,
         'tempo',
       )
     }
