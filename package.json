@@ -61,7 +61,8 @@
     "format": "node scripts/prettier.ts --write .",
     "format:check": "node scripts/prettier.ts --check .",
     "hooks:install": "git config core.hooksPath .githooks",
-    "corpus-gate": "vitest run tests/corpus-full.test.ts"
+    "corpus-gate": "vitest run tests/corpus-full.test.ts",
+    "compare-output": "node scripts/compare-output.ts"
   },
   "dependencies": {
     "@rgrove/parse-xml": "5.0.0",
