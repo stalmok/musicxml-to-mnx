@@ -606,13 +606,70 @@ describe('a fermata on the notes of a chord', () => {
     ['the other note faces another way', '<fermata/>', '<fermata type="inverted"/>'],
     ['the other note draws on another side', '<fermata/>', '<fermata placement="below"/>'],
     ['the other note draws with a shape MNX lacks', '<fermata>x</fermata>', '<fermata>y</fermata>'],
-    ['the other note draws a second', '<fermata/>', '<fermata/><fermata/>'],
   ])('reports a fermata %s', (_, first, other) => {
     const { events, warnings } = read(chord(first, other))
     const own = read(note(first))
 
     expect(events[0]?.fermata).toEqual(own.events[0]?.fermata)
     expect(warnings.slice(own.warnings.length).map((w) => [w.code, w.element])).toEqual([
+      ['unsupported:element', 'fermata'],
+    ])
+  })
+
+  // MNX states one fermata on the event, so a second has no home on any note.
+  const twoStaves = '<fermata type="upright"/><fermata type="inverted" placement="below"/>'
+  test('reports a second fermata every note carries once, on the note the chord opens with', () => {
+    const { events, warnings } = read(chord(twoStaves, twoStaves))
+
+    expect(events[0]?.fermata).toMatchObject({ pointing: 'up' })
+    expect(warnings.map((w) => [w.code, w.element, w.message])).toEqual([
+      [
+        'unrepresentable:fermata',
+        'fermata',
+        'More than one fermata is written at the same place, and MNX states one. ' +
+          'The first is the one converted.',
+      ],
+    ])
+  })
+
+  test('reads a second fermata a note of a chord restates in a block of its own', () => {
+    const other = twoStaves.replace('/><fermata', '/></notations><notations><fermata')
+
+    expect(read(chord(twoStaves, other)).warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:fermata',
+    ])
+  })
+
+  test.each([
+    ['the note it joins carries one', '<fermata type="upright"/>', twoStaves],
+    ['the note it joins carries another', twoStaves, '<fermata type="upright"/><fermata/>'],
+    [
+      'the note it joins carries fewer',
+      twoStaves,
+      twoStaves + '<fermata type="inverted" placement="below"/>',
+    ],
+    ['the note it joins carries more', twoStaves + '<fermata>square</fermata>', twoStaves],
+    [
+      'the note it joins carries another third',
+      twoStaves + '<fermata>square</fermata>',
+      twoStaves + '<fermata>angled</fermata>',
+    ],
+  ])('reports a second fermata on a note of a chord where %s', (_, first, other) => {
+    const { events, warnings } = read(chord(first, other))
+    const own = read(note(first))
+
+    expect(events[0]?.fermata).toEqual(own.events[0]?.fermata)
+    expect(
+      warnings.slice(own.warnings.length).map((w) => [w.code, w.element, w.context.measure]),
+    ).toEqual([['unrepresentable:fermata', 'fermata', 1]])
+  })
+
+  test('reports a second fermata on a note of a chord whose first differs', () => {
+    const { warnings } = read(chord(twoStaves, '<fermata/>' + '<fermata type="inverted"/>'))
+
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([
+      ['unrepresentable:fermata', 'fermata'],
+      ['unrepresentable:fermata', 'fermata'],
       ['unsupported:element', 'fermata'],
     ])
   })

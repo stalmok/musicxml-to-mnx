@@ -2,6 +2,7 @@
 // read without.
 
 import type {
+  Event,
   PitchedClefSign,
   Key,
   KitComponent,
@@ -11,6 +12,7 @@ import type {
 import { fraction } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type { WarningContext } from '../warnings.js'
+import type { XmlElement } from '../xml/parse.js'
 import { IdGenerator } from './idGenerator.js'
 import { SpannerResolver } from './spanners.js'
 import type { CarriedTupletStop } from './tuplets.js'
@@ -169,6 +171,12 @@ export interface PartState {
    * this one and reports the change.
    */
   statedTransposition: Transposition | undefined
+  /**
+   * The fermatas past the first that an event's own note wrote, reported as
+   * it was read because MNX states one. A note of the chord restating them
+   * loses nothing more.
+   */
+  fermatasPastFirst: WeakMap<Event, readonly XmlElement[]>
 }
 
 /**
@@ -204,5 +212,6 @@ export function newPartState(
     carriedTupletStops: [],
     transposition: undefined,
     statedTransposition: undefined,
+    fermatasPastFirst: new WeakMap(),
   }
 }

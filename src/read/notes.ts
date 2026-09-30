@@ -426,6 +426,13 @@ export function readNote(
     isRest: restElement !== undefined,
     staffPosition,
   }
+  const pastFirst = writtenFermatas(notations).slice(1)
+  if (pastFirst.length > 0) {
+    state.fermatasPastFirst.set(
+      event,
+      pastFirst.map(({ found }) => found),
+    )
+  }
 
   // A grace note is drawn small beside the note it ornaments and takes none
   // of the measure's time, which is why it carries no <duration>. It joins a
@@ -993,7 +1000,13 @@ function readChordMember(
     readArpeggio(notations, placed, builder, undefined)
   }
   readChordMemberMarkings(notations, placed.event.markings, warnings, context)
-  readChordMemberFermata(notations, placed.event.fermata)
+  readChordMemberFermatas(
+    notations,
+    placed.event.fermata,
+    state.fermatasPastFirst.get(placed.event) ?? [],
+    warnings,
+    context,
+  )
   readTies(
     element,
     chordNote,
@@ -1560,6 +1573,15 @@ function readFermata(
   )
 }
 
+/** Each <fermata> a note writes, in order, with the block that accounts for it. */
+function writtenFermatas(
+  notations: readonly ElementReader[],
+): { found: XmlElement; block: ElementReader }[] {
+  return notations.flatMap((block) =>
+    children(block.element, 'fermata').map((found) => ({ found, block })),
+  )
+}
+
 /**
  * The pause the given <fermata> elements state. Shared with the barline
  * reader, because MusicXML writes the same element over a note and over a
@@ -1612,30 +1634,55 @@ function fermataOf(found: XmlElement): Fermata {
 }
 
 /**
- * The fermata written on a note of a chord, against the event's. The first,
+ * The fermatas written on a note of a chord, against the event's. The first,
  * where it is the same as the chord's own, is read; any other is reported.
+ * MNX states one fermata, so the ones past the first are lost on every note.
+ * The chord's own note reported its own, so a note restating exactly those
+ * reports nothing more.
  */
-function readChordMemberFermata(
+function readChordMemberFermatas(
   notations: readonly ElementReader[],
   chord: Fermata | undefined,
+  chordPastFirst: readonly XmlElement[],
+  warnings: WarningCollector,
+  context: WarningContext,
 ): void {
-  for (const block of notations) {
-    const first = children(block.element, 'fermata')[0]
-    if (!first) continue
-    // A shape MNX lacks is not converted, so it restates nothing.
-    const shape = trimmedText(first)
-    if (!chord || (shape !== '' && !FERMATA_SYMBOLS.has(shape))) return
-    const fermata = fermataOf(first)
+  const [first, ...pastFirst] = writtenFermatas(notations)
+  if (!first) return
+  // A shape MNX lacks is not converted, so it restates nothing.
+  const shape = trimmedText(first.found)
+  if (chord && (shape === '' || FERMATA_SYMBOLS.has(shape))) {
+    const fermata = fermataOf(first.found)
     if (
       // A fermata stating no shape is a normal one.
       (fermata.symbol ?? 'normal') === (chord.symbol ?? 'normal') &&
       fermata.pointing === chord.pointing &&
       fermata.placement === chord.placement
     ) {
-      block.read(first)
+      first.block.read(first.found)
     }
-    return
   }
+
+  const extra = pastFirst[0]
+  if (!extra) return
+  for (const { found, block } of pastFirst) block.read(found)
+  const written = JSON.stringify(pastFirst.map(({ found }) => writtenFermata(found)))
+  if (written === JSON.stringify(chordPastFirst.map(writtenFermata))) return
+  warnings.add(
+    'unrepresentable:fermata',
+    'A note of a chord carries more than one fermata, and MNX states one on the event. ' +
+      "The first fermata of the chord's own note is the one converted.",
+    { ...context, line: extra.found.line },
+    'fermata',
+  )
+}
+
+/**
+ * What a <fermata> states, to compare one note's with another's. An empty
+ * one states no shape, which MNX reads as normal.
+ */
+function writtenFermata(found: XmlElement): (string | undefined)[] {
+  return [trimmedText(found) || 'normal', attribute(found, 'type'), attribute(found, 'placement')]
 }
 
 function placementOf(element: XmlElement): 'above' | 'below' | undefined {
