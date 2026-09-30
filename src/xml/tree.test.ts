@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { MusicXMLError } from '../errors.js'
 import { parseXmlRoot } from './parse.js'
-import { attribute, child, children, requireAttribute, requireChild } from './tree.js'
+import { attribute, child, children, descendants, requireAttribute, requireChild } from './tree.js'
 
 const measure = parseXmlRoot(
   '<measure number="1">\n' +
@@ -18,6 +18,20 @@ describe('child', () => {
 
   test('is undefined when there is no such child', () => {
     expect(child(measure, 'barline')).toBeUndefined()
+  })
+})
+
+describe('descendants', () => {
+  test('walks every element below, each before what it holds', () => {
+    expect([...descendants(measure)].map((found) => found.name)).toEqual([
+      'attributes',
+      'divisions',
+      'note',
+      'pitch',
+      'step',
+      'note',
+      'rest',
+    ])
   })
 })
 

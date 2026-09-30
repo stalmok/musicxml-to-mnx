@@ -36,7 +36,7 @@ import type {
 import type { Draft } from './draft.js'
 import type { WarningCollector, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
-import { attribute, child, children, requireChild, trimmedText } from '../xml/tree.js'
+import { attribute, child, children, descendants, requireChild, trimmedText } from '../xml/tree.js'
 import { beamCountForValue, valueForBeamCount } from './beams.js'
 import type { BeamedEvent } from './beams.js'
 import { readDuration } from './divisions.js'
@@ -859,9 +859,14 @@ function reportCarriedByUnwritableRest(
     dropSlurEnd(attribute(slur, 'type') === 'stop' ? 'stop' : 'start', slur)
   }
   // A note has at most one <stem>.
-  const stem = element.child('stem')
-  const carried = [...(stem ? [stem] : []), ...marks, ...slurEnds, ...element.children('lyric')]
-  for (const found of carried) {
+  const carried = new Set([
+    element.child('stem'),
+    ...marks,
+    ...slurEnds,
+    ...element.children('lyric'),
+  ])
+  for (const found of descendants(element.element)) {
+    if (!carried.has(found)) continue
     // The one warning accounts for the element whole.
     for (const name of Object.keys(found.attributes)) attribute(found, name)
     warnings.add(

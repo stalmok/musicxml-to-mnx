@@ -1112,6 +1112,24 @@ describe('a rest filling a measure a grace note leads into', () => {
     ])
   })
 
+  test('reports what the rest carries in the order the source writes it', () => {
+    const rest = irregularRest.replace(
+      '</note>',
+      '<notations><slur type="start" number="1"/></notations>' +
+        '<notations><articulations><staccato/><accent/></articulations>' +
+        '<technical><down-bow/></technical></notations>' +
+        '<notations><articulations><tenuto/></articulations></notations></note>',
+    )
+
+    expect(kinds(rest).warnings.map(([, element]) => element)).toEqual([
+      'slur',
+      'staccato',
+      'accent',
+      'down-bow',
+      'tenuto',
+    ])
+  })
+
   // The slur end is lost with the rest, but it still ends or begins its slur,
   // so no other end in the part pairs with one it closed or opened.
   describe('a slur end on the rest', () => {

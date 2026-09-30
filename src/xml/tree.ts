@@ -22,6 +22,14 @@ export function children(element: XmlElement, name: string): readonly XmlElement
   return element.children.filter((c) => c.name === name)
 }
 
+/** Every element below this one, in the order the source writes them. */
+export function* descendants(element: XmlElement): Generator<XmlElement> {
+  for (const found of element.children) {
+    yield found
+    yield* descendants(found)
+  }
+}
+
 export function requireChild(element: XmlElement, name: string, path: DocumentPath): XmlElement {
   const found = child(element, name)
   if (!found) {
