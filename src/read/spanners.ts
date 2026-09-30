@@ -27,20 +27,26 @@ import type { Draft } from './draft.js'
 import type { GraceNotesAt, LastEventBefore } from './voices.js'
 import type { WarningContext } from '../warnings.js'
 import type { WarningCollector } from './collector.js'
+import type { XmlElement } from '../xml/parse.js'
 
 /** A tie that has begun, waiting for the note that ends it. */
 interface OpenTie {
   note: TieTarget
   /** The side the tie is drawn on, where the start states it. */
   side: CurveSide | undefined
-  stated: TieElement
 }
 
-/** The element a tie's edge is written with. */
-export type TieElement = 'tie' | 'tied'
-
 /** One end of a tie, and on a stop the note it is written on. */
-type TieEnd = StartEnd<OpenTie> | StopEnd<{ note: TieTarget; stated: TieElement }>
+type TieEnd = StartEnd<OpenTie> | StopEnd<{ note: TieTarget }>
+
+/**
+ * The element an end is written with, and the part and measure it sits in.
+ * An end is reported once the part is whole, so it carries both.
+ */
+export interface WrittenAt {
+  context: WarningContext
+  element: XmlElement
+}
 
 /** An octave shift that has begun, waiting to learn where it stops. */
 export interface OpenOttava {
@@ -148,7 +154,7 @@ interface EndPlace {
    * order the document writes them in.
    */
   grace?: boolean
-  context: WarningContext
+  where: WrittenAt
 }
 
 /** A start, carrying what it opens, handed back when its stop is found. */
@@ -523,8 +529,7 @@ export class SpannerResolver {
     measure: number,
     position: Fraction,
     grace: boolean,
-    stated: TieElement,
-    context: WarningContext,
+    where: WrittenAt,
   ): void {
     this.#tieEnds.push({
       kind: 'start',
@@ -534,8 +539,8 @@ export class SpannerResolver {
       voice,
       grace,
       covers: position,
-      payload: { note, side, stated },
-      context,
+      payload: { note, side },
+      where,
     })
   }
 
@@ -547,8 +552,7 @@ export class SpannerResolver {
     measure: number,
     position: Fraction,
     grace: boolean,
-    stated: TieElement,
-    context: WarningContext,
+    where: WrittenAt,
   ): void {
     this.#tieEnds.push({
       kind: 'stop',
@@ -558,8 +562,8 @@ export class SpannerResolver {
       voice,
       grace,
       covers: position,
-      context,
-      stop: { note, stated },
+      where,
+      stop: { note },
     })
   }
 
@@ -598,8 +602,8 @@ export class SpannerResolver {
         warnings.add(
           'unclosed:spanner',
           'A tie ends on a note where none had started, and is not carried over.',
-          end.context,
-          end.stop.stated,
+          end.where.context,
+          end.where.element,
         )
         continue
       }
@@ -623,8 +627,8 @@ export class SpannerResolver {
         warnings.add(
           'unclosed:spanner',
           'A tie starts on a note that nothing ties to, and is not carried over.',
-          start.context,
-          start.payload.stated,
+          start.where.context,
+          start.where.element,
         )
       }
     }
@@ -641,7 +645,7 @@ export class SpannerResolver {
     measure: number,
     position: Fraction,
     grace: boolean,
-    context: WarningContext,
+    where: WrittenAt,
   ): void {
     this.#slurEnds.push({
       kind: 'start',
@@ -652,7 +656,7 @@ export class SpannerResolver {
       grace,
       covers: position,
       payload: { event, side, lineType },
-      context,
+      where,
     })
   }
 
@@ -665,7 +669,7 @@ export class SpannerResolver {
     measure: number,
     position: Fraction,
     grace: boolean,
-    context: WarningContext,
+    where: WrittenAt,
   ): void {
     this.#slurEnds.push({
       kind: 'stop',
@@ -675,7 +679,7 @@ export class SpannerResolver {
       voice,
       grace,
       covers: position,
-      context,
+      where,
       stop: { event, sideEnd },
     })
   }
@@ -690,7 +694,7 @@ export class SpannerResolver {
     voice: string | undefined,
     measure: number,
     position: Fraction,
-    context: WarningContext,
+    where: WrittenAt,
   ): void {
     this.#slurEnds.push({
       kind,
@@ -700,7 +704,7 @@ export class SpannerResolver {
       voice,
       covers: position,
       dropped: true,
-      context,
+      where,
     })
   }
 
@@ -783,7 +787,7 @@ export class SpannerResolver {
       this.#slurEnds.filter((end) => spare.has(end)),
       join,
       (reason, end) => {
-        warnings.add('unclosed:spanner', messages[reason], end.context, 'slur')
+        warnings.add('unclosed:spanner', messages[reason], end.where.context, end.where.element)
       },
       'as-written',
     )
@@ -796,7 +800,7 @@ export class SpannerResolver {
     number: string,
     measure: number,
     position: Fraction,
-    context: WarningContext,
+    where: WrittenAt,
   ): void {
     this.#wedgeEnds.push({
       kind: 'start',
@@ -807,7 +811,7 @@ export class SpannerResolver {
       // The staff is the hairpin's own, so the two cannot disagree about it.
       staff: dynamic.staff,
       payload: dynamic,
-      context,
+      where,
     })
   }
 
@@ -825,7 +829,7 @@ export class SpannerResolver {
     position: Fraction,
     graceWritten: number,
     staff: number | undefined,
-    context: WarningContext,
+    where: WrittenAt,
   ): WedgeStop {
     const stop: WedgeStop = {}
     this.#wedgeEnds.push({
@@ -836,7 +840,7 @@ export class SpannerResolver {
       covers: position,
       graceWritten,
       staff,
-      context,
+      where,
       stop,
     })
     return stop
@@ -851,7 +855,7 @@ export class SpannerResolver {
     measure: number,
     position: Fraction,
     staff: number | undefined,
-    context: WarningContext,
+    where: WrittenAt,
   ): void {
     this.#wedgeEnds.push({
       kind: 'start',
@@ -861,7 +865,7 @@ export class SpannerResolver {
       covers: position,
       staff,
       dropped: true,
-      context,
+      where,
     })
   }
 
@@ -907,7 +911,7 @@ export class SpannerResolver {
         closed.set(stop, dynamic)
       },
       (reason, end) => {
-        warnings.add('unclosed:spanner', messages[reason], end.context, 'wedge')
+        warnings.add('unclosed:spanner', messages[reason], end.where.context, end.where.element)
       },
     )
 
@@ -933,7 +937,7 @@ export class SpannerResolver {
     number: string,
     measure: number,
     position: Fraction,
-    context: WarningContext,
+    where: WrittenAt,
   ): void {
     this.#ottavaEnds.push({
       kind: 'start',
@@ -944,7 +948,7 @@ export class SpannerResolver {
       // The staff is the shift's own, so the two cannot disagree about it.
       staff: open.staff,
       payload: open,
-      context,
+      where,
     })
   }
 
@@ -955,7 +959,7 @@ export class SpannerResolver {
     cursor: Fraction,
     graceWritten: number,
     staff: number | undefined,
-    context: WarningContext,
+    where: WrittenAt,
   ): void {
     this.#ottavaEnds.push({
       kind: 'stop',
@@ -968,7 +972,7 @@ export class SpannerResolver {
       // it stands as written where the measure holds no event before it.
       covers: cursor,
       graceWritten,
-      context,
+      where,
       stop: undefined,
     })
   }
@@ -1034,7 +1038,7 @@ export class SpannerResolver {
     measure: number,
     position: Fraction,
     staff: number | undefined,
-    context: WarningContext,
+    where: WrittenAt,
   ): void {
     this.#ottavaEnds.push({
       kind: 'start',
@@ -1044,7 +1048,7 @@ export class SpannerResolver {
       covers: position,
       staff,
       dropped: true,
-      context,
+      where,
     })
   }
 
@@ -1084,8 +1088,8 @@ export class SpannerResolver {
                 'earlier than its start, and is not carried over.'
               : 'An octave shift starts where nothing ends it, and MNX states where one ' +
                 'stops, so it is not carried over.',
-          end.context,
-          'octave-shift',
+          end.where.context,
+          end.where.element,
         )
       },
     )

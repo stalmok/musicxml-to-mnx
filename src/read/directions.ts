@@ -452,8 +452,8 @@ function readOctaveShift(
   // start's size and the shift's octaves come from the start alone.
   const size = attribute(found, 'size') ?? '8'
   // Recorded with the edge for the same reason a hairpin's is: the shift is
-  // reported once the part is whole, when the element is gone.
-  const where = { ...context, line: found.line }
+  // reported once the part is whole.
+  const where = { context, element: found }
 
   if (type === 'stop') {
     // Which event the shift ends on is settled once the measure is whole,
@@ -472,8 +472,8 @@ function readOctaveShift(
       'unsupported:element',
       `An <octave-shift> of type "${type ?? ''}" and size "${size}" is not converted yet, ` +
         'so the whole shift is not carried over.',
-      where,
-      'octave-shift',
+      context,
+      found,
     )
     // The stop the source wrote for this shift goes with it, unreported: only
     // "stop" and "continue" are handled above, so an unknown type can only be
@@ -533,9 +533,9 @@ function readWedge(
   const type = attribute(found, 'type')
   const number = attribute(found, 'number') ?? '1'
   // A hairpin is reported long after this, when the part is whole and the
-  // pairing finds an edge with nothing to join it to. The <wedge> itself is
-  // gone by then, so its line is recorded with the edge.
-  const where = { ...context, line: found.line }
+  // pairing finds an edge with nothing to join it to, so the <wedge> is
+  // recorded with the edge.
+  const where = { context, element: found }
 
   if (type === 'stop') {
     // Grace notes written before the stop are drawn under the hairpin. Which
@@ -556,8 +556,8 @@ function readWedge(
         'unsupported:element',
         `A <wedge> of type "${type ?? ''}" is not converted yet, ` +
           'so the whole hairpin is not carried over.',
-        where,
-        'wedge',
+        context,
+        found,
       )
       // The stop the source wrote for this hairpin goes with it, unreported: a
       // stop states its type as the word "stop", handled above, so an unknown

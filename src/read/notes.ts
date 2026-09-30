@@ -54,7 +54,6 @@ import type { PartState } from './state.js'
 import { soundingPitch } from './transposition.js'
 import { entriesOf, recogniser } from './tables.js'
 import { tieKey } from './spanners.js'
-import type { TieElement } from './spanners.js'
 import { MeasureBuilder } from './voices.js'
 import type { PlacedEvent } from './voices.js'
 import type { TupletDisplaySettings } from './tuplets.js'
@@ -743,7 +742,7 @@ function setMeasureRest(
     const at = builder.position()
     reportCarriedByUnwritableRest(note, warnings, context, (type, slur) => {
       const number = attribute(slur, 'number') ?? '1'
-      state.spanners.dropSlurEnd(type, number, voice, measureIndex, at, context)
+      state.spanners.dropSlurEnd(type, number, voice, measureIndex, at, { context, element: slur })
     })
   }
 
@@ -1898,17 +1897,14 @@ function readTies(
   const ties = element.children('tie')
   const side = startTiedSide(tieds)
 
-  // A tie is reported once the part is whole, when the elements it was
-  // written on are gone, so a line is recorded with the edge. The <note>'s,
-  // because an edge comes from <tie>, from <tied>, or from both, and the note
-  // they sit on is the one thing that names all three.
-  const where = { ...context, line: element.element.line }
-  const { stated, edges } = tieEdges(ties, tieds, warnings, context)
-  for (const edge of edges) {
-    if (edge === 'stop') {
-      state.spanners.stopTie(note, pairedBy, voice, measureIndex, at, grace, stated, where)
+  // A tie is reported once the part is whole, so the element each edge is
+  // written with is recorded with the edge.
+  for (const edge of tieEdges(ties, tieds, warnings, context)) {
+    const where = { context, element: edge.element }
+    if (edge.kind === 'stop') {
+      state.spanners.stopTie(note, pairedBy, voice, measureIndex, at, grace, where)
     } else {
-      state.spanners.startTie(note, pairedBy, voice, side, measureIndex, at, grace, stated, where)
+      state.spanners.startTie(note, pairedBy, voice, side, measureIndex, at, grace, where)
     }
   }
 
@@ -1934,42 +1930,41 @@ function tieEdges(
   tieds: readonly XmlElement[],
   warnings: WarningCollector,
   context: WarningContext,
-): { stated: TieElement; edges: ('start' | 'stop')[] } {
-  let starts = 0
-  let stops = 0
+): { kind: 'start' | 'stop'; element: XmlElement }[] {
+  const starts: XmlElement[] = []
+  const stops: XmlElement[] = []
   for (const tie of ties) {
     const type = attribute(tie, 'type')
-    if (type === 'stop') stops += 1
-    else if (type === 'start') starts += 1
+    if (type === 'stop') stops.push(tie)
+    else if (type === 'start') starts.push(tie)
     else if (type !== 'let-ring') {
       warnings.add(
         'unsupported:element',
         `A <tie> of type "${type ?? ''}" is not converted yet.`,
-        { ...context, line: tie.line },
-        'tie',
+        context,
+        tie,
       )
     }
   }
 
   // Read from <tied> only where no <tie> stated an edge. A note whose only
   // <tie> is a let-ring still states its drawn tie in <tied>.
-  const stated = starts === 0 && stops === 0 ? 'tied' : 'tie'
-  if (stated === 'tied') {
+  if (starts.length === 0 && stops.length === 0) {
     for (const tied of tieds) {
       const type = attribute(tied, 'type')
       // A "continue" is the middle of a chain, which <tie> writes as a stop
       // and a start on the one note.
       if (type === 'continue') {
-        starts += 1
-        stops += 1
-      } else if (type === 'stop') stops += 1
-      else if (type === 'start') starts += 1
+        starts.push(tied)
+        stops.push(tied)
+      } else if (type === 'stop') stops.push(tied)
+      else if (type === 'start') starts.push(tied)
       else if (type !== 'let-ring') {
         warnings.add(
           'unsupported:element',
           `A <tied> of type "${type ?? ''}" is not converted yet.`,
-          { ...context, line: tied.line },
-          'tied',
+          context,
+          tied,
         )
       }
     }
@@ -1979,10 +1974,10 @@ function tieEdges(
   // in. A note is the middle of a chain only one way round: it ends the tie
   // before it and then starts the next. Taken as written, a note stating its
   // start first would close that tie and be tied to itself.
-  return {
-    stated,
-    edges: [...Array<'stop'>(stops).fill('stop'), ...Array<'start'>(starts).fill('start')],
-  }
+  return [
+    ...stops.map((element) => ({ kind: 'stop' as const, element })),
+    ...starts.map((element) => ({ kind: 'start' as const, element })),
+  ]
 }
 
 // The side a tie is drawn on, from its <tied> edges. MNX's tie states one
@@ -2036,9 +2031,9 @@ function readSlurs(
     // wherever the source writes them. Only the start's and the stop's go
     // anywhere: a "continue" edge's side has no home in MNX and is dropped.
     const side = curveSide(slur)
-    // Reported once the part is whole, when the <slur> is gone, so its line
-    // is recorded with the edge.
-    const where = { ...context, line: slur.line }
+    // Reported once the part is whole, so the <slur> is recorded with the
+    // edge.
+    const where = { context, element: slur }
     if (type === 'stop') {
       state.spanners.stopSlur(event, number, side, voice, measureIndex, at, grace, where)
     } else if (type === 'start') {
@@ -2060,8 +2055,8 @@ function readSlurs(
       warnings.add(
         'unsupported:element',
         `A <slur> of type "${type ?? ''}" is not converted yet.`,
-        where,
-        'slur',
+        context,
+        slur,
       )
     }
   }

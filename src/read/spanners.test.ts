@@ -12,6 +12,9 @@ import { WarningCollector } from './collector.js'
 import { accountsForItself, measureResidue, pairSpans } from './spanners.js'
 import type { SlurEnd, SpanEnd } from './spanners.js'
 import type { Event, Note } from '../model/score.js'
+import { parseXmlRoot } from '../xml/parse.js'
+
+const WRITTEN = { context: {}, element: parseXmlRoot('<slur/>') }
 
 const DIVISIONS = '<attributes><divisions>4</divisions></attributes>'
 
@@ -1303,13 +1306,31 @@ describe('spanner markings that are not simply a start or a stop', () => {
 // interleave through a backup or forward so that the stop sits past the start
 // while the point it covers falls before it; joined, the span would end
 // before it starts.
+// An unclosed end is reported once the part is whole, at the element it is
+// written with.
+describe('where an end with nothing to join is reported', () => {
+  test.each([
+    ['a <tie>', 'tie', '\n<tie type="stop"/>\n<notations><tied type="stop"/></notations>'],
+    ['a <tied> with no <tie>', 'tied', '\n<notations>\n<tied type="stop"/></notations>'],
+    ['a <slur>', 'slur', '\n<notations>\n<slur type="stop"/></notations>'],
+  ])('reports %s at its own line', (_what, element, body) => {
+    const source = measures(DIVISIONS + note('C', body))
+    const { warnings } = read(source)
+
+    const line = source.split('\n').findIndex((text) => text.includes(`<${element} `)) + 1
+    expect(warnings.map((w) => [w.code, w.element, w.context.line])).toEqual([
+      ['unclosed:spanner', element, line],
+    ])
+  })
+})
+
 describe('pairing the two ends of a span', () => {
   const spanEnd = (
     kind: 'start' | 'stop',
     position: Fraction,
     covers: Fraction,
   ): SpanEnd<string, undefined> => {
-    const place = { number: '1', measure: 0, position, covers, context: {} }
+    const place = { number: '1', measure: 0, position, covers, where: WRITTEN }
     return kind === 'start'
       ? { ...place, kind, payload: 'span' }
       : { ...place, kind, stop: undefined }
@@ -1399,7 +1420,7 @@ describe('whether a voice accounts for its own slurs', () => {
       measure: 0,
       position: fraction(index, 4),
       covers: fraction(index, 4),
-      context: {},
+      where: WRITTEN,
     }
     return kind === 'start'
       ? { ...place, kind, payload: { event, side: undefined, lineType: undefined } }
@@ -1453,7 +1474,7 @@ describe('the order the ends of a span are read in', () => {
       measure,
       position,
       covers: position,
-      context: {},
+      where: WRITTEN,
       ...(grace === undefined ? {} : { grace }),
     }
     return kind === 'start' ? { ...place, kind, payload } : { ...place, kind, stop: undefined }
