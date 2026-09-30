@@ -38,6 +38,7 @@ import {
   children,
   peekAttribute,
   requireAttribute,
+  requireChild,
   trimmedText,
 } from '../xml/tree.js'
 import { firstTimeStated, readAttributes } from './attributes.js'
@@ -68,6 +69,8 @@ import { MeasureBuilder } from './voices.js'
 
 interface PartReading {
   part: Part
+  /** The <part>, for the warnings about it reported once every part is read. */
+  element: XmlElement
   /** What this part declared for each of its measures, by position. */
   globals: readonly ReadGlobalMeasure[]
   /** The <sound tempo> statements of each of its measures, by position. */
@@ -202,6 +205,7 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
         `Part ${reading.part.id} has ${String(found)} measures where the score has ` +
           `${String(globalMeasures.length)}.`,
         { part: reading.part.id },
+        reading.element,
       )
     }
   }
@@ -209,6 +213,18 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
   // A staff pointing at a part the score does not hold would dangle, so the
   // grouping keeps only parts that were written.
   const written = new Set(readings.map((reading) => reading.part.id))
+  // Only a grouping draws a staff for each part it names, so only there is a
+  // part the score never writes a staff that is not drawn.
+  for (const [id, scorePart] of partList.grouping.length > 0 ? partList.scoreParts : []) {
+    if (written.has(id)) continue
+    warnings.add(
+      'unresolved:part-id',
+      `The part list names part ${id}, but the score never writes it, ` +
+        'so no staff of it is drawn.',
+      { part: id },
+      scorePart,
+    )
+  }
   const parts = readings.map(({ part }, index) => {
     const flipAt = flips[index]
     if (flipAt === undefined || !part.transposition) return part
@@ -218,13 +234,13 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
     {
       globalMeasures,
       parts,
-      grouping: pruneGrouping(partList.grouping, written, partList.scoreParts, warnings),
+      grouping: pruneGrouping(partList.grouping, written),
       sounds: partList.sounds,
       ...(musicFont !== undefined ? { musicFont } : {}),
       ...(declaresBeams ? { declaresBeams } : {}),
       ...(declaresAccidentals ? { declaresAccidentals } : {}),
     },
-    partElements,
+    readings,
     warnings,
   )
 }
@@ -239,13 +255,11 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
  */
 function renameInvalidPartIds(
   score: Score,
-  partElements: readonly XmlElement[],
+  readings: readonly PartReading[],
   warnings: WarningCollector,
 ): Score {
-  const failing = score.parts.flatMap((part, index) =>
-    !MNX_ID_PATTERN.test(part.id) || GENERATED_ID_PATTERN.test(part.id)
-      ? [{ part, element: partElements[index] }]
-      : [],
+  const failing = readings.filter(
+    ({ part }) => !MNX_ID_PATTERN.test(part.id) || GENERATED_ID_PATTERN.test(part.id),
   )
   if (failing.length === 0) return score
 
@@ -964,6 +978,7 @@ function readPart(
       transposition: state.statedTransposition,
       measures: readings.map((reading) => reading.measure),
     },
+    element,
     globals: readings.map((reading) => reading.global),
     soundTempos: readings.map((reading) => reading.soundTempos),
   }
@@ -1099,6 +1114,7 @@ function reportAcrossStaves<T>(
   inForce: Map<number, T | undefined>,
   warnings: WarningCollector,
   context: ReportContext,
+  opening: XmlElement,
   place: WarningPlace,
 ): void {
   const stated = new Set<number>()
@@ -1142,7 +1158,7 @@ function reportAcrossStaves<T>(
     `unrepresentable:per-staff-${kind.element}`,
     `${disagreement} The one converted stands for every staff.`,
     context,
-    statements[0]?.element,
+    opening,
   )
 }
 
@@ -1165,7 +1181,16 @@ function settleStated<T>(
   warnings: WarningCollector,
   context: ReportContext,
 ): void {
-  reportAcrossStaves(kind, group.statements, staves, inForce, warnings, context, group.place)
+  reportAcrossStaves(
+    kind,
+    group.statements,
+    staves,
+    inForce,
+    warnings,
+    context,
+    group.first.element,
+    group.place,
+  )
   // Only what the measure opens with is settled against a converted value:
   // one stated after the start is carried to the next measure, and what
   // becomes of it is settled there.
@@ -1209,6 +1234,8 @@ function statingOf<T>(statements: readonly StaffSignature<T>[], first: StaffSign
 interface StatedAt<T> {
   at: Fraction
   place: WarningPlace
+  /** The first statement, where staves that disagree are reported. */
+  first: StaffSignature<T>
   statements: StaffSignature<T>[]
 }
 
@@ -1446,11 +1473,15 @@ function readMeasure(
   const timeGroups: StatedAt<TimeSignature>[] = []
   // Every unmetered statement the measure makes, reported once the measure
   // has settled what it converts.
-  const unmetered: { place: WarningPlace; element: XmlElement | undefined }[] = []
-  const statedAt = <T>(groups: StatedAt<T>[], at: Fraction): StatedAt<T> => {
+  const unmetered: { place: WarningPlace; element: XmlElement }[] = []
+  const statedAt = <T>(
+    groups: StatedAt<T>[],
+    at: Fraction,
+    first: StaffSignature<T>,
+  ): StatedAt<T> => {
     const opened = groups.find((group) => compareFractions(group.at, at) === 0)
     if (opened) return opened
-    const group: StatedAt<T> = { at, place: warnings.reserve(), statements: [] }
+    const group: StatedAt<T> = { at, place: warnings.reserve(), first, statements: [] }
     groups.push(group)
     return group
   }
@@ -1504,7 +1535,7 @@ function readMeasure(
         // stating one at this point.
         const [firstKey] = reading.keys
         if (firstKey) {
-          statedAt(keyGroups, at).statements.push(...reading.keys)
+          statedAt(keyGroups, at, firstKey).statements.push(...reading.keys)
           if (builder.atMeasureStart()) {
             if (!keySettled) key = reading.key
             keySettled = true
@@ -1519,13 +1550,13 @@ function readMeasure(
           if (stated.value === undefined) {
             unmetered.push({
               place: warnings.reserve(),
-              element: child(stated.element, 'senza-misura'),
+              element: requireChild(stated.element, 'senza-misura', measurePath),
             })
           }
         }
         const [firstTime] = reading.times
         if (firstTime) {
-          statedAt(timeGroups, at).statements.push(...reading.times)
+          statedAt(timeGroups, at, firstTime).statements.push(...reading.times)
           if (builder.atMeasureStart()) {
             // A second statement at the start changes nothing. A senza-misura
             // statement clears it: the music is unmetered from here on,

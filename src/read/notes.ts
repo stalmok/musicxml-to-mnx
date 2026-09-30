@@ -189,7 +189,7 @@ function kitComponent(
   // always one MNX can state, so what the score holds the sound under is what
   // the component names.
   const resolved = id !== undefined ? state.sounds.get(id) : undefined
-  if (id !== undefined && resolved === undefined) {
+  if (named && id !== undefined && resolved === undefined) {
     warnings.add(
       'unresolved:instrument-id',
       `The part list has no <score-instrument> with id ${id}.`,
@@ -617,7 +617,7 @@ function openTupletsAndTremolo(
   const endsRun = graceElement
     ? builder.impliedTupletEndsAtGap(voice)
     : builder.impliedTupletEndsBefore(voice, rated)
-  if (endsRun) builder.closeTuplet(voice, warnings, context, path, element.line, undefined)
+  if (endsRun) builder.closeImpliedTuplet(voice, warnings, context, path, element.line)
 
   // A ratio is read only where no bracket the source drew is open, and the
   // close above ends any run this note does not belong in, so what is open
@@ -626,7 +626,8 @@ function openTupletsAndTremolo(
     builder.openImpliedTuplet(voice, rated.inner, rated.outer, ratio)
   }
 
-  if (starts.length > 0) {
+  const [firstStart] = starts
+  if (firstStart) {
     // Sources write a bracket with no ratio beside it, and the note itself
     // says what the ratio is: how long it lasts against how it is written.
     // Some write a plain bracket over notes that play as written, some a
@@ -675,7 +676,7 @@ function openTupletsAndTremolo(
             : `and the two-note tremolo on it takes half of that, so the bracket is ` +
               `converted as ${describeRatio(quantities)}.`),
         context,
-        starts[0],
+        firstStart,
       )
     }
 
@@ -1181,13 +1182,16 @@ function closeTuplets(
     closed.push(ended)
     stops.push(marker)
   }
-  if (stated.length > 0 && String([...stated].sort()) !== String([...closed].sort())) {
+  // Reported at the first stop that closed a tuplet other than the one it
+  // names.
+  const crossing = stops.find((_, index) => stated[index] !== closed[index])
+  if (crossing && String([...stated].sort()) !== String([...closed].sort())) {
     warnings.add(
       'unrepresentable:tuplet-crossing',
       "The source's tuplets cross: a stop names a tuplet other than one ending here. " +
         "MNX's tuplets nest, so each stop is matched to the innermost open tuplet.",
       context,
-      stops.find((_, index) => stated[index] !== closed[index]),
+      crossing,
     )
   }
 }

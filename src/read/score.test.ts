@@ -2512,7 +2512,7 @@ describe('several parts', () => {
         [5, undefined],
         [5, undefined, -7],
         [5, undefined, -7],
-        [['inconsistent:measure-count', { part: 'P1' }]],
+        [['inconsistent:measure-count', { part: 'P1', line: 1 }]],
       ],
     ])('contributes %s', (_name, first, second, expected, reported) => {
       const source = score(concert(first, second))

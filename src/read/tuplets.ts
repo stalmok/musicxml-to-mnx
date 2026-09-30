@@ -264,7 +264,8 @@ export function tupletLevels(
       ? [{ ...start.stated, display: start.display, number: start.number, element: start.element }]
       : [],
   )
-  if (known.length > 0) {
+  const [stating] = known
+  if (stating) {
     const holes = starts.length - known.length
     const product = known
       .map((level) => ratioOf(level.inner, level.outer))
@@ -290,7 +291,7 @@ export function tupletLevels(
       "A tuplet's start marker states a ratio that disagrees with the notes' " +
         '<time-modification>. The ratio the notes state is the one converted.',
       context,
-      starts.find((start) => start.stated !== undefined)?.element,
+      stating.element,
     )
   }
 

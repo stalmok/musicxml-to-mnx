@@ -30,7 +30,7 @@ export class WarningCollector {
     code: WarningCode,
     message: string,
     context: ReportContext,
-    found?: XmlElement,
+    found: XmlElement,
     attribute?: string,
   ): void {
     this.addAt(this.reserve(), code, message, context, found, attribute)
@@ -96,13 +96,9 @@ export class WarningCollector {
     code: WarningCode,
     message: string,
     context: ReportContext,
-    found?: XmlElement,
+    found: XmlElement,
     attribute?: string,
   ): void {
-    if (!found) {
-      this.#push(place, { code, message, element: undefined, attribute, context })
-      return
-    }
     if (attribute !== undefined) readAttribute(found, attribute)
     const at = { ...context, line: found.line }
     this.#push(place, { code, message, element: found.name, attribute, context: at })

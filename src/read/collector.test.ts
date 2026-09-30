@@ -3,30 +3,25 @@ import { WarningCollector } from './collector.js'
 import { parseXmlRoot } from '../xml/parse.js'
 import { readAttributeNames } from '../xml/tree.js'
 
+const NOTE = parseXmlRoot('<note/>')
+
 describe('WarningCollector', () => {
   test('starts with nothing reported', () => {
     expect(new WarningCollector().list()).toEqual([])
   })
 
-  test('leaves the element unset where the loss is not about one', () => {
-    const warnings = new WarningCollector()
-    warnings.add('inconsistent:duration', 'a note disagrees with itself', {})
-
-    expect(warnings.list()[0]?.element).toBeUndefined()
-  })
-
   test('keeps warnings in the order they were reported', () => {
     const warnings = new WarningCollector()
 
-    warnings.add('unsupported:element', 'first', {})
-    warnings.add('unsupported:element', 'second', {})
+    warnings.add('unsupported:element', 'first', {}, NOTE)
+    warnings.add('unsupported:element', 'second', {}, NOTE)
 
     expect(warnings.list().map((w) => w.message)).toEqual(['first', 'second'])
   })
 
   test('hands out a copy, so a caller cannot corrupt the report', () => {
     const warnings = new WarningCollector()
-    warnings.add('unsupported:element', 'reported', {})
+    warnings.add('unsupported:element', 'reported', {}, NOTE)
 
     const list = warnings.list() as ReturnType<WarningCollector['list']>[number][]
     list.length = 0
@@ -41,10 +36,10 @@ describe('a place kept for a decision made later', () => {
   test('reports through a place where it was taken, not where it was added', () => {
     const warnings = new WarningCollector()
 
-    warnings.add('unsupported:element', 'first', {})
+    warnings.add('unsupported:element', 'first', {}, NOTE)
     const place = warnings.reserve()
-    warnings.add('unsupported:element', 'third', {})
-    warnings.addAt(place, 'unsupported:element', 'second', {})
+    warnings.add('unsupported:element', 'third', {}, NOTE)
+    warnings.addAt(place, 'unsupported:element', 'second', {}, NOTE)
 
     expect(warnings.list().map((w) => w.message)).toEqual(['first', 'second', 'third'])
   })
@@ -53,9 +48,9 @@ describe('a place kept for a decision made later', () => {
     const warnings = new WarningCollector()
 
     const place = warnings.reserve()
-    warnings.add('unsupported:element', 'last', {})
-    warnings.addAt(place, 'unsupported:element', 'first', {})
-    warnings.addAt(place, 'unsupported:element', 'second', {})
+    warnings.add('unsupported:element', 'last', {}, NOTE)
+    warnings.addAt(place, 'unsupported:element', 'first', {}, NOTE)
+    warnings.addAt(place, 'unsupported:element', 'second', {}, NOTE)
 
     expect(warnings.list().map((w) => w.message)).toEqual(['first', 'second', 'last'])
   })
@@ -64,7 +59,7 @@ describe('a place kept for a decision made later', () => {
     const warnings = new WarningCollector()
 
     warnings.reserve()
-    warnings.add('unsupported:element', 'only', {})
+    warnings.add('unsupported:element', 'only', {}, NOTE)
 
     expect(warnings.list().map((w) => w.message)).toEqual(['only'])
   })

@@ -1783,8 +1783,7 @@ export class MeasureBuilder {
    * its start marker stated so the caller can check the note's stops as a
    * batch: which stop is written first on a note is not constrained, so a
    * crossing shows only when the note's stated numbers and the closed ones
-   * disagree as sets. `stop` is the <tuplet> marker closing it, where one
-   * does.
+   * disagree as sets. `stop` is the <tuplet> marker closing it.
    */
   closeTuplet(
     voice: string | undefined,
@@ -1792,7 +1791,7 @@ export class MeasureBuilder {
     context: ReportContext,
     path: DocumentPath,
     line: number,
-    stop: XmlElement | undefined,
+    stop: XmlElement,
   ): string | undefined {
     const builder = this.#builderFor(voice)
     const closed = builder.open.at(-1)
@@ -1812,6 +1811,19 @@ export class MeasureBuilder {
       return undefined
     }
     return this.#closeTuplet(builder, closed, warnings, context, path, line, false, stop)
+  }
+
+  /** Closes the run the ratio alone opened in this voice, where one is open. */
+  closeImpliedTuplet(
+    voice: string | undefined,
+    warnings: WarningCollector,
+    context: ReportContext,
+    path: DocumentPath,
+    line: number,
+  ): void {
+    const builder = this.#builderFor(voice)
+    const open = impliedFrame(builder)
+    if (open) this.#closeTuplet(builder, open, warnings, context, path, line, false)
   }
 
   /**
@@ -2092,12 +2104,13 @@ export class MeasureBuilder {
     // name a voice, that splits one measure into two sequences with no way to
     // know the source meant them apart, so the split is reported rather than
     // silent.
-    if (this.#voices.size > 1 && this.#voices.has(UNNAMED_VOICE)) {
+    const unnamed = this.#unnamedNote
+    if (unnamed && this.#voices.size > 1 && this.#voices.has(UNNAMED_VOICE)) {
       warnings.add(
         'missing:voice',
         'A note names no voice while others in the measure do. It is kept as a ' + 'separate line.',
         context,
-        this.#unnamedNote,
+        unnamed,
       )
     }
 

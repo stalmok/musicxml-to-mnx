@@ -137,32 +137,15 @@ export class GroupingBuilder {
 export function pruneGrouping(
   items: readonly GroupingItem[],
   written: ReadonlySet<string>,
-  scoreParts: ReadonlyMap<string, XmlElement>,
-  warnings: WarningCollector,
 ): readonly GroupingItem[] {
-  const pruned = prunedItems(items, written, scoreParts, warnings)
+  const pruned = prunedItems(items, written)
   return pruned.some((item) => item.kind === 'group') ? pruned : []
 }
 
-function prunedItems(
-  items: readonly GroupingItem[],
-  written: ReadonlySet<string>,
-  scoreParts: ReadonlyMap<string, XmlElement>,
-  warnings: WarningCollector,
-): GroupingItem[] {
+function prunedItems(items: readonly GroupingItem[], written: ReadonlySet<string>): GroupingItem[] {
   return items.flatMap((item): GroupingItem[] => {
-    if (item.kind === 'part') {
-      if (written.has(item.part)) return [item]
-      warnings.add(
-        'unresolved:part-id',
-        `The part list names part ${item.part}, but the score never writes it, ` +
-          'so no staff of it is drawn.',
-        { part: item.part },
-        scoreParts.get(item.part),
-      )
-      return []
-    }
-    const content = prunedItems(item.content, written, scoreParts, warnings)
+    if (item.kind === 'part') return written.has(item.part) ? [item] : []
+    const content = prunedItems(item.content, written)
     // A group around nothing draws nothing, so leaving it out loses nothing.
     if (content.length === 0) return []
     return [{ ...item, content }]
