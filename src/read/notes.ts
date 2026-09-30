@@ -123,8 +123,8 @@ function restStaffPosition(
       'unsupported:element',
       "A rest's staff position, given by <display-step> and <display-octave>, needs " +
         'both and a clef in force to place, which this measure does not give.',
-      { ...context, line: restElement.line },
-      stated.name,
+      context,
+      stated,
     )
   }
   return position
@@ -154,24 +154,25 @@ function kitComponent(
   // several at once. MNX strikes one component per kit note, so the first is
   // the one converted.
   const instruments = element.children('instrument')
-  if (instruments.length > 1) {
+  const [named, extra] = instruments
+  if (extra) {
     warnings.add(
       'unrepresentable:element',
       `A note is struck on ${String(instruments.length)} instruments at once, and MNX ` +
         'states one for each note of a kit. The first is the one converted.',
-      { ...context, line: element.line },
-      'instrument',
+      context,
+      extra,
     )
   }
 
   const position = displayStaffPosition(unpitchedElement, staff, state)
-  const named = instruments[0] ? attribute(instruments[0], 'id') : undefined
+  const id = named ? attribute(named, 'id') : undefined
   // A component is an instrument written at a height. MNX places a component
   // once and every note struck on it sits there, so two notes strike the same
   // one only when they agree on both. A part can name one instrument for the
   // whole drumset, and a source can tell two drums apart by instrument alone.
   // Where a source names no instrument, the height is all it gives.
-  const source = `${named ?? ''}@${String(position ?? UNPLACED_KIT_COMPONENT)}`
+  const source = `${id ?? ''}@${String(position ?? UNPLACED_KIT_COMPONENT)}`
 
   const existing = state.kitKeys.get(source)
   if (existing !== undefined) return existing
@@ -181,20 +182,20 @@ function kitComponent(
       'missing:display-step',
       'An unpitched note gives no usable <display-step> and <display-octave> to place it by, or ' +
         'no clef is in force to read them against. It is written on the middle line.',
-      { ...context, line: element.line },
-      'unpitched',
+      context,
+      unpitchedElement,
     )
   }
   // The part list holds the name and the sound; the id a note writes is not
   // always one MNX can state, so what the score holds the sound under is what
   // the component names.
-  const resolved = named !== undefined ? state.sounds.get(named) : undefined
-  if (named !== undefined && resolved === undefined) {
+  const resolved = id !== undefined ? state.sounds.get(id) : undefined
+  if (id !== undefined && resolved === undefined) {
     warnings.add(
       'unresolved:instrument-id',
-      `The part list has no <score-instrument> with id ${named}.`,
-      { ...context, line: element.line },
-      'instrument',
+      `The part list has no <score-instrument> with id ${id}.`,
+      context,
+      named,
     )
   }
 
@@ -413,7 +414,7 @@ export function readNote(
     // A grace note carries no <duration> to measure a value from, so where it
     // states no <type> the beams over it are what say how it is drawn.
     (graceElement && duration === undefined
-      ? drawnGraceValue(element, warnings, context)
+      ? drawnGraceValue(element, graceElement, warnings, context)
       : undefined) ??
     measuredValue(element, duration, scale, state, path)
   // The event states this note's staff, so the note says nothing of its own.
@@ -481,13 +482,13 @@ export function readNote(
   // Sources sometimes write an extra rest over a rest that already fills the
   // same voice's measure. Both are silence, so the measure rest
   // stands, the extra is reported, and the cursor still moves past it.
-  if (event.isRest && builder.restIsRedundant(voice)) {
+  if (restElement && builder.restIsRedundant(voice)) {
     warnings.add(
       'redundant:rest',
       'A rest is written over a rest that already fills the measure in the same ' +
         'voice. The measure rest is the one converted.',
-      { ...context, line: element.line },
-      'rest',
+      context,
+      restElement,
     )
     builder.passOver(duration ?? lengthOf(value))
     return
@@ -767,8 +768,8 @@ function setMeasureRest(
             : 'this measure, and no note value can write that length. ') +
           'MNX states such a rest on the sequence, which carries no length, so the length ' +
           'is not converted.',
-        { ...context, line: element.line },
-        'rest',
+        context,
+        fills.rest,
       )
     }
   }
@@ -832,8 +833,8 @@ function setMeasureRest(
             'can write that rest as an event. MNX states such a rest on a sequence that ' +
             'holds nothing, so the rest is converted as a space of its length. The rest ' +
             'is not drawn, nor a fermata or a position stated on it.',
-          { ...context, line: element.line },
-          'rest',
+          context,
+          fills.rest,
         )
       },
     },
@@ -897,8 +898,8 @@ function reportCarriedByUnwritableRest(
       `A <${found.name}> on a rest that fills the measure is not converted. No note value ` +
         'writes the rest as an event, and neither the rest MNX states on the sequence nor a ' +
         'space written for it carries one.',
-      { ...context, line: found.line },
-      found.name,
+      context,
+      found,
     )
   }
 }
@@ -947,8 +948,8 @@ function readChordMember(
         'inconsistent:grace-time',
         `A note of a grace chord names ${named}, and the chord it joins takes its ` +
           'time from another side. The side the chord states is the one converted.',
-        { ...context, line: graceElement.line },
-        'grace',
+        context,
+        graceElement,
       )
     }
   }
@@ -964,8 +965,8 @@ function readChordMember(
             'converted as a grace note of that chord.'
         : 'A note of a chord is a grace note, and the note it joins is not. It is ' +
             'converted as a full note of that chord.',
-      { ...context, line: element.line },
-      'chord',
+      context,
+      requireChild(element.element, 'chord', path),
     )
   }
 
@@ -1011,8 +1012,8 @@ function readChordMember(
       'inconsistent:duration',
       `A <note> in a chord lasts ${describeLength(duration)} but is written as ` +
         `${describeValue(written)}, as the chord is. The written value is the one converted.`,
-      { ...context, line: element.line },
-      'note',
+      context,
+      element.element,
     )
   }
   const chordDurationOrNone = writtenMatches ? undefined : duration
@@ -1070,8 +1071,8 @@ function readChordMember(
       'unsupported:element',
       'A <tuplet> starts on a chord member, where the bracket would begin after the ' +
         'chord it belongs to, so it is not converted yet.',
-      { ...context, line: element.line },
-      'tuplet',
+      context,
+      marker,
     )
     builder.dropTupletStart(chordVoice, attribute(marker, 'number') ?? '1')
   }
@@ -1260,8 +1261,8 @@ function graceSideToKeep(
     `A grace note states it takes its time from another side than the grace notes it ` +
       'is beamed to. MNX states one side for each group of grace notes, and splitting ' +
       'the group would break the beam, so the side already stated is the one converted.',
-    { ...context, line: grace.line },
-    'grace',
+    context,
+    grace,
   )
   return undefined
 }
@@ -1287,8 +1288,8 @@ function readGraceType(
         'unrepresentable:grace-time',
         `A grace note names ${written} as well as another side to take its time from. ` +
           'MNX states one side, and only one is converted.',
-        { ...context, line: grace.line },
-        'grace',
+        context,
+        grace,
       )
       continue
     }
@@ -1298,8 +1299,8 @@ function readGraceType(
       `A grace note states ${written}="${amount}", and MNX states which side a grace ` +
         'group takes its time from without an amount. The side is converted and the ' +
         'amount is not.',
-      { ...context, line: grace.line },
-      'grace',
+      context,
+      grace,
     )
   }
   return kind
@@ -1334,12 +1335,11 @@ function readCaesura(
   if (text === 'single') return { marks: 1, shape: undefined }
   if (isCaesuraShape(text)) return { marks: undefined, shape: text }
   // The one warning accounts for the caesura whole, its side included.
-  attribute(found, 'placement')
-  warnings.add(
+  warnings.addWhole(
     'unsupported:element',
     `A <caesura> of "${text}" names no shape MusicXML defines, and is not converted.`,
-    { ...context, line: found.line },
-    'caesura',
+    context,
+    found,
   )
   return undefined
 }
@@ -1442,8 +1442,8 @@ function readSingleTremolo(
     warnings.add(
       'unrepresentable:element',
       `A tremolo of type "${type}" cannot be stated in MNX, which counts beams.`,
-      { ...context, line: found.line },
-      'tremolo',
+      context,
+      found,
     )
     return undefined
   }
@@ -1457,8 +1457,8 @@ function readSingleTremolo(
     warnings.add(
       'unrepresentable:element',
       `A tremolo drawn with ${text} beams cannot be stated in MNX, which counts from one.`,
-      { ...context, line: found.line },
-      'tremolo',
+      context,
+      found,
     )
     return undefined
   }
@@ -1498,16 +1498,15 @@ function reportSecondMark(
   warnings: WarningCollector,
   context: WarningContext,
 ): void {
-  attribute(found, 'placement')
-  warnings.add(
+  warnings.addWhole(
     'unrepresentable:marking',
     kind === 'bowDirection'
       ? 'An event carries more than one bow mark, and MNX states one direction. ' +
           'The first is the one converted.'
       : `An event carries more than one <${found.name}>, and MNX states one of each ` +
           'kind. The first is the one converted.',
-    { ...context, line: found.line },
-    found.name,
+    context,
+    found,
   )
 }
 
@@ -1544,15 +1543,14 @@ function readChordMemberMarkings(
     // does not state is still reported.
     const stated = chord[kind]
     if (stated !== undefined && sameMarking(stated, marking)) continue
-    attribute(found, 'placement')
-    warnings.add(
+    warnings.addWhole(
       'inconsistent:marking',
       (stated === undefined
         ? `A note of a chord carries a <${found.name}> the note it joins does not.`
         : `A note of a chord carries a <${found.name}> another way than the note it joins.`) +
         " MNX states the marks on the event, and the chord's own are the ones converted.",
-      { ...context, line: found.line },
-      found.name,
+      context,
+      found,
     )
   }
 }
@@ -1636,8 +1634,8 @@ export function readFermataAt(
       'unrepresentable:fermata',
       'More than one fermata is written at the same place, and MNX states one. ' +
         'The first is the one converted.',
-      { ...context, line: first.line },
-      'fermata',
+      context,
+      first,
     )
   }
 
@@ -1646,8 +1644,8 @@ export function readFermataAt(
     warnings.add(
       'unsupported:element',
       `A <fermata> of "${shape}" is not converted yet.`,
-      { ...context, line: first.line },
-      'fermata',
+      context,
+      first,
     )
   }
   return fermataOf(first)
@@ -1702,8 +1700,8 @@ function readChordMemberFermatas(
     'unrepresentable:fermata',
     'A note of a chord carries more than one fermata, and MNX states one on the event. ' +
       "The first fermata of the chord's own note is the one converted.",
-    { ...context, line: extra.found.line },
-    'fermata',
+    context,
+    extra.found,
   )
 }
 
@@ -1792,8 +1790,8 @@ function readStemDirection(
   warnings.add(
     'unrepresentable:stem-direction',
     `A <stem> of "${direction}" cannot be expressed in MNX, which states only up or down.`,
-    { ...context, line: stem.line },
-    'stem',
+    context,
+    stem,
   )
   return undefined
 }
@@ -2109,8 +2107,8 @@ function beamMarkers(
       warnings.add(
         'unsupported:element',
         `A <beam> fanned as "${fan}" is not converted yet.`,
-        { ...context, line: beam.line },
-        'beam',
+        context,
+        beam,
         'fan',
       )
     }
@@ -2135,8 +2133,8 @@ function beamMarkers(
         `The "number" of a <beam> is "${stated}", which is not one of the eight beam ` +
           'levels. The marker is dropped, and the beams beside it are drawn as if it ' +
           'had never been written.',
-        { ...context, line: beam.line },
-        'beam',
+        context,
+        beam,
         'number',
       )
       continue
@@ -2529,6 +2527,7 @@ interface NoteScale {
  */
 function drawnGraceValue(
   element: ElementReader,
+  grace: XmlElement,
   warnings: WarningCollector,
   context: WarningContext,
 ): NoteValue {
@@ -2545,8 +2544,8 @@ function drawnGraceValue(
     `A grace note states no <type>, and carries no <duration> to measure one from. ` +
       `MNX states a value for every event, so it is converted as ${describeValue({ base, dots: 0 })}` +
       (beams > 0 ? ', which its beams draw.' : ', which is how a grace note is drawn.'),
-    { ...context, line: element.line },
-    'grace',
+    context,
+    grace,
   )
   return { base, dots: 0 }
 }
@@ -2626,8 +2625,8 @@ function reportDurationMismatch(
           'The written value is the one converted.'
       : `A <note> is written as ${describeValue(written)} but lasts ` +
           `${describeLength(duration)}. The written value is the one converted.`,
-    { ...context, line: element.line },
-    'note',
+    context,
+    element.element,
   )
 }
 
@@ -2687,8 +2686,8 @@ function readAlter(
     'unrepresentable:microtone',
     `A note is altered by ${written} semitones, which MNX cannot state: its alter is a ` +
       `whole number of them. The note is converted altered by ${String(nearest)}.`,
-    { ...context, line: element.line },
-    'alter',
+    context,
+    element,
   )
   return nearest === 0 ? 0 : nearest
 }

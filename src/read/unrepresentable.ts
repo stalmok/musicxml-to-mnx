@@ -40,8 +40,8 @@ export function reportHidden(
       // Named so a consumer can tell what kind of notation the hiding
       // covers without reading the source.
       (holds !== undefined ? ` The block holds <${holds}>.` : ''),
-    { ...context, line: element.line },
-    element.name,
+    context,
+    element,
     'print-object',
   )
 }

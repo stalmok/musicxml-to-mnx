@@ -43,6 +43,8 @@ export type RestReading =
   | { kind: 'candidate'; written: NoteValue; duration: Fraction }
   | {
       kind: 'fills'
+      /** The <rest> of the note. */
+      rest: XmlElement
       /**
        * The value the rest is written as where it stays an event, and nothing
        * where no note value can write it: an irregular measure can rest for a
@@ -155,7 +157,10 @@ export function readRest(note: RestNote, state: PartState, builder: MeasureBuild
     !builder.restsTheMeasure(voice)
 
   const fillsMeasure =
-    (markedAsTheMeasure && !markedCandidate) || drawnToTheMeasure || unwritableLength !== undefined
+    rest !== undefined &&
+    ((markedAsTheMeasure && !markedCandidate) ||
+      drawnToTheMeasure ||
+      unwritableLength !== undefined)
 
   // A bar of silence is drawn with a whole rest whatever the meter, so a rest
   // opening a voice can state a written value shorter than the measure it
@@ -186,6 +191,7 @@ export function readRest(note: RestNote, state: PartState, builder: MeasureBuild
   if (fillsMeasure) {
     return {
       kind: 'fills',
+      rest,
       eventValue,
       canStayEvent: eventValue !== undefined && !builder.restsTheMeasure(voice),
       needsEvent: carriesLyric || carriesSlurEnd || afterGraceNotes,

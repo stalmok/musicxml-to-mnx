@@ -214,6 +214,42 @@ describe('the place a warning names', () => {
       code: 'inconsistent:tremolo',
       at: 1,
     },
+    {
+      what: 'the extra rest at its <rest>, not at its <note>',
+      body: [FULL_REST, backup(16), '<note>', '<rest/>', '<duration>4</duration></note>'],
+      code: 'redundant:rest',
+      at: 3,
+    },
+    {
+      what: 'the alteration MNX cannot state at its <alter>',
+      body: [
+        '<note><pitch><step>C</step>',
+        '<alter>0.5</alter><octave>4</octave></pitch>' +
+          '<duration>4</duration><type>quarter</type></note>',
+      ],
+      code: 'unrepresentable:microtone',
+      at: 1,
+    },
+    {
+      what: 'a grace note stating no value at its <grace>',
+      body: [
+        '<note>',
+        '<grace/><pitch><step>C</step><octave>4</octave></pitch></note>',
+        note('D', 4),
+      ],
+      code: 'missing:note-type',
+      at: 1,
+    },
+    {
+      what: 'a chord member disagreeing on grace at its <chord>',
+      body: [
+        note('C', 4),
+        '<note>',
+        '<chord/><grace/><pitch><step>E</step><octave>4</octave></pitch><type>eighth</type></note>',
+      ],
+      code: 'inconsistent:grace',
+      at: 2,
+    },
   ]
 
   test.each(REPORTS)('points at $what', ({ body, code, at }) => {
