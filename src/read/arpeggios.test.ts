@@ -308,6 +308,24 @@ describe('a chord marked both ways at once', () => {
   })
 })
 
+// The warning names the mark that is not converted.
+describe('the mark a chord marked both ways reports', () => {
+  test.each([
+    ['a bracket after a roll', ROLL, '<non-arpeggiate type="bottom"/>', 'non-arpeggiate'],
+    ['a roll after a bracket', '<non-arpeggiate type="bottom"/>', ROLL, 'arpeggiate'],
+    [
+      'a bracket numbered apart from the roll',
+      '<arpeggiate number="1"/>',
+      '<non-arpeggiate number="2" type="bottom"/>',
+      'non-arpeggiate',
+    ],
+  ])('names %s', (_what, first, second, lost) => {
+    const { warnings } = read(head(first) + member('E', second))
+
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([['unrepresentable:arpeggio', lost]])
+  })
+})
+
 // Marks on one chord are compared together whatever their numbers, so a roll
 // and a bracket are not both written over the same notes.
 describe('a chord marked both ways under different numbers', () => {

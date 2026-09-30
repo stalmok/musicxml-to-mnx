@@ -258,15 +258,15 @@ describe('the place a warning names', () => {
   })
 
   // A bracket still open at the barline is closed there, which is found once
-  // the measure is whole, so the report carries the measure's own line.
-  test('points at the measure for a tuplet cut at the barline', () => {
+  // the measure is whole. The report points at the <tuplet> that opened it.
+  test('points at the start marker for a tuplet cut at the barline', () => {
     const reported = warningsOf(score(tupletNote('C', '<tuplet type="start"/>'))).find(
       (warning) => warning.code === 'unrepresentable:tuplet-span',
     )
 
     expect(reported?.context.part).toBe('P1')
     expect(reported?.context.measure).toBe(MEASURE_POSITION)
-    expect(reported?.context.line).toBe(MEASURE_LINE)
+    expect(reported?.context.line).toBe(FIRST_BODY_LINE)
   })
 
   // A roll is drawn beside a chord rather than on a note, so its report names
@@ -283,9 +283,9 @@ describe('the place a warning names', () => {
     expect(reported?.context.measure).toBe(MEASURE_POSITION)
   })
 
-  // A note that names no voice beside notes that do is reported against the
-  // whole measure.
-  test('names the measure where the report is about the whole of it', () => {
+  // A note that names no voice beside notes that do is reported at the first
+  // such note.
+  test('points at the first note that names no voice', () => {
     const reported = warningsOf(
       score(
         '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
@@ -297,6 +297,7 @@ describe('the place a warning names', () => {
 
     expect(reported?.context.part).toBe('P1')
     expect(reported?.context.measure).toBe(MEASURE_POSITION)
+    expect(reported?.context.line).toBe(FIRST_BODY_LINE + 2)
   })
 })
 

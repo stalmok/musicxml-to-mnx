@@ -23,6 +23,7 @@ import type { Fraction } from '../fraction.js'
 import { describeLength, noteValueOf } from './duration.js'
 import type { WarningContext } from '../warnings.js'
 import type { WarningCollector } from './collector.js'
+import type { XmlElement } from '../xml/parse.js'
 import type { BeamedEvent } from './beams.js'
 import {
   countedLengthOf,
@@ -183,11 +184,10 @@ interface VoiceBuilder {
    */
   grace: { group: GraceGroup; beams: BeamedEvent[]; at: Fraction; placedFrom: number } | undefined
   /**
-   * The line of the note that opened this sequence, where it is a line laid
-   * over the voice rather than the voice's first. The split is reported at
-   * that note.
+   * The note that opened this sequence, where it is a line laid over the
+   * voice rather than the voice's first. The split is reported at that note.
    */
-  openedAt: number | undefined
+  openedAt: XmlElement | undefined
   measureRest: MeasureRestState
   /**
    * The brackets this voice has closed, outermost first in the order the
@@ -303,15 +303,14 @@ interface MarkedArpeggio {
   number: string | undefined
   struck: boolean
   /**
-   * The line the mark was written on. A roll is reported once the measure is
-   * whole, when the element it came from is gone, so the line comes along
-   * with the mark rather than being looked up again.
+   * The <arpeggiate> or <non-arpeggiate> the mark was written with. A roll is
+   * reported once the measure is whole, so the element comes along with it.
    */
-  line: number
-  /** True where the same chord was marked the other way as well. */
-  conflicted: boolean
-  /** True where the same chord was rolled in both directions at once. */
-  crossed: boolean
+  element: XmlElement
+  /** The mark marking the same chord the other way, where one does. */
+  conflicted: XmlElement | undefined
+  /** The mark rolling the same chord in the other direction, where one does. */
+  crossed: XmlElement | undefined
   direction: 'up' | 'down' | undefined
   arrow: boolean
 }
@@ -422,7 +421,9 @@ export class MeasureBuilder {
    * The <backup> that carried the cursor before the measure start, held until
    * something is written out there or a <forward> brings the cursor back.
    */
-  #reached: { warnings: WarningCollector; context: WarningContext; line: number } | undefined
+  // The first note naming no voice, for the report where others name one.
+  #unnamedNote: XmlElement | undefined
+  #reached: { warnings: WarningCollector; context: WarningContext; backup: XmlElement } | undefined
 
   /** The voices that sound a note somewhere in the measure, rather than only rest. */
   readonly #soundingVoices: ReadonlySet<string>
@@ -466,13 +467,18 @@ export class MeasureBuilder {
    * a <forward> cancels is not reported and a reach several
    * <forward>s cancel is reported once.
    */
-  shift(by: Fraction, warnings: WarningCollector, context: WarningContext, line: number): void {
+  shift(
+    by: Fraction,
+    warnings: WarningCollector,
+    context: WarningContext,
+    moved: XmlElement,
+  ): void {
     this.#moveTo(addFractions(this.#cursor, by))
     if (compareFractions(this.#cursor, fraction(0)) >= 0) {
       this.#reached = undefined
       return
     }
-    this.#reached ??= { warnings, context, line }
+    this.#reached ??= { warnings, context, backup: moved }
   }
 
   /**
@@ -491,8 +497,8 @@ export class MeasureBuilder {
         'inconsistent:backup',
         'A <backup> reaches back further than the measure has run, and the music written ' +
           'out there is written at the start of the measure instead.',
-        { ...reached.context, line: reached.line },
-        'backup',
+        reached.context,
+        reached.backup,
       )
     }
     this.#reached = undefined
@@ -576,11 +582,12 @@ export class MeasureBuilder {
    * note they were written against stands, and belong to the sequence it
    * went to.
    */
-  beginNote(voice: string | undefined, line: number): void {
+  beginNote(voice: string | undefined, note: XmlElement): void {
     this.#writeAt()
+    if (voice === undefined) this.#unnamedNote ??= note
     const layers = this.#layersFor(voice)
     const before = layers.layers[layers.active] as VoiceBuilder
-    const taken = this.#layerAt(voice, line)
+    const taken = this.#layerAt(voice, note)
     if (taken !== before) this.#carryGrace(before, taken)
   }
 
@@ -1085,7 +1092,6 @@ export class MeasureBuilder {
       starts,
       warnings,
       context,
-      line,
     )
 
     // Time this voice has passed over in silence belongs before the brackets,
@@ -1131,7 +1137,7 @@ export class MeasureBuilder {
             : undefined,
         openEnd,
         unbracketed: false,
-        openLine: line,
+        element: level.element,
         within,
         children: [],
         skips: [],
@@ -1148,7 +1154,7 @@ export class MeasureBuilder {
     voice: string | undefined,
     inner: NoteValueQuantity,
     outer: NoteValueQuantity,
-    line: number,
+    ratio: XmlElement,
   ): void {
     const builder = this.#builderFor(voice)
     // Time this voice passed over in silence belongs before the tuplet, not
@@ -1172,7 +1178,7 @@ export class MeasureBuilder {
       stated: undefined,
       openEnd: builder.end,
       unbracketed: true,
-      openLine: line,
+      element: ratio,
       within,
       children: [],
       skips: [],
@@ -1352,12 +1358,13 @@ export class MeasureBuilder {
    */
   closeTremolo(
     voice: string | undefined,
-    marks: number,
+    marker: { marks: number; element: XmlElement },
     warnings: WarningCollector,
     context: WarningContext,
     path: DocumentPath,
     line: number,
   ): void {
+    const { marks } = marker
     const builder = this.#builderFor(voice)
     const pending = tremoloFrame(builder)
     if (!pending) {
@@ -1371,8 +1378,8 @@ export class MeasureBuilder {
         'inconsistent:tremolo',
         'The two ends of a tremolo count different beams. The count where it starts ' +
           'is the one converted.',
-        { ...context, line },
-        'tremolo',
+        context,
+        marker.element,
       )
     }
 
@@ -1441,8 +1448,8 @@ export class MeasureBuilder {
     struck: boolean,
     direction: 'up' | 'down' | undefined,
     arrow: boolean,
-    /** The line the mark is written on, for the report that comes later. */
-    line: number,
+    /** The element the mark is written with, for the report that comes later. */
+    element: XmlElement,
   ): void {
     // Every note of a chord carries the mark, so the first one to arrive sets
     // it up and the rest join what it already covers. Marks on one chord are
@@ -1461,14 +1468,17 @@ export class MeasureBuilder {
       existing.number ??= number
       // One roll cannot go both ways, so a second direction is a loss rather
       // than a detail: the first stands and the other is reported.
-      existing.crossed ||=
+      if (
         existing.direction !== undefined &&
         direction !== undefined &&
         existing.direction !== direction
+      ) {
+        existing.crossed ??= element
+      }
       existing.direction ??= direction
       existing.arrow ||= arrow
       // Rolled and struck together are opposite instructions.
-      existing.conflicted ||= existing.struck !== struck
+      if (existing.struck !== struck) existing.conflicted ??= element
       return
     }
 
@@ -1478,9 +1488,9 @@ export class MeasureBuilder {
       position,
       number,
       struck,
-      line,
-      conflicted: false,
-      crossed: false,
+      element,
+      conflicted: undefined,
+      crossed: undefined,
       direction,
       arrow,
     })
@@ -1516,8 +1526,8 @@ export class MeasureBuilder {
           'unrepresentable:arpeggio',
           'A chord is marked both as rolled and as struck together, which are opposite ' +
             'instructions. The first is the one converted.',
-          { ...context, line: first.line },
-          'arpeggiate',
+          context,
+          marked.element,
         )
         continue
       }
@@ -1569,8 +1579,8 @@ export class MeasureBuilder {
           'unsupported:element',
           'A rest is marked as rolled, and a roll runs between notes, so it is not ' +
             'carried over.',
-          { ...context, line: first.line },
-          'arpeggiate',
+          context,
+          first.element,
         )
         continue
       }
@@ -1583,8 +1593,8 @@ export class MeasureBuilder {
           'unclosed:spanner',
           'A bracket marking notes as struck together has only one note under it, ' +
             'and is not carried over.',
-          { ...context, line: first.line },
-          'non-arpeggiate',
+          context,
+          first.element,
         )
         continue
       }
@@ -1602,8 +1612,8 @@ export class MeasureBuilder {
           `A chord ${first.struck ? 'bracketed as struck together' : 'rolled'} across a ` +
             'pitched staff and a percussion kit is carried over its pitched notes only, ' +
             'which is not the whole chord.',
-          { ...context, line: first.line },
-          first.struck ? 'non-arpeggiate' : 'arpeggiate',
+          context,
+          first.element,
         )
       }
 
@@ -1617,28 +1627,32 @@ export class MeasureBuilder {
           'A chord struck on a percussion kit is marked twice under different numbers, ' +
             'and which notes each covers is not known. Each is carried over the whole ' +
             'chord.',
-          { ...context, line: first.line },
-          first.struck ? 'non-arpeggiate' : 'arpeggiate',
+          context,
+          first.element,
         )
       }
 
-      if (group.some((one) => one.crossed)) {
+      const crossed = group.find((one) => one.crossed)?.crossed
+      if (crossed) {
         warnings.add(
           'inconsistent:arpeggio',
           'A chord is rolled upwards by one mark and downwards by another. The first ' +
             'is the one converted.',
-          { ...context, line: first.line },
-          'arpeggiate',
+          context,
+          crossed,
         )
       }
 
-      if (group.some((one) => one.conflicted || one.struck !== first.struck)) {
+      const conflicted =
+        group.find((one) => one.conflicted)?.conflicted ??
+        group.find((one) => one.struck !== first.struck)?.element
+      if (conflicted) {
         warnings.add(
           'unrepresentable:arpeggio',
           'A chord is marked both as rolled and as struck together, which are opposite ' +
             'instructions. The first is the one converted.',
-          { ...context, line: first.line },
-          'arpeggiate',
+          context,
+          conflicted,
         )
       }
 
@@ -1769,7 +1783,8 @@ export class MeasureBuilder {
    * its start marker stated so the caller can check the note's stops as a
    * batch: which stop is written first on a note is not constrained, so a
    * crossing shows only when the note's stated numbers and the closed ones
-   * disagree as sets.
+   * disagree as sets. `stop` is the <tuplet> marker closing it, where one
+   * does.
    */
   closeTuplet(
     voice: string | undefined,
@@ -1777,6 +1792,7 @@ export class MeasureBuilder {
     context: WarningContext,
     path: DocumentPath,
     line: number,
+    stop: XmlElement | undefined,
   ): string | undefined {
     const builder = this.#builderFor(voice)
     const closed = builder.open.at(-1)
@@ -1790,12 +1806,12 @@ export class MeasureBuilder {
         'inconsistent:tuplet',
         'A <tuplet> stops where no tuplet is open, and names no bracket this measure ' +
           'dropped or carried in. The marker is passed over.',
-        { ...context, line },
-        'tuplet',
+        context,
+        stop,
       )
       return undefined
     }
-    return this.#closeTuplet(builder, closed, warnings, context, path, line, false)
+    return this.#closeTuplet(builder, closed, warnings, context, path, line, false, stop)
   }
 
   /**
@@ -1812,6 +1828,7 @@ export class MeasureBuilder {
     path: DocumentPath,
     line: number,
     cut: boolean,
+    stop?: XmlElement,
   ): string {
     // A tremolo edge and a tuplet edge can fall on different notes. Popping
     // the tremolo's frame here would lose the notes it holds, so a bracket
@@ -1820,8 +1837,9 @@ export class MeasureBuilder {
       throw new MusicXMLError('A tuplet closes inside a two-note tremolo.', { path, line })
     }
     builder.open.pop()
-    // A run with no bracket has no stop, so it is reported where it opened.
-    const at = closed.unbracketed ? closed.openLine : line
+    // A run with no bracket has no stop, so it is reported where it opened,
+    // and so is a bracket the barline closes.
+    const at = stop ?? closed.element
 
     const { tuplet } = closed
     // A run the ratio alone opened on a note that turned out not to be an
@@ -1845,8 +1863,8 @@ export class MeasureBuilder {
           'over grace notes alone does. MNX states a tuplet as a written length against the ' +
           'time it is played in, so the bracket is not converted and what it holds is ' +
           'written as it stands.',
-        { ...context, line: at },
-        'tuplet',
+        context,
+        at,
       )
       return closed.number
     }
@@ -1870,7 +1888,7 @@ export class MeasureBuilder {
       children: closed.children,
       skips: closed.skips,
       place: warnings.reserve(),
-      line: at,
+      element: at,
     }
     // A bracket still open around this one holds the claim, so that the two
     // settle together: this one's outer is written in the frame that one
@@ -2038,14 +2056,19 @@ export class MeasureBuilder {
         if (tremoloFrame(builder)) {
           throw new MusicXMLError('A tremolo is opened and never closed.', { path, line })
         }
-        for (let open = builder.open.at(-1); open; open = builder.open.at(-1)) {
+        // Every frame left is a bracket: a tremolo left open is refused above.
+        for (
+          let open = builder.open.at(-1);
+          open?.opened === 'tuplet';
+          open = builder.open.at(-1)
+        ) {
           warnings.add(
             'unrepresentable:tuplet-span',
             'A tuplet bracket runs past the end of the measure, and MNX states a tuplet ' +
               'inside one measure. It is drawn as far as the barline, over the notes of ' +
               'it that this measure holds.',
-            { ...context, line },
-            'tuplet',
+            context,
+            open.element,
           )
           carried.push({
             voice,
@@ -2074,7 +2097,7 @@ export class MeasureBuilder {
         'missing:voice',
         'A note names no voice while others in the measure do. It is kept as a ' + 'separate line.',
         context,
-        'note',
+        this.#unnamedNote,
       )
     }
 
@@ -2102,8 +2125,8 @@ export class MeasureBuilder {
         `Voice ${voice === UNNAMED_VOICE ? '(unnamed)' : voice} sounds ` +
           `${String(layers.length)} lines at once in this measure. Each is kept as a ` +
           'separate sequence.',
-        { ...context, line: openedAt },
-        'note',
+        context,
+        openedAt,
       )
     }
 
@@ -2173,7 +2196,7 @@ export class MeasureBuilder {
    * still sounding, the first sequence with room takes the note, and a new
    * one opens where every sequence is still sounding.
    */
-  #layerAt(voice: string | undefined, line: number): VoiceBuilder {
+  #layerAt(voice: string | undefined, note: XmlElement): VoiceBuilder {
     const layers = this.#layersFor(voice)
     const free = (candidate: VoiceBuilder) => compareFractions(this.#cursor, candidate.end) >= 0
 
@@ -2182,7 +2205,7 @@ export class MeasureBuilder {
       : layers.layers.findIndex(free)
     if (index === -1) {
       index = layers.layers.length
-      layers.layers.push(newVoiceBuilder(line))
+      layers.layers.push(newVoiceBuilder(note))
     }
     layers.active = index
     return layers.layers[index] as VoiceBuilder
@@ -2194,7 +2217,7 @@ export class MeasureBuilder {
   }
 }
 
-function newVoiceBuilder(openedAt?: number): VoiceBuilder {
+function newVoiceBuilder(openedAt?: XmlElement): VoiceBuilder {
   return {
     openedAt,
     beamed: [],

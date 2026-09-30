@@ -1638,7 +1638,7 @@ function readMeasure(
       case 'backup':
       case 'forward': {
         const by = requireDuration(reader, state, warnings, context, measurePath)
-        builder.shift(found.name === 'backup' ? negate(by) : by, warnings, context, found.line)
+        builder.shift(found.name === 'backup' ? negate(by) : by, warnings, context, found)
         break
       }
 

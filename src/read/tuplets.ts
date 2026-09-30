@@ -22,6 +22,7 @@ import {
 import type { Fraction } from '../fraction.js'
 import { lengthOf, noteValueOf } from './duration.js'
 import type { WarningContext } from '../warnings.js'
+import type { XmlElement } from '../xml/parse.js'
 import type { WarningCollector, WarningPlace } from './collector.js'
 import type {
   NoteValue,
@@ -58,6 +59,8 @@ export interface TupletStart {
   display: TupletDisplaySettings
   stated: { inner: NoteValueQuantity; outer: NoteValueQuantity } | undefined
   number: string
+  /** The <tuplet> start marker. */
+  element: XmlElement
 }
 
 /**
@@ -94,10 +97,11 @@ export interface OpenTuplet {
    */
   unbracketed: boolean
   /**
-   * The line of the note it opened on. A run with no bracket has no stop, so
-   * it is reported here.
+   * The <tuplet> that opened it, or for a run with no bracket the
+   * <time-modification> of its first note. A run with no bracket has no
+   * stop, so it is reported here.
    */
-  openLine: number
+  element: XmlElement
   /** The list this bracket sits in, for dropping it from where it stands. */
   within: SequenceItem[]
   /** The brackets that closed inside this one, for its claim to carry. */
@@ -222,6 +226,8 @@ interface TupletLevel {
   outer: NoteValueQuantity
   display: TupletDisplaySettings
   number: string
+  /** The <tuplet> start marker that opens the level. */
+  element: XmlElement
 }
 
 /**
@@ -248,7 +254,6 @@ export function tupletLevels(
   starts: readonly TupletStart[],
   warnings: WarningCollector,
   context: WarningContext,
-  line: number,
 ): TupletLevel[] {
   const enclosing = openRatios.reduce(multiplyFractions, fraction(1))
   const cumulative = ratioOf(inner, outer)
@@ -256,7 +261,9 @@ export function tupletLevels(
   const required = divideFractions(cumulative, enclosing)
 
   const known = starts.flatMap((start) =>
-    start.stated ? [{ ...start.stated, display: start.display, number: start.number }] : [],
+    start.stated
+      ? [{ ...start.stated, display: start.display, number: start.number, element: start.element }]
+      : [],
   )
   if (known.length > 0) {
     const holes = starts.length - known.length
@@ -276,14 +283,15 @@ export function tupletLevels(
         }),
         display: start.display,
         number: start.number,
+        element: start.element,
       }))
     }
     warnings.add(
       'inconsistent:tuplet',
       "A tuplet's start marker states a ratio that disagrees with the notes' " +
         '<time-modification>. The ratio the notes state is the one converted.',
-      { ...context, line },
-      'tuplet',
+      context,
+      starts.find((start) => start.stated !== undefined)?.element,
     )
   }
 
@@ -291,14 +299,16 @@ export function tupletLevels(
   let open = enclosing
   let depth = openRatios.length
   for (const start of starts) {
-    let level: TupletLevel = { inner, outer, display: start.display, number: start.number }
+    const { display, number, element } = start
+    let level: TupletLevel = { inner, outer, display, number, element }
     if (depth > 0) {
       const perLevel = divideFractions(cumulative, open)
       level = {
         inner: { value: inner.value, multiple: perLevel.den },
         outer: { value: outer.value, multiple: perLevel.num },
-        display: start.display,
-        number: start.number,
+        display,
+        number,
+        element,
       }
     }
     levels.push(level)
@@ -359,7 +369,8 @@ export interface TupletClaim {
    * document order, so the place is taken at the stop the source wrote.
    */
   place: WarningPlace
-  line: number
+  /** The <tuplet> stop that closed it, or else the element it opened on. */
+  element: XmlElement
 }
 
 /** The shape of the measure a bracket is settled against. */
@@ -523,7 +534,7 @@ function rewrite(
   warnings: WarningCollector,
   context: WarningContext,
 ): void {
-  const { tuplet, place, line } = claim
+  const { tuplet, place, element } = claim
   const drawn = tuplet.inner.value
   // The length the ratio the source drew gives it, which is what it takes
   // where no pair of note values states the time its notes do.
@@ -560,8 +571,8 @@ function rewrite(
             'it, which is not the time the source gives its notes.'
           : 'No pair of them counts what it holds against that ratio either, so the ' +
             'tuplet is not converted and its notes are written as they stand.'),
-      { ...context, line },
-      claim.unbracketed ? 'time-modification' : 'tuplet',
+      context,
+      element,
     )
   } else if (claim.stated && !claim.cut) {
     // The source drew a bracket the notes under it do not bear out, so the
@@ -575,8 +586,8 @@ function rewrite(
       'inconsistent:tuplet',
       `A tuplet parts from the ratio the source states for it: ${parts}. The ratio is ` +
         'rewritten over the notes the bracket holds and the time they take.',
-      { ...context, line },
-      'tuplet',
+      context,
+      element,
     )
   }
 }
@@ -659,8 +670,8 @@ function complete(
         `ratio. ${adopted.run ? 'Those notes are' : 'That rest is'} drawn inside the ` +
         'bracket, where the source draws ' +
         `${adopted.run ? 'them' : 'it'} outside.`,
-      { ...context, line: claim.line },
-      'tuplet',
+      context,
+      claim.element,
     )
   }
   // The counts the source states are kept, against a note value narrower than
@@ -673,8 +684,8 @@ function complete(
       'A tuplet holds less than its ratio counts, and the silence around it is less than ' +
         'that ratio needs in the note value it counts. The same counts are stated in a ' +
         'narrower note value, which is as wide as the bracket can be here.',
-      { ...context, line: claim.line },
-      'tuplet',
+      context,
+      claim.element,
     )
   }
   takeSilence(claim, voice, taken.lead, taken.left, taken.silent.span, ratio)
@@ -690,8 +701,8 @@ function complete(
       'inconsistent:measure-length',
       'A tuplet takes in the silence after it to keep the ratio the source states for it, ' +
         'and the voice then sounds past the end of the time signature in force.',
-      { ...context, line: claim.line },
-      'tuplet',
+      context,
+      claim.element,
     )
   }
   return true

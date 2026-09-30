@@ -318,7 +318,7 @@ export function readNote(
   // the sequence the voice last sounded in and carried to the one its note
   // turns out to take.
   const chordMember = element.child('chord') !== undefined
-  if (!chordMember && !graceElement) builder.beginNote(voice, element.line)
+  if (!chordMember && !graceElement) builder.beginNote(voice, element.element)
 
   // MNX states a rest filling the measure on a sequence that holds nothing,
   // so a voice that rests the measure has nowhere to put a grace note. The
@@ -528,7 +528,7 @@ export function readNote(
   // Closed before any tuplet stopping on the same note, because the pair
   // sits inside the bracket.
   if (tremolo?.type === 'stop') {
-    builder.closeTremolo(voice, tremolo.marks, warnings, context, path, element.line)
+    builder.closeTremolo(voice, tremolo, warnings, context, path, element.line)
   }
   closeTuplets(builder, voice, markers, warnings, context, path, element.line)
 }
@@ -616,13 +616,13 @@ function openTupletsAndTremolo(
   const endsRun = graceElement
     ? builder.impliedTupletEndsAtGap(voice)
     : builder.impliedTupletEndsBefore(voice, rated)
-  if (endsRun) builder.closeTuplet(voice, warnings, context, path, element.line)
+  if (endsRun) builder.closeTuplet(voice, warnings, context, path, element.line, undefined)
 
   // A ratio is read only where no bracket the source drew is open, and the
   // close above ends any run this note does not belong in, so what is open
   // here is the run this note joins, or nothing.
-  if (!graceElement && rated && !builder.insideImpliedTuplet(voice)) {
-    builder.openImpliedTuplet(voice, rated.inner, rated.outer, element.line)
+  if (!graceElement && ratio && rated && !builder.insideImpliedTuplet(voice)) {
+    builder.openImpliedTuplet(voice, rated.inner, rated.outer, ratio)
   }
 
   if (starts.length > 0) {
@@ -651,6 +651,7 @@ function openTupletsAndTremolo(
       stated: statedTupletRatio(marker, quantities, path),
       // A marker that states no number is tuplet 1, as the spec has it.
       number: attribute(marker, 'number') ?? '1',
+      element: marker,
     }))
 
     // The note states one ratio for however many brackets open on it. Where
@@ -672,8 +673,8 @@ function openTupletsAndTremolo(
             ? 'so that is the ratio converted.'
             : `and the two-note tremolo on it takes half of that, so the bracket is ` +
               `converted as ${describeRatio(quantities)}.`),
-        { ...context, line: element.line },
-        'tuplet',
+        context,
+        starts[0],
       )
     }
 
@@ -692,8 +693,8 @@ function openTupletsAndTremolo(
         'A <tuplet> holds one note of a two-note tremolo, which MNX states as one item ' +
           'holding both notes. The bracket is one in the time of one, so it scales nothing ' +
           'and is not converted.',
-        { ...context, line: element.line },
-        'tuplet',
+        context,
+        start.element,
       )
       builder.dropTupletStart(voice, start.number)
       return false
@@ -1143,6 +1144,7 @@ function closeTuplets(
   // that cross, which MNX's nested tuplets cannot.
   const stated: string[] = []
   const closed: string[] = []
+  const stops: XmlElement[] = []
   for (const marker of markers) {
     if (attribute(marker, 'type') !== 'stop') continue
     // A stop's placement restates the start's, which the tuplet's placement
@@ -1164,26 +1166,27 @@ function closeTuplets(
           'inconsistent:tuplet',
           'A <tuplet> stops where no tuplet the source opened is running, and short of ' +
             "what its ratio counts. The ratio's count is the one converted.",
-          { ...context, line },
-          'tuplet',
+          context,
+          marker,
         )
       }
       continue
     }
     // A stop with no bracket to close is reported where it is met and takes
     // no part in the crossing test below: it names no tuplet that ended here.
-    const ended = builder.closeTuplet(voice, warnings, context, path, line)
+    const ended = builder.closeTuplet(voice, warnings, context, path, line, marker)
     if (ended === undefined) continue
     stated.push(number)
     closed.push(ended)
+    stops.push(marker)
   }
   if (stated.length > 0 && String([...stated].sort()) !== String([...closed].sort())) {
     warnings.add(
       'unrepresentable:tuplet-crossing',
       "The source's tuplets cross: a stop names a tuplet other than one ending here. " +
         "MNX's tuplets nest, so each stop is matched to the innermost open tuplet.",
-      { ...context, line },
-      'tuplet',
+      context,
+      stops.find((_, index) => stated[index] !== closed[index]),
     )
   }
 }
@@ -1750,7 +1753,7 @@ function readArpeggio(
         false,
         direction,
         direction !== undefined,
-        rolled.line,
+        rolled,
       )
     }
     // <non-arpeggiate> says the opposite: a bracket meaning the notes are
@@ -1766,7 +1769,7 @@ function readArpeggio(
         true,
         undefined,
         false,
-        struck.line,
+        struck,
       )
     }
   }
@@ -2158,6 +2161,8 @@ function tremoloBeamCount(text: string): number | undefined {
 interface MultiNoteTremolo {
   type: 'start' | 'stop'
   marks: number
+  /** The <tremolo> marker. */
+  element: XmlElement
   /** The marker as written, for a note of the chord to restate. */
   key: string
 }
@@ -2180,8 +2185,8 @@ function multiNoteTremoloOf(
             'unrepresentable:element',
             'A tremolo written across two notes says which side it is drawn on, and MNX ' +
               'has nowhere to put that.',
-            { ...context, line: tremolo.line },
-            'tremolo',
+            context,
+            tremolo,
           )
         }
 
@@ -2194,12 +2199,12 @@ function multiNoteTremoloOf(
             'unrepresentable:element',
             `A tremolo drawn with ${text} beams cannot be stated in MNX, which counts ` +
               'from one to eight. Three beams are drawn instead.',
-            { ...context, line: tremolo.line },
-            'tremolo',
+            context,
+            tremolo,
           )
           marks = 3
         }
-        return { type, marks, key: tremoloMarkerKey(tremolo) }
+        return { type, marks, element: tremolo, key: tremoloMarkerKey(tremolo) }
       }
     }
   }
