@@ -44,6 +44,7 @@ import {
 import { firstTimeStated, readAttributes } from './attributes.js'
 import type { MeasureRepeatReading, StaffSignature } from './attributes.js'
 import { readBarline, resolveEndings } from './barlines.js'
+import type { EndingStart, EndingStop } from './barlines.js'
 import { buildBeams } from './beams.js'
 import { readDirection, readSound } from './directions.js'
 import type { SoundTempo } from './directions.js'
@@ -81,8 +82,8 @@ interface MeasureReading {
    * Held until the part can join it to its other end, with the line the
    * <ending> was written on, so the report names it.
    */
-  endingStart: { numbers: readonly number[]; line: number } | undefined
-  endingStop: { open: boolean; line: number } | undefined
+  endingStart: EndingStart | undefined
+  endingStop: EndingStop | undefined
   /**
    * The measure repeat edges this measure stated, held until the part can
    * walk the sign from its start to its stop or the end of the part.
@@ -1488,8 +1489,8 @@ function readMeasure(
   let barline: BarlineType | undefined
   let repeatStart = false
   let repeatEnd: RepeatEnd | undefined
-  let endingStart: { numbers: readonly number[]; line: number } | undefined
-  let endingStop: { open: boolean; line: number } | undefined
+  let endingStart: EndingStart | undefined
+  let endingStop: EndingStop | undefined
   let fermata: Fermata | undefined
 
   const builder = new MeasureBuilder(state.carriedTupletStops, soundingVoices(element))

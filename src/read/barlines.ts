@@ -45,19 +45,28 @@ const BAR_STYLES = new Map<string, BarlineType>(
   entriesOf(MUSICXML_SPELLINGS).map(([line, spelling]) => [spelling, line]),
 )
 
+/**
+ * An ending beginning here, with the numbers written over it. A bracket is
+ * reported once the part is whole, so its <ending> comes along with it.
+ */
+export interface EndingStart {
+  numbers: readonly number[]
+  element: XmlElement
+}
+
+/** An ending finishing here, and whether it is drawn with a closing hook. */
+export interface EndingStop {
+  open: boolean
+  element: XmlElement
+}
+
 /** What one <barline> was found to carry. */
 export interface BarlineReading {
   barline: BarlineType | undefined
   repeatStart: boolean
   repeatEnd: RepeatEnd | undefined
-  /**
-   * An ending beginning here, with the numbers written over it and the line
-   * the <ending> was written on. A bracket is reported once the part is
-   * whole, when the element is gone, so its line comes along with it.
-   */
-  endingStart: { numbers: readonly number[]; line: number } | undefined
-  /** An ending finishing here, and whether it is drawn with a closing hook. */
-  endingStop: { open: boolean; line: number } | undefined
+  endingStart: EndingStart | undefined
+  endingStop: EndingStop | undefined
   fermata: Fermata | undefined
   /** A segno drawn on the barline, the same sign a direction can carry. */
   segno: NamedSegno | undefined
@@ -89,8 +98,8 @@ export function readBarline(
       'unrepresentable:barline',
       `A <barline> at "${location}" is drawn partway through the measure, and MNX ` +
         'states the barline that closes one.',
-      { ...context, line: element.line },
-      'barline',
+      context,
+      element.element,
     )
     // The one warning accounts for the whole element, so what it holds is not
     // reported a second time.
@@ -154,14 +163,12 @@ function reportOpeningFermata(
   context: WarningContext,
 ): undefined {
   for (const found of element.children('fermata')) {
-    // The one warning accounts for the whole mark, its facing included.
-    attribute(found, 'type')
-    warnings.add(
+    warnings.addWhole(
       'unrepresentable:barline',
       'A fermata is written at the start of a measure, and MNX states one over the ' +
         'barline that closes a measure.',
-      { ...context, line: found.line },
-      'fermata',
+      context,
+      found,
     )
   }
   return undefined
@@ -183,8 +190,8 @@ function readBarStyle(
     warnings.add(
       'unsupported:element',
       `A <bar-style> of "${written}" is not converted yet.`,
-      { ...context, line: style.line },
-      'bar-style',
+      context,
+      style,
     )
     return undefined
   }
@@ -203,8 +210,8 @@ function readBarStyle(
       'unrepresentable:barline',
       `A <bar-style> of "${written}" is drawn at the start of the measure, and MNX ` +
         'states the barline that closes one.',
-      { ...context, line: style.line },
-      'bar-style',
+      context,
+      style,
     )
     return undefined
   }
@@ -229,8 +236,8 @@ function readRepeat(
   warnings.add(
     'unsupported:element',
     `A <repeat> in direction "${direction ?? ''}" is not converted yet.`,
-    { ...context, line: repeat.line },
-    'repeat',
+    context,
+    repeat,
   )
   return { repeatStart: false, repeatEnd: undefined }
 }
@@ -253,8 +260,8 @@ function readTimes(
       'unsupported:element',
       `A <repeat> is played "${written}" times, which is not a count of two or more, ` +
         'and is not carried over.',
-      { ...context, line: repeat.line },
-      'repeat',
+      context,
+      repeat,
     )
     return undefined
   }
@@ -266,8 +273,8 @@ function readEnding(
   warnings: WarningCollector,
   context: WarningContext,
 ): {
-  endingStart: { numbers: readonly number[]; line: number } | undefined
-  endingStop: { open: boolean; line: number } | undefined
+  endingStart: EndingStart | undefined
+  endingStop: EndingStop | undefined
 } {
   const ending = element.child('ending')
   if (!ending) return { endingStart: undefined, endingStop: undefined }
@@ -283,7 +290,7 @@ function readEnding(
   const type = attribute(ending, 'type')
   if (type === 'start') {
     return {
-      endingStart: { numbers: endingNumbers(ending, warnings, context), line: ending.line },
+      endingStart: { numbers: endingNumbers(ending, warnings, context), element: ending },
       endingStop: undefined,
     }
   }
@@ -292,15 +299,15 @@ function readEnding(
   if (type === 'stop' || type === 'discontinue') {
     return {
       endingStart: undefined,
-      endingStop: { open: type === 'discontinue', line: ending.line },
+      endingStop: { open: type === 'discontinue', element: ending },
     }
   }
 
   warnings.add(
     'unsupported:element',
     `An <ending> of type "${type ?? ''}" is not converted yet.`,
-    { ...context, line: ending.line },
-    'ending',
+    context,
+    ending,
   )
   return { endingStart: undefined, endingStop: undefined }
 }
@@ -326,8 +333,8 @@ function endingNumbers(
       warnings.add(
         'unsupported:element',
         `An <ending> is numbered "${written}", which is not a list of times counted from 1.`,
-        { ...context, line: ending.line },
-        'ending',
+        context,
+        ending,
       )
       return []
     }
@@ -344,13 +351,13 @@ function endingNumbers(
 export function resolveEndings(
   measures: readonly {
     global: Pick<GlobalMeasure, 'ending'>
-    endingStart: { numbers: readonly number[]; line: number } | undefined
-    endingStop: { open: boolean; line: number } | undefined
+    endingStart: EndingStart | undefined
+    endingStop: EndingStop | undefined
   }[],
   warnings: WarningCollector,
   partId: string,
 ): void {
-  let open: { at: number; numbers: readonly number[]; line: number } | undefined
+  let open: { at: number; start: EndingStart } | undefined
 
   measures.forEach((measure, index) => {
     if (measure.endingStart) {
@@ -358,15 +365,11 @@ export function resolveEndings(
         warnings.add(
           'unclosed:ending',
           'An ending starts where one is already open, and the first is not carried over.',
-          { part: partId, measure: open.at + 1, line: open.line },
-          'ending',
+          { part: partId, measure: open.at + 1 },
+          open.start.element,
         )
       }
-      open = {
-        at: index,
-        numbers: measure.endingStart.numbers,
-        line: measure.endingStart.line,
-      }
+      open = { at: index, start: measure.endingStart }
     }
 
     if (!measure.endingStop) return
@@ -374,8 +377,8 @@ export function resolveEndings(
       warnings.add(
         'unclosed:ending',
         'An ending stops where none had started, and is not carried over.',
-        { part: partId, measure: index + 1, line: measure.endingStop.line },
-        'ending',
+        { part: partId, measure: index + 1 },
+        measure.endingStop.element,
       )
       return
     }
@@ -388,7 +391,7 @@ export function resolveEndings(
 
     start.global.ending = {
       duration: index - open.at + 1,
-      numbers: open.numbers,
+      numbers: open.start.numbers,
       open: measure.endingStop.open,
     }
     open = undefined
@@ -398,8 +401,8 @@ export function resolveEndings(
     warnings.add(
       'unclosed:ending',
       'An ending starts where nothing ends it, and is not carried over.',
-      { part: partId, measure: open.at + 1, line: open.line },
-      'ending',
+      { part: partId, measure: open.at + 1 },
+      open.start.element,
     )
   }
 }
