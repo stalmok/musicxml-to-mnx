@@ -11,8 +11,7 @@
 // written.
 
 import type { Lyric } from '../model/score.js'
-import type { WarningContext } from '../warnings.js'
-import type { WarningCollector } from './collector.js'
+import type { ReportContext, WarningCollector } from './collector.js'
 import { attribute } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
 import { reportHidden } from './unrepresentable.js'
@@ -31,7 +30,7 @@ const LYRIC_TYPES = new Map<string, 'start' | 'middle' | 'end' | undefined>([
 export function readLyrics(
   element: ElementReader,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): Map<string, Lyric> {
   const lyrics = new Map<string, Lyric>()
   for (const lyric of element.blocks('lyric')) {
@@ -67,7 +66,7 @@ interface Verse {
 function readVerse(
   lyric: ElementReader,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): Verse | undefined {
   const line = attribute(lyric.element, 'number') ?? '1'
   const text = joinSyllables(lyric)

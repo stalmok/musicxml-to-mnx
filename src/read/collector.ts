@@ -1,8 +1,15 @@
 // Collects the loss report while the reader walks the source.
+//
+// A warning about an element takes its name and its line from the element
+// itself, so the two cannot disagree. The context says only which part and
+// measure the warning is in.
 
 import type { ConversionWarning, WarningCode, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute as readAttribute } from '../xml/tree.js'
+
+/** Where a warning is, apart from its line, which comes from an element. */
+export type ReportContext = Omit<WarningContext, 'line'>
 
 /**
  * A place kept in the report, taken where an element is read and reported
@@ -22,8 +29,8 @@ export class WarningCollector {
   add(
     code: WarningCode,
     message: string,
-    context: WarningContext,
-    found?: XmlElement | string,
+    context: ReportContext,
+    found?: XmlElement,
     attribute?: string,
   ): void {
     this.addAt(this.reserve(), code, message, context, found, attribute)
@@ -33,7 +40,7 @@ export class WarningCollector {
    * Reports found as not converted at all. Every attribute on it counts as
    * read, so the sweep does not report them a second time.
    */
-  addWhole(code: WarningCode, message: string, context: WarningContext, found: XmlElement): void {
+  addWhole(code: WarningCode, message: string, context: ReportContext, found: XmlElement): void {
     for (const name of Object.keys(found.attributes)) readAttribute(found, name)
     this.add(code, message, context, found)
   }
@@ -45,11 +52,17 @@ export class WarningCollector {
   addMissing(
     code: Extract<WarningCode, `missing:${string}`>,
     message: string,
-    context: WarningContext,
+    context: ReportContext,
     at: XmlElement,
     missing: string,
   ): void {
-    this.add(code, message, { ...context, line: at.line }, missing)
+    this.#push(this.reserve(), {
+      code,
+      message,
+      element: missing,
+      attribute: undefined,
+      context: { ...context, line: at.line },
+    })
   }
 
   /**
@@ -60,11 +73,11 @@ export class WarningCollector {
   addForMeasure(
     code: WarningCode,
     message: string,
-    context: WarningContext,
+    context: ReportContext,
     element: string,
     attribute?: string,
   ): void {
-    this.addAt(this.reserve(), code, message, context, element, attribute)
+    this.#push(this.reserve(), { code, message, element, attribute, context })
   }
 
   /**
@@ -82,22 +95,20 @@ export class WarningCollector {
     place: WarningPlace,
     code: WarningCode,
     message: string,
-    context: WarningContext,
-    found?: XmlElement | string,
+    context: ReportContext,
+    found?: XmlElement,
     attribute?: string,
   ): void {
-    if (found === undefined || typeof found === 'string') {
-      this.#warnings.push({ place, warning: { code, message, element: found, attribute, context } })
+    if (!found) {
+      this.#push(place, { code, message, element: undefined, attribute, context })
       return
     }
     if (attribute !== undefined) readAttribute(found, attribute)
-    const warning = {
-      code,
-      message,
-      element: found.name,
-      attribute,
-      context: { ...context, line: found.line },
-    }
+    const at = { ...context, line: found.line }
+    this.#push(place, { code, message, element: found.name, attribute, context: at })
+  }
+
+  #push(place: WarningPlace, warning: ConversionWarning): void {
     this.#warnings.push({ place, warning })
   }
 

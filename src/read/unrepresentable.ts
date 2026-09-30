@@ -9,8 +9,7 @@
 // because it has event-markings, wedge-type, ottava, barline, ending,
 // arpeggio and fermata for them.
 
-import type { WarningContext } from '../warnings.js'
-import type { WarningCollector, WarningPlace } from './collector.js'
+import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute } from '../xml/tree.js'
 
@@ -22,7 +21,7 @@ import { attribute } from '../xml/tree.js'
 export function reportHidden(
   element: XmlElement,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
   holds?: string,
   place: WarningPlace = warnings.reserve(),
 ): void {

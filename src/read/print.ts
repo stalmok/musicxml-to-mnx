@@ -3,8 +3,7 @@
 // systems; most of the rest of the element is spacing and numbering with no
 // home there.
 
-import type { WarningContext } from '../warnings.js'
-import type { WarningCollector } from './collector.js'
+import type { ReportContext, WarningCollector } from './collector.js'
 import { attribute } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
 
@@ -25,7 +24,7 @@ const UNCARRIED_PRINT_ATTRIBUTES = ['page-number', 'blank-page', 'staff-spacing'
 export function readPrint(
   element: ElementReader,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): PrintReading {
   for (const name of UNCARRIED_PRINT_ATTRIBUTES) {
     const value = attribute(element.element, name)

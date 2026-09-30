@@ -5,6 +5,7 @@
 // partway through, so what they declare is folded into the measure in the
 // order they are met.
 
+import type { ReportContext } from './collector.js'
 import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
 import type { Fraction } from '../fraction.js'
@@ -18,7 +19,6 @@ import type {
   Transposition,
 } from '../model/score.js'
 import { WarningCollector } from './collector.js'
-import type { WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, children, requireChild, trimmedText } from '../xml/tree.js'
 import { ElementReader } from './element.js'
@@ -128,7 +128,7 @@ export function readAttributes(
   // here is drawn: a clef can change partway through a measure.
   position: Fraction,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
   path: DocumentPath,
 ): AttributesReading {
   const divisionsElement = element.child('divisions')
@@ -309,7 +309,7 @@ function readMeasureStyle(
   element: ElementReader,
   state: PartState,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
   path: DocumentPath,
 ): MeasureStyleReading {
   const reading: MeasureStyleReading = { multimeasureRests: [], measureRepeats: [] }
@@ -395,7 +395,7 @@ function readMeasureStyle(
 function readKey(
   element: ElementReader,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
   path: DocumentPath,
 ): Key | undefined {
   reportHidden(element.element, warnings, context)
@@ -442,7 +442,7 @@ export function firstTimeStated(block: XmlElement): TimeSignature | undefined {
 function readTime(
   element: ElementReader,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
   path: DocumentPath,
 ): TimeSignature | undefined {
   reportHidden(element.element, warnings, context)
@@ -503,7 +503,7 @@ function readTime(
 function readTimeDisplay(
   element: XmlElement,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): 'common' | 'cut' | undefined {
   const symbol = attribute(element, 'symbol')
   if (symbol === undefined) return undefined
@@ -535,7 +535,7 @@ function readTransposition(
   element: ElementReader,
   state: PartState,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
   path: DocumentPath,
 ): void {
   const stated = element.blocks('transpose').map((found) => {
@@ -608,7 +608,7 @@ function readClef(
   state: PartState,
   position: Fraction,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
   path: DocumentPath,
 ): Clef | undefined {
   const hidden = attribute(element.element, 'print-object') === 'no'

@@ -1,6 +1,7 @@
 // What the readers of one part share: the running state a measure cannot be
 // read without.
 
+import type { ReportContext } from './collector.js'
 import type {
   Event,
   PitchedClefSign,
@@ -11,7 +12,6 @@ import type {
 } from '../model/score.js'
 import { fraction } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
-import type { WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 import { IdGenerator } from './idGenerator.js'
 import { SpannerResolver } from './spanners.js'
@@ -66,7 +66,7 @@ export interface ClefInForce {
 export interface HeldSignature<T> {
   value: T
   partway: boolean
-  context: WarningContext
+  context: ReportContext
   /** The <key> or <time> stating it. */
   element: XmlElement
 }

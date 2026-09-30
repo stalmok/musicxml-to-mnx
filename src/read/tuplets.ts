@@ -21,9 +21,8 @@ import {
 } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import { lengthOf, noteValueOf } from './duration.js'
-import type { WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
-import type { WarningCollector, WarningPlace } from './collector.js'
+import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
 import type {
   NoteValue,
   NoteValueQuantity,
@@ -253,7 +252,7 @@ export function tupletLevels(
   outer: NoteValueQuantity,
   starts: readonly TupletStart[],
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): TupletLevel[] {
   const enclosing = openRatios.reduce(multiplyFractions, fraction(1))
   const cumulative = ratioOf(inner, outer)
@@ -426,7 +425,7 @@ export function settleClaims(
   claims: readonly TupletClaim[],
   voice: VoiceTail,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): Fraction {
   for (const [index, claim] of claims.entries()) {
     // A bracket an earlier one took in whole is no longer there to settle.
@@ -453,7 +452,7 @@ function settleClaim(
   voice: VoiceTail | undefined,
   next: TupletClaim | undefined,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): void {
   const inside = frameOf(claim)
   for (const child of claim.children) {
@@ -532,7 +531,7 @@ function rewrite(
   mistimed: number,
   sounded: Fraction,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): void {
   const { tuplet, place, element } = claim
   const drawn = tuplet.inner.value
@@ -619,7 +618,7 @@ function complete(
   voice: VoiceTail,
   next: TupletClaim | undefined,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): boolean {
   const { stated, tuplet } = claim
   if (!stated || claim.derived || claim.cut) return false

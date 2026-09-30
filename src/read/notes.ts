@@ -34,8 +34,7 @@ import type {
   TupletDisplay,
 } from '../model/score.js'
 import type { Draft } from './draft.js'
-import type { WarningContext } from '../warnings.js'
-import type { WarningCollector, WarningPlace } from './collector.js'
+import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, child, children, descendants, requireChild, trimmedText } from '../xml/tree.js'
 import { beamCountForValue, valueForBeamCount } from './beams.js'
@@ -111,7 +110,7 @@ function restStaffPosition(
   staff: number | undefined,
   state: PartState,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): number | undefined {
   // A rest stating neither is drawn at its default height, which is not a loss.
   const stated = child(restElement, 'display-step') ?? child(restElement, 'display-octave')
@@ -148,7 +147,7 @@ function kitComponent(
   staff: number | undefined,
   state: PartState,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): string {
   // MusicXML lets a note name more than one instrument, for a note played on
   // several at once. MNX strikes one component per kit note, so the first is
@@ -235,7 +234,7 @@ export function readNote(
   measureIndex: number,
   builder: MeasureBuilder,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
   path: DocumentPath,
 ): void {
   const restElement = element.child('rest')
@@ -543,7 +542,7 @@ function openTupletsAndTremolo(
   note: NoteStatement,
   builder: MeasureBuilder,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
   path: DocumentPath,
 ): { markers: readonly XmlElement[]; tremolo: MultiNoteTremolo | undefined } {
   const { element, notations, hiddenTuplets, voice, duration, written, grace: graceElement } = note
@@ -733,7 +732,7 @@ function setMeasureRest(
   builder: MeasureBuilder,
   measureIndex: number,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
   path: DocumentPath,
 ): void {
   const { element, notations, voice, written, duration, staff, staffPosition } = note
@@ -853,7 +852,7 @@ function setMeasureRest(
 function reportCarriedByUnwritableRest(
   { element, notations, hidden }: NoteStatement,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
   dropSlurEnd: (type: 'start' | 'stop', slur: XmlElement) => void,
 ): void {
   const marks = notations.flatMap((block) => {
@@ -911,7 +910,7 @@ function readChordMember(
   measureIndex: number,
   builder: MeasureBuilder,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
   path: DocumentPath,
 ): void {
   const {
@@ -1094,7 +1093,7 @@ function readEventSpanners(
   state: PartState,
   measureIndex: number,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
   tieds: readonly XmlElement[],
   /** The run a grace note's group beams within; nothing for any other event. */
   graceBeams: BeamedEvent[] | undefined,
@@ -1134,7 +1133,7 @@ function closeTuplets(
   voice: string | undefined,
   markers: readonly XmlElement[],
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
   path: DocumentPath,
   line: number,
 ): void {
@@ -1242,7 +1241,7 @@ function graceSideToKeep(
   voice: string | undefined,
   builder: MeasureBuilder,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): GraceType | undefined {
   const side = readGraceType(grace, warnings, context)
   const open = builder.openGraceType(voice)
@@ -1277,7 +1276,7 @@ function graceSideToKeep(
 function readGraceType(
   grace: XmlElement,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): GraceType | undefined {
   let kind: GraceType | undefined
   for (const [type, written] of entriesOf(GRACE_TIME_ATTRIBUTES)) {
@@ -1328,7 +1327,7 @@ const isCaesuraShape = recogniser<CaesuraShape>({
 function readCaesura(
   found: XmlElement,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): CaesuraMarking | undefined {
   const text = trimmedText(found)
   if (text === '') return { marks: undefined, shape: undefined }
@@ -1368,7 +1367,7 @@ type WrittenMark = {
 function* writtenMarks(
   notations: readonly ElementReader[],
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): Generator<WrittenMark> {
   for (const block of notations) {
     for (const articulations of block.blocks('articulations')) {
@@ -1433,7 +1432,7 @@ function readSingleTremolo(
   found: XmlElement,
   type: string,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): TremoloMarking | undefined {
   const placement = placementOf(found)
   // An unmeasured tremolo has no beam count, and MNX states a tremolo as a
@@ -1469,7 +1468,7 @@ function readSingleTremolo(
 function readMarkings(
   notations: readonly ElementReader[],
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): Markings {
   // Held as a draft: each notation the note carries sets its own key as it
   // is read, and the event takes the finished set.
@@ -1496,7 +1495,7 @@ function reportSecondMark(
   kind: MarkingKind,
   found: XmlElement,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): void {
   warnings.addWhole(
     'unrepresentable:marking',
@@ -1526,7 +1525,7 @@ function readChordMemberMarkings(
   notations: readonly ElementReader[],
   chord: Markings,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): void {
   const read = new Set<MarkingKind>()
   for (const { kind, marking, found, block } of writtenMarks(notations, warnings, context)) {
@@ -1592,7 +1591,7 @@ const FERMATA_SYMBOLS = new Map<string, FermataSymbol>(
 function readFermata(
   notations: readonly ElementReader[],
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): Fermata | undefined {
   return readFermataAt(
     notations.flatMap((block) => block.children('fermata')),
@@ -1618,7 +1617,7 @@ function writtenFermatas(
 export function readFermataAt(
   found: readonly XmlElement[],
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): Fermata | undefined {
   const first = found[0]
   if (!first) return undefined
@@ -1673,7 +1672,7 @@ function readChordMemberFermatas(
   chord: Fermata | undefined,
   chordPastFirst: readonly XmlElement[],
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): void {
   const [first, ...pastFirst] = writtenFermatas(notations)
   if (!first) return
@@ -1776,7 +1775,7 @@ function readArpeggio(
 function readStemDirection(
   element: ElementReader,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): 'up' | 'down' | undefined {
   const stem = element.child('stem')
   if (!stem) return undefined
@@ -1813,7 +1812,7 @@ function readNoteAt(
   path: DocumentPath,
   staff: number | undefined,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): Note {
   // MusicXML writes the pitch the player reads, MNX the pitch the instrument
   // sounds. They differ only for a transposing part, which states the
@@ -1837,7 +1836,7 @@ function readKitNoteAt(
   staff: number | undefined,
   state: PartState,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): KitNote {
   return {
     id: state.ids.nextNote(),
@@ -1892,7 +1891,7 @@ function readTies(
   grace: boolean,
   state: PartState,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
   tieds: readonly XmlElement[],
 ): void {
   const ties = element.children('tie')
@@ -1930,7 +1929,7 @@ function tieEdges(
   ties: readonly XmlElement[],
   tieds: readonly XmlElement[],
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): { kind: 'start' | 'stop'; element: XmlElement }[] {
   const starts: XmlElement[] = []
   const stops: XmlElement[] = []
@@ -2020,7 +2019,7 @@ function readSlurs(
   measureIndex: number,
   state: PartState,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
   grace: boolean,
 ): void {
   const slurs = notations.flatMap((block) => block.children('slur'))
@@ -2095,7 +2094,7 @@ function slurLineType(slur: XmlElement): LineType | undefined {
 function beamMarkers(
   element: ElementReader,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): ReadonlyMap<number, string> {
   const markers = new Map<number, string>()
   for (const beam of element.children('beam')) {
@@ -2168,7 +2167,7 @@ interface MultiNoteTremolo {
 function multiNoteTremoloOf(
   notations: readonly ElementReader[],
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): MultiNoteTremolo | undefined {
   for (const block of notations) {
     for (const ornaments of block.blocks('ornaments')) {
@@ -2529,7 +2528,7 @@ function drawnGraceValue(
   element: ElementReader,
   grace: XmlElement,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): NoteValue {
   const levels = element.children('beam').flatMap((beam) => {
     const level = parseWholeNumber(attribute(beam, 'number') ?? '1')
@@ -2607,7 +2606,7 @@ function reportDurationMismatch(
   duration: Fraction,
   scale: NoteScale,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): void {
   const scaledBy = scale.by
   const wanted = multiplyFractions(lengthOf(written), scale.factor)
@@ -2634,7 +2633,7 @@ function readPitch(
   element: XmlElement,
   path: DocumentPath,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): Pitch {
   const step = trimmedText(requireChild(element, 'step', path))
   if (!isStep(step)) {
@@ -2669,7 +2668,7 @@ function readAlter(
   element: XmlElement,
   path: DocumentPath,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): number {
   const written = trimmedText(element)
   const value = Number(written)

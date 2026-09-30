@@ -21,8 +21,7 @@ import {
 } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import { describeLength, noteValueOf } from './duration.js'
-import type { WarningContext } from '../warnings.js'
-import type { WarningCollector } from './collector.js'
+import type { ReportContext, WarningCollector } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
 import type { BeamedEvent } from './beams.js'
 import {
@@ -423,7 +422,7 @@ export class MeasureBuilder {
    */
   // The first note naming no voice, for the report where others name one.
   #unnamedNote: XmlElement | undefined
-  #reached: { warnings: WarningCollector; context: WarningContext; backup: XmlElement } | undefined
+  #reached: { warnings: WarningCollector; context: ReportContext; backup: XmlElement } | undefined
 
   /** The voices that sound a note somewhere in the measure, rather than only rest. */
   readonly #soundingVoices: ReadonlySet<string>
@@ -467,12 +466,7 @@ export class MeasureBuilder {
    * a <forward> cancels is not reported and a reach several
    * <forward>s cancel is reported once.
    */
-  shift(
-    by: Fraction,
-    warnings: WarningCollector,
-    context: WarningContext,
-    moved: XmlElement,
-  ): void {
+  shift(by: Fraction, warnings: WarningCollector, context: ReportContext, moved: XmlElement): void {
     this.#moveTo(addFractions(this.#cursor, by))
     if (compareFractions(this.#cursor, fraction(0)) >= 0) {
       this.#reached = undefined
@@ -708,11 +702,7 @@ export class MeasureBuilder {
    * `measure` is the measure's own shape: where its beats line up, how far it
    * runs, and the time signature it runs against.
    */
-  #settleMeasure(
-    measure: MeasureExtent,
-    warnings: WarningCollector,
-    context: WarningContext,
-  ): void {
+  #settleMeasure(measure: MeasureExtent, warnings: WarningCollector, context: ReportContext): void {
     for (const builder of this.#allBuilders()) {
       const voice = {
         content: builder.content,
@@ -1068,7 +1058,7 @@ export class MeasureBuilder {
     outer: NoteValueQuantity,
     starts: readonly TupletStart[],
     warnings: WarningCollector,
-    context: WarningContext,
+    context: ReportContext,
     path: DocumentPath,
     line: number,
     /**
@@ -1264,7 +1254,7 @@ export class MeasureBuilder {
     /** The components this part strikes, which is where a kit note's height is. */
     kit: ReadonlyMap<string, KitComponent>,
     warnings: WarningCollector,
-    context: WarningContext,
+    context: ReportContext,
     path: DocumentPath,
     line: number,
   ): FinishedMeasure {
@@ -1303,7 +1293,7 @@ export class MeasureBuilder {
    */
   #closeImpliedTuplets(
     warnings: WarningCollector,
-    context: WarningContext,
+    context: ReportContext,
     path: DocumentPath,
     line: number,
   ): void {
@@ -1360,7 +1350,7 @@ export class MeasureBuilder {
     voice: string | undefined,
     marker: { marks: number; element: XmlElement },
     warnings: WarningCollector,
-    context: WarningContext,
+    context: ReportContext,
     path: DocumentPath,
     line: number,
   ): void {
@@ -1511,7 +1501,7 @@ export class MeasureBuilder {
    */
   #settleArpeggios(
     warnings: WarningCollector,
-    context: WarningContext,
+    context: ReportContext,
     /** The components this part strikes, which is where a kit note's height is. */
     kit: ReadonlyMap<string, KitComponent>,
   ): Arpeggio[] {
@@ -1789,7 +1779,7 @@ export class MeasureBuilder {
   closeTuplet(
     voice: string | undefined,
     warnings: WarningCollector,
-    context: WarningContext,
+    context: ReportContext,
     path: DocumentPath,
     line: number,
     stop: XmlElement | undefined,
@@ -1824,7 +1814,7 @@ export class MeasureBuilder {
     builder: VoiceBuilder,
     closed: OpenBracket,
     warnings: WarningCollector,
-    context: WarningContext,
+    context: ReportContext,
     path: DocumentPath,
     line: number,
     cut: boolean,
@@ -2046,7 +2036,7 @@ export class MeasureBuilder {
    */
   #closeAtBarline(
     warnings: WarningCollector,
-    context: WarningContext,
+    context: ReportContext,
     path: DocumentPath,
     line: number,
   ): CarriedTupletStop[] {
@@ -2087,7 +2077,7 @@ export class MeasureBuilder {
    * events that reach across to another say so. Choosing the commonest that
    * way keeps the overrides to the notes that cross.
    */
-  #sequences(warnings: WarningCollector, context: WarningContext): Sequence[] {
+  #sequences(warnings: WarningCollector, context: ReportContext): Sequence[] {
     // A note that names no voice goes into its own bucket. Beside notes that do
     // name a voice, that splits one measure into two sequences with no way to
     // know the source meant them apart, so the split is reported rather than

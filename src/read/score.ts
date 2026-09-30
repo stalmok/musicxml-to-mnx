@@ -30,8 +30,7 @@ import type {
   Tempo,
   TimeSignature,
 } from '../model/score.js'
-import type { WarningContext } from '../warnings.js'
-import type { WarningCollector, WarningPlace } from './collector.js'
+import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
 import {
   attribute,
@@ -410,7 +409,7 @@ function mergeGlobalMeasures(
     inScore: T | undefined,
     inPart: T | undefined,
     same: (a: T, b: T) => boolean,
-    context: WarningContext,
+    context: ReportContext,
   ): void => {
     if (inScore === undefined || inPart === undefined || same(inScore, inPart)) return
     warnings.addForMeasure(
@@ -636,7 +635,7 @@ function mergeTempos(
   existing: readonly Tempo[],
   found: readonly Tempo[],
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): Tempo[] {
   const merged = [...existing]
   for (const tempo of found) {
@@ -1042,7 +1041,7 @@ function holdLate<T>(
   inForce: T | undefined,
   end: Fraction,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): HeldSignature<T> | undefined {
   const changes: LateSignature<T>[] = []
   let current = inForce
@@ -1099,7 +1098,7 @@ function reportAcrossStaves<T>(
   staves: number,
   inForce: Map<number, T | undefined>,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
   place: WarningPlace,
 ): void {
   const stated = new Set<number>()
@@ -1164,7 +1163,7 @@ function settleStated<T>(
   staves: number,
   inForce: Map<number, T | undefined>,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): void {
   reportAcrossStaves(kind, group.statements, staves, inForce, warnings, context, group.place)
   // Only what the measure opens with is settled against a converted value:
@@ -1222,7 +1221,7 @@ function reportSecondAtStart<T>(
   first: T | undefined,
   second: StaffSignature<T>,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
   place: WarningPlace,
 ): void {
   if (first === undefined ? second.value === undefined : kind.same(first, second.value)) return
@@ -1340,7 +1339,7 @@ function resolveMeasureRepeats(
   let pattern: number | undefined
   let offset = 0
   readings.forEach((reading, index) => {
-    const context: WarningContext = { part: partId, measure: index + 1 }
+    const context: ReportContext = { part: partId, measure: index + 1 }
     const stops = reading.measureRepeats.filter((edge) => edge.edge === 'stop')
     const starts = reading.measureRepeats.filter(
       (edge): edge is Extract<MeasureRepeatReading, { edge: 'start' }> => edge.edge === 'start',
@@ -1418,7 +1417,7 @@ function readMeasure(
   path: DocumentPath,
 ): MeasureReading {
   const position = index + 1
-  const context: WarningContext = { part: partId, measure: position }
+  const context: ReportContext = { part: partId, measure: position }
   const stated = readMeasureLabel(element, warnings, context)
   const measurePath: DocumentPath = [...path, `measure ${String(stated ?? position)}`]
   // The measure element is walked child by child below rather than through
@@ -1765,7 +1764,7 @@ function onePerMeasure<T extends { location: Fraction }>(
   name: string,
   source: readonly [string, string?],
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
   differs?: (first: T, other: T) => boolean,
 ): T | undefined {
   const first = marks[0]
@@ -1802,7 +1801,7 @@ function drawnDifferently(a: Segno, b: Segno): boolean {
 function oneMultimeasureRest(
   counts: readonly number[],
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): number | undefined {
   const first = counts[0]
   if (first === undefined) return undefined
@@ -1827,7 +1826,7 @@ function oneMultimeasureRest(
 function dedupeClefs(
   clefs: readonly Clef[],
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): Clef[] {
   // A clef naming no staff draws the first, so the two ways of naming staff 1
   // are the same staff.
@@ -1867,7 +1866,7 @@ function dedupeClefs(
 function dedupeStaffConfigs(
   configs: readonly StaffConfig[],
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): StaffConfig[] {
   // A config naming no staff draws the first, as MNX reads it, so the two
   // ways of naming staff 1 are the same staff.
@@ -1904,7 +1903,7 @@ function sameClef(a: Clef, b: Clef): boolean {
 function readMeasureLabel(
   element: XmlElement,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): number | undefined {
   const written = attribute(element, 'number')
   if (written === undefined) return undefined

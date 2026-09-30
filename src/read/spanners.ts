@@ -25,8 +25,7 @@ import type {
 } from '../model/score.js'
 import type { Draft } from './draft.js'
 import type { GraceNotesAt, LastEventBefore } from './voices.js'
-import type { WarningContext } from '../warnings.js'
-import type { WarningCollector } from './collector.js'
+import type { ReportContext, WarningCollector } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
 
 /** A tie that has begun, waiting for the note that ends it. */
@@ -44,7 +43,7 @@ type TieEnd = StartEnd<OpenTie> | StopEnd<{ note: TieTarget }>
  * An end is reported once the part is whole, so it carries both.
  */
 export interface WrittenAt {
-  context: WarningContext
+  context: ReportContext
   element: XmlElement
 }
 

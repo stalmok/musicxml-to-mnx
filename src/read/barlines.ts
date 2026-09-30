@@ -13,8 +13,7 @@
 import type { Fraction } from '../fraction.js'
 import type { BarlineType, Fermata, GlobalMeasure, RepeatEnd } from '../model/score.js'
 import type { NamedSegno } from './jumps.js'
-import type { WarningContext } from '../warnings.js'
-import type { WarningCollector } from './collector.js'
+import type { ReportContext, WarningCollector } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, trimmedText } from '../xml/tree.js'
 import { readColor } from './color.js'
@@ -86,7 +85,7 @@ export function readBarline(
   element: ElementReader,
   position: Fraction,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): BarlineReading {
   // Where on the measure it sits. MusicXML's default is the right edge, and
   // it also allows one partway through, which is neither edge.
@@ -138,7 +137,7 @@ function readSegno(
   element: ElementReader,
   position: Fraction,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): NamedSegno | undefined {
   const segno = element.child('segno')
   if (!segno) return undefined
@@ -160,7 +159,7 @@ function readSegno(
 function reportOpeningFermata(
   element: ElementReader,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): undefined {
   for (const found of element.children('fermata')) {
     warnings.addWhole(
@@ -179,7 +178,7 @@ function readBarStyle(
   atStart: boolean,
   repeatStart: boolean,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): BarlineType | undefined {
   const style = element.child('bar-style')
   if (!style) return undefined
@@ -221,7 +220,7 @@ function readBarStyle(
 function readRepeat(
   element: ElementReader,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): { repeatStart: boolean; repeatEnd: RepeatEnd | undefined } {
   const repeat = element.child('repeat')
   if (!repeat) return { repeatStart: false, repeatEnd: undefined }
@@ -249,7 +248,7 @@ function readRepeat(
 function readTimes(
   repeat: XmlElement,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): number | undefined {
   const written = attribute(repeat, 'times')
   if (written === undefined) return undefined
@@ -271,7 +270,7 @@ function readTimes(
 function readEnding(
   element: ElementReader,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): {
   endingStart: EndingStart | undefined
   endingStop: EndingStop | undefined
@@ -319,7 +318,7 @@ function readEnding(
 function endingNumbers(
   ending: XmlElement,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): readonly number[] {
   const written = attribute(ending, 'number') ?? ''
   const numbers: number[] = []

@@ -8,26 +8,6 @@ describe('WarningCollector', () => {
     expect(new WarningCollector().list()).toEqual([])
   })
 
-  test('records a warning with its code, message, and context', () => {
-    const warnings = new WarningCollector()
-
-    warnings.add(
-      'unsupported:element',
-      'The <pedal> element is not converted.',
-      { part: 'P1', measure: 4, line: 88 },
-      'pedal',
-    )
-
-    expect(warnings.list()).toEqual([
-      {
-        code: 'unsupported:element',
-        message: 'The <pedal> element is not converted.',
-        element: 'pedal',
-        context: { part: 'P1', measure: 4, line: 88 },
-      },
-    ])
-  })
-
   test('leaves the element unset where the loss is not about one', () => {
     const warnings = new WarningCollector()
     warnings.add('inconsistent:duration', 'a note disagrees with itself', {})
@@ -92,13 +72,15 @@ describe('a place kept for a decision made later', () => {
   test('records the same fields a warning reported in place carries', () => {
     const warnings = new WarningCollector()
 
+    const sound = parseXmlRoot('<sound tempo="60"/>')
+
     const place = warnings.reserve()
     warnings.addAt(
       place,
       'unsupported:attribute',
       'The "tempo" of a <sound> is not converted yet.',
-      { part: 'P1', measure: 2, line: 9 },
-      'sound',
+      { part: 'P1', measure: 2 },
+      sound,
       'tempo',
     )
 
@@ -108,7 +90,7 @@ describe('a place kept for a decision made later', () => {
         message: 'The "tempo" of a <sound> is not converted yet.',
         element: 'sound',
         attribute: 'tempo',
-        context: { part: 'P1', measure: 2, line: 9 },
+        context: { part: 'P1', measure: 2, line: 1 },
       },
     ])
   })

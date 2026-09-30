@@ -21,8 +21,7 @@ import type {
   WedgeType,
 } from '../model/score.js'
 import type { NamedSegno, DalSegno } from './jumps.js'
-import type { WarningContext } from '../warnings.js'
-import type { WarningCollector, WarningPlace } from './collector.js'
+import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, trimmedText } from '../xml/tree.js'
 import { readColor } from './color.js'
@@ -189,7 +188,7 @@ export function readDirection(
   measure: number,
   state: PartState,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
   path: DocumentPath,
 ): DirectionReading {
   const reading: DirectionReading = {
@@ -357,7 +356,7 @@ function offsetPosition(
   position: Fraction,
   state: PartState,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): Fraction {
   const offset = element.child('offset')
   if (!offset) return position
@@ -439,7 +438,7 @@ function readOctaveShift(
   placement: 'above' | 'below' | undefined,
   state: PartState,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): void {
   const type = attribute(found, 'type')
   const number = attribute(found, 'number') ?? '1'
@@ -523,7 +522,7 @@ function readWedge(
   placement: 'above' | 'below' | undefined,
   state: PartState,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): WedgeReading | undefined {
   const type = attribute(found, 'type')
   const number = attribute(found, 'number') ?? '1'
@@ -663,7 +662,7 @@ export function readSound(
   sound: ElementReader,
   position: Fraction,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): SoundReading {
   let fine: Fine | undefined
   let jump: DalSegno | undefined
@@ -777,7 +776,7 @@ function readDynamics(
   placement: 'above' | 'below' | undefined,
   wording: PendingWording,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): Dynamic[] {
   const dynamics: Dynamic[] = []
 
@@ -858,7 +857,7 @@ function reportWordingGlyph(
   element: XmlElement,
   wording: string,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): void {
   const glyph = attribute(element, 'smufl')
   if (glyph === undefined) return
@@ -887,7 +886,7 @@ function readMetronome(
   reader: ElementReader,
   position: Fraction,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): Tempo[] {
   const element = reader.element
   // MusicXML allows several <beat-unit> children: a second one states the

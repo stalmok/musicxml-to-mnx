@@ -5,8 +5,7 @@
 // form is carried as written, a fully opaque alpha says nothing and is
 // dropped, and any other alpha is reported and the color converted opaque.
 
-import type { WarningContext } from '../warnings.js'
-import type { WarningCollector } from './collector.js'
+import type { ReportContext, WarningCollector } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute } from '../xml/tree.js'
 
@@ -17,7 +16,7 @@ const ARGB = /^#[0-9A-Fa-f]{8}$/
 export function readColor(
   element: XmlElement,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): string | undefined {
   const written = attribute(element, 'color')
   if (written === undefined) return undefined

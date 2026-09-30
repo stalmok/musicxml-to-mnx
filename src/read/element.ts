@@ -4,8 +4,7 @@
 // path that skips a child reports it. The only hand-kept entries are skip()
 // calls, for a child accounted for elsewhere, and each one says why.
 
-import type { WarningContext } from '../warnings.js'
-import type { WarningCollector } from './collector.js'
+import type { ReportContext, WarningCollector } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, child, children, readAttributeNames } from '../xml/tree.js'
 import { attributeLoss, elementLoss } from './unrepresentable.js'
@@ -44,7 +43,7 @@ const PRESENTATION_ATTRIBUTES: ReadonlySet<string> = new Set([
 export function reportUnreadAttributes(
   element: XmlElement,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
 ): void {
   const read = readAttributeNames(element)
   for (const name of Object.keys(element.attributes)) {
@@ -146,7 +145,7 @@ export class ElementReader {
   }
 
   /** Everything this reader never looked at, reported as a loss. */
-  reportUnread(warnings: WarningCollector, context: WarningContext): void {
+  reportUnread(warnings: WarningCollector, context: ReportContext): void {
     reportUnreadAttributes(this.element, warnings, context)
 
     // A block wraps its own reader, which sweeps its attributes below; a

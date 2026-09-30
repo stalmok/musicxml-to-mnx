@@ -8,8 +8,7 @@ import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
 import { fraction } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
-import type { WarningContext } from '../warnings.js'
-import type { WarningCollector } from './collector.js'
+import type { ReportContext, WarningCollector } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
 import type { ElementReader } from './element.js'
 import { readIntegerInRange } from './numbers.js'
@@ -25,7 +24,7 @@ import type { PartState } from './state.js'
 export function divisionsInForce(
   state: PartState,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
   at: XmlElement,
 ): number {
   if (state.divisions === undefined) {
@@ -48,7 +47,7 @@ export function readDuration(
   element: ElementReader,
   state: PartState,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
   path: DocumentPath,
 ): Fraction | undefined {
   const durationElement = element.child('duration')
@@ -66,7 +65,7 @@ export function requireDuration(
   element: ElementReader,
   state: PartState,
   warnings: WarningCollector,
-  context: WarningContext,
+  context: ReportContext,
   path: DocumentPath,
 ): Fraction {
   const duration = readDuration(element, state, warnings, context, path)
