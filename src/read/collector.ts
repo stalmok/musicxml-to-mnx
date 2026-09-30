@@ -53,6 +53,21 @@ export class WarningCollector {
   }
 
   /**
+   * Reports a loss about what a measure states as a whole, such as two parts
+   * stating different barlines for it. No one element holds the loss, so the
+   * warning names the kind of element and gives no line.
+   */
+  addForMeasure(
+    code: WarningCode,
+    message: string,
+    context: WarningContext,
+    element: string,
+    attribute?: string,
+  ): void {
+    this.addAt(this.reserve(), code, message, context, element, attribute)
+  }
+
+  /**
    * Keeps this point in the report for a decision that cannot be made yet,
    * such as one that depends on what a later part writes. Take a place where
    * the element is read and report through it later with addAt, so the report

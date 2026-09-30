@@ -250,6 +250,16 @@ describe('the place a warning names', () => {
       code: 'inconsistent:grace',
       at: 2,
     },
+    {
+      what: 'a key stated for one staff at its <key>, not at its <attributes>',
+      body: [
+        '<attributes><staves>2</staves>',
+        '<key number="1"><fifths>1</fifths></key></attributes>',
+        note('C', 4),
+      ],
+      code: 'unrepresentable:per-staff-key',
+      at: 1,
+    },
   ]
 
   test.each(REPORTS)('points at $what', ({ body, code, at }) => {

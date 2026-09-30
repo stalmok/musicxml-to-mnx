@@ -67,6 +67,8 @@ export interface HeldSignature<T> {
   value: T
   partway: boolean
   context: WarningContext
+  /** The <key> or <time> stating it. */
+  element: XmlElement
 }
 
 /**

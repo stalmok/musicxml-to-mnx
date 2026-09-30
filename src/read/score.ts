@@ -134,7 +134,7 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
     }
     if (defaults.children.some((found) => found.name !== 'music-font')) {
       const loss = elementLoss('defaults')
-      warnings.add(loss.code, `<defaults> ${loss.ending}`, { line: defaults.line }, 'defaults')
+      warnings.add(loss.code, `<defaults> ${loss.ending}`, {}, defaults)
     }
   }
 
@@ -166,12 +166,7 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
     }
     if (rest) {
       const loss = elementLoss('identification')
-      warnings.add(
-        loss.code,
-        `<identification> ${loss.ending}`,
-        { line: identification.line },
-        'identification',
-      )
+      warnings.add(loss.code, `<identification> ${loss.ending}`, {}, identification)
     }
   }
 
@@ -418,7 +413,7 @@ function mergeGlobalMeasures(
     context: WarningContext,
   ): void => {
     if (inScore === undefined || inPart === undefined || same(inScore, inPart)) return
-    warnings.add(
+    warnings.addForMeasure(
       'unrepresentable:cross-part-mark',
       `The parts of this score state different ${name}s on this measure, and MNX ` +
         'states one there. The first stated is the one converted.',
@@ -439,7 +434,7 @@ function mergeGlobalMeasures(
       writtenFifthsWithFlip(pair.score, transposition, flipAt) !==
         writtenFifths(pair.part, transposition)
     ) {
-      warnings.add(
+      warnings.addForMeasure(
         'unrepresentable:cross-part-key',
         'The parts of this score are in different keys, and MNX states one key for ' +
           'the score. The first stated is the one converted.',
@@ -457,7 +452,7 @@ function mergeGlobalMeasures(
       partTime &&
       !sameMeter(scoreTime, partTime)
     ) {
-      warnings.add(
+      warnings.addForMeasure(
         'unrepresentable:cross-part-time',
         'The parts of this score are in different time signatures, and MNX states one ' +
           'for the score. The first stated is the one converted.',
@@ -473,7 +468,7 @@ function mergeGlobalMeasures(
       measure.multimeasureRest !== undefined &&
       existing.multimeasureRest !== measure.multimeasureRest
     ) {
-      warnings.add(
+      warnings.addForMeasure(
         'unrepresentable:cross-part-multimeasure-rest',
         'The parts of this score state multi-measure rests of different spans over ' +
           'this measure, and MNX states one for the score. The first stated is the ' +
@@ -486,7 +481,7 @@ function mergeGlobalMeasures(
     // and each usually writes the same thing. Parts writing different ones
     // disagree about the one line MNX can state, so that is reported.
     if (existing?.barline && measure.barline && existing.barline !== measure.barline) {
-      warnings.add(
+      warnings.addForMeasure(
         'unrepresentable:cross-part-barline',
         'The parts of this score close this measure with different barlines, and MNX ' +
           'states one for the score. The first stated is the one converted.',
@@ -498,7 +493,7 @@ function mergeGlobalMeasures(
     // stating different signs, at different points or drawn differently,
     // disagree about the one segno MNX can state, so that is reported.
     if (existing?.segno && measure.segno && !sameSegno(existing.segno, measure.segno)) {
-      warnings.add(
+      warnings.addForMeasure(
         'unrepresentable:cross-part-segno',
         'The parts of this score state different segnos on this measure, and MNX ' +
           'states one for the score. The first stated is the one converted.',
@@ -515,7 +510,7 @@ function mergeGlobalMeasures(
       measure.number !== undefined &&
       existing.number !== measure.number
     ) {
-      warnings.add(
+      warnings.addForMeasure(
         'inconsistent:measure-number',
         `This measure is numbered ${String(existing.number)} by an earlier part and ` +
           `${String(measure.number)} by this one. The first is the one converted.`,
@@ -651,7 +646,7 @@ function mergeTempos(
       // A mark below existing.length is an earlier part's, and one at or past
       // it is this part's own. Only the wording of the report differs.
       const acrossParts = at < existing.length
-      warnings.add(
+      warnings.addForMeasure(
         'inconsistent:tempo',
         acrossParts
           ? 'The parts of this score state different tempos at the same point in this ' +
@@ -755,12 +750,15 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
         // The instrument setup. A <score-instrument> names what plays the
         // part; what its reader passes over is reported by the sweep. A part
         // may set up several, one per kit component, so every block is read.
-        const named = new Map<string, string | undefined>()
+        const named = new Map<string, { name: string | undefined; element: XmlElement }>()
         for (const instrument of scorePart.blocks('score-instrument')) {
           const instrumentId = requireAttribute(instrument.element, 'id', LIST_PATH)
           const nameElement = instrument.child('instrument-name')
           const instrumentName = nameElement ? trimmedText(nameElement) : ''
-          named.set(instrumentId, instrumentName === '' ? undefined : instrumentName)
+          named.set(instrumentId, {
+            name: instrumentName === '' ? undefined : instrumentName,
+            element: instrument.element,
+          })
         }
 
         // From a <midi-instrument> only <midi-unpitched> is taken: the
@@ -785,7 +783,7 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
           midiPitches.set(midiId, pitch - 1)
         }
 
-        for (const [instrumentId, instrumentName] of named) {
+        for (const [instrumentId, { name: instrumentName, element: instrument }] of named) {
           let key = instrumentId
           const fits = MNX_ID_PATTERN.test(key)
           if (!fits || GENERATED_ID_PATTERN.test(key)) {
@@ -801,8 +799,8 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
                     `instrument is renamed ${key}.`
                 : `The instrument id "${instrumentId}" does not fit MNX's id, which is 1 to 256 ` +
                     `printable ASCII characters, so the instrument is renamed ${key}.`,
-              { ...(id !== undefined ? { part: id } : {}), line: element.line },
-              'score-instrument',
+              id !== undefined ? { part: id } : {},
+              instrument,
             )
           }
           sounds.set(key, {
@@ -935,8 +933,8 @@ function readPart(
     warnings.add(
       'unresolved:part-id',
       `The part list has no entry for part ${id}.`,
-      { part: id, line: element.line },
-      'part',
+      { part: id },
+      element,
       'id',
     )
   }
@@ -979,7 +977,8 @@ function readPart(
 interface LateSignature<T> {
   value: T | undefined
   at: Fraction
-  line: number
+  /** The <key> or <time> stating it. */
+  element: XmlElement
 }
 
 /** What reports and compares a key or a time signature stated late. */
@@ -1057,10 +1056,11 @@ function holdLate<T>(
     }
     current = late.value
   }
-  const held = ({ at, line }: LateSignature<T>, value: T): HeldSignature<T> => ({
+  const held = ({ at, element }: LateSignature<T>, value: T): HeldSignature<T> => ({
     value,
     partway: compareFractions(at, end) < 0,
-    context: { ...context, line },
+    context,
+    element,
   })
   const last = changes.pop()
   for (const replaced of changes) {
@@ -1099,7 +1099,7 @@ function reportAcrossStaves<T>(
   staves: number,
   inForce: Map<number, T | undefined>,
   warnings: WarningCollector,
-  at: WarningContext,
+  context: WarningContext,
   place: WarningPlace,
 ): void {
   const stated = new Set<number>()
@@ -1142,8 +1142,8 @@ function reportAcrossStaves<T>(
     place,
     `unrepresentable:per-staff-${kind.element}`,
     `${disagreement} The one converted stands for every staff.`,
-    at,
-    kind.element,
+    context,
+    statements[0]?.element,
   )
 }
 
@@ -1166,23 +1166,14 @@ function settleStated<T>(
   warnings: WarningCollector,
   context: WarningContext,
 ): void {
-  const at = (line: number) => ({ ...context, line })
-  reportAcrossStaves(
-    kind,
-    group.statements,
-    staves,
-    inForce,
-    warnings,
-    at(group.first),
-    group.place,
-  )
+  reportAcrossStaves(kind, group.statements, staves, inForce, warnings, context, group.place)
   // Only what the measure opens with is settled against a converted value:
   // one stated after the start is carried to the next measure, and what
   // becomes of it is settled there.
   if (compareFractions(group.at, fraction(0)) !== 0) return
   const restated = restatement(group.statements)
   if (restated) {
-    reportSecondAtStart(kind, converted, restated.value, warnings, at(group.last), group.place)
+    reportSecondAtStart(kind, converted, restated, warnings, context, group.place)
   }
 }
 
@@ -1194,32 +1185,31 @@ function settleStated<T>(
  * one named refines the signature stated for every staff, which is how a
  * part states one and then changes a single staff's.
  */
-function restatement<T>(
-  statements: readonly StaffSignature<T>[],
-): { value: T | undefined } | undefined {
+function restatement<T>(statements: readonly StaffSignature<T>[]): StaffSignature<T> | undefined {
   const named = new Set<number | undefined>()
-  let last: { value: T | undefined } | undefined
+  let last: StaffSignature<T> | undefined
   for (const statement of statements) {
-    last =
-      statement.staff === undefined || named.has(statement.staff)
-        ? { value: statement.value }
-        : undefined
+    last = statement.staff === undefined || named.has(statement.staff) ? statement : undefined
     named.add(statement.staff)
   }
   return last
 }
 
 /**
+ * The <key> or <time> a block's signature is read from: the first statement
+ * MNX can hold, or else the first.
+ */
+function statingOf<T>(statements: readonly StaffSignature<T>[], first: StaffSignature<T>) {
+  return (statements.find((statement) => statement.value !== undefined) ?? first).element
+}
+
+/**
  * What the blocks at one point of a measure state about one signature: the
- * place the report reads at, the line of the first block stating one, the
- * line of the last, which is where a second statement is reported, and every
- * statement they make between them.
+ * place the report reads at, and every statement they make there.
  */
 interface StatedAt<T> {
   at: Fraction
   place: WarningPlace
-  first: number
-  last: number
   statements: StaffSignature<T>[]
 }
 
@@ -1230,19 +1220,19 @@ interface StatedAt<T> {
 function reportSecondAtStart<T>(
   kind: SignatureKind<T>,
   first: T | undefined,
-  second: T | undefined,
+  second: StaffSignature<T>,
   warnings: WarningCollector,
   context: WarningContext,
   place: WarningPlace,
 ): void {
-  if (first === undefined ? second === undefined : kind.same(first, second)) return
+  if (first === undefined ? second.value === undefined : kind.same(first, second.value)) return
   warnings.addAt(
     place,
     `inconsistent:${kind.element}`,
     `Two different ${kind.element} signatures are stated at the start of this measure. ` +
       'The later one is not converted.',
     context,
-    kind.element,
+    second.element,
   )
 }
 
@@ -1257,7 +1247,7 @@ function reportLate<T>(
     `A ${kind.element} signature is stated ${late.partway ? 'partway through' : 'at the end of'} this ` +
       `measure, and MNX states one only where a measure begins. ${outcome}`,
     late.context,
-    kind.element,
+    late.element,
   )
 }
 
@@ -1362,7 +1352,7 @@ function resolveMeasureRepeats(
     const closed = stops.filter((stop) => open.delete(stop.staff)).length
     if (closed > 0) {
       if (open.size > 0) {
-        warnings.add(
+        warnings.addForMeasure(
           'unrepresentable:measure-repeat',
           "This measure stops a measure repeat sign for one staff while another staff's " +
             'sign runs on, and MNX states one sign for the part. The sign ends here for ' +
@@ -1381,7 +1371,7 @@ function resolveMeasureRepeats(
       // differing lengths cannot all be carried, so the first is kept and
       // the disagreement reported.
       if (starts.some((start) => start.measures !== first.measures)) {
-        warnings.add(
+        warnings.addForMeasure(
           'unrepresentable:measure-repeat',
           'This measure starts measure repeats of different patterns, and MNX states ' +
             'one for the measure. The first is the one converted.',
@@ -1395,7 +1385,7 @@ function resolveMeasureRepeats(
       const restated = new Set(starts.map((start) => start.staff))
       const cut = [...open.keys()].filter((staff) => !restated.has(staff))
       if (cut.length > 0) {
-        warnings.add(
+        warnings.addForMeasure(
           'unrepresentable:measure-repeat',
           "This measure starts a measure repeat sign while another staff's sign is " +
             'still running, and MNX states one sign for the part. The new sign ' +
@@ -1457,20 +1447,11 @@ function readMeasure(
   const timeGroups: StatedAt<TimeSignature>[] = []
   // Every unmetered statement the measure makes, reported once the measure
   // has settled what it converts.
-  const unmetered: { place: WarningPlace; line: number }[] = []
-  const statedAt = <T>(groups: StatedAt<T>[], at: Fraction, line: number): StatedAt<T> => {
+  const unmetered: { place: WarningPlace; element: XmlElement | undefined }[] = []
+  const statedAt = <T>(groups: StatedAt<T>[], at: Fraction): StatedAt<T> => {
     const opened = groups.find((group) => compareFractions(group.at, at) === 0)
-    if (opened) {
-      opened.last = line
-      return opened
-    }
-    const group: StatedAt<T> = {
-      at,
-      place: warnings.reserve(),
-      first: line,
-      last: line,
-      statements: [],
-    }
+    if (opened) return opened
+    const group: StatedAt<T> = { at, place: warnings.reserve(), statements: [] }
     groups.push(group)
     return group
   }
@@ -1522,13 +1503,14 @@ function readMeasure(
         const at = builder.position()
         // Held for the settlement after the loop, which sees every block
         // stating one at this point.
-        if (reading.keys.length > 0) {
-          statedAt(keyGroups, at, found.line).statements.push(...reading.keys)
+        const [firstKey] = reading.keys
+        if (firstKey) {
+          statedAt(keyGroups, at).statements.push(...reading.keys)
           if (builder.atMeasureStart()) {
             if (!keySettled) key = reading.key
             keySettled = true
           } else {
-            lateKeys.push({ value: reading.key, at, line: found.line })
+            lateKeys.push({ value: reading.key, at, element: statingOf(reading.keys, firstKey) })
           }
         }
         // Taken after the key, and before the settlement of the time blocks
@@ -1536,11 +1518,15 @@ function readMeasure(
         // states them.
         for (const stated of reading.times) {
           if (stated.value === undefined) {
-            unmetered.push({ place: warnings.reserve(), line: stated.line })
+            unmetered.push({
+              place: warnings.reserve(),
+              element: child(stated.element, 'senza-misura'),
+            })
           }
         }
-        if (reading.times.length > 0) {
-          statedAt(timeGroups, at, found.line).statements.push(...reading.times)
+        const [firstTime] = reading.times
+        if (firstTime) {
+          statedAt(timeGroups, at).statements.push(...reading.times)
           if (builder.atMeasureStart()) {
             // A second statement at the start changes nothing. A senza-misura
             // statement clears it: the music is unmetered from here on,
@@ -1551,7 +1537,11 @@ function readMeasure(
             }
             timeSettled = true
           } else {
-            lateTimes.push({ value: reading.time, at, line: found.line })
+            lateTimes.push({
+              value: reading.time,
+              at,
+              element: statingOf(reading.times, firstTime),
+            })
             nextTime = { value: reading.time }
           }
         }
@@ -1596,8 +1586,8 @@ function readMeasure(
             'inconsistent:barline',
             'Two barlines close this measure with different styles. The first is the ' +
               'one converted.',
-            { ...context, line: found.line },
-            'barline',
+            context,
+            found,
           )
         }
         barline ??= reading.barline
@@ -1644,12 +1634,7 @@ function readMeasure(
 
       default: {
         const loss = elementLoss(found.name)
-        warnings.add(
-          loss.code,
-          `<${found.name}> ${loss.ending}`,
-          { ...context, line: found.line },
-          found.name,
-        )
+        warnings.add(loss.code, `<${found.name}> ${loss.ending}`, context, found)
         continue
       }
     }
@@ -1688,7 +1673,7 @@ function readMeasure(
   // converted with a meter the music they cover does not have. Measured
   // against the meter in force, not the measure's own statement, because a
   // measure stating none keeps the one before it.
-  for (const { place, line } of unmetered) {
+  for (const { place, element: senzaMisura } of unmetered) {
     warnings.addAt(
       place,
       'unrepresentable:senza-misura',
@@ -1696,8 +1681,8 @@ function readMeasure(
         `or nothing. The measure is converted with ${
           state.convertedTime ? 'the time signature in force' : 'no time signature'
         }.`,
-      { ...context, line },
-      'senza-misura',
+      context,
+      senzaMisura,
     )
   }
 
@@ -1787,7 +1772,7 @@ function onePerMeasure<T extends { location: Fraction }>(
   if (first === undefined) return undefined
   for (const other of marks.slice(1)) {
     if (compareFractions(other.location, first.location) !== 0 || differs?.(first, other)) {
-      warnings.add(
+      warnings.addForMeasure(
         'unrepresentable:element',
         `A measure carries more than one ${name}, and MNX states one per measure. ` +
           'The first is the one converted.',
@@ -1822,7 +1807,7 @@ function oneMultimeasureRest(
   const first = counts[0]
   if (first === undefined) return undefined
   if (counts.some((count) => count !== first)) {
-    warnings.add(
+    warnings.addForMeasure(
       'unrepresentable:multimeasure-rest',
       'This measure states multi-measure rests of different spans, and MNX states ' +
         'one for the score. The first is the one converted.',
@@ -1855,7 +1840,7 @@ function dedupeClefs(
       // Exporters restate the clef a staff already has, which loses nothing.
       // Only a clef the next one replaces is a loss.
       if (replacing && !sameClef(replacing, clef)) {
-        warnings.add(
+        warnings.addForMeasure(
           'unrepresentable:clef',
           'Two clefs are written at the same point on the same staff, and MNX draws ' +
             'one there. The last is the one converted.',
@@ -1895,7 +1880,7 @@ function dedupeStaffConfigs(
         compareFractions(later.position, config.position) === 0,
     )
     if (replacing) {
-      warnings.add(
+      warnings.addForMeasure(
         'unrepresentable:staff-config',
         'Two staff line counts are written at the same point on the same staff, and ' +
           'MNX draws one there. The last is the one converted.',
@@ -1930,8 +1915,8 @@ function readMeasureLabel(
       'unrepresentable:measure-label',
       `The measure label "${written}" is not a whole number of zero or more, which is ` +
         'how MNX numbers a measure, so it is not carried over.',
-      { ...context, line: element.line },
-      'measure',
+      context,
+      element,
     )
     return undefined
   }

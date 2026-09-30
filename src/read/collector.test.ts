@@ -180,3 +180,25 @@ describe('a warning about an element the source leaves out', () => {
     ])
   })
 })
+
+describe('a warning about what a measure states as a whole', () => {
+  test('names the kind of element and gives no line', () => {
+    const warnings = new WarningCollector()
+
+    warnings.addForMeasure(
+      'unrepresentable:cross-part-barline',
+      'differ',
+      { measure: 3 },
+      'barline',
+    )
+
+    expect(warnings.list()).toEqual([
+      {
+        code: 'unrepresentable:cross-part-barline',
+        message: 'differ',
+        element: 'barline',
+        context: { measure: 3 },
+      },
+    ])
+  })
+})

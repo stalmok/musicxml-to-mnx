@@ -104,7 +104,8 @@ export interface StaffSignature<T> {
    * that stood when it was made.
    */
   staves: number
-  line: number
+  /** The <key> or <time> stating it. */
+  element: XmlElement
 }
 
 /**
@@ -290,7 +291,7 @@ function statedPerStaff<T>(
     staff: state.staves > 1 ? numbers[index] : undefined,
     value: read(block),
     staves: state.staves,
-    line: block.line,
+    element: block.element,
   }))
 }
 
