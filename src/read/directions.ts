@@ -382,7 +382,7 @@ function offsetPosition(
     return position
   }
 
-  const divisions = divisionsInForce(state, warnings, context, offset.line)
+  const divisions = divisionsInForce(state, warnings, context, offset)
   const moved = addFractions(position, fraction(count, divisions * 4))
 
   // MNX states a position within its measure, counting from the start, so a

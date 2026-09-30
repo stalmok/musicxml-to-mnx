@@ -39,6 +39,20 @@ export class WarningCollector {
   }
 
   /**
+   * Reports an element the source leaves out. at is where it is needed, and
+   * gives the warning its line.
+   */
+  addMissing(
+    code: Extract<WarningCode, `missing:${string}`>,
+    message: string,
+    context: WarningContext,
+    at: XmlElement,
+    missing: string,
+  ): void {
+    this.add(code, message, { ...context, line: at.line }, missing)
+  }
+
+  /**
    * Keeps this point in the report for a decision that cannot be made yet,
    * such as one that depends on what a later part writes. Take a place where
    * the element is read and report through it later with addAt, so the report

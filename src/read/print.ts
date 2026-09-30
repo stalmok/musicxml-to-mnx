@@ -34,8 +34,8 @@ export function readPrint(
         'unrepresentable:print-detail',
         `A <print> states a ${name} of "${value}", which MNX's pages and systems ` +
           'cannot state.',
-        { ...context, line: element.line },
-        'print',
+        context,
+        element.element,
         name,
       )
     }

@@ -10,6 +10,7 @@ import { fraction } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type { WarningContext } from '../warnings.js'
 import type { WarningCollector } from './collector.js'
+import type { XmlElement } from '../xml/parse.js'
 import type { ElementReader } from './element.js'
 import { readIntegerInRange } from './numbers.js'
 import type { PartState } from './state.js'
@@ -25,14 +26,15 @@ export function divisionsInForce(
   state: PartState,
   warnings: WarningCollector,
   context: WarningContext,
-  line: number,
+  at: XmlElement,
 ): number {
   if (state.divisions === undefined) {
-    warnings.add(
+    warnings.addMissing(
       'missing:divisions',
       'A duration appears before any <divisions> said how long one is. ' +
         'One division per quarter note is assumed.',
-      { ...context, line },
+      context,
+      at,
       'divisions',
     )
     state.divisions = 1
@@ -52,7 +54,7 @@ export function readDuration(
   const durationElement = element.child('duration')
   if (!durationElement) return undefined
 
-  const divisions = divisionsInForce(state, warnings, context, durationElement.line)
+  const divisions = divisionsInForce(state, warnings, context, durationElement)
 
   // <divisions> counts per quarter note, and a whole note is four of those.
   const count = readIntegerInRange(durationElement, path, 0, 1_000_000_000)

@@ -51,8 +51,8 @@ export function readLyrics(
       'unrepresentable:lyric-line',
       `A note sings line ${verse.line} twice, as "${stated.text}" and as "${verse.lyric.text}", ` +
         'and MNX states one lyric per line on an event. The first is the one converted.',
-      { ...context, line: lyric.line },
-      'lyric',
+      context,
+      lyric.element,
     )
   }
   return lyrics
@@ -91,7 +91,8 @@ function readVerse(
   reportHidden(lyric.element, warnings, context)
 
   const syllabics = lyric.children('syllabic')
-  if (syllabics.length > 1) {
+  const extra = syllabics[1]
+  if (extra) {
     // Each <syllabic> belongs to the <text> after it, so an elided verse can
     // carry several. MNX states one type per event. Only the first survives,
     // because it says how the syllable joins the one before it.
@@ -99,8 +100,8 @@ function readVerse(
       'unrepresentable:lyric-syllabic',
       'A lyric states how each of its elided syllables joins its word, and MNX states ' +
         'one for the event. The first is the one converted.',
-      { ...context, line: lyric.line },
-      'syllabic',
+      context,
+      extra,
     )
   }
 
@@ -113,8 +114,8 @@ function readVerse(
     warnings.add(
       'unsupported:element',
       `A <syllabic> of "${spelling}" is not converted yet.`,
-      { ...context, line: first.line },
-      'syllabic',
+      context,
+      first,
     )
   }
   return { line, lyric: { text, type: LYRIC_TYPES.get(spelling) } }

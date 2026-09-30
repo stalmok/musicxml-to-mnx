@@ -56,8 +56,8 @@ export function reportUnreadAttributes(
     warnings.add(
       loss.code,
       `The "${name}" attribute of a <${element.name}> ${loss.ending}`,
-      { ...context, line: element.line },
-      element.name,
+      context,
+      element,
       name,
     )
   }
@@ -161,12 +161,7 @@ export class ElementReader {
         continue
       }
       const loss = elementLoss(found.name)
-      warnings.add(
-        loss.code,
-        `<${found.name}> ${loss.ending}`,
-        { ...context, line: found.line },
-        found.name,
-      )
+      warnings.add(loss.code, `<${found.name}> ${loss.ending}`, context, found)
     }
     for (const block of this.#blocks.values()) block.reportUnread(warnings, context)
   }

@@ -162,3 +162,21 @@ describe('a warning about an element', () => {
     expect(warnings.list().map((w) => w.message)).toEqual(['first', 'second'])
   })
 })
+
+describe('a warning about an element the source leaves out', () => {
+  test('names the element left out, at the line where it is needed', () => {
+    const warnings = new WarningCollector()
+    const note = parseXmlRoot('<measure>\n  <note/>\n</measure>').children[0]!
+
+    warnings.addMissing('missing:divisions', 'assumed', { measure: 1 }, note, 'divisions')
+
+    expect(warnings.list()).toEqual([
+      {
+        code: 'missing:divisions',
+        message: 'assumed',
+        element: 'divisions',
+        context: { measure: 1, line: 2 },
+      },
+    ])
+  })
+})

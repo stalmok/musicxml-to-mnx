@@ -282,6 +282,20 @@ describe('a verse written as several pieces', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:lyric-syllabic'])
   })
 
+  test('reports the syllabics it cannot state at the first one not converted', () => {
+    const source = measure(
+      note(
+        'C',
+        '<lyric number="1"><syllabic>begin</syllabic><text>to</text>\n' +
+          '<elision>-</elision><syllabic>end</syllabic><text>day</text></lyric>',
+      ),
+    )
+    const { warnings } = read(source)
+
+    const second = source.split('\n').findIndex((line) => line.includes('<syllabic>end')) + 1
+    expect(warnings.map((w) => [w.element, w.context.line])).toEqual([['syllabic', second]])
+  })
+
   // A <lyric> holding only an <extend> is how MusicXML continues a melisma
   // under a later note. There is no syllable in it to write.
   test('states no verse for a lyric that is only a melisma line', () => {
