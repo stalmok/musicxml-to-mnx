@@ -1270,14 +1270,16 @@ describe('a rest filling a measure a grace note leads into', () => {
       'a stem of none',
       irregularRest.replace('</note>', '<stem default-y="-20"> none </stem></note>'),
       [],
+      reported,
     ],
-    ['a hidden stem', hidden('<stem default-y="10">up</stem>'), hiddenReported],
-  ])('reads %s on the rest as losing nothing', (_, rest, lost) => {
-    expect(kinds(rest).warnings).toEqual(lost)
-    expect(kinds(rest + grace).warnings).toEqual(rest.includes('print-object') ? [] : reported)
+    ['a hidden stem', hidden('<stem default-y="10">up</stem>'), hiddenReported, []],
+  ])('reads %s on the rest as losing nothing', (_, rest, onSequence, asSpace) => {
+    expect(kinds(rest).warnings).toEqual(onSequence)
+    expect(kinds(rest + grace).warnings).toEqual(asSpace)
   })
 
-  // Only the <notations> block is hidden, so the marks in it are drawn.
+  // Only the rest is hidden. Its <notations> block is shown, so the marks in
+  // it are drawn.
   test('reports a mark in a shown block on a hidden rest', () => {
     const rest = hidden('<notations><articulations><accent/></articulations></notations>')
 
@@ -1305,6 +1307,16 @@ describe('a rest filling a measure a grace note leads into', () => {
 
     expect(warnings.map((w) => [w.code, w.element, w.context.measure])).toEqual([blockDrawn])
     expect(warnings[0]?.message).toContain('The block holds <fermata>.')
+    expect(kinds(rest + grace).warnings).toEqual(reported)
+  })
+
+  test('reports a hidden rest and a hidden block holding its fermata as drawn', () => {
+    const rest = hidden(
+      '<notations print-object="no"><articulations><accent/></articulations><fermata/>' +
+        '</notations>',
+    )
+
+    expect(kinds(rest).warnings).toEqual([...hiddenReported, blockDrawn])
     expect(kinds(rest + grace).warnings).toEqual(reported)
   })
 

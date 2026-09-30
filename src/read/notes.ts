@@ -221,10 +221,10 @@ interface NoteStatement extends RestNote {
   hidden: boolean
   /**
    * Reports the note and its <notations> blocks hidden, each in the place it
-   * was read. Given an element name, only a block holding one is reported,
-   * naming it: the rest of the block is not converted, so none of it is drawn.
+   * was read. Given `only`, just a block holding a fermata is reported, naming
+   * it: nothing else in the block is converted, so hiding it loses nothing.
    */
-  reportHidden: (drawn?: string) => void
+  reportHidden: (only?: 'fermata') => void
 }
 
 export function readNote(
@@ -266,13 +266,13 @@ export function readNote(
 
   const notations = element.blocks('notations')
   // A <notations> block hidden with print-object="no" still has its slur,
-  // fermata and the rest drawn, because MNX cannot mark them invisible. The
-  // hiding is reported, naming what the block holds. The exception is a block
-  // holding only <tuplet> markers: a hidden tuplet notation is the tuplet
-  // drawn with no bracket, number or value, which MNX's display settings
-  // state, so the hiding converts. Sources use this to number only the first
-  // tuplet of a run. A block on a rest is settled once the rest is placed,
-  // as the rest's own hiding is.
+  // fermata and everything else in it drawn, because MNX cannot mark them
+  // invisible. The hiding is reported, naming what the block holds. The
+  // exception is a block holding only <tuplet> markers: a hidden tuplet
+  // notation is the tuplet drawn with no bracket, number or value, which
+  // MNX's display settings state, so the hiding converts. Sources use this to
+  // number only the first tuplet of a run. A block on a rest is reported once
+  // the rest is placed, as the rest's own hiding is.
   const hiddenTuplets = new Set<XmlElement>()
   const hiddenBlocks: { block: XmlElement; place: WarningPlace }[] = []
   for (const block of notations) {
@@ -292,11 +292,11 @@ export function readNote(
       hiddenBlocks.push({ block: block.element, place: warnings.reserve() })
     }
   }
-  const reportHiddenNote = (drawn?: string) => {
+  const reportHiddenNote = (only?: 'fermata') => {
     reportHidden(element.element, warnings, context, undefined, hiddenPlace)
     for (const { block, place } of hiddenBlocks) {
-      if (drawn !== undefined && !child(block, drawn)) continue
-      reportHidden(block, warnings, context, drawn ?? block.children[0]?.name, place)
+      if (only !== undefined && !child(block, only)) continue
+      reportHidden(block, warnings, context, only ?? block.children[0]?.name, place)
     }
   }
   if (!restElement) reportHiddenNote()
@@ -777,8 +777,8 @@ function setMeasureRest(
   // reported only where it stays on the sequence. Where the rest cannot stay
   // an event, only its fermata is converted, so only a hidden block holding
   // one is drawn anyway.
-  const drawn = fills.canStayEvent ? undefined : 'fermata'
-  if (restValue) note.reportHidden(drawn)
+  const hiddenDrawn = fills.canStayEvent ? undefined : 'fermata'
+  if (restValue) note.reportHidden(hiddenDrawn)
 
   // Where the source states no <duration>, the rest lasts the measure. A bar
   // of silence is drawn as a whole rest in any meter, so the written value is
@@ -818,7 +818,7 @@ function setMeasureRest(
     },
     {
       onSequence: () => {
-        if (!restValue) note.reportHidden(drawn)
+        if (!restValue) note.reportHidden(hiddenDrawn)
         reportLength()
       },
       // A hidden rest is time with nothing drawn in it, which is what a space
@@ -876,12 +876,11 @@ function reportCarriedByUnwritableRest(
   for (const slur of stopsFirst(slurEnds)) {
     dropSlurEnd(attribute(slur, 'type') === 'stop' ? 'stop' : 'start', slur)
   }
-  // A note has at most one <stem>. A rest is drawn with no stem, and a hidden
-  // one with nothing, so neither draws one it states.
+  // A note has at most one <stem>. A hidden rest draws none it states.
   const stem = element.child('stem')
   // Each element the rest carries, and whether the source draws it.
   const carried = new Map<XmlElement | undefined, boolean>([
-    [stem, !hidden && stem?.text.trim() !== 'none'],
+    [stem, !hidden && stem !== undefined && !statesNoStem(stem)],
     ...marks.map(({ found, shown }) => [found, shown] as const),
     ...slurEnds.map((slur) => [slur, true] as const),
     ...element.children('lyric').map((lyric) => [lyric, true] as const),
@@ -1707,7 +1706,8 @@ function readChordMemberFermatas(
 
 /**
  * What a <fermata> states, to compare one note's with another's. An empty
- * one states no shape, which MNX reads as normal.
+ * one states no shape, which MNX reads as normal. It must tell apart what
+ * fermataOf tells apart.
  */
 function writtenFermata(found: XmlElement): (string | undefined)[] {
   return [trimmedText(found) || 'normal', attribute(found, 'type'), attribute(found, 'placement')]
@@ -1782,8 +1782,7 @@ function readStemDirection(
 
   const direction = stem.text.trim()
   if (direction === 'up' || direction === 'down') return direction
-  // A rest is drawn with no stem, so a stem of none on one states nothing.
-  if (direction === 'none' && element.child('rest')) return undefined
+  if (statesNoStem(stem) && element.child('rest')) return undefined
 
   // MNX's stem direction is up or down and nothing else, so "none" and
   // "double" have no home.
@@ -1794,6 +1793,11 @@ function readStemDirection(
     'stem',
   )
   return undefined
+}
+
+/** A rest is drawn with no stem, so a stem of none on one states nothing. */
+function statesNoStem(stem: XmlElement): boolean {
+  return stem.text.trim() === 'none'
 }
 
 const ENCLOSURES = new Map<string, 'parentheses' | 'brackets'>([
