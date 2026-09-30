@@ -9,7 +9,7 @@ import type { XmlElement } from '../xml/parse.js'
 import { attribute as readAttribute } from '../xml/tree.js'
 
 /** Where a warning is, apart from its line, which comes from an element. */
-export type ReportContext = Omit<WarningContext, 'line'>
+export type ReportContext = Omit<WarningContext, 'line'> & { readonly line?: never }
 
 /**
  * A place kept in the report, taken where an element is read and reported

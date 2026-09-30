@@ -78,8 +78,8 @@ interface MeasureReading {
   measure: Measure
   global: ReadGlobalMeasure
   /**
-   * Held until the part can join it to its other end, with the line the
-   * <ending> was written on, so the report names it.
+   * Held until the part can join it to its other end, with its <ending>,
+   * so the report names it.
    */
   endingStart: EndingStart | undefined
   endingStop: EndingStop | undefined

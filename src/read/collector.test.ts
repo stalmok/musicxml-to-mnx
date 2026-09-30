@@ -133,15 +133,18 @@ describe('a warning about an element', () => {
     expect([...(readAttributeNames(fermata) ?? [])]).toEqual(['type', 'placement'])
   })
 
-  test('reports through a place taken earlier', () => {
+  test('reports through a place taken earlier with the element it names', () => {
     const warnings = new WarningCollector()
-    const tuplet = parseXmlRoot('<tuplet/>')
+    const tuplet = parseXmlRoot('<measure>\n<tuplet/>\n</measure>').children[0]!
 
     const place = warnings.reserve()
     warnings.add('unsupported:element', 'second', {}, tuplet)
     warnings.addAt(place, 'unsupported:element', 'first', {}, tuplet)
 
-    expect(warnings.list().map((w) => w.message)).toEqual(['first', 'second'])
+    expect(warnings.list().map((w) => [w.message, w.element, w.context.line])).toEqual([
+      ['first', 'tuplet', 2],
+      ['second', 'tuplet', 2],
+    ])
   })
 })
 
