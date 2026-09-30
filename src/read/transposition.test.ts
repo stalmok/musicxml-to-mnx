@@ -311,6 +311,19 @@ describe('a part stating more than one transposition', () => {
     expect(warnings[0]?.element).toBe('transpose')
   })
 
+  test('reports staves transposed differently at the first that differs', () => {
+    const source = inPart(
+      '<staves>2</staves>\n' +
+        '<transpose number="1"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>\n' +
+        '<transpose number="2"><diatonic>0</diatonic><chromatic>0</chromatic></transpose>',
+      NOTE,
+    )
+    const { warnings } = read(source)
+
+    const differing = warnings.find((w) => w.code === 'unrepresentable:per-staff-transposition')
+    expect(differing?.context.line).toBe(3)
+  })
+
   // The two are compared whole, so a pair agreeing on the staff distance but
   // not the half steps is two intervals, and so is the pair the other way
   // round: a major second and a diminished third move the same half steps.
@@ -354,6 +367,20 @@ describe('a part stating more than one transposition', () => {
       alter: 0,
     })
     expect(warnings.list().map((one) => one.code)).toEqual(['unrepresentable:transposition-change'])
+  })
+
+  test('reports a change of instrument at the <transpose> that changes it', () => {
+    const { warnings } = read(
+      '<score-partwise><part id="P1">' +
+        `<measure number="1"><attributes><divisions>4</divisions>${IN_B_FLAT}</attributes>` +
+        `${NOTE}</measure>` +
+        '<measure number="2"><attributes>\n' +
+        '<transpose><diatonic>-2</diatonic><chromatic>-3</chromatic></transpose>' +
+        `</attributes>${NOTE}</measure>` +
+        '</part></score-partwise>',
+    )
+
+    expect(warnings.map((w) => [w.element, w.context.line])).toEqual([['transpose', 2]])
   })
 
   // A restatement of the same interval is not a change.

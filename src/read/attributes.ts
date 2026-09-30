@@ -158,8 +158,8 @@ export function readAttributes(
       warnings.add(
         'unsupported:element',
         'Hiding a staff with <staff-details print-object="no"> is not converted yet.',
-        { ...context, line: details.line },
-        'staff-details',
+        context,
+        details.element,
       )
     }
     // MusicXML states a non-negative count, and MNX can draw a staff with no
@@ -177,8 +177,8 @@ export function readAttributes(
           'inconsistent:staff',
           `A staff line count is stated for staff ${String(staff)}, and this part is ` +
             `written on ${String(state.staves)}. It is not carried over.`,
-          { ...context, line: lines.line },
-          'staff-lines',
+          context,
+          lines,
         )
       } else if (staffLinesOf(state, staff) !== count) {
         // A height is measured from the middle of the staff, which moves with
@@ -190,8 +190,8 @@ export function readAttributes(
             'unsupported:element',
             'A staff changes how many lines it is drawn with, and no clef is restated ' +
               'on it. The notes on it keep the heights the clef in force gives them.',
-            { ...context, line: lines.line },
-            'staff-lines',
+            context,
+            lines,
           )
         }
         state.staffLines.set(staff, count)
@@ -209,12 +209,7 @@ export function readAttributes(
     const size = details.child('staff-size')
     if (size && !DEFAULT_STAFF_SIZE.test(trimmedText(size))) {
       const loss = elementLoss('staff-size')
-      warnings.add(
-        loss.code,
-        `<staff-size> ${loss.ending}`,
-        { ...context, line: size.line },
-        'staff-size',
-      )
+      warnings.add(loss.code, `<staff-size> ${loss.ending}`, context, size)
     }
   }
 
@@ -334,8 +329,8 @@ function readMeasureStyle(
         'unrepresentable:multiple-rest-symbols',
         'A multi-measure rest is drawn with the stacked rest symbols, which MNX cannot ' +
           'ask for. The rest is converted and drawn the default way.',
-        { ...context, line: rest.line },
-        'multiple-rest',
+        context,
+        rest,
       )
     }
 
@@ -370,8 +365,8 @@ function readMeasureStyle(
           'unrepresentable:measure-repeat',
           `A measure repeat sign repeats ${String(measures)} measures, and MNX states a ` +
             'pattern of at most four. The sign is not carried over.',
-          { ...context, line: repeat.line },
-          'measure-repeat',
+          context,
+          repeat,
         )
         // The source drew a new sign on these staves, so whatever they were
         // drawing stopped. Staves the sign does not name are left running.
@@ -384,8 +379,8 @@ function readMeasureStyle(
           'unrepresentable:measure-repeat-slashes',
           `A measure repeat sign is drawn with ${slashes} slashes, which MNX cannot ` +
             'ask for. The repeat is converted and drawn the default way.',
-          { ...context, line: repeat.line },
-          'measure-repeat',
+          context,
+          repeat,
         )
       }
 
@@ -416,8 +411,8 @@ function readKey(
       'unrepresentable:non-traditional-key',
       'A key signature written as individual altered steps cannot be stated in MNX, ' +
         'which counts fifths. The signature is not converted; the notes still sound right.',
-      { ...context, line: element.line },
-      'key',
+      context,
+      element.element,
     )
     return undefined
   }
@@ -493,8 +488,8 @@ function readTime(
       'unrepresentable:interchangeable-time',
       'A time signature states a second, interchangeable meter, and MNX states one ' +
         'count and unit. The primary meter is converted; the alternative is not.',
-      { ...context, line: element.line },
-      'time',
+      context,
+      element.element,
     )
   }
 
@@ -519,8 +514,8 @@ function readTimeDisplay(
     'unrepresentable:time-symbol',
     `A <time> is drawn with the "${symbol}" symbol, and MNX draws a time signature ` +
       'as a common or cut sign or its numbers. The numbers are the ones drawn.',
-    { ...context, line: element.line },
-    'time',
+    context,
+    element,
   )
   return undefined
 }
@@ -554,25 +549,28 @@ function readTransposition(
       found.child('chromatic') ?? requireChild(found.element, 'chromatic', path)
     const chromatic = readInteger(chromaticElement, path)
 
-    return {
+    const transposition: Transposition = {
       staffDistance: opposite(diatonic + 7 * octaves),
       halfSteps: opposite(chromatic + 12 * octaves),
       // Settled once the whole score is in: whether the part flips its
       // signature shows only against the key the rest of the score is in.
       keyFifthsFlipAt: undefined,
     }
+    return { transposition, element: found.element }
   })
 
-  const first = stated[0]
-  if (!first) return
+  const [opening] = stated
+  if (!opening) return
+  const first = opening.transposition
 
-  if (stated.some((other) => !sameTransposition(other, first))) {
+  const other = stated.find((one) => !sameTransposition(one.transposition, first))
+  if (other) {
     warnings.add(
       'unrepresentable:per-staff-transposition',
       'The staves of this part are transposed by different intervals, and MNX states one ' +
         'for the part. The first is the one converted.',
-      { ...context, line: element.line },
-      'transpose',
+      context,
+      other.element,
     )
   }
 
@@ -586,8 +584,8 @@ function readTransposition(
       'unrepresentable:transposition-change',
       'A part changes instrument partway, and MNX states one transposition for the part. ' +
         'The first is the one written out; the notes sound as each instrument plays them.',
-      { ...context, line: element.line },
-      'transpose',
+      context,
+      opening.element,
     )
   }
 }
@@ -667,8 +665,8 @@ function readClef(
       'unrepresentable:clef-sign',
       `A "${sign}" clef heads a staff, and MNX has no such clef. The staff ` +
         'is converted without a clef.',
-      { ...context, line: element.line },
-      'clef',
+      context,
+      element.element,
     )
     return undefined
   }
@@ -699,8 +697,8 @@ function readClef(
       'unrepresentable:clef-octave',
       `A clef is transposed by ${String(change)} octaves, and MNX states an ottava of ` +
         'at most three. The clef is converted at pitch, without the transposition.',
-      { ...context, line: element.line },
-      'clef',
+      context,
+      element.element,
     )
   }
 
