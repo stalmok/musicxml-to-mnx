@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { WarningCollector } from './collector.js'
+import { parseXmlRoot } from '../xml/parse.js'
+import { readAttributeNames } from '../xml/tree.js'
 
 describe('WarningCollector', () => {
   test('starts with nothing reported', () => {
@@ -109,5 +111,54 @@ describe('a place kept for a decision made later', () => {
         context: { part: 'P1', measure: 2, line: 9 },
       },
     ])
+  })
+})
+
+describe('a warning about an element', () => {
+  test('takes its element and its line from the element', () => {
+    const warnings = new WarningCollector()
+    const pedal = parseXmlRoot('<direction>\n  <pedal/>\n</direction>').children[0]!
+
+    warnings.add('unsupported:element', 'not converted', { part: 'P1', measure: 4 }, pedal)
+
+    expect(warnings.list()).toEqual([
+      {
+        code: 'unsupported:element',
+        message: 'not converted',
+        element: 'pedal',
+        context: { part: 'P1', measure: 4, line: 2 },
+      },
+    ])
+  })
+
+  test('counts the attribute it names as read, and no other', () => {
+    const warnings = new WarningCollector()
+    const sound = parseXmlRoot('<sound tempo="60" dynamics="80"/>')
+
+    warnings.add('unsupported:attribute', 'not converted', {}, sound, 'tempo')
+
+    expect(warnings.list()[0]?.attribute).toBe('tempo')
+    expect([...(readAttributeNames(sound) ?? [])]).toEqual(['tempo'])
+  })
+
+  test('counts every attribute as read where the element is not converted at all', () => {
+    const warnings = new WarningCollector()
+    const fermata = parseXmlRoot('<fermata type="inverted" placement="below"/>')
+
+    warnings.addWhole('unrepresentable:fermata', 'not converted', {}, fermata)
+
+    expect(warnings.list()[0]?.element).toBe('fermata')
+    expect([...(readAttributeNames(fermata) ?? [])]).toEqual(['type', 'placement'])
+  })
+
+  test('reports through a place taken earlier', () => {
+    const warnings = new WarningCollector()
+    const tuplet = parseXmlRoot('<tuplet/>')
+
+    const place = warnings.reserve()
+    warnings.add('unsupported:element', 'second', {}, tuplet)
+    warnings.addAt(place, 'unsupported:element', 'first', {}, tuplet)
+
+    expect(warnings.list().map((w) => w.message)).toEqual(['first', 'second'])
   })
 })

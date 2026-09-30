@@ -1,6 +1,8 @@
 // Collects the loss report while the reader walks the source.
 
 import type { ConversionWarning, WarningCode, WarningContext } from '../warnings.js'
+import type { XmlElement } from '../xml/parse.js'
+import { attribute as readAttribute } from '../xml/tree.js'
 
 /**
  * A place kept in the report, taken where an element is read and reported
@@ -12,14 +14,28 @@ export class WarningCollector {
   readonly #warnings: { place: WarningPlace; warning: ConversionWarning }[] = []
   #next = 0
 
+  /**
+   * Reports a loss about found, which gives the warning its element and its
+   * line. A named attribute is the part of found the loss is about, and
+   * counts as read, so the sweep does not report it a second time.
+   */
   add(
     code: WarningCode,
     message: string,
     context: WarningContext,
-    element?: string,
+    found?: XmlElement | string,
     attribute?: string,
   ): void {
-    this.addAt(this.reserve(), code, message, context, element, attribute)
+    this.addAt(this.reserve(), code, message, context, found, attribute)
+  }
+
+  /**
+   * Reports found as not converted at all. Every attribute on it counts as
+   * read, so the sweep does not report them a second time.
+   */
+  addWhole(code: WarningCode, message: string, context: WarningContext, found: XmlElement): void {
+    for (const name of Object.keys(found.attributes)) readAttribute(found, name)
+    this.add(code, message, context, found)
   }
 
   /**
@@ -38,10 +54,22 @@ export class WarningCollector {
     code: WarningCode,
     message: string,
     context: WarningContext,
-    element?: string,
+    found?: XmlElement | string,
     attribute?: string,
   ): void {
-    this.#warnings.push({ place, warning: { code, message, element, attribute, context } })
+    if (found === undefined || typeof found === 'string') {
+      this.#warnings.push({ place, warning: { code, message, element: found, attribute, context } })
+      return
+    }
+    if (attribute !== undefined) readAttribute(found, attribute)
+    const warning = {
+      code,
+      message,
+      element: found.name,
+      attribute,
+      context: { ...context, line: found.line },
+    }
+    this.#warnings.push({ place, warning })
   }
 
   /**
