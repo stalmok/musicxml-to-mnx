@@ -859,6 +859,17 @@ describe('a rest filling a measure a grace note leads into', () => {
     })
   })
 
+  test('reports the space where the rest stands, before what is written after it', () => {
+    const direction =
+      '<direction><direction-type><other-direction>ad lib.</other-direction>' +
+      '</direction-type></direction>'
+
+    expect(kinds(irregularRest + direction + grace).warnings).toEqual([
+      ...reported,
+      ['unsupported:element', 'other-direction', 1],
+    ])
+  })
+
   // The space states the length the rest on the sequence could not, so only
   // the rest that stays on the sequence reports it lost.
   test('reports the length of a rest with no time signature only where it stays on the sequence', () => {
@@ -1733,6 +1744,18 @@ describe('a rest drawn shorter than the measure it fills', () => {
     )
 
     expect(codes).toEqual(['inconsistent:duration'])
+  })
+
+  test('reports the drawn value where the rest stands, before what follows it', () => {
+    const codes = keptAnEvent(
+      inThreeTwo(
+        rest() +
+          '<note><grace/><pitch><step>C</step><octave>4</octave></pitch><type>eighth</type>' +
+          '<notations><other-notation type="single"/></notations></note>',
+      ),
+    )
+
+    expect(codes).toEqual(['inconsistent:duration', 'unsupported:element'])
   })
 
   // A grace note takes none of the measure's time, so a rest written as one

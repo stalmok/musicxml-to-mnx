@@ -405,8 +405,11 @@ export function readNote(
     : { factor: builder.tupletFactor(voice), by: builder.scaledBy(voice) }
 
   const candidate = restReading.kind === 'candidate' ? restReading : undefined
+  // A rest that may be the measure's reports a mismatch only once the voice
+  // is whole, through the place the report would hold here.
+  const mismatchPlace = warnings.reserve()
   if (written && duration && !candidate) {
-    reportDurationMismatch(element, written, duration, scale, warnings, context)
+    reportDurationMismatch(element, written, duration, scale, warnings, context, mismatchPlace)
   }
 
   const value =
@@ -509,7 +512,7 @@ export function readNote(
   if (candidate) {
     const { written: drawn, duration: lasts } = candidate
     builder.markMeasureRest(voice, event, () =>
-      reportDurationMismatch(element, drawn, lasts, scale, warnings, context),
+      reportDurationMismatch(element, drawn, lasts, scale, warnings, context, mismatchPlace),
     )
   }
   readEventSpanners(
@@ -755,7 +758,7 @@ function setMeasureRest(
   // time signature states, says nothing MNX's measure does not. Reported
   // once the measure is whole, and only if the rest is still on the
   // sequence then: a grace note beside it writes it as a space, which
-  // states the length.
+  // states the length, and reports the space through the same place.
   const { eventValue: restValue, unwritableLength: unwritableRest } = fills
   const place = warnings.reserve()
   const reportLength = () => {
@@ -828,7 +831,8 @@ function setMeasureRest(
       // is, unless a fermata is drawn over it.
       asSpace: () => {
         if (note.hidden && !fermata) return
-        warnings.add(
+        warnings.addAt(
+          place,
           'unrepresentable:grace-beside-rest',
           'A grace note stands beside a rest that fills the measure, and no note value ' +
             'can write that rest as an event. MNX states such a rest on a sequence that ' +
@@ -2612,6 +2616,7 @@ function reportDurationMismatch(
   scale: NoteScale,
   warnings: WarningCollector,
   context: ReportContext,
+  place: WarningPlace,
 ): void {
   const scaledBy = scale.by
   const wanted = multiplyFractions(lengthOf(written), scale.factor)
@@ -2621,7 +2626,8 @@ function reportDurationMismatch(
   // tuplet or a tremolo the message names the length that ratio wants, and
   // which of the two states it. Naming the written value alone would give
   // "written as an eighth but lasts an eighth", the same length twice.
-  warnings.add(
+  warnings.addAt(
+    place,
     'inconsistent:duration',
     scaledBy
       ? `A <note> is written as ${describeValue(written)}, which the ${scaledBy} around ` +
