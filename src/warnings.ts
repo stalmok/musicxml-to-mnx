@@ -238,11 +238,19 @@ export const WARNING_CODES = Object.freeze([
   // it another way. MNX states the marks on the event, and the marks of the
   // chord's own note are the ones converted.
   'inconsistent:marking',
+  // A note of a chord carries a fermata the note it joins does not, or
+  // carries it another way. MNX states one fermata on the event, and the
+  // chord's own is the one converted.
+  'inconsistent:fermata',
   // A tuplet whose written content does not add up to its stated ratio. The
-  // content is converted as written.
+  // content is converted as written. Also a note of a chord drawing the
+  // chord's tuplet bracket another way than the note it joins, whose own
+  // drawing is the one converted.
   'inconsistent:tuplet',
-  // The two ends of a two-note tremolo count different beams. The start's
-  // count is the one converted.
+  // The two ends of a two-note tremolo count different beams, and the
+  // start's count is the one converted. Also a note of a chord carrying a
+  // tremolo marker the note it joins does not, or carrying it another way,
+  // where the chord's own marker is the one converted.
   'inconsistent:tremolo',
   // A <backup> reaches back further than the measure has run, so the two
   // numbers disagree about how long the measure is. The cursor is taken to

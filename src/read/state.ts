@@ -2,9 +2,7 @@
 // read without.
 
 import type { ReportContext } from './collector.js'
-import type { EventNotation } from './eventNotations.js'
 import type {
-  Event,
   PitchedClefSign,
   Key,
   KitComponent,
@@ -174,11 +172,6 @@ export interface PartState {
    * this one and reports the change.
    */
   statedTransposition: Transposition | undefined
-  /**
-   * The notations each event's own note wrote on it, for the notes of the
-   * chord that follow to restate or disagree with.
-   */
-  eventNotations: WeakMap<Event, readonly EventNotation[]>
 }
 
 /**
@@ -214,6 +207,5 @@ export function newPartState(
     carriedTupletStops: [],
     transposition: undefined,
     statedTransposition: undefined,
-    eventNotations: new WeakMap(),
   }
 }

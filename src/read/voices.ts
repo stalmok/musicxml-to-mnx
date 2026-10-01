@@ -21,6 +21,7 @@ import {
 import type { Fraction } from '../fraction.js'
 import { describeLength, noteValueOf } from './duration.js'
 import type { ReportContext, WarningCollector } from './collector.js'
+import type { EventNotation } from './eventNotations.js'
 import type { XmlElement } from '../xml/parse.js'
 import type { BeamedEvent } from './beams.js'
 import type { CarriedTupletStop, MeasureExtent, TupletStart } from './tuplets.js'
@@ -68,6 +69,11 @@ export type GraceNotesAt = (position: Fraction, staff?: number) => number
 export interface PlacedEvent {
   event: Event
   start: Fraction
+}
+
+/** The event a note of a chord joins, with what the chord's own note wrote on it. */
+export interface JoinedEvent extends PlacedEvent {
+  notations: readonly EventNotation[]
 }
 
 /** A grace note just put in its group, with the run its group beams within. */
@@ -121,7 +127,7 @@ interface VoiceBuilder {
    * moved past the event it joins, and an arpeggio over the chord belongs at
    * the event's own place in the measure.
    */
-  last: { event: Event; duration: Fraction | undefined; start: Fraction } | undefined
+  last: (JoinedEvent & { duration: Fraction | undefined }) | undefined
   /**
    * The grace group at the end of this sequence that is still waiting for
    * the note it ornaments, where the sequence ends in one. `at` is where it
@@ -534,6 +540,7 @@ export class MeasureBuilder {
   addEvent(
     voice: string | undefined,
     event: Event,
+    notations: readonly EventNotation[],
     duration: Fraction,
     path: DocumentPath,
     line: number,
@@ -561,7 +568,7 @@ export class MeasureBuilder {
     builder.placed.push({ event, staff })
     this.#lastVoice = voice ?? UNNAMED_VOICE
     const start = this.#cursor
-    builder.last = { event, duration, start }
+    builder.last = { event, notations, duration, start }
     this.#eventStarts.push({ start, staff, grace: false })
     builder.tuplets.addTremoloNote(duration)
     builder.end = addFractions(start, duration)
@@ -703,7 +710,7 @@ export class MeasureBuilder {
     duration: Fraction | undefined,
     path: DocumentPath,
     line: number,
-  ): PlacedEvent {
+  ): JoinedEvent {
     const placed = this.#chordEvent(voice, duration, path, line)
     placed.event.notes = [...placed.event.notes, note]
     return placed
@@ -716,7 +723,7 @@ export class MeasureBuilder {
     duration: Fraction | undefined,
     path: DocumentPath,
     line: number,
-  ): PlacedEvent {
+  ): JoinedEvent {
     const placed = this.#chordEvent(voice, duration, path, line)
     placed.event.kitNotes = [...placed.event.kitNotes, note]
     return placed
@@ -728,7 +735,7 @@ export class MeasureBuilder {
     duration: Fraction | undefined,
     path: DocumentPath,
     line: number,
-  ): PlacedEvent {
+  ): JoinedEvent {
     const builder = this.#builderFor(voice ?? this.#lastVoice)
     const previous = builder.last
     if (!previous) {
@@ -758,7 +765,7 @@ export class MeasureBuilder {
       })
     }
 
-    return { event: previous.event, start: previous.start }
+    return { event: previous.event, start: previous.start, notations: previous.notations }
   }
 
   /**
@@ -849,6 +856,7 @@ export class MeasureBuilder {
   addMeasureRestEvent(
     voice: string | undefined,
     event: Event,
+    notations: readonly EventNotation[],
     duration: Fraction,
     path: DocumentPath,
     line: number,
@@ -861,7 +869,7 @@ export class MeasureBuilder {
         line,
       })
     }
-    const placed = this.addEvent(voice, event, duration, path, line, staff)
+    const placed = this.addEvent(voice, event, notations, duration, path, line, staff)
     builder.measureRest = { origin: 'fills-as-event' }
     return placed
   }
@@ -1487,6 +1495,7 @@ export class MeasureBuilder {
   addGraceNote(
     voice: string | undefined,
     event: Event,
+    notations: readonly EventNotation[],
     slashed: boolean,
     graceType: GraceType | undefined,
     staff?: number,
@@ -1505,7 +1514,7 @@ export class MeasureBuilder {
     // Grace notes have no duration of their own, so a chord note joining one
     // has nothing to agree with.
     const start = this.#cursor
-    builder.last = { event, duration: undefined, start }
+    builder.last = { event, notations, duration: undefined, start }
     this.#eventStarts.push({ start, staff, grace: true })
     // Recorded like any other event, so the voice's staff counts it and a
     // grace note reaching across to the other staff says so.

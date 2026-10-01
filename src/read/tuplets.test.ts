@@ -2148,6 +2148,92 @@ describe('a tuplet marker on a chord member', () => {
     expect(content?.[0]?.kind === 'tuplet' && content[0].content).toHaveLength(3)
   })
 
+  test('passes over a restatement that states how the bracket is drawn', () => {
+    const drawn = '<tuplet type="start" bracket="yes" show-number="actual"/>'
+    const { content, warnings } = read(
+      measure(
+        tupletNote('C', 4, 'eighth').replace('</note>', `<notations>${drawn}</notations></note>`) +
+          chordMember(drawn) +
+          tupletNote('D', 4, 'eighth') +
+          tupletNote('E', 4, 'eighth', 'stop'),
+      ),
+    )
+
+    expect(warnings).toEqual([])
+    expect(content?.[0]).toMatchObject({ bracket: 'yes', showNumber: 'inner' })
+  })
+
+  // A tuplet shows the played count unless it states otherwise.
+  test('passes over a restatement that states the default number shown', () => {
+    const { warnings } = read(
+      measure(
+        tupletNote('C', 4, 'eighth', 'start') +
+          chordMember('<tuplet type="start" show-number="actual"/>') +
+          tupletNote('D', 4, 'eighth') +
+          tupletNote('E', 4, 'eighth', 'stop'),
+      ),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  // A bracket is drawn as its start says, so a stop names it and says
+  // nothing more.
+  test('passes over a stop that places itself elsewhere', () => {
+    const { warnings } = read(
+      measure(
+        tupletNote('C', 4, 'eighth', 'start') +
+          tupletNote('D', 4, 'eighth') +
+          tupletNote('E', 4, 'eighth', 'stop') +
+          chordMember('<tuplet type="stop" placement="above"/>'),
+      ),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  test('reports a restatement drawn where the chord’s own is hidden', () => {
+    const { content, warnings } = read(
+      measure(
+        tupletNote('C', 4, 'eighth').replace(
+          '</note>',
+          '<notations print-object="no"><tuplet type="start"/></notations></note>',
+        ) +
+          chordMember('<tuplet type="start"/>') +
+          tupletNote('D', 4, 'eighth') +
+          tupletNote('E', 4, 'eighth', 'stop'),
+      ),
+    )
+
+    expect(content?.[0]).toMatchObject({ bracket: 'no' })
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([['inconsistent:tuplet', 'tuplet']])
+  })
+
+  test('reports a restatement that draws the bracket another way', () => {
+    const drawn = (bracket: string) => `<tuplet type="start" bracket="${bracket}"/>`
+    const { content, warnings } = read(
+      measure(
+        tupletNote('C', 4, 'eighth').replace(
+          '</note>',
+          `<notations>${drawn('yes')}</notations></note>`,
+        ) +
+          chordMember(drawn('no')) +
+          tupletNote('D', 4, 'eighth') +
+          tupletNote('E', 4, 'eighth', 'stop'),
+      ),
+    )
+
+    expect(content?.[0]).toMatchObject({ bracket: 'yes' })
+    expect(warnings.map((w) => [w.code, w.element, w.message])).toEqual([
+      [
+        'inconsistent:tuplet',
+        'tuplet',
+        'A note of a chord carries a <tuplet> another way than the note it joins. MNX ' +
+          "states the tuplet once for the chord, and the chord's own is the one converted.",
+      ],
+    ])
+  })
+
   // Sibelius leaves <voice> off a chord member, so the marker is compared
   // with the chord it joins rather than against the unnamed voice.
   test('passes over a restatement on a member that states no voice', () => {
@@ -2685,7 +2771,7 @@ describe('two-note tremolos', () => {
 
     expect(warnings.map((w) => [w.code, w.element])).toEqual([
       ['unrepresentable:element', 'tremolo'],
-      ['unsupported:element', 'tremolo'],
+      ['inconsistent:tremolo', 'tremolo'],
     ])
   })
 
@@ -2704,7 +2790,23 @@ describe('two-note tremolos', () => {
     )
 
     expect(content?.[0]?.kind).toBe('multiNoteTremolo')
-    expect(warnings.map((w) => [w.code, w.element])).toEqual([['unsupported:element', 'tremolo']])
+    expect(warnings.map((w) => [w.code, w.element, w.message])).toEqual([
+      [
+        'inconsistent:tremolo',
+        'tremolo',
+        'A note of a chord carries a <tremolo> another way than the note it joins. MNX ' +
+          "states the tremolo once for the chord, and the chord's own is the one converted.",
+      ],
+    ])
+  })
+
+  test('reports a stop marker on a note of the chord that counts other beams', () => {
+    const member = tremoloNote('G', 'stop', '2').replace('<note>', '<note><chord/>')
+    const { warnings } = read(
+      measure(tremoloNote('C', 'start') + tremoloNote('E', 'stop') + member),
+    )
+
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([['inconsistent:tremolo', 'tremolo']])
   })
 
   test('rejects a tremolo that stops where none is open', () => {

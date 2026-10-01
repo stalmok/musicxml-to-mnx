@@ -411,6 +411,47 @@ describe('marks on the notes of a chord', () => {
     expect(warnings).toEqual([])
   })
 
+  // Each note's mark is drawn at its own place on the page.
+  test('reads a mark the other note places elsewhere as the chord’s own', () => {
+    const { warnings } = read(
+      chord(articulations('<accent default-y="12"/>'), articulations('<accent default-y="-30"/>')),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  // MusicXML gives each of these a value where the element leaves it out.
+  test.each([
+    ['a strong accent pointing up', '<strong-accent/>', '<strong-accent type="up"/>'],
+    ['a normal caesura', '<caesura/>', '<caesura>normal</caesura>'],
+  ])('reads %s the other note states outright', (_, first, other) => {
+    expect(read(chord(articulations(first), articulations(other))).warnings).toEqual([])
+  })
+
+  test.each([
+    ['on one note', '<tremolo>3</tremolo>', '<tremolo type="single">3</tremolo>'],
+    ['with three beams', '<tremolo type="single"/>', '<tremolo type="single">3</tremolo>'],
+    ['with a count written with a leading zero', '<tremolo>2</tremolo>', '<tremolo>02</tremolo>'],
+    ['unmeasured', '<tremolo type="unmeasured"/>', '<tremolo type="unmeasured">0</tremolo>'],
+  ])('reads a tremolo %s the other note states another way', (_, first, other) => {
+    const { warnings } = read(
+      chord(`<ornaments>${first}</ornaments>`, `<ornaments>${other}</ornaments>`),
+    )
+
+    expect(warnings).toEqual(read(note(`<ornaments>${first}</ornaments>`)).warnings)
+  })
+
+  test('reads a mark the other note writes with its attributes in another order', () => {
+    const { warnings } = read(
+      chord(
+        articulations('<accent placement="above" color="#800000"/>'),
+        articulations('<accent color="#800000" placement="above"/>'),
+      ),
+    )
+
+    expect(warnings.map((w) => [w.element, w.attribute])).toEqual([['accent', 'color']])
+  })
+
   test('writes the mark once', () => {
     const marks = articulations('<staccato/>')
     const { mnx, warnings } = convertValid(
@@ -560,26 +601,39 @@ describe('marks on the notes of a chord', () => {
     ])
   })
 
-  // MNX's caesura states no side, and each note states one.
-  test('reports the side of a restated caesura on each note', () => {
+  // MNX's caesura states no side. The chord's own note reports it, and a
+  // note restating it loses nothing more.
+  test('reports the side of a caesura every note carries once', () => {
     const caesura = articulations('<caesura placement="above"/>')
     const { warnings } = read(chord(caesura, caesura))
 
     expect(warnings.map((w) => [w.code, w.attribute])).toEqual([
       ['unrepresentable:attribute', 'placement'],
-      ['unrepresentable:attribute', 'placement'],
+    ])
+  })
+
+  test('reports a caesura the other note draws on another side', () => {
+    const { warnings } = read(
+      chord(
+        articulations('<caesura placement="above"/>'),
+        articulations('<caesura placement="below"/>'),
+      ),
+    )
+
+    expect(warnings.map((w) => [w.code, w.element, w.attribute])).toEqual([
+      ['unrepresentable:attribute', 'caesura', 'placement'],
+      ['inconsistent:marking', 'caesura', undefined],
     ])
   })
 
   test.each([
     ['<tremolo type="single">9</tremolo>'],
     ['<tremolo type="unmeasured" placement="above"/>'],
-  ])('reports %s once on each note', (inner) => {
+  ])('reports %s every note carries once', (inner) => {
     const tremolo = `<ornaments>${inner}</ornaments>`
     const { warnings } = read(chord(tremolo, tremolo))
 
     expect(warnings.map((w) => [w.code, w.element, w.context.measure])).toEqual([
-      ['unrepresentable:element', 'tremolo', 1],
       ['unrepresentable:element', 'tremolo', 1],
     ])
   })
@@ -608,6 +662,8 @@ describe('a fermata on the notes of a chord', () => {
   test.each([
     ['<fermata/>', '<fermata>normal</fermata>'],
     ['<fermata>normal</fermata>', '<fermata/>'],
+    // A fermata stating no type is upright.
+    ['<fermata/>', '<fermata type="upright"/>'],
   ])('reads %s restated as %s', (first, other) => {
     expect(read(chord(first, other)).warnings).toEqual([])
   })
@@ -624,6 +680,23 @@ describe('a fermata on the notes of a chord', () => {
 
     expect(events[0]?.fermata).toEqual(own.events[0]?.fermata)
     expect(warnings.slice(own.warnings.length).map((w) => [w.code, w.element])).toEqual([
+      ['inconsistent:fermata', 'fermata'],
+    ])
+  })
+
+  test('says how the other note’s fermata disagrees', () => {
+    const { warnings } = read(chord('', '<fermata/>'))
+
+    expect(warnings.map((w) => w.message)).toEqual([
+      'A note of a chord carries a <fermata> the note it joins does not. MNX states the ' +
+        "fermata once for the chord, and the chord's own is the one converted.",
+    ])
+  })
+
+  test('reports a shape MNX lacks that every note carries once', () => {
+    const fermata = '<fermata>x</fermata>'
+
+    expect(read(chord(fermata, fermata)).warnings.map((w) => [w.code, w.element])).toEqual([
       ['unsupported:element', 'fermata'],
     ])
   })
@@ -660,7 +733,6 @@ describe('a fermata on the notes of a chord', () => {
       twoStaves,
       twoStaves + '<fermata type="inverted" placement="below"/>',
     ],
-    ['the note it joins carries more', twoStaves + '<fermata>square</fermata>', twoStaves],
     [
       'the note it joins carries another third',
       twoStaves + '<fermata>square</fermata>',
@@ -676,13 +748,47 @@ describe('a fermata on the notes of a chord', () => {
     ).toEqual([['unrepresentable:fermata', 'fermata', 1]])
   })
 
+  test('says the chord’s own first fermata is the one converted', () => {
+    const { warnings } = read(chord('<fermata/>', twoStaves))
+
+    expect(warnings.map((w) => w.message)).toEqual([
+      'A note of a chord carries more than one fermata, and MNX states one on the event. ' +
+        "The first fermata of the chord's own note is the one converted.",
+    ])
+  })
+
+  test('says no fermata is converted where only the other note carries two', () => {
+    const { warnings } = read(chord('', twoStaves))
+
+    expect(warnings.map((w) => [w.code, w.message])).toEqual([
+      [
+        'inconsistent:fermata',
+        'A note of a chord carries a <fermata> the note it joins does not. MNX states the ' +
+          "fermata once for the chord, and the chord's own is the one converted.",
+      ],
+      [
+        'unrepresentable:fermata',
+        'A note of a chord carries more than one fermata, and MNX states one on the event. ' +
+          "The chord's own note carries no fermata, so none is converted.",
+      ],
+    ])
+  })
+
+  test('says nothing of a note restating fewer of the chord’s fermatas', () => {
+    const { warnings } = read(chord(twoStaves + '<fermata>square</fermata>', twoStaves))
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:fermata'])
+  })
+
   test('reports a second fermata on a note of a chord whose first differs', () => {
-    const { warnings } = read(chord(twoStaves, '<fermata/>' + '<fermata type="inverted"/>'))
+    const { warnings } = read(
+      chord(twoStaves, '<fermata>square</fermata><fermata type="inverted"/>'),
+    )
 
     expect(warnings.map((w) => [w.code, w.element])).toEqual([
       ['unrepresentable:fermata', 'fermata'],
+      ['inconsistent:fermata', 'fermata'],
       ['unrepresentable:fermata', 'fermata'],
-      ['unsupported:element', 'fermata'],
     ])
   })
 })

@@ -36,6 +36,14 @@ const PRESENTATION_ATTRIBUTES: ReadonlySet<string> = new Set([
 ])
 
 /**
+ * Whether an attribute states only where or how something is drawn, or is
+ * XML plumbing such as a namespace declaration, rather than notation.
+ */
+export function isPresentationAttribute(name: string): boolean {
+  return PRESENTATION_ATTRIBUTES.has(name) || name.startsWith('xmlns')
+}
+
+/**
  * Report the notation-bearing attributes nothing read off this element.
  * Reading one through the tree accessor accounts for it. An attribute is a
  * converter gap unless NO_HOME_ATTRIBUTES lists it.
@@ -47,10 +55,7 @@ export function reportUnreadAttributes(
 ): void {
   const read = readAttributeNames(element)
   for (const name of Object.keys(element.attributes)) {
-    if (read?.has(name)) continue
-    if (PRESENTATION_ATTRIBUTES.has(name)) continue
-    // Namespace declarations are XML plumbing, not notation.
-    if (name.startsWith('xmlns')) continue
+    if (read?.has(name) || isPresentationAttribute(name)) continue
     const loss = attributeLoss(element.name, name)
     warnings.add(
       loss.code,
@@ -104,6 +109,15 @@ export class ElementReader {
   /** Accounts for one child, found on `element` directly and read there. */
   read(found: XmlElement): void {
     this.#read.add(found)
+  }
+
+  /**
+   * Accounts for one child whole, attributes included, for a child whose
+   * content another element states.
+   */
+  readWhole(found: XmlElement): void {
+    this.#read.add(found)
+    this.#skipped.add(found)
   }
 
   /**
