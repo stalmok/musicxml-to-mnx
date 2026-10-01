@@ -2661,6 +2661,17 @@ describe('two-note tremolos', () => {
     expect(warnings).toEqual([])
   })
 
+  test('reports a second marker on one note', () => {
+    const twice = tremoloNote('C', 'start').replace(
+      '</ornaments>',
+      '<tremolo type="start">2</tremolo></ornaments>',
+    )
+    const { content, warnings } = read(measure(twice + tremoloNote('E', 'stop')))
+
+    expect(content?.[0]?.kind === 'multiNoteTremolo' && content[0].marks).toBe(3)
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([['unsupported:element', 'tremolo']])
+  })
+
   test('reports a marker on a note of the chord drawn on the other side', () => {
     const drawn = (step: string, side: string) =>
       tremoloNote(step, 'start').replace('type="start"', `type="start" placement="${side}"`)

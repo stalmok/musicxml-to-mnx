@@ -848,9 +848,9 @@ function reportCarriedByUnwritableRest(
   const marks = notations.flatMap((block) => {
     const shown = attribute(block.element, 'print-object') !== 'no'
     return [...writtenMarks([block], warnings, context)].flatMap(({ marking, found, block }) => {
+      block.read(found)
       // A mark MNX cannot state was reported as it was read.
       if (marking === undefined) return []
-      block.read(found)
       return [{ found, shown }]
     })
   })
@@ -2164,9 +2164,11 @@ function multiNoteTremoloOf(
 ): MultiNoteTremolo | undefined {
   for (const block of notations) {
     for (const ornaments of block.blocks('ornaments')) {
-      for (const tremolo of ornaments.children('tremolo')) {
+      for (const tremolo of children(ornaments.element, 'tremolo')) {
         const type = attribute(tremolo, 'type')
         if (type !== 'start' && type !== 'stop') continue
+        // A note is one end of one pair, so a second marker stays unread.
+        ornaments.read(tremolo)
 
         // MNX has nowhere on a two-note tremolo to say which side it is
         // drawn on; the single-note kind carries that, this kind does not.
