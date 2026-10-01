@@ -4,7 +4,8 @@
 // settled.
 
 import type { Fraction } from '../fraction.js'
-import type { GlobalMeasure, Segno } from '../model/score.js'
+import type { GlobalMeasure, Segno, Tempo } from '../model/score.js'
+import type { Stated } from './element.js'
 
 export interface NamedSegno extends Segno {
   /** What the source calls this sign, where it names one. */
@@ -22,10 +23,16 @@ export interface DalSegno {
   readonly target?: string
 }
 
-/** A score measure while the parts are merged, before jumps are settled. */
-export type ReadGlobalMeasure = Omit<GlobalMeasure, 'segno' | 'jump'> & {
+/**
+ * A score measure while the parts are merged, before jumps are settled. The
+ * tempos and the number keep the elements that state them, for the warnings
+ * about parts that disagree.
+ */
+export type ReadGlobalMeasure = Omit<GlobalMeasure, 'segno' | 'jump' | 'tempos' | 'number'> & {
   readonly segno: NamedSegno | undefined
   readonly jump: DalSegno | undefined
+  readonly tempos: readonly Stated<Tempo>[]
+  readonly number: Stated<number> | undefined
 }
 
 /**
@@ -51,8 +58,10 @@ export function settleJumps(measures: readonly ReadGlobalMeasure[]): GlobalMeasu
     return from !== undefined && measures.some((m, i) => i >= from && m.fine !== undefined)
   }
 
-  return measures.map(({ segno, jump, ...measure }) => ({
+  return measures.map(({ segno, jump, tempos, number, ...measure }) => ({
     ...measure,
+    tempos: tempos.map((tempo) => tempo.value),
+    number: number?.value,
     segno: segno && { location: segno.location, glyph: segno.glyph, color: segno.color },
     jump: jump && { location: jump.location, type: reachesFine(jump) ? 'dsalfine' : 'segno' },
   }))

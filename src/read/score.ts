@@ -424,14 +424,15 @@ function mergeGlobalMeasures(
     if (
       existing?.number !== undefined &&
       measure.number !== undefined &&
-      existing.number !== measure.number
+      existing.number.value !== measure.number.value
     ) {
-      warnings.addForMeasure(
+      warnings.add(
         'inconsistent:measure-number',
-        `This measure is numbered ${String(existing.number)} by an earlier part and ` +
-          `${String(measure.number)} by this one. The first is the one converted.`,
+        `This measure is numbered ${String(existing.number.value)} by an earlier part and ` +
+          `${String(measure.number.value)} by this one. The first is the one converted.`,
         context,
-        'measure',
+        measure.number.element,
+        'number',
       )
     }
     reportDifferingMark(
@@ -539,20 +540,22 @@ function sameJump(a: DalSegno, b: DalSegno): boolean {
  * every other mark the parts share.
  */
 function mergeTempos(
-  existing: readonly Tempo[],
-  found: readonly Tempo[],
+  existing: readonly Stated<Tempo>[],
+  found: readonly Stated<Tempo>[],
   warnings: WarningCollector,
   context: ReportContext,
-): Tempo[] {
+): Stated<Tempo>[] {
   const merged = [...existing]
   for (const tempo of found) {
-    if (merged.some((other) => sameTempo(other, tempo))) continue
-    const at = merged.findIndex((other) => compareFractions(other.position, tempo.position) === 0)
+    if (merged.some((other) => sameTempo(other.value, tempo.value))) continue
+    const at = merged.findIndex(
+      (other) => compareFractions(other.value.position, tempo.value.position) === 0,
+    )
     if (at >= 0) {
       // A mark below existing.length is an earlier part's, and one at or past
       // it is this part's own. Only the wording of the report differs.
       const acrossParts = at < existing.length
-      warnings.addForMeasure(
+      warnings.add(
         'inconsistent:tempo',
         acrossParts
           ? 'The parts of this score state different tempos at the same point in this ' +
@@ -560,7 +563,7 @@ function mergeTempos(
           : 'This part states two different tempos at the same point in this measure. ' +
               'The first is the one converted.',
         context,
-        'metronome',
+        tempo.element,
       )
       continue
     }
@@ -974,7 +977,7 @@ function readMeasure(
   const staffConfigs: Stated<StaffConfig>[] = []
   const signatures = new MeasureSignatures(state, warnings, context, measurePath)
   const dynamics: Dynamic[] = []
-  const tempos: Tempo[] = []
+  const tempos: Stated<Tempo>[] = []
   // Every <sound tempo> of the measure, waiting on the score's marks to say
   // whether each one echoes a mark or stands alone.
   const soundTempos: SoundTempo[] = []
@@ -1157,7 +1160,7 @@ function readMeasure(
       key,
       time,
       tempos,
-      number: stated !== position ? stated : undefined,
+      number: stated !== undefined && stated !== position ? { value: stated, element } : undefined,
       // A light-heavy beside a backward repeat is how the closing sign is
       // drawn, and repeatEnd already draws it, so final is not stated too.
       // Settled here, not per <barline>, because a source can split the style

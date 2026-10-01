@@ -2852,16 +2852,17 @@ describe('several parts', () => {
   test('reports parts numbering the same measure differently', () => {
     const { score: result, warnings } = read(
       score(
-        `<part id="P1"><measure number="0">${NOTE}</measure></part>` +
+        `<part id="P1"><measure number="0">${NOTE}</measure></part>\n` +
           `<part id="P2"><measure number="5">${NOTE}</measure></part>`,
       ),
     )
 
     expect(result.globalMeasures[0]?.number).toBe(0)
     expect(warnings.map((w) => w.code)).toEqual(['inconsistent:measure-number'])
+    expect(warnings[0]).toMatchObject({ element: 'measure', attribute: 'number' })
     // Named by where the measure sits, as every other report names it; the
     // two labels the parts disagree over are in the message.
-    expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 1 })
+    expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 1, line: 2 })
     expect(warnings[0]?.message).toContain('numbered 0 by an earlier part and 5 by this one')
   })
 
@@ -3266,7 +3267,7 @@ describe('a tempo stated by more than one part', () => {
     const slower = metronome.replace('96', '60')
     const { score: result, warnings } = read(
       score(
-        `<part id="P1"><measure number="1">${metronome}${NOTE}</measure></part>` +
+        `<part id="P1"><measure number="1">${metronome}${NOTE}</measure></part>\n` +
           `<part id="P2"><measure number="1">${slower}${NOTE}</measure></part>`,
       ),
     )
@@ -3274,7 +3275,7 @@ describe('a tempo stated by more than one part', () => {
     expect(result.globalMeasures[0]?.tempos.map((t) => t.bpm)).toEqual([96])
     expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tempo'])
     expect(warnings[0]?.element).toBe('metronome')
-    expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 1 })
+    expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 1, line: 2 })
     // Named as a disagreement between parts, not within one.
     expect(warnings[0]?.message).toBe(
       'The parts of this score state different tempos at the same point in this measure. ' +
@@ -3287,11 +3288,12 @@ describe('a tempo stated by more than one part', () => {
   test('reports one part stating two different tempos at the same point', () => {
     const slower = metronome.replace('96', '60')
     const { score: result, warnings } = read(
-      score(`<part id="P1"><measure number="1">${metronome}${slower}${NOTE}</measure></part>`),
+      score(`<part id="P1"><measure number="1">${metronome}\n${slower}${NOTE}</measure></part>`),
     )
 
     expect(result.globalMeasures[0]?.tempos.map((t) => t.bpm)).toEqual([96])
     expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tempo'])
+    expect(warnings[0]).toMatchObject({ element: 'metronome', context: { line: 2 } })
     expect(warnings[0]?.message).toBe(
       'This part states two different tempos at the same point in this measure. ' +
         'The first is the one converted.',

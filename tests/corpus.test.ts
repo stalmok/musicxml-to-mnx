@@ -73,9 +73,9 @@ const converted = attempted.filter(
   (song) => song.rejected === undefined && song.crashed === undefined,
 )
 
-// Every warning names the line of its element, except where the element is
-// already read into the model. The three below work on model objects and name
-// only the measure. They are settled once the parts are merged.
+// Every warning names the line of its element, except the two below. They
+// compare what the parts state once they are merged, and a part may state
+// nothing in the measure, so they name only the measure.
 //
 // The per-song check below fails on a warning with no line that is not
 // listed. The whole-corpus check fails on a listed code the corpus no longer
@@ -84,7 +84,6 @@ const converted = attempted.filter(
 const REPORTED_WITHOUT_A_LINE: ReadonlySet<string> = new Set([
   'unrepresentable:cross-part-key',
   'unrepresentable:cross-part-time',
-  'inconsistent:tempo',
 ])
 
 // The list must equal the codes the corpus reports without a line.

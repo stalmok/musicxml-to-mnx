@@ -39,7 +39,7 @@ import { attributeLoss, elementLoss } from './unrepresentable.js'
 /** What one <direction> was found to carry. */
 export interface DirectionReading {
   dynamics: Dynamic[]
-  tempos: Tempo[]
+  tempos: Stated<Tempo>[]
   segnos: Stated<NamedSegno>[]
   fines: Stated<Fine>[]
   jumps: Stated<DalSegno>[]
@@ -246,7 +246,9 @@ export function readDirection(
           break
         }
         case 'metronome':
-          reading.tempos.push(...readMetronome(directionType.block(found), at, warnings, context))
+          for (const tempo of readMetronome(directionType.block(found), at, warnings, context)) {
+            reading.tempos.push({ value: tempo, element: found })
+          }
           break
         case 'octave-shift':
           // Read plainly, being an empty element.
