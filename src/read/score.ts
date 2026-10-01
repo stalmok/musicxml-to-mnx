@@ -1195,7 +1195,7 @@ function readMeasure(
 function onePerMeasure<T extends { location: Fraction }>(
   marks: readonly Stated<T>[],
   name: string,
-  // The attribute of the element the mark is read from, where it is one.
+  // The attribute that states the mark. Undefined where the element states it.
   attribute: string | undefined,
   warnings: WarningCollector,
   context: ReportContext,

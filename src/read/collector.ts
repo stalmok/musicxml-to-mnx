@@ -53,8 +53,8 @@ export class WarningCollector {
   }
 
   /**
-   * Reports an element the source leaves out, which the code names. at is
-   * where it is needed, and gives the warning its line.
+   * Reports a <divisions> the source leaves out. at is where it is needed,
+   * and gives the warning its line.
    */
   addMissing(
     code: 'missing:divisions',
@@ -65,7 +65,7 @@ export class WarningCollector {
     this.#push(this.reserve(), {
       code,
       message,
-      element: code.slice('missing:'.length),
+      element: 'divisions',
       attribute: undefined,
       context: { ...context, line: at.line },
     })

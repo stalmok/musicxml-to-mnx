@@ -36,18 +36,18 @@ const PRESENTATION_ATTRIBUTES: ReadonlySet<string> = new Set([
 ])
 
 /**
- * Whether an attribute states only where or how something is drawn, or is
- * XML plumbing such as a namespace declaration, rather than notation.
- */
-/**
- * A value read from the source, with the element that states it, for a
- * warning about the value that waits until the whole measure is read.
+ * A value read from the source, with the element that states it. A warning
+ * made after the read names that element.
  */
 export interface Stated<T> {
   readonly value: T
   readonly element: XmlElement
 }
 
+/**
+ * Whether an attribute states only where or how something is drawn, or is
+ * XML plumbing such as a namespace declaration, rather than notation.
+ */
 export function isPresentationAttribute(name: string): boolean {
   return PRESENTATION_ATTRIBUTES.has(name) || name.startsWith('xmlns')
 }
