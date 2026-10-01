@@ -968,6 +968,27 @@ describe('a rest filling a measure a grace note leads into', () => {
     )
   })
 
+  // A time signature stated after the rest is the next measure's, so the rest
+  // is still in a measure with the time signature it opened with.
+  test.each([
+    ['with no time signature', '', '<time><beats>3</beats><beat-type>4</beat-type></time>'],
+    [
+      'with a time signature',
+      '<time><beats>5</beats><beat-type>4</beat-type></time>',
+      '<time><senza-misura/></time>',
+    ],
+  ])('words the rest length in a measure that opens %s', (_, opens, late) => {
+    const bare = '<note><rest/><duration>18</duration><voice>1</voice></note>'
+    const message = (time: string) =>
+      convertValid(irregular(bare + `<attributes>${late}</attributes>`, time)).warnings.find(
+        (warning) => warning.code === 'unrepresentable:rest-length',
+      )?.message
+
+    expect(message(opens)).toContain(
+      opens === '' ? 'a measure written with no time signature' : 'no note value can write',
+    )
+  })
+
   // The space names no staff, so the rest still counts toward the staff the
   // voice sits on. With one grace note on each staff the two tie, and a tie
   // goes to the staff written first.
