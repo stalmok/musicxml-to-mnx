@@ -2319,11 +2319,12 @@ describe('a tuplet marker on a chord member', () => {
       measure(
         tupletNote('C', 4, 'eighth', 'start') +
           tupletNote('D', 4, 'eighth') +
-          chordMember('<tuplet type="start" number="2"/>') +
+          chordMember('<tuplet type="start" number="2" bracket="yes"/>') +
           tupletNote('E', 4, 'eighth', 'stop'),
       ),
     )
 
+    // The one warning accounts for the marker whole, how it is drawn included.
     expect(warnings.map((w) => ({ code: w.code, element: w.element }))).toEqual([
       { code: 'unsupported:element', element: 'tuplet' },
     ])
@@ -3483,6 +3484,39 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
     expect(content).toHaveLength(1)
     expect(content?.[0]?.kind === 'tuplet' && content[0].content).toHaveLength(3)
     expect(warnings).toEqual([])
+  })
+
+  // A rest filling the measure stands in no bracket, so a stop on it closes
+  // nothing.
+  test('reports a stop on a rest that fills the measure', () => {
+    const { content, warnings } = read(
+      measure(
+        '<note><rest measure="yes"/><duration>48</duration>' +
+          '<notations><tuplet type="stop" number="1"/></notations></note>',
+      ),
+    )
+
+    expect(content).toEqual([])
+    expect(warnings.map((w) => [w.code, w.element, w.message])).toEqual([
+      [
+        'unsupported:element',
+        'tuplet',
+        'A <tuplet> on a rest that fills the measure closes no bracket, and is not converted.',
+      ],
+    ])
+  })
+
+  test('reports a stop on a rest written over a rest that fills the measure', () => {
+    const measureRest = '<note><rest measure="yes"/><duration>48</duration></note>'
+    const over =
+      '<note><rest/><duration>12</duration><type>quarter</type>' +
+      '<notations><tuplet type="stop" number="1"/></notations></note>'
+    const { warnings } = read(measure(measureRest + over))
+
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([
+      ['unsupported:element', 'tuplet'],
+      ['redundant:rest', 'rest'],
+    ])
   })
 
   // A run opens on the note's ratio, before the note turns out not to be an

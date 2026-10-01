@@ -387,6 +387,7 @@ export function readNote(
     fills &&
     !((fills.needsEvent || carriesMarking || restStem !== undefined) && fills.canStayEvent)
   ) {
+    reportMarkersOnMeasureRest(markers, warnings, context)
     setMeasureRest(note, fills, state, builder, measureIndex, warnings, context, path)
     return
   }
@@ -475,6 +476,7 @@ export function readNote(
   // same voice's measure. Both are silence, so the measure rest
   // stands, the extra is reported, and the cursor still moves past it.
   if (restElement && builder.restIsRedundant(voice)) {
+    reportMarkersOnMeasureRest(markers, warnings, context)
     warnings.add(
       'redundant:rest',
       'A rest is written over a rest that already fills the measure in the same ' +
@@ -730,6 +732,25 @@ function openTupletsAndTremolo(
   }
 
   return { markers, tremolo }
+}
+
+/**
+ * A rest that fills the measure stands in no bracket. A start opens one, and
+ * a rest inside a bracket stays an event, so the markers here are stops.
+ */
+function reportMarkersOnMeasureRest(
+  markers: readonly XmlElement[],
+  warnings: WarningCollector,
+  context: ReportContext,
+): void {
+  for (const marker of markers) {
+    warnings.addWhole(
+      'unsupported:element',
+      'A <tuplet> on a rest that fills the measure closes no bracket, and is not converted.',
+      context,
+      marker,
+    )
+  }
 }
 
 /** Places a rest as its voice's rest through the measure. */
@@ -1056,7 +1077,7 @@ function readChordMember(
     // member is read, so the bracket would begin after the chord it
     // belongs to. The number is recorded so the stop that matches it is
     // dropped too, rather than closing the bracket around it.
-    warnings.add(
+    warnings.addWhole(
       'unsupported:element',
       'A <tuplet> starts on a chord member, where the bracket would begin after the ' +
         'chord it belongs to, so it is not converted yet.',
