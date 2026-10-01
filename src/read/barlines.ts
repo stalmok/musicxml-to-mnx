@@ -17,7 +17,7 @@ import type { ReportContext, WarningCollector } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, trimmedText } from '../xml/tree.js'
 import { readColor } from './color.js'
-import type { ElementReader } from './element.js'
+import type { ElementReader, Stated } from './element.js'
 import { entriesOf } from './tables.js'
 import { reportHidden } from './unrepresentable.js'
 import { readFermataAt } from './notes.js'
@@ -68,7 +68,7 @@ export interface BarlineReading {
   endingStop: EndingStop | undefined
   fermata: Fermata | undefined
   /** A segno drawn on the barline, the same sign a direction can carry. */
-  segno: NamedSegno | undefined
+  segno: Stated<NamedSegno> | undefined
 }
 
 const NOTHING: BarlineReading = {
@@ -138,16 +138,19 @@ function readSegno(
   position: Fraction,
   warnings: WarningCollector,
   context: ReportContext,
-): NamedSegno | undefined {
+): Stated<NamedSegno> | undefined {
   const segno = element.child('segno')
   if (!segno) return undefined
 
   const name = attribute(element.element, 'segno')
   return {
-    location: position,
-    glyph: attribute(segno, 'smufl'),
-    color: readColor(segno, warnings, context),
-    ...(name !== undefined ? { name } : {}),
+    value: {
+      location: position,
+      glyph: attribute(segno, 'smufl'),
+      color: readColor(segno, warnings, context),
+      ...(name !== undefined ? { name } : {}),
+    },
+    element: segno,
   }
 }
 

@@ -26,7 +26,7 @@ import type { XmlElement } from '../xml/parse.js'
 import { attribute, trimmedText } from '../xml/tree.js'
 import { readColor } from './color.js'
 import { divisionsInForce } from './divisions.js'
-import type { ElementReader } from './element.js'
+import type { ElementReader, Stated } from './element.js'
 import { noteValueBaseOf } from './noteValues.js'
 import { parseDecimal, parseWholeNumber, readIntegerInRange } from './numbers.js'
 import type { GraceNotesAt } from './voices.js'
@@ -40,9 +40,9 @@ import { attributeLoss, elementLoss } from './unrepresentable.js'
 export interface DirectionReading {
   dynamics: Dynamic[]
   tempos: Tempo[]
-  segnos: NamedSegno[]
-  fines: Fine[]
-  jumps: DalSegno[]
+  segnos: Stated<NamedSegno>[]
+  fines: Stated<Fine>[]
+  jumps: Stated<DalSegno>[]
   /** Each <sound tempo> the direction states. */
   soundTempos: SoundTempo[]
 }
@@ -302,9 +302,12 @@ export function readDirection(
           // part it is written in. The optional smufl attribute names a
           // specific glyph; MNX carries it as the segno's glyph.
           reading.segnos.push({
-            location: at,
-            glyph: attribute(found, 'smufl'),
-            color: readColor(found, warnings, context),
+            value: {
+              location: at,
+              glyph: attribute(found, 'smufl'),
+              color: readColor(found, warnings, context),
+            },
+            element: found,
           })
           break
         default: {
@@ -332,14 +335,17 @@ export function readDirection(
   // later <direction> at the same point, or by another part.
   for (const sound of element.blocks('sound')) {
     const soundReading = readSound(sound, at, warnings, context)
-    if (soundReading.fine) reading.fines.push(soundReading.fine)
-    if (soundReading.jump) reading.jumps.push(soundReading.jump)
+    if (soundReading.fine) reading.fines.push({ value: soundReading.fine, element: sound.element })
+    if (soundReading.jump) reading.jumps.push({ value: soundReading.jump, element: sound.element })
     if (soundReading.tempo) reading.soundTempos.push(soundReading.tempo)
     // The <sound> naming the sign sits in the same <direction> as the <segno>
     // it names, so the name is put on the signs this direction just read.
     if (soundReading.segnoName !== undefined) {
       const name = soundReading.segnoName
-      reading.segnos = reading.segnos.map((segno) => ({ ...segno, name }))
+      reading.segnos = reading.segnos.map((segno) => ({
+        ...segno,
+        value: { ...segno.value, name },
+      }))
     }
   }
 

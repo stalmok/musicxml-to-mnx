@@ -978,9 +978,9 @@ function readMeasure(
   // Every <sound tempo> of the measure, waiting on the score's marks to say
   // whether each one echoes a mark or stands alone.
   const soundTempos: SoundTempo[] = []
-  const segnos: NamedSegno[] = []
-  const fines: Fine[] = []
-  const jumps: DalSegno[] = []
+  const segnos: Stated<NamedSegno>[] = []
+  const fines: Stated<Fine>[] = []
+  const jumps: Stated<DalSegno>[] = []
   const multimeasureRests: Stated<number>[] = []
   const measureRepeats: MeasureRepeatReading[] = []
   let systemBreak = false
@@ -1086,8 +1086,8 @@ function readMeasure(
       // after the <sound> or by another part.
       case 'sound': {
         const reading = readSound(reader, builder.position(), warnings, context)
-        if (reading.fine) fines.push(reading.fine)
-        if (reading.jump) jumps.push(reading.jump)
+        if (reading.fine) fines.push({ value: reading.fine, element: found })
+        if (reading.jump) jumps.push({ value: reading.jump, element: found })
         if (reading.tempo) soundTempos.push(reading.tempo)
         break
       }
@@ -1169,9 +1169,9 @@ function readMeasure(
       // Filled in by the part, once the ending's other end has been met.
       ending: undefined,
       fermata,
-      segno: onePerMeasure(segnos, 'segno', ['segno'], warnings, context, drawnDifferently),
-      fine: onePerMeasure(fines, 'fine', ['sound', 'fine'], warnings, context),
-      jump: onePerMeasure(jumps, 'jump', ['sound', 'dalsegno'], warnings, context),
+      segno: onePerMeasure(segnos, 'segno', undefined, warnings, context, drawnDifferently),
+      fine: onePerMeasure(fines, 'fine', 'fine', warnings, context),
+      jump: onePerMeasure(jumps, 'jump', 'dalsegno', warnings, context),
       multimeasureRest: oneMultimeasureRest(multimeasureRests, warnings, context),
       systemBreak,
       pageBreak,
@@ -1190,23 +1190,25 @@ function readMeasure(
  * and lose nothing, unless `differs` says they are drawn as different marks.
  */
 function onePerMeasure<T extends { location: Fraction }>(
-  marks: readonly T[],
+  marks: readonly Stated<T>[],
   name: string,
-  source: readonly [string, string?],
+  // The attribute of the element the mark is read from, where it is one.
+  attribute: string | undefined,
   warnings: WarningCollector,
   context: ReportContext,
   differs?: (first: T, other: T) => boolean,
 ): T | undefined {
-  const first = marks[0]
+  const first = marks[0]?.value
   if (first === undefined) return undefined
-  for (const other of marks.slice(1)) {
+  for (const { value: other, element } of marks.slice(1)) {
     if (compareFractions(other.location, first.location) !== 0 || differs?.(first, other)) {
-      warnings.addForMeasure(
+      warnings.add(
         'unrepresentable:element',
         `A measure carries more than one ${name}, and MNX states one per measure. ` +
           'The first is the one converted.',
         context,
-        ...source,
+        element,
+        attribute,
       )
     }
   }

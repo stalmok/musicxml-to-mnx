@@ -1204,11 +1204,12 @@ describe('segno', () => {
   // and the first kept.
   test('reports a second segno at a different point in the measure', () => {
     const { global, warnings } = read(
-      inMeasure(direction('<segno/>') + note('C') + direction('<segno/>') + note('D')),
+      inMeasure(direction('<segno/>') + note('C') + '\n' + direction('<segno/>') + note('D')),
     )
 
     expect(global?.segno).toEqual({ location: { num: 0, den: 1 }, glyph: undefined })
     expect(warnings.map((w) => w.element)).toEqual(['segno'])
+    expect(warnings[0]?.context.line).toBe(2)
     expect(warnings[0]?.message).toContain('more than one segno')
   })
 
@@ -1356,12 +1357,29 @@ describe('sound navigation', () => {
   // and the first kept.
   test('reports a second fine at a different point in the measure', () => {
     const { global, warnings } = read(
-      inMeasure('<sound fine="yes"/>' + note('C') + '<sound fine="yes"/>'),
+      inMeasure('<sound fine="yes"/>' + note('C') + '\n<sound fine="yes"/>'),
     )
 
     expect(global?.fine).toEqual({ location: { num: 0, den: 1 } })
     expect(warnings.map((w) => [w.element, w.attribute])).toEqual([['sound', 'fine']])
+    expect(warnings[0]?.context.line).toBe(2)
     expect(warnings[0]?.message).toContain('more than one fine')
+  })
+
+  test('reports a second jump at a different point in the measure', () => {
+    const { global, warnings } = read(
+      inMeasure(
+        '<sound dalsegno="segno"/>' +
+          note('C') +
+          '\n<direction><direction-type><segno/></direction-type>' +
+          '<sound dalsegno="segno"/></direction>',
+      ),
+    )
+
+    expect(global?.jump).toEqual({ location: { num: 0, den: 1 }, type: 'segno' })
+    expect(warnings.map((w) => [w.element, w.attribute])).toEqual([['sound', 'dalsegno']])
+    expect(warnings[0]?.context.line).toBe(2)
+    expect(warnings[0]?.message).toContain('more than one jump')
   })
 
   // A jump carries other playback the output cannot hold; the jump converts

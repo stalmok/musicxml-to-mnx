@@ -469,11 +469,15 @@ describe('a segno on the barline', () => {
   // two claims about the one segno MNX states per measure.
   test('reports a second segno where a direction already drew one', () => {
     const { globals, warnings } = read(
-      '<direction><direction-type><segno/></direction-type></direction>' + NOTE + right('<segno/>'),
+      '<direction><direction-type><segno/></direction-type></direction>' +
+        NOTE +
+        '\n' +
+        right('<segno/>'),
     )
 
     expect(globals[0]?.segno).toEqual({ location: { num: 0, den: 1 } })
     expect(warnings.map((w) => w.element)).toEqual(['segno'])
+    expect(warnings[0]?.context.line).toBe(3)
     expect(warnings[0]?.message).toContain('more than one segno')
   })
 
