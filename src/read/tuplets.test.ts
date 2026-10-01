@@ -3393,6 +3393,49 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
     expect(warnings).toEqual([])
   })
 
+  // A run that holds all its ratio counts is over, so a grace note after it
+  // leads to the next note, as it does after a drawn bracket.
+  test('leaves a grace note after a full run outside it', () => {
+    const grace =
+      '<note><grace/><pitch><step>F</step><octave>5</octave></pitch><type>eighth</type></note>'
+    const { content, warnings } = read(
+      measure(
+        rated('C', 4, 'eighth') +
+          rated('D', 4, 'eighth') +
+          rated('E', 4, 'eighth') +
+          grace +
+          plain('G', 12, 'quarter'),
+      ),
+    )
+    const tuplet = content?.[0]
+
+    expect(content?.map((item) => item.kind)).toEqual(['tuplet', 'grace', 'event'])
+    expect(tuplet?.kind === 'tuplet' && tuplet.content).toHaveLength(3)
+    expect(warnings).toEqual([])
+  })
+
+  test('leaves a grace note between two full runs outside both', () => {
+    const grace =
+      '<note><grace/><pitch><step>F</step><octave>5</octave></pitch><type>eighth</type></note>'
+    const { content, warnings } = read(
+      measure(
+        rated('C', 4, 'eighth') +
+          rated('D', 4, 'eighth') +
+          rated('E', 4, 'eighth') +
+          grace +
+          rated('F', 4, 'eighth') +
+          rated('G', 4, 'eighth') +
+          rated('A', 4, 'eighth'),
+      ),
+    )
+
+    expect(content?.map((item) => item.kind)).toEqual(['tuplet', 'grace', 'tuplet'])
+    expect(
+      content?.map((item) => (item.kind === 'tuplet' ? item.content.length : undefined)),
+    ).toEqual([3, undefined, 3])
+    expect(warnings).toEqual([])
+  })
+
   /** A note of `units` divisions written as `type`, ending a tuplet it never opened. */
   const stopping = (step: string, units: number, type: string) =>
     `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
