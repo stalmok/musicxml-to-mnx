@@ -24,6 +24,7 @@ in memory. A fatal error returns no partial result.
 | ------------------ | ------------------------------------------------------------------ |
 | `src/index.ts`     | Export the public conversion API, errors, warnings, and MNX types. |
 | `src/container.ts` | Decode input bytes and select the score from an archive.           |
+| `src/convert.ts`   | Run the pipeline from input to MNX and warnings.                   |
 | `src/xml/`         | Parse XML and provide typed tree access with source positions.     |
 | `src/read/`        | Interpret MusicXML, build the score model, and collect warnings.   |
 | `src/model/`       | Define the internal score model shared by reader and writer.       |
