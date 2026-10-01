@@ -2798,6 +2798,7 @@ describe('several parts', () => {
 
     expect(result.globalMeasures[0]?.barline).toBe('final')
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-barline'])
+    expect(warnings[0]?.element).toBe('barline')
     expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 1, line: 2 })
   })
 

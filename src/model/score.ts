@@ -731,7 +731,7 @@ export interface GlobalMeasure {
    * Filled in once the whole part is read, because the bracket is written as
    * a start in one measure and a stop in another.
    */
-  ending: Ending | undefined
+  readonly ending: Ending | undefined
   /** A pause written over the barline rather than over a note. */
   readonly fermata: Fermata | undefined
   /** The segno sign, where the measure carries one. MNX draws one per measure. */

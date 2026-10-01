@@ -960,8 +960,8 @@ function readMeasure(
 ): MeasureReading {
   const position = index + 1
   const context: ReportContext = { part: partId, measure: position }
-  const stated = readMeasureLabel(element, warnings, context)
-  const measurePath: DocumentPath = [...path, `measure ${String(stated ?? position)}`]
+  const label = readMeasureLabel(element, warnings, context)
+  const measurePath: DocumentPath = [...path, `measure ${String(label ?? position)}`]
   // The measure element is walked child by child below rather than through
   // one reader, so its own attributes are swept here: the label above read
   // the number, and anything else (implicit, non-controlling) is a loss.
@@ -1154,7 +1154,7 @@ function readMeasure(
       key,
       time,
       tempos,
-      number: stated !== undefined && stated !== position ? { value: stated, element } : undefined,
+      number: label !== undefined && label !== position ? { value: label, element } : undefined,
       // A light-heavy beside a backward repeat is how the closing sign is
       // drawn, and repeatEnd already draws it, so final is not stated too.
       // Settled here, not per <barline>, because a source can split the style

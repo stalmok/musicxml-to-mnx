@@ -1,19 +1,10 @@
-// The segno and jump as the reader holds them. MNX names neither the sign nor
-// the sign a jump returns to, so the model carries no name. The reader needs
-// both to tell which segno a D.S. goes back to, and drops them once that is
-// settled.
+// The score's measure as the reader holds it while the parts are merged. MNX
+// names neither the segno nor the sign a jump returns to, so the model carries
+// no name. The reader needs both to tell which segno a D.S. goes back to, and
+// drops them once that is settled.
 
 import type { Fraction } from '../fraction.js'
-import type {
-  BarlineType,
-  Ending,
-  Fermata,
-  Fine,
-  GlobalMeasure,
-  RepeatEnd,
-  Segno,
-  Tempo,
-} from '../model/score.js'
+import type { GlobalMeasure, Segno, Tempo } from '../model/score.js'
 import type { Stated } from './element.js'
 
 export interface NamedSegno extends Segno {
@@ -34,15 +25,16 @@ export interface DalSegno {
 
 /** The marks one part states on the score's measure. */
 interface ReadMarks {
-  readonly number: number
-  readonly barline: BarlineType
-  readonly repeatEnd: RepeatEnd
-  ending: Ending
-  readonly fermata: Fermata
+  readonly number: NonNullable<GlobalMeasure['number']>
+  readonly barline: NonNullable<GlobalMeasure['barline']>
+  readonly repeatEnd: NonNullable<GlobalMeasure['repeatEnd']>
+  // Filled in once the part has met the ending's stop.
+  ending: NonNullable<GlobalMeasure['ending']>
+  readonly fermata: NonNullable<GlobalMeasure['fermata']>
   readonly segno: NamedSegno
-  readonly fine: Fine
+  readonly fine: NonNullable<GlobalMeasure['fine']>
   readonly jump: DalSegno
-  readonly multimeasureRest: number
+  readonly multimeasureRest: NonNullable<GlobalMeasure['multimeasureRest']>
 }
 
 /**
