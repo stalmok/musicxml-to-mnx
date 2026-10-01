@@ -85,9 +85,9 @@ export interface PartState {
   divisionsAssumed: boolean
   /**
    * The time signature the measure being read is measured against, which like
-   * <divisions> stays until restated. Only the measure reader sets it: to the
+   * <divisions> stays until restated. Only MeasureSignatures sets it: to the
    * one stated where the measure begins, and to one stated after the start
-   * once the measure is settled, since that one is the next measure's.
+   * once the measure is finished, since that one is the next measure's.
    */
   time: TimeSignature | undefined
   /**

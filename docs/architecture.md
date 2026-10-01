@@ -98,6 +98,7 @@ The reader modules are:
 | ----------------------------- | ------------------------------------------------------------------------------ |
 | `score.ts`                    | Read parts and walk measures in document order.                                |
 | `attributes.ts`               | Read divisions, staves, keys, time signatures, clefs, and measure styles.      |
+| `signatures.ts`               | Settle key and time signatures per measure, per part, and across parts.        |
 | `notes.ts`                    | Read notes and their notation.                                                 |
 | `voices.ts`                   | Track the cursor and assemble voice events.                                    |
 | `rests.ts`                    | Decide whether a rest is its voice's measure rest, and in what form.           |
