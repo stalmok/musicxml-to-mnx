@@ -29,7 +29,7 @@ import type {
   Tempo,
   TimeSignature,
 } from '../model/score.js'
-import type { ReportContext, WarningCollector } from './collector.js'
+import type { MeasureWideElement, ReportContext, WarningCollector } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
 import {
   attribute,
@@ -338,7 +338,7 @@ function mergeGlobalMeasures(
   // `source` is the element and attribute the mark is read from.
   const reportDifferingMark = <T>(
     name: string,
-    source: readonly [string, string?],
+    source: readonly [MeasureWideElement, string?],
     inScore: T | undefined,
     inPart: T | undefined,
     same: (a: T, b: T) => boolean,

@@ -34,7 +34,6 @@ export function divisionsInForce(
         'One division per quarter note is assumed.',
       context,
       at,
-      'divisions',
     )
     state.divisions = 1
     state.divisionsAssumed = true

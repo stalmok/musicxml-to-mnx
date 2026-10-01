@@ -17,6 +17,13 @@ export type ReportContext = Omit<WarningContext, 'line'> & { readonly line?: nev
  */
 export type WarningPlace = number
 
+/**
+ * The elements whose losses are reported for a measure as a whole: the marks
+ * MNX states once on the score's measure, which the parts can disagree about.
+ */
+export type MeasureWideElement =
+  'barline' | 'ending' | 'fermata' | 'key' | 'multiple-rest' | 'repeat' | 'segno' | 'sound' | 'time'
+
 export class WarningCollector {
   readonly #warnings: { place: WarningPlace; warning: ConversionWarning }[] = []
   #next = 0
@@ -46,20 +53,19 @@ export class WarningCollector {
   }
 
   /**
-   * Reports an element the source leaves out. at is where it is needed, and
-   * gives the warning its line.
+   * Reports an element the source leaves out, which the code names. at is
+   * where it is needed, and gives the warning its line.
    */
   addMissing(
-    code: Extract<WarningCode, `missing:${string}`>,
+    code: 'missing:divisions',
     message: string,
     context: ReportContext,
     at: XmlElement,
-    missing: string,
   ): void {
     this.#push(this.reserve(), {
       code,
       message,
-      element: missing,
+      element: code.slice('missing:'.length),
       attribute: undefined,
       context: { ...context, line: at.line },
     })
@@ -74,7 +80,7 @@ export class WarningCollector {
     code: WarningCode,
     message: string,
     context: ReportContext,
-    element: string,
+    element: MeasureWideElement,
     attribute?: string,
   ): void {
     this.#push(this.reserve(), { code, message, element, attribute, context })

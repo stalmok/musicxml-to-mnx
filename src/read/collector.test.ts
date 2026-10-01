@@ -148,7 +148,7 @@ describe('a warning about an element the source leaves out', () => {
     const warnings = new WarningCollector()
     const note = parseXmlRoot('<measure>\n  <note/>\n</measure>').children[0]!
 
-    warnings.addMissing('missing:divisions', 'assumed', { measure: 1 }, note, 'divisions')
+    warnings.addMissing('missing:divisions', 'assumed', { measure: 1 }, note)
 
     expect(warnings.list()).toEqual([
       {
