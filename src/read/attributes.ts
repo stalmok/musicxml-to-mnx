@@ -81,7 +81,7 @@ export interface AttributesReading {
    * starting at this one. A block may state one per staff, and the measure
    * checks whether they agree.
    */
-  multimeasureRests: number[]
+  multimeasureRests: Stated<number>[]
   /**
    * Every measure repeat edge this block states: the pattern length of a sign
    * starting here, or a stop naming this the first measure without one.
@@ -114,8 +114,12 @@ export interface StaffSignature<T> {
  * scoped to one staff. An edge written without a <measure-style> "number"
  * speaks for every staff of the part, and is read as one edge per staff.
  */
-export type MeasureRepeatReading =
+export type MeasureRepeatReading = (
   { edge: 'start'; measures: number; staff: number } | { edge: 'stop'; staff: number }
+) & {
+  /** The <measure-repeat> stating the edge. */
+  element: XmlElement
+}
 
 // The one <staff-size> that states the default: a hundred percent of the
 // work's scaling, written with or without a fraction. Matched as text rather
@@ -272,7 +276,7 @@ export function readAttributes(
 }
 
 interface MeasureStyleReading {
-  multimeasureRests: number[]
+  multimeasureRests: Stated<number>[]
   measureRepeats: MeasureRepeatReading[]
 }
 
@@ -344,7 +348,10 @@ function readMeasureStyle(
 
     // MusicXML states a positive integer. The upper bound rejects a corrupt
     // file.
-    reading.multimeasureRests.push(readIntegerInRange(rest, path, 1, 100_000))
+    reading.multimeasureRests.push({
+      value: readIntegerInRange(rest, path, 1, 100_000),
+      element: rest,
+    })
   }
 
   const repeat = element.child('measure-repeat')
@@ -357,7 +364,9 @@ function readMeasureStyle(
       })
     }
     if (edge === 'stop') {
-      for (const staff of staves) reading.measureRepeats.push({ edge: 'stop', staff })
+      for (const staff of staves) {
+        reading.measureRepeats.push({ edge: 'stop', staff, element: repeat })
+      }
     } else {
       // The content is a positive integer or empty, and an empty sign is the
       // one-measure sign. The upper bound rejects a corrupt file.
@@ -378,7 +387,9 @@ function readMeasureStyle(
         )
         // The source drew a new sign on these staves, so whatever they were
         // drawing stopped. Staves the sign does not name are left running.
-        for (const staff of staves) reading.measureRepeats.push({ edge: 'stop', staff })
+        for (const staff of staves) {
+          reading.measureRepeats.push({ edge: 'stop', staff, element: repeat })
+        }
         return reading
       }
 
@@ -392,7 +403,9 @@ function readMeasureStyle(
         )
       }
 
-      for (const staff of staves) reading.measureRepeats.push({ edge: 'start', measures, staff })
+      for (const staff of staves) {
+        reading.measureRepeats.push({ edge: 'start', measures, staff, element: repeat })
+      }
     }
   }
 

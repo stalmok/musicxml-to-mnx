@@ -251,7 +251,7 @@ describe('a measure repeat', () => {
         },
         { body: NOTE },
         {
-          attributes: '<measure-style number="1"><measure-repeat type="stop"/></measure-style>',
+          attributes: '\n<measure-style number="1"><measure-repeat type="stop"/></measure-style>',
           body: NOTE,
         },
         { body: NOTE },
@@ -264,7 +264,10 @@ describe('a measure repeat', () => {
 
     expect(repeats(mnx)).toEqual([{ number: 1 }, { number: 1 }, undefined, undefined, undefined])
     expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:measure-repeat'])
-    expect(warnings[0]?.context).toMatchObject({ part: 'P1', measure: 3 })
+    expect(warnings[0]).toMatchObject({
+      element: 'measure-repeat',
+      context: { part: 'P1', measure: 3, line: 2 },
+    })
   })
 
   // One staff starts a sign while another staff's sign runs. The walk
@@ -282,7 +285,7 @@ describe('a measure repeat', () => {
         { body: NOTE },
         {
           attributes:
-            '<measure-style number="2"><measure-repeat type="start">1</measure-repeat>' +
+            '\n<measure-style number="2"><measure-repeat type="start">1</measure-repeat>' +
             '</measure-style>',
           body: NOTE,
         },
@@ -292,7 +295,10 @@ describe('a measure repeat', () => {
 
     expect(repeats(mnx)).toEqual([{ number: 1 }, { number: 1 }, { number: 1 }, undefined])
     expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:measure-repeat'])
-    expect(warnings[0]?.context).toMatchObject({ part: 'P1', measure: 3 })
+    expect(warnings[0]).toMatchObject({
+      element: 'measure-repeat',
+      context: { part: 'P1', measure: 3, line: 2 },
+    })
   })
 
   // A start restating one staff's running sign while the other staff's runs
@@ -442,7 +448,7 @@ describe('a measure repeat', () => {
         {
           attributes:
             '<measure-style number="1"><measure-repeat type="start">1</measure-repeat>' +
-            '</measure-style>' +
+            '</measure-style>\n' +
             '<measure-style number="2"><measure-repeat type="start">2</measure-repeat>' +
             '</measure-style>',
           body: NOTE,
@@ -453,6 +459,7 @@ describe('a measure repeat', () => {
 
     expect(repeats(mnx)?.[3]).toEqual({ number: 1 })
     expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:measure-repeat'])
+    expect(warnings[0]).toMatchObject({ element: 'measure-repeat', context: { line: 2 } })
   })
 
   // MusicXML sets no upper bound on the pattern; MNX states one of four

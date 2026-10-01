@@ -90,7 +90,7 @@ describe('a multi-measure rest', () => {
     const { mnx, warnings } = convert(
       part('P1', [
         {
-          attributes: multipleRest('3', '') + multipleRest('2', ''),
+          attributes: multipleRest('3', '') + '\n' + multipleRest('2', ''),
           body: REST,
         },
         { body: REST },
@@ -101,6 +101,7 @@ describe('a multi-measure rest', () => {
 
     expect(mnx.scores?.[0]?.multimeasureRests?.[0]?.duration).toBe(3)
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:multimeasure-rest'])
+    expect(warnings[0]).toMatchObject({ element: 'multiple-rest', context: { line: 2 } })
   })
 
   test('does not report a count restated per staff', () => {

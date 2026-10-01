@@ -891,16 +891,17 @@ function resolveMeasureRepeats(
     // A stop is read before a start, so a measure stopping one sign may
     // start the next. A stop for a staff drawing no sign closes nothing, and
     // leaves the staves that are drawing one alone.
-    const closed = stops.filter((stop) => open.delete(stop.staff)).length
-    if (closed > 0) {
+    const closed = stops.filter((stop) => open.delete(stop.staff))
+    const firstClosed = closed[0]
+    if (firstClosed !== undefined) {
       if (open.size > 0) {
-        warnings.addForMeasure(
+        warnings.add(
           'unrepresentable:measure-repeat',
           "This measure stops a measure repeat sign for one staff while another staff's " +
             'sign runs on, and MNX states one sign for the part. The sign ends here for ' +
             'every staff.',
           context,
-          'measure-repeat',
+          firstClosed.element,
         )
         open.clear()
       }
@@ -912,13 +913,14 @@ function resolveMeasureRepeats(
       // A restated length, as one written per staff, loses nothing;
       // differing lengths cannot all be carried, so the first is kept and
       // the disagreement reported.
-      if (starts.some((start) => start.measures !== first.measures)) {
-        warnings.addForMeasure(
+      const differing = starts.find((start) => start.measures !== first.measures)
+      if (differing !== undefined) {
+        warnings.add(
           'unrepresentable:measure-repeat',
           'This measure starts measure repeats of different patterns, and MNX states ' +
             'one for the measure. The first is the one converted.',
           context,
-          'measure-repeat',
+          differing.element,
         )
       }
 
@@ -927,13 +929,13 @@ function resolveMeasureRepeats(
       const restated = new Set(starts.map((start) => start.staff))
       const cut = [...open.keys()].filter((staff) => !restated.has(staff))
       if (cut.length > 0) {
-        warnings.addForMeasure(
+        warnings.add(
           'unrepresentable:measure-repeat',
           "This measure starts a measure repeat sign while another staff's sign is " +
             'still running, and MNX states one sign for the part. The new sign ' +
             'replaces the running one.',
           context,
-          'measure-repeat',
+          first.element,
         )
         for (const staff of cut) open.delete(staff)
       }
@@ -979,7 +981,7 @@ function readMeasure(
   const segnos: NamedSegno[] = []
   const fines: Fine[] = []
   const jumps: DalSegno[] = []
-  const multimeasureRests: number[] = []
+  const multimeasureRests: Stated<number>[] = []
   const measureRepeats: MeasureRepeatReading[] = []
   let systemBreak = false
   let pageBreak = false
@@ -1227,22 +1229,23 @@ function drawnDifferently(a: Segno, b: Segno): boolean {
  * be carried, so the first is kept and the disagreement reported.
  */
 function oneMultimeasureRest(
-  counts: readonly number[],
+  counts: readonly Stated<number>[],
   warnings: WarningCollector,
   context: ReportContext,
 ): number | undefined {
   const first = counts[0]
   if (first === undefined) return undefined
-  if (counts.some((count) => count !== first)) {
-    warnings.addForMeasure(
+  const differing = counts.find((count) => count.value !== first.value)
+  if (differing !== undefined) {
+    warnings.add(
       'unrepresentable:multimeasure-rest',
       'This measure states multi-measure rests of different spans, and MNX states ' +
         'one for the score. The first is the one converted.',
       context,
-      'multiple-rest',
+      differing.element,
     )
   }
-  return first
+  return first.value
 }
 
 /**
