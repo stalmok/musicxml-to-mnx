@@ -109,8 +109,6 @@ interface VoiceBuilder {
    * closed in this measure, waiting for it to be whole.
    */
   tuplets: TupletTracker
-  /** The two-note tremolo marker the most recent event's own note carried. */
-  eventTremoloMarker: string | undefined
   content: SequenceItem[]
   /** Where this voice's content runs out, measured from the measure start. */
   end: Fraction
@@ -1405,26 +1403,6 @@ export class MeasureBuilder {
     return voice ?? this.#lastVoice
   }
 
-  /** Holds what the event's own note said about tuplets, for its chord. */
-  holdTupletMarkers(voice: string | undefined, markers: readonly string[]): void {
-    this.#builderFor(voice).tuplets.holdEventMarkers(markers)
-  }
-
-  /** Whether a chord member's marker restates one the chord's own note carried. */
-  restatesTupletMarker(voice: string | undefined, marker: string): boolean {
-    return this.#builderFor(voice).tuplets.restatesMarker(marker)
-  }
-
-  /** Holds the two-note tremolo marker the event's own note carried, for its chord. */
-  noteTremoloMarker(voice: string | undefined, marker: string | undefined): void {
-    this.#builderFor(voice).eventTremoloMarker = marker
-  }
-
-  /** Whether a chord member's two-note tremolo marker restates the chord's own. */
-  restatesTremoloMarker(voice: string | undefined, marker: string): boolean {
-    return this.#builderFor(voice).eventTremoloMarker === marker
-  }
-
   /**
    * Records a tuplet this voice never opened, by the number its start marker
    * stated, so the stop that matches it can be dropped with it.
@@ -1836,7 +1814,6 @@ function newVoiceBuilder(openedAt?: XmlElement): VoiceBuilder {
     graceBeamed: [],
     placed: [],
     tuplets: new TupletTracker(content),
-    eventTremoloMarker: undefined,
     content,
     end: fraction(0),
     last: undefined,

@@ -2,6 +2,7 @@
 // read without.
 
 import type { ReportContext } from './collector.js'
+import type { EventNotation } from './eventNotations.js'
 import type {
   Event,
   PitchedClefSign,
@@ -174,11 +175,10 @@ export interface PartState {
    */
   statedTransposition: Transposition | undefined
   /**
-   * The fermatas past the first that an event's own note wrote, reported as
-   * it was read because MNX states one. A note of the chord restating them
-   * loses nothing more.
+   * The notations each event's own note wrote on it, for the notes of the
+   * chord that follow to restate or disagree with.
    */
-  fermatasPastFirst: WeakMap<Event, readonly XmlElement[]>
+  eventNotations: WeakMap<Event, readonly EventNotation[]>
 }
 
 /**
@@ -214,6 +214,6 @@ export function newPartState(
     carriedTupletStops: [],
     transposition: undefined,
     statedTransposition: undefined,
-    fermatasPastFirst: new WeakMap(),
+    eventNotations: new WeakMap(),
   }
 }

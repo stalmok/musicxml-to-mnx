@@ -15,7 +15,6 @@ import type {
   CurveSide,
   Event,
   Fermata,
-  BowDirectionMarking,
   FermataSymbol,
   GraceType,
   KitNote,
@@ -42,6 +41,8 @@ import type { BeamedEvent } from './beams.js'
 import { readDuration } from './divisions.js'
 import { describeLength, describeValue, lengthOf, noteValueOf } from './duration.js'
 import type { ElementReader } from './element.js'
+import { readEventNotations, writtenFor } from './eventNotations.js'
+import type { EventNotation } from './eventNotations.js'
 import { reportHidden } from './unrepresentable.js'
 import { readLyrics } from './lyrics.js'
 import { readRest } from './rests.js'
@@ -210,6 +211,8 @@ function kitComponent(
 
 /** What is read from a <note> once and shared by the paths that place it. */
 interface NoteStatement extends RestNote {
+  /** The notations the note writes on its event. */
+  eventNotations: readonly EventNotation[]
   tieds: readonly XmlElement[]
   /** The <tuplet> markers in a block hidden with print-object="no". */
   hiddenTuplets: ReadonlySet<XmlElement>
@@ -337,9 +340,11 @@ export function readNote(
     ? restStaffPosition(restElement, staff, state, warnings, context)
     : undefined
 
+  const eventNotations = readEventNotations(notations)
   const note: NoteStatement = {
     element,
     notations,
+    eventNotations,
     tieds,
     hiddenTuplets,
     voice,
@@ -374,7 +379,7 @@ export function readNote(
   // value can write the rest, both stay unread and are reported as a loss.
   const fills = restReading.kind === 'fills' ? restReading : undefined
   const canStayEvent = fills?.canStayEvent ?? false
-  const restMarkings = canStayEvent ? readMarkings(notations, warnings, context) : undefined
+  const restMarkings = canStayEvent ? readMarkings(eventNotations, warnings, context) : undefined
   const restStem = canStayEvent ? readStemDirection(element, warnings, context) : undefined
   const carriesMarking = restMarkings !== undefined && Object.keys(restMarkings).length > 0
 
@@ -426,20 +431,16 @@ export function readNote(
     slurs: [],
     lyrics: readLyrics(element, warnings, context),
     stemDirection: fills ? restStem : readStemDirection(element, warnings, context),
-    markings: restMarkings ?? readMarkings(notations, warnings, context),
-    fermata: readFermata(notations, warnings, context),
+    markings: restMarkings ?? readMarkings(eventNotations, warnings, context),
+    fermata: readFermata(eventNotations, warnings, context),
     notes,
     kitNotes,
     isRest: restElement !== undefined,
     staffPosition,
   }
-  const pastFirst = writtenFermatas(notations).slice(1)
-  if (pastFirst.length > 0) {
-    state.fermatasPastFirst.set(
-      event,
-      pastFirst.map(({ found }) => found),
-    )
-  }
+  // Held for the notes of the chord that follow, which restate the event's
+  // notations or disagree with them.
+  state.eventNotations.set(event, eventNotations)
 
   // A grace note is drawn small beside the note it ornaments and takes none
   // of the measure's time, which is why it carries no <duration>. It joins a
@@ -540,17 +541,21 @@ function openTupletsAndTremolo(
   context: ReportContext,
   path: DocumentPath,
 ): { markers: readonly XmlElement[]; tremolo: MultiNoteTremolo | undefined } {
-  const { element, notations, hiddenTuplets, voice, duration, written, grace: graceElement } = note
-  const markers = tupletMarkers(notations)
-  // Held so the notes of a chord that follow can tell a marker restating this
-  // one from a marker of its own.
-  builder.holdTupletMarkers(voice, markers.map(tupletMarkerKey))
+  const {
+    element,
+    eventNotations,
+    hiddenTuplets,
+    voice,
+    duration,
+    written,
+    grace: graceElement,
+  } = note
+  const markers = tupletMarkers(eventNotations)
 
   // A tremolo written across two notes gives each of them the value of the
   // pair while the pair lasts only one of them. The pair is gathered into
   // one item, which is how MNX states it.
-  const tremolo = multiNoteTremoloOf(notations, warnings, context)
-  builder.noteTremoloMarker(voice, tremolo?.key)
+  const tremolo = multiNoteTremoloOf(eventNotations, warnings, context)
 
   // A tremolo on a single note carries no <time-modification> and lasts what
   // it is written as, so only the ornament itself is lost, and that is
@@ -731,7 +736,7 @@ function setMeasureRest(
   context: ReportContext,
   path: DocumentPath,
 ): void {
-  const { element, notations, voice, written, duration, staff, staffPosition } = note
+  const { element, eventNotations, voice, written, duration, staff, staffPosition } = note
   // A beam over a rest alone is not a beam, so a source stating one says
   // nothing this loses.
   element.skip('beam')
@@ -758,7 +763,7 @@ function setMeasureRest(
   // of silence is drawn as a whole rest in any meter, so the written value is
   // what it lasts only where no time signature says how long the measure is.
   const lasts = duration ?? measureLength(state) ?? (written && lengthOf(written))
-  const fermata = readFermata(notations, warnings, context)
+  const fermata = readFermata(eventNotations, warnings, context)
   builder.setFullMeasure(
     voice,
     {
@@ -847,7 +852,8 @@ function reportCarriedByUnwritableRest(
 ): void {
   const marks = notations.flatMap((block) => {
     const shown = attribute(block.element, 'print-object') !== 'no'
-    return [...writtenMarks([block], warnings, context)].flatMap(({ marking, found, block }) => {
+    const marks = writtenMarks(readEventNotations([block]), warnings, context)
+    return [...marks].flatMap(({ marking, found, block }) => {
       block.read(found)
       // A mark MNX cannot state was reported as it was read.
       if (marking === undefined) return []
@@ -906,6 +912,7 @@ function readChordMember(
   const {
     element,
     notations,
+    eventNotations,
     tieds,
     voice,
     duration,
@@ -1017,11 +1024,14 @@ function readChordMember(
     placed = builder.addChordKitNote(voice, chordNote, chordDurationOrNone, path, element.line)
     readArpeggio(notations, placed, builder, undefined)
   }
-  readChordMemberMarkings(notations, placed.event.markings, warnings, context)
+  const chord = state.eventNotations.get(placed.event) ?? []
+  readChordMemberMarkings(eventNotations, placed.event.markings, warnings, context)
   readChordMemberFermatas(
-    notations,
+    eventNotations,
     placed.event.fermata,
-    state.fermatasPastFirst.get(placed.event) ?? [],
+    writtenFor(chord, 'fermata')
+      .slice(1)
+      .map(({ found }) => found),
     warnings,
     context,
   )
@@ -1045,9 +1055,10 @@ function readChordMember(
   // bracket nothing opened. Sibelius leaves <voice> off a
   // chord member, so the chord's voice is the one asked, not the member's.
   const chordVoice = builder.voiceOfChord(voice)
-  readChordMemberTremolo(notations, chordVoice, builder)
-  const chordMarkers = tupletMarkers(notations).filter(
-    (marker) => !builder.restatesTupletMarker(chordVoice, tupletMarkerKey(marker)),
+  readChordMemberTremolo(eventNotations, chord)
+  const restated = new Set(writtenFor(chord, 'tuplet').map(({ found }) => tupletMarkerKey(found)))
+  const chordMarkers = tupletMarkers(eventNotations).filter(
+    (marker) => !restated.has(tupletMarkerKey(marker)),
   )
   for (const marker of chordMarkers) {
     if (attribute(marker, 'type') !== 'start') continue
@@ -1184,30 +1195,6 @@ function closeTuplets(
   }
 }
 
-// MusicXML's <articulations> children, in MNX's spelling. A caesura is read
-// apart, because it states no side. Everything else MusicXML allows there,
-// from a doit to a falloff, has no home in event-markings and stays unread,
-// which is what reports it. A tremolo is not one of them: it is written
-// among the ornaments, and read below with the beam count it needs. Keyed by
-// the mark, so the compiler demands an entry for every kind the model holds.
-const ARTICULATIONS: Record<
-  Exclude<MarkingKind, 'tremolo' | 'bowDirection' | 'caesura'>,
-  string
-> = {
-  accent: 'accent',
-  staccato: 'staccato',
-  staccatissimo: 'staccatissimo',
-  tenuto: 'tenuto',
-  spiccato: 'spiccato',
-  stress: 'stress',
-  unstress: 'unstress',
-  softAccent: 'soft-accent',
-  strongAccent: 'strong-accent',
-  // MusicXML files a breath mark among the articulations; MNX states it
-  // beside them, under its own name.
-  breath: 'breath-mark',
-}
-
 // MusicXML says where a grace note's time comes from with one attribute per
 // side, each naming an amount: a percentage of the note beside it, or, for
 // make-time, a length in divisions. MNX names the side and states no amount.
@@ -1298,14 +1285,6 @@ function readGraceType(
   return kind
 }
 
-// MusicXML's bow marks, keyed by the way the bow travels, which is what MNX
-// states. Keyed by the model's own direction, so a direction the model gains
-// with no element here does not compile.
-const BOW_DIRECTIONS: Record<BowDirectionMarking['direction'], string> = {
-  up: 'up-bow',
-  down: 'down-bow',
-}
-
 const isCaesuraShape = recogniser<CaesuraShape>({
   normal: true,
   thick: true,
@@ -1336,11 +1315,6 @@ function readCaesura(
   return undefined
 }
 
-// The same table the way it is read: MusicXML's element to the direction.
-const BOW_DIRECTION_OF = new Map<string, BowDirectionMarking['direction']>(
-  entriesOf(BOW_DIRECTIONS).map(([direction, written]) => [written, direction]),
-)
-
 /**
  * One mark written on a note: its kind, the element stating it, and the
  * block the element sits in, which accounts for it once it is read. The
@@ -1351,68 +1325,62 @@ type WrittenMark = {
   readonly [K in MarkingKind]: { readonly kind: K; readonly marking: Markings[K] }
 }[MarkingKind] & { readonly found: XmlElement; readonly block: ElementReader }
 
-/**
- * The marks written on a note, each read off its element. Read in a fixed
- * order rather than the source's, because MNX keys them by name, so a note
- * carries at most one of each and the order they were written in is not part
- * of what it says. The bow marks are the exception, below.
- */
+/** The marks written on a note, each read off its element. */
 function* writtenMarks(
-  notations: readonly ElementReader[],
+  written: readonly EventNotation[],
   warnings: WarningCollector,
   context: ReportContext,
 ): Generator<WrittenMark> {
-  for (const block of notations) {
-    for (const articulations of block.blocks('articulations')) {
-      for (const [kind, written] of entriesOf(ARTICULATIONS)) {
-        for (const found of children(articulations.element, written)) {
-          const placement = placementOf(found)
-          const mark = { found, block: articulations }
-          if (kind === 'strongAccent') {
-            // Which way the wedge of a strong accent points.
-            const pointing = upOrDown(attribute(found, 'type'))
-            yield { ...mark, kind, marking: { placement, pointing } }
-          } else if (kind === 'breath') {
-            // A breath mark names its glyph as its text: a comma, a tick.
-            yield { ...mark, kind, marking: { placement, symbol: trimmedText(found) || undefined } }
-          } else {
-            yield { ...mark, kind, marking: { placement } }
-          }
+  for (const notation of written) {
+    const { found, block } = notation
+    switch (notation.slot) {
+      case 'fermata':
+      case 'multiNoteTremolo':
+      case 'tuplet':
+        continue
+      case 'strongAccent': {
+        // Which way the wedge of a strong accent points.
+        const pointing = upOrDown(attribute(found, 'type'))
+        yield {
+          kind: notation.slot,
+          marking: { placement: placementOf(found), pointing },
+          found,
+          block,
         }
+        continue
       }
-
-      for (const found of children(articulations.element, 'caesura')) {
-        const marking = readCaesura(found, warnings, context)
-        yield { kind: 'caesura', marking, found, block: articulations }
+      case 'breath': {
+        // A breath mark names its glyph as its text: a comma, a tick.
+        const symbol = trimmedText(found) || undefined
+        yield {
+          kind: notation.slot,
+          marking: { placement: placementOf(found), symbol },
+          found,
+          block,
+        }
+        continue
       }
-    }
-
-    // MusicXML files the bow marks under <technical>, away from the
-    // articulations; MNX states them beside the rest of the marks. The other
-    // playing instructions there stay unread, which is what reports them.
-    // Two elements share the one MNX key, unlike the articulations above, so
-    // they are read in the order the source wrote them, which is what says
-    // which mark is kept.
-    for (const technical of block.blocks('technical')) {
-      for (const found of technical.element.children) {
-        const direction = BOW_DIRECTION_OF.get(found.name)
-        if (direction === undefined) continue
-        const marking = { placement: placementOf(found), direction }
-        yield { kind: 'bowDirection', marking, found, block: technical }
+      case 'caesura':
+        yield { kind: notation.slot, marking: readCaesura(found, warnings, context), found, block }
+        continue
+      case 'bowDirection': {
+        const { direction } = notation
+        yield {
+          kind: notation.slot,
+          marking: { placement: placementOf(found), direction },
+          found,
+          block,
+        }
+        continue
       }
-    }
-
-    // A tremolo on one note is drawn as beams across its stem, and MNX
-    // states it with the other marks. One written across two notes is a
-    // pair of events rather than a mark, gathered where the note is read,
-    // so its start and stop markers are passed over here.
-    for (const ornaments of block.blocks('ornaments')) {
-      for (const found of children(ornaments.element, 'tremolo')) {
+      case 'tremolo': {
         const type = attribute(found, 'type') ?? 'single'
-        if (type === 'start' || type === 'stop') continue
         const marking = readSingleTremolo(found, type, warnings, context)
-        yield { kind: 'tremolo', marking, found, block: ornaments }
+        yield { kind: notation.slot, marking, found, block }
+        continue
       }
+      default:
+        yield { kind: notation.slot, marking: { placement: placementOf(found) }, found, block }
     }
   }
 }
@@ -1459,7 +1427,7 @@ function readSingleTremolo(
 
 /** The marks written on this event. */
 function readMarkings(
-  notations: readonly ElementReader[],
+  written: readonly EventNotation[],
   warnings: WarningCollector,
   context: ReportContext,
 ): Markings {
@@ -1467,7 +1435,7 @@ function readMarkings(
   // is read, and the event takes the finished set.
   const markings: Draft<Markings> = {}
 
-  for (const mark of writtenMarks(notations, warnings, context)) {
+  for (const mark of writtenMarks(written, warnings, context)) {
     const { kind, marking, found, block } = mark
     block.read(found)
     if (marking === undefined) continue
@@ -1515,13 +1483,13 @@ function setMarking<K extends MarkingKind>(
  * joins. A mark the same as the chord's own is read; any other is reported.
  */
 function readChordMemberMarkings(
-  notations: readonly ElementReader[],
+  written: readonly EventNotation[],
   chord: Markings,
   warnings: WarningCollector,
   context: ReportContext,
 ): void {
   const read = new Set<MarkingKind>()
-  for (const { kind, marking, found, block } of writtenMarks(notations, warnings, context)) {
+  for (const { kind, marking, found, block } of writtenMarks(written, warnings, context)) {
     block.read(found)
     // A mark MNX cannot state was reported as it was read.
     if (marking === undefined) continue
@@ -1582,23 +1550,16 @@ const FERMATA_SYMBOLS = new Map<string, FermataSymbol>(
  * is the one converted.
  */
 function readFermata(
-  notations: readonly ElementReader[],
+  written: readonly EventNotation[],
   warnings: WarningCollector,
   context: ReportContext,
 ): Fermata | undefined {
+  const fermatas = writtenFor(written, 'fermata')
+  for (const { found, block } of fermatas) block.read(found)
   return readFermataAt(
-    notations.flatMap((block) => block.children('fermata')),
+    fermatas.map(({ found }) => found),
     warnings,
     context,
-  )
-}
-
-/** Each <fermata> a note writes, in order, with the block that accounts for it. */
-function writtenFermatas(
-  notations: readonly ElementReader[],
-): { found: XmlElement; block: ElementReader }[] {
-  return notations.flatMap((block) =>
-    children(block.element, 'fermata').map((found) => ({ found, block })),
   )
 }
 
@@ -1661,13 +1622,13 @@ function fermataOf(found: XmlElement): Fermata {
  * reports nothing more.
  */
 function readChordMemberFermatas(
-  notations: readonly ElementReader[],
+  written: readonly EventNotation[],
   chord: Fermata | undefined,
   chordPastFirst: readonly XmlElement[],
   warnings: WarningCollector,
   context: ReportContext,
 ): void {
-  const [first, ...pastFirst] = writtenFermatas(notations)
+  const [first, ...pastFirst] = writtenFor(written, 'fermata')
   if (!first) return
   // A shape MNX lacks is not converted, so it restates nothing.
   const shape = trimmedText(first.found)
@@ -1686,8 +1647,8 @@ function readChordMemberFermatas(
   const extra = pastFirst[0]
   if (!extra) return
   for (const { found, block } of pastFirst) block.read(found)
-  const written = JSON.stringify(pastFirst.map(({ found }) => writtenFermata(found)))
-  if (written === JSON.stringify(chordPastFirst.map(writtenFermata))) return
+  const restated = JSON.stringify(pastFirst.map(({ found }) => writtenFermata(found)))
+  if (restated === JSON.stringify(chordPastFirst.map(writtenFermata))) return
   warnings.add(
     'unrepresentable:fermata',
     'A note of a chord carries more than one fermata, and MNX states one on the event. ' +
@@ -2153,54 +2114,47 @@ interface MultiNoteTremolo {
   marks: number
   /** The <tremolo> marker. */
   element: XmlElement
-  /** The marker as written, for a note of the chord to restate. */
-  key: string
 }
 
 function multiNoteTremoloOf(
-  notations: readonly ElementReader[],
+  written: readonly EventNotation[],
   warnings: WarningCollector,
   context: ReportContext,
 ): MultiNoteTremolo | undefined {
-  for (const block of notations) {
-    for (const ornaments of block.blocks('ornaments')) {
-      for (const tremolo of children(ornaments.element, 'tremolo')) {
-        const type = attribute(tremolo, 'type')
-        if (type !== 'start' && type !== 'stop') continue
-        // A note is one end of one pair, so a second marker stays unread.
-        ornaments.read(tremolo)
+  // A note is one end of one pair, so a second marker stays unread.
+  const [first] = writtenFor(written, 'multiNoteTremolo')
+  if (!first) return undefined
+  const { found: tremolo, block } = first
+  block.read(tremolo)
+  const type = attribute(tremolo, 'type') === 'start' ? 'start' : 'stop'
 
-        // MNX has nowhere on a two-note tremolo to say which side it is
-        // drawn on; the single-note kind carries that, this kind does not.
-        if (attribute(tremolo, 'placement') !== undefined) {
-          warnings.add(
-            'unrepresentable:element',
-            'A tremolo written across two notes says which side it is drawn on, and MNX ' +
-              'has nowhere to put that.',
-            context,
-            tremolo,
-          )
-        }
-
-        const text = tremolo.text.trim()
-        let marks = tremoloBeamCount(text)
-        if (marks === undefined) {
-          // Unlike the single-note kind, the pair still converts, drawn the
-          // usual way with three beams.
-          warnings.add(
-            'unrepresentable:element',
-            `A tremolo drawn with ${text} beams cannot be stated in MNX, which counts ` +
-              'from one to eight. Three beams are drawn instead.',
-            context,
-            tremolo,
-          )
-          marks = 3
-        }
-        return { type, marks, element: tremolo, key: tremoloMarkerKey(tremolo) }
-      }
-    }
+  // MNX has nowhere on a two-note tremolo to say which side it is drawn on;
+  // the single-note kind carries that, this kind does not.
+  if (attribute(tremolo, 'placement') !== undefined) {
+    warnings.add(
+      'unrepresentable:element',
+      'A tremolo written across two notes says which side it is drawn on, and MNX ' +
+        'has nowhere to put that.',
+      context,
+      tremolo,
+    )
   }
-  return undefined
+
+  const text = tremolo.text.trim()
+  let marks = tremoloBeamCount(text)
+  if (marks === undefined) {
+    // Unlike the single-note kind, the pair still converts, drawn the usual
+    // way with three beams.
+    warnings.add(
+      'unrepresentable:element',
+      `A tremolo drawn with ${text} beams cannot be stated in MNX, which counts ` +
+        'from one to eight. Three beams are drawn instead.',
+      context,
+      tremolo,
+    )
+    marks = 3
+  }
+  return { type, marks, element: tremolo }
 }
 
 function tremoloMarkerKey(marker: XmlElement): string {
@@ -2215,18 +2169,13 @@ function tremoloMarkerKey(marker: XmlElement): string {
  * the chord's own is read; any other is reported.
  */
 function readChordMemberTremolo(
-  notations: readonly ElementReader[],
-  voice: string | undefined,
-  builder: MeasureBuilder,
+  written: readonly EventNotation[],
+  chord: readonly EventNotation[],
 ): void {
-  for (const block of notations) {
-    for (const ornaments of block.blocks('ornaments')) {
-      for (const tremolo of children(ornaments.element, 'tremolo')) {
-        if (builder.restatesTremoloMarker(voice, tremoloMarkerKey(tremolo))) {
-          ornaments.read(tremolo)
-        }
-      }
-    }
+  const [own] = writtenFor(chord, 'multiNoteTremolo')
+  const restated = own && tremoloMarkerKey(own.found)
+  for (const { found, block } of writtenFor(written, 'multiNoteTremolo')) {
+    if (tremoloMarkerKey(found) === restated) block.read(found)
   }
 }
 
@@ -2241,18 +2190,14 @@ function tupletMarkerKey(marker: XmlElement): string {
 }
 
 /**
- * The <tuplet> markers a note carries, in the order they are written. A note
- * may hold several <notations> blocks, and exporters use that: a tie in one,
- * a tuplet marker in another. One block may also hold several markers, as
- * when two nested tuplets start on the same note, so this reads children()
- * rather than the first child.
+ * The <tuplet> markers a note carries, in the order they are written. Each is
+ * accounted for whether or not it goes on to open or close a bracket.
  */
-function tupletMarkers(notations: readonly ElementReader[]): readonly XmlElement[] {
-  // Every marker is keyed by tupletMarkerKey, on the chord path and on the
-  // ordinary one, and the key reads both the type and the number. So each is
-  // accounted for whether or not it goes on to open or close a bracket, and
-  // there is nothing left here to read.
-  return notations.flatMap((block) => block.children('tuplet'))
+function tupletMarkers(written: readonly EventNotation[]): readonly XmlElement[] {
+  return writtenFor(written, 'tuplet').map(({ found, block }) => {
+    block.read(found)
+    return found
+  })
 }
 
 // What MusicXML's show-number and show-type say, in MNX's spelling. "actual"

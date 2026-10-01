@@ -121,12 +121,6 @@ export class TupletTracker {
    */
   readonly #dropped: string[] = []
   /**
-   * What the most recent event's own note said about tuplets, as the type and
-   * number of each marker it carried. A chord member repeating one of these
-   * is drawing the chord's bracket, not naming a bracket of its own.
-   */
-  #eventMarkers: readonly string[] = []
-  /**
    * The brackets this sequence has closed, outermost first in the order the
    * source closed them. Each waits for the measure to be whole. See
    * TupletClaim.
@@ -410,20 +404,6 @@ export class TupletTracker {
     // whenever one is open.
     this.#open.pop()
     return pending
-  }
-
-  /** Holds what the event's own note said about tuplets, for its chord. */
-  holdEventMarkers(markers: readonly string[]): void {
-    this.#eventMarkers = markers
-  }
-
-  /**
-   * Whether a chord member's marker restates one the chord's own note
-   * carried. Every note of a chord is written with the bracket around the
-   * chord, and that bracket is one bracket.
-   */
-  restatesMarker(marker: string): boolean {
-    return this.#eventMarkers.includes(marker)
   }
 
   /**
