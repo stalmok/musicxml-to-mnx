@@ -100,9 +100,11 @@ The reader modules are:
 | `attributes.ts`               | Read divisions, staves, keys, time signatures, clefs, and measure styles.      |
 | `signatures.ts`               | Settle key and time signatures per measure, per part, and across parts.        |
 | `notes.ts`                    | Read notes and their notation.                                                 |
+| `eventNotations.ts`           | Read the notations a note states on its event, and reconcile a chord's notes.  |
 | `voices.ts`                   | Track the cursor and assemble voice events.                                    |
 | `rests.ts`                    | Decide whether a rest is its voice's measure rest, and in what form.           |
-| `tuplets.ts`                  | Track tuplet ratios and settle tuplet brackets when the measure is complete.   |
+| `tupletTracker.ts`            | Track the tuplets and two-note tremolos open in a voice.                       |
+| `tuplets.ts`                  | Compute tuplet ratios and settle tuplet brackets when the measure is complete. |
 | `lyrics.ts`                   | Read lyrics for each verse.                                                    |
 | `spanners.ts`                 | Resolve ties, slurs, hairpins, and octave shifts.                              |
 | `idGenerator.ts`              | Generate event, note, and kit component IDs.                                   |
@@ -117,6 +119,7 @@ The reader modules are:
 | `numbers.ts`                  | Read whole and decimal numbers strictly, and check ranges.                     |
 | `color.ts`                    | Read MusicXML colors into MNX color strings.                                   |
 | `tables.ts`                   | Provide typed helpers for tables keyed by model unions.                        |
+| `collector.ts`                | Collect warnings in reading order. Take a warning's line from its element.     |
 | `element.ts`                  | Track consumed XML content and report unhandled content.                       |
 | `unrepresentable.ts`          | Record notation that the pinned MNX schema cannot express.                     |
 | `state.ts`                    | Hold state shared across measures in a part.                                   |
