@@ -1562,6 +1562,23 @@ describe('a measure rest with no duration', () => {
       convertValid(inThreeFour(withDuration + after + threeQuarters)).mnx,
     )
   })
+
+  // Beside a grace note the rest stays an event, drawn as the whole it is
+  // written as, so the measure it lasts is reported as lost.
+  test.each([
+    ['before', grace + wholeRest()],
+    ['after', wholeRest() + grace],
+  ])('reports the whole it is drawn as in 3/4, with a grace note %s', (_, body) => {
+    const withDuration = body.replace('<voice>1</voice><type>whole', '<duration>12</duration>$&')
+    const { mnx, warnings } = convertValid(inThreeFour(body))
+    const stated = convertValid(inThreeFour(withDuration))
+
+    expect(mnx).toEqual(stated.mnx)
+    expect(warnings.map((w) => [w.code, w.message])).toEqual(
+      stated.warnings.map((w) => [w.code, w.message]),
+    )
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:duration'])
+  })
 })
 
 // Chant editions are written senza misura, where no time signature says how

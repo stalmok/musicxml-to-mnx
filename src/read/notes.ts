@@ -404,8 +404,11 @@ export function readNote(
   // A rest that may be the measure's reports a mismatch only once the voice
   // is whole, through the place the report would hold here.
   const mismatchPlace = warnings.reserve()
-  if (written && duration && !candidate) {
-    reportDurationMismatch(element, written, duration, scale, warnings, context, mismatchPlace)
+  // Where the source states no <duration>, a rest filling the measure lasts
+  // the measure.
+  const lasts = duration ?? (fills ? measureLength(state) : undefined)
+  if (written && lasts && !candidate) {
+    reportDurationMismatch(element, written, lasts, scale, warnings, context, mismatchPlace)
   }
 
   const value =
@@ -495,7 +498,7 @@ export function readNote(
         voice,
         event,
         eventNotations,
-        duration ?? measureLength(state) ?? lengthOf(value),
+        lasts ?? lengthOf(value),
         path,
         element.line,
         staff,
@@ -822,6 +825,14 @@ function setMeasureRest(
         staffPosition,
       })),
     {
+      // A tuplet or a tremolo open around the rest is refused, so nothing
+      // scales its written value.
+      event: () => {
+        if (written && lasts) {
+          const scale = { factor: fraction(1), by: undefined }
+          reportDurationMismatch(element, written, lasts, scale, warnings, context, place)
+        }
+      },
       sequence: () => {
         if (!restValue) note.reportHidden(hiddenDrawn)
         // MNX's rest filling the measure states no length, so how long the
