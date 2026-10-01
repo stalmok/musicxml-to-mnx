@@ -44,6 +44,11 @@ export interface Stated<T> {
   readonly element: XmlElement
 }
 
+/** The value with the element that states it, where there is a value. */
+export function stated<T>(value: T | undefined, element: XmlElement): Stated<T> | undefined {
+  return value === undefined ? undefined : { value, element }
+}
+
 /**
  * Whether an attribute states only where or how something is drawn, or is
  * XML plumbing such as a namespace declaration, rather than notation.

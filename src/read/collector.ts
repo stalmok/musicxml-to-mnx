@@ -17,13 +17,6 @@ export type ReportContext = Omit<WarningContext, 'line'> & { readonly line?: nev
  */
 export type WarningPlace = number
 
-/**
- * The elements whose losses are reported for a measure as a whole: the marks
- * MNX states once on the score's measure, which the parts can disagree about.
- */
-export type MeasureWideElement =
-  'barline' | 'ending' | 'fermata' | 'key' | 'multiple-rest' | 'repeat' | 'segno' | 'sound' | 'time'
-
 export class WarningCollector {
   readonly #warnings: { place: WarningPlace; warning: ConversionWarning }[] = []
   #next = 0
@@ -72,18 +65,18 @@ export class WarningCollector {
   }
 
   /**
-   * Reports a loss about what a measure states as a whole, such as two parts
-   * stating different barlines for it. No one element holds the loss, so the
-   * warning names the kind of element and gives no line.
+   * Reports parts that disagree about the key or time signature in force on a
+   * measure. A part may carry it over from an earlier measure, so no element
+   * in this measure need state it. The warning names the kind of element and
+   * gives no line.
    */
   addForMeasure(
     code: WarningCode,
     message: string,
     context: ReportContext,
-    element: MeasureWideElement,
-    attribute?: string,
+    element: 'key' | 'time',
   ): void {
-    this.#push(this.reserve(), { code, message, element, attribute, context })
+    this.#push(this.reserve(), { code, message, element, attribute: undefined, context })
   }
 
   /**

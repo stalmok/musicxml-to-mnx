@@ -11,12 +11,13 @@
 // measures it runs for. resolveEndings joins the two, one part at a time.
 
 import type { Fraction } from '../fraction.js'
-import type { BarlineType, Fermata, GlobalMeasure, RepeatEnd } from '../model/score.js'
-import type { NamedSegno } from './jumps.js'
+import type { BarlineType, Fermata, RepeatEnd } from '../model/score.js'
+import type { NamedSegno, ReadGlobalMeasure } from './jumps.js'
 import type { ReportContext, WarningCollector } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, trimmedText } from '../xml/tree.js'
 import { readColor } from './color.js'
+import { stated } from './element.js'
 import type { ElementReader, Stated } from './element.js'
 import { entriesOf } from './tables.js'
 import { reportHidden } from './unrepresentable.js'
@@ -61,12 +62,12 @@ export interface EndingStop {
 
 /** What one <barline> was found to carry. */
 export interface BarlineReading {
-  barline: BarlineType | undefined
+  barline: Stated<BarlineType> | undefined
   repeatStart: boolean
-  repeatEnd: RepeatEnd | undefined
+  repeatEnd: Stated<RepeatEnd> | undefined
   endingStart: EndingStart | undefined
   endingStop: EndingStop | undefined
-  fermata: Fermata | undefined
+  fermata: Stated<Fermata> | undefined
   /** A segno drawn on the barline, the same sign a direction can carry. */
   segno: Stated<NamedSegno> | undefined
 }
@@ -109,15 +110,20 @@ export function readBarline(
   // The repeat is read first, because a bar style at the opening edge is
   // usually how a repeat start is drawn.
   const repeat = readRepeat(element, warnings, context)
+  const fermatas = element.children('fermata')
+  const fermata = fermatas[0]
 
   return {
     ...NOTHING,
     ...repeat,
-    barline: readBarStyle(element, atStart, repeat.repeatStart, warnings, context),
+    barline: stated(
+      readBarStyle(element, atStart, repeat.repeatStart, warnings, context),
+      element.element,
+    ),
     ...readEnding(element, warnings, context),
     fermata: atStart
       ? reportOpeningFermata(element, warnings, context)
-      : readFermataAt(element.children('fermata'), warnings, context),
+      : fermata && stated(readFermataAt(fermatas, warnings, context), fermata),
     segno: readSegno(element, position, warnings, context),
   }
 }
@@ -224,7 +230,7 @@ function readRepeat(
   element: ElementReader,
   warnings: WarningCollector,
   context: ReportContext,
-): { repeatStart: boolean; repeatEnd: RepeatEnd | undefined } {
+): { repeatStart: boolean; repeatEnd: Stated<RepeatEnd> | undefined } {
   const repeat = element.child('repeat')
   if (!repeat) return { repeatStart: false, repeatEnd: undefined }
 
@@ -232,7 +238,10 @@ function readRepeat(
   if (direction === 'forward') return { repeatStart: true, repeatEnd: undefined }
 
   if (direction === 'backward') {
-    return { repeatStart: false, repeatEnd: { times: readTimes(repeat, warnings, context) } }
+    return {
+      repeatStart: false,
+      repeatEnd: { value: { times: readTimes(repeat, warnings, context) }, element: repeat },
+    }
   }
 
   warnings.add(
@@ -352,7 +361,7 @@ function endingNumbers(
  */
 export function resolveEndings(
   measures: readonly {
-    global: Pick<GlobalMeasure, 'ending'>
+    global: Pick<ReadGlobalMeasure, 'ending'>
     endingStart: EndingStart | undefined
     endingStop: EndingStop | undefined
   }[],
@@ -392,9 +401,12 @@ export function resolveEndings(
     if (!start) throw new Error('An ending opened on a measure that is not there.')
 
     start.global.ending = {
-      duration: index - open.at + 1,
-      numbers: open.start.numbers,
-      open: measure.endingStop.open,
+      value: {
+        duration: index - open.at + 1,
+        numbers: open.start.numbers,
+        open: measure.endingStop.open,
+      },
+      element: open.start.element,
     }
     open = undefined
   })

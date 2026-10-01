@@ -29,7 +29,7 @@ import type {
   Tempo,
   TimeSignature,
 } from '../model/score.js'
-import type { MeasureWideElement, ReportContext, WarningCollector } from './collector.js'
+import type { ReportContext, WarningCollector } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
 import {
   attribute,
@@ -335,22 +335,23 @@ function mergeGlobalMeasures(
   // score's measure: parts stating different ones disagree about the one
   // mark, so that is reported. Each is compared by content where two parts
   // both state one; a part restating an equal one says nothing new.
-  // `source` is the element and attribute the mark is read from.
+  // `attribute` states the mark, where the element itself does not.
   const reportDifferingMark = <T>(
     name: string,
-    source: readonly [MeasureWideElement, string?],
-    inScore: T | undefined,
-    inPart: T | undefined,
+    attribute: string | undefined,
+    inScore: Stated<T> | undefined,
+    inPart: Stated<T> | undefined,
     same: (a: T, b: T) => boolean,
     context: ReportContext,
   ): void => {
-    if (inScore === undefined || inPart === undefined || same(inScore, inPart)) return
-    warnings.addForMeasure(
+    if (inScore === undefined || inPart === undefined || same(inScore.value, inPart.value)) return
+    warnings.add(
       'unrepresentable:cross-part-mark',
       `The parts of this score state different ${name}s on this measure, and MNX ` +
         'states one there. The first stated is the one converted.',
       context,
-      ...source,
+      inPart.element,
+      attribute,
     )
   }
   found.forEach((measure, index) => {
@@ -382,39 +383,39 @@ function mergeGlobalMeasures(
     if (
       existing?.multimeasureRest !== undefined &&
       measure.multimeasureRest !== undefined &&
-      existing.multimeasureRest !== measure.multimeasureRest
+      existing.multimeasureRest.value !== measure.multimeasureRest.value
     ) {
-      warnings.addForMeasure(
+      warnings.add(
         'unrepresentable:cross-part-multimeasure-rest',
         'The parts of this score state multi-measure rests of different spans over ' +
           'this measure, and MNX states one for the score. The first stated is the ' +
           'one converted.',
         context,
-        'multiple-rest',
+        measure.multimeasureRest.element,
       )
     }
     // A barline is the whole score's: every part is cut at the same place,
     // and each usually writes the same thing. Parts writing different ones
     // disagree about the one line MNX can state, so that is reported.
-    if (existing?.barline && measure.barline && existing.barline !== measure.barline) {
-      warnings.addForMeasure(
+    if (existing?.barline && measure.barline && existing.barline.value !== measure.barline.value) {
+      warnings.add(
         'unrepresentable:cross-part-barline',
         'The parts of this score close this measure with different barlines, and MNX ' +
           'states one for the score. The first stated is the one converted.',
         context,
-        'barline',
+        measure.barline.element,
       )
     }
     // A segno is restated in each part the same way a barline is. Parts
     // stating different signs, at different points or drawn differently,
     // disagree about the one segno MNX can state, so that is reported.
-    if (existing?.segno && measure.segno && !sameSegno(existing.segno, measure.segno)) {
-      warnings.addForMeasure(
+    if (existing?.segno && measure.segno && !sameSegno(existing.segno.value, measure.segno.value)) {
+      warnings.add(
         'unrepresentable:cross-part-segno',
         'The parts of this score state different segnos on this measure, and MNX ' +
           'states one for the score. The first stated is the one converted.',
         context,
-        'segno',
+        measure.segno.element,
       )
     }
     // The number is the label the score writes over the measure, so parts
@@ -437,30 +438,23 @@ function mergeGlobalMeasures(
     }
     reportDifferingMark(
       'repeat',
-      ['repeat'],
+      undefined,
       existing?.repeatEnd,
       measure.repeatEnd,
       sameRepeatEnd,
       context,
     )
-    reportDifferingMark('ending', ['ending'], existing?.ending, measure.ending, sameEnding, context)
+    reportDifferingMark('ending', undefined, existing?.ending, measure.ending, sameEnding, context)
     reportDifferingMark(
       'fermata',
-      ['fermata'],
+      undefined,
       existing?.fermata,
       measure.fermata,
       sameFermata,
       context,
     )
-    reportDifferingMark('fine', ['sound', 'fine'], existing?.fine, measure.fine, sameFine, context)
-    reportDifferingMark(
-      'jump',
-      ['sound', 'dalsegno'],
-      existing?.jump,
-      measure.jump,
-      sameJump,
-      context,
-    )
+    reportDifferingMark('fine', 'fine', existing?.fine, measure.fine, sameFine, context)
+    reportDifferingMark('jump', 'dalsegno', existing?.jump, measure.jump, sameJump, context)
     target[index] = {
       key: existing?.key ?? contributed[index],
       time: existing?.time ?? measure.time,
@@ -988,12 +982,12 @@ function readMeasure(
   const measureRepeats: MeasureRepeatReading[] = []
   let systemBreak = false
   let pageBreak = false
-  let barline: BarlineType | undefined
+  let barline: Stated<BarlineType> | undefined
   let repeatStart = false
-  let repeatEnd: RepeatEnd | undefined
+  let repeatEnd: Stated<RepeatEnd> | undefined
   let endingStart: EndingStart | undefined
   let endingStop: EndingStop | undefined
-  let fermata: Fermata | undefined
+  let fermata: Stated<Fermata> | undefined
 
   const builder = new MeasureBuilder(state.carriedTupletStops, soundingVoices(element))
 
@@ -1055,7 +1049,7 @@ function readMeasure(
         // readBarline only returns a style for the closing edge, so two styles
         // here are two claims about the same line, not a left and right pair.
         // A restatement of the same style is not a disagreement.
-        if (barline && reading.barline && reading.barline !== barline) {
+        if (barline && reading.barline && reading.barline.value !== barline.value) {
           warnings.add(
             'inconsistent:barline',
             'Two barlines close this measure with different styles. The first is the ' +
@@ -1166,7 +1160,7 @@ function readMeasure(
       // Settled here, not per <barline>, because a source can split the style
       // and the repeat across two elements at one edge. Any other style
       // beside the repeat stays.
-      barline: repeatEnd !== undefined && barline === 'final' ? undefined : barline,
+      barline: repeatEnd !== undefined && barline?.value === 'final' ? undefined : barline,
       repeatStart,
       repeatEnd,
       // Filled in by the part, once the ending's other end has been met.
@@ -1200,11 +1194,14 @@ function onePerMeasure<T extends { location: Fraction }>(
   warnings: WarningCollector,
   context: ReportContext,
   differs?: (first: T, other: T) => boolean,
-): T | undefined {
-  const first = marks[0]?.value
+): Stated<T> | undefined {
+  const first = marks[0]
   if (first === undefined) return undefined
   for (const { value: other, element } of marks.slice(1)) {
-    if (compareFractions(other.location, first.location) !== 0 || differs?.(first, other)) {
+    if (
+      compareFractions(other.location, first.value.location) !== 0 ||
+      differs?.(first.value, other)
+    ) {
       warnings.add(
         'unrepresentable:element',
         `A measure carries more than one ${name}, and MNX states one per measure. ` +
@@ -1237,7 +1234,7 @@ function oneMultimeasureRest(
   counts: readonly Stated<number>[],
   warnings: WarningCollector,
   context: ReportContext,
-): number | undefined {
+): Stated<number> | undefined {
   const first = counts[0]
   if (first === undefined) return undefined
   const differing = counts.find((count) => count.value !== first.value)
@@ -1250,7 +1247,7 @@ function oneMultimeasureRest(
       differing.element,
     )
   }
-  return first.value
+  return first
 }
 
 /**

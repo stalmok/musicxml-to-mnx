@@ -79,8 +79,7 @@ const converted = attempted.filter(
 //
 // The per-song check below fails on a warning with no line that is not
 // listed. The whole-corpus check fails on a listed code the corpus no longer
-// reaches. Other warnings in score.ts have no line for the same reason, but
-// no vendored song reaches them, so they are not listed.
+// reaches.
 const REPORTED_WITHOUT_A_LINE: ReadonlySet<string> = new Set([
   'unrepresentable:cross-part-key',
   'unrepresentable:cross-part-time',

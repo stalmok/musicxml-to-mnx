@@ -2790,7 +2790,7 @@ describe('several parts', () => {
         '<part id="P1"><measure number="1">' +
           `${NOTE}<barline location="right"><bar-style>light-heavy</bar-style></barline>` +
           '</measure></part>' +
-          '<part id="P2"><measure number="1">' +
+          '\n<part id="P2"><measure number="1">' +
           `${NOTE}<barline location="right"><bar-style>light-light</bar-style></barline>` +
           '</measure></part>',
       ),
@@ -2798,7 +2798,7 @@ describe('several parts', () => {
 
     expect(result.globalMeasures[0]?.barline).toBe('final')
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-barline'])
-    expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 1 })
+    expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 1, line: 2 })
   })
 
   test('says nothing where the parts restate the same barline', () => {
@@ -2825,13 +2825,13 @@ describe('several parts', () => {
     const { score: result, warnings } = read(
       score(
         `<part id="P1"><measure number="1">${segno(' color="#FF0000"')}${NOTE}</measure></part>` +
-          `<part id="P2"><measure number="1">${segno('')}${NOTE}</measure></part>`,
+          `\n<part id="P2"><measure number="1">${segno('')}${NOTE}</measure></part>`,
       ),
     )
 
     expect(result.globalMeasures[0]?.segno?.color).toBe('#FF0000')
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-segno'])
-    expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 1 })
+    expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 1, line: 2 })
   })
 
   test('says nothing where the parts restate the same segno', () => {
@@ -2898,7 +2898,7 @@ describe('several parts', () => {
     const { score: result, warnings } = read(
       score(
         `<part id="P1"><measure number="1">${repeated('2')}</measure></part>` +
-          `<part id="P2"><measure number="1">${repeated('3')}</measure></part>`,
+          `\n<part id="P2"><measure number="1">${repeated('3')}</measure></part>`,
       ),
     )
 
@@ -2907,7 +2907,7 @@ describe('several parts', () => {
       ['unrepresentable:cross-part-mark', 'repeat', undefined],
     ])
     expect(warnings[0]?.element).toBe('repeat')
-    expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 1 })
+    expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 1, line: 2 })
   })
 
   test('reports parts drawing different endings over the same measure', () => {
@@ -2917,7 +2917,7 @@ describe('several parts', () => {
     const { score: result, warnings } = read(
       score(
         `<part id="P1"><measure number="1">${bracketed('1')}</measure></part>` +
-          `<part id="P2"><measure number="1">${bracketed('2')}</measure></part>`,
+          `\n<part id="P2"><measure number="1">${bracketed('2')}</measure></part>`,
       ),
     )
 
@@ -2926,6 +2926,7 @@ describe('several parts', () => {
       ['unrepresentable:cross-part-mark', 'ending', undefined],
     ])
     expect(warnings[0]?.element).toBe('ending')
+    expect(warnings[0]?.context.line).toBe(2)
   })
 
   test('reports parts holding different fermatas over the same barline', () => {
@@ -2934,7 +2935,7 @@ describe('several parts', () => {
     const { score: result, warnings } = read(
       score(
         `<part id="P1"><measure number="1">${held('angled')}</measure></part>` +
-          `<part id="P2"><measure number="1">${held('square')}</measure></part>`,
+          `\n<part id="P2"><measure number="1">${held('square')}</measure></part>`,
       ),
     )
 
@@ -2943,6 +2944,7 @@ describe('several parts', () => {
       ['unrepresentable:cross-part-mark', 'fermata', undefined],
     ])
     expect(warnings[0]?.element).toBe('fermata')
+    expect(warnings[0]?.context.line).toBe(2)
   })
 
   // The name tells one sign from another when a jump is matched to the one it
@@ -2956,7 +2958,7 @@ describe('several parts', () => {
     const { warnings } = read(
       score(
         `<part id="P1"><measure number="1">${sign('A')}</measure></part>` +
-          `<part id="P2"><measure number="1">${sign('B')}</measure></part>`,
+          `\n<part id="P2"><measure number="1">${sign('B')}</measure></part>`,
       ),
     )
 
@@ -2966,6 +2968,7 @@ describe('several parts', () => {
       'unrepresentable:cross-part-segno',
     ])
     expect(warnings[2]?.element).toBe('segno')
+    expect(warnings[2]?.context.line).toBe(2)
   })
 
   test('says nothing where the parts restate the same named segno', () => {
@@ -2993,7 +2996,7 @@ describe('several parts', () => {
       score(
         `<part id="P1"><measure number="1">${divisions}<sound fine="yes"/>${quarter}` +
           '</measure></part>' +
-          `<part id="P2"><measure number="1">${divisions}${quarter}<sound fine="yes"/>` +
+          `\n<part id="P2"><measure number="1">${divisions}${quarter}<sound fine="yes"/>` +
           '</measure></part>',
       ),
     )
@@ -3002,13 +3005,14 @@ describe('several parts', () => {
     expect(warnings.map((w) => [w.code, w.element, w.attribute])).toEqual([
       ['unrepresentable:cross-part-mark', 'sound', 'fine'],
     ])
+    expect(warnings[0]?.context.line).toBe(2)
   })
 
   test('reports parts jumping back to differently named segnos', () => {
     const { score: result, warnings } = read(
       score(
         `<part id="P1"><measure number="1"><sound dalsegno="A"/>${NOTE}</measure></part>` +
-          `<part id="P2"><measure number="1"><sound dalsegno="B"/>${NOTE}</measure></part>`,
+          `\n<part id="P2"><measure number="1"><sound dalsegno="B"/>${NOTE}</measure></part>`,
       ),
     )
 
@@ -3019,6 +3023,7 @@ describe('several parts', () => {
     expect(warnings.map((w) => [w.code, w.element, w.attribute])).toEqual([
       ['unrepresentable:cross-part-mark', 'sound', 'dalsegno'],
     ])
+    expect(warnings[0]?.context.line).toBe(2)
   })
 
   test('says nothing where the parts restate the same marks', () => {

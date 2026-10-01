@@ -136,6 +136,7 @@ describe('a multi-measure rest', () => {
 
     expect(mnx.scores?.[0]?.multimeasureRests?.[0]?.duration).toBe(3)
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-multimeasure-rest'])
+    expect(warnings[0]?.element).toBe('multiple-rest')
   })
 
   // A part that states no count does not disagree. Only two parts that state

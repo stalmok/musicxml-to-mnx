@@ -4,7 +4,16 @@
 // settled.
 
 import type { Fraction } from '../fraction.js'
-import type { GlobalMeasure, Segno, Tempo } from '../model/score.js'
+import type {
+  BarlineType,
+  Ending,
+  Fermata,
+  Fine,
+  GlobalMeasure,
+  RepeatEnd,
+  Segno,
+  Tempo,
+} from '../model/score.js'
 import type { Stated } from './element.js'
 
 export interface NamedSegno extends Segno {
@@ -23,17 +32,27 @@ export interface DalSegno {
   readonly target?: string
 }
 
-/**
- * A score measure while the parts are merged, before jumps are settled. The
- * tempos and the number keep the elements that state them, for the warnings
- * about parts that disagree.
- */
-export type ReadGlobalMeasure = Omit<GlobalMeasure, 'segno' | 'jump' | 'tempos' | 'number'> & {
-  readonly segno: NamedSegno | undefined
-  readonly jump: DalSegno | undefined
-  readonly tempos: readonly Stated<Tempo>[]
-  readonly number: Stated<number> | undefined
+/** The marks one part states on the score's measure. */
+interface ReadMarks {
+  readonly number: number
+  readonly barline: BarlineType
+  readonly repeatEnd: RepeatEnd
+  ending: Ending
+  readonly fermata: Fermata
+  readonly segno: NamedSegno
+  readonly fine: Fine
+  readonly jump: DalSegno
+  readonly multimeasureRest: number
 }
+
+/**
+ * A score measure while the parts are merged, before jumps are settled. Each
+ * mark keeps the element that states it, for the warnings about parts that
+ * disagree.
+ */
+export type ReadGlobalMeasure = Omit<GlobalMeasure, keyof ReadMarks | 'tempos'> & {
+  [K in keyof ReadMarks]: Stated<ReadMarks[K]> | undefined
+} & { readonly tempos: readonly Stated<Tempo>[] }
 
 /**
  * A dal-segno jump returning to a Fine is a "D.S. al Fine": the player goes
@@ -50,7 +69,7 @@ export type ReadGlobalMeasure = Omit<GlobalMeasure, 'segno' | 'jump' | 'tempos' 
  */
 export function settleJumps(measures: readonly ReadGlobalMeasure[]): GlobalMeasure[] {
   const signs = measures.flatMap((measure, index) =>
-    measure.segno ? [{ index, name: measure.segno.name }] : [],
+    measure.segno ? [{ index, name: measure.segno.value.name }] : [],
   )
   const reachesFine = (jump: DalSegno): boolean => {
     const from = segnoReturnedTo(signs, jump.target)
@@ -58,13 +77,40 @@ export function settleJumps(measures: readonly ReadGlobalMeasure[]): GlobalMeasu
     return from !== undefined && measures.some((m, i) => i >= from && m.fine !== undefined)
   }
 
-  return measures.map(({ segno, jump, tempos, number, ...measure }) => ({
-    ...measure,
-    tempos: tempos.map((tempo) => tempo.value),
-    number: number?.value,
-    segno: segno && { location: segno.location, glyph: segno.glyph, color: segno.color },
-    jump: jump && { location: jump.location, type: reachesFine(jump) ? 'dsalfine' : 'segno' },
-  }))
+  return measures.map(
+    ({
+      tempos,
+      number,
+      barline,
+      repeatEnd,
+      ending,
+      fermata,
+      segno,
+      fine,
+      jump,
+      multimeasureRest,
+      ...measure
+    }) => ({
+      ...measure,
+      tempos: tempos.map((tempo) => tempo.value),
+      number: number?.value,
+      barline: barline?.value,
+      repeatEnd: repeatEnd?.value,
+      ending: ending?.value,
+      fermata: fermata?.value,
+      segno: segno && {
+        location: segno.value.location,
+        glyph: segno.value.glyph,
+        color: segno.value.color,
+      },
+      fine: fine?.value,
+      jump: jump && {
+        location: jump.value.location,
+        type: reachesFine(jump.value) ? 'dsalfine' : 'segno',
+      },
+      multimeasureRest: multimeasureRest?.value,
+    }),
+  )
 }
 
 /**
