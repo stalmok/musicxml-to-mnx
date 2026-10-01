@@ -1627,6 +1627,29 @@ describe('how many lines a staff is drawn with', () => {
     expect(warnings[0]).toMatchObject({ element: 'staff-lines', context: { line: 1 } })
   })
 
+  test('keeps two counts stated at different points on one staff', () => {
+    const { part, warnings } = read(
+      measures(
+        `<attributes><divisions>4</divisions>${details('1')}</attributes>` +
+          note('C', '1') +
+          `<attributes>${details('3')}</attributes>` +
+          note('D', '1'),
+      ),
+    )
+
+    expect(part?.measures[0]?.staffConfigs.map((config) => config.lines)).toEqual([1, 3])
+    expect(warnings).toEqual([])
+  })
+
+  // MNX states the staff only where a part has more than one, as for a clef.
+  test('names no staff on a part written on one', () => {
+    const { part } = read(measures(oneStaff(details('3', '1'))))
+
+    expect(part?.measures[0]?.staffConfigs).toEqual([
+      { lines: 3, staff: undefined, position: { num: 0, den: 1 } },
+    ])
+  })
+
   // MusicXML states the count as a non-negative number, so only a negative
   // one is no count. A staff drawn on more lines than any this
   // converter expects is still a staff.
