@@ -913,6 +913,73 @@ describe('a time signature stated after the measure start', () => {
     ])
   })
 
+  test('keeps a restatement partway through over one at the end of the measure', () => {
+    const { warnings } = read(
+      part(
+        opening +
+          timed(2) +
+          note(12) +
+          timed(3) +
+          '<backup><duration>12</duration></backup>' +
+          note(24, 2) +
+          timed(3),
+        note(36),
+      ),
+    )
+
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        code: 'unrepresentable:mid-measure-time',
+        message: expect.stringContaining('partway through'),
+      }),
+    ])
+  })
+
+  test('names the first of two restatements at the same point', () => {
+    const { warnings } = read(
+      part(
+        opening +
+          timed(2) +
+          note(12) +
+          '\n' +
+          timed(3) +
+          '<backup><duration>12</duration></backup>' +
+          note(12, 2) +
+          '\n' +
+          timed(3) +
+          note(12, 2),
+        note(36),
+      ),
+    )
+
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        code: 'unrepresentable:mid-measure-time',
+        context: { part: 'P1', measure: 1, line: 2 },
+      }),
+    ])
+  })
+
+  // The first staff's is senza misura, which MNX cannot state, so the change
+  // is the second staff's.
+  test('names the time signature of a block that MNX can state', () => {
+    const { warnings } = read(
+      part(
+        '<attributes><divisions>12</divisions><staves>2</staves></attributes>' +
+          timed(2) +
+          note(12) +
+          '<attributes><time number="1"><senza-misura/></time>\n' +
+          '<time number="2"><beats>3</beats><beat-type>4</beat-type></time></attributes>' +
+          note(12),
+        note(36),
+      ),
+    )
+
+    expect(warnings.filter((w) => w.code === 'unrepresentable:mid-measure-time')).toEqual([
+      expect.objectContaining({ context: { part: 'P1', measure: 1, line: 2 } }),
+    ])
+  })
+
   test('carries one equal to a time signature the start of the measure did not convert', () => {
     const { score: result } = read(
       part(
