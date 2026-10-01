@@ -102,8 +102,8 @@ describe('clefs', () => {
     const { part, warnings } = read(
       measures(
         '<attributes><divisions>4</divisions><staves>2</staves>' +
-          '<clef number="1"><sign>G</sign></clef>' +
-          '<clef number="2"><sign>F</sign></clef></attributes>' +
+          '<clef number="1"><sign>G</sign></clef>\n' +
+          '<clef number="2"><sign>F</sign></clef></attributes>\n' +
           '<attributes><clef number="2" after-barline="yes"><sign>G</sign></clef></attributes>' +
           note('C', '1'),
       ),
@@ -120,6 +120,7 @@ describe('clefs', () => {
       'unrepresentable:attribute',
       'unrepresentable:clef',
     ])
+    expect(warnings[1]).toMatchObject({ element: 'clef', context: { line: 2 } })
   })
 
   // A clef naming no staff draws the first, so the two ways of naming staff 1
@@ -1619,10 +1620,11 @@ describe('how many lines a staff is drawn with', () => {
   })
 
   test('keeps only the last of two counts stated at the same point', () => {
-    const { part, warnings } = read(measures(oneStaff(details('1') + details('3'))))
+    const { part, warnings } = read(measures(oneStaff(details('1') + '\n' + details('3'))))
 
     expect(part?.measures[0]?.staffConfigs.map((config) => config.lines)).toEqual([3])
     expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:staff-config'])
+    expect(warnings[0]).toMatchObject({ element: 'staff-lines', context: { line: 1 } })
   })
 
   // MusicXML states the count as a non-negative number, so only a negative

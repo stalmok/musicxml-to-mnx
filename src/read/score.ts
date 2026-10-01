@@ -49,6 +49,7 @@ import type { SoundTempo } from './directions.js'
 import { requireDuration } from './divisions.js'
 import { lengthOf } from './duration.js'
 import { drawnName, ElementReader, reportUnreadAttributes } from './element.js'
+import type { Stated } from './element.js'
 import { GroupingBuilder, pruneGrouping } from './part-groups.js'
 import { compareFractions, fraction, negate } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
@@ -967,8 +968,8 @@ function readMeasure(
   // the number, and anything else (implicit, non-controlling) is a loss.
   reportUnreadAttributes(element, warnings, context)
 
-  const clefs: Clef[] = []
-  const staffConfigs: StaffConfig[] = []
+  const clefs: Stated<Clef>[] = []
+  const staffConfigs: Stated<StaffConfig>[] = []
   const signatures = new MeasureSignatures(state, warnings, context, measurePath)
   const dynamics: Dynamic[] = []
   const tempos: Tempo[] = []
@@ -1251,7 +1252,7 @@ function oneMultimeasureRest(
  * obey, which is the last declared, is the one converted.
  */
 function dedupeClefs(
-  clefs: readonly Clef[],
+  clefs: readonly Stated<Clef>[],
   warnings: WarningCollector,
   context: ReportContext,
 ): Clef[] {
@@ -1260,25 +1261,26 @@ function dedupeClefs(
   const staffOf = (clef: Clef) => clef.staff ?? 1
   const atSamePoint = (one: Clef, other: Clef) =>
     staffOf(one) === staffOf(other) && compareFractions(one.position, other.position) === 0
+  const values = clefs.map((clef) => clef.value)
   return clefs
-    .filter((clef, index) => {
-      const replacing = clefs.find((later, at) => at > index && atSamePoint(later, clef))
+    .filter(({ value: clef, element }, index) => {
+      const replacing = values.find((later, at) => at > index && atSamePoint(later, clef))
       // Exporters restate the clef a staff already has, which loses nothing.
       // Only a clef the next one replaces is a loss.
       if (replacing && !sameClef(replacing, clef)) {
-        warnings.addForMeasure(
+        warnings.add(
           'unrepresentable:clef',
           'Two clefs are written at the same point on the same staff, and MNX draws ' +
             'one there. The last is the one converted.',
           context,
-          'clef',
+          element,
         )
       }
       return replacing === undefined
     })
-    .map((kept) => {
+    .map(({ value: kept }) => {
       // The same clef drawn once and hidden once at a point is drawn there.
-      const drawn = clefs.some(
+      const drawn = values.some(
         (other) => atSamePoint(other, kept) && sameClef(other, kept) && !other.hide,
       )
       return kept.hide && drawn ? { ...kept, hide: false } : kept
@@ -1291,31 +1293,33 @@ function dedupeClefs(
  * is for a clef.
  */
 function dedupeStaffConfigs(
-  configs: readonly StaffConfig[],
+  configs: readonly Stated<StaffConfig>[],
   warnings: WarningCollector,
   context: ReportContext,
 ): StaffConfig[] {
   // A config naming no staff draws the first, as MNX reads it, so the two
   // ways of naming staff 1 are the same staff.
   const staffOf = (config: StaffConfig) => config.staff ?? 1
-  return configs.filter((config, index) => {
-    const replacing = configs.find(
-      (later, at) =>
-        at > index &&
-        staffOf(later) === staffOf(config) &&
-        compareFractions(later.position, config.position) === 0,
-    )
-    if (replacing) {
-      warnings.addForMeasure(
-        'unrepresentable:staff-config',
-        'Two staff line counts are written at the same point on the same staff, and ' +
-          'MNX draws one there. The last is the one converted.',
-        context,
-        'staff-lines',
+  return configs
+    .filter(({ value: config, element }, index) => {
+      const replacing = configs.find(
+        ({ value: later }, at) =>
+          at > index &&
+          staffOf(later) === staffOf(config) &&
+          compareFractions(later.position, config.position) === 0,
       )
-    }
-    return replacing === undefined
-  })
+      if (replacing) {
+        warnings.add(
+          'unrepresentable:staff-config',
+          'Two staff line counts are written at the same point on the same staff, and ' +
+            'MNX draws one there. The last is the one converted.',
+          context,
+          element,
+        )
+      }
+      return replacing === undefined
+    })
+    .map((config) => config.value)
 }
 
 /** The sign, where it sits on the staff, and how it is transposed. */

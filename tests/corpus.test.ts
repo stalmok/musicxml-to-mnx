@@ -74,10 +74,8 @@ const converted = attempted.filter(
 )
 
 // Every warning names the line of its element, except where the element is
-// already read into the model. The four below work on model objects and name
-// only the measure. Three are settled once the parts are merged. The clef is
-// settled inside one part, and could carry a line if the model's clef held
-// one, as an ending's edge does.
+// already read into the model. The three below work on model objects and name
+// only the measure. They are settled once the parts are merged.
 //
 // The per-song check below fails on a warning with no line that is not
 // listed. The whole-corpus check fails on a listed code the corpus no longer
@@ -87,7 +85,6 @@ const REPORTED_WITHOUT_A_LINE: ReadonlySet<string> = new Set([
   'unrepresentable:cross-part-key',
   'unrepresentable:cross-part-time',
   'inconsistent:tempo',
-  'unrepresentable:clef',
 ])
 
 // The list must equal the codes the corpus reports without a line.

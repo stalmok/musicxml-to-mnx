@@ -22,6 +22,7 @@ import { WarningCollector } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, children, requireChild, trimmedText } from '../xml/tree.js'
 import { ElementReader } from './element.js'
+import type { Stated } from './element.js'
 import { readAttributeInRange, readInteger, readIntegerInRange } from './numbers.js'
 import { staffLinesOf, staffPositionOfLine } from './state.js'
 import type { PartState } from './state.js'
@@ -72,9 +73,9 @@ export interface AttributesReading {
   /** The first of each the block states that MNX can hold. */
   key: Key | undefined
   time: TimeSignature | undefined
-  clefs: Clef[]
+  clefs: Stated<Clef>[]
   /** The staves this block starts drawing with a line count of their own. */
-  staffConfigs: StaffConfig[]
+  staffConfigs: Stated<StaffConfig>[]
   /**
    * Every multi-measure rest span this block states, as a count of measures
    * starting at this one. A block may state one per staff, and the measure
@@ -148,7 +149,7 @@ export function readAttributes(
   // The line count goes into the measure's staffConfigs. The size has no home
   // unless it states the default. MusicXML allows one <staff-details> per
   // staff, and one <staff-lines> in each.
-  const staffConfigs: StaffConfig[] = []
+  const staffConfigs: Stated<StaffConfig>[] = []
   for (const details of element.blocks('staff-details')) {
     // Not bounded to the part's staves: MusicXML numbers a staff with any
     // positive integer. A line count for a staff past the part's staves is
@@ -197,10 +198,13 @@ export function readAttributes(
         }
         state.staffLines.set(staff, count)
         staffConfigs.push({
-          lines: count,
-          // Stated only where the part has more than one staff, as for a clef.
-          staff: state.staves > 1 ? named : undefined,
-          position,
+          value: {
+            lines: count,
+            // Stated only where the part has more than one staff, as for a clef.
+            staff: state.staves > 1 ? named : undefined,
+            position,
+          },
+          element: lines,
         })
       }
     }
@@ -247,7 +251,10 @@ export function readAttributes(
     time: metered[0],
     clefs: element
       .blocks('clef')
-      .map((found) => readClef(found, state, position, warnings, context, path))
+      .map((found) => {
+        const clef = readClef(found, state, position, warnings, context, path)
+        return clef && { value: clef, element: found.element }
+      })
       .filter((clef) => clef !== undefined),
     staffConfigs,
     // MusicXML allows one <measure-style> per staff, so every block is read.
