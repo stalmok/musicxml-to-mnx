@@ -186,6 +186,7 @@ Important limits include:
 - Free text directions, pedal marks, and unsupported ornaments produce warnings.
 - Chord symbols are not converted and produce `unsupported:` warnings.
 - Playback-only `<sound>` tempo is omitted with a warning unless a matching metronome mark already carries it.
+- A tie stated by `<tie>` with no `<tied>` on either note is not drawn in the source. It is omitted with a warning.
 - Transposition changes within a part and differing staff transpositions produce warnings.
 - Grace-note time amounts produce warnings. Grace notes with an unbracketed tuplet ratio cause a refusal.
 - Composite meters such as `3+2/8` cause a refusal.

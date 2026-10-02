@@ -33,10 +33,12 @@ interface OpenTie {
   note: TieTarget
   /** The side the tie is drawn on, where the start states it. */
   side: CurveSide | undefined
+  /** Whether the start states the tie in <tied>, not in <tie> alone. */
+  drawn: boolean
 }
 
 /** One end of a tie, and on a stop the note it is written on. */
-type TieEnd = StartEnd<OpenTie> | StopEnd<{ note: TieTarget }>
+type TieEnd = StartEnd<OpenTie> | StopEnd<{ note: TieTarget; drawn: boolean }>
 
 /**
  * The element an end is written with, and the part and measure it sits in.
@@ -525,6 +527,7 @@ export class SpannerResolver {
     pairedBy: string,
     voice: string | undefined,
     side: CurveSide | undefined,
+    drawn: boolean,
     measure: number,
     position: Fraction,
     grace: boolean,
@@ -538,7 +541,7 @@ export class SpannerResolver {
       voice,
       grace,
       covers: position,
-      payload: { note, side },
+      payload: { note, side, drawn },
       where,
     })
   }
@@ -548,6 +551,7 @@ export class SpannerResolver {
     note: TieTarget,
     pairedBy: string,
     voice: string | undefined,
+    drawn: boolean,
     measure: number,
     position: Fraction,
     grace: boolean,
@@ -562,7 +566,7 @@ export class SpannerResolver {
       grace,
       covers: position,
       where,
-      stop: { note },
+      stop: { note, drawn },
     })
   }
 
@@ -607,6 +611,19 @@ export class SpannerResolver {
         continue
       }
       waiting.splice(waiting.indexOf(started), 1)
+
+      // A tie stated in <tie> at both ends and in <tied> at neither sounds
+      // but is not drawn, as MuseScore writes an invisible tie.
+      if (!started.payload.drawn && !end.stop.drawn) {
+        warnings.add(
+          'unrepresentable:element',
+          'A tie stated by <tie> with no <tied> on either note sounds but is not drawn, ' +
+            'and cannot be expressed in MNX, where a tie is always drawn.',
+          started.where.context,
+          started.where.element,
+        )
+        continue
+      }
 
       started.payload.note.ties = [
         ...started.payload.note.ties,

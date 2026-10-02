@@ -1747,9 +1747,19 @@ function readTies(
   for (const edge of tieEdges(ties, tieds, warnings, context)) {
     const where = { context, element: edge.element }
     if (edge.kind === 'stop') {
-      state.spanners.stopTie(note, pairedBy, voice, measureIndex, at, grace, where)
+      state.spanners.stopTie(note, pairedBy, voice, edge.drawn, measureIndex, at, grace, where)
     } else {
-      state.spanners.startTie(note, pairedBy, voice, side, measureIndex, at, grace, where)
+      state.spanners.startTie(
+        note,
+        pairedBy,
+        voice,
+        side,
+        edge.drawn,
+        measureIndex,
+        at,
+        grace,
+        where,
+      )
     }
   }
 
@@ -1768,14 +1778,15 @@ function readTies(
  *
  * <tie> is the sounded tie and <tied> the drawn one, so a document stating
  * both is read from <tie>. A note that is not sounded, such as a cue, states
- * the tie in <tied> alone and is read from that instead.
+ * the tie in <tied> alone and is read from that instead. An edge is drawn
+ * where the note states it in <tied>.
  */
 function tieEdges(
   ties: readonly XmlElement[],
   tieds: readonly XmlElement[],
   warnings: WarningCollector,
   context: ReportContext,
-): { kind: 'start' | 'stop'; element: XmlElement }[] {
+): { kind: 'start' | 'stop'; element: XmlElement; drawn: boolean }[] {
   const starts: XmlElement[] = []
   const stops: XmlElement[] = []
   for (const tie of ties) {
@@ -1791,6 +1802,10 @@ function tieEdges(
       )
     }
   }
+
+  const tiedTypes = tieds.map((tied) => attribute(tied, 'type'))
+  const drawnStart = tiedTypes.includes('start') || tiedTypes.includes('continue')
+  const drawnStop = tiedTypes.includes('stop') || tiedTypes.includes('continue')
 
   // Read from <tied> only where no <tie> stated an edge. A note whose only
   // <tie> is a let-ring still states its drawn tie in <tied>.
@@ -1820,8 +1835,8 @@ function tieEdges(
   // before it and then starts the next. Taken as written, a note stating its
   // start first would close that tie and be tied to itself.
   return [
-    ...stops.map((element) => ({ kind: 'stop' as const, element })),
-    ...starts.map((element) => ({ kind: 'start' as const, element })),
+    ...stops.map((element) => ({ kind: 'stop' as const, element, drawn: drawnStop })),
+    ...starts.map((element) => ({ kind: 'start' as const, element, drawn: drawnStart })),
   ]
 }
 

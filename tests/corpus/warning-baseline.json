@@ -964,7 +964,8 @@
     "instrument": 891,
     "part-name-display": 1,
     "part-abbreviation-display": 1,
-    "instrument-change": 1
+    "instrument-change": 1,
+    "tie": 1
   },
   "bishop-sappho-at-her-loom": {
     "midi-device": 2,
@@ -1371,7 +1372,8 @@
     "notehead": 3,
     "dashes": 2,
     "pedal": 4,
-    "note@print-object": 51
+    "note@print-object": 51,
+    "tie": 2
   },
   "boulton-1-constancy": {
     "midi-device": 2,
@@ -1568,7 +1570,8 @@
     "direction@system": 3,
     "sound@dynamics": 10,
     "pedal": 16,
-    "note@print-object": 12
+    "note@print-object": 12,
+    "tie": 1
   },
   "brahms-1-gestillte-sehnsucht": {
     "midi-device": 3,
@@ -1689,7 +1692,8 @@
     "stem": 24,
     "notehead": 24,
     "other-direction": 24,
-    "note@print-object": 57
+    "note@print-object": 57,
+    "tie": 24
   },
   "brahms-4-wiegenlied": {
     "midi-device": 2,
@@ -6435,7 +6439,8 @@
     "sound@dynamics": 19,
     "dashes": 8,
     "notehead": 1,
-    "note@print-object": 91
+    "note@print-object": 91,
+    "tie": 2
   },
   "jaell-3-les-papillons": {
     "midi-device": 2,
@@ -8749,7 +8754,8 @@
     "extend": 21,
     "dashes": 12,
     "dot@placement": 1,
-    "note@print-object": 18
+    "note@print-object": 18,
+    "tie": 1
   },
   "parratt-2-out-in-the-windy-west": {
     "midi-device": 8,
@@ -10161,7 +10167,8 @@
     "direction@system": 1,
     "sound@dynamics": 21,
     "extend": 4,
-    "note@print-object": 61
+    "note@print-object": 61,
+    "tie": 1
   },
   "schumann-3-liebeszauber": {
     "midi-device": 2,
@@ -11025,7 +11032,8 @@
     "pedal": 38,
     "dot@placement": 3,
     "other-notation": 8,
-    "note@print-object": 22
+    "note@print-object": 22,
+    "tie": 4
   },
   "wagner-3-im-treibhaus": {
     "midi-device": 2,

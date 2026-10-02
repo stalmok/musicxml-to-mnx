@@ -591,8 +591,18 @@ describe('the MNX a percussion part converts to', () => {
   test('names the note a tie reaches, so nothing points at an unwritten id', () => {
     const { mnx } = convertValid(
       source(
-        struck('C', '5', 'P1-I39', '<tie type="start"/>') +
-          struck('C', '5', 'P1-I39', '<tie type="stop"/>'),
+        struck(
+          'C',
+          '5',
+          'P1-I39',
+          '<tie type="start"/><notations><tied type="start"/></notations>',
+        ) +
+          struck(
+            'C',
+            '5',
+            'P1-I39',
+            '<tie type="stop"/><notations><tied type="stop"/></notations>',
+          ),
         DRUM_KIT,
       ),
     )

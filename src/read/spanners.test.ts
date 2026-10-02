@@ -442,6 +442,95 @@ describe('a tie stated only as <tied>', () => {
   })
 })
 
+// A tie whose notes state <tie> and no <tied> sounds but is not drawn. MNX's
+// tie is always drawn.
+describe('a tie stated only as <tie>', () => {
+  const tieOnly = (type: string) => `<tie type="${type}"/>`
+  const tiedOnly = (type: string) => `<notations><tied type="${type}"/></notations>`
+
+  test('is reported, not written, where neither note states <tied>', () => {
+    const { notes, warnings } = read(
+      measures(DIVISIONS + note('C', tieOnly('start')) + note('C', tieOnly('stop'))),
+    )
+
+    expect(notes.map((one) => one.ties)).toEqual([[], []])
+    expect(warnings.map((w) => [w.code, w.element, w.message])).toEqual([
+      [
+        'unrepresentable:element',
+        'tie',
+        'A tie stated by <tie> with no <tied> on either note sounds but is not drawn, ' +
+          'and cannot be expressed in MNX, where a tie is always drawn.',
+      ],
+    ])
+  })
+
+  test('is reported in the measure where it starts', () => {
+    const { warnings } = read(
+      measures(DIVISIONS + note('C', tieOnly('start')), note('C', tieOnly('stop'))),
+    )
+
+    expect(warnings.map((w) => w.context.measure)).toEqual([1])
+  })
+
+  test('is written where its start states <tied>', () => {
+    const { notes, warnings } = read(
+      measures(
+        DIVISIONS + note('C', tieOnly('start') + tiedOnly('start')) + note('C', tieOnly('stop')),
+      ),
+    )
+
+    expect(notes[0]?.ties).toEqual([{ target: notes[1]?.id, crossVoice: false }])
+    expect(warnings).toEqual([])
+  })
+
+  test('is written where its stop states <tied>', () => {
+    const { notes, warnings } = read(
+      measures(
+        DIVISIONS + note('C', tieOnly('start')) + note('C', tieOnly('stop') + tiedOnly('stop')),
+      ),
+    )
+
+    expect(notes[0]?.ties).toEqual([{ target: notes[1]?.id, crossVoice: false }])
+    expect(warnings).toEqual([])
+  })
+
+  // The middle note's <tied> stop draws the first tie of the chain. Its
+  // second tie has no <tied> at either note.
+  test('drops only the tie of a chain that neither of its notes draws', () => {
+    const { notes, warnings } = read(
+      measures(
+        DIVISIONS +
+          note('C', tied('start')) +
+          note('C', tieOnly('stop') + tieOnly('start') + tiedOnly('stop')) +
+          note('C', tieOnly('stop')),
+      ),
+    )
+    const [first, second, third] = notes
+
+    expect(first?.ties).toEqual([{ target: second?.id, crossVoice: false }])
+    expect(second?.ties).toEqual([])
+    expect(third?.ties).toEqual([])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:element'])
+  })
+
+  // A "continue" draws both the tie it ends and the tie it starts.
+  test('is written where a <tied> continue draws it', () => {
+    const { notes, warnings } = read(
+      measures(
+        DIVISIONS +
+          note('C', tieOnly('start')) +
+          note('C', tieOnly('stop') + tieOnly('start') + tiedOnly('continue')) +
+          note('C', tieOnly('stop')),
+      ),
+    )
+    const [first, second, third] = notes
+
+    expect(first?.ties).toEqual([{ target: second?.id, crossVoice: false }])
+    expect(second?.ties).toEqual([{ target: third?.id, crossVoice: false }])
+    expect(warnings).toEqual([])
+  })
+})
+
 // <tied> is the visual side of a tie. Most of it repeats <tie>, but let-ring
 // and the drawn side are stated only there.
 describe('let-ring and the drawn side', () => {
