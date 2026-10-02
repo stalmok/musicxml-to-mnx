@@ -334,31 +334,43 @@ export class TupletTracker {
   }
 
   /**
-   * Whether the tuplet the ratio alone opened ends at the time the sequence
-   * has passed over in silence, from `end` to `cursor`. A skip inside such a run stands in
-   * it as a space, the way a rest written there would, so a skip the ratio
-   * still counts room for leaves the run open. One that carries the run past
-   * what its ratio counts cannot be inside it, because the run is gathered
-   * from what follows the ratio and nothing the source drew bounds it. False
+   * Whether the tuplet the ratio alone opened holds all its ratio counts once
+   * the time the sequence has passed over in silence, from `end` to `cursor`,
+   * stands inside it. A skip inside such a run stands in it as a space, the
+   * way a rest written there would, so a skip the ratio still counts room for
+   * leaves the run open, and one that fills the run exactly completes it. One
+   * that carries the run past what its ratio counts cannot be inside it,
+   * because the run is gathered from what follows the ratio and nothing the
+   * source drew bounds it. Either way the run ends. False where no such tuplet
+   * is open.
+   */
+  impliedFullAt(cursor: Fraction, end: Fraction): boolean {
+    const open = this.#implied()
+    return (
+      open !== undefined &&
+      compareFractions(this.#heldAt(open, cursor, end), countedLengthOf(open)) >= 0
+    )
+  }
+
+  /**
+   * Whether the time the sequence has passed over in silence, from `end` to
+   * `cursor`, fills exactly what the tuplet the ratio alone opened still
+   * counts room for, so the skip goes inside the run before it closes. False
    * where no such tuplet is open.
    */
-  impliedEndsAtGap(cursor: Fraction, end: Fraction): boolean {
+  impliedCompletedAt(cursor: Fraction, end: Fraction): boolean {
     const open = this.#implied()
-    if (!open) return false
-    const gap = subtractFractions(cursor, end)
-    if (compareFractions(gap, fraction(0)) <= 0) return false
-    // Stated in the run's written units, as everything inside it is.
-    const held = addFractions(
-      writtenLengthOf(open.tuplet.content),
-      divideFractions(gap, this.tupletFactor()),
+    return (
+      open !== undefined &&
+      compareFractions(this.#heldAt(open, cursor, end), countedLengthOf(open)) === 0
     )
-    return compareFractions(held, countedLengthOf(open)) > 0
   }
 
   /**
    * Whether the tuplet the ratio alone opened ends before a note stating
-   * `quantities`, written at `cursor` with the sequence reaching `end`. It takes the note while the note
-   * states the same counts and the tuplet holds less than what its first
+   * `quantities`, written at `cursor` with the sequence reaching `end`. It
+   * takes the note while the note states the same counts and the tuplet,
+   * with any skip before the note inside it, holds less than what its first
    * note's ratio counts. False where no such tuplet is open.
    */
   impliedEndsBefore(
@@ -368,9 +380,9 @@ export class TupletTracker {
   ): boolean {
     const open = this.#implied()
     if (!open) return false
-    if (this.impliedEndsAtGap(cursor, end)) return true
+    if (this.impliedFullAt(cursor, end)) return true
     if (!quantities) return true
-    return !sameCounts(open.tuplet, quantities) || tupletFilled(open)
+    return !sameCounts(open.tuplet, quantities)
   }
 
   /**
@@ -608,6 +620,20 @@ export class TupletTracker {
     else this.#claims.push(claim)
 
     return closed.number
+  }
+
+  /**
+   * The written length `open` holds with the time the sequence has passed
+   * over in silence, from `end` to `cursor`, inside it. Stated in the run's
+   * written units, as everything inside it is.
+   */
+  #heldAt(open: OpenTuplet, cursor: Fraction, end: Fraction): Fraction {
+    const gap = subtractFractions(cursor, end)
+    const skipped = compareFractions(gap, fraction(0)) > 0 ? gap : fraction(0)
+    return addFractions(
+      writtenLengthOf(open.tuplet.content),
+      divideFractions(skipped, this.tupletFactor()),
+    )
   }
 
   /**

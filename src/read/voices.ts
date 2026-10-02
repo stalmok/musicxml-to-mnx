@@ -942,12 +942,13 @@ export class MeasureBuilder {
   }
 
   /**
-   * Whether the tuplet the ratio alone opened in this voice ends at time the
-   * voice has passed over in silence. False where no such tuplet is open.
+   * Whether the tuplet the ratio alone opened in this voice holds all its
+   * ratio counts once the time the voice has passed over in silence stands
+   * inside it. False where no such tuplet is open.
    */
-  impliedTupletEndsAtGap(voice: string | undefined): boolean {
+  impliedTupletFull(voice: string | undefined): boolean {
     const builder = this.#builderFor(voice)
-    return builder.tuplets.impliedEndsAtGap(this.#cursor, builder.end)
+    return builder.tuplets.impliedFullAt(this.#cursor, builder.end)
   }
 
   /**
@@ -1475,7 +1476,11 @@ export class MeasureBuilder {
     return builder.tuplets.closeTuplet(builder.end, warnings, context, path, line, stop)
   }
 
-  /** Closes the run the ratio alone opened in this voice, where one is open. */
+  /**
+   * Closes the run the ratio alone opened in this voice, where one is open. A
+   * skip that fills exactly what the run's ratio still counts goes inside it
+   * first.
+   */
   closeImpliedTuplet(
     voice: string | undefined,
     warnings: WarningCollector,
@@ -1484,6 +1489,7 @@ export class MeasureBuilder {
     line: number,
   ): void {
     const builder = this.#builderFor(voice)
+    if (builder.tuplets.impliedCompletedAt(this.#cursor, builder.end)) this.#fillGap(builder)
     builder.tuplets.closeImplied(builder.end, warnings, context, path, line)
   }
 

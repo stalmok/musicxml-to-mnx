@@ -3615,6 +3615,87 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
     expect(written.warnings).toEqual([])
   })
 
+  test('completes a group with a skip that fills what the ratio counts', () => {
+    const { content, warnings } = read(
+      measure(
+        rated('C', 4, 'eighth') +
+          rated('D', 4, 'eighth') +
+          '<forward><duration>4</duration></forward>' +
+          plain('E', 12, 'quarter'),
+      ),
+    )
+    const tuplet = content?.[0]
+
+    expect(content?.map((item) => item.kind)).toEqual(['tuplet', 'event'])
+    expect(tuplet?.kind === 'tuplet' && tuplet.content.map((item) => item.kind)).toEqual([
+      'event',
+      'event',
+      'space',
+    ])
+    expect(tuplet?.kind === 'tuplet' && tuplet.inner.multiple).toBe(3)
+    expect(warnings).toEqual([])
+  })
+
+  test('completes a group with a skip that fills it before the next group', () => {
+    const { content, warnings } = read(
+      measure(
+        rated('C', 4, 'eighth') +
+          rated('D', 4, 'eighth') +
+          '<forward><duration>4</duration></forward>' +
+          rated('E', 4, 'eighth') +
+          rated('F', 4, 'eighth') +
+          rated('G', 4, 'eighth'),
+      ),
+    )
+
+    expect(content?.map((item) => item.kind)).toEqual(['tuplet', 'tuplet'])
+    expect(content?.[0]?.kind === 'tuplet' && content[0].content).toHaveLength(3)
+    expect(content?.[1]?.kind === 'tuplet' && content[1].content).toHaveLength(3)
+    expect(warnings).toEqual([])
+  })
+
+  test('leaves a grace note after a skip that fills the group outside it', () => {
+    const grace =
+      '<note><grace/><pitch><step>F</step><octave>5</octave></pitch><type>eighth</type></note>'
+    const { content, warnings } = read(
+      measure(
+        rated('C', 4, 'eighth') +
+          rated('D', 4, 'eighth') +
+          '<forward><duration>4</duration></forward>' +
+          grace +
+          plain('E', 12, 'quarter'),
+      ),
+    )
+    const tuplet = content?.[0]
+
+    expect(content?.map((item) => item.kind)).toEqual(['tuplet', 'grace', 'event'])
+    expect(tuplet?.kind === 'tuplet' && tuplet.content.map((item) => item.kind)).toEqual([
+      'event',
+      'event',
+      'space',
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  test('leaves a grace note written back over a full group outside it', () => {
+    const grace =
+      '<note><grace/><pitch><step>F</step><octave>5</octave></pitch><type>eighth</type></note>'
+    const { content } = read(
+      measure(
+        rated('C', 4, 'eighth') +
+          rated('D', 4, 'eighth') +
+          rated('E', 4, 'eighth') +
+          '<backup><duration>4</duration></backup>' +
+          grace +
+          '<forward><duration>4</duration></forward>' +
+          plain('G', 12, 'quarter'),
+      ),
+    )
+
+    expect(content?.map((item) => item.kind)).toEqual(['tuplet', 'grace', 'event'])
+    expect(content?.[0]?.kind === 'tuplet' && content[0].content).toHaveLength(3)
+  })
+
   // A run gathers notes that follow one another, and nothing the source drew
   // bounds it. A skip that carries the run past what its ratio counts cannot
   // stand inside it, so the run ends and the notes after start a new one.
