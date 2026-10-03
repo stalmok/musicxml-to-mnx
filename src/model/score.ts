@@ -571,8 +571,8 @@ export interface Measure {
   /** Stated over the measure rather than on the notes, as MNX has it. */
   readonly beams: readonly Beam[]
   /**
-   * Added to once the whole part is read: wording at a hairpin's closing edge
-   * stands alone if the hairpin cannot take it.
+   * Taken from once the whole part is read: a hairpin the source never
+   * closes is removed.
    */
   readonly dynamics: Dynamic[]
   readonly arpeggios: readonly Arpeggio[]

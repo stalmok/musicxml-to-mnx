@@ -81,15 +81,24 @@ export type SlurEnd = SpanEnd<OpenSlur, SlurStopAt> | DroppedStopEnd
 type SlurStart = Extract<SlurEnd, { kind: 'start' }>
 type SlurStop = Extract<SlurEnd, { kind: 'stop' }>
 
-/**
- * Wording written at a hairpin's closing edge. It waits until the pairing
- * says which hairpin the stop closes.
- */
-export interface StopWording {
-  /** The words, to become that hairpin's suffix. */
+/** Dynamic wording, and where it is written so a report can point at it. */
+export interface Wording {
   text: string
-  /** The dynamic group drawn where no hairpin takes them. */
-  standalone: Dynamic
+  where: WrittenAt
+}
+
+/**
+ * Reports wording that qualifies no mark. MNX states wording only as the
+ * prefix or suffix of a dynamic that states a level.
+ */
+export function reportLoneWording(wording: Wording, warnings: WarningCollector): void {
+  warnings.add(
+    'unrepresentable:dynamic-wording',
+    `The dynamic wording "${wording.text}" qualifies no mark, and MNX states wording ` +
+      'only on a mark, so it is not converted.',
+    wording.where.context,
+    wording.where.element,
+  )
 }
 
 /**
@@ -98,7 +107,9 @@ export interface StopWording {
  * after this stop, although the music puts that start earlier.
  */
 export interface WedgeStop {
-  wording?: StopWording
+  /** Wording at the closing edge. It waits until the pairing says which
+   * hairpin the stop closes, and becomes that hairpin's suffix. */
+  wording?: Wording
 }
 
 /** A hairpin end, and on a stop the wording waiting at it. */
@@ -462,13 +473,6 @@ function wordingOf(hairpin: Dynamic): string {
     .filter((text) => text !== undefined)
     .map((text) => `"${text}"`)
     .join(' and ')
-}
-
-function insertAtPosition(dynamics: Dynamic[] | undefined, added: Dynamic): void {
-  if (!dynamics) return
-  const after = dynamics.findIndex((mark) => compareFractions(mark.position, added.position) > 0)
-  if (after < 0) dynamics.push(added)
-  else dynamics.splice(after, 0, added)
 }
 
 /**
@@ -950,7 +954,7 @@ export class SpannerResolver {
     }
 
     // Wording written at a closing edge goes on the hairpin the pairing joins
-    // to that stop. It is drawn on its own where the stop closed nothing, and
+    // to that stop. It qualifies no mark where the stop closed nothing, and
     // where the hairpin already carries wording from its starting edge: the
     // source wrote both, so the closing words do not overwrite the opening.
     for (const end of this.#wedgeEnds) {
@@ -958,7 +962,7 @@ export class SpannerResolver {
       const wording = end.stop.wording
       const hairpin = closed.get(end)
       if (hairpin && hairpin.suffix === undefined) hairpin.suffix = wording.text
-      else insertAtPosition(measures[end.measure]?.dynamics, wording.standalone)
+      else reportLoneWording(wording, warnings)
     }
     this.#wedgeEnds.length = 0
   }

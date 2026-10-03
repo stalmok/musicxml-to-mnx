@@ -178,6 +178,10 @@ export const WARNING_CODES = Object.freeze([
   // draw the mark itself, not the words, so the wording goes over as text
   // and the glyph choice is lost.
   'unrepresentable:wording-glyph',
+  // Dynamic wording, such as "dolce", that qualifies no mark. MNX states
+  // wording only as the prefix or suffix of a dynamic that states a level,
+  // so the words are not converted.
+  'unrepresentable:dynamic-wording',
   // Tuplets that cross: a stop marker numbered for a tuplet other than the
   // last opened, which MNX's nested tuplets cannot state. The stop is matched
   // to the innermost open tuplet.

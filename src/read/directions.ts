@@ -30,7 +30,8 @@ import type { ElementReader, Stated } from './element.js'
 import { noteValueBaseOf } from './noteValues.js'
 import { parseDecimal, parseWholeNumber, readIntegerInRange } from './numbers.js'
 import type { GraceNotesAt } from './voices.js'
-import type { StopWording, WedgeStop } from './spanners.js'
+import { reportLoneWording } from './spanners.js'
+import type { WedgeStop, Wording } from './spanners.js'
 import { measureLength } from './state.js'
 import type { PartState } from './state.js'
 import { entriesOf, recogniser } from './tables.js'
@@ -291,7 +292,10 @@ export function readDirection(
             // after the stop closes the same stop.
             const suffix = wording.take()
             if (suffix !== undefined) {
-              wedge.stop.wording = stopWording(suffix.text, at, staff, placement)
+              wedge.stop.wording = {
+                text: suffix.text,
+                where: { context, element: suffix.element },
+              }
             }
             lastMark = { kind: 'stop', stop: wedge.stop }
           }
@@ -321,13 +325,14 @@ export function readDirection(
       }
     }
 
-    // Wording left over closes the mark before it. With no mark to close, it
-    // stands alone: MNX requires only a position and a type of a dynamic
-    // group, so the words are carried on a group with no level.
+    // Wording left over closes the mark before it.
     const trailing = wording.take()
     if (trailing !== undefined) {
-      const group = suffixOrStandalone(lastMark, trailing.text, at, staff, placement)
-      if (group) reading.dynamics.push(group)
+      closeWithWording(
+        lastMark,
+        { text: trailing.text, where: { context, element: trailing.element } },
+        warnings,
+      )
     }
   }
 
@@ -590,63 +595,22 @@ function readWedge(
 type SuffixTarget = { kind: 'mark'; mark: Dynamic } | { kind: 'stop'; stop: WedgeStop }
 
 /**
- * Puts wording on the mark it trails, as that mark's suffix. Hands back the
- * group to draw where nothing takes the words.
+ * Puts wording on the mark it trails, as that mark's suffix, and reports it
+ * where nothing takes it.
  *
  * The mark cannot have a suffix yet. This runs once for each
  * <direction-type>, on a mark read in it. A stop already worded on the other
  * side keeps the first wording, because the source wrote both.
  */
-function suffixOrStandalone(
+function closeWithWording(
   target: SuffixTarget | undefined,
-  text: string,
-  position: Fraction,
-  staff: number | undefined,
-  placement: 'above' | 'below' | undefined,
-): Dynamic | undefined {
-  if (target?.kind === 'mark') {
-    target.mark.suffix = text
-    return undefined
-  }
-  if (target?.kind === 'stop' && target.stop.wording === undefined) {
-    target.stop.wording = stopWording(text, position, staff, placement)
-    return undefined
-  }
-  return standaloneWording(text, position, staff, placement)
-}
-
-/**
- * Wording written at a hairpin's closing edge: the text the hairpin takes as
- * its suffix, and the group it is drawn as where no hairpin takes it.
- */
-function stopWording(
-  text: string,
-  position: Fraction,
-  staff: number | undefined,
-  placement: 'above' | 'below' | undefined,
-): StopWording {
-  return { text, standalone: standaloneWording(text, position, staff, placement) }
-}
-
-/**
- * Wording with no mark to qualify, carried as a dynamic group of its own.
- * MNX requires only a position and a type of one, so no level is stated.
- */
-function standaloneWording(
-  text: string,
-  position: Fraction,
-  staff: number | undefined,
-  placement: 'above' | 'below' | undefined,
-): Dynamic {
-  return {
-    position,
-    value: undefined,
-    wedge: undefined,
-    end: undefined,
-    staff,
-    prefix: text,
-    ...(placement !== undefined ? { placement } : {}),
-  }
+  wording: Wording,
+  warnings: WarningCollector,
+): void {
+  if (target?.kind === 'mark') target.mark.suffix = wording.text
+  else if (target?.kind === 'stop' && target.stop.wording === undefined) {
+    target.stop.wording = wording
+  } else reportLoneWording(wording, warnings)
 }
 
 // How long the final note of a movement sounds, in divisions. MusicXML writes
@@ -745,8 +709,9 @@ function placementOf(element: XmlElement): 'above' | 'below' | undefined {
  * blocks or beside the <wedge> the words qualify, so the text is held for
  * the whole <direction-type> until the mark it opens arrives and becomes
  * that mark's prefix. Anything still held once the marks run out closes the
- * last one instead, as its suffix, or is carried standing alone. The element
- * of each piece is held with it, so a report points at the wording.
+ * last one instead, as its suffix, or is reported where no mark takes it.
+ * The element of each piece is held with it, so a report points at the
+ * wording.
  *
  * Pieces are held as written and trimmed only once joined, so that the
  * source's own spacing decides where the words run together: "sempre " and
@@ -853,8 +818,8 @@ function readDynamics(
  * words. The wording goes over as text and the glyph is reported.
  *
  * The two cases are different kinds of loss. A glyph with no text is the
- * mark itself, and a group with no level can state glyphs, so a later
- * release may carry it: a converter gap. A glyph named for words that also
+ * mark itself, and a later release may read the level that glyph draws: a
+ * converter gap. A glyph named for words that also
  * convert has no home, because the schema nowhere states how the
  * wording is drawn: a format limit.
  */

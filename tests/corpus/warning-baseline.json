@@ -286,7 +286,8 @@
     "stem": 13,
     "dashes": 4,
     "pedal": 2,
-    "note@print-object": 11
+    "note@print-object": 11,
+    "other-dynamics": 1
   },
   "bantock-3-under-the-moon": {
     "midi-device": 2,
@@ -1593,7 +1594,8 @@
     "notehead": 1,
     "open": 1,
     "staff-size": 1,
-    "note@print-object": 67
+    "note@print-object": 67,
+    "other-dynamics": 3
   },
   "brahms-2-geistliches-wiegenlied": {
     "midi-device": 3,
@@ -1616,7 +1618,8 @@
     "pedal": 12,
     "stem": 8,
     "staff-size": 1,
-    "note@print-object": 9
+    "note@print-object": 9,
+    "other-dynamics": 10
   },
   "brahms-2-ich-wandte-mich-und-sahe": {
     "midi-device": 2,
@@ -1927,7 +1930,8 @@
     "trill-mark": 1,
     "dashes": 4,
     "dot@placement": 1,
-    "note@print-object": 10
+    "note@print-object": 10,
+    "other-dynamics": 1
   },
   "burleigh-1-worth-while": {
     "midi-device": 2,
@@ -2143,7 +2147,8 @@
     "sound@dynamics": 20,
     "extend": 8,
     "pedal": 14,
-    "note@print-object": 3
+    "note@print-object": 3,
+    "other-dynamics": 2
   },
   "butterworth-2-when-i-was-one-and-twenty": {
     "midi-device": 2,
@@ -2264,7 +2269,8 @@
     "dashes": 2,
     "measure@implicit": 2,
     "dot@placement": 6,
-    "note@print-object": 11
+    "note@print-object": 11,
+    "other-dynamics": 3
   },
   "cellier-oh-woman-sweet-woman": {
     "midi-device": 2,
@@ -3083,7 +3089,8 @@
     "clef": 1,
     "pedal": 6,
     "dashes": 4,
-    "note@print-object": 2
+    "note@print-object": 2,
+    "other-dynamics": 2
   },
   "davies-1-the-apology": {
     "midi-device": 5,
@@ -3717,7 +3724,8 @@
     "stem": 1,
     "pedal": 4,
     "fingering": 4,
-    "note@print-object": 9
+    "note@print-object": 9,
+    "other-dynamics": 1
   },
   "elgar-1-the-torch": {
     "midi-device": 2,
@@ -4108,7 +4116,8 @@
     "dashes": 6,
     "sound@tempo": 2,
     "pedal": 56,
-    "note@print-object": 7
+    "note@print-object": 7,
+    "other-dynamics": 1
   },
   "farrenc-le-berger-fidele": {
     "midi-device": 2,
@@ -4264,7 +4273,8 @@
     "pedal": 76,
     "notehead": 1,
     "sound@tempo": 1,
-    "note@print-object": 4
+    "note@print-object": 4,
+    "other-dynamics": 1
   },
   "faure-vocalise-etude": {
     "midi-device": 2,
@@ -4715,7 +4725,8 @@
     "type@size": 6,
     "cue": 1,
     "pedal": 36,
-    "note@print-object": 4
+    "note@print-object": 4,
+    "other-dynamics": 7
   },
   "gonzaga-a-mulatinha": {
     "midi-device": 2,
@@ -5404,7 +5415,8 @@
     "extend": 2,
     "notehead": 5,
     "staff-size": 1,
-    "note@print-object": 13
+    "note@print-object": 13,
+    "other-dynamics": 8
   },
   "gurney-1-orpheus": {
     "midi-device": 2,
@@ -7247,7 +7259,8 @@
     "cue": 4,
     "words": 20,
     "stem": 4,
-    "note@print-object": 6
+    "note@print-object": 6,
+    "other-dynamics": 1
   },
   "lehmann-bouton-de-rose": {
     "midi-device": 2,
@@ -9218,7 +9231,8 @@
     "wedge": 6,
     "staff-layout": 27,
     "notehead": 5,
-    "pedal": 6
+    "pedal": 6,
+    "other-dynamics": 2
   },
   "quilter-3-blow-blow-thou-winter-wind": {
     "midi-device": 2,
@@ -9244,7 +9258,8 @@
     "wedge": 2,
     "staff-layout": 38,
     "pedal": 26,
-    "clef@after-barline": 1
+    "clef@after-barline": 1,
+    "other-dynamics": 2
   },
   "quilter-3-the-maiden-blush": {
     "midi-device": 2,

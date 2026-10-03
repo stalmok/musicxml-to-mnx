@@ -56,6 +56,13 @@ describe('a direction written before the measure starts', () => {
 })
 
 describe('dynamics', () => {
+  const lone = (text: string) => ({
+    code: 'unrepresentable:dynamic-wording',
+    element: 'other-dynamics',
+    message:
+      `The dynamic wording "${text}" qualifies no mark, and MNX states wording only on a ` +
+      'mark, so it is not converted.',
+  })
   test('places a dynamic on the measure at the cursor', () => {
     const { measure } = read(inMeasure(direction('<dynamics><f/></dynamics>') + note('C')))
 
@@ -341,32 +348,26 @@ describe('dynamics', () => {
     expect(measure?.dynamics[0]).toMatchObject({ prefix: 'meno', suffix: 'sempre', value: 'f' })
   })
 
-  // MNX requires only a position and a type of a dynamic group, so wording
-  // standing alone converts as a group with no level: the words are drawn
-  // where the source drew them, and no level the source never wrote is
-  // stated.
-  test('converts wording standing alone as a mark-less group', () => {
+  // MNX requires an immediate dynamic to state a level, and states wording
+  // only beside one.
+  test('reports wording standing alone, and leaves it out', () => {
     const { measure, warnings } = read(
       inMeasure(direction('<dynamics><other-dynamics>sff</other-dynamics></dynamics>') + note('C')),
     )
 
-    expect(measure?.dynamics).toEqual([{ position: { num: 0, den: 1 }, prefix: 'sff' }])
-    expect(warnings).toEqual([])
+    expect(measure?.dynamics).toEqual([])
+    expect(warnings).toMatchObject([lone('sff')])
   })
 
-  test('writes standalone wording onto schema-valid MNX', () => {
+  test('writes a measure whose only dynamic is wording onto schema-valid MNX', () => {
     const { mnx, warnings } = convertValid(
       inMeasure(
         direction('<dynamics><other-dynamics>dolce</other-dynamics></dynamics>') + note('C'),
       ),
     )
 
-    expect(mnx.parts[0]?.measures[0]?.dynamics?.[0]).toEqual({
-      position: { fraction: [0, 1] },
-      type: 'immediate',
-      prefix: 'dolce',
-    })
-    expect(warnings).toEqual([])
+    expect(mnx.parts[0]?.measures[0]?.dynamics).toBeUndefined()
+    expect(warnings).toMatchObject([lone('dolce')])
   })
 
   // An edge that writes no number is number 1.
@@ -456,12 +457,10 @@ describe('dynamics', () => {
     expect(warnings).toEqual([])
   })
 
-  // Wording whose stop closed no hairpin stands on its own, at the point the
-  // source drew it. The marks of a measure are read in document order, which
-  // a <backup> takes back to an earlier point, so one drawn later can belong
-  // before the marks already read.
-  test('puts wording standing alone before a mark drawn later in the measure', () => {
-    const { measure } = read(
+  // The wording waits on the stop until the part is whole, and is reported
+  // once the pairing finds the stop closed nothing.
+  test('reports wording at a stop that closes nothing, after a <backup>', () => {
+    const { measure, warnings } = read(
       inMeasure(
         note('C') +
           direction('<dynamics><f/></dynamics>') +
@@ -474,10 +473,12 @@ describe('dynamics', () => {
       ),
     )
 
-    expect(measure?.dynamics.map((d) => [d.position, d.prefix ?? d.value])).toEqual([
-      [{ num: 0, den: 1 }, 'morendo'],
-      [{ num: 1, den: 4 }, 'f'],
+    expect(measure?.dynamics.map((d) => [d.position, d.value])).toEqual([[{ num: 1, den: 4 }, 'f']])
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unclosed:spanner',
+      'unrepresentable:dynamic-wording',
     ])
+    expect(warnings[1]).toMatchObject(lone('morendo'))
   })
 
   test('carries wording after a stop wedge as the hairpin suffix', () => {
@@ -524,8 +525,8 @@ describe('dynamics', () => {
   })
 
   // A stop that matches no start closes nothing, so the wording beside it
-  // stands alone, and the stray stop is reported.
-  test('keeps wording beside a stray stop standing alone', () => {
+  // qualifies no mark. Both are reported.
+  test('reports wording beside a stray stop', () => {
     const { measure, warnings } = read(
       inMeasure(
         note('C') +
@@ -536,39 +537,11 @@ describe('dynamics', () => {
       ),
     )
 
-    expect(measure?.dynamics).toEqual([{ position: { num: 1, den: 4 }, prefix: 'dim.' }])
-    expect(warnings.map((w) => w.message)).toEqual([
-      'A hairpin stops where none had started, and is not carried over.',
+    expect(measure?.dynamics).toEqual([])
+    expect(warnings).toMatchObject([
+      { message: 'A hairpin stops where none had started, and is not carried over.' },
+      lone('dim.'),
     ])
-  })
-
-  // The words stand alone only once the pairing has run, which is after the
-  // rest of the measure is read. They belong where the source drew them, so
-  // they go in at their position rather than after everything read later.
-  test('places wording that stands alone at its own position in the measure', () => {
-    const { measure, warnings } = read(
-      inMeasure(
-        '<direction><direction-type>' +
-          '<wedge type="crescendo"/>' +
-          '<dynamics><other-dynamics>molto</other-dynamics></dynamics>' +
-          '</direction-type></direction>' +
-          note('C') +
-          '<direction><direction-type>' +
-          '<dynamics><other-dynamics>cresc.</other-dynamics></dynamics>' +
-          '<wedge type="stop"/>' +
-          '</direction-type></direction>' +
-          note('D') +
-          direction('<dynamics><f/></dynamics>'),
-      ),
-    )
-
-    expect(measure?.dynamics.map((d) => d.position)).toEqual([
-      { num: 0, den: 1 },
-      { num: 1, den: 4 },
-      { num: 1, den: 2 },
-    ])
-    expect(measure?.dynamics[1]?.prefix).toBe('cresc.')
-    expect(warnings).toEqual([])
   })
 
   // The words are written at a closing edge, so they stay with that edge even
@@ -586,41 +559,16 @@ describe('dynamics', () => {
       ),
     )
 
-    expect(measure?.dynamics).toEqual([
-      { position: { num: 1, den: 4 }, value: 'p' },
-      { position: { num: 1, den: 4 }, prefix: 'dim.' },
+    expect(measure?.dynamics).toEqual([{ position: { num: 1, den: 4 }, value: 'p' }])
+    expect(warnings).toMatchObject([
+      { message: 'A hairpin stops where none had started, and is not carried over.' },
+      lone('dim.'),
     ])
-    expect(warnings.map((w) => w.message)).toEqual([
-      'A hairpin stops where none had started, and is not carried over.',
-    ])
-  })
-
-  test('writes wording standing alone onto schema-valid MNX', () => {
-    const { mnx, warnings } = convertValid(
-      inMeasure(
-        '<direction placement="above"><direction-type>' +
-          '<wedge type="crescendo"/>' +
-          '<dynamics><other-dynamics>molto</other-dynamics></dynamics>' +
-          '</direction-type></direction>' +
-          note('C') +
-          '<direction placement="above"><direction-type>' +
-          '<dynamics><other-dynamics>cresc.</other-dynamics></dynamics>' +
-          '<wedge type="stop"/>' +
-          '</direction-type></direction>',
-      ),
-    )
-
-    expect(mnx.parts[0]?.measures[0]?.dynamics?.[1]).toMatchObject({
-      type: 'immediate',
-      prefix: 'cresc.',
-      placement: 'above',
-    })
-    expect(warnings).toEqual([])
   })
 
   // A source can word both edges of one hairpin. The suffix set where it
-  // started stays, and the closing words stand alone rather than overwrite it.
-  test('keeps closing wording standing alone when the hairpin already has a suffix', () => {
+  // started stays, and the closing words are reported rather than overwrite it.
+  test('reports closing wording when the hairpin already has a suffix', () => {
     const { measure, warnings } = read(
       inMeasure(
         '<direction><direction-type>' +
@@ -642,12 +590,11 @@ describe('dynamics', () => {
         suffix: 'molto',
         end: { measure: 0, position: { num: 1, den: 4 } },
       },
-      { position: { num: 1, den: 4 }, prefix: 'cresc.' },
     ])
-    expect(warnings).toEqual([])
+    expect(warnings).toMatchObject([lone('cresc.')])
   })
 
-  test('keeps wording after the stop standing alone when the hairpin already has a suffix', () => {
+  test('reports wording after the stop when the hairpin already has a suffix', () => {
     const { measure, warnings } = read(
       inMeasure(
         '<direction><direction-type>' +
@@ -669,14 +616,13 @@ describe('dynamics', () => {
         suffix: 'molto',
         end: { measure: 0, position: { num: 1, den: 4 } },
       },
-      { position: { num: 1, den: 4 }, prefix: 'sempre' },
     ])
-    expect(warnings).toEqual([])
+    expect(warnings).toMatchObject([lone('sempre')])
   })
 
   // A source can word both sides of one closing edge. The hairpin takes the
-  // first, since one mark carries one suffix, and the second stands alone.
-  test('keeps the second wording at one closing edge standing alone', () => {
+  // first, since one mark carries one suffix, and the second is reported.
+  test('reports the second wording at one closing edge', () => {
     const { measure, warnings } = read(
       inMeasure(
         '<direction><direction-type><wedge type="crescendo"/></direction-type></direction>' +
@@ -696,9 +642,8 @@ describe('dynamics', () => {
         suffix: 'dim.',
         end: { measure: 0, position: { num: 1, den: 4 } },
       },
-      { position: { num: 1, den: 4 }, prefix: 'poco' },
     ])
-    expect(warnings).toEqual([])
+    expect(warnings).toMatchObject([lone('poco')])
   })
 
   // MusicXML allows <dynamics> more than once in one <direction-type>, so
@@ -791,8 +736,8 @@ describe('dynamics', () => {
 
   // An element naming a glyph and holding no text is a mark drawn as that
   // glyph alone, which is notation, not an empty element to pass over. It is
-  // a converter gap, not a format limit: a group with no level can state
-  // glyphs.
+  // a converter gap, not a format limit: a later release may read the level
+  // the glyph draws.
   test('reports a wording drawn only as a glyph', () => {
     const { measure, warnings } = read(
       inMeasure(
