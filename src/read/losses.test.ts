@@ -225,6 +225,27 @@ describe('an element hidden with print-object="no"', () => {
     ).toEqual([['unrepresentable:attribute', 'ending']])
   })
 
+  test.each([
+    ['key', '<divisions>4</divisions><key print-object="no"><fifths>2</fifths></key>', ''],
+    [
+      'time',
+      '<divisions>4</divisions><time print-object="no"><beats>4</beats><beat-type>4</beat-type></time>',
+      '',
+    ],
+    [
+      'ending',
+      '',
+      '<barline location="right"><ending number="1" type="stop" print-object="no"/></barline>',
+    ],
+  ])('says a hidden %s is drawn anyway', (element, attributes, barline) => {
+    const { warnings } = read(measure(note('') + barline, attributes))
+
+    expect(warnings.find((warning) => warning.attribute === 'print-object')?.message).toBe(
+      `A <${element}> hidden with print-object="no" is drawn anyway, because MNX cannot mark ` +
+        'it invisible.',
+    )
+  })
+
   test('reports a hidden notations block', () => {
     expect(hidden(measure(note('<notations print-object="no"><fermata/></notations>')))).toEqual([
       ['unrepresentable:attribute', 'notations'],

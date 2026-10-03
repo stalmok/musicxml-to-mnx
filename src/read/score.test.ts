@@ -1134,6 +1134,37 @@ describe('a time signature stated after the measure start', () => {
     expect(warnings).toEqual([])
   })
 
+  // A figured bass states a <duration> but does not move the cursor.
+  test('reads ahead a figured bass as taking no time', () => {
+    const { warnings } = read(
+      untimedBeside(
+        '<figured-bass><figure><figure-number>6</figure-number></figure>' +
+          '<duration>12</duration></figured-bass>' +
+          timed(3) +
+          note(36),
+      ),
+    )
+
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([
+      ['unsupported:element', 'figured-bass'],
+    ])
+  })
+
+  test('reads ahead the metered time signature where another staff is unmetered', () => {
+    const { warnings } = read(
+      untimedBeside(
+        '<attributes><staves>2</staves><time number="1"><senza-misura/></time>' +
+          '<time number="2"><beats>3</beats><beat-type>4</beat-type></time></attributes>' +
+          note(36),
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:senza-misura',
+      'unrepresentable:per-staff-time',
+    ])
+  })
+
   test('takes a <forward> as the start of the music when reading ahead', () => {
     const { warnings } = read(
       untimedBeside(timed(3) + '<forward><duration>36</duration></forward>' + timed(2)),

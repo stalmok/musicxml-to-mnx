@@ -418,21 +418,24 @@ describe('part groups', () => {
   })
 
   // An empty <group-symbol> states no symbol, the same as "none".
-  test('reads an empty group-symbol as no symbol, saying nothing', () => {
-    const { mnx, warnings } = convertValid(
-      score(
-        '<part-group type="start" number="1"><group-symbol></group-symbol></part-group>' +
-          '<score-part id="P1"/><score-part id="P2"/>' +
-          '<part-group type="stop" number="1"/>',
-        part('P1') + part('P2'),
-      ),
-    )
+  test.each(['none', ''])(
+    'reads a group-symbol of "%s" as no symbol, saying nothing',
+    (written) => {
+      const { mnx, warnings } = convertValid(
+        score(
+          `<part-group type="start" number="1"><group-symbol>${written}</group-symbol></part-group>` +
+            '<score-part id="P1"/><score-part id="P2"/>' +
+            '<part-group type="stop" number="1"/>',
+          part('P1') + part('P2'),
+        ),
+      )
 
-    const group = mnx.layouts?.[0]?.content[0]
-    if (group?.type !== 'group') throw new Error('expected a staff group')
-    expect(group.symbol).toBe('noSymbol')
-    expect(warnings).toEqual([])
-  })
+      const group = mnx.layouts?.[0]?.content[0]
+      if (group?.type !== 'group') throw new Error('expected a staff group')
+      expect(group.symbol).toBe('noSymbol')
+      expect(warnings).toEqual([])
+    },
+  )
 
   // A brace group holding exactly one multi-staff part restates the grand
   // staff the part gets on its own, and nested, a renderer draws two braces

@@ -1989,6 +1989,14 @@ describe('a rest drawn shorter than the measure it fills', () => {
     expect(codes).toEqual(['inconsistent:duration', 'unclosed:spanner'])
   })
 
+  test('keeps a rest an event where its slur shares the notations with a fermata', () => {
+    const codes = keptAnEvent(
+      inThreeTwo(rest('<notations><fermata/><slur type="start" number="1"/></notations>')),
+    )
+
+    expect(codes).toEqual(['inconsistent:duration', 'unclosed:spanner'])
+  })
+
   // The measure rest stands and the extra is discarded, but the extra still
   // disagreed with itself, and that disagreement is reported where it stands.
   test('reports the drawn value of a rest written over the measure rest', () => {
