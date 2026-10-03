@@ -1071,6 +1071,25 @@ describe('the measure cursor', () => {
     expect(result?.beams[0]?.events).toHaveLength(2)
   })
 
+  test('keeps the beams over a grace group the line it leaves already held', () => {
+    const graced = (step: string, marker: string) =>
+      `<note><grace/><pitch><step>${step}</step><octave>4</octave></pitch>` +
+      `<voice>1</voice><type>eighth</type><beam number="1">${marker}</beam></note>`
+    const { measure: result } = read(
+      measure(
+        graced('E', 'begin') +
+          graced('F', 'end') +
+          note('C', 2, '1') +
+          '<backup><duration>8</duration></backup>' +
+          graced('A', 'begin') +
+          graced('B', 'end') +
+          note('D', 1, '1'),
+      ),
+    )
+
+    expect(result?.beams.map((beam) => beam.events.length)).toEqual([2, 2])
+  })
+
   // A group taking its time from the note before it is drawn after that
   // note, so it stays in that note's sequence rather than following the one
   // that comes next.
