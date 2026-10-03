@@ -539,6 +539,21 @@ describe('a rest in a line laid over a measure rest', () => {
     expect(secondLine(source)).toEqual({ kinds, codes: ['inconsistent:voice'] })
   })
 
+  test('keeps a measure rest written back over the notes of its voice as a line', () => {
+    const { mnx, warnings } = convertValid(
+      inMeasure(
+        '<note><pitch><step>C</step><octave>4</octave></pitch><duration>16</duration>' +
+          '<voice>1</voice><type>whole</type></note>' +
+          '<backup><duration>16</duration></backup>' +
+          '<note><rest measure="yes"/><duration>16</duration><voice>1</voice></note>',
+      ),
+    )
+    const sequences = mnx.parts[0]?.measures[0]?.sequences
+
+    expect(sequences?.map((sequence) => sequence.fullMeasure)).toEqual([undefined, {}])
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:voice'])
+  })
+
   // Written straight after the measure rest, with no <backup>, the rest falls
   // in the line that rests the measure, whatever the other line sings.
   test('drops a rest after the measure rest in its own line', () => {
@@ -1979,6 +1994,24 @@ describe('a rest drawn shorter than the measure it fills', () => {
     // A roll runs between notes, and a rest has none. It is not a chord on a
     // kit, which has notes but no pitches to order them by.
     expect(warnings[1]?.message).toContain('A rest is marked as rolled')
+  })
+
+  test('rests the measure beside a chord another voice rolls', () => {
+    const rolledNote = (step: string, chord: string) =>
+      `<note>${chord}<pitch><step>${step}</step><octave>4</octave></pitch>` +
+      '<duration>24</duration><voice>2</voice><type>whole</type><dot/>' +
+      '<notations><arpeggiate/></notations></note>'
+    const { sequences, warnings } = convert(
+      inThreeTwo(
+        rest().replace('</note>', '<voice>1</voice></note>') +
+          '<backup><duration>24</duration></backup>' +
+          rolledNote('C', '') +
+          rolledNote('E', '<chord/>'),
+      ),
+    )
+
+    expect(sequences[0]?.fullMeasure).toEqual({ visualDuration: { base: 'whole' } })
+    expect(warnings).toEqual([])
   })
 
   test('keeps a rest a slur reaches an event', () => {
