@@ -316,10 +316,9 @@ describe('global measures', () => {
       measureRepeat: undefined,
       dynamics: [
         {
+          kind: 'immediate' as const,
           position: fraction(0, 1),
           value: 'f' as const,
-          wedge: undefined,
-          end: undefined,
           staff: undefined,
         },
       ],
@@ -408,9 +407,7 @@ describe('octave shifts and hairpins', () => {
     const measure: Measure = {
       ...measureOf(WHOLE_C),
       ottavas: [{ position: fraction(0, 1), end, value: -1, staff: 2 }],
-      dynamics: [
-        { position: fraction(0, 1), value: undefined, wedge: 'increasing', end, staff: 2 },
-      ],
+      dynamics: [{ kind: 'gradual', position: fraction(0, 1), wedge: 'increasing', end, staff: 2 }],
     }
     const score = scoreOf(measure)
     const part = score.parts[0]

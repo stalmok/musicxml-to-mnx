@@ -536,6 +536,10 @@ describe('the registry of what MNX cannot hold, against the schema', () => {
 const SEQUENCE_ITEM_TAG =
   'The model tags a sequence item with kind, and the writer states MNX type from it. The two do not always spell it alike: the model says multiNoteTremolo where MNX says tremolo.'
 
+/** The model's own tag for a dynamic, which MNX states as a type. */
+const DYNAMIC_TAG =
+  'The model tags a dynamic with kind, spelled as MNX spells its type, and the writer states MNX type from it.'
+
 /** The same, for what a system's layout is built from. */
 const GROUPING_ITEM_TAG =
   'The model tags a grouping item with kind, and the writer states MNX type from it. The model says part, where MNX says the staff that part is drawn on.'
@@ -580,7 +584,7 @@ const MNX_SPELLING: Readonly<Record<string, string>> = {
   'Fermata.pointing': 'MNXFermata.pointing',
   'Tuplet.placement': 'MNXPlacement',
   'Tuplet.bracket': 'MNXTuplet.bracket',
-  'Dynamic.placement': 'MNXMultiStaffPlacement',
+  'DynamicBase.placement': 'MNXMultiStaffPlacement',
   'Ottava.placement': 'MNXPlacement',
   'Arpeggio.direction': 'MNXArpeggio.direction',
   'Beam.direction': 'MNXBeamHookDirection',
@@ -595,6 +599,9 @@ const NOT_AN_MNX_ENUM: Readonly<Record<string, string>> = {
   'Tuplet.kind': SEQUENCE_ITEM_TAG,
   'GraceGroup.kind': SEQUENCE_ITEM_TAG,
   'MultiNoteTremolo.kind': SEQUENCE_ITEM_TAG,
+  'ImmediateDynamic.kind': DYNAMIC_TAG,
+  'GradualDynamic.kind': DYNAMIC_TAG,
+  'AccentDynamic.kind': DYNAMIC_TAG,
 }
 
 /**
@@ -624,7 +631,7 @@ const NARROWER: Readonly<Record<string, { missing: readonly string[]; why: strin
   'Tuplet.bracket': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
   'Arpeggio.direction': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
   'Beam.direction': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
-  'Dynamic.placement': {
+  'DynamicBase.placement': {
     missing: ['auto', 'between'],
     why: `${UNSTATED_IS_UNDEFINED} A dynamic written between two staves of one part is not read.`,
   },
@@ -709,7 +716,7 @@ const NOT_RESTATED: Readonly<Record<string, string>> = {
   MNXFermataDuration: `MusicXML's <fermata> states a shape and a side, and says nothing about how long the pause holds, so there is nothing to read.`,
   MNXStaffLabelref:
     "The writer picks which of a part's names its staff draws, from the names the part has. No source value decides it.",
-  'MNXDynamic.type': `The writer states it from the shape of the model's dynamic: a hairpin is gradual, an accent is accent, anything else immediate. Relative dynamics are not converted.`,
+  'MNXDynamic.type': `${DYNAMIC_TAG} Relative dynamics are not converted.`,
   'MNXEvent.type': SEQUENCE_ITEM_TAG,
   'MNXSpace.type': SEQUENCE_ITEM_TAG,
   'MNXTuplet.type': SEQUENCE_ITEM_TAG,

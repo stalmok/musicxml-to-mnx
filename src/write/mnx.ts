@@ -616,24 +616,39 @@ function writeArpeggios(
  * only a letter that differs is written.
  */
 function writeDynamic(dynamic: Dynamic, names: MeasureNames): MNXDynamic {
-  return {
-    position: writePosition(dynamic.position),
-    type: dynamic.wedge ? 'gradual' : dynamic.accent ? 'accent' : 'immediate',
-    ...(dynamic.value ? { value: dynamic.value } : {}),
-    ...(dynamic.accent?.residualValue ? { residualValue: dynamic.accent.residualValue } : {}),
-    ...(dynamic.accent?.prefix !== undefined && dynamic.accent.prefix !== 's'
-      ? { accentPrefix: dynamic.accent.prefix }
-      : {}),
-    ...(dynamic.accent?.suffix !== undefined && dynamic.accent.suffix !== 'z'
-      ? { accentSuffix: dynamic.accent.suffix }
-      : {}),
-    ...(dynamic.accent ? { glyphs: [...dynamic.accent.glyphs] } : {}),
+  const position = writePosition(dynamic.position)
+  const wording = {
     ...(dynamic.prefix !== undefined ? { prefix: dynamic.prefix } : {}),
     ...(dynamic.suffix !== undefined ? { suffix: dynamic.suffix } : {}),
-    ...(dynamic.wedge ? { wedgeType: dynamic.wedge } : {}),
-    ...(dynamic.end ? { end: writeSpanEnd(dynamic.end, names) } : {}),
+  }
+  const where = {
     ...(dynamic.staff !== undefined ? { staff: dynamic.staff } : {}),
     ...(dynamic.placement ? { placement: dynamic.placement } : {}),
+  }
+  switch (dynamic.kind) {
+    case 'immediate':
+      return { position, type: 'immediate', value: dynamic.value, ...wording, ...where }
+    case 'gradual':
+      return {
+        position,
+        type: 'gradual',
+        ...wording,
+        wedgeType: dynamic.wedge,
+        ...(dynamic.end ? { end: writeSpanEnd(dynamic.end, names) } : {}),
+        ...where,
+      }
+    case 'accent':
+      return {
+        position,
+        type: 'accent',
+        value: dynamic.value,
+        ...(dynamic.residualValue ? { residualValue: dynamic.residualValue } : {}),
+        ...(dynamic.accentPrefix !== 's' ? { accentPrefix: dynamic.accentPrefix } : {}),
+        ...(dynamic.accentSuffix !== 'z' ? { accentSuffix: dynamic.accentSuffix } : {}),
+        glyphs: [...dynamic.glyphs],
+        ...wording,
+        ...where,
+      }
   }
 }
 

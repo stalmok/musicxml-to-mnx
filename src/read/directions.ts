@@ -16,6 +16,7 @@ import type {
   Dynamic,
   DynamicValue,
   Fine,
+  GradualDynamic,
   OttavaAmount,
   Tempo,
   WedgeType,
@@ -113,14 +114,14 @@ const isDynamicValue = recogniser<DynamicValue>({
 //
 // pf (poco forte / piano-forte) is left out: its two letters have no settled
 // reading, and MNX requires an accent to state the level of its attack.
-interface AccentDynamic {
+interface AccentSpelling {
   glyph: string
   value: DynamicValue
   residualValue: DynamicValue | undefined
   prefix: AccentPrefix
   suffix: AccentSuffix
 }
-const ACCENT_DYNAMICS = new Map<string, AccentDynamic>([
+const ACCENT_DYNAMICS = new Map<string, AccentSpelling>([
   [
     'sf',
     { glyph: 'dynamicSforzando1', value: 'f', residualValue: undefined, prefix: 's', suffix: '' },
@@ -506,7 +507,7 @@ const WEDGE_TYPES = new Map<string, WedgeType>(
  * goes on the hairpin. Wording beside a stop waits on the stop until the
  * pairing names the hairpin.
  */
-type WedgeReading = { edge: 'start'; hairpin: Dynamic } | { edge: 'stop'; stop: WedgeStop }
+type WedgeReading = { edge: 'start'; hairpin: GradualDynamic } | { edge: 'stop'; stop: WedgeStop }
 
 /**
  * A hairpin: a dynamic that grows or fades from here to somewhere later,
@@ -566,9 +567,9 @@ function readWedge(
 
   // A hairpin states no value of its own: what it grows from and to is said
   // by the plain marks around it.
-  const hairpin: Dynamic = {
+  const hairpin: GradualDynamic = {
+    kind: 'gradual',
     position,
-    value: undefined,
     wedge,
     end: undefined,
     staff,
@@ -751,10 +752,9 @@ function readDynamics(
     } else if (isDynamicValue(mark.name)) {
       const prefix = wording.take()
       dynamics.push({
+        kind: 'immediate',
         position,
         value: mark.name,
-        wedge: undefined,
-        end: undefined,
         staff,
         ...(prefix !== undefined ? { prefix: prefix.text } : {}),
         ...(placement !== undefined ? { placement } : {}),
@@ -762,17 +762,14 @@ function readDynamics(
     } else if (accent) {
       const prefix = wording.take()
       dynamics.push({
+        kind: 'accent',
         position,
         value: accent.value,
-        wedge: undefined,
-        end: undefined,
+        residualValue: accent.residualValue,
+        accentPrefix: accent.prefix,
+        accentSuffix: accent.suffix,
+        glyphs: [accent.glyph],
         staff,
-        accent: {
-          residualValue: accent.residualValue,
-          prefix: accent.prefix,
-          suffix: accent.suffix,
-          glyphs: [accent.glyph],
-        },
         ...(prefix !== undefined ? { prefix: prefix.text } : {}),
         ...(placement !== undefined ? { placement } : {}),
       })

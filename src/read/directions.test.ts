@@ -7,6 +7,7 @@ import { readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
 import { WarningCollector } from './collector.js'
+import type { Dynamic, GradualDynamic } from '../model/score.js'
 
 function note(step: string, quarters = 1): string {
   return (
@@ -51,7 +52,9 @@ describe('a direction written before the measure starts', () => {
       ),
     )
 
-    expect(measure?.dynamics).toEqual([{ position: { num: 0, den: 1 }, value: 'f' }])
+    expect(measure?.dynamics).toEqual([
+      { kind: 'immediate', position: { num: 0, den: 1 }, value: 'f' },
+    ])
   })
 })
 
@@ -66,7 +69,9 @@ describe('dynamics', () => {
   test('places a dynamic on the measure at the cursor', () => {
     const { measure } = read(inMeasure(direction('<dynamics><f/></dynamics>') + note('C')))
 
-    expect(measure?.dynamics).toEqual([{ position: { num: 0, den: 1 }, value: 'f' }])
+    expect(measure?.dynamics).toEqual([
+      { kind: 'immediate', position: { num: 0, den: 1 }, value: 'f' },
+    ])
   })
 
   test('places a dynamic partway through the measure', () => {
@@ -121,7 +126,7 @@ describe('dynamics', () => {
       inMeasure(direction(`<dynamics><${value}/></dynamics>`) + note('C')),
     )
 
-    expect(measure?.dynamics[0]?.value).toBe(value)
+    expect(measure?.dynamics[0]).toMatchObject({ kind: 'immediate', value })
     expect(warnings).toEqual([])
   })
 
@@ -158,12 +163,15 @@ describe('dynamics', () => {
       inMeasure(direction(`<dynamics><${mark}/></dynamics>`) + note('C')),
     )
 
-    expect(measure?.dynamics[0]?.value).toBe(value)
-    expect(measure?.dynamics[0]?.accent).toEqual({
+    expect(measure?.dynamics[0]).toEqual({
+      kind: 'accent',
+      position: { num: 0, den: 1 },
+      value,
       residualValue: undefined,
-      prefix,
-      suffix,
+      accentPrefix: prefix,
+      accentSuffix: suffix,
       glyphs: [glyph],
+      staff: undefined,
     })
     expect(warnings).toEqual([])
   })
@@ -200,11 +208,12 @@ describe('dynamics', () => {
         inMeasure(direction(`<dynamics><${mark}/></dynamics>`) + note('C')),
       )
 
-      expect(measure?.dynamics[0]?.value).toBe(attack)
-      expect(measure?.dynamics[0]?.accent).toEqual({
+      expect(measure?.dynamics[0]).toMatchObject({
+        kind: 'accent',
+        value: attack,
         residualValue: residual,
-        prefix,
-        suffix,
+        accentPrefix: prefix,
+        accentSuffix: suffix,
         glyphs: [glyph],
       })
       expect(warnings).toEqual([])
@@ -266,7 +275,7 @@ describe('dynamics', () => {
     )
 
     expect(measure?.dynamics[0]?.prefix).toBe('più')
-    expect(measure?.dynamics[0]?.value).toBe('f')
+    expect(measure?.dynamics[0]).toMatchObject({ value: 'f' })
     expect(warnings).toEqual([])
   })
 
@@ -278,7 +287,7 @@ describe('dynamics', () => {
     )
 
     expect(measure?.dynamics[0]?.suffix).toBe('dolce')
-    expect(measure?.dynamics[0]?.value).toBe('p')
+    expect(measure?.dynamics[0]).toMatchObject({ value: 'p' })
     expect(warnings).toEqual([])
   })
 
@@ -290,7 +299,7 @@ describe('dynamics', () => {
     )
 
     expect(measure?.dynamics[0]?.prefix).toBe('poco')
-    expect(measure?.dynamics[0]?.accent?.glyphs).toEqual(['dynamicSforzando1'])
+    expect(measure?.dynamics[0]).toMatchObject({ glyphs: ['dynamicSforzando1'] })
   })
 
   // Text sitting between two marks qualifies the one it comes before: "1st
@@ -371,7 +380,9 @@ describe('dynamics', () => {
       ),
     )
 
-    expect(measure?.dynamics[0]?.end).toEqual({ measure: 0, position: { num: 1, den: 4 } })
+    expect(measure?.dynamics[0]).toMatchObject({
+      end: { measure: 0, position: { num: 1, den: 4 } },
+    })
     expect(warnings).toEqual([])
   })
 
@@ -392,6 +403,7 @@ describe('dynamics', () => {
 
     expect(measure?.dynamics).toEqual([
       {
+        kind: 'gradual',
         position: { num: 0, den: 1 },
         wedge: 'increasing',
         prefix: 'cresc.',
@@ -413,7 +425,7 @@ describe('dynamics', () => {
       ),
     )
 
-    expect(measure?.dynamics[0]?.wedge).toBe('increasing')
+    expect(measure?.dynamics[0]).toMatchObject({ wedge: 'increasing' })
     expect(measure?.dynamics[0]?.suffix).toBe('molto')
     expect(warnings).toEqual([])
   })
@@ -436,6 +448,7 @@ describe('dynamics', () => {
 
     expect(measure?.dynamics).toEqual([
       {
+        kind: 'gradual',
         position: { num: 0, den: 1 },
         wedge: 'decreasing',
         suffix: 'smorz.',
@@ -461,7 +474,7 @@ describe('dynamics', () => {
       ),
     )
 
-    expect(measure?.dynamics.map((d) => [d.position, d.value])).toEqual([[{ num: 1, den: 4 }, 'f']])
+    expect(measure?.dynamics).toMatchObject([{ position: { num: 1, den: 4 }, value: 'f' }])
     expect(warnings.map((w) => w.code)).toEqual([
       'unclosed:spanner',
       'unrepresentable:dynamic-wording',
@@ -483,6 +496,7 @@ describe('dynamics', () => {
 
     expect(measure?.dynamics).toEqual([
       {
+        kind: 'gradual',
         position: { num: 0, den: 1 },
         wedge: 'increasing',
         suffix: 'dolce',
@@ -547,7 +561,9 @@ describe('dynamics', () => {
       ),
     )
 
-    expect(measure?.dynamics).toEqual([{ position: { num: 1, den: 4 }, value: 'p' }])
+    expect(measure?.dynamics).toEqual([
+      { kind: 'immediate', position: { num: 1, den: 4 }, value: 'p' },
+    ])
     expect(warnings).toMatchObject([
       { message: 'A hairpin stops where none had started, and is not carried over.' },
       lone('dim.'),
@@ -573,6 +589,7 @@ describe('dynamics', () => {
 
     expect(measure?.dynamics).toEqual([
       {
+        kind: 'gradual',
         position: { num: 0, den: 1 },
         wedge: 'increasing',
         suffix: 'molto',
@@ -599,6 +616,7 @@ describe('dynamics', () => {
 
     expect(measure?.dynamics).toEqual([
       {
+        kind: 'gradual',
         position: { num: 0, den: 1 },
         wedge: 'increasing',
         suffix: 'molto',
@@ -625,6 +643,7 @@ describe('dynamics', () => {
 
     expect(measure?.dynamics).toEqual([
       {
+        kind: 'gradual',
         position: { num: 0, den: 1 },
         wedge: 'increasing',
         suffix: 'dim.',
@@ -647,7 +666,9 @@ describe('dynamics', () => {
       ),
     )
 
-    expect(measure?.dynamics).toEqual([{ position: { num: 0, den: 1 }, value: 'f', prefix: 'più' }])
+    expect(measure?.dynamics).toEqual([
+      { kind: 'immediate', position: { num: 0, den: 1 }, value: 'f', prefix: 'più' },
+    ])
     expect(warnings).toEqual([])
   })
 
@@ -714,7 +735,7 @@ describe('dynamics', () => {
       ),
     )
 
-    expect(measure?.dynamics[0]?.value).toBe('p')
+    expect(measure?.dynamics[0]).toMatchObject({ value: 'p' })
     expect(measure?.dynamics[0]?.prefix).toBeUndefined()
     expect(warnings.map((w) => w.message)).toEqual([
       'A dynamic of "fffffff" is not converted yet.',
@@ -753,7 +774,7 @@ describe('dynamics', () => {
     )
 
     expect(measure?.dynamics[0]?.placement).toBe('above')
-    expect(measure?.dynamics[0]?.accent?.glyphs).toEqual(['dynamicSforzato'])
+    expect(measure?.dynamics[0]).toMatchObject({ glyphs: ['dynamicSforzato'] })
   })
 
   test('passes over an empty wording without reporting it', () => {
@@ -1988,6 +2009,13 @@ describe('the tempo a <sound> states', () => {
 // matched, as it does a slur. MNX states the pair once, on the end where it
 // begins, pointing at the measure where it stops.
 describe('hairpins', () => {
+  /** The hairpins of a measure, failing on any other mark. */
+  const hairpins = (marks: readonly Dynamic[] | undefined): GradualDynamic[] =>
+    (marks ?? []).map((mark) => {
+      if (mark.kind !== 'gradual') throw new Error(`Expected a hairpin, found ${mark.kind}.`)
+      return mark
+    })
+
   const NOTE =
     '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
     '<type>quarter</type></note>'
@@ -2019,8 +2047,8 @@ describe('hairpins', () => {
     const { dynamics, warnings } = readMeasures(wedge('crescendo') + NOTE, NOTE + wedge('stop'))
 
     expect(dynamics[0]?.[0]).toEqual({
+      kind: 'gradual',
       position: { num: 0, den: 1 },
-      value: undefined,
       wedge: 'increasing',
       end: { measure: 1, position: { num: 1, den: 4 } },
       staff: undefined,
@@ -2032,8 +2060,8 @@ describe('hairpins', () => {
   test('states a diminuendo as a wedge closing', () => {
     const { dynamics } = readMeasures(wedge('diminuendo') + NOTE + wedge('stop'))
 
-    expect(dynamics[0]?.[0]?.wedge).toBe('decreasing')
-    expect(dynamics[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 1, den: 4 } })
+    expect(hairpins(dynamics[0])[0]?.wedge).toBe('decreasing')
+    expect(hairpins(dynamics[0])[0]?.end).toEqual({ measure: 0, position: { num: 1, den: 4 } })
   })
 
   // Several may be open at once, so each number holds a stack and a stop
@@ -2044,7 +2072,7 @@ describe('hairpins', () => {
       NOTE + wedge('stop', '2') + wedge('stop', '1'),
     )
 
-    expect(dynamics[0]?.map((d) => d.wedge)).toEqual(['increasing', 'decreasing'])
+    expect(hairpins(dynamics[0]).map((d) => d.wedge)).toEqual(['increasing', 'decreasing'])
     expect(warnings).toEqual([])
   })
 
@@ -2139,7 +2167,9 @@ describe('hairpins', () => {
         voiced('E', 2),
     )
 
-    expect(dynamics[0]?.map((d) => ({ wedge: d.wedge, suffix: d.suffix, end: d.end }))).toEqual([
+    expect(
+      hairpins(dynamics[0]).map((d) => ({ wedge: d.wedge, suffix: d.suffix, end: d.end })),
+    ).toEqual([
       { wedge: 'increasing', suffix: undefined, end: { measure: 0, position: { num: 3, den: 4 } } },
       { wedge: 'decreasing', suffix: 'smorz.', end: { measure: 0, position: { num: 1, den: 2 } } },
     ])
@@ -2184,7 +2214,8 @@ describe('hairpins', () => {
         NOTE,
     )
 
-    expect(dynamics[0]?.map((d) => d.wedge ?? d.value)).toEqual(['increasing', 'f'])
+    expect(dynamics[0]).toHaveLength(2)
+    expect(dynamics[0]).toMatchObject([{ wedge: 'increasing' }, { value: 'f' }])
   })
 
   test('reports a stop where no hairpin had started', () => {
@@ -2257,7 +2288,7 @@ describe('hairpins', () => {
       wedge('crescendo') + NOTE + wedge('wibble') + NOTE + wedge('stop') + NOTE + wedge('stop')
     const { dynamics, warnings } = readMeasures(body)
 
-    expect(dynamics[0]?.map((d) => [d.wedge, d.end])).toEqual([
+    expect(hairpins(dynamics[0]).map((d) => [d.wedge, d.end])).toEqual([
       ['increasing', { measure: 0, position: { num: 3, den: 4 } }],
     ])
     expect(warnings.map((w) => w.element)).toEqual(['wedge'])
@@ -2288,7 +2319,7 @@ describe('hairpins', () => {
         `<duration>8</duration><type>half</type></note>`,
     )
 
-    expect(dynamics[0]?.map((d) => [d.wedge, d.position, d.end])).toEqual([
+    expect(hairpins(dynamics[0]).map((d) => [d.wedge, d.position, d.end])).toEqual([
       ['increasing', { num: 0, den: 1 }, { measure: 0, position: { num: 1, den: 2 } }],
     ])
     expect(warnings).toEqual([])
@@ -2304,7 +2335,7 @@ describe('hairpins', () => {
     const { dynamics, warnings } = readMeasures(body)
 
     expect(dynamics[0]?.[0]?.position).toEqual({ num: 3, den: 4 })
-    expect(dynamics[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 7, den: 8 } })
+    expect(hairpins(dynamics[0])[0]?.end).toEqual({ measure: 0, position: { num: 7, den: 8 } })
     expect(warnings).toEqual([])
 
     convertValid(
@@ -2318,9 +2349,9 @@ describe('hairpins', () => {
       wedge('crescendo') + NOTE + wedge('stop') + wedge('diminuendo') + NOTE + wedge('stop'),
     )
 
-    expect(dynamics[0]?.map((d) => d.wedge)).toEqual(['increasing', 'decreasing'])
-    expect(dynamics[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 1, den: 4 } })
-    expect(dynamics[0]?.[1]?.end).toEqual({ measure: 0, position: { num: 1, den: 2 } })
+    expect(hairpins(dynamics[0]).map((d) => d.wedge)).toEqual(['increasing', 'decreasing'])
+    expect(hairpins(dynamics[0])[0]?.end).toEqual({ measure: 0, position: { num: 1, den: 4 } })
+    expect(hairpins(dynamics[0])[1]?.end).toEqual({ measure: 0, position: { num: 1, den: 2 } })
     expect(warnings).toEqual([])
   })
 
@@ -2359,7 +2390,7 @@ describe('hairpins', () => {
         wedge('crescendo') + NOTE + GRACE + GRACE + wedge('stop') + NOTE,
       )
 
-      expect(dynamics[0]?.[0]?.end).toEqual({
+      expect(hairpins(dynamics[0])[0]?.end).toEqual({
         measure: 0,
         position: { num: 1, den: 4 },
         graceIndex: 1,
@@ -2375,7 +2406,7 @@ describe('hairpins', () => {
         wedge('crescendo') + NOTE + GRACE + wedge('stop') + GRACE + NOTE,
       )
 
-      expect(dynamics[0]?.[0]?.end).toEqual({
+      expect(hairpins(dynamics[0])[0]?.end).toEqual({
         measure: 0,
         position: { num: 1, den: 4 },
         graceIndex: 2,
@@ -2399,7 +2430,7 @@ describe('hairpins', () => {
           wedge('stop'),
       )
 
-      expect(dynamics[0]?.[0]?.end).toEqual({
+      expect(hairpins(dynamics[0])[0]?.end).toEqual({
         measure: 0,
         position: { num: 1, den: 4 },
         graceIndex: 1,
@@ -2412,7 +2443,7 @@ describe('hairpins', () => {
         wedge('crescendo') + NOTE + wedge('stop') + GRACE + NOTE,
       )
 
-      expect(dynamics[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 1, den: 4 } })
+      expect(hairpins(dynamics[0])[0]?.end).toEqual({ measure: 0, position: { num: 1, den: 4 } })
       expect(warnings).toEqual([])
     })
 
@@ -2428,7 +2459,7 @@ describe('hairpins', () => {
           NOTE,
       )
 
-      expect(dynamics[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 1, den: 2 } })
+      expect(hairpins(dynamics[0])[0]?.end).toEqual({ measure: 0, position: { num: 1, den: 2 } })
       expect(warnings).toEqual([])
     })
 
@@ -2444,7 +2475,7 @@ describe('hairpins', () => {
           '<staff>2</staff></direction>',
       )
 
-      expect(dynamics[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 1, den: 4 } })
+      expect(hairpins(dynamics[0])[0]?.end).toEqual({ measure: 0, position: { num: 1, den: 4 } })
       expect(warnings).toEqual([])
     })
 

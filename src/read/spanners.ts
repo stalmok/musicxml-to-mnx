@@ -12,7 +12,7 @@ import { compareFractions } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type {
   CurveSide,
-  Dynamic,
+  GradualDynamic,
   Event,
   LineType,
   Measure,
@@ -113,7 +113,7 @@ export interface WedgeStop {
 }
 
 /** A hairpin end, and on a stop the wording waiting at it. */
-type WedgeEnd = SpanEnd<Dynamic, WedgeStop>
+type WedgeEnd = SpanEnd<GradualDynamic, WedgeStop>
 
 /** Where an end of a span is written, and what it marks, whichever end it is. */
 interface EndPlace {
@@ -468,7 +468,7 @@ function lastOpenedIn<E extends EndPlace>(waiting: readonly E[], end: EndPlace):
  * source has it rather than a sort of the whole measure.
  */
 /** The wording a hairpin carries, quoted for a report, or '' where it has none. */
-function wordingOf(hairpin: Dynamic): string {
+function wordingOf(hairpin: GradualDynamic): string {
   return [hairpin.prefix, hairpin.suffix]
     .filter((text) => text !== undefined)
     .map((text) => `"${text}"`)
@@ -824,7 +824,7 @@ export class SpannerResolver {
 
   /** Notes where a hairpin begins, to be paired once the part is read. */
   startWedge(
-    dynamic: Dynamic,
+    dynamic: GradualDynamic,
     number: string,
     measure: number,
     position: Fraction,
@@ -923,8 +923,8 @@ export class SpannerResolver {
         'than its start, and is not carried over.',
       'unclosed-start': 'A hairpin starts where nothing ends it, and is not carried over.',
     }
-    const closed = new Map<StopEnd<WedgeStop>, Dynamic>()
-    pairSpans<Dynamic, WedgeStop>(
+    const closed = new Map<StopEnd<WedgeStop>, GradualDynamic>()
+    pairSpans<GradualDynamic, WedgeStop>(
       this.#wedgeEnds,
       (dynamic, stop) => {
         // The grace note the hairpin ends on is stated where the stop covers

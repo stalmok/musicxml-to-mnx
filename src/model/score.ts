@@ -9,9 +9,9 @@
 //
 // A `readonly` property is one nothing assigns after the object is made; a
 // mutable one is something a later pass replaces. A `readonly T[]` is a list
-// nothing adds to; a plain `T[]` is one something still pushes into. So
+// nothing changes; a plain `T[]` is one something still changes in place. So
 // `readonly ties: readonly Tie[]` is settled, `ties: readonly Tie[]` is
-// replaced whole, and `readonly dynamics: Dynamic[]` is added to in place.
+// replaced whole, and `readonly ottavas: Ottava[]` is added to in place.
 //
 // Every field that is open either way says in its comment what fills it. Most
 // are the passes that run once a whole part is read, because what they
@@ -477,29 +477,9 @@ export interface SpanStop {
   readonly graceIndex?: number
 }
 
-/**
- * A dynamic mark. An immediate one states a value and sits at a point; a
- * gradual one is a hairpin, which opens one way or the other and runs from
- * here to a point that may be several measures away; an accent one, such as a
- * sforzando, is drawn as a single combined glyph.
- */
-export interface Dynamic {
+/** What every dynamic mark states, whatever its kind. */
+interface DynamicBase {
   readonly position: Fraction
-  readonly value: DynamicValue | undefined
-  /** Set on a hairpin, which is what makes it gradual rather than immediate. */
-  readonly wedge: WedgeType | undefined
-  /**
-   * Set on an accent, such as a sforzando. The mark's spelling is the plain
-   * `value` for the attack level with the accent's letters around it as the
-   * prefix and suffix, and a two-stage accent like fp adds the level it
-   * settles to as the residual. Its glyphs draw the combined mark.
-   */
-  readonly accent?: {
-    readonly residualValue: DynamicValue | undefined
-    readonly prefix: AccentPrefix
-    readonly suffix: AccentSuffix
-    readonly glyphs: readonly string[]
-  }
   /** The wording drawn before the mark, as in the "più" of "più f", which is
    * read before the mark it belongs to. */
   prefix?: string
@@ -510,16 +490,48 @@ export interface Dynamic {
    * where the two ends meet.
    */
   suffix?: string
-  /**
-   * Where the hairpin stops. Filled in by the spanner resolver, which removes
-   * a hairpin the source never closed.
-   */
-  end: SpanStop | undefined
   /** Which staff it belongs under, where the part has more than one. */
   readonly staff: number | undefined
   /** Which side of the staff it is drawn on, where the source states it. */
   readonly placement?: 'above' | 'below'
 }
+
+/** A dynamic that states a level from here on, such as f. */
+export interface ImmediateDynamic extends DynamicBase {
+  readonly kind: 'immediate'
+  readonly value: DynamicValue
+}
+
+/**
+ * A hairpin, which opens one way or the other and runs from here to a point
+ * that may be several measures away.
+ */
+export interface GradualDynamic extends DynamicBase {
+  readonly kind: 'gradual'
+  readonly wedge: WedgeType
+  /**
+   * Where the hairpin stops. Filled in by the spanner resolver, which removes
+   * a hairpin the source never closed.
+   */
+  end: SpanStop | undefined
+}
+
+/**
+ * An accent, such as a sforzando, drawn as a single combined glyph. Its
+ * spelling is the plain `value` for the attack level, with the accent's
+ * letters around it, and a two-stage accent like fp adds the level it
+ * settles to as the residual.
+ */
+export interface AccentDynamic extends DynamicBase {
+  readonly kind: 'accent'
+  readonly value: DynamicValue
+  readonly residualValue: DynamicValue | undefined
+  readonly accentPrefix: AccentPrefix
+  readonly accentSuffix: AccentSuffix
+  readonly glyphs: readonly string[]
+}
+
+export type Dynamic = ImmediateDynamic | GradualDynamic | AccentDynamic
 
 /**
  * A chord rolled rather than struck. MNX states it on the measure rather than
