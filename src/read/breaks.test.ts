@@ -90,10 +90,10 @@ describe('system and page breaks', () => {
     expect(warnings).toEqual([])
   })
 
-  test('takes a page turn from whichever part states it', () => {
+  test.each(['P1', 'P2'])('takes a page turn from %s where only it states one', (stating) => {
     const { mnx, warnings } = convert(
-      part('P1', ['', '']),
-      part('P2', ['', '<print new-page="yes"/>']),
+      part('P1', ['', stating === 'P1' ? '<print new-page="yes"/>' : '']),
+      part('P2', ['', stating === 'P2' ? '<print new-page="yes"/>' : '']),
     )
 
     expect(mnx.scores?.[0]?.pages).toEqual([

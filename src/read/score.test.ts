@@ -205,6 +205,17 @@ describe('parts', () => {
     ).toContain('missing a "id" attribute')
   })
 
+  test('reports what a part list entry holds unread against its part', () => {
+    const { warnings } = read(
+      score(
+        '<part-list><score-part id="P1"><part-name>Flute</part-name><group>score</group>' +
+          `</score-part></part-list><part id="P1"><measure number="1">${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(warnings.map((w) => [w.element, w.context.part])).toEqual([['group', 'P1']])
+  })
+
   test('reports a part whose id the part list never introduces', () => {
     const { warnings } = read(
       score(
@@ -215,6 +226,7 @@ describe('parts', () => {
 
     expect(warnings.map((w) => w.message)).toEqual(['The part list has no entry for part P9.'])
     expect(warnings.map((w) => [w.element, w.attribute])).toEqual([['part', 'id']])
+    expect(warnings[0]?.context.part).toBe('P9')
   })
 })
 
@@ -2685,16 +2697,12 @@ describe('several parts', () => {
   // A repeat sign belongs to the score and is usually written into one part
   // only, so a part not stating one is not disagreeing: the sign any part
   // states is the score's.
-  test('takes a repeat sign from whichever part states it', () => {
-    const keyed = (id: string, barline = '') =>
-      `<part id="${id}"><measure number="1">${barline}` +
+  test.each(['P1', 'P2'])('takes a repeat sign from %s where only it states one', (stating) => {
+    const keyed = (id: string) =>
+      `<part id="${id}"><measure number="1">` +
+      (id === stating ? '<barline location="left"><repeat direction="forward"/></barline>' : '') +
       `<attributes><divisions>4</divisions></attributes>${QUARTER}</measure></part>`
-    const { score: result, warnings } = read(
-      score(
-        keyed('P1') +
-          keyed('P2', '<barline location="left"><repeat direction="forward"/></barline>'),
-      ),
-    )
+    const { score: result, warnings } = read(score(keyed('P1') + keyed('P2')))
 
     expect(result.globalMeasures[0]?.repeatStart).toBe(true)
     expect(warnings).toEqual([])
@@ -3552,6 +3560,7 @@ describe('a part id the output cannot carry as it stands', () => {
       expect(mnx.parts.map((part) => part.id)).toEqual(['p1'])
       expect(warnings.map((warning) => warning.code)).toEqual(['unrepresentable:part-id'])
       expect(warnings[0]?.message).toContain(id)
+      expect(warnings[0]?.context.part).toBe(id)
       // The two reasons a part is renamed read differently, so the report
       // says which one this is.
       expect(warnings[0]?.message).toContain(
