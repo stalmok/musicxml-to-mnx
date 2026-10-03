@@ -27,7 +27,7 @@ function documentWith(parts: {
 }): MNXDocument {
   return {
     mnx: { version: 1, ...(parts.support ? { support: parts.support } : {}) },
-    global: { measures: [{}] },
+    global: { measures: [{ id: 'm1' }] },
     parts: [
       {
         measures: [
@@ -69,14 +69,28 @@ describe('the type surface the writer does not yet emit is still legal MNX', () 
     },
   )
 
-  test.each<MNXDynamic['type']>(['immediate', 'gradual', 'relative', 'accent'])(
-    'a dynamic type of %s',
-    (type) => {
-      expect(
-        schemaErrors(documentWith({ dynamics: [{ position: { fraction: [0, 1] }, type }] })),
-      ).toEqual([])
+  const start = { fraction: [0, 1] as [number, number] }
+
+  // Each with only the fields its type requires.
+  test.each<MNXDynamic>([
+    { position: start, type: 'immediate', value: 'f' },
+    {
+      position: start,
+      type: 'gradual',
+      wedgeType: 'increasing',
+      end: { measure: 'm1', position: { fraction: [1, 4] } },
     },
-  )
+    { position: start, type: 'relative', relativeValue: 'louder' },
+    { position: start, type: 'accent', value: 'f' },
+  ])('a dynamic of type $type', (dynamic) => {
+    expect(schemaErrors(documentWith({ dynamics: [dynamic] }))).toEqual([])
+  })
+
+  test('a hairpin must state where it ends', () => {
+    // @ts-expect-error MNX requires a gradual dynamic to state its end.
+    const endless: MNXDynamic = { position: start, type: 'gradual', wedgeType: 'increasing' }
+    expect(schemaErrors(documentWith({ dynamics: [endless] }))).not.toEqual([])
+  })
 
   // Every other sequence item states its kind, and an event may. The writer
   // leaves it off, but the types must accept it.

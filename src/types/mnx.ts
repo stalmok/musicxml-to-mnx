@@ -376,31 +376,63 @@ export interface MNXMeasureRhythmicPosition {
   position: MNXRhythmicPosition
 }
 
-export interface MNXDynamic {
+/** What every dynamic states, whatever its type. */
+export interface MNXDynamicBase {
   position: MNXRhythmicPosition
-  type: 'immediate' | 'gradual' | 'relative' | 'accent'
-  value?: MNXDynamicValue
-  /** The level a two-stage accent settles to after the attack in `value`. */
-  residualValue?: MNXDynamicValue
-  /** The letter before an accent's value. Reads as "s" when unstated. */
-  accentPrefix?: 's' | 'r' | ''
-  /** The letter after an accent's value. Reads as "z" when unstated. */
-  accentSuffix?: 'z' | ''
-  /** The combined glyph(s) an accent is drawn as, by SMuFL name. */
-  glyphs?: string[]
   /** Text drawn before the mark, such as "più". */
   prefix?: string
   /** Text drawn after the mark, such as "sub.". */
   suffix?: string
-  /** Which way a hairpin opens. Present only on a gradual mark. */
-  wedgeType?: MNXWedgeType
-  /** Where a hairpin stops, which may be in a later measure. */
-  end?: MNXMeasureRhythmicPosition
   /** Which staff of the part it sits under, where it has more than one. */
   staff?: number
   /** Which side of the staff it is drawn on. */
   placement?: MNXMultiStaffPlacement
 }
+
+/** A level that holds from here on, such as f. */
+export interface MNXImmediateDynamic extends MNXDynamicBase {
+  type: 'immediate'
+  value: MNXDynamicValue
+  /** The glyph(s) the mark is drawn as, by SMuFL name. */
+  glyphs?: string[]
+}
+
+/** A hairpin. */
+export interface MNXGradualDynamic extends MNXDynamicBase {
+  type: 'gradual'
+  /** The level the hairpin starts from. */
+  value?: MNXDynamicValue
+  /** Which way the hairpin opens. */
+  wedgeType: MNXWedgeType
+  /** Where the hairpin stops, which may be in a later measure. */
+  end: MNXMeasureRhythmicPosition
+}
+
+export type MNXRelativeDynamicValue = 'louder' | 'softer'
+
+/** A level stated against the one before it, such as più f. */
+export interface MNXRelativeDynamic extends MNXDynamicBase {
+  type: 'relative'
+  relativeValue: MNXRelativeDynamicValue
+}
+
+/** An accent on a single beat, such as sfz. */
+export interface MNXAccentDynamic extends MNXDynamicBase {
+  type: 'accent'
+  /** The level of the attack: the "f" of "sfz". */
+  value: MNXDynamicValue
+  /** The level a two-stage accent settles to after the attack. */
+  residualValue?: MNXDynamicValue
+  /** The letter before the value. Reads as "s" when unstated. */
+  accentPrefix?: 's' | 'r' | ''
+  /** The letter after the value. Reads as "z" when unstated. */
+  accentSuffix?: 'z' | ''
+  /** The combined glyph(s) the accent is drawn as, by SMuFL name. */
+  glyphs?: string[]
+}
+
+export type MNXDynamic =
+  MNXImmediateDynamic | MNXGradualDynamic | MNXRelativeDynamic | MNXAccentDynamic
 
 /** The ids of the two notes a mark runs between. */
 export interface MNXIdPair {

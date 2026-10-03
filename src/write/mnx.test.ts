@@ -3,6 +3,7 @@
 
 import { describe, expect, test } from 'vitest'
 import { writeValid } from '../../tests/support/convert.js'
+import { writeMnx } from './mnx.js'
 import { fraction } from '../fraction.js'
 import type {
   Ending,
@@ -427,6 +428,25 @@ describe('octave shifts and hairpins', () => {
         staff: 2,
       },
     ])
+  })
+})
+
+describe('a hairpin with no end', () => {
+  test('is refused, because MNX requires a gradual dynamic to state its end', () => {
+    const measure: Measure = {
+      ...measureOf(WHOLE_C),
+      dynamics: [
+        {
+          kind: 'gradual',
+          position: fraction(0, 1),
+          wedge: 'increasing',
+          end: undefined,
+          staff: undefined,
+        },
+      ],
+    }
+
+    expect(() => writeMnx(scoreOf(measure))).toThrow('A hairpin with no end reached the writer.')
   })
 })
 

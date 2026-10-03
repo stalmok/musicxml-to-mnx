@@ -601,11 +601,11 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     mnx.parts.forEach((part, partIndex) => {
       part.measures.forEach((measure, index) => {
         for (const dynamic of measure.dynamics ?? []) {
-          if (!dynamic.wedgeType) continue
-          const endsIn = dynamic.end ? named.get(dynamic.end.measure) : undefined
+          if (dynamic.type !== 'gradual') continue
+          const endsIn = named.get(dynamic.end.measure)
           converted.push(
             `part ${String(partIndex + 1)} ${dynamic.wedgeType} ` +
-              `m${String(index + 1)} -> ${endsIn === undefined ? 'open' : `m${String(endsIn + 1)}`}`,
+              `m${String(index + 1)} -> ${endsIn === undefined ? 'a measure the score does not name' : `m${String(endsIn + 1)}`}`,
           )
         }
       })

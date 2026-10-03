@@ -133,7 +133,7 @@ describe('dynamics', () => {
   test('writes an extreme dynamic the spec schema accepts', () => {
     const { mnx } = convertValid(inMeasure(direction('<dynamics><pppp/></dynamics>') + note('C')))
 
-    expect(mnx.parts[0]?.measures[0]?.dynamics?.[0]?.value).toBe('pppp')
+    expect(mnx.parts[0]?.measures[0]?.dynamics?.[0]).toMatchObject({ value: 'pppp' })
   })
 
   // Every dynamic element MusicXML names converts, so only an element
@@ -2484,9 +2484,8 @@ describe('hairpins', () => {
         inMeasure(wedge('crescendo') + NOTE + GRACE + wedge('stop') + NOTE),
       )
 
-      expect(mnx.parts[0]?.measures[0]?.dynamics?.[0]?.end).toEqual({
-        measure: 'm1',
-        position: { fraction: [1, 4], graceIndex: 1 },
+      expect(mnx.parts[0]?.measures[0]?.dynamics?.[0]).toMatchObject({
+        end: { measure: 'm1', position: { fraction: [1, 4], graceIndex: 1 } },
       })
       expect(warnings).toEqual([])
     })

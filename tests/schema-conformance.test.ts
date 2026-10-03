@@ -176,7 +176,10 @@ function readMnxTypes(): Map<string, Map<string, { optional: boolean; union: str
 const DEFINITION_OF: Readonly<Record<string, string | undefined>> = {
   MNXDocument: 'root',
   MNXFormat: 'mnx',
-  MNXDynamic: 'dynamic-group',
+  MNXImmediateDynamic: 'dynamic-group-immediate',
+  MNXGradualDynamic: 'dynamic-group-gradual',
+  MNXRelativeDynamic: 'dynamic-group-relative',
+  MNXAccentDynamic: 'dynamic-group-accent',
   MNXGlobalMeasure: 'measure-global',
   MNXGraceGroup: 'grace',
   MNXLayoutStaff: 'staff',
@@ -187,6 +190,8 @@ const DEFINITION_OF: Readonly<Record<string, string | undefined>> = {
   // (accent, staccato, ...) as a bare placement, which MNXEventMarkings'
   // properties already reach.
   MNXMarking: undefined,
+  // A shared base for the four dynamic types. Each of them is checked whole.
+  MNXDynamicBase: undefined,
 }
 
 /**
@@ -200,6 +205,9 @@ const GLOBAL_ATTRIBUTES = ['id', '_c', '_x']
  * Schema properties the types do not model, with the reason. The writer
  * cannot produce any of them yet. A difference not listed here fails.
  */
+/** The reason every dynamic type shares. */
+const DYNAMIC_NOT_MODELLED = 'A continued dynamic, and the voice a mark belongs to.'
+
 const NOT_MODELLED: Readonly<Record<string, { properties: readonly string[]; why: string }>> = {
   MNXNote: {
     properties: ['perform', 'written'],
@@ -229,10 +237,13 @@ const NOT_MODELLED: Readonly<Record<string, { properties: readonly string[]; why
     properties: ['color', 'glyph'],
     why: 'The colour a clef is drawn in, and a glyph in place of its sign.',
   },
-  MNXDynamic: {
-    properties: ['relativeValue', 'staffEnd', 'visuallyContinues', 'voice'],
-    why: 'Relative dynamics, a hairpin ending on another staff, a continued hairpin, and the voice a mark belongs to.',
+  MNXImmediateDynamic: { properties: ['visuallyContinues', 'voice'], why: DYNAMIC_NOT_MODELLED },
+  MNXGradualDynamic: {
+    properties: ['staffEnd', 'visuallyContinues', 'voice'],
+    why: `A hairpin ending on another staff. ${DYNAMIC_NOT_MODELLED}`,
   },
+  MNXRelativeDynamic: { properties: ['visuallyContinues', 'voice'], why: DYNAMIC_NOT_MODELLED },
+  MNXAccentDynamic: { properties: ['visuallyContinues', 'voice'], why: DYNAMIC_NOT_MODELLED },
   MNXOttava: { properties: ['voice'], why: 'The voice an octave shift applies to.' },
   MNXMeasureRepeat: {
     properties: ['counter', 'displayNumber', 'staffPosition'],
@@ -545,6 +556,10 @@ describe('the registry of what MNX cannot hold, against the schema', () => {
 const SEQUENCE_ITEM_TAG =
   'The model tags a sequence item with kind, and the writer states MNX type from it. The two do not always spell it alike: the model says multiNoteTremolo where MNX says tremolo.'
 
+/** Why the model states nothing about a relative dynamic. */
+const RELATIVE_NOT_CONVERTED =
+  'Relative dynamics are not converted: MusicXML writes più f as words beside a mark.'
+
 /** The model's own tag for a dynamic, which MNX states as a type. */
 const DYNAMIC_TAG =
   'The model tags a dynamic with kind, spelled as MNX spells its type, and the writer states MNX type from it.'
@@ -570,8 +585,8 @@ const MNX_SPELLING: Readonly<Record<string, string>> = {
   LineType: 'MNXLineType',
   FermataSymbol: 'MNXFermataSymbol',
   TupletDisplay: 'MNXTupletDisplaySetting',
-  AccentPrefix: 'MNXDynamic.accentPrefix',
-  AccentSuffix: 'MNXDynamic.accentSuffix',
+  AccentPrefix: 'MNXAccentDynamic.accentPrefix',
+  AccentSuffix: 'MNXAccentDynamic.accentSuffix',
   DynamicValue: 'MNXDynamicValue',
   WedgeType: 'MNXWedgeType',
   OttavaAmount: 'MNXOttavaAmount',
@@ -725,7 +740,11 @@ const NOT_RESTATED: Readonly<Record<string, string>> = {
   MNXFermataDuration: `MusicXML's <fermata> states a shape and a side, and says nothing about how long the pause holds, so there is nothing to read.`,
   MNXStaffLabelref:
     "The writer picks which of a part's names its staff draws, from the names the part has. No source value decides it.",
-  'MNXDynamic.type': `${DYNAMIC_TAG} Relative dynamics are not converted.`,
+  'MNXImmediateDynamic.type': DYNAMIC_TAG,
+  'MNXGradualDynamic.type': DYNAMIC_TAG,
+  'MNXAccentDynamic.type': DYNAMIC_TAG,
+  'MNXRelativeDynamic.type': RELATIVE_NOT_CONVERTED,
+  MNXRelativeDynamicValue: RELATIVE_NOT_CONVERTED,
   'MNXEvent.type': SEQUENCE_ITEM_TAG,
   'MNXSpace.type': SEQUENCE_ITEM_TAG,
   'MNXTuplet.type': SEQUENCE_ITEM_TAG,
