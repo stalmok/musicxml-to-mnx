@@ -185,7 +185,7 @@ describe('stem direction', () => {
     const { events, warnings } = read(measure(note('C', '<stem>none</stem>')))
 
     expect(events[0]?.stemDirection).toBeUndefined()
-    expect(warnings.map((w) => w.code)).toContain('unrepresentable:stem-direction')
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:stem-direction'])
   })
 
   test('leaves the direction unset where there is no stem', () => {

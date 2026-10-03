@@ -240,6 +240,18 @@ describe('a note naming an instrument the part list does not set up', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unresolved:instrument-id'])
     expect(warnings[0]?.message).toContain('P1-I99')
   })
+
+  test('reads an instrument stating no id as naming none', () => {
+    const { part, warnings } = read(
+      struck('C', '5').replace('</note>', '<instrument/></note>'),
+      DRUM_KIT,
+    )
+
+    expect([...(part?.kit.values() ?? [])]).toEqual([
+      { name: undefined, staffPosition: 1, sound: undefined },
+    ])
+    expect(warnings).toEqual([])
+  })
 })
 
 // MusicXML ids are unique across the document, so a part naming an

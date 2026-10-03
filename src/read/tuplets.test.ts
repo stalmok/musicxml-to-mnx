@@ -2816,6 +2816,17 @@ describe('two-note tremolos', () => {
     )
   })
 
+  // The note that stops a pair adds nothing to the ratio, so its own is not
+  // read, and a broken one is not what refuses the file.
+  test('rejects a stop where none is open before reading the ratio it states', () => {
+    const broken = tremoloNote('C', 'stop').replace(
+      '<actual-notes>2</actual-notes>',
+      '<actual-notes>0</actual-notes>',
+    )
+
+    expect(readFailure(measure(broken)).message).toContain('stops where none is open')
+  })
+
   // Named in full, because a tuplet left open at the end of the measure
   // refuses with a message these words also fit.
   test('rejects a tremolo that is opened and never closed', () => {
