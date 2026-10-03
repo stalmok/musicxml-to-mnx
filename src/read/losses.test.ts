@@ -486,26 +486,30 @@ describe('a loss the schema has no home for', () => {
   // A size is a percentage of the work's own scaling, so a hundred percent is
   // the staff MNX draws anyway. The value is a decimal, so a fraction of
   // nothing and a leading zero state the same hundred.
-  test.each(['100', '100.0', '0100'])('says nothing about a staff sized %s', (written) => {
+  test.each(['100', '100.0', '100.00', '100.', '0100'])(
+    'says nothing about a staff sized %s',
+    (written) => {
+      expect(
+        codes(
+          measure(
+            note(''),
+            `<divisions>4</divisions><staff-details><staff-size>${written}</staff-size>` +
+              '</staff-details>',
+          ),
+        ),
+      ).toEqual([])
+    },
+  )
+
+  // Any other size is reported. Exponent notation is not a decimal, so 1e2 is
+  // reported rather than read as the hundred it would come to.
+  test.each(['1e2', '1100', '1005', '100.5'])('reports a staff sized %s', (written) => {
     expect(
       codes(
         measure(
           note(''),
           `<divisions>4</divisions><staff-details><staff-size>${written}</staff-size>` +
             '</staff-details>',
-        ),
-      ),
-    ).toEqual([])
-  })
-
-  // Exponent notation is not a decimal, and is reported rather than read as
-  // the hundred it would come to.
-  test('reports a size written in exponent notation', () => {
-    expect(
-      codes(
-        measure(
-          note(''),
-          '<divisions>4</divisions><staff-details><staff-size>1e2</staff-size></staff-details>',
         ),
       ),
     ).toEqual(['unrepresentable:element <staff-size> cannot be expressed in MNX.'])

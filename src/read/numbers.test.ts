@@ -9,7 +9,7 @@
 import { describe, expect, test } from 'vitest'
 import { MusicXMLError } from '../errors.js'
 import { parseXmlRoot } from '../xml/parse.js'
-import { readAttributeInRange, readInteger, readIntegerInRange } from './numbers.js'
+import { parseDecimal, readAttributeInRange, readInteger, readIntegerInRange } from './numbers.js'
 
 const PATH = ['score-partwise', 'part']
 
@@ -93,5 +93,21 @@ describe('a whole number written as an attribute', () => {
 
   test('refuses digits too large to be read back exactly', () => {
     expect(() => read('99999999999999999999')).toThrow('which is not a whole number')
+  })
+})
+
+describe('a decimal number', () => {
+  test.each([
+    ['120', 120],
+    ['-4', -4],
+    ['1.25', 1.25],
+    ['.25', 0.25],
+    ['3.', 3],
+  ])('reads "%s"', (written, value) => {
+    expect(parseDecimal(written)).toBe(value)
+  })
+
+  test.each(['0x10', '1e3', '', '.', '1.2.3', ' 12'])('reads nothing from "%s"', (written) => {
+    expect(parseDecimal(written)).toBeUndefined()
   })
 })

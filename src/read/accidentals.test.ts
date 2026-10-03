@@ -123,6 +123,7 @@ describe('an altered note', () => {
     ['1.5', 1],
     ['-1.5', -1],
     ['1.75', 2],
+    ['.25', 0],
   ])('converts an alteration of %s semitones as %i', (written, expected) => {
     const { notes, warnings } = read(score(note('C', written, '')))
 
@@ -139,7 +140,15 @@ describe('an altered note', () => {
     expect(warnings).toEqual([])
   })
 
-  test('refuses an alteration that is not a number', () => {
-    expect(() => read(score(note('C', 'flat', '')))).toThrow('not a number of semitones')
+  test('converts an alteration written with more than one digit', () => {
+    const { notes, warnings } = read(score(note('C', '-10', '')))
+
+    expect(notes[0]?.pitch.alter).toBe(-10)
+    expect(warnings).toEqual([])
+  })
+
+  // Number() reads all of these.
+  test.each(['flat', '0x1', '1e1', ' '])('refuses an alteration of "%s"', (written) => {
+    expect(() => read(score(note('C', written, '')))).toThrow('not a number of semitones')
   })
 })

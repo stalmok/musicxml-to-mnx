@@ -1191,14 +1191,19 @@ describe('segno', () => {
     ])
   })
 
-  test('reports a color that is not a MusicXML color, converting none', () => {
-    const { global, warnings } = read(inMeasure(direction('<segno color="red"/>') + note('C')))
+  test.each(['red', 'x#FF0000', 'x#FFFF0000', '#FFFF00000'])(
+    'reports a color of "%s", which is not a MusicXML color, converting none',
+    (written) => {
+      const { global, warnings } = read(
+        inMeasure(direction(`<segno color="${written}"/>`) + note('C')),
+      )
 
-    expect(global?.segno?.color).toBeUndefined()
-    expect(warnings.map((w) => [w.code, w.element, w.attribute])).toEqual([
-      ['unresolved:attribute-value', 'segno', 'color'],
-    ])
-  })
+      expect(global?.segno?.color).toBeUndefined()
+      expect(warnings.map((w) => [w.code, w.element, w.attribute])).toEqual([
+        ['unresolved:attribute-value', 'segno', 'color'],
+      ])
+    },
+  )
 
   // MNX draws one segno per measure, so a second at another point is reported
   // and the first kept.
