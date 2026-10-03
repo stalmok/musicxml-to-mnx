@@ -520,14 +520,17 @@ describe('crossing tuplet numbers', () => {
   // which stop is written first inside <notations>. Whatever the order, the
   // note's stops close the same tuplets, so nothing crosses.
   test.each([
-    ['<tuplet type="stop" number="1"/><tuplet type="stop" number="2"/>'],
-    ['<tuplet type="stop" number="2"/><tuplet type="stop" number="1"/>'],
-  ])('says nothing when nested tuplets stop on one note as %s', (stops) => {
+    ['1', '<tuplet type="stop" number="1"/><tuplet type="stop" number="2"/>'],
+    ['1', '<tuplet type="stop" number="2"/><tuplet type="stop" number="1"/>'],
+    ['2', '<tuplet type="stop" number="1"/><tuplet type="stop" number="2"/>'],
+    ['2', '<tuplet type="stop" number="2"/><tuplet type="stop" number="1"/>'],
+  ])('says nothing when nested tuplets, outer %s, stop on one note as %s', (outer, stops) => {
+    const inner = outer === '1' ? '2' : '1'
     const nested =
       '<score-partwise><part id="P1"><measure number="1">' +
       '<attributes><divisions>9</divisions></attributes>' +
-      note('C', 3, 3, 2, `<tuplet type="start" number="1">${threeInTwoEighths}</tuplet>`) +
-      note('D', 2, 9, 4, `<tuplet type="start" number="2">${threeInTwoEighths}</tuplet>`) +
+      note('C', 3, 3, 2, `<tuplet type="start" number="${outer}">${threeInTwoEighths}</tuplet>`) +
+      note('D', 2, 9, 4, `<tuplet type="start" number="${inner}">${threeInTwoEighths}</tuplet>`) +
       note('E', 2, 9, 4) +
       note('F', 2, 9, 4, stops) +
       '</measure></part></score-partwise>'
