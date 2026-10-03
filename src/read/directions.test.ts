@@ -169,21 +169,20 @@ describe('dynamics', () => {
   })
 
   // pf (poco forte / piano-forte) has no single settled reading of its two
-  // letters, and the accent prefixes MNX names stop at s and r, so only its
-  // glyph is carried.
-  test('reads pf as its glyph alone', () => {
+  // letters, and MNX requires an accent to state the level of its attack.
+  test('reports pf, and leaves it out', () => {
     const { measure, warnings } = read(
       inMeasure(direction('<dynamics><pf/></dynamics>') + note('C')),
     )
 
-    expect(measure?.dynamics[0]?.value).toBeUndefined()
-    expect(measure?.dynamics[0]?.accent).toEqual({
-      residualValue: undefined,
-      prefix: undefined,
-      suffix: undefined,
-      glyphs: ['dynamicPF'],
-    })
-    expect(warnings).toEqual([])
+    expect(measure?.dynamics).toEqual([])
+    expect(warnings).toMatchObject([
+      {
+        code: 'unsupported:element',
+        element: 'pf',
+        message: 'A dynamic of "pf" is not converted yet.',
+      },
+    ])
   })
 
   // A two-stage accent states a momentary attack and the level it settles to:
@@ -253,17 +252,6 @@ describe('dynamics', () => {
       value: 'f',
       accentSuffix: '',
       glyphs: ['dynamicSforzando1'],
-    })
-  })
-
-  test('writes a glyph-only accent with no value', () => {
-    const { mnx } = convertValid(inMeasure(direction('<dynamics><pf/></dynamics>') + note('C')))
-
-    const dynamic = mnx.parts[0]?.measures[0]?.dynamics?.[0]
-    expect(dynamic).toEqual({
-      position: { fraction: [0, 1] },
-      type: 'accent',
-      glyphs: ['dynamicPF'],
     })
   })
 

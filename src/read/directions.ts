@@ -110,12 +110,15 @@ const isDynamicValue = recogniser<DynamicValue>({
 // held at piano) adds the level it settles to as the residual. The glyph
 // names are the precomposed combined marks from SMuFL's dynamics range,
 // carried besides so the mark is drawn as written.
+//
+// pf (poco forte / piano-forte) is left out: its two letters have no settled
+// reading, and MNX requires an accent to state the level of its attack.
 interface AccentDynamic {
   glyph: string
-  value: DynamicValue | undefined
+  value: DynamicValue
   residualValue: DynamicValue | undefined
-  prefix: AccentPrefix | undefined
-  suffix: AccentSuffix | undefined
+  prefix: AccentPrefix
+  suffix: AccentSuffix
 }
 const ACCENT_DYNAMICS = new Map<string, AccentDynamic>([
   [
@@ -147,19 +150,6 @@ const ACCENT_DYNAMICS = new Map<string, AccentDynamic>([
   [
     'sffz',
     { glyph: 'dynamicSforzatoFF', value: 'ff', residualValue: undefined, prefix: 's', suffix: 'z' },
-  ],
-  // pf (poco forte / piano-forte) has no settled reading of its two letters,
-  // and the accent prefixes MNX names stop at s and r, so only its glyph is
-  // carried.
-  [
-    'pf',
-    {
-      glyph: 'dynamicPF',
-      value: undefined,
-      residualValue: undefined,
-      prefix: undefined,
-      suffix: undefined,
-    },
   ],
   ['fp', { glyph: 'dynamicFortePiano', value: 'f', residualValue: 'p', prefix: '', suffix: '' }],
   [

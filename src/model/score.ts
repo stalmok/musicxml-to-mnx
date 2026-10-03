@@ -492,14 +492,12 @@ export interface Dynamic {
    * Set on an accent, such as a sforzando. The mark's spelling is the plain
    * `value` for the attack level with the accent's letters around it as the
    * prefix and suffix, and a two-stage accent like fp adds the level it
-   * settles to as the residual. Its glyphs draw the combined mark. A mark
-   * with no settled spelling, like pf, leaves everything but the glyphs
-   * unset.
+   * settles to as the residual. Its glyphs draw the combined mark.
    */
   readonly accent?: {
     readonly residualValue: DynamicValue | undefined
-    readonly prefix: AccentPrefix | undefined
-    readonly suffix: AccentSuffix | undefined
+    readonly prefix: AccentPrefix
+    readonly suffix: AccentSuffix
     readonly glyphs: readonly string[]
   }
   /** The wording drawn before the mark, as in the "più" of "più f", which is
