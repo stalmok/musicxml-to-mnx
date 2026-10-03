@@ -132,6 +132,9 @@ test('refuses only the songs it is known to refuse', () => {
  * hairpins numbered 1 at the same time. On the number alone, a stop on one
  * hand closes the other hand's hairpin (brahms-1-gestillte-sehnsucht,
  * measure 7).
+ *
+ * MNX requires a hairpin to state where it stops, so a hairpin the source
+ * never closes is left out.
  */
 function sourceHairpins(root: XmlElement): string[] {
   const paired: string[] = []
@@ -230,9 +233,10 @@ function sourceHairpins(root: XmlElement): string[] {
       for (const end of ends) {
         if (end.kind !== 'start') continue
         const stop = closed.get(end.order)
+        if (!stop) continue
         paired.push(
           `part ${String(partIndex + 1)} ${end.wedge} m${String(end.measure + 1)} -> ` +
-            `${stop ? `m${String(stop.measure + 1)}` : 'open'}`,
+            `m${String(stop.measure + 1)}`,
         )
       }
     })

@@ -2213,15 +2213,45 @@ describe('hairpins', () => {
     expect(warnings).toEqual([])
   })
 
-  // MNX allows a gradual mark with no end, and saying a hairpin starts here
-  // says more than dropping it would. What is lost is how far it runs.
-  test('keeps a hairpin nothing closes, and reports how far it runs is lost', () => {
+  // MNX requires a gradual dynamic to state where it ends.
+  test('drops a hairpin nothing closes, and reports it', () => {
     const { dynamics, warnings } = readMeasures(wedge('crescendo') + NOTE)
 
-    expect(dynamics[0]?.[0]?.wedge).toBe('increasing')
-    expect(dynamics[0]?.[0]?.end).toBeUndefined()
-    expect(warnings.map((w) => w.element)).toEqual(['wedge'])
-    expect(warnings[0]?.message).toContain('nothing ends it')
+    expect(dynamics[0]).toEqual([])
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([['unclosed:spanner', 'wedge']])
+    expect(warnings[0]?.message).toBe(
+      'A hairpin starts where nothing ends it, and is not carried over.',
+    )
+  })
+
+  test('names the wording that goes with a hairpin nothing closes', () => {
+    const { dynamics, warnings } = readMeasures(
+      '<direction><direction-type>' +
+        '<dynamics><other-dynamics>cresc.</other-dynamics></dynamics>' +
+        '<wedge type="crescendo" number="1"/>' +
+        '<dynamics><other-dynamics>poco a poco</other-dynamics></dynamics>' +
+        '</direction-type></direction>' +
+        NOTE,
+    )
+
+    expect(dynamics[0]).toEqual([])
+    expect(warnings.map((w) => w.message)).toEqual([
+      'A hairpin starts where nothing ends it, and is not carried over, nor its wording ' +
+        '"cresc." and "poco a poco".',
+    ])
+  })
+
+  test('drops only the hairpin nothing closes, and keeps the marks around it', () => {
+    const { dynamics } = readMeasures(
+      wedge('crescendo') +
+        NOTE +
+        wedge('stop') +
+        '<direction><direction-type><dynamics><f/></dynamics></direction-type></direction>' +
+        wedge('diminuendo') +
+        NOTE,
+    )
+
+    expect(dynamics[0]?.map((d) => d.wedge ?? d.value)).toEqual(['increasing', 'f'])
   })
 
   test('reports a stop where no hairpin had started', () => {

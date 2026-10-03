@@ -513,8 +513,8 @@ export interface Dynamic {
    */
   suffix?: string
   /**
-   * Where the hairpin stops. Filled in by the spanner resolver; unset where
-   * the source never closed the hairpin.
+   * Where the hairpin stops. Filled in by the spanner resolver, which removes
+   * a hairpin the source never closed.
    */
   end: SpanStop | undefined
   /** Which staff it belongs under, where the part has more than one. */

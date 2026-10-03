@@ -456,6 +456,14 @@ function lastOpenedIn<E extends EndPlace>(waiting: readonly E[], end: EndPlace):
  * which a <backup> can take back to an earlier point, so this is where the
  * source has it rather than a sort of the whole measure.
  */
+/** The wording a hairpin carries, quoted for a report, or '' where it has none. */
+function wordingOf(hairpin: Dynamic): string {
+  return [hairpin.prefix, hairpin.suffix]
+    .filter((text) => text !== undefined)
+    .map((text) => `"${text}"`)
+    .join(' and ')
+}
+
 function insertAtPosition(dynamics: Dynamic[] | undefined, added: Dynamic): void {
   if (!dynamics) return
   const after = dynamics.findIndex((mark) => compareFractions(mark.position, added.position) > 0)
@@ -899,19 +907,17 @@ export class SpannerResolver {
 
   /** Joins every hairpin in the part, once all of both ends are in. */
   #resolveWedges(measures: readonly Measure[], warnings: WarningCollector): void {
-    // MNX allows a gradual mark with no end, so of the three failures only
-    // the orphan stop drops anything whole: a hairpin whose stop is missing
-    // or unusable keeps its mark, and loses how far it runs. A hairpin's stop
-    // covers the point where it is written, so no stop covers a point before
-    // its start; the backwards message is for when the two differ, as an
-    // octave shift's do.
+    // MNX requires a gradual dynamic to state where it ends, so a hairpin
+    // left with no stop is not carried over. A hairpin's stop covers the
+    // point where it is written, so no stop covers a point before its start;
+    // the backwards message is for when the two differ, as an octave shift's
+    // do.
     const messages = {
       'orphan-stop': 'A hairpin stops where none had started, and is not carried over.',
       'backwards-stop':
         'A hairpin would end before it starts, its stop covering a point earlier ' +
-        'than its start, so how far it runs is not carried over.',
-      'unclosed-start':
-        'A hairpin starts where nothing ends it, so how far it runs is not carried over.',
+        'than its start, and is not carried over.',
+      'unclosed-start': 'A hairpin starts where nothing ends it, and is not carried over.',
     }
     const closed = new Map<StopEnd<WedgeStop>, Dynamic>()
     pairSpans<Dynamic, WedgeStop>(
@@ -927,9 +933,21 @@ export class SpannerResolver {
         closed.set(stop, dynamic)
       },
       (reason, end) => {
-        warnings.add('unclosed:spanner', messages[reason], end.where.context, end.where.element)
+        // Only a start can carry wording, and only an unclosed one reaches here.
+        const words = end.kind === 'start' && !end.dropped ? wordingOf(end.payload) : ''
+        const message =
+          words === ''
+            ? messages[reason]
+            : `A hairpin starts where nothing ends it, and is not carried over, nor its wording ${words}.`
+        warnings.add('unclosed:spanner', message, end.where.context, end.where.element)
       },
     )
+
+    for (const end of this.#wedgeEnds) {
+      if (end.kind !== 'start' || end.dropped || end.payload.end !== undefined) continue
+      const dynamics = measures[end.measure]?.dynamics ?? []
+      dynamics.splice(0, dynamics.length, ...dynamics.filter((mark) => mark !== end.payload))
+    }
 
     // Wording written at a closing edge goes on the hairpin the pairing joins
     // to that stop. It is drawn on its own where the stop closed nothing, and
