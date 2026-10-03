@@ -298,6 +298,15 @@ describe('the hand-written MNX types against the schema', () => {
     )
   })
 
+  // The per-type comparison below passes over a definition it cannot find,
+  // so a definition MNX removes or renames is caught here.
+  test('every type mapped by hand still exists, mapped to a definition the schema still has', () => {
+    expect(Object.keys(DEFINITION_OF).filter((name) => !mnxTypes.has(name))).toEqual([])
+    expect(
+      Object.entries(DEFINITION_OF).filter(([, key]) => key !== undefined && !(key in schemaDefs)),
+    ).toEqual([])
+  })
+
   const mapped = [...mnxTypes.entries()].flatMap(([name, properties]) => {
     const key = name in DEFINITION_OF ? DEFINITION_OF[name] : kebab(name)
     if (key === undefined) return []
