@@ -316,6 +316,23 @@ describe('a rolled chord struck on a kit', () => {
     expect(warnings).toEqual([])
   })
 
+  test('runs from the lowest component where the chord is written top first', () => {
+    const topFirst =
+      struck('G', '5', 'P1-I43', '<notations><arpeggiate/></notations>') +
+      '<note><chord/><unpitched><display-step>C</display-step>' +
+      '<display-octave>5</display-octave></unpitched><duration>1</duration>' +
+      '<type>quarter</type><instrument id="P1-I39"/>' +
+      '<notations><arpeggiate/></notations></note>'
+    const { part, warnings } = read(topFirst, DRUM_KIT)
+    const event = firstEvent(part)
+
+    expect(part?.measures[0]?.arpeggios[0]?.span).toEqual({
+      start: event?.kitNotes[1]?.id,
+      end: event?.kitNotes[0]?.id,
+    })
+    expect(warnings).toEqual([])
+  })
+
   // The mark states the direction, not the order the notes are written in, so
   // a roll drawn downwards runs from the top component to the bottom.
   test('runs the other way where the mark rolls downwards', () => {
@@ -591,6 +608,24 @@ describe('the MNX a percussion part converts to', () => {
 
     expect(warnings.map((w) => w.code)).toEqual(['unsupported:element', 'unsupported:element'])
     expect(warnings[0]?.message).toContain('different numbers')
+  })
+
+  // A roll numbered 1 here also covers a chord of another voice. The divided
+  // chord still makes it unknown which notes the roll covers.
+  test('reports a roll that holds a divided kit chord beside an undivided one', () => {
+    const voiced = (note: string, voice: string) =>
+      note.replace('</note>', `<voice>${voice}</voice></note>`)
+    const numbered =
+      voiced(struck('C', '5', 'P1-I39', '<notations><arpeggiate number="1"/></notations>'), '1') +
+      '<note><chord/><unpitched><display-step>G</display-step>' +
+      '<display-octave>5</display-octave></unpitched><duration>1</duration>' +
+      '<type>quarter</type><instrument id="P1-I43"/><voice>1</voice>' +
+      '<notations><arpeggiate number="2"/></notations></note>' +
+      '<backup><duration>1</duration></backup>' +
+      voiced(struck('C', '5', 'P1-I39', '<notations><arpeggiate number="1"/></notations>'), '2')
+    const { warnings } = read(numbered, DRUM_KIT)
+
+    expect(warnings.filter((w) => w.message.includes('different numbers'))).toHaveLength(2)
   })
 
   test('writes no notes array on an event that only strikes the kit', () => {
