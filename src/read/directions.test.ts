@@ -1306,8 +1306,8 @@ describe('sound navigation', () => {
     },
   )
 
-  test('reports a <sound fine> with text after the duration', () => {
-    const { global, warnings } = read(inMeasure(note('C') + '<sound fine="8x"/>'))
+  test.each(['8x', 'x8', '-8'])('reports a <sound fine> written as "%s"', (written) => {
+    const { global, warnings } = read(inMeasure(note('C') + `<sound fine="${written}"/>`))
 
     expect(global?.fine).toBeUndefined()
     expect(warnings.map((w) => w.code)).toEqual(['unresolved:attribute-value'])
