@@ -89,7 +89,8 @@ export interface Wording {
 
 /**
  * Reports wording that qualifies no mark. MNX states wording only as the
- * prefix or suffix of a dynamic that states a level.
+ * prefix or suffix of a dynamic mark, and each kind of mark requires more
+ * than its wording.
  */
 export function reportLoneWording(wording: Wording, warnings: WarningCollector): void {
   warnings.add(
@@ -461,12 +462,6 @@ function lastOpenedIn<E extends EndPlace>(waiting: readonly E[], end: EndPlace):
   )
 }
 
-/**
- * Puts a dynamic in a measure at the point the source drew it, before the
- * first one written later. The measure's marks are read in document order,
- * which a <backup> can take back to an earlier point, so this is where the
- * source has it rather than a sort of the whole measure.
- */
 /** The wording a hairpin carries, quoted for a report, or '' where it has none. */
 function wordingOf(hairpin: GradualDynamic): string {
   return [hairpin.prefix, hairpin.suffix]

@@ -179,8 +179,8 @@ export const WARNING_CODES = Object.freeze([
   // and the glyph choice is lost.
   'unrepresentable:wording-glyph',
   // Dynamic wording, such as "dolce", that qualifies no mark. MNX states
-  // wording only as the prefix or suffix of a dynamic that states a level,
-  // so the words are not converted.
+  // wording only as the prefix or suffix of a dynamic mark, and each kind of
+  // mark requires more than its wording, so the words are not converted.
   'unrepresentable:dynamic-wording',
   // Tuplets that cross: a stop marker numbered for a tuplet other than the
   // last opened, which MNX's nested tuplets cannot state. The stop is matched
@@ -285,8 +285,10 @@ export const WARNING_CODES = Object.freeze([
   // staves it is written on, and the statement names one beyond them. There
   // is no staff for it to be about, so it is not carried over.
   'inconsistent:staff',
-  // A tie or slur has only one of its two ends, so there is nothing to join
-  // it to. Real scores contain these, so it is reported rather than refused.
+  // A tie, slur, hairpin or octave shift has only one of its two ends, so
+  // there is nothing to join it to. Real scores contain these, so it is
+  // reported rather than refused. A hairpin or octave shift with no end is
+  // not carried over, because MNX requires one to state where it stops.
   'unclosed:spanner',
   // A first or second time bracket with only one of its two ends.
   'unclosed:ending',

@@ -201,13 +201,13 @@ const DEFINITION_OF: Readonly<Record<string, string | undefined>> = {
  */
 const GLOBAL_ATTRIBUTES = ['id', '_c', '_x']
 
+/** The reason every dynamic type shares. */
+const DYNAMIC_NOT_MODELLED = 'A continued dynamic, and the voice a mark belongs to.'
+
 /**
  * Schema properties the types do not model, with the reason. The writer
  * cannot produce any of them yet. A difference not listed here fails.
  */
-/** The reason every dynamic type shares. */
-const DYNAMIC_NOT_MODELLED = 'A continued dynamic, and the voice a mark belongs to.'
-
 const NOT_MODELLED: Readonly<Record<string, { properties: readonly string[]; why: string }>> = {
   MNXNote: {
     properties: ['perform', 'written'],
