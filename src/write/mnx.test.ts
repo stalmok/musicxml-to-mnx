@@ -214,6 +214,47 @@ describe('global measures', () => {
     })
   })
 
+  test('writes the number, barline, repeats, fermata and segno the measure states', () => {
+    const score = scoreOf(measureOf(WHOLE_C), [
+      {
+        key: undefined,
+        time: undefined,
+        tempos: [],
+        ...NO_BARLINE,
+        number: 5,
+        barline: 'dashed',
+        repeatStart: true,
+        repeatEnd: { times: 3 },
+        fermata: { symbol: undefined, pointing: undefined, placement: 'above' },
+        segno: { location: fraction(0, 1), glyph: 'segnoSerpent1', color: undefined },
+      },
+    ])
+
+    expect(writeValid(score).global.measures[0]).toEqual({
+      number: 5,
+      barline: { type: 'dashed' },
+      repeatStart: {},
+      repeatEnd: { times: 3 },
+      fermata: { placement: 'above' },
+      segno: { location: { fraction: [0, 1] }, glyph: 'segnoSerpent1' },
+    })
+  })
+
+  test('writes a repeat end that states no count of times as an empty object', () => {
+    const score = scoreOf(measureOf(WHOLE_C), [
+      {
+        key: undefined,
+        time: undefined,
+        tempos: [],
+        number: undefined,
+        ...NO_BARLINE,
+        repeatEnd: { times: undefined },
+      },
+    ])
+
+    expect(writeValid(score).global.measures[0]).toEqual({ repeatEnd: {} })
+  })
+
   test('leaves them out when the score states neither', () => {
     expect(writeValid(scoreOf(measureOf(WHOLE_C))).global.measures[0]).toEqual({})
   })
@@ -336,6 +377,61 @@ describe('parts', () => {
 
   test('leaves the short name out when the part has none', () => {
     expect(writeValid(scoreOf(measureOf(WHOLE_C))).parts[0]).not.toHaveProperty('shortName')
+  })
+})
+
+describe('a two-staff transposing part', () => {
+  test('writes its staff count and the point its key signature flips at', () => {
+    const score = scoreOf(measureOf(WHOLE_C))
+    const part = score.parts[0]
+    if (!part) throw new Error('expected a part')
+    const written = writeValid({
+      ...score,
+      parts: [
+        {
+          ...part,
+          staves: 2,
+          transposition: { staffDistance: -1, halfSteps: -2, keyFifthsFlipAt: 6 },
+        },
+      ],
+    })
+
+    expect(written.parts[0]?.staves).toBe(2)
+    expect(written.parts[0]?.transposition).toEqual({
+      interval: { halfSteps: -2, staffDistance: -1 },
+      keyFifthsFlipAt: 6,
+    })
+  })
+})
+
+describe('octave shifts and hairpins', () => {
+  test('writes each with the staff it belongs under, and nothing it does not state', () => {
+    const end = { measure: 0, position: fraction(1, 2) }
+    const measure: Measure = {
+      ...measureOf(WHOLE_C),
+      ottavas: [{ position: fraction(0, 1), end, value: -1, staff: 2 }],
+      dynamics: [
+        { position: fraction(0, 1), value: undefined, wedge: 'increasing', end, staff: 2 },
+      ],
+    }
+    const score = scoreOf(measure)
+    const part = score.parts[0]
+    if (!part) throw new Error('expected a part')
+    const written = writeValid({ ...score, parts: [{ ...part, staves: 2 }] }).parts[0]?.measures[0]
+    const stop = { measure: 'm1', position: { fraction: [1, 2] } }
+
+    expect(written?.ottavas).toStrictEqual([
+      { position: { fraction: [0, 1] }, end: stop, value: -1, staff: 2 },
+    ])
+    expect(written?.dynamics).toStrictEqual([
+      {
+        position: { fraction: [0, 1] },
+        type: 'gradual',
+        wedgeType: 'increasing',
+        end: stop,
+        staff: 2,
+      },
+    ])
   })
 })
 
@@ -518,6 +614,16 @@ describe('ties and slurs', () => {
 
   // A tie to the same voice's next note is the ordinary one and states no
   // target type.
+  test('writes a let-ring tie with no target', () => {
+    const ringing: Event = {
+      ...WHOLE_C,
+      notes: WHOLE_C.notes.map((note) => ({ ...note, ties: [{ crossVoice: false, lv: true }] })),
+    }
+    const score = scoreOf(measureOf(ringing))
+
+    expect(firstEvent(score)?.notes?.[0]?.ties).toStrictEqual([{ lv: true }])
+  })
+
   test('says nothing about the target type of a tie within one voice', () => {
     const note = writeValid(joined()).parts[0]?.measures[0]?.sequences[0]?.content[0]
 
@@ -941,6 +1047,21 @@ describe('events', () => {
 
   test('leaves the alteration out when the pitch is unaltered', () => {
     expect(firstEvent(scoreOf(measureOf(WHOLE_C)))?.notes?.[0]?.pitch).not.toHaveProperty('alter')
+  })
+
+  test('writes an accidental drawn in parentheses', () => {
+    const cautionary: Event = {
+      ...WHOLE_C,
+      notes: WHOLE_C.notes.map((note) => ({
+        ...note,
+        accidentalDisplay: { show: true, enclosure: 'parentheses' },
+      })),
+    }
+
+    expect(firstEvent(scoreOf(measureOf(cautionary)))?.notes?.[0]?.accidentalDisplay).toEqual({
+      show: true,
+      enclosure: { symbol: 'parentheses' },
+    })
   })
 })
 
