@@ -782,10 +782,15 @@ function writeEvent(event: Event, referenced: ReadonlySet<string>): MNXEvent {
         }
       : {}),
     ...(event.stemDirection ? { stemDirection: event.stemDirection } : {}),
-    ...(Object.keys(event.markings).length > 0 ? { markings: writeMarkings(event.markings) } : {}),
+    ...(hasMarking(event.markings) ? { markings: writeMarkings(event.markings) } : {}),
     ...(event.fermata ? { fermata: writeFermata(event.fermata) } : {}),
     ...(event.lyrics.size > 0 ? { lyrics: writeLyrics(event.lyrics) } : {}),
   }
+}
+
+/** True where the event carries any mark. */
+function hasMarking(markings: Markings): boolean {
+  return Object.values(markings).some((marking) => marking !== undefined)
 }
 
 /** Which side a mark sits on, as MNX states it: left off where unstated. */
