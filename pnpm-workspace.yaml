@@ -33,12 +33,6 @@ minimumReleaseAge: 1440
 # 3.1.8 is the newest 3.x and satisfies ajv's ^3.0.1. Remove when ajv depends
 # on a patched range itself.
 #
-# brace-expansion <5.0.9, pulled in by minimatch under eslint (dev-only), is
-# GHSA-mh99-v99m-4gvg: an out-of-memory DoS on unbounded expansion. The range
-# first read <=5.0.7 and now reads <5.0.9, the earlier fix having been found
-# to be incomplete. 5.0.9 patches it and satisfies minimatch's range. Remove
-# when eslint's minimatch depends on a patched range itself.
-#
 # qs, pulled in by typed-rest-client under the mutation testing runner
 # (dev-only), is named by two advisories. GHSA-x5fp-wj9c-mxmx is an array-limit
 # bypass through a bracket key parsed as a comma list, reading >=6.14.2
@@ -50,5 +44,4 @@ minimumReleaseAge: 1440
 # typed-rest-client range reaches a version pinning 6.16.0 or later.
 overrides:
   fast-uri: 3.1.8
-  brace-expansion: 5.0.9
   qs: 6.16.0
