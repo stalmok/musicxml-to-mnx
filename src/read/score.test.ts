@@ -1147,7 +1147,7 @@ describe('a time signature stated after the measure start', () => {
   })
 
   // A figured bass states a <duration> but does not move the cursor.
-  test('reads ahead a figured bass as taking no time', () => {
+  test('measures an untimed part against a time signature stated after a figured bass', () => {
     const { warnings } = read(
       untimedBeside(
         '<figured-bass><figure><figure-number>6</figure-number></figure>' +
@@ -1162,7 +1162,7 @@ describe('a time signature stated after the measure start', () => {
     ])
   })
 
-  test('reads ahead the metered time signature where another staff is unmetered', () => {
+  test('measures an untimed part against the metered one of two per-staff time signatures', () => {
     const { warnings } = read(
       untimedBeside(
         '<attributes><staves>2</staves><time number="1"><senza-misura/></time>' +

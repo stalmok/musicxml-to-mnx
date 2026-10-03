@@ -378,10 +378,8 @@ describe('parts', () => {
   test('leaves the short name out when the part has none', () => {
     expect(writeValid(scoreOf(measureOf(WHOLE_C))).parts[0]).not.toHaveProperty('shortName')
   })
-})
 
-describe('a two-staff transposing part', () => {
-  test('writes its staff count and the point its key signature flips at', () => {
+  test('writes the staff count and key flip point of a two-staff transposing part', () => {
     const score = scoreOf(measureOf(WHOLE_C))
     const part = score.parts[0]
     if (!part) throw new Error('expected a part')
@@ -612,8 +610,6 @@ describe('ties and slurs', () => {
     expect(written).toMatchObject({ notes: [{ ties: [{ target: 'note-target' }] }] })
   })
 
-  // A tie to the same voice's next note is the ordinary one and states no
-  // target type.
   test('writes a let-ring tie with no target', () => {
     const ringing: Event = {
       ...WHOLE_C,
@@ -624,6 +620,8 @@ describe('ties and slurs', () => {
     expect(firstEvent(score)?.notes?.[0]?.ties).toStrictEqual([{ lv: true }])
   })
 
+  // A tie to the same voice's next note is the ordinary one and states no
+  // target type.
   test('says nothing about the target type of a tie within one voice', () => {
     const note = writeValid(joined()).parts[0]?.measures[0]?.sequences[0]?.content[0]
 

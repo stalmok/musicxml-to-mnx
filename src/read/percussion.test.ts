@@ -613,8 +613,8 @@ describe('the MNX a percussion part converts to', () => {
   // A roll numbered 1 here also covers a chord of another voice. The divided
   // chord still makes it unknown which notes the roll covers.
   test('reports a roll that holds a divided kit chord beside an undivided one', () => {
-    const voiced = (note: string, voice: string) =>
-      note.replace('</note>', `<voice>${voice}</voice></note>`)
+    const voiced = (xml: string, voice: string) =>
+      xml.replace('</note>', `<voice>${voice}</voice></note>`)
     const numbered =
       voiced(struck('C', '5', 'P1-I39', '<notations><arpeggiate number="1"/></notations>'), '1') +
       '<note><chord/><unpitched><display-step>G</display-step>' +
@@ -625,7 +625,8 @@ describe('the MNX a percussion part converts to', () => {
       voiced(struck('C', '5', 'P1-I39', '<notations><arpeggiate number="1"/></notations>'), '2')
     const { warnings } = read(numbered, DRUM_KIT)
 
-    expect(warnings.filter((w) => w.message.includes('different numbers'))).toHaveLength(2)
+    expect(warnings.map((w) => w.code)).toEqual(['unsupported:element', 'unsupported:element'])
+    expect(warnings.every((w) => w.message.includes('different numbers'))).toBe(true)
   })
 
   test('writes no notes array on an event that only strikes the kit', () => {

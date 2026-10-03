@@ -517,8 +517,9 @@ describe('crossing tuplet numbers', () => {
   })
 
   // Nested tuplets may end on the same note, and MusicXML does not constrain
-  // which stop is written first inside <notations>. Whatever the order, the
-  // note's stops close the same tuplets, so nothing crosses.
+  // which stop is written first inside <notations> or which number the outer
+  // tuplet takes. Either way, the note's stops close the same tuplets, so
+  // nothing crosses.
   test.each([
     ['1', '<tuplet type="stop" number="1"/><tuplet type="stop" number="2"/>'],
     ['1', '<tuplet type="stop" number="2"/><tuplet type="stop" number="1"/>'],

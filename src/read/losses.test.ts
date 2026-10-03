@@ -192,39 +192,6 @@ describe('an element hidden with print-object="no"', () => {
     ).toEqual([['unsupported:attribute', 'note']])
   })
 
-  test('reports a hidden time signature', () => {
-    expect(
-      hidden(
-        measure(
-          note(''),
-          '<divisions>4</divisions><time print-object="no"><beats>4</beats><beat-type>4</beat-type></time>',
-        ),
-      ),
-    ).toEqual([['unrepresentable:attribute', 'time']])
-  })
-
-  test('reports a hidden key signature', () => {
-    expect(
-      hidden(
-        measure(
-          note(''),
-          '<divisions>4</divisions><key print-object="no"><fifths>2</fifths></key>',
-        ),
-      ),
-    ).toEqual([['unrepresentable:attribute', 'key']])
-  })
-
-  test('reports a hidden ending', () => {
-    expect(
-      hidden(
-        measure(
-          note('') +
-            '<barline location="right"><ending number="1" type="stop" print-object="no"/></barline>',
-        ),
-      ),
-    ).toEqual([['unrepresentable:attribute', 'ending']])
-  })
-
   test.each([
     ['key', '<divisions>4</divisions><key print-object="no"><fifths>2</fifths></key>', ''],
     [
@@ -234,13 +201,18 @@ describe('an element hidden with print-object="no"', () => {
     ],
     [
       'ending',
-      '',
+      '<divisions>4</divisions>',
       '<barline location="right"><ending number="1" type="stop" print-object="no"/></barline>',
     ],
-  ])('says a hidden %s is drawn anyway', (element, attributes, barline) => {
-    const { warnings } = read(measure(note('') + barline, attributes))
+  ])('reports a hidden %s, which is drawn anyway', (element, attributes, barline) => {
+    const reported = read(measure(note('') + barline, attributes)).warnings.filter(
+      (warning) => warning.attribute === 'print-object',
+    )
 
-    expect(warnings.find((warning) => warning.attribute === 'print-object')?.message).toBe(
+    expect(reported.map((warning) => [warning.code, warning.element])).toEqual([
+      ['unrepresentable:attribute', element],
+    ])
+    expect(reported[0]?.message).toBe(
       `A <${element}> hidden with print-object="no" is drawn anyway, because MNX cannot mark ` +
         'it invisible.',
     )

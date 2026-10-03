@@ -1071,7 +1071,7 @@ describe('the measure cursor', () => {
     expect(result?.beams[0]?.events).toHaveLength(2)
   })
 
-  test('keeps the beams over a grace group the line it leaves already held', () => {
+  test('beams the grace groups of both lines once each', () => {
     const graced = (step: string, marker: string) =>
       `<note><grace/><pitch><step>${step}</step><octave>4</octave></pitch>` +
       `<voice>1</voice><type>eighth</type><beam number="1">${marker}</beam></note>`
