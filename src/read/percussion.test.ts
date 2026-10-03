@@ -241,7 +241,7 @@ describe('a note naming an instrument the part list does not set up', () => {
     expect(warnings[0]?.message).toContain('P1-I99')
   })
 
-  test('reads an instrument stating no id as naming none', () => {
+  test('reports an instrument stating no id', () => {
     const { part, warnings } = read(
       struck('C', '5').replace('</note>', '<instrument/></note>'),
       DRUM_KIT,
@@ -250,7 +250,9 @@ describe('a note naming an instrument the part list does not set up', () => {
     expect([...(part?.kit.values() ?? [])]).toEqual([
       { name: undefined, staffPosition: 1, sound: undefined },
     ])
-    expect(warnings).toEqual([])
+    expect(warnings.map((w) => w.code)).toEqual(['unresolved:instrument-id'])
+    expect(warnings[0]?.message).toContain('no id')
+    expect(warnings[0]?.element).toBe('instrument')
   })
 })
 

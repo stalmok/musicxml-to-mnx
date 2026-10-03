@@ -190,10 +190,12 @@ function kitComponent(
   // always one MNX can state, so what the score holds the sound under is what
   // the component names.
   const resolved = id !== undefined ? state.sounds.get(id) : undefined
-  if (named && id !== undefined && resolved === undefined) {
+  if (named && resolved === undefined) {
     warnings.add(
       'unresolved:instrument-id',
-      `The part list has no <score-instrument> with id ${id}.`,
+      id === undefined
+        ? 'A note names an <instrument> with no id, so it names no <score-instrument>.'
+        : `The part list has no <score-instrument> with id ${id}.`,
       context,
       named,
     )
