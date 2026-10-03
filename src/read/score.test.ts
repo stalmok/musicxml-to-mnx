@@ -1367,13 +1367,16 @@ describe('a time signature stated after the measure start', () => {
     ])
   })
 
-  test('reads ahead past a <divisions> of zero, which the part reader refuses', () => {
-    const zero = '<attributes><divisions>0</divisions></attributes>'
+  test.each(['0', '-3000000000000000'])(
+    'reads ahead past a <divisions> of %s, which the part reader refuses',
+    (written) => {
+      const divisions = `<attributes><divisions>${written}</divisions></attributes>`
 
-    expect(readFailure(untimedBesideNext(zero + timed(3) + note(36), 36)).message).toMatch(
-      /divisions/,
-    )
-  })
+      expect(readFailure(untimedBesideNext(divisions + timed(3) + note(36), 36)).message).toContain(
+        `<divisions> is ${written}, outside the range`,
+      )
+    },
+  )
 
   test('reads ahead a broken time signature as stating none', () => {
     const composite =
