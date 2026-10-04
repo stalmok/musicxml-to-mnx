@@ -1233,6 +1233,20 @@ describe('the ends a spanner is keyed by', () => {
     expect(withTie.every((note) => note.ties[0]?.crossVoice === false)).toBe(true)
   })
 
+  // Sibelius leaves <voice> off the notes of a chord after the first.
+  test('ties a chord member that names no voice from the voice of its chord', () => {
+    const member =
+      '<note><chord/><pitch><step>E</step><octave>4</octave></pitch><duration>4</duration>' +
+      `<type>quarter</type>${tied('start')}</note>`
+    const { notes, warnings } = read(
+      measures(DIVISIONS + note('C') + member, note('E', tied('stop'))),
+    )
+    const [, e1, e2] = notes as [Note, Note, Note]
+
+    expect(e1.ties).toEqual([{ target: e2.id, crossVoice: false }])
+    expect(warnings).toEqual([])
+  })
+
   test('tells apart ties of different pitch left open at once', () => {
     const { notes } = read(
       measures(

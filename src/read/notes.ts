@@ -966,6 +966,9 @@ function readChordMember(
   if (restElement) {
     throw new MusicXMLError('A rest cannot be part of a chord.', { path, line: element.line })
   }
+  // Sibelius leaves <voice> off a chord member, so the chord's voice is the
+  // one asked, not the member's.
+  const chordVoice = builder.voiceOfChord(voice)
   // A chord member is drawn with the event it joins, so its stem and its
   // beams are that event's and are read from the note carrying them. The
   // ratio it repeats is likewise the event's.
@@ -977,7 +980,7 @@ function readChordMember(
   // does not take is the source disagreeing with itself about one group.
   if (graceElement) {
     attribute(graceElement, 'slash')
-    const open = builder.openGraceType(voice)
+    const open = builder.openGraceType(chordVoice)
     for (const [side, named] of entriesOf(GRACE_TIME_ATTRIBUTES)) {
       if (attribute(graceElement, named) === undefined) continue
       if (open === undefined || open === side) continue
@@ -993,7 +996,7 @@ function readChordMember(
 
   // A chord cannot be part grace note and part full note. The note the chord
   // opened with decides, and a member marked the other way is reported.
-  const joinsGrace = builder.chordIsGrace(voice)
+  const joinsGrace = builder.chordIsGrace(chordVoice)
   if (joinsGrace === (graceElement === undefined)) {
     warnings.add(
       'inconsistent:grace',
@@ -1011,7 +1014,8 @@ function readChordMember(
   // across to the other hand, on that note. A chord straddling the two
   // staves is ordinary piano writing, so only the note that differs from
   // the event's staff states one of its own.
-  const reaches = staff !== undefined && staff !== builder.staffOfChord(voice) ? staff : undefined
+  const reaches =
+    staff !== undefined && staff !== builder.staffOfChord(chordVoice) ? staff : undefined
 
   // A chord member is a pitch or an unpitched note: a rest was refused just
   // above, and a note sounding none of the three never reached here.
@@ -1032,13 +1036,13 @@ function readChordMember(
   // duration dropped the dot). Where the written values agree the chord is
   // coherent: the written value is the one converted, and the duration is
   // reported rather than compared.
-  const joins = builder.chordValue(voice)
+  const joins = builder.chordValue(chordVoice)
   const writtenMatches =
     written !== undefined &&
     joins !== undefined &&
     written.base === joins.base &&
     written.dots === joins.dots
-  const chordDuration = builder.chordDuration(voice)
+  const chordDuration = builder.chordDuration(chordVoice)
   if (
     writtenMatches &&
     duration &&
@@ -1056,13 +1060,13 @@ function readChordMember(
   const chordDurationOrNone = writtenMatches ? undefined : duration
   let placed: JoinedEvent
   if ('pitch' in chordNote) {
-    placed = builder.addChordNote(voice, chordNote, chordDurationOrNone, path, element.line)
+    placed = builder.addChordNote(chordVoice, chordNote, chordDurationOrNone, path, element.line)
     // A roll is drawn across the notes of a chord, so it is the pitched
     // members that say how far it reaches. A kit note has no pitch to order
     // it by, and the chord it sits on is what the roll spans anyway.
     readArpeggio(notations, placed, builder, chordNote)
   } else {
-    placed = builder.addChordKitNote(voice, chordNote, chordDurationOrNone, path, element.line)
+    placed = builder.addChordKitNote(chordVoice, chordNote, chordDurationOrNone, path, element.line)
     readArpeggio(notations, placed, builder, undefined)
   }
   // Exporters write a chord's marks, fermata, tremolo and tuplet bracket on
@@ -1073,7 +1077,7 @@ function readChordMember(
     element,
     chordNote,
     tiePairing(chordNote),
-    voice,
+    chordVoice,
     measureIndex,
     placed.start,
     graceElement !== undefined,
@@ -1082,9 +1086,6 @@ function readChordMember(
     context,
     tieds,
   )
-  // Sibelius leaves <voice> off a chord member, so the chord's voice is the
-  // one asked, not the member's.
-  const chordVoice = builder.voiceOfChord(voice)
   for (const marker of ownMarkers) {
     if (attribute(marker, 'type') !== 'start') continue
     // A bracket the chord's own note did not open cannot open here either:
