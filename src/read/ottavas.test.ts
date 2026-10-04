@@ -408,12 +408,117 @@ describe('where an octave shift runs', () => {
     expect(ottavas[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 1, den: 8 } })
   })
 
-  // A shift whose stop has no event before it in its measure has nothing
-  // nearer to point at than the stop's own place.
-  test('falls back to where the stop is written where nothing precedes it', () => {
-    const { ottavas } = read(shift('down') + NOTE, shift('stop') + NOTE)
+  // A stop written before any event of its measure closes the shift at the
+  // barline, so the last event it covers is in a measure before.
+  test('ends on the last event before the barline where its stop opens a measure', () => {
+    const { ottavas, warnings } = read(shift('down') + NOTE + NOTE, shift('stop') + NOTE)
 
-    expect(ottavas[0]?.[0]?.end).toEqual({ measure: 1, position: { num: 0, den: 1 } })
+    expect(ottavas[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 1, den: 4 } })
+    expect(warnings).toEqual([])
+  })
+
+  // MNX states a rest filling the measure on the sequence, not as an event.
+  test('ends before a measure that holds only a rest filling it', () => {
+    const { ottavas } = read(
+      shift('down') + NOTE,
+      '<note><rest measure="yes"/><duration>4</duration></note>',
+      shift('stop') + NOTE,
+    )
+
+    expect(ottavas[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 0, den: 1 } })
+  })
+
+  test('ends on the last event of its own staff before the barline', () => {
+    const onStaff = (staff: number, step: string) =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>2</duration>` +
+      `<type>eighth</type><staff>${String(staff)}</staff></note>`
+    const stop = '<direction><direction-type><octave-shift type="stop" number="1"/>'
+    const { ottavas } = read(
+      '<attributes><staves>2</staves></attributes>' +
+        '<direction><direction-type><octave-shift type="down" number="1"/></direction-type>' +
+        '<staff>1</staff></direction>' +
+        onStaff(1, 'C') +
+        onStaff(1, 'D') +
+        '<backup><duration>4</duration></backup>' +
+        onStaff(2, 'E') +
+        onStaff(2, 'F') +
+        onStaff(2, 'G'),
+      `${stop}</direction-type><staff>1</staff></direction>` + onStaff(1, 'C'),
+    )
+
+    expect(ottavas[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 1, den: 8 } })
+  })
+
+  test('drops a shift whose stop covers a measure before the one it starts in', () => {
+    const { ottavas, warnings } = read(
+      NOTE,
+      shift('down') + '<note><rest measure="yes"/><duration>4</duration></note>',
+      shift('stop') + NOTE,
+    )
+
+    expect(ottavas.flat()).toEqual([])
+    expect(warnings.map((w) => w.message)).toEqual([
+      expect.stringContaining('end before it starts'),
+    ])
+  })
+
+  describe('a stop that names no staff, written before any event of its measure', () => {
+    const eighth = (staff: number, step: string) =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>2</duration>` +
+      `<type>eighth</type><staff>${String(staff)}</staff></note>`
+    const quarter = (staff: number, step: string) =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>4</duration>` +
+      `<type>quarter</type><staff>${String(staff)}</staff></note>`
+    const back = '<backup><duration>4</duration></backup>'
+    const forward = '<forward><duration>4</duration><staff>1</staff></forward>'
+    const staves = '<attributes><staves>2</staves></attributes>'
+
+    test('ends on the latest event of any staff in the same measure', () => {
+      const { ottavas } = read(
+        staves + shift('down') + quarter(1, 'C') + back + eighth(2, 'E') + eighth(2, 'F'),
+        shift('stop') + quarter(1, 'C'),
+      )
+
+      expect(ottavas[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 1, den: 8 } })
+    })
+
+    test('ends on the latest event, whichever staff is read first', () => {
+      const { ottavas } = read(
+        staves + shift('down') + eighth(1, 'C') + eighth(1, 'D') + back + quarter(2, 'E'),
+        shift('stop') + quarter(1, 'C'),
+      )
+
+      expect(ottavas[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 1, den: 8 } })
+    })
+
+    test('ends on the later measure, not a later point of an earlier one', () => {
+      const { ottavas } = read(
+        staves + shift('down') + quarter(1, 'C') + back + eighth(2, 'E') + eighth(2, 'F'),
+        quarter(1, 'G'),
+        shift('stop') + quarter(1, 'C'),
+      )
+
+      expect(ottavas[0]?.[0]?.end).toEqual({ measure: 1, position: { num: 0, den: 1 } })
+    })
+
+    test('ends on the event of the later measure, whichever staff holds it', () => {
+      const { ottavas } = read(
+        staves + shift('down') + eighth(1, 'C') + eighth(1, 'D') + back + quarter(2, 'E'),
+        forward + back + quarter(2, 'F'),
+        shift('stop') + quarter(1, 'C'),
+      )
+
+      expect(ottavas[0]?.[0]?.end).toEqual({ measure: 1, position: { num: 0, den: 1 } })
+    })
+  })
+
+  test('drops a shift that starts after the last event before the barline it stops at', () => {
+    const { ottavas, warnings } = read(NOTE + shift('down'), shift('stop') + NOTE)
+
+    expect(ottavas[0]).toEqual([])
+    expect(warnings.map((w) => w.message)).toEqual([
+      expect.stringContaining('end before it starts'),
+    ])
   })
 
   test('says nothing about a point partway along one', () => {

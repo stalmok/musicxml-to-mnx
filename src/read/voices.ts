@@ -58,6 +58,9 @@ export interface CoveredEvent {
 /** The last event of the measure before a point, on the staff given or any. */
 export type LastEventBefore = (position: Fraction, staff?: number) => CoveredEvent | undefined
 
+/** The last event of the measure on each staff that has one. */
+export type LastEvents = () => ReadonlyMap<number, CoveredEvent>
+
 /** How many grace notes stand at a point, on the staff given or any. */
 export type GraceNotesAt = (position: Fraction, staff?: number) => number
 
@@ -633,12 +636,14 @@ export class MeasureBuilder {
    * one staff and the other hand's notes lie under the same beats without
    * being what it covers. An event that names no staff is the first staff,
    * which is how MusicXML reads a note that leaves it off.
+   *
+   * No point asks for the last event of the whole measure.
    */
-  #lastEventBefore(position: Fraction, staff?: number): CoveredEvent | undefined {
+  #lastEventBefore(position: Fraction | undefined, staff?: number): CoveredEvent | undefined {
     let latest: Fraction | undefined
     for (const event of this.#eventStarts) {
       if (staff !== undefined && (event.staff ?? 1) !== staff) continue
-      if (compareFractions(event.start, position) >= 0) continue
+      if (position !== undefined && compareFractions(event.start, position) >= 0) continue
       if (!latest || compareFractions(event.start, latest) > 0) latest = event.start
     }
     if (!latest) return undefined
@@ -653,6 +658,16 @@ export class MeasureBuilder {
     // grace note where it did not.
     if (!here.some((event) => event.grace)) return { start: latest }
     return { start: latest, graceIndex: here.some((event) => !event.grace) ? 0 : 1 }
+  }
+
+  /** The last event of the measure on each staff, grace notes after it included. */
+  #lastEvents(): Map<number, CoveredEvent> {
+    const lastOn = new Map<number, CoveredEvent>()
+    for (const staff of new Set(this.#eventStarts.map((event) => event.staff ?? 1))) {
+      const last = this.#lastEventBefore(undefined, staff)
+      if (last) lastOn.set(staff, last)
+    }
+    return lastOn
   }
 
   /**
@@ -1003,7 +1018,11 @@ export class MeasureBuilder {
    */
   finish(
     opening: Omit<MeasureExtent, 'length'>,
-    settleSpanCovers: (lastEventBefore: LastEventBefore, graceNotesAt: GraceNotesAt) => void,
+    settleSpanCovers: (
+      lastEventBefore: LastEventBefore,
+      graceNotesAt: GraceNotesAt,
+      lastEvents: LastEvents,
+    ) => void,
     /** The components this part strikes, which is where a kit note's height is. */
     kit: ReadonlyMap<string, KitComponent>,
     warnings: WarningCollector,
@@ -1031,6 +1050,7 @@ export class MeasureBuilder {
     settleSpanCovers(
       (position, staff) => this.#lastEventBefore(position, staff),
       (position, staff) => this.graceNotesAt(position, staff),
+      () => this.#lastEvents(),
     )
 
     return {

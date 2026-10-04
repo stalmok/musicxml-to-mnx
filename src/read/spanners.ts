@@ -24,9 +24,15 @@ import type {
   TieTarget,
 } from '../model/score.js'
 import type { Draft } from './draft.js'
-import type { GraceNotesAt, LastEventBefore } from './voices.js'
+import type { CoveredEvent, GraceNotesAt, LastEventBefore, LastEvents } from './voices.js'
 import type { ReportContext, WarningCollector } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
+
+/** An event read on a staff, and the measure it is in. */
+interface LastSeen {
+  measure: number
+  event: CoveredEvent
+}
 
 /** A tie that has begun, waiting for the note that ends it. */
 interface OpenTie {
@@ -143,6 +149,12 @@ interface EndPlace {
    * notes, which reads as before all of them.
    */
   coversGraceIndex?: number
+  /**
+   * The measure of the place it marks, where that is not the measure it is
+   * written in. An octave shift stopped before any event of its measure
+   * covers the last event before the barline.
+   */
+  coversMeasure?: number
   /**
    * How many grace notes stood where a stop was written, at the point it was
    * written. The grace notes read after it belong on the far side of it, so
@@ -272,10 +284,13 @@ export function pairSpans<T, S>(
 
     // The stop's cursor sits past the start, or it would not have paired, but
     // the point it covers can still fall before it, when the two ends
-    // interleave through a backup or forward. A stop never pairs with a start
-    // in a later measure, so only a stop in the start's own measure can cover
-    // a point before it.
-    if (end.measure === started.measure && compareFractions(end.covers, started.position) < 0) {
+    // interleave through a backup or forward, or when the stop opens the
+    // measure the start opens.
+    const coversMeasure = end.coversMeasure ?? end.measure
+    if (
+      coversMeasure < started.measure ||
+      (coversMeasure === started.measure && compareFractions(end.covers, started.position) < 0)
+    ) {
       report('backwards-stop', end)
       continue
     }
@@ -990,6 +1005,8 @@ export class SpannerResolver {
 
   // Both ends of every octave shift in the part, paired the same way.
   readonly #ottavaEnds: SpanEnd<OpenOttava, undefined>[] = []
+  // The last event read on each staff, from the measures settled so far.
+  readonly #lastSeen = new Map<number, LastSeen>()
 
   startOttava(
     open: OpenOttava,
@@ -1050,12 +1067,14 @@ export class SpannerResolver {
    *
    * A stop with no grace notes before it keeps the place it was written for a
    * hairpin, and for an octave shift moves back to the last event the cursor
-   * had passed, on the staff the stop names.
+   * had passed, on the staff the stop names. Where the stop is written before
+   * any event of its measure, that event is in a measure before.
    */
   settleSpanCovers(
     measure: number,
     lastEventBefore: LastEventBefore,
     graceNotesAt: GraceNotesAt,
+    lastEvents: LastEvents,
   ): void {
     const overGraceNotes = (end: EndPlace): boolean => {
       if (!end.graceWritten) return false
@@ -1084,11 +1103,37 @@ export class SpannerResolver {
     // written, such a stop would end on the barline, where no event begins.
     for (const end of stoppingHere(this.#ottavaEnds)) {
       if (overGraceNotes(end)) continue
-      const covered = lastEventBefore(end.covers, end.staff) ?? lastEventBefore(end.covers)
+      const inMeasure = lastEventBefore(end.covers, end.staff) ?? lastEventBefore(end.covers)
+      const before = inMeasure ? undefined : this.#lastSeenOn(end.staff)
+      if (before) end.coversMeasure = before.measure
+      const covered = inMeasure ?? before?.event
       if (!covered) continue
       end.covers = covered.start
       if (covered.graceIndex !== undefined) end.coversGraceIndex = covered.graceIndex
     }
+
+    for (const [staff, event] of lastEvents()) this.#lastSeen.set(staff, { measure, event })
+  }
+
+  /**
+   * The last event read so far on a staff, or on any staff where that staff
+   * has none or none is named.
+   */
+  #lastSeenOn(staff: number | undefined): LastSeen | undefined {
+    const own = staff === undefined ? undefined : this.#lastSeen.get(staff)
+    if (own) return own
+    let latest: LastSeen | undefined
+    for (const seen of this.#lastSeen.values()) {
+      if (
+        !latest ||
+        seen.measure > latest.measure ||
+        (seen.measure === latest.measure &&
+          compareFractions(seen.event.start, latest.event.start) > 0)
+      ) {
+        latest = seen
+      }
+    }
+    return latest
   }
 
   /** The same as dropWedgeStart, for an octave shift the reader dropped. */
@@ -1122,7 +1167,10 @@ export class SpannerResolver {
       (open, stop) => {
         // Assigned, not spread in, so the compiler tells an absent key from an
         // undefined one.
-        const end: Draft<SpanStop> = { measure: stop.measure, position: stop.covers }
+        const end: Draft<SpanStop> = {
+          measure: stop.coversMeasure ?? stop.measure,
+          position: stop.covers,
+        }
         if (stop.coversGraceIndex !== undefined) end.graceIndex = stop.coversGraceIndex
         const ottava: Draft<Ottava> = {
           position: open.position,
