@@ -1153,8 +1153,8 @@ describe('a rest filling a measure a grace note leads into', () => {
     expect(warnings.map((w) => [w.code, w.element, w.context.measure])).toEqual(reported)
   })
 
-  // The space stands between the chord member and the grace note before the
-  // rest, and a space is not a note to join.
+  // The rest stands between the chord member and the grace note before it,
+  // and a rest is not a note to join.
   test.each([
     ['a grace note', graceMember],
     [
@@ -1163,9 +1163,7 @@ describe('a rest filling a measure a grace note leads into', () => {
         '<voice>1</voice></note>',
     ],
   ])('refuses %s marked as a chord straight after the rest', (_, member) => {
-    expect(refusal(grace + irregularRest + member)).toContain(
-      'marked as a chord with no note for it to join',
-    )
+    expect(refusal(grace + irregularRest + member)).toContain('rest cannot be part of a chord')
   })
 
   // A note written over the rest in the same voice opens a line of its own,

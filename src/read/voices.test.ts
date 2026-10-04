@@ -133,6 +133,72 @@ describe('chords', () => {
     expect(first?.kind === 'event' && first.notes.map((n) => n.pitch.step)).toEqual(['C', 'E'])
   })
 
+  test('joins the note written just before it, not the last note of the voice it names', () => {
+    const { measure: result, warnings } = read(
+      measure(
+        note('G', 2, '2') +
+          '<backup><duration>8</duration></backup>' +
+          note('C', 1, '1') +
+          note('D', 1, '1') +
+          note('B', 1, '2', '<chord/>'),
+      ),
+    )
+    const steps = (index: number) =>
+      result?.sequences[index]?.content.map((item) =>
+        item.kind === 'event' ? item.notes.map((n) => n.pitch.step) : [],
+      )
+
+    expect(result?.sequences.map((sequence) => sequence.voice)).toEqual(['2', '1'])
+    expect(steps(0)).toEqual([['G']])
+    expect(steps(1)).toEqual([['C'], ['D', 'B']])
+    expect(warnings.map((w) => [w.code, w.element, w.context.line])).toEqual([
+      ['inconsistent:voice', 'voice', 1],
+    ])
+    expect(warnings[0]?.message).toContain('names voice 2, and the note it joins is in voice 1')
+  })
+
+  test('says so where a chord member names a voice and the note it joins names none', () => {
+    const { warnings } = read(
+      measure(
+        '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration></note>' +
+          note('E', 1, '1', '<chord/>'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.message)).toEqual([
+      'A note of a chord names voice 1, and the note it joins is in no named voice. ' +
+        'It is converted in the voice of the note it joins.',
+    ])
+  })
+
+  test('rejects a note marked as part of a chord on a rest that fills the measure', () => {
+    expect(
+      readFailure(
+        measure(
+          note('C', 2, '1') +
+            note('D', 2, '1') +
+            '<backup><duration>16</duration></backup>' +
+            '<note><rest measure="yes"/><duration>16</duration><voice>2</voice></note>' +
+            '<note><chord/><pitch><step>E</step><octave>4</octave></pitch>' +
+            '<duration>16</duration></note>',
+        ),
+      ).message,
+    ).toContain('rest cannot be part of a chord')
+  })
+
+  test('rejects a note marked as part of a chord on a rest passed over', () => {
+    expect(
+      readFailure(
+        measure(
+          '<note><rest measure="yes"/><duration>16</duration><voice>1</voice></note>' +
+            '<backup><duration>16</duration></backup>' +
+            '<note><rest/><duration>4</duration><voice>1</voice></note>' +
+            note('E', 1, '1', '<chord/>'),
+        ),
+      ).message,
+    ).toContain('rest cannot be part of a chord')
+  })
+
   test('rejects a rest marked as part of a chord', () => {
     expect(
       readFailure(measure(note('C', 1) + '<note><chord/><rest/><duration>4</duration></note>'))

@@ -91,6 +91,12 @@ export interface FinishedMeasure {
   carriedTupletStops: CarriedTupletStop[]
 }
 
+/** Where the last item of a voice takes its time from, where it is a grace group. */
+function graceTypeOf(builder: VoiceBuilder): GraceType | undefined {
+  const last = builder.tuplets.list().at(-1)
+  return last?.kind === 'grace' ? last.graceType : undefined
+}
+
 /** The name a voice goes under when the source does not give it one. */
 const UNNAMED_VOICE = ''
 
@@ -321,8 +327,12 @@ export class MeasureBuilder {
    * silence it draws nothing for.
    */
   #furthest: Fraction = fraction(0)
-  /** The voice of the most recent event, which a chord member joins. */
-  #lastVoice: string | undefined
+  /**
+   * What a chord member joins: the event written last, in whatever voice. A
+   * rest written last, whether it fills the measure or is passed over,
+   * leaves only a rest to join.
+   */
+  #lastWritten: { readonly voice: string; readonly builder: VoiceBuilder } | 'rest' | undefined
   /**
    * The <backup> that carried the cursor before the measure start, held until
    * something is written out there or a <forward> brings the cursor back.
@@ -414,6 +424,7 @@ export class MeasureBuilder {
    */
   passOver(by: Fraction): void {
     this.#writeAt()
+    this.#lastWritten = 'rest'
     this.#moveTo(addFractions(this.#cursor, by))
   }
 
@@ -566,7 +577,7 @@ export class MeasureBuilder {
     builder.spent.set(event, duration)
     builder.grace = undefined
     builder.placed.push({ event, staff })
-    this.#lastVoice = voice ?? UNNAMED_VOICE
+    this.#lastWritten = { voice: voice ?? UNNAMED_VOICE, builder }
     const start = this.#cursor
     builder.last = { event, notations, duration, start }
     this.#eventStarts.push({ start, staff, grace: false })
@@ -665,39 +676,51 @@ export class MeasureBuilder {
   }
 
   /**
+   * Where the grace group open in this voice takes its time from, or nothing
+   * where the group says nothing. A grace note taking another side starts a
+   * group of its own.
+   */
+  openGraceType(voice: string | undefined): GraceType | undefined {
+    return graceTypeOf(this.#builderFor(voice))
+  }
+
+  /**
    * Where the grace group a chord note is joining takes its time from, or
    * nothing where the group says nothing. The group is the last thing added,
    * so this is what a member of it has to agree with.
    */
-  openGraceType(voice: string | undefined): GraceType | undefined {
-    const last = this.#builderFor(voice ?? this.#lastVoice)
-      .tuplets.list()
-      .at(-1)
-    return last?.kind === 'grace' ? last.graceType : undefined
+  chordGraceType(): GraceType | undefined {
+    const builder = this.#chordBuilder()
+    return builder && graceTypeOf(builder)
   }
 
   /** The staff the event a chord note would join was placed on. */
-  staffOfChord(voice: string | undefined): number | undefined {
-    return this.#builderFor(voice ?? this.#lastVoice).placed.at(-1)?.staff
+  staffOfChord(): number | undefined {
+    return this.#chordBuilder()?.placed.at(-1)?.staff
   }
 
   /** The written value of the event a chord note would join. */
-  chordValue(voice: string | undefined): NoteValue | undefined {
-    return this.#builderFor(voice ?? this.#lastVoice).last?.event.value
+  chordValue(): NoteValue | undefined {
+    return this.#chordBuilder()?.last?.event.value
   }
 
   /**
    * Whether the event a chord note would join is a grace note, and nothing
    * where there is no event to join.
    */
-  chordIsGrace(voice: string | undefined): boolean | undefined {
-    const last = this.#builderFor(voice ?? this.#lastVoice).last
+  chordIsGrace(): boolean | undefined {
+    const last = this.#chordBuilder()?.last
     return last && last.duration === undefined
   }
 
   /** How long the event a chord note would join lasts. */
-  chordDuration(voice: string | undefined): Fraction | undefined {
-    return this.#builderFor(voice ?? this.#lastVoice).last?.duration
+  chordDuration(): Fraction | undefined {
+    return this.#chordBuilder()?.last?.duration
+  }
+
+  /** The voice line holding the event a chord note would join. */
+  #chordBuilder(): VoiceBuilder | undefined {
+    return typeof this.#lastWritten === 'object' ? this.#lastWritten.builder : undefined
   }
 
   /**
@@ -705,40 +728,32 @@ export class MeasureBuilder {
    * rather than after. The cursor does not move.
    */
   addChordNote(
-    voice: string | undefined,
     note: Note,
     duration: Fraction | undefined,
     path: DocumentPath,
     line: number,
   ): JoinedEvent {
-    const placed = this.#chordEvent(voice, duration, path, line)
+    const placed = this.#chordEvent(duration, path, line)
     placed.event.notes = [...placed.event.notes, note]
     return placed
   }
 
   /** The same, for a note struck on a percussion kit. */
   addChordKitNote(
-    voice: string | undefined,
     note: KitNote,
     duration: Fraction | undefined,
     path: DocumentPath,
     line: number,
   ): JoinedEvent {
-    const placed = this.#chordEvent(voice, duration, path, line)
+    const placed = this.#chordEvent(duration, path, line)
     placed.event.kitNotes = [...placed.event.kitNotes, note]
     return placed
   }
 
   /** The event a chord member joins, held to lasting as long as the chord. */
-  #chordEvent(
-    voice: string | undefined,
-    duration: Fraction | undefined,
-    path: DocumentPath,
-    line: number,
-  ): JoinedEvent {
-    const builder = this.#builderFor(voice ?? this.#lastVoice)
-    const previous = builder.last
-    if (!previous) {
+  #chordEvent(duration: Fraction | undefined, path: DocumentPath, line: number): JoinedEvent {
+    const previous = this.#chordBuilder()?.last
+    if (!previous && this.#lastWritten !== 'rest') {
       throw new MusicXMLError('A <note> is marked as a chord with no note for it to join.', {
         path,
         line,
@@ -748,7 +763,7 @@ export class MeasureBuilder {
     // The event a note joins has to be a note itself. A rest sounds nothing,
     // so a note written onto one has no chord to be part of, the same way a
     // rest written into a chord has none.
-    if (previous.event.isRest) {
+    if (!previous || previous.event.isRest) {
       throw new MusicXMLError('A <note> joins a rest, and a rest cannot be part of a chord.', {
         path,
         line,
@@ -833,8 +848,7 @@ export class MeasureBuilder {
       this.#moveTo(builder.end)
     }
     builder.grace = undefined
-    // A space is not a note, so a chord member after it has nothing to join.
-    builder.last = undefined
+    this.#lastWritten = 'rest'
     builder.measureRest = {
       origin: 'fills',
       onSequence: rest,
@@ -1404,12 +1418,12 @@ export class MeasureBuilder {
   }
 
   /**
-   * The voice the chord being built belongs to. A chord member may leave
+   * The voice of the event a chord note would join. A chord member may leave
    * <voice> off, and Sibelius does, so it belongs to the event it joins
    * rather than to the unnamed voice.
    */
-  voiceOfChord(voice: string | undefined): string | undefined {
-    return voice ?? this.#lastVoice
+  voiceOfChord(): string | undefined {
+    return typeof this.#lastWritten === 'object' ? this.#lastWritten.voice : undefined
   }
 
   /**
@@ -1516,7 +1530,7 @@ export class MeasureBuilder {
     const list = builder.tuplets.list()
     const open = builder.grace
 
-    this.#lastVoice = voice ?? UNNAMED_VOICE
+    this.#lastWritten = { voice: voice ?? UNNAMED_VOICE, builder }
     // Grace notes have no duration of their own, so a chord note joining one
     // has nothing to agree with.
     const start = this.#cursor
