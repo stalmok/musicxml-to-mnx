@@ -601,6 +601,7 @@ const MNX_SPELLING: Readonly<Record<string, string>> = {
   'Lyric.type': 'MNXLyricLineType',
   GraceType: 'MNXGraceType',
   CaesuraShape: 'MNXCaesuraShape',
+  BreathSymbol: 'MNXBreathMarkSymbol',
   'Marking.placement': 'MNXPlacement',
   'StrongAccentMarking.pointing': 'MNXStrongAccent.pointing',
   'BowDirectionMarking.direction': 'MNXBowDirection.direction',
@@ -655,6 +656,7 @@ const NARROWER: Readonly<Record<string, { missing: readonly string[]; why: strin
   'Tuplet.bracket': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
   'Arpeggio.direction': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
   'Beam.direction': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
+  BreathSymbol: { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
   'DynamicBase.placement': {
     missing: ['auto', 'between'],
     why: `${UNSTATED_IS_UNDEFINED} A dynamic written between two staves of one part is not read.`,

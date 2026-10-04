@@ -132,9 +132,11 @@ export interface MNXBowDirection extends MNXMarking {
   direction: 'up' | 'down'
 }
 
+export type MNXBreathMarkSymbol = 'comma' | 'tick' | 'upbow' | 'salzedo' | 'auto'
+
 export interface MNXBreathMark extends MNXMarking {
   /** The glyph it is drawn with, such as a comma or a tick. */
-  symbol?: string
+  symbol?: MNXBreathMarkSymbol
 }
 
 /** The marks on an event, keyed by name, so at most one of each. */

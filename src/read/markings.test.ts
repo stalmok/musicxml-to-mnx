@@ -30,6 +30,16 @@ function note(notations = '', extra = ''): string {
 
 const articulations = (inner: string) => `<articulations>${inner}</articulations>`
 
+const score = (inner: string) =>
+  '<score-partwise><part-list><score-part id="P1"><part-name>A</part-name></score-part></part-list>' +
+  '<part id="P1"><measure number="1"><attributes><divisions>4</divisions></attributes>' +
+  note(articulations(inner)) +
+  '</measure></part></score-partwise>'
+const markingsOf = (mnx: ReturnType<typeof convertValid>['mnx']) => {
+  const item = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
+  return item?.type === undefined ? item?.markings : undefined
+}
+
 describe('articulations', () => {
   test('reads each mark under the name MNX gives it', () => {
     const { events, warnings } = read(
@@ -89,9 +99,30 @@ describe('articulations', () => {
   })
 
   test('states no glyph for a breath mark that names none', () => {
-    const { events } = read(note(articulations('<breath-mark/>')))
+    const { events, warnings } = read(note(articulations('<breath-mark/>')))
 
     expect(events[0]?.markings.breath?.symbol).toBeUndefined()
+    expect(warnings).toEqual([])
+  })
+
+  test.each(['comma', 'tick', 'upbow', 'salzedo'])('reads a %s breath mark', (glyph) => {
+    const { events, warnings } = read(note(articulations(`<breath-mark>${glyph}</breath-mark>`)))
+
+    expect(events[0]?.markings.breath?.symbol).toBe(glyph)
+    expect(warnings).toEqual([])
+  })
+
+  test('reports a breath-mark glyph it does not know and keeps the breath mark', () => {
+    const { mnx, warnings } = convertValid(
+      score('<breath-mark placement="above">Comma</breath-mark>'),
+    )
+
+    expect(markingsOf(mnx)).toEqual({ breath: { placement: 'above' } })
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([
+      ['unsupported:element', 'breath-mark'],
+    ])
+    expect(warnings[0]?.message).toContain('Comma')
+    expect(warnings[0]?.context.measure).toBe(1)
   })
 
   test('reports the marks event-markings has no room for', () => {
@@ -313,16 +344,6 @@ describe('a fermata over a rest filling the measure', () => {
 })
 
 describe('caesura', () => {
-  const score = (inner: string) =>
-    '<score-partwise><part-list><score-part id="P1"><part-name>A</part-name></score-part></part-list>' +
-    '<part id="P1"><measure number="1"><attributes><divisions>4</divisions></attributes>' +
-    note(articulations(inner)) +
-    '</measure></part></score-partwise>'
-  const markingsOf = (mnx: ReturnType<typeof convertValid>['mnx']) => {
-    const item = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
-    return item?.type === undefined ? item?.markings : undefined
-  }
-
   test('writes a caesura with no shape as an empty caesura', () => {
     const { mnx, warnings } = convertValid(score('<caesura/>'))
 

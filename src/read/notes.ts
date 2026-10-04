@@ -20,6 +20,8 @@ import type {
   KitNote,
   LineType,
   MarkingKind,
+  BreathMarking,
+  BreathSymbol,
   CaesuraMarking,
   CaesuraShape,
   Markings,
@@ -1308,6 +1310,33 @@ function readGraceType(
   return kind
 }
 
+const isBreathSymbol = recogniser<BreathSymbol>({
+  comma: true,
+  tick: true,
+  upbow: true,
+  salzedo: true,
+})
+
+/** A breath mark, which names its glyph as its text: a comma, a tick. */
+function readBreath(
+  found: XmlElement,
+  warnings: WarningCollector,
+  context: ReportContext,
+): BreathMarking {
+  const placement = placementOf(found)
+  const text = trimmedText(found)
+  if (text === '') return { placement, symbol: undefined }
+  if (isBreathSymbol(text)) return { placement, symbol: text }
+  warnings.add(
+    'unsupported:element',
+    `A <breath-mark> of "${text}" names no glyph MusicXML defines. ` +
+      'The breath mark is converted without its glyph.',
+    context,
+    found,
+  )
+  return { placement, symbol: undefined }
+}
+
 const isCaesuraShape = recogniser<CaesuraShape>({
   normal: true,
   thick: true,
@@ -1369,12 +1398,9 @@ function* writtenMarks(
         yield { ...at, kind: notation.kind, marking: { placement: placementOf(found), pointing } }
         continue
       }
-      case 'breath': {
-        // A breath mark names its glyph as its text: a comma, a tick.
-        const symbol = trimmedText(found) || undefined
-        yield { ...at, kind: notation.kind, marking: { placement: placementOf(found), symbol } }
+      case 'breath':
+        yield { ...at, kind: notation.kind, marking: readBreath(found, warnings, context) }
         continue
-      }
       case 'caesura':
         yield { ...at, kind: notation.kind, marking: readCaesura(found, warnings, context) }
         continue

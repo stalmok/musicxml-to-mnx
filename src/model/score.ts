@@ -180,9 +180,11 @@ export interface BowDirectionMarking extends Marking {
   readonly direction: 'up' | 'down'
 }
 
+export type BreathSymbol = 'comma' | 'tick' | 'upbow' | 'salzedo'
+
 /** A breath mark, which names the glyph it is drawn with. */
 export interface BreathMarking extends Marking {
-  readonly symbol: string | undefined
+  readonly symbol: BreathSymbol | undefined
 }
 
 /** A tremolo on one note, drawn as beams across its stem. */
