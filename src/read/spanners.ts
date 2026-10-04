@@ -37,8 +37,13 @@ interface OpenTie {
   drawn: boolean
 }
 
-/** One end of a tie, and on a stop the note it is written on. */
-type TieEnd = StartEnd<OpenTie> | StopEnd<{ note: TieTarget; drawn: boolean }>
+/**
+ * One end of a tie, and on a stop the note it is written on. `sounded` is how
+ * many events its voice has sounded in the part, its own included.
+ */
+type TieEnd = (StartEnd<OpenTie> | StopEnd<{ note: TieTarget; drawn: boolean }>) & {
+  sounded: number
+}
 
 /**
  * The element an end is written with, and the part and measure it sits in.
@@ -517,10 +522,26 @@ export function tieKey(pitch: Pitch): string {
 export class SpannerResolver {
   // Both ends of every tie in the part, paired once all of them are in.
   readonly #tieEnds: TieEnd[] = []
+  // How many events each voice has sounded so far in the part.
+  readonly #sounded = new Map<string, number>()
   // Both ends of every slur in the part, paired once all of them are in.
   readonly #slurEnds: SlurEnd[] = []
   // Both ends of every hairpin in the part, paired once all of them are in.
   readonly #wedgeEnds: WedgeEnd[] = []
+
+  /**
+   * Counts an event that sounds in a voice. A tie in its own voice joins one
+   * event to the next its voice sounds, so this is what tells a stop from a
+   * start its voice has sounded past.
+   */
+  sound(voice: string | undefined): void {
+    const key = voice ?? ''
+    this.#sounded.set(key, this.#soundedIn(key) + 1)
+  }
+
+  #soundedIn(voice: string | undefined): number {
+    return this.#sounded.get(voice ?? '') ?? 0
+  }
 
   /**
    * Notes the note a tie begins on, to be paired once the part is read.
@@ -550,6 +571,7 @@ export class SpannerResolver {
       covers: position,
       payload: { note, side, drawn },
       where,
+      sounded: this.#soundedIn(voice),
     })
   }
 
@@ -574,6 +596,7 @@ export class SpannerResolver {
       covers: position,
       where,
       stop: { note, drawn },
+      sounded: this.#soundedIn(voice),
     })
   }
 
@@ -583,10 +606,11 @@ export class SpannerResolver {
    * Paired in time order, not as the ends are met, for the reason the slurs
    * are.
    *
-   * A stop takes the most recent open start of its own voice, so two hands
-   * each sustaining one pitch pair within a hand. That pair is the source's
-   * own statement, and it holds at any distance: a score can tie a note to
-   * its pitch's next sounding measures away, across rests.
+   * A stop takes the open start of its own voice on the event its voice
+   * sounded just before, so two hands each sustaining one pitch pair within a
+   * hand. That pair is the source's own statement, and it holds at any
+   * distance: a score can tie a note to its pitch's next sounding measures
+   * away, across rests. A start its voice has sounded past is not one.
    *
    * A stop with no same-voice start falls back to the most recent open start
    * of any voice, which is the cross-voice tie MNX marks. That pair is
@@ -596,7 +620,7 @@ export class SpannerResolver {
   #resolveTies(warnings: WarningCollector): void {
     // Two ties of one pitch can be open at once, as when two hands each
     // sustain it, so each pitch holds a stack rather than a single open tie.
-    const open = new Map<string, StartEnd<OpenTie>[]>()
+    const open = new Map<string, (StartEnd<OpenTie> & { sounded: number })[]>()
 
     for (const end of inTimeOrder(this.#tieEnds, 'as-written')) {
       if (end.kind === 'start') {
@@ -606,8 +630,10 @@ export class SpannerResolver {
 
       const waiting = open.get(end.number) ?? []
       const started =
-        findLastOpened(waiting, (start) => (start.voice ?? '') === (end.voice ?? '')) ??
-        findLastOpened(waiting, (start) => end.measure - start.measure <= 1)
+        findLastOpened(
+          waiting,
+          (start) => (start.voice ?? '') === (end.voice ?? '') && end.sounded === start.sounded + 1,
+        ) ?? findLastOpened(waiting, (start) => end.measure - start.measure <= 1)
       if (!started) {
         warnings.add(
           'unclosed:spanner',

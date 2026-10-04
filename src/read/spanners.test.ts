@@ -259,15 +259,37 @@ describe('ties', () => {
   // A same-voice stop is the source's own pairing and holds at any
   // distance. Scores tie a note to the next sounding of its pitch measures
   // away, across rests.
-  test('keeps a tie its own voice states across an intervening measure', () => {
+  test('keeps a tie its own voice states across an intervening measure of rest', () => {
     const { notes, warnings } = readAllVoices(
-      measures(DIVISIONS + note('A', tied('start')), note('G'), note('A', tied('stop'))),
+      measures(
+        DIVISIONS + note('A', tied('start')),
+        '<note><rest/><duration>4</duration><voice>1</voice></note>',
+        note('A', tied('stop')),
+      ),
     )
     const started = notes.find((n) => n.ties.length > 0)
     const stopped = notes[notes.length - 1]
 
     expect(started?.ties).toEqual([{ target: stopped?.id, crossVoice: false }])
     expect(warnings).toEqual([])
+  })
+
+  // A tie joins a note to the next note its voice sounds. A start its voice
+  // has sounded past is stray, and a stop after it belongs elsewhere.
+  test('does not join a same-voice start that other notes of the voice sound after', () => {
+    const { notes, warnings } = readAllVoices(
+      measures(
+        DIVISIONS + note('C', tied('start')),
+        note('E'),
+        note('E') + '<backup><duration>4</duration></backup>' + note('C', tied('start'), '2'),
+        note('C', tied('stop')),
+      ),
+    )
+    const [stray, , , crossing, stopped] = notes as [Note, Note, Note, Note, Note]
+
+    expect(stray.ties).toEqual([])
+    expect(crossing.ties).toEqual([{ target: stopped.id, crossVoice: true }])
+    expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([['unclosed:spanner', 1]])
   })
 
   // A chord member of a grace chord sounds before the beat as the whole

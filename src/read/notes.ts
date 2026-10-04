@@ -1140,6 +1140,8 @@ function readEventSpanners(
   // are read where the member is, against the note it added.
   const { event } = placed
   readArpeggio(notations, placed, builder, event.notes[0])
+  // A rest sounds nothing, so a tie in its voice reaches across it.
+  if (!event.isRest) state.spanners.sound(voice)
   for (const note of [...event.notes, ...event.kitNotes]) {
     readTies(
       element,

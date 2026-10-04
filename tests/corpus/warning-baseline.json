@@ -11271,7 +11271,8 @@
     "sound@dynamics": 21,
     "extend": 2,
     "pedal": 8,
-    "note@print-object": 25
+    "note@print-object": 25,
+    "tie": 2
   },
   "webern-1-eingang": {
     "midi-device": 2,
