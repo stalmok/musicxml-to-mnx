@@ -2982,7 +2982,8 @@
     "extend": 19,
     "notehead": 8,
     "dashes": 2,
-    "note@print-object": 4
+    "note@print-object": 4,
+    "ending": 1
   },
   "cornelius-4-schmetterling": {
     "midi-device": 2,
@@ -4577,7 +4578,8 @@
     "stem": 1,
     "notehead": 2,
     "staff-size": 1,
-    "note@print-object": 22
+    "note@print-object": 22,
+    "ending": 2
   },
   "gabriel-sacred-vows": {
     "midi-device": 2,
@@ -6297,7 +6299,8 @@
     "direction@system": 1,
     "sound@dynamics": 8,
     "cue": 1,
-    "clef@after-barline": 1
+    "clef@after-barline": 1,
+    "ending": 1
   },
   "jacobs-bond-2-walking-in-her-garden": {
     "midi-device": 2,
@@ -9339,7 +9342,8 @@
     "coda": 1,
     "sound@coda": 1,
     "measure-layout": 2,
-    "ending@print-object": 2
+    "ending@print-object": 2,
+    "ending": 2
   },
   "reichardt-10-ida-aus-ariels-offenbarungen": {
     "midi-device": 2,
@@ -9387,7 +9391,8 @@
     "identification": 1,
     "words": 1,
     "sound@tempo": 1,
-    "direction@system": 1
+    "direction@system": 1,
+    "ending": 2
   },
   "reichardt-2-wenn-ich-ihn-nur-habe": {
     "midi-device": 2,
@@ -9533,7 +9538,8 @@
     "sound@tempo": 1,
     "direction@system": 1,
     "sound@dynamics": 3,
-    "note@print-object": 28
+    "note@print-object": 28,
+    "ending": 1
   },
   "satie-je-te-veux": {
     "midi-device": 2,
@@ -9555,7 +9561,8 @@
     "stem": 1,
     "notehead": 1,
     "note@print-object": 9,
-    "ending@print-object": 2
+    "ending@print-object": 2,
+    "ending": 1
   },
   "satie-l-omnibus-automobile": {
     "midi-device": 2,

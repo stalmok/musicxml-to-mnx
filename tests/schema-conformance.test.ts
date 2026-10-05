@@ -118,6 +118,20 @@ describe('what a grace group holds', () => {
   })
 })
 
+// An ending printed with text other than its numbers is reported as a format
+// limit (unrepresentable:ending-text). That rests on the ending holding no
+// text.
+describe('what an ending holds', () => {
+  test('an ending states its numbers and no text', () => {
+    expect(Object.keys(schemaDefs['ending']?.properties ?? {}).sort()).toEqual([
+      'color',
+      'duration',
+      'numbers',
+      'open',
+    ])
+  })
+})
+
 // --- The MNX types against the schema ---------------------------------------
 
 /**

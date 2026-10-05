@@ -318,8 +318,10 @@ function readEnding(
 
   const type = attribute(ending, 'type')
   if (type === 'start') {
+    const numbers = endingNumbers(ending, warnings, context)
+    reportEndingText(ending, numbers, warnings, context)
     return {
-      endingStart: { numbers: endingNumbers(ending, warnings, context), element: ending },
+      endingStart: { numbers, element: ending },
       endingStop: undefined,
     }
   }
@@ -368,6 +370,58 @@ function endingNumbers(
       return []
     }
     numbers.push(Number(trimmed))
+  }
+  return numbers
+}
+
+/**
+ * MusicXML writes text in an <ending> only where what is printed over the
+ * bracket differs from its numbers. MNX's ending states the numbers and has no
+ * text, so text that prints other numbers, or anything besides them, is
+ * reported. Text that only spells the numbers, such as "1., 2." or "1.-3.",
+ * prints what MNX draws from them.
+ */
+function reportEndingText(
+  ending: XmlElement,
+  numbers: readonly number[],
+  warnings: WarningCollector,
+  context: ReportContext,
+): void {
+  const text = trimmedText(ending)
+  if (text === '') return
+
+  const printed = printedNumbers(text, numbers.length)
+  if (printed && printed.join() === numbers.join()) return
+
+  warnings.add(
+    'unrepresentable:ending-text',
+    `An ending is printed as "${text}", and MNX prints an ending's numbers only.`,
+    context,
+    ending,
+  )
+}
+
+/**
+ * The numbers a text spells out, where it holds nothing else: numbers, each
+ * with an optional period, and a range written with a dash, separated by
+ * commas, spaces or the periods alone. Nothing where it holds any other
+ * character, a dash outside a range, or more than most numbers.
+ */
+function printedNumbers(text: string, most: number): number[] | undefined {
+  if (!/^[\d.,\s\-–]+$/.test(text)) return undefined
+
+  const parts = text.match(/\d+\.?\s*[-–]\s*\d+|\d+/g)
+  if (!parts) return undefined
+  const ranges = parts.filter((part) => /[-–]/.test(part))
+  if (ranges.length !== (text.match(/[-–]/g) ?? []).length) return undefined
+
+  const numbers: number[] = []
+  for (const part of parts) {
+    const [first = 0, last = first] = part.split(/[-–]/).map((side) => parseInt(side, 10))
+    for (let number = first; number <= last; number++) {
+      if (numbers.length === most) return undefined
+      numbers.push(number)
+    }
   }
   return numbers
 }

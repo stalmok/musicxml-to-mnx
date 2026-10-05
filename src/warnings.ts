@@ -88,6 +88,10 @@ export const WARNING_CODES = Object.freeze([
   'unrepresentable:marking',
   // A chord marked both as rolled and as struck together at once.
   'unrepresentable:arpeggio',
+  // An ending printed with text other than its numbers, such as "Pour
+  // finir" or "1st and 2nd Verses". MNX's ending prints its numbers and has
+  // no text. The numbers are converted.
+  'unrepresentable:ending-text',
   // A barline drawn at the opening edge of a measure. MNX states the one that
   // closes a measure. Also a repeat sign facing away from the edge it is
   // written on, which MNX states on the neighbouring measure.

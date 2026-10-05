@@ -332,6 +332,69 @@ describe('a repeat sign', () => {
   })
 })
 
+describe('the text printed over an ending', () => {
+  const ending = (numbers: string, text: string) =>
+    read(
+      left(`<ending number="${numbers}" type="start">${text}</ending>`) +
+        NOTE +
+        right(`<ending number="${numbers}" type="stop"/>`),
+    )
+
+  // MusicXML writes the text only where it differs from the numbers, but a
+  // source often writes the numbers out anyway.
+  test.each([
+    ['1', ''],
+    ['1', '  '],
+    ['1', '1'],
+    ['1', '1.'],
+    ['1, 2', '1. 2.'],
+    ['1, 2', '1.,2.'],
+    ['1, 2', '1.2'],
+    ['1, 2, 3', '1.2.3.'],
+    ['1, 2, 3, 4', '1.-4.'],
+    ['1, 2, 3', '1 – 3'],
+    ['12', '12.'],
+    ['10, 11, 12', '10.-12.'],
+  ])('says nothing where %s is printed as "%s"', (numbers, text) => {
+    const { globals, warnings } = ending(numbers, text)
+
+    expect(globals[0]?.ending?.numbers).toEqual(numbers.split(',').map(Number))
+    expect(warnings).toEqual([])
+  })
+
+  test.each([
+    ['3', 'Pour finir'],
+    ['1, 2', '1. and 2.'],
+    ['1, 2', '[1. 2.]'],
+    ['1', '1°'],
+    ['1', '2.'],
+    ['1', '1.-5.'],
+    ['1, 2', '2. 1.'],
+    ['1, 2', '1-'],
+    ['1', '1-'],
+    ['12', '1'],
+    ['1, 2', '1.-2.-3.'],
+    ['1', '.'],
+  ])('reports %s printed as "%s", and keeps the numbers', (numbers, text) => {
+    const { globals, warnings } = ending(numbers, text)
+
+    expect(globals[0]?.ending?.numbers).toEqual(numbers.split(',').map(Number))
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        code: 'unrepresentable:ending-text',
+        element: 'ending',
+        message: `An ending is printed as "${text}", and MNX prints an ending's numbers only.`,
+      }),
+    ])
+  })
+
+  test('does not count out a long range', () => {
+    const { warnings } = ending('1', '1-999999999')
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:ending-text'])
+  })
+})
+
 describe('first and second time endings', () => {
   test('states one on the measure it starts, as the measures it covers', () => {
     const { globals, warnings } = read(
