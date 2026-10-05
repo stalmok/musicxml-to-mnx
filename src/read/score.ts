@@ -989,7 +989,11 @@ function readMeasure(
   let endingStop: EndingStop | undefined
   let fermata: Stated<Fermata> | undefined
 
-  const builder = new MeasureBuilder(state.carriedTupletStops, soundingVoices(element))
+  const builder = new MeasureBuilder(
+    state.carriedTupletStops,
+    soundingVoices(element),
+    state.beamsOpenAtBarline,
+  )
 
   // Walked in document order, because MusicXML states a measure as one stream
   // with a cursor running through it: what a <note> means depends on the
@@ -1132,6 +1136,7 @@ function readMeasure(
     element.line,
   )
   state.carriedTupletStops = finished.carriedTupletStops
+  state.beamsOpenAtBarline = finished.beamsOpenAtBarline
   signatures.carryToNextMeasure()
 
   return {
@@ -1140,7 +1145,7 @@ function readMeasure(
       staffConfigs: dedupeStaffConfigs(staffConfigs, warnings, context),
       // Beams are stated over the measure in MNX rather than on the notes,
       // and each voice is beamed on its own.
-      beams: finished.beamedEvents.flatMap((events) => buildBeams(events)),
+      beams: finished.beamedEvents.flatMap((events) => buildBeams(events, warnings, context)),
       dynamics,
       arpeggios: finished.arpeggios,
       // Filled in below, once the whole part has been read.

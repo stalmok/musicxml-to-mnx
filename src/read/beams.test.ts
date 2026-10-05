@@ -8,8 +8,11 @@
 import { readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { WarningCollector } from './collector.js'
-import { buildBeams } from './beams.js'
-import type { BeamedEvent } from './beams.js'
+import { buildBeams as buildReported } from './beams.js'
+import type { BeamedEvent, BeamMarker } from './beams.js'
+
+const buildBeams = (events: readonly BeamedEvent[]) =>
+  buildReported(events, new WarningCollector(), {})
 
 /**
  * `levels` reads as "level:marker", separated by semicolons because a marker
@@ -18,14 +21,17 @@ import type { BeamedEvent } from './beams.js'
  * pass one to model a note whose value needs fewer beams than it marks.
  */
 function event(id: string, levels: string, beamCount?: number): BeamedEvent {
-  const markers = new Map<number, string>()
+  const markers = new Map<number, BeamMarker>()
   let deepest = 0
   for (const part of levels.split(';').filter(Boolean)) {
-    const [level, marker] = part.split(':')
-    markers.set(Number(level), marker ?? '')
+    const [level, kind = ''] = part.split(':')
+    markers.set(Number(level), {
+      kind,
+      element: { name: 'beam', attributes: {}, children: [], text: kind, line: 1 },
+    })
     deepest = Math.max(deepest, Number(level))
   }
-  return { id, markers, beamCount: beamCount ?? deepest }
+  return { id, markers, beamCount: beamCount ?? deepest, continuesFromBefore: false }
 }
 
 describe('a single beam', () => {
@@ -379,5 +385,177 @@ describe('beaming grace notes', () => {
       ['ev1', 'ev4'],
       ['ev2', 'ev3'],
     ])
+  })
+})
+
+describe('a beam crossing the barline', () => {
+  const QUARTER =
+    '<note><pitch><step>B</step><octave>3</octave></pitch><duration>4</duration>' +
+    '<type>quarter</type></note>'
+
+  function eighth(step: string, marker?: string): string {
+    return (
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>2</duration>` +
+      `<type>eighth</type>${marker ? `<beam number="1">${marker}</beam>` : ''}</note>`
+    )
+  }
+
+  // Each measure on its own line, so a warning's line names the measure.
+  function readMeasures(...bodies: string[]) {
+    const warnings = new WarningCollector()
+    const measures = bodies
+      .map(
+        (body, index) =>
+          `<measure number="${String(index + 1)}">` +
+          (index === 0 ? '<attributes><divisions>4</divisions></attributes>' : '') +
+          `${body}</measure>`,
+      )
+      .join('\n')
+    const score = readValid(
+      `<score-partwise><part id="P1">\n${measures}\n</part></score-partwise>`,
+      warnings,
+    )
+    const read = score.parts[0]?.measures ?? []
+    return {
+      beams: read.map((measure) => measure.beams.map((b) => b.events)),
+      trees: read.map((measure) => measure.beams),
+      warnings: warnings.list(),
+    }
+  }
+
+  const CROSSES =
+    'A beam crosses the barline into this measure, which is not converted yet. It is ' +
+    'drawn as one beam each side of the barline, and a side holding one note is not beamed.'
+
+  test('reports a beam over two single notes, and beams neither', () => {
+    const { beams, warnings } = readMeasures(eighth('C', 'begin'), eighth('D', 'end'))
+
+    expect(beams).toEqual([[], []])
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        code: 'unsupported:element',
+        element: 'beam',
+        message: CROSSES,
+        context: expect.objectContaining({ measure: 2, line: 3 }),
+      }),
+    ])
+  })
+
+  test('beams the notes on each side of the barline on their own', () => {
+    const { beams, warnings } = readMeasures(
+      eighth('C', 'begin') + eighth('D', 'continue'),
+      eighth('E', 'continue') + eighth('F', 'continue') + eighth('G', 'end') + eighth('A'),
+    )
+
+    expect(beams).toEqual([[['ev1', 'ev2']], [['ev3', 'ev4', 'ev5']]])
+    expect(warnings.map((w) => w.message)).toEqual([CROSSES])
+  })
+
+  // A source may leave the barline to close a beam, and then nothing is lost.
+  test('keeps a beam the measure never ends, and says nothing', () => {
+    const { beams, warnings } = readMeasures(
+      eighth('C', 'begin') + eighth('D', 'continue'),
+      eighth('E', 'begin') + eighth('F', 'end'),
+    )
+
+    expect(beams).toEqual([[['ev1', 'ev2']], [['ev3', 'ev4']]])
+    expect(warnings).toEqual([])
+  })
+
+  // Only the note opening the measure can carry on a beam from before it.
+  test('says nothing of an end with no begin later in the measure', () => {
+    const { beams, warnings } = readMeasures(
+      eighth('A', 'begin'),
+      QUARTER + eighth('C', 'end') + eighth('D', 'end'),
+    )
+
+    expect(beams).toEqual([[], []])
+    expect(warnings).toEqual([])
+  })
+
+  // The source's markers say nothing crossed: the beam before was closed.
+  test('says nothing of an end opening the measure after a closed beam', () => {
+    const { beams, warnings } = readMeasures(
+      eighth('A', 'begin') + eighth('B', 'end') + QUARTER,
+      eighth('C', 'end') + eighth('D', 'end'),
+    )
+
+    expect(beams).toEqual([[['ev1', 'ev2']], []])
+    expect(warnings).toEqual([])
+  })
+
+  test('says nothing of an end opening the measure where no beam came before', () => {
+    const { beams, warnings } = readMeasures(QUARTER, eighth('C', 'end') + eighth('D', 'end'))
+
+    expect(beams).toEqual([[], []])
+    expect(warnings).toEqual([])
+  })
+
+  // Beamed at an inner level only, the last note is outside the primary beam.
+  test('says nothing where the last note before the barline closes the beam', () => {
+    const inner =
+      '<note><pitch><step>B</step><octave>4</octave></pitch><duration>1</duration>' +
+      '<type>16th</type><beam number="2">backward hook</beam></note>'
+    const { warnings } = readMeasures(eighth('A', 'begin') + inner, eighth('C', 'end'))
+
+    expect(warnings).toEqual([])
+  })
+
+  test('says nothing of a beam another voice left open', () => {
+    const voiced = (voice: string, note: string) =>
+      note.replace('<type>', `<voice>${voice}</voice><type>`)
+    const { beams, warnings } = readMeasures(
+      voiced('1', eighth('A', 'begin')),
+      voiced('2', eighth('C', 'continue')) + voiced('2', eighth('D', 'end')),
+    )
+
+    expect(beams).toEqual([[], []])
+    expect(warnings).toEqual([])
+  })
+
+  // A grace group beams within itself, so its beams never cross the barline.
+  test('says nothing of a grace note opening the measure with an end', () => {
+    const grace =
+      '<note><grace/><pitch><step>B</step><octave>4</octave></pitch>' +
+      '<type>16th</type><beam number="1">end</beam></note>'
+    const { warnings } = readMeasures(grace + eighth('C'))
+
+    expect(warnings).toEqual([])
+  })
+
+  test('draws an inner beam from the measure before as a partial beam to the left', () => {
+    const sixteenth = (step: string, inner: string) =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>1</duration>` +
+      `<type>16th</type>${inner}</note>`
+    const { trees, warnings } = readMeasures(
+      sixteenth('B', '<beam number="1">begin</beam><beam number="2">begin</beam>'),
+      sixteenth('C', '<beam number="1">continue</beam><beam number="2">end</beam>') +
+        sixteenth('D', '<beam number="1">end</beam>'),
+    )
+
+    expect(trees).toEqual([
+      [],
+      [
+        {
+          events: ['ev2', 'ev3'],
+          beams: [{ events: ['ev2'], beams: [], direction: 'left' }],
+          direction: undefined,
+        },
+      ],
+    ])
+    expect(warnings.map((w) => w.message)).toEqual([CROSSES])
+  })
+
+  test('reports nothing for an inner beam the primary one closes', () => {
+    const sixteenth = (step: string, inner: string) =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>1</duration>` +
+      `<type>16th</type>${inner}</note>`
+    const { beams, warnings } = readMeasures(
+      sixteenth('C', '<beam number="1">begin</beam><beam number="2">end</beam>') +
+        sixteenth('D', '<beam number="1">end</beam><beam number="2">begin</beam>'),
+    )
+
+    expect(beams).toEqual([[['ev1', 'ev2']]])
+    expect(warnings).toEqual([])
   })
 })

@@ -16,6 +16,7 @@ import {
   compareFractions,
   divideFractions,
   fraction,
+  isZero,
   subtractFractions,
 } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
@@ -23,7 +24,7 @@ import { describeLength, noteValueOf } from './duration.js'
 import type { ReportContext, WarningCollector } from './collector.js'
 import type { EventNotation } from './eventNotations.js'
 import type { XmlElement } from '../xml/parse.js'
-import type { BeamedEvent } from './beams.js'
+import type { BeamedEvent, BeamMarker } from './beams.js'
 import type { CarriedTupletStop, MeasureExtent, TupletStart } from './tuplets.js'
 import { TupletTracker } from './tupletTracker.js'
 import type {
@@ -92,6 +93,8 @@ export interface FinishedMeasure {
   sequences: Sequence[]
   /** Tuplet stops no bracket here met, handed on to the next measure. */
   carriedTupletStops: CarriedTupletStop[]
+  /** The voices whose primary beam is still open at the closing barline. */
+  beamsOpenAtBarline: ReadonlySet<string>
 }
 
 /** Where the last item of a voice takes its time from, where it is a grace group. */
@@ -346,13 +349,17 @@ export class MeasureBuilder {
 
   /** The voices that sound a note somewhere in the measure, rather than only rest. */
   readonly #soundingVoices: ReadonlySet<string>
+  /** The voices whose primary beam the measure before left open at the barline. */
+  readonly #beamsOpenBefore: ReadonlySet<string>
 
   constructor(
     carriedStops: readonly CarriedTupletStop[],
     soundingVoices: Iterable<string | undefined>,
+    beamsOpenBefore: ReadonlySet<string>,
   ) {
     this.#carriedStops = [...carriedStops]
     this.#soundingVoices = new Set([...soundingVoices].map((voice) => voice ?? UNNAMED_VOICE))
+    this.#beamsOpenBefore = beamsOpenBefore
   }
 
   /**
@@ -1058,7 +1065,24 @@ export class MeasureBuilder {
       arpeggios: this.#settleArpeggios(warnings, context, kit),
       sequences: this.#sequences(warnings, context),
       carriedTupletStops,
+      beamsOpenAtBarline: this.#beamsOpenAtBarline(),
     }
+  }
+
+  /**
+   * The voices whose last beamed event begins or continues a primary beam,
+   * which the source then carries on over the barline or leaves open.
+   */
+  #beamsOpenAtBarline(): Set<string> {
+    const open = new Set<string>()
+    for (const [voice, { layers }] of this.#voices) {
+      for (const layer of layers) {
+        // An event with no primary marker closes the primary beam.
+        const kind = layer.beamed.at(-1)?.markers.get(1)?.kind
+        if (kind === 'begin' || kind === 'continue') open.add(voice)
+      }
+    }
+    return open
   }
 
   /**
@@ -1172,14 +1196,21 @@ export class MeasureBuilder {
   addBeamMarkers(
     voice: string | undefined,
     id: string,
-    markers: ReadonlyMap<number, string>,
+    markers: ReadonlyMap<number, BeamMarker>,
     beamCount: number,
+    start: Fraction,
     /** The run of a grace note's group, which its beams run within. */
     graceBeams: BeamedEvent[] | undefined,
   ): void {
     if (markers.size === 0) return
     const run = graceBeams ?? this.#builderFor(voice).beamed
-    run.push({ id, markers, beamCount })
+    const key = voice ?? UNNAMED_VOICE
+    run.push({
+      id,
+      markers,
+      beamCount,
+      continuesFromBefore: !graceBeams && isZero(start) && this.#beamsOpenBefore.has(key),
+    })
   }
 
   /**

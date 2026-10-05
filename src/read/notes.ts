@@ -39,7 +39,7 @@ import type { ReportContext, WarningCollector, WarningPlace } from './collector.
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, child, children, descendants, requireChild, trimmedText } from '../xml/tree.js'
 import { beamCountForValue, valueForBeamCount } from './beams.js'
-import type { BeamedEvent } from './beams.js'
+import type { BeamedEvent, BeamMarker } from './beams.js'
 import { readDuration } from './divisions.js'
 import { describeLength, describeValue, lengthOf, noteValueOf } from './duration.js'
 import type { ElementReader } from './element.js'
@@ -1163,6 +1163,7 @@ function readEventSpanners(
     event.id,
     beamMarkers(element, warnings, context),
     beamCountForValue(event.value.base),
+    placed.start,
     graceBeams,
   )
 }
@@ -1996,8 +1997,8 @@ function beamMarkers(
   element: ElementReader,
   warnings: WarningCollector,
   context: ReportContext,
-): ReadonlyMap<number, string> {
-  const markers = new Map<number, string>()
+): ReadonlyMap<number, BeamMarker> {
+  const markers = new Map<number, BeamMarker>()
   for (const beam of element.children('beam')) {
     // A fanned beam draws an accelerando or ritardando by spreading the beams.
     // MNX has no home for it in this schema pin, and <beam> has no children
@@ -2017,7 +2018,7 @@ function beamMarkers(
     // does there, as "begin" or "end".
     const stated = attribute(beam, 'number')
     if (stated === undefined) {
-      markers.set(1, trimmedText(beam))
+      markers.set(1, { kind: trimmedText(beam), element: beam })
       continue
     }
 
@@ -2039,7 +2040,7 @@ function beamMarkers(
       )
       continue
     }
-    markers.set(level, trimmedText(beam))
+    markers.set(level, { kind: trimmedText(beam), element: beam })
   }
   return markers
 }

@@ -10,12 +10,27 @@
 // with a direction for a hook.
 
 import type { Beam, NoteValueBase } from '../model/score.js'
+import type { XmlElement } from '../xml/parse.js'
+import type { ReportContext, WarningCollector } from './collector.js'
 import { entriesOf } from './tables.js'
+
+/** What one <beam> says the beam at its level does at this event. */
+export interface BeamMarker {
+  /** "begin", "continue", "end", "forward hook" or "backward hook". */
+  kind: string
+  element: XmlElement
+}
 
 /** What one event says about the beams it carries, by level. */
 export interface BeamedEvent {
   id: string
-  markers: ReadonlyMap<number, string>
+  markers: ReadonlyMap<number, BeamMarker>
+  /**
+   * Whether the event opens the measure in a voice whose primary beam the
+   * measure before left open. A beam continued or ended here carries on
+   * that one. Never true for a grace note, whose beams stay in its group.
+   */
+  continuesFromBefore: boolean
   /**
    * How many beams the note's value calls for: an eighth one, a 16th two. An
    * inner beam that closes on this event alone is kept only up to this level.
@@ -70,16 +85,33 @@ const HOOK_DIRECTIONS = new Map<string, 'left' | 'right'>([
  * The beams over one measure of one voice, outermost first.
  *
  * A run at a given level starts where a beam begins and closes where it ends.
- * A run the measure never closes is kept. A primary run over one event is
- * dropped, because a beam over a single note is a flag.
+ * A run the measure never closes is kept, since a source may leave the
+ * barline to close it. A primary run over one event is dropped, because a
+ * beam over a single note is a flag.
+ *
+ * A beam crossing the barline shows as a continue or end on the event that
+ * opens the measure, in a voice whose beam the measure before left open. MNX states such a beam on the measure it starts in,
+ * listing the events of both. This converter does not join the two yet, so
+ * each side is beamed on its own, and the crossing is reported.
  */
-export function buildBeams(events: readonly BeamedEvent[]): Beam[] {
-  return beamsAtLevel(events, 1)
+export function buildBeams(
+  events: readonly BeamedEvent[],
+  warnings: WarningCollector,
+  context: ReportContext,
+): Beam[] {
+  return beamsAtLevel(events, 1, { warnings, context })
 }
 
-function beamsAtLevel(events: readonly BeamedEvent[], level: number): Beam[] {
+function beamsAtLevel(
+  events: readonly BeamedEvent[],
+  level: number,
+  /** Where to report a primary beam crossing the barline. */
+  report?: { warnings: WarningCollector; context: ReportContext },
+): Beam[] {
   const beams: Beam[] = []
   let run: BeamedEvent[] = []
+  // Whether the run carries on a beam from the measure before.
+  let fromBefore = false
 
   const close = (): void => {
     const [only] = run
@@ -90,21 +122,23 @@ function beamsAtLevel(events: readonly BeamedEvent[], level: number): Beam[] {
         direction: undefined,
       })
     } else if (only !== undefined && level > 1 && only.beamCount >= level) {
-      // A single event left at an inner level always came from a begin, since
-      // a continue or end only extends an open run. Where the note's value
-      // needs this beam, it is a partial beam pointing forward: a one-event
-      // beam drawn to the right. A repeated begin (two begins with no end
-      // between) leaves the first note in this shape.
-      beams.push({ events: [only.id], beams: [], direction: 'right' })
+      // A single event left at an inner level came from a begin, or carries
+      // on a beam from the measure before. Where the note's value needs this
+      // beam, it is a partial beam pointing at the rest of it. A repeated
+      // begin (two begins with no end between) leaves the first note in this
+      // shape.
+      beams.push({ events: [only.id], beams: [], direction: fromBefore ? 'left' : 'right' })
     }
     // A single event whose value does not need this beam is a stray marker.
     // It is dropped with no warning, because the note is drawn correctly
     // without it.
     run = []
+    fromBefore = false
   }
 
   for (const event of events) {
-    const marker = event.markers.get(level)
+    const found = event.markers.get(level)
+    const marker = found?.kind
 
     const hook = marker === undefined ? undefined : HOOK_DIRECTIONS.get(marker)
     if (hook) {
@@ -118,9 +152,25 @@ function beamsAtLevel(events: readonly BeamedEvent[], level: number): Beam[] {
     if (marker === 'begin') {
       close()
       run = [event]
-    } else if (marker === 'continue' || marker === 'end') {
-      // An end with no begin is not a beam.
-      if (run.length > 0) run.push(event)
+    } else if (found?.kind === 'continue' || found?.kind === 'end') {
+      if (run.length > 0) {
+        run.push(event)
+      } else if (event.continuesFromBefore) {
+        if (report) {
+          report.warnings.add(
+            'unsupported:element',
+            'A beam crosses the barline into this measure, which is not converted yet. ' +
+              'It is drawn as one beam each side of the barline, and a side holding one ' +
+              'note is not beamed.',
+            report.context,
+            found.element,
+          )
+        }
+        run = [event]
+        fromBefore = true
+      }
+      // Anywhere else, an end or continue with no begin is not a beam, and
+      // the notes are drawn correctly without it.
       if (marker === 'end') close()
     } else {
       close()

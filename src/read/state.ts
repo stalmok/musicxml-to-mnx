@@ -166,6 +166,8 @@ export interface PartState {
    * the source wrote in a later measure with nothing to close.
    */
   carriedTupletStops: readonly CarriedTupletStop[]
+  /** The voices whose primary beam the last measure left open at its barline. */
+  beamsOpenAtBarline: ReadonlySet<string>
   /**
    * The first transposition the part stated, which is the one written out.
    * MNX states one per part, so a part that changes instrument partway keeps
@@ -205,6 +207,7 @@ export function newPartState(
     kit: new Map(),
     kitKeys: new Map(),
     carriedTupletStops: [],
+    beamsOpenAtBarline: new Set(),
     transposition: undefined,
     statedTransposition: undefined,
   }
