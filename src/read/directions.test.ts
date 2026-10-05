@@ -2124,6 +2124,34 @@ describe('hairpins', () => {
 
     expect(dynamics[0]?.[0]).toMatchObject({ wedge: 'increasing', staff: 1, end: { measure: 2 } })
     expect(dynamics[1]?.[0]).toMatchObject({ wedge: 'decreasing', staff: 2, end: { measure: 3 } })
+    expect(dynamics.flat().map((d) => d.kind === 'gradual' && d.staffEnd)).toEqual([
+      undefined,
+      undefined,
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  // MNX draws such a hairpin diagonally, from the staff it starts on to the
+  // one it stops on.
+  test('ends a hairpin on the staff its stop names', () => {
+    const { dynamics, warnings } = readTwoStaves(
+      staffWedge('crescendo', '1'),
+      staffWedge('stop', '2'),
+    )
+
+    expect(dynamics[0]?.[0]).toMatchObject({ staff: 1, staffEnd: 2, end: { measure: 1 } })
+    expect(warnings).toEqual([])
+  })
+
+  // A hairpin naming no staff applies to every staff of the part.
+  test('ends a hairpin naming no staff on none', () => {
+    const { dynamics, warnings } = readTwoStaves(
+      '<direction><direction-type><wedge type="crescendo"/></direction-type></direction>',
+      staffWedge('stop', '2'),
+    )
+
+    expect(dynamics[0]?.[0]).toMatchObject({ staff: undefined, end: { measure: 1 } })
+    expect(dynamics[0]?.[0]).not.toHaveProperty('staffEnd')
     expect(warnings).toEqual([])
   })
 

@@ -429,6 +429,38 @@ describe('octave shifts and hairpins', () => {
       },
     ])
   })
+
+  test('writes the staff a hairpin stops on', () => {
+    const end = { measure: 0, position: fraction(1, 2) }
+    const measure: Measure = {
+      ...measureOf(WHOLE_C),
+      dynamics: [
+        {
+          kind: 'gradual',
+          position: fraction(0, 1),
+          wedge: 'decreasing',
+          end,
+          staff: 1,
+          staffEnd: 2,
+        },
+      ],
+    }
+    const score = scoreOf(measure)
+    const part = score.parts[0]
+    if (!part) throw new Error('expected a part')
+    const written = writeValid({ ...score, parts: [{ ...part, staves: 2 }] }).parts[0]?.measures[0]
+
+    expect(written?.dynamics).toStrictEqual([
+      {
+        position: { fraction: [0, 1] },
+        type: 'gradual',
+        wedgeType: 'decreasing',
+        end: { measure: 'm1', position: { fraction: [1, 2] } },
+        staff: 1,
+        staffEnd: 2,
+      },
+    ])
+  })
 })
 
 describe('a hairpin with no end', () => {

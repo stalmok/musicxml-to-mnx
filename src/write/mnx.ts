@@ -638,6 +638,7 @@ function writeDynamic(dynamic: Dynamic, names: MeasureNames): MNXDynamic {
         wedgeType: dynamic.wedge,
         end: writeSpanEnd(dynamic.end, names),
         ...where,
+        ...(dynamic.staffEnd !== undefined ? { staffEnd: dynamic.staffEnd } : {}),
       }
     case 'accent':
       return {

@@ -408,6 +408,8 @@ export interface MNXGradualDynamic extends MNXDynamicBase {
   wedgeType: MNXWedgeType
   /** Where the hairpin stops, which may be in a later measure. */
   end: MNXMeasureRhythmicPosition
+  /** The staff the hairpin stops on, for one drawn across staves. */
+  staffEnd?: number
 }
 
 export type MNXRelativeDynamicValue = 'louder' | 'softer'

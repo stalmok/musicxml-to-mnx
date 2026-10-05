@@ -252,10 +252,7 @@ const NOT_MODELLED: Readonly<Record<string, { properties: readonly string[]; why
     why: 'The colour a clef is drawn in, and a glyph in place of its sign.',
   },
   MNXImmediateDynamic: { properties: ['visuallyContinues', 'voice'], why: DYNAMIC_NOT_MODELLED },
-  MNXGradualDynamic: {
-    properties: ['staffEnd', 'visuallyContinues', 'voice'],
-    why: `A hairpin ending on another staff. ${DYNAMIC_NOT_MODELLED}`,
-  },
+  MNXGradualDynamic: { properties: ['visuallyContinues', 'voice'], why: DYNAMIC_NOT_MODELLED },
   MNXRelativeDynamic: { properties: ['visuallyContinues', 'voice'], why: DYNAMIC_NOT_MODELLED },
   MNXAccentDynamic: { properties: ['visuallyContinues', 'voice'], why: DYNAMIC_NOT_MODELLED },
   MNXOttava: { properties: ['voice'], why: 'The voice an octave shift applies to.' },

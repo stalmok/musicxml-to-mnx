@@ -970,6 +970,15 @@ export class SpannerResolver {
         const end: Draft<SpanStop> = { measure: stop.measure, position: stop.covers }
         if (stop.coversGraceIndex !== undefined) end.graceIndex = stop.coversGraceIndex
         dynamic.end = end
+        // A hairpin stating no staff applies to all of them, so only one
+        // naming its staff can end on another.
+        if (
+          dynamic.staff !== undefined &&
+          stop.staff !== undefined &&
+          stop.staff !== dynamic.staff
+        ) {
+          dynamic.staffEnd = stop.staff
+        }
         closed.set(stop, dynamic)
       },
       (reason, end) => {

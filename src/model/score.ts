@@ -516,6 +516,11 @@ export interface GradualDynamic extends DynamicBase {
    * a hairpin the source never closed.
    */
   end: SpanStop | undefined
+  /**
+   * The staff the hairpin stops on, where that is not the one it starts on.
+   * Filled in by the spanner resolver with the end.
+   */
+  staffEnd?: number
 }
 
 /**
