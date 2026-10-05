@@ -112,7 +112,10 @@ export function readDecimalInRange(
   const text = trimmedText(element)
   const value = parseExactDecimal(text)
   if (value === undefined) {
-    throw new MusicXMLError(`<${element.name}> is not a number: "${text}".`, {
+    const why = DECIMAL_NUMBER.test(text)
+      ? 'has too many digits to read exactly'
+      : 'is not a number'
+    throw new MusicXMLError(`<${element.name}> ${why}: "${text}".`, {
       path,
       line: element.line,
     })

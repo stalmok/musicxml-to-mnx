@@ -189,6 +189,12 @@ describe('a decimal number that has to fall in a range', () => {
     )
   })
 
+  test('refuses a number with too many digits to read exactly', () => {
+    expect(() => read('1.0000000000000001', { min: 0, max: 5 })).toThrow(
+      '<duration> has too many digits to read exactly: "1.0000000000000001".',
+    )
+  })
+
   test('refuses text that is not a number, naming the line', () => {
     expect(() => read('1e3', { min: 0, max: 5 })).toThrow(
       '<duration> is not a number: "1e3". (at score-partwise > part, line 1)',
