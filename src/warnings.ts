@@ -93,8 +93,7 @@ export const WARNING_CODES = Object.freeze([
   // no text. The numbers are converted.
   'unrepresentable:ending-text',
   // A barline drawn at the opening edge of a measure. MNX states the one that
-  // closes a measure. Also a repeat sign facing away from the edge it is
-  // written on, which MNX states on the neighbouring measure.
+  // closes a measure.
   'unrepresentable:barline',
   // Two clefs written at the same point on the same staff, where MNX draws
   // one. The last declared is the one the following notes obey.

@@ -222,7 +222,7 @@ describe('repeat signs', () => {
     expect(globals[0]?.barline).toBeUndefined()
     expect(globals[0]?.repeatEnd).toBeUndefined()
     expect(warnings.map((w) => [w.code, w.element])).toEqual([
-      ['unrepresentable:barline', 'repeat'],
+      ['unsupported:element', 'repeat'],
       ['unrepresentable:barline', 'bar-style'],
     ])
   })
@@ -238,11 +238,11 @@ describe('repeat signs', () => {
     expect(globals.map((g) => g.repeatEnd)).toEqual([undefined, undefined])
     expect(warnings).toEqual([
       expect.objectContaining({
-        code: 'unrepresentable:barline',
+        code: 'unsupported:element',
         element: 'repeat',
         message:
-          'A backward repeat is written at the start of a measure, and MNX states one ' +
-          'at the end of a measure.',
+          'A backward repeat is written at the start of a measure. Moving it to the end ' +
+          'of the measure before is not converted yet.',
         context: expect.objectContaining({ measure: 2 }),
       }),
     ])
@@ -254,11 +254,11 @@ describe('repeat signs', () => {
     expect(globals.map((g) => g.repeatStart)).toEqual([false, false])
     expect(warnings).toEqual([
       expect.objectContaining({
-        code: 'unrepresentable:barline',
+        code: 'unsupported:element',
         element: 'repeat',
         message:
-          'A forward repeat is written at the end of a measure, and MNX states one ' +
-          'at the start of a measure.',
+          'A forward repeat is written at the end of a measure. Moving it to the start ' +
+          'of the next is not converted yet.',
         context: expect.objectContaining({ measure: 1 }),
       }),
     ])
@@ -375,6 +375,7 @@ describe('the text printed over an ending', () => {
     ['12', '1'],
     ['1, 2', '1.-2.-3.'],
     ['1', '.'],
+    ['1', '1, 3-1'],
   ])('reports %s printed as "%s", and keeps the numbers', (numbers, text) => {
     const { globals, warnings } = ending(numbers, text)
 
@@ -386,6 +387,30 @@ describe('the text printed over an ending', () => {
         message: `An ending is printed as "${text}", and MNX prints an ending's numbers only.`,
       }),
     ])
+  })
+
+  test('reports nothing more where the numbers are reported already', () => {
+    const { warnings } = ending('0', '0')
+
+    expect(warnings.map((w) => w.message)).toEqual([
+      'An <ending> is numbered "0", which is not a list of times counted from 1.',
+    ])
+  })
+
+  test('reports text where the ending states no number', () => {
+    const { warnings } = read(
+      left('<ending type="start">Pour finir</ending>') +
+        NOTE +
+        right('<ending number="1" type="stop"/>'),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:ending-text'])
+  })
+
+  test('reports text where the number is only spaces', () => {
+    const { warnings } = ending(' ', 'Pour finir')
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:ending-text'])
   })
 
   test('does not count out a long range', () => {

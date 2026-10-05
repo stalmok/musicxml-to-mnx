@@ -229,8 +229,7 @@ function readBarStyle(
 /**
  * MNX states a repeat start on the measure it opens and a repeat end on the
  * measure it closes. A sign facing away from the edge it is written on sits
- * on the neighbouring measure's edge, and moving it there is a guess about
- * which measure the source meant, so it is reported.
+ * on the neighbouring measure's edge, and is reported rather than moved.
  */
 function readRepeat(
   element: ElementReader,
@@ -244,9 +243,10 @@ function readRepeat(
   const direction = attribute(repeat, 'direction')
   if ((direction === 'forward' && !atStart) || (direction === 'backward' && atStart)) {
     warnings.addWhole(
-      'unrepresentable:barline',
-      `A ${direction} repeat is written at the ${atStart ? 'start' : 'end'} of a measure, ` +
-        `and MNX states one at the ${atStart ? 'end' : 'start'} of a measure.`,
+      'unsupported:element',
+      `A ${direction} repeat is written at the ${atStart ? 'start' : 'end'} of a measure. ` +
+        `Moving it to the ${atStart ? 'end of the measure before' : 'start of the next'} ` +
+        'is not converted yet.',
       context,
       repeat,
     )
@@ -389,6 +389,8 @@ function reportEndingText(
 ): void {
   const text = trimmedText(ending)
   if (text === '') return
+  // A number attribute that is not a list of times is reported already.
+  if (numbers.length === 0 && attribute(ending, 'number')?.trim()) return
 
   const printed = printedNumbers(text, numbers.length)
   if (printed && printed.join() === numbers.join()) return
@@ -405,7 +407,8 @@ function reportEndingText(
  * The numbers a text spells out, where it holds nothing else: numbers, each
  * with an optional period, and a range written with a dash, separated by
  * commas, spaces or the periods alone. Nothing where it holds any other
- * character, a dash outside a range, or more than most numbers.
+ * character, a dash outside a range, a range counting down, or more than most
+ * numbers.
  */
 function printedNumbers(text: string, most: number): number[] | undefined {
   if (!/^[\d.,\s\-–]+$/.test(text)) return undefined
@@ -418,6 +421,7 @@ function printedNumbers(text: string, most: number): number[] | undefined {
   const numbers: number[] = []
   for (const part of parts) {
     const [first = 0, last = first] = part.split(/[-–]/).map((side) => parseInt(side, 10))
+    if (last < first) return undefined
     for (let number = first; number <= last; number++) {
       if (numbers.length === most) return undefined
       numbers.push(number)
