@@ -492,13 +492,107 @@ describe('a beam crossing the barline', () => {
   })
 
   // Beamed at an inner level only, the last note is outside the primary beam.
-  test('says nothing where the last note before the barline closes the beam', () => {
+  test('says nothing where the last note before the barline has no primary beam', () => {
     const inner =
       '<note><pitch><step>B</step><octave>4</octave></pitch><duration>1</duration>' +
       '<type>16th</type><beam number="2">backward hook</beam></note>'
     const { warnings } = readMeasures(eighth('A', 'begin') + inner, eighth('C', 'end'))
 
     expect(warnings).toEqual([])
+  })
+
+  test('reports a beam carried on past a beamed grace group', () => {
+    const grace = (step: string, marker: string) =>
+      `<note><grace/><pitch><step>${step}</step><octave>5</octave></pitch>` +
+      `<type>16th</type><beam number="1">${marker}</beam></note>`
+    const { beams, warnings } = readMeasures(
+      eighth('A', 'begin') + eighth('B', 'continue'),
+      grace('D', 'begin') + grace('E', 'end') + eighth('C', 'continue') + eighth('F', 'end'),
+    )
+
+    expect(beams?.[1]).toEqual([
+      ['ev5', 'ev6'],
+      ['ev3', 'ev4'],
+    ])
+    expect(warnings.map((w) => w.message)).toEqual([CROSSES])
+  })
+
+  test('says nothing where an unbeamed note follows the beam before the barline', () => {
+    const { warnings } = readMeasures(
+      eighth('A', 'begin') + eighth('B', 'continue') + QUARTER,
+      eighth('C', 'end'),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  // MusicXML reads a note naming no staff as on the first.
+  test('says nothing of a beam the same unnamed voice left open on another staff', () => {
+    const on = (staff: string, note: string) =>
+      note.replace('</note>', `<staff>${staff}</staff></note>`)
+    const { warnings } = readMeasures(
+      '<attributes><staves>2</staves></attributes>' + on('1', eighth('A', 'begin')),
+      on('2', eighth('C', 'end')),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  test('reports a beam a named voice carries over the barline onto another staff', () => {
+    const on = (staff: string, note: string) =>
+      note
+        .replace('<type>', '<voice>1</voice><type>')
+        .replace('</note>', `<staff>${staff}</staff></note>`)
+    const { warnings } = readMeasures(
+      '<attributes><staves>2</staves></attributes>' + on('2', eighth('A', 'begin')),
+      on('1', eighth('C', 'end')),
+    )
+
+    expect(warnings.map((w) => w.message)).toEqual([CROSSES])
+  })
+
+  test('reports a beam crossing once where the voice runs in two lines', () => {
+    const backup = '<backup><duration>4</duration></backup>'
+    const { beams, warnings } = readMeasures(
+      eighth('A', 'begin') + eighth('B', 'continue'),
+      eighth('C', 'continue') +
+        eighth('D', 'end') +
+        backup +
+        eighth('E', 'continue') +
+        eighth('F', 'end'),
+    )
+
+    expect(beams?.[1]).toEqual([['ev3', 'ev4']])
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:voice', 'unsupported:element'])
+    expect(warnings[1]?.message).toBe(CROSSES)
+  })
+
+  // The primary beam begins here, so a stray inner continue carries nothing on.
+  test('carries no inner beam on where the primary beam begins at the barline', () => {
+    const sixteenth = (step: string, inner: string) =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>1</duration>` +
+      `<type>16th</type>${inner}</note>`
+    const { trees, warnings } = readMeasures(
+      sixteenth('B', '<beam number="1">begin</beam><beam number="2">begin</beam>'),
+      sixteenth('C', '<beam number="1">begin</beam><beam number="2">continue</beam>') +
+        sixteenth('D', '<beam number="1">end</beam><beam number="2">end</beam>'),
+    )
+
+    expect(trees[1]).toEqual([{ events: ['ev2', 'ev3'], beams: [], direction: undefined }])
+    expect(warnings).toEqual([])
+  })
+
+  // A hook stands alone, so the inner beam on it carries nothing on either.
+  test('carries no inner beam on through a hook at the barline', () => {
+    const sixteenth = (step: string, inner: string) =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>1</duration>` +
+      `<type>16th</type>${inner}</note>`
+    const { trees } = readMeasures(
+      sixteenth('B', '<beam number="1">begin</beam><beam number="2">begin</beam>'),
+      sixteenth('C', '<beam number="1">backward hook</beam><beam number="2">end</beam>'),
+    )
+
+    expect(trees[1]).toEqual([{ events: ['ev2'], beams: [], direction: 'left' }])
   })
 
   test('says nothing of a beam another voice left open', () => {
@@ -518,7 +612,7 @@ describe('a beam crossing the barline', () => {
     const grace =
       '<note><grace/><pitch><step>B</step><octave>4</octave></pitch>' +
       '<type>16th</type><beam number="1">end</beam></note>'
-    const { warnings } = readMeasures(grace + eighth('C'))
+    const { warnings } = readMeasures(eighth('A', 'begin'), grace + eighth('C'))
 
     expect(warnings).toEqual([])
   })

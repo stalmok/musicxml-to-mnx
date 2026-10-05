@@ -90,9 +90,10 @@ const HOOK_DIRECTIONS = new Map<string, 'left' | 'right'>([
  * beam over a single note is a flag.
  *
  * A beam crossing the barline shows as a continue or end on the event that
- * opens the measure, in a voice whose beam the measure before left open. MNX states such a beam on the measure it starts in,
- * listing the events of both. This converter does not join the two yet, so
- * each side is beamed on its own, and the crossing is reported.
+ * opens the measure, in a voice whose beam the measure before left open.
+ * MNX states such a beam on the measure it starts in, listing the events of
+ * both. This converter does not join the two yet, so each side is beamed on
+ * its own, and the crossing is reported.
  */
 export function buildBeams(
   events: readonly BeamedEvent[],
@@ -107,6 +108,11 @@ function beamsAtLevel(
   level: number,
   /** Where to report a primary beam crossing the barline. */
   report?: { warnings: WarningCollector; context: ReportContext },
+  /**
+   * Whether the run these events make up carries on a beam from the measure
+   * before, so an inner beam can carry on with it.
+   */
+  carriesOn = true,
 ): Beam[] {
   const beams: Beam[] = []
   let run: BeamedEvent[] = []
@@ -118,7 +124,7 @@ function beamsAtLevel(
     if (run.length > 1) {
       beams.push({
         events: run.map((event) => event.id),
-        beams: beamsAtLevel(run, level + 1),
+        beams: beamsAtLevel(run, level + 1, undefined, fromBefore),
         direction: undefined,
       })
     } else if (only !== undefined && level > 1 && only.beamCount >= level) {
@@ -145,7 +151,11 @@ function beamsAtLevel(
       // A hook belongs to the level it is written at, beside the runs there.
       // A note may carry hooks at several levels, as a 32nd beside a
       // double-dotted eighth does, and the deeper ones nest inside this one.
-      beams.push({ events: [event.id], beams: beamsAtLevel([event], level + 1), direction: hook })
+      beams.push({
+        events: [event.id],
+        beams: beamsAtLevel([event], level + 1, undefined, false),
+        direction: hook,
+      })
       continue
     }
 
@@ -155,7 +165,7 @@ function beamsAtLevel(
     } else if (found?.kind === 'continue' || found?.kind === 'end') {
       if (run.length > 0) {
         run.push(event)
-      } else if (event.continuesFromBefore) {
+      } else if (carriesOn && event.continuesFromBefore) {
         if (report) {
           report.warnings.add(
             'unsupported:element',

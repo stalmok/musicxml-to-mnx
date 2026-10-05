@@ -93,8 +93,11 @@ export interface FinishedMeasure {
   sequences: Sequence[]
   /** Tuplet stops no bracket here met, handed on to the next measure. */
   carriedTupletStops: CarriedTupletStop[]
-  /** The voices whose primary beam is still open at the closing barline. */
-  beamsOpenAtBarline: ReadonlySet<string>
+  /**
+   * The voices whose primary beam is still open at the closing barline, with
+   * the staff the beam's last event named.
+   */
+  beamsOpenAtBarline: ReadonlyMap<string, number | undefined>
 }
 
 /** Where the last item of a voice takes its time from, where it is a grace group. */
@@ -122,6 +125,8 @@ interface VoiceBuilder {
    * written as one, so it contributes the staff and nothing to override.
    */
   placed: { event: Event | undefined; staff: number | undefined }[]
+  /** The last event that is not a grace note, and the staff it named. */
+  lastEvent: { id: string; staff: number | undefined } | undefined
   /**
    * The tuplets and the tremolo open around the next note, and the tuplets
    * closed in this measure, waiting for it to be whole.
@@ -349,17 +354,20 @@ export class MeasureBuilder {
 
   /** The voices that sound a note somewhere in the measure, rather than only rest. */
   readonly #soundingVoices: ReadonlySet<string>
-  /** The voices whose primary beam the measure before left open at the barline. */
-  readonly #beamsOpenBefore: ReadonlySet<string>
+  /**
+   * The voices whose primary beam the measure before left open at the
+   * barline, with its staff. Each is taken by the first event to carry it on.
+   */
+  readonly #beamsOpenBefore: Map<string, number | undefined>
 
   constructor(
     carriedStops: readonly CarriedTupletStop[],
     soundingVoices: Iterable<string | undefined>,
-    beamsOpenBefore: ReadonlySet<string>,
+    beamsOpenBefore: ReadonlyMap<string, number | undefined>,
   ) {
     this.#carriedStops = [...carriedStops]
     this.#soundingVoices = new Set([...soundingVoices].map((voice) => voice ?? UNNAMED_VOICE))
-    this.#beamsOpenBefore = beamsOpenBefore
+    this.#beamsOpenBefore = new Map(beamsOpenBefore)
   }
 
   /**
@@ -587,6 +595,7 @@ export class MeasureBuilder {
     builder.spent.set(event, duration)
     builder.grace = undefined
     builder.placed.push({ event, staff })
+    builder.lastEvent = { id: event.id, staff }
     this.#lastWritten = { voice: voice ?? UNNAMED_VOICE, builder }
     const start = this.#cursor
     builder.last = { event, notations, duration, start }
@@ -1070,16 +1079,19 @@ export class MeasureBuilder {
   }
 
   /**
-   * The voices whose last beamed event begins or continues a primary beam,
-   * which the source then carries on over the barline or leaves open.
+   * The voices whose last event begins or continues a primary beam, which
+   * the source then carries on over the barline or leaves open. An event
+   * with no primary marker, or no beam at all, closes the primary beam.
    */
-  #beamsOpenAtBarline(): Set<string> {
-    const open = new Set<string>()
+  #beamsOpenAtBarline(): Map<string, number | undefined> {
+    const open = new Map<string, number | undefined>()
     for (const [voice, { layers }] of this.#voices) {
-      for (const layer of layers) {
-        // An event with no primary marker closes the primary beam.
-        const kind = layer.beamed.at(-1)?.markers.get(1)?.kind
-        if (kind === 'begin' || kind === 'continue') open.add(voice)
+      for (const { beamed, lastEvent } of layers) {
+        const last = beamed.at(-1)
+        const kind = last?.markers.get(1)?.kind
+        if (lastEvent?.id === last?.id && (kind === 'begin' || kind === 'continue')) {
+          open.set(voice, lastEvent?.staff)
+        }
       }
     }
     return open
@@ -1203,14 +1215,19 @@ export class MeasureBuilder {
     graceBeams: BeamedEvent[] | undefined,
   ): void {
     if (markers.size === 0) return
-    const run = graceBeams ?? this.#builderFor(voice).beamed
+    const builder = this.#builderFor(voice)
     const key = voice ?? UNNAMED_VOICE
-    run.push({
-      id,
-      markers,
-      beamCount,
-      continuesFromBefore: !graceBeams && isZero(start) && this.#beamsOpenBefore.has(key),
-    })
+    // A named voice may beam across staves. Where the source names no
+    // voice, the staff is all that tells two lines apart, so the beam carries
+    // on only on the staff it left.
+    const continues =
+      !graceBeams &&
+      isZero(start) &&
+      this.#beamsOpenBefore.has(key) &&
+      (voice !== undefined || this.#beamsOpenBefore.get(key) === builder.lastEvent?.staff)
+    if (continues) this.#beamsOpenBefore.delete(key)
+    const run = graceBeams ?? builder.beamed
+    run.push({ id, markers, beamCount, continuesFromBefore: continues })
   }
 
   /**
@@ -1893,6 +1910,7 @@ function newVoiceBuilder(openedAt?: XmlElement): VoiceBuilder {
     beamed: [],
     graceBeamed: [],
     placed: [],
+    lastEvent: undefined,
     tuplets: new TupletTracker(content),
     content,
     end: fraction(0),
