@@ -1680,18 +1680,44 @@ describe('an offset moving a direction', () => {
     expect(warnings.list().map((w) => w.code)).toContain('missing:divisions')
   })
 
-  // MusicXML allows a fractional offset, and rounding one would move the
-  // mark. "2.5" fails both halves of the guard. "2.0" is a safe integer the
-  // regex refuses. Twenty digits pass the regex but cannot be read back
-  // exactly.
-  test.each(['2.5', '2.0', '99999999999999999999'])(
+  // MusicXML types an offset as a decimal.
+  test.each([
+    ['2.0', { num: 3, den: 8 }],
+    ['2.5', { num: 13, den: 32 }],
+    ['-.5', { num: 7, den: 32 }],
+  ])('moves the mark by an offset of %s exactly', (written, position) => {
+    const { positions, warnings } = at(quarter + dynamic(`<offset>${written}</offset>`))
+
+    expect(positions).toEqual([position])
+    expect(warnings).toEqual([])
+  })
+
+  test('counts an offset in a decimal <divisions>', () => {
+    const warnings = new WarningCollector()
+    const score = readValid(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        '<attributes><divisions>2.5</divisions></attributes>' +
+        '<note><pitch><step>C</step><octave>4</octave></pitch><duration>2.5</duration>' +
+        `<type>quarter</type></note>${dynamic('<offset>1.25</offset>')}` +
+        '</measure></part></score-partwise>',
+      warnings,
+    )
+
+    expect(score.parts[0]?.measures[0]?.dynamics.map((d) => d.position)).toEqual([
+      { num: 3, den: 8 },
+    ])
+    expect(warnings.list()).toEqual([])
+  })
+
+  // Twenty digits pass the number's pattern but cannot be read back exactly.
+  test.each(['1e1', '99999999999999999999'])(
     'leaves the mark where it was where the offset is "%s"',
     (written) => {
       const { positions, warnings } = at(quarter + dynamic(`<offset>${written}</offset>`))
 
       expect(positions).toEqual([{ num: 1, den: 4 }])
       expect(warnings.map((w) => w.element)).toEqual(['offset'])
-      expect(warnings[0]?.message).toContain('not a whole number')
+      expect(warnings[0]?.message).toContain('not a number of divisions that can be read exactly')
     },
   )
 

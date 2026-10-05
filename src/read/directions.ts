@@ -35,7 +35,7 @@ import { readColor } from './color.js'
 import { divisionsInForce } from './divisions.js'
 import type { ElementReader, Stated } from './element.js'
 import { noteValueBaseOf } from './noteValues.js'
-import { parseDecimal, parseWholeNumber, readIntegerInRange } from './numbers.js'
+import { parseDecimal, parseExactDecimal, readIntegerInRange } from './numbers.js'
 import type { GraceNotesAt } from './voices.js'
 import { reportLoneWording } from './spanners.js'
 import type { WedgeStop, Wording } from './spanners.js'
@@ -372,14 +372,15 @@ function offsetPosition(
   if (!offset) return position
 
   const written = trimmedText(offset)
-  const count = parseWholeNumber(written)
+  // MusicXML measures an offset in divisions and allows a fractional one. One
+  // that cannot be read exactly is reported, and the mark stays where it was
+  // written.
+  const count = parseExactDecimal(written)
   if (count === undefined) {
-    // MusicXML measures an offset in divisions and allows a fractional one.
-    // Rounding it would put the mark somewhere the source did not, so the
-    // offset is reported and the mark stays where it was written.
     warnings.add(
       'unsupported:element',
-      `An <offset> of "${written}" is not a whole number of divisions, and is not applied.`,
+      `An <offset> of "${written}" is not a number of divisions that can be read exactly, ` +
+        'and is not applied.',
       context,
       offset,
     )
@@ -389,7 +390,7 @@ function offsetPosition(
   const divisions = divisionsInForce(state, warnings, context, offset)
   const moved = addFractions(
     position,
-    divideFractions(fraction(count), multiplyFractions(divisions, fraction(4))),
+    divideFractions(count, multiplyFractions(divisions, fraction(4))),
   )
 
   // MNX states a position within its measure, counting from the start, so a
