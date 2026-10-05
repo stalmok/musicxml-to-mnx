@@ -541,7 +541,8 @@ export function timesInForce(part: XmlElement): (TimeSignature | undefined)[] {
       return divideFractions(count ?? fraction(0), multiplyFractions(divisions, fraction(4)))
     }
     // A note's own <time-modification> states every ratio around it, nested
-    // ones multiplied.
+    // ones and a two-note tremolo's multiplied. A note of a two-note tremolo
+    // stating none still lasts half its written value, as the builder reads it.
     const ratioOf = (found: XmlElement) => {
       const ratio = child(found, 'time-modification')
       const count = (name: string) => {
@@ -551,12 +552,14 @@ export function timesInForce(part: XmlElement): (TimeSignature | undefined)[] {
       }
       const actual = count('actual-notes')
       const normal = count('normal-notes')
-      return actual && normal ? divideFractions(normal, actual) : fraction(1)
+      if (actual && normal) return divideFractions(normal, actual)
+      return inTwoNoteTremolo(found) ? fraction(1, 2) : fraction(1)
     }
     // A grace note takes none of the measure's time, whatever it states. A
     // note stating no <duration> lasts its written value as its ratio scales
     // it, except a rest marked as the measure's, which lasts the measure where
-    // a time signature says how long that is.
+    // a time signature says how long that is. That is the one in force when
+    // the rest is reached, since its length is what places a later statement.
     const noteLength = (found: XmlElement) => {
       if (child(found, 'grace')) return fraction(0)
       if (child(found, 'duration')) return by(found)
@@ -600,6 +603,21 @@ export function timesInForce(part: XmlElement): (TimeSignature | undefined)[] {
     }
     return opens
   })
+}
+
+/**
+ * Whether a note starts or stops a two-note tremolo. A note can carry more
+ * than one <notations> and <ornaments>, so all are searched.
+ */
+function inTwoNoteTremolo(note: XmlElement): boolean {
+  return children(note, 'notations').some((notations) =>
+    children(notations, 'ornaments').some((ornaments) =>
+      children(ornaments, 'tremolo').some((tremolo) => {
+        const type = attribute(tremolo, 'type')
+        return type === 'start' || type === 'stop'
+      }),
+    ),
+  )
 }
 
 interface KeyPair {

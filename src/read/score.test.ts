@@ -1403,6 +1403,41 @@ describe('a time signature stated after the measure start', () => {
     expect(unstated.warnings.map((w) => w.code)).toEqual(stated.warnings.map((w) => w.code))
   })
 
+  // A note of a two-note tremolo lasts half its written value, whether or not
+  // it states the pair's ratio. A single-note tremolo scales nothing. A
+  // <backup> of a quarter returns to the start only where the pair lasts one.
+  test.each([
+    ['a two-note tremolo', (type: string) => `<tremolo type="${type}">2</tremolo>`, 6],
+    [
+      'a two-note tremolo in a second <ornaments>',
+      (type: string) => `<trill-mark/></ornaments><ornaments><tremolo type="${type}">2</tremolo>`,
+      6,
+    ],
+    [
+      'a two-note tremolo after a single-note one',
+      (type: string) => `<tremolo type="single">3</tremolo><tremolo type="${type}">2</tremolo>`,
+      6,
+    ],
+    ['a single-note tremolo', () => '<tremolo type="single">3</tremolo>', 12],
+  ])('reads ahead %s stating no ratio and no <duration>', (_, ornament, units) => {
+    const notes = (duration: string) =>
+      ['start', 'stop']
+        .map(
+          (type) =>
+            `<note><pitch><step>C</step><octave>4</octave></pitch>${duration}<voice>1</voice>` +
+            `<type>quarter</type><notations><ornaments>${ornament(type)}</ornaments></notations>` +
+            '</note>',
+        )
+        .join('')
+    const first = (duration: string) =>
+      read(untimedBesideNext(timed(2) + notes(duration) + back(12) + timed(3) + note(24, 2), 24))
+    const stated = first(`<duration>${String(units)}</duration>`)
+    const unstated = first('')
+
+    expect(unstated.score.globalMeasures).toEqual(stated.score.globalMeasures)
+    expect(unstated.warnings.map((w) => w.code)).toEqual(stated.warnings.map((w) => w.code))
+  })
+
   test.each(['actual-notes', 'normal-notes'])(
     'reads ahead a <%s> of 0, which the part reader refuses',
     (name) => {
