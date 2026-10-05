@@ -8,7 +8,13 @@
 // no home in MNX, and is reported.
 
 import type { DocumentPath } from '../errors.js'
-import { addFractions, compareFractions, fraction } from '../fraction.js'
+import {
+  addFractions,
+  compareFractions,
+  divideFractions,
+  fraction,
+  multiplyFractions,
+} from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type {
   AccentPrefix,
@@ -381,7 +387,10 @@ function offsetPosition(
   }
 
   const divisions = divisionsInForce(state, warnings, context, offset)
-  const moved = addFractions(position, fraction(count, divisions * 4))
+  const moved = addFractions(
+    position,
+    divideFractions(fraction(count), multiplyFractions(divisions, fraction(4))),
+  )
 
   // MNX states a position within its measure, counting from the start, so a
   // mark an offset carries out of it has nowhere to go. Moving it into the

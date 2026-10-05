@@ -9,7 +9,15 @@
 import { describe, expect, test } from 'vitest'
 import { MusicXMLError } from '../errors.js'
 import { parseXmlRoot } from '../xml/parse.js'
-import { parseDecimal, readAttributeInRange, readInteger, readIntegerInRange } from './numbers.js'
+import { fraction } from '../fraction.js'
+import {
+  parseDecimal,
+  parseExactDecimal,
+  readAttributeInRange,
+  readDecimalInRange,
+  readInteger,
+  readIntegerInRange,
+} from './numbers.js'
 
 const PATH = ['score-partwise', 'part']
 
@@ -109,5 +117,81 @@ describe('a decimal number', () => {
 
   test.each(['0x10', '1e3', '', '.', '1.2.3', ' 12'])('reads nothing from "%s"', (written) => {
     expect(parseDecimal(written)).toBeUndefined()
+  })
+})
+
+describe('an exact decimal number', () => {
+  test.each([
+    ['12', fraction(12)],
+    ['+3', fraction(3)],
+    ['-4', fraction(-4)],
+    ['4.0', fraction(4)],
+    ['1.25', fraction(5, 4)],
+    ['.75', fraction(3, 4)],
+    ['3.', fraction(3)],
+    ['-.5', fraction(-1, 2)],
+    ['0.00', fraction(0)],
+    ['-.0', fraction(0)],
+    ['007.50', fraction(15, 2)],
+    ['2.0000000000000000000', fraction(2)],
+  ])('reads "%s"', (written, value) => {
+    expect(parseExactDecimal(written)).toEqual(value)
+  })
+
+  test.each(['0x10', '1e3', '', '.', '-', '1.2.3', ' 12', '4,0'])(
+    'reads nothing from "%s"',
+    (written) => {
+      expect(parseExactDecimal(written)).toBeUndefined()
+    },
+  )
+
+  // Past 2^53 a part read back is not the part written.
+  test('reads nothing from digits too many to hold exactly', () => {
+    expect(parseExactDecimal('99999999999999999999')).toBeUndefined()
+    expect(parseExactDecimal('0.1234567890123456')).toBeUndefined()
+  })
+
+  test('reads fifteen places, the most a power of ten below 2^53 holds', () => {
+    expect(parseExactDecimal('0.000000000000001')).toEqual(fraction(1, 10 ** 15))
+  })
+})
+
+describe('a decimal number that has to fall in a range', () => {
+  const read = (written: string, range: Parameters<typeof readDecimalInRange>[2]) =>
+    readDecimalInRange(element(`<duration>${written}</duration>`), PATH, range)
+
+  test.each(['0', '2.5', '5.0'])(
+    'accepts %s, inside a range that includes its bounds',
+    (written) => {
+      expect(read(written, { min: 0, max: 5 })).toEqual(parseExactDecimal(written))
+    },
+  )
+
+  test('refuses one below a range that includes its bounds', () => {
+    expect(() => read('-0.5', { min: 0, max: 5 })).toThrow(
+      '<duration> is -0.5, outside the range 0 to 5.',
+    )
+  })
+
+  test('refuses one above the range', () => {
+    expect(() => read('5.01', { min: 0, max: 5 })).toThrow(
+      '<duration> is 5.01, outside the range 0 to 5.',
+    )
+  })
+
+  test('accepts one just above a bound the range leaves out', () => {
+    expect(read('0.01', { above: 0, max: 5 })).toEqual(fraction(1, 100))
+  })
+
+  test('refuses the bound a range leaves out', () => {
+    expect(() => read('0.0', { above: 0, max: 5 })).toThrow(
+      '<duration> is 0.0, outside the range above 0 to 5.',
+    )
+  })
+
+  test('refuses text that is not a number, naming the line', () => {
+    expect(() => read('1e3', { min: 0, max: 5 })).toThrow(
+      '<duration> is not a number: "1e3". (at score-partwise > part, line 1)',
+    )
   })
 })

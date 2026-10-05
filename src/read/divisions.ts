@@ -6,12 +6,12 @@
 
 import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
-import { fraction } from '../fraction.js'
+import { divideFractions, fraction, multiplyFractions } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type { ReportContext, WarningCollector } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
 import type { ElementReader } from './element.js'
-import { readIntegerInRange } from './numbers.js'
+import { readDecimalInRange } from './numbers.js'
 import type { PartState } from './state.js'
 
 /**
@@ -26,7 +26,7 @@ export function divisionsInForce(
   warnings: WarningCollector,
   context: ReportContext,
   at: XmlElement,
-): number {
+): Fraction {
   if (state.divisions === undefined) {
     warnings.addMissing(
       'missing:divisions',
@@ -35,7 +35,7 @@ export function divisionsInForce(
       context,
       at,
     )
-    state.divisions = 1
+    state.divisions = fraction(1)
     state.divisionsAssumed = true
   }
   return state.divisions
@@ -55,8 +55,8 @@ export function readDuration(
   const divisions = divisionsInForce(state, warnings, context, durationElement)
 
   // <divisions> counts per quarter note, and a whole note is four of those.
-  const count = readIntegerInRange(durationElement, path, 0, 1_000_000_000)
-  return fraction(count, divisions * 4)
+  const count = readDecimalInRange(durationElement, path, { min: 0, max: 1_000_000_000 })
+  return divideFractions(count, multiplyFractions(divisions, fraction(4)))
 }
 
 /** The duration of a <backup> or <forward>, which must state one. */

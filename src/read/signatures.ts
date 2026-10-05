@@ -11,7 +11,14 @@
 
 import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
-import { addFractions, compareFractions, fraction, negate } from '../fraction.js'
+import {
+  addFractions,
+  compareFractions,
+  divideFractions,
+  fraction,
+  multiplyFractions,
+  negate,
+} from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type { Key, TimeSignature, Transposition } from '../model/score.js'
 import type { XmlElement } from '../xml/parse.js'
@@ -22,7 +29,7 @@ import type { ReportContext, WarningCollector, WarningPlace } from './collector.
 import { lengthOf } from './duration.js'
 import type { ReadGlobalMeasure } from './jumps.js'
 import { noteValueBaseOf } from './noteValues.js'
-import { parseWholeNumber } from './numbers.js'
+import { parseExactDecimal } from './numbers.js'
 import type { HeldSignature, PartState } from './state.js'
 import { keyFifthsFlipAt, writtenFifths, writtenFifthsWithFlip } from './transposition.js'
 
@@ -535,7 +542,7 @@ export function scoreTimesInForce(parts: readonly XmlElement[]): (TimeSignature 
  */
 function timesInForce(part: XmlElement): (TimeSignature | undefined)[] {
   let inForce: TimeSignature | undefined
-  let divisions = 1
+  let divisions = fraction(1)
   return children(part, 'measure').map((measure) => {
     let opens = inForce
     let settled = false
@@ -543,8 +550,8 @@ function timesInForce(part: XmlElement): (TimeSignature | undefined)[] {
     let cursor = fraction(0)
     const by = (found: XmlElement) => {
       const duration = child(found, 'duration')
-      const count = duration && parseWholeNumber(trimmedText(duration))
-      return fraction(count ?? 0, divisions * 4)
+      const count = duration && parseExactDecimal(trimmedText(duration))
+      return divideFractions(count ?? fraction(0), multiplyFractions(divisions, fraction(4)))
     }
     // A grace note takes none of the measure's time, whatever it states. A
     // note stating no <duration> lasts its written value, except a rest marked
@@ -571,8 +578,8 @@ function timesInForce(part: XmlElement): (TimeSignature | undefined)[] {
       }
       if (found.name !== 'attributes') continue
       const stated = child(found, 'divisions')
-      const count = stated && parseWholeNumber(trimmedText(stated))
-      if (count && count > 0) divisions = count
+      const count = stated && parseExactDecimal(trimmedText(stated))
+      if (count && compareFractions(count, fraction(0)) > 0) divisions = count
       if (!child(found, 'time')) continue
       let time: TimeSignature | undefined
       try {

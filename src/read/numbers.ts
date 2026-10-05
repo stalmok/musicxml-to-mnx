@@ -5,6 +5,8 @@
 
 import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
+import { compareFractions, fraction } from '../fraction.js'
+import type { Fraction } from '../fraction.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, trimmedText } from '../xml/tree.js'
 
@@ -22,6 +24,20 @@ export function parseWholeNumber(text: string): number | undefined {
 /** The decimal number `text` states, or nothing where it states none. */
 export function parseDecimal(text: string): number | undefined {
   return DECIMAL_NUMBER.test(text) ? Number(text) : undefined
+}
+
+/**
+ * The exact value of the decimal number `text` states: its digits over a power
+ * of ten. Nothing where it states none, or where the value cannot be held
+ * exactly.
+ */
+export function parseExactDecimal(text: string): Fraction | undefined {
+  if (!DECIMAL_NUMBER.test(text)) return undefined
+  const [whole = '', fractional = ''] = text.split('.')
+  const places = fractional.replace(/0+$/, '')
+  const num = Number(/\d/.test(whole + places) ? whole + places : 0)
+  const den = 10 ** places.length
+  return Number.isSafeInteger(num) && Number.isSafeInteger(den) ? fraction(num, den) : undefined
 }
 
 export function readInteger(element: XmlElement, path: DocumentPath): number {
@@ -78,6 +94,37 @@ export function readIntegerInRange(
   if (value < min || value > max) {
     throw new MusicXMLError(
       `<${element.name}> is ${String(value)}, outside the range ${String(min)} to ${String(max)}.`,
+      { path, line: element.line },
+    )
+  }
+  return value
+}
+
+/** A decimal range: from `min` with the bound included, or `above` it with the bound left out. */
+type DecimalRange = { min: number; max: number } | { above: number; max: number }
+
+/** The exact value of an element written as a decimal number in `range`. */
+export function readDecimalInRange(
+  element: XmlElement,
+  path: DocumentPath,
+  range: DecimalRange,
+): Fraction {
+  const text = trimmedText(element)
+  const value = parseExactDecimal(text)
+  if (value === undefined) {
+    throw new MusicXMLError(`<${element.name}> is not a number: "${text}".`, {
+      path,
+      line: element.line,
+    })
+  }
+  const tooLow =
+    'min' in range
+      ? compareFractions(value, fraction(range.min)) < 0
+      : compareFractions(value, fraction(range.above)) <= 0
+  if (tooLow || compareFractions(value, fraction(range.max)) > 0) {
+    const from = 'min' in range ? String(range.min) : `above ${String(range.above)}`
+    throw new MusicXMLError(
+      `<${element.name}> is ${text}, outside the range ${from} to ${String(range.max)}.`,
       { path, line: element.line },
     )
   }

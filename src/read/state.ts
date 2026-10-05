@@ -76,7 +76,7 @@ export interface HeldSignature<T> {
  * own.
  */
 export interface PartState {
-  divisions: number | undefined
+  divisions: Fraction | undefined
   /**
    * Whether the divisions in force are an assumption rather than something
    * the file stated. A written note value can be checked against an assumed

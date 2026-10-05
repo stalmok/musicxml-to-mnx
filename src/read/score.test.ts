@@ -657,7 +657,7 @@ describe('measure attributes', () => {
 describe('a time signature stated after the measure start', () => {
   const timed = (beats: number) =>
     `<attributes><time><beats>${String(beats)}</beats><beat-type>4</beat-type></time></attributes>`
-  const note = (duration: number, voice = 1) =>
+  const note = (duration: number | string, voice = 1) =>
     '<note><pitch><step>C</step><octave>4</octave></pitch>' +
     `<duration>${String(duration)}</duration><voice>${String(voice)}</voice></note>`
   const part = (...measures: string[]) =>
@@ -1203,16 +1203,20 @@ describe('a time signature stated after the measure start', () => {
         `<part id="P2"><measure number="1">${opening + note(length)}</measure>` +
         `<measure number="2">${note(24) + shortTriplet}</measure></part>`,
     )
-  const back = (duration: number) => `<backup><duration>${String(duration)}</duration></backup>`
+  const back = (duration: number | string) =>
+    `<backup><duration>${String(duration)}</duration></backup>`
 
-  test('reads ahead a second statement at the start as the first one stands', () => {
-    const { score: result, warnings } = read(
-      untimedBesideNext(timed(3) + note(36) + back(36) + timed(2) + note(36, 2), 36),
-    )
+  test.each([36, '36.0'])(
+    'reads ahead a second statement at the start, after a <backup> of %s, as the first one stands',
+    (backup) => {
+      const { score: result, warnings } = read(
+        untimedBesideNext(timed(3) + note(36) + back(backup) + timed(2) + note(36, 2), 36),
+      )
 
-    expect(result.globalMeasures.map((m) => m.time)).toEqual([{ count: 3, unit: 4 }, undefined])
-    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:time'])
-  })
+      expect(result.globalMeasures.map((m) => m.time)).toEqual([{ count: 3, unit: 4 }, undefined])
+      expect(warnings.map((w) => w.code)).toEqual(['inconsistent:time'])
+    },
+  )
 
   test('reads ahead a late statement before a restatement at the start', () => {
     const { score: result, warnings } = read(
@@ -1273,11 +1277,15 @@ describe('a time signature stated after the measure start', () => {
     expect(warnings.map((w) => w.code)).toEqual(['inconsistent:backup'])
   })
 
-  test('reads ahead a <backup> in the divisions stated before it', () => {
+  test.each([
+    ['24', '24'],
+    ['24.0', '24'],
+  ])('reads ahead a <backup> in the divisions stated before it: %s, %s', (divisions, backup) => {
     const { warnings } = read(
       score(
         `<part id="P1"><measure number="1">${opening + timed(2) + note(24)}` +
-          `<attributes><divisions>24</divisions></attributes>${back(24) + timed(3)}</measure>` +
+          `<attributes><divisions>${divisions}</divisions></attributes>` +
+          `<backup><duration>${backup}</duration></backup>${timed(3)}</measure>` +
           `<measure number="2">${note(72)}</measure></part>` +
           `<part id="P2"><measure number="1">${opening + note(24)}</measure>` +
           `<measure number="2">${note(24) + shortTriplet}</measure></part>`,
@@ -1412,7 +1420,7 @@ describe('a time signature stated after the measure start', () => {
 describe('a key signature stated after the measure start', () => {
   const keyed = (fifths: number) =>
     `<attributes><key><fifths>${String(fifths)}</fifths></key></attributes>`
-  const note = (duration: number, voice = 1) =>
+  const note = (duration: number | string, voice = 1) =>
     '<note><pitch><step>C</step><octave>4</octave></pitch>' +
     `<duration>${String(duration)}</duration><voice>${String(voice)}</voice></note>`
   const measures = (...bodies: string[]) =>
@@ -1866,6 +1874,37 @@ describe('durations', () => {
       base: 'half',
       dots: 0,
     })
+  })
+
+  // MusicXML types both as a decimal.
+  test.each([
+    ['4.0', '6.0'],
+    ['4', '6.00'],
+    ['2.5', '3.75'],
+    ['0.5', '.75'],
+  ])('reads a <divisions> of %s and a <duration> of %s exactly', (divisions, duration) => {
+    const { score: result, warnings } = read(
+      measure(
+        `<attributes><divisions>${divisions}</divisions></attributes>` +
+          `<note><pitch><step>C</step><octave>4</octave></pitch><duration>${duration}</duration></note>`,
+      ),
+    )
+
+    expect(firstEvent(result)?.value).toEqual({ base: 'quarter', dots: 1 })
+    expect(warnings).toEqual([])
+  })
+
+  test.each(['1e1', '0x4', '4,0', '-'])('refuses a <divisions> of "%s"', (written) => {
+    expect(
+      readFailure(measure(`<attributes><divisions>${written}</divisions></attributes>${NOTE}`))
+        .message,
+    ).toContain(`<divisions> is not a number: "${written}".`)
+  })
+
+  test('refuses a <divisions> of 0.0, which must be above 0', () => {
+    expect(
+      readFailure(measure(`<attributes><divisions>0.0</divisions></attributes>${NOTE}`)).message,
+    ).toContain('<divisions> is 0.0, outside the range above 0 to 1000000.')
   })
 
   test('rejects a duration that no note value can write', () => {
