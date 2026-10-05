@@ -676,6 +676,29 @@ describe('part groups', () => {
     ])
   })
 
+  test('draws one staff for two unlisted parts sharing an id, as for listed ones', () => {
+    const { mnx } = convertValid(
+      score(
+        '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
+          '<score-part id="P1"/><score-part id="P2"/>' +
+          '<part-group type="stop" number="1"/>',
+        part('P1') + part('P2') + part('P3') + part('P3'),
+      ),
+    )
+
+    expect(mnx.layouts?.[0]?.content.slice(1)).toEqual([
+      { type: 'staff', sources: [{ part: 'P3' }] },
+    ])
+  })
+
+  // A part list drawing no group writes no layout, so an unlisted part
+  // leaves the parts as bare staves with no layout either.
+  test('writes no layout for an unlisted part where the list draws no group', () => {
+    const { mnx } = convertValid(score('<score-part id="P1"/>', part('P1') + part('P2')))
+
+    expect('layouts' in mnx).toBe(false)
+  })
+
   // A group around nothing draws nothing, so it is left out; here that
   // leaves no group, and with it goes the layout.
   test('writes no layout when every group ends up empty', () => {

@@ -142,7 +142,8 @@ export function writtenGrouping(
   const pruned = prunedItems(items, new Set(written))
   if (!pruned.some((item) => item.kind === 'group')) return []
   const listed = new Set(partsIn(pruned))
-  const unlisted = written.filter((part) => !listed.has(part))
+  // A staff names its part by id, so a second part sharing one adds no staff.
+  const unlisted = [...new Set(written)].filter((part) => !listed.has(part))
   return [...pruned, ...unlisted.map((part): GroupingItem => ({ kind: 'part', part }))]
 }
 
