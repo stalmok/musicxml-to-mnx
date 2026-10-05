@@ -109,7 +109,7 @@ export function readBarline(
 
   // The repeat is read first, because a bar style at the opening edge is
   // usually how a repeat start is drawn.
-  const repeat = readRepeat(element, warnings, context)
+  const repeat = readRepeat(element, atStart, warnings, context)
   const fermatas = element.children('fermata')
   const fermata = fermatas[0]
 
@@ -226,8 +226,15 @@ function readBarStyle(
   return type
 }
 
+/**
+ * MNX states a repeat start on the measure it opens and a repeat end on the
+ * measure it closes. A sign facing away from the edge it is written on sits
+ * on the neighbouring measure's edge, and moving it there is a guess about
+ * which measure the source meant, so it is reported.
+ */
 function readRepeat(
   element: ElementReader,
+  atStart: boolean,
   warnings: WarningCollector,
   context: ReportContext,
 ): { repeatStart: boolean; repeatEnd: Stated<RepeatEnd> | undefined } {
@@ -235,6 +242,17 @@ function readRepeat(
   if (!repeat) return { repeatStart: false, repeatEnd: undefined }
 
   const direction = attribute(repeat, 'direction')
+  if ((direction === 'forward' && !atStart) || (direction === 'backward' && atStart)) {
+    warnings.addWhole(
+      'unrepresentable:barline',
+      `A ${direction} repeat is written at the ${atStart ? 'start' : 'end'} of a measure, ` +
+        `and MNX states one at the ${atStart ? 'end' : 'start'} of a measure.`,
+      context,
+      repeat,
+    )
+    return { repeatStart: false, repeatEnd: undefined }
+  }
+
   if (direction === 'forward') return { repeatStart: true, repeatEnd: undefined }
 
   if (direction === 'backward') {

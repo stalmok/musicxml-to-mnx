@@ -89,7 +89,8 @@ export const WARNING_CODES = Object.freeze([
   // A chord marked both as rolled and as struck together at once.
   'unrepresentable:arpeggio',
   // A barline drawn at the opening edge of a measure. MNX states the one that
-  // closes a measure.
+  // closes a measure. Also a repeat sign facing away from the edge it is
+  // written on, which MNX states on the neighbouring measure.
   'unrepresentable:barline',
   // Two clefs written at the same point on the same staff, where MNX draws
   // one. The last declared is the one the following notes obey.

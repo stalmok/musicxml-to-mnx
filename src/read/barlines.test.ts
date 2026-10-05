@@ -214,15 +214,62 @@ describe('repeat signs', () => {
     expect(warnings).toEqual([])
   })
 
-  // A backward repeat at the opening edge is legal MusicXML but has no
-  // musical meaning. The style there still has no home in MNX.
-  test('still reports an opening-edge style beside a backward repeat', () => {
+  test('reports an opening-edge style and the backward repeat beside it', () => {
     const { globals, warnings } = read(
       left('<bar-style>light-heavy</bar-style><repeat direction="backward"/>') + NOTE,
     )
 
     expect(globals[0]?.barline).toBeUndefined()
-    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:barline'])
+    expect(globals[0]?.repeatEnd).toBeUndefined()
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([
+      ['unrepresentable:barline', 'repeat'],
+      ['unrepresentable:barline', 'bar-style'],
+    ])
+  })
+
+  // The sign sits on the barline the two measures share, so it belongs to
+  // the neighbouring measure, not the one whose edge carries it.
+  test('reports a backward repeat at the start of a measure', () => {
+    const { globals, warnings } = read(
+      NOTE,
+      left('<repeat direction="backward" times="3"/>') + NOTE,
+    )
+
+    expect(globals.map((g) => g.repeatEnd)).toEqual([undefined, undefined])
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        code: 'unrepresentable:barline',
+        element: 'repeat',
+        message:
+          'A backward repeat is written at the start of a measure, and MNX states one ' +
+          'at the end of a measure.',
+        context: expect.objectContaining({ measure: 2 }),
+      }),
+    ])
+  })
+
+  test('reports a forward repeat at the end of a measure', () => {
+    const { globals, warnings } = read(NOTE + right('<repeat direction="forward"/>'), NOTE)
+
+    expect(globals.map((g) => g.repeatStart)).toEqual([false, false])
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        code: 'unrepresentable:barline',
+        element: 'repeat',
+        message:
+          'A forward repeat is written at the end of a measure, and MNX states one ' +
+          'at the start of a measure.',
+        context: expect.objectContaining({ measure: 1 }),
+      }),
+    ])
+  })
+
+  // MusicXML's default location is the right edge.
+  test('reports a forward repeat on a barline that names no location', () => {
+    const { globals, warnings } = read(NOTE + '<barline><repeat direction="forward"/></barline>')
+
+    expect(globals[0]?.repeatStart).toBe(false)
+    expect(warnings.map((w) => w.element)).toEqual(['repeat'])
   })
 
   test('reports a repeat in neither direction', () => {
