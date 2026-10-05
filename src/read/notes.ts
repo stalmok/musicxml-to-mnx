@@ -494,14 +494,15 @@ export function readNote(
     return
   }
 
-  // Where the source states no <duration>, the written value is how long the
-  // note lasts.
+  // Where the source states no <duration>, the written value as the tuplets
+  // and tremolos around it scale it is how long the note lasts.
+  const unstated = multiplyFractions(lengthOf(value), scale.factor)
   const placed = fills
     ? builder.addMeasureRestEvent(
         voice,
         event,
         eventNotations,
-        lasts ?? lengthOf(value),
+        lasts ?? unstated,
         path,
         element.line,
         staff,
@@ -510,7 +511,7 @@ export function readNote(
         voice,
         event,
         eventNotations,
-        duration ?? lengthOf(value),
+        duration ?? unstated,
         path,
         element.line,
         staff,

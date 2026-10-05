@@ -2070,6 +2070,31 @@ describe('a note inside a tuplet stating no <type>', () => {
   })
 })
 
+// A <note> stating no <duration> lasts its written value as the tuplets and
+// tremolos around it scale it, as one stating the matching duration does.
+describe('a note inside a tuplet stating no <duration>', () => {
+  const FOUR_FOUR =
+    '<attributes><divisions>12</divisions><time><beats>4</beats><beat-type>4</beat-type></time>' +
+    '</attributes>'
+  const unmeasured = (notes: string) => notes.replaceAll(/<duration>\d+<\/duration>/g, '')
+  const after =
+    '<note><pitch><step>G</step><octave>4</octave></pitch><duration>12</duration>' +
+    '<type>quarter</type></note>' +
+    '<note><pitch><step>A</step><octave>4</octave></pitch><duration>24</duration>' +
+    '<type>half</type></note>'
+
+  test.each([
+    ['a tuplet', TRIPLET],
+    ['a tremolo', tremoloNote('C', 'start') + tremoloNote('E', 'stop')],
+  ])('reads the notes inside %s as their stated durations read them', (_, group) => {
+    const measured = read(measures(FOUR_FOUR + group + after))
+    const unstated = read(measures(FOUR_FOUR + unmeasured(group) + after))
+
+    expect(unstated.content).toEqual(measured.content)
+    expect(unstated.warnings).toEqual(measured.warnings)
+  })
+})
+
 describe('beam levels', () => {
   const beamed = (level: string) =>
     '<note><pitch><step>C</step><octave>4</octave></pitch><duration>6</duration>' +

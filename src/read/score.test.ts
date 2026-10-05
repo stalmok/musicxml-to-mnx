@@ -1362,6 +1362,50 @@ describe('a time signature stated after the measure start', () => {
     expect(unstated.warnings.map((w) => w.code)).toEqual(stated.warnings.map((w) => w.code))
   })
 
+  // A <backup> of the two notes' length returns to the start only where the
+  // triplet lasts the quarter its ratio gives it.
+  test('reads ahead a note with no <duration> inside a tuplet as its ratio scales it', () => {
+    const triplet = (duration: string) =>
+      ['start', '', 'stop']
+        .map(
+          (bracket) =>
+            `<note><pitch><step>C</step><octave>4</octave></pitch>${duration}<voice>1</voice>` +
+            '<type>eighth</type><time-modification><actual-notes>3</actual-notes>' +
+            '<normal-notes>2</normal-notes></time-modification>' +
+            (bracket ? `<notations><tuplet type="${bracket}"/></notations>` : '') +
+            '</note>',
+        )
+        .join('')
+    const first = (duration: string) =>
+      read(
+        untimedBesideNext(
+          timed(2) + triplet(duration) + note(12) + back(24) + timed(3) + note(24, 2),
+          24,
+        ),
+      )
+    const stated = first('<duration>4</duration>')
+    const unstated = first('')
+
+    expect(unstated.score.globalMeasures).toEqual(stated.score.globalMeasures)
+    expect(unstated.warnings.map((w) => w.code)).toEqual(stated.warnings.map((w) => w.code))
+  })
+
+  test.each(['actual-notes', 'normal-notes'])(
+    'reads ahead a <%s> of 0, which the part reader refuses',
+    (name) => {
+      const zero =
+        '<note><pitch><step>C</step><octave>4</octave></pitch><voice>1</voice>' +
+        '<type>eighth</type><time-modification><actual-notes>3</actual-notes>' +
+        '<normal-notes>2</normal-notes></time-modification></note>'
+      const source = untimedBesideNext(
+        timed(2) + zero.replace(new RegExp(`(<${name}>)\\d`), '$10') + timed(3),
+        24,
+      )
+
+      expect(() => read(source)).toThrow(MusicXMLError)
+    },
+  )
+
   test('reads ahead a grace note stating a <duration> as taking no time', () => {
     const grace =
       '<note><grace/><pitch><step>D</step><octave>4</octave></pitch><duration>24</duration>' +

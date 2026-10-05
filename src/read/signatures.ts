@@ -553,10 +553,23 @@ function timesInForce(part: XmlElement): (TimeSignature | undefined)[] {
       const count = duration && parseExactDecimal(trimmedText(duration))
       return divideFractions(count ?? fraction(0), multiplyFractions(divisions, fraction(4)))
     }
+    // A note's own <time-modification> states every ratio around it, nested
+    // ones multiplied.
+    const ratioOf = (found: XmlElement) => {
+      const ratio = child(found, 'time-modification')
+      const count = (name: string) => {
+        const stated = ratio && child(ratio, name)
+        const value = stated && parseExactDecimal(trimmedText(stated))
+        return value && compareFractions(value, fraction(0)) > 0 ? value : undefined
+      }
+      const actual = count('actual-notes')
+      const normal = count('normal-notes')
+      return actual && normal ? divideFractions(normal, actual) : fraction(1)
+    }
     // A grace note takes none of the measure's time, whatever it states. A
-    // note stating no <duration> lasts its written value, except a rest marked
-    // as the measure's, which lasts the measure where a time signature says
-    // how long that is.
+    // note stating no <duration> lasts its written value as its ratio scales
+    // it, except a rest marked as the measure's, which lasts the measure where
+    // a time signature says how long that is.
     const noteLength = (found: XmlElement) => {
       if (child(found, 'grace')) return fraction(0)
       if (child(found, 'duration')) return by(found)
@@ -566,7 +579,9 @@ function timesInForce(part: XmlElement): (TimeSignature | undefined)[] {
       }
       const type = child(found, 'type')
       const base = type && noteValueBaseOf(type)
-      return base ? lengthOf({ base, dots: children(found, 'dot').length }) : fraction(0)
+      return base
+        ? multiplyFractions(lengthOf({ base, dots: children(found, 'dot').length }), ratioOf(found))
+        : fraction(0)
     }
     for (const found of measure.children) {
       if (found.name === 'forward') cursor = addFractions(cursor, by(found))
