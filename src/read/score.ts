@@ -50,7 +50,7 @@ import { requireDuration } from './divisions.js'
 import { lengthOf } from './duration.js'
 import { drawnName, ElementReader, reportUnreadAttributes } from './element.js'
 import type { Stated } from './element.js'
-import { GroupingBuilder, pruneGrouping } from './part-groups.js'
+import { GroupingBuilder, writtenGrouping } from './part-groups.js'
 import { compareFractions, fraction, negate } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import { readNote } from './notes.js'
@@ -215,7 +215,8 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
 
   // A staff pointing at a part the score does not hold would dangle, so the
   // grouping keeps only parts that were written.
-  const written = new Set(readings.map((reading) => reading.part.id))
+  const writtenIds = readings.map((reading) => reading.part.id)
+  const written = new Set(writtenIds)
   // Only a grouping draws a staff for each part it names, so only there is a
   // part the score never writes a staff that is not drawn.
   for (const [id, scorePart] of partList.grouping.length > 0 ? partList.scoreParts : []) {
@@ -237,7 +238,7 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
     {
       globalMeasures,
       parts,
-      grouping: pruneGrouping(partList.grouping, written),
+      grouping: writtenGrouping(partList.grouping, writtenIds),
       sounds: partList.sounds,
       ...(musicFont !== undefined ? { musicFont } : {}),
       ...(declaresBeams ? { declaresBeams } : {}),

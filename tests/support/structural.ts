@@ -1137,9 +1137,10 @@ export function sourceSlurSpans(root: XmlElement): Set<string> {
  * What a layout hides. A layout can state less than the part list and stay
  * legal MNX: a staff with no label or labelref hides its part's name, and a
  * multi-staff part written as bare sibling staves loses its grand staff.
- * This checks that every drawn part name is reachable from the layout, and
- * that every multi-staff part the layout draws is in exactly one braced
- * group of its own staves.
+ * A part the layout never names is not drawn at all. This checks that the
+ * layout draws every part, that every drawn part name is reachable from it,
+ * and that every multi-staff part it draws is in exactly one braced group of
+ * its own staves.
  */
 export function layoutLosses(document: MNXDocument): string[] {
   const layouts = document.layouts ?? []
@@ -1203,6 +1204,11 @@ export function layoutLosses(document: MNXDocument): string[] {
   for (const layout of layouts) walk(layout.content, false)
 
   const losses: string[] = []
+  document.parts.forEach((part, index) => {
+    if (part.id === undefined || !drawn.has(part.id)) {
+      losses.push(`part ${part.id ?? String(index + 1)}: not in the layout`)
+    }
+  })
   for (const part of [...drawn].sort()) {
     if (namesDrawn.has(part) && !named.has(part)) {
       losses.push(`part ${part}: name unreachable from the layout`)

@@ -132,14 +132,22 @@ export class GroupingBuilder {
  * points at a part that does not exist, and without groups left empty, which
  * would draw a bracket around nothing. With no group left, the whole
  * grouping goes: a layout of bare staves states nothing the part list does
- * not.
+ * not. A layout draws only the staves it names, so each written part the list
+ * never mentions follows the listed ones, in score order.
  */
-export function pruneGrouping(
+export function writtenGrouping(
   items: readonly GroupingItem[],
-  written: ReadonlySet<string>,
+  written: readonly string[],
 ): readonly GroupingItem[] {
-  const pruned = prunedItems(items, written)
-  return pruned.some((item) => item.kind === 'group') ? pruned : []
+  const pruned = prunedItems(items, new Set(written))
+  if (!pruned.some((item) => item.kind === 'group')) return []
+  const listed = new Set(partsIn(pruned))
+  const unlisted = written.filter((part) => !listed.has(part))
+  return [...pruned, ...unlisted.map((part): GroupingItem => ({ kind: 'part', part }))]
+}
+
+function partsIn(items: readonly GroupingItem[]): string[] {
+  return items.flatMap((item) => (item.kind === 'part' ? [item.part] : partsIn(item.content)))
 }
 
 function prunedItems(items: readonly GroupingItem[], written: ReadonlySet<string>): GroupingItem[] {

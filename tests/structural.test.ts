@@ -265,6 +265,18 @@ test('a layout that states every name and brace loses nothing', () => {
   expect(layoutLosses(document)).toEqual([])
 })
 
+test('a part the layout never names is not drawn', () => {
+  const document = layoutDocument(
+    [{ type: 'staff', sources: [{ part: 'P1' }] }],
+    [{ id: 'P1', measures: [] }, { id: 'P2', measures: [] }, { measures: [] }],
+  )
+
+  expect(layoutLosses(document)).toEqual([
+    'part P2: not in the layout',
+    'part 3: not in the layout',
+  ])
+})
+
 test('a staff with no label reference loses its part name', () => {
   const document = layoutDocument(
     [{ type: 'staff', sources: [{ part: 'P1' }] }],
@@ -342,7 +354,7 @@ test('a braced group that leaves its barlines unstated does not count', () => {
   ])
 })
 
-test('a part left out of the layout is not the layout to state', () => {
+test('a part left out of the layout loses only its place in it', () => {
   const document = layoutDocument(
     [{ type: 'staff', labelref: 'name', sources: [{ part: 'P1' }] }],
     [
@@ -351,7 +363,7 @@ test('a part left out of the layout is not the layout to state', () => {
     ],
   )
 
-  expect(layoutLosses(document)).toEqual([])
+  expect(layoutLosses(document)).toEqual(['part P2: not in the layout'])
 })
 
 test('a document of single staves needs no layout', () => {

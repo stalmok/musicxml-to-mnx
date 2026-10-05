@@ -811,8 +811,8 @@ export interface Score {
   /**
    * The instrument grouping the part list draws, empty where it draws none.
    * Ungrouped parts appear as bare items, so a non-empty grouping holds, in
-   * order, every listed part the score writes; a part the list never
-   * mentions stands outside it.
+   * order, every listed part the score writes, then each part the list never
+   * mentions.
    */
   readonly grouping: readonly GroupingItem[]
   /**

@@ -646,6 +646,36 @@ describe('part groups', () => {
     ])
   })
 
+  // A layout draws only the staves it names, so a part the list never
+  // mentions is drawn after the listed ones, outside any group.
+  test('draws a part the part list never mentions after the listed parts', () => {
+    const { mnx, warnings } = convertValid(
+      score(
+        '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
+          '<score-part id="P1"/><score-part id="P2"/>' +
+          '<part-group type="stop" number="1"/>',
+        part('P3') + part('P1') + part('P4') + part('P2'),
+      ),
+    )
+
+    expect(mnx.layouts?.[0]?.content).toEqual([
+      {
+        type: 'group',
+        symbol: 'bracket',
+        content: [
+          { type: 'staff', sources: [{ part: 'P1' }] },
+          { type: 'staff', sources: [{ part: 'P2' }] },
+        ],
+      },
+      { type: 'staff', sources: [{ part: 'P3' }] },
+      { type: 'staff', sources: [{ part: 'P4' }] },
+    ])
+    expect(warnings.map((w) => [w.code, w.context.part])).toEqual([
+      ['unresolved:part-id', 'P3'],
+      ['unresolved:part-id', 'P4'],
+    ])
+  })
+
   // A group around nothing draws nothing, so it is left out; here that
   // leaves no group, and with it goes the layout.
   test('writes no layout when every group ends up empty', () => {
@@ -709,23 +739,6 @@ describe('part groups', () => {
     expect(outer.content).toHaveLength(1)
     expect(outer.content[0]?.type).toBe('group')
     expect(warnings).toEqual([])
-  })
-
-  // A part the list never mentions cannot be grouped, so the layout omits
-  // it; the id is still written, like every part's once a layout exists.
-  test('gives an unlisted part an id even though the layout omits it', () => {
-    const { mnx } = convertValid(
-      score(
-        '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
-          '<score-part id="P1"/><score-part id="P2"/>' +
-          '<part-group type="stop" number="1"/>',
-        part('P1') + part('P2') + part('P3'),
-      ),
-    )
-
-    expect(mnx.parts.map((p) => p.id)).toEqual(['P1', 'P2', 'P3'])
-    const layout = JSON.stringify(mnx.layouts)
-    expect(layout).not.toContain('P3')
   })
 
   // The gate on writing a layout is a surviving group, not the absence of
