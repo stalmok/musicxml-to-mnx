@@ -63,6 +63,7 @@ import {
   MeasureSignatures,
   reportHeldAtPartEnd,
   scoreTimesInForce,
+  timesInForce,
   settleAcrossParts,
 } from './signatures.js'
 import { measureLength, newPartState } from './state.js'
@@ -179,10 +180,13 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
   reader.reportUnread(warnings, {})
 
   const ids = new IdGenerator()
-  const partElements = children(root, 'part')
-  const scoreTimes = scoreTimesInForce(partElements)
-  const readings = partElements.map((element) =>
-    readPart(element, partList, ids, scoreTimes, warnings, path),
+  const timedParts = children(root, 'part').map((element) => ({
+    element,
+    times: timesInForce(element),
+  }))
+  const scoreTimes = scoreTimesInForce(timedParts.map(({ times }) => times))
+  const readings = timedParts.map(({ element, times }) =>
+    readPart(element, partList, ids, times, scoreTimes, warnings, path),
   )
 
   const merged: ReadGlobalMeasure[] = []
@@ -742,6 +746,7 @@ function readPart(
   element: XmlElement,
   partList: PartList,
   ids: IdGenerator,
+  partTimes: readonly (TimeSignature | undefined)[],
   scoreTimes: readonly (TimeSignature | undefined)[],
   warnings: WarningCollector,
   path: DocumentPath,
@@ -763,7 +768,16 @@ function readPart(
 
   const state = newPartState(ids, partList.soundsByInstrument.get(id))
   const readings = children(element, 'measure').map((measureElement, index) =>
-    readMeasure(measureElement, index, id, state, scoreTimes[index], warnings, partPath),
+    readMeasure(
+      measureElement,
+      index,
+      id,
+      state,
+      partTimes[index],
+      scoreTimes[index],
+      warnings,
+      partPath,
+    ),
   )
   // Spans are paired once the whole part is in, because the document's order
   // is not the music's. What stays open is reported in the same step.
@@ -955,6 +969,7 @@ function readMeasure(
   index: number,
   partId: string,
   state: PartState,
+  opensWith: TimeSignature | undefined,
   scoreTime: TimeSignature | undefined,
   warnings: WarningCollector,
   path: DocumentPath,
@@ -967,6 +982,9 @@ function readMeasure(
   // one reader, so its own attributes are swept here: the label above read
   // the number, and anything else (implicit, non-controlling) is a loss.
   reportUnreadAttributes(element, warnings, context)
+  // A time signature stated at the start after a <backup> stands where the
+  // measure begins, so the notes written before it are measured against it.
+  state.time = opensWith
 
   const clefs: Stated<Clef>[] = []
   const staffConfigs: Stated<StaffConfig>[] = []
@@ -1138,7 +1156,6 @@ function readMeasure(
   )
   state.carriedTupletStops = finished.carriedTupletStops
   state.beamsOpenAtBarline = finished.beamsOpenAtBarline
-  signatures.carryToNextMeasure()
 
   return {
     measure: {

@@ -689,6 +689,19 @@ describe('a time signature stated after the measure start', () => {
     expect(warnings).toEqual([])
   })
 
+  // A statement after a <backup> to the start stands where the measure
+  // begins, so the notes written before it are measured against it too.
+  test('measures the rests written before a statement at the start against it', () => {
+    const rest = (voice: number) =>
+      `<note><rest/><duration>36</duration><voice>${String(voice)}</voice><type>whole</type></note>`
+    const second = (body: string) =>
+      read(part(opening + timed(4) + note(48), body)).score.parts[0]?.measures[1]
+    const before = second(rest(1) + back(36) + timed(3) + rest(2))
+    const after = second(timed(3) + rest(1) + back(36) + rest(2))
+
+    expect(before).toEqual(after)
+  })
+
   test('adds nothing when it restates the time signature in force', () => {
     const { score: result, warnings } = read(
       part(opening + timed(2) + note(24) + timed(2), note(24)),

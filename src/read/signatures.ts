@@ -130,9 +130,6 @@ export class MeasureSignatures {
   // Every unmetered statement the measure makes, reported once the measure
   // has settled what it converts.
   readonly #unmetered: { place: WarningPlace; element: XmlElement }[] = []
-  // The last time signature stated after the measure start. It is the next
-  // measure's, so the part takes it only once this measure is settled.
-  #nextTime: { value: TimeSignature | undefined } | undefined
 
   constructor(
     state: PartState,
@@ -176,11 +173,8 @@ export class MeasureSignatures {
       if (atStart) {
         // A second statement at the start changes nothing. A senza-misura
         // statement clears it: the music is unmetered from here on, whatever
-        // was in force before. The notes after it are measured against it.
-        if (!this.#timeSettled) {
-          this.#time = reading.time
-          this.#state.time = reading.time
-        }
+        // was in force before.
+        if (!this.#timeSettled) this.#time = reading.time
         this.#timeSettled = true
       } else {
         this.#lateTimes.push({
@@ -188,7 +182,6 @@ export class MeasureSignatures {
           at,
           element: statingOf(reading.times, firstTime),
         })
-        this.#nextTime = { value: reading.time }
       }
     }
   }
@@ -249,15 +242,6 @@ export class MeasureSignatures {
     }
 
     return { key, time }
-  }
-
-  /**
-   * Measures the next measure against the last time signature this one
-   * stated after its start. Called once the measure is finished, because
-   * what the measure reports as it finishes reads the one it opened with.
-   */
-  carryToNextMeasure(): void {
-    if (this.#nextTime) this.#state.time = this.#nextTime.value
   }
 
   #statedAt<T>(groups: StatedAt<T>[], at: Fraction, first: StaffSignature<T>): StatedAt<T> {
@@ -520,10 +504,11 @@ function reportLate<T>(
 
 /**
  * The time signature each measure of the score opens with, as the first part
- * stating one there has it.
+ * stating one there has it. Takes each part's own, as timesInForce reads them.
  */
-export function scoreTimesInForce(parts: readonly XmlElement[]): (TimeSignature | undefined)[] {
-  const perPart = parts.map(timesInForce)
+export function scoreTimesInForce(
+  perPart: readonly (readonly (TimeSignature | undefined)[])[],
+): (TimeSignature | undefined)[] {
   const longest = Math.max(0, ...perPart.map((times) => times.length))
   return Array.from({ length: longest }, (_, index) =>
     perPart.map((times) => times[index]).find((time) => time !== undefined),
@@ -532,15 +517,17 @@ export function scoreTimesInForce(parts: readonly XmlElement[]): (TimeSignature 
 
 /**
  * The time signature each measure of a part opens with, read ahead of the
- * part itself: a part that states none of its own runs to the barline the
- * other parts state, and those may be read after it. It answers one question
+ * part itself: a statement at the start can follow notes written before a
+ * <backup>, and those are measured against it, and a part that states none
+ * of its own runs to the barline the other parts state, and those may be read
+ * after it. It answers one question
  * per statement, whether it stands where the measure begins, so its cursor
  * moves by the rules the measure builder's does. The first statement at the
  * start stands, and the last one after it opens the next measure. The part
  * reader reports or refuses whatever here is broken, so nothing here reports
  * anything, and a value it cannot read counts as nothing.
  */
-function timesInForce(part: XmlElement): (TimeSignature | undefined)[] {
+export function timesInForce(part: XmlElement): (TimeSignature | undefined)[] {
   let inForce: TimeSignature | undefined
   let divisions = fraction(1)
   return children(part, 'measure').map((measure) => {

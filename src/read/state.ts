@@ -85,9 +85,9 @@ export interface PartState {
   divisionsAssumed: boolean
   /**
    * The time signature the measure being read is measured against, which like
-   * <divisions> stays until restated. Only MeasureSignatures sets it: to the
-   * one stated where the measure begins, and to one stated after the start
-   * once the measure is finished, since that one is the next measure's.
+   * <divisions> stays until restated. Set before the measure is walked, to the
+   * one timesInForce reads ahead for it, since a statement at the start can
+   * follow notes written before a <backup>.
    */
   time: TimeSignature | undefined
   /**
