@@ -376,16 +376,16 @@ export function readNote(
   // Sources sometimes write an extra rest over a rest that already fills the
   // same voice's measure. Both are silence, so the measure rest stands and the
   // extra is dropped. That is settled before anything opens around the rest or
-  // reads what it carries. A second rest filling the measure is refused where
-  // it is placed.
-  if (
-    restElement &&
-    !graceElement &&
-    builder.restIsRedundant(voice) &&
-    readRest(note, state, builder).kind !== 'fills'
-  ) {
-    dropRedundantRest(note, restElement, state, builder, measureIndex, warnings, context, path)
-    return
+  // reads what it carries. A second rest marked as the measure's, or drawn to
+  // its length, is refused where it is placed. One that fills it only by a
+  // length no note value writes is read here before its own ratio opens, so
+  // that length says nothing, and it is dropped.
+  if (restElement && !graceElement && builder.restIsRedundant(voice)) {
+    const reading = readRest(note, state, builder)
+    if (reading.kind !== 'fills' || reading.unwritableLength !== undefined) {
+      dropRedundantRest(note, restElement, state, builder, measureIndex, warnings, context, path)
+      return
+    }
   }
 
   const { markers, tremolo } = openTupletsAndTremolo(note, builder, warnings, context, path)

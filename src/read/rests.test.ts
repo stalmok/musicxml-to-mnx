@@ -658,11 +658,71 @@ describe('a rest dropped over a measure rest', () => {
     ])
   })
 
+  test('reports a slur stopped on the rest once, where it stops', () => {
+    const note =
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>16</duration>' +
+      '<voice>2</voice><type>whole</type><notations><slur type="start"/></notations></note>'
+    const { lost: reported } = lost(
+      note +
+        '<backup><duration>16</duration></backup>' +
+        measureRest +
+        wholeRest('<notations><slur type="stop"/></notations>'),
+    )
+
+    expect(reported).toEqual([
+      ['redundant:rest', 'rest'],
+      ['redundant:rest', 'slur'],
+    ])
+  })
+
+  // A grace note takes none of the measure's time, so a grace rest is not
+  // silence over the measure rest. The measure rest stays an event for the
+  // grace notes to stand beside.
+  test('keeps a grace rest written over the measure rest', () => {
+    const { sequences, lost: reported } = lost(
+      measureRest + '<note><grace/><rest/><voice>1</voice><type>eighth</type></note>',
+    )
+
+    expect(sequences?.[0]?.content.map((item) => ('type' in item ? item.type : 'event'))).toEqual([
+      'event',
+      'grace',
+    ])
+    expect(reported).toEqual([])
+  })
+
   test('says nothing of a beam on the rest, which beams nothing', () => {
     expect(lost(measureRest + wholeRest('<beam number="1">begin</beam>')).lost).toEqual([
       ['redundant:rest', 'rest'],
     ])
   })
+
+  // Read before the rest's own ratio opens, its length has no note value, as a
+  // rest filling an irregular measure has none. It is still a rest over the
+  // measure rest.
+  test.each([
+    ['3', '2', '2'],
+    ['5', '4', '5'],
+  ])(
+    'drops a rest with no value in a %s:%s ratio lasting %s divisions',
+    (actual, normal, units) => {
+      const { mnx, warnings } = convertValid(
+        '<score-partwise><part id="P1"><measure number="1">' +
+          '<attributes><divisions>3</divisions><time><beats>4</beats><beat-type>4</beat-type>' +
+          '</time></attributes>' +
+          '<note><rest measure="yes"/><duration>12</duration><voice>1</voice></note>' +
+          '<backup><duration>12</duration></backup>' +
+          `<note><rest/><duration>${units}</duration><voice>1</voice><time-modification>` +
+          `<actual-notes>${actual}</actual-notes><normal-notes>${normal}</normal-notes>` +
+          '<normal-type>quarter</normal-type></time-modification></note>' +
+          '</measure></part></score-partwise>',
+      )
+
+      expect(mnx.parts[0]?.measures[0]?.sequences).toEqual([
+        { voice: '1', fullMeasure: {}, content: [] },
+      ])
+      expect(warnings.map((w) => [w.code, w.element])).toEqual([['redundant:rest', 'rest']])
+    },
+  )
 
   test('refuses a rest stating neither a value nor a duration', () => {
     expect(() =>
