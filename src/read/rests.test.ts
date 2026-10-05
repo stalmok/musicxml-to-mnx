@@ -594,6 +594,105 @@ describe('a rest in a line laid over a measure rest', () => {
   })
 })
 
+describe('a rest dropped over a measure rest', () => {
+  const measureRest =
+    '<note><rest measure="yes"/><duration>16</duration><voice>1</voice></note>' +
+    '<backup><duration>16</duration></backup>'
+  const wholeRest = (body: string, hidden = false) =>
+    `<note${hidden ? ' print-object="no"' : ''}><rest/><duration>16</duration>` +
+    `<voice>1</voice><type>whole</type>${body}</note>`
+  const lost = (source: string) => {
+    const { mnx, warnings } = convertValid(inMeasure(source))
+    return {
+      sequences: mnx.parts[0]?.measures[0]?.sequences,
+      lost: warnings.map((w) => [w.code, w.element]),
+    }
+  }
+
+  test('reports each thing the rest carries', () => {
+    const { sequences, lost: reported } = lost(
+      measureRest +
+        wholeRest(
+          '<stem>up</stem><notations><fermata/><articulations><accent/></articulations>' +
+            '</notations><lyric><text>la</text></lyric>',
+        ),
+    )
+
+    expect(sequences).toEqual([{ voice: '1', fullMeasure: {}, content: [] }])
+    expect(reported).toEqual([
+      ['redundant:rest', 'rest'],
+      ['redundant:rest', 'stem'],
+      ['redundant:rest', 'fermata'],
+      ['redundant:rest', 'accent'],
+      ['redundant:rest', 'lyric'],
+    ])
+  })
+
+  test('reads and does not report what the source does not draw', () => {
+    const { lost: reported } = lost(
+      measureRest +
+        wholeRest(
+          '<stem>up</stem><notations print-object="no"><articulations><accent/></articulations>' +
+            '</notations>',
+          true,
+        ),
+    )
+
+    expect(reported).toEqual([['redundant:rest', 'rest']])
+  })
+
+  test('reports a slur started on the rest once, where it starts', () => {
+    const note =
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>16</duration>' +
+      '<voice>2</voice><type>whole</type><notations><slur type="stop"/></notations></note>'
+    const { lost: reported } = lost(
+      measureRest +
+        wholeRest('<notations><slur type="start"/></notations>') +
+        '<backup><duration>16</duration></backup>' +
+        note,
+    )
+
+    expect(reported).toEqual([
+      ['redundant:rest', 'rest'],
+      ['redundant:rest', 'slur'],
+    ])
+  })
+
+  test('says nothing of a beam on the rest, which beams nothing', () => {
+    expect(lost(measureRest + wholeRest('<beam number="1">begin</beam>')).lost).toEqual([
+      ['redundant:rest', 'rest'],
+    ])
+  })
+
+  test('refuses a rest stating neither a value nor a duration', () => {
+    expect(() =>
+      convertMusicXML(inMeasure(measureRest + '<note><rest/><voice>1</voice></note>')),
+    ).toThrow('A <note> states neither a <type> nor a <duration>.')
+  })
+
+  // The voice rests the measure, so the rest's own ratio is all that scales
+  // it, and the cursor moves on by the length the ratio gives it.
+  test('moves the cursor past a rest with no duration by its ratio', () => {
+    const { mnx, warnings } = convertValid(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        '<attributes><divisions>12</divisions><time><beats>4</beats><beat-type>4</beat-type>' +
+        '</time></attributes>' +
+        '<note><rest measure="yes"/><duration>48</duration><voice>1</voice></note>' +
+        '<backup><duration>48</duration></backup>' +
+        '<note><rest/><voice>1</voice><type>eighth</type><time-modification>' +
+        '<actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification></note>' +
+        '<backup><duration>4</duration></backup>' +
+        '<note><pitch><step>C</step><octave>4</octave></pitch><duration>48</duration>' +
+        '<voice>2</voice><type>whole</type></note>' +
+        '</measure></part></score-partwise>',
+    )
+
+    const voice2 = mnx.parts[0]?.measures[0]?.sequences[1]?.content
+    expect(voice2?.map((item) => ('type' in item ? item.type : 'event'))).toEqual(['event'])
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([['redundant:rest', 'rest']])
+  })
+})
+
 // A <backup> reaching back further than the measure has run is reported where
 // the music after it is written, which for a rest filling the measure is the
 // rest itself.

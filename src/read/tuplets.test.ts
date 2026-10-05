@@ -3572,9 +3572,27 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
     const { warnings } = read(measure(measureRest + over))
 
     expect(warnings.map((w) => [w.code, w.element])).toEqual([
-      ['unsupported:element', 'tuplet'],
       ['redundant:rest', 'rest'],
+      ['redundant:rest', 'tuplet'],
     ])
+  })
+
+  // The rest is dropped before anything opens around it, so the bracket opens
+  // nowhere and the next measure finds nothing to stop.
+  test('reports a start on a rest written over a rest that fills the measure', () => {
+    const measureRest = '<note><rest measure="yes"/><duration>48</duration></note>'
+    const over =
+      '<note><rest/><duration>4</duration><type>eighth</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+      '</time-modification><notations><tuplet type="start" number="1"/></notations></note>'
+    const next = ['C', 'D', 'E', 'F'].map((step) => bracketedNote(step)).join('')
+    const { mnx, warnings } = convertValid(measures(DIVISIONS + measureRest + over, next))
+
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([
+      ['redundant:rest', 'rest'],
+      ['redundant:rest', 'tuplet'],
+    ])
+    expect(mnx.parts[0]?.measures.map((m) => m.sequences[0]?.content.length)).toEqual([0, 4])
   })
 
   // A run opens on the note's ratio, before the note turns out not to be an

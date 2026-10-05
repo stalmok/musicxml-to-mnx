@@ -332,9 +332,11 @@ export const WARNING_CODES = Object.freeze([
   // every kit component sits, so it is written on the middle line.
   'missing:display-step',
   // A rest written over a rest that already fills the same voice's measure.
-  // Both are silence, so the measure rest stands and the extra is dropped. A
-  // rest in another line of the voice, where the voice sounds a note in the
-  // measure, is part of that line's music and is kept.
+  // Both are silence, so the measure rest stands and the extra is dropped.
+  // Each drawn thing the extra carries, such as a lyric or a fermata, is
+  // reported under this code too, naming its element. A rest in another line
+  // of the voice, where the voice sounds a note in the measure, is part of
+  // that line's music and is kept.
   'redundant:rest',
 ] as const)
 

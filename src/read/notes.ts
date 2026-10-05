@@ -373,6 +373,21 @@ export function readNote(
     return
   }
 
+  // Sources sometimes write an extra rest over a rest that already fills the
+  // same voice's measure. Both are silence, so the measure rest stands and the
+  // extra is dropped. That is settled before anything opens around the rest or
+  // reads what it carries. A second rest filling the measure is refused where
+  // it is placed.
+  if (
+    restElement &&
+    !graceElement &&
+    builder.restIsRedundant(voice) &&
+    readRest(note, state, builder).kind !== 'fills'
+  ) {
+    dropRedundantRest(note, restElement, state, builder, measureIndex, warnings, context, path)
+    return
+  }
+
   const { markers, tremolo } = openTupletsAndTremolo(note, builder, warnings, context, path)
 
   const restReading = readRest(note, state, builder)
@@ -476,22 +491,6 @@ export function readNote(
     // on any other note. Left unread, the bracket would run on past the group
     // and take in whatever sounded next.
     closeTuplets(builder, voice, markers, warnings, context, path, element.line)
-    return
-  }
-
-  // Sources sometimes write an extra rest over a rest that already fills the
-  // same voice's measure. Both are silence, so the measure rest
-  // stands, the extra is reported, and the cursor still moves past it.
-  if (restElement && builder.restIsRedundant(voice)) {
-    reportMarkersOnMeasureRest(markers, warnings, context)
-    warnings.add(
-      'redundant:rest',
-      'A rest is written over a rest that already fills the measure in the same ' +
-        'voice. The measure rest is the one converted.',
-      context,
-      restElement,
-    )
-    builder.passOver(duration ?? lengthOf(value))
     return
   }
 
@@ -884,23 +883,114 @@ function setMeasureRest(
 /**
  * Reports what only an event holds on a rest no note value writes as one.
  * MNX states that rest on the sequence, or as a space beside grace notes,
- * and neither carries a stem, a mark, a slur end or a lyric. What the source
- * does not draw loses nothing drawn, so it is read and not reported.
+ * and neither carries a stem, a mark, a slur end or a lyric.
  */
 function reportCarriedByUnwritableRest(
-  { element, notations, eventNotations, hidden }: NoteStatement,
+  note: NoteStatement,
   warnings: WarningCollector,
   context: ReportContext,
   dropSlurEnd: (type: 'start' | 'stop', slur: XmlElement) => void,
 ): void {
-  const marks = [...writtenMarks(eventNotations, warnings, context)].flatMap(
+  const marks = [...writtenMarks(note.eventNotations, warnings, context)].flatMap(
     ({ marking, found, block, notations }) => {
       block.read(found)
       // A mark MNX cannot state was reported as it was read.
       if (marking === undefined) return []
-      return [{ found, shown: attribute(notations.element, 'print-object') !== 'no' }]
+      return [[found, attribute(notations.element, 'print-object') !== 'no'] as const]
     },
   )
+  reportCarriedByRest(note, marks, dropSlurEnd, (found) => {
+    warnings.add(
+      'unrepresentable:element',
+      `A <${found.name}> on a rest that fills the measure is not converted. No note value ` +
+        'writes the rest as an event, and neither the rest MNX states on the sequence nor a ' +
+        'space written for it carries one.',
+      context,
+      found,
+    )
+  })
+}
+
+/**
+ * Drops a rest written over its voice's rest through the measure. The rest
+ * and each notation it carries are reported, and the cursor still moves past
+ * where it stood.
+ */
+function dropRedundantRest(
+  note: NoteStatement,
+  rest: XmlElement,
+  state: PartState,
+  builder: MeasureBuilder,
+  measureIndex: number,
+  warnings: WarningCollector,
+  context: ReportContext,
+  path: DocumentPath,
+): void {
+  const { element, eventNotations, voice, duration, written } = note
+  // The voice rests the measure, so no bracket is open around the rest, and a
+  // ratio on it scales it alone.
+  const ratio = element.child('time-modification')
+  const rated = ratio && readTupletRatio(ratio, element, path)
+  const scale: NoteScale = rated
+    ? { factor: fraction(rated.outer.multiple, rated.inner.multiple), by: 'tuplet' }
+    : { factor: fraction(1), by: undefined }
+  if (written && duration) {
+    reportDurationMismatch(element, written, duration, scale, warnings, context, warnings.reserve())
+  }
+  const lasts =
+    duration ??
+    multiplyFractions(
+      lengthOf(written ?? measuredValue(element, duration, scale, state, path)),
+      scale.factor,
+    )
+
+  warnings.add(
+    'redundant:rest',
+    'A rest is written over a rest that already fills the measure in the same voice. The ' +
+      'measure rest is the one converted.',
+    context,
+    rest,
+  )
+  // A beam over a rest alone is not a beam, so a source stating one says
+  // nothing this loses.
+  element.skip('beam')
+  const notations = eventNotations.map(({ found, block, notations }) => {
+    block.read(found)
+    return [found, attribute(notations.element, 'print-object') !== 'no'] as const
+  })
+  const at = builder.position()
+  reportCarriedByRest(
+    note,
+    notations,
+    (type, slur) => {
+      const number = attribute(slur, 'number') ?? '1'
+      state.spanners.dropSlurEnd(type, number, voice, measureIndex, at, { context, element: slur })
+    },
+    (found) => {
+      warnings.add(
+        'redundant:rest',
+        `A <${found.name}> on a rest written over a rest that already fills the measure is ` +
+          'not converted.',
+        context,
+        found,
+      )
+    },
+  )
+  builder.passOver(lasts)
+}
+
+/**
+ * Reports, through `report`, what a rest carries and loses: the `notations`
+ * given, its stem, its slur ends and its lyrics. Each comes with whether the
+ * source draws it, and what the source does not draw loses nothing drawn, so
+ * it is read and not reported.
+ */
+function reportCarriedByRest(
+  { element, notations, hidden }: NoteStatement,
+  carriedNotations: readonly (readonly [XmlElement, boolean])[],
+  dropSlurEnd: (type: 'start' | 'stop', slur: XmlElement) => void,
+  report: (found: XmlElement) => void,
+): void {
   // A slur passing over the rest needs nothing of it. A slur end in a hidden
   // block still closes or opens its slur, so its loss reaches the other end.
   const slurEnds = notations.flatMap((block) =>
@@ -919,7 +1009,7 @@ function reportCarriedByUnwritableRest(
   // Each element the rest carries, and whether the source draws it.
   const carried = new Map<XmlElement | undefined, boolean>([
     [stem, !hidden && stem !== undefined && !statesNoStem(stem)],
-    ...marks.map(({ found, shown }) => [found, shown] as const),
+    ...carriedNotations,
     ...slurEnds.map((slur) => [slur, true] as const),
     ...element.children('lyric').map((lyric) => [lyric, true] as const),
   ])
@@ -928,15 +1018,7 @@ function reportCarriedByUnwritableRest(
     if (drawn === undefined) continue
     // Reading it, or the one warning, accounts for the element whole.
     for (const name of Object.keys(found.attributes)) attribute(found, name)
-    if (!drawn) continue
-    warnings.add(
-      'unrepresentable:element',
-      `A <${found.name}> on a rest that fills the measure is not converted. No note value ` +
-        'writes the rest as an event, and neither the rest MNX states on the sequence nor a ' +
-        'space written for it carries one.',
-      context,
-      found,
-    )
+    if (drawn) report(found)
   }
 }
 
