@@ -200,6 +200,11 @@ export interface PartState {
         element: XmlElement
         /** Every <transpose> the measure states. */
         stated: Set<XmlElement>
+        /**
+         * The measure's first <transpose> that puts the part in a
+         * transposition other than the one it first stated.
+         */
+        change: XmlElement | undefined
       }
     | undefined
 }
