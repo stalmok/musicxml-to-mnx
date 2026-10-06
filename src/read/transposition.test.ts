@@ -383,6 +383,28 @@ describe('a part stating more than one transposition', () => {
     expect(warnings).toEqual([])
   })
 
+  test("keeps the first staff's transposition where a later measure changes only the second", () => {
+    const { score, warnings } = read(
+      '<score-partwise><part id="P1">' +
+        '<measure number="1"><attributes><divisions>4</divisions><staves>2</staves>' +
+        `${IN_B_FLAT}</attributes>${NOTE}</measure>` +
+        '<measure number="2"><attributes>' +
+        '<transpose number="2"><diatonic>-2</diatonic><chromatic>-3</chromatic></transpose>' +
+        `</attributes>${NOTE}</measure>` +
+        '</part></score-partwise>',
+    )
+    const second = score.parts[0]?.measures[1]?.sequences[0]?.content[0]
+
+    expect(second?.kind === 'event' && second.notes[0]?.pitch).toEqual({
+      step: 'B',
+      octave: 3,
+      alter: -1,
+    })
+    expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
+      ['unrepresentable:per-staff-transposition', 2],
+    ])
+  })
+
   // A <transpose> naming no staff gives every staff, including those added
   // after it, and replaces what single staves were given before.
   test('gives every staff a transpose naming none, after single staves', () => {
