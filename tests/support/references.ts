@@ -20,6 +20,7 @@ export const FOLLOWED_REFERENCES = [
   'beam.events',
   'kit-component.sound',
   'kit-note.kitComponent',
+  'lyrics-global.lineOrder',
   'measure-rhythmic-position.measure',
   'multimeasure-rest.start',
   'non-arpeggio.span',
@@ -29,6 +30,28 @@ export const FOLLOWED_REFERENCES = [
   'system.measure',
   'tie.target',
 ] as const
+
+/**
+ * Where danglingReferences reads each definition it follows, as the schema
+ * properties that hold one. tests/schema-conformance.test.ts holds this to
+ * every such property the MNX types model, so a reference written somewhere
+ * new is not missed.
+ */
+export const READ_AT: Readonly<Record<string, readonly string[]>> = {
+  arpeggio: ['part-measure.arpeggios'],
+  beam: ['beam.beams', 'part-measure.beams'],
+  'kit-component': ['part.kit'],
+  'kit-note': ['event.kitNotes'],
+  'lyrics-global': ['global.lyrics'],
+  'measure-rhythmic-position': ['dynamic-group-gradual.end', 'ottava.end'],
+  'multimeasure-rest': ['score.multimeasureRests'],
+  'non-arpeggio': ['part-measure.nonArpeggios'],
+  score: ['root.scores'],
+  slur: ['event.slurs'],
+  'staff-source': ['staff.sources'],
+  system: ['page.systems'],
+  tie: ['kit-note.ties', 'note.ties'],
+}
 
 /** The events of a sequence, including those inside tuplets, graces and tremolos. */
 function eventsOf(items: readonly MNXSequenceItem[]): MNXEvent[] {
@@ -61,6 +84,8 @@ export function danglingReferences(mnx: MNXDocument): string[] {
   const parts = idsOf(mnx.parts)
   const layouts = idsOf(mnx.layouts ?? [])
   const sounds = new Set(Object.keys(mnx.global.sounds ?? {}))
+  const lineOrder = mnx.global.lyrics?.lineOrder
+  const lines = new Set(lineOrder)
 
   for (const [partIndex, part] of mnx.parts.entries()) {
     const kit = new Set(Object.keys(part.kit ?? {}))
@@ -99,6 +124,12 @@ export function danglingReferences(mnx: MNXDocument): string[] {
       }
 
       for (const event of own) {
+        // A document that orders its verse lines orders every line it sings.
+        if (lineOrder !== undefined) {
+          for (const line of Object.keys(event.lyrics?.lines ?? {})) {
+            check(`${where} lyric line`, line, lines)
+          }
+        }
         for (const slur of event.slurs ?? []) check(`${where} slur`, slur.target, events)
         for (const note of event.notes ?? []) {
           for (const tie of note.ties ?? []) check(`${where} tie`, tie.target, notes)

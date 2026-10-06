@@ -32,7 +32,7 @@ import { TREMOLO_MARKS } from '../src/read/notes.js'
 import { MIDI_NUMBERS } from '../src/read/score.js'
 import { NO_HOME_ATTRIBUTES, NO_HOME_IN_MNX } from '../src/read/unrepresentable.js'
 import type { FormatLimit } from '../src/warnings.js'
-import { FOLLOWED_REFERENCES } from './support/references.js'
+import { FOLLOWED_REFERENCES, READ_AT } from './support/references.js'
 import { resolveRef, schemaDefs } from './support/schema.js'
 import type { SchemaNode } from './support/schema.js'
 
@@ -499,7 +499,7 @@ describe('the numeric bounds the reader keeps to, against the schema', () => {
 
 /** Every schema property that names an id, as definition.property. */
 function idReferenceProperties(): string[] {
-  const names = ['#/$defs/id', '#/$defs/id-pair']
+  const names = ['#/$defs/id', '#/$defs/id-pair', '#/$defs/lyric-line-id']
   const found: string[] = []
   for (const [definition, node] of Object.entries(schemaDefs)) {
     // An object's own id defines it, and an id pair is followed where it is
@@ -524,16 +524,48 @@ function typesModel(reference: string): boolean {
   )
 }
 
+/**
+ * The schema properties that hold a definition, as definition.property. A
+ * list or map of the definition, such as tie-list, is followed to where it is
+ * held in turn.
+ */
+function placesOf(target: string): string[] {
+  const ref = `#/$defs/${target}`
+  const found: string[] = []
+  for (const [definition, node] of Object.entries(schemaDefs)) {
+    const values = Object.values(node.patternProperties ?? {})
+    if (node.items?.$ref === ref || values.some((value) => value.$ref === ref)) {
+      found.push(...placesOf(definition))
+      continue
+    }
+    for (const [property, value] of Object.entries(node.properties ?? {})) {
+      if (value.$ref === ref || value.items?.$ref === ref) found.push(`${definition}.${property}`)
+    }
+  }
+  return found.sort()
+}
+
 describe('the id references the output check follows, against the schema', () => {
   const references = idReferenceProperties()
   const followed: readonly string[] = FOLLOWED_REFERENCES
+  const holders = [...new Set(followed.map((one) => one.slice(0, one.indexOf('.'))))].sort()
 
   test('follows every reference the MNX types model', () => {
     expect(references.filter((one) => typesModel(one) && !followed.includes(one))).toEqual([])
   })
 
-  test('follows only references the schema states', () => {
+  test('follows only references the schema states and the MNX types model', () => {
     expect(followed.filter((one) => !references.includes(one))).toEqual([])
+    expect(followed.filter((one) => !typesModel(one))).toEqual([])
+  })
+
+  test('says where it reads each definition that holds a reference', () => {
+    expect(Object.keys(READ_AT).sort()).toEqual(holders)
+  })
+
+  test.each(holders)('reads %s everywhere the MNX types hold one', (holder) => {
+    const modelled = placesOf(holder).filter(typesModel)
+    expect([...(READ_AT[holder] ?? [])].sort()).toEqual(modelled)
   })
 })
 

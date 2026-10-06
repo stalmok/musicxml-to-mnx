@@ -14,11 +14,15 @@ function document(): MNXDocument {
     global: {
       measures: [{ id: 'm1' }, { id: 'm2' }],
       sounds: { drum: { name: 'Drum' } },
+      lyrics: { lineOrder: ['1', '2'] },
     },
     layouts: [
       {
         id: 'layout',
-        content: [{ type: 'group', content: [{ type: 'staff', sources: [{ part: 'P1' }] }] }],
+        content: [
+          { type: 'group', content: [{ type: 'staff', sources: [{ part: 'P1' }] }] },
+          { type: 'staff', sources: [{ part: 'P2' }] },
+        ],
       },
     ],
     parts: [
@@ -31,6 +35,7 @@ function document(): MNXDocument {
             arpeggios: [{ position: at, span: { start: 'n1', end: 'k1' } }],
             nonArpeggios: [{ position: at, span: { start: 'n1', end: 'n2' } }],
             dynamics: [
+              { type: 'immediate', position: at, value: 'f' },
               {
                 type: 'gradual',
                 position: at,
@@ -46,6 +51,7 @@ function document(): MNXDocument {
                     id: 'e1',
                     duration: quarter,
                     slurs: [{ target: 'e3' }],
+                    lyrics: { lines: { '1': { text: 'la' } } },
                     notes: [
                       { id: 'n1', pitch: { step: 'C', octave: 4 }, ties: [{ target: 'n3' }] },
                     ],
@@ -75,13 +81,32 @@ function document(): MNXDocument {
                   {
                     id: 'e3',
                     duration: quarter,
-                    notes: [{ id: 'n3', pitch: { step: 'C', octave: 4 } }],
+                    notes: [{ id: 'n3', pitch: { step: 'C', octave: 4 }, ties: [{ lv: true }] }],
                     kitNotes: [{ id: 'k2', kitComponent: 'snare' }],
                   },
                 ],
               },
             ],
           },
+        ],
+      },
+      {
+        id: 'P2',
+        measures: [
+          {
+            sequences: [
+              {
+                content: [
+                  {
+                    id: 'e9',
+                    duration: quarter,
+                    notes: [{ id: 'n9', pitch: { step: 'E', octave: 4 } }],
+                  },
+                ],
+              },
+            ],
+          },
+          { sequences: [] },
         ],
       },
     ],
@@ -96,7 +121,7 @@ function document(): MNXDocument {
   }
 }
 
-/** The first measure of the one part, which holds most of the references. */
+/** The first measure of the first part, which holds most of the references. */
 function first(mnx: MNXDocument): MNXDocument['parts'][number]['measures'][number] {
   const measure = mnx.parts[0]?.measures[0]
   if (measure === undefined) throw new Error('The document has no first measure.')
@@ -175,6 +200,38 @@ describe('reports a reference that leads nowhere', () => {
         if (note) note.ties = [{ target: 'k2' }]
       },
       'part 1 measure 1 tie names "k2"',
+    ],
+    [
+      'a slur naming an event of another part',
+      (mnx) => {
+        const event = first(mnx).sequences[0]?.content[0]
+        if (event && 'slurs' in event) event.slurs = [{ target: 'e9' }]
+      },
+      'part 1 measure 1 slur names "e9"',
+    ],
+    [
+      'a tie naming a note of another part',
+      (mnx) => {
+        const event = first(mnx).sequences[0]?.content[0]
+        const note = event && 'notes' in event ? event.notes?.[0] : undefined
+        if (note) note.ties = [{ target: 'n9' }]
+      },
+      'part 1 measure 1 tie names "n9"',
+    ],
+    [
+      'a lyric line the document does not order',
+      (mnx) => {
+        mnx.global.lyrics = { lineOrder: ['2'] }
+      },
+      'part 1 measure 1 lyric line names "1"',
+    ],
+    [
+      'a staff naming a part, outside a group',
+      (mnx) => {
+        const part = mnx.parts[1]
+        if (part) part.id = 'P3'
+      },
+      'layout layout staff names "P2"',
     ],
     [
       'a kit note naming a component the kit lacks',
