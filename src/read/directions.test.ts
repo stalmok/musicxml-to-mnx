@@ -1096,7 +1096,7 @@ describe('tempo', () => {
     expect(warnings).toEqual([])
   })
 
-  // No music is played at no beats per minute, so the source has gone wrong.
+  // MNX's bpm is a number above zero, so zero itself has nothing to carry.
   test.each(['0', '-60'])('reports a per-minute of %s, which is not above zero', (written) => {
     const { global, warnings } = read(
       inMeasure(
@@ -1107,13 +1107,7 @@ describe('tempo', () => {
     )
 
     expect(global?.tempos).toEqual([])
-    expect(warnings.map((w) => [w.code, w.message])).toEqual([
-      [
-        'unresolved:element-value',
-        `A <metronome> states its tempo as ${written} beats per minute, which is not above ` +
-          'zero, so the mark is not converted.',
-      ],
-    ])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tempo'])
   })
 
   // An empty <per-minute> prints the beat-unit glyph alone, with the number

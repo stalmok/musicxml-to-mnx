@@ -75,9 +75,10 @@ export const WARNING_CODES = Object.freeze([
   // A stem that neither points up nor down. MNX states only those two.
   'unrepresentable:stem-direction',
   // A tempo MNX has no value for: one written as one note value equalling
-  // another, one whose beat unit is tied to another, and one with no
-  // beats-per-minute number or a word in its place. MNX states a tempo as one
-  // note value and a count of them per minute.
+  // another, one whose beat unit is tied to another, one with no
+  // beats-per-minute number or a word in its place, and one whose number is
+  // not above zero. MNX states a tempo as one note value and a positive count
+  // of them per minute.
   'unrepresentable:tempo',
   // A verse whose elided syllables each say how they join their word. MNX
   // states one lyric type for the whole event.
@@ -245,11 +246,13 @@ export const WARNING_CODES = Object.freeze([
   // D.S. al Fine.
   'unresolved:segno',
   // An attribute whose value is not one MusicXML defines for it, so what the
-  // source meant by it cannot be read. The attribute is not converted.
+  // source meant by it cannot be read. The attribute is not converted, nor
+  // what it is needed to read, such as the tie whose type it states.
   'unresolved:attribute-value',
-  // An element whose text is not a value MusicXML defines for it, or names an
-  // amount no music has, such as a tempo of no beats per minute. What the
-  // source meant by it cannot be read, and the element is not converted.
+  // An element whose text is not a value MusicXML defines for it, such as a
+  // <beat-unit> that names no note value. What the source meant by it cannot
+  // be read, and it is not converted. Where it drops a whole mark, the
+  // warning names the mark.
   'unresolved:element-value',
   // A note's written value and its measured duration disagree, outside a
   // tuplet where they are meant to. The written value is the one converted.

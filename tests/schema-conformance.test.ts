@@ -1052,6 +1052,7 @@ const FORMAT_LIMITS: Readonly<Record<FormatLimit, () => boolean>> = {
     propertiesOf('tempo').join() === 'bpm,location,value' &&
     (schemaDefs['tempo']?.required ?? []).includes('bpm') &&
     schemaDefs['bpm']?.type === 'number' &&
+    schemaDefs['bpm']?.exclusiveMinimum === 0 &&
     refers('tempo', 'value', 'note-value'),
   'unrepresentable:lyric-syllabic': () =>
     propertiesOf('event-lyric-line').join() === 'text,type' &&

@@ -966,29 +966,17 @@ function readMetronome(
     return dropWholeMark()
   }
 
-  // MusicXML's per-minute is a string, so it can be a word such as "fast".
-  // MNX states a tempo as a number of beats per minute, so a non-numeric one
-  // is dropped and reported.
+  // MusicXML's per-minute is a string, so it can be a word such as "fast",
+  // or a number of zero or less. MNX states a tempo as a positive number of
+  // beats per minute, so either is dropped and reported.
   //
   // Read as a plain decimal. Number() would read "0x10" as sixteen.
   const bpm = parseDecimal(written)
-  if (bpm === undefined) {
+  if (bpm === undefined || bpm <= 0) {
     warnings.add(
       'unrepresentable:tempo',
       `A <metronome> states its tempo as "${written}", which cannot be expressed in MNX, ` +
-        'which states a tempo as a number of beats per minute.',
-      context,
-      element,
-    )
-    return dropWholeMark()
-  }
-
-  // No music is played at no beats per minute, or fewer.
-  if (bpm <= 0) {
-    warnings.add(
-      'unresolved:element-value',
-      `A <metronome> states its tempo as ${written} beats per minute, which is not above ` +
-        'zero, so the mark is not converted.',
+        'which states a tempo as a positive number of beats per minute.',
       context,
       element,
     )
