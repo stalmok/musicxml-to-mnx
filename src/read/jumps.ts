@@ -68,15 +68,9 @@ export function settleJumps(
     measure.segno ? [{ index, name: measure.segno.value.name }] : [],
   )
   const reachesFine = ({ value, element }: Stated<DalSegno>, index: number): boolean => {
-    const from = segnoReturnedTo(signs, value.target)
-    if (signs.length === 0 || from === undefined) {
-      warnings.add(
-        'unresolved:segno',
-        unresolvedMessage(signs.length, value.target),
-        { measure: index + 1 },
-        element,
-        'dalsegno',
-      )
+    const { from, unresolved } = segnoReturnedTo(signs, value.target)
+    if (unresolved !== undefined) {
+      warnings.add('unresolved:segno', unresolved, { measure: index + 1 }, element, 'dalsegno')
     }
     // A Fine at or after the sign is reached on the way back through.
     return from !== undefined && measures.some((m, i) => i >= from && m.fine !== undefined)
@@ -122,31 +116,35 @@ export function settleJumps(
 }
 
 /**
- * Where a jump goes back to, as a measure index. A score drawing one sign
- * settles it whatever either is called, since there is nothing to confuse it
- * with. A score drawing none is taken from its start, which is where a player
- * with no sign to find would go. Past that the name decides, and a name
- * matching no sign leaves the jump alone rather than guessing between them.
+ * Where a jump goes back to, as a measure index, and why it cannot be told
+ * where the source does not settle it. A score drawing one sign settles it
+ * whatever either is called, since there is nothing to confuse it with. A
+ * score drawing none is taken from its start, which is where a player with no
+ * sign to find would go. Past that the name decides, and a name matching no
+ * sign leaves the jump alone rather than guessing between them.
  */
 function segnoReturnedTo(
   signs: readonly { index: number; name: string | undefined }[],
   target: string | undefined,
-): number | undefined {
-  if (signs.length === 0) return 0
-  if (signs.length === 1) return signs[0]?.index
-  return signs.find((sign) => sign.name === target)?.index
-}
-
-function unresolvedMessage(signCount: number, target: string | undefined): string {
-  if (signCount === 0) {
-    return (
-      'This dal segno jump returns to a segno, but the score draws none. The jump is ' +
-      'converted as a return to the start of the score.'
-    )
+): { from: number | undefined; unresolved: string | undefined } {
+  if (signs.length === 0) {
+    return {
+      from: 0,
+      unresolved:
+        'This dal segno jump returns to a segno, but the score draws none. The jump is ' +
+        'converted with no segno to return to, and is ended by a Fine anywhere in the score.',
+    }
   }
+  if (signs.length === 1) return { from: signs[0]?.index, unresolved: undefined }
+  const from = signs.find((sign) => sign.name === target)?.index
+  if (from !== undefined) return { from, unresolved: undefined }
   const plain = 'The jump is converted as a plain dal segno, not a D.S. al Fine.'
-  return target === undefined
-    ? `This dal segno jump names no segno, and the score draws several. ${plain}`
-    : `This dal segno jump returns to the segno "${target}", which is none of the segnos ` +
-        `the score draws. ${plain}`
+  return {
+    from,
+    unresolved:
+      target === undefined
+        ? `This dal segno jump names no segno, and the score draws several. ${plain}`
+        : `This dal segno jump returns to the segno "${target}", which is none of the ` +
+          `segnos the score draws. ${plain}`,
+  }
 }

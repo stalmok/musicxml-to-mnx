@@ -1598,7 +1598,8 @@ describe('sound navigation', () => {
         code: 'unresolved:segno',
         message:
           'This dal segno jump returns to a segno, but the score draws none. The jump ' +
-          'is converted as a return to the start of the score.',
+          'is converted with no segno to return to, and is ended by a Fine anywhere in ' +
+          'the score.',
         element: 'sound',
         attribute: 'dalsegno',
         context: { measure: 1, line: 2 },
