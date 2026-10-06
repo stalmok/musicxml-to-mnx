@@ -227,7 +227,8 @@ export const WARNING_CODES = Object.freeze([
   'unresolved:part-id',
   // Two parts share one id, and MNX names each part once. The later part is
   // renamed to a generated id, and takes the part list's details for the id
-  // it shares.
+  // it shares. Also a second part list entry for one id, which is not
+  // converted: the parts holding the id take the first entry's details.
   'inconsistent:part-id',
   // A note naming an instrument the part list does not set up, or naming
   // one with no id. The kit component it strikes is kept, without a name or

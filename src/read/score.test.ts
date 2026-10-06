@@ -3849,6 +3849,33 @@ describe('a part id the output cannot carry as it stands', () => {
     ])
   })
 
+  // The part list names each part once. A second entry for an id is not
+  // converted, so the parts holding the id take the first entry's details.
+  test('reports a second part list entry for one id, and keeps the first', () => {
+    const { mnx, warnings } = convertValid(
+      score(
+        '<part-list><score-part id="P1"><part-name>Violin</part-name></score-part>\n' +
+          '<score-part id="P1"><part-name>Viola</part-name>' +
+          '<score-instrument id="I1"><instrument-name>Viola</instrument-name>' +
+          '</score-instrument></score-part></part-list>' +
+          `<part id="P1"><measure number="1">${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(mnx.parts.map((p) => p.name)).toEqual(['Violin'])
+    expect(warnings).toEqual([
+      {
+        code: 'inconsistent:part-id',
+        message:
+          'The part list has an entry for part "P1" already, and MNX names each part once. ' +
+          'This entry is not converted.',
+        element: 'score-part',
+        attribute: undefined,
+        context: { part: 'P1', line: 2 },
+      },
+    ])
+  })
+
   // A rename is reported where the part is, ahead of what the part holds.
   test('reports the renames in document order', () => {
     const { warnings } = convertValid(

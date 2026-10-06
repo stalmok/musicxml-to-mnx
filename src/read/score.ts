@@ -680,8 +680,18 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
     list.skip('score-part', 'part-group')
     for (const element of list.element.children) {
       if (element.name === 'score-part') {
-        const scorePart = new ElementReader(element)
         const id = attribute(element, 'id')
+        if (id !== undefined && listed.has(id)) {
+          warnings.addWhole(
+            'inconsistent:part-id',
+            `The part list has an entry for part "${id}" already, and MNX names each part ` +
+              'once. This entry is not converted.',
+            { part: id },
+            element,
+          )
+          continue
+        }
+        const scorePart = new ElementReader(element)
         if (id !== undefined) {
           listed.add(id)
           scoreParts.set(id, element)
