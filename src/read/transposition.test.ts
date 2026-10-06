@@ -403,6 +403,21 @@ describe('a part stating more than one transposition', () => {
     ])
   })
 
+  // The part takes the first transposition it is given, where the first
+  // staff sounds as written.
+  test('takes the transposition of the only staff given one', () => {
+    const { part, warnings } = read(
+      inPart(
+        '<staves>2</staves>' +
+          '<transpose number="2"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>',
+        NOTE,
+      ),
+    )
+
+    expect(part?.transposition).toEqual({ staffDistance: 1, halfSteps: 2 })
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-transposition'])
+  })
+
   test('reports the one staff of three that no transpose names', () => {
     const { warnings } = read(
       inPart(
@@ -523,6 +538,43 @@ describe('a part stating more than one transposition', () => {
     )
 
     expect(warnings.map((w) => [w.element, w.context.line])).toEqual([['transpose', 2]])
+  })
+
+  // The warnings name a <transpose> of the measure they are about.
+  test('reports one staff changing instrument at the <transpose> that changes it', () => {
+    const { warnings } = read(
+      '<score-partwise><part id="P1">\n' +
+        '<measure number="1"><attributes><divisions>4</divisions><staves>2</staves>' +
+        '<transpose number="1"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>' +
+        '<transpose number="2"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>' +
+        `</attributes>${NOTE}</measure>\n` +
+        '<measure number="2"><attributes>' +
+        '<transpose number="1"><diatonic>-2</diatonic><chromatic>-3</chromatic></transpose>' +
+        `</attributes>${NOTE}</measure>` +
+        '</part></score-partwise>',
+    )
+
+    expect(warnings.map((w) => [w.code, w.context.measure, w.context.line])).toEqual([
+      ['unrepresentable:per-staff-transposition', 2, 3],
+      ['unrepresentable:transposition-change', 2, 3],
+    ])
+  })
+
+  test('reports a change of instrument written in two <attributes> once', () => {
+    const changed = (staff: number) =>
+      `<attributes><transpose number="${String(staff)}">` +
+      '<diatonic>-2</diatonic><chromatic>-3</chromatic></transpose></attributes>'
+    const { warnings } = read(
+      '<score-partwise><part id="P1">' +
+        '<measure number="1"><attributes><divisions>4</divisions><staves>2</staves>' +
+        `${IN_B_FLAT}</attributes>${NOTE}</measure>` +
+        `<measure number="2">${changed(1)}${changed(2)}${NOTE}</measure>` +
+        '</part></score-partwise>',
+    )
+
+    expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
+      ['unrepresentable:transposition-change', 2],
+    ])
   })
 
   // A restatement of the same interval is not a change.

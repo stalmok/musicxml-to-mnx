@@ -193,7 +193,15 @@ export interface PartState {
    * measure that states a <transpose> is read to its end.
    */
   transpositionCheck:
-    { place: WarningPlace; context: ReportContext; element: XmlElement } | undefined
+    | {
+        place: WarningPlace
+        context: ReportContext
+        /** The measure's first <transpose>. */
+        element: XmlElement
+        /** Every <transpose> the measure states. */
+        stated: Set<XmlElement>
+      }
+    | undefined
 }
 
 /**

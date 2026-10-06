@@ -591,7 +591,6 @@ function readTransposition(
 
   const [opening] = stated
   if (!opening) return
-  const first = opening.transposition
 
   const given = state.staffTranspositions
   for (const { transposition, staff, element: found } of stated) {
@@ -603,49 +602,70 @@ function readTransposition(
       given.staves.set(staff, value)
     }
   }
-  state.transpositionCheck ??= { place: warnings.reserve(), context, element: opening.element }
+  const check = (state.transpositionCheck ??= {
+    place: warnings.reserve(),
+    context,
+    element: opening.element,
+    stated: new Set(),
+  })
+  for (const { element: found } of stated) check.stated.add(found)
 
-  state.transposition = first
-  if (state.statedTransposition === undefined) {
-    state.statedTransposition = first
-    return
-  }
-  if (!sameTransposition(state.statedTransposition, first)) {
-    warnings.add(
-      'unrepresentable:transposition-change',
-      'A part changes instrument partway, and MNX states one transposition for the part. ' +
-        'The first is the one written out; the notes sound as each instrument plays them.',
-      context,
-      opening.element,
-    )
-  }
+  // The notes follow the first staff's transposition, or, where the first
+  // staff has none, the first staff's that has one.
+  state.transposition = staffTranspositions(state).find((one) => one !== undefined)?.value
+  state.statedTransposition ??= state.transposition
+}
+
+/** What each staff of the part was last given, by staff number from one. */
+function staffTranspositions(state: PartState): (Stated<Transposition> | undefined)[] {
+  const { every, staves } = state.staffTranspositions
+  return Array.from({ length: state.staves }, (_, i) => staves.get(i + 1) ?? every)
 }
 
 /**
- * Reports staves of the part transposed by different intervals, once the
- * measure that states a <transpose> is read: a source can give each staff its
- * own in separate <attributes>. The report names the <transpose> given to the
- * first staff that differs from the first staff, or the measure's first
- * <transpose> where that staff was given none.
+ * Reports what the <transpose> statements of a measure leave unconvertible,
+ * once the measure is read: a source can give each staff its own in separate
+ * <attributes>. Staves transposed by different intervals are reported at the
+ * <transpose> of this measure given to the first staff that differs, or at the
+ * measure's first <transpose> where that staff was given none here. A part
+ * whose transposition is no longer the one it first stated has changed
+ * instrument, which is reported once for the measure.
  */
 export function settleTranspositions(state: PartState, warnings: WarningCollector): void {
   const check = state.transpositionCheck
   if (check === undefined) return
   state.transpositionCheck = undefined
 
-  const { every, staves } = state.staffTranspositions
-  const given = Array.from({ length: state.staves }, (_, i) => staves.get(i + 1) ?? every)
+  const given = staffTranspositions(state)
   const first = given[0]?.value ?? CONCERT_PITCH
   const differing = given.findIndex((one) => !sameTransposition(one?.value ?? CONCERT_PITCH, first))
-  if (differing === -1) return
-  warnings.addAt(
-    check.place,
-    'unrepresentable:per-staff-transposition',
-    'The staves of this part are transposed by different intervals, and MNX states one ' +
-      'for the part. The first is the one converted.',
-    check.context,
-    given[differing]?.element ?? check.element,
-  )
+  if (differing !== -1) {
+    const named = given[differing]?.element
+    warnings.addAt(
+      check.place,
+      'unrepresentable:per-staff-transposition',
+      'The staves of this part are transposed by different intervals, and MNX states one ' +
+        'for the part. The first is the one converted.',
+      check.context,
+      named !== undefined && check.stated.has(named) ? named : check.element,
+    )
+  }
+
+  const { transposition, statedTransposition } = state
+  if (
+    transposition !== undefined &&
+    statedTransposition !== undefined &&
+    !sameTransposition(statedTransposition, transposition)
+  ) {
+    warnings.addAt(
+      check.place,
+      'unrepresentable:transposition-change',
+      'A part changes instrument partway, and MNX states one transposition for the part. ' +
+        'The first is the one written out; the notes sound as each instrument plays them.',
+      check.context,
+      check.element,
+    )
+  }
 }
 
 const CONCERT_PITCH: Transposition = { staffDistance: 0, halfSteps: 0, keyFifthsFlipAt: undefined }
