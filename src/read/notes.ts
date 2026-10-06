@@ -1904,8 +1904,9 @@ function readTies(
   }
 
   // A let-ring (l.v.) tie rings out with no ending note. MusicXML 4.0 states
-  // it as type "let-ring" on either <tie> or <tied>; MNX states it as a tie's
-  // `lv`, with no target.
+  // it as type "let-ring" on <tied>. A <tie> of that type is read the same
+  // way, though MusicXML allows only start and stop there. MNX states it as a
+  // tie's `lv`, with no target.
   const letRing =
     ties.some((tie) => attribute(tie, 'type') === 'let-ring') ||
     tieds.some((tied) => attribute(tied, 'type') === 'let-ring')
