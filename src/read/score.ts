@@ -39,7 +39,7 @@ import {
   requireAttribute,
   trimmedText,
 } from '../xml/tree.js'
-import { readAttributes } from './attributes.js'
+import { readAttributes, settleTranspositions } from './attributes.js'
 import type { MeasureRepeatReading } from './attributes.js'
 import { readBarline, resolveEndings } from './barlines.js'
 import type { EndingStart, EndingStop } from './barlines.js'
@@ -1197,6 +1197,7 @@ function readMeasure(
     reader.reportUnread(warnings, context)
   }
 
+  settleTranspositions(state, warnings)
   const { key, time } = signatures.settle(builder.furthest())
 
   // A part stating no time signature runs to the barline the score states.

@@ -335,15 +335,71 @@ describe('a part stating more than one transposition', () => {
   test('reports a staff left at concert pitch beside a transposed one', () => {
     const { part, warnings } = read(
       inPart(
-        '<staves>2</staves>' +
+        '<staves>2</staves>\n' +
           '<transpose number="1"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>',
         NOTE,
       ),
     )
 
     expect(part?.transposition).toEqual({ staffDistance: 1, halfSteps: 2 })
-    expect(warnings.map((w) => [w.code, w.element])).toEqual([
-      ['unrepresentable:per-staff-transposition', 'transpose'],
+    expect(warnings.map((w) => [w.code, w.element, w.context.line])).toEqual([
+      ['unrepresentable:per-staff-transposition', 'transpose', 2],
+    ])
+  })
+
+  // A source can give each staff its own <transpose> in a separate
+  // <attributes>, so the staves are compared once the measure is read.
+  test('says nothing where the staves are given the same interval in two <attributes>', () => {
+    const { warnings } = read(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        '<attributes><divisions>4</divisions><staves>2</staves>' +
+        '<transpose number="1"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>' +
+        '</attributes>' +
+        '<attributes>' +
+        '<transpose number="2"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>' +
+        '</attributes>' +
+        NOTE +
+        '</measure></part></score-partwise>',
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  // A staff keeps the transposition it was given until it is given another.
+  test('says nothing where a later measure restates one staff alone', () => {
+    const both =
+      '<transpose number="1"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>' +
+      '<transpose number="2"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>'
+    const { warnings } = read(
+      '<score-partwise><part id="P1">' +
+        '<measure number="1"><attributes><divisions>4</divisions><staves>2</staves>' +
+        `${both}</attributes>${NOTE}</measure>` +
+        '<measure number="2"><attributes>' +
+        '<transpose number="1"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>' +
+        `</attributes>${NOTE}</measure>` +
+        '</part></score-partwise>',
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  // A <transpose> naming no staff gives every staff, including those added
+  // after it, and replaces what single staves were given before.
+  test('gives every staff a transpose naming none, after single staves', () => {
+    const { warnings } = read(
+      '<score-partwise><part id="P1">' +
+        '<measure number="1"><attributes><divisions>4</divisions><staves>2</staves>' +
+        '<transpose number="1"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>' +
+        `<transpose number="2"><diatonic>0</diatonic><chromatic>0</chromatic></transpose>` +
+        `</attributes>${NOTE}</measure>` +
+        '<measure number="2"><attributes><staves>3</staves>' +
+        '<transpose><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>' +
+        `</attributes>${NOTE}</measure>` +
+        '</part></score-partwise>',
+    )
+
+    expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
+      ['unrepresentable:per-staff-transposition', 1],
     ])
   })
 

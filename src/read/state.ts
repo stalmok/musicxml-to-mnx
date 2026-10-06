@@ -1,7 +1,7 @@
 // What the readers of one part share: the running state a measure cannot be
 // read without.
 
-import type { ReportContext } from './collector.js'
+import type { ReportContext, WarningPlace } from './collector.js'
 import type {
   PitchedClefSign,
   Key,
@@ -12,6 +12,7 @@ import type {
 import { fraction } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type { XmlElement } from '../xml/parse.js'
+import type { Stated } from './element.js'
 import { IdGenerator } from './idGenerator.js'
 import { SpannerResolver } from './spanners.js'
 import type { CarriedTupletStop } from './tuplets.js'
@@ -177,6 +178,22 @@ export interface PartState {
    * this one and reports the change.
    */
   statedTransposition: Transposition | undefined
+  /**
+   * The transposition each staff was last given, with the <transpose> that
+   * gave it. A <transpose> naming no staff gives every staff, including any
+   * the part adds later, and clears what single staves were given before it.
+   * A staff given none sounds as written.
+   */
+  staffTranspositions: {
+    every: Stated<Transposition> | undefined
+    staves: Map<number, Stated<Transposition>>
+  }
+  /**
+   * Where the report about staves transposed differently goes, once the
+   * measure that states a <transpose> is read to its end.
+   */
+  transpositionCheck:
+    { place: WarningPlace; context: ReportContext; element: XmlElement } | undefined
 }
 
 /**
@@ -213,5 +230,7 @@ export function newPartState(
     beamsOpenAtBarline: new Map(),
     transposition: undefined,
     statedTransposition: undefined,
+    staffTranspositions: { every: undefined, staves: new Map() },
+    transpositionCheck: undefined,
   }
 }

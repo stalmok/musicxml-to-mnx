@@ -552,9 +552,11 @@ function readTimeDisplay(
  * other way round, so both numbers are negated.
  *
  * MusicXML writes one <transpose> per staff, told apart by a "number"
- * attribute, and MNX states one for the part. A part whose staves disagree,
- * or which changes instrument partway, keeps the first and reports the rest.
- * The pitches follow the transposition in force, so each note sounds right.
+ * attribute, and MNX states one for the part. Each staff keeps the last one
+ * given to it, and a staff given none sounds as written. Staves that disagree
+ * are reported once the measure is read; see settleTranspositions. A part
+ * that changes instrument partway keeps the first and reports the change.
+ * The pitches follow the transposition in force.
  */
 function readTransposition(
   element: ElementReader,
@@ -591,25 +593,17 @@ function readTransposition(
   if (!opening) return
   const first = opening.transposition
 
-  // A transpose naming no staff applies to every staff, and a staff none
-  // names sounds as written.
-  const uncovered =
-    !stated.some((one) => one.staff === undefined) &&
-    Array.from({ length: state.staves }, (_, i) => i + 1).some(
-      (staff) => !stated.some((one) => one.staff === staff),
-    )
-  const other =
-    stated.find((one) => !sameTransposition(one.transposition, first)) ??
-    (uncovered && !sameTransposition(CONCERT_PITCH, first) ? opening : undefined)
-  if (other) {
-    warnings.add(
-      'unrepresentable:per-staff-transposition',
-      'The staves of this part are transposed by different intervals, and MNX states one ' +
-        'for the part. The first is the one converted.',
-      context,
-      other.element,
-    )
+  const given = state.staffTranspositions
+  for (const { transposition, staff, element: found } of stated) {
+    const value = { value: transposition, element: found }
+    if (staff === undefined) {
+      given.every = value
+      given.staves.clear()
+    } else {
+      given.staves.set(staff, value)
+    }
   }
+  state.transpositionCheck ??= { place: warnings.reserve(), context, element: opening.element }
 
   state.transposition = first
   if (state.statedTransposition === undefined) {
@@ -625,6 +619,33 @@ function readTransposition(
       opening.element,
     )
   }
+}
+
+/**
+ * Reports staves of the part transposed by different intervals, once the
+ * measure that states a <transpose> is read: a source can give each staff its
+ * own in separate <attributes>. The report names the <transpose> given to the
+ * first staff that differs from the first staff, or the measure's first
+ * <transpose> where that staff was given none.
+ */
+export function settleTranspositions(state: PartState, warnings: WarningCollector): void {
+  const check = state.transpositionCheck
+  if (check === undefined) return
+  state.transpositionCheck = undefined
+
+  const { every, staves } = state.staffTranspositions
+  const given = Array.from({ length: state.staves }, (_, i) => staves.get(i + 1) ?? every)
+  const first = given[0]?.value ?? CONCERT_PITCH
+  const differing = given.findIndex((one) => !sameTransposition(one?.value ?? CONCERT_PITCH, first))
+  if (differing === -1) return
+  warnings.addAt(
+    check.place,
+    'unrepresentable:per-staff-transposition',
+    'The staves of this part are transposed by different intervals, and MNX states one ' +
+      'for the part. The first is the one converted.',
+    check.context,
+    given[differing]?.element ?? check.element,
+  )
 }
 
 const CONCERT_PITCH: Transposition = { staffDistance: 0, halfSteps: 0, keyFifthsFlipAt: undefined }
