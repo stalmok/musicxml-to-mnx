@@ -323,11 +323,23 @@ describe('a mark on the opening edge of a measure', () => {
 
 describe('a repeat sign', () => {
   // MusicXML's repeat runs forward or backward.
-  test('reports a repeat in a direction it does not know, and names it', () => {
+  test('reports a repeat in a direction MusicXML does not define, and names it', () => {
     const { warnings } = read(NOTE + right('<repeat direction="sideways"/>'))
 
-    expect(warnings.map((one) => one.message)).toEqual([
-      'A <repeat> in direction "sideways" is not converted yet.',
+    expect(warnings.map((one) => [one.code, one.attribute, one.message])).toEqual([
+      [
+        'unresolved:attribute-value',
+        'direction',
+        'A <repeat> of direction "sideways" is not one MusicXML defines, and is not carried over.',
+      ],
+    ])
+  })
+
+  test('reports a repeat stating no direction', () => {
+    const { warnings } = read(NOTE + right('<repeat/>'))
+
+    expect(warnings.map((one) => [one.code, one.attribute, one.message])).toEqual([
+      ['missing:attribute', undefined, 'A <repeat> states no direction, and is not carried over.'],
     ])
   })
 })
@@ -513,19 +525,25 @@ describe('first and second time endings', () => {
   // that the regex refuses. Twenty digits cannot be read back exactly. Each
   // check rejects a case the others accept. Both formats count the times from
   // 1, so "0" states no time, and a list that holds "0" states none.
-  test.each(['first', '+1', '1e2', '99999999999999999999', '0', '1, 2, 0'])(
-    'reports a number of "%s", which is not a list of times counted from 1',
-    (numbers) => {
-      const { globals, warnings } = read(
-        left(`<ending number="${numbers}" type="start"/>`) +
-          NOTE +
-          right(`<ending number="${numbers}" type="stop"/>`),
-      )
+  // Every one but the twenty digits breaks MusicXML's pattern for an ending
+  // number, which is the source's problem.
+  test.each([
+    ['first', 'unresolved:attribute-value'],
+    ['+1', 'unresolved:attribute-value'],
+    ['1e2', 'unresolved:attribute-value'],
+    ['0', 'unresolved:attribute-value'],
+    ['1, 2, 0', 'unresolved:attribute-value'],
+    ['99999999999999999999', 'unsupported:element'],
+  ])('reports a number of "%s" as %s', (numbers, code) => {
+    const { globals, warnings } = read(
+      left(`<ending number="${numbers}" type="start"/>`) +
+        NOTE +
+        right(`<ending number="${numbers}" type="stop"/>`),
+    )
 
-      expect(globals[0]?.ending?.numbers).toEqual([])
-      expect(warnings.map((w) => w.element)).toEqual(['ending'])
-    },
-  )
+    expect(globals[0]?.ending?.numbers).toEqual([])
+    expect(warnings.map((w) => [w.element, w.code])).toEqual([['ending', code]])
+  })
 
   // MusicXML lets an ending state no number, and writes the stop with
   // an empty one.
@@ -541,14 +559,17 @@ describe('first and second time endings', () => {
   test('reports an ending stating no type at all', () => {
     const { warnings } = read(NOTE + right('<ending number="1"/>'))
 
-    expect(warnings.map((w) => w.element)).toEqual(['ending'])
-    expect(warnings[0]?.message).toContain('of type ""')
+    expect(warnings.map((w) => [w.element, w.code, w.message])).toEqual([
+      ['ending', 'missing:attribute', 'An <ending> states no type, and is not carried over.'],
+    ])
   })
 
-  test('reports an ending of a type it does not know', () => {
+  test('reports an ending of a type MusicXML does not define', () => {
     const { warnings } = read(NOTE + right('<ending number="1" type="wibble"/>'))
 
-    expect(warnings.map((w) => w.element)).toEqual(['ending'])
+    expect(warnings.map((w) => [w.element, w.code, w.attribute])).toEqual([
+      ['ending', 'unresolved:attribute-value', 'type'],
+    ])
   })
 })
 

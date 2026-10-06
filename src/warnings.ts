@@ -72,9 +72,9 @@ export const WARNING_CODES = Object.freeze([
   // A stem that neither points up nor down. MNX states only those two.
   'unrepresentable:stem-direction',
   // A tempo MNX has no value for: one written as one note value equalling
-  // another, one with no beats-per-minute number, and one whose number is
-  // not above zero. MNX states a tempo as a note value and a positive count
-  // of them per minute.
+  // another, one whose beat unit is tied to another, and one with no
+  // beats-per-minute number or a word in its place. MNX states a tempo as one
+  // note value and a count of them per minute.
   'unrepresentable:tempo',
   // A verse whose elided syllables each say how they join their word. MNX
   // states one lyric type for the whole event.
@@ -244,6 +244,10 @@ export const WARNING_CODES = Object.freeze([
   // An attribute whose value is not one MusicXML defines for it, so what the
   // source meant by it cannot be read. The attribute is not converted.
   'unresolved:attribute-value',
+  // An element whose text is not a value MusicXML defines for it, or names an
+  // amount no music has, such as a tempo of no beats per minute. What the
+  // source meant by it cannot be read, and the element is not converted.
+  'unresolved:element-value',
   // A note's written value and its measured duration disagree, outside a
   // tuplet where they are meant to. The written value is the one converted.
   'inconsistent:duration',
@@ -322,6 +326,10 @@ export const WARNING_CODES = Object.freeze([
   // The parts of the score number the same measure differently. The first
   // stated is the one converted.
   'inconsistent:measure-number',
+  // An element leaves out an attribute MusicXML requires on it, such as the
+  // type of a <tie>, so what the element states cannot be read. The element
+  // is not converted.
+  'missing:attribute',
   // A duration or offset appears before any <divisions> said how long one
   // is. One division per quarter note is assumed; if that is wrong,
   // 'inconsistent:duration' warnings follow.

@@ -46,6 +46,37 @@ export class WarningCollector {
   }
 
   /**
+   * Reports an attribute of found whose value MusicXML does not define, or a
+   * required one the source leaves out. The consequence finishes the
+   * sentence, as in "and is not carried over."
+   */
+  addUndefinedAttribute(
+    found: XmlElement,
+    name: string,
+    consequence: string,
+    context: ReportContext,
+  ): void {
+    const written = readAttribute(found, name)
+    const article = /^[aeiou]/.test(found.name) ? 'An' : 'A'
+    if (written === undefined) {
+      this.add(
+        'missing:attribute',
+        `${article} <${found.name}> states no ${name}, ${consequence}`,
+        context,
+        found,
+      )
+      return
+    }
+    this.add(
+      'unresolved:attribute-value',
+      `${article} <${found.name}> of ${name} "${written}" is not one MusicXML defines, ${consequence}`,
+      context,
+      found,
+      name,
+    )
+  }
+
+  /**
    * Reports a <divisions> the source leaves out. at is where it is needed,
    * and gives the warning its line.
    */

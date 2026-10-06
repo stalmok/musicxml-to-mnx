@@ -387,14 +387,22 @@ function offsetPosition(
 
   const written = trimmedText(offset)
   // MusicXML measures an offset in divisions and allows a fractional one. One
-  // that cannot be read exactly is reported, and the mark stays where it was
-  // written.
+  // that is not a number, or cannot be read exactly, is reported, and the mark
+  // stays where it was written.
+  if (parseDecimal(written) === undefined) {
+    warnings.add(
+      'unresolved:element-value',
+      `An <offset> of "${written}" is not a number of divisions, and is not applied.`,
+      context,
+      offset,
+    )
+    return position
+  }
   const count = parseExactDecimal(written)
   if (count === undefined) {
     warnings.add(
       'unsupported:element',
-      `An <offset> of "${written}" is not a number of divisions that can be read exactly, ` +
-        'and is not applied.',
+      `An <offset> of "${written}" divisions cannot be read exactly, and is not applied.`,
       context,
       offset,
     )
@@ -490,13 +498,22 @@ function readOctaveShift(
 
   const shift = SHIFT_SIZES.get(size)
   if ((type !== 'up' && type !== 'down') || !shift) {
-    warnings.add(
-      'unsupported:element',
-      `An <octave-shift> of type "${type ?? ''}" and size "${size}" is not converted yet, ` +
+    if (type !== 'up' && type !== 'down') {
+      warnings.addUndefinedAttribute(
+        found,
+        'type',
         'so the whole shift is not carried over.',
-      context,
-      found,
-    )
+        context,
+      )
+    } else {
+      warnings.add(
+        'unsupported:element',
+        `An <octave-shift> of size "${size}" is not converted yet, ` +
+          'so the whole shift is not carried over.',
+        context,
+        found,
+      )
+    }
     // The stop the source wrote for this shift goes with it, unreported: only
     // "stop" and "continue" are handled above, so an unknown type can only be
     // meant as a start.
@@ -574,12 +591,11 @@ function readWedge(
     // "continue" marks a point partway along a hairpin, which MNX has no need
     // of, since it states only where one begins and ends.
     if (type !== 'continue') {
-      warnings.add(
-        'unsupported:element',
-        `A <wedge> of type "${type ?? ''}" is not converted yet, ` +
-          'so the whole hairpin is not carried over.',
-        context,
+      warnings.addUndefinedAttribute(
         found,
+        'type',
+        'so the whole hairpin is not carried over.',
+        context,
       )
       // The stop the source wrote for this hairpin goes with it, unreported: a
       // stop states its type as the word "stop", handled above, so an unknown
@@ -905,14 +921,15 @@ function readMetronome(
   }
 
   // A <beat-unit> that is not a note value, such as the empty one some
-  // exporters write where the mark has no note glyph, drops the mark. It is
-  // reported, not refused.
+  // exporters write where the mark has no note glyph, drops the mark. MusicXML
+  // defines the beat unit as a note value, so it is the source's problem. It
+  // is reported, not refused.
   const base = noteValueBaseOf(beatUnit)
   if (!base) {
     warnings.add(
-      'unrepresentable:tempo',
+      'unresolved:element-value',
       `A <metronome> states a beat unit of "${trimmedText(beatUnit)}", which is not a note ` +
-        'value, so the mark cannot be expressed in MNX.',
+        'value, so the mark is not converted.',
       context,
       element,
     )
@@ -950,16 +967,28 @@ function readMetronome(
   }
 
   // MusicXML's per-minute is a string, so it can be a word such as "fast".
-  // MNX states a tempo as a positive number of beats per minute, so a
-  // non-numeric or zero one is dropped and reported.
+  // MNX states a tempo as a number of beats per minute, so a non-numeric one
+  // is dropped and reported.
   //
   // Read as a plain decimal. Number() would read "0x10" as sixteen.
   const bpm = parseDecimal(written)
-  if (bpm === undefined || bpm <= 0) {
+  if (bpm === undefined) {
     warnings.add(
       'unrepresentable:tempo',
       `A <metronome> states its tempo as "${written}", which cannot be expressed in MNX, ` +
-        'which states a tempo as a positive number of beats per minute.',
+        'which states a tempo as a number of beats per minute.',
+      context,
+      element,
+    )
+    return dropWholeMark()
+  }
+
+  // No music is played at no beats per minute, or fewer.
+  if (bpm <= 0) {
+    warnings.add(
+      'unresolved:element-value',
+      `A <metronome> states its tempo as ${written} beats per minute, which is not above ` +
+        'zero, so the mark is not converted.',
       context,
       element,
     )

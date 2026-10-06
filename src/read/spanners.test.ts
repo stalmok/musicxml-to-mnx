@@ -459,7 +459,7 @@ describe('a tie stated only as <tied>', () => {
     const { warnings } = read(measures(DIVISIONS + note('C', tiedOnly('sideways'))))
 
     expect(warnings.map((w) => w.message)).toContain(
-      'A <tied> of type "sideways" is not converted yet.',
+      'A <tied> of type "sideways" is not one MusicXML defines, and is not carried over.',
     )
   })
 })
@@ -1395,7 +1395,7 @@ describe('spanner markings that are not simply a start or a stop', () => {
     )
 
     expect(warnings.map((w) => w.message)).toContain(
-      'A <slur> of type "backward hook" is not converted yet.',
+      'A <slur> of type "backward hook" is not one MusicXML defines, and is not carried over.',
     )
   })
 
@@ -1405,7 +1405,10 @@ describe('spanner markings that are not simply a start or a stop', () => {
   ])('reports a %s that states no type at all', (kind, markup) => {
     const { warnings } = read(measures(DIVISIONS + note('C', markup)))
 
-    expect(warnings.map((w) => w.message)).toContain(`A <${kind}> of type "" is not converted yet.`)
+    expect(warnings.map((w) => [w.code, w.message])).toContainEqual([
+      'missing:attribute',
+      `A <${kind}> states no type, and is not carried over.`,
+    ])
   })
 
   test('reads a let-ring <tie> as an lv tie', () => {
@@ -1417,12 +1420,17 @@ describe('spanner markings that are not simply a start or a stop', () => {
     expect(warnings).toEqual([])
   })
 
-  test('reports a tie type it has no reading for', () => {
+  // MusicXML defines a tie's type as start or stop, so another is the
+  // source's problem, not a gap in this converter.
+  test('reports a tie type MusicXML does not define', () => {
     const { warnings } = read(measures(DIVISIONS + note('C', '<tie type="bogus"/>')))
 
-    expect(warnings.map((w) => w.message)).toContain(
-      'A <tie> of type "bogus" is not converted yet.',
-    )
+    expect(warnings.map((w) => [w.code, w.element, w.attribute, w.message])).toContainEqual([
+      'unresolved:attribute-value',
+      'tie',
+      'type',
+      'A <tie> of type "bogus" is not one MusicXML defines, and is not carried over.',
+    ])
   })
 })
 

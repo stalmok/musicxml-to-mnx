@@ -112,14 +112,17 @@ describe('lyrics', () => {
     expect(warnings).toEqual([])
   })
 
-  test('reports a syllabic it does not know rather than dropping the type', () => {
+  test('reports a syllabic MusicXML does not define rather than dropping the type', () => {
     const { warnings } = read(
       measure(note('C', '<lyric number="1"><syllabic>trailing</syllabic><text>x</text></lyric>')),
     )
 
-    expect(warnings.map((w) => w.message)).toContain(
-      'A <syllabic> of "trailing" is not converted yet.',
-    )
+    expect(warnings.map((w) => [w.code, w.element, w.message])).toContainEqual([
+      'unresolved:element-value',
+      'syllabic',
+      'A <syllabic> of "trailing" is not one MusicXML defines, so the syllable is ' +
+        'converted with no type.',
+    ])
   })
 
   test('takes a lyric with no verse number as the first verse', () => {

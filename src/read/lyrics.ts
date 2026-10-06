@@ -111,8 +111,9 @@ function readVerse(
   const spelling = first.text.trim()
   if (!LYRIC_TYPES.has(spelling)) {
     warnings.add(
-      'unsupported:element',
-      `A <syllabic> of "${spelling}" is not converted yet.`,
+      'unresolved:element-value',
+      `A <syllabic> of "${spelling}" is not one MusicXML defines, so the syllable is ` +
+        'converted with no type.',
       context,
       first,
     )

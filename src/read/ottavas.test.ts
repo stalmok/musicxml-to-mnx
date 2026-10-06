@@ -544,11 +544,17 @@ describe('where an octave shift runs', () => {
     expect(warnings[0]?.message).toContain('end before it starts')
   })
 
-  test('reports a size MNX has no value for', () => {
-    const { ottavas, warnings } = read(shift('down', '9') + NOTE)
+  test.each(['up', 'down'])('reports a shift %s of a size MNX has no value for', (type) => {
+    const { ottavas, warnings } = read(shift(type, '9') + NOTE)
 
     expect(ottavas[0]).toEqual([])
-    expect(warnings.map((w) => w.element)).toEqual(['octave-shift'])
+    expect(warnings.map((w) => [w.element, w.code, w.message])).toEqual([
+      [
+        'octave-shift',
+        'unsupported:element',
+        'An <octave-shift> of size "9" is not converted yet, so the whole shift is not carried over.',
+      ],
+    ])
   })
 
   // The source did start the shift, and the reader dropped it. Its stop is not
@@ -585,14 +591,27 @@ describe('where an octave shift runs', () => {
       '<direction><direction-type><octave-shift/></direction-type></direction>' + NOTE,
     )
 
-    expect(warnings.map((w) => w.element)).toEqual(['octave-shift'])
-    expect(warnings[0]?.message).toContain('of type ""')
+    expect(warnings.map((w) => [w.element, w.code, w.message])).toEqual([
+      [
+        'octave-shift',
+        'missing:attribute',
+        'An <octave-shift> states no type, so the whole shift is not carried over.',
+      ],
+    ])
   })
 
-  test('reports a type it does not know', () => {
+  test('reports a type MusicXML does not define', () => {
     const { warnings } = read(shift('sideways') + NOTE)
 
-    expect(warnings.map((w) => w.element)).toEqual(['octave-shift'])
+    expect(warnings.map((w) => [w.element, w.code, w.attribute, w.message])).toEqual([
+      [
+        'octave-shift',
+        'unresolved:attribute-value',
+        'type',
+        'An <octave-shift> of type "sideways" is not one MusicXML defines, ' +
+          'so the whole shift is not carried over.',
+      ],
+    ])
   })
 })
 

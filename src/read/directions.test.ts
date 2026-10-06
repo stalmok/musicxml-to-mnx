@@ -1037,7 +1037,7 @@ describe('tempo', () => {
     )
 
     expect(global?.tempos).toEqual([])
-    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tempo'])
+    expect(warnings.map((w) => w.code)).toEqual(['unresolved:element-value'])
     expect(warnings[0]?.message).toContain('is not a note value')
   })
 
@@ -1096,7 +1096,7 @@ describe('tempo', () => {
     expect(warnings).toEqual([])
   })
 
-  // MNX's bpm is a number above zero, so zero itself has nothing to carry.
+  // No music is played at no beats per minute, so the source has gone wrong.
   test.each(['0', '-60'])('reports a per-minute of %s, which is not above zero', (written) => {
     const { global, warnings } = read(
       inMeasure(
@@ -1107,7 +1107,13 @@ describe('tempo', () => {
     )
 
     expect(global?.tempos).toEqual([])
-    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tempo'])
+    expect(warnings.map((w) => [w.code, w.message])).toEqual([
+      [
+        'unresolved:element-value',
+        `A <metronome> states its tempo as ${written} beats per minute, which is not above ` +
+          'zero, so the mark is not converted.',
+      ],
+    ])
   })
 
   // An empty <per-minute> prints the beat-unit glyph alone, with the number
@@ -1901,17 +1907,19 @@ describe('an offset moving a direction', () => {
     expect(warnings.list()).toEqual([])
   })
 
-  // Twenty digits pass the number's pattern but cannot be read back exactly.
-  test.each(['1e1', '99999999999999999999'])(
-    'leaves the mark where it was where the offset is "%s"',
-    (written) => {
-      const { positions, warnings } = at(quarter + dynamic(`<offset>${written}</offset>`))
+  // "1e1" is not how MusicXML writes a decimal, which is the source's problem.
+  // Twenty digits pass the number's pattern but cannot be read back exactly,
+  // which is this converter's.
+  test.each([
+    ['1e1', 'unresolved:element-value', 'is not a number of divisions'],
+    ['99999999999999999999', 'unsupported:element', 'cannot be read exactly'],
+  ])('leaves the mark where it was where the offset is "%s"', (written, code, reason) => {
+    const { positions, warnings } = at(quarter + dynamic(`<offset>${written}</offset>`))
 
-      expect(positions).toEqual([{ num: 1, den: 4 }])
-      expect(warnings.map((w) => w.element)).toEqual(['offset'])
-      expect(warnings[0]?.message).toContain('not a number of divisions that can be read exactly')
-    },
-  )
+    expect(positions).toEqual([{ num: 1, den: 4 }])
+    expect(warnings.map((w) => [w.element, w.code])).toEqual([['offset', code]])
+    expect(warnings[0]?.message).toContain(reason)
+  })
 
   // The other end of the bar is only knowable once a time signature is in
   // force. Without one, an offset running forward is applied whatever it
@@ -2529,7 +2537,7 @@ describe('hairpins', () => {
     )
 
     expect(dynamics[0]?.[0]).toMatchObject({ wedge: 'increasing', staff: 2, end: { measure: 2 } })
-    expect(warnings.map((w) => w.code)).toEqual(['unsupported:element'])
+    expect(warnings.map((w) => w.code)).toEqual(['unresolved:attribute-value'])
   })
 
   // A stop closes the most recently opened hairpin of its number, and which
@@ -2650,11 +2658,19 @@ describe('hairpins', () => {
     expect(warnings).toEqual([])
   })
 
-  test('reports a wedge of a type it does not know', () => {
+  // MusicXML's wedge is a crescendo, a diminuendo, a stop or a continue.
+  test('reports a wedge of a type MusicXML does not define', () => {
     const { warnings } = readMeasures(wedge('wibble') + NOTE)
 
-    expect(warnings.map((w) => w.element)).toEqual(['wedge'])
-    expect(warnings[0]?.message).toContain('not converted yet')
+    expect(warnings.map((w) => [w.element, w.code, w.attribute, w.message])).toEqual([
+      [
+        'wedge',
+        'unresolved:attribute-value',
+        'type',
+        'A <wedge> of type "wibble" is not one MusicXML defines, ' +
+          'so the whole hairpin is not carried over.',
+      ],
+    ])
   })
 
   // The source did start the hairpin, and the reader dropped it. Its stop is
@@ -2750,8 +2766,13 @@ describe('hairpins', () => {
       '<direction><direction-type><wedge number="1"/></direction-type></direction>' + NOTE,
     )
 
-    expect(warnings.map((w) => w.element)).toEqual(['wedge'])
-    expect(warnings[0]?.message).toContain('of type ""')
+    expect(warnings.map((w) => [w.element, w.code, w.message])).toEqual([
+      [
+        'wedge',
+        'missing:attribute',
+        'A <wedge> states no type, so the whole hairpin is not carried over.',
+      ],
+    ])
   })
 
   test('keeps the staff a hairpin belongs under', () => {

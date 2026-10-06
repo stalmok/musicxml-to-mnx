@@ -262,12 +262,7 @@ function readRepeat(
     }
   }
 
-  warnings.add(
-    'unsupported:element',
-    `A <repeat> in direction "${direction ?? ''}" is not converted yet.`,
-    context,
-    repeat,
-  )
+  warnings.addUndefinedAttribute(repeat, 'direction', 'and is not carried over.', context)
   return { repeatStart: false, repeatEnd: undefined }
 }
 
@@ -338,12 +333,7 @@ function readEnding(
     }
   }
 
-  warnings.add(
-    'unsupported:element',
-    `An <ending> of type "${type ?? ''}" is not converted yet.`,
-    context,
-    ending,
-  )
+  warnings.addUndefinedAttribute(ending, 'type', 'and is not carried over.', context)
   return { endingStart: undefined, endingStop: undefined }
 }
 
@@ -364,10 +354,20 @@ function endingNumbers(
     if (trimmed === '') continue
     // Both formats count the times from 1, so a zero states no time. Such a
     // list is reported, not guessed at.
-    if (!/^\d+$/.test(trimmed) || !Number.isSafeInteger(Number(trimmed)) || Number(trimmed) < 1) {
+    if (!/^\d+$/.test(trimmed) || Number(trimmed) < 1) {
+      warnings.add(
+        'unresolved:attribute-value',
+        `An <ending> is numbered "${written}", which is not a list of times counted from 1.`,
+        context,
+        ending,
+        'number',
+      )
+      return []
+    }
+    if (!Number.isSafeInteger(Number(trimmed))) {
       warnings.add(
         'unsupported:element',
-        `An <ending> is numbered "${written}", which is not a list of times counted from 1.`,
+        `An <ending> is numbered "${written}", a time too large to read exactly.`,
         context,
         ending,
       )

@@ -1919,12 +1919,7 @@ function tieEdges(
     if (type === 'stop') stops.push(tie)
     else if (type === 'start') starts.push(tie)
     else if (type !== 'let-ring') {
-      warnings.add(
-        'unsupported:element',
-        `A <tie> of type "${type ?? ''}" is not converted yet.`,
-        context,
-        tie,
-      )
+      warnings.addUndefinedAttribute(tie, 'type', 'and is not carried over.', context)
     }
   }
 
@@ -1945,12 +1940,7 @@ function tieEdges(
       } else if (type === 'stop') stops.push(tied)
       else if (type === 'start') starts.push(tied)
       else if (type !== 'let-ring') {
-        warnings.add(
-          'unsupported:element',
-          `A <tied> of type "${type ?? ''}" is not converted yet.`,
-          context,
-          tied,
-        )
+        warnings.addUndefinedAttribute(tied, 'type', 'and is not carried over.', context)
       }
     }
   }
@@ -2037,12 +2027,7 @@ function readSlurs(
       // "continue" marks a note partway along a slur. MNX states only where a
       // slur begins and ends, so there is nothing for it to carry, and
       // nothing is lost by passing over it.
-      warnings.add(
-        'unsupported:element',
-        `A <slur> of type "${type ?? ''}" is not converted yet.`,
-        context,
-        slur,
-      )
+      warnings.addUndefinedAttribute(slur, 'type', 'and is not carried over.', context)
     }
   }
 }
