@@ -509,12 +509,11 @@ function sameRepeatEnd(a: RepeatEnd, b: RepeatEnd): boolean {
 }
 
 function sameEnding(a: Ending, b: Ending): boolean {
-  return (
-    a.duration === b.duration &&
-    a.open === b.open &&
-    a.numbers.length === b.numbers.length &&
-    a.numbers.every((number, index) => number === b.numbers[index])
-  )
+  return a.duration === b.duration && a.open === b.open && sameNumbers(a.numbers, b.numbers)
+}
+
+function sameNumbers(a: readonly number[], b: readonly number[]): boolean {
+  return a.length === b.length && a.every((number, index) => number === b[index])
 }
 
 function sameFermata(a: Fermata, b: Fermata): boolean {
@@ -1079,6 +1078,46 @@ function readMeasure(
               'one converted.',
             context,
             found,
+          )
+        }
+        // The same holds for each mark: a second statement at the same edge
+        // that differs is a second claim about the one mark MNX states there.
+        const reportSecond = (name: string, second: XmlElement | undefined): void => {
+          if (second === undefined) return
+          warnings.add(
+            'inconsistent:barline',
+            `Two barlines at this edge of the measure state different ${name}s. The ` +
+              'first is the one converted.',
+            context,
+            second,
+          )
+        }
+        if (repeatEnd && reading.repeatEnd) {
+          reportSecond(
+            'repeat',
+            sameRepeatEnd(repeatEnd.value, reading.repeatEnd.value)
+              ? undefined
+              : reading.repeatEnd.element,
+          )
+        }
+        if (endingStart && reading.endingStart) {
+          reportSecond(
+            'ending start',
+            sameNumbers(endingStart.numbers, reading.endingStart.numbers)
+              ? undefined
+              : reading.endingStart.element,
+          )
+        }
+        if (endingStop && reading.endingStop) {
+          reportSecond(
+            'ending stop',
+            endingStop.open === reading.endingStop.open ? undefined : reading.endingStop.element,
+          )
+        }
+        if (fermata && reading.fermata) {
+          reportSecond(
+            'fermata',
+            sameFermata(fermata.value, reading.fermata.value) ? undefined : reading.fermata.element,
           )
         }
         barline ??= reading.barline
