@@ -658,6 +658,22 @@ describe('a part stating more than one transposition', () => {
     ])
   })
 
+  test('reports a change of instrument once, not where a later measure restates it', () => {
+    const inF = '<transpose><diatonic>-4</diatonic><chromatic>-7</chromatic></transpose>'
+    const { warnings } = read(
+      '<score-partwise><part id="P1">' +
+        `<measure number="1"><attributes><divisions>4</divisions>${IN_B_FLAT}</attributes>` +
+        `${NOTE}</measure>` +
+        `<measure number="2"><attributes>${inF}</attributes>${NOTE}</measure>` +
+        `<measure number="3"><attributes>${inF}</attributes>${NOTE}</measure>` +
+        '</part></score-partwise>',
+    )
+
+    expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
+      ['unrepresentable:transposition-change', 2],
+    ])
+  })
+
   // A restatement of the same interval is not a change.
   test('says nothing where a later measure restates the same interval', () => {
     const warnings = new WarningCollector()

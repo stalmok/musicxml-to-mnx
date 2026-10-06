@@ -611,13 +611,13 @@ function readTransposition(
   })
   for (const { element: found } of stated) check.stated.add(found)
 
+  const before = state.transposition
   const inForce = staffTranspositions(state).find((one) => one !== undefined)
   state.transposition = inForce?.value
   if (inForce === undefined) return
   const first = (state.statedTransposition ??= inForce.value)
-  if (check.stated.has(inForce.element) && !sameTransposition(first, inForce.value)) {
-    check.change ??= inForce.element
-  }
+  const changed = before !== undefined && !sameTransposition(before, inForce.value)
+  if (changed && !sameTransposition(first, inForce.value)) check.change ??= inForce.element
 }
 
 /** What each staff of the part was last given, by staff number from one. */
