@@ -3849,6 +3849,24 @@ describe('a part id the output cannot carry as it stands', () => {
     ])
   })
 
+  // A rename is reported where the part is, ahead of what the part holds.
+  test('reports the renames in document order', () => {
+    const { warnings } = convertValid(
+      score(
+        '<part-list><score-part id="Süß"/></part-list>\n' +
+          `<part id="Süß"><measure number="1">${NOTE}<foo/></measure></part>\n` +
+          `<part id="Süß"><measure number="1">${NOTE}<foo/></measure></part>`,
+      ),
+    )
+
+    expect(warnings.map((w) => [w.code, w.element, w.context.line])).toEqual([
+      ['unrepresentable:part-id', 'part', 2],
+      ['unsupported:element', 'foo', 2],
+      ['inconsistent:part-id', 'part', 3],
+      ['unsupported:element', 'foo', 3],
+    ])
+  })
+
   test('renames each later part sharing an id, and an invalid id once per part', () => {
     const { mnx, warnings } = convertValid(
       score(

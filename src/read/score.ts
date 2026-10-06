@@ -29,7 +29,7 @@ import type {
   Tempo,
   TimeSignature,
 } from '../model/score.js'
-import type { ReportContext, WarningCollector } from './collector.js'
+import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
 import {
   attribute,
@@ -75,6 +75,8 @@ interface PartReading {
   part: Part
   /** The <part>, for the warnings about it reported once every part is read. */
   element: XmlElement
+  /** Where a warning about the part's id goes, ahead of what the part holds. */
+  place: WarningPlace
   /** What this part declared for each of its measures, by position. */
   globals: readonly ReadGlobalMeasure[]
   /** The <sound tempo> statements of each of its measures, by position. */
@@ -270,11 +272,11 @@ function renamePartIds(
   warnings: WarningCollector,
 ): Score {
   const seen = new Set<string>()
-  const failing = readings.flatMap(({ part, element }, index) => {
+  const failing = readings.flatMap(({ part, element, place }, index) => {
     const shared = seen.has(part.id)
     seen.add(part.id)
     const invalid = !MNX_ID_PATTERN.test(part.id) || GENERATED_ID_PATTERN.test(part.id)
-    return shared || invalid ? [{ part, element, index, shared }] : []
+    return shared || invalid ? [{ part, element, place, index, shared }] : []
   })
 
   const taken: ReadonlySet<string> = seen
@@ -282,7 +284,7 @@ function renamePartIds(
   const firstRenames = new Map<string, string>()
   const sharing: string[] = []
   let counter = 0
-  for (const { part, element, index, shared } of failing) {
+  for (const { part, element, place, index, shared } of failing) {
     let generated: string
     do {
       counter += 1
@@ -291,7 +293,8 @@ function renamePartIds(
     byPosition.set(index, generated)
     if (shared) {
       sharing.push(generated)
-      warnings.add(
+      warnings.addAt(
+        place,
         'inconsistent:part-id',
         `A part before this one has the id "${part.id}" too, and MNX names each part ` +
           `once. This part is renamed ${generated}, and takes the part list's details ` +
@@ -302,7 +305,8 @@ function renamePartIds(
       continue
     }
     firstRenames.set(part.id, generated)
-    warnings.add(
+    warnings.addAt(
+      place,
       'unrepresentable:part-id',
       MNX_ID_PATTERN.test(part.id)
         ? `The part id "${part.id}" is shaped like the ids the converter gives ` +
@@ -791,6 +795,7 @@ function readPart(
   // warning reported against it.
   const id = requireAttribute(element, 'id', path)
   const partPath: DocumentPath = [...path, `part ${id}`]
+  const place = warnings.reserve()
 
   if (partList.listed.size > 0 && !partList.listed.has(id)) {
     warnings.add(
@@ -836,6 +841,7 @@ function readPart(
       measures: readings.map((reading) => reading.measure),
     },
     element,
+    place,
     globals: readings.map((reading) => reading.global),
     soundTempos: readings.map((reading) => reading.soundTempos),
   }
