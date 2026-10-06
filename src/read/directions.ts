@@ -339,8 +339,8 @@ export function readDirection(
   if (placement === 'below' && reading.segnos.length + reading.tempos.length > 0) {
     warnings.add(
       'unrepresentable:attribute',
-      'This <direction> is placed below the staff, and MNX states no side for a segno ' +
-        'or a tempo. It is converted without its placement.',
+      'This <direction> places a segno or a tempo below the staff, and MNX states no ' +
+        'side for either. The segno or tempo is converted without its placement.',
       context,
       element.element,
       'placement',

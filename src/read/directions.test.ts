@@ -111,8 +111,8 @@ describe('dynamics', () => {
       {
         code: 'unrepresentable:attribute',
         message:
-          'This <direction> is placed below the staff, and MNX states no side for a ' +
-          'segno or a tempo. It is converted without its placement.',
+          'This <direction> places a segno or a tempo below the staff, and MNX states no ' +
+          'side for either. The segno or tempo is converted without its placement.',
         element: 'direction',
         attribute: 'placement',
         context: { part: 'P1', measure: 1, line: 1 },
