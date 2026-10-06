@@ -708,7 +708,8 @@
     "words": 4,
     "direction@system": 1,
     "sound@segno": 6,
-    "sound@dynamics": 10
+    "sound@dynamics": 10,
+    "direction@placement": 4
   },
   "beethoven-2-feuerfarb": {
     "midi-device": 2,
@@ -1111,7 +1112,8 @@
     "dashes": 10,
     "sound@tempo": 1,
     "pedal": 34,
-    "note@print-object": 4
+    "note@print-object": 4,
+    "direction@placement": 1
   },
   "bizet-15-apres-l-hiver": {
     "midi-device": 2,
@@ -3693,7 +3695,8 @@
     "sound@tempo": 1,
     "direction@system": 1,
     "measure-layout": 8,
-    "dot@placement": 2
+    "dot@placement": 2,
+    "direction@placement": 1
   },
   "duchambge-ronde-des-pauvres": {
     "midi-device": 2,
@@ -5019,7 +5022,8 @@
     "staff-details": 2,
     "note": 12,
     "note@print-object": 5,
-    "ending@print-object": 1
+    "ending@print-object": 1,
+    "direction@placement": 1
   },
   "grandval-chanson-de-barberine": {
     "midi-device": 2,
@@ -5695,7 +5699,8 @@
     "extend": 5,
     "cue": 7,
     "pedal": 106,
-    "dashes": 4
+    "dashes": 4,
+    "direction@placement": 1
   },
   "hardelot-la-chanson-de-ma-mie": {
     "midi-device": 2,
@@ -7524,7 +7529,8 @@
     "extend": 22,
     "dashes": 6,
     "notehead": 3,
-    "note@print-object": 8
+    "note@print-object": 8,
+    "direction@placement": 1
   },
   "mackenzie-4-spring-is-not-dead": {
     "midi-device": 2,
@@ -8720,7 +8726,8 @@
     "sound@tempo": 1,
     "dot@placement": 2,
     "other-direction": 1,
-    "note@print-object": 10
+    "note@print-object": 10,
+    "direction@placement": 3
   },
   "parratt-11-a-thousand-years-by-sea-and-land": {
     "midi-device": 5,

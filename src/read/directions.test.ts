@@ -94,6 +94,72 @@ describe('dynamics', () => {
     expect(measure?.dynamics[0]?.placement).toBe('above')
   })
 
+  // MNX states no side for a segno or a tempo, which are drawn above the
+  // staff. One placed below is drawn on a side the output cannot state.
+  test.each([
+    ['segno', '<segno/>'],
+    ['tempo', '<metronome><beat-unit>quarter</beat-unit><per-minute>60</per-minute></metronome>'],
+  ])('reports a %s placed below the staff', (_, mark) => {
+    const { warnings } = read(
+      inMeasure(
+        `<direction placement="below"><direction-type>${mark}</direction-type></direction>` +
+          note('C'),
+      ),
+    )
+
+    expect(warnings).toEqual([
+      {
+        code: 'unrepresentable:attribute',
+        message:
+          'This <direction> is placed below the staff, and MNX states no side for a ' +
+          'segno or a tempo. It is converted without its placement.',
+        element: 'direction',
+        attribute: 'placement',
+        context: { part: 'P1', measure: 1, line: 1 },
+      },
+    ])
+  })
+
+  test('says nothing of a segno placed above the staff', () => {
+    const { warnings } = read(
+      inMeasure(
+        '<direction placement="above"><direction-type><segno/></direction-type></direction>' +
+          note('C'),
+      ),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  test.each([
+    ['dynamic', '<dynamics><p/></dynamics>'],
+    ['hairpin', '<wedge type="crescendo"/>'],
+    ['octave shift', '<octave-shift type="down" size="8"/>'],
+  ])('says nothing of a placement a %s beside the segno takes', (_, mark) => {
+    const { warnings } = read(
+      inMeasure(
+        `<direction placement="below"><direction-type><segno/>${mark}</direction-type>` +
+          '</direction>' +
+          note('C'),
+      ),
+    )
+
+    expect(warnings.filter((w) => w.attribute === 'placement')).toEqual([])
+  })
+
+  // The warning about the mark covers the side it is drawn on.
+  test('reports only the mark where the direction converts nothing', () => {
+    const { warnings } = read(
+      inMeasure(
+        '<direction placement="below"><direction-type><rehearsal>A</rehearsal>' +
+          '</direction-type></direction>' +
+          note('C'),
+      ),
+    )
+
+    expect(warnings.map((w) => [w.element, w.attribute])).toEqual([['rehearsal', undefined]])
+  })
+
   test('writes the dynamic side onto schema-valid MNX', () => {
     const { mnx } = convertValid(
       inMeasure(
