@@ -556,7 +556,8 @@ function readTimeDisplay(
  * given to it, and a staff given none sounds as written. Staves that disagree
  * are reported once the measure is read; see settleTranspositions. A part
  * that changes instrument partway keeps the first and reports the change.
- * The pitches follow the transposition in force.
+ * The pitches follow the first staff's transposition, or the next staff's
+ * where the first is given none.
  */
 function readTransposition(
   element: ElementReader,

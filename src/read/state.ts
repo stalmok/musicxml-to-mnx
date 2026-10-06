@@ -189,8 +189,8 @@ export interface PartState {
     staves: Map<number, Stated<Transposition>>
   }
   /**
-   * Where the report about staves transposed differently goes, once the
-   * measure that states a <transpose> is read to its end.
+   * Where the reports about a measure's <transpose> statements go, once the
+   * measure is read to its end.
    */
   transpositionCheck:
     | {
