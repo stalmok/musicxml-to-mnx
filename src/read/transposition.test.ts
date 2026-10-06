@@ -441,8 +441,7 @@ describe('a part stating more than one transposition', () => {
       [
         'unrepresentable:per-staff-transposition',
         'The staves of this part are transposed by different intervals, and MNX states one ' +
-          "for the part. The first staff's is the one converted, or the next staff's where " +
-          'the first is given none.',
+          'for the part. The notes follow the first staff that is given one.',
       ],
     ])
   })

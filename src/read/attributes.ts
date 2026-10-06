@@ -556,8 +556,7 @@ function readTimeDisplay(
  * given to it, and a staff given none sounds as written. Staves that disagree
  * are reported once the measure is read; see settleTranspositions. A part
  * that changes instrument partway keeps the first and reports the change.
- * The pitches follow the first staff's transposition, or the next staff's
- * where the first is given none.
+ * The pitches follow the first staff that is given a transposition.
  */
 function readTransposition(
   element: ElementReader,
@@ -651,8 +650,7 @@ export function settleTranspositions(state: PartState, warnings: WarningCollecto
       check.place,
       'unrepresentable:per-staff-transposition',
       'The staves of this part are transposed by different intervals, and MNX states one ' +
-        "for the part. The first staff's is the one converted, or the next staff's where " +
-        'the first is given none.',
+        'for the part. The notes follow the first staff that is given one.',
       check.context,
       named !== undefined && check.stated.has(named) ? named : check.element,
     )
