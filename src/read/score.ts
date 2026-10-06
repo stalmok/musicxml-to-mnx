@@ -1228,8 +1228,8 @@ function readMeasure(
       anchor: peekAttribute(element, 'implicit') === 'yes' ? 'end' : 'start',
       signature: measureLength(state) ?? (scoreTime && fraction(scoreTime.count, scoreTime.unit)),
     },
-    (lastEventBefore, graceNotesAt, lastEvents) => {
-      state.spanners.settleSpanCovers(index, lastEventBefore, graceNotesAt, lastEvents)
+    (length, lastEventBefore, graceNotesAt, lastEvents) => {
+      state.spanners.settleSpanCovers(index, length, lastEventBefore, graceNotesAt, lastEvents)
     },
     state.kit,
     warnings,

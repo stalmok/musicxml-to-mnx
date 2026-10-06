@@ -153,12 +153,15 @@ function sourceHairpins(root: XmlElement): string[] {
         order: number
       }
       const ends: End[] = []
+      // The furthest point each measure reaches, which is where its barline is.
+      const lengths: number[] = []
       let divisions = 1
 
       part.children
         .filter((c) => c.name === 'measure')
         .forEach((measure, measureIndex) => {
           let position = 0
+          let furthest = 0
 
           for (const item of measure.children) {
             const durationOf = () =>
@@ -176,6 +179,7 @@ function sourceHairpins(root: XmlElement): string[] {
                 item.children.some((c) => c.name === 'chord') ||
                 item.children.some((c) => c.name === 'grace')
               if (!held) position += durationOf()
+              furthest = Math.max(furthest, position)
             } else if (item.name === 'direction') {
               const wedge = item.children
                 .filter((c) => c.name === 'direction-type')
@@ -203,6 +207,7 @@ function sourceHairpins(root: XmlElement): string[] {
               })
             }
           }
+          lengths[measureIndex] = Math.max(furthest, position) / (divisions * 4)
         })
 
       const inTime = [...ends].sort(
@@ -216,20 +221,43 @@ function sourceHairpins(root: XmlElement): string[] {
       // starts in the score, which is the order of the converted list.
       const open = new Map<string, End[]>()
       const closed = new Map<number, End>()
-      for (const end of inTime) {
+      // A stop the source writes just before a start of its number on its
+      // staff, at the same instant, is a hairpin of no length. The instant is
+      // the same point, or the barline the stop sits on and the first beat
+      // after it. Such a pair converts to nothing.
+      const noLength = new Set<End>()
+      const atInstant = (start: End, stop: End) =>
+        start.kind === 'start' &&
+        start.number === stop.number &&
+        start.staff === stop.staff &&
+        (start.measure === stop.measure
+          ? start.position === stop.position
+          : start.measure === stop.measure + 1 &&
+            start.position === 0 &&
+            stop.position === lengths[stop.measure])
+      inTime.forEach((end, index) => {
         if (end.kind === 'start') {
-          open.set(end.number, [...(open.get(end.number) ?? []), end])
-          continue
+          if (!noLength.has(end)) open.set(end.number, [...(open.get(end.number) ?? []), end])
+          return
         }
-        // The last one opened on the stop's own staff, or else the last one
-        // opened. A source that names the staff on one end only means that
-        // end's staff.
+        // The last one opened on the stop's own staff, or else a start at the
+        // stop's instant, or else the last one opened. A source that names the
+        // staff on one end only means that end's staff.
         const waiting = open.get(end.number) ?? []
         const sameStaff = waiting.map((one) => one.staff).lastIndexOf(end.staff)
+        if (sameStaff < 0) {
+          const beside = inTime
+            .slice(index + 1)
+            .find((later) => !noLength.has(later) && atInstant(later, end))
+          if (beside) {
+            noLength.add(beside)
+            return
+          }
+        }
         const started = waiting.splice(sameStaff < 0 ? waiting.length - 1 : sameStaff, 1)[0]
         open.set(end.number, waiting)
         if (started) closed.set(started.order, end)
-      }
+      })
 
       for (const end of ends) {
         if (end.kind !== 'start') continue

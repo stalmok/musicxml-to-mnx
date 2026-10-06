@@ -1035,6 +1035,7 @@ export class MeasureBuilder {
   finish(
     opening: Omit<MeasureExtent, 'length'>,
     settleSpanCovers: (
+      length: Fraction,
       lastEventBefore: LastEventBefore,
       graceNotesAt: GraceNotesAt,
       lastEvents: LastEvents,
@@ -1064,6 +1065,7 @@ export class MeasureBuilder {
     this.#settleCandidateRests()
 
     settleSpanCovers(
+      length,
       (position, staff) => this.#lastEventBefore(position, staff),
       (position, staff) => this.graceNotesAt(position, staff),
       () => this.#lastEvents(),

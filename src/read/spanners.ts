@@ -8,7 +8,7 @@
 // The open ends are held until their partner is read, often several measures
 // later, so this is kept per part.
 
-import { compareFractions } from '../fraction.js'
+import { compareFractions, isZero } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type {
   CurveSide,
@@ -162,6 +162,11 @@ interface EndPlace {
    */
   graceWritten?: number
   /**
+   * Whether it is written at the end of its measure, the instant the next
+   * measure begins. Settled once the measure is whole, and only for a hairpin.
+   */
+  atBarline?: boolean
+  /**
    * The voice it is written in, where the thing has one. A stop takes the
    * open start of its own voice before any other, because exporters number a
    * slur within the voice they write it in and reuse the number in every
@@ -253,27 +258,47 @@ export type SamePoint = 'stop-first' | 'as-written'
  * and where that has none open, the most recently opened of any. The first
  * rule keeps two voices or two hands, each holding a span numbered 1, from
  * closing into each other. The fallback lets a span one voice opens close in
- * another. lastOpenedIn below states which rule applies to what.
+ * another. openedIn below states which rule applies to what.
  *
  * A stop whose covered point falls before its start is reported as a
  * backwards-stop, not joined.
+ *
+ * Where `noLength` is given, a stop with no start open in its own voice and
+ * staff first takes a start of its number, voice and staff at the same
+ * instant after it, and the two are handed to `noLength`. An exporter writes
+ * a span that starts and stops at one point with its stop first. Paired any
+ * other way, the stop closes another staff's span, and its start takes some
+ * later stop of its number.
  */
 export function pairSpans<T, S>(
   ends: readonly (SpanEnd<T, S> | DroppedStopEnd)[],
   join: (payload: T, stop: StopEnd<S>) => void,
   report: (reason: 'orphan-stop' | 'unclosed-start' | 'backwards-stop', end: SpanEnd<T, S>) => void,
   atSamePoint: SamePoint = 'stop-first',
+  noLength?: (start: StartEnd<T> | DroppedStartEnd, stop: StopEnd<S>) => void,
 ): void {
   const open = new Map<string, (StartEnd<T> | DroppedStartEnd)[]>()
+  const ordered = inTimeOrder(ends, atSamePoint)
+  const noLengthStarts = new Set<SpanEnd<T, S> | DroppedStopEnd>()
 
-  for (const end of inTimeOrder(ends, atSamePoint)) {
+  for (const [index, end] of ordered.entries()) {
     if (end.kind === 'start') {
-      open.set(end.number, [...(open.get(end.number) ?? []), end])
+      if (!noLengthStarts.has(end)) open.set(end.number, [...(open.get(end.number) ?? []), end])
       continue
     }
 
     const waiting = open.get(end.number) ?? []
-    const started = lastOpenedIn(waiting, end)
+    const own = findLastOpened(waiting, (start) => openedIn(start, end))
+    if (!own && noLength && !end.dropped) {
+      const start = startAtInstant(ordered, index, end, noLengthStarts)
+      if (start) {
+        noLengthStarts.add(start)
+        noLength(start, end)
+        continue
+      }
+    }
+
+    const started = own ?? waiting[waiting.length - 1]
     if (!started) {
       if (!end.dropped) report('orphan-stop', end)
       continue
@@ -466,20 +491,40 @@ function findLastOpened<E>(waiting: readonly E[], keeps: (start: E) => boolean):
 }
 
 /**
- * The start a stop closes: the last one opened where the stop was written, or
- * failing that the last one opened.
+ * The first start after `index` that falls at the instant `stop` marks and
+ * is not already taken.
+ */
+function startAtInstant<T, S>(
+  ordered: readonly (SpanEnd<T, S> | DroppedStopEnd)[],
+  index: number,
+  stop: EndPlace,
+  taken: ReadonlySet<SpanEnd<T, S> | DroppedStopEnd>,
+): StartEnd<T> | DroppedStartEnd | undefined {
+  for (const later of ordered.slice(index + 1)) {
+    if (later.kind === 'start' && !taken.has(later) && startsWhereStops(later, stop)) return later
+  }
+  return undefined
+}
+
+/**
+ * Whether two ends are written in one voice and one staff.
  *
  * "Where" is the voice for a tie or a slur, and the staff for a hairpin or an
- * octave shift, each of which states the one the other leaves unset. The
- * fallback pairs a source that names the staff on one end only.
+ * octave shift, each of which states the one the other leaves unset.
  */
-function lastOpenedIn<E extends EndPlace>(waiting: readonly E[], end: EndPlace): E | undefined {
-  return (
-    findLastOpened(
-      waiting,
-      (start) => (start.voice ?? '') === (end.voice ?? '') && start.staff === end.staff,
-    ) ?? waiting[waiting.length - 1]
-  )
+function openedIn(start: EndPlace, end: EndPlace): boolean {
+  return (start.voice ?? '') === (end.voice ?? '') && start.staff === end.staff
+}
+
+/**
+ * Whether a start falls at the instant a stop of its number, voice and staff
+ * marks: the same point, or the first beat after the barline the stop is
+ * written at.
+ */
+function startsWhereStops(start: EndPlace, stop: EndPlace): boolean {
+  if (start.number !== stop.number || !openedIn(start, stop)) return false
+  if (start.measure === stop.measure) return compareFractions(start.position, stop.position) === 0
+  return stop.atBarline === true && start.measure === stop.measure + 1 && isZero(start.position)
 }
 
 /** The wording a hairpin carries, quoted for a report, or '' where it has none. */
@@ -990,6 +1035,18 @@ export class SpannerResolver {
             : `A hairpin starts where nothing ends it, and is not carried over, nor its wording ${words}.`
         warnings.add('unclosed:spanner', message, end.where.context, end.where.element)
       },
+      'stop-first',
+      (start) => {
+        if (start.dropped) return
+        const words = wordingOf(start.payload)
+        warnings.add(
+          'unclosed:spanner',
+          'A hairpin stops at the point where it starts, and is not carried over' +
+            (words === '' ? '.' : `, nor its wording ${words}.`),
+          start.where.context,
+          start.where.element,
+        )
+      },
     )
 
     for (const end of this.#wedgeEnds) {
@@ -1078,9 +1135,13 @@ export class SpannerResolver {
    * hairpin, and for an octave shift moves back to the last event the cursor
    * had passed, on the staff the stop names. Where the stop is written before
    * any event of its measure, that event is in a measure before.
+   *
+   * A hairpin stop also learns whether it sits at the barline, which is the
+   * measure's `length` from its start.
    */
   settleSpanCovers(
     measure: number,
+    length: Fraction,
     lastEventBefore: LastEventBefore,
     graceNotesAt: GraceNotesAt,
     lastEvents: LastEvents,
@@ -1101,6 +1162,7 @@ export class SpannerResolver {
 
     for (const end of stoppingHere(this.#wedgeEnds)) {
       overGraceNotes(end)
+      end.atBarline = compareFractions(end.position, length) === 0
     }
 
     // Only an octave shift moves back off the point its stop was written at.

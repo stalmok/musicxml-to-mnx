@@ -2361,6 +2361,150 @@ describe('hairpins', () => {
     expect(warnings).toEqual([])
   })
 
+  // An exporter writes a hairpin that starts and stops at one point with its
+  // stop first. Left as an orphan, the stop frees the start to take a later
+  // stop of its number, here the other hand's, two measures on.
+  test('pairs a stop written at the barline with a start of its number just after', () => {
+    const atBarline = (wedge: string) =>
+      `<forward><duration>16</duration></forward>${wedge}<backup><duration>16</duration></backup>`
+    const atHalf = (wedge: string) =>
+      `<forward><duration>8</duration></forward>${wedge}<backup><duration>8</duration></backup>`
+    const { dynamics, warnings } = readTwoStaves(
+      atBarline(staffWedge('stop', '1')),
+      staffWedge('crescendo', '1') + atHalf(staffWedge('crescendo', '1')),
+      staffWedge('stop', '1'),
+      staffWedge('stop', '2'),
+    )
+
+    expect(dynamics.flat()).toEqual([
+      expect.objectContaining({
+        position: { num: 1, den: 2 },
+        staff: 1,
+        end: { measure: 2, position: { num: 0, den: 1 } },
+      }),
+    ])
+    expect(dynamics[1]?.[0]).not.toHaveProperty('staffEnd')
+    expect(warnings.map((w) => [w.code, w.context.measure, w.message])).toEqual([
+      [
+        'unclosed:spanner',
+        2,
+        'A hairpin stops at the point where it starts, and is not carried over.',
+      ],
+      ['unclosed:spanner', 4, 'A hairpin stops where none had started, and is not carried over.'],
+    ])
+  })
+
+  // The stop has no hairpin open on its own staff, so it could close the
+  // other hand's. The start written beside it is the one it belongs to.
+  test('pairs a stop with a start beside it before reaching to another staff', () => {
+    const at = (divisions: number, wedge: string) =>
+      `<forward><duration>${String(divisions)}</duration></forward>${wedge}` +
+      `<backup><duration>${String(divisions)}</duration></backup>`
+    const { dynamics, warnings } = readTwoStaves(
+      staffWedge('crescendo', '1') +
+        at(8, staffWedge('stop', '2') + staffWedge('crescendo', '2')) +
+        at(12, staffWedge('stop', '1')),
+    )
+
+    expect(dynamics.flat()).toEqual([
+      expect.objectContaining({ staff: 1, end: { measure: 0, position: { num: 3, den: 4 } } }),
+    ])
+    expect(dynamics[0]?.[0]).not.toHaveProperty('staffEnd')
+    expect(warnings.map((w) => w.message)).toEqual([
+      'A hairpin stops at the point where it starts, and is not carried over.',
+    ])
+  })
+
+  test('pairs a stop with a start of its number at the same point in one measure', () => {
+    const { dynamics, warnings } = readMeasures(
+      wedge('crescendo') + NOTE + NOTE + wedge('stop') + wedge('stop') + wedge('diminuendo') + NOTE,
+      wedge('crescendo') + NOTE + wedge('stop'),
+      NOTE + wedge('stop'),
+    )
+
+    expect(hairpins(dynamics[0]).map((d) => [d.wedge, d.end])).toEqual([
+      ['increasing', { measure: 0, position: { num: 1, den: 2 } }],
+    ])
+    expect(hairpins(dynamics[1]).map((d) => [d.wedge, d.end])).toEqual([
+      ['increasing', { measure: 1, position: { num: 1, den: 4 } }],
+    ])
+    expect(warnings.map((w) => [w.context.measure, w.message])).toEqual([
+      [1, 'A hairpin stops at the point where it starts, and is not carried over.'],
+      [3, 'A hairpin stops where none had started, and is not carried over.'],
+    ])
+  })
+
+  // Each is a stop and a start at two different instants, or of two numbers,
+  // so the start is a hairpin of its own and the stop closes nothing.
+  test.each([
+    ['of another number', [NOTE + wedge('stop', '2') + wedge('crescendo') + NOTE + wedge('stop')]],
+    [
+      'later in the measure',
+      [NOTE + wedge('stop') + NOTE + wedge('crescendo') + NOTE + wedge('stop')],
+    ],
+    [
+      'after a stop short of the barline',
+      [NOTE + wedge('stop') + NOTE, wedge('crescendo') + NOTE + wedge('stop')],
+    ],
+    [
+      'past the first beat after the barline',
+      [NOTE + wedge('stop'), NOTE + wedge('crescendo') + NOTE + wedge('stop')],
+    ],
+    [
+      'a measure after the next',
+      [NOTE + wedge('stop'), NOTE, wedge('crescendo') + NOTE + wedge('stop')],
+    ],
+  ])('keeps a start %s apart from a stop that closes nothing', (_where, bodies) => {
+    const { dynamics, warnings } = readMeasures(...bodies)
+
+    expect(dynamics.flat()).toEqual([expect.objectContaining({ wedge: 'increasing' })])
+    expect(warnings.map((w) => w.message)).toEqual([
+      'A hairpin stops where none had started, and is not carried over.',
+    ])
+  })
+
+  test('names the wording that goes with a hairpin of no length', () => {
+    const { dynamics, warnings } = readMeasures(
+      NOTE +
+        wedge('stop') +
+        '<direction><direction-type>' +
+        '<dynamics><other-dynamics>cresc.</other-dynamics></dynamics>' +
+        '<wedge type="crescendo" number="1"/>' +
+        '</direction-type></direction>' +
+        NOTE,
+    )
+
+    expect(dynamics.flat()).toEqual([])
+    expect(warnings.map((w) => w.message)).toEqual([
+      'A hairpin stops at the point where it starts, and is not carried over, ' +
+        'nor its wording "cresc.".',
+    ])
+  })
+
+  // Stopping one hairpin and starting the next at one point is the usual way
+  // to write a crescendo turning into a diminuendo.
+  test('opens a hairpin where a stop closes the one before it', () => {
+    const { dynamics, warnings } = readMeasures(
+      wedge('crescendo') + NOTE + wedge('stop') + wedge('diminuendo') + NOTE + wedge('stop'),
+    )
+
+    expect(hairpins(dynamics[0]).map((d) => d.wedge)).toEqual(['increasing', 'decreasing'])
+    expect(warnings).toEqual([])
+  })
+
+  // The other hand's stop is no stop of this hairpin.
+  test('leaves a stop on another staff an orphan where a hairpin starts', () => {
+    const { dynamics, warnings } = readTwoStaves(
+      staffWedge('stop', '2') + staffWedge('crescendo', '1'),
+      staffWedge('stop', '1'),
+    )
+
+    expect(dynamics[0]?.[0]).toMatchObject({ staff: 1, end: { measure: 1 } })
+    expect(warnings.map((w) => w.message)).toEqual([
+      'A hairpin stops where none had started, and is not carried over.',
+    ])
+  })
+
   // A hairpin naming no staff applies to every staff of the part.
   test('ends a hairpin naming no staff on none', () => {
     const { dynamics, warnings } = readTwoStaves(
