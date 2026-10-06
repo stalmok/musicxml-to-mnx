@@ -544,17 +544,42 @@ describe('where an octave shift runs', () => {
     expect(warnings[0]?.message).toContain('end before it starts')
   })
 
+  // MusicXML's size is a whole number above zero. MNX shifts by one to three
+  // octaves, so a size of 29, four octaves, or 10, no whole number of
+  // octaves, is a limit of the format.
   test.each(['up', 'down'])('reports a shift %s of a size MNX has no value for', (type) => {
-    const { ottavas, warnings } = read(shift(type, '9') + NOTE)
+    const { ottavas, warnings } = read(shift(type, '29') + NOTE)
 
     expect(ottavas[0]).toEqual([])
-    expect(warnings.map((w) => [w.element, w.code, w.message])).toEqual([
+    expect(warnings.map((w) => [w.element, w.code, w.attribute, w.message])).toEqual([
       [
         'octave-shift',
-        'unsupported:element',
-        'An <octave-shift> of size "9" is not converted yet, so the whole shift is not carried over.',
+        'unrepresentable:octave-shift-size',
+        'size',
+        'An <octave-shift> of size 29 cannot be expressed in MNX, which shifts by one to ' +
+          'three octaves, so the whole shift is not carried over.',
       ],
     ])
+  })
+
+  test.each([
+    ['10', 'unrepresentable:octave-shift-size'],
+    ['1', 'unrepresentable:octave-shift-size'],
+    ['0', 'unresolved:attribute-value'],
+    ['-8', 'unresolved:attribute-value'],
+    ['eight', 'unresolved:attribute-value'],
+  ])('reports a shift of size "%s" as %s', (size, code) => {
+    const { ottavas, warnings } = read(shift('down', size) + NOTE)
+
+    expect(ottavas[0]).toEqual([])
+    expect(warnings.map((w) => [w.code, w.attribute])).toEqual([[code, 'size']])
+  })
+
+  test.each([' 15 ', '015', '+15'])('reads a shift of size "%s" as two octaves', (size) => {
+    const { ottavas, warnings } = read(shift('down', size) + NOTE + shift('stop', size))
+
+    expect(ottavas[0]?.map((o) => o.value)).toEqual([2])
+    expect(warnings).toEqual([])
   })
 
   // The source did start the shift, and the reader dropped it. Its stop is not

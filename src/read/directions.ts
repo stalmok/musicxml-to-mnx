@@ -35,7 +35,7 @@ import { readColor } from './color.js'
 import { divisionsInForce } from './divisions.js'
 import type { ElementReader, Stated } from './element.js'
 import { noteValueBaseOf } from './noteValues.js'
-import { parseDecimal, parseExactDecimal, readIntegerInRange } from './numbers.js'
+import { parseDecimal, parseExactDecimal, parseWholeNumber, readIntegerInRange } from './numbers.js'
 import type { GraceNotesAt } from './voices.js'
 import { reportLoneWording, writtenAt } from './spanners.js'
 import type { WedgeStop, Wording } from './spanners.js'
@@ -447,11 +447,49 @@ function pastTheEnd(position: Fraction, state: PartState): boolean {
 // octave, 15ma two. MNX states the other direction as a negative amount.
 // Both are written out, not negated at the call site, so each value stays in
 // the model's union.
-const SHIFT_SIZES = new Map<string, Record<'up' | 'down', OttavaAmount>>([
-  ['8', { down: 1, up: -1 }],
-  ['15', { down: 2, up: -2 }],
-  ['22', { down: 3, up: -3 }],
+const SHIFT_SIZES = new Map<number, Record<'up' | 'down', OttavaAmount>>([
+  [8, { down: 1, up: -1 }],
+  [15, { down: 2, up: -2 }],
+  [22, { down: 3, up: -3 }],
 ])
+
+/**
+ * The amount a starting shift moves the music, or nothing where the type or
+ * the size says none MNX can state, which is reported. MusicXML's size is a
+ * whole number above zero, 8 where none is written, and allows spaces around
+ * it. MNX shifts by one to three octaves.
+ */
+function startingShift(
+  found: XmlElement,
+  type: string | undefined,
+  size: string | undefined,
+  warnings: WarningCollector,
+  context: ReportContext,
+): OttavaAmount | undefined {
+  const ending = 'so the whole shift is not carried over.'
+  if (type !== 'up' && type !== 'down') {
+    warnings.addUndefinedAttribute(found, 'type', ending, context)
+    return undefined
+  }
+  const stated = size === undefined ? 8 : parseWholeNumber(size.trim())
+  if (stated === undefined || stated < 1) {
+    warnings.addUndefinedAttribute(found, 'size', ending, context)
+    return undefined
+  }
+  const shift = SHIFT_SIZES.get(stated)
+  if (!shift) {
+    warnings.add(
+      'unrepresentable:octave-shift-size',
+      `An <octave-shift> of size ${String(stated)} cannot be expressed in MNX, which ` +
+        `shifts by one to three octaves, ${ending}`,
+      context,
+      found,
+      'size',
+    )
+    return undefined
+  }
+  return shift[type]
+}
 
 /**
  * An octave shift: a stretch drawn an octave or more from where it sounds, to
@@ -480,7 +518,7 @@ function readOctaveShift(
   const number = attribute(found, 'number') ?? '1'
   // Read before the edges split, because a stop or continue restates the
   // start's size and the shift's octaves come from the start alone.
-  const size = attribute(found, 'size') ?? '8'
+  const size = attribute(found, 'size')
   // Recorded with the edge for the same reason a hairpin's is: the shift is
   // reported once the part is whole.
   const where = writtenAt(found, context, warnings)
@@ -496,24 +534,8 @@ function readOctaveShift(
   // "continue" marks a point partway along one, which MNX has no need of.
   if (type === 'continue') return
 
-  const shift = SHIFT_SIZES.get(size)
-  if ((type !== 'up' && type !== 'down') || !shift) {
-    if (type !== 'up' && type !== 'down') {
-      warnings.addUndefinedAttribute(
-        found,
-        'type',
-        'so the whole shift is not carried over.',
-        context,
-      )
-    } else {
-      warnings.add(
-        'unsupported:element',
-        `An <octave-shift> of size "${size}" is not converted yet, ` +
-          'so the whole shift is not carried over.',
-        context,
-        found,
-      )
-    }
+  const value = startingShift(found, type, size, warnings, context)
+  if (value === undefined) {
     // The stop the source wrote for this shift goes with it, unreported: only
     // "stop" and "continue" are handled above, so an unknown type can only be
     // meant as a start.
@@ -521,7 +543,6 @@ function readOctaveShift(
     return
   }
 
-  const value = shift[type]
   state.spanners.startOttava(
     { measure, position, value, staff, ...(placement !== undefined ? { placement } : {}) },
     number,

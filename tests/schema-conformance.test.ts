@@ -1089,6 +1089,9 @@ const FORMAT_LIMITS: Readonly<Record<FormatLimit, () => boolean>> = {
   'unrepresentable:time-symbol': () => valuesOf('time-signature-display').join() === 'common,cut',
   'unrepresentable:interchangeable-time': () =>
     !isList('measure-global', 'time') && propertiesOf('time').join() === 'count,display,unit',
+  'unrepresentable:octave-shift-size': () =>
+    refers('ottava', 'value', 'ottava-amount') &&
+    valuesOf('ottava-amount').join() === '-1,-2,-3,1,2,3',
   'unrepresentable:clef-octave': () =>
     Math.max(...valuesOf('ottava-amount-or-zero').map((value) => Math.abs(Number(value)))) === 3,
   'unrepresentable:clef-sign': () => valuesOf('clef-sign').join() === 'C,F,G,P',

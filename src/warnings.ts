@@ -127,6 +127,10 @@ export const WARNING_CODES = Object.freeze([
   // count and unit, so the primary meter is converted and the alternative is
   // not.
   'unrepresentable:interchangeable-time',
+  // An octave shift by a size MNX's ottava amount cannot state, such as 29,
+  // four octaves, or 10, which is not a whole number of octaves. MNX shifts
+  // by one to three octaves. The shift is not converted.
+  'unrepresentable:octave-shift-size',
   // A clef transposed by more than three octaves, which MNX's ottava amount
   // cannot state. The clef is converted at pitch, without the transposition.
   'unrepresentable:clef-octave',
