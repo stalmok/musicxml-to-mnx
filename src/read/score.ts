@@ -500,8 +500,9 @@ function mergeGlobalMeasures(
       ending: existing?.ending ?? measure.ending,
       fermata: existing?.fermata ?? measure.fermata,
       // A segno is the score's navigation mark, restated in each part like the
-      // barline, so the first part to state one wins.
-      segno: existing?.segno ?? measure.segno,
+      // barline, so the first part to state one wins. A later part may name a
+      // sign the first left unnamed, and the name is kept for the jumps.
+      segno: namedSegno(existing?.segno, measure.segno),
       fine: existing?.fine ?? measure.fine,
       jump: existing?.jump ?? measure.jump,
       multimeasureRest: existing?.multimeasureRest ?? measure.multimeasureRest,
@@ -518,14 +519,25 @@ function mergeGlobalMeasures(
 // The written sign: where it sits, its glyph and its color. The name is
 // compared too: it is never drawn, but it tells one sign from another when a
 // jump is matched to the one it returns to, so parts naming the sign
-// differently disagree about which sign the measure carries.
+// differently disagree about which sign the measure carries. A part naming
+// none says nothing about the name.
 function sameSegno(a: NamedSegno, b: NamedSegno): boolean {
   return (
     compareFractions(a.location, b.location) === 0 &&
     a.glyph === b.glyph &&
     a.color === b.color &&
-    a.name === b.name
+    (a.name === undefined || b.name === undefined || a.name === b.name)
   )
+}
+
+function namedSegno(
+  first: Stated<NamedSegno> | undefined,
+  later: Stated<NamedSegno> | undefined,
+): Stated<NamedSegno> | undefined {
+  if (first === undefined || later === undefined) return first ?? later
+  const { name } = later.value
+  if (name === undefined || !sameSegno(first.value, later.value)) return first
+  return { ...first, value: { ...first.value, name } }
 }
 
 // Content equality for the marks compared above, one per shape.

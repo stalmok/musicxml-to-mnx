@@ -3145,6 +3145,32 @@ describe('several parts', () => {
     expect(warnings[2]?.context.line).toBe(2)
   })
 
+  // A part leaving the sign unnamed says nothing about its name, so it does
+  // not disagree with a part naming it, and the name is kept for the jump.
+  test.each([
+    ['the first part', false],
+    ['a later part', true],
+  ])('keeps the name of a segno that only %s gives', (_, laterNames) => {
+    const drawn = '<direction><direction-type><segno/></direction-type>'
+    const part = (id: string, naming: boolean) =>
+      `<part id="${id}">` +
+      `<measure number="1">${drawn}${naming ? '<sound segno="s1"/>' : ''}</direction>${NOTE}` +
+      '</measure>' +
+      `<measure number="2">${drawn}${naming ? '<sound segno="s2"/>' : ''}</direction>${NOTE}` +
+      '<sound fine="yes"/></measure>' +
+      `<measure number="3">${NOTE}<sound dalsegno="s2"/></measure>` +
+      '</part>'
+    const { score: result, warnings } = read(
+      score(part('P1', !laterNames) + part('P2', laterNames)),
+    )
+
+    expect(result.globalMeasures[2]?.jump?.type).toBe('dsalfine')
+    expect(warnings.map((w) => [w.code, w.element, w.attribute])).toEqual([
+      ['unrepresentable:attribute', 'sound', 'segno'],
+      ['unrepresentable:attribute', 'sound', 'segno'],
+    ])
+  })
+
   test('says nothing where the parts restate the same named segno', () => {
     const sign =
       '<direction><direction-type><segno/></direction-type><sound segno="A"/></direction>' + NOTE
