@@ -3876,6 +3876,27 @@ describe('a part id the output cannot carry as it stands', () => {
     ])
   })
 
+  test('reads no instrument from a second part list entry for one id', () => {
+    const { mnx, warnings } = convertValid(
+      score(
+        '<part-list><score-part id="P1"><part-name>Drums</part-name></score-part>\n' +
+          '<score-part id="P1"><part-name>Snare</part-name>' +
+          '<score-instrument id="I1"><instrument-name>Snare</instrument-name>' +
+          '</score-instrument></score-part></part-list>\n' +
+          '<part id="P1"><measure number="1"><attributes><divisions>1</divisions>' +
+          '<clef><sign>percussion</sign></clef></attributes><note><unpitched>' +
+          '<display-step>C</display-step><display-octave>5</display-octave></unpitched>' +
+          '<duration>4</duration><instrument id="I1"/><type>whole</type></note></measure></part>',
+      ),
+    )
+
+    expect(mnx.parts[0]?.kit).toEqual({ kit1: { staffPosition: 1 } })
+    expect(warnings.map((w) => [w.code, w.element, w.context.line])).toEqual([
+      ['inconsistent:part-id', 'score-part', 2],
+      ['unresolved:instrument-id', 'instrument', 3],
+    ])
+  })
+
   // A rename is reported where the part is, ahead of what the part holds.
   test('reports the renames in document order', () => {
     const { warnings } = convertValid(
