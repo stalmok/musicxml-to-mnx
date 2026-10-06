@@ -415,7 +415,14 @@ describe('a part stating more than one transposition', () => {
     )
 
     expect(part?.transposition).toEqual({ staffDistance: 1, halfSteps: 2 })
-    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-transposition'])
+    expect(warnings.map((w) => [w.code, w.message])).toEqual([
+      [
+        'unrepresentable:per-staff-transposition',
+        'The staves of this part are transposed by different intervals, and MNX states one ' +
+          "for the part. The first staff's is the one converted, or the next staff's where " +
+          'the first is given none.',
+      ],
+    ])
   })
 
   test('reports the one staff of three that no transpose names', () => {

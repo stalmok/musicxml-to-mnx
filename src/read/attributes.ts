@@ -650,7 +650,8 @@ export function settleTranspositions(state: PartState, warnings: WarningCollecto
       check.place,
       'unrepresentable:per-staff-transposition',
       'The staves of this part are transposed by different intervals, and MNX states one ' +
-        'for the part. The first is the one converted.',
+        "for the part. The first staff's is the one converted, or the next staff's where " +
+        'the first is given none.',
       check.context,
       named !== undefined && check.stated.has(named) ? named : check.element,
     )
