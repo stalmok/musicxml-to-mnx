@@ -570,7 +570,7 @@ describe('a part stating more than one transposition', () => {
   })
 
   // The warnings name a <transpose> of the measure they are about.
-  test('reports one staff changing instrument at the <transpose> that changes it', () => {
+  test('reports one staff changing instrument, and the staves now differing, at its <transpose>', () => {
     const { warnings } = read(
       '<score-partwise><part id="P1">\n' +
         '<measure number="1"><attributes><divisions>4</divisions><staves>2</staves>' +
