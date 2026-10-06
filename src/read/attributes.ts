@@ -683,7 +683,10 @@ function sameTransposition(one: Transposition, other: Transposition): boolean {
   return one.staffDistance === other.staffDistance && one.halfSteps === other.halfSteps
 }
 
-/** The octaves MNX transposes a clef by, which are an octave shift's. */
+/**
+ * The octave amounts an MNX clef states. MNX also allows 0, which the model
+ * leaves undefined.
+ */
 export const CLEF_OCTAVES = [1, 2, 3, -1, -2, -3] as const satisfies readonly OttavaAmount[]
 
 function readClef(

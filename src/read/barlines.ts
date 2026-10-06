@@ -275,8 +275,9 @@ function readRepeat(
 export const FEWEST_REPEAT_TIMES = 2
 
 /**
- * How many times the passage is played, where the source counts them. Both
- * formats allow any whole number, so an odd one is reported, not refused.
+ * How many times the passage is played, where the source counts them.
+ * MusicXML allows any whole number. MNX plays a repeat at least twice, so a
+ * lower count is reported and not carried over.
  */
 function readTimes(
   repeat: XmlElement,

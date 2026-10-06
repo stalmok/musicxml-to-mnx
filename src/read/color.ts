@@ -1,10 +1,10 @@
 // MusicXML's color attribute, read into MNX's color string.
 //
 // MusicXML writes a color as #RRGGBB, or as #AARRGGBB with an alpha channel
-// first. MNX's color is a string of no stated form, and the one color form
-// the schema does state is #rrggbb, so the six-digit form is carried as
-// written, a fully opaque alpha says nothing and is dropped, and any other
-// alpha is reported and the color converted opaque.
+// first. MNX's color is a string of no stated form. The one color form the
+// schema states elsewhere is #rrggbb, with no alpha. The six-digit form is
+// carried as written. A fully opaque alpha says nothing and is dropped. Any
+// other alpha is reported, and the color is converted opaque.
 
 import type { ReportContext, WarningCollector } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'

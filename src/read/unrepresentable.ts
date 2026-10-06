@@ -207,8 +207,9 @@ export const NO_HOME_ATTRIBUTES: ReadonlySet<string> = new Set([
   'sound damper-pedal',
   'sound soft-pedal',
   'sound sostenuto-pedal',
-  // An element hidden with print-object="no". The schema has no visibility
-  // of any kind. A hidden rest is not listed: a space holds it.
+  // An element hidden with print-object="no". The schema's notes, events,
+  // markings, keys, times, endings and lyrics have no visibility property. A
+  // hidden rest is not listed: a space holds it.
   'note print-object',
   'notations print-object',
   'key print-object',
