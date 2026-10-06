@@ -35,9 +35,10 @@ Moving to a newer spec snapshot is a release:
 1. Download the new `docs/mnx-schema.json` and update this file's commit,
    date, and checksum, then regenerate `SHA256SUMS`.
 2. Run `pnpm exec vitest run tests/schema-conformance.test.ts`. It holds the
-   three places that state something about MNX by hand to this file: the types
-   in `src/types/mnx.ts`, the registry of what MNX cannot hold in
-   `src/read/unrepresentable.ts`, and the id pattern in `src/ids.ts`.
+   places that state something about MNX by hand to this file: the types in
+   `src/types/mnx.ts`, the registry of what MNX cannot hold in
+   `src/read/unrepresentable.ts`, the id pattern in `src/ids.ts`, and the
+   numeric limits the reader keeps to.
    Each failure names the decision to make.
 3. Update `src/types/mnx.ts` to match any shape change the test reported. No
    other check finds a field the schema gained and the types lack.

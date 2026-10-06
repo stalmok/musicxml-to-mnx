@@ -1,10 +1,11 @@
 // Compares what the converter states about MNX by hand with the vendored
-// schema. tests/support/schema.ts checks only the emitted documents. Three
+// schema. tests/support/schema.ts checks only the emitted documents. These
 // places state MNX facts by hand:
 //
 //   src/types/mnx.ts             these are MNX's fields and enums
 //   src/read/unrepresentable.ts  these elements have no home in MNX
 //   src/ids.ts                   an MNX id looks like this
+//   the reader's numeric limits  MNX counts this far
 //
 // A fourth, the model's enums in src/model/score.ts, copies the types, because
 // the model uses MNX's spelling. It is compared with the types at the end of
@@ -21,8 +22,12 @@
 import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
 import { describe, expect, test } from 'vitest'
+import { CLEF_OCTAVES, LONGEST_MNX_REPEAT } from '../src/read/attributes.js'
+import { FEWEST_REPEAT_TIMES } from '../src/read/barlines.js'
 import { BASE_VALUES } from '../src/read/duration.js'
 import { MNX_ID_PATTERN } from '../src/ids.js'
+import { TREMOLO_MARKS } from '../src/read/notes.js'
+import { MIDI_NUMBERS } from '../src/read/score.js'
 import { NO_HOME_ATTRIBUTES, NO_HOME_IN_MNX } from '../src/read/unrepresentable.js'
 import { resolveRef, schemaDefs } from './support/schema.js'
 import type { SchemaNode } from './support/schema.js'
@@ -372,12 +377,17 @@ describe('the hand-written MNX types against the schema', () => {
   )
 
   test.each(mapped)('$name enumerates the same values as $key', ({ properties, definition }) => {
+    const untyped: string[] = []
     const wider: string[] = []
     const narrower: string[] = []
     for (const [property, { union }] of properties) {
-      if (union === null) continue
       const stated = schemaUnion(definition, property)
       if (stated === null) continue
+      // A plain string or number lets the writer emit any value.
+      if (union === null) {
+        untyped.push(property)
+        continue
+      }
       const extra = union.filter((value) => !stated.includes(value))
       const missing = stated.filter((value) => !union.includes(value))
       // A wider type permits output that is not legal MNX. A narrower one
@@ -385,8 +395,99 @@ describe('the hand-written MNX types against the schema', () => {
       if (extra.length > 0) wider.push(`${property}: ${extra.join(', ')}`)
       if (missing.length > 0) narrower.push(`${property}: ${missing.join(', ')}`)
     }
+    expect(untyped).toEqual([])
     expect(wider).toEqual([])
     expect(narrower).toEqual([])
+  })
+})
+
+// --- The numeric bounds the reader keeps to, against the schema -------------
+
+type Bound = Pick<SchemaNode, 'minimum' | 'maximum' | 'exclusiveMinimum'>
+
+/**
+ * Every bound the schema puts on a number, keyed by definition, or by
+ * definition.property where the property states its own. A bound not listed
+ * here fails, and so does one the schema states differently.
+ */
+const BOUNDS: Readonly<Record<string, Bound>> = {
+  'tremolo-single.marks': { minimum: TREMOLO_MARKS.fewest, maximum: TREMOLO_MARKS.most },
+  'multi-note-tremolo.marks': { minimum: TREMOLO_MARKS.fewest, maximum: TREMOLO_MARKS.most },
+  // The reader refuses a sign that repeats no measures.
+  'measure-repeat-count': { minimum: 1, maximum: LONGEST_MNX_REPEAT },
+  'repeat-times': { minimum: FEWEST_REPEAT_TIMES },
+  'midi-number': { minimum: MIDI_NUMBERS.lowest, maximum: MIDI_NUMBERS.highest },
+  // Compared with the model's stroke counts below.
+  'caesura.marks': { minimum: 1, maximum: 2 },
+  // The reader reports a tempo of zero or less.
+  bpm: { exclusiveMinimum: 0 },
+  // An ending covers the measure it starts on.
+  'ending-duration': { minimum: 1 },
+  // The reader reports an ending numbered below 1.
+  'ending-number': { minimum: 1 },
+  // The reader refuses a multi-measure rest of no measures.
+  'measure-count': { minimum: 1 },
+  // The reader reports a measure label that is not a whole number.
+  'measure-number': { minimum: 0 },
+  // The reader refuses a part of no staves, and numbers staves from 1.
+  'staff-count': { minimum: 1 },
+  'staff-number': { minimum: 1 },
+  'integer-unsigned': { minimum: 0 },
+  'positive-integer': { minimum: 1 },
+}
+
+function boundOf(node: SchemaNode | undefined): Bound | undefined {
+  if (node === undefined) return undefined
+  const { minimum, maximum, exclusiveMinimum } = node
+  if (minimum === undefined && maximum === undefined && exclusiveMinimum === undefined) {
+    return undefined
+  }
+  return {
+    ...(minimum !== undefined ? { minimum } : {}),
+    ...(maximum !== undefined ? { maximum } : {}),
+    ...(exclusiveMinimum !== undefined ? { exclusiveMinimum } : {}),
+  }
+}
+
+/** Every bound the schema states, keyed as BOUNDS is. */
+function schemaBounds(): Map<string, Bound> {
+  const found = new Map<string, Bound>()
+  for (const [name, definition] of Object.entries(schemaDefs)) {
+    const own = boundOf(definition)
+    if (own) found.set(name, own)
+    for (const [property, node] of Object.entries(definition.properties ?? {})) {
+      const stated = boundOf(node)
+      if (stated) found.set(`${name}.${property}`, stated)
+    }
+  }
+  return found
+}
+
+describe('the numeric bounds the reader keeps to, against the schema', () => {
+  const stated = schemaBounds()
+
+  test('every bound the schema states is listed', () => {
+    expect([...stated.keys()].filter((key) => !(key in BOUNDS)).sort()).toEqual([])
+    expect(Object.keys(BOUNDS).filter((key) => !stated.has(key))).toEqual([])
+  })
+
+  test.each(Object.entries(BOUNDS))('%s is bounded as the schema bounds it', (key, bound) => {
+    expect(bound).toEqual(stated.get(key))
+  })
+
+  test('a clef is transposed by the amounts the schema allows', () => {
+    // Zero is how MNX states an untransposed clef, which the model leaves
+    // undefined.
+    expect([...CLEF_OCTAVES, 0].sort()).toEqual(
+      [...(schemaDefs['ottava-amount-or-zero']?.enum ?? [])].sort(),
+    )
+  })
+
+  test('every caesura stroke count the model states is within the bound', () => {
+    const { minimum = 1, maximum = 1 } = BOUNDS['caesura.marks'] ?? {}
+    const counts = modelUnions.get('CaesuraMarking.marks')?.map(Number) ?? []
+    expect(counts.length).toBeGreaterThan(0)
+    expect(counts.filter((count) => count < minimum || count > maximum)).toEqual([])
   })
 })
 

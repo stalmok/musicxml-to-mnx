@@ -646,6 +646,9 @@ interface PartList {
   soundsByInstrument: ReadonlyMap<string, ReadonlyMap<string, ResolvedSound>>
 }
 
+/** The MIDI pitches a sound's midiNumber states. */
+export const MIDI_NUMBERS = { lowest: 0, highest: 127 } as const
+
 /**
  * Reads the part list: each part's names and instrument setup, and the part
  * group edges. Everything not read here is reported.
@@ -735,10 +738,12 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
           if (midiId === undefined || !named.has(midiId)) continue
           const stated = child(midi.element, 'midi-unpitched')?.text.trim() ?? ''
           // MusicXML numbers these from 1 and MIDI from 0.
-          const pitch = parseWholeNumber(stated)
-          if (pitch === undefined || pitch < 1 || pitch > 128) continue
+          const written = parseWholeNumber(stated)
+          if (written === undefined) continue
+          const pitch = written - 1
+          if (pitch < MIDI_NUMBERS.lowest || pitch > MIDI_NUMBERS.highest) continue
           midi.child('midi-unpitched')
-          midiPitches.set(midiId, pitch - 1)
+          midiPitches.set(midiId, pitch)
         }
 
         for (const [instrumentId, { name: instrumentName, element: instrument }] of named) {

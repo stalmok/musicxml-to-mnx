@@ -2137,8 +2137,13 @@ function beamMarkers(
  */
 function tremoloBeamCount(text: string): number | undefined {
   const marks = text === '' ? 3 : parseWholeNumber(text)
-  return marks !== undefined && marks >= 1 && marks <= 8 ? marks : undefined
+  return marks !== undefined && marks >= TREMOLO_MARKS.fewest && marks <= TREMOLO_MARKS.most
+    ? marks
+    : undefined
 }
+
+/** The beam counts MNX draws a tremolo with. */
+export const TREMOLO_MARKS = { fewest: 1, most: 8 } as const
 
 interface MultiNoteTremolo {
   type: 'start' | 'stop'

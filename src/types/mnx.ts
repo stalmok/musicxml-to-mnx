@@ -317,7 +317,7 @@ export interface MNXClef {
   /** Staff steps from the middle line; negative is below it. */
   staffPosition: number
   /** Octaves the clef is transposed for drawing, as an ottava amount. */
-  octave?: number
+  octave?: MNXOttavaAmount | 0
   /** Whether the octave number is drawn beside the clef. */
   showOctave?: boolean
   /** True where the clef is not drawn, and takes no space. */

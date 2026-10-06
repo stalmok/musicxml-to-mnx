@@ -13,6 +13,7 @@ import type {
   Clef,
   PitchedClefSign,
   Key,
+  OttavaAmount,
   StaffConfig,
   TimeSignature,
   TimeUnit,
@@ -313,7 +314,7 @@ function statedPerStaff<T>(
 
 // The longest pattern MNX states for a measure repeat. MusicXML sets no
 // upper bound, so a longer one has no home in MNX.
-const LONGEST_MNX_REPEAT = 4
+export const LONGEST_MNX_REPEAT = 4
 
 /**
  * The measure-style children converted are <multiple-rest>, a multi-measure
@@ -682,6 +683,9 @@ function sameTransposition(one: Transposition, other: Transposition): boolean {
   return one.staffDistance === other.staffDistance && one.halfSteps === other.halfSteps
 }
 
+/** The octaves MNX transposes a clef by, which are an octave shift's. */
+export const CLEF_OCTAVES = [1, 2, 3, -1, -2, -3] as const satisfies readonly OttavaAmount[]
+
 function readClef(
   element: ElementReader,
   state: PartState,
@@ -769,10 +773,8 @@ function readClef(
   // drawn at pitch and the loss is reported.
   const octaveElement = element.child('clef-octave-change')
   const change = octaveElement ? readInteger(octaveElement, path) : 0
-  let octave: number | undefined
-  if (change !== 0 && change >= -3 && change <= 3) {
-    octave = change
-  } else if (change !== 0) {
+  const octave = CLEF_OCTAVES.find((amount) => amount === change)
+  if (octave === undefined && change !== 0) {
     warnings.add(
       'unrepresentable:clef-octave',
       `A clef is transposed by ${String(change)} octaves, and MNX states an ottava of ` +

@@ -182,6 +182,7 @@ The CLI provides optional validation through `--validate`.
 - The public MNX types against the schema.
 - The unrepresentable-element registry against schema capabilities.
 - Generated-ID constraints against the schema's ID pattern.
+- The reader's numeric limits against the schema's minimum and maximum values.
 - Model enums against the corresponding MNX enums, with explicit exceptions.
 
 Follow the [schema update procedure](../schema/PROVENANCE.md) when changing the pin.

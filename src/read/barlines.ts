@@ -271,6 +271,9 @@ function readRepeat(
   return { repeatStart: false, repeatEnd: undefined }
 }
 
+/** The fewest times MNX plays a repeated passage. */
+export const FEWEST_REPEAT_TIMES = 2
+
 /**
  * How many times the passage is played, where the source counts them. Both
  * formats allow any whole number, so an odd one is reported, not refused.
@@ -284,7 +287,7 @@ function readTimes(
   if (written === undefined) return undefined
 
   const times = parseWholeNumber(written)
-  if (times === undefined || times < 2) {
+  if (times === undefined || times < FEWEST_REPEAT_TIMES) {
     warnings.add(
       'unsupported:element',
       `A <repeat> is played "${written}" times, which is not a count of two or more, ` +
