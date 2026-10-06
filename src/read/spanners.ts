@@ -25,7 +25,8 @@ import type {
 } from '../model/score.js'
 import type { Draft } from './draft.js'
 import type { CoveredEvent, GraceNotesAt, LastEventBefore, LastEvents } from './voices.js'
-import type { ReportContext, WarningCollector } from './collector.js'
+import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
+import type { WarningCode } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 
 /** An event read on a staff, and the measure it is in. */
@@ -58,6 +59,27 @@ type TieEnd = (StartEnd<OpenTie> | StopEnd<{ note: TieTarget; drawn: boolean }>)
 export interface WrittenAt {
   context: ReportContext
   element: XmlElement
+  /** The element's place in the report, taken when it was read. */
+  place: WarningPlace
+}
+
+/** Where an end is written, holding its place in the report from now. */
+export function writtenAt(
+  element: XmlElement,
+  context: ReportContext,
+  warnings: WarningCollector,
+): WrittenAt {
+  return { context, element, place: warnings.reserve() }
+}
+
+/** Reports a loss at the place its element took in the document. */
+function reportAt(
+  where: WrittenAt,
+  code: WarningCode,
+  message: string,
+  warnings: WarningCollector,
+): void {
+  warnings.addAt(where.place, code, message, where.context, where.element)
 }
 
 /** An octave shift that has begun, waiting to learn where it stops. */
@@ -104,12 +126,12 @@ export interface Wording {
  * than its wording.
  */
 export function reportLoneWording(wording: Wording, warnings: WarningCollector): void {
-  warnings.add(
+  reportAt(
+    wording.where,
     'unrepresentable:dynamic-wording',
     `The dynamic wording "${wording.text}" qualifies no mark, and MNX states wording ` +
       'only on a mark, so it is not converted.',
-    wording.where.context,
-    wording.where.element,
+    warnings,
   )
 }
 
@@ -695,11 +717,11 @@ export class SpannerResolver {
           (start) => (start.voice ?? '') === (end.voice ?? '') && end.sounded === start.sounded + 1,
         ) ?? findLastOpened(waiting, (start) => end.measure - start.measure <= 1)
       if (!started) {
-        warnings.add(
+        reportAt(
+          end.where,
           'unclosed:spanner',
           'A tie ends on a note where none had started, and is not carried over.',
-          end.where.context,
-          end.where.element,
+          warnings,
         )
         continue
       }
@@ -708,12 +730,12 @@ export class SpannerResolver {
       // A tie stated in <tie> at both ends and in <tied> at neither sounds
       // but is not drawn, as MuseScore writes an invisible tie.
       if (!started.payload.drawn && !end.stop.drawn) {
-        warnings.add(
+        reportAt(
+          started.where,
           'unrepresentable:element',
           'A tie stated by <tie> with no <tied> on either note sounds but is not drawn, ' +
             'and cannot be expressed in MNX, where a tie is always drawn.',
-          started.where.context,
-          started.where.element,
+          warnings,
         )
         continue
       }
@@ -733,11 +755,11 @@ export class SpannerResolver {
 
     for (const waiting of open.values()) {
       for (const start of waiting) {
-        warnings.add(
+        reportAt(
+          start.where,
           'unclosed:spanner',
           'A tie starts on a note that nothing ties to, and is not carried over.',
-          start.where.context,
-          start.where.element,
+          warnings,
         )
       }
     }
@@ -896,7 +918,7 @@ export class SpannerResolver {
       this.#slurEnds.filter((end) => spare.has(end)),
       join,
       (reason, end) => {
-        warnings.add('unclosed:spanner', messages[reason], end.where.context, end.where.element)
+        reportAt(end.where, 'unclosed:spanner', messages[reason], warnings)
       },
       'as-written',
     )
@@ -1033,18 +1055,18 @@ export class SpannerResolver {
           words === ''
             ? messages[reason]
             : `A hairpin starts where nothing ends it, and is not carried over, nor its wording ${words}.`
-        warnings.add('unclosed:spanner', message, end.where.context, end.where.element)
+        reportAt(end.where, 'unclosed:spanner', message, warnings)
       },
       'stop-first',
       (start) => {
         if (start.dropped) return
         const words = wordingOf(start.payload)
-        warnings.add(
+        reportAt(
+          start.where,
           'unclosed:spanner',
           'A hairpin stops at the point where it starts, and is not carried over' +
             (words === '' ? '.' : `, nor its wording ${words}.`),
-          start.where.context,
-          start.where.element,
+          warnings,
         )
       },
     )
@@ -1253,7 +1275,8 @@ export class SpannerResolver {
         measures[open.measure]?.ottavas.push(ottava)
       },
       (reason, end) => {
-        warnings.add(
+        reportAt(
+          end.where,
           'unclosed:spanner',
           reason === 'orphan-stop'
             ? 'An octave shift stops where none had started, and is not carried over.'
@@ -1266,8 +1289,7 @@ export class SpannerResolver {
                 'earlier than its start, and is not carried over.'
               : 'An octave shift starts where nothing ends it, and MNX states where one ' +
                 'stops, so it is not carried over.',
-          end.where.context,
-          end.where.element,
+          warnings,
         )
       },
     )

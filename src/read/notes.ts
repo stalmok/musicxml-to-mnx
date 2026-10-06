@@ -55,7 +55,8 @@ import { measureLength } from './state.js'
 import type { PartState } from './state.js'
 import { soundingPitch } from './transposition.js'
 import { entriesOf, recogniser } from './tables.js'
-import { tieKey } from './spanners.js'
+import { tieKey, writtenAt } from './spanners.js'
+import type { WrittenAt } from './spanners.js'
 import { MeasureBuilder } from './voices.js'
 import type { JoinedEvent, PlacedEvent } from './voices.js'
 import type { TupletDisplaySettings } from './tuplets.js'
@@ -779,7 +780,14 @@ function setMeasureRest(
     const at = builder.position()
     reportCarriedByUnwritableRest(note, warnings, context, (type, slur) => {
       const number = attribute(slur, 'number') ?? '1'
-      state.spanners.dropSlurEnd(type, number, voice, measureIndex, at, { context, element: slur })
+      state.spanners.dropSlurEnd(
+        type,
+        number,
+        voice,
+        measureIndex,
+        at,
+        writtenAt(slur, context, warnings),
+      )
     })
   }
 
@@ -965,7 +973,14 @@ function dropRedundantRest(
     notations,
     (type, slur) => {
       const number = attribute(slur, 'number') ?? '1'
-      state.spanners.dropSlurEnd(type, number, voice, measureIndex, at, { context, element: slur })
+      state.spanners.dropSlurEnd(
+        type,
+        number,
+        voice,
+        measureIndex,
+        at,
+        writtenAt(slur, context, warnings),
+      )
     },
     (found) => {
       warnings.add(
@@ -1002,7 +1017,7 @@ function reportCarriedByRest(
       return true
     }),
   )
-  for (const slur of stopsFirst(slurEnds)) {
+  for (const slur of stopsFirst(slurEnds, (end) => end)) {
     dropSlurEnd(attribute(slur, 'type') === 'stop' ? 'stop' : 'start', slur)
   }
   // A note has at most one <stem>. A hidden rest draws none it states.
@@ -1870,7 +1885,7 @@ function readTies(
   // A tie is reported once the part is whole, so the element each edge is
   // written with is recorded with the edge.
   for (const edge of tieEdges(ties, tieds, warnings, context)) {
-    const where = { context, element: edge.element }
+    const where = edge.where
     if (edge.kind === 'stop') {
       state.spanners.stopTie(note, pairedBy, voice, edge.drawn, measureIndex, at, grace, where)
     } else {
@@ -1911,13 +1926,14 @@ function tieEdges(
   tieds: readonly XmlElement[],
   warnings: WarningCollector,
   context: ReportContext,
-): { kind: 'start' | 'stop'; element: XmlElement; drawn: boolean }[] {
-  const starts: XmlElement[] = []
-  const stops: XmlElement[] = []
+): { kind: 'start' | 'stop'; where: WrittenAt; drawn: boolean }[] {
+  // Each edge takes its place in the report as it is read, in document order.
+  const starts: WrittenAt[] = []
+  const stops: WrittenAt[] = []
   for (const tie of ties) {
     const type = attribute(tie, 'type')
-    if (type === 'stop') stops.push(tie)
-    else if (type === 'start') starts.push(tie)
+    if (type === 'stop') stops.push(writtenAt(tie, context, warnings))
+    else if (type === 'start') starts.push(writtenAt(tie, context, warnings))
     else if (type !== 'let-ring') {
       warnings.addUndefinedAttribute(tie, 'type', 'and is not carried over.', context)
     }
@@ -1935,10 +1951,11 @@ function tieEdges(
       // A "continue" is the middle of a chain, which <tie> writes as a stop
       // and a start on the one note.
       if (type === 'continue') {
-        starts.push(tied)
-        stops.push(tied)
-      } else if (type === 'stop') stops.push(tied)
-      else if (type === 'start') starts.push(tied)
+        const where = writtenAt(tied, context, warnings)
+        starts.push(where)
+        stops.push(where)
+      } else if (type === 'stop') stops.push(writtenAt(tied, context, warnings))
+      else if (type === 'start') starts.push(writtenAt(tied, context, warnings))
       else if (type !== 'let-ring') {
         warnings.addUndefinedAttribute(tied, 'type', 'and is not carried over.', context)
       }
@@ -1950,8 +1967,8 @@ function tieEdges(
   // before it and then starts the next. Taken as written, a note stating its
   // start first would close that tie and be tied to itself.
   return [
-    ...stops.map((element) => ({ kind: 'stop' as const, element, drawn: drawnStop })),
-    ...starts.map((element) => ({ kind: 'start' as const, element, drawn: drawnStart })),
+    ...stops.map((where) => ({ kind: 'stop' as const, where, drawn: drawnStop })),
+    ...starts.map((where) => ({ kind: 'start' as const, where, drawn: drawnStart })),
   ]
 }
 
@@ -1975,9 +1992,9 @@ function startTiedSide(tieds: readonly XmlElement[]): CurveSide | undefined {
  * document writes them in. A slur cannot start and end on one note, so a stop
  * closes a slur opened before the note, as a tie's does.
  */
-function stopsFirst(slurs: readonly XmlElement[]): XmlElement[] {
-  const isStop = (slur: XmlElement) => attribute(slur, 'type') === 'stop'
-  return [...slurs.filter(isStop), ...slurs.filter((slur) => !isStop(slur))]
+function stopsFirst<E>(edges: readonly E[], slurOf: (edge: E) => XmlElement): E[] {
+  const isStop = (edge: E) => attribute(slurOf(edge), 'type') === 'stop'
+  return [...edges.filter(isStop), ...edges.filter((edge) => !isStop(edge))]
 }
 
 /**
@@ -1999,16 +2016,17 @@ function readSlurs(
 ): void {
   const slurs = notations.flatMap((block) => block.children('slur'))
   if (slurs.length === 0) return
-  for (const slur of stopsFirst(slurs)) {
+  // Each <slur> takes its place in the report in document order, before the
+  // stops are put first.
+  const placed = slurs.map((slur) => writtenAt(slur, context, warnings))
+  for (const where of stopsFirst(placed, (edge) => edge.element)) {
+    const slur = where.element
     const type = attribute(slur, 'type')
     const number = attribute(slur, 'number') ?? '1'
     // Every edge is read for its side, so the attributes are accounted for
     // wherever the source writes them. Only the start's and the stop's go
     // anywhere: a "continue" edge's side has no home in MNX and is dropped.
     const side = curveSide(slur)
-    // Reported once the part is whole, so the <slur> is recorded with the
-    // edge.
-    const where = { context, element: slur }
     if (type === 'stop') {
       state.spanners.stopSlur(event, number, side, voice, measureIndex, at, grace, where)
     } else if (type === 'start') {

@@ -37,7 +37,7 @@ import type { ElementReader, Stated } from './element.js'
 import { noteValueBaseOf } from './noteValues.js'
 import { parseDecimal, parseExactDecimal, readIntegerInRange } from './numbers.js'
 import type { GraceNotesAt } from './voices.js'
-import { reportLoneWording } from './spanners.js'
+import { reportLoneWording, writtenAt } from './spanners.js'
 import type { WedgeStop, Wording } from './spanners.js'
 import { measureLength } from './state.js'
 import type { PartState } from './state.js'
@@ -291,7 +291,7 @@ export function readDirection(
             if (suffix !== undefined) {
               wedge.stop.wording = {
                 text: suffix.text,
-                where: { context, element: suffix.element },
+                where: writtenAt(suffix.element, context, warnings),
               }
             }
             lastMark = { kind: 'stop', stop: wedge.stop }
@@ -327,7 +327,7 @@ export function readDirection(
     if (trailing !== undefined) {
       closeWithWording(
         lastMark,
-        { text: trailing.text, where: { context, element: trailing.element } },
+        { text: trailing.text, where: writtenAt(trailing.element, context, warnings) },
         warnings,
       )
     }
@@ -483,7 +483,7 @@ function readOctaveShift(
   const size = attribute(found, 'size') ?? '8'
   // Recorded with the edge for the same reason a hairpin's is: the shift is
   // reported once the part is whole.
-  const where = { context, element: found }
+  const where = writtenAt(found, context, warnings)
 
   if (type === 'stop') {
     // Which event the shift ends on is settled once the measure is whole,
@@ -574,7 +574,7 @@ function readWedge(
   // A hairpin is reported long after this, when the part is whole and the
   // pairing finds an edge with nothing to join it to, so the <wedge> is
   // recorded with the edge.
-  const where = { context, element: found }
+  const where = writtenAt(found, context, warnings)
 
   if (type === 'stop') {
     // Grace notes written before the stop are drawn under the hairpin. Which

@@ -14,7 +14,7 @@ import type { SlurEnd, SpanEnd } from './spanners.js'
 import type { Event, Note } from '../model/score.js'
 import { parseXmlRoot } from '../xml/parse.js'
 
-const WRITTEN = { context: {}, element: parseXmlRoot('<slur/>') }
+const WRITTEN = { context: {}, element: parseXmlRoot('<slur/>'), place: 0 }
 
 const DIVISIONS = '<attributes><divisions>4</divisions></attributes>'
 
@@ -1442,6 +1442,64 @@ describe('spanner markings that are not simply a start or a stop', () => {
 // An unclosed end is reported once the part is whole, at the element it is
 // written with.
 describe('where an end with nothing to join is reported', () => {
+  // An end is reported once the part is whole, but in the place its element
+  // takes in the document, before a loss written in a later measure.
+  const wedge = (type: string, words = '') =>
+    `<direction><direction-type>${words}<wedge type="${type}"/></direction-type></direction>`
+  const shift = (type: string) =>
+    `<direction><direction-type><octave-shift type="${type}"/></direction-type></direction>`
+  test.each([
+    ['a tie', note('C', tied('stop')), ['tie']],
+    ['a slur', note('C', slur('stop')), ['slur']],
+    ['a hairpin', wedge('stop') + note('C'), ['wedge']],
+    ['an octave shift', shift('stop') + note('C'), ['octave-shift']],
+    [
+      'a tie that is never drawn',
+      note('C', '<tie type="start"/>') + note('C', '<tie type="stop"/>'),
+      ['tie'],
+    ],
+    [
+      'wording at a hairpin stop that closes nothing',
+      wedge('stop', '<dynamics><other-dynamics>smorz.</other-dynamics></dynamics>') + note('C'),
+      ['wedge', 'other-dynamics'],
+    ],
+  ])('reports %s before a loss in a later measure', (_what, body, elements) => {
+    const { warnings } = read(
+      measures(
+        DIVISIONS + body,
+        note('C', '<notations><ornaments><trill-mark/></ornaments></notations>'),
+      ),
+    )
+
+    expect(warnings.map((w) => [w.context.measure, w.element])).toEqual([
+      ...elements.map((element) => [1, element]),
+      [2, 'trill-mark'],
+    ])
+  })
+
+  // The reader takes a note's stops before its starts, but reports them in
+  // the order the note writes them.
+  test.each([
+    ['ties', note('C', '<tie type="start"/><tie type="stop"/>'), ['tie', 'tie']],
+    [
+      'tied edges',
+      note('C', '<notations><tied type="start"/><tied type="stop"/></notations>'),
+      ['tied', 'tied'],
+    ],
+    [
+      'slurs',
+      note('C', '<notations><slur type="start"/><slur type="stop"/></notations>'),
+      ['slur', 'slur'],
+    ],
+  ])('reports the %s of one note in the order the note writes them', (_what, body, elements) => {
+    const { warnings } = read(measures(DIVISIONS + body))
+
+    expect(warnings.map((w) => [w.element, w.message.split(' ')[2]])).toEqual([
+      [elements[0], 'starts'],
+      [elements[1], 'ends'],
+    ])
+  })
+
   test.each([
     ['a <tie>', 'tie', '\n<tie type="stop"/>\n<notations><tied type="stop"/></notations>'],
     ['a <tied> with no <tie>', 'tied', '\n<notations>\n<tied type="stop"/></notations>'],
@@ -1690,9 +1748,10 @@ describe('the order the ends of a span are read in', () => {
       ),
     )
 
+    // Reported in document order: the chord member is written first.
     expect(warnings.map((one) => one.message)).toEqual([
-      'A tie ends on a note where none had started, and is not carried over.',
       'A tie starts on a note that nothing ties to, and is not carried over.',
+      'A tie ends on a note where none had started, and is not carried over.',
     ])
   })
 
