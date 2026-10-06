@@ -25,7 +25,7 @@ import type {
 } from '../model/score.js'
 import type { Draft } from './draft.js'
 import type { CoveredEvent, GraceNotesAt, LastEventBefore, LastEvents } from './voices.js'
-import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
+import type { HeldPlace, ReportContext, WarningCollector } from './collector.js'
 import type { WarningCode } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 
@@ -59,8 +59,11 @@ type TieEnd = (StartEnd<OpenTie> | StopEnd<{ note: TieTarget; drawn: boolean }>)
 export interface WrittenAt {
   context: ReportContext
   element: XmlElement
-  /** The element's place in the report, taken when it was read. */
-  place: WarningPlace
+  /**
+   * The element's place in the report: after the warnings of the note or
+   * direction it is written in, and before those of the next.
+   */
+  place: HeldPlace
 }
 
 /** Where an end is written, holding its place in the report from now. */
@@ -69,7 +72,7 @@ export function writtenAt(
   context: ReportContext,
   warnings: WarningCollector,
 ): WrittenAt {
-  return { context, element, place: warnings.reserve() }
+  return { context, element, place: warnings.hold(element) }
 }
 
 /** Reports a loss at the place its element took in the document. */
@@ -79,7 +82,7 @@ function reportAt(
   message: string,
   warnings: WarningCollector,
 ): void {
-  warnings.addAt(where.place, code, message, where.context, where.element)
+  warnings.addAt(where.place.place, code, message, where.context, where.element)
 }
 
 /** An octave shift that has begun, waiting to learn where it stops. */

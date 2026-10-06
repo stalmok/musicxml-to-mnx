@@ -1213,6 +1213,7 @@ function readMeasure(
     }
 
     reader.reportUnread(warnings, context)
+    warnings.settleHeld()
   }
 
   settleTranspositions(state, warnings)

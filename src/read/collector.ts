@@ -17,8 +17,14 @@ export type ReportContext = Omit<WarningContext, 'line'> & { readonly line?: nev
  */
 export type WarningPlace = number
 
+/** A place kept for a warning about an element, moved by settleHeld. */
+export interface HeldPlace {
+  place: WarningPlace
+}
+
 export class WarningCollector {
   readonly #warnings: { place: WarningPlace; warning: ConversionWarning }[] = []
+  readonly #held: { held: HeldPlace; line: number }[] = []
   #next = 0
 
   /**
@@ -118,6 +124,28 @@ export class WarningCollector {
    */
   reserve(): WarningPlace {
     return this.#next++
+  }
+
+  /**
+   * Keeps a place for a warning about found that is decided later. The place
+   * moves when settleHeld is next called, so found's warning comes after the
+   * ones the element holding it reports as it is read.
+   */
+  hold(found: XmlElement): HeldPlace {
+    const held = { place: this.reserve() }
+    this.#held.push({ held, line: found.line })
+    return held
+  }
+
+  /**
+   * Moves the places held since the last call past every place taken so far,
+   * in the order of the lines their elements are written on. Called once an
+   * element of a measure has been read and swept for what it does not convert.
+   */
+  settleHeld(): void {
+    const byLine = [...this.#held].sort((a, b) => a.line - b.line)
+    for (const { held } of byLine) held.place = this.reserve()
+    this.#held.length = 0
   }
 
   /** Reports at a place taken earlier. Otherwise the same as add. */

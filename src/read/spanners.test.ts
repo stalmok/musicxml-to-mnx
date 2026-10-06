@@ -14,7 +14,7 @@ import type { SlurEnd, SpanEnd } from './spanners.js'
 import type { Event, Note } from '../model/score.js'
 import { parseXmlRoot } from '../xml/parse.js'
 
-const WRITTEN = { context: {}, element: parseXmlRoot('<slur/>'), place: 0 }
+const WRITTEN = { context: {}, element: parseXmlRoot('<slur/>'), place: { place: 0 } }
 
 const DIVISIONS = '<attributes><divisions>4</divisions></attributes>'
 
@@ -1475,6 +1475,29 @@ describe('where an end with nothing to join is reported', () => {
       ...elements.map((element) => [1, element]),
       [2, 'trill-mark'],
     ])
+  })
+
+  // A spanner end is reported after what the note it is written on reports as
+  // the note is read, such as a notehead written before it.
+  test('reports an end after the losses of its own note', () => {
+    const { warnings } = read(
+      measures(DIVISIONS + note('C', '<notehead>x</notehead>' + tied('start'))),
+    )
+
+    expect(warnings.map((w) => w.element)).toEqual(['notehead', 'tie'])
+  })
+
+  // Among themselves, the ends of one note are reported in the order of the
+  // lines they are written on, though ties are read before slurs.
+  test('reports the ends of one note in the order of their lines', () => {
+    const { warnings } = read(
+      measures(
+        DIVISIONS +
+          note('C', '<notations>\n<slur type="start"/>\n<tied type="start"/>\n</notations>'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.element)).toEqual(['slur', 'tied'])
   })
 
   // The reader takes a note's stops before its starts, but reports them in

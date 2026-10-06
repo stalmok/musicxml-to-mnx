@@ -2326,11 +2326,11 @@ describe('reporting what is not converted', () => {
     )
 
     // The <tied> start is a tie the measure never ends, reported as such
-    // rather than as an unread block, and first, as the document writes it.
+    // rather than as an unread block.
     expect(warnings.map((w) => w.message)).toEqual([
-      'A tie starts on a note that nothing ties to, and is not carried over.',
       '<harmonic> cannot be expressed in MNX.',
       '<trill-mark> cannot be expressed in MNX.',
+      'A tie starts on a note that nothing ties to, and is not carried over.',
     ])
   })
 
