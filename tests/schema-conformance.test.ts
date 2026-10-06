@@ -32,6 +32,7 @@ import { TREMOLO_MARKS } from '../src/read/notes.js'
 import { MIDI_NUMBERS } from '../src/read/score.js'
 import { NO_HOME_ATTRIBUTES, NO_HOME_IN_MNX } from '../src/read/unrepresentable.js'
 import type { FormatLimit } from '../src/warnings.js'
+import { FOLLOWED_REFERENCES } from './support/references.js'
 import { resolveRef, schemaDefs } from './support/schema.js'
 import type { SchemaNode } from './support/schema.js'
 
@@ -491,6 +492,48 @@ describe('the numeric bounds the reader keeps to, against the schema', () => {
     const counts = modelUnions.get('CaesuraMarking.marks')?.map(Number) ?? []
     expect(counts.length).toBeGreaterThan(0)
     expect(counts.filter((count) => count < minimum || count > maximum)).toEqual([])
+  })
+})
+
+// --- The id references the output check follows, against the schema -------
+
+/** Every schema property that names an id, as definition.property. */
+function idReferenceProperties(): string[] {
+  const names = ['#/$defs/id', '#/$defs/id-pair']
+  const found: string[] = []
+  for (const [definition, node] of Object.entries(schemaDefs)) {
+    // An object's own id defines it, and an id pair is followed where it is
+    // used.
+    if (definition === 'global-attrs' || definition === 'id-pair') continue
+    for (const [property, value] of Object.entries(node.properties ?? {})) {
+      if (names.includes(value.$ref ?? value.items?.$ref ?? '')) {
+        found.push(`${definition}.${property}`)
+      }
+    }
+  }
+  return found.sort()
+}
+
+/** Whether an MNX type models a schema property, so the writer can emit it. */
+function typesModel(reference: string): boolean {
+  const [definition = '', property = ''] = reference.split('.')
+  return [...mnxTypes.entries()].some(
+    ([name, properties]) =>
+      (name in DEFINITION_OF ? DEFINITION_OF[name] : kebab(name)) === definition &&
+      properties.has(property),
+  )
+}
+
+describe('the id references the output check follows, against the schema', () => {
+  const references = idReferenceProperties()
+  const followed: readonly string[] = FOLLOWED_REFERENCES
+
+  test('follows every reference the MNX types model', () => {
+    expect(references.filter((one) => typesModel(one) && !followed.includes(one))).toEqual([])
+  })
+
+  test('follows only references the schema states', () => {
+    expect(followed.filter((one) => !references.includes(one))).toEqual([])
   })
 })
 

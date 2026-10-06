@@ -13,9 +13,10 @@
 
 import { describe, expect, test } from 'vitest'
 import { MusicXMLError, convertMusicXML } from '../src/index.js'
-import type { MNXBeam, MNXSequenceItem } from '../src/index.js'
+import type { MNXSequenceItem } from '../src/index.js'
 import { parseXmlRoot } from '../src/xml/parse.js'
 import type { XmlElement } from '../src/xml/parse.js'
+import { danglingReferences } from './support/references.js'
 import { schemaErrors } from './support/schema.js'
 import { songs } from './support/corpus.js'
 import {
@@ -383,45 +384,6 @@ function sourceWordings(root: XmlElement): string[] {
   return found
 }
 
-/**
- * Every id the document defines, and every id it points at. A tie, slur, beam,
- * arpeggio or span end names an event, note or measure by id. Collected by
- * field name, so a new kind of reference that reuses a field is caught.
- */
-function idReferences(document: unknown): { defined: Set<string>; referenced: Set<string> } {
-  const defined = new Set<string>()
-  const referenced = new Set<string>()
-
-  const visit = (node: unknown): void => {
-    if (Array.isArray(node)) {
-      for (const child of node) visit(child)
-      return
-    }
-    if (node === null || typeof node !== 'object') return
-    const record = node as Record<string, unknown>
-
-    if (typeof record.id === 'string') defined.add(record.id)
-    // A tie or slur names its far end; a rhythmic position names its measure.
-    if (typeof record.target === 'string') referenced.add(record.target)
-    if (typeof record.measure === 'string') referenced.add(record.measure)
-    // A beam names the events it runs over.
-    if (Array.isArray(record.events)) {
-      for (const id of record.events) if (typeof id === 'string') referenced.add(id)
-    }
-    // An arpeggio names the two notes it runs between.
-    if (record.span !== null && typeof record.span === 'object') {
-      const span = record.span as Record<string, unknown>
-      if (typeof span.start === 'string') referenced.add(span.start)
-      if (typeof span.end === 'string') referenced.add(span.end)
-    }
-
-    for (const value of Object.values(record)) visit(value)
-  }
-
-  visit(document)
-  return { defined, referenced }
-}
-
 describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   test('produces MNX the spec schema accepts', () => {
     expect(schemaErrors(mnx)).toEqual([])
@@ -467,10 +429,7 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   // it. A reference with no definition means the writer missed a place that
   // points at an id.
   test('names every id it points at', () => {
-    const { defined, referenced } = idReferences(mnx)
-    const dangling = [...referenced].filter((id) => !defined.has(id))
-
-    expect(dangling).toEqual([])
+    expect(danglingReferences(mnx).slice(0, 5)).toEqual([])
   })
 
   // A voice may stop before the barline, but it must not run past the end.
@@ -505,71 +464,6 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     })
 
     expect(overfull.slice(0, 5)).toEqual([])
-  })
-
-  // A beam, tie or slur names what it joins. The schema checks the shape of
-  // an id, not whether it leads anywhere.
-  test('every reference leads to something named', () => {
-    const named = new Set<string>()
-    const collect = (items: readonly MNXSequenceItem[]): void => {
-      for (const item of items) {
-        if (
-          'type' in item &&
-          (item.type === 'tuplet' || item.type === 'grace' || item.type === 'tremolo')
-        ) {
-          collect(item.content)
-          continue
-        }
-        if ('id' in item && item.id !== undefined) named.add(item.id)
-        if ('notes' in item) {
-          for (const note of item.notes ?? []) if (note.id !== undefined) named.add(note.id)
-        }
-      }
-    }
-
-    const referenced: string[] = []
-    const fromBeams = (beams: readonly MNXBeam[]): void => {
-      for (const beam of beams) {
-        referenced.push(...beam.events)
-        fromBeams(beam.beams ?? [])
-      }
-    }
-    const fromSpanners = (items: readonly MNXSequenceItem[]): void => {
-      for (const item of items) {
-        if (
-          'type' in item &&
-          (item.type === 'tuplet' || item.type === 'grace' || item.type === 'tremolo')
-        ) {
-          fromSpanners(item.content)
-          continue
-        }
-        if ('slurs' in item) referenced.push(...(item.slurs ?? []).map((slur) => slur.target))
-        if ('notes' in item) {
-          for (const note of item.notes ?? []) {
-            // A let-ring tie has no target.
-            referenced.push(
-              ...(note.ties ?? []).flatMap((tie) => (tie.target !== undefined ? [tie.target] : [])),
-            )
-          }
-        }
-      }
-    }
-
-    for (const part of mnx.parts) {
-      for (const measure of part.measures) {
-        fromBeams(measure.beams ?? [])
-        // An arpeggio names the two notes it runs between.
-        for (const arpeggio of [...(measure.arpeggios ?? []), ...(measure.nonArpeggios ?? [])]) {
-          referenced.push(arpeggio.span.start, arpeggio.span.end)
-        }
-        for (const sequence of measure.sequences) {
-          collect(sequence.content)
-          fromSpanners(sequence.content)
-        }
-      }
-    }
-
-    expect(referenced.filter((id) => !named.has(id)).slice(0, 5)).toEqual([])
   })
 
   // Each part's measures line up with the global measure list by position.

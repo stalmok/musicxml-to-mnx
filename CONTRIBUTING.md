@@ -22,7 +22,8 @@ A pull request must:
 
 - Validate every conversion output in its tests against the vendored MNX
   schema. Tests convert through `convertValid` and `writeValid` in
-  `tests/support/convert.ts`.
+  `tests/support/convert.ts`, which also check that every id reference
+  leads somewhere.
 - Emit a `ConversionWarning` for notation it cannot convert. Never drop
   notation without a warning.
 - Keep test coverage at 98% or more.
