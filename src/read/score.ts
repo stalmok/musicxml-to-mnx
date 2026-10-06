@@ -238,7 +238,7 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
     if (flipAt === undefined || !part.transposition) return part
     return { ...part, transposition: { ...part.transposition, keyFifthsFlipAt: flipAt } }
   })
-  return renameInvalidPartIds(
+  return renamePartIds(
     {
       globalMeasures,
       parts,
@@ -254,33 +254,54 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
 }
 
 /**
- * Renames every part id MNX cannot state or the converter generates for
- * something else, in the parts and in the grouping's staves, which are the
- * only places the model refers to a part by id. Generated names run p1, p2,
- * ... skipping any id a part already holds. The counter only rises, so no
- * generated name is reached twice. A generated name is never one
- * GENERATED_ID_PATTERN matches.
+ * Renames every part id MNX cannot state, the converter generates for
+ * something else, or a part before it already holds. The parts and the
+ * grouping's staves are the only places the model refers to a part by id.
+ * Generated names run p1, p2, ... skipping any id a part already holds. The
+ * counter only rises, so no generated name is reached twice. A generated name
+ * is never one GENERATED_ID_PATTERN matches.
+ *
+ * The grouping names a part list entry, which is the first part holding its
+ * id, so a later part sharing the id is drawn after the listed parts.
  */
-function renameInvalidPartIds(
+function renamePartIds(
   score: Score,
   readings: readonly PartReading[],
   warnings: WarningCollector,
 ): Score {
-  const failing = readings.filter(
-    ({ part }) => !MNX_ID_PATTERN.test(part.id) || GENERATED_ID_PATTERN.test(part.id),
-  )
-  if (failing.length === 0) return score
+  const seen = new Set<string>()
+  const failing = readings.flatMap(({ part, element }, index) => {
+    const shared = seen.has(part.id)
+    seen.add(part.id)
+    const invalid = !MNX_ID_PATTERN.test(part.id) || GENERATED_ID_PATTERN.test(part.id)
+    return shared || invalid ? [{ part, element, index, shared }] : []
+  })
 
-  const taken: ReadonlySet<string> = new Set(score.parts.map((part) => part.id))
-  const renames = new Map<string, string>()
+  const taken: ReadonlySet<string> = seen
+  const byPosition = new Map<number, string>()
+  const firstRenames = new Map<string, string>()
+  const sharing: string[] = []
   let counter = 0
-  for (const { part, element } of failing) {
+  for (const { part, element, index, shared } of failing) {
     let generated: string
     do {
       counter += 1
       generated = renamedId('part', counter)
     } while (taken.has(generated))
-    renames.set(part.id, generated)
+    byPosition.set(index, generated)
+    if (shared) {
+      sharing.push(generated)
+      warnings.add(
+        'inconsistent:part-id',
+        `A part before this one has the id "${part.id}" too, and MNX names each part ` +
+          `once. This part is renamed ${generated}, and takes the part list's details ` +
+          `for "${part.id}".`,
+        { part: part.id },
+        element,
+      )
+      continue
+    }
+    firstRenames.set(part.id, generated)
     warnings.add(
       'unrepresentable:part-id',
       MNX_ID_PATTERN.test(part.id)
@@ -294,13 +315,17 @@ function renameInvalidPartIds(
     )
   }
 
+  const grouping = renameGroupingParts(score.grouping, firstRenames)
   return {
     ...score,
-    parts: score.parts.map((part) => {
-      const renamed = renames.get(part.id)
+    parts: score.parts.map((part, index) => {
+      const renamed = byPosition.get(index)
       return renamed === undefined ? part : { ...part, id: renamed }
     }),
-    grouping: renameGroupingParts(score.grouping, renames),
+    grouping:
+      grouping.length === 0
+        ? grouping
+        : [...grouping, ...sharing.map((part): GroupingItem => ({ kind: 'part', part }))],
   }
 }
 

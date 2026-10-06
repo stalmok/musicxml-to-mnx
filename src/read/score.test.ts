@@ -3776,6 +3776,70 @@ describe('a part id the output cannot carry as it stands', () => {
     expect(mnx.parts.map((p) => p.id)).toEqual(['p2', 'p1'])
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:part-id'])
   })
+
+  // A layout staff names its part by id, so a second part holding the same
+  // one could not be drawn. It is renamed, and drawn after the listed parts.
+  test('renames the second of two parts sharing an id, and draws it', () => {
+    const { mnx, warnings } = convertValid(
+      score(
+        '<part-list>' +
+          '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
+          '<score-part id="P1"><part-name>Violin</part-name></score-part>' +
+          '<score-part id="P2"/>' +
+          '<part-group type="stop" number="1"/>' +
+          '</part-list>\n' +
+          `<part id="P1"><measure number="1">${NOTE}</measure></part>\n` +
+          `<part id="P1"><measure number="1">${NOTE}</measure></part>\n` +
+          `<part id="P2"><measure number="1">${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(mnx.parts.map((p) => [p.id, p.name])).toEqual([
+      ['P1', 'Violin'],
+      ['p1', 'Violin'],
+      ['P2', undefined],
+    ])
+    expect(mnx.layouts?.[0]?.content).toEqual([
+      {
+        type: 'group',
+        symbol: 'bracket',
+        content: [
+          { type: 'staff', labelref: 'name', sources: [{ part: 'P1' }] },
+          { type: 'staff', sources: [{ part: 'P2' }] },
+        ],
+      },
+      { type: 'staff', labelref: 'name', sources: [{ part: 'p1' }] },
+    ])
+    expect(warnings).toEqual([
+      {
+        code: 'inconsistent:part-id',
+        message:
+          'A part before this one has the id "P1" too, and MNX names each part once. ' +
+          'This part is renamed p1, and takes the part list\'s details for "P1".',
+        element: 'part',
+        attribute: undefined,
+        context: { part: 'P1', line: 3 },
+      },
+    ])
+  })
+
+  test('renames each later part sharing an id, and an invalid id once per part', () => {
+    const { mnx, warnings } = convertValid(
+      score(
+        '<part-list><score-part id="Süß"/></part-list>' +
+          `<part id="Süß"><measure number="1">${NOTE}</measure></part>` +
+          `<part id="Süß"><measure number="1">${NOTE}</measure></part>`,
+      ),
+    )
+
+    // With no layout to name them, the parts are written with no ids.
+    expect(mnx.parts).toHaveLength(2)
+    expect('layouts' in mnx).toBe(false)
+    expect(warnings.map((w) => [w.code, /renamed (p\d)/.exec(w.message)?.[1]])).toEqual([
+      ['unrepresentable:part-id', 'p1'],
+      ['inconsistent:part-id', 'p2'],
+    ])
+  })
 })
 
 // The notation font. <defaults> is page geometry with no home in MNX, but

@@ -1204,10 +1204,15 @@ export function layoutLosses(document: MNXDocument): string[] {
   for (const layout of layouts) walk(layout.content, false)
 
   const losses: string[] = []
+  const reached = new Set<string>()
   document.parts.forEach((part, index) => {
-    if (part.id === undefined || !drawn.has(part.id)) {
-      losses.push(`part ${part.id ?? String(index + 1)}: not in the layout`)
+    if (part.id !== undefined && drawn.has(part.id) && !reached.has(part.id)) {
+      reached.add(part.id)
+      return
     }
+    // A part sharing an earlier part's id is named by its position.
+    const name = part.id === undefined || reached.has(part.id) ? String(index + 1) : part.id
+    losses.push(`part ${name}: not in the layout`)
   })
   for (const part of [...drawn].sort()) {
     if (namesDrawn.has(part) && !named.has(part)) {

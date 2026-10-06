@@ -676,7 +676,7 @@ describe('part groups', () => {
     ])
   })
 
-  test('draws one staff for two unlisted parts sharing an id, as for listed ones', () => {
+  test('draws each of two unlisted parts sharing an id, the second renamed', () => {
     const { mnx } = convertValid(
       score(
         '<part-group type="start" number="1"><group-symbol>bracket</group-symbol></part-group>' +
@@ -688,6 +688,7 @@ describe('part groups', () => {
 
     expect(mnx.layouts?.[0]?.content.slice(1)).toEqual([
       { type: 'staff', sources: [{ part: 'P3' }] },
+      { type: 'staff', sources: [{ part: 'p1' }] },
     ])
   })
 

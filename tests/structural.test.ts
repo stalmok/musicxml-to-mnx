@@ -277,6 +277,19 @@ test('a part the layout never names is not drawn', () => {
   ])
 })
 
+// A staff names its part by id, so it reaches only the first part holding it.
+test('a second part sharing an id is not drawn', () => {
+  const document = layoutDocument(
+    [{ type: 'staff', sources: [{ part: 'P1' }] }],
+    [
+      { id: 'P1', measures: [] },
+      { id: 'P1', measures: [] },
+    ],
+  )
+
+  expect(layoutLosses(document)).toEqual(['part 2: not in the layout'])
+})
+
 test('a staff with no label reference loses its part name', () => {
   const document = layoutDocument(
     [{ type: 'staff', sources: [{ part: 'P1' }] }],

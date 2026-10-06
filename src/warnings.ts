@@ -225,6 +225,10 @@ export const WARNING_CODES = Object.freeze([
   // list, so its name and any other list detail are unavailable; or the list
   // names a part the score never writes, so no staff of it is drawn.
   'unresolved:part-id',
+  // Two parts share one id, and MNX names each part once. The later part is
+  // renamed to a generated id, and takes the part list's details for the id
+  // it shares.
+  'inconsistent:part-id',
   // A note naming an instrument the part list does not set up, or naming
   // one with no id. The kit component it strikes is kept, without a name or
   // a sound.
