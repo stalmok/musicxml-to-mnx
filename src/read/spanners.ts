@@ -285,9 +285,10 @@ export type SamePoint = 'stop-first' | 'as-written'
  * A stop whose covered point falls before its start is reported as a
  * backwards-stop, not joined.
  *
- * Where `noLength` is given, a stop with no start open in its own voice and
- * staff first takes a start of its number, voice and staff at the same
- * instant after it, and the two are handed to `noLength`. An exporter writes
+ * Where `noLength` is given, a stop with no start open that could be its own,
+ * one in its voice and staff or one naming no staff, first takes a start of
+ * its number, voice and staff at the same instant after it, and the two are
+ * handed to `noLength`. An exporter writes
  * a span that starts and stops at one point with its stop first. Paired any
  * other way, the stop closes another staff's span, and its start takes some
  * later stop of its number.
@@ -311,7 +312,10 @@ export function pairSpans<T, S>(
 
     const waiting = open.get(end.number) ?? []
     const own = findLastOpened(waiting, (start) => openedIn(start, end))
-    if (!own && noLength && !end.dropped) {
+    // No start open on the stop's staff, and every one open names another
+    // staff: none of them can be the stop's own.
+    const elsewhere = waiting.every((start) => start.staff !== undefined && end.staff !== undefined)
+    if (!own && elsewhere && noLength && !end.dropped) {
       const start = startAtInstant(ordered, index, end, noLengthStarts)
       if (start) {
         noLengthStarts.add(start)

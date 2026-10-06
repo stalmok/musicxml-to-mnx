@@ -2500,6 +2500,48 @@ describe('hairpins', () => {
     expect(warnings).toEqual([])
   })
 
+  // A hairpin naming no staff can be the one a stop on staff 1 closes, so the
+  // stop closes it rather than taking the start written beside it.
+  test.each([
+    ['the start', '', '1'],
+    ['the stop and the next start', '1', ''],
+  ])(
+    'closes a hairpin where %s names no staff, before the start beside the stop',
+    (_what, first, then) => {
+      const named = (type: string, staff: string) =>
+        staff === '' ? wedge(type) : staffWedge(type, staff)
+      const { dynamics, warnings } = readTwoStaves(
+        named('crescendo', first),
+        named('stop', then) + named('diminuendo', then),
+        named('stop', then),
+      )
+
+      expect(dynamics.flat().map((d) => d.kind === 'gradual' && [d.wedge, d.end?.measure])).toEqual(
+        [
+          ['increasing', 1],
+          ['decreasing', 2],
+        ],
+      )
+      expect(warnings).toEqual([])
+    },
+  )
+
+  // In a measure the notes leave short of its time signature, the barline is
+  // where the signature puts it, past the last note.
+  test('takes the barline from the time signature where the notes stop short of it', () => {
+    const { dynamics, warnings } = readMeasures(
+      '<attributes><time><beats>2</beats><beat-type>4</beat-type></time></attributes>' +
+        NOTE +
+        wedge('stop'),
+      wedge('crescendo') + NOTE + wedge('stop'),
+    )
+
+    expect(dynamics.flat()).toEqual([expect.objectContaining({ wedge: 'increasing' })])
+    expect(warnings.map((w) => w.message)).toEqual([
+      'A hairpin stops where none had started, and is not carried over.',
+    ])
+  })
+
   // The other hand's stop is no stop of this hairpin.
   test('leaves a stop on another staff an orphan where a hairpin starts', () => {
     const { dynamics, warnings } = readTwoStaves(

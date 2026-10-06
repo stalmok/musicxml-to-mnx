@@ -241,11 +241,15 @@ function sourceHairpins(root: XmlElement): string[] {
           return
         }
         // The last one opened on the stop's own staff, or else a start at the
-        // stop's instant, or else the last one opened. A source that names the
-        // staff on one end only means that end's staff.
+        // stop's instant where every open one names another staff, or else the
+        // last one opened. A source that names the staff on one end only means
+        // that end's staff.
         const waiting = open.get(end.number) ?? []
         const sameStaff = waiting.map((one) => one.staff).lastIndexOf(end.staff)
-        if (sameStaff < 0) {
+        const elsewhere = waiting.every(
+          (one) => one.staff !== '' && end.staff !== '' && one.staff !== end.staff,
+        )
+        if (sameStaff < 0 && elsewhere) {
           const beside = inTime
             .slice(index + 1)
             .find((later) => !noLength.has(later) && atInstant(later, end))
