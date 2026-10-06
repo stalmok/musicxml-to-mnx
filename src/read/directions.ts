@@ -221,8 +221,6 @@ export function readDirection(
   const graceAtCursor = graceNotesAt(position, staff)
   const overGrace = compareFractions(at, position) === 0 ? graceAtCursor : 0
 
-  // Whether a mark MNX states a side for took the placement.
-  let placed = false
   for (const directionType of element.blocks('direction-type')) {
     // The wording is held for the whole <direction-type>: MusicXML allows
     // the words and the mark they qualify in sibling <dynamics> blocks, and
@@ -236,7 +234,6 @@ export function readDirection(
       // unhandled type is reported whole below.
       switch (found.name) {
         case 'dynamics': {
-          placed = true
           // Read plainly: readDynamics reports every child of a <dynamics>
           // it does not know, so the sweep has nothing left to say.
           directionType.children('dynamics')
@@ -252,7 +249,6 @@ export function readDirection(
           }
           break
         case 'octave-shift':
-          placed = true
           // Read plainly, being an empty element.
           directionType.children('octave-shift')
           readOctaveShift(
@@ -269,7 +265,6 @@ export function readDirection(
           )
           break
         case 'wedge': {
-          placed = true
           // Read plainly, being an empty element.
           directionType.children('wedge')
           const wedge = readWedge(
@@ -339,8 +334,9 @@ export function readDirection(
   }
 
   // A segno and a tempo are drawn above the staff, and MNX states no side
-  // for either, so only one placed below loses its side.
-  if (!placed && placement === 'below' && reading.segnos.length + reading.tempos.length > 0) {
+  // for either, so only one placed below loses its side. A dynamic beside it
+  // takes the placement and keeps it.
+  if (placement === 'below' && reading.segnos.length + reading.tempos.length > 0) {
     warnings.add(
       'unrepresentable:attribute',
       'This <direction> is placed below the staff, and MNX states no side for a segno ' +

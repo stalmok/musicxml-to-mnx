@@ -120,10 +120,13 @@ describe('dynamics', () => {
     ])
   })
 
-  test('says nothing of a segno placed above the staff', () => {
+  test.each([
+    ['segno', '<segno/>'],
+    ['tempo', '<metronome><beat-unit>quarter</beat-unit><per-minute>60</per-minute></metronome>'],
+  ])('says nothing of a %s placed above the staff', (_, mark) => {
     const { warnings } = read(
       inMeasure(
-        '<direction placement="above"><direction-type><segno/></direction-type></direction>' +
+        `<direction placement="above"><direction-type>${mark}</direction-type></direction>` +
           note('C'),
       ),
     )
@@ -131,11 +134,13 @@ describe('dynamics', () => {
     expect(warnings).toEqual([])
   })
 
+  // The placement is the direction's, so a mark beside the segno that MNX
+  // can place takes it, and the segno still loses its side.
   test.each([
     ['dynamic', '<dynamics><p/></dynamics>'],
     ['hairpin', '<wedge type="crescendo"/>'],
     ['octave shift', '<octave-shift type="down" size="8"/>'],
-  ])('says nothing of a placement a %s beside the segno takes', (_, mark) => {
+  ])('reports a segno placed below beside a %s', (_, mark) => {
     const { warnings } = read(
       inMeasure(
         `<direction placement="below"><direction-type><segno/>${mark}</direction-type>` +
@@ -144,7 +149,22 @@ describe('dynamics', () => {
       ),
     )
 
-    expect(warnings.filter((w) => w.attribute === 'placement')).toEqual([])
+    expect(warnings.filter((w) => w.attribute === 'placement').map((w) => w.element)).toEqual([
+      'direction',
+    ])
+  })
+
+  test('says nothing of a dynamic placed below on its own', () => {
+    const { measure, warnings } = read(
+      inMeasure(
+        '<direction placement="below"><direction-type><dynamics><p/></dynamics>' +
+          '</direction-type></direction>' +
+          note('C'),
+      ),
+    )
+
+    expect(measure?.dynamics[0]?.placement).toBe('below')
+    expect(warnings).toEqual([])
   })
 
   // The warning about the mark covers the side it is drawn on.
