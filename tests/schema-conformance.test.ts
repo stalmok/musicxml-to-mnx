@@ -407,7 +407,15 @@ describe('the hand-written MNX types against the schema', () => {
 
 // --- The numeric bounds the reader keeps to, against the schema -------------
 
-type Bound = Pick<SchemaNode, 'minimum' | 'maximum' | 'exclusiveMinimum'>
+const BOUND_KINDS = [
+  'minimum',
+  'maximum',
+  'exclusiveMinimum',
+  'exclusiveMaximum',
+  'multipleOf',
+] as const satisfies readonly (keyof SchemaNode)[]
+
+type Bound = Pick<SchemaNode, (typeof BOUND_KINDS)[number]>
 
 /**
  * Every bound the schema puts on a number, keyed by definition, or by
@@ -442,15 +450,10 @@ const BOUNDS: Readonly<Record<string, Bound>> = {
 
 function boundOf(node: SchemaNode | undefined): Bound | undefined {
   if (node === undefined) return undefined
-  const { minimum, maximum, exclusiveMinimum } = node
-  if (minimum === undefined && maximum === undefined && exclusiveMinimum === undefined) {
-    return undefined
-  }
-  return {
-    ...(minimum !== undefined ? { minimum } : {}),
-    ...(maximum !== undefined ? { maximum } : {}),
-    ...(exclusiveMinimum !== undefined ? { exclusiveMinimum } : {}),
-  }
+  const stated = BOUND_KINDS.flatMap((kind) =>
+    node[kind] !== undefined ? [[kind, node[kind]] as const] : [],
+  )
+  return stated.length > 0 ? Object.fromEntries(stated) : undefined
 }
 
 /** Every bound the schema states, keyed as BOUNDS is. */
@@ -617,9 +620,9 @@ function usedBy(name: string): string[] {
 /**
  * The words the schema would use for a concept, and where it would put them.
  * With homes, the concept is looked for in the properties and values of those
- * definitions alone, because the schema uses some of the words elsewhere with
- * another meaning: a clef has hide, and nothing else does. Without homes, the
- * concept is looked for everywhere.
+ * definitions alone, as part of a name, because the schema uses some of the
+ * words elsewhere with another meaning: a clef has hide. Without homes, the
+ * concept is looked for everywhere, as a whole name.
  */
 interface Concept {
   readonly words: readonly string[]
@@ -637,7 +640,7 @@ function conceptFound({ words, homes }: Concept): string[] {
       ...(definition?.enum ?? []).map((value) => String(value)),
     ].map(normalised)
   })
-  return wanted.filter((word) => held.includes(word))
+  return wanted.filter((word) => held.some((name) => name.includes(word)))
 }
 
 /**
@@ -825,7 +828,10 @@ const ELEMENT_CONCEPTS: readonly (Concept & { readonly elements: readonly string
   },
 ]
 
-/** The words for hiding, which the schema states for a clef and nothing else. */
+/**
+ * The words for hiding. The schema states hide for a clef and show for an
+ * accidental, and nothing else.
+ */
 const HIDING = ['hide', 'hidden', 'show', 'visible', 'invisible', 'print-object']
 
 /**
@@ -853,7 +859,8 @@ const ATTRIBUTE_CONCEPTS: Readonly<Record<string, Concept>> = {
   'note print-object': { words: HIDING, homes: ['note', 'event'] },
   'notations print-object': {
     words: HIDING,
-    homes: ['event-markings', 'fermata', 'slur', 'tie', 'arpeggio', 'tuplet'],
+    // A tuplet's showNumber and showValue hold its hiding, and are converted.
+    homes: ['event-markings', 'fermata', 'slur', 'tie', 'arpeggio'],
   },
   'key print-object': { words: HIDING, homes: ['key'] },
   'time print-object': { words: HIDING, homes: ['time'] },
@@ -950,41 +957,51 @@ describe('the registry of what MNX cannot hold, against the schema', () => {
 
 // --- Each format limit, against the schema fact it rests on -----------------
 
+/**
+ * A definition the facts below name. A definition MNX renames or removes
+ * throws, so a fact stated as an absence cannot pass because its subject has
+ * gone.
+ */
+function definitionNamed(name: string): SchemaNode {
+  const definition = schemaDefs[name]
+  if (definition === undefined) throw new Error(`The schema has no definition ${name}.`)
+  return definition
+}
+
 /** The properties a definition states, without the ones every object gets. */
 function propertiesOf(definition: string): string[] {
-  const node = schemaDefs[definition]
-  return node === undefined ? [] : schemaProperties(node).sort()
+  return schemaProperties(definitionNamed(definition)).sort()
 }
 
 function has(definition: string, property: string): boolean {
-  return schemaDefs[definition]?.properties?.[property] !== undefined
+  return definitionNamed(definition).properties?.[property] !== undefined
 }
 
 function isList(definition: string, property: string): boolean {
-  return schemaDefs[definition]?.properties?.[property]?.type === 'array'
+  return definitionNamed(definition).properties?.[property]?.type === 'array'
 }
 
 function refers(definition: string, property: string, target: string): boolean {
-  return resolveRef(schemaDefs[definition]?.properties?.[property]) === schemaDefs[target]
+  const held = definitionNamed(definition).properties?.[property]
+  return held !== undefined && resolveRef(held) === definitionNamed(target)
 }
 
 /** The values a definition enumerates, as sorted text. */
 function valuesOf(definition: string): string[] {
-  return (schemaDefs[definition]?.enum ?? []).map(String).sort()
-}
-
-/** Whether a definition states where in a measure it sits. */
-function positioned(definition: string): boolean {
-  return Object.keys(schemaDefs[definition]?.properties ?? {}).some((property) =>
-    refers(definition, property, 'rhythmic-position'),
-  )
+  return (definitionNamed(definition).enum ?? []).map(String).sort()
 }
 
 /** The definitions an anyOf list holds, by name. */
 function itemsOf(definition: string): string[] {
-  return (schemaDefs[definition]?.items?.anyOf ?? [])
+  return (definitionNamed(definition).items?.anyOf ?? [])
     .map((item) => (item.$ref ?? '').replace('#/$defs/', ''))
     .sort()
+}
+
+/** Whether the schema holds a definition at the one place named, and nowhere else. */
+function heldOnlyAt(definition: string, place: string): boolean {
+  definitionNamed(definition)
+  return placesOf(definition).join() === place
 }
 
 /** The marks MNX states once on a global measure. */
@@ -1003,7 +1020,8 @@ const FORMAT_LIMITS: Readonly<Record<FormatLimit, () => boolean>> = {
   'unrepresentable:attribute': () =>
     Object.values(ATTRIBUTE_CONCEPTS).every((concept) => conceptFound(concept).length === 0),
   'unrepresentable:measure-label': () =>
-    resolveRef(schemaDefs['measure-global']?.properties?.['number'])?.type === 'integer',
+    resolveRef(definitionNamed('measure-global').properties?.['number'])?.type === 'integer' &&
+    !has('measure-global', 'label'),
   'unrepresentable:per-staff-key': () => !has('key', 'staff') && !has('part-measure', 'key'),
   'unrepresentable:per-staff-transposition': () =>
     !has('part-transposition', 'staff') && !isList('part', 'transposition'),
@@ -1032,23 +1050,24 @@ const FORMAT_LIMITS: Readonly<Record<FormatLimit, () => boolean>> = {
     (schemaDefs['tempo']?.required ?? []).includes('bpm') &&
     schemaDefs['bpm']?.exclusiveMinimum === 0,
   'unrepresentable:lyric-syllabic': () =>
+    propertiesOf('event-lyric-line').join() === 'text,type' &&
     refers('event-lyric-line', 'type', 'event-lyric-line-type'),
   'unrepresentable:lyric-line': () =>
-    schemaDefs['event-lyric-lines']?.type === 'object' &&
-    schemaDefs['event-lyric-lines']?.patternProperties !== undefined,
+    Object.values(definitionNamed('event-lyric-lines').patternProperties ?? {})
+      .map((value) => value.$ref)
+      .join() === '#/$defs/event-lyric-line',
   'unrepresentable:fermata': () => refers('event', 'fermata', 'fermata'),
   'unrepresentable:marking': () =>
     propertiesOf('event-markings').every((mark) => !isList('event-markings', mark)),
-  // A chord is listed as rolled or as struck together, and nothing joins the
-  // two lists.
+  // A chord is listed as rolled or as struck together, and neither list says
+  // anything of the other.
   'unrepresentable:arpeggio': () =>
-    has('part-measure', 'arpeggios') &&
-    has('part-measure', 'nonArpeggios') &&
-    !has('arpeggio', 'nonArpeggio'),
+    propertiesOf('arpeggio').join() === 'arrow,direction,position,span' &&
+    propertiesOf('non-arpeggio').join() === 'position,span',
   'unrepresentable:ending-text': () =>
     propertiesOf('ending').join() === 'color,duration,numbers,open',
   'unrepresentable:barline': () =>
-    propertiesOf('barline').join() === 'type' && !isList('measure-global', 'barline'),
+    propertiesOf('barline').join() === 'type' && heldOnlyAt('barline', 'measure-global.barline'),
   // Nothing orders two clefs, or two staff configs, at one point.
   'unrepresentable:clef': () => propertiesOf('rhythmic-position').join() === 'fraction,graceIndex',
   'unrepresentable:staff-config': () =>
@@ -1057,8 +1076,8 @@ const FORMAT_LIMITS: Readonly<Record<FormatLimit, () => boolean>> = {
     (schemaDefs['time']?.required ?? []).includes('count') &&
     usedBy('senzaMisura').length === 0 &&
     usedBy('unmetered').length === 0,
-  'unrepresentable:mid-measure-key': () => !positioned('key'),
-  'unrepresentable:mid-measure-time': () => !positioned('time'),
+  'unrepresentable:mid-measure-key': () => heldOnlyAt('key', 'measure-global.key'),
+  'unrepresentable:mid-measure-time': () => heldOnlyAt('time', 'measure-global.time'),
   'unrepresentable:rest-length': () =>
     !has('full-measure-rest', 'duration') &&
     refers('full-measure-rest', 'visualDuration', 'note-value'),
@@ -1075,7 +1094,7 @@ const FORMAT_LIMITS: Readonly<Record<FormatLimit, () => boolean>> = {
   'unrepresentable:part-group-overlap': () =>
     refers('staff-group', 'content', 'system-layout-content') &&
     itemsOf('system-layout-content').join() === 'staff,staff-group',
-  'unrepresentable:part-id': () => schemaDefs['id']?.pattern !== undefined,
+  'unrepresentable:part-id': () => definitionNamed('id').pattern === MNX_ID_PATTERN.source,
   // A kit component names its sound by MNX id, not by the key global.sounds
   // allows.
   'unrepresentable:instrument-id': () => refers('kit-component', 'sound', 'id'),
@@ -1099,11 +1118,10 @@ const FORMAT_LIMITS: Readonly<Record<FormatLimit, () => boolean>> = {
     refers('sequence', 'fullMeasure', 'full-measure-rest') && !has('full-measure-rest', 'duration'),
   // A dynamic's wording is text; only the mark itself takes glyphs.
   'unrepresentable:wording-glyph': () =>
-    ['dynamic-group-immediate', 'dynamic-group-accent'].every(
-      (group) =>
-        propertiesOf(group)
-          .filter((property) => /glyph/i.test(property))
-          .join() === 'glyphs',
+    itemsOf('dynamic-groups').every((group) =>
+      propertiesOf(group)
+        .filter((property) => /glyph/i.test(property))
+        .every((property) => property === 'glyphs'),
     ),
   // Every kind of dynamic states a mark, a hairpin or a change, beside any
   // wording.
@@ -1123,7 +1141,14 @@ const FORMAT_LIMITS: Readonly<Record<FormatLimit, () => boolean>> = {
   'unrepresentable:tuplet-ratio': () =>
     [...(schemaDefs['note-value-quantity']?.required ?? [])].sort().join() ===
       'duration,multiple' && refers('note-value-quantity', 'multiple', 'positive-integer'),
-  'unrepresentable:tuplet-untimed': () => schemaDefs['positive-integer']?.minimum === 1,
+  // A tuplet states a written length against the time it is played in, each
+  // at least one note value long.
+  'unrepresentable:tuplet-untimed': () =>
+    ['inner', 'outer'].every(
+      (side) =>
+        (definitionNamed('tuplet').required ?? []).includes(side) &&
+        refers('tuplet', side, 'note-value-quantity'),
+    ) && schemaDefs['positive-integer']?.minimum === 1,
   'unrepresentable:print-detail': () =>
     propertiesOf('page').join() === 'layout,systems' &&
     propertiesOf('system').join() === 'layout,layoutChanges,measure',
@@ -1157,7 +1182,9 @@ const CALL_SITE_LIMITS: Readonly<
     },
     {
       says: 'a tremolo is a count of beams',
-      holds: () => (schemaDefs['tremolo-single']?.required ?? []).includes('marks'),
+      holds: () =>
+        propertiesOf('tremolo-single').join() === 'marks,placement' &&
+        (schemaDefs['tremolo-single']?.required ?? []).includes('marks'),
     },
     {
       says: 'a single-note tremolo counts from one beam',
@@ -1186,17 +1213,20 @@ const CALL_SITE_LIMITS: Readonly<
   ],
 }
 
-/** How many times each file under src names the element or attribute code. */
+/**
+ * How many times each source file under src names the element or attribute
+ * code. The registry's own module and the list of codes are left out.
+ */
 function callSites(): Map<string, number> {
   const root = fileURLToPath(new URL('../', import.meta.url))
+  const skipped = ['src/read/unrepresentable.ts', 'src/warnings.ts']
   const found = new Map<string, number>()
-  for (const file of readdirSync(`${root}src/read`)) {
-    if (!file.endsWith('.ts') || file.endsWith('.test.ts') || file === 'unrepresentable.ts') {
-      continue
-    }
-    const text = readFileSync(`${root}src/read/${file}`, 'utf8')
-    const count = (text.match(/'unrepresentable:(element|attribute)'/g) ?? []).length
-    if (count > 0) found.set(`src/read/${file}`, count)
+  for (const entry of readdirSync(`${root}src`, { recursive: true, encoding: 'utf8' })) {
+    const file = `src/${entry}`
+    if (!file.endsWith('.ts') || file.endsWith('.test.ts') || skipped.includes(file)) continue
+    const text = readFileSync(`${root}${file}`, 'utf8')
+    const count = (text.match(/unrepresentable:(element|attribute)\b/g) ?? []).length
+    if (count > 0) found.set(file, count)
   }
   return found
 }

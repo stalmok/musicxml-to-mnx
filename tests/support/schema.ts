@@ -22,6 +22,8 @@ export interface SchemaNode {
   minimum?: number
   maximum?: number
   exclusiveMinimum?: number
+  exclusiveMaximum?: number
+  multipleOf?: number
 }
 
 const parsed = JSON.parse(
