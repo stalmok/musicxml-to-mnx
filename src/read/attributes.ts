@@ -582,14 +582,25 @@ function readTransposition(
       // signature shows only against the key the rest of the score is in.
       keyFifthsFlipAt: undefined,
     }
-    return { transposition, element: found.element }
+    // Bounded like a clef's.
+    const staff = readAttributeInRange(found.element, 'number', path, 1, state.staves)
+    return { transposition, staff, element: found.element }
   })
 
   const [opening] = stated
   if (!opening) return
   const first = opening.transposition
 
-  const other = stated.find((one) => !sameTransposition(one.transposition, first))
+  // A transpose naming no staff applies to every staff, and a staff none
+  // names sounds as written.
+  const uncovered =
+    !stated.some((one) => one.staff === undefined) &&
+    Array.from({ length: state.staves }, (_, i) => i + 1).some(
+      (staff) => !stated.some((one) => one.staff === staff),
+    )
+  const other =
+    stated.find((one) => !sameTransposition(one.transposition, first)) ??
+    (uncovered && !sameTransposition(CONCERT_PITCH, first) ? opening : undefined)
   if (other) {
     warnings.add(
       'unrepresentable:per-staff-transposition',
@@ -615,6 +626,8 @@ function readTransposition(
     )
   }
 }
+
+const CONCERT_PITCH: Transposition = { staffDistance: 0, halfSteps: 0, keyFifthsFlipAt: undefined }
 
 /**
  * The same distance the other way. Zero is written without a sign, because a

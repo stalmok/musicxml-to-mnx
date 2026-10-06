@@ -301,14 +301,100 @@ describe('a part stating more than one transposition', () => {
     )
 
     expect(part?.transposition).toEqual({ staffDistance: 1, halfSteps: 2 })
-    // The staff each names has no home either, since MNX states one for the
-    // whole part, so both "number" attributes are reported as well.
-    expect(warnings.map((w) => w.code)).toEqual([
-      'unrepresentable:per-staff-transposition',
-      'unsupported:attribute',
-      'unsupported:attribute',
-    ])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-transposition'])
     expect(warnings[0]?.element).toBe('transpose')
+  })
+
+  test('says nothing where every staff names the same interval', () => {
+    const { part, warnings } = read(
+      inPart(
+        '<staves>2</staves>' +
+          '<transpose number="1"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>' +
+          '<transpose number="2"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>',
+        NOTE,
+      ),
+    )
+
+    expect(part?.transposition).toEqual({ staffDistance: 1, halfSteps: 2 })
+    expect(warnings).toEqual([])
+  })
+
+  test('takes the number on a one-staff part as the whole part', () => {
+    const { part, warnings } = read(
+      inPart(
+        '<transpose number="1"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>',
+        NOTE,
+      ),
+    )
+
+    expect(part?.transposition).toEqual({ staffDistance: 1, halfSteps: 2 })
+    expect(warnings).toEqual([])
+  })
+
+  // A staff no <transpose> names sounds as written.
+  test('reports a staff left at concert pitch beside a transposed one', () => {
+    const { part, warnings } = read(
+      inPart(
+        '<staves>2</staves>' +
+          '<transpose number="1"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>',
+        NOTE,
+      ),
+    )
+
+    expect(part?.transposition).toEqual({ staffDistance: 1, halfSteps: 2 })
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([
+      ['unrepresentable:per-staff-transposition', 'transpose'],
+    ])
+  })
+
+  test('reports the one staff of three that no transpose names', () => {
+    const { warnings } = read(
+      inPart(
+        '<staves>3</staves>' +
+          '<transpose number="1"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>' +
+          '<transpose number="2"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>',
+        NOTE,
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-transposition'])
+  })
+
+  test('says nothing where the one staff named is at concert pitch too', () => {
+    const { warnings } = read(
+      inPart(
+        '<staves>2</staves>' +
+          '<transpose number="2"><diatonic>0</diatonic><chromatic>0</chromatic></transpose>',
+        NOTE,
+      ),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  test('applies a transpose stating no number to every staff it does not name', () => {
+    const { warnings } = read(
+      inPart(
+        '<staves>2</staves>' +
+          '<transpose><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>' +
+          '<transpose number="2"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>',
+        NOTE,
+      ),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  test('refuses a transpose naming a staff the part does not have', () => {
+    expect(() =>
+      read(
+        inPart(
+          '<staves>2</staves>' +
+            '<transpose number="3"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>',
+          NOTE,
+        ),
+      ),
+    ).toThrow('<transpose> has a "number" of 3, outside the range 1 to 2.')
   })
 
   test('reports staves transposed differently at the first that differs', () => {
