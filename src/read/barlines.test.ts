@@ -707,65 +707,74 @@ describe('what a barline can say that MNX cannot', () => {
   })
 })
 
-// MusicXML allows several <barline> elements at one edge. Two stating
+// MusicXML allows several <barline> elements in a measure. Two stating
 // different marks of one kind disagree about the one mark MNX states there.
-describe('two barlines at one edge stating different marks', () => {
-  test('reports a second repeat played a different number of times', () => {
-    const { globals, warnings } = read(
-      NOTE +
-        right('<repeat direction="backward" times="2"/>') +
-        '\n' +
-        right('<repeat direction="backward" times="3"/>'),
-    )
+// Each second barline is written on a line of its own, so the warning's line
+// names it.
+describe('two barlines of one measure stating different marks', () => {
+  test.each([
+    [
+      'repeat',
+      'repeats',
+      NOTE + right('<repeat direction="backward" times="2"/>'),
+      right('<repeat direction="backward" times="3"/>'),
+    ],
+    [
+      'fermata',
+      'fermatas',
+      NOTE + right('<fermata>normal</fermata>'),
+      right('<fermata>angled</fermata>'),
+    ],
+    [
+      'ending',
+      'ending starts',
+      left('<ending number="1" type="start"/>'),
+      left('<ending number="2" type="start"/>') + NOTE + right('<ending number="1" type="stop"/>'),
+    ],
+    [
+      'ending',
+      'ending stops',
+      left('<ending number="1" type="start"/>') + NOTE + right('<ending number="1" type="stop"/>'),
+      right('<ending number="1" type="discontinue"/>'),
+    ],
+    // An ending start written on the closing barline is still the measure's
+    // one ending start.
+    [
+      'ending',
+      'ending starts',
+      left('<ending number="1" type="start"/>') + NOTE,
+      right('<ending number="2" type="start"/>'),
+    ],
+  ])('reports a second %s that states different %s', (element, kind, before, second) => {
+    const { warnings } = read(`${before}\n${second}`)
 
-    expect(globals[0]?.repeatEnd).toEqual({ times: 2 })
-    expect(warnings).toEqual([
+    expect(warnings.filter((w) => w.code === 'inconsistent:barline')).toEqual([
       {
         code: 'inconsistent:barline',
         message:
-          'Two barlines at this edge of the measure state different repeats. The first ' +
-          'is the one converted.',
-        element: 'repeat',
+          `Two barlines of this measure state different ${kind}. The first is the one ` +
+          'converted.',
+        element,
         attribute: undefined,
         context: { part: 'P1', measure: 1, line: 3 },
       },
     ])
   })
 
-  test('reports a second fermata drawn differently', () => {
-    const { globals, warnings } = read(
-      NOTE + right('<fermata>normal</fermata>') + right('<fermata>angled</fermata>'),
-    )
-
-    expect(globals[0]?.fermata?.symbol).toBe('normal')
-    expect(warnings.map((w) => [w.code, w.element])).toEqual([['inconsistent:barline', 'fermata']])
-    expect(warnings[0]?.message).toContain('different fermatas')
-  })
-
-  test('reports a second ending start with other numbers', () => {
-    const { globals, warnings } = read(
+  test('keeps the first of each', () => {
+    const { globals } = read(
       left('<ending number="1" type="start"/>') +
         left('<ending number="2" type="start"/>') +
         NOTE +
-        right('<ending number="1" type="stop"/>'),
-    )
-
-    expect(globals[0]?.ending?.numbers).toEqual([1])
-    expect(warnings.map((w) => [w.code, w.element])).toEqual([['inconsistent:barline', 'ending']])
-    expect(warnings[0]?.message).toContain('different ending starts')
-  })
-
-  test('reports a second ending stop drawn another way', () => {
-    const { globals, warnings } = read(
-      left('<ending number="1" type="start"/>') +
-        NOTE +
+        right('<repeat direction="backward" times="2"/><fermata>normal</fermata>') +
         right('<ending number="1" type="stop"/>') +
-        right('<ending number="1" type="discontinue"/>'),
+        right('<ending number="1" type="discontinue"/>') +
+        right('<repeat direction="backward" times="3"/><fermata>angled</fermata>'),
     )
 
-    expect(globals[0]?.ending?.open).toBe(false)
-    expect(warnings.map((w) => [w.code, w.element])).toEqual([['inconsistent:barline', 'ending']])
-    expect(warnings[0]?.message).toContain('different ending stops')
+    expect(globals[0]?.repeatEnd).toEqual({ times: 2 })
+    expect(globals[0]?.fermata?.symbol).toBe('normal')
+    expect(globals[0]?.ending).toMatchObject({ numbers: [1], open: false })
   })
 
   test('says nothing where a second barline restates the same marks', () => {

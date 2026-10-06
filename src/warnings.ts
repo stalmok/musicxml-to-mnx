@@ -275,8 +275,8 @@ export const WARNING_CODES = Object.freeze([
   // numbers disagree about how long the measure is. The cursor is taken to
   // the start of the measure.
   'inconsistent:backup',
-  // Two barlines at the same edge of a measure state different styles,
-  // repeats, endings or fermatas. The first is the one converted.
+  // Two barlines of one measure state different closing styles, repeats,
+  // ending starts, ending stops or fermatas. The first is the one converted.
   'inconsistent:barline',
   // A measure states two different key signatures, or two different time
   // signatures, at its start for the same staves. The later one is not

@@ -1117,46 +1117,31 @@ function readMeasure(
             found,
           )
         }
-        // The same holds for each mark: a second statement at the same edge
-        // that differs is a second claim about the one mark MNX states there.
-        const reportSecond = (name: string, second: XmlElement | undefined): void => {
-          if (second === undefined) return
+        // The same holds for each mark: a second statement that differs is a
+        // second claim about the one mark MNX states on the measure.
+        const reportSecond = <T extends { element: XmlElement }>(
+          name: string,
+          first: T | undefined,
+          second: T | undefined,
+          same: (a: T, b: T) => boolean,
+        ): void => {
+          if (first === undefined || second === undefined || same(first, second)) return
           warnings.add(
             'inconsistent:barline',
-            `Two barlines at this edge of the measure state different ${name}s. The ` +
-              'first is the one converted.',
+            `Two barlines of this measure state different ${name}s. The first is the one ` +
+              'converted.',
             context,
-            second,
+            second.element,
           )
         }
-        if (repeatEnd && reading.repeatEnd) {
-          reportSecond(
-            'repeat',
-            sameRepeatEnd(repeatEnd.value, reading.repeatEnd.value)
-              ? undefined
-              : reading.repeatEnd.element,
-          )
-        }
-        if (endingStart && reading.endingStart) {
-          reportSecond(
-            'ending start',
-            sameNumbers(endingStart.numbers, reading.endingStart.numbers)
-              ? undefined
-              : reading.endingStart.element,
-          )
-        }
-        if (endingStop && reading.endingStop) {
-          reportSecond(
-            'ending stop',
-            endingStop.open === reading.endingStop.open ? undefined : reading.endingStop.element,
-          )
-        }
-        if (fermata && reading.fermata) {
-          reportSecond(
-            'fermata',
-            sameFermata(fermata.value, reading.fermata.value) ? undefined : reading.fermata.element,
-          )
-        }
+        reportSecond('repeat', repeatEnd, reading.repeatEnd, (a, b) =>
+          sameRepeatEnd(a.value, b.value),
+        )
+        reportSecond('ending start', endingStart, reading.endingStart, (a, b) =>
+          sameNumbers(a.numbers, b.numbers),
+        )
+        reportSecond('ending stop', endingStop, reading.endingStop, (a, b) => a.open === b.open)
+        reportSecond('fermata', fermata, reading.fermata, (a, b) => sameFermata(a.value, b.value))
         barline ??= reading.barline
         repeatStart ||= reading.repeatStart
         repeatEnd ??= reading.repeatEnd
