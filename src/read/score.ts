@@ -229,7 +229,7 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
     if (written.has(id)) continue
     warnings.add(
       'unresolved:part-id',
-      `The part list names part ${id}, but the score never writes it, ` +
+      `The part list names part "${id}", but the score never writes it, ` +
         'so no staff of it is drawn.',
       { part: id },
       scorePart,
@@ -810,7 +810,7 @@ function readPart(
   if (partList.listed.size > 0 && !partList.listed.has(id)) {
     warnings.add(
       'unresolved:part-id',
-      `The part list has no entry for part ${id}.`,
+      `The part list has no entry for part "${id}".`,
       { part: id },
       element,
       'id',

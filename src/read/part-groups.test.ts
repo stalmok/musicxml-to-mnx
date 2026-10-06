@@ -637,6 +637,9 @@ describe('part groups', () => {
     expect(warnings).toEqual([
       expect.objectContaining({
         code: 'unresolved:part-id',
+        message:
+          'The part list names part "P2", but the score never writes it, so no staff of it ' +
+          'is drawn.',
         element: 'score-part',
         context: expect.objectContaining({
           part: 'P2',
