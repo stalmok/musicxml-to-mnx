@@ -704,20 +704,45 @@ describe('what a barline can say that MNX cannot', () => {
     expect(warnings.map((w) => w.element)).toEqual(['fermata'])
   })
 
-  // Both formats allow any whole number of repeats, so an odd count is
-  // reported and the score is not refused. Twenty digits cannot be read back
-  // exactly.
-  test.each(['1', '0', 'lots', '1e2', '99999999999999999999'])(
-    'reports a repeat played "%s" times, keeping the repeat',
-    (times) => {
-      const { globals, warnings } = read(
-        NOTE + right(`<repeat direction="backward" times="${times}"/>`),
-      )
+  // MusicXML counts repeats as a whole number from 0, and MNX from 2, so a
+  // count of 0 or 1 is a limit of the format. A count that is not a whole
+  // number is the source's problem. Twenty digits cannot be read back exactly,
+  // which is this converter's gap. Each keeps the repeat.
+  test.each([
+    ['1', 'unrepresentable:repeat-times'],
+    ['0', 'unrepresentable:repeat-times'],
+    ['+1', 'unrepresentable:repeat-times'],
+    ['lots', 'unresolved:attribute-value'],
+    ['1e2', 'unresolved:attribute-value'],
+    ['-3', 'unresolved:attribute-value'],
+    ['99999999999999999999', 'unsupported:element'],
+  ])('reports a repeat played "%s" times as %s, keeping the repeat', (times, code) => {
+    const { globals, warnings } = read(
+      NOTE + right(`<repeat direction="backward" times="${times}"/>`),
+    )
 
-      expect(globals[0]?.repeatEnd).toEqual({ times: undefined })
-      expect(warnings.map((w) => w.element)).toEqual(['repeat'])
-    },
-  )
+    expect(globals[0]?.repeatEnd).toEqual({ times: undefined })
+    expect(warnings.map((w) => [w.element, w.code])).toEqual([['repeat', code]])
+  })
+
+  test('says why a count of one is not carried over', () => {
+    const { warnings } = read(NOTE + right('<repeat direction="backward" times="1"/>'))
+
+    expect(warnings.map((w) => [w.attribute, w.message])).toEqual([
+      [
+        'times',
+        'A <repeat> states a count of 1, and MNX plays a repeat at least 2 times, ' +
+          'so the count is not carried over.',
+      ],
+    ])
+  })
+
+  test('reads a repeat played exactly as often as MNX allows', () => {
+    const { globals, warnings } = read(NOTE + right('<repeat direction="backward" times="2"/>'))
+
+    expect(globals[0]?.repeatEnd).toEqual({ times: 2 })
+    expect(warnings).toEqual([])
+  })
 
   // The count is an xs:nonNegativeInteger, which allows a leading plus sign.
   test('reads a repeat count written with a plus sign', () => {

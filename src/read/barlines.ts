@@ -269,10 +269,13 @@ function readRepeat(
 /** The fewest times MNX plays a repeated passage. */
 export const FEWEST_REPEAT_TIMES = 2
 
+/** A whole number from 0, as MusicXML writes a count, whatever its size. */
+const UNSIGNED_DIGITS = /^\+?\d+$/
+
 /**
  * How many times the passage is played, where the source counts them.
- * MusicXML allows any whole number. MNX plays a repeat at least twice, so a
- * lower count is reported and not carried over.
+ * MusicXML allows any whole number from 0. MNX plays a repeat at least twice,
+ * so a lower count is reported and not carried over.
  */
 function readTimes(
   repeat: XmlElement,
@@ -283,13 +286,35 @@ function readTimes(
   if (written === undefined) return undefined
 
   const times = parseWholeNumber(written)
-  if (times === undefined || times < FEWEST_REPEAT_TIMES) {
+  if (times === undefined && UNSIGNED_DIGITS.test(written)) {
     warnings.add(
       'unsupported:element',
-      `A <repeat> is played "${written}" times, which is not a count of two or more, ` +
-        'and is not carried over.',
+      `A <repeat> is played "${written}" times, a count too large to read exactly, ` +
+        'and the count is not carried over.',
       context,
       repeat,
+    )
+    return undefined
+  }
+  if (times === undefined || times < 0) {
+    warnings.add(
+      'unresolved:attribute-value',
+      `A <repeat> is played "${written}" times, which is not a whole number, ` +
+        'and the count is not carried over.',
+      context,
+      repeat,
+      'times',
+    )
+    return undefined
+  }
+  if (times < FEWEST_REPEAT_TIMES) {
+    warnings.add(
+      'unrepresentable:repeat-times',
+      `A <repeat> states a count of ${String(times)}, and MNX plays a repeat at least ` +
+        `${String(FEWEST_REPEAT_TIMES)} times, so the count is not carried over.`,
+      context,
+      repeat,
+      'times',
     )
     return undefined
   }

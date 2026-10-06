@@ -1044,6 +1044,9 @@ const FORMAT_LIMITS: Readonly<Record<FormatLimit, () => boolean>> = {
   },
   'unrepresentable:cross-part-mark': () =>
     GLOBAL_MARKS.every((mark) => has('measure-global', mark) && !has('part-measure', mark)),
+  'unrepresentable:repeat-times': () =>
+    refers('repeat-end', 'times', 'repeat-times') &&
+    schemaDefs['repeat-times']?.minimum === FEWEST_REPEAT_TIMES,
   'unrepresentable:stem-direction': () => valuesOf('stem-direction').join() === 'down,up',
   'unrepresentable:tempo': () =>
     propertiesOf('tempo').join() === 'bpm,location,value' &&

@@ -69,6 +69,9 @@ export const WARNING_CODES = Object.freeze([
   // or jumps on the same measure, and MNX states one of each there. The
   // element field names which mark. Segnos have their own code above.
   'unrepresentable:cross-part-mark',
+  // A repeat played fewer than two times. MNX plays a repeat at least twice,
+  // so the repeat is converted and the count is not.
+  'unrepresentable:repeat-times',
   // A stem that neither points up nor down. MNX states only those two.
   'unrepresentable:stem-direction',
   // A tempo MNX has no value for: one written as one note value equalling
