@@ -134,23 +134,31 @@ describe('dynamics', () => {
     expect(warnings).toEqual([])
   })
 
-  // The placement is the direction's, so a mark beside the segno that MNX
-  // can place takes it, and the segno still loses its side.
+  const tempo = '<metronome><beat-unit>quarter</beat-unit><per-minute>60</per-minute></metronome>'
   test.each([
-    ['dynamic', '<dynamics><p/></dynamics>'],
-    ['hairpin', '<wedge type="crescendo"/>'],
-    ['octave shift', '<octave-shift type="down" size="8"/>'],
-  ])('reports a segno placed below beside a %s', (_, mark) => {
+    ['segno', 'a dynamic', '<segno/>', '<dynamics><p/></dynamics>'],
+    ['segno', 'a hairpin', '<segno/>', '<wedge type="crescendo"/>'],
+    ['segno', 'an octave shift', '<segno/>', '<octave-shift type="down" size="8"/>'],
+    ['tempo', 'a dynamic', tempo, '<dynamics><p/></dynamics>'],
+  ])('reports a %s placed below beside %s', (_, __, first, mark) => {
     const { warnings } = read(
       inMeasure(
-        `<direction placement="below"><direction-type><segno/>${mark}</direction-type>` +
+        `<direction placement="below"><direction-type>${first}${mark}</direction-type>` +
           '</direction>' +
           note('C'),
       ),
     )
 
-    expect(warnings.filter((w) => w.attribute === 'placement').map((w) => w.element)).toEqual([
-      'direction',
+    expect(warnings.filter((w) => w.attribute === 'placement')).toEqual([
+      {
+        code: 'unrepresentable:attribute',
+        message:
+          'This <direction> places a segno or a tempo below the staff, and MNX states no ' +
+          'side for either. The segno or tempo is converted without its placement.',
+        element: 'direction',
+        attribute: 'placement',
+        context: { part: 'P1', measure: 1, line: 1 },
+      },
     ])
   })
 
