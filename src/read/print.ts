@@ -6,15 +6,18 @@
 import type { ReportContext, WarningCollector } from './collector.js'
 import { attribute } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
+import { NO_HOME_ATTRIBUTES } from './unrepresentable.js'
 
 export interface PrintReading {
   systemBreak: boolean
   pageBreak: boolean
 }
 
-// The attributes a <print> may carry besides the two breaks. Reported here
-// as having no home in MNX; the sweep would report them as a converter gap.
-const UNCARRIED_PRINT_ATTRIBUTES = ['page-number', 'blank-page', 'staff-spacing'] as const
+// The attributes a <print> may carry besides the two breaks, reported here
+// under a code of their own rather than by the sweep.
+const UNCARRIED_PRINT_ATTRIBUTES = [...NO_HOME_ATTRIBUTES]
+  .filter((entry) => entry.startsWith('print '))
+  .map((entry) => entry.slice('print '.length))
 
 /**
  * The breaks a <print> states. Its children (system and page layout, measure

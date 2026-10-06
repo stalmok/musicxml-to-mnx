@@ -10,6 +10,7 @@ export { schemaErrors } from '../../cli/validate.js'
 export interface SchemaNode {
   $ref?: string
   allOf?: readonly SchemaNode[]
+  anyOf?: readonly SchemaNode[]
   properties?: Record<string, SchemaNode>
   patternProperties?: Record<string, SchemaNode>
   items?: SchemaNode

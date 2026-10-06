@@ -180,7 +180,9 @@ The CLI provides optional validation through `--validate`.
 `tests/schema-conformance.test.ts` checks:
 
 - The public MNX types against the schema.
-- The unrepresentable-element registry against schema capabilities.
+- The unrepresentable-element registry against schema capabilities, by name
+  and by the concept each entry stands for.
+- Each `unrepresentable:*` warning code against the schema fact it rests on.
 - Generated-ID constraints against the schema's ID pattern.
 - The reader's numeric limits against the schema's minimum and maximum values.
 - Model enums against the corresponding MNX enums, with explicit exceptions.

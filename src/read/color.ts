@@ -1,9 +1,10 @@
 // MusicXML's color attribute, read into MNX's color string.
 //
 // MusicXML writes a color as #RRGGBB, or as #AARRGGBB with an alpha channel
-// first. MNX's color is a plain string with no alpha form, so the six-digit
-// form is carried as written, a fully opaque alpha says nothing and is
-// dropped, and any other alpha is reported and the color converted opaque.
+// first. MNX's color is a string of no stated form, and the one color form
+// the schema does state is #rrggbb, so the six-digit form is carried as
+// written, a fully opaque alpha says nothing and is dropped, and any other
+// alpha is reported and the color converted opaque.
 
 import type { ReportContext, WarningCollector } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
@@ -28,8 +29,8 @@ export function readColor(
     if (written.slice(1, 3).toUpperCase() === 'FF') return opaque
     warnings.add(
       'unrepresentable:color',
-      `A color of "${written}" has an alpha channel, and MNX's color has no alpha ` +
-        'form. The color is converted opaque.',
+      `A color of "${written}" has an alpha channel, and MNX states no form for one. ` +
+        'The color is converted opaque.',
       context,
       element,
       'color',

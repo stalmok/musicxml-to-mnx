@@ -61,8 +61,9 @@ export const WARNING_CODES = Object.freeze([
   // The parts of the score state different segnos on the same measure, and
   // MNX states one segno for the whole score's measure.
   'unrepresentable:cross-part-segno',
-  // A color with an alpha channel other than fully opaque. MNX's color has no
-  // alpha form, so the color is converted opaque and the alpha is not.
+  // A color with an alpha channel other than fully opaque. MNX's color states
+  // no form, and the one form the schema states has no alpha, so the color is
+  // converted opaque and the alpha is not.
   'unrepresentable:color',
   // The parts of the score state different repeats, endings, fermatas, fines,
   // or jumps on the same measure, and MNX states one of each there. The

@@ -248,6 +248,13 @@ export const NO_HOME_ATTRIBUTES: ReadonlySet<string> = new Set([
   // measure number is a plain integer override, so a measure can be
   // renumbered but not stated unnumbered.
   'measure implicit',
+  // The page numbering, blank pages and staff spacing a <print> states. The
+  // schema's page holds systems and a layout, and its system a measure, a
+  // layout and layout changes. src/read/print.ts reports these under a code
+  // of its own.
+  'print page-number',
+  'print blank-page',
+  'print staff-spacing',
 ])
 
 /**

@@ -1226,8 +1226,8 @@ describe('segno', () => {
     expect(warnings).toEqual([])
   })
 
-  // MNX's color has no alpha form, so a translucent color is converted opaque
-  // and the alpha is reported.
+  // MNX states no form for an alpha channel, so a translucent color is
+  // converted opaque and the alpha is reported.
   test('reports an alpha channel and converts the color opaque', () => {
     const { global, warnings } = read(
       inMeasure(direction('<segno color="#80FF0000"/>') + note('C')),

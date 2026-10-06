@@ -6,8 +6,9 @@
 //   src/read/unrepresentable.ts  these elements have no home in MNX
 //   src/ids.ts                   an MNX id looks like this
 //   the reader's numeric limits  MNX counts this far
+//   src/warnings.ts              these losses have no home in MNX
 //
-// A fourth, the model's enums in src/model/score.ts, copies the types, because
+// Another, the model's enums in src/model/score.ts, copies the types, because
 // the model uses MNX's spelling. It is compared with the types at the end of
 // this file.
 //
@@ -19,6 +20,7 @@
 //
 // Run this after moving the schema pin.
 
+import { readdirSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
 import { describe, expect, test } from 'vitest'
@@ -29,6 +31,7 @@ import { MNX_ID_PATTERN } from '../src/ids.js'
 import { TREMOLO_MARKS } from '../src/read/notes.js'
 import { MIDI_NUMBERS } from '../src/read/score.js'
 import { NO_HOME_ATTRIBUTES, NO_HOME_IN_MNX } from '../src/read/unrepresentable.js'
+import type { FormatLimit } from '../src/warnings.js'
 import { resolveRef, schemaDefs } from './support/schema.js'
 import type { SchemaNode } from './support/schema.js'
 
@@ -501,6 +504,11 @@ function kebab(name: string): string {
 
 // --- The registry of what MNX cannot hold, against the schema ---------------
 
+/** A name as the schema comparison reads it: lower case, letters and digits. */
+function normalised(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
 /**
  * Every name the schema uses, normalised, against the definitions that use it.
  * A MusicXML name is hyphenated and an MNX one is camelCase, so only letters
@@ -509,7 +517,7 @@ function kebab(name: string): string {
 function schemaNames(): Map<string, Set<string>> {
   const found = new Map<string, Set<string>>()
   const note = (name: string, where: string): void => {
-    const key = name.toLowerCase().replace(/[^a-z0-9]/g, '')
+    const key = normalised(name)
     const places = found.get(key) ?? new Set<string>()
     places.add(where)
     found.set(key, places)
@@ -528,7 +536,33 @@ const names = schemaNames()
 
 /** Where the schema uses a name, ignoring case and hyphens. */
 function usedBy(name: string): string[] {
-  return [...(names.get(name.toLowerCase().replace(/[^a-z0-9]/g, '')) ?? [])].sort()
+  return [...(names.get(normalised(name)) ?? [])].sort()
+}
+
+/**
+ * The words the schema would use for a concept, and where it would put them.
+ * With homes, the concept is looked for in the properties and values of those
+ * definitions alone, because the schema uses some of the words elsewhere with
+ * another meaning: a clef has hide, and nothing else does. Without homes, the
+ * concept is looked for everywhere.
+ */
+interface Concept {
+  readonly words: readonly string[]
+  readonly homes?: readonly string[]
+}
+
+/** The words of a concept the schema uses where it would hold the concept. */
+function conceptFound({ words, homes }: Concept): string[] {
+  const wanted = words.map(normalised)
+  if (homes === undefined) return wanted.filter((word) => usedBy(word).length > 0)
+  const held = homes.flatMap((home) => {
+    const definition = schemaDefs[home]
+    return [
+      ...Object.keys(definition?.properties ?? {}),
+      ...(definition?.enum ?? []).map((value) => String(value)),
+    ].map(normalised)
+  })
+  return wanted.filter((word) => held.includes(word))
 }
 
 /**
@@ -557,51 +591,233 @@ const ELEMENT_COLLISIONS: Readonly<Record<string, readonly string[]>> = {
 }
 
 /**
- * The definition that would hold each attribute on the no-home list. The test
- * checks that the definition has no such property. Attributes with no home
- * anywhere in the schema are listed after it.
+ * The concept each group of elements on the no-home list stands for. The
+ * schema could gain the concept under a name of its own, which the spelling
+ * check above does not see.
  */
-const ATTRIBUTE_HOMES: Readonly<Record<string, string>> = {
-  'dot placement': 'note-value',
-  'note dynamics': 'perform-options',
-  'sound dynamics': 'sound',
-  'sound pan': 'sound',
-  'sound elevation': 'sound',
-  'sound pizzicato': 'event-markings',
-  'sound segno': 'segno',
-  'clef after-barline': 'clef',
-  'caesura placement': 'caesura',
-  'tied line-type': 'tie',
-  'metronome parentheses': 'tempo',
-  'direction system': 'system',
-  'measure implicit': 'measure-global',
-}
+const ELEMENT_CONCEPTS: readonly (Concept & { readonly elements: readonly string[] })[] = [
+  { elements: ['pedal'], words: ['pedal', 'sustain', 'sostenuto', 'unaCorda', 'damper'] },
+  {
+    elements: ['words'],
+    words: ['words', 'text', 'expression', 'directions', 'instruction'],
+    homes: ['measure-global', 'part-measure', 'event'],
+  },
+  {
+    elements: ['dashes', 'bracket'],
+    words: ['dashes', 'bracket', 'brackets', 'lines', 'extender'],
+    homes: ['measure-global', 'part-measure'],
+  },
+  {
+    elements: ['rehearsal'],
+    words: ['rehearsal', 'label', 'mark', 'marks'],
+    homes: ['measure-global'],
+  },
+  { elements: ['coda'], words: ['coda', 'toCoda'], homes: ['jump-type', 'measure-global'] },
+  {
+    elements: ['notehead'],
+    words: ['notehead', 'head', 'shape', 'glyph'],
+    homes: ['note', 'event', 'kit-note', 'kit-component'],
+  },
+  { elements: ['cue'], words: ['cue', 'size', 'small'] },
+  {
+    elements: [
+      'trill-mark',
+      'turn',
+      'inverted-turn',
+      'mordent',
+      'inverted-mordent',
+      'wavy-line',
+      'accidental-mark',
+    ],
+    words: ['ornament', 'ornaments', 'trill', 'turn', 'mordent', 'wavyLine', 'vibrato'],
+  },
+  { elements: ['slide'], words: ['slide', 'glissando', 'portamento'] },
+  {
+    elements: [
+      'harmonic',
+      'open-string',
+      'thumb-position',
+      'fingering',
+      'pluck',
+      'double-tongue',
+      'triple-tongue',
+      'stopped',
+      'snap-pizzicato',
+      'fret',
+      'string',
+      'hammer-on',
+      'pull-off',
+      'bend',
+      'tap',
+      'heel',
+      'toe',
+      'fingernails',
+      'hole',
+      'arrow',
+      'handbell',
+      'brass-bend',
+      'flip',
+      'smear',
+      'open',
+      'half-muted',
+      'harmon-mute',
+      'golpe',
+      'other-technical',
+    ],
+    words: [
+      'technical',
+      'technique',
+      'fingering',
+      'harmonic',
+      'pluck',
+      'pizzicato',
+      'fret',
+      'mute',
+      'muted',
+      'tongue',
+      'tonguing',
+      'bend',
+      'hammerOn',
+      'pullOff',
+    ],
+  },
+  {
+    elements: ['extend'],
+    words: ['extend', 'extender', 'melisma', 'line'],
+    homes: ['event-lyric-line'],
+  },
+  {
+    elements: ['mode', 'cancel', 'key-octave'],
+    words: ['mode', 'cancel', 'naturals', 'octave'],
+    homes: ['key'],
+  },
+  {
+    elements: ['work', 'movement-title', 'movement-number'],
+    words: ['work', 'movement', 'title', 'composer', 'opus'],
+  },
+  {
+    elements: ['staff-type', 'line-detail', 'staff-tuning', 'capo', 'staff-size'],
+    words: ['ossia', 'cue', 'size', 'scale', 'tuning', 'capo', 'detail', 'details'],
+    homes: ['staff-config', 'staff'],
+  },
+  {
+    elements: ['credit'],
+    words: ['credit', 'credits', 'text', 'words', 'title'],
+    homes: ['score', 'page', 'system', 'system-layout'],
+  },
+  {
+    elements: ['identification'],
+    words: ['identification', 'composer', 'rights', 'copyright', 'encoding', 'creator'],
+  },
+  {
+    elements: [
+      'defaults',
+      'page-layout',
+      'system-layout',
+      'staff-layout',
+      'measure-layout',
+      'measure-numbering',
+    ],
+    words: ['width', 'height', 'margin', 'margins', 'scaling', 'spacing', 'distance', 'numbering'],
+    homes: ['score', 'page', 'system', 'system-layout', 'staff', 'layout-change'],
+  },
+  {
+    elements: [
+      'instrument-sound',
+      'instrument-abbreviation',
+      'virtual-instrument',
+      'midi-device',
+      'midi-channel',
+      'midi-bank',
+      'midi-program',
+      'volume',
+      'pan',
+      'elevation',
+    ],
+    words: [
+      'program',
+      'patch',
+      'channel',
+      'bank',
+      'volume',
+      'pan',
+      'elevation',
+      'device',
+      'abbreviation',
+      'virtualInstrument',
+    ],
+    homes: ['sound', 'part', 'kit-component'],
+  },
+]
 
-const HIDING = ['visible', 'invisible', 'hidden', 'print-object']
+/** The words for hiding, which the schema states for a clef and nothing else. */
+const HIDING = ['hide', 'hidden', 'show', 'visible', 'invisible', 'print-object']
 
-/** Attributes whose comment claims the schema has no such concept anywhere. */
-const ATTRIBUTES_NOWHERE: Readonly<Record<string, readonly string[]>> = {
-  // No cue and no size concept.
-  'type size': ['size', 'cue'],
-  // The same fact the <pedal> element rests on.
-  'sound damper-pedal': ['pedal'],
-  'sound soft-pedal': ['pedal'],
-  'sound sostenuto-pedal': ['pedal'],
-  // No visibility of any kind.
-  'note print-object': HIDING,
-  'notations print-object': HIDING,
-  'key print-object': HIDING,
-  'time print-object': HIDING,
-  'ending print-object': HIDING,
-  'lyric print-object': HIDING,
+/**
+ * The concept behind each attribute on the no-home list. Only a dot's side and
+ * a caesura's are spelled as the schema would spell them, so the attribute's
+ * own name is not enough to look for.
+ */
+const ATTRIBUTE_CONCEPTS: Readonly<Record<string, Concept>> = {
+  'dot placement': { words: ['placement', 'side', 'position'], homes: ['note-value'] },
+  'type size': { words: ['cue', 'size', 'small'] },
+  'note dynamics': {
+    words: ['dynamics', 'velocity', 'volume'],
+    homes: ['note', 'perform-options'],
+  },
+  'sound dynamics': { words: ['dynamics', 'velocity', 'volume'], homes: ['sound'] },
+  // MNX jumps to a segno or plays to a Fine, and names nothing else.
+  'sound dacapo': { words: ['daCapo', 'dc', 'start'], homes: ['jump-type', 'jump'] },
+  'sound tocoda': { words: ['toCoda', 'coda'], homes: ['jump-type', 'jump'] },
+  'sound coda': { words: ['coda'], homes: ['jump-type', 'jump', 'measure-global'] },
+  'sound pan': { words: ['pan', 'stereo'], homes: ['sound'] },
+  'sound elevation': { words: ['elevation', 'height'], homes: ['sound'] },
+  'sound damper-pedal': { words: ['pedal', 'sustain', 'damper'] },
+  'sound soft-pedal': { words: ['pedal', 'unaCorda', 'soft'] },
+  'sound sostenuto-pedal': { words: ['pedal', 'sostenuto'] },
+  'note print-object': { words: HIDING, homes: ['note', 'event'] },
+  'notations print-object': {
+    words: HIDING,
+    homes: ['event-markings', 'fermata', 'slur', 'tie', 'arpeggio', 'tuplet'],
+  },
+  'key print-object': { words: HIDING, homes: ['key'] },
+  'time print-object': { words: HIDING, homes: ['time'] },
+  'ending print-object': { words: HIDING, homes: ['ending'] },
+  'lyric print-object': { words: HIDING, homes: ['event-lyric-line', 'lyrics'] },
+  'sound pizzicato': { words: ['pizzicato', 'pluck', 'plucked'] },
+  'sound segno': { words: ['name', 'label'], homes: ['segno'] },
   // The same fact <staff-tuning>, <capo> and <fret> rest on: no tablature.
-  // <string> is left out, because the schema's "string" is the JSON type, as
-  // ELEMENT_COLLISIONS records.
-  'staff-details show-frets': ['tablature', 'tuning', 'fret', 'capo'],
+  'staff-details show-frets': { words: ['tablature', 'tuning', 'fret', 'frets', 'capo'] },
+  'caesura placement': { words: ['placement', 'side'], homes: ['caesura'] },
+  'clef after-barline': {
+    words: ['afterBarline', 'barline', 'side'],
+    homes: ['clef', 'positioned-clef'],
+  },
+  'tied line-type': { words: ['lineType', 'dashed', 'dotted', 'style'], homes: ['tie'] },
+  'metronome parentheses': {
+    words: ['parentheses', 'parenthesis', 'enclosure', 'bracket'],
+    homes: ['tempo'],
+  },
+  'direction system': {
+    words: ['system', 'systems', 'top'],
+    homes: ['tempo', 'segno', 'ottava', 'dynamic-group-immediate', 'dynamic-group-gradual'],
+  },
+  'measure implicit': {
+    words: ['implicit', 'numbered', 'unnumbered', 'pickup', 'anacrusis'],
+    homes: ['measure-global'],
+  },
+  'print page-number': { words: ['number', 'pageNumber'], homes: ['page'] },
+  'print blank-page': { words: ['blank', 'empty'], homes: ['page'] },
+  'print staff-spacing': {
+    words: ['spacing', 'distance'],
+    homes: ['system', 'system-layout', 'staff', 'staff-group'],
+  },
 }
 
-/** Attributes whose home would be a wider jump-type, not a property. */
-const ATTRIBUTES_NEEDING_A_JUMP = ['sound dacapo', 'sound tocoda', 'sound coda']
+/** Whether an element on the no-home list still has none, by name. */
+function elementUnnamed(element: string): boolean {
+  return usedBy(element).join() === [...(ELEMENT_COLLISIONS[element] ?? [])].sort().join()
+}
 
 describe('the registry of what MNX cannot hold, against the schema', () => {
   test.each([...NO_HOME_IN_MNX])('the schema has nowhere for <%s>', (element) => {
@@ -614,39 +830,318 @@ describe('the registry of what MNX cannot hold, against the schema', () => {
     expect(Object.keys(ELEMENT_COLLISIONS).filter((one) => !NO_HOME_IN_MNX.has(one))).toEqual([])
   })
 
-  test('every attribute on the list states which fact it rests on', () => {
-    const stated = new Set([
-      ...Object.keys(ATTRIBUTE_HOMES),
-      ...Object.keys(ATTRIBUTES_NOWHERE),
-      ...ATTRIBUTES_NEEDING_A_JUMP,
-    ])
-    expect([...NO_HOME_ATTRIBUTES].filter((one) => !stated.has(one))).toEqual([])
-    expect([...stated].filter((one) => !NO_HOME_ATTRIBUTES.has(one))).toEqual([])
+  test('every element on the list is in exactly one concept group', () => {
+    const grouped = ELEMENT_CONCEPTS.flatMap((group) => group.elements)
+    expect([...NO_HOME_IN_MNX].filter((one) => !grouped.includes(one))).toEqual([])
+    expect(grouped.filter((one) => !NO_HOME_IN_MNX.has(one))).toEqual([])
+    expect(grouped.filter((one, index) => grouped.indexOf(one) !== index)).toEqual([])
   })
 
-  test.each(Object.entries(ATTRIBUTE_HOMES))(
-    'the definition that would hold %s has no such property',
-    (entry, definition) => {
-      const attribute = entry.slice(entry.indexOf(' ') + 1)
-      const wanted = attribute.toLowerCase().replace(/[^a-z0-9]/g, '')
-      const held = Object.keys(schemaDefs[definition]?.properties ?? {}).map((one) =>
-        one.toLowerCase().replace(/[^a-z0-9]/g, ''),
-      )
-      expect(held).not.toContain(wanted)
+  test.each(ELEMENT_CONCEPTS.map((group) => [group.elements.join(', '), group] as const))(
+    'the schema states no concept behind <%s>',
+    (_elements, group) => {
+      expect(conceptFound(group)).toEqual([])
     },
   )
 
-  test.each(Object.entries(ATTRIBUTES_NOWHERE))(
-    'the schema has no concept behind %s',
-    (_entry, concepts) => {
-      expect(concepts.flatMap((concept) => usedBy(concept))).toEqual([])
+  test('every attribute on the list states the concept it stands for', () => {
+    expect([...NO_HOME_ATTRIBUTES].filter((one) => !(one in ATTRIBUTE_CONCEPTS))).toEqual([])
+    expect(Object.keys(ATTRIBUTE_CONCEPTS).filter((one) => !NO_HOME_ATTRIBUTES.has(one))).toEqual(
+      [],
+    )
+  })
+
+  test.each(Object.entries(ATTRIBUTE_CONCEPTS))(
+    'the schema states no concept behind %s',
+    (_attribute, concept) => {
+      expect(conceptFound(concept)).toEqual([])
     },
   )
 
-  test.each(ATTRIBUTES_NEEDING_A_JUMP)('%s would need a jump type the schema lacks', () => {
-    // MNX jumps to a segno or plays to a Fine, and names nothing else, so a
-    // da capo, a to-coda and a coda have no home in MNX.
-    expect(schemaDefs['jump-type']?.enum).toEqual(['dsalfine', 'segno'])
+  test('every definition a concept is looked for in still exists', () => {
+    const homes = [
+      ...ELEMENT_CONCEPTS.flatMap((group) => group.homes ?? []),
+      ...Object.values(ATTRIBUTE_CONCEPTS).flatMap((concept) => concept.homes ?? []),
+    ]
+    expect(homes.filter((home) => !(home in schemaDefs))).toEqual([])
+  })
+
+  test('a word for hiding is used where the schema states it, and nowhere else', () => {
+    // Hiding is looked for only in each attribute's own home, because a clef
+    // can hide. This names every other place, so a new one is decided here.
+    expect(HIDING.flatMap((word) => usedBy(word))).toEqual(['clef', 'accidental-display'])
+  })
+})
+
+// --- Each format limit, against the schema fact it rests on -----------------
+
+/** The properties a definition states, without the ones every object gets. */
+function propertiesOf(definition: string): string[] {
+  const node = schemaDefs[definition]
+  return node === undefined ? [] : schemaProperties(node).sort()
+}
+
+function has(definition: string, property: string): boolean {
+  return schemaDefs[definition]?.properties?.[property] !== undefined
+}
+
+function isList(definition: string, property: string): boolean {
+  return schemaDefs[definition]?.properties?.[property]?.type === 'array'
+}
+
+function refers(definition: string, property: string, target: string): boolean {
+  return resolveRef(schemaDefs[definition]?.properties?.[property]) === schemaDefs[target]
+}
+
+/** The values a definition enumerates, as sorted text. */
+function valuesOf(definition: string): string[] {
+  return (schemaDefs[definition]?.enum ?? []).map(String).sort()
+}
+
+/** Whether a definition states where in a measure it sits. */
+function positioned(definition: string): boolean {
+  return Object.keys(schemaDefs[definition]?.properties ?? {}).some((property) =>
+    refers(definition, property, 'rhythmic-position'),
+  )
+}
+
+/** The definitions an anyOf list holds, by name. */
+function itemsOf(definition: string): string[] {
+  return (schemaDefs[definition]?.items?.anyOf ?? [])
+    .map((item) => (item.$ref ?? '').replace('#/$defs/', ''))
+    .sort()
+}
+
+/** The marks MNX states once on a global measure. */
+const GLOBAL_MARKS = ['ending', 'fermata', 'fine', 'jump', 'repeatEnd', 'repeatStart', 'segno']
+
+/**
+ * The schema fact each format limit rests on, as a test of the schema that
+ * holds while the limit does. Keyed by the code, so a new format limit does not
+ * compile until it states its fact. A failure means MNX may have gained a home
+ * for the loss: move the code to a converter gap, or convert it.
+ */
+const FORMAT_LIMITS: Readonly<Record<FormatLimit, () => boolean>> = {
+  'unrepresentable:element': () =>
+    [...NO_HOME_IN_MNX].every(elementUnnamed) &&
+    ELEMENT_CONCEPTS.every((group) => conceptFound(group).length === 0),
+  'unrepresentable:attribute': () =>
+    Object.values(ATTRIBUTE_CONCEPTS).every((concept) => conceptFound(concept).length === 0),
+  'unrepresentable:measure-label': () =>
+    resolveRef(schemaDefs['measure-global']?.properties?.['number'])?.type === 'integer',
+  'unrepresentable:per-staff-key': () => !has('key', 'staff') && !has('part-measure', 'key'),
+  'unrepresentable:per-staff-transposition': () =>
+    !has('part-transposition', 'staff') && !isList('part', 'transposition'),
+  'unrepresentable:transposition-change': () =>
+    !has('part-measure', 'transposition') && !has('measure-global', 'transposition'),
+  'unrepresentable:per-staff-time': () => !has('time', 'staff') && !has('part-measure', 'time'),
+  'unrepresentable:cross-part-key': () =>
+    has('measure-global', 'key') && !has('part-measure', 'key'),
+  'unrepresentable:cross-part-time': () =>
+    has('measure-global', 'time') && !has('part-measure', 'time'),
+  'unrepresentable:cross-part-barline': () =>
+    has('measure-global', 'barline') && !has('part-measure', 'barline'),
+  'unrepresentable:cross-part-segno': () =>
+    !isList('measure-global', 'segno') && !has('part-measure', 'segno'),
+  // MNX's color states no form, and the one form the schema does state has
+  // no alpha.
+  'unrepresentable:color': () => {
+    const forms = ['color', 'simple-color'].flatMap((name) => schemaDefs[name]?.pattern ?? [])
+    return forms.length > 0 && forms.every((form) => !new RegExp(form).test('#ffffffff'))
+  },
+  'unrepresentable:cross-part-mark': () =>
+    GLOBAL_MARKS.every((mark) => has('measure-global', mark) && !has('part-measure', mark)),
+  'unrepresentable:stem-direction': () => valuesOf('stem-direction').join() === 'down,up',
+  'unrepresentable:tempo': () =>
+    propertiesOf('tempo').join() === 'bpm,location,value' &&
+    (schemaDefs['tempo']?.required ?? []).includes('bpm') &&
+    schemaDefs['bpm']?.exclusiveMinimum === 0,
+  'unrepresentable:lyric-syllabic': () =>
+    refers('event-lyric-line', 'type', 'event-lyric-line-type'),
+  'unrepresentable:lyric-line': () =>
+    schemaDefs['event-lyric-lines']?.type === 'object' &&
+    schemaDefs['event-lyric-lines']?.patternProperties !== undefined,
+  'unrepresentable:fermata': () => refers('event', 'fermata', 'fermata'),
+  'unrepresentable:marking': () =>
+    propertiesOf('event-markings').every((mark) => !isList('event-markings', mark)),
+  // A chord is listed as rolled or as struck together, and nothing joins the
+  // two lists.
+  'unrepresentable:arpeggio': () =>
+    has('part-measure', 'arpeggios') &&
+    has('part-measure', 'nonArpeggios') &&
+    !has('arpeggio', 'nonArpeggio'),
+  'unrepresentable:ending-text': () =>
+    propertiesOf('ending').join() === 'color,duration,numbers,open',
+  'unrepresentable:barline': () =>
+    propertiesOf('barline').join() === 'type' && !isList('measure-global', 'barline'),
+  // Nothing orders two clefs, or two staff configs, at one point.
+  'unrepresentable:clef': () => propertiesOf('rhythmic-position').join() === 'fraction,graceIndex',
+  'unrepresentable:staff-config': () =>
+    propertiesOf('rhythmic-position').join() === 'fraction,graceIndex',
+  'unrepresentable:senza-misura': () =>
+    (schemaDefs['time']?.required ?? []).includes('count') &&
+    usedBy('senzaMisura').length === 0 &&
+    usedBy('unmetered').length === 0,
+  'unrepresentable:mid-measure-key': () => !positioned('key'),
+  'unrepresentable:mid-measure-time': () => !positioned('time'),
+  'unrepresentable:rest-length': () =>
+    !has('full-measure-rest', 'duration') &&
+    refers('full-measure-rest', 'visualDuration', 'note-value'),
+  'unrepresentable:time-symbol': () => valuesOf('time-signature-display').join() === 'common,cut',
+  'unrepresentable:interchangeable-time': () =>
+    !isList('measure-global', 'time') && propertiesOf('time').join() === 'count,display,unit',
+  'unrepresentable:clef-octave': () =>
+    Math.max(...valuesOf('ottava-amount-or-zero').map((value) => Math.abs(Number(value)))) === 3,
+  'unrepresentable:clef-sign': () => valuesOf('clef-sign').join() === 'C,F,G,P',
+  'unrepresentable:non-traditional-key': () => propertiesOf('key').join() === 'color,fifths',
+  'unrepresentable:group-symbol': () =>
+    valuesOf('staff-symbol').join() === 'brace,bracket,noSymbol',
+  // A layout is a tree: a group holds staves and other groups.
+  'unrepresentable:part-group-overlap': () =>
+    refers('staff-group', 'content', 'system-layout-content') &&
+    itemsOf('system-layout-content').join() === 'staff,staff-group',
+  'unrepresentable:part-id': () => schemaDefs['id']?.pattern !== undefined,
+  // A kit component names its sound by MNX id, not by the key global.sounds
+  // allows.
+  'unrepresentable:instrument-id': () => refers('kit-component', 'sound', 'id'),
+  'unrepresentable:multimeasure-rest': () =>
+    propertiesOf('multimeasure-rest').join() === 'duration,label,start',
+  'unrepresentable:cross-part-multimeasure-rest': () =>
+    has('score', 'multimeasureRests') &&
+    !has('part', 'multimeasureRests') &&
+    !has('part-measure', 'multimeasureRest'),
+  'unrepresentable:multiple-rest-symbols': () =>
+    propertiesOf('multimeasure-rest').join() === 'duration,label,start',
+  'unrepresentable:measure-repeat': () =>
+    !isList('part-measure', 'measureRepeat') && schemaDefs['measure-repeat-count']?.maximum === 4,
+  'unrepresentable:measure-repeat-slashes': () =>
+    propertiesOf('measure-repeat').join() === 'counter,displayNumber,number,staffPosition',
+  'unrepresentable:grace-time': () =>
+    propertiesOf('grace').join() === 'color,content,graceType,slash,type' &&
+    valuesOf('grace-type').join() === 'makeTime,stealFollowing,stealPrevious',
+  // The rest a sequence states for its whole measure has no length.
+  'unrepresentable:grace-beside-rest': () =>
+    refers('sequence', 'fullMeasure', 'full-measure-rest') && !has('full-measure-rest', 'duration'),
+  // A dynamic's wording is text; only the mark itself takes glyphs.
+  'unrepresentable:wording-glyph': () =>
+    ['dynamic-group-immediate', 'dynamic-group-accent'].every(
+      (group) =>
+        propertiesOf(group)
+          .filter((property) => /glyph/i.test(property))
+          .join() === 'glyphs',
+    ),
+  // Every kind of dynamic states a mark, a hairpin or a change, beside any
+  // wording.
+  'unrepresentable:dynamic-wording': () =>
+    itemsOf('dynamic-groups').every(
+      (group) =>
+        (schemaDefs[group]?.required ?? []).filter(
+          (property) => !['end', 'position', 'type'].includes(property),
+        ).length > 0,
+    ),
+  // A tuplet holds what it brackets, so tuplets nest and do not cross.
+  'unrepresentable:tuplet-crossing': () => refers('tuplet', 'content', 'sequence-content'),
+  'unrepresentable:tuplet-span': () =>
+    refers('tuplet', 'content', 'sequence-content') &&
+    itemsOf('sequence-content').includes('tuplet') &&
+    !has('tuplet', 'end'),
+  'unrepresentable:tuplet-ratio': () =>
+    [...(schemaDefs['note-value-quantity']?.required ?? [])].sort().join() ===
+      'duration,multiple' && refers('note-value-quantity', 'multiple', 'positive-integer'),
+  'unrepresentable:tuplet-untimed': () => schemaDefs['positive-integer']?.minimum === 1,
+  'unrepresentable:print-detail': () =>
+    propertiesOf('page').join() === 'layout,systems' &&
+    propertiesOf('system').join() === 'layout,layoutChanges,measure',
+  'unrepresentable:microtone': () => schemaDefs['alter']?.type === 'integer',
+}
+
+/**
+ * The places that raise the element or attribute code with a message of their
+ * own, rather than through the registry, by file, with the schema fact each
+ * rests on. A new call site fails until it is listed.
+ */
+const CALL_SITE_LIMITS: Readonly<
+  Record<string, readonly { readonly says: string; readonly holds: () => boolean }[]>
+> = {
+  'src/read/directions.ts': [
+    {
+      says: 'a segno or a tempo states no side',
+      holds: () => !has('segno', 'placement') && !has('tempo', 'placement'),
+    },
+  ],
+  'src/read/notes.ts': [
+    {
+      says: 'a kit note strikes one component',
+      holds: () => propertiesOf('kit-note').every((property) => !isList('kit-note', property)),
+    },
+    {
+      says: 'neither a measure rest nor a space carries a mark',
+      holds: () =>
+        propertiesOf('full-measure-rest').join() === 'fermata,staffPosition,visualDuration' &&
+        propertiesOf('space').join() === 'duration,type',
+    },
+    {
+      says: 'a tremolo is a count of beams',
+      holds: () => (schemaDefs['tremolo-single']?.required ?? []).includes('marks'),
+    },
+    {
+      says: 'a single-note tremolo counts from one beam',
+      holds: () => schemaDefs['tremolo-single']?.properties?.['marks']?.minimum === 1,
+    },
+    {
+      says: 'a two-note tremolo states no side',
+      holds: () => !has('multi-note-tremolo', 'placement'),
+    },
+    {
+      says: 'a two-note tremolo counts one to eight beams',
+      holds: () => schemaDefs['multi-note-tremolo']?.properties?.['marks']?.maximum === 8,
+    },
+  ],
+  'src/read/score.ts': [
+    {
+      says: 'a measure states one of each mark',
+      holds: () => GLOBAL_MARKS.every((mark) => !isList('measure-global', mark)),
+    },
+  ],
+  'src/read/spanners.ts': [
+    {
+      says: 'a tie is always drawn',
+      holds: () => propertiesOf('tie').join() === 'lv,side,target,targetType',
+    },
+  ],
+}
+
+/** How many times each file under src names the element or attribute code. */
+function callSites(): Map<string, number> {
+  const root = fileURLToPath(new URL('../', import.meta.url))
+  const found = new Map<string, number>()
+  for (const file of readdirSync(`${root}src/read`)) {
+    if (!file.endsWith('.ts') || file.endsWith('.test.ts') || file === 'unrepresentable.ts') {
+      continue
+    }
+    const text = readFileSync(`${root}src/read/${file}`, 'utf8')
+    const count = (text.match(/'unrepresentable:(element|attribute)'/g) ?? []).length
+    if (count > 0) found.set(`src/read/${file}`, count)
+  }
+  return found
+}
+
+describe('each format limit, against the schema fact it rests on', () => {
+  test.each(Object.entries(FORMAT_LIMITS))('%s still has no home in MNX', (_code, holds) => {
+    expect(holds()).toBe(true)
+  })
+
+  test('every call site raising the element or attribute code states its fact', () => {
+    const listed = Object.entries(CALL_SITE_LIMITS).map(([file, facts]) => [file, facts.length])
+    expect([...callSites().entries()].sort()).toEqual(listed.sort())
+  })
+
+  test.each(
+    Object.values(CALL_SITE_LIMITS)
+      .flat()
+      .map((fact) => [fact.says, fact] as const),
+  )('%s', (_says, { holds }) => {
+    expect(holds()).toBe(true)
   })
 })
 

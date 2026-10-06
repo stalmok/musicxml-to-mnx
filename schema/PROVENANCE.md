@@ -37,8 +37,9 @@ Moving to a newer spec snapshot is a release:
 2. Run `pnpm exec vitest run tests/schema-conformance.test.ts`. It holds the
    places that state something about MNX by hand to this file: the types in
    `src/types/mnx.ts`, the registry of what MNX cannot hold in
-   `src/read/unrepresentable.ts`, the id pattern in `src/ids.ts`, and the
-   numeric limits the reader keeps to.
+   `src/read/unrepresentable.ts`, the id pattern in `src/ids.ts`, the
+   numeric limits the reader keeps to, and the schema fact each
+   `unrepresentable:*` warning code rests on.
    Each failure names the decision to make.
 3. Update `src/types/mnx.ts` to match any shape change the test reported. No
    other check finds a field the schema gained and the types lack.
@@ -50,7 +51,9 @@ Moving to a newer spec snapshot is a release:
    the model does not restate it.
 5. Move any entry the test reported out of `src/read/unrepresentable.ts` and
    into whatever now carries it. An element MNX can now hold is a gap in this
-   converter, not a limit of the format.
+   converter, not a limit of the format. Treat an `unrepresentable:*` code
+   whose schema fact no longer holds the same way: convert what it reports,
+   or report it as a converter gap.
 6. Regenerate fixture goldens and review every diff. A changed golden is a
    changed wire format.
 7. Re-run the corpus gate and record any movement in the warning baseline.
