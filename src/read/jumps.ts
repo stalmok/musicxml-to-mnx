@@ -5,6 +5,7 @@
 
 import type { Fraction } from '../fraction.js'
 import type { GlobalMeasure, Segno, Tempo } from '../model/score.js'
+import type { WarningCollector } from './collector.js'
 import type { Stated } from './element.js'
 
 export interface NamedSegno extends Segno {
@@ -59,30 +60,45 @@ export type ReadGlobalMeasure = Omit<GlobalMeasure, keyof ReadMarks | 'tempos'> 
  * one "dsalfine" would say the piece ends somewhere it does not, so a score
  * with several signs is matched sign by sign, by the name MusicXML gives them.
  */
-export function settleJumps(measures: readonly ReadGlobalMeasure[]): GlobalMeasure[] {
+export function settleJumps(
+  measures: readonly ReadGlobalMeasure[],
+  warnings: WarningCollector,
+): GlobalMeasure[] {
   const signs = measures.flatMap((measure, index) =>
     measure.segno ? [{ index, name: measure.segno.value.name }] : [],
   )
-  const reachesFine = (jump: DalSegno): boolean => {
-    const from = segnoReturnedTo(signs, jump.target)
+  const reachesFine = ({ value, element }: Stated<DalSegno>, index: number): boolean => {
+    const from = segnoReturnedTo(signs, value.target)
+    if (signs.length === 0 || from === undefined) {
+      warnings.add(
+        'unresolved:segno',
+        unresolvedMessage(signs.length, value.target),
+        { measure: index + 1 },
+        element,
+        'dalsegno',
+      )
+    }
     // A Fine at or after the sign is reached on the way back through.
     return from !== undefined && measures.some((m, i) => i >= from && m.fine !== undefined)
   }
 
   return measures.map(
-    ({
-      tempos,
-      number,
-      barline,
-      repeatEnd,
-      ending,
-      fermata,
-      segno,
-      fine,
-      jump,
-      multimeasureRest,
-      ...measure
-    }) => ({
+    (
+      {
+        tempos,
+        number,
+        barline,
+        repeatEnd,
+        ending,
+        fermata,
+        segno,
+        fine,
+        jump,
+        multimeasureRest,
+        ...measure
+      },
+      index,
+    ) => ({
       ...measure,
       tempos: tempos.map((tempo) => tempo.value),
       number: number?.value,
@@ -98,7 +114,7 @@ export function settleJumps(measures: readonly ReadGlobalMeasure[]): GlobalMeasu
       fine: fine?.value,
       jump: jump && {
         location: jump.value.location,
-        type: reachesFine(jump.value) ? 'dsalfine' : 'segno',
+        type: reachesFine(jump, index) ? 'dsalfine' : 'segno',
       },
       multimeasureRest: multimeasureRest?.value,
     }),
@@ -119,4 +135,18 @@ function segnoReturnedTo(
   if (signs.length === 0) return 0
   if (signs.length === 1) return signs[0]?.index
   return signs.find((sign) => sign.name === target)?.index
+}
+
+function unresolvedMessage(signCount: number, target: string | undefined): string {
+  if (signCount === 0) {
+    return (
+      'This dal segno jump returns to a segno, but the score draws none. The jump is ' +
+      'converted as a return to the start of the score.'
+    )
+  }
+  const plain = 'The jump is converted as a plain dal segno, not a D.S. al Fine.'
+  return target === undefined
+    ? `This dal segno jump names no segno, and the score draws several. ${plain}`
+    : `This dal segno jump returns to the segno "${target}", which is none of the segnos ` +
+        `the score draws. ${plain}`
 }

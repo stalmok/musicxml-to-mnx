@@ -1285,7 +1285,9 @@ describe('sound navigation', () => {
   })
 
   test('puts a jump of type segno on the measure for a <sound dalsegno>', () => {
-    const { global, warnings } = read(inMeasure(note('C') + '<sound dalsegno="segno"/>'))
+    const { global, warnings } = read(
+      inMeasure(direction('<segno/>') + note('C') + '<sound dalsegno="segno"/>'),
+    )
 
     expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'segno' })
     expect(warnings).toEqual([])
@@ -1345,7 +1347,7 @@ describe('sound navigation', () => {
   // and the rest is still reported.
   test('reports the playback a <sound dalsegno> carries besides the jump', () => {
     const { global, warnings } = read(
-      inMeasure(note('C') + '<sound dalsegno="segno" dynamics="54"/>'),
+      inMeasure(direction('<segno/>') + note('C') + '<sound dalsegno="segno" dynamics="54"/>'),
     )
 
     expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'segno' })
@@ -1422,7 +1424,9 @@ describe('sound navigation', () => {
   // reaches its own home, and the jump becomes "dsalfine": MusicXML says the
   // al-Fine only through the Fine's presence, not on the dalsegno attribute.
   test('reads a fine and a jump written on the one <sound>', () => {
-    const { global, warnings } = read(inMeasure(note('C') + '<sound fine="yes" dalsegno="segno"/>'))
+    const { global, warnings } = read(
+      inMeasure(direction('<segno/>') + note('C') + '<sound fine="yes" dalsegno="segno"/>'),
+    )
 
     expect(global?.fine).toEqual({ location: { num: 1, den: 4 } })
     expect(global?.jump).toEqual({
@@ -1439,6 +1443,7 @@ describe('sound navigation', () => {
     const score = readValid(
       '<score-partwise><part id="P1">' +
         '<measure number="1"><attributes><divisions>4</divisions></attributes>' +
+        direction('<segno/>') +
         note('C') +
         '<sound dalsegno="segno"/></measure>' +
         '<measure number="2">' +
@@ -1512,6 +1517,98 @@ describe('sound navigation', () => {
     )
 
     expect(score.globalMeasures[2]?.jump?.type).toBe('dsalfine')
+  })
+
+  // With no sign to go back to, a player takes the jump from the start, so a
+  // Fine anywhere stops it. The source still names a sign it never draws.
+  test('reports a jump in a score that draws no segno', () => {
+    const { global, warnings } = read(
+      inMeasure(note('C') + '\n<sound fine="yes" dalsegno="segno"/>'),
+    )
+
+    expect(global?.jump?.type).toBe('dsalfine')
+    expect(warnings).toEqual([
+      {
+        code: 'unresolved:segno',
+        message:
+          'This dal segno jump returns to a segno, but the score draws none. The jump ' +
+          'is converted as a return to the start of the score.',
+        element: 'sound',
+        attribute: 'dalsegno',
+        context: { measure: 1, line: 2 },
+      },
+    ])
+  })
+
+  // With several signs, only the name says which one the jump returns to. A
+  // name matching none of them leaves open whether a Fine stops the jump.
+  test('reports a jump naming none of the segnos the score draws', () => {
+    const warnings = new WarningCollector()
+    const score = readValid(
+      '<score-partwise><part id="P1">' +
+        '<measure number="1"><attributes><divisions>4</divisions></attributes>' +
+        '<direction><direction-type><segno/></direction-type>' +
+        '<sound segno="first"/></direction>' +
+        note('C') +
+        '</measure>' +
+        `<measure number="2">${note('C')}<sound fine="yes"/></measure>` +
+        '<measure number="3">' +
+        '<direction><direction-type><segno/></direction-type>' +
+        '<sound segno="second"/></direction>' +
+        note('C') +
+        '</measure>' +
+        `<measure number="4">${note('C')}\n<sound dalsegno="third"/></measure>` +
+        '</part></score-partwise>',
+      warnings,
+    )
+
+    expect(score.globalMeasures[3]?.jump?.type).toBe('segno')
+    expect(warnings.list().filter((w) => w.code === 'unresolved:segno')).toEqual([
+      {
+        code: 'unresolved:segno',
+        message:
+          'This dal segno jump returns to the segno "third", which is none of the ' +
+          'segnos the score draws. The jump is converted as a plain dal segno, not a ' +
+          'D.S. al Fine.',
+        element: 'sound',
+        attribute: 'dalsegno',
+        context: { measure: 4, line: 2 },
+      },
+    ])
+  })
+
+  test('reports a jump naming no segno where the score draws several', () => {
+    const warnings = new WarningCollector()
+    readValid(
+      '<score-partwise><part id="P1">' +
+        '<measure number="1"><attributes><divisions>4</divisions></attributes>' +
+        '<direction><direction-type><segno/></direction-type>' +
+        '<sound segno="first"/></direction>' +
+        note('C') +
+        '</measure>' +
+        '<measure number="2">' +
+        '<direction><direction-type><segno/></direction-type>' +
+        '<sound segno="second"/></direction>' +
+        note('C') +
+        '</measure>' +
+        '<measure number="3">' +
+        note('C') +
+        '<direction><direction-type><words>D.S.</words></direction-type>' +
+        '<sound dalsegno=""/></direction>' +
+        '</measure>' +
+        '</part></score-partwise>',
+      warnings,
+    )
+
+    expect(
+      warnings
+        .list()
+        .filter((w) => w.code === 'unresolved:segno')
+        .map((w) => w.message),
+    ).toEqual([
+      'This dal segno jump names no segno, and the score draws several. The jump is ' +
+        'converted as a plain dal segno, not a D.S. al Fine.',
+    ])
   })
 
   test('writes a fine the spec schema accepts', () => {

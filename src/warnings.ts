@@ -229,6 +229,11 @@ export const WARNING_CODES = Object.freeze([
   // one with no id. The kit component it strikes is kept, without a name or
   // a sound.
   'unresolved:instrument-id',
+  // A dal segno jump whose segno the score does not draw: the score draws
+  // none, or draws several and the jump names none of them. With none, the
+  // jump is converted as a return to the start of the score. With several,
+  // it is converted as a plain dal segno, not a D.S. al Fine.
+  'unresolved:segno',
   // An attribute whose value is not one MusicXML defines for it, so what the
   // source meant by it cannot be read. The attribute is not converted.
   'unresolved:attribute-value',

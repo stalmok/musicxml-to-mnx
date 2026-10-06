@@ -194,7 +194,7 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
   const flips = readings.map((reading) =>
     mergeGlobalMeasures(merged, reading.globals, reading.part, warnings),
   )
-  const globalMeasures = settleJumps(merged)
+  const globalMeasures = settleJumps(merged, warnings)
 
   for (const reading of readings) {
     reportSoundTempos(reading.part.id, reading.soundTempos, globalMeasures, warnings)

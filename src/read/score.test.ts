@@ -3185,7 +3185,8 @@ describe('several parts', () => {
   test('reports parts jumping back to differently named segnos', () => {
     const { score: result, warnings } = read(
       score(
-        `<part id="P1"><measure number="1"><sound dalsegno="A"/>${NOTE}</measure></part>` +
+        `<part id="P1"><measure number="1"><direction><direction-type><segno/></direction-type></direction>` +
+          `<sound dalsegno="A"/>${NOTE}</measure></part>` +
           `\n<part id="P2"><measure number="1"><sound dalsegno="B"/>${NOTE}</measure></part>`,
       ),
     )
@@ -3203,7 +3204,7 @@ describe('several parts', () => {
   test('says nothing where the parts restate the same marks', () => {
     const marked =
       '<barline location="left"><ending number="1" type="start"/></barline>' +
-      `<sound dalsegno="A"/>${NOTE}<sound fine="yes"/>` +
+      `<direction><direction-type><segno/></direction-type></direction><sound dalsegno="A"/>${NOTE}<sound fine="yes"/>` +
       '<barline location="right"><ending number="1" type="stop"/>' +
       '<repeat direction="backward" times="2"/><fermata>angled</fermata></barline>'
     const { warnings } = read(
@@ -3358,7 +3359,8 @@ describe('two parts disagreeing on one field of a mark', () => {
       '<duration>1</duration><type>quarter</type></note>'
     const { warnings } = read(
       score(
-        `<part id="P1"><measure number="1">${divisions}<sound dalsegno="A"/>${quarter}` +
+        `<part id="P1"><measure number="1">${divisions}<direction><direction-type><segno/></direction-type></direction>` +
+          `<sound dalsegno="A"/>${quarter}` +
           '</measure></part>' +
           `<part id="P2"><measure number="1">${divisions}${quarter}<sound dalsegno="A"/>` +
           '</measure></part>',
