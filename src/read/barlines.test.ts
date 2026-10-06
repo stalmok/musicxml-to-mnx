@@ -716,6 +716,7 @@ describe('what a barline can say that MNX cannot', () => {
     ['1e2', 'unresolved:attribute-value'],
     ['-3', 'unresolved:attribute-value'],
     ['99999999999999999999', 'unsupported:element'],
+    [' 99999999999999999999 ', 'unsupported:element'],
   ])('reports a repeat played "%s" times as %s, keeping the repeat', (times, code) => {
     const { globals, warnings } = read(
       NOTE + right(`<repeat direction="backward" times="${times}"/>`),
@@ -741,6 +742,23 @@ describe('what a barline can say that MNX cannot', () => {
     const { globals, warnings } = read(NOTE + right('<repeat direction="backward" times="2"/>'))
 
     expect(globals[0]?.repeatEnd).toEqual({ times: 2 })
+    expect(warnings).toEqual([])
+  })
+
+  test('says why a negative count is not carried over', () => {
+    const { warnings } = read(NOTE + right('<repeat direction="backward" times="-3"/>'))
+
+    expect(warnings.map((w) => w.message)).toEqual([
+      'A <repeat> is played "-3" times, which is not a count from 0, ' +
+        'and the count is not carried over.',
+    ])
+  })
+
+  // MusicXML collapses the spaces around a whole number before reading it.
+  test('keeps a repeat count written with spaces around it', () => {
+    const { globals, warnings } = read(NOTE + right('<repeat direction="backward" times=" 3 "/>'))
+
+    expect(globals[0]?.repeatEnd).toEqual({ times: 3 })
     expect(warnings).toEqual([])
   })
 

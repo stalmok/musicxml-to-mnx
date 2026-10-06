@@ -285,8 +285,10 @@ function readTimes(
   const written = attribute(repeat, 'times')
   if (written === undefined) return undefined
 
-  const times = parseWholeNumber(written)
-  if (times === undefined && UNSIGNED_DIGITS.test(written)) {
+  // MusicXML reads the count with the spaces around it collapsed.
+  const stated = written.trim()
+  const times = parseWholeNumber(stated)
+  if (times === undefined && UNSIGNED_DIGITS.test(stated)) {
     warnings.add(
       'unsupported:element',
       `A <repeat> is played "${written}" times, a count too large to read exactly, ` +
@@ -299,7 +301,7 @@ function readTimes(
   if (times === undefined || times < 0) {
     warnings.add(
       'unresolved:attribute-value',
-      `A <repeat> is played "${written}" times, which is not a whole number, ` +
+      `A <repeat> is played "${written}" times, which is not a count from 0, ` +
         'and the count is not carried over.',
       context,
       repeat,
