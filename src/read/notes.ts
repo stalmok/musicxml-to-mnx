@@ -1439,13 +1439,7 @@ function readBreath(
   const text = trimmedText(found)
   if (text === '') return { placement, symbol: undefined }
   if (isBreathSymbol(text)) return { placement, symbol: text }
-  warnings.add(
-    'unsupported:element',
-    `A <breath-mark> of "${text}" names no glyph MusicXML defines. ` +
-      'The breath mark is converted without its glyph.',
-    context,
-    found,
-  )
+  warnings.addUndefinedText(found, 'and the breath mark is converted without its glyph.', context)
   return { placement, symbol: undefined }
 }
 
@@ -1470,12 +1464,7 @@ function readCaesura(
   if (text === 'single') return { marks: 1, shape: undefined }
   if (isCaesuraShape(text)) return { marks: undefined, shape: text }
   // The one warning accounts for the caesura whole, its side included.
-  warnings.addWhole(
-    'unsupported:element',
-    `A <caesura> of "${text}" names no shape MusicXML defines, and is not converted.`,
-    context,
-    found,
-  )
+  warnings.addUndefinedText(found, 'and the caesura is not converted.', context, { whole: true })
   return undefined
 }
 
@@ -1546,7 +1535,7 @@ function readSingleTremolo(
   const placement = placementOf(found)
   // An unmeasured tremolo has no beam count, and MNX states a tremolo as a
   // count of beams.
-  if (type !== 'single') {
+  if (type === 'unmeasured') {
     warnings.add(
       'unrepresentable:element',
       `A tremolo of type "${type}" cannot be stated in MNX, which counts beams.`,
@@ -1555,13 +1544,21 @@ function readSingleTremolo(
     )
     return undefined
   }
+  if (type !== 'single') {
+    warnings.addUndefinedAttribute(found, 'type', 'and the tremolo is not converted.', context)
+    return undefined
+  }
 
   const text = trimmedText(found)
-  // Zero beams write an unmeasured tremolo, and MNX counts from one. Anything
-  // else out of range is not a tremolo a stem can carry, so the single-note
-  // mark is dropped rather than degraded.
+  // A count that is not a tremolo a stem can carry drops the single-note mark
+  // rather than degrading it.
   const marks = tremoloBeamCount(text)
   if (marks === undefined) {
+    warnings.addUndefinedText(found, 'and the tremolo is not converted.', context)
+    return undefined
+  }
+  // Zero beams write an unmeasured tremolo, and MNX counts from one.
+  if (marks < TREMOLO_MARKS.fewest) {
     warnings.add(
       'unrepresentable:element',
       `A tremolo drawn with ${text} beams cannot be stated in MNX, which counts from one.`,
@@ -1676,14 +1673,10 @@ export function readFermataAt(
     )
   }
 
+  // The table holds every shape MusicXML defines.
   const shape = trimmedText(first)
   if (shape !== '' && !FERMATA_SYMBOLS.has(shape)) {
-    warnings.add(
-      'unsupported:element',
-      `A <fermata> of "${shape}" is not converted yet.`,
-      context,
-      first,
-    )
+    warnings.addUndefinedText(first, 'and the fermata is converted without its shape.', context)
   }
   return fermataOf(first)
 }
@@ -1768,6 +1761,11 @@ function readStemDirection(
   const direction = stem.text.trim()
   if (direction === 'up' || direction === 'down') return direction
   if (statesNoStem(stem) && element.child('rest')) return undefined
+
+  if (direction !== 'none' && direction !== 'double') {
+    warnings.addUndefinedText(stem, 'and is not carried over.', context)
+    return undefined
+  }
 
   // MNX's stem direction is up or down and nothing else, so "none" and
   // "double" have no home.
@@ -2091,7 +2089,7 @@ function beamMarkers(
     // MNX has no home for it in this schema pin, and <beam> has no children
     // for the unread-element sweep to catch, so it is reported here.
     const fan = attribute(beam, 'fan')
-    if (fan !== undefined && fan !== 'none') {
+    if (fan === 'accel' || fan === 'rit') {
       warnings.add(
         'unsupported:element',
         `A <beam> fanned as "${fan}" is not converted yet.`,
@@ -2099,6 +2097,8 @@ function beamMarkers(
         beam,
         'fan',
       )
+    } else if (fan !== undefined && fan !== 'none') {
+      warnings.addUndefinedAttribute(beam, 'fan', 'and is not carried over.', context)
     }
 
     // The level is the attribute; the element's own text says what the beam
@@ -2135,16 +2135,22 @@ function beamMarkers(
 /**
  * The beam count a `<tremolo>` states in its text: three where it states none,
  * which is how the mark is usually drawn, or nothing where the text is not a
- * whole number in the one-to-eight range MNX can draw. The single-note and
- * two-note kinds part ways on what to do with an out-of-range count, so each
- * reports its own loss; only the reading of the count is shared.
+ * whole number in MusicXML's zero-to-eight range. MNX draws one to eight, so
+ * zero is the one count MusicXML defines that MNX cannot draw. The single-note
+ * and two-note kinds part ways on what to do with a count they cannot draw,
+ * so each reports its own loss; only the reading of the count is shared.
  */
 function tremoloBeamCount(text: string): number | undefined {
   const marks = text === '' ? 3 : parseWholeNumber(text)
-  return marks !== undefined && marks >= TREMOLO_MARKS.fewest && marks <= TREMOLO_MARKS.most
+  return marks !== undefined &&
+    marks >= MUSICXML_TREMOLO_MARKS.fewest &&
+    marks <= MUSICXML_TREMOLO_MARKS.most
     ? marks
     : undefined
 }
+
+/** The beam counts MusicXML defines for a tremolo. */
+const MUSICXML_TREMOLO_MARKS = { fewest: 0, most: 8 } as const
 
 /** The beam counts MNX draws a tremolo with. */
 export const TREMOLO_MARKS = { fewest: 1, most: 8 } as const
@@ -2180,11 +2186,14 @@ function multiNoteTremoloOf(
     )
   }
 
+  // Unlike the single-note kind, the pair still converts, drawn the usual way
+  // with three beams.
   const text = tremolo.text.trim()
   let marks = tremoloBeamCount(text)
   if (marks === undefined) {
-    // Unlike the single-note kind, the pair still converts, drawn the usual
-    // way with three beams.
+    warnings.addUndefinedText(tremolo, 'and the tremolo is drawn with three beams.', context)
+    marks = 3
+  } else if (marks < TREMOLO_MARKS.fewest) {
     warnings.add(
       'unrepresentable:element',
       `A tremolo drawn with ${text} beams cannot be stated in MNX, which counts ` +

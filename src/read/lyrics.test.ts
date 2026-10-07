@@ -184,11 +184,24 @@ describe('stem direction', () => {
   })
 
   // MNX states only up or down; "none" and "double" have no place there.
-  test('leaves the direction unset where the stem is neither up nor down', () => {
-    const { events, warnings } = read(measure(note('C', '<stem>none</stem>')))
+  test.each(['none', 'double'])('leaves the direction unset where the stem is %s', (stem) => {
+    const { events, warnings } = read(measure(note('C', `<stem>${stem}</stem>`)))
 
     expect(events[0]?.stemDirection).toBeUndefined()
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:stem-direction'])
+  })
+
+  test('reports a stem MusicXML does not define', () => {
+    const { events, warnings } = read(measure(note('C', '<stem>sideways</stem>')))
+
+    expect(events[0]?.stemDirection).toBeUndefined()
+    expect(warnings.map((w) => [w.code, w.element, w.message])).toEqual([
+      [
+        'unresolved:element-value',
+        'stem',
+        'A <stem> of "sideways" is not one MusicXML defines, and is not carried over.',
+      ],
+    ])
   })
 
   test('leaves the direction unset where there is no stem', () => {

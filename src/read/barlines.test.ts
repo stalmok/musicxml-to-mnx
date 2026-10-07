@@ -54,11 +54,17 @@ describe('the line closing a measure', () => {
     expect(warnings).toEqual([])
   })
 
-  test('reports a bar style MNX has no line for', () => {
+  test('reports a bar style MusicXML does not define', () => {
     const { globals, warnings } = read(NOTE + right('<bar-style>wibble</bar-style>'))
 
     expect(globals[0]?.barline).toBeUndefined()
-    expect(warnings.map((w) => w.element)).toEqual(['bar-style'])
+    expect(warnings.map((w) => [w.code, w.element, w.message])).toEqual([
+      [
+        'unresolved:element-value',
+        'bar-style',
+        'A <bar-style> of "wibble" is not one MusicXML defines, and is not carried over.',
+      ],
+    ])
   })
 
   // MNX states the line that closes a measure, so one drawn at the opening

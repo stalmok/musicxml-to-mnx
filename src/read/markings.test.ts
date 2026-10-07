@@ -112,17 +112,33 @@ describe('articulations', () => {
     expect(warnings).toEqual([])
   })
 
-  test('reports a breath-mark glyph it does not know and keeps the breath mark', () => {
+  test('reports a breath-mark glyph MusicXML does not define and keeps the breath mark', () => {
     const { mnx, warnings } = convertValid(
       score('<breath-mark placement="above">Comma</breath-mark>'),
     )
 
     expect(markingsOf(mnx)).toEqual({ breath: { placement: 'above' } })
-    expect(warnings.map((w) => [w.code, w.element])).toEqual([
-      ['unsupported:element', 'breath-mark'],
+    expect(warnings.map((w) => [w.code, w.element, w.message])).toEqual([
+      [
+        'unresolved:element-value',
+        'breath-mark',
+        'A <breath-mark> of "Comma" is not one MusicXML defines, and the breath mark is ' +
+          'converted without its glyph.',
+      ],
     ])
-    expect(warnings[0]?.message).toContain('Comma')
     expect(warnings[0]?.context.measure).toBe(1)
+  })
+
+  // The breath mark is kept, so its color is a loss of its own.
+  test('reports the color of a breath mark whose glyph MusicXML does not define', () => {
+    const { warnings } = read(
+      note(articulations('<breath-mark color="#800000">Comma</breath-mark>')),
+    )
+
+    expect(warnings.map((w) => [w.code, w.attribute])).toEqual([
+      ['unresolved:element-value', undefined],
+      ['unsupported:attribute', 'color'],
+    ])
   })
 
   test('reports the marks event-markings has no room for', () => {
@@ -254,11 +270,19 @@ describe('fermatas', () => {
     expect(warnings).toEqual([])
   })
 
-  test('reports a shape MNX has no symbol for, keeping the fermata', () => {
+  test('reports a shape MusicXML does not define, keeping the fermata', () => {
     const { events, warnings } = read(note('<fermata>wibble</fermata>'))
 
     expect(events[0]?.fermata?.symbol).toBeUndefined()
-    expect(warnings.map((w) => [w.element, w.context.measure])).toEqual([['fermata', 1]])
+    expect(warnings.map((w) => [w.code, w.element, w.message, w.context.measure])).toEqual([
+      [
+        'unresolved:element-value',
+        'fermata',
+        'A <fermata> of "wibble" is not one MusicXML defines, and the fermata is converted ' +
+          'without its shape.',
+        1,
+      ],
+    ])
   })
 
   // MusicXML allows one per staff of a part, and MNX states one per event.
@@ -372,14 +396,19 @@ describe('caesura', () => {
     expect(markingsOf(mnx)).toEqual({ caesura: { shape: 'curved' } })
   })
 
-  test('reports a caesura shape it does not know and drops the caesura', () => {
+  test('reports a caesura shape MusicXML does not define and drops the caesura', () => {
     const { events, warnings } = read(
       note(articulations('<caesura placement="above">wiggly</caesura>')),
     )
 
     expect(events[0]?.markings.caesura).toBeUndefined()
-    expect(warnings.map((w) => [w.code, w.element])).toEqual([['unsupported:element', 'caesura']])
-    expect(warnings[0]?.message).toContain('wiggly')
+    expect(warnings.map((w) => [w.code, w.element, w.message])).toEqual([
+      [
+        'unresolved:element-value',
+        'caesura',
+        'A <caesura> of "wiggly" is not one MusicXML defines, and the caesura is not converted.',
+      ],
+    ])
     expect(warnings[0]?.context.measure).toBe(1)
   })
 
@@ -533,7 +562,7 @@ describe('marks on the notes of a chord', () => {
   test('reports a mark the other note carries where the chord’s own was not converted', () => {
     const { warnings } = read(
       chord(
-        '<ornaments><tremolo type="single">9</tremolo></ornaments>',
+        '<ornaments><tremolo type="single">0</tremolo></ornaments>',
         '<ornaments><tremolo type="single">3</tremolo></ornaments>',
       ),
     )
@@ -648,7 +677,7 @@ describe('marks on the notes of a chord', () => {
   })
 
   test.each([
-    ['<tremolo type="single">9</tremolo>'],
+    ['<tremolo type="single">0</tremolo>'],
     ['<tremolo type="unmeasured" placement="above"/>'],
   ])('reports %s every note carries once', (inner) => {
     const tremolo = `<ornaments>${inner}</ornaments>`
@@ -694,7 +723,11 @@ describe('a fermata on the notes of a chord', () => {
     ['the other note draws with another shape', '<fermata/>', '<fermata>square</fermata>'],
     ['the other note faces another way', '<fermata/>', '<fermata type="inverted"/>'],
     ['the other note draws on another side', '<fermata/>', '<fermata placement="below"/>'],
-    ['the other note draws with a shape MNX lacks', '<fermata>x</fermata>', '<fermata>y</fermata>'],
+    [
+      'the other note draws with a shape MusicXML does not define',
+      '<fermata>x</fermata>',
+      '<fermata>y</fermata>',
+    ],
   ])('reports a fermata %s', (_, first, other) => {
     const { events, warnings } = read(chord(first, other))
     const own = read(note(first))
@@ -714,11 +747,11 @@ describe('a fermata on the notes of a chord', () => {
     ])
   })
 
-  test('reports a shape MNX lacks that every note carries once', () => {
+  test('reports a shape MusicXML does not define that every note carries once', () => {
     const fermata = '<fermata>x</fermata>'
 
     expect(read(chord(fermata, fermata)).warnings.map((w) => [w.code, w.element])).toEqual([
-      ['unsupported:element', 'fermata'],
+      ['unresolved:element-value', 'fermata'],
     ])
   })
 

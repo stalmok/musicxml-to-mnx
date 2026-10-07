@@ -2902,18 +2902,28 @@ describe('two-note tremolos', () => {
     )
   })
 
-  // The same degradation a single-note tremolo gets: the pair still
-  // converts, drawn the usual way, and the loss is reported.
-  test('draws three beams where the stated count cannot be', () => {
+  test.each(['1', '8'])('draws a pair counting %s beams', (marks) => {
     const { content, warnings } = read(
-      measure(tremoloNote('C', 'start', '9') + tremoloNote('E', 'stop', '9')),
+      measure(tremoloNote('C', 'start', marks) + tremoloNote('E', 'stop', marks)),
+    )
+
+    expect(content?.[0]?.kind === 'multiNoteTremolo' && content[0].marks).toBe(Number(marks))
+    expect(warnings).toEqual([])
+  })
+
+  // The pair still converts, drawn the usual way, and the loss is reported:
+  // zero beams as a count MNX cannot state, nine as one MusicXML does not
+  // define.
+  test.each([
+    ['0', 'unrepresentable:element'],
+    ['9', 'unresolved:element-value'],
+  ])('draws three beams where the stated count is %s', (marks, code) => {
+    const { content, warnings } = read(
+      measure(tremoloNote('C', 'start', marks) + tremoloNote('E', 'stop', marks)),
     )
 
     expect(content?.[0]?.kind === 'multiNoteTremolo' && content[0].marks).toBe(3)
-    expect(warnings.map((w) => w.code)).toEqual([
-      'unrepresentable:element',
-      'unrepresentable:element',
-    ])
+    expect(warnings.map((w) => w.code)).toEqual([code, code])
   })
 
   // Both ends count the beams joining the pair, and there is one pair to
@@ -3098,7 +3108,7 @@ describe('two-note tremolos', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:element'])
   })
 
-  // MNX counts a tremolo's beams from one to eight.
+  // MusicXML counts a tremolo's beams from zero to eight, and MNX from one.
   const tremoloOf = (marks: string) =>
     '<note><pitch><step>C</step><octave>4</octave></pitch><duration>24</duration>' +
     '<type>half</type>' +
@@ -3111,19 +3121,35 @@ describe('two-note tremolos', () => {
     expect(warnings).toEqual([])
   })
 
-  // Number() reads each of these as three.
-  test.each(['0x3', '3e0', '3.0'])('reports a tremolo counting "%s" beams', (marks) => {
-    const { content, warnings } = read(measure(tremoloOf(marks)))
+  // Number() reads the first three as three.
+  test.each(['0x3', '3e0', '3.0', '9', '-1', 'three'])(
+    'reports a tremolo counting "%s" beams, which MusicXML does not define',
+    (marks) => {
+      const { content, warnings } = read(measure(tremoloOf(marks)))
+
+      expect(content?.[0]?.kind === 'event' && content[0].markings).toEqual({})
+      expect(warnings.map((w) => [w.code, w.message])).toEqual([
+        [
+          'unresolved:element-value',
+          `A <tremolo> of "${marks}" is not one MusicXML defines, and the tremolo is not converted.`,
+        ],
+      ])
+    },
+  )
+
+  test('reports a tremolo of a type MusicXML does not define', () => {
+    const { content, warnings } = read(
+      measure(tremoloOf('3').replace('type="single"', 'type="double"')),
+    )
 
     expect(content?.[0]?.kind === 'event' && content[0].markings).toEqual({})
-    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:element'])
-  })
-
-  test('reports a tremolo counting more beams than MNX draws', () => {
-    const { content, warnings } = read(measure(tremoloOf('9')))
-
-    expect(content?.[0]?.kind === 'event' && content[0].markings).toEqual({})
-    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:element'])
+    expect(warnings.map((w) => [w.code, w.attribute, w.message])).toEqual([
+      [
+        'unresolved:attribute-value',
+        'type',
+        'A <tremolo> of type "double" is not one MusicXML defines, and the tremolo is not converted.',
+      ],
+    ])
   })
 
   test('keeps the first of two single-note tremolos', () => {

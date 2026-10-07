@@ -126,15 +126,31 @@ describe('a beam', () => {
   // A fanned beam (accelerando or ritardando) has no home in the schema, and
   // <beam> has no children for the unread sweep to catch, so the fan is
   // reported explicitly.
-  test('reports the fan on it, which is not carried over', () => {
-    expect(
-      lost(
-        measure(
-          note('<beam number="1" fan="accel">begin</beam>') +
-            note('<beam number="1">end</beam>', 'D'),
-        ),
+  test.each(['accel', 'rit'])('reports a fan of %s, which is not carried over', (fan) => {
+    const { warnings } = read(
+      measure(
+        note(`<beam number="1" fan="${fan}">begin</beam>`) +
+          note('<beam number="1">end</beam>', 'D'),
       ),
-    ).toEqual(['beam'])
+    )
+
+    expect(warnings.map((w) => [w.code, w.attribute])).toEqual([['unsupported:element', 'fan']])
+  })
+
+  test('reports a fan MusicXML does not define', () => {
+    const { warnings } = read(
+      measure(
+        note('<beam number="1" fan="wide">begin</beam>') + note('<beam number="1">end</beam>', 'D'),
+      ),
+    )
+
+    expect(warnings.map((w) => [w.code, w.attribute, w.message])).toEqual([
+      [
+        'unresolved:attribute-value',
+        'fan',
+        'A <beam> of fan "wide" is not one MusicXML defines, and is not carried over.',
+      ],
+    ])
   })
 
   // "none" is MusicXML's default.

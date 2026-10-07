@@ -195,14 +195,7 @@ function groupSymbolOf(group: ElementReader, warnings: WarningCollector): PartGr
     )
     return undefined
   }
-  // Anything else is not a symbol MusicXML names, so it is invalid input
-  // rather than a format limit.
-  warnings.add(
-    'unsupported:element',
-    `A <group-symbol> of "${text}" is not converted yet.`,
-    {},
-    element,
-  )
+  warnings.addUndefinedText(element, 'and the group is kept with no symbol.', {})
   return undefined
 }
 
@@ -220,11 +213,6 @@ function groupBarlineOf(
   if (text === 'yes') return 'unified'
   if (text === 'no') return 'individual'
   if (text === 'Mensurstrich') return 'mensurstrich'
-  warnings.add(
-    'unsupported:element',
-    `A <group-barline> of "${text}" is not converted yet.`,
-    {},
-    element,
-  )
+  warnings.addUndefinedText(element, 'and is not carried over.', {})
   return undefined
 }

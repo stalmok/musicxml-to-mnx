@@ -195,12 +195,7 @@ function readBarStyle(
   const written = trimmedText(style)
   const type = BAR_STYLES.get(written)
   if (!type) {
-    warnings.add(
-      'unsupported:element',
-      `A <bar-style> of "${written}" is not converted yet.`,
-      context,
-      style,
-    )
+    warnings.addUndefinedText(style, 'and is not carried over.', context)
     return undefined
   }
 

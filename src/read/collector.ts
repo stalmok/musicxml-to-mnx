@@ -6,7 +6,7 @@
 
 import type { ConversionWarning, WarningCode, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
-import { attribute as readAttribute } from '../xml/tree.js'
+import { attribute as readAttribute, trimmedText } from '../xml/tree.js'
 
 /** Where a warning is, apart from its line, which comes from an element. */
 export type ReportContext = Omit<WarningContext, 'line'> & { readonly line?: never }
@@ -63,7 +63,7 @@ export class WarningCollector {
     context: ReportContext,
   ): void {
     const written = readAttribute(found, name)
-    const article = /^[aeiou]/.test(found.name) ? 'An' : 'A'
+    const article = articleFor(found)
     if (written === undefined) {
       this.add(
         'missing:attribute',
@@ -80,6 +80,24 @@ export class WarningCollector {
       found,
       name,
     )
+  }
+
+  /**
+   * Reports found, whose text is not a value MusicXML defines for it. The
+   * consequence finishes the sentence, as in "and is not carried over." A
+   * whole report also accounts for every attribute on found, as addWhole does.
+   */
+  addUndefinedText(
+    found: XmlElement,
+    consequence: string,
+    context: ReportContext,
+    { whole = false } = {},
+  ): void {
+    const message =
+      `${articleFor(found)} <${found.name}> of "${trimmedText(found)}" is not one MusicXML ` +
+      `defines, ${consequence}`
+    if (whole) this.addWhole('unresolved:element-value', message, context, found)
+    else this.add('unresolved:element-value', message, context, found)
   }
 
   /**
@@ -173,4 +191,8 @@ export class WarningCollector {
   list(): readonly ConversionWarning[] {
     return [...this.#warnings].sort((a, b) => a.place - b.place).map((entry) => entry.warning)
   }
+}
+
+function articleFor(found: XmlElement): 'A' | 'An' {
+  return /^[aeiou]/.test(found.name) ? 'An' : 'A'
 }

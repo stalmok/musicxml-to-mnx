@@ -1427,7 +1427,7 @@ describe('a rest filling a measure a grace note leads into', () => {
   test('reports a mark MNX cannot state once', () => {
     const rest = irregularRest.replace(
       '</note>',
-      '<notations><ornaments><tremolo type="single">9</tremolo></ornaments></notations></note>',
+      '<notations><ornaments><tremolo type="single">0</tremolo></ornaments></notations></note>',
     )
 
     expect(kinds(rest).warnings).toEqual([['unrepresentable:element', 'tremolo', 1]])

@@ -858,9 +858,8 @@ describe('part groups', () => {
     expect(warnings.map((w) => w.element)).toEqual(['group-time'])
   })
 
-  // A value outside yes/no/Mensurstrich is invalid input, reported the same
-  // way an unrecognized <bar-style> is.
-  test('reports a group-barline value it does not recognize', () => {
+  // MusicXML defines yes, no and Mensurstrich.
+  test('reports a group-barline value MusicXML does not define', () => {
     const { mnx, warnings } = convertValid(
       score(
         '<part-group type="start" number="1"><group-barline>maybe</group-barline></part-group>' +
@@ -873,12 +872,16 @@ describe('part groups', () => {
     const group = mnx.layouts?.[0]?.content[0]
     if (group?.type !== 'group') throw new Error('expected a staff group')
     expect('barlineStyle' in group).toBe(false)
-    expect(warnings).toEqual([
-      expect.objectContaining({ code: 'unsupported:element', element: 'group-barline' }),
+    expect(warnings.map((w) => [w.code, w.element, w.message])).toEqual([
+      [
+        'unresolved:element-value',
+        'group-barline',
+        'A <group-barline> of "maybe" is not one MusicXML defines, and is not carried over.',
+      ],
     ])
   })
 
-  test('reports a group-symbol value it does not recognize as invalid, not as a format limit', () => {
+  test('reports a group-symbol value MusicXML does not define as a source problem', () => {
     const { mnx, warnings } = convertValid(
       score(
         '<part-group type="start" number="1"><group-symbol>squiggle</group-symbol></part-group>' +
@@ -891,8 +894,13 @@ describe('part groups', () => {
     const group = mnx.layouts?.[0]?.content[0]
     if (group?.type !== 'group') throw new Error('expected a staff group')
     expect('symbol' in group).toBe(false)
-    expect(warnings).toEqual([
-      expect.objectContaining({ code: 'unsupported:element', element: 'group-symbol' }),
+    expect(warnings.map((w) => [w.code, w.element, w.message])).toEqual([
+      [
+        'unresolved:element-value',
+        'group-symbol',
+        'A <group-symbol> of "squiggle" is not one MusicXML defines, and the group is kept ' +
+          'with no symbol.',
+      ],
     ])
   })
 
