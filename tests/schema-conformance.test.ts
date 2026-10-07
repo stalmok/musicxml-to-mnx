@@ -1064,11 +1064,6 @@ const FORMAT_LIMITS: Readonly<Record<FormatLimit, () => boolean>> = {
   'unrepresentable:fermata': () => refers('event', 'fermata', 'fermata'),
   'unrepresentable:marking': () =>
     propertiesOf('event-markings').every((mark) => !isList('event-markings', mark)),
-  // A chord is listed as rolled or as struck together, and neither list says
-  // anything of the other.
-  'unrepresentable:arpeggio': () =>
-    propertiesOf('arpeggio').join() === 'arrow,direction,position,span' &&
-    propertiesOf('non-arpeggio').join() === 'position,span',
   'unrepresentable:ending-text': () =>
     propertiesOf('ending').join() === 'color,duration,numbers,open',
   'unrepresentable:barline': () =>

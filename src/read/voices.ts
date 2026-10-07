@@ -1320,7 +1320,7 @@ export class MeasureBuilder {
       const first = kept.find((one) => one.event === marked.event)
       if (first && first.struck !== marked.struck) {
         warnings.add(
-          'unrepresentable:arpeggio',
+          'inconsistent:arpeggio',
           'A chord is marked both as rolled and as struck together, which are opposite ' +
             'instructions. The first is the one converted.',
           context,
@@ -1447,7 +1447,7 @@ export class MeasureBuilder {
         group.find((one) => one.struck !== first.struck)?.element
       if (conflicted) {
         warnings.add(
-          'unrepresentable:arpeggio',
+          'inconsistent:arpeggio',
           'A chord is marked both as rolled and as struck together, which are opposite ' +
             'instructions. The first is the one converted.',
           context,

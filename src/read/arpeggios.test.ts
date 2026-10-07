@@ -286,14 +286,14 @@ describe('a roll marked on something with no notes', () => {
   })
 })
 
-// Rolled and struck together are opposite instructions, and MNX keeps them in
-// separate lists, so a chord marked as both cannot be stated as both.
+// Rolled and struck together are opposite instructions, so a chord marked as
+// both is the source disagreeing with itself.
 describe('a chord marked both ways at once', () => {
   test('keeps the first and says the other is lost', () => {
     const { measure, warnings } = read(head('<non-arpeggiate type="bottom"/>') + member('E', ROLL))
 
     expect(measure?.arpeggios).toHaveLength(1)
-    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:arpeggio'])
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:arpeggio'])
   })
 
   // Sources number one note of a chord and leave the next bare. Both marks
@@ -304,7 +304,7 @@ describe('a chord marked both ways at once', () => {
     )
 
     expect(measure?.arpeggios).toHaveLength(1)
-    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:arpeggio'])
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:arpeggio'])
   })
 })
 
@@ -336,7 +336,7 @@ describe('the mark a chord marked both ways reports', () => {
   ])('names %s', (_what, first, second, lost) => {
     const { warnings } = read(head(first) + member('E', second))
 
-    expect(warnings.map((w) => [w.code, w.element])).toEqual([['unrepresentable:arpeggio', lost]])
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([['inconsistent:arpeggio', lost]])
   })
 })
 
@@ -352,7 +352,7 @@ describe('a chord marked both ways under different numbers', () => {
 
     expect(measure?.arpeggios).toHaveLength(1)
     expect(measure?.arpeggios[0]?.struck).toBe(false)
-    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:arpeggio'])
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:arpeggio'])
   })
 })
 
@@ -501,7 +501,7 @@ describe('a roll across two chords where one of them disagrees with itself', () 
     )
 
     expect(measure?.arpeggios).toHaveLength(1)
-    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:arpeggio'])
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:arpeggio'])
   })
 })
 

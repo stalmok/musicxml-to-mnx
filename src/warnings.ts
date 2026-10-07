@@ -91,8 +91,6 @@ export const WARNING_CODES = Object.freeze([
   'unrepresentable:fermata',
   // An event carrying two marks of one kind. MNX keys them by name.
   'unrepresentable:marking',
-  // A chord marked both as rolled and as struck together at once.
-  'unrepresentable:arpeggio',
   // An ending printed with text other than its numbers, such as "Pour
   // finir" or "1st and 2nd Verses". MNX's ending prints its numbers and has
   // no text. The numbers are converted.
@@ -308,8 +306,8 @@ export const WARNING_CODES = Object.freeze([
   // <backup>. Each line is kept as a sequence of its own, and only the first
   // carries the voice's name.
   'inconsistent:voice',
-  // A chord is rolled upwards by one mark and downwards by another. The first
-  // is the one converted.
+  // A chord is rolled upwards by one mark and downwards by another, or marked
+  // both as rolled and as struck together. The first is the one converted.
   'inconsistent:arpeggio',
   // A statement about a staff the part does not have: the part says how many
   // staves it is written on, and the statement names one beyond them. There
