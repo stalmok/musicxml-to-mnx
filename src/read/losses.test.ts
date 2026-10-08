@@ -126,7 +126,7 @@ describe('a beam', () => {
   // A fanned beam (accelerando or ritardando) has no home in the schema, and
   // <beam> has no children for the unread sweep to catch, so the fan is
   // reported explicitly.
-  test.each(['accel', 'rit'])('reports a fan of %s, which is not carried over', (fan) => {
+  test.each(['accel', 'rit'])('reports a fan of %s as a format limit', (fan) => {
     const { warnings } = read(
       measure(
         note(`<beam number="1" fan="${fan}">begin</beam>`) +
@@ -134,7 +134,14 @@ describe('a beam', () => {
       ),
     )
 
-    expect(warnings.map((w) => [w.code, w.attribute])).toEqual([['unsupported:element', 'fan']])
+    expect(warnings.map((w) => [w.code, w.element, w.attribute, w.message])).toEqual([
+      [
+        'unrepresentable:attribute',
+        'beam',
+        'fan',
+        `A <beam> fanned as "${fan}" is drawn as a plain beam. Its fan cannot be expressed in MNX.`,
+      ],
+    ])
   })
 
   test('reports a fan MusicXML does not define', () => {

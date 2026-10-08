@@ -237,6 +237,9 @@ export const NO_HOME_ATTRIBUTES: ReadonlySet<string> = new Set([
   'clef after-barline',
   // A dashed tie. The schema's slur states a lineType; its tie does not.
   'tied line-type',
+  // A fanned beam, drawn for an accelerando or ritardando. The schema's beam
+  // states its events, its inner beams and a hook direction.
+  'beam fan',
   // A metronome mark drawn in parentheses. The schema's tempo states a bpm
   // and a value, and nothing about how the mark is drawn.
   'metronome parentheses',

@@ -2115,8 +2115,7 @@ describe('beam levels', () => {
 
   // How a note is beamed is drawing rather than duration: the measure adds up
   // whether or not the beam is drawn. A level outside the eight a stem can
-  // carry is reported and the beam left undrawn, the way a fanned beam on the
-  // same element is.
+  // carry is reported and the beam left undrawn.
   test.each(['0', '99', 'first'])('reports "%s" as a beam level, and converts', (level) => {
     const { content, warnings } = read(measure(beamed(level)))
 

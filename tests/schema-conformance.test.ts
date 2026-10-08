@@ -876,6 +876,10 @@ const ATTRIBUTE_CONCEPTS: Readonly<Record<string, Concept>> = {
     homes: ['clef', 'positioned-clef'],
   },
   'tied line-type': { words: ['lineType', 'dashed', 'dotted', 'style'], homes: ['tie'] },
+  'beam fan': {
+    words: ['fan', 'feather', 'accel', 'rit', 'spread'],
+    homes: ['beam', 'beam-hook-direction'],
+  },
   'metronome parentheses': {
     words: ['parentheses', 'parenthesis', 'enclosure', 'bracket'],
     homes: ['tempo'],

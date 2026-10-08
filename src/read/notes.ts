@@ -45,7 +45,7 @@ import { describeLength, describeValue, lengthOf, noteValueOf } from './duration
 import type { ElementReader } from './element.js'
 import { readEventNotations, reconcile, reportSecondMark, writtenFor } from './eventNotations.js'
 import type { EventNotation } from './eventNotations.js'
-import { reportHidden } from './unrepresentable.js'
+import { attributeLoss, reportHidden } from './unrepresentable.js'
 import { readLyrics } from './lyrics.js'
 import { readRest } from './rests.js'
 import type { FillsMeasure, RestNote } from './rests.js'
@@ -2086,13 +2086,14 @@ function beamMarkers(
   const markers = new Map<number, BeamMarker>()
   for (const beam of element.children('beam')) {
     // A fanned beam draws an accelerando or ritardando by spreading the beams.
-    // MNX has no home for it in this schema pin, and <beam> has no children
-    // for the unread-element sweep to catch, so it is reported here.
+    // It is read here to tell a fan from none, which accounts for it, so it is
+    // reported here too.
     const fan = attribute(beam, 'fan')
     if (fan === 'accel' || fan === 'rit') {
+      const { code, ending } = attributeLoss('beam', 'fan')
       warnings.add(
-        'unsupported:element',
-        `A <beam> fanned as "${fan}" is not converted yet.`,
+        code,
+        `A <beam> fanned as "${fan}" is drawn as a plain beam. Its fan ${ending}`,
         context,
         beam,
         'fan',
