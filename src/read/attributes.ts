@@ -152,8 +152,8 @@ export function readAttributes(
   const stavesElement = element.child('staves')
   if (stavesElement) {
     state.staves = readIntegerInRange(stavesElement, path, 1, 16)
-    // A staff the part drops loses its transposition. Added back, it takes
-    // the one every staff has.
+    // A staff the part drops loses the transposition it was given. Added
+    // back, it takes the one every staff has.
     const given = state.staffTranspositions.staves
     for (const staff of given.keys()) if (staff > state.staves) given.delete(staff)
   }
@@ -552,10 +552,10 @@ function readTimeDisplay(
  * attribute, and MNX states one for the part. Each staff keeps the last one
  * given to it, and a staff given none sounds as written. Staves that disagree
  * are reported once the measure is read; see settleTranspositions. A part
- * that changes instrument partway keeps the one its first note is read in,
- * and reports the change. The <transpose> statements before that note say
- * together where the part starts, however many <attributes> they take. The
- * pitches follow the first staff that is given a transposition.
+ * that changes instrument partway keeps the first transposition in force at
+ * a note, and reports the change. Together, the <transpose> statements before
+ * that note state where the part starts, however many <attributes> they take.
+ * The pitches follow the first staff that is given a transposition.
  */
 function readTransposition(
   element: ElementReader,
@@ -631,8 +631,8 @@ function staffTranspositions(state: PartState): (Stated<Transposition> | undefin
  * <attributes>. Staves transposed by different intervals are reported at the
  * <transpose> of this measure given to the first staff that differs, or at the
  * measure's first <transpose> where that staff was given none here. A
- * <transpose> that puts the part in a transposition other than the one it
- * first stated changes instrument. The first such <transpose> of the measure
+ * <transpose> that puts the part in a transposition other than the one it is
+ * written out in changes instrument. The first such <transpose> of the measure
  * is reported, even where a later one changes back.
  */
 export function settleTranspositions(state: PartState, warnings: WarningCollector): void {

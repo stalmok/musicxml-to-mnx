@@ -196,7 +196,7 @@ export class MeasureSignatures {
 
   /**
    * Moves the keys stated since the last note to the keys the music sounds
-   * in, with the transposition in force now.
+   * in, with the transposition in force now, and settles where each stands.
    */
   convertKeys(): void {
     const transposition = this.#state.transposition

@@ -287,8 +287,8 @@ describe('a part written for a transposing instrument', () => {
 })
 
 // MusicXML writes one <transpose> per staff and lets a part change instrument
-// partway. MNX states one transposition for the part, so the first is the one
-// written out and the rest are reported.
+// partway. MNX states one transposition for the part, so the one in force at
+// the part's first note is written out and the rest are reported.
 describe('a part stating more than one transposition', () => {
   test('reports staves transposed by different intervals', () => {
     const { part, warnings } = read(
@@ -365,8 +365,8 @@ describe('a part stating more than one transposition', () => {
     expect(warnings).toEqual([])
   })
 
-  // The <attributes> before the part's first note state where it starts
-  // together, however many blocks they take. The staves here are in B-flat
+  // Together, the <attributes> before the part's first note state where it
+  // starts, however many blocks they take. The staves here are in B-flat
   // and F, and the first staff, in F, is the one followed.
   describe('given its staves in two <attributes> before its first note', () => {
     const KEY = '<key><fifths>0</fifths></key>'
@@ -392,7 +392,7 @@ describe('a part stating more than one transposition', () => {
         `<attributes>${SECOND_IN_B_FLAT}</attributes>` +
           `<attributes>${KEY}${FIRST_IN_F}</attributes>`,
       ],
-    ])('takes the first staff, and the key it reads, %s', (_name, attributes) => {
+    ])('takes the first staff, and converts the key with it, %s', (_name, attributes) => {
       const { score, part, warnings } = read(inMeasure(attributes + NOTE))
       const first = part?.measures[0]?.sequences[0]?.content[0]
 
@@ -406,8 +406,9 @@ describe('a part stating more than one transposition', () => {
       expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-transposition'])
     })
 
+    // The key stays with the transposition in force at the first note.
     test('reports a change of instrument after the first note', () => {
-      const { part, warnings } = read(
+      const { score, part, warnings } = read(
         inMeasure(
           `<attributes>${KEY}${SECOND_IN_B_FLAT}</attributes>${NOTE}` +
             `<attributes>${FIRST_IN_F}</attributes>${NOTE}`,
@@ -415,41 +416,11 @@ describe('a part stating more than one transposition', () => {
       )
 
       expect(part?.transposition).toEqual({ staffDistance: 1, halfSteps: 2 })
+      expect(score.globalMeasures[0]?.key).toEqual({ fifths: -2 })
       expect(warnings.map((w) => w.code)).toEqual([
         'unrepresentable:per-staff-transposition',
         'unrepresentable:transposition-change',
       ])
-    })
-
-    // A rest is the music starting as much as a note is.
-    test('reports a change of instrument after a first rest', () => {
-      const { part, warnings } = read(
-        '<score-partwise><part id="P1">' +
-          `<measure number="1"><attributes><divisions>4</divisions>${IN_B_FLAT}</attributes>` +
-          '<note><rest/><duration>4</duration><type>quarter</type></note></measure>' +
-          '<measure number="2"><attributes>' +
-          '<transpose><diatonic>-4</diatonic><chromatic>-7</chromatic></transpose>' +
-          `</attributes>${NOTE}</measure>` +
-          '</part></score-partwise>',
-      )
-
-      expect(part?.transposition).toEqual({ staffDistance: 1, halfSteps: 2 })
-      expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:transposition-change'])
-    })
-
-    test('reports a change of instrument after a measure with no note', () => {
-      const { part, warnings } = read(
-        '<score-partwise><part id="P1">' +
-          `<measure number="1"><attributes><divisions>4</divisions>${IN_B_FLAT}</attributes>` +
-          '</measure>' +
-          '<measure number="2"><attributes>' +
-          '<transpose><diatonic>-4</diatonic><chromatic>-7</chromatic></transpose>' +
-          `</attributes>${NOTE}</measure>` +
-          '</part></score-partwise>',
-      )
-
-      expect(part?.transposition).toEqual({ staffDistance: 1, halfSteps: 2 })
-      expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:transposition-change'])
     })
 
     test('agrees with a concert part on the key it sounds in', () => {
@@ -469,6 +440,54 @@ describe('a part stating more than one transposition', () => {
       expect(score.globalMeasures[0]?.key).toEqual({ fifths: -1 })
       expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-transposition'])
     })
+  })
+
+  const IN_F = '<transpose><diatonic>-4</diatonic><chromatic>-7</chromatic></transpose>'
+
+  // A rest is a <note>, so it fixes the transposition too.
+  test('reports a change of instrument after a first rest', () => {
+    const { part, warnings } = read(
+      inPart(
+        IN_B_FLAT,
+        '<note><rest/><duration>4</duration><type>quarter</type></note>' +
+          `<attributes>${IN_F}</attributes>${NOTE}`,
+      ),
+    )
+
+    expect(part?.transposition).toEqual({ staffDistance: 1, halfSteps: 2 })
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:transposition-change'])
+  })
+
+  test('reports a change of instrument after a measure with no note', () => {
+    const { part, warnings } = read(
+      '<score-partwise><part id="P1">' +
+        `<measure number="1"><attributes><divisions>4</divisions>${IN_B_FLAT}</attributes>` +
+        '</measure>' +
+        `<measure number="2"><attributes>${IN_F}</attributes>${NOTE}</measure>` +
+        '</part></score-partwise>',
+    )
+
+    expect(part?.transposition).toEqual({ staffDistance: 1, halfSteps: 2 })
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:transposition-change'])
+  })
+
+  // A key stated partway is converted with the transposition the notes after
+  // it are read in, here a horn in F reading no sharps or flats.
+  test('converts a key stated partway with a change of instrument after it', () => {
+    const { score, warnings } = read(
+      '<score-partwise><part id="P1">' +
+        `<measure number="1"><attributes><divisions>4</divisions>${IN_B_FLAT}</attributes>` +
+        `${NOTE}<attributes><key><fifths>0</fifths></key></attributes>` +
+        `<attributes>${IN_F}</attributes>${NOTE}</measure>` +
+        `<measure number="2">${NOTE}</measure>` +
+        '</part></score-partwise>',
+    )
+
+    expect(score.globalMeasures[1]?.key).toEqual({ fifths: -1 })
+    expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
+      ['unrepresentable:transposition-change', 1],
+      ['unrepresentable:mid-measure-key', 1],
+    ])
   })
 
   // A staff keeps the transposition it was given until it is given another.

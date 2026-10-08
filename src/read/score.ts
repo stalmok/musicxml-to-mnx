@@ -1101,8 +1101,9 @@ function readMeasure(
       }
 
       case 'note':
-        // The <attributes> before a note may state the transposition over
-        // several blocks. It is settled once the music reaches the note.
+        // The <attributes> before a note can state the transposition over
+        // several blocks. The keys stated since the last note are converted
+        // here, and the part's transposition is fixed at its first note.
         signatures.convertKeys()
         state.statedTransposition ??= state.transposition
         readNote(reader, state, index, builder, warnings, context, measurePath)
