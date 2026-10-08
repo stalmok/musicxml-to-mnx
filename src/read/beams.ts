@@ -27,7 +27,11 @@ export const isBeamValue = recogniser<BeamValue>({
 
 /** What one <beam> says the beam at its level does at this event. */
 export interface BeamMarker {
-  kind: BeamValue
+  /**
+   * Nothing where the text is not one MusicXML defines. The beam at its level
+   * then stops before the event, as at an event with no marker there.
+   */
+  kind: BeamValue | undefined
   element: XmlElement
 }
 

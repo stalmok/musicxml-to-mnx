@@ -2085,43 +2085,50 @@ function beamMarkers(
 ): ReadonlyMap<number, BeamMarker> {
   const markers = new Map<number, BeamMarker>()
   for (const beam of element.children('beam')) {
-    // A fanned beam draws an accelerando or ritardando by spreading the beams.
-    // It is read here to tell a fan from none, which accounts for it, so it is
-    // reported here too.
+    // Read before the marker is checked, so the fan of a dropped marker is
+    // not reported apart from it.
     const fan = attribute(beam, 'fan')
-    if (fan === 'accel' || fan === 'rit') {
-      const { code, ending } = attributeLoss('beam', 'fan')
-      warnings.add(
-        code,
-        `A <beam> fanned as "${fan}" is drawn as a plain beam. Its fan ${ending}`,
-        context,
-        beam,
-        'fan',
-      )
-    } else if (fan !== undefined && fan !== 'none') {
-      warnings.addUndefinedAttribute(beam, 'fan', 'and is not carried over.', context)
-    }
-
     // The level is the attribute; the element's own text says what the beam
-    // does there, as "begin" or "end". A marker MusicXML does not define
-    // draws no beam, and the measure adds up without it, so it is dropped and
-    // reported, not refused. The beams around it are drawn as if it were never
-    // written: a run whose end was written here closes at the last marker it
-    // kept, and comes out short.
+    // does there, as "begin" or "end". A level MusicXML does not define draws
+    // no beam, and the measure adds up without it, so the marker is dropped
+    // and reported, not refused.
     const level = beamLevel(beam, warnings, context)
     if (level === undefined) continue
     const kind = trimmedText(beam)
-    if (!isBeamValue(kind)) {
-      warnings.addUndefinedText(
-        beam,
-        'and the marker is dropped. The beams beside it are drawn as if it had never been written.',
-        context,
-      )
-      continue
+    if (isBeamValue(kind)) {
+      reportFan(beam, fan, warnings, context)
+      markers.set(level, { kind, element: beam })
+    } else {
+      warnings.addUndefinedText(beam, 'and the beam at its level stops before this note.', context)
+      markers.set(level, { kind: undefined, element: beam })
     }
-    markers.set(level, { kind, element: beam })
   }
   return markers
+}
+
+/**
+ * A fanned beam draws an accelerando or ritardando by spreading the beams.
+ * Reading the fan keeps the unread-attribute sweep from reporting it, so it is
+ * reported here.
+ */
+function reportFan(
+  beam: XmlElement,
+  fan: string | undefined,
+  warnings: WarningCollector,
+  context: ReportContext,
+): void {
+  if (fan === 'accel' || fan === 'rit') {
+    const { code, ending } = attributeLoss('beam', 'fan')
+    warnings.add(
+      code,
+      `A <beam> fanned as "${fan}" is drawn as a plain beam. Its fan ${ending}`,
+      context,
+      beam,
+      'fan',
+    )
+  } else if (fan !== undefined && fan !== 'none') {
+    warnings.addUndefinedAttribute(beam, 'fan', 'and is not carried over.', context)
+  }
 }
 
 /**
