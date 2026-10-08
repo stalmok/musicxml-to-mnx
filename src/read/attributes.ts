@@ -152,6 +152,10 @@ export function readAttributes(
   const stavesElement = element.child('staves')
   if (stavesElement) {
     state.staves = readIntegerInRange(stavesElement, path, 1, 16)
+    // A staff the part drops loses its transposition. Added back, it takes
+    // the one every staff has.
+    const given = state.staffTranspositions.staves
+    for (const staff of given.keys()) if (staff > state.staves) given.delete(staff)
   }
 
   // Each statement in <staff-details> is read on its own, and the sweep

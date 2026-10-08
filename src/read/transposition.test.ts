@@ -531,6 +531,46 @@ describe('a part stating more than one transposition', () => {
     ])
   })
 
+  // A staff the part drops loses what it was given. Added back, it is a new
+  // staff, and takes the transposition given to every staff.
+  test('gives a staff added back the transposition every staff has', () => {
+    const { warnings } = read(
+      '<score-partwise><part id="P1">' +
+        '<measure number="1"><attributes><divisions>4</divisions><staves>2</staves>' +
+        IN_B_FLAT +
+        '<transpose number="2"><diatonic>-4</diatonic><chromatic>-7</chromatic></transpose>' +
+        `</attributes>${NOTE}</measure>` +
+        `<measure number="2"><attributes><staves>1</staves></attributes>${NOTE}</measure>` +
+        '<measure number="3"><attributes><staves>2</staves>' +
+        '<transpose number="1"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>' +
+        `</attributes>${NOTE}</measure>` +
+        '</part></score-partwise>',
+    )
+
+    expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
+      ['unrepresentable:per-staff-transposition', 1],
+    ])
+  })
+
+  test('keeps what each staff was given where the part restates its staves', () => {
+    const { warnings } = read(
+      '<score-partwise><part id="P1">' +
+        '<measure number="1"><attributes><divisions>4</divisions><staves>2</staves>' +
+        IN_B_FLAT +
+        '<transpose number="2"><diatonic>-4</diatonic><chromatic>-7</chromatic></transpose>' +
+        `</attributes>${NOTE}</measure>` +
+        '<measure number="2"><attributes><staves>2</staves>' +
+        '<transpose number="1"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>' +
+        `</attributes>${NOTE}</measure>` +
+        '</part></score-partwise>',
+    )
+
+    expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
+      ['unrepresentable:per-staff-transposition', 1],
+      ['unrepresentable:per-staff-transposition', 2],
+    ])
+  })
+
   // The part takes the first transposition it is given, where the first
   // staff sounds as written.
   test('takes the transposition of the only staff given one', () => {
