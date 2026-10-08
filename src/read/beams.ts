@@ -12,12 +12,22 @@
 import type { Beam, NoteValueBase } from '../model/score.js'
 import type { XmlElement } from '../xml/parse.js'
 import type { ReportContext, WarningCollector } from './collector.js'
-import { entriesOf } from './tables.js'
+import { entriesOf, recogniser } from './tables.js'
+
+/** MusicXML's beam-value: what the beam at a level does at a note. */
+export type BeamValue = 'begin' | 'continue' | 'end' | 'forward hook' | 'backward hook'
+
+export const isBeamValue = recogniser<BeamValue>({
+  begin: true,
+  continue: true,
+  end: true,
+  'forward hook': true,
+  'backward hook': true,
+})
 
 /** What one <beam> says the beam at its level does at this event. */
 export interface BeamMarker {
-  /** "begin", "continue", "end", "forward hook" or "backward hook". */
-  kind: string
+  kind: BeamValue
   element: XmlElement
 }
 
@@ -76,7 +86,7 @@ export function valueForBeamCount(count: number): NoteValueBase | undefined {
   return VALUE_FOR_BEAMS.get(count)
 }
 
-const HOOK_DIRECTIONS = new Map<string, 'left' | 'right'>([
+const HOOK_DIRECTIONS = new Map<BeamValue, 'left' | 'right'>([
   ['forward hook', 'right'],
   ['backward hook', 'left'],
 ])

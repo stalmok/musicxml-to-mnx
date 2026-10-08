@@ -38,7 +38,7 @@ import type { Draft } from './draft.js'
 import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, child, children, descendants, requireChild, trimmedText } from '../xml/tree.js'
-import { beamCountForValue, valueForBeamCount } from './beams.js'
+import { beamCountForValue, isBeamValue, valueForBeamCount } from './beams.js'
 import type { BeamedEvent, BeamMarker } from './beams.js'
 import { readDuration } from './divisions.js'
 import { describeLength, describeValue, lengthOf, noteValueOf } from './duration.js'
@@ -2102,34 +2102,50 @@ function beamMarkers(
     }
 
     // The level is the attribute; the element's own text says what the beam
-    // does there, as "begin" or "end".
-    const stated = attribute(beam, 'number')
-    if (stated === undefined) {
-      markers.set(1, { kind: trimmedText(beam), element: beam })
-      continue
-    }
-
-    // A level outside the eight a stem can carry draws no beam, and the
-    // measure adds up without it, so the marker is dropped and reported, not
-    // refused. The beams around it are drawn as if it were never written: a
-    // run whose end was written here closes at the last marker it kept, and
-    // comes out short. The report says so.
-    const level = parseWholeNumber(stated)
-    if (level === undefined || level < 1 || level > MOST_BEAM_LEVELS) {
-      warnings.add(
-        'unresolved:attribute-value',
-        `The "number" of a <beam> is "${stated}", which is not one of the eight beam ` +
-          'levels. The marker is dropped, and the beams beside it are drawn as if it ' +
-          'had never been written.',
-        context,
+    // does there, as "begin" or "end". A marker MusicXML does not define
+    // draws no beam, and the measure adds up without it, so it is dropped and
+    // reported, not refused. The beams around it are drawn as if it were never
+    // written: a run whose end was written here closes at the last marker it
+    // kept, and comes out short.
+    const level = beamLevel(beam, warnings, context)
+    if (level === undefined) continue
+    const kind = trimmedText(beam)
+    if (!isBeamValue(kind)) {
+      warnings.addUndefinedText(
         beam,
-        'number',
+        'and the marker is dropped. The beams beside it are drawn as if it had never been written.',
+        context,
       )
       continue
     }
-    markers.set(level, { kind: trimmedText(beam), element: beam })
+    markers.set(level, { kind, element: beam })
   }
   return markers
+}
+
+/**
+ * The level a <beam> states, or 1 where it states none. A level outside the
+ * eight a stem can carry is reported, and gives nothing.
+ */
+function beamLevel(
+  beam: XmlElement,
+  warnings: WarningCollector,
+  context: ReportContext,
+): number | undefined {
+  const stated = attribute(beam, 'number')
+  if (stated === undefined) return 1
+  const level = parseWholeNumber(stated)
+  if (level !== undefined && level >= 1 && level <= MOST_BEAM_LEVELS) return level
+  warnings.add(
+    'unresolved:attribute-value',
+    `The "number" of a <beam> is "${stated}", which is not one of the eight beam ` +
+      'levels. The marker is dropped, and the beams beside it are drawn as if it ' +
+      'had never been written.',
+    context,
+    beam,
+    'number',
+  )
+  return undefined
 }
 
 /**

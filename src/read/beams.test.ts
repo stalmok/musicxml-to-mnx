@@ -8,7 +8,7 @@
 import { readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { WarningCollector } from './collector.js'
-import { buildBeams as buildReported } from './beams.js'
+import { buildBeams as buildReported, isBeamValue } from './beams.js'
 import type { BeamedEvent, BeamMarker } from './beams.js'
 
 const buildBeams = (events: readonly BeamedEvent[]) =>
@@ -25,6 +25,7 @@ function event(id: string, levels: string, beamCount?: number): BeamedEvent {
   let deepest = 0
   for (const part of levels.split(';').filter(Boolean)) {
     const [level, kind = ''] = part.split(':')
+    if (!isBeamValue(kind)) throw new Error(`"${kind}" is not a beam marker`)
     markers.set(Number(level), {
       kind,
       element: { name: 'beam', attributes: {}, children: [], text: kind, line: 1 },
@@ -225,9 +226,10 @@ describe('beams the measure does not finish', () => {
   })
 })
 
-// A level outside the eight a stem can carry cannot be drawn, so the marker
-// is dropped. A run whose end is dropped closes at the last marker before it.
-describe('a beam marker at a level that does not exist', () => {
+// A level outside the eight a stem can carry, or a marker MusicXML does not
+// define, cannot be drawn, so the marker is dropped. A run whose end is
+// dropped closes at the last marker before it.
+describe('a beam marker MusicXML does not define', () => {
   function sixteenth(step: string, beams: string): string {
     return (
       `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>1</duration>` +
@@ -325,6 +327,44 @@ describe('a beam marker at a level that does not exist', () => {
 
     expect(beams.map((beam) => beam.events)).toEqual([['ev1', 'ev2']])
     expect(warnings).toEqual([])
+  })
+
+  // MusicXML's beam-value is begin, continue, end, forward hook and backward
+  // hook, spelled as written.
+  test.each(['middle', 'Begin', 'forward-hook', ''])(
+    'reports a marker of "%s", and draws the beams as if it were not there',
+    (marker) => {
+      const { beams, warnings } = read(
+        sixteenth('C', '<beam number="1">begin</beam><beam number="2">begin</beam>') +
+          sixteenth('D', `<beam number="1">continue</beam><beam number="2">${marker}</beam>`) +
+          sixteenth('E', '<beam number="1">end</beam><beam number="2">end</beam>'),
+      )
+
+      // The inner run stops before the note whose marker is dropped, which
+      // leaves the first note a partial beam, and the end after it joins
+      // nothing.
+      expect(beams.map((beam) => beam.events)).toEqual([['ev1', 'ev2', 'ev3']])
+      expect(beams[0]?.beams).toEqual([{ events: ['ev1'], beams: [], direction: 'right' }])
+      expect(warnings.map((w) => [w.code, w.element, w.message])).toEqual([
+        [
+          'unresolved:element-value',
+          'beam',
+          `A <beam> of "${marker}" is not one MusicXML defines, and the marker is dropped. ` +
+            'The beams beside it are drawn as if it had never been written.',
+        ],
+      ])
+    },
+  )
+
+  test('reports only the level of a marker whose level and text are both undefined', () => {
+    const { warnings } = read(
+      sixteenth('C', '<beam number="1">begin</beam>') +
+        sixteenth('D', '<beam number="1">end</beam><beam number="9">middle</beam>'),
+    )
+
+    expect(warnings.map((w) => [w.code, w.attribute])).toEqual([
+      ['unresolved:attribute-value', 'number'],
+    ])
   })
 })
 
