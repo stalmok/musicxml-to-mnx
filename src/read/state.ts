@@ -173,9 +173,10 @@ export interface PartState {
    */
   beamsOpenAtBarline: ReadonlyMap<string, number | undefined>
   /**
-   * The first transposition the part stated, which is the one written out.
-   * MNX states one per part, so a part that changes instrument partway keeps
-   * this one and reports the change.
+   * The transposition the part's first note is read in, which is the one
+   * written out. A measure with no note fixes it at its end. MNX states one
+   * per part, so a part that changes instrument partway keeps this one and
+   * reports the change.
    */
   statedTransposition: Transposition | undefined
   /**

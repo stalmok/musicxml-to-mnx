@@ -31,7 +31,12 @@ import type { ReadGlobalMeasure } from './jumps.js'
 import { noteValueBaseOf } from './noteValues.js'
 import { parseExactDecimal } from './numbers.js'
 import type { HeldSignature, PartState } from './state.js'
-import { keyFifthsFlipAt, writtenFifths, writtenFifthsWithFlip } from './transposition.js'
+import {
+  concertFifths,
+  keyFifthsFlipAt,
+  writtenFifths,
+  writtenFifthsWithFlip,
+} from './transposition.js'
 
 /**
  * A key or time signature stated after the start of a measure. A statement
@@ -91,7 +96,7 @@ interface StatedAt<T> {
   at: Fraction
   place: WarningPlace
   /** The first statement, where staves that disagree are reported. */
-  first: StaffSignature<T>
+  first: XmlElement
   statements: StaffSignature<T>[]
 }
 
@@ -130,6 +135,13 @@ export class MeasureSignatures {
   // Every unmetered statement the measure makes, reported once the measure
   // has settled what it converts.
   readonly #unmetered: { place: WarningPlace; element: XmlElement }[] = []
+  // The keys stated since the last note, as the player reads them. A later
+  // <attributes> before the next note can still change the transposition.
+  readonly #writtenKeys: {
+    keys: readonly StaffSignature<Key>[]
+    at: Fraction
+    first: XmlElement
+  }[] = []
 
   constructor(
     state: PartState,
@@ -148,13 +160,9 @@ export class MeasureSignatures {
     const atStart = compareFractions(at, fraction(0)) === 0
     const [firstKey] = reading.keys
     if (firstKey) {
-      this.#statedAt(this.#keyGroups, at, firstKey).statements.push(...reading.keys)
-      if (atStart) {
-        if (!this.#keySettled) this.#key = reading.key
-        this.#keySettled = true
-      } else {
-        this.#lateKeys.push({ value: reading.key, at, element: statingOf(reading.keys, firstKey) })
-      }
+      // Placed now, so the reports read in the order the source states them.
+      this.#statedAt(this.#keyGroups, at, firstKey.element)
+      this.#writtenKeys.push({ keys: reading.keys, at, first: firstKey.element })
     }
     // Taken after the key, and before the settlement of the time blocks
     // around it, so the reports of one block read in the order it states
@@ -169,7 +177,7 @@ export class MeasureSignatures {
     }
     const [firstTime] = reading.times
     if (firstTime) {
-      this.#statedAt(this.#timeGroups, at, firstTime).statements.push(...reading.times)
+      this.#statedAt(this.#timeGroups, at, firstTime.element).statements.push(...reading.times)
       if (atStart) {
         // A second statement at the start changes nothing. A senza-misura
         // statement clears it: the music is unmetered from here on, whatever
@@ -180,8 +188,34 @@ export class MeasureSignatures {
         this.#lateTimes.push({
           value: reading.time,
           at,
-          element: statingOf(reading.times, firstTime),
+          element: statingOf(reading.times, firstTime.element),
         })
+      }
+    }
+  }
+
+  /**
+   * Moves the keys stated since the last note to the keys the music sounds
+   * in, with the transposition in force now.
+   */
+  convertKeys(): void {
+    const transposition = this.#state.transposition
+    for (const { keys: written, at, first } of this.#writtenKeys.splice(0)) {
+      const keys = written.map((stated) =>
+        stated.value && transposition
+          ? {
+              ...stated,
+              value: { ...stated.value, fifths: concertFifths(stated.value.fifths, transposition) },
+            }
+          : stated,
+      )
+      this.#statedAt(this.#keyGroups, at, first).statements.push(...keys)
+      const key = keys.map((stated) => stated.value).find((stated) => stated !== undefined)
+      if (compareFractions(at, fraction(0)) === 0) {
+        if (!this.#keySettled) this.#key = key
+        this.#keySettled = true
+      } else {
+        this.#lateKeys.push({ value: key, at, element: statingOf(keys, first) })
       }
     }
   }
@@ -191,6 +225,7 @@ export class MeasureSignatures {
    * the furthest the measure's cursor ran.
    */
   settle(end: Fraction): SettledSignatures {
+    this.convertKeys()
     const state = this.#state
     const warnings = this.#warnings
     const context = this.#context
@@ -244,7 +279,7 @@ export class MeasureSignatures {
     return { key, time }
   }
 
-  #statedAt<T>(groups: StatedAt<T>[], at: Fraction, first: StaffSignature<T>): StatedAt<T> {
+  #statedAt<T>(groups: StatedAt<T>[], at: Fraction, first: XmlElement): StatedAt<T> {
     const opened = groups.find((group) => compareFractions(group.at, at) === 0)
     if (opened) return opened
     const group: StatedAt<T> = { at, place: this.#warnings.reserve(), first, statements: [] }
@@ -425,7 +460,7 @@ function settleStated<T>(
     inForce,
     warnings,
     context,
-    group.first.element,
+    group.first,
     group.place,
   )
   // Only what the measure opens with is settled against a converted value:
@@ -460,8 +495,8 @@ function restatement<T>(statements: readonly StaffSignature<T>[]): StaffSignatur
  * The <key> or <time> a block's signature is read from: the first statement
  * MNX can hold, or else the first.
  */
-function statingOf<T>(statements: readonly StaffSignature<T>[], first: StaffSignature<T>) {
-  return (statements.find((statement) => statement.value !== undefined) ?? first).element
+function statingOf<T>(statements: readonly StaffSignature<T>[], first: XmlElement) {
+  return statements.find((statement) => statement.value !== undefined)?.element ?? first
 }
 
 /**

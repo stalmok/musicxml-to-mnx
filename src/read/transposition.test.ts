@@ -365,6 +365,112 @@ describe('a part stating more than one transposition', () => {
     expect(warnings).toEqual([])
   })
 
+  // The <attributes> before the part's first note state where it starts
+  // together, however many blocks they take. The staves here are in B-flat
+  // and F, and the first staff, in F, is the one followed.
+  describe('given its staves in two <attributes> before its first note', () => {
+    const KEY = '<key><fifths>0</fifths></key>'
+    const SECOND_IN_B_FLAT =
+      '<transpose number="2"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>'
+    const FIRST_IN_F =
+      '<transpose number="1"><diatonic>-4</diatonic><chromatic>-7</chromatic></transpose>'
+    const IN_F = { staffDistance: 4, halfSteps: 7 }
+    const inMeasure = (body: string) =>
+      '<score-partwise><part id="P1"><measure number="1">' +
+      `<attributes><divisions>4</divisions><staves>2</staves></attributes>${body}` +
+      '</measure></part></score-partwise>'
+
+    test.each([
+      ['in one block', `<attributes>${KEY}${SECOND_IN_B_FLAT}${FIRST_IN_F}</attributes>`],
+      [
+        'with the key first',
+        `<attributes>${KEY}${SECOND_IN_B_FLAT}</attributes>` +
+          `<attributes>${FIRST_IN_F}</attributes>`,
+      ],
+      [
+        'with the key last',
+        `<attributes>${SECOND_IN_B_FLAT}</attributes>` +
+          `<attributes>${KEY}${FIRST_IN_F}</attributes>`,
+      ],
+    ])('takes the first staff, and the key it reads, %s', (_name, attributes) => {
+      const { score, part, warnings } = read(inMeasure(attributes + NOTE))
+      const first = part?.measures[0]?.sequences[0]?.content[0]
+
+      expect(part?.transposition).toEqual(IN_F)
+      expect(first?.kind === 'event' && first.notes[0]?.pitch).toEqual({
+        step: 'F',
+        octave: 3,
+        alter: 0,
+      })
+      expect(score.globalMeasures[0]?.key).toEqual({ fifths: -1 })
+      expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-transposition'])
+    })
+
+    test('reports a change of instrument after the first note', () => {
+      const { part, warnings } = read(
+        inMeasure(
+          `<attributes>${KEY}${SECOND_IN_B_FLAT}</attributes>${NOTE}` +
+            `<attributes>${FIRST_IN_F}</attributes>${NOTE}`,
+        ),
+      )
+
+      expect(part?.transposition).toEqual({ staffDistance: 1, halfSteps: 2 })
+      expect(warnings.map((w) => w.code)).toEqual([
+        'unrepresentable:per-staff-transposition',
+        'unrepresentable:transposition-change',
+      ])
+    })
+
+    // A rest is the music starting as much as a note is.
+    test('reports a change of instrument after a first rest', () => {
+      const { part, warnings } = read(
+        '<score-partwise><part id="P1">' +
+          `<measure number="1"><attributes><divisions>4</divisions>${IN_B_FLAT}</attributes>` +
+          '<note><rest/><duration>4</duration><type>quarter</type></note></measure>' +
+          '<measure number="2"><attributes>' +
+          '<transpose><diatonic>-4</diatonic><chromatic>-7</chromatic></transpose>' +
+          `</attributes>${NOTE}</measure>` +
+          '</part></score-partwise>',
+      )
+
+      expect(part?.transposition).toEqual({ staffDistance: 1, halfSteps: 2 })
+      expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:transposition-change'])
+    })
+
+    test('reports a change of instrument after a measure with no note', () => {
+      const { part, warnings } = read(
+        '<score-partwise><part id="P1">' +
+          `<measure number="1"><attributes><divisions>4</divisions>${IN_B_FLAT}</attributes>` +
+          '</measure>' +
+          '<measure number="2"><attributes>' +
+          '<transpose><diatonic>-4</diatonic><chromatic>-7</chromatic></transpose>' +
+          `</attributes>${NOTE}</measure>` +
+          '</part></score-partwise>',
+      )
+
+      expect(part?.transposition).toEqual({ staffDistance: 1, halfSteps: 2 })
+      expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:transposition-change'])
+    })
+
+    test('agrees with a concert part on the key it sounds in', () => {
+      const { score, warnings } = read(
+        '<score-partwise><part-list>' +
+          '<score-part id="P1"><part-name>Flute</part-name></score-part>' +
+          '<score-part id="P2"><part-name>Horn</part-name></score-part>' +
+          '</part-list>' +
+          '<part id="P1"><measure number="1"><attributes><divisions>4</divisions>' +
+          `<key><fifths>-1</fifths></key></attributes>${NOTE}</measure></part>` +
+          '<part id="P2"><measure number="1">' +
+          `<attributes><divisions>4</divisions><staves>2</staves>${KEY}${SECOND_IN_B_FLAT}` +
+          `</attributes><attributes>${FIRST_IN_F}</attributes>${NOTE}</measure></part>` +
+          '</score-partwise>',
+      )
+
+      expect(score.globalMeasures[0]?.key).toEqual({ fifths: -1 })
+      expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-transposition'])
+    })
+  })
+
   // A staff keeps the transposition it was given until it is given another.
   test('says nothing where a later measure restates one staff alone', () => {
     const both =

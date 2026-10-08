@@ -33,7 +33,6 @@ import {
 import { staffLinesOf, staffPositionOfLine } from './state.js'
 import type { PartState } from './state.js'
 import { recogniser } from './tables.js'
-import { concertFifths } from './transposition.js'
 import { elementLoss, reportHidden } from './unrepresentable.js'
 
 // A recogniser narrows the value it accepts to the model's type, so a
@@ -73,11 +72,13 @@ export interface AttributesReading {
    * Every key and time signature the block states. A statement MNX cannot
    * carry, such as senza misura or a non-traditional key, has no value, which
    * differs from no statement. The measure settles what the staves state.
+   *
+   * A key is the one the player reads. The measure moves it to the key the
+   * music sounds in, once it knows the transposition the notes are read in.
    */
   keys: readonly StaffSignature<Key>[]
   times: readonly StaffSignature<TimeSignature>[]
-  /** The first of each the block states that MNX can hold. */
-  key: Key | undefined
+  /** The first time signature the block states that MNX can hold. */
   time: TimeSignature | undefined
   clefs: Stated<Clef>[]
   /** The staves this block starts drawing with a line count of their own. */
@@ -228,8 +229,6 @@ export function readAttributes(
     }
   }
 
-  // Read before the key, because a transposing part writes the key it reads
-  // and MNX states the key the music sounds in.
   readTransposition(element, state, warnings, context, path)
 
   // MusicXML allows one key and one time signature per staff, and MNX states
@@ -238,14 +237,9 @@ export function readAttributes(
   //
   // Read as blocks, so the sweep reports what these readers skip inside a
   // <key>, <time> or <clef>.
-  //
-  // A transposing part writes the key its player reads. Each key is moved
-  // here to the key the music sounds in.
-  const keys = statedPerStaff(element.blocks('key'), state, path, (found) => {
-    const written = readKey(found, warnings, context, path)
-    if (!written || !state.transposition) return written
-    return { ...written, fifths: concertFifths(written.fifths, state.transposition) }
-  })
+  const keys = statedPerStaff(element.blocks('key'), state, path, (found) =>
+    readKey(found, warnings, context, path),
+  )
   const times = statedPerStaff(element.blocks('time'), state, path, (found) =>
     readTime(found, warnings, context, path),
   )
@@ -253,11 +247,9 @@ export function readAttributes(
     .map((stated) => stated.value)
     .filter((time): time is TimeSignature => time !== undefined)
 
-  const key = keys.map((stated) => stated.value).find((stated) => stated !== undefined)
   return {
     keys,
     times,
-    key,
     time: metered[0],
     clefs: element
       .blocks('clef')
@@ -556,8 +548,10 @@ function readTimeDisplay(
  * attribute, and MNX states one for the part. Each staff keeps the last one
  * given to it, and a staff given none sounds as written. Staves that disagree
  * are reported once the measure is read; see settleTranspositions. A part
- * that changes instrument partway keeps the first and reports the change.
- * The pitches follow the first staff that is given a transposition.
+ * that changes instrument partway keeps the one its first note is read in,
+ * and reports the change. The <transpose> statements before that note say
+ * together where the part starts, however many <attributes> they take. The
+ * pitches follow the first staff that is given a transposition.
  */
 function readTransposition(
   element: ElementReader,
@@ -615,9 +609,9 @@ function readTransposition(
   const before = state.transposition
   const inForce = staffTranspositions(state).find((one) => one !== undefined)
   state.transposition = inForce?.value
-  if (inForce === undefined) return
-  const first = (state.statedTransposition ??= inForce.value)
-  const changed = before !== undefined && !sameTransposition(before, inForce.value)
+  const first = state.statedTransposition
+  if (inForce === undefined || first === undefined || before === undefined) return
+  const changed = !sameTransposition(before, inForce.value)
   if (changed && !sameTransposition(first, inForce.value)) check.change ??= inForce.element
 }
 
@@ -638,6 +632,9 @@ function staffTranspositions(state: PartState): (Stated<Transposition> | undefin
  * is reported, even where a later one changes back.
  */
 export function settleTranspositions(state: PartState, warnings: WarningCollector): void {
+  // A measure with no note converts its keys with the transposition in force
+  // at its end, so the part is fixed there too.
+  state.statedTransposition ??= state.transposition
   const check = state.transpositionCheck
   if (check === undefined) return
   state.transpositionCheck = undefined
