@@ -770,7 +770,7 @@ export class SpannerResolver {
       started.payload.note.ties = [
         ...started.payload.note.ties,
         {
-          kind: 'to',
+          kind: 'target',
           target: end.stop.note.id,
           // Voices are compared the way sequences are bucketed: a note
           // stating no voice and one stating an empty voice are both the

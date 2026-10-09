@@ -1360,7 +1360,7 @@ const NOT_AN_MNX_ENUM: Readonly<Record<string, string>> = {
   'AccentDynamic.kind': DYNAMIC_TAG,
   'RolledArpeggio.kind': ARPEGGIO_TAG,
   'StruckArpeggio.kind': ARPEGGIO_TAG,
-  'TieTo.kind': TIE_TAG,
+  'TargetTie.kind': TIE_TAG,
   'LetRingTie.kind': TIE_TAG,
   'EventRest.kind': EVENT_BODY_TAG,
   'EventNotes.kind': EVENT_BODY_TAG,

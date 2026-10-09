@@ -599,7 +599,7 @@ describe('ties and slurs', () => {
   const startNote: Note = {
     id: 'note-start',
     pitch: { step: 'G', octave: 4, alter: 0 },
-    ties: [{ kind: 'to', target: 'note-target', crossVoice: false }],
+    ties: [{ kind: 'target', target: 'note-target', crossVoice: false }],
     accidentalDisplay: undefined,
     staff: undefined,
   }
@@ -655,7 +655,7 @@ describe('ties and slurs', () => {
   test('declares the target type of a tie that crosses voices', () => {
     const crossingNote: Note = {
       ...startNote,
-      ties: [{ kind: 'to', target: 'note-target', crossVoice: true }],
+      ties: [{ kind: 'target', target: 'note-target', crossVoice: true }],
     }
     const crossing: Event = {
       ...start,

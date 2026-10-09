@@ -36,8 +36,8 @@ describe('a rolled chord', () => {
 
     expect(measure?.arpeggios).toEqual([
       {
-        position: { num: 0, den: 1 },
         kind: 'rolled',
+        position: { num: 0, den: 1 },
         span: { start: 'note1', end: 'note3' },
         direction: 'up',
         arrow: false,
@@ -207,8 +207,8 @@ describe('a chord bracketed as struck together', () => {
 
     expect(measure?.arpeggios).toEqual([
       {
-        position: { num: 0, den: 1 },
         kind: 'struck',
+        position: { num: 0, den: 1 },
         span: { start: 'note1', end: 'note2' },
       },
     ])
@@ -249,8 +249,8 @@ describe('a roll marked on a single note', () => {
 
     expect(measure?.arpeggios).toEqual([
       {
-        position: { num: 0, den: 1 },
         kind: 'rolled',
+        position: { num: 0, den: 1 },
         span: { start: 'note1', end: 'note1' },
         direction: 'up',
         arrow: false,

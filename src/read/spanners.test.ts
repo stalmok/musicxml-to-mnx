@@ -71,7 +71,7 @@ describe('ties', () => {
     const { notes } = read(measures(DIVISIONS + note('C', tied('start')) + note('C', tied('stop'))))
     const [first, second] = notes as [Note, Note]
 
-    expect(first.ties).toEqual([{ kind: 'to', target: second.id, crossVoice: false }])
+    expect(first.ties).toEqual([{ kind: 'target', target: second.id, crossVoice: false }])
     expect(second.ties).toEqual([])
   })
 
@@ -79,7 +79,7 @@ describe('ties', () => {
     const { notes } = read(measures(DIVISIONS + note('C', tied('start')), note('C', tied('stop'))))
     const [first, second] = notes as [Note, Note]
 
-    expect(first.ties).toEqual([{ kind: 'to', target: second.id, crossVoice: false }])
+    expect(first.ties).toEqual([{ kind: 'target', target: second.id, crossVoice: false }])
   })
 
   // Ties are matched on pitch across the part, so one may end in a different
@@ -91,7 +91,7 @@ describe('ties', () => {
     )
     const [first, second] = notes as [Note, Note]
 
-    expect(first.ties).toEqual([{ kind: 'to', target: second.id, crossVoice: true }])
+    expect(first.ties).toEqual([{ kind: 'target', target: second.id, crossVoice: true }])
   })
 
   test('does not mark a tie between measures as crossing voices', () => {
@@ -100,7 +100,7 @@ describe('ties', () => {
     )
     const [first, second] = notes as [Note, Note]
 
-    expect(first.ties).toEqual([{ kind: 'to', target: second.id, crossVoice: false }])
+    expect(first.ties).toEqual([{ kind: 'target', target: second.id, crossVoice: false }])
   })
 
   // A note stating no voice and one stating an empty voice are both the
@@ -115,7 +115,7 @@ describe('ties', () => {
     const { notes } = read(measures(DIVISIONS + unvoiced, emptyVoiced))
     const [first, second] = notes as [Note, Note]
 
-    expect(first.ties).toEqual([{ kind: 'to', target: second.id, crossVoice: false }])
+    expect(first.ties).toEqual([{ kind: 'target', target: second.id, crossVoice: false }])
   })
 
   // A note in the middle of a chain both ends the tie before it and starts the
@@ -127,8 +127,8 @@ describe('ties', () => {
     )
     const [first, second, third] = notes as [Note, Note, Note]
 
-    expect(first.ties).toEqual([{ kind: 'to', target: second.id, crossVoice: false }])
-    expect(second.ties).toEqual([{ kind: 'to', target: third.id, crossVoice: false }])
+    expect(first.ties).toEqual([{ kind: 'target', target: second.id, crossVoice: false }])
+    expect(second.ties).toEqual([{ kind: 'target', target: third.id, crossVoice: false }])
     expect(third.ties).toEqual([])
   })
 
@@ -145,7 +145,7 @@ describe('ties', () => {
     const { notes, warnings } = read(measures(DIVISIONS + sharp + flat))
     const [first, second] = notes as [Note, Note]
 
-    expect(first.ties).toEqual([{ kind: 'to', target: second.id, crossVoice: false }])
+    expect(first.ties).toEqual([{ kind: 'target', target: second.id, crossVoice: false }])
     expect(warnings).toEqual([])
   })
 
@@ -161,7 +161,7 @@ describe('ties', () => {
     const { notes, warnings } = read(measures(DIVISIONS + bSharp + cNatural))
     const [first, second] = notes as [Note, Note]
 
-    expect(first.ties).toEqual([{ kind: 'to', target: second.id, crossVoice: false }])
+    expect(first.ties).toEqual([{ kind: 'target', target: second.id, crossVoice: false }])
     expect(warnings).toEqual([])
   })
 
@@ -186,7 +186,7 @@ describe('ties', () => {
     )
     const [first, , third] = notes as [Note, Note, Note]
 
-    expect(first.ties).toEqual([{ kind: 'to', target: third.id, crossVoice: false }])
+    expect(first.ties).toEqual([{ kind: 'target', target: third.id, crossVoice: false }])
   })
 
   test('reports a tie the source never ends', () => {
@@ -220,7 +220,7 @@ describe('ties', () => {
     const stopped = notes.find((n) => n.ties.length === 0)
     const started = notes.find((n) => n.ties.length > 0)
 
-    expect(started?.ties).toEqual([{ kind: 'to', target: stopped?.id, crossVoice: true }])
+    expect(started?.ties).toEqual([{ kind: 'target', target: stopped?.id, crossVoice: true }])
     expect(warnings).toEqual([])
   })
 
@@ -253,7 +253,7 @@ describe('ties', () => {
     const started = notes.find((n) => n.ties.length > 0)
 
     expect(started?.ties).toEqual([
-      { kind: 'to', target: notes[notes.length - 1]?.id, crossVoice: true },
+      { kind: 'target', target: notes[notes.length - 1]?.id, crossVoice: true },
     ])
     expect(warnings).toEqual([])
   })
@@ -272,7 +272,7 @@ describe('ties', () => {
     const started = notes.find((n) => n.ties.length > 0)
     const stopped = notes[notes.length - 1]
 
-    expect(started?.ties).toEqual([{ kind: 'to', target: stopped?.id, crossVoice: false }])
+    expect(started?.ties).toEqual([{ kind: 'target', target: stopped?.id, crossVoice: false }])
     expect(warnings).toEqual([])
   })
 
@@ -290,7 +290,7 @@ describe('ties', () => {
     const [stray, , , crossing, stopped] = notes as [Note, Note, Note, Note, Note]
 
     expect(stray.ties).toEqual([])
-    expect(crossing.ties).toEqual([{ kind: 'to', target: stopped.id, crossVoice: true }])
+    expect(crossing.ties).toEqual([{ kind: 'target', target: stopped.id, crossVoice: true }])
     expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([['unclosed:spanner', 1]])
   })
 
@@ -316,7 +316,7 @@ describe('ties', () => {
     const stopped = notes.find((n) => n.pitch.step === 'A' && n.ties.length === 0)
 
     expect(started?.pitch).toEqual({ step: 'A', octave: 4, alter: 0 })
-    expect(started?.ties).toEqual([{ kind: 'to', target: stopped?.id, crossVoice: true }])
+    expect(started?.ties).toEqual([{ kind: 'target', target: stopped?.id, crossVoice: true }])
     expect(warnings).toEqual([])
   })
 
@@ -337,7 +337,7 @@ describe('ties', () => {
     const started = notes.find((n) => n.ties.length > 0)
     const stopped = notes.find((n) => n.pitch.step === 'A' && n.ties.length === 0)
 
-    expect(started?.ties).toEqual([{ kind: 'to', target: stopped?.id, crossVoice: true }])
+    expect(started?.ties).toEqual([{ kind: 'target', target: stopped?.id, crossVoice: true }])
     expect(warnings).toEqual([])
   })
 })
@@ -353,7 +353,7 @@ describe('a tie stated only as <tied>', () => {
     )
     const [first, second] = notes
 
-    expect(first?.ties).toEqual([{ kind: 'to', target: second?.id, crossVoice: false }])
+    expect(first?.ties).toEqual([{ kind: 'target', target: second?.id, crossVoice: false }])
     expect(second?.ties).toEqual([])
   })
 
@@ -381,8 +381,8 @@ describe('a tie stated only as <tied>', () => {
     )
     const [first, second, third] = notes
 
-    expect(first?.ties).toEqual([{ kind: 'to', target: second?.id, crossVoice: false }])
-    expect(second?.ties).toEqual([{ kind: 'to', target: third?.id, crossVoice: false }])
+    expect(first?.ties).toEqual([{ kind: 'target', target: second?.id, crossVoice: false }])
+    expect(second?.ties).toEqual([{ kind: 'target', target: third?.id, crossVoice: false }])
     expect(third?.ties).toEqual([])
   })
 
@@ -422,8 +422,8 @@ describe('a tie stated only as <tied>', () => {
     )
     const [first, second, third] = notes
 
-    expect(first?.ties).toEqual([{ kind: 'to', target: second?.id, crossVoice: false }])
-    expect(second?.ties).toEqual([{ kind: 'to', target: third?.id, crossVoice: false }])
+    expect(first?.ties).toEqual([{ kind: 'target', target: second?.id, crossVoice: false }])
+    expect(second?.ties).toEqual([{ kind: 'target', target: third?.id, crossVoice: false }])
     expect(warnings).toEqual([])
   })
 
@@ -454,7 +454,11 @@ describe('a tie stated only as <tied>', () => {
       ),
     )
 
-    expect(notes[0]?.ties).toContainEqual({ kind: 'to', target: notes[1]?.id, crossVoice: false })
+    expect(notes[0]?.ties).toContainEqual({
+      kind: 'target',
+      target: notes[1]?.id,
+      crossVoice: false,
+    })
   })
 
   test('reports an edge whose type it cannot read', () => {
@@ -503,7 +507,7 @@ describe('a tie stated only as <tie>', () => {
       ),
     )
 
-    expect(notes[0]?.ties).toEqual([{ kind: 'to', target: notes[1]?.id, crossVoice: false }])
+    expect(notes[0]?.ties).toEqual([{ kind: 'target', target: notes[1]?.id, crossVoice: false }])
     expect(warnings).toEqual([])
   })
 
@@ -514,7 +518,7 @@ describe('a tie stated only as <tie>', () => {
       ),
     )
 
-    expect(notes[0]?.ties).toEqual([{ kind: 'to', target: notes[1]?.id, crossVoice: false }])
+    expect(notes[0]?.ties).toEqual([{ kind: 'target', target: notes[1]?.id, crossVoice: false }])
     expect(warnings).toEqual([])
   })
 
@@ -531,7 +535,7 @@ describe('a tie stated only as <tie>', () => {
     )
     const [first, second, third] = notes
 
-    expect(first?.ties).toEqual([{ kind: 'to', target: second?.id, crossVoice: false }])
+    expect(first?.ties).toEqual([{ kind: 'target', target: second?.id, crossVoice: false }])
     expect(second?.ties).toEqual([])
     expect(third?.ties).toEqual([])
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:element'])
@@ -549,8 +553,8 @@ describe('a tie stated only as <tie>', () => {
     )
     const [first, second, third] = notes
 
-    expect(first?.ties).toEqual([{ kind: 'to', target: second?.id, crossVoice: false }])
-    expect(second?.ties).toEqual([{ kind: 'to', target: third?.id, crossVoice: false }])
+    expect(first?.ties).toEqual([{ kind: 'target', target: second?.id, crossVoice: false }])
+    expect(second?.ties).toEqual([{ kind: 'target', target: third?.id, crossVoice: false }])
     expect(warnings).toEqual([])
   })
 })
@@ -1255,8 +1259,8 @@ describe('the ends a spanner is keyed by', () => {
     expect(collector.list().filter((w) => w.code === 'unclosed:spanner')).toEqual([])
     expect(withTie).toHaveLength(2)
     expect(withTie.map((note) => note.ties[0])).toMatchObject([
-      { kind: 'to', crossVoice: false },
-      { kind: 'to', crossVoice: false },
+      { kind: 'target', crossVoice: false },
+      { kind: 'target', crossVoice: false },
     ])
   })
 
@@ -1270,7 +1274,7 @@ describe('the ends a spanner is keyed by', () => {
     )
     const [, e1, e2] = notes as [Note, Note, Note]
 
-    expect(e1.ties).toEqual([{ kind: 'to', target: e2.id, crossVoice: false }])
+    expect(e1.ties).toEqual([{ kind: 'target', target: e2.id, crossVoice: false }])
     expect(warnings).toEqual([])
   })
 
@@ -1286,8 +1290,8 @@ describe('the ends a spanner is keyed by', () => {
     )
     const [c1, g1, g2, c2] = notes as [Note, Note, Note, Note]
 
-    expect(c1.ties).toEqual([{ kind: 'to', target: c2.id, crossVoice: false }])
-    expect(g1.ties).toEqual([{ kind: 'to', target: g2.id, crossVoice: false }])
+    expect(c1.ties).toEqual([{ kind: 'target', target: c2.id, crossVoice: false }])
+    expect(g1.ties).toEqual([{ kind: 'target', target: g2.id, crossVoice: false }])
   })
 
   // In piano writing a slur routinely runs from one hand to the other, which
@@ -1356,7 +1360,7 @@ describe('spanners on music that names no voice', () => {
   test('joins a tie', () => {
     const { notes } = read(measures(DIVISIONS + bare('C', tied('start')) + bare('C', tied('stop'))))
 
-    expect(notes[0]?.ties).toEqual([{ kind: 'to', target: notes[1]?.id, crossVoice: false }])
+    expect(notes[0]?.ties).toEqual([{ kind: 'target', target: notes[1]?.id, crossVoice: false }])
   })
 
   test('joins a slur that states no number either', () => {
