@@ -491,6 +491,31 @@ describe('where an octave shift runs', () => {
       expect(ottavas[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 1, den: 8 } })
     })
 
+    // Where both staves end at one point, the staff read first is the one
+    // taken. Only the first staff has a grace note there.
+    test('ends on the staff read first where both staves end at one point', () => {
+      const grace =
+        '<note><grace/><pitch><step>B</step><octave>3</octave></pitch>' +
+        '<type>eighth</type><staff>1</staff></note>'
+      const { ottavas } = read(
+        staves +
+          shift('down') +
+          eighth(1, 'C') +
+          grace +
+          eighth(1, 'D') +
+          back +
+          eighth(2, 'E') +
+          eighth(2, 'F'),
+        shift('stop') + quarter(1, 'C'),
+      )
+
+      expect(ottavas[0]?.[0]?.end).toEqual({
+        measure: 0,
+        position: { num: 1, den: 8 },
+        graceIndex: 0,
+      })
+    })
+
     test('ends on the later measure, not a later point of an earlier one', () => {
       const { ottavas } = read(
         staves + shift('down') + quarter(1, 'C') + back + eighth(2, 'E') + eighth(2, 'F'),
