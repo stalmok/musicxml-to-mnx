@@ -1462,16 +1462,15 @@ export class MeasureBuilder {
 
       // MusicXML rolls from the lowest note up unless it says otherwise.
       const direction = first.direction ?? 'up'
-      arpeggios.push({
-        position: first.position,
-        span:
-          direction === 'down'
-            ? { start: highest.id, end: lowest.id }
-            : { start: lowest.id, end: highest.id },
-        direction,
-        arrow: first.arrow,
-        struck: first.struck,
-      })
+      const span =
+        direction === 'down'
+          ? { start: highest.id, end: lowest.id }
+          : { start: lowest.id, end: highest.id }
+      arpeggios.push(
+        first.struck
+          ? { kind: 'struck', position: first.position, span }
+          : { kind: 'rolled', position: first.position, span, direction, arrow: first.arrow },
+      )
     }
     return arpeggios
   }

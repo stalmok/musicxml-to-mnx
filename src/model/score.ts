@@ -535,24 +535,34 @@ export interface AccentDynamic extends DynamicBase {
 export type Dynamic = ImmediateDynamic | GradualDynamic | AccentDynamic
 
 /**
- * A chord rolled rather than struck. MNX states it on the measure rather than
- * on the event, spanning the notes it runs between, because it is drawn as a
- * line beside them rather than as a mark on any one of them.
+ * A chord rolled, or bracketed as struck together. MNX states either on the
+ * measure rather than on the event, spanning the notes it runs between,
+ * because it is drawn as a line beside them rather than as a mark on any one
+ * of them.
  */
-export interface Arpeggio {
+interface ArpeggioBase {
   readonly position: Fraction
   /**
    * The ids of the notes it runs between. MNX names the first-played note
    * first, so a roll going downwards runs from the highest to the lowest.
    */
   readonly span: { readonly start: string; readonly end: string }
+}
+
+export interface RolledArpeggio extends ArpeggioBase {
+  readonly kind: 'rolled'
   /** Which way it is rolled. MusicXML's default is upwards. */
   readonly direction: 'up' | 'down'
   /** Whether an arrowhead is drawn, which is what a stated direction means. */
   readonly arrow: boolean
-  /** A bracket saying the notes are struck together, rather than a roll. */
-  readonly struck: boolean
 }
+
+/** A bracket saying the notes are struck together, rather than a roll. */
+export interface StruckArpeggio extends ArpeggioBase {
+  readonly kind: 'struck'
+}
+
+export type Arpeggio = RolledArpeggio | StruckArpeggio
 
 /**
  * An octave shift: a stretch of music drawn an octave or more away from where

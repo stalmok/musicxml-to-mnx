@@ -37,10 +37,10 @@ describe('a rolled chord', () => {
     expect(measure?.arpeggios).toEqual([
       {
         position: { num: 0, den: 1 },
+        kind: 'rolled',
         span: { start: 'note1', end: 'note3' },
         direction: 'up',
         arrow: false,
-        struck: false,
       },
     ])
     expect(warnings).toEqual([])
@@ -96,7 +96,7 @@ describe('a rolled chord', () => {
       head('<arpeggiate direction="down"/>') + member('E', '<arpeggiate direction="down"/>'),
     )
 
-    expect(measure?.arpeggios[0]?.direction).toBe('down')
+    expect(measure?.arpeggios[0]).toMatchObject({ kind: 'rolled', direction: 'down' })
     expect(measure?.arpeggios[0]?.span).toEqual({ start: 'note2', end: 'note1' })
   })
 
@@ -107,8 +107,8 @@ describe('a rolled chord', () => {
       head('<arpeggiate direction="up"/>') + member('E', '<arpeggiate direction="up"/>'),
     )
 
-    expect(measure?.arpeggios[0]?.arrow).toBe(false)
-    expect(arrowed?.arpeggios[0]?.arrow).toBe(true)
+    expect(measure?.arpeggios[0]).toMatchObject({ kind: 'rolled', arrow: false })
+    expect(arrowed?.arpeggios[0]).toMatchObject({ kind: 'rolled', arrow: true })
   })
 
   // In MNX the key's presence draws an arrowhead, and its absence is the
@@ -208,10 +208,8 @@ describe('a chord bracketed as struck together', () => {
     expect(measure?.arpeggios).toEqual([
       {
         position: { num: 0, den: 1 },
+        kind: 'struck',
         span: { start: 'note1', end: 'note2' },
-        direction: 'up',
-        arrow: false,
-        struck: true,
       },
     ])
     expect(warnings).toEqual([])
@@ -252,10 +250,10 @@ describe('a roll marked on a single note', () => {
     expect(measure?.arpeggios).toEqual([
       {
         position: { num: 0, den: 1 },
+        kind: 'rolled',
         span: { start: 'note1', end: 'note1' },
         direction: 'up',
         arrow: false,
-        struck: false,
       },
     ])
     expect(warnings).toEqual([])
@@ -351,7 +349,7 @@ describe('a chord marked both ways under different numbers', () => {
     )
 
     expect(measure?.arpeggios).toHaveLength(1)
-    expect(measure?.arpeggios[0]?.struck).toBe(false)
+    expect(measure?.arpeggios[0]?.kind).toBe('rolled')
     expect(warnings.map((w) => w.code)).toEqual(['inconsistent:arpeggio'])
   })
 })
@@ -438,7 +436,10 @@ describe('a chord divided into two numbered rolls', () => {
         member('B', '<arpeggiate number="2" direction="down"/>'),
     )
 
-    expect(measure?.arpeggios.map((a) => a.direction)).toEqual(['up', 'down'])
+    expect(measure?.arpeggios).toMatchObject([
+      { kind: 'rolled', direction: 'up' },
+      { kind: 'rolled', direction: 'down' },
+    ])
     expect(measure?.arpeggios[1]?.span).toEqual({ start: 'note4', end: 'note3' })
   })
 })
@@ -457,10 +458,9 @@ describe('a chord whose marks agree', () => {
     )
 
     expect(measure?.arpeggios).toHaveLength(1)
-    expect(measure?.arpeggios[0]?.direction).toBe('up')
     // MusicXML states a direction only where an arrowhead is drawn, so a mark
     // stating one draws the head however the mark beside it is written.
-    expect(measure?.arpeggios[0]?.arrow).toBe(true)
+    expect(measure?.arpeggios[0]).toMatchObject({ kind: 'rolled', direction: 'up', arrow: true })
     expect(warnings).toEqual([])
   })
 })
@@ -517,7 +517,7 @@ describe('two chords marked in opposite ways', () => {
         member('F', '<non-arpeggiate type="top"/>'),
     )
 
-    expect(measure?.arpeggios.map((a) => a.struck)).toEqual([false, true])
+    expect(measure?.arpeggios.map((a) => a.kind)).toEqual(['rolled', 'struck'])
     expect(warnings).toEqual([])
   })
 
@@ -549,7 +549,7 @@ describe('a chord rolled both ways at once', () => {
     )
 
     expect(measure?.arpeggios).toHaveLength(1)
-    expect(measure?.arpeggios[0]?.direction).toBe('up')
+    expect(measure?.arpeggios[0]).toMatchObject({ kind: 'rolled', direction: 'up' })
     expect(warnings.map((w) => w.code)).toEqual(['inconsistent:arpeggio'])
   })
 })

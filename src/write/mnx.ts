@@ -582,8 +582,8 @@ function writeMeasure(
 function writeArpeggios(
   arpeggios: readonly Arpeggio[],
 ): Pick<MNXPartMeasure, 'arpeggios' | 'nonArpeggios'> {
-  const rolled = arpeggios.filter((arpeggio) => !arpeggio.struck)
-  const struck = arpeggios.filter((arpeggio) => arpeggio.struck)
+  const rolled = arpeggios.filter((arpeggio) => arpeggio.kind === 'rolled')
+  const struck = arpeggios.filter((arpeggio) => arpeggio.kind === 'struck')
 
   return {
     ...(rolled.length > 0

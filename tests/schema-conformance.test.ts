@@ -1287,6 +1287,10 @@ const DYNAMIC_TAG =
 const GROUPING_ITEM_TAG =
   'The model tags a grouping item with kind, and the writer states MNX type from it. The model says part, where MNX says the staff that part is drawn on.'
 
+/** The model's own tag for an arpeggio, which MNX states by the list it is in. */
+const ARPEGGIO_TAG =
+  "The model tags an arpeggio with kind, and the writer puts it in the measure's arpeggios or nonArpeggios by it."
+
 /** The reason most of the narrowings below share. */
 const UNSTATED_IS_UNDEFINED =
   'MNX names a value auto for what the source did not state; the model leaves it undefined, so the writer omits the field and a renderer decides.'
@@ -1330,7 +1334,7 @@ const MNX_SPELLING: Readonly<Record<string, string>> = {
   'Tuplet.bracket': 'MNXTuplet.bracket',
   'DynamicBase.placement': 'MNXMultiStaffPlacement',
   'Ottava.placement': 'MNXPlacement',
-  'Arpeggio.direction': 'MNXArpeggio.direction',
+  'RolledArpeggio.direction': 'MNXArpeggio.direction',
   'Beam.direction': 'MNXBeamHookDirection',
 }
 
@@ -1346,6 +1350,8 @@ const NOT_AN_MNX_ENUM: Readonly<Record<string, string>> = {
   'ImmediateDynamic.kind': DYNAMIC_TAG,
   'GradualDynamic.kind': DYNAMIC_TAG,
   'AccentDynamic.kind': DYNAMIC_TAG,
+  'RolledArpeggio.kind': ARPEGGIO_TAG,
+  'StruckArpeggio.kind': ARPEGGIO_TAG,
 }
 
 /**
@@ -1373,7 +1379,7 @@ const NARROWER: Readonly<Record<string, { missing: readonly string[]; why: strin
   'StrongAccentMarking.pointing': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
   'Fermata.pointing': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
   'Tuplet.bracket': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
-  'Arpeggio.direction': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
+  'RolledArpeggio.direction': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
   'Beam.direction': { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
   BreathSymbol: { missing: ['auto'], why: UNSTATED_IS_UNDEFINED },
   'DynamicBase.placement': {

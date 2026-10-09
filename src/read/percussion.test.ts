@@ -314,7 +314,7 @@ describe('a rolled chord struck on a kit', () => {
     const arpeggio = part?.measures[0]?.arpeggios[0]
 
     expect(arpeggio?.span).toEqual({ start: event?.kitNotes[0]?.id, end: event?.kitNotes[1]?.id })
-    expect(arpeggio?.direction).toBe('up')
+    expect(arpeggio).toMatchObject({ kind: 'rolled', direction: 'up' })
     expect(warnings).toEqual([])
   })
 
