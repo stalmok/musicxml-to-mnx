@@ -1844,15 +1844,16 @@ export class MeasureBuilder {
           }
         }
 
-        return {
+        const named = {
           staff,
           // Whenever the source named the voice. MNX treats the name as a label
           // for the line across the whole score, so deciding it per measure would
           // give one musical line a different identity from bar to bar.
           voice: index > 0 ? nameFor(voice, index) : voice === UNNAMED_VOICE ? undefined : voice,
-          content: builder.content,
-          fullMeasure: builder.fullMeasure,
         }
+        return builder.fullMeasure
+          ? { ...named, content: [], fullMeasure: builder.fullMeasure }
+          : { ...named, content: builder.content, fullMeasure: undefined }
       }),
     )
   }

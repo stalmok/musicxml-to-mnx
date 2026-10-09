@@ -396,14 +396,27 @@ export interface FullMeasureRest {
   readonly staffPosition: number | undefined
 }
 
-export interface Sequence {
+interface SequenceBase {
   /** The voice as the source named it, when a measure holds more than one. */
   readonly voice: string | undefined
   /** The staff this voice sits on, where the part has more than one. */
   readonly staff: number | undefined
-  readonly content: readonly SequenceItem[]
-  readonly fullMeasure: FullMeasureRest | undefined
 }
+
+export interface ContentSequence extends SequenceBase {
+  readonly content: readonly SequenceItem[]
+  readonly fullMeasure: undefined
+}
+
+/** A sequence that is a full-measure rest, and so holds no events. */
+export interface RestSequence extends SequenceBase {
+  // Empty by its length rather than as readonly [], so a method called on any
+  // sequence's content keeps one signature.
+  readonly content: readonly SequenceItem[] & { readonly length: 0 }
+  readonly fullMeasure: FullMeasureRest
+}
+
+export type Sequence = ContentSequence | RestSequence
 
 export interface Clef {
   readonly sign: ClefSign
