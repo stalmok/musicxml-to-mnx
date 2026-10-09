@@ -484,7 +484,7 @@ interface DynamicBase {
   readonly position: Fraction
   /** The wording drawn before the mark, as in the "più" of "più f", which is
    * read before the mark it belongs to. */
-  prefix?: string
+  readonly prefix?: string
   /**
    * The wording drawn after the mark, as in the "sub." of "p sub.", which the
    * direction reader adds once it reaches the words. Wording written at a

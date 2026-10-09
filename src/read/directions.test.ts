@@ -2300,24 +2300,35 @@ describe('hairpins', () => {
   // its place among the marks read after it. The f is pulled back before the
   // third hairpin, but written after it.
   test('keeps the hairpins among the other marks in the order of the source', () => {
+    const mark = (value: string, offset = '') =>
+      `<direction><direction-type><dynamics><${value}/></dynamics></direction-type>${offset}</direction>`
     const { dynamics, warnings } = readMeasures(
       '<direction><direction-type><dynamics><p/></dynamics>' +
         '<wedge type="crescendo" number="1"/></direction-type></direction>' +
         wedge('diminuendo', '2') +
         wedge('diminuendo', '4') +
         NOTE +
-        wedge('diminuendo', '3') +
-        '<direction><direction-type><dynamics><f/></dynamics></direction-type>' +
-        '<offset>-4</offset></direction>' +
+        mark('mf') +
+        wedge('crescendo', '3') +
+        mark('f', '<offset>-4</offset>') +
         wedge('stop', '1') +
-        wedge('stop', '2') +
         NOTE +
+        wedge('stop', '2') +
         wedge('stop', '3'),
+      mark('p') + wedge('crescendo', '5') + mark('f') + NOTE + wedge('stop', '5'),
     )
 
-    expect(
-      (dynamics[0] ?? []).map((mark) => (mark.kind === 'gradual' ? mark.wedge : mark.value)),
-    ).toEqual(['p', 'increasing', 'decreasing', 'decreasing', 'f'])
+    const marks = dynamics.map((measure) =>
+      measure.map((d) =>
+        d.kind === 'gradual'
+          ? `${d.wedge} to ${String(d.end.measure)}:${String(d.end.position.num)}/${String(d.end.position.den)}`
+          : d.value,
+      ),
+    )
+    expect(marks).toEqual([
+      ['p', 'increasing to 0:1/4', 'decreasing to 0:1/2', 'mf', 'increasing to 0:1/2', 'f'],
+      ['p', 'increasing to 1:1/4', 'f'],
+    ])
     expect(warnings.map((w) => w.message)).toEqual([
       'A hairpin starts where nothing ends it, and is not carried over.',
     ])
@@ -2537,12 +2548,10 @@ describe('hairpins', () => {
         named('stop', then),
       )
 
-      expect(dynamics.flat().map((d) => d.kind === 'gradual' && [d.wedge, d.end?.measure])).toEqual(
-        [
-          ['increasing', 1],
-          ['decreasing', 2],
-        ],
-      )
+      expect(dynamics.flat().map((d) => d.kind === 'gradual' && [d.wedge, d.end.measure])).toEqual([
+        ['increasing', 1],
+        ['decreasing', 2],
+      ])
       expect(warnings).toEqual([])
     },
   )

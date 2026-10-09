@@ -1047,8 +1047,8 @@ export class SpannerResolver {
         'than its start, and is not carried over.',
       'unclosed-start': 'A hairpin starts where nothing ends it, and is not carried over.',
     }
-    const closed = new Map<StopEnd<WedgeStop>, OpenHairpin>()
-    const ends = new Map<OpenHairpin, Pick<GradualDynamic, 'end' | 'staffEnd'>>()
+    const closed = new Map<StopEnd<WedgeStop>, GradualDynamic>()
+    const built = new Map<OpenHairpin, GradualDynamic>()
     pairSpans<OpenHairpin, WedgeStop>(
       this.#wedgeEnds,
       (open, stop) => {
@@ -1058,15 +1058,23 @@ export class SpannerResolver {
         // tells an absent key from an undefined one.
         const end: Draft<SpanStop> = { measure: stop.measure, position: stop.covers }
         if (stop.coversGraceIndex !== undefined) end.graceIndex = stop.coversGraceIndex
+        const hairpin: Draft<GradualDynamic> = {
+          kind: 'gradual',
+          position: open.position,
+          wedge: open.wedge,
+          end,
+          staff: open.staff,
+        }
         // A hairpin stating no staff applies to all of them, so only one
         // naming its staff can end on another.
-        ends.set(
-          open,
-          open.staff !== undefined && stop.staff !== undefined && stop.staff !== open.staff
-            ? { end, staffEnd: stop.staff }
-            : { end },
-        )
-        closed.set(stop, open)
+        if (open.staff !== undefined && stop.staff !== undefined && stop.staff !== open.staff) {
+          hairpin.staffEnd = stop.staff
+        }
+        if (open.placement !== undefined) hairpin.placement = open.placement
+        if (open.prefix !== undefined) hairpin.prefix = open.prefix
+        if (open.suffix !== undefined) hairpin.suffix = open.suffix
+        built.set(open, hairpin)
+        closed.set(stop, hairpin)
       },
       (reason, end) => {
         // Only a start can carry wording, and only an unclosed one reaches here.
@@ -1108,21 +1116,8 @@ export class SpannerResolver {
     // inserting the last first leaves each earlier one before the later ones.
     for (const end of [...this.#wedgeEnds].reverse()) {
       if (end.kind !== 'start' || end.dropped) continue
-      const open = end.payload
-      const closing = ends.get(open)
-      if (!closing) continue
-      const hairpin: Draft<GradualDynamic> = {
-        kind: 'gradual',
-        position: open.position,
-        wedge: open.wedge,
-        end: closing.end,
-        staff: open.staff,
-      }
-      if (closing.staffEnd !== undefined) hairpin.staffEnd = closing.staffEnd
-      if (open.placement !== undefined) hairpin.placement = open.placement
-      if (open.prefix !== undefined) hairpin.prefix = open.prefix
-      if (open.suffix !== undefined) hairpin.suffix = open.suffix
-      measures[open.measure]?.dynamics.splice(open.slot, 0, hairpin)
+      const hairpin = built.get(end.payload)
+      if (hairpin) measures[end.measure]?.dynamics.splice(end.payload.slot, 0, hairpin)
     }
     this.#wedgeEnds.length = 0
   }
