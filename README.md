@@ -272,9 +272,6 @@ pnpm build
 Before you push a release tag, run `pnpm test:mutation`.
 Kill each surviving mutant with a test, or record it as equivalent, with the reason.
 
-Before you push a release tag, check the open dependency pull requests, the Dependabot alerts and the last `audit.yml` run.
-Merge, replace or close each pull request, and resolve or dismiss each alert, with the reason.
-
 Read the [architecture](docs/architecture.md) and [working conventions](AGENTS.md)
 before changing the converter.
 
