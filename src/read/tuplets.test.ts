@@ -540,6 +540,26 @@ describe('crossing tuplet numbers', () => {
     expect(warnings).toEqual([])
   })
 
+  // Three tuplets start on one note. A later note's first stop closes the
+  // innermost, as it names; its second names the outermost but closes the
+  // middle one. The report is at the second stop, on its own line.
+  test('reports the crossing at the stop that crosses, not the first stop of the note', () => {
+    const start = (number: string): string =>
+      `<tuplet type="start" number="${number}">${threeInTwoEighths}</tuplet>`
+    const source = [
+      '<score-partwise><part id="P1"><measure number="1">',
+      '<attributes><divisions>54</divisions></attributes>',
+      note('C', 8, 27, 8, start('1') + start('2') + start('3')),
+      note('D', 8, 27, 8),
+      note('E', 8, 27, 8, '<tuplet type="stop" number="3"/>\n<tuplet type="stop" number="1"/>'),
+      '</measure></part></score-partwise>',
+    ].join('\n')
+    const { warnings } = convertValid(source)
+    const crossings = warnings.filter((w) => w.code === 'unrepresentable:tuplet-crossing')
+
+    expect(crossings.map((w) => w.context.line)).toEqual([6])
+  })
+
   // A marker that states no number is tuplet 1, so an unnumbered marker and
   // one numbered 1 name the same tuplet.
   test('matches a stop that states no number to a start numbered 1', () => {
@@ -4304,8 +4324,43 @@ describe('a bracket whose notes take a time its ratio does not give them', () =>
     expect(reported?.message).toContain('take less time')
   })
 
+  // The same eighths, each lasting a whole eighth.
+  test('says the notes take more time than the stated ratio gives them', () => {
+    const longer = source.replaceAll('<duration>3</duration>', '<duration>6</duration>')
+    const { warnings } = read(longer)
+    const reported = warnings.find((w) => w.code === 'inconsistent:tuplet')
+
+    expect(reported?.message).toContain('take more time')
+  })
+
   test('leaves output the schema takes', () => {
     convertValid(source)
+  })
+})
+
+// A bracket opened in quarters is restated in the value it opened with,
+// halved as far as a 1024th, before any other value is tried.
+describe('a bracket restated in a value halved from the one it opened with', () => {
+  test('counts in 1024ths, eight halvings from a quarter', () => {
+    const { mnx } = convertValid(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        '<attributes><divisions>256</divisions></attributes>' +
+        '<note><pitch><step>C</step><octave>4</octave></pitch><duration>9</duration>' +
+        '<type>512th</type><dot/><time-modification><actual-notes>3</actual-notes>' +
+        '<normal-notes>2</normal-notes><normal-type>quarter</normal-type></time-modification>' +
+        '<notations><tuplet type="start"/><tuplet type="stop"/></notations></note>' +
+        '</measure></part></score-partwise>',
+    )
+    const tuplet = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
+
+    expect(tuplet && 'type' in tuplet && tuplet.type === 'tuplet' && tuplet.inner).toEqual({
+      duration: { base: '1024th' },
+      multiple: 3,
+    })
+    expect(tuplet && 'type' in tuplet && tuplet.type === 'tuplet' && tuplet.outer).toEqual({
+      duration: { base: '1024th' },
+      multiple: 9,
+    })
   })
 })
 
@@ -4465,6 +4520,44 @@ describe('a bracket the silence after it completes', () => {
       held: ['event'],
     })
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-ratio'])
+  })
+
+  // Silence completes a bracket only where its notes sound at its ratio.
+  // These two eighths each last 5 of the 4 divisions 3:2 gives them.
+  test('leaves a bracket whose notes do not sound at its ratio uncompleted', () => {
+    const slow = (step: string, bracket: string) =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>5</duration>` +
+      '<type>eighth</type><time-modification><actual-notes>3</actual-notes>' +
+      '<normal-notes>2</normal-notes></time-modification>' +
+      `<notations><tuplet type="${bracket}"/></notations></note>`
+    const { content } = timed(slow('C', 'start') + slow('D', 'stop'))
+
+    expect(stated(content?.[0])).toEqual({
+      inner: { value: { base: 'eighth', dots: 0 }, multiple: 2 },
+      outer: { value: { base: 'eighth', dots: 0 }, multiple: 2 },
+      held: ['event', 'event'],
+    })
+  })
+
+  // The start marker states the ratio, so the bracket is the source's own
+  // even where its notes state no <time-modification>.
+  test('takes in the rest after a bracket whose marker states its ratio', () => {
+    const marked =
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+      '<type>eighth</type><notations><tuplet type="start">' +
+      '<tuplet-actual><tuplet-number>3</tuplet-number><tuplet-type>eighth</tuplet-type>' +
+      '</tuplet-actual><tuplet-normal><tuplet-number>2</tuplet-number>' +
+      '<tuplet-type>eighth</tuplet-type></tuplet-normal></tuplet></notations></note>' +
+      '<note><pitch><step>D</step><octave>4</octave></pitch><duration>4</duration>' +
+      '<type>eighth</type><notations><tuplet type="stop"/></notations></note>' +
+      '<note><rest/><duration>4</duration><type>eighth</type></note>'
+    const { content } = timed(marked + plain('F', 12, 'quarter'))
+
+    expect(stated(content?.[0])).toEqual({
+      inner: { value: { base: 'eighth', dots: 0 }, multiple: 3 },
+      outer: { value: { base: 'eighth', dots: 0 }, multiple: 2 },
+      held: ['event', 'event', 'event'],
+    })
   })
 
   // A grace note takes none of the measure's time, so the voice has not
