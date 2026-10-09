@@ -25,14 +25,6 @@ minimumReleaseAge: 1440
 # An override names an exact version, so it does not follow an advisory range
 # that grows. The weekly `pnpm audit` finds an override that is out of date.
 #
-# fast-uri, pulled in by ajv (dev-only), is named by three advisories.
-# GHSA-v2hh-gcrm-f6hx is host confusion via a backslash authority delimiter,
-# reading <3.1.5. GHSA-58mr-gqgx-xq4g is host confusion via an unclosed
-# bracket in the authority, reading =3.1.6. GHSA-qw65-cvwx-89v3 is authority
-# injection via an unvalidated port in serialize, reading >=3.0.0 <3.1.7.
-# 3.1.8 is the newest 3.x and satisfies ajv's ^3.0.1. Remove when ajv depends
-# on a patched range itself.
-#
 # qs, pulled in by typed-rest-client under the mutation testing runner
 # (dev-only), is named by two advisories. GHSA-x5fp-wj9c-mxmx is an array-limit
 # bypass through a bracket key parsed as a comma list, reading >=6.14.2
@@ -43,5 +35,4 @@ minimumReleaseAge: 1440
 # reach further, so 6.16.0 is forced here. Remove when the runner's
 # typed-rest-client range reaches a version pinning 6.16.0 or later.
 overrides:
-  fast-uri: 3.1.8
   qs: 6.16.0
