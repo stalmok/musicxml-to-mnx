@@ -581,6 +581,38 @@ describe('a rest in a line laid over a measure rest', () => {
     expect(warnings.map((warning) => warning.code)).toEqual(['redundant:rest'])
   })
 
+  // A chord member sounds in its chord's voice, whatever voice it names.
+  describe('where only a chord member of another voice names this one', () => {
+    const otherChord = (memberVoice: string) =>
+      halfNote.replace('<voice>1</voice>', '<voice>2</voice>') +
+      halfNote
+        .replace('<note>', '<note><chord/>')
+        .replace('<step>C</step>', '<step>E</step>')
+        .replace('<voice>1</voice>', memberVoice)
+    const voices = (source: string) => {
+      const { mnx, warnings } = convertValid(inMeasure(source))
+      return {
+        voices: mnx.parts[0]?.measures[0]?.sequences.map((sequence) => sequence.voice),
+        codes: warnings.map((warning) => warning.code),
+      }
+    }
+
+    test('drops the rest where the member names it', () => {
+      expect(voices(measureRest() + halfRest + otherChord('<voice>1</voice>'))).toEqual({
+        voices: ['1', '2'],
+        codes: ['redundant:rest', 'inconsistent:voice'],
+      })
+    })
+
+    test('drops the rest where the member and the rest both name no voice', () => {
+      const unnamed = (measureRest() + halfRest).replaceAll('<voice>1</voice>', '')
+      expect(voices(unnamed + otherChord(''))).toEqual({
+        voices: [undefined, '2'],
+        codes: ['redundant:rest', 'missing:voice'],
+      })
+    })
+  })
+
   // A grace note sounds too, and ornaments the rest after it.
   test('keeps the rests around a grace note laid over the measure rest', () => {
     const grace =

@@ -919,11 +919,12 @@ function quarterNotesPerMinute(tempo: Tempo): number {
 /**
  * The voices of a measure that sound a note, rather than only rest. A grace
  * note counts: a rest beside one in a line laid over the measure rest is
- * part of that line's music.
+ * part of that line's music. A chord member sounds in its chord's voice,
+ * whatever voice it names, so the note it joins already counts for it.
  */
 function soundingVoices(measure: XmlElement): (string | undefined)[] {
   return children(measure, 'note')
-    .filter((note) => !child(note, 'rest'))
+    .filter((note) => !child(note, 'rest') && !child(note, 'chord'))
     .map((note) => child(note, 'voice')?.text.trim())
 }
 
