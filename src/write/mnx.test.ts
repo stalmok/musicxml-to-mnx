@@ -608,7 +608,7 @@ describe('ties and slurs', () => {
       {
         id: 'note-start',
         pitch: { step: 'G', octave: 4, alter: 0 },
-        ties: [{ target: 'note-target', crossVoice: false }],
+        ties: [{ kind: 'to', target: 'note-target', crossVoice: false }],
         accidentalDisplay: undefined,
         staff: undefined,
       },
@@ -642,7 +642,7 @@ describe('ties and slurs', () => {
   test('writes a let-ring tie with no target', () => {
     const ringing: Event = {
       ...WHOLE_C,
-      notes: WHOLE_C.notes.map((note) => ({ ...note, ties: [{ crossVoice: false, lv: true }] })),
+      notes: WHOLE_C.notes.map((note) => ({ ...note, ties: [{ kind: 'letRing' }] })),
     }
     const score = scoreOf(measureOf(ringing))
 
@@ -660,7 +660,7 @@ describe('ties and slurs', () => {
   test('declares the target type of a tie that crosses voices', () => {
     const crossing = structuredClone(start)
     crossing.notes = [
-      { ...crossing.notes[0]!, ties: [{ target: 'note-target', crossVoice: true }] },
+      { ...crossing.notes[0]!, ties: [{ kind: 'to', target: 'note-target', crossVoice: true }] },
     ]
     const score = scoreOf({
       clefs: [],

@@ -1908,7 +1908,7 @@ function readTies(
   const letRing =
     ties.some((tie) => attribute(tie, 'type') === 'let-ring') ||
     tieds.some((tied) => attribute(tied, 'type') === 'let-ring')
-  if (letRing) note.ties = [...note.ties, { crossVoice: false, lv: true }]
+  if (letRing) note.ties = [...note.ties, { kind: 'letRing' }]
 }
 
 /**

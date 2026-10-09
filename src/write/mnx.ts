@@ -350,13 +350,13 @@ function surveyScore(score: Score): {
       for (const slur of item.slurs) referenced.add(slur.target)
       for (const line of item.lyrics.keys()) lyricLines.add(line)
       for (const note of item.notes) {
-        for (const tie of note.ties) if (tie.target !== undefined) referenced.add(tie.target)
+        for (const tie of note.ties) if (tie.kind === 'to') referenced.add(tie.target)
         if (note.accidentalDisplay?.show) drawsAccidentals = true
       }
       // A kit note is tied the same way, and the note a tie names has to be
       // named in turn whether it carries a pitch or a kit component.
       for (const note of item.kitNotes) {
-        for (const tie of note.ties) if (tie.target !== undefined) referenced.add(tie.target)
+        for (const tie of note.ties) if (tie.kind === 'to') referenced.add(tie.target)
       }
     }
   }
@@ -915,12 +915,15 @@ function writeNote(note: Note, referenced: ReadonlySet<string>): MNXNote {
 
 function writeTies(ties: readonly Tie[]): MNXTie[] {
   return ties.map((tie) => ({
-    // A let-ring tie has no target: it rings out with no ending note.
-    ...(tie.target !== undefined ? { target: tie.target } : {}),
-    // Left unsaid for the ordinary tie, whose target is the same voice's next
-    // note.
-    ...(tie.crossVoice ? { targetType: 'crossVoice' as const } : {}),
-    ...(tie.lv ? { lv: true } : {}),
+    ...(tie.kind === 'to'
+      ? {
+          target: tie.target,
+          // Left unsaid for the ordinary tie, whose target is the same voice's
+          // next note.
+          ...(tie.crossVoice ? { targetType: 'crossVoice' as const } : {}),
+        }
+      : // A let-ring tie has no target: it rings out with no ending note.
+        { lv: true }),
     ...(tie.side ? { side: tie.side } : {}),
   }))
 }

@@ -1291,6 +1291,10 @@ const GROUPING_ITEM_TAG =
 const ARPEGGIO_TAG =
   "The model tags an arpeggio with kind, and the writer puts it in the measure's arpeggios or nonArpeggios by it."
 
+/** The model's own tag for a tie, which MNX states by whether it has a target. */
+const TIE_TAG =
+  'The model tags a tie with kind, and the writer states a target for one kind and lv for the other.'
+
 /** The reason most of the narrowings below share. */
 const UNSTATED_IS_UNDEFINED =
   'MNX names a value auto for what the source did not state; the model leaves it undefined, so the writer omits the field and a renderer decides.'
@@ -1352,6 +1356,8 @@ const NOT_AN_MNX_ENUM: Readonly<Record<string, string>> = {
   'AccentDynamic.kind': DYNAMIC_TAG,
   'RolledArpeggio.kind': ARPEGGIO_TAG,
   'StruckArpeggio.kind': ARPEGGIO_TAG,
+  'TieTo.kind': TIE_TAG,
+  'LetRingTie.kind': TIE_TAG,
 }
 
 /**

@@ -414,7 +414,7 @@ describe('a tie between unpitched notes', () => {
     const second = content[1]?.kind === 'event' ? content[1] : undefined
 
     expect(first?.kitNotes[0]?.ties).toEqual([
-      { target: second?.kitNotes[0]?.id, crossVoice: false },
+      { kind: 'to', target: second?.kitNotes[0]?.id, crossVoice: false },
     ])
   })
 

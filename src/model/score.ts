@@ -66,16 +66,24 @@ export type LineType = 'dashed' | 'dotted' | 'solid' | 'wavy'
  * A tie joining this note to a later one of the same pitch. Stated once, on
  * the note where it begins, as a reference to the note where it ends.
  */
-export interface Tie {
-  /** The note the tie ends on. Absent for a let-ring tie, which rings out. */
-  readonly target?: string
+export interface TieTo {
+  readonly kind: 'to'
+  /** The note the tie ends on. */
+  readonly target: string
   /** True where the tie ends in a different voice from the one it starts in. */
   readonly crossVoice: boolean
-  /** True for a let-ring (l.v.) tie, which has no ending note. */
-  readonly lv?: boolean
   /** Which side the tie is drawn on, where the source states it. */
   readonly side?: CurveSide
 }
+
+/** A let-ring (l.v.) tie, which rings out with no ending note. */
+export interface LetRingTie {
+  readonly kind: 'letRing'
+  /** Which side the tie is drawn on, where the source states it. */
+  readonly side?: CurveSide
+}
+
+export type Tie = TieTo | LetRingTie
 
 /**
  * A syllable of a lyric under an event. The type says how the syllable joins
