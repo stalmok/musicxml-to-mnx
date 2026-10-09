@@ -546,8 +546,6 @@ function readOctaveShift(
   state.spanners.startOttava(
     { measure, position, value, staff, ...(placement !== undefined ? { placement } : {}) },
     number,
-    measure,
-    position,
     where,
   )
 }

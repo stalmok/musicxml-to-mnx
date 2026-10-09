@@ -88,11 +88,11 @@ function reportAt(
 
 /** An octave shift that has begun, waiting to learn where it stops. */
 export interface OpenOttava {
-  measure: number
-  position: Fraction
-  value: OttavaAmount
-  staff: number | undefined
-  placement?: 'above' | 'below'
+  readonly measure: number
+  readonly position: Fraction
+  readonly value: OttavaAmount
+  readonly staff: number | undefined
+  readonly placement?: 'above' | 'below'
 }
 
 /**
@@ -1127,19 +1127,13 @@ export class SpannerResolver {
   // The last event read on each staff, from the measures settled so far.
   readonly #lastSeen = new Map<number, LastSeen>()
 
-  startOttava(
-    open: OpenOttava,
-    number: string,
-    measure: number,
-    position: Fraction,
-    where: WrittenAt,
-  ): void {
+  startOttava(open: OpenOttava, number: string, where: WrittenAt): void {
     this.#ottavaEnds.push({
       kind: 'start',
       number,
-      measure,
-      position,
-      covers: position,
+      measure: open.measure,
+      position: open.position,
+      covers: open.position,
       // The staff is the shift's own, so the two cannot disagree about it.
       staff: open.staff,
       payload: open,
