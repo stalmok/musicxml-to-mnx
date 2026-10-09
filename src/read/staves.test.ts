@@ -3,7 +3,7 @@
 // count on the part, the staff on each voice, and an override on the events
 // of a voice that reaches across to the other hand.
 
-import { readValid } from '../../tests/support/read.js'
+import { notesOf, readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
 import { WarningCollector } from './collector.js'
@@ -1454,7 +1454,10 @@ describe('a chord that straddles the two staves', () => {
     const { part, warnings } = read(measures(GRAND_STAFF + note('C', '1') + chorded('C', '2')))
     const event = part?.measures[0]?.sequences[0]?.content[0]
 
-    expect(event?.kind === 'event' ? event.notes.map((n) => n.staff) : []).toEqual([undefined, 2])
+    expect(event?.kind === 'event' ? notesOf(event).map((n) => n.staff) : []).toEqual([
+      undefined,
+      2,
+    ])
     expect(warnings).toEqual([])
   })
 
@@ -1475,7 +1478,7 @@ describe('a chord that straddles the two staves', () => {
     const { part, warnings } = read(measures(GRAND_STAFF + note('C', '1') + chorded('E', '1')))
     const event = part?.measures[0]?.sequences[0]?.content[0]
 
-    expect(event?.kind === 'event' ? event.notes.map((n) => n.staff) : []).toEqual([
+    expect(event?.kind === 'event' ? notesOf(event).map((n) => n.staff) : []).toEqual([
       undefined,
       undefined,
     ])
@@ -1496,7 +1499,7 @@ describe('a chord member that states no voice', () => {
     const { part } = read(measures(GRAND_STAFF + note('C', '1', '1') + member('E', '1')))
     const event = part?.measures[0]?.sequences[0]?.content[0]
 
-    expect(event?.kind === 'event' && event.notes.map((n) => n.staff)).toEqual([
+    expect(event?.kind === 'event' && notesOf(event).map((n) => n.staff)).toEqual([
       undefined,
       undefined,
     ])
@@ -1506,7 +1509,7 @@ describe('a chord member that states no voice', () => {
     const { part } = read(measures(GRAND_STAFF + note('C', '1', '1') + member('E', '2')))
     const event = part?.measures[0]?.sequences[0]?.content[0]
 
-    expect(event?.kind === 'event' && event.notes.map((n) => n.staff)).toEqual([undefined, 2])
+    expect(event?.kind === 'event' && notesOf(event).map((n) => n.staff)).toEqual([undefined, 2])
   })
 
   // The same for a grace chord: the member joins the grace note before it,
@@ -1521,7 +1524,7 @@ describe('a chord member that states no voice', () => {
     )
     const group = part?.measures[0]?.sequences[0]?.content[0]
 
-    expect(group?.kind === 'grace' && group.content[0]?.notes).toHaveLength(2)
+    expect(group?.kind === 'grace' && notesOf(group.content[0])).toHaveLength(2)
     expect(warnings).toEqual([])
   })
 
@@ -1697,7 +1700,11 @@ describe('how many lines a staff is drawn with', () => {
     )
     const heights = part?.measures.map((m) => m.sequences[0]?.content[0])
 
-    expect(heights?.map((item) => item?.kind === 'event' && item.staffPosition)).toEqual([0, 0])
+    expect(
+      heights?.map(
+        (item) => item?.kind === 'event' && item.body.kind === 'rest' && item.body.staffPosition,
+      ),
+    ).toEqual([0, 0])
     expect(warnings.map((w) => w.code)).toEqual(['unsupported:element'])
     expect(warnings[0]?.element).toBe('staff-lines')
   })

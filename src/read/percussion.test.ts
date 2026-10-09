@@ -2,7 +2,7 @@
 // instrument struck at it. MNX names each instrument once, on the part's kit,
 // and every note of the part names the component it strikes.
 
-import { readValid } from '../../tests/support/read.js'
+import { kitNotesOf, notesOf, readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
 import { WarningCollector } from './collector.js'
@@ -97,9 +97,9 @@ describe('an unpitched note', () => {
     const event = firstEvent(part)
     const [component] = [...(part?.kit.keys() ?? [])]
 
-    expect(event?.notes).toEqual([])
-    expect(event?.kitNotes.map((note) => note.component)).toEqual([component])
-    expect(event?.isRest).toBe(false)
+    expect(event?.body.kind).toBe('notes')
+    expect(notesOf(event)).toEqual([])
+    expect(kitNotesOf(event).map((note) => note.component)).toEqual([component])
   })
 
   test('takes its name and its sound from the part list', () => {
@@ -313,7 +313,10 @@ describe('a rolled chord struck on a kit', () => {
     const event = firstEvent(part)
     const arpeggio = part?.measures[0]?.arpeggios[0]
 
-    expect(arpeggio?.span).toEqual({ start: event?.kitNotes[0]?.id, end: event?.kitNotes[1]?.id })
+    expect(arpeggio?.span).toEqual({
+      start: kitNotesOf(event)[0]?.id,
+      end: kitNotesOf(event)[1]?.id,
+    })
     expect(arpeggio).toMatchObject({ kind: 'rolled', direction: 'up' })
     expect(warnings).toEqual([])
   })
@@ -329,8 +332,8 @@ describe('a rolled chord struck on a kit', () => {
     const event = firstEvent(part)
 
     expect(part?.measures[0]?.arpeggios[0]?.span).toEqual({
-      start: event?.kitNotes[1]?.id,
-      end: event?.kitNotes[0]?.id,
+      start: kitNotesOf(event)[1]?.id,
+      end: kitNotesOf(event)[0]?.id,
     })
     expect(warnings).toEqual([])
   })
@@ -343,8 +346,8 @@ describe('a rolled chord struck on a kit', () => {
     const event = firstEvent(part)
 
     expect(part?.measures[0]?.arpeggios[0]?.span).toEqual({
-      start: event?.kitNotes[1]?.id,
-      end: event?.kitNotes[0]?.id,
+      start: kitNotesOf(event)[1]?.id,
+      end: kitNotesOf(event)[0]?.id,
     })
     expect(warnings).toEqual([])
   })
@@ -391,8 +394,8 @@ describe('a chord of unpitched notes', () => {
     const event = firstEvent(part)
 
     expect(part?.measures[0]?.sequences[0]?.content).toHaveLength(1)
-    expect(event?.kitNotes).toHaveLength(2)
-    expect(event?.kitNotes.map((note) => note.component)).toEqual([...(part?.kit.keys() ?? [])])
+    expect(kitNotesOf(event)).toHaveLength(2)
+    expect(kitNotesOf(event).map((note) => note.component)).toEqual([...(part?.kit.keys() ?? [])])
   })
 
   test('refuses a rest in a chord as it does for pitched notes', () => {
@@ -413,8 +416,8 @@ describe('a tie between unpitched notes', () => {
     const first = content[0]?.kind === 'event' ? content[0] : undefined
     const second = content[1]?.kind === 'event' ? content[1] : undefined
 
-    expect(first?.kitNotes[0]?.ties).toEqual([
-      { kind: 'to', target: second?.kitNotes[0]?.id, crossVoice: false },
+    expect(kitNotesOf(first)[0]?.ties).toEqual([
+      { kind: 'to', target: kitNotesOf(second)[0]?.id, crossVoice: false },
     ])
   })
 
@@ -561,7 +564,7 @@ describe('the MNX a percussion part converts to', () => {
     const event = firstEvent(part)
     const arpeggio = part?.measures[0]?.arpeggios[0]
 
-    expect(arpeggio?.span).toEqual({ start: event?.notes[0]?.id, end: event?.notes[1]?.id })
+    expect(arpeggio?.span).toEqual({ start: notesOf(event)[0]?.id, end: notesOf(event)[1]?.id })
     expect(warnings.map((w) => w.code)).toEqual(['unsupported:element'])
     expect(warnings[0]?.element).toBe('arpeggiate')
     convertValid(source(rolled, DRUM_KIT))

@@ -1295,6 +1295,10 @@ const ARPEGGIO_TAG =
 const TIE_TAG =
   'The model tags a tie with kind, and the writer states a target for one kind and lv for the other.'
 
+/** The model's own tag for what an event holds, which MNX states by which key it writes. */
+const EVENT_BODY_TAG =
+  'The model tags an event as a rest or as sounding notes, and the writer states rest, or notes and kitNotes, from it.'
+
 /** The reason most of the narrowings below share. */
 const UNSTATED_IS_UNDEFINED =
   'MNX names a value auto for what the source did not state; the model leaves it undefined, so the writer omits the field and a renderer decides.'
@@ -1358,6 +1362,8 @@ const NOT_AN_MNX_ENUM: Readonly<Record<string, string>> = {
   'StruckArpeggio.kind': ARPEGGIO_TAG,
   'TieTo.kind': TIE_TAG,
   'LetRingTie.kind': TIE_TAG,
+  'EventRest.kind': EVENT_BODY_TAG,
+  'EventNotes.kind': EVENT_BODY_TAG,
 }
 
 /**

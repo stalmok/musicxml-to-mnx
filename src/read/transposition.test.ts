@@ -3,7 +3,7 @@
 // the written one; MusicXML states the written pitch and the interval the
 // other way round. These cover the arithmetic between the two.
 
-import { readValid } from '../../tests/support/read.js'
+import { notesOf, readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
 import {
@@ -228,7 +228,7 @@ describe('a part written for a transposing instrument', () => {
     const { part } = read(inPart(IN_B_FLAT, NOTE))
     const item = part?.measures[0]?.sequences[0]?.content[0]
 
-    expect(item?.kind === 'event' && item.notes[0]?.pitch).toEqual({
+    expect(item?.kind === 'event' && notesOf(item)[0]?.pitch).toEqual({
       step: 'B',
       octave: 3,
       alter: -1,
@@ -275,7 +275,7 @@ describe('a part written for a transposing instrument', () => {
     const item = part?.measures[0]?.sequences[0]?.content[0]
 
     expect(part?.transposition).toEqual({ staffDistance: 0, halfSteps: 0 })
-    expect(item?.kind === 'event' && item.notes[0]?.pitch.step).toBe('C')
+    expect(item?.kind === 'event' && notesOf(item)[0]?.pitch.step).toBe('C')
   })
 
   test('converts to MNX the schema accepts', () => {
@@ -397,7 +397,7 @@ describe('a part stating more than one transposition', () => {
       const first = part?.measures[0]?.sequences[0]?.content[0]
 
       expect(part?.transposition).toEqual(IN_F)
-      expect(first?.kind === 'event' && first.notes[0]?.pitch).toEqual({
+      expect(first?.kind === 'event' && notesOf(first)[0]?.pitch).toEqual({
         step: 'F',
         octave: 3,
         alter: 0,
@@ -520,7 +520,7 @@ describe('a part stating more than one transposition', () => {
     )
     const second = score.parts[0]?.measures[1]?.sequences[0]?.content[0]
 
-    expect(second?.kind === 'event' && second.notes[0]?.pitch).toEqual({
+    expect(second?.kind === 'event' && notesOf(second)[0]?.pitch).toEqual({
       step: 'B',
       octave: 3,
       alter: -1,
@@ -711,7 +711,7 @@ describe('a part stating more than one transposition', () => {
     // The part states the first instrument, and the second measure sounds as
     // the instrument playing it does: a written C sounds an A.
     expect(score.parts[0]?.transposition).toEqual({ staffDistance: 1, halfSteps: 2 })
-    expect(second?.kind === 'event' && second.notes[0]?.pitch).toEqual({
+    expect(second?.kind === 'event' && notesOf(second)[0]?.pitch).toEqual({
       step: 'A',
       octave: 3,
       alter: 0,

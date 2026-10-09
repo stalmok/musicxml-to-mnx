@@ -682,7 +682,7 @@ function adoptable(
   // the bracket: its written value lasts what it lasts only at the bracket's
   // ratio. A rest that lasts what it is written as is silence beside the
   // bracket, not a note of it.
-  if (after.kind === 'event' && after.isRest) {
+  if (after.kind === 'event' && after.body.kind === 'rest') {
     const time = voice.spent.get(after)
     const drawn = multiplyFractions(writtenLengthOf([after]), ratio)
     if (!time || compareFractions(time, drawn) !== 0) return undefined

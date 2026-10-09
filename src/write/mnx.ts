@@ -349,13 +349,14 @@ function surveyScore(score: Score): {
       if (item.kind !== 'event') continue
       for (const slur of item.slurs) referenced.add(slur.target)
       for (const line of item.lyrics.keys()) lyricLines.add(line)
-      for (const note of item.notes) {
+      if (item.body.kind === 'rest') continue
+      for (const note of item.body.notes) {
         for (const tie of note.ties) if (tie.kind === 'to') referenced.add(tie.target)
         if (note.accidentalDisplay?.show) drawsAccidentals = true
       }
       // A kit note is tied the same way, and the note a tie names has to be
       // named in turn whether it carries a pitch or a kit component.
-      for (const note of item.kitNotes) {
+      for (const note of item.body.kitNotes) {
         for (const tie of note.ties) if (tie.kind === 'to') referenced.add(tie.target)
       }
     }
@@ -769,22 +770,23 @@ function writeQuantity(quantity: NoteValueQuantity): MNXNoteValueQuantity {
 }
 
 function writeEvent(event: Event, referenced: ReadonlySet<string>): MNXEvent {
+  const { body } = event
   return {
     ...(referenced.has(event.id) ? { id: event.id } : {}),
     ...(event.staff !== undefined ? { staff: event.staff } : {}),
     duration: writeNoteValue(event.value),
     // A rest is marked by the presence of the object, not by a flag; its height
-    // rides on it where the source fixed one. An event is a rest or it sounds,
-    // never both, and what it sounds is pitches, kit components, or both at
-    // once, which is a chord struck across a pitched staff and a kit.
-    ...(event.isRest
-      ? { rest: event.staffPosition !== undefined ? { staffPosition: event.staffPosition } : {} }
+    // rides on it where the source fixed one. What an event sounds is pitches,
+    // kit components, or both at once, which is a chord struck across a
+    // pitched staff and a kit.
+    ...(body.kind === 'rest'
+      ? { rest: body.staffPosition !== undefined ? { staffPosition: body.staffPosition } : {} }
       : {
-          ...(event.kitNotes.length === 0 || event.notes.length > 0
-            ? { notes: event.notes.map((note) => writeNote(note, referenced)) }
+          ...(body.kitNotes.length === 0 || body.notes.length > 0
+            ? { notes: body.notes.map((note) => writeNote(note, referenced)) }
             : {}),
-          ...(event.kitNotes.length > 0
-            ? { kitNotes: event.kitNotes.map((note) => writeKitNote(note, referenced)) }
+          ...(body.kitNotes.length > 0
+            ? { kitNotes: body.kitNotes.map((note) => writeKitNote(note, referenced)) }
             : {}),
         }),
     ...(event.slurs.length > 0

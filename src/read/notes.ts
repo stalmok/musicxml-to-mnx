@@ -14,6 +14,8 @@ import type {
   PitchedClefSign,
   CurveSide,
   Event,
+  EventNotes,
+  EventRest,
   Fermata,
   FermataSymbol,
   GraceType,
@@ -440,12 +442,16 @@ export function readNote(
       : undefined) ??
     measuredValue(element, duration, scale, state, path)
   // The event states this note's staff, so the note says nothing of its own.
-  const notes: Note[] = pitchElement
-    ? [readNoteAt(element, pitchElement, state, path, undefined, warnings, context)]
-    : []
-  const kitNotes: KitNote[] = unpitchedElement
-    ? [readKitNoteAt(element, unpitchedElement, staff, undefined, state, warnings, context)]
-    : []
+  const rest: EventRest | undefined = restElement && { kind: 'rest', staffPosition }
+  const body: EventRest | EventNotes = rest ?? {
+    kind: 'notes',
+    notes: pitchElement
+      ? [readNoteAt(element, pitchElement, state, path, undefined, warnings, context)]
+      : [],
+    kitNotes: unpitchedElement
+      ? [readKitNoteAt(element, unpitchedElement, staff, undefined, state, warnings, context)]
+      : [],
+  }
 
   const event: Event = {
     kind: 'event',
@@ -457,10 +463,7 @@ export function readNote(
     stemDirection: fills ? restStem : readStemDirection(element, warnings, context),
     markings: restMarkings ?? readMarkings(eventNotations, warnings, context),
     fermata: readFermata(eventNotations, warnings, context),
-    notes,
-    kitNotes,
-    isRest: restElement !== undefined,
-    staffPosition,
+    body,
   }
 
   // A grace note is drawn small beside the note it ornaments and takes none
@@ -517,9 +520,10 @@ export function readNote(
         element.line,
         staff,
       )
-  if (candidate) {
+  // Only a rest is ever a candidate.
+  if (candidate && rest) {
     const { written: drawn, duration: lasts } = candidate
-    builder.markMeasureRest(voice, event, {
+    builder.markMeasureRest(voice, event, rest, {
       event: () =>
         reportDurationMismatch(element, drawn, lasts, scale, warnings, context, mismatchPlace),
     })
@@ -831,10 +835,7 @@ function setMeasureRest(
         stemDirection: undefined,
         markings: {},
         fermata,
-        notes: [],
-        kitNotes: [],
-        isRest: true,
-        staffPosition,
+        body: { kind: 'rest', staffPosition },
       })),
     {
       // A tuplet or a tremolo open around the rest is refused, so nothing
@@ -1237,10 +1238,11 @@ function readEventSpanners(
   // The event's own note is the one these notations sit on: a chord member's
   // are read where the member is, against the note it added.
   const { event } = placed
-  readArpeggio(notations, placed, builder, event.notes[0])
+  const { body } = event
+  readArpeggio(notations, placed, builder, body.kind === 'notes' ? body.notes[0] : undefined)
   // A rest sounds nothing, so a tie in its voice reaches across it.
-  if (!event.isRest) state.spanners.sound(voice)
-  for (const note of [...event.notes, ...event.kitNotes]) {
+  if (body.kind === 'notes') state.spanners.sound(voice)
+  for (const note of body.kind === 'notes' ? [...body.notes, ...body.kitNotes] : []) {
     readTies(
       element,
       note,

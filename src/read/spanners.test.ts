@@ -3,7 +3,7 @@
 // reference to the one where it ends. Resolving that means holding the open
 // ends until their partner turns up, which can be several measures later.
 
-import { readValid } from '../../tests/support/read.js'
+import { notesOf, readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
 import { fraction } from '../fraction.js'
@@ -47,7 +47,7 @@ function read(source: string) {
     (measure) =>
       measure.sequences[0]?.content.filter((item): item is Event => item.kind === 'event') ?? [],
   )
-  return { events, notes: events.flatMap((event) => event.notes), warnings: warnings.list() }
+  return { events, notes: events.flatMap((event) => notesOf(event)), warnings: warnings.list() }
 }
 
 /** Every note of every voice, with grace groups walked into. */
@@ -63,7 +63,7 @@ function readAllVoices(source: string) {
       }),
     ),
   )
-  return { notes: events.flatMap((event) => event.notes), warnings: warnings.list() }
+  return { notes: events.flatMap((event) => notesOf(event)), warnings: warnings.list() }
 }
 
 describe('ties', () => {
@@ -1163,7 +1163,7 @@ describe('slurs', () => {
     const { events, warnings } = read(measures(DIVISIONS + note('C', slur('start')), fullRest))
     const [first, rest] = events
 
-    expect(rest?.isRest).toBe(true)
+    expect(rest?.body.kind).toBe('rest')
     expect(first?.slurs[0]?.target).toBe(rest?.id)
     expect(warnings).toEqual([])
   })
@@ -1184,7 +1184,7 @@ describe('slurs', () => {
     const { events, warnings } = read(measures(DIVISIONS + fullRest, note('G', slur('stop'))))
     const [rest, second] = events
 
-    expect(rest?.isRest).toBe(true)
+    expect(rest?.body.kind).toBe('rest')
     expect(rest?.slurs[0]?.target).toBe(second?.id)
     expect(warnings).toEqual([])
   })
@@ -1249,7 +1249,7 @@ describe('the ends a spanner is keyed by', () => {
     const allNotes = (score.parts[0]?.measures ?? [])
       .flatMap((measure) => measure.sequences.flatMap((sequence) => sequence.content))
       .filter(isEvent)
-      .flatMap((event) => event.notes)
+      .flatMap((event) => notesOf(event))
     const withTie = allNotes.filter((note) => note.ties.length > 0)
 
     expect(collector.list().filter((w) => w.code === 'unclosed:spanner')).toEqual([])
@@ -1627,10 +1627,7 @@ describe('whether a voice accounts for its own slurs', () => {
     stemDirection: undefined,
     markings: {},
     fermata: undefined,
-    notes: [],
-    kitNotes: [],
-    isRest: false,
-    staffPosition: undefined,
+    body: { kind: 'notes', notes: [], kitNotes: [] },
   }
 
   const slurEnd = (kind: 'start' | 'stop', index: number): SlurEnd => {

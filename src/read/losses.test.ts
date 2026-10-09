@@ -345,7 +345,7 @@ describe('a rest that fills the measure', () => {
     const first = sequence?.content[0]
 
     expect(sequence?.fullMeasure).toBeUndefined()
-    expect(first?.kind === 'event' && first.isRest).toBe(true)
+    expect(first?.kind === 'event' && first.body.kind).toBe('rest')
     expect(first?.kind === 'event' && first.lyrics).toHaveLength(1)
     expect(warnings).toEqual([])
   })

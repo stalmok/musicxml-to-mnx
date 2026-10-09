@@ -39,7 +39,7 @@ describe('a rest placed on the staff', () => {
     // G4 sits on the second line of a treble staff, two steps below the middle.
     const { item, warnings } = firstEvent(inMeasure(displayRest('G', 4)))
 
-    expect(item).toMatchObject({ isRest: true, staffPosition: -2 })
+    expect(item).toMatchObject({ body: { kind: 'rest', staffPosition: -2 } })
     expect(warnings).toEqual([])
   })
 
@@ -47,7 +47,7 @@ describe('a rest placed on the staff', () => {
     // B4 sits on the middle line of a treble staff.
     const { item } = firstEvent(inMeasure(displayRest('B', 4)))
 
-    expect(item).toMatchObject({ staffPosition: 0 })
+    expect(item).toMatchObject({ body: { kind: 'rest', staffPosition: 0 } })
   })
 
   test('places a rest on the bass clef', () => {
@@ -56,7 +56,7 @@ describe('a rest placed on the staff', () => {
       inMeasure(displayRest('D', 3), '<clef><sign>F</sign><line>4</line></clef>'),
     )
 
-    expect(item).toMatchObject({ staffPosition: 0 })
+    expect(item).toMatchObject({ body: { kind: 'rest', staffPosition: 0 } })
   })
 
   test('places a rest on a C clef by the line the clef sits on', () => {
@@ -68,8 +68,8 @@ describe('a rest placed on the staff', () => {
       inMeasure(displayRest('C', 4), '<clef><sign>C</sign><line>4</line></clef>'),
     )
 
-    expect(alto.item).toMatchObject({ staffPosition: 0 })
-    expect(tenor.item).toMatchObject({ staffPosition: 2 })
+    expect(alto.item).toMatchObject({ body: { kind: 'rest', staffPosition: 0 } })
+    expect(tenor.item).toMatchObject({ body: { kind: 'rest', staffPosition: 2 } })
   })
 
   test('follows a clef that changes partway through the measure', () => {
@@ -87,7 +87,7 @@ describe('a rest placed on the staff', () => {
     // mid-measure <attributes> put in force: D3 is the bass staff's middle line.
     const rest = score.parts[0]?.measures[0]?.sequences[0]?.content[1]
 
-    expect(rest).toMatchObject({ isRest: true, staffPosition: 0 })
+    expect(rest).toMatchObject({ body: { kind: 'rest', staffPosition: 0 } })
   })
 
   test('leaves a plain rest without a position', () => {
@@ -95,7 +95,7 @@ describe('a rest placed on the staff', () => {
       inMeasure('<note><rest/><duration>4</duration><type>quarter</type></note>'),
     )
 
-    expect(item).toMatchObject({ isRest: true, staffPosition: undefined })
+    expect(item).toMatchObject({ body: { kind: 'rest', staffPosition: undefined } })
     expect(warnings).toEqual([])
   })
 
@@ -110,7 +110,7 @@ describe('a rest placed on the staff', () => {
       inMeasure(`<note><rest>${half}</rest><duration>4</duration><type>quarter</type></note>`),
     )
 
-    expect(item).toMatchObject({ isRest: true, staffPosition: undefined })
+    expect(item).toMatchObject({ body: { kind: 'rest', staffPosition: undefined } })
     expect(warnings.map((w) => w.element)).toEqual([stated])
   })
 

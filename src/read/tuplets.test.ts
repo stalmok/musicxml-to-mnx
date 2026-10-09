@@ -3,7 +3,7 @@
 // (<time-modification>) and once as a bracket around them (<tuplet>). MNX
 // wraps the notes in one object carrying the ratio.
 
-import { readValid } from '../../tests/support/read.js'
+import { notesOf, readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
 import { MusicXMLError } from '../errors.js'
@@ -2750,7 +2750,7 @@ describe('two-note tremolos', () => {
 
     const item = content?.[0]
     expect(
-      item?.kind === 'multiNoteTremolo' && item.content.map((event) => event.notes.length),
+      item?.kind === 'multiNoteTremolo' && item.content.map((event) => notesOf(event).length),
     ).toEqual([2, 2])
   })
 
@@ -2769,7 +2769,7 @@ describe('two-note tremolos', () => {
 
     const item = content?.[0]
     expect(
-      item?.kind === 'multiNoteTremolo' && item.content.map((event) => event.notes.length),
+      item?.kind === 'multiNoteTremolo' && item.content.map((event) => notesOf(event).length),
     ).toEqual([2, 2])
     expect(warnings).toEqual([])
   })

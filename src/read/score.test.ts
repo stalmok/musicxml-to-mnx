@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { readValid } from '../../tests/support/read.js'
+import { notesOf, readValid } from '../../tests/support/read.js'
 import { convertValid } from '../../tests/support/convert.js'
 import { MusicXMLError } from '../errors.js'
 import { WarningCollector } from './collector.js'
@@ -1844,7 +1844,7 @@ describe('notes', () => {
       ),
     )
 
-    expect(firstEvent(result)?.notes[0]?.pitch).toEqual({
+    expect(notesOf(firstEvent(result))[0]?.pitch).toEqual({
       step: 'B',
       octave: 3,
       alter: -1,
@@ -1868,8 +1868,7 @@ describe('notes', () => {
     const { score: result } = read(measure('<note><rest/><type>whole</type></note>'))
     const event = firstEvent(result)
 
-    expect(event?.isRest).toBe(true)
-    expect(event?.notes).toEqual([])
+    expect(event?.body).toEqual({ kind: 'rest', staffPosition: undefined })
   })
 
   test("spells MusicXML's long as MNX's longa", () => {

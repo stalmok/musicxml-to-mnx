@@ -30,6 +30,8 @@ import { TupletTracker } from './tupletTracker.js'
 import type {
   Arpeggio,
   Event,
+  EventNotes,
+  EventRest,
   FullMeasureRest,
   GraceGroup,
   GraceType,
@@ -212,6 +214,7 @@ type MeasureRest =
   | {
       readonly origin: 'candidate'
       readonly event: Event
+      readonly body: EventRest
       readonly reports: MeasureRestReports<'sequence' | 'event'>
     }
   | {
@@ -294,6 +297,11 @@ function kitOrder(
   return [...kit]
     .sort(([, a], [, b]) => a.staffPosition - b.staffPosition)
     .flatMap(([component]) => notes.filter((note) => note.component === component))
+}
+
+/** What an event sounds, which for a rest is nothing. */
+function notesOf(event: Event): Pick<EventNotes, 'notes' | 'kitNotes'> {
+  return event.body.kind === 'notes' ? event.body : { notes: [], kitNotes: [] }
 }
 
 /** The staff a voice is mostly on, or nothing when it names no staff. */
@@ -764,9 +772,9 @@ export class MeasureBuilder {
     path: DocumentPath,
     line: number,
   ): JoinedEvent {
-    const placed = this.#chordEvent(duration, path, line)
-    placed.event.notes = [...placed.event.notes, note]
-    return placed
+    const { joined, body } = this.#chordEvent(duration, path, line)
+    body.notes = [...body.notes, note]
+    return joined
   }
 
   /** The same, for a note struck on a percussion kit. */
@@ -776,13 +784,17 @@ export class MeasureBuilder {
     path: DocumentPath,
     line: number,
   ): JoinedEvent {
-    const placed = this.#chordEvent(duration, path, line)
-    placed.event.kitNotes = [...placed.event.kitNotes, note]
-    return placed
+    const { joined, body } = this.#chordEvent(duration, path, line)
+    body.kitNotes = [...body.kitNotes, note]
+    return joined
   }
 
   /** The event a chord member joins, held to lasting as long as the chord. */
-  #chordEvent(duration: Fraction | undefined, path: DocumentPath, line: number): JoinedEvent {
+  #chordEvent(
+    duration: Fraction | undefined,
+    path: DocumentPath,
+    line: number,
+  ): { joined: JoinedEvent; body: EventNotes } {
     const previous = this.#chordBuilder()?.last
     if (!previous && this.#lastWritten !== 'rest') {
       throw new MusicXMLError('A <note> is marked as a chord with no note for it to join.', {
@@ -794,7 +806,8 @@ export class MeasureBuilder {
     // The event a note joins has to be a note itself. A rest sounds nothing,
     // so a note written onto one has no chord to be part of, the same way a
     // rest written into a chord has none.
-    if (!previous || previous.event.isRest) {
+    const body = previous?.event.body
+    if (!previous || body?.kind !== 'notes') {
       throw new MusicXMLError('A <note> joins a rest, and a rest cannot be part of a chord.', {
         path,
         line,
@@ -811,7 +824,10 @@ export class MeasureBuilder {
       })
     }
 
-    return { event: previous.event, start: previous.start, notations: previous.notations }
+    return {
+      joined: { event: previous.event, start: previous.start, notations: previous.notations },
+      body,
+    }
   }
 
   /**
@@ -1358,8 +1374,10 @@ export class MeasureBuilder {
       /* v8 ignore next -- a group exists because something was put in it. */
       if (!first) continue
 
-      const notes = group.flatMap((one) => (divided.has(one.event) ? one.notes : one.event.notes))
-      const kitNotes = group.flatMap((one) => one.event.kitNotes)
+      const notes = group.flatMap((one) =>
+        divided.has(one.event) ? one.notes : notesOf(one.event).notes,
+      )
+      const kitNotes = group.flatMap((one) => notesOf(one.event).kitNotes)
       // A chord struck on a percussion kit carries no pitches to order by, so
       // it is ordered by the height the part's kit draws each component at. A
       // mark is written on a note and a kit note carries none, so such a roll
@@ -1648,9 +1666,10 @@ export class MeasureBuilder {
   markMeasureRest(
     voice: string | undefined,
     event: Event,
+    body: EventRest,
     reports: MeasureRestReports<'sequence' | 'event'>,
   ): void {
-    this.#builderFor(voice).measureRest = { origin: 'candidate', event, reports }
+    this.#builderFor(voice).measureRest = { origin: 'candidate', event, body, reports }
   }
 
   /**
@@ -1734,8 +1753,12 @@ export class MeasureBuilder {
       // The rest is the whole of the voice, so the staff it named stays as
       // the sequence's own. Its entry keeps naming the event it came from,
       // which nothing writes once the content is empty.
-      const { value, fermata, staffPosition } = event
-      stateOnSequence(builder, { visualDuration: value, fermata, staffPosition })
+      const { value, fermata } = event
+      stateOnSequence(builder, {
+        visualDuration: value,
+        fermata,
+        staffPosition: rest.body.staffPosition,
+      })
       rest.reports.sequence?.()
     }
   }

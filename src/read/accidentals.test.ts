@@ -3,7 +3,7 @@
 // earlier note. MNX also marks only the notes whose accidental shows. The
 // support block is tested in tests/support-block.test.ts.
 
-import { readValid } from '../../tests/support/read.js'
+import { notesOf, readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { WarningCollector } from './collector.js'
 import type { Note } from '../model/score.js'
@@ -28,7 +28,7 @@ function read(source: string) {
   const warnings = new WarningCollector()
   const result = readValid(source, warnings)
   const notes = (result.parts[0]?.measures[0]?.sequences[0]?.content ?? []).flatMap((item) =>
-    item.kind === 'event' ? item.notes : [],
+    item.kind === 'event' ? notesOf(item) : [],
   )
   return { score: result, notes, warnings: warnings.list() }
 }

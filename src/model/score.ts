@@ -275,23 +275,30 @@ export interface Event {
   readonly stemDirection: 'up' | 'down' | undefined
   readonly markings: Markings
   readonly fermata: Fermata | undefined
+  readonly body: EventRest | EventNotes
+}
+
+/** What a rest states beyond its value. */
+export interface EventRest {
+  readonly kind: 'rest'
   /**
-   * Empty for a rest. More than one note makes it a chord, and each of those
-   * joins as the measure walk reaches it.
-   */
-  notes: readonly Note[]
-  /**
-   * Empty unless the event is struck on a percussion kit. More than one makes
-   * it a chord, as a hi-hat struck with a snare is.
-   */
-  kitNotes: readonly KitNote[]
-  readonly isRest: boolean
-  /**
-   * A rest's height on the staff, in steps from the middle line, where the
-   * source fixed it with <display-step>/<display-octave>. Undefined for a note
-   * and for a rest drawn at its default height.
+   * Its height on the staff, in steps from the middle line, where the source
+   * fixed it with <display-step>/<display-octave>. Undefined for a rest drawn
+   * at its default height.
    */
   readonly staffPosition: number | undefined
+}
+
+/**
+ * The notes an event sounds: pitches, notes struck on a percussion kit, or
+ * both at once, which is a chord struck across a pitched staff and a kit.
+ * More than one note makes it a chord, and each of those joins as the measure
+ * walk reaches it.
+ */
+export interface EventNotes {
+  readonly kind: 'notes'
+  notes: readonly Note[]
+  kitNotes: readonly KitNote[]
 }
 
 /**

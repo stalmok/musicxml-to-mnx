@@ -3,7 +3,7 @@
 // note to the one before it. MNX states each voice as its own sequence. These
 // cover the translation between the two.
 
-import { readValid } from '../../tests/support/read.js'
+import { notesOf, readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
 import { MusicXMLError } from '../errors.js'
@@ -80,7 +80,7 @@ describe('voices', () => {
 
     const pitchOf = (index: number) => {
       const item = result?.sequences[index]?.content[0]
-      return item?.kind === 'event' ? item.notes[0]?.pitch.step : undefined
+      return item?.kind === 'event' ? notesOf(item)[0]?.pitch.step : undefined
     }
 
     expect(pitchOf(0)).toBe('C')
@@ -94,7 +94,7 @@ describe('chords', () => {
     const content = result?.sequences[0]?.content
 
     expect(content).toHaveLength(1)
-    expect(content?.[0]?.kind === 'event' && content[0].notes).toHaveLength(2)
+    expect(content?.[0]?.kind === 'event' && notesOf(content[0])).toHaveLength(2)
   })
 
   test('does not let a chord note advance the cursor', () => {
@@ -130,7 +130,7 @@ describe('chords', () => {
     const first = result?.sequences[0]?.content[0]
 
     expect(result?.sequences).toHaveLength(1)
-    expect(first?.kind === 'event' && first.notes.map((n) => n.pitch.step)).toEqual(['C', 'E'])
+    expect(first?.kind === 'event' && notesOf(first).map((n) => n.pitch.step)).toEqual(['C', 'E'])
   })
 
   test('joins the note written just before it, not the last note of the voice it names', () => {
@@ -145,7 +145,7 @@ describe('chords', () => {
     )
     const steps = (index: number) =>
       result?.sequences[index]?.content.map((item) =>
-        item.kind === 'event' ? item.notes.map((n) => n.pitch.step) : [],
+        item.kind === 'event' ? notesOf(item).map((n) => n.pitch.step) : [],
       )
 
     expect(result?.sequences.map((sequence) => sequence.voice)).toEqual(['2', '1'])
@@ -240,7 +240,7 @@ describe('chords', () => {
     )
     const first = result?.sequences[0]?.content[0]
 
-    expect(first?.kind === 'event' && first.notes.map((n) => n.pitch.step)).toEqual(['C', 'E'])
+    expect(first?.kind === 'event' && notesOf(first).map((n) => n.pitch.step)).toEqual(['C', 'E'])
     expect(first?.kind === 'event' && first.value).toEqual({ base: 'half', dots: 1 })
     expect(warnings.map((w) => w.code)).toEqual(['inconsistent:duration'])
   })
@@ -299,7 +299,7 @@ describe('grace notes', () => {
 
     expect(content?.map((item) => item.kind)).toEqual(['grace', 'event'])
     // The event that follows is the real note, at its full value.
-    expect(content?.[1]?.kind === 'event' && content[1].notes[0]?.pitch.step).toBe('C')
+    expect(content?.[1]?.kind === 'event' && notesOf(content[1])[0]?.pitch.step).toBe('C')
   })
 
   // The grace note is the last thing written, so no note after it settles
@@ -338,7 +338,7 @@ describe('grace notes', () => {
     const event = item?.kind === 'grace' ? item.content[0] : item
 
     expect(item?.kind).toBe(kind)
-    expect(event?.kind === 'event' && event.notes.map((n) => n.pitch.step)).toHaveLength(2)
+    expect(event?.kind === 'event' && notesOf(event).map((n) => n.pitch.step)).toHaveLength(2)
     expect(warnings.map((w) => [w.code, w.element, w.context])).toEqual([
       ['inconsistent:grace', 'chord', { part: 'P1', measure: 1, line: 1 }],
     ])

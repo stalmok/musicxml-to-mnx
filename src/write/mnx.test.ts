@@ -9,6 +9,7 @@ import type {
   Event,
   GraceGroup,
   Markings,
+  Note,
   FullMeasureRest,
   Measure,
   Score,
@@ -16,6 +17,14 @@ import type {
   Tuplet,
 } from '../model/score.js'
 import type { MNXEvent } from '../types/mnx.js'
+
+const C4: Note = {
+  id: 'note1',
+  pitch: { step: 'C', octave: 4, alter: 0 },
+  ties: [],
+  accidentalDisplay: undefined,
+  staff: undefined,
+}
 
 const WHOLE_C: Event = {
   kind: 'event',
@@ -27,18 +36,12 @@ const WHOLE_C: Event = {
   stemDirection: undefined,
   markings: {},
   fermata: undefined,
-  notes: [
-    {
-      id: 'note1',
-      pitch: { step: 'C', octave: 4, alter: 0 },
-      ties: [],
-      accidentalDisplay: undefined,
-      staff: undefined,
-    },
-  ],
-  kitNotes: [],
-  isRest: false,
-  staffPosition: undefined,
+  body: { kind: 'notes', notes: [C4], kitNotes: [] },
+}
+
+/** WHOLE_C, sounding these notes in place of its own. */
+function wholeSounding(...notes: Note[]): Event {
+  return { ...WHOLE_C, body: { kind: 'notes', notes, kitNotes: [] } }
 }
 
 // Everything a global measure can state beyond a key, a time and a tempo.
@@ -116,10 +119,7 @@ test.each([
         stemDirection: undefined,
         markings: {},
         fermata: undefined,
-        notes: [],
-        kitNotes: [],
-        isRest: true,
-        staffPosition: undefined,
+        body: { kind: 'rest', staffPosition: undefined },
       }),
     ),
   ],
@@ -136,18 +136,19 @@ test.each([
         stemDirection: undefined,
         markings: {},
         fermata: undefined,
-        notes: [
-          {
-            id: 'note2',
-            pitch: { step: 'B', octave: 3, alter: -1 },
-            ties: [],
-            accidentalDisplay: undefined,
-            staff: undefined,
-          },
-        ],
-        kitNotes: [],
-        isRest: false,
-        staffPosition: undefined,
+        body: {
+          kind: 'notes',
+          notes: [
+            {
+              id: 'note2',
+              pitch: { step: 'B', octave: 3, alter: -1 },
+              ties: [],
+              accidentalDisplay: undefined,
+              staff: undefined,
+            },
+          ],
+          kitNotes: [],
+        },
       }),
     ),
   ],
@@ -581,18 +582,26 @@ describe('ties and slurs', () => {
     stemDirection: undefined,
     markings: {},
     fermata: undefined,
-    notes: [
-      {
-        id: 'note-target',
-        pitch: { step: 'G', octave: 4, alter: 0 },
-        ties: [],
-        accidentalDisplay: undefined,
-        staff: undefined,
-      },
-    ],
-    kitNotes: [],
-    isRest: false,
-    staffPosition: undefined,
+    body: {
+      kind: 'notes',
+      notes: [
+        {
+          id: 'note-target',
+          pitch: { step: 'G', octave: 4, alter: 0 },
+          ties: [],
+          accidentalDisplay: undefined,
+          staff: undefined,
+        },
+      ],
+      kitNotes: [],
+    },
+  }
+  const startNote: Note = {
+    id: 'note-start',
+    pitch: { step: 'G', octave: 4, alter: 0 },
+    ties: [{ kind: 'to', target: 'note-target', crossVoice: false }],
+    accidentalDisplay: undefined,
+    staff: undefined,
   }
   const start: Event = {
     kind: 'event',
@@ -604,18 +613,7 @@ describe('ties and slurs', () => {
     stemDirection: undefined,
     markings: {},
     fermata: undefined,
-    notes: [
-      {
-        id: 'note-start',
-        pitch: { step: 'G', octave: 4, alter: 0 },
-        ties: [{ kind: 'to', target: 'note-target', crossVoice: false }],
-        accidentalDisplay: undefined,
-        staff: undefined,
-      },
-    ],
-    kitNotes: [],
-    isRest: false,
-    staffPosition: undefined,
+    body: { kind: 'notes', notes: [startNote], kitNotes: [] },
   }
 
   function joined(): Score {
@@ -640,10 +638,7 @@ describe('ties and slurs', () => {
   })
 
   test('writes a let-ring tie with no target', () => {
-    const ringing: Event = {
-      ...WHOLE_C,
-      notes: WHOLE_C.notes.map((note) => ({ ...note, ties: [{ kind: 'letRing' }] })),
-    }
+    const ringing = wholeSounding({ ...C4, ties: [{ kind: 'letRing' }] })
     const score = scoreOf(measureOf(ringing))
 
     expect(firstEvent(score)?.notes?.[0]?.ties).toStrictEqual([{ lv: true }])
@@ -658,10 +653,14 @@ describe('ties and slurs', () => {
   })
 
   test('declares the target type of a tie that crosses voices', () => {
-    const crossing = structuredClone(start)
-    crossing.notes = [
-      { ...crossing.notes[0]!, ties: [{ kind: 'to', target: 'note-target', crossVoice: true }] },
-    ]
+    const crossingNote: Note = {
+      ...startNote,
+      ties: [{ kind: 'to', target: 'note-target', crossVoice: true }],
+    }
+    const crossing: Event = {
+      ...start,
+      body: { kind: 'notes', notes: [crossingNote], kitNotes: [] },
+    }
     const score = scoreOf({
       clefs: [],
       staffConfigs: [],
@@ -1026,10 +1025,7 @@ describe('events', () => {
       stemDirection: undefined,
       markings: {},
       fermata: undefined,
-      notes: [],
-      kitNotes: [],
-      isRest: true,
-      staffPosition: undefined,
+      body: { kind: 'rest', staffPosition: undefined },
     }
 
     expect(firstEvent(scoreOf(measureOf(rest)))).toEqual({
@@ -1052,18 +1048,7 @@ describe('events', () => {
   })
 
   test('writes an alteration when the pitch is altered', () => {
-    const flat: Event = {
-      ...WHOLE_C,
-      notes: [
-        {
-          id: 'note9',
-          pitch: { step: 'B', octave: 3, alter: -1 },
-          ties: [],
-          accidentalDisplay: undefined,
-          staff: undefined,
-        },
-      ],
-    }
+    const flat = wholeSounding({ ...C4, id: 'note9', pitch: { step: 'B', octave: 3, alter: -1 } })
 
     expect(firstEvent(scoreOf(measureOf(flat)))?.notes?.[0]?.pitch).toEqual({
       step: 'B',
@@ -1077,13 +1062,10 @@ describe('events', () => {
   })
 
   test('writes an accidental drawn in parentheses', () => {
-    const cautionary: Event = {
-      ...WHOLE_C,
-      notes: WHOLE_C.notes.map((note) => ({
-        ...note,
-        accidentalDisplay: { show: true, enclosure: 'parentheses' },
-      })),
-    }
+    const cautionary = wholeSounding({
+      ...C4,
+      accidentalDisplay: { show: true, enclosure: 'parentheses' },
+    })
 
     expect(firstEvent(scoreOf(measureOf(cautionary)))?.notes?.[0]?.accidentalDisplay).toEqual({
       show: true,
@@ -1141,18 +1123,19 @@ describe('fermatas', () => {
       stemDirection: undefined,
       markings: {},
       fermata,
-      notes: [
-        {
-          id: 'note1',
-          pitch: { step: 'C', octave: 4, alter: 0 },
-          ties: [],
-          accidentalDisplay: undefined,
-          staff: undefined,
-        },
-      ],
-      kitNotes: [],
-      isRest: false,
-      staffPosition: undefined,
+      body: {
+        kind: 'notes',
+        notes: [
+          {
+            id: 'note1',
+            pitch: { step: 'C', octave: 4, alter: 0 },
+            ties: [],
+            accidentalDisplay: undefined,
+            staff: undefined,
+          },
+        ],
+        kitNotes: [],
+      },
     }
     const score = scoreOf(measureOf(event))
     writeValid(score)
@@ -1191,18 +1174,19 @@ describe('event markings', () => {
       stemDirection: undefined,
       markings,
       fermata: undefined,
-      notes: [
-        {
-          id: 'note1',
-          pitch: { step: 'C', octave: 4, alter: 0 },
-          ties: [],
-          accidentalDisplay: undefined,
-          staff: undefined,
-        },
-      ],
-      kitNotes: [],
-      isRest: false,
-      staffPosition: undefined,
+      body: {
+        kind: 'notes',
+        notes: [
+          {
+            id: 'note1',
+            pitch: { step: 'C', octave: 4, alter: 0 },
+            ties: [],
+            accidentalDisplay: undefined,
+            staff: undefined,
+          },
+        ],
+        kitNotes: [],
+      },
     }
   }
 
