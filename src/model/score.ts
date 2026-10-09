@@ -511,16 +511,10 @@ export interface ImmediateDynamic extends DynamicBase {
 export interface GradualDynamic extends DynamicBase {
   readonly kind: 'gradual'
   readonly wedge: WedgeType
-  /**
-   * Where the hairpin stops. Filled in by the spanner resolver, which removes
-   * a hairpin the source never closed.
-   */
-  end: SpanStop | undefined
-  /**
-   * The staff the hairpin stops on, where that is not the one it starts on.
-   * Filled in by the spanner resolver with the end.
-   */
-  staffEnd?: number
+  /** Where the hairpin stops. */
+  readonly end: SpanStop
+  /** The staff the hairpin stops on, where that is not the one it starts on. */
+  readonly staffEnd?: number
 }
 
 /**
@@ -588,8 +582,8 @@ export interface Measure {
   /** Stated over the measure rather than on the notes, as MNX has it. */
   readonly beams: readonly Beam[]
   /**
-   * Taken from once the whole part is read: a hairpin the source never
-   * closes is removed.
+   * The hairpins are added once the whole part is read, because a hairpin
+   * spans measures.
    */
   readonly dynamics: Dynamic[]
   readonly arpeggios: readonly Arpeggio[]

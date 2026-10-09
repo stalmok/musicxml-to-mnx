@@ -22,6 +22,7 @@ import type {
   SpanStop,
   Step,
   TieTarget,
+  WedgeType,
 } from '../model/score.js'
 import type { Draft } from './draft.js'
 import type { CoveredEvent, GraceNotesAt, LastEventBefore, LastEvents } from './voices.js'
@@ -94,6 +95,25 @@ export interface OpenOttava {
   placement?: 'above' | 'below'
 }
 
+/**
+ * A hairpin that has begun, waiting to learn where it stops. It goes into the
+ * measure only once closed, because MNX requires a hairpin to state its end.
+ */
+export interface OpenHairpin {
+  readonly measure: number
+  readonly position: Fraction
+  readonly wedge: WedgeType
+  readonly staff: number | undefined
+  readonly placement?: 'above' | 'below'
+  prefix?: string
+  suffix?: string
+  /**
+   * How many other dynamics the measure held when the hairpin was read, which
+   * is where it goes among them, so the measure keeps the order of the source.
+   */
+  readonly slot: number
+}
+
 /** A slur that has begun, waiting to learn which event ends it. */
 interface OpenSlur {
   event: Event
@@ -150,7 +170,7 @@ export interface WedgeStop {
 }
 
 /** A hairpin end, and on a stop the wording waiting at it. */
-type WedgeEnd = SpanEnd<GradualDynamic, WedgeStop>
+type WedgeEnd = SpanEnd<OpenHairpin, WedgeStop>
 
 /** Where an end of a span is written, and what it marks, whichever end it is. */
 interface EndPlace {
@@ -557,7 +577,7 @@ function startsWhereStops(start: EndPlace, stop: EndPlace): boolean {
 }
 
 /** The wording a hairpin carries, quoted for a report, or '' where it has none. */
-function wordingOf(hairpin: GradualDynamic): string {
+function wordingOf(hairpin: OpenHairpin): string {
   return [hairpin.prefix, hairpin.suffix]
     .filter((text) => text !== undefined)
     .map((text) => `"${text}"`)
@@ -933,22 +953,16 @@ export class SpannerResolver {
   }
 
   /** Notes where a hairpin begins, to be paired once the part is read. */
-  startWedge(
-    dynamic: GradualDynamic,
-    number: string,
-    measure: number,
-    position: Fraction,
-    where: WrittenAt,
-  ): void {
+  startWedge(open: OpenHairpin, number: string, where: WrittenAt): void {
     this.#wedgeEnds.push({
       kind: 'start',
       number,
-      measure,
-      position,
-      covers: position,
+      measure: open.measure,
+      position: open.position,
+      covers: open.position,
       // The staff is the hairpin's own, so the two cannot disagree about it.
-      staff: dynamic.staff,
-      payload: dynamic,
+      staff: open.staff,
+      payload: open,
       where,
     })
   }
@@ -1033,27 +1047,26 @@ export class SpannerResolver {
         'than its start, and is not carried over.',
       'unclosed-start': 'A hairpin starts where nothing ends it, and is not carried over.',
     }
-    const closed = new Map<StopEnd<WedgeStop>, GradualDynamic>()
-    pairSpans<GradualDynamic, WedgeStop>(
+    const closed = new Map<StopEnd<WedgeStop>, OpenHairpin>()
+    const ends = new Map<OpenHairpin, Pick<GradualDynamic, 'end' | 'staffEnd'>>()
+    pairSpans<OpenHairpin, WedgeStop>(
       this.#wedgeEnds,
-      (dynamic, stop) => {
+      (open, stop) => {
         // The grace note the hairpin ends on is stated where the stop covers
         // one, and the key left off where it does not: MNX reads an absent
         // key as the beat itself. Assigned, not spread in, so the compiler
         // tells an absent key from an undefined one.
         const end: Draft<SpanStop> = { measure: stop.measure, position: stop.covers }
         if (stop.coversGraceIndex !== undefined) end.graceIndex = stop.coversGraceIndex
-        dynamic.end = end
         // A hairpin stating no staff applies to all of them, so only one
         // naming its staff can end on another.
-        if (
-          dynamic.staff !== undefined &&
-          stop.staff !== undefined &&
-          stop.staff !== dynamic.staff
-        ) {
-          dynamic.staffEnd = stop.staff
-        }
-        closed.set(stop, dynamic)
+        ends.set(
+          open,
+          open.staff !== undefined && stop.staff !== undefined && stop.staff !== open.staff
+            ? { end, staffEnd: stop.staff }
+            : { end },
+        )
+        closed.set(stop, open)
       },
       (reason, end) => {
         // Only a start can carry wording, and only an unclosed one reaches here.
@@ -1078,12 +1091,6 @@ export class SpannerResolver {
       },
     )
 
-    for (const end of this.#wedgeEnds) {
-      if (end.kind !== 'start' || end.dropped || end.payload.end !== undefined) continue
-      const dynamics = measures[end.measure]?.dynamics ?? []
-      dynamics.splice(0, dynamics.length, ...dynamics.filter((mark) => mark !== end.payload))
-    }
-
     // Wording written at a closing edge goes on the hairpin the pairing joins
     // to that stop. It qualifies no mark where the stop closed nothing, and
     // where the hairpin already carries wording from its starting edge: the
@@ -1094,6 +1101,28 @@ export class SpannerResolver {
       const hairpin = closed.get(end)
       if (hairpin && hairpin.suffix === undefined) hairpin.suffix = wording.text
       else reportLoneWording(wording, warnings)
+    }
+
+    // Each closed hairpin goes into its measure at its slot. The ends are in
+    // the order of the source, and slots never go back within a measure, so
+    // inserting the last first leaves each earlier one before the later ones.
+    for (const end of [...this.#wedgeEnds].reverse()) {
+      if (end.kind !== 'start' || end.dropped) continue
+      const open = end.payload
+      const closing = ends.get(open)
+      if (!closing) continue
+      const hairpin: Draft<GradualDynamic> = {
+        kind: 'gradual',
+        position: open.position,
+        wedge: open.wedge,
+        end: closing.end,
+        staff: open.staff,
+      }
+      if (closing.staffEnd !== undefined) hairpin.staffEnd = closing.staffEnd
+      if (open.placement !== undefined) hairpin.placement = open.placement
+      if (open.prefix !== undefined) hairpin.prefix = open.prefix
+      if (open.suffix !== undefined) hairpin.suffix = open.suffix
+      measures[open.measure]?.dynamics.splice(open.slot, 0, hairpin)
     }
     this.#wedgeEnds.length = 0
   }
@@ -1258,8 +1287,8 @@ export class SpannerResolver {
 
   /**
    * Joins every octave shift in the part, putting each finished one on the
-   * measure it begins in. Unlike a hairpin, MNX requires a shift to say where
-   * it stops, so one the source never closed cannot be written.
+   * measure it begins in. MNX requires a shift to say where it stops, so one
+   * the source never closed cannot be written.
    */
   #resolveOttavas(measures: readonly Measure[], warnings: WarningCollector): void {
     pairSpans<OpenOttava, undefined>(

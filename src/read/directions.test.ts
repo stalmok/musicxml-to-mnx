@@ -2296,6 +2296,33 @@ describe('hairpins', () => {
     expect(warnings).toEqual([])
   })
 
+  // A hairpin goes into the measure only once it closes, so it has to find
+  // its place among the marks read after it. The f is pulled back before the
+  // third hairpin, but written after it.
+  test('keeps the hairpins among the other marks in the order of the source', () => {
+    const { dynamics, warnings } = readMeasures(
+      '<direction><direction-type><dynamics><p/></dynamics>' +
+        '<wedge type="crescendo" number="1"/></direction-type></direction>' +
+        wedge('diminuendo', '2') +
+        wedge('diminuendo', '4') +
+        NOTE +
+        wedge('diminuendo', '3') +
+        '<direction><direction-type><dynamics><f/></dynamics></direction-type>' +
+        '<offset>-4</offset></direction>' +
+        wedge('stop', '1') +
+        wedge('stop', '2') +
+        NOTE +
+        wedge('stop', '3'),
+    )
+
+    expect(
+      (dynamics[0] ?? []).map((mark) => (mark.kind === 'gradual' ? mark.wedge : mark.value)),
+    ).toEqual(['p', 'increasing', 'decreasing', 'decreasing', 'f'])
+    expect(warnings.map((w) => w.message)).toEqual([
+      'A hairpin starts where nothing ends it, and is not carried over.',
+    ])
+  })
+
   // Both hands hold a hairpin numbered 1 at once, as an exporter that numbers
   // each hand from 1 writes. Paired on the number alone, each would join the
   // other hand's stop.

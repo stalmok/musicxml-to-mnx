@@ -629,8 +629,6 @@ function writeDynamic(dynamic: Dynamic, names: MeasureNames): MNXDynamic {
     case 'immediate':
       return { position, type: 'immediate', value: dynamic.value, ...wording, ...where }
     case 'gradual':
-      // The spanner resolver removes a hairpin the source never closed.
-      if (!dynamic.end) throw new Error('A hairpin with no end reached the writer.')
       return {
         position,
         type: 'gradual',

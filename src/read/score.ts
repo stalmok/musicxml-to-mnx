@@ -1115,6 +1115,7 @@ function readMeasure(
           builder.position(),
           (at, staff) => builder.graceNotesAt(at, staff),
           index,
+          dynamics.length,
           state,
           warnings,
           context,

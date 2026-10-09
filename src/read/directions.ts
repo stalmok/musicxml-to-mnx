@@ -22,7 +22,6 @@ import type {
   Dynamic,
   DynamicValue,
   Fine,
-  GradualDynamic,
   OttavaAmount,
   Tempo,
   WedgeType,
@@ -38,7 +37,7 @@ import { noteValueBaseOf } from './noteValues.js'
 import { parseDecimal, parseExactDecimal, parseWholeNumber, readIntegerInRange } from './numbers.js'
 import type { GraceNotesAt } from './voices.js'
 import { reportLoneWording, writtenAt } from './spanners.js'
-import type { WedgeStop, Wording } from './spanners.js'
+import type { OpenHairpin, WedgeStop, Wording } from './spanners.js'
 import { measureLength } from './state.js'
 import type { PartState } from './state.js'
 import { entriesOf, recogniser } from './tables.js'
@@ -184,6 +183,7 @@ export function readDirection(
   position: Fraction,
   graceNotesAt: GraceNotesAt,
   measure: number,
+  dynamicsBefore: number,
   state: PartState,
   warnings: WarningCollector,
   context: ReportContext,
@@ -272,6 +272,7 @@ export function readDirection(
             at,
             overGrace,
             measure,
+            dynamicsBefore + reading.dynamics.length,
             staff,
             placement,
             state,
@@ -281,7 +282,6 @@ export function readDirection(
           if (wedge?.edge === 'start') {
             const prefix = wording.take()
             if (prefix !== undefined) wedge.hairpin.prefix = prefix.text
-            reading.dynamics.push(wedge.hairpin)
             lastMark = { kind: 'mark', mark: wedge.hairpin }
           } else if (wedge) {
             // Wording at a closing edge trails the mark. Words pending at the
@@ -569,7 +569,7 @@ const WEDGE_TYPES = new Map<string, WedgeType>(
  * goes on the hairpin. Wording beside a stop waits on the stop until the
  * pairing names the hairpin.
  */
-type WedgeReading = { edge: 'start'; hairpin: GradualDynamic } | { edge: 'stop'; stop: WedgeStop }
+type WedgeReading = { edge: 'start'; hairpin: OpenHairpin } | { edge: 'stop'; stop: WedgeStop }
 
 /**
  * A hairpin: a dynamic that grows or fades from here to somewhere later,
@@ -584,6 +584,7 @@ function readWedge(
   position: Fraction,
   overGrace: number,
   measure: number,
+  slot: number,
   staff: number | undefined,
   placement: 'above' | 'below' | undefined,
   state: PartState,
@@ -628,15 +629,15 @@ function readWedge(
 
   // A hairpin states no value of its own: what it grows from and to is said
   // by the plain marks around it.
-  const hairpin: GradualDynamic = {
-    kind: 'gradual',
+  const hairpin: OpenHairpin = {
+    measure,
     position,
     wedge,
-    end: undefined,
     staff,
     ...(placement !== undefined ? { placement } : {}),
+    slot,
   }
-  state.spanners.startWedge(hairpin, number, measure, position, where)
+  state.spanners.startWedge(hairpin, number, where)
   return { edge: 'start', hairpin }
 }
 
@@ -644,7 +645,8 @@ function readWedge(
  * What wording trailing a mark can be put on. A hairpin's stop is not a mark
  * yet, so it holds the words until the pairing names the hairpin.
  */
-type SuffixTarget = { kind: 'mark'; mark: Dynamic } | { kind: 'stop'; stop: WedgeStop }
+type SuffixTarget =
+  { kind: 'mark'; mark: Dynamic | OpenHairpin } | { kind: 'stop'; stop: WedgeStop }
 
 /**
  * Puts wording on the mark it trails, as that mark's suffix, and reports it
