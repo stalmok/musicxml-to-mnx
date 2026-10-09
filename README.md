@@ -269,9 +269,6 @@ pnpm build
 `pnpm bench` measures pipeline stages and complete conversions.
 `pnpm test:mutation` runs Stryker over all shipped source. A full run takes about an hour.
 
-Before you push a release tag, run `pnpm test:mutation`.
-Kill each surviving mutant with a test, or record it as equivalent, with the reason.
-
 Read the [architecture](docs/architecture.md) and [working conventions](AGENTS.md)
 before changing the converter.
 
