@@ -2293,3 +2293,39 @@ describe("a rest marked as the measure's standing beside other notes", () => {
     expect(thrown).toContain('both a rest that fills the measure and notes in it')
   })
 })
+
+// A grace note that opens a tuplet leaves a tuplet at the measure start, not
+// a grace group. The voice then holds something other than grace notes, so a
+// rest after it does not open the voice.
+describe('a rest after a grace note that opens a tuplet', () => {
+  const inFourFour = (body: string) =>
+    '<score-partwise><part id="P1"><measure number="1"><attributes><divisions>2</divisions>' +
+    '<time><beats>4</beats><beat-type>4</beat-type></time></attributes>' +
+    `${body}</measure></part></score-partwise>`
+  const grace = (step: string, tuplet?: string) =>
+    `<note><grace/><pitch><step>${step}</step><octave>4</octave></pitch><voice>1</voice>` +
+    '<type>eighth</type>' +
+    (tuplet === undefined
+      ? ''
+      : '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+        `</time-modification><notations><tuplet type="${tuplet}"/></notations>`) +
+    '</note>'
+
+  test('keeps a rest with no value lasting the measure as an event', () => {
+    const { mnx } = convertValid(
+      inFourFour(
+        grace('E', 'start') + '<note><rest/><duration>8</duration><voice>1</voice></note>',
+      ),
+    )
+
+    expect(mnx.parts[0]?.measures[0]?.sequences[0]?.fullMeasure).toBeUndefined()
+  })
+
+  test('refuses a measure rest inside the tuplet, after another grace note', () => {
+    const rest = '<note><rest measure="yes"/><duration>8</duration><voice>1</voice></note>'
+
+    expect(() => convertMusicXML(inFourFour(grace('D') + grace('E', 'start') + rest))).toThrow(
+      'A rest that fills the measure is inside a <tuplet>.',
+    )
+  })
+})
