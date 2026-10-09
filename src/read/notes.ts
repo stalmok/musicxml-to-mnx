@@ -60,7 +60,7 @@ import { entriesOf, recogniser } from './tables.js'
 import { tieKey, writtenAt } from './spanners.js'
 import type { WrittenAt } from './spanners.js'
 import { MeasureBuilder } from './voices.js'
-import type { JoinedEvent, PlacedEvent } from './voices.js'
+import type { ChordJoin, PlacedEvent, VoiceLine } from './voices.js'
 import type { TupletDisplaySettings } from './tuplets.js'
 
 // A recogniser narrows the value to the model's Step, so no cast is needed,
@@ -217,7 +217,9 @@ function kitComponent(
 }
 
 /** What is read from a <note> once and shared by the paths that place it. */
-interface NoteStatement extends RestNote {
+interface NoteStatement extends Omit<RestNote, 'voice'> {
+  /** The voice the note names, where it names one. */
+  named: string | undefined
   /** The notations the note writes on its event. */
   eventNotations: readonly EventNotation[]
   tieds: readonly XmlElement[]
@@ -236,6 +238,9 @@ interface NoteStatement extends RestNote {
    */
   reportHidden: (only?: 'fermata') => void
 }
+
+/** The same, once the note has the line of its voice it is written in. */
+type VoicedNote = NoteStatement & RestNote
 
 export function readNote(
   element: ElementReader,
@@ -314,7 +319,7 @@ export function readNote(
   // and the drawn side live only on it, so it is read rather than skipped.
   const tieds = notations.flatMap((block) => block.children('tied'))
 
-  const voice = element.child('voice')?.text.trim()
+  const namedVoice = element.child('voice')?.text.trim()
   const duration = readDuration(element, state, warnings, context, path)
   const written = readWrittenValue(element, path)
   const graceElement = element.child('grace')
@@ -328,8 +333,12 @@ export function readNote(
   // the sequence the voice last sounded in and carried to the one its note
   // turns out to take.
   const chordMember = element.child('chord') !== undefined
-  if (!chordMember && voice === undefined) builder.namesNoVoice(element.element)
-  if (!chordMember && !graceElement) builder.beginNote(voice, element.element)
+  if (!chordMember && namedVoice === undefined) builder.namesNoVoice(element.element)
+  const voice = chordMember
+    ? undefined
+    : graceElement
+      ? builder.lineOf(namedVoice)
+      : builder.beginNote(namedVoice, element.element)
 
   // Which staff the note names. It is range-checked even in a one-staff part,
   // so a note naming a staff that <staves> has not declared is rejected, not
@@ -348,13 +357,13 @@ export function readNote(
     : undefined
 
   const eventNotations = readEventNotations(notations)
-  const note: NoteStatement = {
+  const statement: NoteStatement = {
     element,
     notations,
     eventNotations,
     tieds,
     hiddenTuplets,
-    voice,
+    named: namedVoice,
     duration,
     written,
     rest: restElement,
@@ -370,11 +379,13 @@ export function readNote(
   // A note carrying <chord> sounds with the one before it, so it joins that
   // event rather than starting another. It is settled first because it is
   // not an event of its own: it opens no tuplet, and the ratio it repeats
-  // belongs to the event it joins.
-  if (chordMember) {
-    readChordMember(note, state, measureIndex, builder, warnings, context, path)
+  // belongs to the event it joins. It has no line of its own: it takes its
+  // chord's.
+  if (!voice) {
+    readChordMember(statement, state, measureIndex, builder, warnings, context, path)
     return
   }
+  const note: VoicedNote = { ...statement, voice }
 
   // Sources sometimes write an extra rest over a rest that already fills the
   // same voice's measure. Both are silence, so the measure rest stands and the
@@ -420,7 +431,7 @@ export function readNote(
   // scales the <duration> an exporter writes on one.
   const scale = graceElement
     ? { factor: fraction(1), by: undefined }
-    : { factor: builder.noteFactor(voice), by: builder.scaledBy(voice) }
+    : { factor: voice.noteFactor(), by: voice.scaledBy() }
 
   const candidate = restReading.kind === 'candidate' ? restReading : undefined
   // A rest that may be the measure's reports a mismatch only once the voice
@@ -491,7 +502,7 @@ export function readNote(
       event,
       eventNotations,
       attribute(graceElement, 'slash') === 'yes',
-      graceSideToKeep(element, graceElement, voice, builder, warnings, context),
+      graceSideToKeep(element, graceElement, voice, warnings, context),
       staff,
     )
     readEventSpanners(
@@ -572,7 +583,7 @@ export function readNote(
  * tremolo, which close once the note is placed.
  */
 function openTupletsAndTremolo(
-  note: NoteStatement,
+  note: VoicedNote,
   builder: MeasureBuilder,
   warnings: WarningCollector,
   context: ReportContext,
@@ -603,7 +614,7 @@ function openTupletsAndTremolo(
   // Whether a bracket the source drew is open. A tuplet the ratio alone
   // opened is not one: it is the reading below, not something the source
   // stated the extent of.
-  const insideDrawnBracket = builder.insideBracket(voice) && !builder.insideImpliedTuplet(voice)
+  const insideDrawnBracket = voice.insideBracket() && !voice.insideImpliedTuplet()
 
   // A grace note takes none of the measure's time, so a ratio on one says
   // nothing about how long a group is or where it ends, and no bracket is
@@ -658,7 +669,7 @@ function openTupletsAndTremolo(
   // A ratio is read only where no bracket the source drew is open, and the
   // close above ends any run this note does not belong in, so what is open
   // here is the run this note joins, or nothing.
-  if (!graceElement && ratio && rated && !builder.insideImpliedTuplet(voice)) {
+  if (!graceElement && ratio && rated && !voice.insideImpliedTuplet()) {
     builder.openImpliedTuplet(voice, rated.inner, rated.outer, ratio)
   }
 
@@ -723,7 +734,7 @@ function openTupletsAndTremolo(
     // so passing it over adds no duration, and the stop that matches it is
     // passed over with it. A bracket that does scale something is refused
     // where it opens.
-    const inTremolo = tremolo?.type === 'start' || builder.insideTremolo(voice)
+    const inTremolo = tremolo?.type === 'start' || voice.insideTremolo()
     const opened = opening.filter((start) => {
       if (!inTremolo || !scalesNothing(start.stated ?? quantities)) return true
       warnings.add(
@@ -734,7 +745,7 @@ function openTupletsAndTremolo(
         context,
         start.element,
       )
-      builder.dropTupletStart(voice, start.number)
+      voice.dropTupletStart(start.number)
       return false
     })
 
@@ -783,7 +794,7 @@ function reportMarkersOnMeasureRest(
 
 /** Places a rest as its voice's rest through the measure. */
 function setMeasureRest(
-  note: NoteStatement,
+  note: VoicedNote,
   fills: FillsMeasure,
   state: PartState,
   builder: MeasureBuilder,
@@ -803,7 +814,7 @@ function setMeasureRest(
       state.spanners.dropSlurEnd(
         type,
         number,
-        voice,
+        voice.name,
         measureIndex,
         at,
         writtenAt(slur, context, warnings),
@@ -943,7 +954,7 @@ function reportCarriedByUnwritableRest(
  * where it stood.
  */
 function dropRedundantRest(
-  note: NoteStatement,
+  note: VoicedNote,
   rest: XmlElement,
   state: PartState,
   builder: MeasureBuilder,
@@ -993,7 +1004,7 @@ function dropRedundantRest(
       state.spanners.dropSlurEnd(
         type,
         number,
-        voice,
+        voice.name,
         measureIndex,
         at,
         writtenAt(slur, context, warnings),
@@ -1070,7 +1081,7 @@ function readChordMember(
     notations,
     eventNotations,
     tieds,
-    voice,
+    named,
     duration,
     written,
     rest: restElement,
@@ -1084,12 +1095,12 @@ function readChordMember(
   // A chord member joins the note written just before it. Sibelius leaves
   // <voice> off a chord member, so the chord's voice is the one used, not
   // the member's.
-  const chordVoice = builder.voiceOfChord()
-  if (voice !== undefined && chordVoice !== undefined && voice !== chordVoice) {
+  const chord = builder.chordLine()
+  if (named !== undefined && chord !== undefined && named !== chord.name) {
     warnings.add(
       'inconsistent:voice',
-      `A note of a chord names voice ${voice}, and the note it joins is in ` +
-        `${chordVoice === '' ? 'no named voice' : `voice ${chordVoice}`}. It is converted ` +
+      `A note of a chord names voice ${named}, and the note it joins is in ` +
+        `${chord.name === '' ? 'no named voice' : `voice ${chord.name}`}. It is converted ` +
         'in the voice of the note it joins.',
       context,
       requireChild(element.element, 'voice', path),
@@ -1106,7 +1117,7 @@ function readChordMember(
   // does not take is the source disagreeing with itself about one group.
   if (graceElement) {
     attribute(graceElement, 'slash')
-    const open = builder.chordGraceType()
+    const open = chord?.graceType()
     for (const [side, named] of entriesOf(GRACE_TIME_ATTRIBUTES)) {
       if (attribute(graceElement, named) === undefined) continue
       if (open === undefined || open === side) continue
@@ -1122,7 +1133,7 @@ function readChordMember(
 
   // A chord cannot be part grace note and part full note. The note the chord
   // opened with decides, and a member marked the other way is reported.
-  const joinsGrace = builder.chordIsGrace()
+  const joinsGrace = chord?.lastIsGrace()
   if (joinsGrace === (graceElement === undefined)) {
     warnings.add(
       'inconsistent:grace',
@@ -1140,7 +1151,7 @@ function readChordMember(
   // across to the other hand, on that note. A chord straddling the two
   // staves is ordinary piano writing, so only the note that differs from
   // the event's staff states one of its own.
-  const reaches = staff !== undefined && staff !== builder.staffOfChord() ? staff : undefined
+  const reaches = staff !== undefined && staff !== chord?.lastStaff() ? staff : undefined
 
   // A chord member is a pitch or an unpitched note: a rest was refused just
   // above, and a note sounding none of the three never reached here.
@@ -1161,13 +1172,13 @@ function readChordMember(
   // duration dropped the dot). Where the written values agree the chord is
   // coherent: the written value is the one converted, and the duration is
   // reported rather than compared.
-  const joins = builder.chordValue()
+  const joins = chord?.lastValue()
   const writtenMatches =
     written !== undefined &&
     joins !== undefined &&
     written.base === joins.base &&
     written.dots === joins.dots
-  const chordDuration = builder.chordDuration()
+  const chordDuration = chord?.lastDuration()
   if (
     writtenMatches &&
     duration &&
@@ -1183,7 +1194,7 @@ function readChordMember(
     )
   }
   const chordDurationOrNone = writtenMatches ? undefined : duration
-  let placed: JoinedEvent
+  let placed: ChordJoin
   if ('pitch' in chordNote) {
     placed = builder.addChordNote(chordNote, chordDurationOrNone, path, element.line)
     // A roll is drawn across the notes of a chord, so it is the pitched
@@ -1202,7 +1213,7 @@ function readChordMember(
     element,
     chordNote,
     tiePairing(chordNote),
-    chordVoice,
+    placed.voice.name,
     measureIndex,
     placed.start,
     graceElement !== undefined,
@@ -1225,9 +1236,9 @@ function readChordMember(
       context,
       marker,
     )
-    builder.dropTupletStart(chordVoice, attribute(marker, 'number') ?? '1')
+    placed.voice.dropTupletStart(attribute(marker, 'number') ?? '1')
   }
-  closeTuplets(builder, chordVoice, ownMarkers, warnings, context, path, element.line)
+  closeTuplets(builder, placed.voice, ownMarkers, warnings, context, path, element.line)
 }
 
 /**
@@ -1240,7 +1251,7 @@ function readEventSpanners(
   element: ElementReader,
   notations: readonly ElementReader[],
   placed: PlacedEvent,
-  voice: string | undefined,
+  voice: VoiceLine,
   builder: MeasureBuilder,
   state: PartState,
   measureIndex: number,
@@ -1257,13 +1268,13 @@ function readEventSpanners(
   const { body } = event
   readArpeggio(notations, placed, builder, body.kind === 'notes' ? body.notes[0] : undefined)
   // A rest sounds nothing, so a tie in its voice reaches across it.
-  if (body.kind === 'notes') state.spanners.sound(voice)
+  if (body.kind === 'notes') state.spanners.sound(voice.name)
   for (const note of body.kind === 'notes' ? [...body.notes, ...body.kitNotes] : []) {
     readTies(
       element,
       note,
       tiePairing(note),
-      voice,
+      voice.name,
       measureIndex,
       placed.start,
       inGraceGroup,
@@ -1273,7 +1284,7 @@ function readEventSpanners(
       tieds,
     )
   }
-  readSlurs(notations, placed, voice, measureIndex, state, warnings, context, inGraceGroup)
+  readSlurs(notations, placed, voice.name, measureIndex, state, warnings, context, inGraceGroup)
   builder.addBeamMarkers(
     voice,
     event.id,
@@ -1286,7 +1297,7 @@ function readEventSpanners(
 
 function closeTuplets(
   builder: MeasureBuilder,
-  voice: string | undefined,
+  voice: VoiceLine,
   markers: readonly XmlElement[],
   warnings: WarningCollector,
   context: ReportContext,
@@ -1316,8 +1327,8 @@ function closeTuplets(
     // source's is open for it to close, and what the ratio counts is what
     // ends the run. Where the run ends on this note the two agree; where it
     // does not, the marker states a grouping the ratio contradicts.
-    if (builder.insideImpliedTuplet(voice)) {
-      if (!builder.impliedTupletFilled(voice)) {
+    if (voice.insideImpliedTuplet()) {
+      if (!voice.impliedTupletFilled()) {
         warnings.add(
           'inconsistent:tuplet',
           'A <tuplet> stops where no tuplet the source opened is running, and short of ' +
@@ -1373,13 +1384,12 @@ const GRACE_TIME_ATTRIBUTES: Record<GraceType, string> = {
 function graceSideToKeep(
   element: ElementReader,
   grace: XmlElement,
-  voice: string | undefined,
-  builder: MeasureBuilder,
+  voice: VoiceLine,
   warnings: WarningCollector,
   context: ReportContext,
 ): GraceType | undefined {
   const side = readGraceType(grace, warnings, context)
-  const open = builder.openGraceType(voice)
+  const open = voice.graceType()
   if (side === undefined || open === undefined || open === side) return side
   // The <beam> children are read directly, so that a marker this never keeps
   // is still read and reported where the note's beams are.

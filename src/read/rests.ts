@@ -15,7 +15,7 @@ import { lengthOf, noteValueOf } from './duration.js'
 import type { ElementReader } from './element.js'
 import { measureLength } from './state.js'
 import type { PartState } from './state.js'
-import type { MeasureBuilder } from './voices.js'
+import type { MeasureBuilder, VoiceLine } from './voices.js'
 
 export interface RestNote {
   element: ElementReader
@@ -25,7 +25,8 @@ export interface RestNote {
   /** The value the note states in <type>, where it states one. */
   written: NoteValue | undefined
   duration: Fraction | undefined
-  voice: string | undefined
+  /** The line of its voice the note is written in. */
+  voice: VoiceLine
 }
 
 /**
@@ -104,7 +105,7 @@ export function readRest(note: RestNote, state: PartState, builder: MeasureBuild
   const markedAsTheMeasure =
     rest !== undefined && grace === undefined && attribute(rest, 'measure') === 'yes'
 
-  const afterGraceNotes = builder.holdsOnlyGraceNotes(voice) && builder.atMeasureStart()
+  const afterGraceNotes = voice.holdsOnlyGraceNotes() && builder.atMeasureStart()
 
   // This rest has no written value and opens its voice. It is not marked as the
   // measure's rest, is not drawn to the time signature's length, and lasts a
@@ -123,7 +124,7 @@ export function readRest(note: RestNote, state: PartState, builder: MeasureBuild
     written === undefined &&
     duration !== undefined &&
     !state.divisionsAssumed &&
-    noteValueOf(divideFractions(duration, builder.noteFactor(voice))) === undefined &&
+    noteValueOf(divideFractions(duration, voice.noteFactor())) === undefined &&
     (builder.opensMeasure(voice) || afterGraceNotes)
       ? duration
       : undefined
