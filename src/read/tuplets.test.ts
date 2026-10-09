@@ -4560,6 +4560,24 @@ describe('a bracket the silence after it completes', () => {
     })
   })
 
+  // Only a rest is taken in this way. A note lasting what the ratio gives it
+  // but stating no ratio of its own stays where the source wrote it.
+  test('leaves a note after a bracket whose marker states its ratio outside it', () => {
+    const marked =
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+      '<type>eighth</type><notations><tuplet type="start">' +
+      '<tuplet-actual><tuplet-number>3</tuplet-number><tuplet-type>eighth</tuplet-type>' +
+      '</tuplet-actual><tuplet-normal><tuplet-number>2</tuplet-number>' +
+      '<tuplet-type>eighth</tuplet-type></tuplet-normal></tuplet></notations></note>' +
+      '<note><pitch><step>D</step><octave>4</octave></pitch><duration>4</duration>' +
+      '<type>eighth</type><notations><tuplet type="stop"/></notations></note>' +
+      plain('E', 4, 'eighth')
+    const { content } = timed(marked + plain('F', 12, 'quarter'))
+
+    expect(stated(content?.[0])?.held).toEqual(['event', 'event'])
+    expect(content?.map((item) => item.kind)).toEqual(['tuplet', 'event', 'event'])
+  })
+
   // A grace note takes none of the measure's time, so the voice has not
   // sounded again where one stands after the bracket.
   test('states the silence past a grace note standing after the bracket', () => {
