@@ -174,6 +174,9 @@ vendored schema.
 
 The vendored schema defines the accepted MNX output format.
 Every conversion output in tests must validate against it.
+The schema checks the form of an id, not its target. Tests also check that
+every id reference in the output leads to an object. A beam must name events
+of its own measure. A tie or slur must name a target in its own part.
 The library does not run schema validation during conversion.
 The CLI provides optional validation through `--validate`.
 
@@ -186,6 +189,7 @@ The CLI provides optional validation through `--validate`.
 - Generated-ID constraints against the schema's ID pattern.
 - The reader's numeric limits against the schema's minimum and maximum values.
 - Model enums against the corresponding MNX enums, with explicit exceptions.
+- The id references the tests follow against every reference the MNX types hold.
 
 Follow the [schema update procedure](../schema/PROVENANCE.md) when changing the pin.
 Review affected types, model values, reader behavior, writer output, and corpus results.
