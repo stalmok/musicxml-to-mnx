@@ -205,7 +205,7 @@ These comparisons run in the test suite. The library does not run them
 during conversion. The CLI's `--validate` option checks schema validity only.
 
 The following are previously recorded results, not results from a fresh run.
-Counts are from September 2026, except String Quartets, which is from July 2026.
+Counts are from October 2026, except String Quartets, which is from July 2026.
 A converted file can still have warnings.
 
 | Corpus                                                                                        | Files  | Converted |
