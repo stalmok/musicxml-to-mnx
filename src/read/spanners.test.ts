@@ -1631,7 +1631,19 @@ describe('whether a voice accounts for its own slurs', () => {
     stemDirection: undefined,
     markings: {},
     fermata: undefined,
-    body: { kind: 'notes', notes: [], kitNotes: [] },
+    body: {
+      kind: 'notes',
+      notes: [
+        {
+          id: 'note',
+          pitch: { step: 'C', octave: 4, alter: 0 },
+          ties: [],
+          accidentalDisplay: undefined,
+          staff: undefined,
+        },
+      ],
+      kitNotes: [],
+    },
   }
 
   const slurEnd = (kind: 'start' | 'stop', index: number): SlurEnd => {

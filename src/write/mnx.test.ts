@@ -39,9 +39,9 @@ const WHOLE_C: Event = {
   body: { kind: 'notes', notes: [C4], kitNotes: [] },
 }
 
-/** WHOLE_C, sounding these notes in place of its own. */
-function wholeSounding(...notes: Note[]): Event {
-  return { ...WHOLE_C, body: { kind: 'notes', notes, kitNotes: [] } }
+/** WHOLE_C, sounding this note in place of its own. */
+function wholeSounding(note: Note): Event {
+  return { ...WHOLE_C, body: { kind: 'notes', notes: [note], kitNotes: [] } }
 }
 
 // Everything a global measure can state beyond a key, a time and a tempo.

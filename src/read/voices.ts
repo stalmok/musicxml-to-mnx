@@ -300,7 +300,7 @@ function kitOrder(
 }
 
 /** What an event sounds, which for a rest is nothing. */
-function notesOf(event: Event): Pick<EventNotes, 'notes' | 'kitNotes'> {
+function soundOf(event: Event): { notes: readonly Note[]; kitNotes: readonly KitNote[] } {
   return event.body.kind === 'notes' ? event.body : { notes: [], kitNotes: [] }
 }
 
@@ -1375,9 +1375,9 @@ export class MeasureBuilder {
       if (!first) continue
 
       const notes = group.flatMap((one) =>
-        divided.has(one.event) ? one.notes : notesOf(one.event).notes,
+        divided.has(one.event) ? one.notes : soundOf(one.event).notes,
       )
-      const kitNotes = group.flatMap((one) => notesOf(one.event).kitNotes)
+      const kitNotes = group.flatMap((one) => soundOf(one.event).kitNotes)
       // A chord struck on a percussion kit carries no pitches to order by, so
       // it is ordered by the height the part's kit draws each component at. A
       // mark is written on a note and a kit note carries none, so such a roll

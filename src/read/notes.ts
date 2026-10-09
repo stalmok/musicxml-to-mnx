@@ -441,17 +441,33 @@ export function readNote(
       ? drawnGraceValue(element, graceElement, warnings, context)
       : undefined) ??
     measuredValue(element, duration, scale, state, path)
-  // The event states this note's staff, so the note says nothing of its own.
   const rest: EventRest | undefined = restElement && { kind: 'rest', staffPosition }
-  const body: EventRest | EventNotes = rest ?? {
-    kind: 'notes',
-    notes: pitchElement
-      ? [readNoteAt(element, pitchElement, state, path, undefined, warnings, context)]
-      : [],
-    kitNotes: unpitchedElement
-      ? [readKitNoteAt(element, unpitchedElement, staff, undefined, state, warnings, context)]
-      : [],
-  }
+  // The event states this note's staff, so the note says nothing of its own.
+  // A note sounding neither a rest nor a pitch was refused above, so it
+  // strikes a kit.
+  const body: EventRest | EventNotes =
+    rest ??
+    (pitchElement
+      ? {
+          kind: 'notes',
+          notes: [readNoteAt(element, pitchElement, state, path, undefined, warnings, context)],
+          kitNotes: [],
+        }
+      : {
+          kind: 'notes',
+          notes: [],
+          kitNotes: [
+            readKitNoteAt(
+              element,
+              requireChild(element.element, 'unpitched', path),
+              staff,
+              undefined,
+              state,
+              warnings,
+              context,
+            ),
+          ],
+        })
 
   const event: Event = {
     kind: 'event',

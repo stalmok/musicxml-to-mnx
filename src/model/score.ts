@@ -295,11 +295,17 @@ export interface EventRest {
  * More than one note makes it a chord, and each of those joins as the measure
  * walk reaches it.
  */
-export interface EventNotes {
-  readonly kind: 'notes'
-  notes: readonly Note[]
-  kitNotes: readonly KitNote[]
-}
+export type EventNotes =
+  | {
+      readonly kind: 'notes'
+      notes: readonly [Note, ...Note[]]
+      kitNotes: readonly KitNote[]
+    }
+  | {
+      readonly kind: 'notes'
+      notes: readonly Note[]
+      kitNotes: readonly [KitNote, ...KitNote[]]
+    }
 
 /**
  * Time a voice passes over without sounding. MusicXML leaves such a gap
