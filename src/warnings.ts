@@ -91,6 +91,10 @@ export const WARNING_CODES = Object.freeze([
   'unrepresentable:fermata',
   // An event carrying two marks of one kind. MNX keys them by name.
   'unrepresentable:marking',
+  // An accidental drawn as a glyph other than the one its note's alter calls
+  // for, such as a courtesy natural before a sharp. MNX's accidental display
+  // states whether it is shown and how it is enclosed, and no glyph.
+  'unrepresentable:accidental',
   // An ending printed with text other than its numbers, such as "Pour
   // finir" or "1st and 2nd Verses". MNX's ending prints its numbers and has
   // no text. The numbers are converted.

@@ -1068,6 +1068,8 @@ const FORMAT_LIMITS: Readonly<Record<FormatLimit, () => boolean>> = {
   'unrepresentable:fermata': () => refers('event', 'fermata', 'fermata'),
   'unrepresentable:marking': () =>
     propertiesOf('event-markings').every((mark) => !isList('event-markings', mark)),
+  'unrepresentable:accidental': () =>
+    propertiesOf('accidental-display').join() === 'enclosure,force,show',
   'unrepresentable:ending-text': () =>
     propertiesOf('ending').join() === 'color,duration,numbers,open',
   'unrepresentable:barline': () =>

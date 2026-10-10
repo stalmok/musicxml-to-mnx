@@ -3,6 +3,7 @@
 // earlier note. MNX also marks only the notes whose accidental shows. The
 // support block is tested in tests/support-block.test.ts.
 
+import { convertValid } from '../../tests/support/convert.js'
 import { notesOf, readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { WarningCollector } from './collector.js'
@@ -150,5 +151,158 @@ describe('an altered note', () => {
   // Number() reads all of these but "flat".
   test.each(['flat', '0x1', '1e1', ' '])('refuses an alteration of "%s"', (written) => {
     expect(() => read(score(note('C', written, '')))).toThrow('not a number of semitones')
+  })
+})
+
+// An <accidental> names the glyph drawn. MNX draws the one the note's alter
+// calls for, so a glyph that agrees with the alter loses nothing.
+describe('the glyph an accidental is drawn as', () => {
+  test.each([
+    ['-3', 'triple-flat'],
+    ['-2', 'flat-flat'],
+    ['-1', 'flat'],
+    ['', 'natural'],
+    ['0', 'natural'],
+    ['1', 'sharp'],
+    ['2', 'double-sharp'],
+    ['3', 'triple-sharp'],
+  ])('says nothing of an alter of "%s" drawn as %s', (alter, glyph) => {
+    const { warnings } = read(score(note('C', alter, `<accidental>${glyph}</accidental>`)))
+
+    expect(warnings).toEqual([])
+  })
+
+  // The microtone is reported where the alter is read, and the glyph is the
+  // one that alter calls for.
+  test.each([
+    ['-1.5', 'three-quarters-flat'],
+    ['-0.5', 'quarter-flat'],
+    ['0.5', 'quarter-sharp'],
+    ['1.5', 'three-quarters-sharp'],
+  ])('reports only the microtone of an alter of %s drawn as %s', (alter, glyph) => {
+    const { warnings } = read(score(note('C', alter, `<accidental>${glyph}</accidental>`)))
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:microtone'])
+  })
+
+  test('reports a courtesy natural drawn before a sharp, and draws the sharp', () => {
+    const { notes, warnings } = read(
+      score(note('F', '1', '<accidental>natural-sharp</accidental>')),
+    )
+
+    expect(notes[0]?.accidentalDisplay?.show).toBe(true)
+    expect(warnings.map((w) => [w.code, w.element, w.message])).toEqual([
+      [
+        'unrepresentable:accidental',
+        'accidental',
+        'An accidental drawn as "natural-sharp" cannot be expressed in MNX, which draws the ' +
+          'one the note\'s alter of 1 calls for, "sharp".',
+      ],
+    ])
+  })
+
+  // Two sharps side by side are another glyph than the double sharp.
+  test('reports a double sharp drawn as two sharps', () => {
+    const { warnings } = read(score(note('F', '2', '<accidental>sharp-sharp</accidental>')))
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:accidental'])
+  })
+
+  test('reports a glyph that disagrees with the alter', () => {
+    const { warnings } = read(score(note('F', '', '<accidental>sharp</accidental>')))
+
+    expect(warnings.map((w) => w.message)).toEqual([
+      'An accidental drawn as "sharp" cannot be expressed in MNX, which draws the one the ' +
+        'note\'s alter of 0 calls for, "natural".',
+    ])
+  })
+
+  test('names no glyph for an alter no glyph is drawn for', () => {
+    const { warnings } = read(score(note('C', '4', '<accidental>sharp</accidental>')))
+
+    expect(warnings.map((w) => w.message)).toEqual([
+      'An accidental drawn as "sharp" cannot be expressed in MNX, which draws the one the ' +
+        "note's alter of 4 calls for.",
+    ])
+  })
+
+  test('reports the SMuFL glyph of an other accidental along with it', () => {
+    const { warnings } = read(
+      score(note('F', '1', '<accidental smufl="accSagittal5CommaUp">other</accidental>')),
+    )
+
+    expect(warnings.map((w) => [w.code, w.attribute])).toEqual([
+      ['unrepresentable:accidental', undefined],
+    ])
+  })
+
+  test.each([
+    'sharp',
+    'natural',
+    'flat',
+    'double-sharp',
+    'sharp-sharp',
+    'flat-flat',
+    'natural-sharp',
+    'natural-flat',
+    'quarter-flat',
+    'quarter-sharp',
+    'three-quarters-flat',
+    'three-quarters-sharp',
+    'sharp-down',
+    'sharp-up',
+    'natural-down',
+    'natural-up',
+    'flat-down',
+    'flat-up',
+    'double-sharp-down',
+    'double-sharp-up',
+    'flat-flat-down',
+    'flat-flat-up',
+    'arrow-down',
+    'arrow-up',
+    'triple-sharp',
+    'triple-flat',
+    'slash-quarter-sharp',
+    'slash-sharp',
+    'slash-flat',
+    'double-slash-flat',
+    'sharp-1',
+    'sharp-2',
+    'sharp-3',
+    'sharp-5',
+    'flat-1',
+    'flat-2',
+    'flat-3',
+    'flat-4',
+    'sori',
+    'koron',
+    'other',
+  ])('takes %s as a glyph MusicXML defines', (glyph) => {
+    const { warnings } = read(score(note('C', '4', `<accidental>${glyph}</accidental>`)))
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:accidental'])
+  })
+
+  test('reports a glyph MusicXML does not define as a source problem', () => {
+    const { notes, warnings } = read(score(note('F', '1', '<accidental>sharpish</accidental>')))
+
+    expect(notes[0]?.accidentalDisplay?.show).toBe(true)
+    expect(warnings.map((w) => [w.code, w.message])).toEqual([
+      [
+        'unresolved:element-value',
+        'An <accidental> of "sharpish" is not one MusicXML defines, and the accidental the ' +
+          'alter calls for is drawn instead.',
+      ],
+    ])
+  })
+
+  test('writes a reported glyph onto schema-valid MNX', () => {
+    const { mnx } = convertValid(score(note('F', '1', '<accidental>sharp-up</accidental>')))
+    const event = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
+
+    expect(event && 'notes' in event && event.notes?.[0]?.accidentalDisplay).toEqual({
+      show: true,
+    })
   })
 })

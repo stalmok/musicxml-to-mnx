@@ -1830,6 +1830,68 @@ const ENCLOSURES = new Map<string, 'parentheses' | 'brackets'>([
   ['bracket', 'brackets'],
 ])
 
+// Every glyph MusicXML's <accidental> can name.
+const ACCIDENTAL_GLYPHS: ReadonlySet<string> = new Set([
+  'sharp',
+  'natural',
+  'flat',
+  'double-sharp',
+  'sharp-sharp',
+  'flat-flat',
+  'natural-sharp',
+  'natural-flat',
+  'quarter-flat',
+  'quarter-sharp',
+  'three-quarters-flat',
+  'three-quarters-sharp',
+  'sharp-down',
+  'sharp-up',
+  'natural-down',
+  'natural-up',
+  'flat-down',
+  'flat-up',
+  'double-sharp-down',
+  'double-sharp-up',
+  'flat-flat-down',
+  'flat-flat-up',
+  'arrow-down',
+  'arrow-up',
+  'triple-sharp',
+  'triple-flat',
+  'slash-quarter-sharp',
+  'slash-sharp',
+  'slash-flat',
+  'double-slash-flat',
+  'sharp-1',
+  'sharp-2',
+  'sharp-3',
+  'sharp-5',
+  'flat-1',
+  'flat-2',
+  'flat-3',
+  'flat-4',
+  'sori',
+  'koron',
+  'other',
+])
+
+// The glyph each alter is drawn with. MNX draws the accidental a note's
+// alter calls for, and states no glyph of its own. The alter is taken as
+// written: a microtone's loss is reported where its alter is read.
+const GLYPH_OF_ALTER = new Map<number, string>([
+  [-3, 'triple-flat'],
+  [-2, 'flat-flat'],
+  [-1.5, 'three-quarters-flat'],
+  [-1, 'flat'],
+  [-0.5, 'quarter-flat'],
+  [0, 'natural'],
+  [0.5, 'quarter-sharp'],
+  [1, 'sharp'],
+  [1.5, 'three-quarters-sharp'],
+  [2, 'double-sharp'],
+  [3, 'triple-sharp'],
+])
+
 function readNoteAt(
   element: ElementReader,
   pitchElement: XmlElement,
@@ -1848,7 +1910,7 @@ function readNoteAt(
     id: state.ids.nextNote(),
     pitch: state.transposition ? soundingPitch(written, state.transposition) : written,
     ties: [],
-    accidentalDisplay: readAccidentalDisplay(element),
+    accidentalDisplay: readAccidentalDisplay(element, pitchElement, warnings, context),
     staff,
   }
 }
@@ -1885,9 +1947,38 @@ function tiePairing(note: Note | KitNote): string {
  * presence is what marks the note; a note with an alter but no <accidental> is
  * covered by the key or a note before it.
  */
-function readAccidentalDisplay(element: ElementReader): AccidentalDisplay | undefined {
+function readAccidentalDisplay(
+  element: ElementReader,
+  pitch: XmlElement,
+  warnings: WarningCollector,
+  context: ReportContext,
+): AccidentalDisplay | undefined {
   const accidental = element.child('accidental')
   if (!accidental) return undefined
+
+  // readPitch has already refused an alter that is not a number.
+  const alterElement = child(pitch, 'alter')
+  const alter = alterElement ? Number(trimmedText(alterElement)) : 0
+  const glyph = trimmedText(accidental)
+  const drawn = GLYPH_OF_ALTER.get(alter)
+  if (!ACCIDENTAL_GLYPHS.has(glyph)) {
+    warnings.addUndefinedText(
+      accidental,
+      'and the accidental the alter calls for is drawn instead.',
+      context,
+    )
+  } else if (glyph !== drawn) {
+    // A SMuFL name states the same glyph more closely, and goes with it.
+    attribute(accidental, 'smufl')
+    warnings.add(
+      'unrepresentable:accidental',
+      `An accidental drawn as "${glyph}" cannot be expressed in MNX, which draws the one ` +
+        `the note's alter of ${String(alter)} calls for` +
+        (drawn !== undefined ? `, "${drawn}".` : '.'),
+      context,
+      accidental,
+    )
+  }
 
   let enclosure: 'parentheses' | 'brackets' | undefined
   for (const [source, symbol] of ENCLOSURES) {
