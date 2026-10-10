@@ -570,7 +570,9 @@ describe('measure attributes', () => {
   test('converts senza misura as a measure with no time signature', () => {
     const { score: result, warnings } = read(
       measure(
-        '<attributes><divisions>1</divisions><time><senza-misura/></time></attributes>' + NOTE,
+        '<attributes><divisions>1</divisions><time><senza-misura>X</senza-misura></time>' +
+          '</attributes>' +
+          NOTE,
       ),
     )
 

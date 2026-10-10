@@ -21,7 +21,7 @@ import type {
 } from '../model/score.js'
 import { WarningCollector } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
-import { attribute, children, requireChild, trimmedText } from '../xml/tree.js'
+import { attribute, children, requireChild, text, trimmedText } from '../xml/tree.js'
 import { ElementReader } from './element.js'
 import type { Stated } from './element.js'
 import {
@@ -366,6 +366,8 @@ function readMeasureStyle(
       })
     }
     if (edge === 'stop') {
+      // A stop restates the count of the sign it closes.
+      text(repeat)
       for (const staff of staves) {
         reading.measureRepeats.push({ edge: 'stop', staff, element: repeat })
       }
@@ -471,8 +473,13 @@ function readTime(
 
   // <senza-misura> writes unmetered music, which MNX cannot state, so it
   // reads as a statement with no value. The measure reports it, because the
-  // result depends on what else the measure states.
-  if (element.child('senza-misura')) return undefined
+  // result depends on what else the measure states. Its text, the symbol it
+  // is drawn with, goes with that report.
+  const senzaMisura = element.child('senza-misura')
+  if (senzaMisura) {
+    text(senzaMisura)
+    return undefined
+  }
 
   // A composite meter such as 3+2/8 is written as several beats-and-beat-type
   // pairs. MNX states one count and unit, and the first pair alone would make

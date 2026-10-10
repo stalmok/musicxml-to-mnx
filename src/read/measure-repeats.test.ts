@@ -62,6 +62,17 @@ describe('a measure repeat', () => {
     expect(warnings).toEqual([])
   })
 
+  test('says nothing of the count a stop restates', () => {
+    const { warnings } = convert(
+      part('P1', [
+        { attributes: start('1'), body: NOTE },
+        { attributes: style('<measure-repeat type="stop">1</measure-repeat>'), body: NOTE },
+      ]),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
   test('marks only the first measure of each two-measure sign', () => {
     const { mnx, warnings } = convert(
       part('P1', [
