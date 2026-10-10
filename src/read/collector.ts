@@ -194,6 +194,6 @@ export class WarningCollector {
   }
 }
 
-function articleFor(found: XmlElement): 'A' | 'An' {
+export function articleFor(found: XmlElement): 'A' | 'An' {
   return /^[aeiou]/.test(found.name) ? 'An' : 'A'
 }

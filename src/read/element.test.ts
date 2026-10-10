@@ -179,7 +179,7 @@ describe('the text sweep', () => {
     trimmedText(child(pitch, 'step')!)
     child(pitch, 'octave')
 
-    expect(reported(element)).toEqual(['The text "4" of a <octave> is not converted yet.'])
+    expect(reported(element)).toEqual(['The text "4" of an <octave> is not converted yet.'])
   })
 
   test("names the reader's own text", () => {
@@ -320,6 +320,14 @@ describe('the attribute sweep', () => {
 
     expect(reported(element)).toEqual([
       'The "placement" attribute of a <slur> is not converted yet.',
+    ])
+  })
+
+  test('names an element whose name opens with a vowel with "an"', () => {
+    const element = new ElementReader(parseXmlRoot('<ending system="only-top"/>'))
+
+    expect(reported(element)).toEqual([
+      'The "system" attribute of an <ending> is not converted yet.',
     ])
   })
 

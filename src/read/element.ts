@@ -4,6 +4,7 @@
 // path that skips a child reports it. The only hand-kept entries are skip()
 // calls, for a child accounted for elsewhere, and each one says why.
 
+import { articleFor } from './collector.js'
 import type { ReportContext, WarningCollector } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
 import {
@@ -81,7 +82,7 @@ export function reportUnreadAttributes(
     const loss = attributeLoss(element.name, name)
     warnings.add(
       loss.code,
-      `The "${name}" attribute of a <${element.name}> ${loss.ending}`,
+      `The "${name}" attribute of ${articleFor(element).toLowerCase()} <${element.name}> ${loss.ending}`,
       context,
       element,
       name,
@@ -219,7 +220,7 @@ function reportUnreadText(
   const loss = elementLoss(element.name)
   warnings.add(
     loss.code,
-    `The text "${written}" of a <${element.name}> ${loss.ending}`,
+    `The text "${written}" of ${articleFor(element).toLowerCase()} <${element.name}> ${loss.ending}`,
     context,
     element,
   )
