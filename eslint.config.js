@@ -57,7 +57,8 @@ export default tseslint.config(
       'no-restricted-syntax': [
         'error',
         {
-          selector: 'MemberExpression[property.name="rawText"]',
+          selector:
+            'MemberExpression[property.name="rawText"], MemberExpression[property.value="rawText"], ObjectPattern > Property[key.name="rawText"]',
           message: 'Read text through text() or trimmedText() from src/xml/tree.ts.',
         },
       ],
