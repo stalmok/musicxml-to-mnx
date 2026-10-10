@@ -810,6 +810,7 @@ export class MeasureBuilder {
     if (restFills(layerOf(voice))) throw restBesideNotes(path, line)
 
     const builder = layerOf(voice)
+    this.#writeAt()
     this.#fillGap(builder)
 
     builder.tuplets.list().push(event)
