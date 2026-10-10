@@ -739,7 +739,8 @@ function readPartNames(root: ElementReader, warnings: WarningCollector): PartLis
         for (const midi of scorePart.blocks('midi-instrument')) {
           const midiId = attribute(midi.element, 'id')
           if (midiId === undefined || !named.has(midiId)) continue
-          const stated = child(midi.element, 'midi-unpitched')?.text.trim() ?? ''
+          const unpitched = child(midi.element, 'midi-unpitched')
+          const stated = unpitched ? trimmedText(unpitched) : ''
           // MusicXML numbers these from 1 and MIDI from 0.
           const written = parseWholeNumber(stated)
           if (written === undefined) continue
@@ -929,7 +930,10 @@ function soundingVoices(measure: XmlElement): (string | undefined)[] {
   return peeking(() =>
     children(measure, 'note')
       .filter((note) => !child(note, 'rest') && !child(note, 'chord'))
-      .map((note) => child(note, 'voice')?.text.trim()),
+      .map((note) => {
+        const voice = child(note, 'voice')
+        return voice && trimmedText(voice)
+      }),
   )
 }
 

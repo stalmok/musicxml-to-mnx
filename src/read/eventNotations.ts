@@ -6,7 +6,7 @@
 import type { BowDirectionMarking, MarkingKind } from '../model/score.js'
 import type { WarningCode } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
-import { attribute, children } from '../xml/tree.js'
+import { attribute, children, peeking, trimmedText } from '../xml/tree.js'
 import type { ReportContext, WarningCollector } from './collector.js'
 import { isPresentationAttribute } from './element.js'
 import type { ElementReader } from './element.js'
@@ -194,7 +194,8 @@ function statedForm(found: XmlElement): unknown[] {
   const names = Object.keys(stated)
     .filter((name) => !isPresentationAttribute(name))
     .sort()
-  const text = found.text.trim()
+  // Compared, not read: the note that converts the element reads it.
+  const text = peeking(() => trimmedText(found))
   const count = parseWholeNumber(text)
   return [
     found.name,

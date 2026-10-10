@@ -28,7 +28,7 @@ function event(id: string, levels: string, beamCount?: number): BeamedEvent {
     if (!isBeamValue(kind)) throw new Error(`"${kind}" is not a beam marker`)
     markers.set(Number(level), {
       kind,
-      element: { name: 'beam', attributes: {}, children: [], text: kind, line: 1 },
+      element: { name: 'beam', attributes: {}, children: [], rawText: kind, line: 1 },
     })
     deepest = Math.max(deepest, Number(level))
   }

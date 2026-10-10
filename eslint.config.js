@@ -48,5 +48,20 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // The reader reads an element's text through text() and trimmedText() in
+    // src/xml/tree.ts, which record the read for the sweep.
+    files: ['src/**/*.ts'],
+    ignores: ['src/xml/**', '**/*.test.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'MemberExpression[property.name="rawText"]',
+          message: 'Read text through text() or trimmedText() from src/xml/tree.ts.',
+        },
+      ],
+    },
+  },
   prettier, // must stay last, because it disables rules that conflict with Prettier
 )

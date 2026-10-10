@@ -11,6 +11,9 @@ import {
   readWholeElement,
   requireAttribute,
   requireChild,
+  text,
+  trimmedText,
+  unreadText,
   wasRead,
 } from './tree.js'
 
@@ -188,5 +191,48 @@ describe('peeking', () => {
     })
 
     expect(element.children.some(wasRead)).toBe(false)
+  })
+})
+
+describe('the text record', () => {
+  const lyric = () => parseXmlRoot('<lyric><text> la </text><syllabic>end</syllabic></lyric>')
+
+  test('gives the text as written, and trimmed', () => {
+    const [sung, syllabic] = lyric().children
+
+    expect(text(sung!)).toBe(' la ')
+    expect(trimmedText(syllabic!)).toBe('end')
+  })
+
+  test('gives the trimmed text nothing read', () => {
+    const [sung, syllabic] = lyric().children
+
+    expect([unreadText(sung!), unreadText(syllabic!)]).toEqual(['la', 'end'])
+  })
+
+  test('gives nothing for text something read', () => {
+    const [sung, syllabic] = lyric().children
+    text(sung!)
+    trimmedText(syllabic!)
+
+    expect([unreadText(sung!), unreadText(syllabic!)]).toEqual([undefined, undefined])
+  })
+
+  test('gives nothing for whitespace', () => {
+    expect(unreadText(parseXmlRoot('<lyric>\n  <text>la</text>\n</lyric>'))).toBeUndefined()
+  })
+
+  test('records no text a read looking ahead finds', () => {
+    const [sung] = lyric().children
+    peeking(() => text(sung!))
+
+    expect(unreadText(sung!)).toBe('la')
+  })
+
+  test('records the text of an element read whole', () => {
+    const element = lyric()
+    readWholeElement(element)
+
+    expect(element.children.map(unreadText)).toEqual([undefined, undefined])
   })
 })

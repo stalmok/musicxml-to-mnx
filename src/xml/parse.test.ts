@@ -24,7 +24,7 @@ describe('parseXmlRoot', () => {
   test('exposes the text content of a leaf element', () => {
     const root = parseXmlRoot('<pitch><step>C</step></pitch>')
 
-    expect(root.children[0]?.text).toBe('C')
+    expect(root.children[0]?.rawText).toBe('C')
   })
 
   // Readers that want a number or a keyword trim the text. Lyric text keeps
@@ -32,13 +32,13 @@ describe('parseXmlRoot', () => {
   test('keeps text exactly as written, whitespace and all', () => {
     const root = parseXmlRoot('<divisions>\n  24\n</divisions>')
 
-    expect(root.text).toBe('\n  24\n')
+    expect(root.rawText).toBe('\n  24\n')
   })
 
   test('takes no text from element children', () => {
     const root = parseXmlRoot('<lyric>lead <syllabic>single</syllabic> tail</lyric>')
 
-    expect(root.text).toBe('lead  tail')
+    expect(root.rawText).toBe('lead  tail')
   })
 
   test('does not let a document-supplied attribute name inherit from Object', () => {
@@ -62,20 +62,20 @@ describe('parseXmlRoot', () => {
   test('reads a CDATA section as text', () => {
     const root = parseXmlRoot('<credit-words><![CDATA[Bach & Sons <1750>]]></credit-words>')
 
-    expect(root.text).toBe('Bach & Sons <1750>')
+    expect(root.rawText).toBe('Bach & Sons <1750>')
   })
 
   test('joins text written either side of a CDATA section', () => {
     const root = parseXmlRoot('<credit-words>Bach <![CDATA[&]]> Sons</credit-words>')
 
-    expect(root.text).toBe('Bach & Sons')
+    expect(root.rawText).toBe('Bach & Sons')
   })
 
   test('ignores comments and processing instructions', () => {
     const root = parseXmlRoot('<part><!-- a note --><?php ?><measure/></part>')
 
     expect(root.children.map((c) => c.name)).toEqual(['measure'])
-    expect(root.text).toBe('')
+    expect(root.rawText).toBe('')
   })
 
   test('accepts a document with an XML declaration and a DOCTYPE', () => {
@@ -180,7 +180,7 @@ describe('parseXmlRoot resists hostile documents', () => {
 
     let text: string | undefined
     try {
-      text = parseXmlRoot(billionLaughs).text
+      text = parseXmlRoot(billionLaughs).rawText
     } catch (e) {
       expect(e).toBeInstanceOf(MusicXMLError)
     }
@@ -208,6 +208,6 @@ describe('parseXmlRoot resists hostile documents', () => {
   test('still resolves the five entities XML itself defines', () => {
     const root = parseXmlRoot('<credit-words>Bach &amp; Sons &lt;1750&gt;</credit-words>')
 
-    expect(root.text).toBe('Bach & Sons <1750>')
+    expect(root.rawText).toBe('Bach & Sons <1750>')
   })
 })

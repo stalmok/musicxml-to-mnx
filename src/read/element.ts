@@ -6,7 +6,15 @@
 
 import type { ReportContext, WarningCollector } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
-import { attribute, child, children, readAttributeNames, wasRead } from '../xml/tree.js'
+import {
+  attribute,
+  child,
+  children,
+  readAttributeNames,
+  trimmedText,
+  unreadText,
+  wasRead,
+} from '../xml/tree.js'
 import { attributeLoss, elementLoss } from './unrepresentable.js'
 
 // Attributes that state where or how something is drawn rather than what it
@@ -176,6 +184,7 @@ export class ElementReader {
   /** Everything this reader never looked at, reported as a loss. */
   reportUnread(warnings: WarningCollector, context: ReportContext): void {
     reportUnreadAttributes(this.element, warnings, context)
+    reportUnreadText(this.element, warnings, context)
 
     // A block wraps its own reader, which sweeps it below; a plain-read
     // child has no reader of its own, so it is swept here. An unread child is
@@ -200,6 +209,22 @@ function reportUnreadElement(
   warnings.add(loss.code, `<${element.name}> ${loss.ending}`, context, element)
 }
 
+function reportUnreadText(
+  element: XmlElement,
+  warnings: WarningCollector,
+  context: ReportContext,
+): void {
+  const written = unreadText(element)
+  if (written === undefined) return
+  const loss = elementLoss(element.name)
+  warnings.add(
+    loss.code,
+    `The text "${written}" of a <${element.name}> ${loss.ending}`,
+    context,
+    element,
+  )
+}
+
 // A child read plainly is read with the tree accessors, which record what
 // they read at every depth.
 function reportUnreadBelow(
@@ -208,6 +233,7 @@ function reportUnreadBelow(
   context: ReportContext,
 ): void {
   reportUnreadAttributes(element, warnings, context)
+  reportUnreadText(element, warnings, context)
   for (const found of element.children) {
     if (wasRead(found)) reportUnreadBelow(found, warnings, context)
     else reportUnreadElement(found, warnings, context)
@@ -225,7 +251,7 @@ function reportUnreadBelow(
  */
 export function drawnName(reader: ElementReader, tag: string): string | undefined {
   const element = reader.child(tag)
-  const text = element?.text.trim()
+  const text = element && trimmedText(element)
   const hidden = element !== undefined && attribute(element, 'print-object') === 'no'
   return text && !hidden ? text : undefined
 }

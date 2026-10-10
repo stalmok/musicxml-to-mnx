@@ -421,6 +421,12 @@ describe('the percussion, TAB, jianpu and "none" clef signs', () => {
     expect(warnings[0]?.context.measure).toBe(1)
   })
 
+  test('reports a TAB clef once, with the line it sits on', () => {
+    const { warnings } = read(withSign('TAB', '<line>5</line>'))
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:clef-sign'])
+  })
+
   // MusicXML 4.0 deprecates the "none" sign for print-object="no", and reads
   // the staff as treble.
   test('writes a "none" clef as a hidden treble clef', () => {

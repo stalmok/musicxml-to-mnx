@@ -17,10 +17,11 @@ export interface XmlElement {
   readonly children: readonly XmlElement[]
   /**
    * Direct text content as written, without the text of element children.
-   * Not trimmed, because spaces in lyric text are significant. A number or a
-   * keyword reads `trimmedText`.
+   * Not trimmed, because spaces in lyric text are significant. The reader
+   * reads it through text() or trimmedText() in tree.ts, which record the
+   * read.
    */
-  readonly text: string
+  readonly rawText: string
   /** 1-based line in the source document. */
   readonly line: number
 }
@@ -70,7 +71,7 @@ function convertElement(element: SourceElement, starts: readonly number[]): XmlE
     // "constructor" or "toString", gives undefined, not an inherited function.
     attributes: Object.assign(Object.create(null) as Record<string, string>, element.attributes),
     children,
-    text,
+    rawText: text,
     line,
   }
 }

@@ -297,6 +297,17 @@ describe('fermatas', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:fermata'])
   })
 
+  test('covers only the fermatas after the first with that warning', () => {
+    const { warnings } = read(
+      note('<fermata type="upright" color="#FF0000"/><fermata color="#FF0000">square</fermata>'),
+    )
+
+    expect(warnings.map((w) => [w.code, w.attribute])).toEqual([
+      ['unrepresentable:fermata', undefined],
+      ['unsupported:attribute', 'color'],
+    ])
+  })
+
   test('states none where the note carries none', () => {
     const { events } = read(note())
 

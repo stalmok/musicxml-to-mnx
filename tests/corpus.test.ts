@@ -165,10 +165,10 @@ function sourceHairpins(root: XmlElement): string[] {
 
           for (const item of measure.children) {
             const durationOf = () =>
-              Number(item.children.find((c) => c.name === 'duration')?.text.trim() ?? '0')
+              Number(item.children.find((c) => c.name === 'duration')?.rawText.trim() ?? '0')
 
             if (item.name === 'attributes') {
-              const stated = item.children.find((c) => c.name === 'divisions')?.text.trim()
+              const stated = item.children.find((c) => c.name === 'divisions')?.rawText.trim()
               if (stated) divisions = Number(stated)
             } else if (item.name === 'backup') {
               position -= durationOf()
@@ -189,7 +189,7 @@ function sourceHairpins(root: XmlElement): string[] {
 
               // The converter moves a direction by its offset, so this must too.
               const offset = Number(
-                item.children.find((c) => c.name === 'offset')?.text.trim() ?? '0',
+                item.children.find((c) => c.name === 'offset')?.rawText.trim() ?? '0',
               )
               // Anything else a wedge can be, such as a point partway along
               // one, is not an end and is not converted either.
@@ -200,7 +200,7 @@ function sourceHairpins(root: XmlElement): string[] {
                 kind: type === 'stop' ? 'stop' : 'start',
                 wedge: type === 'crescendo' ? 'increasing' : 'decreasing',
                 number: wedge.attributes.number ?? '1',
-                staff: item.children.find((c) => c.name === 'staff')?.text.trim() ?? '',
+                staff: item.children.find((c) => c.name === 'staff')?.rawText.trim() ?? '',
                 measure: measureIndex,
                 position: (position + offset) / (divisions * 4),
                 order: ends.length,
@@ -323,10 +323,10 @@ function sourceOttavaSpans(root: XmlElement): string[] {
 
           for (const item of measure.children) {
             const durationOf = () =>
-              Number(item.children.find((c) => c.name === 'duration')?.text.trim() ?? '0')
+              Number(item.children.find((c) => c.name === 'duration')?.rawText.trim() ?? '0')
 
             if (item.name === 'attributes') {
-              const stated = item.children.find((c) => c.name === 'divisions')?.text.trim()
+              const stated = item.children.find((c) => c.name === 'divisions')?.rawText.trim()
               if (stated) divisions = Number(stated)
             } else if (item.name === 'backup') {
               position -= durationOf()
@@ -351,14 +351,14 @@ function sourceOttavaSpans(root: XmlElement): string[] {
 
               // The converter moves a direction by its offset, so this must too.
               const offset = Number(
-                item.children.find((c) => c.name === 'offset')?.text.trim() ?? '0',
+                item.children.find((c) => c.name === 'offset')?.rawText.trim() ?? '0',
               )
               const size = shift.attributes.size ?? '8'
               ends.push({
                 kind: type === 'stop' ? 'stop' : 'start',
                 value: octaves.get(size)?.[type],
                 number: shift.attributes.number ?? '1',
-                staff: item.children.find((c) => c.name === 'staff')?.text.trim() ?? '',
+                staff: item.children.find((c) => c.name === 'staff')?.rawText.trim() ?? '',
                 measure: measureIndex,
                 position: (position + offset) / (divisions * 4),
                 order: ends.length,
@@ -407,7 +407,7 @@ function sourceWordings(root: XmlElement): string[] {
   const found: string[] = []
   const walk = (element: XmlElement): void => {
     if (element.name === 'other-dynamics') {
-      const wording = element.text.trim()
+      const wording = element.rawText.trim()
       if (wording !== '') found.push(wording)
     }
     for (const child of element.children) walk(child)

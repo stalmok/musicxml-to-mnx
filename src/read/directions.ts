@@ -29,7 +29,7 @@ import type {
 import type { NamedSegno, DalSegno } from './jumps.js'
 import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
-import { attribute, trimmedText } from '../xml/tree.js'
+import { attribute, text, trimmedText } from '../xml/tree.js'
 import { readColor } from './color.js'
 import { divisionsInForce } from './divisions.js'
 import type { ElementReader, Stated } from './element.js'
@@ -786,7 +786,7 @@ class PendingWording {
     if (first === undefined) return undefined
     const held = {
       text: this.#pieces
-        .map((piece) => piece.text)
+        .map((piece) => text(piece))
         .join('')
         .trim(),
       element: first,
@@ -924,11 +924,11 @@ function readMetronome(
   const dots = reader.children('beat-unit-dot').length
 
   // The mark converts to nothing, and the warning already names the whole of
-  // it, so the parts that state it go with it rather than being reported one
-  // by one. <metronome-arrows> is among them here, and only here: on a mark
-  // that does convert, the arrows are a loss of their own.
+  // it, so every part that states it goes with it rather than being reported
+  // one by one. <metronome-arrows> is among them here, and only here: on a
+  // mark that does convert, the arrows are a loss of their own.
   const dropWholeMark = (): Tempo[] => {
-    reader.skip('metronome-note', 'metronome-relation', 'metronome-arrows', 'beat-unit-tied')
+    reader.skip(...element.children.map((found) => found.name))
     return []
   }
 

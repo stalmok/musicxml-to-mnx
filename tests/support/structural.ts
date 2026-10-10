@@ -140,7 +140,7 @@ export function sourceMicrotones(root: XmlElement): number {
         const alter = note.children
           .find((c) => c.name === 'pitch')
           ?.children.find((c) => c.name === 'alter')
-          ?.text.trim()
+          ?.rawText.trim()
         if (alter !== undefined && !Number.isInteger(Number(alter))) count += 1
       }
     }
@@ -239,7 +239,7 @@ interface SourceTranspose {
 function statedTranspose(attributes: XmlElement): SourceTranspose | undefined {
   for (const transpose of attributes.children.filter((c) => c.name === 'transpose')) {
     const number = (name: string) => {
-      const text = transpose.children.find((c) => c.name === name)?.text.trim() ?? ''
+      const text = transpose.children.find((c) => c.name === name)?.rawText.trim() ?? ''
       return text === '' ? 0 : Number(text)
     }
     const octaves = number('octave-change')
@@ -309,12 +309,12 @@ export function sourcePitches(root: XmlElement): string[] {
 
           for (const item of measure.children) {
             const durationOf = () =>
-              Number(item.children.find((c) => c.name === 'duration')?.text.trim() ?? '0') /
+              Number(item.children.find((c) => c.name === 'duration')?.rawText.trim() ?? '0') /
               (divisions * 4)
 
             if (item.name === 'attributes') {
               transpose = statedTranspose(item) ?? transpose
-              const stated = item.children.find((c) => c.name === 'divisions')?.text.trim()
+              const stated = item.children.find((c) => c.name === 'divisions')?.rawText.trim()
               if (stated) divisions = Number(stated)
               continue
             }
@@ -330,7 +330,7 @@ export function sourcePitches(root: XmlElement): string[] {
 
             const isChord = item.children.some((c) => c.name === 'chord')
             const isGrace = item.children.some((c) => c.name === 'grace')
-            const stated = item.children.find((c) => c.name === 'voice')?.text.trim() ?? ''
+            const stated = item.children.find((c) => c.name === 'voice')?.rawText.trim() ?? ''
             const voice = stated === '' && isChord ? voiceInForce : stated
             if (!isChord) voiceInForce = voice
 
@@ -379,7 +379,7 @@ export function sourcePitches(root: XmlElement): string[] {
             const pitch = item.children.find((c) => c.name === 'pitch')
             if (!pitch) continue
             const text = (name: string) =>
-              pitch.children.find((c) => c.name === name)?.text.trim() ?? ''
+              pitch.children.find((c) => c.name === name)?.rawText.trim() ?? ''
             line.pitches.push(
               pitchKey(
                 sounded(
@@ -434,11 +434,11 @@ export function sourceMeasureLengths(root: XmlElement): number[][] {
 
       for (const item of measure.children) {
         const durationOf = () =>
-          Number(item.children.find((c) => c.name === 'duration')?.text.trim() ?? '0') /
+          Number(item.children.find((c) => c.name === 'duration')?.rawText.trim() ?? '0') /
           (divisions * 4)
 
         if (item.name === 'attributes') {
-          const stated = item.children.find((c) => c.name === 'divisions')?.text.trim()
+          const stated = item.children.find((c) => c.name === 'divisions')?.rawText.trim()
           if (stated) divisions = Number(stated)
         } else if (item.name === 'backup') {
           position -= durationOf()
@@ -509,7 +509,7 @@ function voicesWarned(
     let inForce = ''
     const atLine = new Set<string>()
     for (const note of measure?.children.filter((c) => c.name === 'note') ?? []) {
-      const stated = note.children.find((c) => c.name === 'voice')?.text.trim() ?? ''
+      const stated = note.children.find((c) => c.name === 'voice')?.rawText.trim() ?? ''
       const isChord = note.children.some((c) => c.name === 'chord')
       const own = stated === '' && isChord ? inForce : stated
       if (!isChord) inForce = own
@@ -756,14 +756,14 @@ function placeEvents(
  * read from the source must use the written value too.
  */
 function drawnLength(note: XmlElement): number | undefined {
-  const type = note.children.find((c) => c.name === 'type')?.text.trim()
+  const type = note.children.find((c) => c.name === 'type')?.rawText.trim()
   const base = type === undefined ? undefined : BASE_LENGTHS[type]
   if (base === undefined) return undefined
 
   const dots = note.children.filter((c) => c.name === 'dot').length
   const modification = note.children.find((c) => c.name === 'time-modification')
   const stated = (name: string): number => {
-    const text = modification?.children.find((c) => c.name === name)?.text.trim()
+    const text = modification?.children.find((c) => c.name === name)?.rawText.trim()
     return text === undefined || text === '' ? 1 : Number(text)
   }
   const actual = stated('actual-notes')
@@ -790,11 +790,11 @@ export function sourceLyricPlaces(root: XmlElement): string[] {
 
           for (const item of measure.children) {
             const durationOf = () =>
-              Number(item.children.find((c) => c.name === 'duration')?.text.trim() ?? '0') /
+              Number(item.children.find((c) => c.name === 'duration')?.rawText.trim() ?? '0') /
               (divisions * 4)
 
             if (item.name === 'attributes') {
-              const stated = item.children.find((c) => c.name === 'divisions')?.text.trim()
+              const stated = item.children.find((c) => c.name === 'divisions')?.rawText.trim()
               if (stated) divisions = Number(stated)
               continue
             }
@@ -828,7 +828,7 @@ export function sourceLyricPlaces(root: XmlElement): string[] {
               // corpus run fails when one changes without the other.
               const text = lyric.children
                 .filter((c) => c.name === 'text' || c.name === 'elision')
-                .map((c) => c.text)
+                .map((c) => c.rawText)
                 .join('')
                 .replace(/[ \t\r\n]*[\r\n][ \t\r\n]*/g, '')
                 .trim()
@@ -1050,11 +1050,11 @@ export function sourceSlurSpans(root: XmlElement): Set<string> {
 
           for (const item of measure.children) {
             const durationOf = () =>
-              Number(item.children.find((c) => c.name === 'duration')?.text.trim() ?? '0') /
+              Number(item.children.find((c) => c.name === 'duration')?.rawText.trim() ?? '0') /
               (divisions * 4)
 
             if (item.name === 'attributes') {
-              const stated = item.children.find((c) => c.name === 'divisions')?.text.trim()
+              const stated = item.children.find((c) => c.name === 'divisions')?.rawText.trim()
               if (stated) divisions = Number(stated)
               continue
             }
@@ -1070,7 +1070,7 @@ export function sourceSlurSpans(root: XmlElement): Set<string> {
 
             const isChord = item.children.some((c) => c.name === 'chord')
             const isGrace = item.children.some((c) => c.name === 'grace')
-            const stated = item.children.find((c) => c.name === 'voice')?.text.trim() ?? ''
+            const stated = item.children.find((c) => c.name === 'voice')?.rawText.trim() ?? ''
             const voice = stated === '' && isChord ? voiceInForce : stated
             if (!isChord) voiceInForce = voice
 
@@ -1250,13 +1250,13 @@ export function differingLyricLines(root: XmlElement): string[] {
           // verse elided across two <text>s is compared whole. A syllabic of
           // "single" and no syllabic both mean a syllable on its own.
           const written = pieces
-            .map((c) => c.text)
+            .map((c) => c.rawText)
             .join('')
             .trim()
           // A syllable of only whitespace draws nothing, so the reader states
           // no verse for it.
           if (written === '') continue
-          const spelling = lyric.children.find((c) => c.name === 'syllabic')?.text.trim() ?? ''
+          const spelling = lyric.children.find((c) => c.name === 'syllabic')?.rawText.trim() ?? ''
           const verse = `${written}/${spelling === 'single' ? '' : spelling}`
           const seen = perLine.get(line)
           if (seen !== undefined && seen !== verse) {

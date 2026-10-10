@@ -43,12 +43,25 @@ export function wasRead(element: XmlElement): boolean {
   return elementsRead.has(element)
 }
 
-/**
- * An element's text without surrounding whitespace, for a number or a
- * keyword. Text whose spacing matters (lyrics) reads `element.text`.
- */
+// The elements whose text something read. The sweep in read/element.ts
+// reports text that nothing read.
+const textRead = new WeakSet<XmlElement>()
+
+/** An element's direct text as written, for text whose spacing matters. */
+export function text(element: XmlElement): string {
+  if (recording) textRead.add(element)
+  return element.rawText
+}
+
+/** An element's text without surrounding whitespace, for a number or a keyword. */
 export function trimmedText(element: XmlElement): string {
-  return element.text.trim()
+  return text(element).trim()
+}
+
+/** The element's text, trimmed, where it has some that nothing read. */
+export function unreadText(element: XmlElement): string | undefined {
+  const written = element.rawText.trim()
+  return written === '' || textRead.has(element) ? undefined : written
 }
 
 export function children(element: XmlElement, name: string): readonly XmlElement[] {
@@ -104,12 +117,13 @@ export function peekAttribute(element: XmlElement, name: string): string | undef
 }
 
 /**
- * Records an element as read whole: every attribute on it and every element
- * below it. For an element a warning names whole, so the sweep does not
+ * Records an element as read whole: its text, every attribute on it and every
+ * element below it. For an element a warning names whole, so the sweep does not
  * report its parts a second time.
  */
 export function readWholeElement(element: XmlElement): void {
   recordElement(element)
+  text(element)
   for (const name of Object.keys(element.attributes)) attribute(element, name)
   for (const found of element.children) readWholeElement(found)
 }

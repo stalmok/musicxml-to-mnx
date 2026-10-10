@@ -5,7 +5,7 @@
 import { describe, expect, test } from 'vitest'
 import { WarningCollector } from './collector.js'
 import { parseXmlRoot } from '../xml/parse.js'
-import { attribute, child, readWholeElement } from '../xml/tree.js'
+import { attribute, child, peeking, readWholeElement, trimmedText } from '../xml/tree.js'
 import { ElementReader } from './element.js'
 
 function reader(body: string): ElementReader {
@@ -96,8 +96,8 @@ describe('below a child read plainly', () => {
   test('names an element below it that nothing read', () => {
     const element = reader('<pitch><step>C</step><alter>1</alter><octave>4</octave></pitch>')
     const pitch = element.child('pitch')!
-    child(pitch, 'step')
-    child(pitch, 'octave')
+    trimmedText(child(pitch, 'step')!)
+    trimmedText(child(pitch, 'octave')!)
 
     expect(reported(element)).toEqual(['<alter> is not converted yet.'])
   })
@@ -109,7 +109,7 @@ describe('below a child read plainly', () => {
     )
     const tuplet = element.child('tuplet')!
     attribute(tuplet, 'type')
-    child(child(tuplet, 'tuplet-actual')!, 'tuplet-number')
+    trimmedText(child(child(tuplet, 'tuplet-actual')!, 'tuplet-number')!)
 
     expect(reported(element)).toEqual(['<tuplet-type> is not converted yet.'])
   })
@@ -121,7 +121,7 @@ describe('below a child read plainly', () => {
     )
     const tuplet = element.child('tuplet')!
     attribute(tuplet, 'type')
-    child(child(tuplet, 'tuplet-actual')!, 'tuplet-number')
+    trimmedText(child(child(tuplet, 'tuplet-actual')!, 'tuplet-number')!)
 
     expect(reported(element)).toEqual([
       'The "color" attribute of a <tuplet-number> is not converted yet.',
@@ -161,6 +161,71 @@ describe('below a child read plainly', () => {
     element.readWhole(element.child('time-modification')!)
 
     expect(reported(element)).toEqual([])
+  })
+})
+
+// Text is recorded as it is read, as attributes are.
+describe('the text sweep', () => {
+  test('names the text of a child nothing read', () => {
+    const element = reader('<stem>up</stem>')
+    element.child('stem')
+
+    expect(reported(element)).toEqual(['The text "up" of a <stem> is not converted yet.'])
+  })
+
+  test('names the text of an element below a child read plainly', () => {
+    const element = reader('<pitch><step>C</step><octave>4</octave></pitch>')
+    const pitch = element.child('pitch')!
+    trimmedText(child(pitch, 'step')!)
+    child(pitch, 'octave')
+
+    expect(reported(element)).toEqual(['The text "4" of a <octave> is not converted yet.'])
+  })
+
+  test("names the reader's own text", () => {
+    const element = new ElementReader(parseXmlRoot('<stem>up</stem>'))
+
+    expect(reported(element)).toEqual(['The text "up" of a <stem> is not converted yet.'])
+  })
+
+  test('says nothing of text something read', () => {
+    const element = reader('<stem>up</stem>')
+    trimmedText(element.child('stem')!)
+
+    expect(reported(element)).toEqual([])
+  })
+
+  test('says nothing of whitespace', () => {
+    const element = reader('<pitch>\n  <step>C</step>\n</pitch>')
+    trimmedText(child(element.child('pitch')!, 'step')!)
+
+    expect(reported(element)).toEqual([])
+  })
+
+  test('says nothing of text an element read whole holds', () => {
+    const element = reader('<lyric><text>la</text></lyric>')
+    readWholeElement(element.child('lyric')!)
+
+    expect(reported(element)).toEqual([])
+  })
+
+  test('names text a read looking ahead found', () => {
+    const element = reader('<voice>1</voice>')
+    const voice = element.child('voice')!
+    peeking(() => trimmedText(voice))
+
+    expect(reported(element)).toEqual(['The text "1" of a <voice> is not converted yet.'])
+  })
+
+  test('reports the text of an element with no home as a format limit', () => {
+    const element = reader('<words>dolce</words>')
+    element.child('words')
+    const warnings = new WarningCollector()
+    element.reportUnread(warnings, { measure: 1 })
+
+    expect(warnings.list().map((warning) => [warning.code, warning.message])).toEqual([
+      ['unrepresentable:element', 'The text "dolce" of a <words> cannot be expressed in MNX.'],
+    ])
   })
 })
 

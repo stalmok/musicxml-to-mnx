@@ -108,8 +108,8 @@ function displayStaffPosition(
   const stepElement = child(element, 'display-step')
   const octaveElement = child(element, 'display-octave')
 
-  const step = stepElement?.text.trim().toUpperCase() ?? ''
-  const octave = parseWholeNumber(octaveElement?.text.trim() ?? '')
+  const step = stepElement ? trimmedText(stepElement).toUpperCase() : ''
+  const octave = parseWholeNumber(octaveElement ? trimmedText(octaveElement) : '')
   const clef = state.clefs.get(staff ?? 1)
   if (!isStep(step) || octave === undefined || octave < 0 || octave > 9 || clef === undefined) {
     return undefined
@@ -327,7 +327,8 @@ export function readNote(
   // and the drawn side live only on it, so it is read rather than skipped.
   const tieds = notations.flatMap((block) => block.children('tied'))
 
-  const namedVoice = element.child('voice')?.text.trim()
+  const voiceElement = element.child('voice')
+  const namedVoice = voiceElement && trimmedText(voiceElement)
   const duration = readDuration(element, state, warnings, context, path)
   const written = readWrittenValue(element, path)
   const graceElement = element.child('grace')
@@ -1411,7 +1412,7 @@ function graceSideToKeep(
     (child) =>
       child.name === 'beam' &&
       (attribute(child, 'number') ?? '1') === '1' &&
-      ['continue', 'end'].includes(child.text.trim()),
+      ['continue', 'end'].includes(trimmedText(child)),
   )
   if (!joined) return side
   warnings.add(
@@ -1575,6 +1576,9 @@ function readSingleTremolo(
   context: ReportContext,
 ): TremoloMarking | undefined {
   const placement = placementOf(found)
+  // Read before the type is checked, so the count of a dropped tremolo is not
+  // reported apart from it.
+  const text = trimmedText(found)
   // An unmeasured tremolo has no beam count, and MNX states a tremolo as a
   // count of beams.
   if (type === 'unmeasured') {
@@ -1591,7 +1595,6 @@ function readSingleTremolo(
     return undefined
   }
 
-  const text = trimmedText(found)
   // A count that is not a tremolo a stem can carry drops the single-note mark
   // rather than degrading it.
   const marks = tremoloBeamCount(text)
@@ -1700,12 +1703,9 @@ export function readFermataAt(
   if (!first) return undefined
 
   if (found.length > 1) {
-    // The one warning accounts for the extras whole, facing and side
+    // The one warning accounts for the extras whole, facing, side and shape
     // included.
-    for (const extra of found.slice(1)) {
-      attribute(extra, 'type')
-      attribute(extra, 'placement')
-    }
+    for (const extra of found.slice(1)) readWholeElement(extra)
     warnings.add(
       'unrepresentable:fermata',
       'More than one fermata is written at the same place, and MNX states one. ' +
@@ -1800,7 +1800,7 @@ function readStemDirection(
   const stem = element.child('stem')
   if (!stem) return undefined
 
-  const direction = stem.text.trim()
+  const direction = trimmedText(stem)
   if (direction === 'up' || direction === 'down') return direction
   if (statesNoStem(stem) && element.child('rest')) return undefined
 
@@ -1822,7 +1822,7 @@ function readStemDirection(
 
 /** A rest is drawn with no stem, so a stem of none on one states nothing. */
 function statesNoStem(stem: XmlElement): boolean {
-  return stem.text.trim() === 'none'
+  return trimmedText(stem) === 'none'
 }
 
 const ENCLOSURES = new Map<string, 'parentheses' | 'brackets'>([
@@ -2218,16 +2218,16 @@ function beamMarkers(
 ): ReadonlyMap<number, BeamMarker> {
   const markers = new Map<number, BeamMarker>()
   for (const beam of element.children('beam')) {
-    // Read before the marker is checked, so the fan of a dropped marker is
-    // not reported apart from it.
+    // Read before the marker is checked, so the fan and the text of a
+    // dropped marker are not reported apart from it.
     const fan = attribute(beam, 'fan')
+    const kind = trimmedText(beam)
     // The level is the attribute; the element's own text says what the beam
     // does there, as "begin" or "end". A level MusicXML does not define draws
     // no beam, and the measure adds up without it, so the marker is dropped
     // and reported, not refused.
     const level = beamLevel(beam, warnings, context)
     if (level === undefined) continue
-    const kind = trimmedText(beam)
     if (isBeamValue(kind)) {
       reportFan(beam, fan, warnings, context)
       markers.set(level, { kind, element: beam })
@@ -2345,7 +2345,7 @@ function multiNoteTremoloOf(
 
   // Unlike the single-note kind, the pair still converts, drawn the usual way
   // with three beams.
-  const text = tremolo.text.trim()
+  const text = trimmedText(tremolo)
   let marks = tremoloBeamCount(text)
   if (marks === undefined) {
     warnings.addUndefinedText(tremolo, 'and the tremolo is drawn with three beams.', context)

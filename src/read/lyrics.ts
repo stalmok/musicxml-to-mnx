@@ -12,7 +12,7 @@
 
 import type { Lyric } from '../model/score.js'
 import type { ReportContext, WarningCollector } from './collector.js'
-import { attribute } from '../xml/tree.js'
+import { attribute, text, trimmedText } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
 import { reportHidden } from './unrepresentable.js'
 
@@ -81,7 +81,7 @@ function readVerse(
     attribute(lyric.element, 'print-object')
     // A <syllabic> over no words joins a syllable that is not there. Nothing
     // is lost, so it is read and not reported.
-    lyric.children('syllabic')
+    for (const found of lyric.children('syllabic')) lyric.readWhole(found)
     return undefined
   }
 
@@ -89,12 +89,14 @@ function readVerse(
   // visibility, so a hidden lyric is drawn and the hiding reported.
   reportHidden(lyric.element, warnings, context)
 
-  const syllabics = lyric.children('syllabic')
-  const extra = syllabics[1]
+  const [first, ...rest] = lyric.children('syllabic')
+  const [extra] = rest
   if (extra) {
     // Each <syllabic> belongs to the <text> after it, so an elided verse can
     // carry several. MNX states one type per event. Only the first survives,
-    // because it says how the syllable joins the one before it.
+    // because it says how the syllable joins the one before it. One warning
+    // covers the rest.
+    for (const found of rest) lyric.readWhole(found)
     warnings.add(
       'unrepresentable:lyric-syllabic',
       'A lyric states how each of its elided syllables joins its word, and MNX states ' +
@@ -104,11 +106,10 @@ function readVerse(
     )
   }
 
-  const first = syllabics[0]
   // No <syllabic> means the syllable stands on its own, as "single" does.
   if (!first) return { line, lyric: { text, type: undefined } }
 
-  const spelling = first.text.trim()
+  const spelling = trimmedText(first)
   if (!LYRIC_TYPES.has(spelling)) {
     warnings.add(
       'unresolved:element-value',
@@ -139,7 +140,7 @@ function joinSyllables(lyric: ElementReader): string | undefined {
 
   let joined = ''
   for (const part of lyric.element.children) {
-    if (part.name === 'text' || part.name === 'elision') joined += part.text
+    if (part.name === 'text' || part.name === 'elision') joined += text(part)
   }
   const sung = joined.replace(LAYOUT_BREAK, '').trim()
   return sung === '' ? undefined : sung

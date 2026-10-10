@@ -751,6 +751,8 @@ function readClef(
       }
     }
 
+    // The warning covers the clef, the line it sits on included.
+    element.skip('line', 'clef-octave-change')
     warnings.add(
       'unrepresentable:clef-sign',
       `A "${sign}" clef heads a staff, and MNX has no such clef. The staff ` +
