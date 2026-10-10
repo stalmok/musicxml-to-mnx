@@ -184,6 +184,9 @@ export const NO_HOME_IN_MNX: ReadonlySet<string> = new Set([
 // "element attribute". The rule is the same as for elements. Anything else
 // the sweep reports is a converter gap.
 export const NO_HOME_ATTRIBUTES: ReadonlySet<string> = new Set([
+  // The SMuFL glyph an accidental is drawn with. The schema's accidental
+  // display states whether it is shown, its enclosure and force, and no glyph.
+  'accidental smufl',
   // The side an augmentation dot is drawn on. The schema's note value is a
   // base and a count of dots, and nothing about how they are drawn.
   'dot placement',

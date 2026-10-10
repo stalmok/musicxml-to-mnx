@@ -1831,7 +1831,7 @@ const ENCLOSURES = new Map<string, 'parentheses' | 'brackets'>([
 ])
 
 // Every glyph MusicXML's <accidental> can name.
-const ACCIDENTAL_GLYPHS: ReadonlySet<string> = new Set([
+const ACCIDENTAL_GLYPHS = [
   'sharp',
   'natural',
   'flat',
@@ -1873,21 +1873,20 @@ const ACCIDENTAL_GLYPHS: ReadonlySet<string> = new Set([
   'sori',
   'koron',
   'other',
-])
+] as const
 
-// The glyph each alter is drawn with. MNX draws the accidental a note's
-// alter calls for, and states no glyph of its own. The alter is taken as
-// written: a microtone's loss is reported where its alter is read.
-const GLYPH_OF_ALTER = new Map<number, string>([
+type AccidentalGlyph = (typeof ACCIDENTAL_GLYPHS)[number]
+
+const DEFINED_GLYPHS: ReadonlySet<string> = new Set(ACCIDENTAL_GLYPHS)
+
+// The glyph each whole alter is drawn with. MNX draws the accidental a
+// note's alter calls for, and states no glyph of its own.
+const GLYPH_OF_ALTER = new Map<number, AccidentalGlyph>([
   [-3, 'triple-flat'],
   [-2, 'flat-flat'],
-  [-1.5, 'three-quarters-flat'],
   [-1, 'flat'],
-  [-0.5, 'quarter-flat'],
   [0, 'natural'],
-  [0.5, 'quarter-sharp'],
   [1, 'sharp'],
-  [1.5, 'three-quarters-sharp'],
   [2, 'double-sharp'],
   [3, 'triple-sharp'],
 ])
@@ -1956,23 +1955,26 @@ function readAccidentalDisplay(
   const accidental = element.child('accidental')
   if (!accidental) return undefined
 
-  // readPitch has already refused an alter that is not a number.
+  // readPitch has already refused an alter that is not a number. A microtone
+  // is reported where its alter is read, and its glyph goes with that loss.
   const alterElement = child(pitch, 'alter')
   const alter = alterElement ? Number(trimmedText(alterElement)) : 0
   const glyph = trimmedText(accidental)
   const drawn = GLYPH_OF_ALTER.get(alter)
-  if (!ACCIDENTAL_GLYPHS.has(glyph)) {
+  if (!DEFINED_GLYPHS.has(glyph)) {
     warnings.addUndefinedText(
       accidental,
       'and the accidental the alter calls for is drawn instead.',
       context,
     )
-  } else if (glyph !== drawn) {
-    // A SMuFL name states the same glyph more closely, and goes with it.
-    attribute(accidental, 'smufl')
+  } else if (Number.isInteger(alter) && glyph !== drawn) {
+    // A SMuFL name states the glyph more closely, and goes with it.
+    const smufl = attribute(accidental, 'smufl')
+    const named =
+      glyph === 'other' && smufl !== undefined ? `the SMuFL glyph "${smufl}"` : `"${glyph}"`
     warnings.add(
       'unrepresentable:accidental',
-      `An accidental drawn as "${glyph}" cannot be expressed in MNX, which draws the one ` +
+      `An accidental drawn as ${named} cannot be expressed in MNX, which draws the one ` +
         `the note's alter of ${String(alter)} calls for` +
         (drawn !== undefined ? `, "${drawn}".` : '.'),
       context,

@@ -172,8 +172,8 @@ describe('the glyph an accidental is drawn as', () => {
     expect(warnings).toEqual([])
   })
 
-  // The microtone is reported where the alter is read, and the glyph is the
-  // one that alter calls for.
+  // The microtone is reported where the alter is read, and its glyph goes
+  // with that report.
   test.each([
     ['-1.5', 'three-quarters-flat'],
     ['-0.5', 'quarter-flat'],
@@ -226,14 +226,53 @@ describe('the glyph an accidental is drawn as', () => {
     ])
   })
 
-  test('reports the SMuFL glyph of an other accidental along with it', () => {
+  test('names the SMuFL glyph of an other accidental', () => {
     const { warnings } = read(
       score(note('F', '1', '<accidental smufl="accSagittal5CommaUp">other</accidental>')),
     )
 
-    expect(warnings.map((w) => [w.code, w.attribute])).toEqual([
-      ['unrepresentable:accidental', undefined],
+    expect(warnings.map((w) => [w.code, w.attribute, w.message])).toEqual([
+      [
+        'unrepresentable:accidental',
+        undefined,
+        'An accidental drawn as the SMuFL glyph "accSagittal5CommaUp" cannot be expressed in ' +
+          'MNX, which draws the one the note\'s alter of 1 calls for, "sharp".',
+      ],
     ])
+  })
+
+  test.each([
+    ['<accidental smufl="accidentalNaturalSharp">natural-sharp</accidental>', '"natural-sharp"'],
+    ['<accidental>other</accidental>', '"other"'],
+  ])('names the glyph of %s', (accidental, named) => {
+    const { warnings } = read(score(note('F', '1', accidental)))
+
+    expect(warnings.map((w) => w.message)).toEqual([
+      `An accidental drawn as ${named} cannot be expressed in MNX, which draws the one the ` +
+        'note\'s alter of 1 calls for, "sharp".',
+    ])
+  })
+
+  test('reports the SMuFL glyph of an accidental the alter calls for', () => {
+    const { warnings } = read(
+      score(note('F', '1', '<accidental smufl="accidentalSharpSmall">sharp</accidental>')),
+    )
+
+    expect(warnings.map((w) => [w.code, w.attribute])).toEqual([
+      ['unrepresentable:attribute', 'smufl'],
+    ])
+  })
+
+  // An arrow or slash glyph is another way to write a microtone, and the
+  // microtone's report covers it.
+  test.each([
+    ['0.5', 'sharp-down'],
+    ['1.5', 'sharp-up'],
+    ['-0.5', 'flat-up'],
+  ])('reports only the microtone of an alter of %s drawn as %s', (alter, glyph) => {
+    const { warnings } = read(score(note('C', alter, `<accidental>${glyph}</accidental>`)))
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:microtone'])
   })
 
   test.each([

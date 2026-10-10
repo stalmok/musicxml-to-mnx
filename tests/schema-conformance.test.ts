@@ -880,6 +880,7 @@ const ATTRIBUTE_CONCEPTS: Readonly<Record<string, Concept>> = {
     words: ['fan', 'feather', 'accel', 'rit', 'spread'],
     homes: ['beam', 'beam-hook-direction'],
   },
+  'accidental smufl': { words: ['smufl', 'glyph'], homes: ['accidental-display'] },
   'metronome parentheses': {
     words: ['parentheses', 'parenthesis', 'enclosure', 'bracket'],
     homes: ['tempo'],
