@@ -38,7 +38,6 @@ import type {
   KitComponent,
   KitNote,
   Note,
-  NoteValue,
   NoteValueQuantity,
   Pitch,
   Sequence,
@@ -82,9 +81,15 @@ export interface JoinedEvent extends PlacedEvent {
   notations: readonly EventNotation[]
 }
 
-/** The same, as a chord member finds it, with the line the chord is in. */
-export interface ChordJoin extends JoinedEvent {
-  voice: VoiceLine
+/**
+ * The chord a member joins: the line it is in, the event the member is added
+ * to, and the staff that event was placed on.
+ */
+export interface ChordToJoin {
+  readonly voice: VoiceLine
+  readonly last: JoinedEvent & { readonly duration: Fraction | undefined }
+  readonly body: EventNotes
+  readonly staff: number | undefined
 }
 
 /** A grace note just put in its group, with the run its group beams within. */
@@ -116,7 +121,7 @@ function graceTypeOf(builder: VoiceBuilder): GraceType | undefined {
 /** The name a voice goes under when the source does not give it one. */
 const UNNAMED_VOICE = ''
 
-export interface VoiceBuilder {
+interface VoiceBuilder {
   /** What each event said about its beams, in the order they were read. */
   beamed: BeamedEvent[]
   /**
@@ -189,6 +194,10 @@ interface VoiceLayers {
   active: number
 }
 
+// The builder alone reaches the sequence behind a line, and makes lines.
+let layerOf: (line: VoiceLine) => VoiceBuilder
+let newLine: (name: string, layer: VoiceBuilder) => VoiceLine
+
 /**
  * The line of a voice a note is written in. The builder hands one out as the
  * note begins, and everything the note asks of its voice, or adds to it, goes
@@ -196,12 +205,21 @@ interface VoiceLayers {
  * chord's line, and a grace note the one its voice last sounded in.
  */
 export class VoiceLine {
-  constructor(
+  /** The sequence it writes. */
+  readonly #layer: VoiceBuilder
+
+  private constructor(
     /** The voice as the source named it, and '' where it names none. */
     readonly name: string,
-    /** The sequence it writes. Only the builder reaches into it. */
-    readonly layer: VoiceBuilder,
-  ) {}
+    layer: VoiceBuilder,
+  ) {
+    this.#layer = layer
+  }
+
+  static {
+    layerOf = (line) => line.#layer
+    newLine = (name, layer) => new VoiceLine(name, layer)
+  }
 
   /**
    * Where the grace group open in this line takes its time from, or nothing
@@ -209,7 +227,7 @@ export class VoiceLine {
    * group of its own, and a grace chord member has to agree with it.
    */
   graceType(): GraceType | undefined {
-    return graceTypeOf(this.layer)
+    return graceTypeOf(this.#layer)
   }
 
   /**
@@ -217,7 +235,7 @@ export class VoiceLine {
    * the measure's time, so such a line is silent through it.
    */
   holdsOnlyGraceNotes(): boolean {
-    const { content } = this.layer
+    const { content } = this.#layer
     return content.length > 0 && content.every((item) => item.kind === 'grace')
   }
 
@@ -228,7 +246,7 @@ export class VoiceLine {
    * is written with the value of the pair, so it lasts half of it.
    */
   noteFactor(): Fraction {
-    return this.layer.tuplets.noteFactor()
+    return this.#layer.tuplets.noteFactor()
   }
 
   /**
@@ -236,22 +254,22 @@ export class VoiceLine {
    * report to name.
    */
   scaledBy(): 'tuplet' | 'tremolo' | undefined {
-    return this.layer.tuplets.scaledBy()
+    return this.#layer.tuplets.scaledBy()
   }
 
   /** Whether a tuplet or a tremolo is open around a note in this line. */
   insideBracket(): boolean {
-    return this.layer.tuplets.insideBracket()
+    return this.#layer.tuplets.insideBracket()
   }
 
   /** Whether this line is inside a tuplet stated as a ratio with no bracket. */
   insideImpliedTuplet(): boolean {
-    return this.layer.tuplets.insideImplied()
+    return this.#layer.tuplets.insideImplied()
   }
 
   /** Whether a two-note tremolo is open in this line. */
   insideTremolo(): boolean {
-    return this.layer.tuplets.insideTremolo()
+    return this.#layer.tuplets.insideTremolo()
   }
 
   /**
@@ -259,7 +277,7 @@ export class VoiceLine {
    * ratio counts. False where no such tuplet is open.
    */
   impliedTupletFilled(): boolean {
-    return this.layer.tuplets.impliedFilled()
+    return this.#layer.tuplets.impliedFilled()
   }
 
   /**
@@ -267,31 +285,95 @@ export class VoiceLine {
    * stated, so the stop that matches it can be dropped with it.
    */
   dropTupletStart(number: string): void {
-    this.layer.tuplets.dropStart(number)
-  }
-
-  /** The staff the last event of this line was placed on. */
-  lastStaff(): number | undefined {
-    return this.layer.placed.at(-1)?.staff
-  }
-
-  /** The written value of the last event of this line. */
-  lastValue(): NoteValue | undefined {
-    return this.layer.last?.event.value
+    this.#layer.tuplets.dropStart(number)
   }
 
   /**
-   * Whether the last event of this line is a grace note, and nothing where
-   * the line holds no event.
+   * Closes the tremolo: two notes of one written value, together occupying
+   * twice their measured duration. Anything else is refused, because the
+   * measure would not add up.
    */
-  lastIsGrace(): boolean | undefined {
-    const { last } = this.layer
-    return last && last.duration === undefined
-  }
+  closeTremolo(
+    marker: { marks: number; element: XmlElement },
+    warnings: WarningCollector,
+    context: ReportContext,
+    path: DocumentPath,
+    line: number,
+  ): void {
+    const { marks } = marker
+    const builder = this.#layer
+    const pending = builder.tuplets.closeTremolo(path, line)
 
-  /** How long the last event of this line lasts. */
-  lastDuration(): Fraction | undefined {
-    return this.layer.last?.duration
+    // Both ends count the beams joining the pair, and there is one pair to
+    // draw.
+    if (marks !== pending.marks) {
+      warnings.add(
+        'inconsistent:tremolo',
+        'The two ends of a tremolo count different beams. The count where it starts ' +
+          'is the one converted.',
+        context,
+        marker.element,
+      )
+    }
+
+    const content = pending.list
+    const events = content.filter((item): item is Event => item.kind === 'event')
+    if (events.length !== 2 || content.length !== 2) {
+      throw new MusicXMLError(
+        'A tremolo written across two notes holds something other than two notes.',
+        { path, line },
+      )
+    }
+
+    const [first, second] = pending.durations
+    if (!first || !second || compareFractions(first, second) !== 0) {
+      throw new MusicXMLError('The two notes of a tremolo last different times.', { path, line })
+    }
+
+    // The time the tremolo occupies, stated one unit per note as MNX has it:
+    // a pair of written halves occupies two quarters. Inside a tuplet
+    // everything is stated in written values the ratio scales, so the
+    // measured duration is unscaled back into them first.
+    const unit = noteValueOf(divideFractions(first, builder.tuplets.tupletFactor()))
+    if (!unit) {
+      throw new MusicXMLError(
+        `A note of a tremolo lasts ${describeLength(first)}, which no note value can write.`,
+        { path, line },
+      )
+    }
+
+    builder.tuplets.list().push({
+      kind: 'multiNoteTremolo',
+      marks: pending.marks,
+      outer: { value: unit, multiple: 2 },
+      content: events,
+    })
+  }
+  /**
+   * Closes the innermost open tuplet in this line, handing back the number
+   * its start marker stated, or nothing where no tuplet is open. `stop` is
+   * the <tuplet> marker closing it.
+   */
+  closeTuplet(
+    warnings: WarningCollector,
+    context: ReportContext,
+    path: DocumentPath,
+    line: number,
+    stop: XmlElement,
+  ): string | undefined {
+    const builder = this.#layer
+    return builder.tuplets.closeTuplet(builder.end, warnings, context, path, line, stop)
+  }
+  /**
+   * Marks the rest just added as one that could be this line's measure rest,
+   * to be settled by finish once the voice is whole.
+   */
+  markMeasureRest(
+    event: Event,
+    body: EventRest,
+    reports: MeasureRestReports<'sequence' | 'event'>,
+  ): void {
+    this.#layer.measureRest = { origin: 'candidate', event, body, reports }
   }
 }
 
@@ -588,7 +670,7 @@ export class MeasureBuilder {
    */
   restIsRedundant(voice: VoiceLine): boolean {
     if (!this.restsTheMeasure(voice)) return false
-    return restFills(voice.layer) || !this.#soundingVoices.has(voice.name)
+    return restFills(layerOf(voice)) || !this.#soundingVoices.has(voice.name)
   }
 
   /**
@@ -605,7 +687,7 @@ export class MeasureBuilder {
    * measure begins, so what comes next is the first thing the voice sounds.
    */
   opensMeasure(voice: VoiceLine): boolean {
-    return voice.layer.content.length === 0 && this.atMeasureStart()
+    return layerOf(voice).content.length === 0 && this.atMeasureStart()
   }
 
   /**
@@ -623,11 +705,8 @@ export class MeasureBuilder {
    * open around it, because a note laid over what its voice is still sounding
    * goes to a sequence of its own, and the ratio scaling it, the brackets
    * holding it, the beams joining it and the grace notes ornamenting it all
-   * have to reach the same one.
-   *
-   * A chord member and a grace note settle nothing: both stand where the
-   * note they were written against stands, and belong to the sequence it
-   * went to.
+   * have to reach the same one. A grace note and a chord member settle
+   * nothing: see graceLine and chordToJoin.
    */
   beginNote(voice: string | undefined, note: XmlElement): VoiceLine {
     this.#writeAt()
@@ -635,16 +714,17 @@ export class MeasureBuilder {
     const before = layers.layers[layers.active] as VoiceBuilder
     const taken = this.#layerAt(voice, note)
     if (taken !== before) this.#carryGrace(before, taken)
-    return new VoiceLine(voice ?? UNNAMED_VOICE, taken)
+    return newLine(voice ?? UNNAMED_VOICE, taken)
   }
 
   /**
-   * The line this voice last sounded in, which a grace note is read into. It
-   * stands for that note alone: the note it ornaments may carry its group to
-   * another line once it begins.
+   * The line this voice last sounded in, which a grace note is read into, as
+   * a grace note takes none of the measure's time. For grace notes only, and
+   * for that note alone: the note it ornaments may carry its group to another
+   * line once it begins.
    */
-  lineOf(voice: string | undefined): VoiceLine {
-    return new VoiceLine(voice ?? UNNAMED_VOICE, this.#builderFor(voice))
+  graceLine(voice: string | undefined): VoiceLine {
+    return newLine(voice ?? UNNAMED_VOICE, this.#builderFor(voice))
   }
 
   /**
@@ -695,14 +775,14 @@ export class MeasureBuilder {
     line: number,
     staff?: number,
   ): PlacedEvent {
-    if (restFills(voice.layer)) {
+    if (restFills(layerOf(voice))) {
       throw new MusicXMLError('A voice has both a rest that fills the measure and notes in it.', {
         path,
         line,
       })
     }
 
-    const builder = voice.layer
+    const builder = layerOf(voice)
     this.#fillGap(builder)
 
     builder.tuplets.list().push(event)
@@ -827,51 +907,15 @@ export class MeasureBuilder {
   }
 
   /**
-   * The line holding the event a chord note would join, written last in
+   * The chord a note carrying <chord> joins: the event written last, in
    * whatever voice. A chord member may leave <voice> off, and Sibelius does,
    * so it belongs to the line of the event it joins rather than to the
    * unnamed voice.
    */
-  chordLine(): VoiceLine | undefined {
-    return typeof this.#lastWritten === 'object' ? this.#lastWritten : undefined
-  }
-
-  /**
-   * Adds a note carrying <chord>, which sounds with the event before it
-   * rather than after. The cursor does not move.
-   */
-  addChordNote(
-    note: Note,
-    duration: Fraction | undefined,
-    path: DocumentPath,
-    line: number,
-  ): ChordJoin {
-    const { joined, body } = this.#chordEvent(duration, path, line)
-    body.notes = [...body.notes, note]
-    return joined
-  }
-
-  /** The same, for a note struck on a percussion kit. */
-  addChordKitNote(
-    note: KitNote,
-    duration: Fraction | undefined,
-    path: DocumentPath,
-    line: number,
-  ): ChordJoin {
-    const { joined, body } = this.#chordEvent(duration, path, line)
-    body.kitNotes = [...body.kitNotes, note]
-    return joined
-  }
-
-  /** The event a chord member joins, held to lasting as long as the chord. */
-  #chordEvent(
-    duration: Fraction | undefined,
-    path: DocumentPath,
-    line: number,
-  ): { joined: ChordJoin; body: EventNotes } {
-    const chord = this.chordLine()
-    const previous = chord?.layer.last
-    if (!previous && this.#lastWritten !== 'rest') {
+  chordToJoin(path: DocumentPath, line: number): ChordToJoin {
+    const voice = typeof this.#lastWritten === 'object' ? this.#lastWritten : undefined
+    const last = voice && layerOf(voice).last
+    if (!last && this.#lastWritten !== 'rest') {
       throw new MusicXMLError('A <note> is marked as a chord with no note for it to join.', {
         path,
         line,
@@ -881,32 +925,61 @@ export class MeasureBuilder {
     // The event a note joins has to be a note itself. A rest sounds nothing,
     // so a note written onto one has no chord to be part of, the same way a
     // rest written into a chord has none.
-    const body = previous?.event.body
-    if (!chord || !previous || body?.kind !== 'notes') {
+    const body = last?.event.body
+    if (!voice || !last || body?.kind !== 'notes') {
       throw new MusicXMLError('A <note> joins a rest, and a rest cannot be part of a chord.', {
         path,
         line,
       })
     }
+    return { voice, last, body, staff: layerOf(voice).placed.at(-1)?.staff }
+  }
 
-    // Every note of a chord belongs to one event, so they have to agree on
-    // how long that event lasts.
-    const chordDuration = previous.duration
+  /**
+   * Adds a note carrying <chord>, which sounds with the event before it
+   * rather than after. The cursor does not move.
+   */
+  addChordNote(
+    chord: ChordToJoin,
+    note: Note,
+    duration: Fraction | undefined,
+    path: DocumentPath,
+    line: number,
+  ): JoinedEvent {
+    this.#agreeWithChord(chord, duration, path, line)
+    chord.body.notes = [...chord.body.notes, note]
+    return { event: chord.last.event, start: chord.last.start, notations: chord.last.notations }
+  }
+
+  /** The same, for a note struck on a percussion kit. */
+  addChordKitNote(
+    chord: ChordToJoin,
+    note: KitNote,
+    duration: Fraction | undefined,
+    path: DocumentPath,
+    line: number,
+  ): JoinedEvent {
+    this.#agreeWithChord(chord, duration, path, line)
+    chord.body.kitNotes = [...chord.body.kitNotes, note]
+    return { event: chord.last.event, start: chord.last.start, notations: chord.last.notations }
+  }
+
+  /**
+   * Every note of a chord belongs to one event, so they have to agree on how
+   * long that event lasts.
+   */
+  #agreeWithChord(
+    chord: ChordToJoin,
+    duration: Fraction | undefined,
+    path: DocumentPath,
+    line: number,
+  ): void {
+    const chordDuration = chord.last.duration
     if (duration && chordDuration && compareFractions(duration, chordDuration) !== 0) {
       throw new MusicXMLError('A <note> in a chord lasts a different time from the chord.', {
         path,
         line,
       })
-    }
-
-    return {
-      joined: {
-        event: previous.event,
-        start: previous.start,
-        notations: previous.notations,
-        voice: chord,
-      },
-      body,
     }
   }
 
@@ -927,7 +1000,7 @@ export class MeasureBuilder {
     path: DocumentPath,
     line: number,
   ): void {
-    const builder = voice.layer
+    const builder = layerOf(voice)
     if (this.restsTheMeasure(voice)) {
       throw new MusicXMLError('A voice has more than one rest that fills the measure.', {
         path,
@@ -1000,7 +1073,7 @@ export class MeasureBuilder {
     line: number,
     staff: number | undefined,
   ): PlacedEvent {
-    const builder = voice.layer
+    const builder = layerOf(voice)
     if (builder.content.some((item) => item.kind !== 'grace')) {
       throw new MusicXMLError('A voice has both a rest that fills the measure and notes in it.', {
         path,
@@ -1034,7 +1107,7 @@ export class MeasureBuilder {
      */
     derived: boolean,
   ): void {
-    const builder = voice.layer
+    const builder = layerOf(voice)
     // Time this voice has passed over in silence belongs before the brackets,
     // not inside them, where the tuplets' ratios would scale it.
     this.#fillGap(builder)
@@ -1062,7 +1135,7 @@ export class MeasureBuilder {
     outer: NoteValueQuantity,
     ratio: XmlElement,
   ): void {
-    const builder = voice.layer
+    const builder = layerOf(voice)
     // Time this voice passed over in silence belongs before the tuplet, not
     // inside it, where the ratio would scale it.
     this.#fillGap(builder)
@@ -1075,7 +1148,7 @@ export class MeasureBuilder {
    * inside it. False where no such tuplet is open.
    */
   impliedTupletFull(voice: VoiceLine): boolean {
-    const builder = voice.layer
+    const builder = layerOf(voice)
     return builder.tuplets.impliedFullAt(this.#cursor, builder.end)
   }
 
@@ -1087,7 +1160,7 @@ export class MeasureBuilder {
     voice: VoiceLine,
     quantities: { inner: NoteValueQuantity; outer: NoteValueQuantity } | undefined,
   ): boolean {
-    const builder = voice.layer
+    const builder = layerOf(voice)
     return builder.tuplets.impliedEndsBefore(this.#cursor, builder.end, quantities)
   }
 
@@ -1194,73 +1267,10 @@ export class MeasureBuilder {
    * open are gathered, and join the content as one item when it closes.
    */
   openTremolo(voice: VoiceLine, marks: number, path: DocumentPath, line: number): void {
-    const builder = voice.layer
+    const builder = layerOf(voice)
     // Time this voice has passed over in silence belongs before the tremolo.
     this.#fillGap(builder)
     builder.tuplets.openTremolo(marks, path, line)
-  }
-
-  /**
-   * Closes the tremolo: two notes of one written value, together occupying
-   * twice their measured duration. Anything else is refused, because the
-   * measure would not add up.
-   */
-  closeTremolo(
-    voice: VoiceLine,
-    marker: { marks: number; element: XmlElement },
-    warnings: WarningCollector,
-    context: ReportContext,
-    path: DocumentPath,
-    line: number,
-  ): void {
-    const { marks } = marker
-    const builder = voice.layer
-    const pending = builder.tuplets.closeTremolo(path, line)
-
-    // Both ends count the beams joining the pair, and there is one pair to
-    // draw.
-    if (marks !== pending.marks) {
-      warnings.add(
-        'inconsistent:tremolo',
-        'The two ends of a tremolo count different beams. The count where it starts ' +
-          'is the one converted.',
-        context,
-        marker.element,
-      )
-    }
-
-    const content = pending.list
-    const events = content.filter((item): item is Event => item.kind === 'event')
-    if (events.length !== 2 || content.length !== 2) {
-      throw new MusicXMLError(
-        'A tremolo written across two notes holds something other than two notes.',
-        { path, line },
-      )
-    }
-
-    const [first, second] = pending.durations
-    if (!first || !second || compareFractions(first, second) !== 0) {
-      throw new MusicXMLError('The two notes of a tremolo last different times.', { path, line })
-    }
-
-    // The time the tremolo occupies, stated one unit per note as MNX has it:
-    // a pair of written halves occupies two quarters. Inside a tuplet
-    // everything is stated in written values the ratio scales, so the
-    // measured duration is unscaled back into them first.
-    const unit = noteValueOf(divideFractions(first, builder.tuplets.tupletFactor()))
-    if (!unit) {
-      throw new MusicXMLError(
-        `A note of a tremolo lasts ${describeLength(first)}, which no note value can write.`,
-        { path, line },
-      )
-    }
-
-    builder.tuplets.list().push({
-      kind: 'multiNoteTremolo',
-      marks: pending.marks,
-      outer: { value: unit, multiple: 2 },
-      content: events,
-    })
   }
 
   /** Records what an event said about the beams it carries. */
@@ -1274,7 +1284,7 @@ export class MeasureBuilder {
     graceBeams: BeamedEvent[] | undefined,
   ): void {
     if (markers.size === 0) return
-    const builder = voice.layer
+    const builder = layerOf(voice)
     const key = voice.name
     // A named voice may beam across staves. Where the source names no
     // voice, the staff is all that tells two lines apart, so the beam carries
@@ -1554,7 +1564,7 @@ export class MeasureBuilder {
    * open bracket as any other stop does.
    */
   closesDroppedTuplet(voice: VoiceLine, number: string): boolean {
-    if (voice.layer.tuplets.takesDroppedStart(number)) return true
+    if (layerOf(voice).tuplets.takesDroppedStart(number)) return true
 
     // A stop written inside a bracket the source drew names that bracket,
     // however the source numbers the two, so a carried stop is taken only
@@ -1582,23 +1592,6 @@ export class MeasureBuilder {
   }
 
   /**
-   * Closes the innermost open tuplet in this voice, handing back the number
-   * its start marker stated, or nothing where no tuplet is open. `stop` is
-   * the <tuplet> marker closing it.
-   */
-  closeTuplet(
-    voice: VoiceLine,
-    warnings: WarningCollector,
-    context: ReportContext,
-    path: DocumentPath,
-    line: number,
-    stop: XmlElement,
-  ): string | undefined {
-    const builder = voice.layer
-    return builder.tuplets.closeTuplet(builder.end, warnings, context, path, line, stop)
-  }
-
-  /**
    * Closes the run the ratio alone opened in this voice, where one is open. A
    * skip that fills exactly what the run's ratio still counts goes inside it
    * first.
@@ -1610,7 +1603,7 @@ export class MeasureBuilder {
     path: DocumentPath,
     line: number,
   ): void {
-    const builder = voice.layer
+    const builder = layerOf(voice)
     if (builder.tuplets.impliedCompletedAt(this.#cursor, builder.end)) this.#fillGap(builder)
     builder.tuplets.closeImplied(builder.end, warnings, context, path, line)
   }
@@ -1628,7 +1621,7 @@ export class MeasureBuilder {
     graceType: GraceType | undefined,
     staff?: number,
   ): PlacedGraceNote {
-    const builder = voice.layer
+    const builder = layerOf(voice)
     this.#writeAt()
     // A grace note is drawn before the note it ornaments, so time the voice
     // has passed over in silence goes before the group. This keeps the group
@@ -1678,19 +1671,6 @@ export class MeasureBuilder {
     // own entry in `placed` is the one just pushed.
     builder.grace = { group, beams, at: start, placedFrom: builder.placed.length - 1 }
     return { event, start, beams }
-  }
-
-  /**
-   * Marks the rest just added as one that could be this voice's measure rest,
-   * to be settled by finish once the voice is whole.
-   */
-  markMeasureRest(
-    voice: VoiceLine,
-    event: Event,
-    body: EventRest,
-    reports: MeasureRestReports<'sequence' | 'event'>,
-  ): void {
-    voice.layer.measureRest = { origin: 'candidate', event, body, reports }
   }
 
   /**

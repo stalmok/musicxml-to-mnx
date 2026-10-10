@@ -60,7 +60,7 @@ import { entriesOf, recogniser } from './tables.js'
 import { tieKey, writtenAt } from './spanners.js'
 import type { WrittenAt } from './spanners.js'
 import { MeasureBuilder } from './voices.js'
-import type { ChordJoin, PlacedEvent, VoiceLine } from './voices.js'
+import type { JoinedEvent, PlacedEvent, VoiceLine } from './voices.js'
 import type { TupletDisplaySettings } from './tuplets.js'
 
 // A recogniser narrows the value to the model's Step, so no cast is needed,
@@ -219,7 +219,7 @@ function kitComponent(
 /** What is read from a <note> once and shared by the paths that place it. */
 interface NoteStatement extends Omit<RestNote, 'voice'> {
   /** The voice the note names, where it names one. */
-  named: string | undefined
+  namedVoice: string | undefined
   /** The notations the note writes on its event. */
   eventNotations: readonly EventNotation[]
   tieds: readonly XmlElement[]
@@ -337,7 +337,7 @@ export function readNote(
   const voice = chordMember
     ? undefined
     : graceElement
-      ? builder.lineOf(namedVoice)
+      ? builder.graceLine(namedVoice)
       : builder.beginNote(namedVoice, element.element)
 
   // Which staff the note names. It is range-checked even in a one-staff part,
@@ -363,7 +363,7 @@ export function readNote(
     eventNotations,
     tieds,
     hiddenTuplets,
-    named: namedVoice,
+    namedVoice,
     duration,
     written,
     rest: restElement,
@@ -550,7 +550,7 @@ export function readNote(
   // Only a rest is ever a candidate.
   if (candidate && rest) {
     const { written: drawn, duration: lasts } = candidate
-    builder.markMeasureRest(voice, event, rest, {
+    voice.markMeasureRest(event, rest, {
       event: () =>
         reportDurationMismatch(element, drawn, lasts, scale, warnings, context, mismatchPlace),
     })
@@ -572,7 +572,7 @@ export function readNote(
   // Closed before any tuplet stopping on the same note, because the pair
   // sits inside the bracket.
   if (tremolo?.type === 'stop') {
-    builder.closeTremolo(voice, tremolo, warnings, context, path, element.line)
+    voice.closeTremolo(tremolo, warnings, context, path, element.line)
   }
   closeTuplets(builder, voice, markers, warnings, context, path, element.line)
 }
@@ -1081,7 +1081,7 @@ function readChordMember(
     notations,
     eventNotations,
     tieds,
-    named,
+    namedVoice,
     duration,
     written,
     rest: restElement,
@@ -1095,13 +1095,13 @@ function readChordMember(
   // A chord member joins the note written just before it. Sibelius leaves
   // <voice> off a chord member, so the chord's voice is the one used, not
   // the member's.
-  const chord = builder.chordLine()
-  if (named !== undefined && chord !== undefined && named !== chord.name) {
+  const chord = builder.chordToJoin(path, element.line)
+  if (namedVoice !== undefined && namedVoice !== chord.voice.name) {
     warnings.add(
       'inconsistent:voice',
-      `A note of a chord names voice ${named}, and the note it joins is in ` +
-        `${chord.name === '' ? 'no named voice' : `voice ${chord.name}`}. It is converted ` +
-        'in the voice of the note it joins.',
+      `A note of a chord names voice ${namedVoice}, and the note it joins is in ` +
+        `${chord.voice.name === '' ? 'no named voice' : `voice ${chord.voice.name}`}. ` +
+        'It is converted in the voice of the note it joins.',
       context,
       requireChild(element.element, 'voice', path),
     )
@@ -1117,7 +1117,7 @@ function readChordMember(
   // does not take is the source disagreeing with itself about one group.
   if (graceElement) {
     attribute(graceElement, 'slash')
-    const open = chord?.graceType()
+    const open = chord.voice.graceType()
     for (const [side, named] of entriesOf(GRACE_TIME_ATTRIBUTES)) {
       if (attribute(graceElement, named) === undefined) continue
       if (open === undefined || open === side) continue
@@ -1133,7 +1133,7 @@ function readChordMember(
 
   // A chord cannot be part grace note and part full note. The note the chord
   // opened with decides, and a member marked the other way is reported.
-  const joinsGrace = chord?.lastIsGrace()
+  const joinsGrace = chord.last.duration === undefined
   if (joinsGrace === (graceElement === undefined)) {
     warnings.add(
       'inconsistent:grace',
@@ -1151,7 +1151,7 @@ function readChordMember(
   // across to the other hand, on that note. A chord straddling the two
   // staves is ordinary piano writing, so only the note that differs from
   // the event's staff states one of its own.
-  const reaches = staff !== undefined && staff !== chord?.lastStaff() ? staff : undefined
+  const reaches = staff !== undefined && staff !== chord.staff ? staff : undefined
 
   // A chord member is a pitch or an unpitched note: a rest was refused just
   // above, and a note sounding none of the three never reached here.
@@ -1172,13 +1172,13 @@ function readChordMember(
   // duration dropped the dot). Where the written values agree the chord is
   // coherent: the written value is the one converted, and the duration is
   // reported rather than compared.
-  const joins = chord?.lastValue()
+  const joins = chord.last.event.value
   const writtenMatches =
     written !== undefined &&
     joins !== undefined &&
     written.base === joins.base &&
     written.dots === joins.dots
-  const chordDuration = chord?.lastDuration()
+  const chordDuration = chord.last.duration
   if (
     writtenMatches &&
     duration &&
@@ -1194,15 +1194,15 @@ function readChordMember(
     )
   }
   const chordDurationOrNone = writtenMatches ? undefined : duration
-  let placed: ChordJoin
+  let placed: JoinedEvent
   if ('pitch' in chordNote) {
-    placed = builder.addChordNote(chordNote, chordDurationOrNone, path, element.line)
+    placed = builder.addChordNote(chord, chordNote, chordDurationOrNone, path, element.line)
     // A roll is drawn across the notes of a chord, so it is the pitched
     // members that say how far it reaches. A kit note has no pitch to order
     // it by, and the chord it sits on is what the roll spans anyway.
     readArpeggio(notations, placed, builder, chordNote)
   } else {
-    placed = builder.addChordKitNote(chordNote, chordDurationOrNone, path, element.line)
+    placed = builder.addChordKitNote(chord, chordNote, chordDurationOrNone, path, element.line)
     readArpeggio(notations, placed, builder, undefined)
   }
   // Exporters write a chord's marks, fermata, tremolo and tuplet bracket on
@@ -1213,7 +1213,7 @@ function readChordMember(
     element,
     chordNote,
     tiePairing(chordNote),
-    placed.voice.name,
+    chord.voice.name,
     measureIndex,
     placed.start,
     graceElement !== undefined,
@@ -1236,9 +1236,9 @@ function readChordMember(
       context,
       marker,
     )
-    placed.voice.dropTupletStart(attribute(marker, 'number') ?? '1')
+    chord.voice.dropTupletStart(attribute(marker, 'number') ?? '1')
   }
-  closeTuplets(builder, placed.voice, ownMarkers, warnings, context, path, element.line)
+  closeTuplets(builder, chord.voice, ownMarkers, warnings, context, path, element.line)
 }
 
 /**
@@ -1341,7 +1341,7 @@ function closeTuplets(
     }
     // A stop with no bracket to close is reported where it is met and takes
     // no part in the crossing test below: it names no tuplet that ended here.
-    const ended = builder.closeTuplet(voice, warnings, context, path, line, marker)
+    const ended = voice.closeTuplet(warnings, context, path, line, marker)
     if (ended === undefined) continue
     stated.push(number)
     closed.push(ended)

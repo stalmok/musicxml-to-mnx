@@ -132,7 +132,7 @@ The reader modules are:
 event through a separate path before group opening. They do not open groups.
 
 Each note gets a `VoiceLine`: the line of its voice it is written in. A note
-gets it from `beginNote`, a grace note from `lineOf`, and a chord member from
+gets it from `beginNote`, a grace note from `graceLine`, and a chord member from
 the chord it joins. Every later call for that note goes through this line.
 
 For a new event, the call order is:
