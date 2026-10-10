@@ -439,6 +439,22 @@ describe('a rest filling the measure kept as an event', () => {
     ).toContain('both a rest that fills the measure and notes in it')
   })
 
+  // A slur ending on the rest keeps a marked rest stating its value from
+  // being read as an ordinary rest. The bracket it opens holds nothing yet,
+  // so the bracket, not notes, is what refuses it.
+  test('refuses a rest a slur ends on that opens a tuplet', () => {
+    expect(
+      refusal(
+        inMeasure(
+          '<note><rest measure="yes"/><duration>4</duration><voice>1</voice><type>quarter</type>' +
+            '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+            '</time-modification><notations><tuplet type="start"/><slur type="stop"/>' +
+            '</notations></note>',
+        ),
+      ),
+    ).toContain('A rest that fills the measure is inside a <tuplet>.')
+  })
+
   // Notes laid over the rest after a <backup> are a second line of the voice,
   // as they are over the sequence's own rest.
   test.each(keptRests)('lays notes over a rest with %s into a line of their own', (_, rest) => {

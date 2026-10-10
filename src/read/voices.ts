@@ -700,6 +700,18 @@ export class MeasureBuilder {
   }
 
   #requireMeasureRestFits(voice: VoiceLine, path: DocumentPath, line: number): void {
+    // A tuplet or a tremolo open around the rest is its own refusal. It is
+    // checked first, because a tuplet's own item is already in the content
+    // and would otherwise refuse the rest as notes that are not there.
+    const opened = layerOf(voice).tuplets.scaledBy()
+    if (opened) {
+      throw new MusicXMLError(
+        `A rest that fills the measure is inside ${
+          opened === 'tuplet' ? 'a <tuplet>' : 'a two-note tremolo'
+        }. Such a rest is the whole of its voice, so a bracket cannot hold it.`,
+        { path, line },
+      )
+    }
     if (!this.canTakeMeasureRest(voice)) {
       throw new MusicXMLError('A voice has both a rest that fills the measure and notes in it.', {
         path,
@@ -1024,20 +1036,6 @@ export class MeasureBuilder {
         path,
         line,
       })
-    }
-    // MNX states such a rest on the sequence, where a bracket cannot reach
-    // it, so a tuplet or a tremolo open around it is its own refusal. It is
-    // checked first, because a tuplet's own item is already in the content
-    // and would otherwise refuse the rest as notes that are not there.
-    const opened = builder.tuplets.scaledBy()
-    if (opened) {
-      throw new MusicXMLError(
-        `A rest that fills the measure is inside ${
-          opened === 'tuplet' ? 'a <tuplet>' : 'a two-note tremolo'
-        }. MNX states such a rest on the sequence rather than as an event, so nothing ` +
-          'can hold it.',
-        { path, line },
-      )
     }
     this.#requireMeasureRestFits(voice, path, line)
 
