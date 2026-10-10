@@ -107,6 +107,11 @@ function countedLengthOf(open: OpenTuplet): Fraction {
   return quantityLength(open.tuplet.inner)
 }
 
+function removeLastFrom(list: SequenceItem[], expected: SequenceItem): void {
+  if (list.at(-1) !== expected) throw new Error('The item to remove is not the last one written.')
+  list.pop()
+}
+
 export class TupletTracker {
   /**
    * The brackets this sequence is inside, outermost first. Notes go into the
@@ -133,12 +138,19 @@ export class TupletTracker {
     this.#content = content
   }
 
-  /**
-   * The list a note added now would go into: the innermost bracket's, or the
-   * sequence's own where no bracket is open.
-   */
-  list(): SequenceItem[] {
-    return this.#open.at(-1)?.list ?? this.#content
+  /** Adds an item after what is written so far, inside every bracket open. */
+  append(item: SequenceItem): void {
+    this.#list().push(item)
+  }
+
+  /** The item written last inside every bracket open, if any. */
+  last(): SequenceItem | undefined {
+    return this.#list().at(-1)
+  }
+
+  /** Removes `expected`, which must be the item written last inside every bracket open. */
+  removeLast(expected: SequenceItem): void {
+    removeLastFrom(this.#list(), expected)
   }
 
   /** How much of its written value a note lasts, given the tuplets around it. */
@@ -206,7 +218,7 @@ export class TupletTracker {
       kind: 'space',
       duration: divideFractions(gap, this.tupletFactor()),
     }
-    this.list().push(space)
+    this.#list().push(space)
     // A bracket rewritten when it closes moves the frame this length was
     // taken in, so the skip waits for it. A tremolo is the innermost frame
     // whenever there is one, and states what it holds itself.
@@ -273,7 +285,7 @@ export class TupletTracker {
       if (display.showValue !== undefined) tuplet.showValue = display.showValue
       if (display.placement !== undefined) tuplet.placement = display.placement
 
-      const within = this.list()
+      const within = this.#list()
       within.push(tuplet)
       this.#open.push({
         opened: 'tuplet',
@@ -311,7 +323,7 @@ export class TupletTracker {
   ): void {
     const content: SequenceItem[] = []
     const tuplet: Draft<Tuplet> = { kind: 'tuplet', inner, outer, content }
-    const within = this.list()
+    const within = this.#list()
     within.push(tuplet)
     this.#open.push({
       opened: 'tuplet',
@@ -566,11 +578,9 @@ export class TupletTracker {
     const { tuplet } = closed
     // A run the ratio alone opened on a note that turned out not to be an
     // event holds nothing. It stands for no tuplet the source wrote, so it
-    // goes rather than being drawn empty. Such a run opens only where no other
-    // bracket is, and everything written while it is open goes inside it, so
-    // it is the last item of the sequence's own list.
+    // goes rather than being drawn empty.
     if (closed.unbracketed && tuplet.content.length === 0) {
-      closed.within.pop()
+      removeLastFrom(closed.within, tuplet)
       return closed.number
     }
     // A bracket that holds nothing taking any of the measure's time, which is
@@ -649,6 +659,14 @@ export class TupletTracker {
   #implied(): OpenTuplet | undefined {
     const open = this.#open.at(-1)
     return open?.opened === 'tuplet' && open.unbracketed ? open : undefined
+  }
+
+  /**
+   * The list a note added now would go into: the innermost bracket's, or the
+   * sequence's own where no bracket is open.
+   */
+  #list(): SequenceItem[] {
+    return this.#open.at(-1)?.list ?? this.#content
   }
 
   /** The tuplets open around a note, outermost first. */

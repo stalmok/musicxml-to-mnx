@@ -114,7 +114,7 @@ export interface FinishedMeasure {
 
 /** Where the last item of a voice takes its time from, where it is a grace group. */
 function graceTypeOf(builder: VoiceBuilder): GraceType | undefined {
-  const last = builder.tuplets.list().at(-1)
+  const last = builder.tuplets.last()
   return last?.kind === 'grace' ? last.graceType : undefined
 }
 
@@ -342,7 +342,7 @@ export class VoiceLine {
       )
     }
 
-    builder.tuplets.list().push({
+    builder.tuplets.append({
       kind: 'multiNoteTremolo',
       marks: pending.marks,
       outer: { value: unit, multiple: 2 },
@@ -778,14 +778,13 @@ export class MeasureBuilder {
     if (!waiting || compareFractions(waiting.at, this.#cursor) !== 0) return
     if (waiting.group.graceType === 'stealPrevious') return
 
-    // The group is the last thing written in the sequence it is leaving.
-    // This runs as the note is read and before the note opens or closes a
-    // bracket of its own, so nothing has been written since the group was.
+    // This runs before the note opens or closes a bracket of its own, so the
+    // group is still the last thing written in the sequence it is leaving.
     // The sequence it joins may have been silent since it last sounded, and
     // that silence comes before the group.
-    from.tuplets.list().pop()
+    from.tuplets.removeLast(waiting.group)
     this.#fillGap(to)
-    to.tuplets.list().push(waiting.group)
+    to.tuplets.append(waiting.group)
     from.graceBeamed = from.graceBeamed.filter((run) => run !== waiting.beams)
     to.graceBeamed.push(waiting.beams)
     to.placed.push(...from.placed.splice(waiting.placedFrom))
@@ -813,7 +812,7 @@ export class MeasureBuilder {
     this.#writeAt()
     this.#fillGap(builder)
 
-    builder.tuplets.list().push(event)
+    builder.tuplets.append(event)
     // A bracket completed once the measure is whole can take in a rest
     // written straight after it, where the source drew that rest as one of
     // the tuplet's own notes and left it outside the bracket. Telling one
@@ -1627,7 +1626,6 @@ export class MeasureBuilder {
     // beside its note, not at the point the voice last sounded.
     this.#fillGap(builder)
 
-    const list = builder.tuplets.list()
     const open = builder.grace
 
     this.#lastWritten = voice
@@ -1649,7 +1647,7 @@ export class MeasureBuilder {
     // is open.
     if (
       open !== undefined &&
-      list.at(-1) === open.group &&
+      builder.tuplets.last() === open.group &&
       (graceType === undefined ||
         open.group.graceType === undefined ||
         open.group.graceType === graceType)
@@ -1662,7 +1660,7 @@ export class MeasureBuilder {
     }
 
     const group: GraceGroup = { kind: 'grace', content: [event], slashed, graceType }
-    list.push(group)
+    builder.tuplets.append(group)
     // Each group beams within itself, so each starts a run of its own.
     const beams: BeamedEvent[] = []
     builder.graceBeamed.push(beams)
