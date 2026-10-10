@@ -1077,24 +1077,30 @@ describe('a rest filling a measure a grace note leads into', () => {
     expect(warnings).toEqual([])
   })
 
-  // The grace notes stand where the voice last was, and a <forward> moves the
-  // cursor past them. A rest reached there does not open the measure, so it
-  // is not the measure's rest and the voice cannot hold both.
-  test('refuses where a forward moved the cursor past the grace notes', () => {
-    let thrown = ''
-    try {
-      convertMusicXML(
-        inMeasure(
-          grace +
-            '<forward><duration>2</duration></forward>' +
-            '<note><rest measure="yes"/><duration>4</duration><voice>1</voice></note>',
-        ),
-      )
-    } catch (error) {
-      thrown = error instanceof Error ? error.message : String(error)
-    }
+  // The grace notes take none of the measure's time, so after a <forward>
+  // past them the voice has still sounded nothing. The silence before the
+  // rest stays a space, as it does with no grace notes. A stem keeps the rest
+  // an event from the start, and without one it is restored as an event once
+  // the measure is whole: both read the same.
+  test.each([
+    ['without a stem', '', undefined],
+    ['with a stem', '<stem>up</stem>', 'up'],
+  ])('keeps the silence a forward passed over after the grace notes, %s', (_, stem, up) => {
+    const { mnx, warnings } = convertValid(
+      inMeasure(
+        grace +
+          '<forward><duration>2</duration></forward>' +
+          `<note><rest measure="yes"/><duration>4</duration><voice>1</voice>${stem}</note>`,
+      ),
+    )
+    const content = mnx.parts[0]?.measures[0]?.sequences[0]?.content
 
-    expect(thrown).toContain('both a rest that fills the measure and notes in it')
+    expect(content?.slice(1)).toEqual([
+      { type: 'space', duration: [1, 8] },
+      { duration: { base: 'quarter' }, rest: {}, stemDirection: up },
+    ])
+    expect(content?.[0]).toMatchObject({ type: 'grace' })
+    expect(warnings).toEqual([])
   })
 
   // An irregular measure has no note value to write the rest as, so there is
@@ -1278,19 +1284,15 @@ describe('a rest filling a measure a grace note leads into', () => {
     expect(warnings.map((warning) => warning.code)).toEqual(['inconsistent:voice'])
   })
 
-  // A <forward> takes the rest past the grace notes, so it no longer opens
-  // the measure, and a rest filling the measure from there would overfill it.
-  test('refuses where a forward moved the cursor between the grace notes and the rest', () => {
-    let thrown = ''
-    try {
-      convertMusicXML(
-        irregular(grace + '<forward><duration>4</duration></forward>' + irregularRest),
-      )
-    } catch (error) {
-      thrown = error instanceof Error ? error.message : String(error)
-    }
-
-    expect(thrown).toContain('both a rest that fills the measure and notes in it')
+  // The grace notes take none of the measure's time, so the silence a
+  // <forward> passes over after them stays a space before the rest, which
+  // overfills the measure as the source does.
+  test('keeps the silence a forward passed over between the grace notes and the rest', () => {
+    expect(kinds(grace + '<forward><duration>4</duration></forward>' + irregularRest)).toEqual({
+      fullMeasure: undefined,
+      content: [['grace'], ['space', [1, 4]], space],
+      warnings: reported,
+    })
   })
 
   const refusal = (body: string, time?: string) => {

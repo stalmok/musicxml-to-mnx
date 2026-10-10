@@ -105,7 +105,8 @@ export function readRest(note: RestNote, state: PartState, builder: MeasureBuild
   const markedAsTheMeasure =
     rest !== undefined && grace === undefined && attribute(rest, 'measure') === 'yes'
 
-  const afterGraceNotes = voice.holdsOnlyGraceNotes() && builder.atMeasureStart()
+  const opensMeasure = builder.canTakeMeasureRest(voice) && builder.atMeasureStart()
+  const afterGraceNotes = opensMeasure && voice.holdsOnlyGraceNotes()
 
   // This rest has no written value and opens its voice. It is not marked as the
   // measure's rest, is not drawn to the time signature's length, and lasts a
@@ -125,7 +126,7 @@ export function readRest(note: RestNote, state: PartState, builder: MeasureBuild
     duration !== undefined &&
     !state.divisionsAssumed &&
     noteValueOf(divideFractions(duration, voice.noteFactor())) === undefined &&
-    (builder.opensMeasure(voice) || afterGraceNotes)
+    opensMeasure
       ? duration
       : undefined
 
