@@ -4155,6 +4155,40 @@ describe('a tuplet in a line laid over its voice', () => {
   test('converts to MNX the schema accepts', () => {
     convertValid(measure(laidOver))
   })
+
+  // A grace note leads into the note after it, and goes to that note's line.
+  // A grace note that stops a bracket belongs to the bracket, so it stays in
+  // the line the bracket is in.
+  const closedOnGrace =
+    voiced('C', 'start') +
+    voiced('D') +
+    voiced('E') +
+    '<backup><duration>12</duration></backup>' +
+    '<note><grace/><pitch><step>G</step><octave>4</octave></pitch><voice>1</voice>' +
+    '<type>eighth</type><notations><tuplet type="stop"/></notations></note>' +
+    '<note><pitch><step>F</step><octave>4</octave></pitch><duration>48</duration>' +
+    '<voice>1</voice><type>whole</type></note>'
+
+  test('keeps a bracket a grace note closes, and the grace note in it', () => {
+    const warnings = new WarningCollector()
+    const result = readValid(measure(closedOnGrace), warnings)
+    const sequences = result.parts[0]?.measures[0]?.sequences
+    const tuplet = sequences?.[0]?.content[0]
+
+    expect(sequences?.[0]?.content.map((item) => item.kind)).toEqual(['tuplet'])
+    expect(tuplet?.kind === 'tuplet' && tuplet.content.map((item) => item.kind)).toEqual([
+      'event',
+      'event',
+      'event',
+      'grace',
+    ])
+    expect(sequences?.[1]?.content.map((item) => item.kind)).toEqual(['event'])
+    expect(warnings.list().map((w) => w.code)).toEqual(['inconsistent:voice'])
+  })
+
+  test('converts a bracket closed on a grace note to MNX the schema accepts', () => {
+    convertValid(measure(closedOnGrace))
+  })
 })
 
 // A bracket states what it holds against the time it takes, and where no pair

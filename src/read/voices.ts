@@ -771,15 +771,16 @@ export class MeasureBuilder {
    * has said enough.
    *
    * A group taking its time from the note before it is drawn after that
-   * note, so it belongs to the line that note is in and stays there.
+   * note, so it belongs to the line that note is in and stays there. So does
+   * a group a bracket closed on: the bracket holds it, and it is no longer
+   * the last thing written in its line.
    */
   #carryGrace(from: VoiceBuilder, to: VoiceBuilder): void {
     const waiting = from.grace
     if (!waiting || compareFractions(waiting.at, this.#cursor) !== 0) return
     if (waiting.group.graceType === 'stealPrevious') return
+    if (from.tuplets.last() !== waiting.group) return
 
-    // This runs before the note opens or closes a bracket of its own, so the
-    // group is still the last thing written in the sequence it is leaving.
     // The sequence it joins may have been silent since it last sounded, and
     // that silence comes before the group.
     from.tuplets.removeLast(waiting.group)
