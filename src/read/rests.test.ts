@@ -1094,10 +1094,10 @@ describe('a rest filling a measure a grace note leads into', () => {
   })
 
   // The grace notes take none of the measure's time, so after a <forward>
-  // past them the voice has still sounded nothing. The silence before the
-  // rest stays a space, as it does with no grace notes. A stem keeps the rest
-  // an event from the start, and without one it is restored as an event once
-  // the measure is whole: both read the same.
+  // past them the voice has still sounded nothing. The grace notes keep the
+  // rest off the sequence, so the silence before it stays a space. A stem
+  // keeps the rest an event from the start, and without one it is restored
+  // as an event once the measure is whole: both read the same.
   test.each([
     ['without a stem', '', undefined],
     ['with a stem', '<stem>up</stem>', 'up'],

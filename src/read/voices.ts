@@ -397,7 +397,7 @@ export type MeasureRestReports<Form extends MeasureRestForm = MeasureRestForm> =
  *   turns out to be the whole of its voice. It stays the event it was read
  *   as, or the sequence states it.
  * - `fills`: the rest fills the measure as read, and the voice holds nothing
- *   beside it but grace notes. It stands in the content as a space of its
+ *   beside it but grace notes and silence. It stands in the content as a space of its
  *   length, where one is known, and takes any form.
  * - `fills-as-event`: the rest fills the measure as read and carries what
  *   only an event holds, so it stays the event it was read as.
@@ -428,6 +428,13 @@ type MeasureRest =
 function restFills(builder: VoiceBuilder): boolean {
   const origin = builder.measureRest?.origin
   return origin !== undefined && origin !== 'candidate'
+}
+
+function restBesideNotes(path: DocumentPath, line: number): MusicXMLError {
+  return new MusicXMLError('A voice has both a rest that fills the measure and notes in it.', {
+    path,
+    line,
+  })
 }
 
 /** States the rest on the sequence, which then holds nothing else. */
@@ -691,15 +698,15 @@ export class MeasureBuilder {
   }
 
   /**
-   * Whether this voice can still take a rest filling the measure: it has
-   * sounded nothing yet but grace notes, which take none of the measure's
-   * time. Silence the cursor passed over before the rest stays a space.
+   * Whether this voice has sounded nothing yet but grace notes, which take
+   * none of the measure's time. Only then can it take a rest filling the
+   * measure.
    */
-  canTakeMeasureRest(voice: VoiceLine): boolean {
+  hasSoundedNothing(voice: VoiceLine): boolean {
     return layerOf(voice).content.every((item) => item.kind === 'grace')
   }
 
-  #requireMeasureRestFits(voice: VoiceLine, path: DocumentPath, line: number): void {
+  #requireRoomForMeasureRest(voice: VoiceLine, path: DocumentPath, line: number): void {
     // A tuplet or a tremolo open around the rest is its own refusal. It is
     // checked first, because a tuplet's own item is already in the content
     // and would otherwise refuse the rest as notes that are not there.
@@ -708,16 +715,11 @@ export class MeasureBuilder {
       throw new MusicXMLError(
         `A rest that fills the measure is inside ${
           opened === 'tuplet' ? 'a <tuplet>' : 'a two-note tremolo'
-        }. Such a rest is the whole of its voice, so a bracket cannot hold it.`,
+        }. Such a rest lasts the whole measure, so nothing can scale its time.`,
         { path, line },
       )
     }
-    if (!this.canTakeMeasureRest(voice)) {
-      throw new MusicXMLError('A voice has both a rest that fills the measure and notes in it.', {
-        path,
-        line,
-      })
-    }
+    if (!this.hasSoundedNothing(voice)) throw restBesideNotes(path, line)
   }
 
   /**
@@ -805,12 +807,7 @@ export class MeasureBuilder {
     line: number,
     staff?: number,
   ): PlacedEvent {
-    if (restFills(layerOf(voice))) {
-      throw new MusicXMLError('A voice has both a rest that fills the measure and notes in it.', {
-        path,
-        line,
-      })
-    }
+    if (restFills(layerOf(voice))) throw restBesideNotes(path, line)
 
     const builder = layerOf(voice)
     this.#fillGap(builder)
@@ -1015,7 +1012,7 @@ export class MeasureBuilder {
 
   /**
    * Adds a rest filling the measure, which then holds nothing but grace
-   * notes. MNX states such a rest on the sequence rather than as an event,
+   * notes and silence. MNX states such a rest on the sequence rather than as an event,
    * so a voice cannot be both. It stands in the content as a space of what
    * it `lasts` until the measure is whole, and `asEvent` is the event a note
    * value writes it as where grace notes stand beside it.
@@ -1037,7 +1034,7 @@ export class MeasureBuilder {
         line,
       })
     }
-    this.#requireMeasureRestFits(voice, path, line)
+    this.#requireRoomForMeasureRest(voice, path, line)
 
     this.#writeAt()
     this.#fillGap(builder)
@@ -1069,8 +1066,7 @@ export class MeasureBuilder {
 
   /**
    * Adds a rest filling the measure as an event, which then holds nothing
-   * else. Grace notes before it take none of the measure's time, so they are
-   * the only thing it can follow.
+   * but grace notes and silence.
    */
   addMeasureRestEvent(
     voice: VoiceLine,
@@ -1081,7 +1077,7 @@ export class MeasureBuilder {
     line: number,
     staff: number | undefined,
   ): PlacedEvent {
-    this.#requireMeasureRestFits(voice, path, line)
+    this.#requireRoomForMeasureRest(voice, path, line)
     const placed = this.addEvent(voice, event, notations, duration, path, line, staff)
     layerOf(voice).measureRest = { origin: 'fills-as-event' }
     return placed

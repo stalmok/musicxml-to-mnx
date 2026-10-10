@@ -63,7 +63,8 @@ export type RestReading =
        * marking or a stem, which are read where the event is built. MNX's rest
        * on the sequence has no room for a lyric, and no id for a slur to start
        * or end on. The sequence stating it must hold nothing else, so grace
-       * notes before it also keep it an event, where a note value can write it.
+       * notes before it at the measure start also keep it an event, where a
+       * note value can write it.
        */
       needsEvent: boolean
       /**
@@ -105,8 +106,8 @@ export function readRest(note: RestNote, state: PartState, builder: MeasureBuild
   const markedAsTheMeasure =
     rest !== undefined && grace === undefined && attribute(rest, 'measure') === 'yes'
 
-  const opensMeasure = builder.canTakeMeasureRest(voice) && builder.atMeasureStart()
-  const afterGraceNotes = opensMeasure && voice.holdsOnlyGraceNotes()
+  const soundsFirst = builder.hasSoundedNothing(voice) && builder.atMeasureStart()
+  const afterGraceNotes = soundsFirst && voice.holdsOnlyGraceNotes()
 
   // This rest has no written value and opens its voice. It is not marked as the
   // measure's rest, is not drawn to the time signature's length, and lasts a
@@ -126,7 +127,7 @@ export function readRest(note: RestNote, state: PartState, builder: MeasureBuild
     duration !== undefined &&
     !state.divisionsAssumed &&
     noteValueOf(divideFractions(duration, voice.noteFactor())) === undefined &&
-    opensMeasure
+    soundsFirst
       ? duration
       : undefined
 
