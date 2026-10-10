@@ -6,8 +6,20 @@ import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
 import type { XmlElement } from './parse.js'
 
+// The elements read through child(), children() and requireChild(). The
+// sweep in read/element.ts reports the elements below a plainly read child
+// that nothing read. descendants() and a walk over `children` record nothing.
+const elementsRead = new WeakSet<XmlElement>()
+
 export function child(element: XmlElement, name: string): XmlElement | undefined {
-  return element.children.find((c) => c.name === name)
+  const found = element.children.find((c) => c.name === name)
+  if (found) elementsRead.add(found)
+  return found
+}
+
+/** Whether something has read this element through the accessors here. */
+export function wasRead(element: XmlElement): boolean {
+  return elementsRead.has(element)
 }
 
 /**
@@ -19,7 +31,9 @@ export function trimmedText(element: XmlElement): string {
 }
 
 export function children(element: XmlElement, name: string): readonly XmlElement[] {
-  return element.children.filter((c) => c.name === name)
+  const found = element.children.filter((c) => c.name === name)
+  for (const one of found) elementsRead.add(one)
+  return found
 }
 
 /** Every element below this one, in the order the source writes them. */
@@ -65,6 +79,19 @@ export function attribute(element: XmlElement, name: string): string | undefined
  */
 export function peekAttribute(element: XmlElement, name: string): string | undefined {
   return element.attributes[name]
+}
+
+/**
+ * Records an element as read whole: every attribute on it and every element
+ * below it. For an element a warning names whole, so the sweep does not
+ * report its parts a second time.
+ */
+export function readWholeElement(element: XmlElement): void {
+  for (const name of Object.keys(element.attributes)) attribute(element, name)
+  for (const found of element.children) {
+    elementsRead.add(found)
+    readWholeElement(found)
+  }
 }
 
 /** The attribute names something has read off this element, if any. */

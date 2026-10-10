@@ -39,7 +39,15 @@ import type {
 import type { Draft } from './draft.js'
 import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
-import { attribute, child, children, descendants, requireChild, trimmedText } from '../xml/tree.js'
+import {
+  attribute,
+  child,
+  children,
+  descendants,
+  readWholeElement,
+  requireChild,
+  trimmedText,
+} from '../xml/tree.js'
 import { beamCountForValue, isBeamValue, valueForBeamCount } from './beams.js'
 import type { BeamedEvent, BeamMarker } from './beams.js'
 import { readDuration } from './divisions.js'
@@ -655,6 +663,9 @@ function openTupletsAndTremolo(
     (!tremolo || ratioCountedValue(ratio, element, path) !== undefined)
   const stated = readsRatio ? readTupletRatio(ratio, element, path) : undefined
   const rated = stated && tremolo ? tupletShareOfRatio(stated) : stated
+  // A start marker reads the ratio below. Anywhere else it goes unread, the
+  // bracket or the two-note tremolo it stands in states it.
+  if (ratio && !readsRatio && starts.length === 0) element.readWhole(ratio)
 
   // Full, or this note does not belong in it either way: the run ends here. A
   // grace note takes none of the measure's time, so it neither fills a run nor
@@ -1061,7 +1072,7 @@ function reportCarriedByRest(
     const drawn = carried.get(found)
     if (drawn === undefined) continue
     // Reading it, or the one warning, accounts for the element whole.
-    for (const name of Object.keys(found.attributes)) attribute(found, name)
+    readWholeElement(found)
     if (drawn) report(found)
   }
 }
@@ -1311,9 +1322,14 @@ function closeTuplets(
   const stops: XmlElement[] = []
   for (const marker of markers) {
     if (attribute(marker, 'type') !== 'stop') continue
-    // A stop's placement restates the start's, which the tuplet's placement
-    // already carries, so it is read only for the record.
+    // A stop's placement and ratio restate the start's, which the tuplet
+    // already carries, so they are read only for the record. MusicXML allows
+    // at most one <tuplet-actual> and one <tuplet-normal> in a <tuplet>.
     attribute(marker, 'placement')
+    for (const name of ['tuplet-actual', 'tuplet-normal']) {
+      const portion = child(marker, name)
+      if (portion) readWholeElement(portion)
+    }
     // A marker that states no number is tuplet 1, as the spec has it.
     const number = attribute(marker, 'number') ?? '1'
     // The start this stop matches was dropped where it could not be drawn,

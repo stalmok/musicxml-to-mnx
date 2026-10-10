@@ -506,7 +506,9 @@ function readTime(
 
   // An interchangeable meter offers a second reading of the same measures.
   // MNX states one, so the primary is converted and the alternative reported.
-  if (element.child('interchangeable')) {
+  const interchangeable = element.child('interchangeable')
+  if (interchangeable) {
+    element.readWhole(interchangeable)
     warnings.add(
       'unrepresentable:interchangeable-time',
       'A time signature states a second, interchangeable meter, and MNX states one ' +

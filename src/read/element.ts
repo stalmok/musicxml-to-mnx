@@ -6,7 +6,7 @@
 
 import type { ReportContext, WarningCollector } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
-import { attribute, child, children, readAttributeNames } from '../xml/tree.js'
+import { attribute, child, children, readAttributeNames, wasRead } from '../xml/tree.js'
 import { attributeLoss, elementLoss } from './unrepresentable.js'
 
 // Attributes that state where or how something is drawn rather than what it
@@ -127,7 +127,7 @@ export class ElementReader {
 
   /**
    * Accounts for one child whole, attributes included, for a child whose
-   * content another element states.
+   * content another element states or that is reported by hand.
    */
   readWhole(found: XmlElement): void {
     this.#read.add(found)
@@ -176,21 +176,40 @@ export class ElementReader {
   reportUnread(warnings: WarningCollector, context: ReportContext): void {
     reportUnreadAttributes(this.element, warnings, context)
 
-    // A block wraps its own reader, which sweeps its attributes below; a
-    // plain-read child has no reader of its own, so its attributes are
-    // swept here. An unread child is reported wholesale, and naming its
-    // attributes on top would report the same loss twice.
+    // A block wraps its own reader, which sweeps it below; a plain-read
+    // child has no reader of its own, so it is swept here. An unread child is
+    // reported wholesale, and naming what it holds on top would report the
+    // same loss twice.
     for (const found of this.element.children) {
-      if (this.#read.has(found)) {
-        if (!this.#blocks.has(found) && !this.#skipped.has(found)) {
-          reportUnreadAttributes(found, warnings, context)
-        }
-        continue
+      if (!this.#read.has(found)) reportUnreadElement(found, warnings, context)
+      else if (!this.#blocks.has(found) && !this.#skipped.has(found)) {
+        reportUnreadBelow(found, warnings, context)
       }
-      const loss = elementLoss(found.name)
-      warnings.add(loss.code, `<${found.name}> ${loss.ending}`, context, found)
     }
     for (const block of this.#blocks.values()) block.reportUnread(warnings, context)
+  }
+}
+
+function reportUnreadElement(
+  element: XmlElement,
+  warnings: WarningCollector,
+  context: ReportContext,
+): void {
+  const loss = elementLoss(element.name)
+  warnings.add(loss.code, `<${element.name}> ${loss.ending}`, context, element)
+}
+
+// A child read plainly is read with the tree accessors, which record what
+// they read at every depth.
+function reportUnreadBelow(
+  element: XmlElement,
+  warnings: WarningCollector,
+  context: ReportContext,
+): void {
+  reportUnreadAttributes(element, warnings, context)
+  for (const found of element.children) {
+    if (wasRead(found)) reportUnreadBelow(found, warnings, context)
+    else reportUnreadElement(found, warnings, context)
   }
 }
 

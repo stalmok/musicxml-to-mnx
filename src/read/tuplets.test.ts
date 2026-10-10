@@ -215,6 +215,25 @@ describe('tuplet display', () => {
     expect(warnings).toEqual([])
   })
 
+  test('says nothing of the ratio a stop marker restates', () => {
+    const portions =
+      '<tuplet-actual><tuplet-number>3</tuplet-number><tuplet-type>eighth</tuplet-type></tuplet-actual>' +
+      '<tuplet-normal><tuplet-number>2</tuplet-number><tuplet-type>eighth</tuplet-type></tuplet-normal>'
+    const restated =
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><type>eighth</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>' +
+      `<notations><tuplet type="start">${portions}</tuplet></notations></note>` +
+      tupletNote('D', 4, 'eighth') +
+      '<note><pitch><step>E</step><octave>4</octave></pitch><duration>4</duration><type>eighth</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>' +
+      `<notations><tuplet type="stop">${portions}</tuplet></notations></note>`
+    const { mnx, warnings } = convertValid(measure(restated))
+    const item = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
+
+    expect(item && 'type' in item && item.type).toBe('tuplet')
+    expect(warnings).toEqual([])
+  })
+
   test('writes the display onto schema-valid MNX', () => {
     const { mnx } = convertValid(measure(displayed))
     const item = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]

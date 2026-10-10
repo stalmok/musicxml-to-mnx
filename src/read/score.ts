@@ -136,6 +136,7 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
   // <defaults> and one <music-font> in it.
   let musicFont: string | undefined
   for (const defaults of reader.children('defaults')) {
+    reader.readWhole(defaults)
     for (const font of children(defaults, 'music-font')) {
       musicFont ??= attribute(font, 'font-family')
       reportUnreadAttributes(font, warnings, {})
@@ -155,6 +156,7 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
   let declaresBeams = false
   let declaresAccidentals = false
   for (const identification of reader.children('identification')) {
+    reader.readWhole(identification)
     let rest = false
     for (const found of identification.children) {
       if (found.name !== 'encoding') {

@@ -6,7 +6,7 @@
 
 import type { ConversionWarning, WarningCode, WarningContext } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
-import { attribute as readAttribute, trimmedText } from '../xml/tree.js'
+import { attribute as readAttribute, readWholeElement, trimmedText } from '../xml/tree.js'
 
 /** Where a warning is, apart from its line, which comes from an element. */
 export type ReportContext = Omit<WarningContext, 'line'> & { readonly line?: never }
@@ -43,11 +43,12 @@ export class WarningCollector {
   }
 
   /**
-   * Reports found as not converted at all. Every attribute on it counts as
-   * read, so the sweep does not report them a second time.
+   * Reports found as not converted at all. Every attribute on it and every
+   * element below it counts as read, so the sweep does not report them a
+   * second time.
    */
   addWhole(code: WarningCode, message: string, context: ReportContext, found: XmlElement): void {
-    for (const name of Object.keys(found.attributes)) readAttribute(found, name)
+    readWholeElement(found)
     this.add(code, message, context, found)
   }
 

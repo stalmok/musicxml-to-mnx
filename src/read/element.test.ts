@@ -5,7 +5,7 @@
 import { describe, expect, test } from 'vitest'
 import { WarningCollector } from './collector.js'
 import { parseXmlRoot } from '../xml/parse.js'
-import { attribute } from '../xml/tree.js'
+import { attribute, child, readWholeElement } from '../xml/tree.js'
 import { ElementReader } from './element.js'
 
 function reader(body: string): ElementReader {
@@ -87,6 +87,70 @@ describe('blocks', () => {
     for (const found of element.element.children) element.block(found).children('slur')
 
     expect(reported(element)).toEqual(['<fermata> is not converted yet.'])
+  })
+})
+
+// A child read plainly has no reader of its own. What is read below it is
+// read with the tree accessors, which keep the record at every depth.
+describe('below a child read plainly', () => {
+  test('names an element below it that nothing read', () => {
+    const element = reader('<pitch><step>C</step><alter>1</alter><octave>4</octave></pitch>')
+    const pitch = element.child('pitch')!
+    child(pitch, 'step')
+    child(pitch, 'octave')
+
+    expect(reported(element)).toEqual(['<alter> is not converted yet.'])
+  })
+
+  test('reaches every depth', () => {
+    const element = reader(
+      '<tuplet type="start"><tuplet-actual><tuplet-number>3</tuplet-number>' +
+        '<tuplet-type>eighth</tuplet-type></tuplet-actual></tuplet>',
+    )
+    const tuplet = element.child('tuplet')!
+    attribute(tuplet, 'type')
+    child(child(tuplet, 'tuplet-actual')!, 'tuplet-number')
+
+    expect(reported(element)).toEqual(['<tuplet-type> is not converted yet.'])
+  })
+
+  test('sweeps the attributes of an element below it', () => {
+    const element = reader(
+      '<tuplet type="start"><tuplet-actual><tuplet-number color="#FF0000">3</tuplet-number>' +
+        '</tuplet-actual></tuplet>',
+    )
+    const tuplet = element.child('tuplet')!
+    attribute(tuplet, 'type')
+    child(child(tuplet, 'tuplet-actual')!, 'tuplet-number')
+
+    expect(reported(element)).toEqual([
+      'The "color" attribute of a <tuplet-number> is not converted yet.',
+    ])
+  })
+
+  // An unread element is reported as a whole, so what it holds is not named
+  // again.
+  test('leaves what an unread element holds to its own report', () => {
+    const element = reader(
+      '<tuplet><tuplet-actual><tuplet-number>3</tuplet-number></tuplet-actual></tuplet>',
+    )
+    element.child('tuplet')
+
+    expect(reported(element)).toEqual(['<tuplet-actual> is not converted yet.'])
+  })
+
+  test('says nothing below a child read whole', () => {
+    const element = reader('<lyric number="1"><syllabic>single</syllabic><text>la</text></lyric>')
+    readWholeElement(element.child('lyric')!)
+
+    expect(reported(element)).toEqual([])
+  })
+
+  test('says nothing below a child the reader accounts for whole', () => {
+    const element = reader('<time-modification><actual-notes>3</actual-notes></time-modification>')
+    element.readWhole(element.child('time-modification')!)
+
+    expect(reported(element)).toEqual([])
   })
 })
 

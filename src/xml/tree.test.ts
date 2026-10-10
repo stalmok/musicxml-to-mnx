@@ -1,7 +1,17 @@
 import { describe, expect, test } from 'vitest'
 import { MusicXMLError } from '../errors.js'
 import { parseXmlRoot } from './parse.js'
-import { attribute, child, children, descendants, requireAttribute, requireChild } from './tree.js'
+import {
+  attribute,
+  child,
+  children,
+  descendants,
+  readAttributeNames,
+  readWholeElement,
+  requireAttribute,
+  requireChild,
+  wasRead,
+} from './tree.js'
 
 const measure = parseXmlRoot(
   '<measure number="1">\n' +
@@ -96,5 +106,46 @@ describe('requireAttribute', () => {
     expect((thrown as MusicXMLError).message).toBe(
       '<measure> is missing a "width" attribute. (at part P1 > measure, line 1)',
     )
+  })
+})
+
+// Each test parses its own tree, because the record is kept per element.
+describe('the read record', () => {
+  const note = () => parseXmlRoot('<note><pitch><step>C</step></pitch><rest/><dot/><dot/></note>')
+
+  test('records what child(), children() and requireChild() find', () => {
+    const element = note()
+    const found = [
+      child(element, 'pitch')!,
+      ...children(element, 'dot'),
+      requireChild(element, 'rest', []),
+    ]
+
+    expect(found.map(wasRead)).toEqual([true, true, true, true])
+  })
+
+  test('records nothing for a walk over the tree', () => {
+    const element = note()
+    const walked = [...descendants(element), ...element.children]
+
+    expect(walked.some(wasRead)).toBe(false)
+  })
+
+  test('records only the element found, not what it holds', () => {
+    const element = note()
+    const pitch = child(element, 'pitch')
+
+    expect(pitch?.children.some(wasRead)).toBe(false)
+  })
+
+  test('records an element read whole, its attributes and everything below it', () => {
+    const element = parseXmlRoot(
+      '<lyric number="1"><syllabic>single</syllabic><text font-size="9">la</text></lyric>',
+    )
+    readWholeElement(element)
+
+    expect([...descendants(element)].every(wasRead)).toBe(true)
+    expect([...(readAttributeNames(element) ?? [])]).toEqual(['number'])
+    expect([...(readAttributeNames(element.children[1]!) ?? [])]).toEqual(['font-size'])
   })
 })

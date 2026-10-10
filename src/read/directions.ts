@@ -228,16 +228,21 @@ export function readDirection(
     const wording = new PendingWording()
     let lastMark: SuffixTarget | undefined
     for (const found of directionType.element.children) {
-      // Each case accounts for the child it handles. A type read plainly has
-      // its attributes swept with the other read children. A <metronome> has
-      // a reader of its own, and the sweep reports what that reader skips. An
-      // unhandled type is reported whole below.
+      // Each case accounts for the child it handles. A type read plainly is
+      // swept with the other read children. A <dynamics> and a <metronome>
+      // have a reader of their own, and the sweep reports what that reader
+      // skips. An unhandled type is reported whole below.
       switch (found.name) {
         case 'dynamics': {
-          // Read plainly: readDynamics reports every child of a <dynamics>
-          // it does not know, so the sweep has nothing left to say.
-          directionType.children('dynamics')
-          const marks = readDynamics(found, at, staff, placement, wording, warnings, context)
+          const marks = readDynamics(
+            directionType.block(found),
+            at,
+            staff,
+            placement,
+            wording,
+            warnings,
+            context,
+          )
           reading.dynamics.push(...marks)
           const last = marks[marks.length - 1]
           if (last) lastMark = { kind: 'mark', mark: last }
@@ -792,7 +797,7 @@ class PendingWording {
 }
 
 function readDynamics(
-  element: XmlElement,
+  element: ElementReader,
   position: Fraction,
   staff: number | undefined,
   placement: 'above' | 'below' | undefined,
@@ -802,7 +807,8 @@ function readDynamics(
 ): Dynamic[] {
   const dynamics: Dynamic[] = []
 
-  for (const mark of element.children) {
+  for (const mark of element.element.children) {
+    element.read(mark)
     const accent = ACCENT_DYNAMICS.get(mark.name)
     if (mark.name === 'other-dynamics') {
       // The glyph is reported before the text is read: an element naming a
@@ -922,7 +928,7 @@ function readMetronome(
   // by one. <metronome-arrows> is among them here, and only here: on a mark
   // that does convert, the arrows are a loss of their own.
   const dropWholeMark = (): Tempo[] => {
-    reader.skip('metronome-note', 'metronome-relation', 'metronome-arrows')
+    reader.skip('metronome-note', 'metronome-relation', 'metronome-arrows', 'beat-unit-tied')
     return []
   }
 
