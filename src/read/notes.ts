@@ -1174,10 +1174,7 @@ function readChordMember(
   // reported rather than compared.
   const joins = chord.last.event.value
   const writtenMatches =
-    written !== undefined &&
-    joins !== undefined &&
-    written.base === joins.base &&
-    written.dots === joins.dots
+    written !== undefined && written.base === joins.base && written.dots === joins.dots
   const chordDuration = chord.last.duration
   if (
     writtenMatches &&
