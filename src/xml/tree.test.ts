@@ -144,7 +144,7 @@ describe('the read record', () => {
     )
     readWholeElement(element)
 
-    expect([...descendants(element)].every(wasRead)).toBe(true)
+    expect([element, ...descendants(element)].every(wasRead)).toBe(true)
     expect([...(readAttributeNames(element) ?? [])]).toEqual(['number'])
     expect([...(readAttributeNames(element.children[1]!) ?? [])]).toEqual(['font-size'])
   })

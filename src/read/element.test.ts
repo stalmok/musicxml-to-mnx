@@ -146,6 +146,16 @@ describe('below a child read plainly', () => {
     expect(reported(element)).toEqual([])
   })
 
+  test('says nothing more of an element below it that a warning names whole', () => {
+    const element = reader('<notations><fermata type="upright">normal</fermata></notations>')
+    const warnings = new WarningCollector()
+    const fermata = element.child('notations')!.children[0]!
+    warnings.addWhole('unsupported:element', 'reported by hand', { measure: 1 }, fermata)
+    element.reportUnread(warnings, { measure: 1 })
+
+    expect(warnings.list().map((warning) => warning.message)).toEqual(['reported by hand'])
+  })
+
   test('says nothing below a child the reader accounts for whole', () => {
     const element = reader('<time-modification><actual-notes>3</actual-notes></time-modification>')
     element.readWhole(element.child('time-modification')!)

@@ -231,7 +231,7 @@ export function readDirection(
       // Each case accounts for the child it handles. A type read plainly is
       // swept with the other read children. A <dynamics> and a <metronome>
       // have a reader of their own, and the sweep reports what that reader
-      // skips. An unhandled type is reported whole below.
+      // leaves unread. An unhandled type is reported whole below.
       switch (found.name) {
         case 'dynamics': {
           const marks = readDynamics(
@@ -841,7 +841,7 @@ function readDynamics(
         ...(placement !== undefined ? { placement } : {}),
       })
     } else {
-      warnings.add(
+      warnings.addWhole(
         'unsupported:element',
         `A dynamic of "${mark.name}" is not converted yet.`,
         context,

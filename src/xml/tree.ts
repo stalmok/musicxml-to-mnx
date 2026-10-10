@@ -87,11 +87,9 @@ export function peekAttribute(element: XmlElement, name: string): string | undef
  * report its parts a second time.
  */
 export function readWholeElement(element: XmlElement): void {
+  elementsRead.add(element)
   for (const name of Object.keys(element.attributes)) attribute(element, name)
-  for (const found of element.children) {
-    elementsRead.add(found)
-    readWholeElement(found)
-  }
+  for (const found of element.children) readWholeElement(found)
 }
 
 /** The attribute names something has read off this element, if any. */
