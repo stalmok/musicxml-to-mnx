@@ -413,6 +413,20 @@ describe('tuplet ratios stated on the start marker', () => {
     expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tuplet'])
   })
 
+  test('says nothing of a dot a marker states with no value to dot', () => {
+    const first =
+      '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+      '<duration>4</duration><type>eighth</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+      '</time-modification><notations><tuplet type="start"><tuplet-actual>' +
+      '<tuplet-number>3</tuplet-number><tuplet-dot/></tuplet-actual></tuplet></notations></note>'
+    const { warnings } = convertValid(
+      measure(first + tupletNote('D', 4, 'eighth') + tupletNote('E', 4, 'eighth', 'stop')),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
   // The notes' <time-modification> is what the durations follow, so it
   // governs timing. A start marker stating a different ratio is reported, and
   // the ratio the notes state is the one converted.

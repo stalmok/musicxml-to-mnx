@@ -2367,11 +2367,11 @@ function tupletPortion(
   if (!portion) return fallback
   const number = child(portion, 'tuplet-number')
   const type = child(portion, 'tuplet-type')
+  // A dot with no <tuplet-type> has no value to dot, so it states nothing.
+  const dots = children(portion, 'tuplet-dot').length
   return {
     multiple: number ? readIntegerInRange(number, path, 1, 1_000) : fallback.multiple,
-    value: type
-      ? { base: requireNoteValueBase(type, path), dots: children(portion, 'tuplet-dot').length }
-      : fallback.value,
+    value: type ? { base: requireNoteValueBase(type, path), dots } : fallback.value,
   }
 }
 
