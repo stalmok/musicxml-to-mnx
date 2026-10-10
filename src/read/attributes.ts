@@ -758,7 +758,7 @@ function readClef(
       }
     }
 
-    // The warning covers the clef, the line it sits on included.
+    // The warning covers the clef whole, its line and octave change included.
     element.skip('line', 'clef-octave-change')
     warnings.add(
       'unrepresentable:clef-sign',

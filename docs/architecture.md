@@ -169,8 +169,9 @@ future release will produce the same warnings or refuse the same files.
 `read/element.ts` records consumed children. The accessors in `xml/tree.ts`
 record the attributes, elements and text they read, except inside a
 look-ahead pass. The sweep uses the element record below a child that has no
-reader of its own, and reports text that nothing read. Unhandled content is reported through the warning system. Content
-handled elsewhere needs an explicit exception.
+reader of its own, and reports text that nothing read. Unhandled content is
+reported through the warning system. Content handled elsewhere needs an
+explicit exception.
 
 The reader owns the unrepresentable-element registry because it has the XML
 context needed for warnings. Registry entries must have a basis in the

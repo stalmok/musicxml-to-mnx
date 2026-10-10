@@ -194,7 +194,7 @@ function statedForm(found: XmlElement): unknown[] {
   const names = Object.keys(stated)
     .filter((name) => !isPresentationAttribute(name))
     .sort()
-  // Compared, not read: the note that converts the element reads it.
+  // Compared, not read: reconcile accounts for the element.
   const text = peeking(() => trimmedText(found))
   const count = parseWholeNumber(text)
   return [
