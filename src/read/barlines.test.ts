@@ -451,6 +451,17 @@ describe('first and second time endings', () => {
     expect(warnings).toEqual([])
   })
 
+  // The stop restates the text the start prints.
+  test('says nothing of the text a stop restates', () => {
+    const { warnings } = read(
+      left('<ending number="1" type="start">1.</ending>') +
+        NOTE +
+        right('<ending number="1" type="stop">1.</ending>'),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
   test('counts an ending that opens and closes in one measure as one measure', () => {
     const { globals } = read(
       left('<ending number="1" type="start"/>') + NOTE + right('<ending number="1" type="stop"/>'),
@@ -571,7 +582,7 @@ describe('first and second time endings', () => {
   })
 
   test('reports an ending of a type MusicXML does not define', () => {
-    const { warnings } = read(NOTE + right('<ending number="1" type="wibble"/>'))
+    const { warnings } = read(NOTE + right('<ending number="1" type="wibble">1.</ending>'))
 
     expect(warnings.map((w) => [w.element, w.code, w.attribute])).toEqual([
       ['ending', 'unresolved:attribute-value', 'type'],

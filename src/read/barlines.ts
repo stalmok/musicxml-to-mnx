@@ -15,7 +15,7 @@ import type { BarlineType, Fermata, RepeatEnd } from '../model/score.js'
 import type { NamedSegno, ReadGlobalMeasure } from './jumps.js'
 import type { ReportContext, WarningCollector } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
-import { attribute, trimmedText } from '../xml/tree.js'
+import { attribute, text, trimmedText } from '../xml/tree.js'
 import { readColor } from './color.js'
 import { stated } from './element.js'
 import type { ElementReader, Stated } from './element.js'
@@ -331,11 +331,11 @@ function readEnding(
 
   reportHidden(ending, warnings, context)
 
-  // Which times the bracket covers. Only the start's numbers reach MNX: a
-  // stop restates the numbers of the bracket it closes, and an unknown type
-  // is reported as a whole element, so the attribute is accounted for here
-  // once for every branch.
+  // Which times the bracket covers, and the text it prints. Only the start's
+  // reach MNX: a stop restates the bracket it closes, and an unknown type is
+  // not carried over, so both are accounted for here once for every branch.
   attribute(ending, 'number')
+  text(ending)
 
   const type = attribute(ending, 'type')
   if (type === 'start') {
