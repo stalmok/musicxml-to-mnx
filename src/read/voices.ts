@@ -1046,7 +1046,7 @@ export class MeasureBuilder {
     builder.placed.push(placed)
     const space: Space | undefined = lasts && { kind: 'space', duration: lasts }
     if (space) {
-      builder.content.push(space)
+      builder.tuplets.append(space)
       builder.end = addFractions(at, space.duration)
       this.#moveTo(builder.end)
     }
