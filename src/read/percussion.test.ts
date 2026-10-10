@@ -403,6 +403,15 @@ describe('a chord of unpitched notes', () => {
       read(struck('C', '5', 'P1-I39') + '<note><chord/><rest/><duration>1</duration></note>'),
     ).toThrow(/A rest cannot be part of a chord/)
   })
+
+  test('refuses a note lasting a different time as it does for pitched notes', () => {
+    const longer = CHORD.replace(
+      '<duration>1</duration><type>quarter</type><instrument id="P1-I43"/>',
+      '<duration>2</duration><type>half</type><instrument id="P1-I43"/>',
+    )
+    expect(longer).not.toBe(CHORD)
+    expect(() => read(longer, DRUM_KIT)).toThrow(/lasts a different time from the chord/)
+  })
 })
 
 describe('a tie between unpitched notes', () => {
