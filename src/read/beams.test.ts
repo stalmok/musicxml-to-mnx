@@ -599,6 +599,20 @@ describe('a beam crossing the barline', () => {
     expect(warnings).toEqual([])
   })
 
+  // An empty <voice> names no voice either.
+  test('says nothing of a beam an empty voice left open on another staff', () => {
+    const on = (staff: string, note: string) =>
+      note
+        .replace('<type>', '<voice></voice><type>')
+        .replace('</note>', `<staff>${staff}</staff></note>`)
+    const { warnings } = readMeasures(
+      '<attributes><staves>2</staves></attributes>' + on('1', eighth('A', 'begin')),
+      on('2', eighth('C', 'end')),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
   test('reports a beam a named voice carries over the barline onto another staff', () => {
     const on = (staff: string, note: string) =>
       note
