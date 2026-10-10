@@ -698,12 +698,12 @@ export class MeasureBuilder {
   }
 
   /**
-   * Whether this voice has sounded nothing yet but grace notes, which take
-   * none of the measure's time. Only then can it take a rest filling the
-   * measure.
+   * Whether this voice holds nothing yet but grace notes, which take none of
+   * the measure's time, and silence the cursor passed over. Only then can it
+   * take a rest filling the measure.
    */
   hasSoundedNothing(voice: VoiceLine): boolean {
-    return layerOf(voice).content.every((item) => item.kind === 'grace')
+    return layerOf(voice).content.every((item) => item.kind === 'grace' || item.kind === 'space')
   }
 
   #requireRoomForMeasureRest(voice: VoiceLine, path: DocumentPath, line: number): void {

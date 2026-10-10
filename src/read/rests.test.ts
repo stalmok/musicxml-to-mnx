@@ -1300,6 +1300,21 @@ describe('a rest filling a measure a grace note leads into', () => {
     expect(warnings.map((warning) => warning.code)).toEqual(['inconsistent:voice'])
   })
 
+  test('keeps the silence a forward passed over before the grace notes', () => {
+    const { mnx, warnings } = convertValid(
+      inMeasure('<forward><duration>2</duration></forward>' + grace + measureRest),
+    )
+    const content = mnx.parts[0]?.measures[0]?.sequences[0]?.content
+
+    expect(content?.map((item) => ('type' in item ? item.type : 'event'))).toEqual([
+      'space',
+      'grace',
+      'event',
+    ])
+    expect(content?.[0]).toEqual({ type: 'space', duration: [1, 8] })
+    expect(warnings).toEqual([])
+  })
+
   // The grace notes take none of the measure's time, so the silence a
   // <forward> passes over after them stays a space before the rest, which
   // overfills the measure as the source does.
