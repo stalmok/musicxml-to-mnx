@@ -127,7 +127,8 @@ export class ElementReader {
 
   /**
    * Accounts for one child whole, attributes included, for a child whose
-   * content another element states or that is reported by hand.
+   * content another element states or that is reported by hand. The sweep
+   * does not look inside it.
    */
   readWhole(found: XmlElement): void {
     this.#read.add(found)

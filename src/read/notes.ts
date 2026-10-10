@@ -663,8 +663,9 @@ function openTupletsAndTremolo(
     (!tremolo || ratioCountedValue(ratio, element, path) !== undefined)
   const stated = readsRatio ? readTupletRatio(ratio, element, path) : undefined
   const rated = stated && tremolo ? tupletShareOfRatio(stated) : stated
-  // A start marker reads the ratio below. Anywhere else it goes unread, the
-  // bracket or the two-note tremolo it stands in states it.
+  // A start marker reads the ratio below. Elsewhere the drawn bracket or the
+  // two-note tremolo the note stands in states it, so it is accounted for
+  // whole.
   if (ratio && !readsRatio && starts.length === 0) element.readWhole(ratio)
 
   // Full, or this note does not belong in it either way: the run ends here. A

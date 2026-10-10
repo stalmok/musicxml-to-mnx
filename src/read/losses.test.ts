@@ -296,6 +296,23 @@ describe('a direction', () => {
   })
 })
 
+// <pitch> has no reader of its own. What is read inside it is read with the
+// tree accessors, so the sweep still finds what they left.
+describe('an element read plainly', () => {
+  test('reports an element inside it that nothing read', () => {
+    const { warnings } = read(
+      measure(
+        '<note><pitch><step>C</step><display-step>E</display-step><octave>4</octave></pitch>' +
+          '<duration>4</duration><type>quarter</type></note>',
+      ),
+    )
+
+    expect(warnings.map((w) => [w.code, w.message])).toEqual([
+      ['unsupported:element', '<display-step> is not converted yet.'],
+    ])
+  })
+})
+
 describe('a rest placed on the staff', () => {
   // <display-step>/<display-octave> fix a rest's height, read against the clef
   // in force. Where the measure states no clef, it is reported. Converting it
