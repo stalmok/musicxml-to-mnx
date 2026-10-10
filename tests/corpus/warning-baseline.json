@@ -1171,7 +1171,8 @@
     "direction@system": 3,
     "sound@dynamics": 9,
     "extend": 2,
-    "note@print-object": 1
+    "note@print-object": 1,
+    "accidental": 1
   },
   "bonis-le-chat-sur-le-toit-op-93": {
     "midi-device": 2,
@@ -2041,7 +2042,7 @@
     "dot@placement": 1,
     "trill-mark": 1,
     "notehead": 1,
-    "wedge": 2,
+    "wedge": 1,
     "note@print-object": 20
   },
   "burleigh-ethiopia-saluting-the-colors": {
@@ -3024,7 +3025,7 @@
     "extend": 6,
     "type@size": 2,
     "dashes": 2,
-    "wedge": 2
+    "wedge": 1
   },
   "cornelius-6-denkst-du-an-mich": {
     "midi-device": 2,
@@ -4409,7 +4410,8 @@
     "pedal": 170,
     "fermata": 1,
     "wedge": 1,
-    "note@print-object": 13
+    "note@print-object": 13,
+    "accidental": 11
   },
   "franz-11-voglein-wohin-so-schnell": {
     "midi-device": 2,
@@ -6176,7 +6178,8 @@
     "extend": 8,
     "dashes": 6,
     "pedal": 24,
-    "sound@tempo": 1
+    "sound@tempo": 1,
+    "accidental": 1
   },
   "hopekirk-my-lady-of-sleep": {
     "midi-device": 2,
@@ -6752,7 +6755,8 @@
     "dashes": 2,
     "other-notation": 4,
     "bracket": 6,
-    "note@print-object": 64
+    "note@print-object": 64,
+    "accidental": 2
   },
   "kralik-1-die-sprode": {
     "midi-device": 2,
@@ -8304,7 +8308,8 @@
     "sound@dynamics": 21,
     "dashes": 8,
     "notehead": 5,
-    "note@print-object": 3
+    "note@print-object": 3,
+    "accidental": 1
   },
   "munktell-fjerran-pa-enslig-stig": {
     "midi-device": 2,
@@ -9649,7 +9654,7 @@
     "direction@system": 17,
     "dashes": 10,
     "extend": 2,
-    "wedge": 9,
+    "wedge": 8,
     "staff-layout": 19,
     "sound@dynamics": 9,
     "note@print-object": 8
@@ -9730,7 +9735,7 @@
     "barline": 1,
     "extend": 4,
     "sound@dynamics": 13,
-    "wedge": 13,
+    "wedge": 10,
     "staff-layout": 14,
     "dashes": 3,
     "time@print-object": 22,
@@ -11329,7 +11334,7 @@
     "dashes": 14,
     "pedal": 36,
     "offset": 1,
-    "wedge": 10,
+    "wedge": 6,
     "note@print-object": 62
   },
   "webern-2-im-windesweben": {
@@ -11349,7 +11354,7 @@
     "sound@dynamics": 26,
     "pedal": 28,
     "offset": 1,
-    "wedge": 6,
+    "wedge": 5,
     "note@print-object": 29
   },
   "webern-2-noch-zwingt-mich-treue": {
