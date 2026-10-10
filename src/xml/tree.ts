@@ -11,9 +11,30 @@ import type { XmlElement } from './parse.js'
 // that nothing read. descendants() and a walk over `children` record nothing.
 const elementsRead = new WeakSet<XmlElement>()
 
+// Off while a read looks ahead, see peeking().
+let recording = true
+
+/**
+ * Runs a read that looks ahead of the reader, recording nothing it reads.
+ * What it looks at is still reported if the reader itself leaves it unread.
+ */
+export function peeking<T>(read: () => T): T {
+  const was = recording
+  recording = false
+  try {
+    return read()
+  } finally {
+    recording = was
+  }
+}
+
+function recordElement(element: XmlElement): void {
+  if (recording) elementsRead.add(element)
+}
+
 export function child(element: XmlElement, name: string): XmlElement | undefined {
   const found = element.children.find((c) => c.name === name)
-  if (found) elementsRead.add(found)
+  if (found) recordElement(found)
   return found
 }
 
@@ -32,7 +53,7 @@ export function trimmedText(element: XmlElement): string {
 
 export function children(element: XmlElement, name: string): readonly XmlElement[] {
   const found = element.children.filter((c) => c.name === name)
-  for (const one of found) elementsRead.add(one)
+  for (const one of found) recordElement(one)
   return found
 }
 
@@ -61,6 +82,7 @@ export function requireChild(element: XmlElement, name: string, path: DocumentPa
 const attributesRead = new WeakMap<XmlElement, Set<string>>()
 
 export function attribute(element: XmlElement, name: string): string | undefined {
+  if (!recording) return element.attributes[name]
   let read = attributesRead.get(element)
   if (!read) {
     read = new Set()
@@ -87,7 +109,7 @@ export function peekAttribute(element: XmlElement, name: string): string | undef
  * report its parts a second time.
  */
 export function readWholeElement(element: XmlElement): void {
-  elementsRead.add(element)
+  recordElement(element)
   for (const name of Object.keys(element.attributes)) attribute(element, name)
   for (const found of element.children) readWholeElement(found)
 }

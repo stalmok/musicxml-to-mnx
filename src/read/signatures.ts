@@ -22,7 +22,7 @@ import {
 import type { Fraction } from '../fraction.js'
 import type { Key, TimeSignature, Transposition } from '../model/score.js'
 import type { XmlElement } from '../xml/parse.js'
-import { attribute, child, children, requireChild, trimmedText } from '../xml/tree.js'
+import { attribute, child, children, peeking, requireChild, trimmedText } from '../xml/tree.js'
 import { firstTimeStated } from './attributes.js'
 import type { AttributesReading, StaffSignature } from './attributes.js'
 import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
@@ -563,6 +563,10 @@ export function scoreTimesInForce(
  * anything, and a value it cannot read counts as nothing.
  */
 export function timesInForce(part: XmlElement): (TimeSignature | undefined)[] {
+  return peeking(() => readTimesInForce(part))
+}
+
+function readTimesInForce(part: XmlElement): (TimeSignature | undefined)[] {
   let inForce: TimeSignature | undefined
   let divisions = fraction(1)
   return children(part, 'measure').map((measure) => {

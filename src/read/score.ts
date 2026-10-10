@@ -36,6 +36,7 @@ import {
   child,
   children,
   peekAttribute,
+  peeking,
   requireAttribute,
   trimmedText,
 } from '../xml/tree.js'
@@ -925,9 +926,11 @@ function quarterNotesPerMinute(tempo: Tempo): number {
  * whatever voice it names, so the note it joins already counts for it.
  */
 function soundingVoices(measure: XmlElement): (string | undefined)[] {
-  return children(measure, 'note')
-    .filter((note) => !child(note, 'rest') && !child(note, 'chord'))
-    .map((note) => child(note, 'voice')?.text.trim())
+  return peeking(() =>
+    children(measure, 'note')
+      .filter((note) => !child(note, 'rest') && !child(note, 'chord'))
+      .map((note) => child(note, 'voice')?.text.trim()),
+  )
 }
 
 /**

@@ -6,6 +6,7 @@ import {
   child,
   children,
   descendants,
+  peeking,
   readAttributeNames,
   readWholeElement,
   requireAttribute,
@@ -147,5 +148,45 @@ describe('the read record', () => {
     expect([element, ...descendants(element)].every(wasRead)).toBe(true)
     expect([...(readAttributeNames(element) ?? [])]).toEqual(['number'])
     expect([...(readAttributeNames(element.children[1]!) ?? [])]).toEqual(['font-size'])
+  })
+})
+
+describe('peeking', () => {
+  const note = () => parseXmlRoot('<note><rest measure="yes"/><voice>1</voice></note>')
+
+  test('records nothing a read looking ahead finds', () => {
+    const element = note()
+    const rest = peeking(() => {
+      const found = child(element, 'rest')!
+      attribute(found, 'measure')
+      children(element, 'voice')
+      return found
+    })
+
+    expect(element.children.some(wasRead)).toBe(false)
+    expect(readAttributeNames(rest)).toBeUndefined()
+  })
+
+  test('records again once the read returns, and once it throws', () => {
+    const element = note()
+    peeking(() => child(element, 'rest'))
+    expect(() =>
+      peeking(() => {
+        throw new Error('stop')
+      }),
+    ).toThrow('stop')
+    const found = [child(element, 'rest')!, child(element, 'voice')!]
+
+    expect(found.map(wasRead)).toEqual([true, true])
+  })
+
+  test('keeps not recording after a read inside it returns', () => {
+    const element = note()
+    peeking(() => {
+      peeking(() => child(element, 'rest'))
+      child(element, 'voice')
+    })
+
+    expect(element.children.some(wasRead)).toBe(false)
   })
 })
