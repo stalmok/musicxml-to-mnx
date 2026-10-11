@@ -87,9 +87,11 @@ interface PartReading {
 
 /**
  * What the measures of a part hand on to be settled once the part is read,
- * besides the spans its notes and directions hand to the part's state.
+ * besides the spans its notes and directions hand to the part's state. Each
+ * is finished in the order it is listed here, which is the order of its
+ * reports.
  */
-interface MeasureCollectors {
+type MeasureCollectors = {
   held: HeldSignatures
   endings: Endings
   measureRepeats: MeasureRepeats
@@ -847,13 +849,8 @@ function readPart(
   )
   // Settled once the whole part is in, because the document's order is not
   // the music's and an end can be measures from its start. Each reports what
-  // stays unsettled, in this order.
-  const settling: readonly PartCollector[] = [
-    state.spanners,
-    collectors.held,
-    collectors.endings,
-    collectors.measureRepeats,
-  ]
+  // stays unsettled.
+  const settling: readonly PartCollector[] = [state.spanners, ...Object.values(collectors)]
   for (const collector of settling) collector.finish(readings, warnings)
 
   return {
@@ -1287,7 +1284,7 @@ function readMeasure(
       beams: finished.beamedEvents.flatMap((events) => buildBeams(events, warnings, context)),
       dynamics,
       arpeggios: finished.arpeggios,
-      // Filled in below, once the whole part has been read.
+      // Filled in once the whole part has been read.
       ottavas: [],
       measureRepeat: undefined,
       sequences: finished.sequences,
