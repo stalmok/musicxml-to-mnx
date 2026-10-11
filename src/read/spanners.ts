@@ -46,13 +46,21 @@ interface OpenTie {
   drawn: boolean
 }
 
-/**
- * One end of a tie, and on a stop the note it is written on. `sounded` is how
- * many events its voice has sounded in the part, its own included.
- */
-type TieEnd = (StartEnd<OpenTie> | StopEnd<{ note: TieTarget; drawn: boolean }>) & {
-  sounded: number
+/** Where a tie ends. */
+interface TieStopAt {
+  note: TieTarget
+  /** Whether the stop states the tie in <tied>, not in <tie> alone. */
+  drawn: boolean
 }
+
+/**
+ * Where a tie's end is written. `sounded` is how many events its voice has
+ * sounded in the part, its own included.
+ */
+type TiePlace = EndPlace & { sounded: number }
+
+/** One end of a tie, and on a stop the note it is written on. */
+type TieEnd = (StartEnd<OpenTie> | StopEnd<TieStopAt>) & TiePlace
 
 /**
  * The element an end is written with, and the part and measure it sits in.
@@ -272,14 +280,14 @@ interface DroppedStopEnd extends EndPlace {
 }
 
 /**
- * One end of something that spans a stretch of music and is written between
- * the notes rather than on one: a hairpin, an octave shift.
+ * One end of something that spans a stretch of music: a tie, a slur, a
+ * hairpin, an octave shift.
  *
- * These cannot be paired up as they are met, the way ties and slurs are,
- * because MusicXML's document order is not time order: a measure holding two
- * voices is written as one pass per voice with a <backup> between them, so a
- * stop belonging to the first voice is written before a start belonging to
- * the second even though the music has it the other way round.
+ * These cannot be paired up as they are met, because MusicXML's document
+ * order is not time order: a measure holding two voices is written as one
+ * pass per voice with a <backup> between them, so a stop belonging to the
+ * first voice is written before a start belonging to the second even though
+ * the music has it the other way round.
  */
 export type SpanEnd<T, S> = StartEnd<T> | DroppedStartEnd | StopEnd<S>
 
@@ -294,6 +302,16 @@ export type SpanEnd<T, S> = StartEnd<T> | DroppedStartEnd | StopEnd<S>
 export type SamePoint = 'stop-first' | 'as-written'
 
 /**
+ * Which open start of its number a stop closes, for a span the rules of
+ * pairSpans do not fit. A stop takes the most recently opened start it
+ * `owns`, and where it owns none, the most recently opened one it `reaches`.
+ */
+interface Claim<P extends EndPlace> {
+  owns: (start: P, stop: P) => boolean
+  reaches: (start: P, stop: P) => boolean
+}
+
+/**
  * Joins each span's two ends, in the order the music has them: by measure,
  * then by where in the measure the cursor had reached. Ends falling at the
  * same point are ordered as `atSamePoint` says, and otherwise keep the order
@@ -304,7 +322,8 @@ export type SamePoint = 'stop-first' | 'as-written'
  * and where that has none open, the most recently opened of any. The first
  * rule keeps two voices or two hands, each holding a span numbered 1, from
  * closing into each other. The fallback lets a span one voice opens close in
- * another. openedIn below states which rule applies to what.
+ * another. openedIn below states which rule applies to what. A `claim` gives
+ * a span its own two rules, as a tie's are.
  *
  * A stop whose covered point falls before its start is reported as a
  * backwards-stop, not joined.
@@ -317,14 +336,18 @@ export type SamePoint = 'stop-first' | 'as-written'
  * other way, the stop closes another staff's span, and its start takes some
  * later stop of its number.
  */
-export function pairSpans<T, S>(
-  ends: readonly (SpanEnd<T, S> | DroppedStopEnd)[],
-  join: (payload: T, stop: StopEnd<S>) => void,
-  report: (reason: 'orphan-stop' | 'unclosed-start' | 'backwards-stop', end: SpanEnd<T, S>) => void,
+export function pairSpans<T, S, P extends EndPlace = EndPlace>(
+  ends: readonly ((SpanEnd<T, S> | DroppedStopEnd) & P)[],
+  join: (payload: T, stop: StopEnd<S> & P, start: StartEnd<T> & P) => void,
+  report: (
+    reason: 'orphan-stop' | 'unclosed-start' | 'backwards-stop',
+    end: SpanEnd<T, S> & P,
+  ) => void,
   atSamePoint: SamePoint = 'stop-first',
-  noLength?: (start: StartEnd<T> | DroppedStartEnd, stop: StopEnd<S>) => void,
+  noLength?: (start: (StartEnd<T> | DroppedStartEnd) & P, stop: StopEnd<S> & P) => void,
+  claim: Claim<P> = { owns: openedIn, reaches: () => true },
 ): void {
-  const open = new Map<string, (StartEnd<T> | DroppedStartEnd)[]>()
+  const open = new Map<string, ((StartEnd<T> | DroppedStartEnd) & P)[]>()
   const ordered = inTimeOrder(ends, atSamePoint)
   const noLengthStarts = new Set<SpanEnd<T, S> | DroppedStopEnd>()
 
@@ -335,7 +358,7 @@ export function pairSpans<T, S>(
     }
 
     const waiting = open.get(end.number) ?? []
-    const own = findLastOpened(waiting, (start) => openedIn(start, end))
+    const own = findLastOpened(waiting, (start) => claim.owns(start, end))
     // No start open on the stop's staff, and every one open names another
     // staff: none of them can be the stop's own.
     const elsewhere = waiting.every((start) => start.staff !== undefined && end.staff !== undefined)
@@ -348,7 +371,7 @@ export function pairSpans<T, S>(
       }
     }
 
-    const started = own ?? waiting[waiting.length - 1]
+    const started = own ?? findLastOpened(waiting, (start) => claim.reaches(start, end))
     if (!started) {
       if (!end.dropped) report('orphan-stop', end)
       continue
@@ -370,7 +393,7 @@ export function pairSpans<T, S>(
       continue
     }
 
-    join(started.payload, end)
+    join(started.payload, end, started)
   }
 
   for (const waiting of open.values()) {
@@ -713,8 +736,8 @@ export class SpannerResolver implements PartCollector {
   /**
    * Joins every tie in the part, once both ends of all of them are in.
    *
-   * Paired in time order, not as the ends are met, for the reason the slurs
-   * are.
+   * Paired in time order, not as the ends are met, for the reason every span
+   * is (see SpanEnd).
    *
    * A stop takes the open start of its own voice on the event its voice
    * sounded just before, so two hands each sustaining one pitch pair within a
@@ -728,70 +751,55 @@ export class SpannerResolver implements PartCollector {
    * two notes sounding into each other, and a note never crosses a barline.
    */
   #resolveTies(warnings: WarningCollector): void {
+    // A tie's two ends mark the very points they are written on, so no stop
+    // covers a point before its start; the backwards message is here for the
+    // shape of the report, as a slur's is.
+    const messages = {
+      'orphan-stop': 'A tie ends on a note where none had started, and is not carried over.',
+      'backwards-stop': 'A tie would end before it starts, and is not carried over.',
+      'unclosed-start': 'A tie starts on a note that nothing ties to, and is not carried over.',
+    }
     // Two ties of one pitch can be open at once, as when two hands each
     // sustain it, so each pitch holds a stack rather than a single open tie.
-    const open = new Map<string, (StartEnd<OpenTie> & { sounded: number })[]>()
+    pairSpans<OpenTie, TieStopAt, TiePlace>(
+      this.#tieEnds,
+      (open, stop, start) => {
+        // A tie stated in <tie> at both ends and in <tied> at neither sounds
+        // but is not drawn, as MuseScore writes an invisible tie.
+        if (!open.drawn && !stop.stop.drawn) {
+          reportAt(
+            start.where,
+            'unrepresentable:element',
+            'A tie stated by <tie> with no <tied> on either note sounds but is not drawn, ' +
+              'and cannot be expressed in MNX, where a tie is always drawn.',
+            warnings,
+          )
+          return
+        }
 
-    for (const end of inTimeOrder(this.#tieEnds, 'as-written')) {
-      if (end.kind === 'start') {
-        open.set(end.number, [...(open.get(end.number) ?? []), end])
-        continue
-      }
-
-      const waiting = open.get(end.number) ?? []
-      const started =
-        findLastOpened(
-          waiting,
-          (start) => (start.voice ?? '') === (end.voice ?? '') && end.sounded === start.sounded + 1,
-        ) ?? findLastOpened(waiting, (start) => end.measure - start.measure <= 1)
-      if (!started) {
-        reportAt(
-          end.where,
-          'unclosed:spanner',
-          'A tie ends on a note where none had started, and is not carried over.',
-          warnings,
-        )
-        continue
-      }
-      waiting.splice(waiting.indexOf(started), 1)
-
-      // A tie stated in <tie> at both ends and in <tied> at neither sounds
-      // but is not drawn, as MuseScore writes an invisible tie.
-      if (!started.payload.drawn && !end.stop.drawn) {
-        reportAt(
-          started.where,
-          'unrepresentable:element',
-          'A tie stated by <tie> with no <tied> on either note sounds but is not drawn, ' +
-            'and cannot be expressed in MNX, where a tie is always drawn.',
-          warnings,
-        )
-        continue
-      }
-
-      started.payload.note.ties = [
-        ...started.payload.note.ties,
-        {
-          kind: 'target',
-          target: end.stop.note.id,
-          // Voices are compared the way sequences are bucketed: a note
-          // stating no voice and one stating an empty voice are both the
-          // unnamed voice.
-          crossVoice: (started.voice ?? '') !== (end.voice ?? ''),
-          ...(started.payload.side !== undefined ? { side: started.payload.side } : {}),
-        },
-      ]
-    }
-
-    for (const waiting of open.values()) {
-      for (const start of waiting) {
-        reportAt(
-          start.where,
-          'unclosed:spanner',
-          'A tie starts on a note that nothing ties to, and is not carried over.',
-          warnings,
-        )
-      }
-    }
+        open.note.ties = [
+          ...open.note.ties,
+          {
+            kind: 'target',
+            target: stop.stop.note.id,
+            // Voices are compared the way sequences are bucketed: a note
+            // stating no voice and one stating an empty voice are both the
+            // unnamed voice.
+            crossVoice: (start.voice ?? '') !== (stop.voice ?? ''),
+            ...(open.side !== undefined ? { side: open.side } : {}),
+          },
+        ]
+      },
+      (reason, end) => {
+        reportAt(end.where, 'unclosed:spanner', messages[reason], warnings)
+      },
+      'as-written',
+      undefined,
+      {
+        owns: (start, stop) => openedIn(start, stop) && stop.sounded === start.sounded + 1,
+        reaches: (start, stop) => stop.measure - start.measure <= 1,
+      },
+    )
     this.#tieEnds.length = 0
   }
 
