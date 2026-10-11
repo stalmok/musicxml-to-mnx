@@ -468,22 +468,25 @@ function printedNumbers(text: string, most: number): number[] | undefined {
  */
 export class Endings implements PartCollector {
   readonly #partId: string
-  readonly #ends: { at: number; start: EndingStart | undefined; stop: EndingStop | undefined }[] =
-    []
+  // The edges of each measure stating any, keyed by its index in the part.
+  readonly #ends = new Map<
+    number,
+    { start: EndingStart | undefined; stop: EndingStop | undefined }
+  >()
 
   constructor(partId: string) {
     this.#partId = partId
   }
 
-  /** Notes the ending edges of the measure at `at`, the measure's index in the part. */
   add(at: number, start: EndingStart | undefined, stop: EndingStop | undefined): void {
-    this.#ends.push({ at, start, stop })
+    if (start || stop) this.#ends.set(at, { start, stop })
   }
 
   finish(measures: readonly PartMeasure[], warnings: WarningCollector): void {
-    let open: { at: number; start: EndingStart } | undefined
+    let open: { at: number; measure: PartMeasure; start: EndingStart } | undefined
 
-    for (const { at, start, stop } of this.#ends) {
+    measures.forEach((measure, at) => {
+      const { start, stop } = this.#ends.get(at) ?? {}
       if (start) {
         if (open) {
           warnings.add(
@@ -493,10 +496,10 @@ export class Endings implements PartCollector {
             open.start.element,
           )
         }
-        open = { at, start }
+        open = { at, measure, start }
       }
 
-      if (!stop) continue
+      if (!stop) return
       if (!open) {
         warnings.add(
           'unclosed:ending',
@@ -504,16 +507,12 @@ export class Endings implements PartCollector {
           { part: this.#partId, measure: at + 1 },
           stop.element,
         )
-        continue
+        return
       }
 
       // Counted inclusively: an ending opening and closing in one measure
       // covers that one measure.
-      const opening = measures[open.at]
-      /* v8 ignore next -- every measure the part reads is handed back to finish. */
-      if (!opening) throw new Error('An ending opened on a measure that is not there.')
-
-      opening.global.ending = {
+      open.measure.global.ending = {
         value: {
           duration: at - open.at + 1,
           numbers: open.start.numbers,
@@ -522,7 +521,7 @@ export class Endings implements PartCollector {
         element: open.start.element,
       }
       open = undefined
-    }
+    })
 
     if (open) {
       warnings.add(
