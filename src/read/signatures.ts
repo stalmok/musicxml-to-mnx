@@ -30,7 +30,8 @@ import { lengthOf } from './duration.js'
 import type { ReadGlobalMeasure } from './jumps.js'
 import { noteValueBaseOf } from './noteValues.js'
 import { parseExactDecimal } from './numbers.js'
-import type { HeldSignature, PartState } from './state.js'
+import type { PartCollector, PartMeasure } from './partCollector.js'
+import type { PartState } from './state.js'
 import {
   concertFifths,
   keyFifthsFlipAt,
@@ -112,6 +113,7 @@ export interface SettledSignatures {
  */
 export class MeasureSignatures {
   readonly #state: PartState
+  readonly #held: HeldSignatures
   readonly #warnings: WarningCollector
   readonly #context: ReportContext
   readonly #path: DocumentPath
@@ -145,11 +147,13 @@ export class MeasureSignatures {
 
   constructor(
     state: PartState,
+    held: HeldSignatures,
     warnings: WarningCollector,
     context: ReportContext,
     path: DocumentPath,
   ) {
     this.#state = state
+    this.#held = held
     this.#warnings = warnings
     this.#context = context
     this.#path = path
@@ -227,6 +231,7 @@ export class MeasureSignatures {
   settle(end: Fraction): SettledSignatures {
     this.convertKeys()
     const state = this.#state
+    const held = this.#held
     const warnings = this.#warnings
     const context = this.#context
     // Settled with the measure whole, so a staff stated in a block of its own
@@ -240,22 +245,17 @@ export class MeasureSignatures {
 
     // A measure stating none, or one MNX cannot carry, leaves the one before
     // in force.
-    const key = opening(
-      KEY,
-      state.lateKey,
-      { settled: this.#keySettled, value: this.#key },
-      warnings,
-    )
+    const key = opening(KEY, held.key, { settled: this.#keySettled, value: this.#key }, warnings)
     state.convertedKey = key ?? state.convertedKey
-    state.lateKey = holdLate(KEY, this.#lateKeys, state.convertedKey, end, warnings, context)
+    held.key = holdLate(KEY, this.#lateKeys, state.convertedKey, end, warnings, context)
     const time = opening(
       TIME,
-      state.lateTime,
+      held.time,
       { settled: this.#timeSettled, value: this.#time },
       warnings,
     )
     state.convertedTime = time ?? state.convertedTime
-    state.lateTime = holdLate(TIME, this.#lateTimes, state.convertedTime, end, warnings, context)
+    held.time = holdLate(TIME, this.#lateTimes, state.convertedTime, end, warnings, context)
 
     // Unmetered music is a loss whatever the measure converts. What it says
     // depends on that: a measure stating a time signature beside the unmetered
@@ -289,13 +289,36 @@ export class MeasureSignatures {
 }
 
 /**
- * Reports a key or time signature the part's last measure stated after its
- * start, which no measure is left to take.
+ * A key or time signature a measure stated after its start, held for the next
+ * one.
  */
-export function reportHeldAtPartEnd(state: PartState, warnings: WarningCollector): void {
-  const outcome = 'This is the last measure of the part, so it is not converted.'
-  if (state.lateKey) reportLate(KEY, state.lateKey, outcome, warnings)
-  if (state.lateTime) reportLate(TIME, state.lateTime, outcome, warnings)
+interface HeldSignature<T> {
+  value: T
+  partway: boolean
+  context: ReportContext
+  /** The <key> or <time> stating it. */
+  element: XmlElement
+}
+
+/**
+ * The key and time signature the measure last read stated after its start.
+ * MNX states a signature only where a measure begins, so the next measure
+ * takes it unless it states its own. Where it was stated partway through the
+ * measure rather than after its notes, the move is a loss.
+ */
+export class HeldSignatures implements PartCollector {
+  key: HeldSignature<Key> | undefined
+  time: HeldSignature<TimeSignature> | undefined
+
+  /**
+   * Reports a signature the part's last measure stated after its start,
+   * which no measure is left to take.
+   */
+  finish(_measures: readonly PartMeasure[], warnings: WarningCollector): void {
+    const outcome = 'This is the last measure of the part, so it is not converted.'
+    if (this.key) reportLate(KEY, this.key, outcome, warnings)
+    if (this.time) reportLate(TIME, this.time, outcome, warnings)
+  }
 }
 
 /**

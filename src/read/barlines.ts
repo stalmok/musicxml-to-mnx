@@ -8,12 +8,13 @@
 //
 // MusicXML marks where an ending starts and where it stops, several measures
 // apart. MNX states it once, on the measure where it starts, as how many
-// measures it runs for. resolveEndings joins the two, one part at a time.
+// measures it runs for. Endings joins the two, one part at a time.
 
 import type { Fraction } from '../fraction.js'
 import type { BarlineType, Fermata, RepeatEnd } from '../model/score.js'
-import type { NamedSegno, ReadGlobalMeasure } from './jumps.js'
+import type { NamedSegno } from './jumps.js'
 import type { ReportContext, WarningCollector } from './collector.js'
+import type { PartCollector, PartMeasure } from './partCollector.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, text, trimmedText } from '../xml/tree.js'
 import { readColor } from './color.js'
@@ -457,68 +458,79 @@ function printedNumbers(text: string, most: number): number[] | undefined {
 }
 
 /**
- * Joins each ending's two ends across a part's measures, in place. MNX states
- * an ending on the measure where it begins, as the number of measures it
- * covers, so how far it runs is only known once its stop has been met.
+ * The ends of every ending in a part, joined once the part is read. MNX
+ * states an ending on the measure where it begins, as the number of measures
+ * it covers, so how far it runs is only known once its stop has been met.
+ *
+ * Endings do not nest, and a stop restates the numbers of the bracket it
+ * closes, so one bracket is open at a time and a stop closes it whatever it
+ * is numbered.
  */
-export function resolveEndings(
-  measures: readonly {
-    global: Pick<ReadGlobalMeasure, 'ending'>
-    endingStart: EndingStart | undefined
-    endingStop: EndingStop | undefined
-  }[],
-  warnings: WarningCollector,
-  partId: string,
-): void {
-  let open: { at: number; start: EndingStart } | undefined
+export class Endings implements PartCollector {
+  readonly #partId: string
+  readonly #ends: { at: number; start: EndingStart | undefined; stop: EndingStop | undefined }[] =
+    []
 
-  measures.forEach((measure, index) => {
-    if (measure.endingStart) {
-      if (open) {
+  constructor(partId: string) {
+    this.#partId = partId
+  }
+
+  /** Notes the ending edges of the measure at `at`, the measure's index in the part. */
+  add(at: number, start: EndingStart | undefined, stop: EndingStop | undefined): void {
+    this.#ends.push({ at, start, stop })
+  }
+
+  finish(measures: readonly PartMeasure[], warnings: WarningCollector): void {
+    let open: { at: number; start: EndingStart } | undefined
+
+    for (const { at, start, stop } of this.#ends) {
+      if (start) {
+        if (open) {
+          warnings.add(
+            'unclosed:ending',
+            'An ending starts where one is already open, and the first is not carried over.',
+            { part: this.#partId, measure: open.at + 1 },
+            open.start.element,
+          )
+        }
+        open = { at, start }
+      }
+
+      if (!stop) continue
+      if (!open) {
         warnings.add(
           'unclosed:ending',
-          'An ending starts where one is already open, and the first is not carried over.',
-          { part: partId, measure: open.at + 1 },
-          open.start.element,
+          'An ending stops where none had started, and is not carried over.',
+          { part: this.#partId, measure: at + 1 },
+          stop.element,
         )
+        continue
       }
-      open = { at: index, start: measure.endingStart }
+
+      // Counted inclusively: an ending opening and closing in one measure
+      // covers that one measure.
+      const opening = measures[open.at]
+      /* v8 ignore next -- every measure the part reads is handed back to finish. */
+      if (!opening) throw new Error('An ending opened on a measure that is not there.')
+
+      opening.global.ending = {
+        value: {
+          duration: at - open.at + 1,
+          numbers: open.start.numbers,
+          open: stop.open,
+        },
+        element: open.start.element,
+      }
+      open = undefined
     }
 
-    if (!measure.endingStop) return
-    if (!open) {
+    if (open) {
       warnings.add(
         'unclosed:ending',
-        'An ending stops where none had started, and is not carried over.',
-        { part: partId, measure: index + 1 },
-        measure.endingStop.element,
+        'An ending starts where nothing ends it, and is not carried over.',
+        { part: this.#partId, measure: open.at + 1 },
+        open.start.element,
       )
-      return
     }
-
-    // Counted inclusively: an ending opening and closing in one measure
-    // covers that one measure.
-    const start = measures[open.at]
-    /* v8 ignore next -- `open.at` is an index this same loop has been past. */
-    if (!start) throw new Error('An ending opened on a measure that is not there.')
-
-    start.global.ending = {
-      value: {
-        duration: index - open.at + 1,
-        numbers: open.start.numbers,
-        open: measure.endingStop.open,
-      },
-      element: open.start.element,
-    }
-    open = undefined
-  })
-
-  if (open) {
-    warnings.add(
-      'unclosed:ending',
-      'An ending starts where nothing ends it, and is not carried over.',
-      { part: partId, measure: open.at + 1 },
-      open.start.element,
-    )
   }
 }

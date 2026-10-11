@@ -60,18 +60,6 @@ export interface ClefInForce {
 }
 
 /**
- * A key or time signature a measure stated after its start and held for the
- * next one, as PartState.lateKey and PartState.lateTime.
- */
-export interface HeldSignature<T> {
-  value: T
-  partway: boolean
-  context: ReportContext
-  /** The <key> or <time> stating it. */
-  element: XmlElement
-}
-
-/**
  * What a part carries from one measure to the next. `<divisions>` is stated
  * once and stays in force until restated, so a measure is not readable on its
  * own.
@@ -92,13 +80,6 @@ export interface PartState {
    */
   time: TimeSignature | undefined
   /**
-   * A time signature stated after the start of a measure, held for the next
-   * one. MNX states a time signature only where a measure begins, so the next
-   * measure takes it unless it states its own. Where it was stated partway
-   * through the measure rather than after its notes, the move is a loss.
-   */
-  lateTime: HeldSignature<TimeSignature> | undefined
-  /**
    * The key and time signature MNX has in force after the measures read so
    * far. A statement after a measure's start is compared with these rather
    * than with what the source last stated, because the source can state one
@@ -106,8 +87,6 @@ export interface PartState {
    */
   convertedKey: Key | undefined
   convertedTime: TimeSignature | undefined
-  /** A key signature stated after the start of a measure, held as lateTime is. */
-  lateKey: HeldSignature<Key> | undefined
   /**
    * The key and time signature each staff of the part has in force, as the
    * source states them, keyed by staff number. MusicXML states one per staff
@@ -226,10 +205,8 @@ export function newPartState(
     divisions: undefined,
     divisionsAssumed: false,
     time: undefined,
-    lateTime: undefined,
     convertedKey: undefined,
     convertedTime: undefined,
-    lateKey: undefined,
     staffKeys: new Map(),
     staffTimes: new Map(),
     staves: 1,

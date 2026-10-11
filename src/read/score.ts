@@ -42,7 +42,7 @@ import {
 } from '../xml/tree.js'
 import { readAttributes, settleTranspositions } from './attributes.js'
 import type { MeasureRepeatReading } from './attributes.js'
-import { readBarline, resolveEndings } from './barlines.js'
+import { Endings, readBarline } from './barlines.js'
 import type { EndingStart, EndingStop } from './barlines.js'
 import { buildBeams } from './beams.js'
 import { readDirection, readSound } from './directions.js'
@@ -60,9 +60,10 @@ import { readPrint } from './print.js'
 import { IdGenerator } from './idGenerator.js'
 import { settleJumps } from './jumps.js'
 import type { NamedSegno, ReadGlobalMeasure, DalSegno } from './jumps.js'
+import type { PartCollector, PartMeasure } from './partCollector.js'
 import {
+  HeldSignatures,
   MeasureSignatures,
-  reportHeldAtPartEnd,
   scoreTimesInForce,
   timesInForce,
   settleAcrossParts,
@@ -84,20 +85,19 @@ interface PartReading {
   soundTempos: readonly (readonly SoundTempo[])[]
 }
 
+/**
+ * What the measures of a part hand on to be settled once the part is read,
+ * besides the spans its notes and directions hand to the part's state.
+ */
+interface MeasureCollectors {
+  held: HeldSignatures
+  endings: Endings
+  measureRepeats: MeasureRepeats
+}
+
 interface MeasureReading {
   measure: Measure
   global: ReadGlobalMeasure
-  /**
-   * Held until the part can join it to its other end, with its <ending>,
-   * so the report names it.
-   */
-  endingStart: EndingStart | undefined
-  endingStop: EndingStop | undefined
-  /**
-   * The measure repeat edges this measure stated, held until the part can
-   * walk the sign from its start to its stop or the end of the part.
-   */
-  measureRepeats: readonly MeasureRepeatReading[]
   /**
    * The <sound tempo> statements this measure made, held until every part has
    * been read and the marks the score draws are known.
@@ -827,27 +827,34 @@ function readPart(
   }
 
   const state = newPartState(ids, partList.soundsByInstrument.get(id))
+  const collectors: MeasureCollectors = {
+    held: new HeldSignatures(),
+    endings: new Endings(id),
+    measureRepeats: new MeasureRepeats(id),
+  }
   const readings = children(element, 'measure').map((measureElement, index) =>
     readMeasure(
       measureElement,
       index,
       id,
       state,
+      collectors,
       partTimes[index],
       scoreTimes[index],
       warnings,
       partPath,
     ),
   )
-  // Spans are paired once the whole part is in, because the document's order
-  // is not the music's. What stays open is reported in the same step.
-  state.spanners.finish(
-    readings.map((reading) => reading.measure),
-    warnings,
-  )
-  reportHeldAtPartEnd(state, warnings)
-  resolveEndings(readings, warnings, id)
-  resolveMeasureRepeats(readings, warnings, id)
+  // Settled once the whole part is in, because the document's order is not
+  // the music's and an end can be measures from its start. Each reports what
+  // stays unsettled, in this order.
+  const settling: readonly PartCollector[] = [
+    state.spanners,
+    collectors.held,
+    collectors.endings,
+    collectors.measureRepeats,
+  ]
+  for (const collector of settling) collector.finish(readings, warnings)
 
   return {
     part: {
@@ -938,97 +945,108 @@ function soundingVoices(measure: XmlElement): (string | undefined)[] {
 }
 
 /**
- * Walks each measure repeat sign from its start to its stop, or to the end
- * of the part where the source never closes it, as MusicXML allows. Every
- * measure under the sign draws it in MusicXML; MNX states it only on the
- * first measure of each pattern, so a two-measure pattern is marked on
- * every other measure.
+ * The measure repeat edges of a part. Once the part is read, each sign is
+ * walked from its start to its stop, or to the end of the part where the
+ * source never closes it, as MusicXML allows. Every measure under the sign
+ * draws it in MusicXML; MNX states it only on the first measure of each
+ * pattern, so a two-measure pattern is marked on every other measure.
  *
  * MusicXML scopes each edge to a staff, and MNX states one sign for the
  * part's measure, so staves that truly disagree cannot all be carried: the
  * part's sign ends at the first stop and restarts at any start. An edge
  * that cuts or overrides another staff's running sign is reported.
  */
-function resolveMeasureRepeats(
-  readings: readonly MeasureReading[],
-  warnings: WarningCollector,
-  partId: string,
-): void {
-  // The pattern each staff's sign states, keyed by staff. An edge written
-  // without a staff was read as one edge per staff, so the keys are always
-  // concrete.
-  const open = new Map<number, number>()
-  let pattern: number | undefined
-  let offset = 0
-  readings.forEach((reading, index) => {
-    const context: ReportContext = { part: partId, measure: index + 1 }
-    const stops = reading.measureRepeats.filter((edge) => edge.edge === 'stop')
-    const starts = reading.measureRepeats.filter(
-      (edge): edge is Extract<MeasureRepeatReading, { edge: 'start' }> => edge.edge === 'start',
-    )
+class MeasureRepeats implements PartCollector {
+  readonly #partId: string
+  // The edges each measure states, keyed by its index in the part.
+  readonly #edges = new Map<number, readonly MeasureRepeatReading[]>()
 
-    // A stop is read before a start, so a measure stopping one sign may
-    // start the next. A stop for a staff drawing no sign closes nothing, and
-    // leaves the staves that are drawing one alone.
-    const closed = stops.filter((stop) => open.delete(stop.staff))
-    const firstClosed = closed[0]
-    if (firstClosed !== undefined) {
-      if (open.size > 0) {
-        warnings.add(
-          'unrepresentable:measure-repeat',
-          "This measure stops a measure repeat sign for one staff while another staff's " +
-            'sign runs on, and MNX states one sign for the part. The sign ends here for ' +
-            'every staff.',
-          context,
-          firstClosed.element,
-        )
-        open.clear()
-      }
-      pattern = undefined
-    }
+  constructor(partId: string) {
+    this.#partId = partId
+  }
 
-    const first = starts[0]
-    if (first !== undefined) {
-      // A restated length, as one written per staff, loses nothing;
-      // differing lengths cannot all be carried, so the first is kept and
-      // the disagreement reported.
-      const differing = starts.find((start) => start.measures !== first.measures)
-      if (differing !== undefined) {
-        warnings.add(
-          'unrepresentable:measure-repeat',
-          'This measure starts measure repeats of different patterns, and MNX states ' +
-            'one for the measure. The first is the one converted.',
-          context,
-          differing.element,
-        )
+  add(at: number, edges: readonly MeasureRepeatReading[]): void {
+    this.#edges.set(at, edges)
+  }
+
+  finish(measures: readonly PartMeasure[], warnings: WarningCollector): void {
+    // The pattern each staff's sign states, keyed by staff. An edge written
+    // without a staff was read as one edge per staff, so the keys are always
+    // concrete.
+    const open = new Map<number, number>()
+    let pattern: number | undefined
+    let offset = 0
+    measures.forEach((reading, index) => {
+      const context: ReportContext = { part: this.#partId, measure: index + 1 }
+      const edges = this.#edges.get(index) ?? []
+      const stops = edges.filter((edge) => edge.edge === 'stop')
+      const starts = edges.filter(
+        (edge): edge is Extract<MeasureRepeatReading, { edge: 'start' }> => edge.edge === 'start',
+      )
+
+      // A stop is read before a start, so a measure stopping one sign may
+      // start the next. A stop for a staff drawing no sign closes nothing, and
+      // leaves the staves that are drawing one alone.
+      const closed = stops.filter((stop) => open.delete(stop.staff))
+      const firstClosed = closed[0]
+      if (firstClosed !== undefined) {
+        if (open.size > 0) {
+          warnings.add(
+            'unrepresentable:measure-repeat',
+            "This measure stops a measure repeat sign for one staff while another staff's " +
+              'sign runs on, and MNX states one sign for the part. The sign ends here for ' +
+              'every staff.',
+            context,
+            firstClosed.element,
+          )
+          open.clear()
+        }
+        pattern = undefined
       }
 
-      // A staff's running sign that no start here restates is cut by the
-      // restart, which MusicXML never said happens on that staff.
-      const restated = new Set(starts.map((start) => start.staff))
-      const cut = [...open.keys()].filter((staff) => !restated.has(staff))
-      if (cut.length > 0) {
-        warnings.add(
-          'unrepresentable:measure-repeat',
-          "This measure starts a measure repeat sign while another staff's sign is " +
-            'still running, and MNX states one sign for the part. The new sign ' +
-            'replaces the running one.',
-          context,
-          first.element,
-        )
-        for (const staff of cut) open.delete(staff)
+      const first = starts[0]
+      if (first !== undefined) {
+        // A restated length, as one written per staff, loses nothing;
+        // differing lengths cannot all be carried, so the first is kept and
+        // the disagreement reported.
+        const differing = starts.find((start) => start.measures !== first.measures)
+        if (differing !== undefined) {
+          warnings.add(
+            'unrepresentable:measure-repeat',
+            'This measure starts measure repeats of different patterns, and MNX states ' +
+              'one for the measure. The first is the one converted.',
+            context,
+            differing.element,
+          )
+        }
+
+        // A staff's running sign that no start here restates is cut by the
+        // restart, which MusicXML never said happens on that staff.
+        const restated = new Set(starts.map((start) => start.staff))
+        const cut = [...open.keys()].filter((staff) => !restated.has(staff))
+        if (cut.length > 0) {
+          warnings.add(
+            'unrepresentable:measure-repeat',
+            "This measure starts a measure repeat sign while another staff's sign is " +
+              'still running, and MNX states one sign for the part. The new sign ' +
+              'replaces the running one.',
+            context,
+            first.element,
+          )
+          for (const staff of cut) open.delete(staff)
+        }
+
+        for (const start of starts) open.set(start.staff, start.measures)
+        pattern = first.measures
+        offset = 0
       }
 
-      for (const start of starts) open.set(start.staff, start.measures)
-      pattern = first.measures
-      offset = 0
-    }
-
-    if (pattern !== undefined) {
-      if (offset % pattern === 0) reading.measure.measureRepeat = pattern
-      offset += 1
-    }
-  })
+      if (pattern !== undefined) {
+        if (offset % pattern === 0) reading.measure.measureRepeat = pattern
+        offset += 1
+      }
+    })
+  }
 }
 
 function readMeasure(
@@ -1036,6 +1054,7 @@ function readMeasure(
   index: number,
   partId: string,
   state: PartState,
+  collectors: MeasureCollectors,
   opensWith: TimeSignature | undefined,
   scoreTime: TimeSignature | undefined,
   warnings: WarningCollector,
@@ -1055,7 +1074,7 @@ function readMeasure(
 
   const clefs: Stated<Clef>[] = []
   const staffConfigs: Stated<StaffConfig>[] = []
-  const signatures = new MeasureSignatures(state, warnings, context, measurePath)
+  const signatures = new MeasureSignatures(state, collectors.held, warnings, context, measurePath)
   const dynamics: Dynamic[] = []
   const tempos: Stated<Tempo>[] = []
   // Every <sound tempo> of the measure, waiting on the score's marks to say
@@ -1256,6 +1275,8 @@ function readMeasure(
   )
   state.carriedTupletStops = finished.carriedTupletStops
   state.beamsOpenAtBarline = finished.beamsOpenAtBarline
+  collectors.endings.add(index, endingStart, endingStop)
+  collectors.measureRepeats.add(index, measureRepeats)
 
   return {
     measure: {
@@ -1296,9 +1317,6 @@ function readMeasure(
       systemBreak,
       pageBreak,
     },
-    endingStart,
-    endingStop,
-    measureRepeats,
     soundTempos,
   }
 }

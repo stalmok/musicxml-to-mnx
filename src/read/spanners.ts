@@ -27,6 +27,7 @@ import type {
 import type { Draft } from './draft.js'
 import type { CoveredEvent, GraceNotesAt, LastEventBefore, LastEvents } from './voices.js'
 import type { HeldPlace, ReportContext, WarningCollector } from './collector.js'
+import type { PartCollector, PartMeasure } from './partCollector.js'
 import type { WarningCode } from '../warnings.js'
 import type { XmlElement } from '../xml/parse.js'
 
@@ -628,7 +629,7 @@ export function tieKey(pitch: Pitch): string {
 // is a different voice and a different staff. Several slurs may share a
 // number, and a stop closes the most recently opened one.
 
-export class SpannerResolver {
+export class SpannerResolver implements PartCollector {
   // Both ends of every tie in the part, paired once all of them are in.
   readonly #tieEnds: TieEnd[] = []
   // How many events each voice has sounded so far in the part.
@@ -1027,9 +1028,10 @@ export class SpannerResolver {
    * the octave shifts, the slurs, and the ties. One entry point, so a caller
    * cannot pair the spans and skip the report of what stays unpaired.
    */
-  finish(measures: readonly Measure[], warnings: WarningCollector): void {
-    this.#resolveWedges(measures, warnings)
-    this.#resolveOttavas(measures, warnings)
+  finish(measures: readonly PartMeasure[], warnings: WarningCollector): void {
+    const partMeasures = measures.map((reading) => reading.measure)
+    this.#resolveWedges(partMeasures, warnings)
+    this.#resolveOttavas(partMeasures, warnings)
     this.#resolveSlurs(warnings)
     this.#resolveTies(warnings)
   }

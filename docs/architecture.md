@@ -112,7 +112,7 @@ The reader modules are:
 | `beams.ts`                    | Assemble beam groups.                                                          |
 | `directions.ts`               | Read dynamics, tempo marks, and navigation signs.                              |
 | `jumps.ts`                    | Match each dal segno jump to its segno, and settle it as D.S. or D.S. al Fine. |
-| `barlines.ts`                 | Read barlines, repeats, and endings.                                           |
+| `barlines.ts`                 | Read barlines and repeats. Join each ending's start and stop across the part.  |
 | `part-groups.ts`, `print.ts`  | Read part groups and layout breaks.                                            |
 | `transposition.ts`            | Convert written pitches and keys of transposing parts to sounding pitch.       |
 | `divisions.ts`, `duration.ts` | Read durations in divisions. Convert a duration back to a note value.          |
@@ -124,6 +124,7 @@ The reader modules are:
 | `element.ts`                  | Track consumed XML content and report unhandled content.                       |
 | `unrepresentable.ts`          | Record notation that the pinned MNX schema cannot express.                     |
 | `state.ts`                    | Hold state shared across measures in a part.                                   |
+| `partCollector.ts`            | Define what a part gathers across its measures and settles once it is read.    |
 | `draft.ts`                    | Give a model shape without readonly, for a builder to fill.                    |
 
 ### Note assembly order
