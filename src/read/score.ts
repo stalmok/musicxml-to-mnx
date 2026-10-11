@@ -958,7 +958,7 @@ function soundingVoices(measure: XmlElement): (string | undefined)[] {
  */
 class MeasureRepeats implements PartCollector {
   readonly #partId: string
-  // The edges each measure states, keyed by its index in the part.
+  // The edges of each measure stating any, keyed by its index in the part.
   readonly #edges = new Map<number, readonly MeasureRepeatReading[]>()
 
   constructor(partId: string) {
@@ -966,7 +966,7 @@ class MeasureRepeats implements PartCollector {
   }
 
   add(at: number, edges: readonly MeasureRepeatReading[]): void {
-    this.#edges.set(at, edges)
+    if (edges.length > 0) this.#edges.set(at, edges)
   }
 
   finish(measures: readonly PartMeasure[], warnings: WarningCollector): void {
