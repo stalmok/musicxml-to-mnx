@@ -567,12 +567,12 @@ function findLastOpened<E>(waiting: readonly E[], keeps: (start: E) => boolean):
  * The first start after `index` that falls at the instant `stop` marks and
  * is not already taken.
  */
-function startAtInstant<T, S>(
-  ordered: readonly (SpanEnd<T, S> | DroppedStopEnd)[],
+function startAtInstant<T, S, P extends EndPlace>(
+  ordered: readonly ((SpanEnd<T, S> | DroppedStopEnd) & P)[],
   index: number,
   stop: EndPlace,
   taken: ReadonlySet<SpanEnd<T, S> | DroppedStopEnd>,
-): StartEnd<T> | DroppedStartEnd | undefined {
+): ((StartEnd<T> | DroppedStartEnd) & P) | undefined {
   for (const later of ordered.slice(index + 1)) {
     if (later.kind === 'start' && !taken.has(later) && startsWhereStops(later, stop)) return later
   }
