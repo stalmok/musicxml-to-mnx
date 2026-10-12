@@ -100,7 +100,7 @@ The reader modules are:
 | `score.ts`                    | Read parts and walk measures in document order.                                              |
 | `attributes.ts`               | Read divisions, staves, keys, time signatures, clefs, and measure styles.                    |
 | `signatures.ts`               | Settle key and time signatures per measure, per part, and across parts.                      |
-| `notes.ts`                    | Read a note, chord member or grace note into its voice, with its beams and arpeggios.        |
+| `notes.ts`                    | Read a note, chord member or grace note into its voice.                                      |
 | `pitches.ts`                  | Read pitches, accidentals and kit components, and where a rest or kit note sits.             |
 | `marks.ts`                    | Read the marks, single-note tremolo, fermata and stem on an event, and a barline's fermata.  |
 | `tremolos.ts`                 | Read a tremolo's beam count, and a two-note tremolo's start and stop.                        |
@@ -108,7 +108,7 @@ The reader modules are:
 | `eventNotations.ts`           | Read the notations a note states on its event, and reconcile a chord's notes.                |
 | `voices.ts`                   | Track the cursor and assemble voice events.                                                  |
 | `measureRestForms.ts`         | Settle how each voice's measure rest is written once the measure is whole.                   |
-| `arpeggios.ts`                | Gather a measure's rolled and struck chords, and settle the notes each spans.                |
+| `arpeggios.ts`                | Read and gather a measure's rolled and struck chords, and settle the notes each spans.       |
 | `rests.ts`                    | Decide whether a rest is its voice's measure rest. Place it, or drop a rest written over it. |
 | `noteTuplets.ts`              | Read the tuplets and two-note tremolos a note opens and closes, and their ratios.            |
 | `tupletTracker.ts`            | Track the tuplets and two-note tremolos open in a voice.                                     |
@@ -117,7 +117,7 @@ The reader modules are:
 | `lyrics.ts`                   | Read lyrics for each verse.                                                                  |
 | `spanners.ts`                 | Resolve ties, slurs, hairpins, and octave shifts.                                            |
 | `idGenerator.ts`              | Generate event, note, and kit component IDs.                                                 |
-| `beams.ts`                    | Assemble beam groups.                                                                        |
+| `beams.ts`                    | Read a note's beam markers, and assemble beam groups.                                        |
 | `directions.ts`               | Read dynamics, tempo marks, and navigation signs.                                            |
 | `globalMeasures.ts`           | Hold the score's measure while the parts are merged, and merge each part into it.            |
 | `measureRepeats.ts`           | Mark each measure a measure repeat sign starts a pattern on, once the part is read.          |

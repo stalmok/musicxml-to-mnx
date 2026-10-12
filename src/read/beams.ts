@@ -11,7 +11,11 @@
 
 import type { Beam, NoteValueBase } from '../model/score.js'
 import type { XmlElement } from '../xml/parse.js'
+import { attribute, trimmedText } from '../xml/tree.js'
 import type { ReportContext, WarningCollector } from './collector.js'
+import type { ElementReader } from './element.js'
+import { parseWholeNumber } from './numbers.js'
+import { attributeLoss } from './unrepresentable.js'
 import { entriesOf, recogniser } from './tables.js'
 
 /** MusicXML's beam-value: what the beam at a level does at a note. */
@@ -206,4 +210,87 @@ function beamsAtLevel(
   close()
 
   return beams
+}
+
+/**
+ * What a note says about its beams, by level. A note carries one <beam> per
+ * level it is beamed at, so all of them are read: level 1 is the eighth-note
+ * beam, level 2 the sixteenth, and so on.
+ */
+export function beamMarkers(
+  element: ElementReader,
+  warnings: WarningCollector,
+  context: ReportContext,
+): ReadonlyMap<number, BeamMarker> {
+  const markers = new Map<number, BeamMarker>()
+  for (const beam of element.children('beam')) {
+    // Read before the marker is checked, so the fan and the text of a
+    // dropped marker are not reported apart from it.
+    const fan = attribute(beam, 'fan')
+    const kind = trimmedText(beam)
+    // The level is the attribute; the element's own text says what the beam
+    // does there, as "begin" or "end". A level MusicXML does not define draws
+    // no beam, and the measure adds up without it, so the marker is dropped
+    // and reported, not refused.
+    const level = beamLevel(beam, warnings, context)
+    if (level === undefined) continue
+    if (isBeamValue(kind)) {
+      reportFan(beam, fan, warnings, context)
+      markers.set(level, { kind, element: beam })
+    } else {
+      warnings.addUndefinedText(beam, 'and the beam at its level stops before this note.', context)
+      markers.set(level, { kind: undefined, element: beam })
+    }
+  }
+  return markers
+}
+
+/**
+ * A fanned beam draws an accelerando or ritardando by spreading the beams.
+ * Reading the fan keeps the unread-attribute sweep from reporting it, so it is
+ * reported here.
+ */
+function reportFan(
+  beam: XmlElement,
+  fan: string | undefined,
+  warnings: WarningCollector,
+  context: ReportContext,
+): void {
+  if (fan === 'accel' || fan === 'rit') {
+    const { code, ending } = attributeLoss('beam', 'fan')
+    warnings.add(
+      code,
+      `A <beam> fanned as "${fan}" is drawn as a plain beam. Its fan ${ending}`,
+      context,
+      beam,
+      'fan',
+    )
+  } else if (fan !== undefined && fan !== 'none') {
+    warnings.addUndefinedAttribute(beam, 'fan', 'and is not carried over.', context)
+  }
+}
+
+/**
+ * The level a <beam> states, or 1 where it states none. A level outside the
+ * eight a stem can carry is reported, and gives nothing.
+ */
+function beamLevel(
+  beam: XmlElement,
+  warnings: WarningCollector,
+  context: ReportContext,
+): number | undefined {
+  const stated = attribute(beam, 'number')
+  if (stated === undefined) return 1
+  const level = parseWholeNumber(stated)
+  if (level !== undefined && level >= 1 && level <= MOST_BEAM_LEVELS) return level
+  warnings.add(
+    'unresolved:attribute-value',
+    `The "number" of a <beam> is "${stated}", which is not one of the eight beam ` +
+      'levels. The marker is dropped, and the beams beside it are drawn as if it ' +
+      'had never been written.',
+    context,
+    beam,
+    'number',
+  )
+  return undefined
 }

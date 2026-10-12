@@ -1,7 +1,7 @@
-// Gathering the chords of a measure marked as rolled or struck together.
-// MusicXML marks every note of the chord. MNX states the mark once, on the
-// measure, spanning the notes it runs between, so the span is worked out once
-// the measure is whole.
+// Reading and gathering the chords of a measure marked as rolled or struck
+// together. MusicXML marks every note of the chord. MNX states the mark once,
+// on the measure, spanning the notes it runs between, so the span is worked
+// out once the measure is whole.
 
 import type { Fraction } from '../fraction.js'
 import type {
@@ -15,6 +15,9 @@ import type {
 } from '../model/score.js'
 import type { ReportContext, WarningCollector } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
+import { attribute } from '../xml/tree.js'
+import type { ElementReader } from './element.js'
+import { upOrDown } from './marks.js'
 
 /** A chord marked as rolled or struck, held until its notes are all in. */
 interface MarkedArpeggio {
@@ -329,5 +332,47 @@ export class Arpeggios {
       )
     }
     return arpeggios
+  }
+}
+
+/**
+ * Whether the chord this note belongs to is rolled, or bracketed as struck
+ * together. MusicXML marks every note of the chord; MNX states it once, over
+ * the notes it runs between, so the mark is passed to the collector and the
+ * span worked out once the chord is complete.
+ */
+export function readArpeggio(
+  notations: readonly ElementReader[],
+  placed: { event: Event; start: Fraction },
+  arpeggios: Arpeggios,
+  /** The note carrying these notations, or nothing where a rest carries them. */
+  note: Note | undefined,
+): void {
+  for (const block of notations) {
+    for (const rolled of block.children('arpeggiate')) {
+      // MusicXML states a direction only when an arrowhead is drawn, and
+      // rolls from the lowest note up when it states none.
+      const direction = upOrDown(attribute(rolled, 'direction'))
+      // The number is what joins one chord's mark to another's, so an absent
+      // one is passed on absent: a default would make every unnumbered mark in
+      // the measure claim the same roll.
+      arpeggios.mark(
+        placed,
+        note,
+        attribute(rolled, 'number'),
+        false,
+        direction,
+        direction !== undefined,
+        rolled,
+      )
+    }
+    // <non-arpeggiate> says the opposite: a bracket meaning the notes are
+    // struck together. Its type names which end of the bracket this note is,
+    // which MNX has no use for, since the span already says where it runs;
+    // it is read here only so the sweep knows it is accounted for.
+    for (const struck of block.children('non-arpeggiate')) {
+      attribute(struck, 'type')
+      arpeggios.mark(placed, note, attribute(struck, 'number'), true, undefined, false, struck)
+    }
   }
 }

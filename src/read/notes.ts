@@ -8,23 +8,24 @@
 import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
 import { compareFractions, fraction, multiplyFractions } from '../fraction.js'
-import type { Event, EventNotes, EventRest, GraceType, Note } from '../model/score.js'
+import type { Event, EventNotes, EventRest, GraceType } from '../model/score.js'
 import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, child, requireChild, trimmedText } from '../xml/tree.js'
-import { beamCountForValue, isBeamValue, MOST_BEAM_LEVELS } from './beams.js'
-import type { BeamedEvent, BeamMarker } from './beams.js'
+import { beamCountForValue, beamMarkers } from './beams.js'
+import { readArpeggio } from './arpeggios.js'
+import type { BeamedEvent } from './beams.js'
 import { readDuration } from './divisions.js'
 import { describeLength, describeValue, lengthOf } from './duration.js'
 import type { ElementReader } from './element.js'
 import { readEventNotations, reconcile } from './eventNotations.js'
-import { attributeLoss, reportHidden } from './unrepresentable.js'
-import { readFermata, readMarkings, readStemDirection, upOrDown } from './marks.js'
+import { reportHidden } from './unrepresentable.js'
+import { readFermata, readMarkings, readStemDirection } from './marks.js'
 import { readLyrics } from './lyrics.js'
 import { dropRedundantRest, readRest, reportMarkersOnMeasureRest, setMeasureRest } from './rests.js'
 import type { NoteStatement, VoicedNote } from './noteStatement.js'
 import { closeTuplets, openTupletsAndTremolo } from './noteTuplets.js'
-import { parseWholeNumber, readIntegerInRange } from './numbers.js'
+import { readIntegerInRange } from './numbers.js'
 import { measureLength } from './state.js'
 import type { PartState } from './state.js'
 import {
@@ -506,10 +507,10 @@ function readChordMember(
     // A roll is drawn across the notes of a chord, so it is the pitched
     // members that say how far it reaches. A kit note has no pitch to order
     // it by, and the chord it sits on is what the roll spans anyway.
-    readArpeggio(notations, placed, builder, chordNote)
+    readArpeggio(notations, placed, builder.arpeggios, chordNote)
   } else {
     placed = builder.addChordKitNote(chord, chordNote, chordDurationOrNone, path, element.line)
-    readArpeggio(notations, placed, builder, undefined)
+    readArpeggio(notations, placed, builder.arpeggios, undefined)
   }
   // Exporters write a chord's marks, fermata, tremolo and tuplet bracket on
   // every note of it. What restates the chord's own is passed over: a
@@ -572,7 +573,12 @@ function readEventSpanners(
   // are read where the member is, against the note it added.
   const { event } = placed
   const { body } = event
-  readArpeggio(notations, placed, builder, body.kind === 'notes' ? body.notes[0] : undefined)
+  readArpeggio(
+    notations,
+    placed,
+    builder.arpeggios,
+    body.kind === 'notes' ? body.notes[0] : undefined,
+  )
   // A rest sounds nothing, so a tie in its voice reaches across it.
   if (body.kind === 'notes') state.spanners.sound(voice.name)
   for (const note of body.kind === 'notes' ? [...body.notes, ...body.kitNotes] : []) {
@@ -688,137 +694,4 @@ function readGraceType(
     )
   }
   return kind
-}
-
-/**
- * Whether the chord this note belongs to is rolled, or bracketed as struck
- * together. MusicXML marks every note of the chord; MNX states it once, over
- * the notes it runs between, so the mark is passed to the builder and the
- * span worked out once the chord is complete.
- */
-function readArpeggio(
-  notations: readonly ElementReader[],
-  placed: PlacedEvent,
-  builder: MeasureBuilder,
-  /** The note carrying these notations, or nothing where a rest carries them. */
-  note: Note | undefined,
-): void {
-  for (const block of notations) {
-    for (const rolled of block.children('arpeggiate')) {
-      // MusicXML states a direction only when an arrowhead is drawn, and
-      // rolls from the lowest note up when it states none.
-      const direction = upOrDown(attribute(rolled, 'direction'))
-      // The number is what joins one chord's mark to another's, so an absent
-      // one is passed on absent: a default would make every unnumbered mark in
-      // the measure claim the same roll.
-      builder.arpeggios.mark(
-        placed,
-        note,
-        attribute(rolled, 'number'),
-        false,
-        direction,
-        direction !== undefined,
-        rolled,
-      )
-    }
-    // <non-arpeggiate> says the opposite: a bracket meaning the notes are
-    // struck together. Its type names which end of the bracket this note is,
-    // which MNX has no use for, since the span already says where it runs;
-    // it is read here only so the sweep knows it is accounted for.
-    for (const struck of block.children('non-arpeggiate')) {
-      attribute(struck, 'type')
-      builder.arpeggios.mark(
-        placed,
-        note,
-        attribute(struck, 'number'),
-        true,
-        undefined,
-        false,
-        struck,
-      )
-    }
-  }
-}
-
-/**
- * What a note says about its beams, by level. A note carries one <beam> per
- * level it is beamed at, so all of them are read: level 1 is the eighth-note
- * beam, level 2 the sixteenth, and so on.
- */
-function beamMarkers(
-  element: ElementReader,
-  warnings: WarningCollector,
-  context: ReportContext,
-): ReadonlyMap<number, BeamMarker> {
-  const markers = new Map<number, BeamMarker>()
-  for (const beam of element.children('beam')) {
-    // Read before the marker is checked, so the fan and the text of a
-    // dropped marker are not reported apart from it.
-    const fan = attribute(beam, 'fan')
-    const kind = trimmedText(beam)
-    // The level is the attribute; the element's own text says what the beam
-    // does there, as "begin" or "end". A level MusicXML does not define draws
-    // no beam, and the measure adds up without it, so the marker is dropped
-    // and reported, not refused.
-    const level = beamLevel(beam, warnings, context)
-    if (level === undefined) continue
-    if (isBeamValue(kind)) {
-      reportFan(beam, fan, warnings, context)
-      markers.set(level, { kind, element: beam })
-    } else {
-      warnings.addUndefinedText(beam, 'and the beam at its level stops before this note.', context)
-      markers.set(level, { kind: undefined, element: beam })
-    }
-  }
-  return markers
-}
-
-/**
- * A fanned beam draws an accelerando or ritardando by spreading the beams.
- * Reading the fan keeps the unread-attribute sweep from reporting it, so it is
- * reported here.
- */
-function reportFan(
-  beam: XmlElement,
-  fan: string | undefined,
-  warnings: WarningCollector,
-  context: ReportContext,
-): void {
-  if (fan === 'accel' || fan === 'rit') {
-    const { code, ending } = attributeLoss('beam', 'fan')
-    warnings.add(
-      code,
-      `A <beam> fanned as "${fan}" is drawn as a plain beam. Its fan ${ending}`,
-      context,
-      beam,
-      'fan',
-    )
-  } else if (fan !== undefined && fan !== 'none') {
-    warnings.addUndefinedAttribute(beam, 'fan', 'and is not carried over.', context)
-  }
-}
-
-/**
- * The level a <beam> states, or 1 where it states none. A level outside the
- * eight a stem can carry is reported, and gives nothing.
- */
-function beamLevel(
-  beam: XmlElement,
-  warnings: WarningCollector,
-  context: ReportContext,
-): number | undefined {
-  const stated = attribute(beam, 'number')
-  if (stated === undefined) return 1
-  const level = parseWholeNumber(stated)
-  if (level !== undefined && level >= 1 && level <= MOST_BEAM_LEVELS) return level
-  warnings.add(
-    'unresolved:attribute-value',
-    `The "number" of a <beam> is "${stated}", which is not one of the eight beam ` +
-      'levels. The marker is dropped, and the beams beside it are drawn as if it ' +
-      'had never been written.',
-    context,
-    beam,
-    'number',
-  )
-  return undefined
 }
