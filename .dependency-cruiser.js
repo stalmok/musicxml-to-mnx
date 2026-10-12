@@ -98,6 +98,16 @@ export default {
       to: { path: '^cli/' },
     },
 
+    // === Inside the reader ===
+    {
+      name: 'only-the-score-reader-reads-a-note',
+      comment:
+        'notes.ts reads a whole note into its voice, and score.ts calls it once per note. A reader that needs one part of a note, such as a fermata or a pitch, imports the module that reads that part.',
+      severity: 'error',
+      from: { pathNot: '^src/read/score\\.ts$' },
+      to: { path: '^src/read/notes\\.ts$' },
+    },
+
     // === The isomorphic core ===
     //
     // tsconfig.json withholds Node's and the DOM's types from src, which
