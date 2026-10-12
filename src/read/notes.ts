@@ -711,7 +711,7 @@ function readArpeggio(
       // The number is what joins one chord's mark to another's, so an absent
       // one is passed on absent: a default would make every unnumbered mark in
       // the measure claim the same roll.
-      builder.markArpeggio(
+      builder.arpeggios.mark(
         placed,
         note,
         attribute(rolled, 'number'),
@@ -727,7 +727,7 @@ function readArpeggio(
     // it is read here only so the sweep knows it is accounted for.
     for (const struck of block.children('non-arpeggiate')) {
       attribute(struck, 'type')
-      builder.markArpeggio(
+      builder.arpeggios.mark(
         placed,
         note,
         attribute(struck, 'number'),
