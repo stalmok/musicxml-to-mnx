@@ -126,6 +126,14 @@ export default {
           '^src/read/(collector|color|draft|duration|element|idGenerator|noteValues|numbers|tables|transposition|unrepresentable|wording)\\.ts$',
       },
     },
+    {
+      name: 'measure-builder-parts-stay-inside',
+      comment:
+        'The tuplet tracker and the measure rest forms are parts of the measure builder in voices.ts. Other readers go through the measure builder.',
+      severity: 'error',
+      from: { path: '^(src|cli)/', pathNot: ['^src/read/voices\\.ts$', '\\.(test|bench)\\.ts$'] },
+      to: { path: '^src/read/(measureRestForms|tupletTracker)\\.ts$' },
+    },
 
     // === The isomorphic core ===
     //
