@@ -111,6 +111,7 @@ The reader modules are:
 | `idGenerator.ts`              | Generate event, note, and kit component IDs.                                         |
 | `beams.ts`                    | Assemble beam groups.                                                                |
 | `directions.ts`               | Read dynamics, tempo marks, and navigation signs.                                    |
+| `globalMeasures.ts`           | Hold the score's measure while the parts are merged, and merge each part into it.    |
 | `jumps.ts`                    | Match each dal segno jump to its segno, and settle it as D.S. or D.S. al Fine.       |
 | `barlines.ts`                 | Read barlines and repeats. Join each ending's start and stop across the part.        |
 | `part-groups.ts`, `print.ts`  | Read part groups and layout breaks.                                                  |

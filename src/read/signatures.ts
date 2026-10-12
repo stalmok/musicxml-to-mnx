@@ -27,7 +27,7 @@ import { firstTimeStated } from './attributes.js'
 import type { AttributesReading, StaffSignature } from './attributes.js'
 import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
 import { lengthOf } from './duration.js'
-import type { ReadGlobalMeasure } from './jumps.js'
+import type { AcrossParts, ReadGlobalMeasure } from './globalMeasures.js'
 import { noteValueBaseOf } from './noteValues.js'
 import { parseExactDecimal } from './numbers.js'
 import type { PartCollector, PartMeasure } from './partCollector.js'
@@ -740,18 +740,6 @@ function timesDisagree(
       !sameMeter(inScore, inPart),
     )
   })
-}
-
-/** A part's signatures settled against those of the parts read before it. */
-export interface AcrossParts {
-  /** Where the part flips to the enharmonic signature, if it does. */
-  flipAt: number | undefined
-  /** The key each measure of the part gives the score. */
-  contributed: (Key | undefined)[]
-  /** Whether the part is in a different key from the score at a measure. */
-  keyDisagreesAt: (index: number) => boolean
-  /** Whether the part is in a different meter from the score at a measure. */
-  timeDisagreesAt: (index: number) => boolean
 }
 
 /**

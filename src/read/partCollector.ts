@@ -4,7 +4,7 @@
 
 import type { Measure } from '../model/score.js'
 import type { WarningCollector } from './collector.js'
-import type { ReadGlobalMeasure } from './jumps.js'
+import type { ReadGlobalMeasure } from './globalMeasures.js'
 
 /** One measure of the part as read, and the score's measure it stands in. */
 export interface PartMeasure {

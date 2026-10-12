@@ -26,7 +26,7 @@ import type {
   Tempo,
   WedgeType,
 } from '../model/score.js'
-import type { NamedSegno, DalSegno } from './jumps.js'
+import type { NamedSegno, DalSegno } from './globalMeasures.js'
 import { writtenAt } from './collector.js'
 import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'

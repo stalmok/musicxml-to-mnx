@@ -12,7 +12,7 @@
 
 import type { Fraction } from '../fraction.js'
 import type { BarlineType, Fermata, RepeatEnd } from '../model/score.js'
-import type { NamedSegno } from './jumps.js'
+import type { NamedSegno } from './globalMeasures.js'
 import type { ReportContext, WarningCollector } from './collector.js'
 import type { PartCollector, PartMeasure } from './partCollector.js'
 import type { XmlElement } from '../xml/parse.js'
