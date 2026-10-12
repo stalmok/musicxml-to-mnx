@@ -90,6 +90,9 @@ export function valueForBeamCount(count: number): NoteValueBase | undefined {
   return VALUE_FOR_BEAMS.get(count)
 }
 
+// A stem carries at most eight beams, so a level past that draws nothing.
+export const MOST_BEAM_LEVELS = 8
+
 const HOOK_DIRECTIONS = new Map<BeamValue, 'left' | 'right'>([
   ['forward hook', 'right'],
   ['backward hook', 'left'],

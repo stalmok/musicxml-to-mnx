@@ -122,6 +122,7 @@ The reader modules are:
 | `part-groups.ts`, `print.ts`  | Read part groups and layout breaks.                                                  |
 | `transposition.ts`            | Convert written pitches and keys of transposing parts to sounding pitch.             |
 | `divisions.ts`, `duration.ts` | Read durations in divisions. Convert a duration back to a note value.                |
+| `writtenValues.ts`            | Read a note's written value, or recover it from its duration. Report a mismatch.     |
 | `noteValues.ts`               | Map MusicXML note-type names to model note values.                                   |
 | `numbers.ts`                  | Read whole and decimal numbers strictly, and check ranges.                           |
 | `color.ts`                    | Read MusicXML colors into MNX color strings.                                         |
