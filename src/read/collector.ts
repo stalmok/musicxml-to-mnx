@@ -197,3 +197,36 @@ export class WarningCollector {
 export function articleFor(found: XmlElement): 'A' | 'An' {
   return /^[aeiou]/.test(found.name) ? 'An' : 'A'
 }
+
+/**
+ * The element something is written with, and the part and measure it sits in.
+ * The end of a span is reported once the part is whole, so it carries both.
+ */
+export interface WrittenAt {
+  context: ReportContext
+  element: XmlElement
+  /**
+   * The element's place in the report: after the warnings of the note or
+   * direction it is written in, and before those of the next.
+   */
+  place: HeldPlace
+}
+
+/** Where an element is written, holding its place in the report from now. */
+export function writtenAt(
+  element: XmlElement,
+  context: ReportContext,
+  warnings: WarningCollector,
+): WrittenAt {
+  return { context, element, place: warnings.hold(element) }
+}
+
+/** Reports a loss at the place its element took in the document. */
+export function reportAt(
+  where: WrittenAt,
+  code: WarningCode,
+  message: string,
+  warnings: WarningCollector,
+): void {
+  warnings.addAt(where.place.place, code, message, where.context, where.element)
+}

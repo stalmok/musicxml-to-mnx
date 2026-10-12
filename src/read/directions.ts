@@ -27,6 +27,7 @@ import type {
   WedgeType,
 } from '../model/score.js'
 import type { NamedSegno, DalSegno } from './jumps.js'
+import { writtenAt } from './collector.js'
 import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, text, trimmedText } from '../xml/tree.js'
@@ -36,12 +37,13 @@ import type { ElementReader, Stated } from './element.js'
 import { noteValueBaseOf } from './noteValues.js'
 import { parseDecimal, parseExactDecimal, parseWholeNumber, readIntegerInRange } from './numbers.js'
 import type { GraceNotesAt } from './voices.js'
-import { reportLoneWording, writtenAt } from './spanners.js'
-import type { OpenHairpin, WedgeStop, Wording } from './spanners.js'
+import type { OpenHairpin, WedgeStop } from './spanners.js'
 import { measureLength } from './state.js'
 import type { PartState } from './state.js'
 import { entriesOf, recogniser } from './tables.js'
 import { attributeLoss, elementLoss } from './unrepresentable.js'
+import { reportLoneWording } from './wording.js'
+import type { Wording } from './wording.js'
 
 /** What one <direction> was found to carry. */
 export interface DirectionReading {

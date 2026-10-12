@@ -37,7 +37,8 @@ import type {
   TupletDisplay,
 } from '../model/score.js'
 import type { Draft } from './draft.js'
-import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
+import { writtenAt } from './collector.js'
+import type { ReportContext, WarningCollector, WarningPlace, WrittenAt } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
 import {
   attribute,
@@ -65,8 +66,7 @@ import { measureLength } from './state.js'
 import type { PartState } from './state.js'
 import { soundingPitch } from './transposition.js'
 import { entriesOf, recogniser } from './tables.js'
-import { tieKey, writtenAt } from './spanners.js'
-import type { WrittenAt } from './spanners.js'
+import { tieKey } from './spanners.js'
 import { MeasureBuilder } from './voices.js'
 import type { JoinedEvent, PlacedEvent, VoiceLine } from './voices.js'
 import type { TupletDisplaySettings } from './tuplets.js'

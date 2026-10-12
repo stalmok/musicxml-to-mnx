@@ -95,37 +95,38 @@ It resolves ties, slurs, and other spans across measures.
 
 The reader modules are:
 
-| Module                        | Responsibility                                                                 |
-| ----------------------------- | ------------------------------------------------------------------------------ |
-| `score.ts`                    | Read parts and walk measures in document order.                                |
-| `attributes.ts`               | Read divisions, staves, keys, time signatures, clefs, and measure styles.      |
-| `signatures.ts`               | Settle key and time signatures per measure, per part, and across parts.        |
-| `notes.ts`                    | Read notes and their notation.                                                 |
-| `eventNotations.ts`           | Read the notations a note states on its event, and reconcile a chord's notes.  |
-| `voices.ts`                   | Track the cursor and assemble voice events.                                    |
-| `rests.ts`                    | Decide whether a rest is its voice's measure rest, and in what form.           |
-| `tupletTracker.ts`            | Track the tuplets and two-note tremolos open in a voice.                       |
-| `tuplets.ts`                  | Compute tuplet ratios and settle tuplet brackets when the measure is complete. |
-| `lyrics.ts`                   | Read lyrics for each verse.                                                    |
-| `spanners.ts`                 | Resolve ties, slurs, hairpins, and octave shifts.                              |
-| `idGenerator.ts`              | Generate event, note, and kit component IDs.                                   |
-| `beams.ts`                    | Assemble beam groups.                                                          |
-| `directions.ts`               | Read dynamics, tempo marks, and navigation signs.                              |
-| `jumps.ts`                    | Match each dal segno jump to its segno, and settle it as D.S. or D.S. al Fine. |
-| `barlines.ts`                 | Read barlines and repeats. Join each ending's start and stop across the part.  |
-| `part-groups.ts`, `print.ts`  | Read part groups and layout breaks.                                            |
-| `transposition.ts`            | Convert written pitches and keys of transposing parts to sounding pitch.       |
-| `divisions.ts`, `duration.ts` | Read durations in divisions. Convert a duration back to a note value.          |
-| `noteValues.ts`               | Map MusicXML note-type names to model note values.                             |
-| `numbers.ts`                  | Read whole and decimal numbers strictly, and check ranges.                     |
-| `color.ts`                    | Read MusicXML colors into MNX color strings.                                   |
-| `tables.ts`                   | Provide typed helpers for tables keyed by model unions.                        |
-| `collector.ts`                | Collect warnings in reading order. Take a warning's line from its element.     |
-| `element.ts`                  | Track consumed XML content and report unhandled content.                       |
-| `unrepresentable.ts`          | Record notation that the pinned MNX schema cannot express.                     |
-| `state.ts`                    | Hold state shared across measures in a part.                                   |
-| `partCollector.ts`            | Define what a part gathers across its measures and settles once it is read.    |
-| `draft.ts`                    | Give a model shape without readonly, for a builder to fill.                    |
+| Module                        | Responsibility                                                                       |
+| ----------------------------- | ------------------------------------------------------------------------------------ |
+| `score.ts`                    | Read parts and walk measures in document order.                                      |
+| `attributes.ts`               | Read divisions, staves, keys, time signatures, clefs, and measure styles.            |
+| `signatures.ts`               | Settle key and time signatures per measure, per part, and across parts.              |
+| `notes.ts`                    | Read notes and their notation.                                                       |
+| `eventNotations.ts`           | Read the notations a note states on its event, and reconcile a chord's notes.        |
+| `voices.ts`                   | Track the cursor and assemble voice events.                                          |
+| `rests.ts`                    | Decide whether a rest is its voice's measure rest, and in what form.                 |
+| `tupletTracker.ts`            | Track the tuplets and two-note tremolos open in a voice.                             |
+| `tuplets.ts`                  | Compute tuplet ratios and settle tuplet brackets when the measure is complete.       |
+| `lyrics.ts`                   | Read lyrics for each verse.                                                          |
+| `spanners.ts`                 | Resolve ties, slurs, hairpins, and octave shifts.                                    |
+| `idGenerator.ts`              | Generate event, note, and kit component IDs.                                         |
+| `beams.ts`                    | Assemble beam groups.                                                                |
+| `directions.ts`               | Read dynamics, tempo marks, and navigation signs.                                    |
+| `jumps.ts`                    | Match each dal segno jump to its segno, and settle it as D.S. or D.S. al Fine.       |
+| `barlines.ts`                 | Read barlines and repeats. Join each ending's start and stop across the part.        |
+| `part-groups.ts`, `print.ts`  | Read part groups and layout breaks.                                                  |
+| `transposition.ts`            | Convert written pitches and keys of transposing parts to sounding pitch.             |
+| `divisions.ts`, `duration.ts` | Read durations in divisions. Convert a duration back to a note value.                |
+| `noteValues.ts`               | Map MusicXML note-type names to model note values.                                   |
+| `numbers.ts`                  | Read whole and decimal numbers strictly, and check ranges.                           |
+| `color.ts`                    | Read MusicXML colors into MNX color strings.                                         |
+| `tables.ts`                   | Provide typed helpers for tables keyed by model unions.                              |
+| `collector.ts`                | Collect warnings in reading order. Take a warning's line and place from its element. |
+| `wording.ts`                  | Define dynamic wording, and report wording that qualifies no mark.                   |
+| `element.ts`                  | Track consumed XML content and report unhandled content.                             |
+| `unrepresentable.ts`          | Record notation that the pinned MNX schema cannot express.                           |
+| `state.ts`                    | Hold state shared across measures in a part.                                         |
+| `partCollector.ts`            | Define what a part gathers across its measures and settles once it is read.          |
+| `draft.ts`                    | Give a model shape without readonly, for a builder to fill.                          |
 
 ### Note assembly order
 

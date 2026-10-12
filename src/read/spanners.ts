@@ -26,10 +26,11 @@ import type {
 } from '../model/score.js'
 import type { Draft } from './draft.js'
 import type { CoveredEvent, GraceNotesAt, LastEventBefore, LastEvents } from './voices.js'
-import type { HeldPlace, ReportContext, WarningCollector } from './collector.js'
+import { reportAt } from './collector.js'
+import type { WarningCollector, WrittenAt } from './collector.js'
 import type { PartCollector, PartMeasure } from './partCollector.js'
-import type { WarningCode } from '../warnings.js'
-import type { XmlElement } from '../xml/parse.js'
+import { reportLoneWording } from './wording.js'
+import type { Wording } from './wording.js'
 
 /** An event read on a staff, and the measure it is in. */
 interface LastSeen {
@@ -61,39 +62,6 @@ type TiePlace = EndPlace & { sounded: number }
 
 /** One end of a tie, and on a stop the note it is written on. */
 type TieEnd = (StartEnd<OpenTie> | StopEnd<TieStopAt>) & TiePlace
-
-/**
- * The element an end is written with, and the part and measure it sits in.
- * An end is reported once the part is whole, so it carries both.
- */
-export interface WrittenAt {
-  context: ReportContext
-  element: XmlElement
-  /**
-   * The element's place in the report: after the warnings of the note or
-   * direction it is written in, and before those of the next.
-   */
-  place: HeldPlace
-}
-
-/** Where an end is written, holding its place in the report from now. */
-export function writtenAt(
-  element: XmlElement,
-  context: ReportContext,
-  warnings: WarningCollector,
-): WrittenAt {
-  return { context, element, place: warnings.hold(element) }
-}
-
-/** Reports a loss at the place its element took in the document. */
-function reportAt(
-  where: WrittenAt,
-  code: WarningCode,
-  message: string,
-  warnings: WarningCollector,
-): void {
-  warnings.addAt(where.place.place, code, message, where.context, where.element)
-}
 
 /** An octave shift that has begun, waiting to learn where it stops. */
 export interface OpenOttava {
@@ -145,27 +113,6 @@ interface SlurStopAt {
 export type SlurEnd = SpanEnd<OpenSlur, SlurStopAt> | DroppedStopEnd
 type SlurStart = Extract<SlurEnd, { kind: 'start' }>
 type SlurStop = Extract<SlurEnd, { kind: 'stop' }>
-
-/** Dynamic wording, and where it is written so a report can point at it. */
-export interface Wording {
-  text: string
-  where: WrittenAt
-}
-
-/**
- * Reports wording that qualifies no mark. MNX states wording only as the
- * prefix or suffix of a dynamic mark, and each kind of mark requires more
- * than its wording.
- */
-export function reportLoneWording(wording: Wording, warnings: WarningCollector): void {
-  reportAt(
-    wording.where,
-    'unrepresentable:dynamic-wording',
-    `The dynamic wording "${wording.text}" qualifies no mark, and MNX states wording ` +
-      'only on a mark, so it is not converted.',
-    warnings,
-  )
-}
 
 /**
  * A hairpin's stop, handed back before the hairpin it closes is known. Which
