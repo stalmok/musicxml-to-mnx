@@ -28,6 +28,8 @@ import type { BeamedEvent, BeamMarker } from './beams.js'
 import type { CarriedTupletStop, MeasureExtent, TupletStart } from './tuplets.js'
 import { TupletTracker } from './tupletTracker.js'
 import { Arpeggios } from './arpeggios.js'
+import { settleCandidateRest, settleFillingRest } from './measureRestForms.js'
+import type { MeasureRest, MeasureRestReports } from './measureRestForms.js'
 import type {
   Arpeggio,
   Event,
@@ -376,53 +378,6 @@ export class VoiceLine {
   }
 }
 
-/**
- * How a voice's measure rest is written, settled once the measure is whole:
- * on the sequence, which then holds nothing else, as an event, or as a space
- * where no note value writes the rest.
- */
-export type MeasureRestForm = 'sequence' | 'event' | 'space'
-
-/** What a measure rest loses in each form it can take. */
-export type MeasureRestReports<Form extends MeasureRestForm = MeasureRestForm> = Partial<
-  Record<Form, () => void>
->
-
-/**
- * A rest that fills its voice's measure, or may, until finish settles how it
- * is written.
- *
- * - `candidate`: an ordinary rest that is the measure's rest only where it
- *   turns out to be the whole of its voice. It stays the event it was read
- *   as, or the sequence states it.
- * - `fills`: the rest fills the measure as read, and the voice holds nothing
- *   beside it but grace notes and silence. It stands in the content as a space of its
- *   length, where one is known, and takes any form.
- * - `fills-as-event`: the rest fills the measure as read and carries what
- *   only an event holds, so it stays the event it was read as.
- */
-type MeasureRest =
-  | { readonly origin: 'fills-as-event' }
-  | {
-      readonly origin: 'candidate'
-      readonly event: Event
-      readonly body: EventRest
-      readonly reports: MeasureRestReports<'sequence' | 'event'>
-    }
-  | {
-      readonly origin: 'fills'
-      readonly onSequence: FullMeasureRest
-      readonly space: Space | undefined
-      /** The event a note value writes the rest as, where one does. */
-      readonly asEvent: (() => Event) | undefined
-      readonly at: Fraction
-      /** The rest's entry in `placed`, which names its staff. */
-      readonly placed: { event: Event | undefined; staff: number | undefined }
-      readonly reports: MeasureRestReports
-      readonly path: DocumentPath
-      readonly line: number
-    }
-
 /** Whether the voice rests its measure with a rest that fills it as read. */
 function restFills(builder: VoiceBuilder): boolean {
   const origin = builder.measureRest?.origin
@@ -434,12 +389,6 @@ function restBesideNotes(path: DocumentPath, line: number): MusicXMLError {
     path,
     line,
   })
-}
-
-/** States the rest on the sequence, which then holds nothing else. */
-function stateOnSequence(builder: VoiceBuilder, rest: FullMeasureRest): void {
-  builder.content.length = 0
-  builder.fullMeasure = rest
 }
 
 /** The staff a voice is mostly on, or nothing when it names no staff. */
@@ -1365,94 +1314,23 @@ export class MeasureBuilder {
     return { event, start, beams }
   }
 
-  /**
-   * Settles how each rest filling the measure as read is written, and
-   * reports what that form loses.
-   *
-   * MNX states a measure rest on a sequence that holds nothing else. Grace
-   * notes beside the rest have nowhere to stand there, so the rest is written
-   * as the event a note value writes it as, or as a space of its length where
-   * none can. Which side of the rest the grace notes are written on says
-   * nothing about the music, so both orders are written alike.
-   */
   #settleFillingRests(): void {
     for (const builder of this.#allBuilders()) {
       const rest = builder.measureRest
       if (rest?.origin !== 'fills') continue
-      const form = this.#settleFillingRest(builder, rest)
+      const form = settleFillingRest(builder, rest)
+      if (form === 'event') {
+        this.#eventStarts.push({ start: rest.at, staff: rest.placed.staff, grace: false })
+      }
       rest.reports[form]?.()
     }
   }
 
-  #settleFillingRest(
-    builder: VoiceBuilder,
-    rest: Extract<MeasureRest, { origin: 'fills' }>,
-  ): MeasureRestForm {
-    // Anything in the content but a space is a grace note.
-    if (builder.content.every((item) => item.kind === 'space')) {
-      stateOnSequence(builder, rest.onSequence)
-      return 'sequence'
-    }
-    const { space, asEvent } = rest
-    if (!space) {
-      throw new MusicXMLError(
-        'A grace note stands beside a rest that fills the measure, and neither a note ' +
-          'value nor a length says how long that rest lasts.',
-        { path: rest.path, line: rest.line },
-      )
-    }
-    if (!asEvent) return 'space'
-
-    const event = asEvent()
-    builder.content[builder.content.indexOf(space)] = event
-    builder.spent.set(event, space.duration)
-    rest.placed.event = event
-    this.#eventStarts.push({ start: rest.at, staff: rest.placed.staff, grace: false })
-    return 'event'
-  }
-
-  /**
-   * Reads a rest that is the whole of its voice as that voice's measure rest,
-   * the brackets being written, and reports what the form it takes loses.
-   *
-   * A bar of silence is drawn with a whole rest whatever the meter says, so a
-   * 3/2 measure rests with a whole rest lasting a dotted whole. Where the
-   * exporter leaves measure="yes" off, taking the written value as the rest's
-   * length leaves the measure short. MNX has the full-measure rest's
-   * visualDuration for this: the rest lasts the measure, and the value drawn
-   * is stated beside it. Such a rest is not the measure's rest wherever it
-   * stands: sources write one beside other notes, and the voice has to be
-   * whole before the two can be told apart.
-   *
-   * The sequence carries no marking, no stem, no beam and no roll, and has
-   * no id for a slur or a lyric to reach, so anything reaching the rest keeps
-   * it an event.
-   */
   #settleCandidateRests(): void {
     for (const builder of this.#allBuilders()) {
       const rest = builder.measureRest
       if (rest?.origin !== 'candidate') continue
-      const { event } = rest
-      const reached =
-        builder.beamed.length > 0 ||
-        event.stemDirection !== undefined ||
-        event.lyrics.size > 0 ||
-        Object.keys(event.markings).length > 0 ||
-        this.arpeggios.isMarked(event)
-      if (reached || builder.content.length !== 1 || builder.content[0] !== event) {
-        rest.reports.event?.()
-        continue
-      }
-      // The rest is the whole of the voice, so the staff it named stays as
-      // the sequence's own. Its entry keeps naming the event it came from,
-      // which nothing writes once the content is empty.
-      const { value, fermata } = event
-      stateOnSequence(builder, {
-        visualDuration: value,
-        fermata,
-        staffPosition: rest.body.staffPosition,
-      })
-      rest.reports.sequence?.()
+      settleCandidateRest(builder, rest, this.arpeggios.isMarked(rest.event))
     }
   }
 
