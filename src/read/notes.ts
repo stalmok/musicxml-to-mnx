@@ -24,7 +24,7 @@ import { readFermata, readMarkings, readStemDirection } from './marks.js'
 import { readLyrics } from './lyrics.js'
 import { dropRedundantRest, readRest, reportMarkersOnMeasureRest, setMeasureRest } from './rests.js'
 import type { NoteStatement, VoicedNote } from './noteStatement.js'
-import { closeTuplets, openTupletsAndTremolo } from './noteTuplets.js'
+import { closeTremoloAndTuplets, closeTuplets, openTupletsAndTremolo } from './noteTuplets.js'
 import { readIntegerInRange } from './numbers.js'
 import { measureLength } from './state.js'
 import type { PartState } from './state.js'
@@ -368,12 +368,7 @@ export function readNote(
     undefined,
   )
 
-  // Closed before any tuplet stopping on the same note, because the pair
-  // sits inside the bracket.
-  if (tremolo?.type === 'stop') {
-    voice.closeTremolo(tremolo, warnings, context, path, element.line)
-  }
-  closeTuplets(builder, voice, markers, warnings, context, path, element.line)
+  closeTremoloAndTuplets(builder, voice, markers, tremolo, warnings, context, path, element.line)
 }
 
 /** A note carrying <chord>, joined to the event before it. */

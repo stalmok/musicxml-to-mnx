@@ -224,6 +224,24 @@ export function openTupletsAndTremolo(
   return { markers, tremolo }
 }
 
+/**
+ * Closes what the note stops around it: a two-note tremolo, then the tuplets.
+ * The tremolo closes first, because the pair sits inside the bracket.
+ */
+export function closeTremoloAndTuplets(
+  builder: MeasureBuilder,
+  voice: VoiceLine,
+  markers: readonly XmlElement[],
+  tremolo: TremoloMarker | undefined,
+  warnings: WarningCollector,
+  context: ReportContext,
+  path: DocumentPath,
+  line: number,
+): void {
+  if (tremolo?.type === 'stop') voice.closeTremolo(tremolo, warnings, context, path, line)
+  closeTuplets(builder, voice, markers, warnings, context, path, line)
+}
+
 export function closeTuplets(
   builder: MeasureBuilder,
   voice: VoiceLine,
