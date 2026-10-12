@@ -19,7 +19,7 @@ import { requireNoteValueBase } from './noteValues.js'
 import { readIntegerInRange } from './numbers.js'
 import { entriesOf } from './tables.js'
 import { multiNoteTremoloOf } from './tremolos.js'
-import type { MultiNoteTremolo } from './tremolos.js'
+import type { TremoloMarker } from './tremolos.js'
 import type { TupletDisplaySettings } from './tuplets.js'
 import type { MeasureBuilder, VoiceLine } from './voices.js'
 import { readWrittenValue } from './writtenValues.js'
@@ -35,7 +35,7 @@ export function openTupletsAndTremolo(
   warnings: WarningCollector,
   context: ReportContext,
   path: DocumentPath,
-): { markers: readonly XmlElement[]; tremolo: MultiNoteTremolo | undefined } {
+): { markers: readonly XmlElement[]; tremolo: TremoloMarker | undefined } {
   const {
     element,
     eventNotations,

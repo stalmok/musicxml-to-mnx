@@ -30,7 +30,8 @@ const MUSICXML_TREMOLO_MARKS = { fewest: 0, most: 8 } as const
 /** The beam counts MNX draws a tremolo with. */
 export const TREMOLO_MARKS = { fewest: 1, most: 8 } as const
 
-export interface MultiNoteTremolo {
+/** One end of a tremolo written across two notes, as its <tremolo> marks it. */
+export interface TremoloMarker {
   type: 'start' | 'stop'
   marks: number
   /** The <tremolo> marker. */
@@ -41,7 +42,7 @@ export function multiNoteTremoloOf(
   written: readonly EventNotation[],
   warnings: WarningCollector,
   context: ReportContext,
-): MultiNoteTremolo | undefined {
+): TremoloMarker | undefined {
   // A note is one end of one pair, so a second marker stays unread.
   const [first] = writtenFor(written, 'multiNoteTremolo')
   if (!first) return undefined

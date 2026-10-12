@@ -53,8 +53,8 @@ import { writtenGrouping } from './part-groups.js'
 import { compareFractions, fraction, negate } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import { readNote } from './notes.js'
-import { readPartNames } from './part-list.js'
-import type { PartList } from './part-list.js'
+import { readPartList } from './partList.js'
+import type { PartList } from './partList.js'
 import { readPrint } from './print.js'
 import { IdGenerator } from './idGenerator.js'
 import { mergeGlobalMeasures, sameFermata, sameNumbers, sameRepeatEnd } from './globalMeasures.js'
@@ -183,7 +183,7 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
     }
   }
 
-  const partList = readPartNames(reader, warnings)
+  const partList = readPartList(reader, warnings)
   reader.reportUnread(warnings, {})
 
   const ids = new IdGenerator()

@@ -52,7 +52,7 @@ export const MIDI_NUMBERS = { lowest: 0, highest: 127 } as const
  * Reads the part list: each part's names and instrument setup, and the part
  * group edges. Everything not read here is reported.
  */
-export function readPartNames(root: ElementReader, warnings: WarningCollector): PartList {
+export function readPartList(root: ElementReader, warnings: WarningCollector): PartList {
   const names = new Map<string, string>()
   const shortNames = new Map<string, string>()
   const listed = new Set<string>()
