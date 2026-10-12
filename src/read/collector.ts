@@ -200,7 +200,7 @@ export function articleFor(found: XmlElement): 'A' | 'An' {
 
 /**
  * The element something is written with, and the part and measure it sits in.
- * The end of a span is reported once the part is whole, so it carries both.
+ * Something reported after its element is read carries both.
  */
 export interface WrittenAt {
   context: ReportContext

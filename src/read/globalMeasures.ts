@@ -1,7 +1,5 @@
 // The score's measure as the reader holds it while the parts are merged, and
-// the merge itself. MNX names neither the segno nor the sign a jump returns
-// to, so the model carries no name. The reader needs both to tell which segno
-// a D.S. goes back to, and drops them once that is settled.
+// the merge itself.
 
 import { compareFractions } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
@@ -18,6 +16,12 @@ import type {
 import type { ReportContext, WarningCollector } from './collector.js'
 import type { Stated } from './element.js'
 
+/**
+ * A segno with the name the source gives it. MNX names neither the segno nor
+ * the sign a jump returns to, so the model carries no name. The reader needs
+ * both to tell which segno a D.S. goes back to, and drops them once that is
+ * settled.
+ */
 export interface NamedSegno extends Segno {
   /** What the source calls this sign, where it names one. */
   readonly name?: string
@@ -259,7 +263,7 @@ function namedSegno(
   return { ...first, value: { ...first.value, name } }
 }
 
-// Content equality for the marks compared above, one per shape.
+// Content equality for the marks two parts or two barlines state, one per shape.
 export function sameRepeatEnd(a: RepeatEnd, b: RepeatEnd): boolean {
   return a.times === b.times
 }

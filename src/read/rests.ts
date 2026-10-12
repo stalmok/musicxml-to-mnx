@@ -1,5 +1,5 @@
-// Whether a rest is its voice's rest through the measure, and in what form,
-// and placing it there.
+// Whether a rest is its voice's rest through the measure, and placing it
+// there, or dropping a rest written over it.
 //
 // MNX states a rest filling the measure on the sequence rather than as an
 // event in it. MusicXML writes one as an ordinary <note>, sometimes marked

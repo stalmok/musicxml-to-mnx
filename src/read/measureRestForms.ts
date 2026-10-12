@@ -20,8 +20,8 @@ export type MeasureRestReports<Form extends MeasureRestForm = MeasureRestForm> =
 >
 
 /**
- * A rest that fills its voice's measure, or may, until finish settles how it
- * is written.
+ * A rest that fills its voice's measure, or may, until MeasureBuilder.finish
+ * settles how it is written.
  *
  * - `candidate`: an ordinary rest that is the measure's rest only where it
  *   turns out to be the whole of its voice. It stays the event it was read

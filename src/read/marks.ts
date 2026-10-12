@@ -1,5 +1,5 @@
-// Reading what is drawn on a note's event: its marks, its fermata and its
-// stem. A fermata is read here for a barline too, because MusicXML writes the
+// Reading what is drawn on a note's event: its marks, a tremolo on one note,
+// its fermata and its stem. A fermata is read here for a barline too, because MusicXML writes the
 // same element over a note and over a barline.
 
 import type {
@@ -23,8 +23,10 @@ import type { EventNotation } from './eventNotations.js'
 import { entriesOf, recogniser } from './tables.js'
 import { TREMOLO_MARKS, tremoloBeamCount } from './tremolos.js'
 
-// The side a mark is drawn on, from its placement. MusicXML's above and below
-// are the words MNX states, so a known one passes straight through.
+/**
+ * The side an element is drawn on, from its placement. MusicXML's above and
+ * below are the words MNX states, so a known one passes straight through.
+ */
 export function placementOf(element: XmlElement): 'above' | 'below' | undefined {
   const placement = attribute(element, 'placement')
   return placement === 'above' || placement === 'below' ? placement : undefined

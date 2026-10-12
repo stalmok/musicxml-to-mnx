@@ -237,7 +237,7 @@ function readPitch(
 }
 
 // A decimal as MusicXML writes one, which is what <alter> counts semitones
-// in. Stricter than Number(), for the same reason as readInteger.
+// in. Stricter than Number(), for the same reason as readInteger in numbers.ts.
 const DECIMAL_SEMITONES = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/
 
 /**
