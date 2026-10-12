@@ -101,6 +101,8 @@ The reader modules are:
 | `attributes.ts`               | Read divisions, staves, keys, time signatures, clefs, and measure styles.            |
 | `signatures.ts`               | Settle key and time signatures per measure, per part, and across parts.              |
 | `notes.ts`                    | Read notes and their notation.                                                       |
+| `marks.ts`                    | Read the marks, fermata and stem drawn on an event, and a barline's fermata.         |
+| `tremolos.ts`                 | Read a tremolo's beam count, and a tremolo written across two notes.                 |
 | `eventNotations.ts`           | Read the notations a note states on its event, and reconcile a chord's notes.        |
 | `voices.ts`                   | Track the cursor and assemble voice events.                                          |
 | `rests.ts`                    | Decide whether a rest is its voice's measure rest, and in what form.                 |

@@ -38,6 +38,7 @@ import { noteValueBaseOf } from './noteValues.js'
 import { parseDecimal, parseExactDecimal, parseWholeNumber, readIntegerInRange } from './numbers.js'
 import type { GraceNotesAt } from './voices.js'
 import type { OpenHairpin, WedgeStop } from './spanners.js'
+import { placementOf } from './marks.js'
 import { measureLength } from './state.js'
 import type { PartState } from './state.js'
 import { entriesOf, recogniser } from './tables.js'
@@ -753,13 +754,6 @@ export function readSound(
     )
   }
   return { fine, jump, segnoName, tempo }
-}
-
-// The side a direction is drawn on, from its placement. MusicXML's above and
-// below are the words MNX states, so a known one passes straight through.
-function placementOf(element: XmlElement): 'above' | 'below' | undefined {
-  const placement = attribute(element, 'placement')
-  return placement === 'above' || placement === 'below' ? placement : undefined
 }
 
 /**

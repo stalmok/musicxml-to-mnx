@@ -22,7 +22,7 @@ import { stated } from './element.js'
 import type { ElementReader, Stated } from './element.js'
 import { entriesOf } from './tables.js'
 import { reportHidden } from './unrepresentable.js'
-import { readFermataAt } from './notes.js'
+import { readFermataAt } from './marks.js'
 import { parseWholeNumber } from './numbers.js'
 
 // MusicXML's bar styles, in MNX's spelling. MusicXML names the two strokes

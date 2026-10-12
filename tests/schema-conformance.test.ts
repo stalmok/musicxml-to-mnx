@@ -28,7 +28,7 @@ import { CLEF_OCTAVES, LONGEST_MNX_REPEAT } from '../src/read/attributes.js'
 import { FEWEST_REPEAT_TIMES } from '../src/read/barlines.js'
 import { BASE_VALUES } from '../src/read/duration.js'
 import { MNX_ID_PATTERN } from '../src/ids.js'
-import { TREMOLO_MARKS } from '../src/read/notes.js'
+import { TREMOLO_MARKS } from '../src/read/tremolos.js'
 import { MIDI_NUMBERS } from '../src/read/part-list.js'
 import { NO_HOME_ATTRIBUTES, NO_HOME_IN_MNX } from '../src/read/unrepresentable.js'
 import type { FormatLimit } from '../src/warnings.js'
@@ -1179,17 +1179,7 @@ const CALL_SITE_LIMITS: Readonly<
       holds: () => !has('segno', 'placement') && !has('tempo', 'placement'),
     },
   ],
-  'src/read/notes.ts': [
-    {
-      says: 'a kit note strikes one component',
-      holds: () => propertiesOf('kit-note').every((property) => !isList('kit-note', property)),
-    },
-    {
-      says: 'neither a measure rest nor a space carries a mark',
-      holds: () =>
-        propertiesOf('full-measure-rest').join() === 'fermata,staffPosition,visualDuration' &&
-        propertiesOf('space').join() === 'duration,type',
-    },
+  'src/read/marks.ts': [
     {
       says: 'a tremolo is a count of beams',
       holds: () =>
@@ -1200,13 +1190,17 @@ const CALL_SITE_LIMITS: Readonly<
       says: 'a single-note tremolo counts from one beam',
       holds: () => schemaDefs['tremolo-single']?.properties?.['marks']?.minimum === 1,
     },
+  ],
+  'src/read/notes.ts': [
     {
-      says: 'a two-note tremolo states no side',
-      holds: () => !has('multi-note-tremolo', 'placement'),
+      says: 'a kit note strikes one component',
+      holds: () => propertiesOf('kit-note').every((property) => !isList('kit-note', property)),
     },
     {
-      says: 'a two-note tremolo counts one to eight beams',
-      holds: () => schemaDefs['multi-note-tremolo']?.properties?.['marks']?.maximum === 8,
+      says: 'neither a measure rest nor a space carries a mark',
+      holds: () =>
+        propertiesOf('full-measure-rest').join() === 'fermata,staffPosition,visualDuration' &&
+        propertiesOf('space').join() === 'duration,type',
     },
   ],
   'src/read/score.ts': [
@@ -1219,6 +1213,16 @@ const CALL_SITE_LIMITS: Readonly<
     {
       says: 'a tie is always drawn',
       holds: () => propertiesOf('tie').join() === 'lv,side,target,targetType',
+    },
+  ],
+  'src/read/tremolos.ts': [
+    {
+      says: 'a two-note tremolo states no side',
+      holds: () => !has('multi-note-tremolo', 'placement'),
+    },
+    {
+      says: 'a two-note tremolo counts one to eight beams',
+      holds: () => schemaDefs['multi-note-tremolo']?.properties?.['marks']?.maximum === 8,
     },
   ],
 }
