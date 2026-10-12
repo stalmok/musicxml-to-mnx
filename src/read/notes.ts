@@ -51,7 +51,8 @@ import { multiNoteTremoloOf } from './tremolos.js'
 import type { MultiNoteTremolo } from './tremolos.js'
 import { readLyrics } from './lyrics.js'
 import { readRest } from './rests.js'
-import type { FillsMeasure, RestNote } from './rests.js'
+import type { FillsMeasure } from './rests.js'
+import type { NoteStatement, VoicedNote } from './noteStatement.js'
 import { requireNoteValueBase } from './noteValues.js'
 import { parseWholeNumber, readIntegerInRange } from './numbers.js'
 import { measureLength } from './state.js'
@@ -69,32 +70,6 @@ import { readSlurs, readTies, stopsFirst, tiePairing } from './tiesAndSlurs.js'
 import { MeasureBuilder } from './voices.js'
 import type { JoinedEvent, PlacedEvent, VoiceLine } from './voices.js'
 import type { TupletDisplaySettings } from './tuplets.js'
-
-/** What is read from a <note> once and shared by the paths that place it. */
-interface NoteStatement extends Omit<RestNote, 'voice'> {
-  /** The voice the note names, where it names one. */
-  namedVoice: string | undefined
-  /** The notations the note writes on its event. */
-  eventNotations: readonly EventNotation[]
-  tieds: readonly XmlElement[]
-  /** The <tuplet> markers in a block hidden with print-object="no". */
-  hiddenTuplets: ReadonlySet<XmlElement>
-  pitch: XmlElement | undefined
-  unpitched: XmlElement | undefined
-  staff: number | undefined
-  staffPosition: number | undefined
-  /** Whether the note is hidden with print-object="no". */
-  hidden: boolean
-  /**
-   * Reports the note and its <notations> blocks hidden, each in the place it
-   * was read. Given `only`, just a block holding a fermata is reported, naming
-   * it: nothing else in the block is converted, so hiding it loses nothing.
-   */
-  reportHidden: (only?: 'fermata') => void
-}
-
-/** The same, once the note has the line of its voice it is written in. */
-type VoicedNote = NoteStatement & RestNote
 
 export function readNote(
   element: ElementReader,

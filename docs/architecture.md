@@ -104,6 +104,7 @@ The reader modules are:
 | `pitches.ts`                  | Read pitches, accidentals and kit components, and where a rest or kit note sits.     |
 | `marks.ts`                    | Read the marks, fermata and stem drawn on an event, and a barline's fermata.         |
 | `tremolos.ts`                 | Read a tremolo's beam count, and a tremolo written across two notes.                 |
+| `noteStatement.ts`            | Hold what is read from a note once and shared by the modules that place it.          |
 | `eventNotations.ts`           | Read the notations a note states on its event, and reconcile a chord's notes.        |
 | `voices.ts`                   | Track the cursor and assemble voice events.                                          |
 | `rests.ts`                    | Decide whether a rest is its voice's measure rest, and in what form.                 |

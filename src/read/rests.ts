@@ -12,22 +12,10 @@ import type { NoteValue } from '../model/score.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute } from '../xml/tree.js'
 import { lengthOf, noteValueOf } from './duration.js'
-import type { ElementReader } from './element.js'
 import { measureLength } from './state.js'
 import type { PartState } from './state.js'
-import type { MeasureBuilder, VoiceLine } from './voices.js'
-
-export interface RestNote {
-  element: ElementReader
-  notations: readonly ElementReader[]
-  rest: XmlElement | undefined
-  grace: XmlElement | undefined
-  /** The value the note states in <type>, where it states one. */
-  written: NoteValue | undefined
-  duration: Fraction | undefined
-  /** The line of its voice the note is written in. */
-  voice: VoiceLine
-}
+import type { RestNote } from './noteStatement.js'
+import type { MeasureBuilder } from './voices.js'
 
 /**
  * How a <note> stands against its voice's measure.
