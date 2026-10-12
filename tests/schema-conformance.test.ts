@@ -1191,18 +1191,18 @@ const CALL_SITE_LIMITS: Readonly<
       holds: () => schemaDefs['tremolo-single']?.properties?.['marks']?.minimum === 1,
     },
   ],
-  'src/read/notes.ts': [
+  'src/read/pitches.ts': [
+    {
+      says: 'a kit note strikes one component',
+      holds: () => propertiesOf('kit-note').every((property) => !isList('kit-note', property)),
+    },
+  ],
+  'src/read/rests.ts': [
     {
       says: 'neither a measure rest nor a space carries a mark',
       holds: () =>
         propertiesOf('full-measure-rest').join() === 'fermata,staffPosition,visualDuration' &&
         propertiesOf('space').join() === 'duration,type',
-    },
-  ],
-  'src/read/pitches.ts': [
-    {
-      says: 'a kit note strikes one component',
-      holds: () => propertiesOf('kit-note').every((property) => !isList('kit-note', property)),
     },
   ],
   'src/read/score.ts': [

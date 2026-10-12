@@ -107,7 +107,7 @@ The reader modules are:
 | `noteStatement.ts`            | Hold what is read from a note once and shared by the modules that place it.          |
 | `eventNotations.ts`           | Read the notations a note states on its event, and reconcile a chord's notes.        |
 | `voices.ts`                   | Track the cursor and assemble voice events.                                          |
-| `rests.ts`                    | Decide whether a rest is its voice's measure rest, and in what form.                 |
+| `rests.ts`                    | Decide whether a rest is its voice's measure rest, and in what form. Place it.       |
 | `noteTuplets.ts`              | Read the tuplets and two-note tremolos a note opens and closes, and their ratios.    |
 | `tupletTracker.ts`            | Track the tuplets and two-note tremolos open in a voice.                             |
 | `tuplets.ts`                  | Compute tuplet ratios and settle tuplet brackets when the measure is complete.       |
