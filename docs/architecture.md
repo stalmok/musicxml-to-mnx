@@ -120,6 +120,7 @@ The reader modules are:
 | `beams.ts`                    | Assemble beam groups.                                                                        |
 | `directions.ts`               | Read dynamics, tempo marks, and navigation signs.                                            |
 | `globalMeasures.ts`           | Hold the score's measure while the parts are merged, and merge each part into it.            |
+| `measureRepeats.ts`           | Mark each measure a measure repeat sign starts a pattern on, once the part is read.          |
 | `jumps.ts`                    | Match each dal segno jump to its segno, and settle it as D.S. or D.S. al Fine.               |
 | `barlines.ts`                 | Read barlines and repeats. Join each ending's start and stop across the part.                |
 | `partList.ts`                 | Read the part list: each part's names and instrument setup, and the part group edges.        |
