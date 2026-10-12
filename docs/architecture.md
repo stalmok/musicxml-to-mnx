@@ -114,6 +114,7 @@ The reader modules are:
 | `globalMeasures.ts`           | Hold the score's measure while the parts are merged, and merge each part into it.    |
 | `jumps.ts`                    | Match each dal segno jump to its segno, and settle it as D.S. or D.S. al Fine.       |
 | `barlines.ts`                 | Read barlines and repeats. Join each ending's start and stop across the part.        |
+| `part-list.ts`                | Read the part list: each part's names and instrument setup.                          |
 | `part-groups.ts`, `print.ts`  | Read part groups and layout breaks.                                                  |
 | `transposition.ts`            | Convert written pitches and keys of transposing parts to sounding pitch.             |
 | `divisions.ts`, `duration.ts` | Read durations in divisions. Convert a duration back to a note value.                |
