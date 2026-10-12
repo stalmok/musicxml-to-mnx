@@ -99,13 +99,18 @@ export default {
     },
 
     // === Inside the reader ===
+    //
+    // Tests are exempt, because a test may read one element through the
+    // module that reads it.
     {
-      name: 'only-the-score-reader-reads-a-note',
+      name: 'score-reader-enters-element-readers',
       comment:
-        'notes.ts reads a whole note into its voice, and score.ts calls it once per note. A reader that needs one part of a note, such as a fermata or a pitch, imports the module that reads that part.',
+        'score.ts walks the document and gives each element to the module that reads it. Those modules do not import each other. A reader that needs one part of another element, such as a fermata or a pitch, imports the module that reads that part.',
       severity: 'error',
-      from: { pathNot: '^src/read/score\\.ts$' },
-      to: { path: '^src/read/notes\\.ts$' },
+      from: { path: '^(src|cli)/', pathNot: ['^src/read/score\\.ts$', '\\.(test|bench)\\.ts$'] },
+      to: {
+        path: '^src/read/(barlines|directions|jumps|measureRepeats|notes|partList|print|signatures)\\.ts$',
+      },
     },
 
     // === The isomorphic core ===
