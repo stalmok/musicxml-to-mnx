@@ -100,7 +100,7 @@ The reader modules are:
 | `score.ts`                    | Read parts and walk measures in document order.                                      |
 | `attributes.ts`               | Read divisions, staves, keys, time signatures, clefs, and measure styles.            |
 | `signatures.ts`               | Settle key and time signatures per measure, per part, and across parts.              |
-| `notes.ts`                    | Read notes and their notation.                                                       |
+| `notes.ts`                    | Read a note, chord member or grace note into its voice, with its beams and rolls.    |
 | `pitches.ts`                  | Read pitches, accidentals and kit components, and where a rest or kit note sits.     |
 | `marks.ts`                    | Read the marks, fermata and stem drawn on an event, and a barline's fermata.         |
 | `tremolos.ts`                 | Read a tremolo's beam count, and a tremolo written across two notes.                 |
@@ -141,8 +141,9 @@ The reader modules are:
 
 ### Note assembly order
 
-`notes.ts` calls `MeasureBuilder` in `voices.ts`. Chord members join an existing
-event through a separate path before group opening. They do not open groups.
+`notes.ts`, `noteTuplets.ts` and `rests.ts` call `MeasureBuilder` in `voices.ts`.
+Chord members join an existing event through a separate path before group
+opening. They do not open groups.
 
 Each note gets a `VoiceLine`: the line of its voice it is written in. A note
 gets it from `beginNote`, a grace note from `graceLine`, and a chord member from
