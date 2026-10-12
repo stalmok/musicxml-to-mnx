@@ -1193,14 +1193,16 @@ const CALL_SITE_LIMITS: Readonly<
   ],
   'src/read/notes.ts': [
     {
-      says: 'a kit note strikes one component',
-      holds: () => propertiesOf('kit-note').every((property) => !isList('kit-note', property)),
-    },
-    {
       says: 'neither a measure rest nor a space carries a mark',
       holds: () =>
         propertiesOf('full-measure-rest').join() === 'fermata,staffPosition,visualDuration' &&
         propertiesOf('space').join() === 'duration,type',
+    },
+  ],
+  'src/read/pitches.ts': [
+    {
+      says: 'a kit note strikes one component',
+      holds: () => propertiesOf('kit-note').every((property) => !isList('kit-note', property)),
     },
   ],
   'src/read/score.ts': [
