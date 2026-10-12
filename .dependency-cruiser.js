@@ -112,6 +112,20 @@ export default {
         path: '^src/read/(barlines|directions|jumps|measureRepeats|notes|partList|print|signatures)\\.ts$',
       },
     },
+    {
+      name: 'reader-helpers-stay-leaves',
+      comment:
+        'These modules serve many readers, so they import no reader. They may import each other, the model, and the shared modules outside the reader.',
+      severity: 'error',
+      from: {
+        path: '^src/read/(collector|color|draft|duration|element|idGenerator|noteValues|numbers|tables|transposition|unrepresentable|wording)\\.ts$',
+      },
+      to: {
+        path: '^src/read/',
+        pathNot:
+          '^src/read/(collector|color|draft|duration|element|idGenerator|noteValues|numbers|tables|transposition|unrepresentable|wording)\\.ts$',
+      },
+    },
 
     // === The isomorphic core ===
     //
