@@ -788,8 +788,8 @@ function readClef(
   // drawn at pitch and the loss is reported.
   const octaveElement = element.child('clef-octave-change')
   const change = octaveElement ? readInteger(octaveElement, path) : 0
-  const octave = CLEF_OCTAVES.find((amount) => amount === change)
-  if (octave === undefined && change !== 0) {
+  const amount = CLEF_OCTAVES.find((stated) => stated === change)
+  if (amount === undefined && change !== 0) {
     warnings.add(
       'unrepresentable:clef-octave',
       `A clef is transposed by ${String(change)} octaves, and MNX states an ottava of ` +
@@ -813,7 +813,8 @@ function readClef(
     staffPosition,
     staff,
     position,
-    octave,
+    // MusicXML has no way to hide the 8 or 15 of a clef-octave-change.
+    octave: amount !== undefined ? { amount, shown: true } : undefined,
     hide,
   }
 }

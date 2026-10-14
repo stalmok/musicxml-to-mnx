@@ -532,8 +532,11 @@ describe('measures', () => {
     ])
   })
 
-  // A transposed clef states its octave and asks for the 8 to be drawn.
-  test('writes a clef octave change and shows it', () => {
+  // MNX draws the number of a transposed clef where showOctave is left out.
+  test.each([
+    [true, 'shows'],
+    [false, 'hides'],
+  ])('writes a clef octave change, and showOctave %s where the source %s it', (shown) => {
     const score = scoreOf({
       clefs: [
         {
@@ -541,7 +544,7 @@ describe('measures', () => {
           staffPosition: -2,
           staff: undefined,
           position: fraction(0, 1),
-          octave: -1,
+          octave: { amount: -1, shown },
           hide: false,
         },
       ],
@@ -558,7 +561,7 @@ describe('measures', () => {
     const written = writeValid(score)
 
     expect(written.parts[0]?.measures[0]?.clefs).toEqual([
-      { clef: { sign: 'G', staffPosition: -2, octave: -1, showOctave: true } },
+      { clef: { sign: 'G', staffPosition: -2, octave: -1, showOctave: shown } },
     ])
   })
 

@@ -916,7 +916,12 @@ function dedupeStaffConfigs(
 
 /** The sign, where it sits on the staff, and how it is transposed. */
 function sameClef(a: Clef, b: Clef): boolean {
-  return a.sign === b.sign && a.staffPosition === b.staffPosition && a.octave === b.octave
+  return (
+    a.sign === b.sign &&
+    a.staffPosition === b.staffPosition &&
+    a.octave?.amount === b.octave?.amount &&
+    a.octave?.shown === b.octave?.shown
+  )
 }
 
 /**

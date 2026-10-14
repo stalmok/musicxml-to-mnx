@@ -441,11 +441,17 @@ export interface Clef {
   readonly position: Fraction
   /**
    * Octaves the clef is transposed for drawing, as a treble-8 clef sits an
-   * octave below a plain treble. Undefined where the clef is untransposed.
+   * octave below a plain treble, and whether the 8 or 15 is drawn. Undefined
+   * where the clef is untransposed.
    */
-  readonly octave: OttavaAmount | undefined
+  readonly octave: ClefOctave | undefined
   /** True where the clef is not drawn, and takes no space. */
   readonly hide: boolean
+}
+
+export interface ClefOctave {
+  readonly amount: OttavaAmount
+  readonly shown: boolean
 }
 
 /**

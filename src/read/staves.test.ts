@@ -208,7 +208,7 @@ describe('clefs', () => {
       ),
     )
 
-    expect(part?.measures[0]?.clefs[0]?.octave).toBe(-1)
+    expect(part?.measures[0]?.clefs[0]?.octave).toEqual({ amount: -1, shown: true })
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:clef'])
   })
 
@@ -302,7 +302,7 @@ describe('clefs', () => {
       ),
     )
 
-    expect(part?.measures[0]?.clefs[0]?.octave).toBe(-1)
+    expect(part?.measures[0]?.clefs[0]?.octave).toEqual({ amount: -1, shown: true })
   })
 
   // MNX's ottava amount reaches three octaves. A larger transposition, which
@@ -334,7 +334,7 @@ describe('clefs', () => {
   test.each(['3', '-3'])('carries a clef transposed by %s octaves', (change) => {
     const { part, warnings } = read(measures(transposed(change)))
 
-    expect(part?.measures[0]?.clefs[0]?.octave).toBe(Number(change))
+    expect(part?.measures[0]?.clefs[0]?.octave).toEqual({ amount: Number(change), shown: true })
     expect(warnings).toEqual([])
   })
 
