@@ -864,8 +864,8 @@ export interface Score {
   readonly grouping: readonly GroupingItem[]
   /**
    * The instrument setup the part list states, keyed by the source's
-   * instrument id or, where that id does not fit MNX's, by its new name.
-   * Empty where the part list states none.
+   * instrument id. An id MNX cannot state, or one shaped like an id the
+   * converter generates, is renamed. Empty where the part list states none.
    */
   readonly sounds: ReadonlyMap<string, InstrumentSound>
   /** Every verse line an event sings, sorted by verse number. */

@@ -1,5 +1,6 @@
 // A <score-instrument> names what plays a part. MNX states it in
-// global.sounds, keyed by the source's instrument id where MNX can state it.
+// global.sounds, keyed by the source's instrument id. An id MNX cannot state,
+// or one shaped like an id the converter generates, is renamed.
 // The schema's sound states midiNumber as the MIDI pitch of a percussion
 // sound, not a <midi-program> patch, so the rest of a <midi-instrument> has
 // no home. <midi-unpitched> is that pitch and is tested in percussion.test.ts.

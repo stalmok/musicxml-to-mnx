@@ -45,15 +45,17 @@ describe('the id pattern the reader renames parts by', () => {
 })
 
 describe('the instrument id a sound is keyed by', () => {
-  // The reader renames a part id MNX cannot state. The writer passes the
-  // <score-instrument> id into global.sounds as a key, unchecked. These three
-  // schema facts make that safe. When one stops holding, the instrument id
-  // needs the renaming the part id gets.
+  // The schema puts no shape on a sounds key, but a kit component names its
+  // sound by an MNX id. So the reader renames an instrument id that MNX's id
+  // cannot state, as it renames a part id. These schema facts are what make
+  // the renaming needed and enough.
 
   test('the schema puts no shape on a sounds key', () => {
-    // Any instrument id is a legal key, including one with accented letters,
-    // which MNX's id cannot state.
     expect(Object.keys(schemaDefs['sounds-global']?.patternProperties ?? {})).toEqual(['^.*$'])
+  })
+
+  test('a kit component names its sound by an MNX id', () => {
+    expect(schemaDefs['kit-component']?.properties?.['sound']?.$ref).toBe('#/$defs/id')
   })
 
   test('a percussion kit is the only thing that names a sound', () => {
