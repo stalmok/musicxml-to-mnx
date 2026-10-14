@@ -77,9 +77,11 @@ The stage boundary is narrower than a neutral model. It means two things:
   `<backup>` cursors, or spanner `number` attributes.
 - The reader imports no MNX types. It produces the model.
 
-The model uses narrow types for values such as pitch steps, clefs, and time
-units. The reader checks input values before constructing these types.
-The writer relies on those checked values.
+The model uses narrow types for enumerated values, such as pitch steps, clef
+signs, and time units. The reader checks each input value before it constructs
+one of these types. Numbers, such as staff numbers and MIDI numbers, are plain
+numbers in the model. Where the schema bounds a number, the reader keeps to the
+bound. The writer relies on those checked values.
 
 Because the model follows MNX, a schema change can require model and reader
 changes as well as writer changes.
@@ -205,7 +207,9 @@ The CLI provides optional validation through `--validate`.
 
 `tests/schema-conformance.test.ts` checks:
 
-- The public MNX types against the schema.
+- The public MNX types against the schema: each type's properties, which of
+  them are required, and their enumerated values. A short list of properties
+  the converter never writes is left out, each with the reason.
 - The unrepresentable-element registry against schema capabilities, by name
   and by the concept each entry stands for.
 - Each `unrepresentable:*` warning code against the schema fact it rests on.
