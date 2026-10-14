@@ -125,26 +125,33 @@ export function openTupletsAndTremolo(
     !graceElement &&
     !insideDrawnBracket &&
     (tremolo?.type !== 'stop' || opensTremolo)
-  const readsRatio = mayReadRatio && ratioCountedValue(ratio, element, path) !== undefined
-  // Elsewhere a ratio counting no value says nothing about how long a group
-  // is. A rest that fills the measure is written with no <type>, and some
-  // sources state a ratio on it.
-  if (mayReadRatio && !readsRatio && !tremolo) {
+  // A ratio on a note stating no <type>, with no <normal-type> of its own,
+  // counts no note value. Outside a run of ratios it says nothing about how
+  // long a group is, and is passed over: a rest that fills the measure is
+  // written with no <type>, and some sources state a ratio on it. Inside a
+  // run it is what says where the run ends, so it is refused there.
+  const passesOver = mayReadRatio && !tremolo && !voice.insideImpliedTuplet()
+  const stated = !mayReadRatio
+    ? undefined
+    : passesOver
+      ? readCountedRatio(ratio, element, path)
+      : tremolo && ratioCountedValue(ratio, element, path) === undefined
+        ? undefined
+        : readTupletRatio(ratio, element, path)
+  if (passesOver && !stated) {
     warnings.add(
-      'missing:note-type',
+      'missing:normal-type',
       'A <time-modification> counts no note value: it states no <normal-type>, and the ' +
-        'note states no <type>. The ratio is not converted, and the note lasts its ' +
-        '<duration>.',
+        'note states no <type>. The ratio is not converted, and the note is read without it.',
       context,
       ratio,
     )
   }
-  const stated = readsRatio ? readTupletRatio(ratio, element, path) : undefined
   const rated = stated && tremolo ? tupletShareOfRatio(stated) : stated
   // A start marker reads the ratio below. Elsewhere the drawn bracket or the
   // two-note tremolo the note stands in states it, so it is accounted for
-  // whole.
-  if (ratio && !readsRatio && starts.length === 0) element.readWhole(ratio)
+  // whole, as is a ratio passed over above.
+  if (ratio && !stated && starts.length === 0) element.readWhole(ratio)
 
   // Full, or this note does not belong in it either way: the run ends here. A
   // grace note takes none of the measure's time, so it neither fills a run nor

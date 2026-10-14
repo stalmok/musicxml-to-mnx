@@ -2144,11 +2144,11 @@ describe('a ratio on a note stating no <type>, with no bracket', () => {
     expect(sequence?.fullMeasure).toBeDefined()
     expect(warnings.list().map((w) => [w.code, w.element, w.message])).toEqual([
       [
-        'missing:note-type',
+        'missing:normal-type',
         'time-modification',
         'A <time-modification> counts no note value: it states no <normal-type>, and the ' +
-          'note states no <type>. The ratio is not converted, and the note lasts its ' +
-          '<duration>.',
+          'note states no <type>. The ratio is not converted, and the note is read ' +
+          'without it.',
       ],
     ])
   })
@@ -2164,7 +2164,30 @@ describe('a ratio on a note stating no <type>, with no bracket', () => {
     expect(content?.map((item) => item.kind === 'event' && item.value)).toEqual([
       { base: 'quarter', dots: 0 },
     ])
-    expect(warnings.map((w) => w.code)).toEqual(['missing:note-type'])
+    expect(warnings.map((w) => w.code)).toEqual(['missing:normal-type'])
+  })
+
+  test('rejects counts that are not whole numbers', () => {
+    const broken = RATIO.replace('<actual-notes>3</actual-notes>', '<actual-notes>x</actual-notes>')
+
+    expect(() =>
+      read(measure(`<note><rest measure="yes"/><duration>48</duration>${broken}</note>`)),
+    ).toThrow(MusicXMLError)
+  })
+
+  // Inside a run the ratio is what says where the run ends, so a note whose
+  // ratio counts nothing cannot be placed in it or after it.
+  test('rejects a note inside a run of ratios', () => {
+    const typeless =
+      `<note><pitch><step>D</step><octave>4</octave></pitch><duration>4</duration>${RATIO}` +
+      '</note>'
+    const eighth =
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+      `<type>eighth</type>${RATIO}</note>`
+
+    expect(readFailure(measure(eighth + typeless)).message).toContain(
+      'A tuplet states no note value to count.',
+    )
   })
 
   test('drops a rest written over the measure rest', () => {
