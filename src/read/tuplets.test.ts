@@ -2967,6 +2967,24 @@ describe('two-note tremolos', () => {
     ])
   })
 
+  // A grace note takes none of the pair's time, so its value stands.
+  test('keeps a grace note a tremolo with one end gathered as it is written', () => {
+    const grace =
+      '<note><grace/><pitch><step>D</step><octave>4</octave></pitch>' + '<type>eighth</type></note>'
+    const quarter =
+      '<note><pitch><step>G</step><octave>4</octave></pitch><duration>12</duration>' +
+      '<type>quarter</type></note>'
+    const { content, warnings } = read(measure(tremoloNote('C', 'start') + grace + quarter))
+
+    expect(content?.map((item) => item.kind)).toEqual(['event', 'grace', 'event'])
+    const group = content?.[1]
+    expect(group?.kind === 'grace' && group.content[0]?.value).toEqual({
+      base: 'eighth',
+      dots: 0,
+    })
+    expect(warnings.map((w) => w.code)).toEqual(['unclosed:tremolo'])
+  })
+
   // A 1024th is the shortest value MusicXML and MNX write, so half of one
   // has no value to write.
   test('rejects a tremolo left open on notes no value is half of', () => {
