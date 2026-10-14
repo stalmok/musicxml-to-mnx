@@ -307,8 +307,9 @@ export class VoiceLine {
   ): void {
     const { marks } = marker
     const builder = this.#layer
-    // A stop where no tremolo was open opened one around its own note, and
-    // was reported there, so that note is all the tremolo holds.
+    // A stop where no tremolo was open opened one around its own note, so
+    // that note is all the tremolo holds. It was reported where it opened, or
+    // at the barline that cut the tremolo off.
     if (builder.tuplets.tremoloOpenedBy(marker.element)) {
       builder.tuplets.convertUnclosedTremolo(path, line)
       return

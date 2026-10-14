@@ -56,8 +56,9 @@ export function openTupletsAndTremolo(
   // that does not leaves the tremolo with one end, and is read outside it. A
   // grace note takes none of the pair's time, so it does not end the pair.
   // That holds across a barline: a tremolo the barline before cut, and
-  // reported, is stopped by the voice's first note or by none.
-  const cut = !graceElement && builder.takesCarriedTremolo(voice)
+  // reported, is stopped by the voice's first note or by none. A grace note
+  // carrying the stop is the end the barline cut off too.
+  const cut = (!graceElement || tremolo?.type === 'stop') && builder.takesCarriedTremolo(voice)
   if (!graceElement && tremolo?.type !== 'stop') {
     voice.convertUnstoppedTremolo(warnings, context, path, element.line)
   }
@@ -503,7 +504,7 @@ function impliedTupletRatio(
 }
 
 /**
- * The ratio a bracket holds, with the share a two-note tremolo starting on
+ * The ratio a bracket holds, with the share a two-note tremolo opening on
  * the same note taken out of it. MusicXML counts the two together: a triplet
  * whose first note is a tremolo pair states six in the time of two and draws
  * three, so halving the count keeps the number the bracket draws. Where that

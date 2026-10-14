@@ -3172,6 +3172,20 @@ describe('two-note tremolos', () => {
       expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([['unclosed:tremolo', 1]])
     })
 
+    // A grace note takes none of the pair's time, but the stop it carries is
+    // still the end the barline cut off.
+    test('reports the tremolo once where a grace note carries its stop', () => {
+      const graceStop =
+        '<note><grace/><pitch><step>D</step><octave>4</octave></pitch><type>eighth</type>' +
+        '<notations><ornaments><tremolo type="stop">3</tremolo></ornaments></notations></note>'
+      const { warnings } = readBoth(
+        quarter + quarter + quarter + tremoloNote('C', 'start'),
+        graceStop + quarter + quarter + quarter + quarter,
+      )
+
+      expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([['unclosed:tremolo', 1]])
+    })
+
     // The stop belongs to the voice the tremolo opened in.
     test('reports a stop in another voice', () => {
       const { warnings } = readBoth(
