@@ -129,8 +129,10 @@ export function openTupletsAndTremolo(
   // counts no note value. Outside a run of ratios it says nothing about how
   // long a group is, and is passed over: a rest that fills the measure is
   // written with no <type>, and some sources state a ratio on it. Inside a
-  // run it is what says where the run ends, so it is refused there.
-  const passesOver = mayReadRatio && !tremolo && !voice.insideImpliedTuplet()
+  // run with room left it is what says where the run ends, so it is refused
+  // there.
+  const passesOver =
+    mayReadRatio && !tremolo && (!voice.insideImpliedTuplet() || voice.impliedTupletFilled())
   const stated = !mayReadRatio
     ? undefined
     : passesOver

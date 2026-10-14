@@ -2190,6 +2190,24 @@ describe('a ratio on a note stating no <type>, with no bracket', () => {
     )
   })
 
+  // A full run is over, so a ratio after it says nothing about where it ends.
+  test('passes over the ratio of a rest after a run that is full', () => {
+    const eighth = (step: string) =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>4</duration>` +
+      `<type>eighth</type>${RATIO}</note>`
+    const { content, warnings } = read(
+      measure(
+        eighth('C') +
+          eighth('D') +
+          eighth('E') +
+          `<note><rest/><duration>12</duration>${RATIO}</note>`,
+      ),
+    )
+
+    expect(content?.map((item) => item.kind)).toEqual(['tuplet', 'event'])
+    expect(warnings.map((w) => w.code)).toEqual(['missing:normal-type'])
+  })
+
   test('drops a rest written over the measure rest', () => {
     const warnings = new WarningCollector()
     readValid(
