@@ -537,7 +537,7 @@ describe('measures', () => {
   test.each([
     [true, 'shows'],
     [false, 'hides'],
-  ])('writes a clef octave change, and showOctave %s where the source %s it', (shown) => {
+  ])('writes a clef octave change, and showOctave %s where the model %s it', (shown) => {
     const score = scoreOf({
       clefs: [
         {
@@ -1313,7 +1313,7 @@ describe('event lyrics', () => {
     return { ...WHOLE_C, id: 'ev1', lyrics }
   }
 
-  test('writes each verse line under the number the source gave it', () => {
+  test('writes each verse line under the number the model gives it', () => {
     const score = {
       ...scoreOf(
         measureOf(

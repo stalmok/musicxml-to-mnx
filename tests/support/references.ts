@@ -169,8 +169,8 @@ export function danglingReferences(mnx: MNXDocument): string[] {
 
 /**
  * Where the verse lines a document sings and the order it gives them part
- * ways, as short descriptions. The writer orders the lines wherever there are
- * two or more, so it states the order of exactly the lines sung. A sung line
+ * ways, as short descriptions. A document orders its verse lines wherever
+ * there are two or more, and orders only the lines it sings. A sung line
  * the order leaves out is a dangling reference, reported by danglingReferences.
  */
 export function unorderedLyricLines(mnx: MNXDocument): string[] {
