@@ -86,9 +86,13 @@ export type MNXLineType = 'dashed' | 'dotted' | 'solid' | 'wavy'
 
 export type MNXAccidentalEnclosureSymbol = 'parentheses' | 'brackets'
 
+export interface MNXAccidentalEnclosure {
+  symbol: MNXAccidentalEnclosureSymbol
+}
+
 export interface MNXAccidentalDisplay {
   show: boolean
-  enclosure?: { symbol: MNXAccidentalEnclosureSymbol }
+  enclosure?: MNXAccidentalEnclosure
   /** True where the accidental is forced, as a cautionary or editorial one is. */
   force?: boolean
 }
