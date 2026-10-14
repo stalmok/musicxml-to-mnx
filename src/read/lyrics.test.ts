@@ -357,6 +357,77 @@ describe('the order of the verse lines', () => {
 
     expect('lyrics' in mnx.global).toBe(false)
   })
+
+  // Twelve divisions to the quarter, so a triplet eighth and a tremolo's
+  // halved half note each take a whole number of them.
+  function pitched(step: string, duration: number, type: string, body = ''): string {
+    return (
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+      `<duration>${String(duration)}</duration><type>${type}</type>${body}</note>`
+    )
+  }
+  const ratio = (actual: number, normal: number) =>
+    `<time-modification><actual-notes>${String(actual)}</actual-notes>` +
+    `<normal-notes>${String(normal)}</normal-notes></time-modification>`
+  const second = lyric('two', 'single', '2')
+
+  test.each([
+    [
+      'a tuplet',
+      pitched(
+        'C',
+        4,
+        'eighth',
+        second + ratio(3, 2) + '<notations><tuplet type="start"/></notations>',
+      ) +
+        pitched('D', 4, 'eighth', ratio(3, 2)) +
+        pitched('E', 4, 'eighth', ratio(3, 2) + '<notations><tuplet type="stop"/></notations>'),
+    ],
+    [
+      'a grace note',
+      `<note><grace/><pitch><step>B</step><octave>4</octave></pitch><type>eighth</type>${second}</note>` +
+        pitched('C', 12, 'quarter'),
+    ],
+    [
+      'a tremolo',
+      pitched(
+        'C',
+        12,
+        'half',
+        second +
+          ratio(2, 1) +
+          '<notations><ornaments><tremolo type="start">3</tremolo></ornaments></notations>',
+      ) +
+        pitched(
+          'E',
+          12,
+          'half',
+          ratio(2, 1) +
+            '<notations><ornaments><tremolo type="stop">3</tremolo></ornaments></notations>',
+        ),
+    ],
+  ])('orders a verse sung only inside %s', (_name, body) => {
+    const { mnx, warnings } = convertValid(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        '<attributes><divisions>12</divisions></attributes>' +
+        pitched('G', 12, 'quarter', lyric('one')) +
+        `${body}</measure></part></score-partwise>`,
+    )
+
+    expect(mnx.global.lyrics).toEqual({ lineOrder: ['1', '2'] })
+    expect(warnings).toEqual([])
+  })
+
+  test('orders a verse sung only by a later part', () => {
+    const part = (id: string, verse: string) =>
+      `<part id="${id}"><measure number="1"><attributes><divisions>4</divisions></attributes>` +
+      `${note('C', lyric('la', 'single', verse))}</measure></part>`
+    const { mnx } = convertValid(
+      `<score-partwise>${part('P1', '1')}${part('P2', '2')}</score-partwise>`,
+    )
+
+    expect(mnx.global.lyrics).toEqual({ lineOrder: ['1', '2'] })
+  })
 })
 
 // MNX keys an event's lyrics by line, so two on one line collapse to one.
