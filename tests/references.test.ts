@@ -3,7 +3,7 @@
 
 import { describe, expect, test } from 'vitest'
 import type { MNXDocument } from '../src/index.js'
-import { danglingReferences } from './support/references.js'
+import { danglingReferences, unorderedLyricLines } from './support/references.js'
 
 const at = { fraction: [0, 1] as [number, number] }
 const quarter = { base: 'quarter' as const }
@@ -295,5 +295,51 @@ describe('reports a reference that leads nowhere', () => {
     const mnx = document()
     breaks(mnx)
     expect(danglingReferences(mnx)).toEqual([reported])
+  })
+})
+
+describe('the verse lines a document sings and the order it gives them', () => {
+  function singing(lines: readonly string[], lineOrder?: string[]): MNXDocument {
+    return {
+      mnx: { version: 1 },
+      global: { measures: [{}], ...(lineOrder ? { lyrics: { lineOrder } } : {}) },
+      parts: [
+        {
+          measures: [
+            {
+              sequences: [
+                {
+                  content: lines.map((line) => ({
+                    type: 'event' as const,
+                    duration: quarter,
+                    rest: {},
+                    lyrics: { lines: { [line]: { text: 'la' } } },
+                  })),
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    }
+  }
+
+  test.each<[string, MNXDocument]>([
+    ['one line with no order', singing(['1'])],
+    ['two lines in an order naming both', singing(['1', '2'], ['2', '1'])],
+  ])('agree for %s', (_name, mnx) => {
+    expect(unorderedLyricLines(mnx)).toEqual([])
+  })
+
+  test('part ways where two lines are sung and none ordered', () => {
+    expect(unorderedLyricLines(singing(['1', '2']))).toEqual([
+      '2 verse lines are sung, and none ordered',
+    ])
+  })
+
+  test('part ways where the order names a line nothing sings', () => {
+    expect(unorderedLyricLines(singing(['1', '2'], ['1', '2', '3']))).toEqual([
+      'the order names line "3", which nothing sings',
+    ])
   })
 })

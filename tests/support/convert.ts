@@ -12,14 +12,15 @@ import type { Score } from '../../src/model/score.js'
 import { writeMnx } from '../../src/write/mnx.js'
 import type { WriterOptions } from '../../src/write/mnx.js'
 import { parseXmlRoot } from '../../src/xml/parse.js'
-import { danglingReferences } from './references.js'
+import { danglingReferences, unorderedLyricLines } from './references.js'
 import { schemaErrors } from './schema.js'
 import { unsourcedLosses } from './structural.js'
 
 /**
  * Converts the source and fails the test if the output breaks the schema, if
- * a reference in it leads nowhere, or if a warning names an element or
- * attribute the source does not hold.
+ * a reference in it leads nowhere, if its verse lines and their order part
+ * ways, or if a warning names an element or attribute the source does not
+ * hold.
  */
 export function convertValid(
   source: string | Uint8Array,
@@ -28,6 +29,7 @@ export function convertValid(
   const result = convertMusicXML(source, options)
   expect(schemaErrors(result.mnx), 'the output breaks the MNX schema').toEqual([])
   expect(danglingReferences(result.mnx), 'a reference in the output leads nowhere').toEqual([])
+  expect(unorderedLyricLines(result.mnx), 'the verse lines and their order part ways').toEqual([])
   const text = typeof source === 'string' ? source : readMusicXML(source)
   expect(
     unsourcedLosses(parseXmlRoot(text), result.warnings),
@@ -37,12 +39,14 @@ export function convertValid(
 }
 
 /**
- * Writes the score and fails the test if the output breaks the schema, or if
- * a reference in it leads nowhere.
+ * Writes the score and fails the test if the output breaks the schema, if a
+ * reference in it leads nowhere, or if its verse lines and their order part
+ * ways.
  */
 export function writeValid(score: Score, options?: WriterOptions): MNXDocument {
   const mnx = writeMnx(score, options)
   expect(schemaErrors(mnx), 'the output breaks the MNX schema').toEqual([])
   expect(danglingReferences(mnx), 'a reference in the output leads nowhere').toEqual([])
+  expect(unorderedLyricLines(mnx), 'the verse lines and their order part ways').toEqual([])
   return mnx
 }

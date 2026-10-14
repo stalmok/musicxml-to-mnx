@@ -166,3 +166,24 @@ export function danglingReferences(mnx: MNXDocument): string[] {
 
   return dangling
 }
+
+/**
+ * Where the verse lines a document sings and the order it gives them part
+ * ways, as short descriptions. The writer orders the lines wherever there are
+ * two or more, so it states the order of exactly the lines sung. A sung line
+ * the order leaves out is a dangling reference, reported by danglingReferences.
+ */
+export function unorderedLyricLines(mnx: MNXDocument): string[] {
+  const sung = new Set(
+    mnx.parts
+      .flatMap((part) => part.measures.flatMap(measureEvents))
+      .flatMap((event) => Object.keys(event.lyrics?.lines ?? {})),
+  )
+  const lineOrder = mnx.global.lyrics?.lineOrder
+  if (lineOrder === undefined) {
+    return sung.size > 1 ? [`${String(sung.size)} verse lines are sung, and none ordered`] : []
+  }
+  return lineOrder
+    .filter((line) => !sung.has(line))
+    .map((line) => `the order names line "${line}", which nothing sings`)
+}
