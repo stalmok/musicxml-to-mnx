@@ -2959,16 +2959,92 @@ describe('two-note tremolos', () => {
     expect(warnings.map((w) => [w.code, w.element])).toEqual([['unclosed:tremolo', 'tremolo']])
   })
 
-  // The note that stops a pair adds nothing to the ratio, so its own is not
-  // read, and a broken one does not refuse the file.
-  test('does not read the ratio a stop where none is open states', () => {
+  // A stop where none is open opens a tremolo around its own note, so its
+  // ratio is read as a start's is, and a broken one refuses the file.
+  test('reads the ratio a stop where none is open states', () => {
     const broken = tremoloNote('C', 'stop').replace(
       '<actual-notes>2</actual-notes>',
       '<actual-notes>0</actual-notes>',
     )
-    const { warnings } = read(measure(broken))
 
-    expect(warnings.map((w) => w.code)).toEqual(['unclosed:tremolo'])
+    expect(() => read(measure(broken))).toThrow(MusicXMLError)
+  })
+
+  describe('a stop where none is open, beside a tuplet', () => {
+    const tripletEighth = (step: string) =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>4</duration>` +
+      '<type>eighth</type><time-modification><actual-notes>3</actual-notes>' +
+      '<normal-notes>2</normal-notes></time-modification></note>'
+    // A quarter carrying the triplet's 3:2 and a pair's 2:1, as one 6:2.
+    const tremoloInTriplet = (type: string) =>
+      '<note><pitch><step>E</step><octave>4</octave></pitch><duration>4</duration>' +
+      '<type>quarter</type><time-modification><actual-notes>6</actual-notes>' +
+      '<normal-notes>2</normal-notes><normal-type>eighth</normal-type></time-modification>' +
+      `<notations><ornaments><tremolo type="${type}">3</tremolo></ornaments></notations>` +
+      '</note>'
+
+    // The pair's share comes out of the ratio, as it does on a start, and
+    // what is left keeps the note in the run.
+    test('keeps its note in a run of ratios', () => {
+      const { content, warnings } = read(
+        measure(tripletEighth('C') + tripletEighth('D') + tremoloInTriplet('stop')),
+      )
+
+      const tuplet = content?.[0]
+      expect(content).toHaveLength(1)
+      expect(
+        tuplet?.kind === 'tuplet' &&
+          tuplet.content.map((item) => item.kind === 'event' && item.value.base),
+      ).toEqual(['eighth', 'eighth', 'eighth'])
+      expect(warnings.map((w) => w.code)).toEqual(['unclosed:tremolo'])
+    })
+
+    // The tremolo is converted before the run is closed at the barline, so the
+    // run is what its notes state rather than a bracket drawn past it.
+    test('keeps a tremolo open at the barline in a run of ratios', () => {
+      const { content, warnings } = read(
+        measure(tripletEighth('C') + tripletEighth('D') + tremoloInTriplet('start')),
+      )
+
+      expect(content?.map((item) => item.kind)).toEqual(['tuplet'])
+      expect(warnings.map((w) => w.code)).toEqual(['unclosed:tremolo'])
+    })
+
+    // MuseScore draws each note of a pair inside a bracket of one in the time
+    // of one, which scales nothing.
+    test('passes over the bracket of one in the time of one around it', () => {
+      const degenerate =
+        '<note><pitch><step>E</step><octave>4</octave></pitch>' +
+        '<duration>12</duration><type>half</type>' +
+        '<time-modification><actual-notes>2</actual-notes><normal-notes>1</normal-notes>' +
+        '<normal-type>quarter</normal-type></time-modification>' +
+        '<notations><tuplet type="start" bracket="no" show-number="none">' +
+        '<tuplet-actual><tuplet-number>1</tuplet-number><tuplet-type>quarter</tuplet-type>' +
+        '</tuplet-actual><tuplet-normal><tuplet-number>1</tuplet-number>' +
+        '<tuplet-type>quarter</tuplet-type></tuplet-normal></tuplet>' +
+        '<tuplet type="stop"/>' +
+        '<ornaments><tremolo type="stop">3</tremolo></ornaments></notations></note>'
+      const { content, warnings } = read(measure(degenerate))
+
+      expect(content?.map((item) => item.kind === 'event' && item.value.base)).toEqual(['quarter'])
+      expect(warnings.map((w) => w.code)).toEqual(['unclosed:tremolo', 'unsupported:element'])
+    })
+  })
+
+  // A grace note takes none of the pair's time, so a stop on one opens
+  // nothing, and the note after it is read as it is written.
+  test('reports a stop on a grace note where none is open once', () => {
+    const graceStop =
+      '<note><grace/><pitch><step>D</step><octave>4</octave></pitch><type>eighth</type>' +
+      '<notations><ornaments><tremolo type="stop">3</tremolo></ornaments></notations></note>'
+    const quarter =
+      '<note><pitch><step>G</step><octave>4</octave></pitch><duration>12</duration>' +
+      '<type>quarter</type></note>'
+    const { content, warnings } = read(measure(graceStop + quarter))
+
+    expect(content?.map((item) => item.kind)).toEqual(['grace', 'event'])
+    expect(content?.[1]?.kind === 'event' && content[1].value.base).toBe('quarter')
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([['unclosed:tremolo', 'tremolo']])
   })
 
   // The note written as a half lasts a quarter, so it is converted as one.

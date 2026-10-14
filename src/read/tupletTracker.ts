@@ -551,9 +551,8 @@ export class TupletTracker {
 
   /**
    * Closes every bracket still open at the barline, and hands back the
-   * numbers their start markers stated, innermost first. A tremolo still open
-   * has only one end so far, and is converted as the plain note it holds. The
-   * marker that opened it is handed back for the caller to report.
+   * numbers their start markers stated, innermost first. A tremolo still
+   * open is converted before this, as the innermost frame.
    *
    * A <tuplet> bracket may start in one measure and stop in the next, and MNX
    * states a tuplet inside one measure's sequence, so a bracket still open
@@ -565,11 +564,9 @@ export class TupletTracker {
     context: ReportContext,
     path: DocumentPath,
     line: number,
-  ): { tremolo: XmlElement | undefined; numbers: string[] } {
-    const tremolo = this.convertUnclosedTremolo(path, line)
+  ): string[] {
     const numbers: string[] = []
-    // Every frame left is a bracket: a tremolo is the innermost frame, and
-    // the one left open is converted above.
+    // Every frame left is a bracket: a tremolo left open is converted first.
     for (let open = this.#open.at(-1); open?.opened === 'tuplet'; open = this.#open.at(-1)) {
       warnings.add(
         'unrepresentable:tuplet-span',
@@ -581,7 +578,7 @@ export class TupletTracker {
       )
       numbers.push(this.#close(open, end, warnings, context, path, line, true))
     }
-    return { tremolo, numbers }
+    return numbers
   }
 
   /**

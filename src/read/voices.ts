@@ -360,6 +360,7 @@ export class VoiceLine {
       content: events,
     })
   }
+
   /**
    * Converts the tremolo open in this line as the plain notes it holds, where
    * a note that does not stop it follows its first note.
@@ -1120,15 +1121,13 @@ export class MeasureBuilder {
     path: DocumentPath,
     line: number,
   ): FinishedMeasure {
+    // A tremolo still open is the innermost frame of its line, so it is
+    // converted before anything around it closes.
+    const carriedTremolos = this.#convertOpenTremolos(warnings, context, path, line)
     // A tuplet the source stated as a ratio with no bracket has no stop to
     // close it, so the measure's end is where its run ends.
     this.#closeImpliedTuplets(warnings, context, path, line)
-    const { carriedTupletStops, carriedTremolos } = this.#closeAtBarline(
-      warnings,
-      context,
-      path,
-      line,
-    )
+    const carriedTupletStops = this.#closeAtBarline(warnings, context, path, line)
 
     // A pickup measure's beats line up with the barline it ends on, and it
     // has no silence past its own end.
@@ -1385,8 +1384,7 @@ export class MeasureBuilder {
 
   /**
    * Settles what the measure leaves open at its barline, and hands back the
-   * tuplet stops the measures after it will meet with nothing to close, and
-   * the voices whose two-note tremolo is still open.
+   * stops the measures after it will meet with nothing to close.
    *
    * A stop carried in and not met here is handed on with them. The source may
    * write it any number of measures later, and a stop that closes nothing is
@@ -1398,19 +1396,31 @@ export class MeasureBuilder {
     context: ReportContext,
     path: DocumentPath,
     line: number,
-  ): { carriedTupletStops: CarriedTupletStop[]; carriedTremolos: string[] } {
-    const carriedTupletStops = [...this.#carriedStops]
-    const carriedTremolos: string[] = []
+  ): CarriedTupletStop[] {
+    const carried = [...this.#carriedStops]
     for (const [voice, layers] of this.#voices) {
       for (const builder of layers.layers) {
-        const { tremolo, numbers } = builder.tuplets.closeAtBarline(
-          builder.end,
-          warnings,
-          context,
-          path,
-          line,
-        )
-        carriedTupletStops.push(...numbers.map((number) => ({ voice, number })))
+        const numbers = builder.tuplets.closeAtBarline(builder.end, warnings, context, path, line)
+        carried.push(...numbers.map((number) => ({ voice, number })))
+      }
+    }
+    return carried
+  }
+
+  /**
+   * Converts each two-note tremolo still open at the barline as the plain
+   * note it holds, and hands back the voices it is open in.
+   */
+  #convertOpenTremolos(
+    warnings: WarningCollector,
+    context: ReportContext,
+    path: DocumentPath,
+    line: number,
+  ): string[] {
+    const carried: string[] = []
+    for (const [voice, layers] of this.#voices) {
+      for (const builder of layers.layers) {
+        const tremolo = builder.tuplets.convertUnclosedTremolo(path, line)
         if (!tremolo) continue
         warnings.add(
           'unclosed:tremolo',
@@ -1420,10 +1430,10 @@ export class MeasureBuilder {
           context,
           tremolo,
         )
-        carriedTremolos.push(voice)
+        carried.push(voice)
       }
     }
-    return { carriedTupletStops, carriedTremolos }
+    return carried
   }
 
   /**

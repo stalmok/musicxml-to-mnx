@@ -62,6 +62,22 @@ export function openTupletsAndTremolo(
     voice.convertUnstoppedTremolo(warnings, context, path, element.line)
   }
 
+  // A stop where no tremolo is open is the only end its tremolo has. Its note
+  // is written with the pair's value as the note that opens one is, so it
+  // opens one around itself, and is converted as a plain note once it is
+  // placed. A grace note takes none of the pair's time, so one opens nothing.
+  const unpaired = tremolo?.type === 'stop' && !voice.insideTremolo()
+  if (unpaired && !cut) {
+    warnings.add(
+      'unclosed:tremolo',
+      'A two-note tremolo stops where none is open. Its note is converted as a plain ' +
+        'note, half the value it is written as.',
+      context,
+      tremolo.element,
+    )
+  }
+  const opensTremolo = tremolo?.type === 'start' || (unpaired && !graceElement)
+
   // A tremolo on a single note carries no <time-modification> and lasts what
   // it is written as, so only the ornament itself is lost, and that is
   // reported where <ornaments> is. Across two notes it carries the pair's
@@ -97,7 +113,7 @@ export function openTupletsAndTremolo(
   // bracket says where the tuplet runs, and a note there need not state a
   // value. A stop marker naming no bracket is passed over further down.
   //
-  // A note that starts a two-note tremolo states the pair's 2:1 multiplied
+  // A note that opens a two-note tremolo states the pair's 2:1 multiplied
   // into whatever tuplet it stands in, so the ratio is read through the pair:
   // its share comes out, and what is left says whether a tuplet is there.
   // The note that stops the pair states the same and adds nothing, the
@@ -108,7 +124,7 @@ export function openTupletsAndTremolo(
     starts.length === 0 &&
     !graceElement &&
     !insideDrawnBracket &&
-    tremolo?.type !== 'stop'
+    (tremolo?.type !== 'stop' || opensTremolo)
   const readsRatio = mayReadRatio && ratioCountedValue(ratio, element, path) !== undefined
   // Elsewhere a ratio counting no value says nothing about how long a group
   // is. A rest that fills the measure is written with no <type>, and some
@@ -166,9 +182,9 @@ export function openTupletsAndTremolo(
     /* v8 ignore next -- one of the two is set, or the throw above ran. */
     if (!stated) throw new Error('A tuplet opened with no ratio.')
     // MusicXML counts a tuplet and a two-note tremolo together, so a note
-    // that opens a bracket and starts a tremolo states the two multiplied.
+    // that opens a bracket and a tremolo states the two multiplied.
     // The tremolo's own half is not the bracket's to hold.
-    const quantities = tremolo?.type === 'start' ? withoutTremoloShare(stated) : stated
+    const quantities = opensTremolo ? withoutTremoloShare(stated) : stated
     const opening = starts.map((marker) => ({
       display: tupletDisplayOf(marker, hiddenTuplets.has(marker)),
       stated: statedTupletRatio(marker, quantities, path),
@@ -208,7 +224,7 @@ export function openTupletsAndTremolo(
     // so passing it over adds no duration, and the stop that matches it is
     // passed over with it. A bracket that does scale something is refused
     // where it opens.
-    const inTremolo = tremolo?.type === 'start' || voice.insideTremolo()
+    const inTremolo = opensTremolo || voice.insideTremolo()
     const opened = opening.filter((start) => {
       if (!inTremolo || !scalesNothing(start.stated ?? quantities)) return true
       warnings.add(
@@ -239,23 +255,8 @@ export function openTupletsAndTremolo(
   }
 
   // Opened after any tuplet starting on the same note: the pair may sit
-  // inside a tuplet, and the bracket is the outer grouping. A stop where no
-  // tremolo is open opens one around its own note too, which is written with
-  // the pair's value as the note that opens one is, and is converted as a
-  // plain note once it is placed.
-  if (tremolo?.type === 'stop' && !voice.insideTremolo()) {
-    if (!cut) {
-      warnings.add(
-        'unclosed:tremolo',
-        'A two-note tremolo stops where none is open. Its note is converted as a plain ' +
-          'note, half the value it is written as.',
-        context,
-        tremolo.element,
-      )
-    }
-    builder.openTremolo(voice, tremolo, path, element.line)
-  }
-  if (tremolo?.type === 'start') builder.openTremolo(voice, tremolo, path, element.line)
+  // inside a tuplet, and the bracket is the outer grouping.
+  if (tremolo && opensTremolo) builder.openTremolo(voice, tremolo, path, element.line)
 
   return { markers, tremolo }
 }

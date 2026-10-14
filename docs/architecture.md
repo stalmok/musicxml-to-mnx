@@ -152,7 +152,7 @@ the chord it joins. Every later call for that note goes through this line.
 
 For a new event, the call order is:
 
-1. Open tuplets, then tremolo groups.
+1. Convert a tremolo group the note does not stop as plain notes. Then open tuplets, then tremolo groups.
 2. Add the note to its voice.
 3. Attach notation that refers to the event.
 4. Close tremolo groups, then tuplets.
