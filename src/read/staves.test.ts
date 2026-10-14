@@ -263,6 +263,33 @@ describe('clefs', () => {
     expect(warnings).toEqual([])
   })
 
+  // Two clefs transposed alike are the same clef, though each states it.
+  test.each([
+    ['drawn twice', '<clef>', '<clef>'],
+    ['drawn then hidden', '<clef>', '<clef print-object="no">'],
+    ['hidden then drawn', '<clef print-object="no">', '<clef>'],
+  ])('draws the same transposed clef stated %s at one point', (_, first, second) => {
+    const treble8 = '<sign>G</sign><line>2</line><clef-octave-change>-1</clef-octave-change></clef>'
+    const { part, warnings } = read(
+      measures(
+        `<attributes><divisions>4</divisions>${first}${treble8}${second}${treble8}</attributes>` +
+          note('C', '1'),
+      ),
+    )
+
+    expect(part?.measures[0]?.clefs).toEqual([
+      {
+        sign: 'G',
+        staffPosition: -2,
+        staff: undefined,
+        position: { num: 0, den: 1 },
+        octave: { amount: -1, shown: true },
+        hide: false,
+      },
+    ])
+    expect(warnings).toEqual([])
+  })
+
   test('hides a clef hidden each time it is stated at one point', () => {
     const { part, warnings } = read(
       measures(
