@@ -147,6 +147,12 @@ export interface PartState {
    */
   carriedTupletStops: readonly CarriedTupletStop[]
   /**
+   * The voices whose two-note tremolo the last measure left open at its
+   * barline. The note that stops it, where the voice's next note does, is
+   * converted as one already reported.
+   */
+  carriedTremolos: readonly string[]
+  /**
    * The voices whose primary beam the last measure left open at its barline,
    * with the staff it was on.
    */
@@ -218,6 +224,7 @@ export function newPartState(
     kit: new Map(),
     kitKeys: new Map(),
     carriedTupletStops: [],
+    carriedTremolos: [],
     beamsOpenAtBarline: new Map(),
     transposition: undefined,
     statedTransposition: undefined,

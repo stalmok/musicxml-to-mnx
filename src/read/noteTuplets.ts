@@ -55,6 +55,9 @@ export function openTupletsAndTremolo(
   // The note after a tremolo's first note is its second, and stops it. One
   // that does not leaves the tremolo with one end, and is read outside it. A
   // grace note takes none of the pair's time, so it does not end the pair.
+  // That holds across a barline: a tremolo the barline before cut, and
+  // reported, is stopped by the voice's first note or by none.
+  const cut = !graceElement && builder.takesCarriedTremolo(voice)
   if (!graceElement && tremolo?.type !== 'stop') {
     voice.convertUnstoppedTremolo(warnings, context, path, element.line)
   }
@@ -225,10 +228,21 @@ export function openTupletsAndTremolo(
   // Opened after any tuplet starting on the same note: the pair may sit
   // inside a tuplet, and the bracket is the outer grouping. A stop where no
   // tremolo is open opens one around its own note too, which is written with
-  // the pair's value as the note that opens one is.
-  if (tremolo?.type === 'start' || (tremolo?.type === 'stop' && !voice.insideTremolo())) {
+  // the pair's value as the note that opens one is, and is converted as a
+  // plain note once it is placed.
+  if (tremolo?.type === 'stop' && !voice.insideTremolo()) {
+    if (!cut) {
+      warnings.add(
+        'unclosed:tremolo',
+        'A two-note tremolo stops where none is open. Its note is converted as a plain ' +
+          'note, half the value it is written as.',
+        context,
+        tremolo.element,
+      )
+    }
     builder.openTremolo(voice, tremolo, path, element.line)
   }
+  if (tremolo?.type === 'start') builder.openTremolo(voice, tremolo, path, element.line)
 
   return { markers, tremolo }
 }

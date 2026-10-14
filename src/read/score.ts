@@ -540,6 +540,7 @@ function readMeasure(
 
   const builder = new MeasureBuilder(
     state.carriedTupletStops,
+    state.carriedTremolos,
     soundingVoices(element),
     state.beamsOpenAtBarline,
   )
@@ -718,6 +719,7 @@ function readMeasure(
     element.line,
   )
   state.carriedTupletStops = finished.carriedTupletStops
+  state.carriedTremolos = finished.carriedTremolos
   state.beamsOpenAtBarline = finished.beamsOpenAtBarline
   collectors.endings.add(index, endingStart, endingStop)
   collectors.measureRepeats.add(index, measureRepeats)

@@ -106,6 +106,8 @@ export interface FinishedMeasure {
   sequences: Sequence[]
   /** Tuplet stops no bracket here met, handed on to the next measure. */
   carriedTupletStops: CarriedTupletStop[]
+  /** The voices whose two-note tremolo is still open at the closing barline. */
+  carriedTremolos: string[]
   /**
    * The voices whose primary beam is still open at the closing barline, with
    * the staff the beam's last event named.
@@ -304,17 +306,10 @@ export class VoiceLine {
   ): void {
     const { marks } = marker
     const builder = this.#layer
-    // A stop where no tremolo was open opened one around its own note, so
-    // that note is all the tremolo holds.
+    // A stop where no tremolo was open opened one around its own note, and
+    // was reported there, so that note is all the tremolo holds.
     if (builder.tuplets.tremoloOpenedBy(marker.element)) {
       builder.tuplets.convertUnclosedTremolo(path, line)
-      warnings.add(
-        'unclosed:tremolo',
-        'A two-note tremolo stops where none is open. Its note is converted as a plain ' +
-          'note, half the value it is written as.',
-        context,
-        marker.element,
-      )
       return
     }
     const pending = builder.tuplets.closeTremolo()
@@ -456,6 +451,11 @@ export class MeasureBuilder {
   /** The stops carried in from the measures before, consumed as they are met. */
   readonly #carriedStops: CarriedTupletStop[]
   /**
+   * The voices whose two-note tremolo the measure before left open at its
+   * barline, until the voice's first note is read.
+   */
+  readonly #carriedTremolos: Set<string>
+  /**
    * Where each event of the measure begins, whatever voice it is in, the
    * staff it was placed on, and whether it is a grace note. An event states
    * no staff where the part has only one, and where a multi-staff part leaves
@@ -493,10 +493,12 @@ export class MeasureBuilder {
 
   constructor(
     carriedStops: readonly CarriedTupletStop[],
+    carriedTremolos: readonly string[],
     soundingVoices: Iterable<string | undefined>,
     beamsOpenBefore: ReadonlyMap<string, number | undefined>,
   ) {
     this.#carriedStops = [...carriedStops]
+    this.#carriedTremolos = new Set(carriedTremolos)
     this.#soundingVoices = new Set([...soundingVoices].map((voice) => voice ?? UNNAMED_VOICE))
     this.#beamsOpenBefore = new Map(beamsOpenBefore)
   }
@@ -1120,7 +1122,12 @@ export class MeasureBuilder {
     // A tuplet the source stated as a ratio with no bracket has no stop to
     // close it, so the measure's end is where its run ends.
     this.#closeImpliedTuplets(warnings, context, path, line)
-    const carriedTupletStops = this.#closeAtBarline(warnings, context, path, line)
+    const { carriedTupletStops, carriedTremolos } = this.#closeAtBarline(
+      warnings,
+      context,
+      path,
+      line,
+    )
 
     // A pickup measure's beats line up with the barline it ends on, and it
     // has no silence past its own end.
@@ -1146,6 +1153,7 @@ export class MeasureBuilder {
       arpeggios: this.arpeggios.settle(warnings, context, kit),
       sequences: this.#sequences(warnings, context),
       carriedTupletStops,
+      carriedTremolos,
       beamsOpenAtBarline: this.#beamsOpenAtBarline(),
     }
   }
@@ -1376,7 +1384,8 @@ export class MeasureBuilder {
 
   /**
    * Settles what the measure leaves open at its barline, and hands back the
-   * stops the measures after it will meet with nothing to close.
+   * tuplet stops the measures after it will meet with nothing to close, and
+   * the voices whose two-note tremolo is still open.
    *
    * A stop carried in and not met here is handed on with them. The source may
    * write it any number of measures later, and a stop that closes nothing is
@@ -1388,15 +1397,41 @@ export class MeasureBuilder {
     context: ReportContext,
     path: DocumentPath,
     line: number,
-  ): CarriedTupletStop[] {
-    const carried = [...this.#carriedStops]
+  ): { carriedTupletStops: CarriedTupletStop[]; carriedTremolos: string[] } {
+    const carriedTupletStops = [...this.#carriedStops]
+    const carriedTremolos: string[] = []
     for (const [voice, layers] of this.#voices) {
       for (const builder of layers.layers) {
-        const numbers = builder.tuplets.closeAtBarline(builder.end, warnings, context, path, line)
-        carried.push(...numbers.map((number) => ({ voice, number })))
+        const { tremolo, numbers } = builder.tuplets.closeAtBarline(
+          builder.end,
+          warnings,
+          context,
+          path,
+          line,
+        )
+        carriedTupletStops.push(...numbers.map((number) => ({ voice, number })))
+        if (!tremolo) continue
+        warnings.add(
+          'unclosed:tremolo',
+          'A two-note tremolo is still open at the barline. Its note is converted as a ' +
+            'plain note, half the value it is written as, and so is the note that stops it ' +
+            'where that is the next note of its voice.',
+          context,
+          tremolo,
+        )
+        carriedTremolos.push(voice)
       }
     }
-    return carried
+    return { carriedTupletStops, carriedTremolos }
+  }
+
+  /**
+   * Whether the measure before left a two-note tremolo open at its barline in
+   * this voice. The record is consumed, because only the voice's first note
+   * can be the one that stops it.
+   */
+  takesCarriedTremolo(voice: VoiceLine): boolean {
+    return this.#carriedTremolos.delete(voice.name)
   }
 
   /**

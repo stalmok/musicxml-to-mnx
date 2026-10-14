@@ -2967,6 +2967,63 @@ describe('two-note tremolos', () => {
     ])
   })
 
+  describe('a tremolo the barline cuts', () => {
+    const quarter =
+      '<note><pitch><step>G</step><octave>4</octave></pitch><duration>12</duration>' +
+      '<type>quarter</type></note>'
+
+    function readBoth(...bodies: string[]) {
+      const warnings = new WarningCollector()
+      const score = readValid(measures(DIVISIONS + bodies[0], ...bodies.slice(1)), warnings)
+      return { measures: score.parts[0]?.measures, warnings: warnings.list() }
+    }
+
+    const valuesOf = (content: readonly SequenceItem[] | undefined) =>
+      content?.map((item) => item.kind === 'event' && item.value.base)
+
+    test('reports the tremolo once, where the barline cuts it', () => {
+      const { measures: read, warnings } = readBoth(
+        quarter + quarter + quarter + tremoloNote('C', 'start'),
+        tremoloNote('E', 'stop') + quarter + quarter + quarter,
+      )
+
+      expect(valuesOf(read?.[1]?.sequences[0]?.content)).toEqual([
+        'quarter',
+        'quarter',
+        'quarter',
+        'quarter',
+      ])
+      expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([['unclosed:tremolo', 1]])
+    })
+
+    // The stop belongs to the voice the tremolo opened in.
+    test('reports a stop in another voice', () => {
+      const { warnings } = readBoth(
+        quarter + quarter + quarter + tremoloNote('C', 'start'),
+        tremoloNote('E', 'stop').replace('</pitch>', '</pitch><voice>2</voice>') +
+          quarter.replace('</pitch>', '</pitch><voice>2</voice>').repeat(3),
+      )
+
+      expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
+        ['unclosed:tremolo', 1],
+        ['unclosed:tremolo', 2],
+      ])
+    })
+
+    // The next note of the voice is the one that stops it, or none does.
+    test('reports a stop after the first note of the next measure', () => {
+      const { warnings } = readBoth(
+        quarter + quarter + quarter + tremoloNote('C', 'start'),
+        quarter + tremoloNote('E', 'stop') + quarter + quarter,
+      )
+
+      expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
+        ['unclosed:tremolo', 1],
+        ['unclosed:tremolo', 2],
+      ])
+    })
+  })
+
   // A grace note takes none of the pair's time, so its value stands.
   test('keeps a grace note a tremolo with one end gathered as it is written', () => {
     const grace =
