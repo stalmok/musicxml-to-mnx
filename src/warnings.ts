@@ -353,7 +353,9 @@ export const WARNING_CODES = Object.freeze([
   // A grace note stating no <type>. It carries no <duration> either, so
   // nothing says the value it is drawn with, and MNX states a value for
   // every event. The beams over it are converted as that value, and an
-  // eighth where it carries none.
+  // eighth where it carries none. Also a <time-modification> with no
+  // <normal-type> on a note stating no <type>, which counts no note value.
+  // The ratio is not converted, and the note lasts its <duration>.
   'missing:note-type',
   // A <tuplet> bracket starts on a note with no <time-modification> beside
   // it, so the source states no ratio for it. The ratio is read from how long

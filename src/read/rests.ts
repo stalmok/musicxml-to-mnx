@@ -18,7 +18,7 @@ import { attribute, children, descendants, readWholeElement } from '../xml/tree.
 import { describeLength, lengthOf, noteValueOf } from './duration.js'
 import { readFermata, statesNoStem, writtenMarks } from './marks.js'
 import type { NoteStatement, RestNote, VoicedNote } from './noteStatement.js'
-import { readTupletRatio } from './noteTuplets.js'
+import { readCountedRatio } from './noteTuplets.js'
 import { measureLength } from './state.js'
 import type { PartState } from './state.js'
 import { stopsFirst } from './tiesAndSlurs.js'
@@ -393,9 +393,9 @@ export function dropRedundantRest(
 ): void {
   const { element, eventNotations, voice, duration, written } = note
   // The voice rests the measure, so no bracket is open around the rest, and a
-  // ratio on it scales it alone.
+  // ratio on it scales it alone. One counting no note value scales nothing.
   const ratio = element.child('time-modification')
-  const rated = ratio && readTupletRatio(ratio, element, path)
+  const rated = ratio && readCountedRatio(ratio, element, path)
   const scale: NoteScale = rated
     ? { factor: fraction(rated.outer.multiple, rated.inner.multiple), by: 'tuplet' }
     : { factor: fraction(1), by: undefined }

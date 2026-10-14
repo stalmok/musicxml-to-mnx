@@ -103,13 +103,26 @@ export function openTupletsAndTremolo(
   // The note that stops the pair states the same and adds nothing, the
   // tremolo standing in the run in its place. A pair stating no value to
   // count states no tuplet either, and is left to be read as the pair it is.
-  const readsRatio =
+  const mayReadRatio =
     ratio !== undefined &&
     starts.length === 0 &&
     !graceElement &&
     !insideDrawnBracket &&
-    tremolo?.type !== 'stop' &&
-    (!tremolo || ratioCountedValue(ratio, element, path) !== undefined)
+    tremolo?.type !== 'stop'
+  const readsRatio = mayReadRatio && ratioCountedValue(ratio, element, path) !== undefined
+  // Elsewhere a ratio counting no value says nothing about how long a group
+  // is. A rest that fills the measure is written with no <type>, and some
+  // sources state a ratio on it.
+  if (mayReadRatio && !readsRatio && !tremolo) {
+    warnings.add(
+      'missing:note-type',
+      'A <time-modification> counts no note value: it states no <normal-type>, and the ' +
+        'note states no <type>. The ratio is not converted, and the note lasts its ' +
+        '<duration>.',
+      context,
+      ratio,
+    )
+  }
   const stated = readsRatio ? readTupletRatio(ratio, element, path) : undefined
   const rated = stated && tremolo ? tupletShareOfRatio(stated) : stated
   // A start marker reads the ratio below. Elsewhere the drawn bracket or the
@@ -543,17 +556,30 @@ export function readTupletRatio(
   element: ElementReader,
   path: DocumentPath,
 ): { inner: NoteValueQuantity; outer: NoteValueQuantity } {
-  const played = readIntegerInRange(requireChild(ratio, 'actual-notes', path), path, 1, 1_000)
-  const space = readIntegerInRange(requireChild(ratio, 'normal-notes', path), path, 1, 1_000)
-
-  const value = ratioCountedValue(ratio, element, path)
-
-  if (!value) {
+  const read = readCountedRatio(ratio, element, path)
+  if (!read) {
     throw new MusicXMLError('A tuplet states no note value to count.', {
       path,
       line: ratio.line,
     })
   }
+  return read
+}
+
+/**
+ * The same, or undefined where the ratio counts no note value: it states no
+ * <normal-type>, and the note states no <type>.
+ */
+export function readCountedRatio(
+  ratio: XmlElement,
+  element: ElementReader,
+  path: DocumentPath,
+): { inner: NoteValueQuantity; outer: NoteValueQuantity } | undefined {
+  const played = readIntegerInRange(requireChild(ratio, 'actual-notes', path), path, 1, 1_000)
+  const space = readIntegerInRange(requireChild(ratio, 'normal-notes', path), path, 1, 1_000)
+
+  const value = ratioCountedValue(ratio, element, path)
+  if (!value) return undefined
 
   return { inner: { value, multiple: played }, outer: { value, multiple: space } }
 }

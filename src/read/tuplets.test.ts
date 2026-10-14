@@ -2123,6 +2123,65 @@ describe('a note inside a tuplet stating no <type>', () => {
   })
 })
 
+// A <time-modification> with no <normal-type> counts the note's own <type>.
+// On a note stating none it counts nothing, so it says nothing about how long
+// a group is, and the note lasts its <duration>.
+describe('a ratio on a note stating no <type>, with no bracket', () => {
+  const RATIO =
+    '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+    '</time-modification>'
+
+  test('converts a rest that fills the measure as the measure rest', () => {
+    const source = measures(
+      '<attributes><divisions>12</divisions><time><beats>4</beats><beat-type>4</beat-type>' +
+        '</time></attributes>' +
+        `<note><rest measure="yes"/><duration>48</duration>${RATIO}</note>`,
+    )
+    const warnings = new WarningCollector()
+    const sequence = readValid(source, warnings).parts[0]?.measures[0]?.sequences[0]
+
+    expect(sequence?.content).toEqual([])
+    expect(sequence?.fullMeasure).toBeDefined()
+    expect(warnings.list().map((w) => [w.code, w.element, w.message])).toEqual([
+      [
+        'missing:note-type',
+        'time-modification',
+        'A <time-modification> counts no note value: it states no <normal-type>, and the ' +
+          'note states no <type>. The ratio is not converted, and the note lasts its ' +
+          '<duration>.',
+      ],
+    ])
+  })
+
+  test('converts a note by the time it lasts', () => {
+    const { content, warnings } = read(
+      measure(
+        `<note><pitch><step>C</step><octave>4</octave></pitch><duration>12</duration>${RATIO}` +
+          '</note>',
+      ),
+    )
+
+    expect(content?.map((item) => item.kind === 'event' && item.value)).toEqual([
+      { base: 'quarter', dots: 0 },
+    ])
+    expect(warnings.map((w) => w.code)).toEqual(['missing:note-type'])
+  })
+
+  test('drops a rest written over the measure rest', () => {
+    const warnings = new WarningCollector()
+    readValid(
+      measure(
+        '<note><rest measure="yes"/><duration>48</duration></note>' +
+          '<backup><duration>48</duration></backup>' +
+          `<note><rest/><duration>12</duration>${RATIO}</note>`,
+      ),
+      warnings,
+    )
+
+    expect(warnings.list().map((w) => w.code)).toEqual(['redundant:rest'])
+  })
+})
+
 // A <note> stating no <duration> lasts its written value as the tuplets and
 // tremolos around it scale it, as one stating the matching duration does.
 describe('a note inside a tuplet stating no <duration>', () => {
