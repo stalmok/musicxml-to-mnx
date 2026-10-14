@@ -56,6 +56,11 @@ describe('the warning prefix table in README.md', () => {
     expect(wrong).toEqual([])
   })
 
+  test('names each prefix once', () => {
+    const named = rows.flatMap((row) => row.prefixes)
+    expect(named.filter((prefix, index) => named.indexOf(prefix) !== index)).toEqual([])
+  })
+
   test('names only prefixes some warning code has', () => {
     const used = new Set(WARNING_CODES.map(prefixOf))
     expect(rows.flatMap((row) => row.prefixes).filter((prefix) => !used.has(prefix))).toEqual([])
