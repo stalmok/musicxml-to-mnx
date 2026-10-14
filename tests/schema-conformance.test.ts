@@ -210,8 +210,8 @@ const DEFINITION_OF: Readonly<Record<string, string | undefined>> = {
   MNXSingleNoteTremolo: 'tremolo-single',
   MNXPartTransposition: 'part-transposition',
   // A shared base for the marking types. The schema spells each mark out
-  // (accent, staccato, ...) as a bare placement, which MNXEventMarkings'
-  // properties already reach.
+  // (accent, staccato, ...) as a definition of its own. Each of those is
+  // checked against MNXMarking below.
   MNXMarking: undefined,
   // A shared base for the four dynamic types. Each of them is checked whole.
   MNXDynamicBase: undefined,
@@ -402,6 +402,35 @@ describe('the hand-written MNX types against the schema', () => {
     expect(untyped).toEqual([])
     expect(wider).toEqual([])
     expect(narrower).toEqual([])
+  })
+
+  // MNXMarking maps to no definition, so the comparison above passes over the
+  // marks it stands for: those of event-markings no other type maps to.
+  const bareMarks = Object.values(schemaDefs['event-markings']?.properties ?? {})
+    .map((node) => (node.$ref ?? '').replace('#/$defs/', ''))
+    .filter((key) => !mapped.some((one) => one.key === key))
+    .sort()
+
+  test('MNXMarking stands for the marks no other type maps to', () => {
+    expect(bareMarks).toEqual([
+      'accent',
+      'soft-accent',
+      'spiccato',
+      'staccatissimo',
+      'staccato',
+      'stress-marking',
+      'tenuto',
+      'unstress-marking',
+    ])
+  })
+
+  test.each(bareMarks)('MNXMarking models every property of %s', (key) => {
+    const definition = schemaDefs[key] ?? {}
+    const marking = mnxTypes.get('MNXMarking') ?? new Map()
+    expect(schemaProperties(definition).sort()).toEqual([...marking.keys()].sort())
+    expect(definition.required ?? []).toEqual(
+      [...marking].filter(([, { optional }]) => !optional).map(([name]) => name),
+    )
   })
 })
 
