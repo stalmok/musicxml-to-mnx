@@ -2891,28 +2891,94 @@ describe('two-note tremolos', () => {
     expect(warnings.map((w) => [w.code, w.element])).toEqual([['inconsistent:tremolo', 'tremolo']])
   })
 
-  test('rejects a tremolo that stops where none is open', () => {
-    expect(readFailure(measure(tremoloNote('C', 'stop'))).message).toContain(
-      'stops where none is open',
-    )
+  test('converts a tremolo that stops where none is open as a plain note', () => {
+    const { content, warnings } = read(measure(tremoloNote('C', 'stop')))
+
+    expect(content?.map((item) => item.kind === 'event' && item.value)).toEqual([
+      { base: 'quarter', dots: 0 },
+    ])
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([['unclosed:tremolo', 'tremolo']])
   })
 
   // The note that stops a pair adds nothing to the ratio, so its own is not
-  // read, and a broken one is not what refuses the file.
-  test('rejects a stop where none is open before reading the ratio it states', () => {
+  // read, and a broken one does not refuse the file.
+  test('does not read the ratio a stop where none is open states', () => {
     const broken = tremoloNote('C', 'stop').replace(
       '<actual-notes>2</actual-notes>',
       '<actual-notes>0</actual-notes>',
     )
+    const { warnings } = read(measure(broken))
 
-    expect(readFailure(measure(broken)).message).toContain('stops where none is open')
+    expect(warnings.map((w) => w.code)).toEqual(['unclosed:tremolo'])
   })
 
-  // Named in full, because a tuplet left open at the end of the measure
-  // refuses with a message these words also fit.
-  test('rejects a tremolo that is opened and never closed', () => {
-    expect(readFailure(measure(tremoloNote('C', 'start'))).message).toContain(
-      'A tremolo is opened and never closed.',
+  // The note written as a half lasts a quarter, so it is converted as one.
+  test('converts a tremolo still open at the barline as a plain note', () => {
+    const quarter =
+      '<note><pitch><step>G</step><octave>4</octave></pitch><duration>12</duration>' +
+      '<type>quarter</type></note>'
+    const { content, warnings } = read(
+      measure(quarter + quarter + quarter + tremoloNote('C', 'start')),
+    )
+
+    expect(content?.map((item) => item.kind === 'event' && item.value.base)).toEqual([
+      'quarter',
+      'quarter',
+      'quarter',
+      'quarter',
+    ])
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([['unclosed:tremolo', 'tremolo']])
+  })
+
+  test('converts a tremolo the next note does not stop as a plain note', () => {
+    const quarter =
+      '<note><pitch><step>G</step><octave>4</octave></pitch><duration>12</duration>' +
+      '<type>quarter</type></note>'
+    const { content, warnings } = read(measure(tremoloNote('C', 'start') + quarter))
+
+    expect(content?.map((item) => item.kind === 'event' && item.value.base)).toEqual([
+      'quarter',
+      'quarter',
+    ])
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([['unclosed:tremolo', 'tremolo']])
+  })
+
+  test('converts a tremolo a second start follows as a plain note', () => {
+    const { content, warnings } = read(
+      measure(tremoloNote('C', 'start') + tremoloNote('D', 'start') + tremoloNote('E', 'stop')),
+    )
+
+    expect(content?.map((item) => item.kind)).toEqual(['event', 'multiNoteTremolo'])
+    expect(content?.[0]?.kind === 'event' && content[0].value).toEqual({
+      base: 'quarter',
+      dots: 0,
+    })
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([['unclosed:tremolo', 'tremolo']])
+  })
+
+  test('keeps the chord of a tremolo still open at the barline', () => {
+    const member = tremoloNote('G', 'start').replace('<note>', '<note><chord/>')
+    const { content } = read(measure(tremoloNote('C', 'start') + member))
+
+    const item = content?.[0]
+    expect(item?.kind === 'event' && [item.value.base, notesOf(item).length]).toEqual([
+      'quarter',
+      2,
+    ])
+  })
+
+  // A 1024th is the shortest value MusicXML and MNX write, so half of one
+  // has no value to write.
+  test('rejects a tremolo left open on notes no value is half of', () => {
+    const shortest =
+      '<attributes><divisions>1024</divisions></attributes>' +
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>2</duration>' +
+      '<type>1024th</type><time-modification><actual-notes>2</actual-notes>' +
+      '<normal-notes>1</normal-notes></time-modification><notations><ornaments>' +
+      '<tremolo type="start">1</tremolo></ornaments></notations></note>'
+
+    expect(readFailure(measures(shortest)).message).toContain(
+      'A note of a tremolo with one end is written as a 1024th, and no note value is half of it.',
     )
   })
 
@@ -3104,21 +3170,33 @@ describe('two-note tremolos', () => {
     expect(warnings).toEqual([])
   })
 
-  test('rejects a tremolo starting inside another', () => {
-    expect(
-      readFailure(measure(tremoloNote('C', 'start') + tremoloNote('E', 'start'))).message,
-    ).toContain('inside another')
+  // A grace note does not end the pair it follows, so it cannot open another.
+  test('rejects a tremolo starting on a grace note inside another', () => {
+    const graceStart =
+      '<note><grace/><pitch><step>D</step><octave>4</octave></pitch><type>half</type>' +
+      '<notations><ornaments><tremolo type="start">3</tremolo></ornaments></notations></note>'
+
+    expect(readFailure(measure(tremoloNote('C', 'start') + graceStart)).message).toContain(
+      'inside another',
+    )
   })
 
-  // A note between the pair belongs to neither of them.
-  test('rejects a tremolo holding more than its two notes', () => {
+  // A note between the pair is not its second note, so each end is left on
+  // its own.
+  test('converts a pair a note comes between as plain notes', () => {
     const between =
       '<note><pitch><step>D</step><octave>4</octave></pitch>' +
       '<duration>12</duration><type>quarter</type></note>'
+    const { content, warnings } = read(
+      measure(tremoloNote('C', 'start') + between + tremoloNote('E', 'stop')),
+    )
 
-    expect(
-      readFailure(measure(tremoloNote('C', 'start') + between + tremoloNote('E', 'stop'))).message,
-    ).toContain('something other than two notes')
+    expect(content?.map((item) => item.kind === 'event' && item.value.base)).toEqual([
+      'quarter',
+      'quarter',
+      'quarter',
+    ])
+    expect(warnings.map((w) => w.code)).toEqual(['unclosed:tremolo', 'unclosed:tremolo'])
   })
 
   test('rejects a pair whose time no note value can write', () => {

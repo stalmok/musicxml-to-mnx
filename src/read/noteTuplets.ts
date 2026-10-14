@@ -52,6 +52,13 @@ export function openTupletsAndTremolo(
   // one item, which is how MNX states it.
   const tremolo = multiNoteTremoloOf(eventNotations, warnings, context)
 
+  // The note after a tremolo's first note is its second, and stops it. One
+  // that does not leaves the tremolo with one end, and is read outside it. A
+  // grace note takes none of the pair's time, so it does not end the pair.
+  if (!graceElement && tremolo?.type !== 'stop') {
+    voice.convertUnstoppedTremolo(warnings, context, path, element.line)
+  }
+
   // A tremolo on a single note carries no <time-modification> and lasts what
   // it is written as, so only the ornament itself is lost, and that is
   // reported where <ornaments> is. Across two notes it carries the pair's
@@ -216,9 +223,11 @@ export function openTupletsAndTremolo(
   }
 
   // Opened after any tuplet starting on the same note: the pair may sit
-  // inside a tuplet, and the bracket is the outer grouping.
-  if (tremolo?.type === 'start') {
-    builder.openTremolo(voice, tremolo.marks, path, element.line)
+  // inside a tuplet, and the bracket is the outer grouping. A stop where no
+  // tremolo is open opens one around its own note too, which is written with
+  // the pair's value as the note that opens one is.
+  if (tremolo?.type === 'start' || (tremolo?.type === 'stop' && !voice.insideTremolo())) {
+    builder.openTremolo(voice, tremolo, path, element.line)
   }
 
   return { markers, tremolo }

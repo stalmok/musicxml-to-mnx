@@ -291,8 +291,9 @@ export class VoiceLine {
 
   /**
    * Closes the tremolo: two notes of one written value, together occupying
-   * twice their measured duration. Anything else is refused, because the
-   * measure would not add up.
+   * twice their measured duration. A stop where none is open is converted as
+   * a plain note. Anything else is refused, because the measure would not add
+   * up.
    */
   closeTremolo(
     marker: { marks: number; element: XmlElement },
@@ -303,7 +304,20 @@ export class VoiceLine {
   ): void {
     const { marks } = marker
     const builder = this.#layer
-    const pending = builder.tuplets.closeTremolo(path, line)
+    // A stop where no tremolo was open opened one around its own note, so
+    // that note is all the tremolo holds.
+    if (builder.tuplets.tremoloOpenedBy(marker.element)) {
+      builder.tuplets.convertUnclosedTremolo(path, line)
+      warnings.add(
+        'unclosed:tremolo',
+        'A two-note tremolo stops where none is open. Its note is converted as a plain ' +
+          'note, half the value it is written as.',
+        context,
+        marker.element,
+      )
+      return
+    }
+    const pending = builder.tuplets.closeTremolo()
 
     // Both ends count the beams joining the pair, and there is one pair to
     // draw.
@@ -350,6 +364,27 @@ export class VoiceLine {
       content: events,
     })
   }
+  /**
+   * Converts the tremolo open in this line as the plain notes it holds, where
+   * a note that does not stop it follows its first note.
+   */
+  convertUnstoppedTremolo(
+    warnings: WarningCollector,
+    context: ReportContext,
+    path: DocumentPath,
+    line: number,
+  ): void {
+    const unclosed = this.#layer.tuplets.convertUnclosedTremolo(path, line)
+    if (!unclosed) return
+    warnings.add(
+      'unclosed:tremolo',
+      'A two-note tremolo is not stopped by the note after it. Its note is converted as ' +
+        'a plain note, half the value it is written as.',
+      context,
+      unclosed,
+    )
+  }
+
   /**
    * Closes the innermost open tuplet in this line, handing back the number
    * its start marker stated, or nothing where no tuplet is open. `stop` is
@@ -1153,11 +1188,16 @@ export class MeasureBuilder {
    * Starts a two-note tremolo in this voice. The notes added while it is
    * open are gathered, and join the content as one item when it closes.
    */
-  openTremolo(voice: VoiceLine, marks: number, path: DocumentPath, line: number): void {
+  openTremolo(
+    voice: VoiceLine,
+    marker: { marks: number; element: XmlElement },
+    path: DocumentPath,
+    line: number,
+  ): void {
     const builder = layerOf(voice)
     // Time this voice has passed over in silence belongs before the tremolo.
     this.#fillGap(builder)
-    builder.tuplets.openTremolo(marks, path, line)
+    builder.tuplets.openTremolo(marker.marks, marker.element, path, line)
   }
 
   /** Records what an event said about the beams it carries. */

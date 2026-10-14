@@ -324,6 +324,10 @@ export const WARNING_CODES = Object.freeze([
   'unclosed:spanner',
   // A first or second time bracket with only one of its two ends.
   'unclosed:ending',
+  // A two-note tremolo with only one of its two ends. Each note of it is
+  // written with the pair's value and lasts half of it, so it is converted
+  // as a plain note half its written value.
+  'unclosed:tremolo',
   // A part group with only one of its two edges: a stop nothing opened is
   // dropped, and a start nothing stops runs to the end of the part list.
   // Crossed edges are not this; they are 'unrepresentable:part-group-overlap'.

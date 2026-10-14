@@ -28,7 +28,8 @@ import {
   writtenLengthOf,
 } from './tuplets.js'
 import type { OpenSkip, TupletClaim, TupletStart, VoiceTail } from './tuplets.js'
-import type { NoteValueQuantity, SequenceItem, Space, Tuplet } from '../model/score.js'
+import type { NoteValue, NoteValueQuantity, SequenceItem, Space, Tuplet } from '../model/score.js'
+import { describeValue, lengthOf, noteValueOf } from './duration.js'
 import type { Draft } from './draft.js'
 
 /**
@@ -87,6 +88,8 @@ export interface OpenTremolo {
   list: SequenceItem[]
   marks: number
   durations: Fraction[]
+  /** The <tremolo> marker that opened it. */
+  element: XmlElement
 }
 
 /**
@@ -105,6 +108,22 @@ function tupletFilled(open: OpenTuplet): boolean {
 /** The written length a tuplet's ratio counts, for example three eighths. */
 function countedLengthOf(open: OpenTuplet): Fraction {
   return quantityLength(open.tuplet.inner)
+}
+
+/**
+ * The value a note of a two-note tremolo with one end is converted as: it is
+ * written with the pair's value and lasts half of it.
+ */
+function halfOf(value: NoteValue, path: DocumentPath, line: number): NoteValue {
+  const half = noteValueOf(multiplyFractions(lengthOf(value), fraction(1, 2)))
+  if (!half) {
+    throw new MusicXMLError(
+      `A note of a tremolo with one end is written as ${describeValue(value)}, and no ` +
+        'note value is half of it.',
+      { path, line },
+    )
+  }
+  return half
 }
 
 function removeLastFrom(list: SequenceItem[], expected: SequenceItem): void {
@@ -411,19 +430,39 @@ export class TupletTracker {
    * Starts a two-note tremolo. The notes added while it is open are
    * gathered, and join the content as one item when it closes.
    */
-  openTremolo(marks: number, path: DocumentPath, line: number): void {
+  openTremolo(marks: number, element: XmlElement, path: DocumentPath, line: number): void {
     if (this.#tremolo()) {
       throw new MusicXMLError('A tremolo starts inside another tremolo.', { path, line })
     }
-    this.#open.push({ opened: 'tremolo', list: [], marks, durations: [] })
+    this.#open.push({ opened: 'tremolo', list: [], marks, durations: [], element })
+  }
+
+  /**
+   * Converts the tremolo being gathered, which has only one end, as the plain
+   * notes it holds, and hands back the marker that opened it. Undefined where
+   * no tremolo is open.
+   */
+  convertUnclosedTremolo(path: DocumentPath, line: number): XmlElement | undefined {
+    const pending = this.#tremolo()
+    if (!pending) return undefined
+    this.#open.pop()
+    for (const item of pending.list) {
+      if (item.kind === 'event') item.value = halfOf(item.value, path, line)
+    }
+    this.#list().push(...pending.list)
+    return pending.element
+  }
+
+  /** Whether the tremolo being gathered was opened by `marker`. */
+  tremoloOpenedBy(marker: XmlElement): boolean {
+    return this.#tremolo()?.element === marker
   }
 
   /** Stops the tremolo being gathered, and hands back what it holds. */
-  closeTremolo(path: DocumentPath, line: number): OpenTremolo {
+  closeTremolo(): OpenTremolo {
     const pending = this.#tremolo()
-    if (!pending) {
-      throw new MusicXMLError('A tremolo stops where none is open.', { path, line })
-    }
+    /* v8 ignore next -- a stop where none is open opens one around its own note. */
+    if (!pending) throw new Error('A tremolo stops where none is open.')
     // With no bracket able to open inside a tremolo, its frame is on top
     // whenever one is open.
     this.#open.pop()
@@ -503,10 +542,8 @@ export class TupletTracker {
 
   /**
    * Closes every bracket still open at the barline, and hands back the
-   * numbers their start markers stated, innermost first.
-   *
-   * A tremolo holds exactly its two notes, so one left open is a source the
-   * reader can make no sense of and the document is refused.
+   * numbers their start markers stated, innermost first. A tremolo still open
+   * has only one end, and is converted as the plain notes it holds.
    *
    * A <tuplet> bracket may start in one measure and stop in the next, and MNX
    * states a tuplet inside one measure's sequence, so a bracket still open
@@ -519,11 +556,19 @@ export class TupletTracker {
     path: DocumentPath,
     line: number,
   ): string[] {
-    if (this.#tremolo()) {
-      throw new MusicXMLError('A tremolo is opened and never closed.', { path, line })
+    const unclosed = this.convertUnclosedTremolo(path, line)
+    if (unclosed) {
+      warnings.add(
+        'unclosed:tremolo',
+        'A two-note tremolo is still open at the barline. Its notes are converted as ' +
+          'plain notes, each half the value it is written as.',
+        context,
+        unclosed,
+      )
     }
     const numbers: string[] = []
-    // Every frame left is a bracket: a tremolo left open is refused above.
+    // Every frame left is a bracket: a tremolo is the innermost frame, and
+    // the one left open is converted above.
     for (let open = this.#open.at(-1); open?.opened === 'tuplet'; open = this.#open.at(-1)) {
       warnings.add(
         'unrepresentable:tuplet-span',

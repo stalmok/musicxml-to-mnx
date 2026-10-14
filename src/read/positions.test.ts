@@ -107,18 +107,31 @@ const REFUSALS: readonly { what: string; body: readonly string[]; at: number }[]
   },
   {
     what: 'a tuplet starting inside a tremolo',
-    body: [tremoloNote('C', 'start'), tupletNote('D', '<tuplet type="start"/>')],
+    body: [
+      tremoloNote('C', 'start'),
+      tupletNote(
+        'D',
+        '<tuplet type="start"/><ornaments><tremolo type="stop">3</tremolo></ornaments>',
+      ),
+    ],
     at: 1,
   },
   {
     what: 'a tremolo starting inside another',
-    body: [tremoloNote('C', 'start'), tremoloNote('D', 'start')],
+    body: [
+      tremoloNote('C', 'start'),
+      '<note><grace/><pitch><step>D</step><octave>4</octave></pitch><type>half</type>' +
+        '<notations><ornaments><tremolo type="start">3</tremolo></ornaments></notations></note>',
+    ],
     at: 1,
   },
-  { what: 'a tremolo stopping where none is open', body: [tremoloNote('C', 'stop')], at: 0 },
   {
     what: 'a tremolo holding something other than two notes',
-    body: [tremoloNote('C', 'start'), note('D', 4), tremoloNote('E', 'stop')],
+    body: [
+      tremoloNote('C', 'start'),
+      '<forward><duration>4</duration></forward>',
+      tremoloNote('E', 'stop'),
+    ],
     at: 2,
   },
   {
@@ -130,10 +143,12 @@ const REFUSALS: readonly { what: string; body: readonly string[]; at: number }[]
     what: 'a tuplet closing inside a tremolo',
     body: [
       tupletNote('C', '<tuplet type="start"/>'),
-      tremoloNote('D', 'start'),
-      tupletNote('E', '<tuplet type="stop"/>'),
+      tupletNote(
+        'D',
+        '<tuplet type="stop"/><ornaments><tremolo type="start">3</tremolo></ornaments>',
+      ),
     ],
-    at: 2,
+    at: 1,
   },
   {
     what: 'a backup that states no duration',
@@ -158,9 +173,18 @@ describe('the place a refusal names', () => {
   })
 
   // A tremolo the measure never closes is found once the measure is whole, so
-  // the measure itself is the place.
+  // the measure itself is the place. No note value is half of a 1024th, so
+  // the note it holds cannot be converted on its own.
   test('points at the measure for a tremolo left open', () => {
-    const error = refusal(score(tremoloNote('C', 'start')))
+    const error = refusal(
+      score(
+        '<attributes><divisions>1024</divisions></attributes>',
+        '<note><pitch><step>C</step><octave>4</octave></pitch><duration>2</duration>' +
+          '<type>1024th</type><time-modification><actual-notes>2</actual-notes>' +
+          '<normal-notes>1</normal-notes></time-modification><notations><ornaments>' +
+          '<tremolo type="start">1</tremolo></ornaments></notations></note>',
+      ),
+    )
 
     expect(error.path).toEqual(['score-partwise', 'part P1', 'measure 7'])
     expect(error.line).toBe(MEASURE_LINE)

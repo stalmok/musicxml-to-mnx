@@ -1247,8 +1247,6 @@ describe('a rest filling a measure that already holds something', () => {
       '</time-modification>' +
       '<notations><ornaments><tremolo type="start">3</tremolo></ornaments></notations></note>'
 
-    // Named in full: a tremolo left open at the end of the measure refuses
-    // too, and that message also holds the word "tremolo".
     expect(readFailure(measure(rest)).message).toContain(
       'A rest that fills the measure is inside a two-note tremolo.',
     )
@@ -1263,7 +1261,9 @@ describe('a rest filling a measure that already holds something', () => {
       '<time-modification><actual-notes>2</actual-notes><normal-notes>1</normal-notes>' +
       '</time-modification>' +
       '<notations><ornaments><tremolo type="start">3</tremolo></ornaments></notations></note>'
-    const rest = '<note><rest measure="yes"/><duration>16</duration></note>'
+    const rest =
+      '<note><rest measure="yes"/><duration>16</duration><notations><ornaments>' +
+      '<tremolo type="stop">3</tremolo></ornaments></notations></note>'
 
     expect(readFailure(measure(tuplet + tremolo + rest)).message).toContain(
       'A rest that fills the measure is inside a two-note tremolo.',

@@ -14,7 +14,7 @@ describe('removing the item written last', () => {
     const tracker = new TupletTracker(content)
     const first = space(1)
     tracker.append(first)
-    tracker.openTremolo(1, [], 1)
+    tracker.openTremolo(1, parseXmlRoot('<tremolo/>'), [], 1)
     const second = space(2)
     tracker.append(second)
 
