@@ -864,6 +864,8 @@ export interface Score {
    * instrument id, empty where it states none.
    */
   readonly sounds: ReadonlyMap<string, InstrumentSound>
+  /** Every verse line an event sings, in the order the verses are read. */
+  readonly lyricLines: readonly string[]
   /** The SMuFL font the score is engraved in, where the source names one. */
   readonly musicFont?: string
   /**

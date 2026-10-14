@@ -82,6 +82,7 @@ function scoreOf(
     ],
     grouping: [],
     sounds: new Map(),
+    lyricLines: [],
   }
 }
 
@@ -1313,16 +1314,19 @@ describe('event lyrics', () => {
   }
 
   test('writes each verse line under the number the source gave it', () => {
-    const score = scoreOf(
-      measureOf(
-        singing(
-          new Map([
-            ['1', { text: 'Are', type: undefined }],
-            ['2', { text: 'Am', type: 'start' as const }],
-          ]),
+    const score = {
+      ...scoreOf(
+        measureOf(
+          singing(
+            new Map([
+              ['1', { text: 'Are', type: undefined }],
+              ['2', { text: 'Am', type: 'start' as const }],
+            ]),
+          ),
         ),
       ),
-    )
+      lyricLines: ['1', '2'],
+    }
 
     writeValid(score)
     expect(firstEvent(score)?.lyrics).toEqual({
@@ -1335,5 +1339,31 @@ describe('event lyrics', () => {
 
     writeValid(score)
     expect(firstEvent(score)).not.toHaveProperty('lyrics')
+  })
+})
+
+// The reader puts the verse lines in order, so the writer keeps the order it
+// is given.
+describe('lyric line order', () => {
+  const sung = new Map([
+    ['1', { text: 'Are', type: undefined }],
+    ['2', { text: 'Am', type: undefined }],
+  ])
+
+  test('writes the verse lines in the order the model gives', () => {
+    const score = { ...scoreOf(measureOf({ ...WHOLE_C, lyrics: sung })), lyricLines: ['2', '1'] }
+
+    expect(writeValid(score).global.lyrics).toEqual({ lineOrder: ['2', '1'] })
+  })
+
+  test('writes no order for a single verse line', () => {
+    const score = {
+      ...scoreOf(
+        measureOf({ ...WHOLE_C, lyrics: new Map([['1', { text: 'Are', type: undefined }]]) }),
+      ),
+      lyricLines: ['1'],
+    }
+
+    expect(writeValid(score).global).not.toHaveProperty('lyrics')
   })
 })

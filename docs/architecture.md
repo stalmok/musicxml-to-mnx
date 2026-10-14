@@ -114,7 +114,7 @@ The reader modules are:
 | `tupletTracker.ts`            | Track the tuplets and two-note tremolos open in a voice.                                     |
 | `tuplets.ts`                  | Compute tuplet ratios and settle tuplet brackets when the measure is complete.               |
 | `tiesAndSlurs.ts`             | Read the tie and slur starts and stops a note carries.                                       |
-| `lyrics.ts`                   | Read lyrics for each verse.                                                                  |
+| `lyrics.ts`                   | Read lyrics for each verse, and put the verse lines in order.                                |
 | `spanners.ts`                 | Resolve ties, slurs, hairpins, and octave shifts.                                            |
 | `idGenerator.ts`              | Generate event, note, and kit component IDs.                                                 |
 | `beams.ts`                    | Read a note's beam markers, and assemble beam groups.                                        |

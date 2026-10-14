@@ -164,7 +164,7 @@ export function writeMnx(score: Score, options: WriterOptions = {}): MNXDocument
     },
     global: {
       measures,
-      ...writeLyricLines(survey.lyricLines),
+      ...writeLyricLines(score.lyricLines),
       ...writeSounds(score),
     },
     ...(layouts ? { layouts } : {}),
@@ -325,20 +325,18 @@ function writeGroupingItem(
 
 /**
  * What can only be known once the whole document is seen: which ids something
- * points at, whether any accidental is drawn or any beam written, and which
- * verse lines are sung. Read off the finished model in one walk.
+ * points at, and whether any accidental is drawn or any beam written. Read off
+ * the finished model in one walk.
  */
 function surveyScore(score: Score): {
   referenced: ReadonlySet<string>
   drawsAccidentals: boolean
   writesBeams: boolean
-  lyricLines: ReadonlySet<string>
 } {
   // Only the ids that something points at are written.
   const referenced = new Set<string>()
   let drawsAccidentals = false
   let writesBeams = false
-  const lyricLines = new Set<string>()
 
   const walk = (items: readonly SequenceItem[]): void => {
     for (const item of items) {
@@ -348,7 +346,6 @@ function surveyScore(score: Score): {
       }
       if (item.kind !== 'event') continue
       for (const slur of item.slurs) referenced.add(slur.target)
-      for (const line of item.lyrics.keys()) lyricLines.add(line)
       if (item.body.kind === 'rest') continue
       for (const note of item.body.notes) {
         for (const tie of note.ties) if (tie.kind === 'target') referenced.add(tie.target)
@@ -384,18 +381,13 @@ function surveyScore(score: Score): {
     }
   }
 
-  return { referenced, drawsAccidentals, writesBeams, lyricLines }
+  return { referenced, drawsAccidentals, writesBeams }
 }
 
-/**
- * The verse lines in order, written only when there is more than one. They
- * sort by the source's verse number, not by first appearance, because a
- * later verse can start earlier in the score.
- */
-function writeLyricLines(lines: ReadonlySet<string>): Partial<Pick<MNXGlobal, 'lyrics'>> {
-  if (lines.size < 2) return {}
-  const lineOrder = [...lines].sort((a, b) => a.localeCompare(b, 'en', { numeric: true }))
-  return { lyrics: { lineOrder } }
+/** The verse lines in order, written only when there is more than one. */
+function writeLyricLines(lines: readonly string[]): Partial<Pick<MNXGlobal, 'lyrics'>> {
+  if (lines.length < 2) return {}
+  return { lyrics: { lineOrder: [...lines] } }
 }
 
 /**

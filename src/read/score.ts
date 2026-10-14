@@ -46,6 +46,7 @@ import { buildBeams } from './beams.js'
 import { readDirection, readSound } from './directions.js'
 import type { SoundTempo } from './directions.js'
 import { requireDuration } from './divisions.js'
+import { lyricLineOrder } from './lyrics.js'
 import { lengthOf } from './duration.js'
 import { ElementReader, reportUnreadAttributes } from './element.js'
 import type { Stated } from './element.js'
@@ -254,6 +255,7 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
       parts,
       grouping: writtenGrouping(partList.grouping, writtenIds),
       sounds: partList.sounds,
+      lyricLines: lyricLineOrder(parts),
       ...(musicFont !== undefined ? { musicFont } : {}),
       ...(declaresBeams ? { declaresBeams } : {}),
       ...(declaresAccidentals ? { declaresAccidentals } : {}),

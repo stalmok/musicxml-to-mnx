@@ -10,7 +10,7 @@
 // character between them as an <elision>. Every piece is read, in the order
 // written.
 
-import type { Lyric } from '../model/score.js'
+import type { Lyric, Part, SequenceItem } from '../model/score.js'
 import type { ReportContext, WarningCollector } from './collector.js'
 import { attribute, text, trimmedText } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
@@ -55,6 +55,30 @@ export function readLyrics(
     )
   }
   return lyrics
+}
+
+/**
+ * Every verse line the parts sing, sorted by the source's verse number rather
+ * than by first appearance, because a later verse can start earlier in the
+ * score.
+ */
+export function lyricLineOrder(parts: readonly Part[]): string[] {
+  const lines = new Set<string>()
+  const walk = (items: readonly SequenceItem[]): void => {
+    for (const item of items) {
+      if (item.kind === 'tuplet' || item.kind === 'grace' || item.kind === 'multiNoteTremolo') {
+        walk(item.content)
+      } else if (item.kind === 'event') {
+        for (const line of item.lyrics.keys()) lines.add(line)
+      }
+    }
+  }
+  for (const part of parts) {
+    for (const measure of part.measures) {
+      for (const sequence of measure.sequences) walk(sequence.content)
+    }
+  }
+  return [...lines].sort((a, b) => a.localeCompare(b, 'en', { numeric: true }))
 }
 
 /** A verse as written: the line it is sung on, and what is sung there. */
