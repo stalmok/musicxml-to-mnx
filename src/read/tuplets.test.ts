@@ -3186,6 +3186,19 @@ describe('two-note tremolos', () => {
       expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([['unclosed:tremolo', 1]])
     })
 
+    // A grace note takes none of the pair's time, so the note after it is
+    // still the voice's first.
+    test('reports the tremolo once where a grace note comes before its stop', () => {
+      const grace =
+        '<note><grace/><pitch><step>D</step><octave>4</octave></pitch><type>eighth</type></note>'
+      const { warnings } = readBoth(
+        quarter + quarter + quarter + tremoloNote('C', 'start'),
+        grace + tremoloNote('E', 'stop') + quarter + quarter + quarter,
+      )
+
+      expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([['unclosed:tremolo', 1]])
+    })
+
     // The stop belongs to the voice the tremolo opened in.
     test('reports a stop in another voice', () => {
       const { warnings } = readBoth(
