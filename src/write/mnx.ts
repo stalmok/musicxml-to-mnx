@@ -391,9 +391,8 @@ function writeLyricLines(lines: readonly string[]): Partial<Pick<MNXGlobal, 'lyr
 }
 
 /**
- * The instrument setup, written only when the part list states one. Keyed by
- * the source's instrument id, which is what a kit component names to say what
- * plays it.
+ * The instrument setup, written only when the part list states one. Keyed as
+ * the model keys it, which is what a kit component names to say what plays it.
  */
 function writeSounds(score: Score): Partial<Pick<MNXGlobal, 'sounds'>> {
   if (score.sounds.size === 0) return {}
