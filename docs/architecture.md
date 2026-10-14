@@ -68,7 +68,8 @@ The model is MNX-shaped, not neutral. It follows the MNX structure closely:
 - Beams belong to the measure, as in MNX.
 - `GraceType`, `JumpType`, and `Space` follow their MNX definitions.
   `Transposition` follows MNX closely.
-- A segno color uses MNX's `#RRGGBB` form.
+- A segno color has six hex digits and no alpha, as MNX's simple color has.
+  It keeps the source's letter case.
 
 The stage boundary is narrower than a neutral model. It means two things:
 

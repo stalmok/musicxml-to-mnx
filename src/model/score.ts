@@ -818,7 +818,10 @@ export interface Segno {
   readonly location: Fraction
   /** A specific SMuFL glyph, where the source names one. */
   readonly glyph: string | undefined
-  /** The color it is drawn in, in MNX's "#RRGGBB" form, where the source states one. */
+  /**
+   * The color it is drawn in, as six hex digits with no alpha and in the
+   * source's letter case, where the source states one.
+   */
   readonly color: string | undefined
 }
 
