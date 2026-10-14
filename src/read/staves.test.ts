@@ -212,6 +212,21 @@ describe('clefs', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:clef'])
   })
 
+  test('keeps only the last of two clefs transposed by different octaves', () => {
+    const { part, warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions>' +
+          '<clef><sign>G</sign><line>2</line><clef-octave-change>1</clef-octave-change></clef>' +
+          '<clef><sign>G</sign><line>2</line><clef-octave-change>-1</clef-octave-change></clef>' +
+          '</attributes>' +
+          note('C', '1'),
+      ),
+    )
+
+    expect(part?.measures[0]?.clefs[0]?.octave).toEqual({ amount: -1, shown: true })
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:clef'])
+  })
+
   // Restating the same clef at the same point loses nothing.
   test('says nothing where a staff restates the clef it already has', () => {
     const { part, warnings } = read(
