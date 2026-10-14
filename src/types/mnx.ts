@@ -2,8 +2,10 @@
 // against the vendored schema (schema/mnx-schema.json), which is the
 // authority. The test suite validates every emitted document against it.
 //
-// Only what the converter produces is modelled here. MNXDocument states this
-// too, because a file comment does not reach the emitted declarations.
+// Each type names every property its schema definition states, except a few
+// that tests/schema-conformance.test.ts lists with the reason. MNXDocument
+// states this too, because a file comment does not reach the emitted
+// declarations.
 //
 // Every name has the MNX prefix. The package exports them all, and plain names
 // such as `Step` or `ClefSign` would clash with a consumer's own.
@@ -740,10 +742,10 @@ export interface MNXFormat {
 }
 
 /**
- * An MNX document, as far as this converter emits it. The format is much
- * larger: only what the converter produces is modelled here, so a document
- * from another tool can carry properties these types do not name. The
- * vendored schema (schema/mnx-schema.json) is the authority.
+ * An MNX document, as far as this converter emits it. Each type names every
+ * property its schema definition states, except a few the converter never
+ * writes, so a document from another tool can carry properties these types do
+ * not name. The vendored schema (schema/mnx-schema.json) is the authority.
  */
 export interface MNXDocument {
   mnx: MNXFormat
