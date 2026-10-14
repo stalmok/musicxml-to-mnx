@@ -9,6 +9,7 @@ import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
 import { compareFractions, fraction, multiplyFractions } from '../fraction.js'
 import type { Event, EventNotes, EventRest, GraceType } from '../model/score.js'
+import type { Draft } from './draft.js'
 import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, child, requireChild, trimmedText } from '../xml/tree.js'
@@ -279,7 +280,9 @@ export function readNote(
           ],
         })
 
-  const event: Event = {
+  // A draft, because a two-note tremolo found to have one end once the note
+  // after it is read halves its value.
+  const event: Draft<Event> = {
     kind: 'event',
     id: state.ids.nextEvent(),
     staff: undefined,

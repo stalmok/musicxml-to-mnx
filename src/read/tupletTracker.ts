@@ -28,7 +28,14 @@ import {
   writtenLengthOf,
 } from './tuplets.js'
 import type { OpenSkip, TupletClaim, TupletStart, VoiceTail } from './tuplets.js'
-import type { NoteValue, NoteValueQuantity, SequenceItem, Space, Tuplet } from '../model/score.js'
+import type {
+  Event,
+  NoteValue,
+  NoteValueQuantity,
+  SequenceItem,
+  Space,
+  Tuplet,
+} from '../model/score.js'
 import { describeValue, lengthOf, noteValueOf } from './duration.js'
 import type { Draft } from './draft.js'
 
@@ -87,6 +94,8 @@ export interface OpenTremolo {
   opened: 'tremolo'
   list: SequenceItem[]
   marks: number
+  /** The notes it holds, which are halved where it turns out to have one end. */
+  events: Draft<Event>[]
   durations: Fraction[]
   /** The <tremolo> marker that opened it. */
   element: XmlElement
@@ -202,9 +211,11 @@ export class TupletTracker {
     return this.#tremolo() !== undefined
   }
 
-  /** Records how long a note gathered into the open tremolo lasts, where one is open. */
-  addTremoloNote(duration: Fraction): void {
-    this.#tremolo()?.durations.push(duration)
+  /** Records a note gathered into the open tremolo and how long it lasts, where one is open. */
+  addTremoloNote(event: Draft<Event>, duration: Fraction): void {
+    const pending = this.#tremolo()
+    pending?.events.push(event)
+    pending?.durations.push(duration)
   }
 
   /** Whether a tuplet or a tremolo is open around a note. */
@@ -434,7 +445,7 @@ export class TupletTracker {
     if (this.#tremolo()) {
       throw new MusicXMLError('A tremolo starts inside another tremolo.', { path, line })
     }
-    this.#open.push({ opened: 'tremolo', list: [], marks, durations: [], element })
+    this.#open.push({ opened: 'tremolo', list: [], marks, events: [], durations: [], element })
   }
 
   /**
@@ -446,9 +457,7 @@ export class TupletTracker {
     const pending = this.#tremolo()
     if (!pending) return undefined
     this.#open.pop()
-    for (const item of pending.list) {
-      if (item.kind === 'event') item.value = halfOf(item.value, path, line)
-    }
+    for (const event of pending.events) event.value = halfOf(event.value, path, line)
     this.#list().push(...pending.list)
     return pending.element
   }

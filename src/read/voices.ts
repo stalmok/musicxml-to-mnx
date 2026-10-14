@@ -46,6 +46,7 @@ import type {
   SequenceItem,
   Space,
 } from '../model/score.js'
+import type { Draft } from './draft.js'
 
 /**
  * The event a span ends on: where it begins in the measure, and, where grace
@@ -725,7 +726,7 @@ export class MeasureBuilder {
    */
   addEvent(
     voice: VoiceLine,
-    event: Event,
+    event: Draft<Event>,
     notations: readonly EventNotation[],
     duration: Fraction,
     path: DocumentPath,
@@ -753,7 +754,7 @@ export class MeasureBuilder {
     const start = this.#cursor
     builder.last = { event, notations, duration, start }
     this.#eventStarts.push({ start, staff, grace: false })
-    builder.tuplets.addTremoloNote(duration)
+    builder.tuplets.addTremoloNote(event, duration)
     builder.end = addFractions(start, duration)
     this.#moveTo(builder.end)
     return { event, start }
@@ -996,7 +997,7 @@ export class MeasureBuilder {
    */
   addMeasureRestEvent(
     voice: VoiceLine,
-    event: Event,
+    event: Draft<Event>,
     notations: readonly EventNotation[],
     duration: Fraction,
     path: DocumentPath,

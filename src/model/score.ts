@@ -267,11 +267,7 @@ export interface Event {
    * is settled once the measure is whole and the voice's own staff is known.
    */
   staff: number | undefined
-  /**
-   * Halved where the event is a note of a two-note tremolo with one end, which
-   * is known only once the note after it, or the barline, is read.
-   */
-  value: NoteValue
+  readonly value: NoteValue
   /** Filled in by the spanner resolver, because a slur pairs across measures. */
   slurs: readonly Slur[]
   /** What the event sings, by the verse line the source numbers it. */
