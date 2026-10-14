@@ -916,7 +916,10 @@ function dedupeStaffConfigs(
     .map((config) => config.value)
 }
 
-/** The sign, where it sits on the staff, and how it is transposed. */
+/**
+ * The sign, where it sits on the staff, how it is transposed, and whether the
+ * transposition is drawn.
+ */
 function sameClef(a: Clef, b: Clef): boolean {
   return (
     a.sign === b.sign &&

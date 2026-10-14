@@ -788,7 +788,7 @@ function readClef(
   // drawn at pitch and the loss is reported.
   const octaveElement = element.child('clef-octave-change')
   const change = octaveElement ? readInteger(octaveElement, path) : 0
-  const amount = CLEF_OCTAVES.find((stated) => stated === change)
+  const amount = CLEF_OCTAVES.find((octave) => octave === change)
   if (amount === undefined && change !== 0) {
     warnings.add(
       'unrepresentable:clef-octave',
