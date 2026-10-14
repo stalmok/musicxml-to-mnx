@@ -16,7 +16,7 @@ import { MusicXMLError, convertMusicXML } from '../src/index.js'
 import type { MNXSequenceItem } from '../src/index.js'
 import { parseXmlRoot } from '../src/xml/parse.js'
 import type { XmlElement } from '../src/xml/parse.js'
-import { danglingReferences } from './support/references.js'
+import { danglingReferences, unorderedLyricLines } from './support/references.js'
 import { schemaErrors } from './support/schema.js'
 import { songs } from './support/corpus.js'
 import {
@@ -462,6 +462,10 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   // points at an id.
   test('names every id it points at', () => {
     expect(danglingReferences(mnx).slice(0, 5)).toEqual([])
+  })
+
+  test('orders exactly the verse lines it sings', () => {
+    expect(unorderedLyricLines(mnx)).toEqual([])
   })
 
   // A voice may stop before the barline, but it must not run past the end.
