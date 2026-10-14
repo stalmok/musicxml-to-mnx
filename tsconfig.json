@@ -16,10 +16,9 @@
     "noUnusedParameters": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-    // Stricter than the renderer's config, for two reasons specific to a
-    // converter: index access is everywhere in tree walking, and its results
-    // genuinely can be missing (a <measure> may have no <note>); and MNX
-    // output distinguishes an absent key from one set to undefined, which
+    // Index access is everywhere in tree walking, and its results genuinely
+    // can be missing (a <measure> may have no <note>). MNX output
+    // distinguishes an absent key from one set to undefined, which
     // exactOptionalPropertyTypes enforces at the type level.
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
