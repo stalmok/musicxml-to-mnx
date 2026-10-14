@@ -68,8 +68,9 @@ The model is MNX-shaped, not neutral. It follows the MNX structure closely:
 - Beams belong to the measure, as in MNX.
 - `GraceType`, `JumpType`, and `Space` follow their MNX definitions.
   `Transposition` follows MNX closely.
-- A segno color has six hex digits and no alpha, as MNX's simple color has.
-  It keeps the source's letter case.
+- A segno color is a `#` and six hex digits, with no alpha. It keeps the
+  source's letter case, which MNX allows because a segno color is a plain
+  string.
 
 The stage boundary is narrower than a neutral model. It means two things:
 
@@ -79,9 +80,9 @@ The stage boundary is narrower than a neutral model. It means two things:
 
 The model uses narrow types for enumerated values, such as pitch steps, clef
 signs, and time units. The reader checks each input value before it constructs
-one of these types. Numbers, such as staff numbers and MIDI numbers, are plain
-numbers in the model. Where the schema bounds a number, the reader keeps to the
-bound. The writer relies on those checked values.
+one of these types. Other numbers, such as staff numbers and MIDI numbers, are
+plain numbers in the model. Where the schema bounds a number, the reader keeps
+to the bound. The writer relies on those checked values.
 
 Because the model follows MNX, a schema change can require model and reader
 changes as well as writer changes.
@@ -209,7 +210,8 @@ The CLI provides optional validation through `--validate`.
 
 - The public MNX types against the schema: each type's properties, which of
   them are required, and their enumerated values. A short list of properties
-  the converter never writes is left out, each with the reason.
+  the converter never writes is left out, each with the reason. The `id`,
+  `_c`, and `_x` every object may take are checked once, not per type.
 - The unrepresentable-element registry against schema capabilities, by name
   and by the concept each entry stands for.
 - Each `unrepresentable:*` warning code against the schema fact it rests on.
