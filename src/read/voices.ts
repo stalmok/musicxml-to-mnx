@@ -478,12 +478,12 @@ export class MeasureBuilder {
    * leaves only a rest to join.
    */
   #lastWritten: VoiceLine | 'rest' | undefined
+  // The first note naming no voice, for the report where others name one.
+  #unnamedNote: XmlElement | undefined
   /**
    * The <backup> that carried the cursor before the measure start, held until
    * something is written out there or a <forward> brings the cursor back.
    */
-  // The first note naming no voice, for the report where others name one.
-  #unnamedNote: XmlElement | undefined
   #reached: { warnings: WarningCollector; context: ReportContext; backup: XmlElement } | undefined
 
   /** The voices that sound a note somewhere in the measure, rather than only rest. */
