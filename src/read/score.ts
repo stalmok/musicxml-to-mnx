@@ -412,7 +412,7 @@ function readPart(
       id,
       name: partList.names.get(id),
       shortName: partList.shortNames.get(id),
-      staves: state.staves,
+      staves: state.mostStaves,
       kit: state.kit,
       transposition: state.statedTransposition?.value,
       measures: readings.map((reading) => reading.measure),

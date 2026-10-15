@@ -153,6 +153,7 @@ export function readAttributes(
   if (stavesElement) {
     const had = state.staves
     state.staves = readIntegerInRange(stavesElement, path, 1, 16)
+    state.mostStaves = Math.max(state.mostStaves, state.staves)
     for (let staff = had + 1; staff <= state.staves; staff += 1) {
       takeFirstStaff(state.staffKeys, staff)
       takeFirstStaff(state.staffTimes, staff)

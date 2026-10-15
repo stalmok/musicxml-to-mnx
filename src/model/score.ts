@@ -677,7 +677,7 @@ export interface Part {
   /** The abbreviated name drawn on systems after the first. Undefined where
    * the source gives none, gives an empty one, or hides it. */
   readonly shortName: string | undefined
-  /** How many staves the part is written on. One unless the source says. */
+  /** The most staves the part is written on. One unless the source says. */
   readonly staves: number
   /**
    * The percussion instruments the part is struck on, keyed by what its kit

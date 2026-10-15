@@ -99,6 +99,11 @@ export interface PartState {
   /** How many staves the part is written on, once it says. */
   staves: number
   /**
+   * The most staves the part has had. MNX states one count for the whole
+   * part, so a staff the part drops stays in the output.
+   */
+  mostStaves: number
+  /**
    * The clef in force on each staff, keyed by staff number and updated as
    * clefs are read in document order. A rest placed by <display-step> reads
    * its height against the clef on its staff.
@@ -220,6 +225,7 @@ export function newPartState(
     staffKeys: new Map(),
     staffTimes: new Map(),
     staves: 1,
+    mostStaves: 1,
     clefs: new Map(),
     staffLines: new Map(),
     ids,

@@ -53,6 +53,24 @@ describe('how many staves a part has', () => {
 
     expect(part?.staves).toBe(2)
   })
+
+  // MNX states one count for the whole part, so a staff the part drops later
+  // stays, and the measures before the drop keep what they hold on it.
+  test('counts the most staves the part has had', () => {
+    const { part } = read(
+      measures(GRAND_STAFF + note('C', '2'), '<attributes><staves>1</staves></attributes>'),
+    )
+
+    expect(part?.staves).toBe(2)
+  })
+
+  test('writes a part that drops a staff into legal MNX', () => {
+    const { mnx } = convertValid(
+      measures(GRAND_STAFF + note('C', '2'), '<attributes><staves>1</staves></attributes>'),
+    )
+
+    expect(mnx.parts[0]?.staves).toBe(2)
+  })
 })
 
 describe('clefs', () => {
