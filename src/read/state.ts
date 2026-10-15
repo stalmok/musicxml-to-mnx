@@ -162,13 +162,25 @@ export interface PartState {
    */
   beamsOpenAtBarline: ReadonlyMap<string, number | undefined>
   /**
-   * The first transposition in force at a note or at a key converted with
-   * it, which is the one written out. MNX states one per part, so
-   * a part that changes instrument partway keeps this one and reports the
-   * change. Undefined until the part is fixed; a value of undefined is
+   * The first transposition in force at a pitched note, which is the one
+   * written out. MNX states one per part, so a part that changes instrument
+   * partway keeps this one and reports the change. A part with no pitched
+   * note keeps the one its first key is converted with, or else the last one
+   * in force. Undefined until the part is fixed; a value of undefined is
    * concert pitch.
    */
   statedTransposition: { value: Transposition | undefined } | undefined
+  /**
+   * The keys converted before the part is fixed, each with the transposition
+   * it was converted with. Each is checked against the one the part is fixed
+   * in.
+   */
+  unfixedKeys: {
+    transposition: Transposition | undefined
+    place: WarningPlace
+    context: ReportContext
+    element: XmlElement
+  }[]
   /**
    * The transposition each staff was last given, with the <transpose> that
    * gave it. A <transpose> naming no staff gives every staff, including any
@@ -237,6 +249,7 @@ export function newPartState(
     beamsOpenAtBarline: new Map(),
     transposition: undefined,
     statedTransposition: undefined,
+    unfixedKeys: [],
     staffTranspositions: { every: undefined, staves: new Map() },
     transpositionCheck: undefined,
   }

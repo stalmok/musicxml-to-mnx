@@ -33,6 +33,7 @@ import {
 import { staffLinesOf, staffPositionOfLine } from './state.js'
 import type { PartState } from './state.js'
 import { recogniser } from './tables.js'
+import { writtenFifths } from './transposition.js'
 import { elementLoss, reportHidden } from './unrepresentable.js'
 
 // A recogniser narrows the value it accepts to the model's type, so a
@@ -583,9 +584,10 @@ function readTimeDisplay(
  * given to it, and a staff given none sounds as written. Staves that disagree
  * are reported once the measure is read; see settleTranspositions. A part
  * that changes instrument partway keeps the first transposition in force at
- * a note or at a key, and reports the change. Together, the <transpose>
- * statements before that point state where the part starts, however many
- * <attributes> they take.
+ * a pitched note, and reports the change. A part with no pitched note keeps
+ * the one its first key is converted with, or else the last one in force.
+ * Together, the <transpose> statements before that point state where the
+ * part starts, however many <attributes> they take.
  * The pitches follow the first staff that is given a transposition, also
  * where a <staves> drops the staff they followed. A block that drops it and
  * states a <transpose> is read as one step.
@@ -681,11 +683,30 @@ function followTransposition(state: PartState, cause: XmlElement): XmlElement | 
 }
 
 /**
- * Fixes the part in the transposition in force, which is the one written
- * out, unless the part is fixed already.
+ * Fixes the part in `transposition`, which is the one written out, unless
+ * the part is fixed already. A key converted before then with a transposition
+ * that writes other fifths is written out in a key the source does not state,
+ * so the first such key is reported.
  */
-export function fixTransposition(state: PartState): void {
-  state.statedTransposition ??= { value: state.transposition }
+export function fixTransposition(
+  state: PartState,
+  warnings: WarningCollector,
+  transposition: Transposition | undefined,
+): void {
+  if (state.statedTransposition) return
+  state.statedTransposition = { value: transposition }
+  const fifths = writtenFifths(0, transposition)
+  const differing = state.unfixedKeys.find((key) => writtenFifths(0, key.transposition) !== fifths)
+  state.unfixedKeys = []
+  if (differing === undefined) return
+  warnings.addAt(
+    differing.place,
+    'unrepresentable:transposition-change',
+    'MNX states one transposition for a part, and this key is written in another one. ' +
+      "It is written out in the part's transposition, which gives it other fifths.",
+    differing.context,
+    differing.element,
+  )
 }
 
 /** What each staff of the part was last given, by staff number from one. */
@@ -729,7 +750,8 @@ export function settleTranspositions(state: PartState, warnings: WarningCollecto
       check.place,
       'unrepresentable:transposition-change',
       'A part changes instrument partway, and MNX states one transposition for the part. ' +
-        'The first is the one written out; the notes sound as each instrument plays them.',
+        'The one in force at the first pitched note is written out; the notes sound as each ' +
+        'instrument plays them.',
       check.context,
       check.change,
     )

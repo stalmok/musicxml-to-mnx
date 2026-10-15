@@ -401,6 +401,10 @@ function readPart(
       partPath,
     ),
   )
+  // A part with no pitched note is fixed in the transposition of its first
+  // key, which writes that key as the source states it.
+  const [firstKey] = state.unfixedKeys
+  fixTransposition(state, warnings, firstKey ? firstKey.transposition : state.transposition)
   // Settled once the whole part is in, because the document's order is not
   // the music's and an end can be measures from its start. Each reports what
   // stays unsettled.
@@ -579,9 +583,11 @@ function readMeasure(
       case 'note':
         // The <attributes> before a note can state the transposition over
         // several blocks. The keys stated since the last note are converted
-        // here, and the part's transposition is fixed at its first note.
+        // here, and the part's transposition is fixed at its first pitched
+        // note. A rest or an unpitched note is not transposed.
+        // A note holds one of <pitch>, <unpitched> and <rest>.
         signatures.convertKeys()
-        fixTransposition(state)
+        if (child(found, 'pitch')) fixTransposition(state, warnings, state.transposition)
         readNote(reader, state, index, builder, warnings, context, measurePath)
         break
 

@@ -211,6 +211,8 @@ const NOTE =
   '<note><pitch><step>C</step><octave>4</octave></pitch>' +
   '<duration>4</duration><type>quarter</type></note>'
 
+const REST = '<note><rest/><duration>4</duration><type>quarter</type></note>'
+
 function read(source: string) {
   const warnings = new WarningCollector()
   const score = readValid(source, warnings)
@@ -444,18 +446,126 @@ describe('a part stating more than one transposition', () => {
 
   const IN_F = '<transpose><diatonic>-4</diatonic><chromatic>-7</chromatic></transpose>'
 
-  // A rest is a <note>, so it fixes the transposition too.
-  test('reports a change of instrument after a first rest', () => {
+  // A rest is placed by the clef, not transposed, so it fixes nothing.
+  test('takes the transposition of the first note after a rest', () => {
+    const { part, warnings } = read(
+      inPart(IN_B_FLAT, `${REST}<attributes>${IN_F}</attributes>${NOTE}`),
+    )
+
+    expect(part?.transposition).toEqual({ staffDistance: 4, halfSteps: 7 })
+    expect(warnings).toEqual([])
+  })
+
+  // An unpitched note is placed by <display-step>, not transposed, so it fixes nothing.
+  test('takes the transposition of the first note after an unpitched note', () => {
     const { part, warnings } = read(
       inPart(
-        IN_B_FLAT,
-        '<note><rest/><duration>4</duration><type>quarter</type></note>' +
+        `<clef><sign>percussion</sign></clef>${IN_B_FLAT}`,
+        '<note><unpitched><display-step>C</display-step><display-octave>5</display-octave>' +
+          '</unpitched><duration>4</duration><type>quarter</type></note>' +
           `<attributes>${IN_F}</attributes>${NOTE}`,
       ),
     )
 
+    expect(part?.transposition).toEqual({ staffDistance: 4, halfSteps: 7 })
+    expect(warnings).toEqual([])
+  })
+
+  // An octave transposition writes the key a part at concert pitch writes.
+  test('takes an octave transposition after rests under a key at concert pitch', () => {
+    const { part, warnings } = read(
+      '<score-partwise><part id="P1">' +
+        '<measure number="1"><attributes><divisions>4</divisions>' +
+        `<key><fifths>2</fifths></key></attributes>${REST}</measure>` +
+        '<measure number="2"><attributes><transpose><diatonic>0</diatonic>' +
+        '<chromatic>0</chromatic><octave-change>2</octave-change></transpose></attributes>' +
+        `${NOTE}</measure>` +
+        '</part></score-partwise>',
+    )
+
+    expect(part?.transposition).toEqual({ staffDistance: -14, halfSteps: -24 })
+    expect(warnings).toEqual([])
+  })
+
+  test('reports a key at concert pitch before rests and a transposed first note', () => {
+    const { part, warnings } = read(
+      '<score-partwise><part id="P1">' +
+        '<measure number="1"><attributes><divisions>4</divisions>' +
+        `<key><fifths>0</fifths></key></attributes>${REST}</measure>` +
+        `<measure number="2"><attributes>${IN_B_FLAT}</attributes>${NOTE}</measure>` +
+        '</part></score-partwise>',
+    )
+
     expect(part?.transposition).toEqual({ staffDistance: 1, halfSteps: 2 })
-    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:transposition-change'])
+    expect(warnings.map((w) => [w.code, w.element, w.context.measure])).toEqual([
+      ['unrepresentable:transposition-change', 'key', 1],
+    ])
+  })
+
+  test('reports the first of two keys at concert pitch before a transposed first note', () => {
+    const { warnings } = read(
+      '<score-partwise><part id="P1">' +
+        '<measure number="1"><attributes><divisions>4</divisions>' +
+        `<key><fifths>0</fifths></key></attributes>${REST}</measure>` +
+        `<measure number="2"><attributes><key><fifths>1</fifths></key></attributes>${REST}</measure>` +
+        `<measure number="3"><attributes>${IN_B_FLAT}</attributes>${NOTE}</measure>` +
+        '</part></score-partwise>',
+    )
+
+    expect(warnings.map((w) => [w.code, w.element, w.context.measure])).toEqual([
+      ['unrepresentable:transposition-change', 'key', 1],
+    ])
+  })
+
+  // A non-traditional key converts to no key, so no transposition writes it.
+  test('says nothing of a key MNX cannot state before a transposed first note', () => {
+    const { part, warnings } = read(
+      '<score-partwise><part id="P1">' +
+        '<measure number="1"><attributes><divisions>4</divisions>' +
+        '<key><key-step>F</key-step><key-alter>1</key-alter></key></attributes>' +
+        `${REST}</measure>` +
+        `<measure number="2"><attributes>${IN_B_FLAT}</attributes>${NOTE}</measure>` +
+        '</part></score-partwise>',
+    )
+
+    expect(part?.transposition).toEqual({ staffDistance: 1, halfSteps: 2 })
+    expect(warnings.map((w) => w.code)).not.toContain('unrepresentable:transposition-change')
+  })
+
+  test('keeps the transposition of a part of rests with no key', () => {
+    const { part, warnings } = read(inPart(IN_B_FLAT, REST))
+
+    expect(part?.transposition).toEqual({ staffDistance: 1, halfSteps: 2 })
+    expect(warnings).toEqual([])
+  })
+
+  test('takes the transposition of the first key in a part of rests', () => {
+    const { part, warnings } = read(
+      '<score-partwise><part id="P1">' +
+        '<measure number="1"><attributes><divisions>4</divisions>' +
+        `<key><fifths>2</fifths></key>${IN_B_FLAT}</attributes>${REST}</measure>` +
+        `<measure number="2"><attributes>${IN_F}</attributes>${REST}</measure>` +
+        '</part></score-partwise>',
+    )
+
+    expect(part?.transposition).toEqual({ staffDistance: 1, halfSteps: 2 })
+    expect(warnings).toEqual([])
+  })
+
+  test('reports a later key in another transposition in a part of rests', () => {
+    const { part, warnings } = read(
+      '<score-partwise><part id="P1">' +
+        '<measure number="1"><attributes><divisions>4</divisions>' +
+        `<key><fifths>2</fifths></key>${IN_B_FLAT}</attributes>${REST}</measure>` +
+        `<measure number="2"><attributes><key><fifths>1</fifths></key>${IN_F}</attributes>` +
+        `${REST}</measure>` +
+        '</part></score-partwise>',
+    )
+
+    expect(part?.transposition).toEqual({ staffDistance: 1, halfSteps: 2 })
+    expect(warnings.map((w) => [w.code, w.element, w.context.measure])).toEqual([
+      ['unrepresentable:transposition-change', 'key', 2],
+    ])
   })
 
   test('keeps concert pitch where the part is given a transposition after its first note', () => {
@@ -479,8 +589,8 @@ describe('a part stating more than one transposition', () => {
   })
 
   // The key of a measure with no note is converted with the transposition in
-  // force at its end, so the part is fixed there.
-  test('reports a change of instrument after a measure with a key and no note', () => {
+  // force at its end, which writes it with other fifths than the part's.
+  test('reports a key in another transposition before the first note', () => {
     const { part, warnings } = read(
       '<score-partwise><part id="P1">' +
         '<measure number="1"><attributes><divisions>4</divisions>' +
@@ -489,8 +599,10 @@ describe('a part stating more than one transposition', () => {
         '</part></score-partwise>',
     )
 
-    expect(part?.transposition).toEqual({ staffDistance: 1, halfSteps: 2 })
-    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:transposition-change'])
+    expect(part?.transposition).toEqual({ staffDistance: 4, halfSteps: 7 })
+    expect(warnings.map((w) => [w.code, w.element, w.context.measure])).toEqual([
+      ['unrepresentable:transposition-change', 'key', 1],
+    ])
   })
 
   // Nothing in the first measure is written in a transposition, so the part

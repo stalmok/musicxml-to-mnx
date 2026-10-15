@@ -23,7 +23,7 @@ import type { Fraction } from '../fraction.js'
 import type { Key, TimeSignature, Transposition } from '../model/score.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, child, children, peeking, requireChild, trimmedText } from '../xml/tree.js'
-import { firstTimeStated, fixTransposition } from './attributes.js'
+import { firstTimeStated } from './attributes.js'
 import type { AttributesReading, StaffSignature } from './attributes.js'
 import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
 import { lengthOf } from './duration.js'
@@ -203,11 +203,9 @@ export class MeasureSignatures {
    * in, with the transposition in force now, and settles where each stands.
    */
   convertKeys(): void {
-    const transposition = this.#state.transposition
-    const pending = this.#writtenKeys.splice(0)
-    // A key converted with the transposition in force fixes the part in it.
-    if (pending.length > 0) fixTransposition(this.#state)
-    for (const { keys: written, at, first } of pending) {
+    const state = this.#state
+    const transposition = state.transposition
+    for (const { keys: written, at, first } of this.#writtenKeys.splice(0)) {
       const keys = written.map((stated) =>
         stated.value && transposition
           ? {
@@ -216,8 +214,18 @@ export class MeasureSignatures {
             }
           : stated,
       )
-      this.#statedAt(this.#keyGroups, at, first).statements.push(...keys)
+      const group = this.#statedAt(this.#keyGroups, at, first)
+      group.statements.push(...keys)
       const key = keys.map((stated) => stated.value).find((stated) => stated !== undefined)
+      if (key && !state.statedTransposition) {
+        const element = statingOf(keys, first)
+        state.unfixedKeys.push({
+          transposition,
+          place: group.place,
+          context: this.#context,
+          element,
+        })
+      }
       if (compareFractions(at, fraction(0)) === 0) {
         if (!this.#keySettled) this.#key = key
         this.#keySettled = true
