@@ -623,13 +623,14 @@ describe('a part stating more than one transposition', () => {
     })
     expect(warnings.map((w) => [w.code, w.context.measure, w.element])).toEqual([
       ['unrepresentable:per-staff-transposition', 1, 'transpose'],
+      ['unsupported:element', 2, 'staves'],
       ['unrepresentable:transposition-change', 2, 'staves'],
     ])
   })
 
   // MusicXML writes <staves> before <transpose>, so one block can drop the
   // staff and give the staff left the same transposition.
-  test('says nothing where the block that drops the staff gives the one left its transposition', () => {
+  test('reports no change of instrument where the block that drops the staff gives the one left its transposition', () => {
     const { part, warnings } = read(
       '<score-partwise><part id="P1">' +
         '<measure number="1"><attributes><divisions>4</divisions><staves>2</staves>' +
@@ -649,6 +650,7 @@ describe('a part stating more than one transposition', () => {
     })
     expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
       ['unrepresentable:per-staff-transposition', 1],
+      ['unsupported:element', 2],
     ])
   })
 
@@ -669,13 +671,14 @@ describe('a part stating more than one transposition', () => {
 
     expect(warnings.map((w) => [w.code, w.context.measure, w.element, w.context.line])).toEqual([
       ['unrepresentable:per-staff-transposition', 1, 'transpose', 1],
+      ['unsupported:element', 2, 'staves', 1],
       ['unrepresentable:per-staff-transposition', 2, 'transpose', 2],
       ['unrepresentable:transposition-change', 2, 'staves', 1],
     ])
   })
 
   // Staff 2 is still the first staff given one, so nothing changes.
-  test('says nothing where a dropped staff leaves the transposition in force', () => {
+  test('reports no change of instrument where a dropped staff leaves the transposition in force', () => {
     const { part, warnings } = read(
       '<score-partwise><part id="P1">' +
         '<measure number="1"><attributes><divisions>4</divisions><staves>3</staves>' +
@@ -694,6 +697,7 @@ describe('a part stating more than one transposition', () => {
     })
     expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
       ['unrepresentable:per-staff-transposition', 1],
+      ['unsupported:element', 2],
     ])
   })
 
@@ -715,6 +719,7 @@ describe('a part stating more than one transposition', () => {
 
     expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
       ['unrepresentable:per-staff-transposition', 1],
+      ['unsupported:element', 2],
     ])
   })
 

@@ -64,6 +64,23 @@ describe('how many staves a part has', () => {
     expect(part?.staves).toBe(2)
   })
 
+  // MNX could leave the staff out of a system layout, which is not built.
+  test('reports a part dropping a staff partway', () => {
+    const { warnings } = read(
+      measures(
+        GRAND_STAFF + note('C', '2'),
+        '<attributes><staves>1</staves></attributes>' + note('D', '1'),
+        '<attributes><staves>1</staves></attributes>' + note('E', '1'),
+        '<attributes><staves>2</staves></attributes>' + note('F', '2'),
+      ),
+    )
+
+    expect(warnings.map((w) => [w.code, w.element, w.context.measure])).toEqual([
+      ['unsupported:element', 'staves', 2],
+    ])
+    expect(warnings[0]?.message).toContain('drawn empty')
+  })
+
   test('writes a part that drops a staff into legal MNX', () => {
     const { mnx } = convertValid(
       measures(GRAND_STAFF + note('C', '2'), '<attributes><staves>1</staves></attributes>'),
@@ -1410,6 +1427,7 @@ describe('key and time signatures stated per staff', () => {
 
     expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
       ['unrepresentable:per-staff-key', 1],
+      ['unsupported:element', 2],
     ])
   })
 
@@ -1429,6 +1447,7 @@ describe('key and time signatures stated per staff', () => {
 
     expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
       ['unrepresentable:per-staff-time', 1],
+      ['unsupported:element', 2],
     ])
   })
 
@@ -1448,9 +1467,10 @@ describe('key and time signatures stated per staff', () => {
 
     expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
       ['unrepresentable:per-staff-key', 1],
+      ['unsupported:element', 2],
       ['unrepresentable:per-staff-key', 3],
     ])
-    expect(warnings[1]?.message).toContain('one staff and not the others')
+    expect(warnings[2]?.message).toContain('one staff and not the others')
   })
 
   // The block that raises the count comes between the two statements, so the
@@ -1500,6 +1520,7 @@ describe('key and time signatures stated per staff', () => {
 
     expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
       ['unrepresentable:per-staff-key', 2],
+      ['unsupported:element', 2],
     ])
   })
 

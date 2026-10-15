@@ -154,6 +154,17 @@ export function readAttributes(
     const had = state.staves
     state.staves = readIntegerInRange(stavesElement, path, 1, 16)
     state.mostStaves = Math.max(state.mostStaves, state.staves)
+    // MNX states one count for the part. A system layout could leave the
+    // staff out, which is not built yet.
+    if (state.staves < had) {
+      warnings.add(
+        'unsupported:element',
+        'A part dropping a staff partway is not converted yet. MNX keeps the staff, ' +
+          'and it is drawn empty where the source drops it.',
+        context,
+        stavesElement,
+      )
+    }
     for (let staff = had + 1; staff <= state.staves; staff += 1) {
       takeFirstStaff(state.staffKeys, staff)
       takeFirstStaff(state.staffTimes, staff)
