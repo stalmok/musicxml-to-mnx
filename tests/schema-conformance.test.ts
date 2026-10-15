@@ -32,7 +32,7 @@ import { TREMOLO_MARKS } from '../src/read/tremolos.js'
 import { MIDI_NUMBERS } from '../src/read/partList.js'
 import { NO_HOME_ATTRIBUTES, NO_HOME_IN_MNX } from '../src/read/unrepresentable.js'
 import type { FormatLimit } from '../src/warnings.js'
-import { FOLLOWED_REFERENCES, READ_AT } from './support/references.js'
+import { FOLLOWED_REFERENCES, READ_AT, STAFF_NUMBERS } from './support/references.js'
 import { resolveRef, schemaDefs } from './support/schema.js'
 import type { SchemaNode } from './support/schema.js'
 
@@ -600,6 +600,39 @@ describe('the id references the output check follows, against the schema', () =>
   test.each(holders)('reads %s everywhere the MNX types hold one', (holder) => {
     const modelled = placesOf(holder).filter(typesModel)
     expect([...(READ_AT[holder] ?? [])].sort()).toEqual(modelled)
+  })
+})
+
+describe('the staff numbers the output check reads, against the schema', () => {
+  const held = Object.entries(schemaDefs).flatMap(([definition, node]) =>
+    Object.entries(node.properties ?? {})
+      .filter(([, value]) => value.$ref === '#/$defs/staff-number')
+      .map(([property]) => ({ definition, property })),
+  )
+
+  test('reads every property the schema types as a staff number', () => {
+    const names: readonly string[] = STAFF_NUMBERS
+    expect([...new Set(held.map((one) => one.property))].sort()).toEqual([...names].sort())
+  })
+
+  // The check reads a staff source in the layouts, and every other holder
+  // inside the measures of a part.
+  test('finds a staff number in a part measure or a staff source alone', () => {
+    expect([...new Set(held.map((one) => one.definition))].sort()).toEqual([
+      'dynamic-group-accent',
+      'dynamic-group-gradual',
+      'dynamic-group-immediate',
+      'dynamic-group-relative',
+      'event',
+      'kit-note',
+      'note',
+      'ottava',
+      'positioned-clef',
+      'positioned-staff-config',
+      'sequence',
+      'staff-source',
+      'tuplet',
+    ])
   })
 })
 

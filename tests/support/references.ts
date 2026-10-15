@@ -168,6 +168,53 @@ export function danglingReferences(mnx: MNXDocument): string[] {
 }
 
 /**
+ * The names of the schema properties that number a staff of a part.
+ * tests/schema-conformance.test.ts holds this to every property the schema
+ * types as a staff number.
+ */
+export const STAFF_NUMBERS = ['staff', 'staffEnd'] as const
+
+/**
+ * Every staff number in the document past the staves of the part it names,
+ * as a short description. A staff number inside a part names one of that
+ * part's staves, and a layout's staff source names one of its part's.
+ */
+export function staffNumbersPastParts(mnx: MNXDocument): string[] {
+  const past: string[] = []
+  const names: readonly string[] = STAFF_NUMBERS
+  const visit = (value: unknown, where: string, staves: number): void => {
+    if (typeof value !== 'object' || value === null) return
+    for (const [key, inner] of Object.entries(value)) {
+      if (names.includes(key) && typeof inner === 'number' && inner > staves) {
+        past.push(`${where} names staff ${String(inner)} of ${String(staves)}`)
+      }
+      visit(inner, where, staves)
+    }
+  }
+  for (const [index, part] of mnx.parts.entries()) {
+    visit(part.measures, `part ${String(index + 1)}`, part.staves ?? 1)
+  }
+
+  const staves = new Map(mnx.parts.map((part) => [part.id, part.staves ?? 1]))
+  const fromLayout = (content: MNXSystemLayoutContent, where: string): void => {
+    for (const item of content) {
+      if (item.type === 'group') {
+        fromLayout(item.content, where)
+        continue
+      }
+      for (const source of item.sources) {
+        const count = staves.get(source.part)
+        if (source.staff !== undefined && count !== undefined && source.staff > count) {
+          past.push(`${where} names staff ${String(source.staff)} of part ${source.part}`)
+        }
+      }
+    }
+  }
+  for (const layout of mnx.layouts ?? []) fromLayout(layout.content, `layout ${layout.id ?? ''}`)
+  return past
+}
+
+/**
  * Where the verse lines a document sings and the order it gives them part
  * ways, as short descriptions. A document orders its verse lines wherever
  * there are two or more, and orders only the lines it sings. A sung line

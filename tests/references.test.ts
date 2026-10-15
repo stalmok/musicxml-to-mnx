@@ -3,7 +3,11 @@
 
 import { describe, expect, test } from 'vitest'
 import type { MNXDocument } from '../src/index.js'
-import { danglingReferences, unorderedLyricLines } from './support/references.js'
+import {
+  danglingReferences,
+  staffNumbersPastParts,
+  unorderedLyricLines,
+} from './support/references.js'
 
 const at = { fraction: [0, 1] as [number, number] }
 const quarter = { base: 'quarter' as const }
@@ -340,6 +344,55 @@ describe('the verse lines a document sings and the order it gives them', () => {
   test('part ways where the order names a line nothing sings', () => {
     expect(unorderedLyricLines(singing(['1', '2'], ['1', '2', '3']))).toEqual([
       'the order names line "3", which nothing sings',
+    ])
+  })
+})
+
+describe('the staff numbers a document names', () => {
+  function onStaves(staves: number | undefined, staff: number, sourceStaff: number): MNXDocument {
+    return {
+      mnx: { version: 1 },
+      global: { measures: [{}] },
+      layouts: [
+        {
+          id: 'layout',
+          content: [{ type: 'staff', sources: [{ part: 'P1', staff: sourceStaff }] }],
+        },
+      ],
+      parts: [
+        {
+          id: 'P1',
+          ...(staves === undefined ? {} : { staves }),
+          measures: [
+            {
+              clefs: [{ clef: { sign: 'F', staffPosition: 2 }, staff }],
+              dynamics: [
+                {
+                  type: 'gradual',
+                  position: at,
+                  end: { measure: 'm1', position: at },
+                  wedgeType: 'increasing',
+                  staffEnd: staff,
+                },
+              ],
+              sequences: [{ staff, content: [{ duration: quarter, rest: {} }] }],
+            },
+          ],
+        },
+      ],
+    }
+  }
+
+  test('says nothing where every number is one of its part staves', () => {
+    expect(staffNumbersPastParts(onStaves(2, 2, 2))).toEqual([])
+  })
+
+  test('reports every number past the staves of its part', () => {
+    expect(staffNumbersPastParts(onStaves(undefined, 2, 2))).toEqual([
+      'part 1 names staff 2 of 1',
+      'part 1 names staff 2 of 1',
+      'part 1 names staff 2 of 1',
+      'layout layout names staff 2 of part P1',
     ])
   })
 })
