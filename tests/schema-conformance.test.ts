@@ -604,11 +604,23 @@ describe('the id references the output check follows, against the schema', () =>
 })
 
 describe('the staff numbers the output check reads, against the schema', () => {
-  const held = Object.entries(schemaDefs).flatMap(([definition, node]) =>
-    Object.entries(node.properties ?? {})
-      .filter(([, value]) => value.$ref === '#/$defs/staff-number')
-      .map(([property]) => ({ definition, property })),
-  )
+  // Searched at any depth, so a staff number nested in an allOf, anyOf or
+  // items is found too.
+  const held: { definition: string; property: string }[] = []
+  const search = (definition: string, node: SchemaNode): void => {
+    for (const [property, value] of Object.entries(node.properties ?? {})) {
+      if (value.$ref === '#/$defs/staff-number') held.push({ definition, property })
+      search(definition, value)
+    }
+    const nested = [
+      ...(node.allOf ?? []),
+      ...(node.anyOf ?? []),
+      ...(node.items ? [node.items] : []),
+      ...Object.values(node.patternProperties ?? {}),
+    ]
+    for (const inner of nested) search(definition, inner)
+  }
+  for (const [definition, node] of Object.entries(schemaDefs)) search(definition, node)
 
   test('reads every property the schema types as a staff number', () => {
     const names: readonly string[] = STAFF_NUMBERS
@@ -616,8 +628,9 @@ describe('the staff numbers the output check reads, against the schema', () => {
   })
 
   // The check reads a staff source in the layouts, and every other holder
-  // inside the measures of a part.
-  test('finds a staff number in a part measure or a staff source alone', () => {
+  // inside the measures of a part. A new holder fails this test, so that
+  // where the output holds it is checked.
+  test('finds a staff number in the holders the check reads', () => {
     expect([...new Set(held.map((one) => one.definition))].sort()).toEqual([
       'dynamic-group-accent',
       'dynamic-group-gradual',

@@ -1410,8 +1410,8 @@ describe('key and time signatures stated per staff', () => {
     expect(warnings).toEqual([])
   })
 
-  // A staff the part drops and gains again is a new staff: it takes the
-  // signatures of the first staff, not the ones it had before.
+  // A staff the part drops and gains again takes the signatures of the first
+  // staff, not the ones it had before.
   test('gives a staff added back the key of the first staff', () => {
     const { warnings } = read(
       measures(

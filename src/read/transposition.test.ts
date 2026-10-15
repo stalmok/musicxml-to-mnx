@@ -701,8 +701,8 @@ describe('a part stating more than one transposition', () => {
     ])
   })
 
-  // A staff the part drops loses what it was given. Added back, it is a new
-  // staff, and takes the transposition given to every staff.
+  // A staff the part drops loses what it was given. Added back, it takes the
+  // transposition given to every staff.
   test('gives a staff added back the transposition every staff has', () => {
     const { warnings } = read(
       '<score-partwise><part id="P1">' +
