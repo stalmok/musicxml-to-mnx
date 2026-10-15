@@ -478,7 +478,24 @@ describe('a part stating more than one transposition', () => {
     ])
   })
 
-  test('reports a change of instrument after a measure with no note', () => {
+  // The key of a measure with no note is converted with the transposition in
+  // force at its end, so the part is fixed there.
+  test('reports a change of instrument after a measure with a key and no note', () => {
+    const { part, warnings } = read(
+      '<score-partwise><part id="P1">' +
+        '<measure number="1"><attributes><divisions>4</divisions>' +
+        `<key><fifths>0</fifths></key>${IN_B_FLAT}</attributes></measure>` +
+        `<measure number="2"><attributes>${IN_F}</attributes>${NOTE}</measure>` +
+        '</part></score-partwise>',
+    )
+
+    expect(part?.transposition).toEqual({ staffDistance: 1, halfSteps: 2 })
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:transposition-change'])
+  })
+
+  // Nothing in the first measure is written in a transposition, so the part
+  // is fixed at its first note.
+  test('takes the transposition of the first note after a measure with no note or key', () => {
     const { part, warnings } = read(
       '<score-partwise><part id="P1">' +
         `<measure number="1"><attributes><divisions>4</divisions>${IN_B_FLAT}</attributes>` +
@@ -487,8 +504,20 @@ describe('a part stating more than one transposition', () => {
         '</part></score-partwise>',
     )
 
+    expect(part?.transposition).toEqual({ staffDistance: 4, halfSteps: 7 })
+    expect(warnings).toEqual([])
+  })
+
+  test('takes the transposition of the first note after an empty measure at concert pitch', () => {
+    const { part, warnings } = read(
+      '<score-partwise><part id="P1">' +
+        '<measure number="1"><attributes><divisions>4</divisions></attributes></measure>' +
+        `<measure number="2"><attributes>${IN_B_FLAT}</attributes>${NOTE}</measure>` +
+        '</part></score-partwise>',
+    )
+
     expect(part?.transposition).toEqual({ staffDistance: 1, halfSteps: 2 })
-    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:transposition-change'])
+    expect(warnings).toEqual([])
   })
 
   // A key stated partway is converted with the transposition the notes after

@@ -162,8 +162,8 @@ export interface PartState {
    */
   beamsOpenAtBarline: ReadonlyMap<string, number | undefined>
   /**
-   * The first transposition in force at a note, or at the end of a measure
-   * with no note, which is the one written out. MNX states one per part, so
+   * The first transposition in force at a note or at a key converted with
+   * it, which is the one written out. MNX states one per part, so
    * a part that changes instrument partway keeps this one and reports the
    * change. Undefined until the part is fixed; a value of undefined is
    * concert pitch.

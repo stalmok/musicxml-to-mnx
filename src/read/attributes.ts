@@ -568,8 +568,9 @@ function readTimeDisplay(
  * given to it, and a staff given none sounds as written. Staves that disagree
  * are reported once the measure is read; see settleTranspositions. A part
  * that changes instrument partway keeps the first transposition in force at
- * a note, and reports the change. Together, the <transpose> statements before
- * that note state where the part starts, however many <attributes> they take.
+ * a note or at a key, and reports the change. Together, the <transpose>
+ * statements before that point state where the part starts, however many
+ * <attributes> they take.
  * The pitches follow the first staff that is given a transposition, also
  * where a <staves> drops the staff they followed. A block that drops it and
  * states a <transpose> is read as one step.
@@ -701,9 +702,6 @@ function staffTranspositions(state: PartState): (Stated<Transposition> | undefin
  * is reported, even where a later one changes back.
  */
 export function settleTranspositions(state: PartState, warnings: WarningCollector): void {
-  // A measure with no note converts its keys with the transposition in force
-  // at its end, so the part is fixed there too.
-  fixTransposition(state)
   const check = state.transpositionCheck
   if (check === undefined) return
   state.transpositionCheck = undefined

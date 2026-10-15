@@ -23,7 +23,7 @@ import type { Fraction } from '../fraction.js'
 import type { Key, TimeSignature, Transposition } from '../model/score.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, child, children, peeking, requireChild, trimmedText } from '../xml/tree.js'
-import { firstTimeStated } from './attributes.js'
+import { firstTimeStated, fixTransposition } from './attributes.js'
 import type { AttributesReading, StaffSignature } from './attributes.js'
 import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
 import { lengthOf } from './duration.js'
@@ -204,7 +204,10 @@ export class MeasureSignatures {
    */
   convertKeys(): void {
     const transposition = this.#state.transposition
-    for (const { keys: written, at, first } of this.#writtenKeys.splice(0)) {
+    const pending = this.#writtenKeys.splice(0)
+    // A key converted with the transposition in force fixes the part in it.
+    if (pending.length > 0) fixTransposition(this.#state)
+    for (const { keys: written, at, first } of pending) {
       const keys = written.map((stated) =>
         stated.value && transposition
           ? {
