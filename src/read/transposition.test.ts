@@ -570,6 +570,57 @@ describe('a part stating more than one transposition', () => {
     ])
   })
 
+  // The part follows staff 2 until staff 2 is dropped. Staff 1 sounds as
+  // written, so the part written out in B-flat changes instrument there.
+  test('reports a change of instrument where a dropped staff takes the transposition with it', () => {
+    const { part, warnings } = read(
+      '<score-partwise><part id="P1">' +
+        '<measure number="1"><attributes><divisions>4</divisions><staves>2</staves>' +
+        '<transpose number="2"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>' +
+        `</attributes>${NOTE}</measure>` +
+        `<measure number="2"><attributes><staves>1</staves></attributes>${NOTE}</measure>` +
+        '<measure number="3"><attributes>' +
+        '<transpose number="1"><diatonic>0</diatonic><chromatic>0</chromatic></transpose>' +
+        `</attributes>${NOTE}</measure>` +
+        '</part></score-partwise>',
+    )
+
+    expect(part?.transposition).toEqual({ staffDistance: 1, halfSteps: 2 })
+    const second = part?.measures[1]?.sequences[0]?.content[0]
+    expect(second?.kind === 'event' && notesOf(second)[0]?.pitch).toEqual({
+      step: 'C',
+      octave: 4,
+      alter: 0,
+    })
+    expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
+      ['unrepresentable:per-staff-transposition', 1],
+      ['unrepresentable:transposition-change', 2],
+    ])
+  })
+
+  // Staff 2 is still the first staff given one, so nothing changes.
+  test('says nothing where a dropped staff leaves the transposition in force', () => {
+    const { part, warnings } = read(
+      '<score-partwise><part id="P1">' +
+        '<measure number="1"><attributes><divisions>4</divisions><staves>3</staves>' +
+        '<transpose number="2"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>' +
+        '<transpose number="3"><diatonic>-4</diatonic><chromatic>-7</chromatic></transpose>' +
+        `</attributes>${NOTE}</measure>` +
+        `<measure number="2"><attributes><staves>2</staves></attributes>${NOTE}</measure>` +
+        '</part></score-partwise>',
+    )
+
+    const second = part?.measures[1]?.sequences[0]?.content[0]
+    expect(second?.kind === 'event' && notesOf(second)[0]?.pitch).toEqual({
+      step: 'B',
+      octave: 3,
+      alter: -1,
+    })
+    expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
+      ['unrepresentable:per-staff-transposition', 1],
+    ])
+  })
+
   // A staff the part drops loses what it was given. Added back, it is a new
   // staff, and takes the transposition given to every staff.
   test('gives a staff added back the transposition every staff has', () => {

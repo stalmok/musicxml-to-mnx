@@ -183,13 +183,16 @@ export interface PartState {
     | {
         place: WarningPlace
         context: ReportContext
-        /** The measure's first <transpose>. */
+        /**
+         * The measure's first <transpose>, or the <staves> before it that
+         * changed the transposition in force.
+         */
         element: XmlElement
         /** Every <transpose> the measure states. */
         stated: Set<XmlElement>
         /**
-         * The measure's first <transpose> that puts the part in a
-         * transposition other than the one it is written out in.
+         * The measure's first <transpose> or <staves> that puts the part in
+         * a transposition other than the one it is written out in.
          */
         change: XmlElement | undefined
       }

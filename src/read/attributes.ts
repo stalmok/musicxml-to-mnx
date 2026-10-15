@@ -152,10 +152,7 @@ export function readAttributes(
   const stavesElement = element.child('staves')
   if (stavesElement) {
     state.staves = readIntegerInRange(stavesElement, path, 1, 16)
-    // A staff the part drops loses the transposition it was given. Added
-    // back, it takes the one every staff has.
-    const given = state.staffTranspositions.staves
-    for (const staff of given.keys()) if (staff > state.staves) given.delete(staff)
+    dropTranspositions(stavesElement, state, warnings, context)
   }
 
   // Each statement in <staff-details> is read on its own, and the sweep
@@ -610,24 +607,59 @@ function readTransposition(
       given.staves.set(staff, value)
     }
   }
-  const check = (state.transpositionCheck ??= {
+  const check = transpositionCheck(state, warnings, context, opening.element)
+  for (const { element: found } of stated) check.stated.add(found)
+  const change = followTransposition(state, opening.element)
+  if (change) check.change ??= change
+}
+
+/**
+ * A staff the part drops loses the transposition it was given. Added back,
+ * it takes the one every staff has. A drop that leaves the part in a
+ * transposition other than the one it is written out in changes instrument.
+ */
+function dropTranspositions(
+  element: XmlElement,
+  state: PartState,
+  warnings: WarningCollector,
+  context: ReportContext,
+): void {
+  const given = state.staffTranspositions.staves
+  for (const staff of given.keys()) if (staff > state.staves) given.delete(staff)
+  const change = followTransposition(state, element)
+  if (change) transpositionCheck(state, warnings, context, element).change ??= change
+}
+
+function transpositionCheck(
+  state: PartState,
+  warnings: WarningCollector,
+  context: ReportContext,
+  element: XmlElement,
+): NonNullable<PartState['transpositionCheck']> {
+  return (state.transpositionCheck ??= {
     place: warnings.reserve(),
     context,
-    element: opening.element,
+    element,
     stated: new Set(),
     change: undefined,
   })
-  for (const { element: found } of stated) check.stated.add(found)
+}
 
+/**
+ * Moves the notes to the transposition of the first staff given one. Where
+ * that changes the part to a transposition other than the one it is written
+ * out in, returns what to report the change at: the <transpose> now in
+ * force, or `cause` where no staff is given one.
+ */
+function followTransposition(state: PartState, cause: XmlElement): XmlElement | undefined {
   const before = state.transposition ?? CONCERT_PITCH
   const inForce = staffTranspositions(state).find((one) => one !== undefined)
   state.transposition = inForce?.value
+  const now = inForce?.value ?? CONCERT_PITCH
   const first = state.statedTransposition
-  if (inForce === undefined || first === undefined) return
-  const changed = !sameTransposition(before, inForce.value)
-  if (changed && !sameTransposition(first.value ?? CONCERT_PITCH, inForce.value)) {
-    check.change ??= inForce.element
-  }
+  if (first === undefined || sameTransposition(before, now)) return undefined
+  if (sameTransposition(first.value ?? CONCERT_PITCH, now)) return undefined
+  return inForce?.element ?? cause
 }
 
 /**
