@@ -458,6 +458,26 @@ describe('a part stating more than one transposition', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:transposition-change'])
   })
 
+  test('keeps concert pitch where the part is given a transposition after its first note', () => {
+    const { part, warnings } = read(
+      '<score-partwise><part id="P1">' +
+        `<measure number="1"><attributes><divisions>4</divisions></attributes>${NOTE}</measure>` +
+        `<measure number="2"><attributes>${IN_B_FLAT}</attributes>${NOTE}</measure>` +
+        '</part></score-partwise>',
+    )
+
+    expect(part?.transposition).toBeUndefined()
+    const second = part?.measures[1]?.sequences[0]?.content[0]
+    expect(second?.kind === 'event' && notesOf(second)[0]?.pitch).toEqual({
+      step: 'B',
+      octave: 3,
+      alter: -1,
+    })
+    expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
+      ['unrepresentable:transposition-change', 2],
+    ])
+  })
+
   test('reports a change of instrument after a measure with no note', () => {
     const { part, warnings } = read(
       '<score-partwise><part id="P1">' +

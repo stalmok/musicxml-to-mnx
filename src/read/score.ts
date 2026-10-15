@@ -38,7 +38,7 @@ import {
   requireAttribute,
   trimmedText,
 } from '../xml/tree.js'
-import { readAttributes, settleTranspositions } from './attributes.js'
+import { fixTransposition, readAttributes, settleTranspositions } from './attributes.js'
 import type { MeasureRepeatReading } from './attributes.js'
 import { Endings, readBarline } from './barlines.js'
 import type { EndingStart, EndingStop } from './barlines.js'
@@ -414,7 +414,7 @@ function readPart(
       shortName: partList.shortNames.get(id),
       staves: state.staves,
       kit: state.kit,
-      transposition: state.statedTransposition,
+      transposition: state.statedTransposition?.value,
       measures: readings.map((reading) => reading.measure),
     },
     element,
@@ -581,7 +581,7 @@ function readMeasure(
         // several blocks. The keys stated since the last note are converted
         // here, and the part's transposition is fixed at its first note.
         signatures.convertKeys()
-        state.statedTransposition ??= state.transposition
+        fixTransposition(state)
         readNote(reader, state, index, builder, warnings, context, measurePath)
         break
 

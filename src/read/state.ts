@@ -161,9 +161,10 @@ export interface PartState {
    * The first transposition in force at a note, or at the end of a measure
    * with no note, which is the one written out. MNX states one per part, so
    * a part that changes instrument partway keeps this one and reports the
-   * change.
+   * change. Undefined until the part is fixed; a value of undefined is
+   * concert pitch.
    */
-  statedTransposition: Transposition | undefined
+  statedTransposition: { value: Transposition | undefined } | undefined
   /**
    * The transposition each staff was last given, with the <transpose> that
    * gave it. A <transpose> naming no staff gives every staff, including any

@@ -619,13 +619,23 @@ function readTransposition(
   })
   for (const { element: found } of stated) check.stated.add(found)
 
-  const before = state.transposition
+  const before = state.transposition ?? CONCERT_PITCH
   const inForce = staffTranspositions(state).find((one) => one !== undefined)
   state.transposition = inForce?.value
   const first = state.statedTransposition
-  if (inForce === undefined || first === undefined || before === undefined) return
+  if (inForce === undefined || first === undefined) return
   const changed = !sameTransposition(before, inForce.value)
-  if (changed && !sameTransposition(first, inForce.value)) check.change ??= inForce.element
+  if (changed && !sameTransposition(first.value ?? CONCERT_PITCH, inForce.value)) {
+    check.change ??= inForce.element
+  }
+}
+
+/**
+ * Fixes the part in the transposition in force, which is the one written
+ * out, unless the part is fixed already.
+ */
+export function fixTransposition(state: PartState): void {
+  state.statedTransposition ??= { value: state.transposition }
 }
 
 /** What each staff of the part was last given, by staff number from one. */
@@ -647,7 +657,7 @@ function staffTranspositions(state: PartState): (Stated<Transposition> | undefin
 export function settleTranspositions(state: PartState, warnings: WarningCollector): void {
   // A measure with no note converts its keys with the transposition in force
   // at its end, so the part is fixed there too.
-  state.statedTransposition ??= state.transposition
+  fixTransposition(state)
   const check = state.transpositionCheck
   if (check === undefined) return
   state.transpositionCheck = undefined
