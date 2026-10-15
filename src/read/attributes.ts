@@ -151,7 +151,12 @@ export function readAttributes(
 
   const stavesElement = element.child('staves')
   if (stavesElement) {
+    const had = state.staves
     state.staves = readIntegerInRange(stavesElement, path, 1, 16)
+    for (let staff = had + 1; staff <= state.staves; staff += 1) {
+      takeFirstStaff(state.staffKeys, staff)
+      takeFirstStaff(state.staffTimes, staff)
+    }
     dropTranspositions(stavesElement, state, warnings, context)
   }
 
@@ -611,6 +616,17 @@ function readTransposition(
   for (const { element: found } of stated) check.stated.add(found)
   const change = followTransposition(state, opening.element)
   if (change) check.change ??= change
+}
+
+/**
+ * A staff the part gains takes the signature its first staff has in force,
+ * also where it is one the part dropped before. Its clef and line count stay
+ * as they were: MNX keeps every staff for the whole part, so those stay in
+ * force in the output while the staff is dropped.
+ */
+function takeFirstStaff<T>(inForce: Map<number, T | undefined>, staff: number): void {
+  if (inForce.has(1)) inForce.set(staff, inForce.get(1))
+  else inForce.delete(staff)
 }
 
 /**

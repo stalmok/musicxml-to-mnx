@@ -65,6 +65,24 @@ describe('clefs', () => {
     ])
   })
 
+  // MNX keeps the staff while the source drops it, so its clef stays in force
+  // there too. A rest placed by <display-step> reads against that clef: D3
+  // is the middle line of the bass clef.
+  test('keeps the clef of a staff dropped and added back', () => {
+    const { part } = read(
+      measures(
+        GRAND_STAFF + note('C', '1'),
+        '<attributes><staves>1</staves></attributes>' + note('D', '1'),
+        '<attributes><staves>2</staves></attributes>' +
+          '<note><rest><display-step>D</display-step><display-octave>3</display-octave></rest>' +
+          '<duration>4</duration><type>quarter</type><staff>2</staff></note>',
+      ),
+    )
+    const rest = part?.measures[2]?.sequences[0]?.content[0]
+
+    expect(rest?.kind === 'event' && rest.body.kind === 'rest' && rest.body.staffPosition).toBe(0)
+  })
+
   test('leaves the staff off where the part has only one', () => {
     const { part } = read(
       measures(
@@ -1342,6 +1360,79 @@ describe('key and time signatures stated per staff', () => {
 
     expect(part?.staves).toBe(3)
     expect(warnings).toEqual([])
+  })
+
+  test('carries the key of a part with one staff onto the staff it gains in a later measure', () => {
+    const { warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions><key><fifths>2</fifths></key></attributes>' +
+          note('C', '1'),
+        '<attributes><staves>2</staves></attributes>' + note('D', '1'),
+        '<attributes><key number="1"><fifths>2</fifths></key></attributes>' + note('E', '1'),
+      ),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  // A staff the part drops and gains again is a new staff: it takes the
+  // signatures of the first staff, not the ones it had before.
+  test('gives a staff added back the key of the first staff', () => {
+    const { warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions><staves>2</staves>' +
+          '<key number="1"><fifths>0</fifths></key>' +
+          '<key number="2"><fifths>2</fifths></key></attributes>' +
+          note('C', '1'),
+        '<attributes><staves>1</staves></attributes>' + note('D', '1'),
+        '<attributes><staves>2</staves><key number="1"><fifths>0</fifths></key></attributes>' +
+          note('E', '1'),
+      ),
+    )
+
+    expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
+      ['unrepresentable:per-staff-key', 1],
+    ])
+  })
+
+  test('gives a staff added back the time signature of the first staff', () => {
+    const { warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions><staves>2</staves>' +
+          '<time number="1"><beats>1</beats><beat-type>4</beat-type></time>' +
+          '<time number="2"><beats>2</beats><beat-type>8</beat-type></time></attributes>' +
+          note('C', '1'),
+        '<attributes><staves>1</staves></attributes>' + note('D', '1'),
+        '<attributes><staves>2</staves>' +
+          '<time number="1"><beats>1</beats><beat-type>4</beat-type></time></attributes>' +
+          note('E', '1'),
+      ),
+    )
+
+    expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
+      ['unrepresentable:per-staff-time', 1],
+    ])
+  })
+
+  // The first staff stated none, so the staff added back has none either,
+  // and the key it had before does not agree with the one stated here.
+  test('gives a staff added back no key where the first staff has none', () => {
+    const { warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions><staves>2</staves>' +
+          '<key number="2"><fifths>2</fifths></key></attributes>' +
+          note('C', '1'),
+        '<attributes><staves>1</staves></attributes>' + note('D', '1'),
+        '<attributes><staves>2</staves><key number="1"><fifths>2</fifths></key></attributes>' +
+          note('E', '1'),
+      ),
+    )
+
+    expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
+      ['unrepresentable:per-staff-key', 1],
+      ['unrepresentable:per-staff-key', 3],
+    ])
+    expect(warnings[1]?.message).toContain('one staff and not the others')
   })
 
   // The count rises before the keys rather than after them, so the third
