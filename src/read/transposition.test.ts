@@ -290,7 +290,7 @@ describe('a part written for a transposing instrument', () => {
 
 // MusicXML writes one <transpose> per staff and lets a part change instrument
 // partway. MNX states one transposition for the part, so the one in force at
-// the part's first note is written out and the rest are reported.
+// the part's first pitched note is written out and the rest are reported.
 describe('a part stating more than one transposition', () => {
   test('reports staves transposed by different intervals', () => {
     const { part, warnings } = read(
