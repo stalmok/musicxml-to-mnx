@@ -165,9 +165,13 @@ export function readAttributes(
         stavesElement,
       )
     }
+    // A staff the part gains takes the signatures its first staff has in
+    // force, also where it is one the part dropped before. Its clef and line
+    // count stay as they were: MNX keeps every staff for the whole part, so
+    // those stay in force in the output while the staff is dropped.
     for (let staff = had + 1; staff <= state.staves; staff += 1) {
-      takeFirstStaff(state.staffKeys, staff)
-      takeFirstStaff(state.staffTimes, staff)
+      state.staffKeys.set(staff, state.staffKeys.get(1))
+      state.staffTimes.set(staff, state.staffTimes.get(1))
     }
     // A staff the part drops loses the transposition it was given. Added
     // back, it takes the one every staff has.
@@ -641,19 +645,7 @@ function readTransposition(
   // A <staves> earlier in the measure may have opened the check.
   if (check.stated.size === 0) check.element = opening.element
   for (const { element: found } of stated) check.stated.add(found)
-  const change = followTransposition(state, opening.element)
-  if (change) check.change ??= change
-}
-
-/**
- * A staff the part gains takes the signature its first staff has in force,
- * also where it is one the part dropped before. Its clef and line count stay
- * as they were: MNX keeps every staff for the whole part, so those stay in
- * force in the output while the staff is dropped.
- */
-function takeFirstStaff<T>(inForce: Map<number, T | undefined>, staff: number): void {
-  if (inForce.has(1)) inForce.set(staff, inForce.get(1))
-  else inForce.delete(staff)
+  check.change ??= followTransposition(state, opening.element)
 }
 
 function transpositionCheck(
