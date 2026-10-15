@@ -539,6 +539,69 @@ describe('a part stating more than one transposition', () => {
     ])
   })
 
+  // The part changes back to the transposition it is written out in, which
+  // loses nothing more.
+  test('reports a change of instrument once where a later measure changes back', () => {
+    const { warnings } = read(
+      '<score-partwise><part id="P1">' +
+        `<measure number="1"><attributes><divisions>4</divisions>${IN_B_FLAT}</attributes>` +
+        `${NOTE}</measure>` +
+        `<measure number="2"><attributes>${IN_F}</attributes>${NOTE}</measure>` +
+        `<measure number="3"><attributes>${IN_B_FLAT}</attributes>${NOTE}</measure>` +
+        '</part></score-partwise>',
+    )
+
+    expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
+      ['unrepresentable:transposition-change', 2],
+    ])
+  })
+
+  // Staff 2 keeps the B-flat every staff was given in measure 1, and the
+  // measure gives it none, so the report goes to the measure's first
+  // <transpose>.
+  test('reports staves left disagreeing at the first of two blocks of <transpose>', () => {
+    const { warnings } = read(
+      '<score-partwise><part id="P1">' +
+        '<measure number="1"><attributes><divisions>4</divisions><staves>2</staves>' +
+        `${IN_B_FLAT}</attributes>${NOTE}</measure>` +
+        '<measure number="2"><attributes>' +
+        '<transpose number="1"><diatonic>-4</diatonic><chromatic>-7</chromatic></transpose>' +
+        '</attributes><attributes>\n' +
+        '<transpose number="1"><diatonic>-4</diatonic><chromatic>-7</chromatic></transpose>' +
+        `</attributes>${NOTE}</measure>` +
+        '</part></score-partwise>',
+    )
+
+    expect(warnings.map((w) => [w.code, w.context.measure, w.context.line])).toEqual([
+      ['unrepresentable:per-staff-transposition', 2, 1],
+      ['unrepresentable:transposition-change', 2, 1],
+    ])
+  })
+
+  // The drop opens the check, and staff 2, now at concert pitch, was given
+  // nothing in this measure, so the report goes to the first <transpose>.
+  test('reports staves left disagreeing after a drop at the <transpose> after it', () => {
+    const { warnings } = read(
+      '<score-partwise><part id="P1">' +
+        '<measure number="1"><attributes><divisions>4</divisions><staves>3</staves>' +
+        '<transpose number="3"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>' +
+        `</attributes>${NOTE}</measure>` +
+        '<measure number="2"><attributes><staves>2</staves></attributes><attributes>\n' +
+        '<transpose number="1"><diatonic>-4</diatonic><chromatic>-7</chromatic></transpose>' +
+        `</attributes>${NOTE}</measure>` +
+        '</part></score-partwise>',
+    )
+
+    expect(
+      warnings
+        .filter((w) => w.code === 'unrepresentable:per-staff-transposition')
+        .map((w) => [w.context.measure, w.element, w.context.line]),
+    ).toEqual([
+      [1, 'transpose', 1],
+      [2, 'transpose', 2],
+    ])
+  })
+
   // A staff keeps the transposition it was given until it is given another.
   test('says nothing where a later measure restates one staff alone', () => {
     const both =

@@ -1524,6 +1524,40 @@ describe('key and time signatures stated per staff', () => {
     ])
   })
 
+  // Only the staff gained takes the first staff's key: staff 2 keeps its own.
+  test('keeps the key of a staff the part had where it gains another', () => {
+    const { warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions><staves>2</staves>' +
+          '<key number="1"><fifths>0</fifths></key>' +
+          '<key number="2"><fifths>2</fifths></key></attributes>' +
+          note('C', '1'),
+        '<attributes><staves>3</staves><key number="1"><fifths>0</fifths></key></attributes>' +
+          note('D', '1'),
+      ),
+    )
+
+    expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
+      ['unrepresentable:per-staff-key', 1],
+      ['unrepresentable:per-staff-key', 2],
+    ])
+  })
+
+  // The staff gained takes the key every staff was given, and then a key of
+  // its own, which leaves the staves in different keys.
+  test('reports a staff gained and given its own key in the block that gains it', () => {
+    const { warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions><key><fifths>0</fifths></key></attributes>' +
+          '<attributes><staves>2</staves><key number="2"><fifths>2</fifths></key></attributes>' +
+          note('C', '1'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-key'])
+    expect(warnings[0]?.message).toContain('in different keys')
+  })
+
   // The count rises before the keys rather than after them, so the third
   // staff stands where they are stated and is one they leave unstated.
   test('reports a key stated for every staff but the one the part already gained', () => {
