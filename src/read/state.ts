@@ -141,8 +141,7 @@ export interface PartState {
   /**
    * The instrument transposition in force, from the part's <transpose>. Every
    * pitch is carried by it to what the instrument sounds, and the key
-   * signature to the key the music sounds in. Undefined until the part states
-   * one, which is concert pitch.
+   * signature to the key the music sounds in. Undefined at concert pitch.
    */
   transposition: Transposition | undefined
   /**
@@ -189,8 +188,8 @@ export interface PartState {
         place: WarningPlace
         context: ReportContext
         /**
-         * The measure's first <transpose>, or the <staves> before it that
-         * changed the transposition in force.
+         * The measure's first <transpose>, or the <staves> that changed the
+         * transposition in force where the measure states none.
          */
         element: XmlElement
         /** Every <transpose> the measure states. */

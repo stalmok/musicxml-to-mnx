@@ -592,9 +592,56 @@ describe('a part stating more than one transposition', () => {
       octave: 4,
       alter: 0,
     })
+    expect(warnings.map((w) => [w.code, w.context.measure, w.element])).toEqual([
+      ['unrepresentable:per-staff-transposition', 1, 'transpose'],
+      ['unrepresentable:transposition-change', 2, 'staves'],
+    ])
+  })
+
+  // MusicXML writes <staves> before <transpose>, so one block can drop the
+  // staff and give the staff left the same transposition.
+  test('says nothing where the block that drops the staff gives the one left its transposition', () => {
+    const { part, warnings } = read(
+      '<score-partwise><part id="P1">' +
+        '<measure number="1"><attributes><divisions>4</divisions><staves>2</staves>' +
+        '<transpose number="2"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>' +
+        `</attributes>${NOTE}</measure>` +
+        '<measure number="2"><attributes><staves>1</staves>' +
+        '<transpose number="1"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>' +
+        `</attributes>${NOTE}</measure>` +
+        '</part></score-partwise>',
+    )
+
+    const second = part?.measures[1]?.sequences[0]?.content[0]
+    expect(second?.kind === 'event' && notesOf(second)[0]?.pitch).toEqual({
+      step: 'B',
+      octave: 3,
+      alter: -1,
+    })
     expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
       ['unrepresentable:per-staff-transposition', 1],
-      ['unrepresentable:transposition-change', 2],
+    ])
+  })
+
+  // The drop opens the measure's check, and the staves still disagree once a
+  // later block gives the first staff a transposition of its own.
+  test("reports staves left disagreeing after a drop at the measure's first <transpose>", () => {
+    const { warnings } = read(
+      '<score-partwise><part id="P1">' +
+        '<measure number="1"><attributes><divisions>4</divisions><staves>3</staves>' +
+        '<transpose number="3"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>' +
+        `</attributes>${NOTE}</measure>` +
+        '<measure number="2"><attributes><staves>2</staves></attributes>' +
+        '<attributes>\n' +
+        '<transpose number="2"><diatonic>-4</diatonic><chromatic>-7</chromatic></transpose>' +
+        `</attributes>${NOTE}</measure>` +
+        '</part></score-partwise>',
+    )
+
+    expect(warnings.map((w) => [w.code, w.context.measure, w.element, w.context.line])).toEqual([
+      ['unrepresentable:per-staff-transposition', 1, 'transpose', 1],
+      ['unrepresentable:per-staff-transposition', 2, 'transpose', 2],
+      ['unrepresentable:transposition-change', 2, 'staves', 1],
     ])
   })
 
@@ -802,6 +849,28 @@ describe('a part stating more than one transposition', () => {
     )
 
     expect(warnings.map((w) => [w.element, w.context.line])).toEqual([['transpose', 2]])
+  })
+
+  // The notes follow staff 1, so the change is reported at the <transpose>
+  // given to it, not at the block's first.
+  test('reports a change of instrument at the <transpose> of the staff the notes follow', () => {
+    const { warnings } = read(
+      '<score-partwise><part id="P1">' +
+        '<measure number="1"><attributes><divisions>4</divisions><staves>2</staves>' +
+        '<transpose><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>' +
+        `</attributes>${NOTE}</measure>` +
+        '<measure number="2"><attributes>' +
+        '<transpose number="2"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>\n' +
+        '<transpose number="1"><diatonic>-2</diatonic><chromatic>-3</chromatic></transpose>' +
+        `</attributes>${NOTE}</measure>` +
+        '</part></score-partwise>',
+    )
+
+    expect(
+      warnings
+        .map((w) => [w.code, w.element, w.context.line])
+        .filter(([code]) => code === 'unrepresentable:transposition-change'),
+    ).toEqual([['unrepresentable:transposition-change', 'transpose', 2]])
   })
 
   // The warnings name a <transpose> of the measure they are about.

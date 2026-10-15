@@ -158,7 +158,10 @@ export function readAttributes(
       takeFirstStaff(state.staffKeys, staff)
       takeFirstStaff(state.staffTimes, staff)
     }
-    dropTranspositions(stavesElement, state, warnings, context)
+    // A staff the part drops loses the transposition it was given. Added
+    // back, it takes the one every staff has.
+    const given = state.staffTranspositions.staves
+    for (const staff of given.keys()) if (staff > state.staves) given.delete(staff)
   }
 
   // Each statement in <staff-details> is read on its own, and the sweep
@@ -236,7 +239,7 @@ export function readAttributes(
     }
   }
 
-  readTransposition(element, state, warnings, context, path)
+  readTransposition(element, state, stavesElement, warnings, context, path)
 
   // MusicXML allows one key and one time signature per staff, and MNX states
   // them for the whole score. The measure settles what the staves state,
@@ -567,11 +570,15 @@ function readTimeDisplay(
  * that changes instrument partway keeps the first transposition in force at
  * a note, and reports the change. Together, the <transpose> statements before
  * that note state where the part starts, however many <attributes> they take.
- * The pitches follow the first staff that is given a transposition.
+ * The pitches follow the first staff that is given a transposition, also
+ * where a <staves> drops the staff they followed. A block that drops it and
+ * states a <transpose> is read as one step.
  */
 function readTransposition(
   element: ElementReader,
   state: PartState,
+  // A <staves> in the same block, which can drop the staff the notes follow.
+  resized: XmlElement | undefined,
   warnings: WarningCollector,
   context: ReportContext,
   path: DocumentPath,
@@ -601,7 +608,12 @@ function readTransposition(
   })
 
   const [opening] = stated
-  if (!opening) return
+  if (!opening) {
+    if (resized === undefined) return
+    const change = followTransposition(state, resized)
+    if (change) transpositionCheck(state, warnings, context, resized).change ??= change
+    return
+  }
 
   const given = state.staffTranspositions
   for (const { transposition, staff, element: found } of stated) {
@@ -614,6 +626,8 @@ function readTransposition(
     }
   }
   const check = transpositionCheck(state, warnings, context, opening.element)
+  // A <staves> earlier in the measure may have opened the check.
+  if (check.stated.size === 0) check.element = opening.element
   for (const { element: found } of stated) check.stated.add(found)
   const change = followTransposition(state, opening.element)
   if (change) check.change ??= change
@@ -628,23 +642,6 @@ function readTransposition(
 function takeFirstStaff<T>(inForce: Map<number, T | undefined>, staff: number): void {
   if (inForce.has(1)) inForce.set(staff, inForce.get(1))
   else inForce.delete(staff)
-}
-
-/**
- * A staff the part drops loses the transposition it was given. Added back,
- * it takes the one every staff has. A drop that leaves the part in a
- * transposition other than the one it is written out in changes instrument.
- */
-function dropTranspositions(
-  element: XmlElement,
-  state: PartState,
-  warnings: WarningCollector,
-  context: ReportContext,
-): void {
-  const given = state.staffTranspositions.staves
-  for (const staff of given.keys()) if (staff > state.staves) given.delete(staff)
-  const change = followTransposition(state, element)
-  if (change) transpositionCheck(state, warnings, context, element).change ??= change
 }
 
 function transpositionCheck(
