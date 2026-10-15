@@ -416,7 +416,21 @@ function reportAcrossStaves<T>(
   place: WarningPlace,
 ): void {
   const stated = new Set<number>()
+  // A staff the part gains between the statements here, or after them, is
+  // not one they left unstated: it takes the signature the part is in, which
+  // is the first staff's, the one every other staff is compared against.
+  let had = 0
+  const gain = (count: number): void => {
+    for (let staff = had + 1; staff <= count; staff += 1) {
+      inForce.set(staff, inForce.get(1))
+      stated.add(staff)
+    }
+    had = Math.max(had, count)
+  }
   for (const statement of statements) {
+    // The staves standing at the first statement are not gained.
+    if (had === 0) had = statement.staves
+    gain(statement.staves)
     for (let staff = 1; staff <= statement.staves; staff += 1) {
       if (statement.staff === undefined || statement.staff === staff) {
         inForce.set(staff, statement.value)
@@ -424,15 +438,11 @@ function reportAcrossStaves<T>(
       }
     }
   }
-  // A staff the part gains after every statement here is not one they left
-  // unstated: it takes the signature the part is in, which is the first
-  // staff's, the one every other staff is compared against.
-  const had = Math.max(...statements.map((statement) => statement.staves))
-  for (let staff = had + 1; staff <= staves; staff += 1) {
-    inForce.set(staff, inForce.get(1))
-    stated.add(staff)
-  }
-  const values = Array.from({ length: staves }, (_unused, index) => inForce.get(index + 1))
+  gain(staves)
+  // A staff the part drops later in the measure stays in MNX, so it is
+  // compared too.
+  const count = had
+  const values = Array.from({ length: count }, (_unused, index) => inForce.get(index + 1))
   const first = values[0]
   if (
     !values.some((value) =>
@@ -446,7 +456,7 @@ function reportAcrossStaves<T>(
   // stated: a staff written senza misura or in a non-traditional key states
   // one MNX cannot carry, and a later staff's stands instead.
   const disagreement =
-    stated.size < staves
+    stated.size < count
       ? `A ${kind.element} signature is stated for one staff and not the others, and MNX ` +
         'states one for the whole score.'
       : `The staves of this part are in different ${kind.name}s, and MNX states one ` +

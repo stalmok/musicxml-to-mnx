@@ -1453,6 +1453,56 @@ describe('key and time signatures stated per staff', () => {
     expect(warnings[1]?.message).toContain('one staff and not the others')
   })
 
+  // The block that raises the count comes between the two statements, so the
+  // staff gained takes the key the first one gave every staff.
+  test('says nothing where a part gains a staff between two statements of one key', () => {
+    const { warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions><key><fifths>0</fifths></key></attributes>' +
+          note('C', '1'),
+        '<attributes><key><fifths>2</fifths></key></attributes>' +
+          '<attributes><staves>2</staves><key number="1"><fifths>2</fifths></key></attributes>' +
+          note('D', '1'),
+      ),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  test('says nothing where a part gains a staff between two statements of one meter', () => {
+    const { warnings } = read(
+      measures(
+        '<attributes><divisions>4</divisions>' +
+          '<time><beats>1</beats><beat-type>4</beat-type></time></attributes>' +
+          note('C', '1'),
+        '<attributes><time><beats>2</beats><beat-type>8</beat-type></time></attributes>' +
+          '<attributes><staves>2</staves>' +
+          '<time number="1"><beats>2</beats><beat-type>8</beat-type></time></attributes>' +
+          note('D', '1'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual([])
+  })
+
+  // MNX keeps the staff the part drops later in the measure, so the key
+  // stated for it is lost there.
+  test('reports staves in different keys where the part drops one later in the measure', () => {
+    const { warnings } = read(
+      measures(
+        GRAND_STAFF + note('C', '1'),
+        '<attributes><key number="1"><fifths>0</fifths></key>' +
+          '<key number="2"><fifths>3</fifths></key></attributes>' +
+          note('D', '1') +
+          '<attributes><staves>1</staves></attributes>',
+      ),
+    )
+
+    expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
+      ['unrepresentable:per-staff-key', 2],
+    ])
+  })
+
   // The count rises before the keys rather than after them, so the third
   // staff stands where they are stated and is one they leave unstated.
   test('reports a key stated for every staff but the one the part already gained', () => {
@@ -1487,9 +1537,9 @@ describe('key and time signatures stated per staff', () => {
   })
 
   // Two blocks state a key where the measure begins and the second raises the
-  // count, so the staves each of them speaks for differ. The second names
-  // staff 1 alone with staff 3 standing, which leaves staff 3 unstated.
-  test('reports a staff left unstated by the block that gave the part it', () => {
+  // count. Staff 3 takes the key the first staff has where it is gained, so
+  // the second block naming staff 1 alone leaves the staves agreed.
+  test('gives a staff gained between two blocks of keys the key of the first staff', () => {
     const { warnings } = read(
       measures(
         '<attributes><divisions>4</divisions><staves>2</staves>' +
@@ -1501,8 +1551,7 @@ describe('key and time signatures stated per staff', () => {
       ),
     )
 
-    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:per-staff-key'])
-    expect(warnings[0]?.message).toContain('one staff and not the others')
+    expect(warnings).toEqual([])
   })
 
   // A staff number is read before the signature it numbers, so a block
