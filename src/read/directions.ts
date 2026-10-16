@@ -116,70 +116,98 @@ const isDynamicValue = recogniser<DynamicValue>({
 // The accent dynamics, such as a sforzando, spelled out the way MNX states
 // them: the value is the level of the attack, the letters around it are the
 // accent's prefix and suffix, and a two-stage accent (fp is a forte attack
-// held at piano) adds the level it settles to as the residual. The glyph
-// names are the precomposed combined marks from SMuFL's dynamics range,
-// carried besides so the mark is drawn as written.
+// held at piano) adds the level it settles to as the residual.
 //
 // pf (poco forte / piano-forte) is left out: its two letters have no settled
 // reading, and MNX requires an accent to state the level of its attack.
 interface AccentSpelling {
-  glyph: string
   value: DynamicValue
   residualValue: DynamicValue | undefined
   prefix: AccentPrefix
   suffix: AccentSuffix
 }
-const ACCENT_DYNAMICS = new Map<string, AccentSpelling>([
-  [
-    'sf',
-    { glyph: 'dynamicSforzando1', value: 'f', residualValue: undefined, prefix: 's', suffix: '' },
-  ],
-  [
-    'sfz',
-    { glyph: 'dynamicSforzato', value: 'f', residualValue: undefined, prefix: 's', suffix: 'z' },
-  ],
-  [
-    'fz',
-    { glyph: 'dynamicForzando', value: 'f', residualValue: undefined, prefix: '', suffix: 'z' },
-  ],
-  [
-    'rf',
-    { glyph: 'dynamicRinforzando1', value: 'f', residualValue: undefined, prefix: 'r', suffix: '' },
-  ],
-  [
-    'rfz',
-    {
-      glyph: 'dynamicRinforzando2',
-      value: 'f',
-      residualValue: undefined,
-      prefix: 'r',
-      suffix: 'z',
-    },
-  ],
-  [
-    'sffz',
-    { glyph: 'dynamicSforzatoFF', value: 'ff', residualValue: undefined, prefix: 's', suffix: 'z' },
-  ],
-  ['fp', { glyph: 'dynamicFortePiano', value: 'f', residualValue: 'p', prefix: '', suffix: '' }],
-  [
-    'sfp',
-    { glyph: 'dynamicSforzandoPiano', value: 'f', residualValue: 'p', prefix: 's', suffix: '' },
-  ],
-  [
-    'sfpp',
-    {
-      glyph: 'dynamicSforzandoPianissimo',
-      value: 'f',
-      residualValue: 'pp',
-      prefix: 's',
-      suffix: '',
-    },
-  ],
-  [
-    'sfzp',
-    { glyph: 'dynamicSforzatoPiano', value: 'f', residualValue: 'p', prefix: 's', suffix: 'z' },
-  ],
+
+const ATTACK_LEVELS = [
+  'f',
+  'ff',
+  'fff',
+  'ffff',
+  'fffff',
+  'ffffff',
+] as const satisfies readonly DynamicValue[]
+const RESIDUAL_LEVELS = [
+  'pppppp',
+  'ppppp',
+  'pppp',
+  'ppp',
+  'pp',
+  'p',
+  'mp',
+  'mf',
+] as const satisfies readonly DynamicValue[]
+
+// Every accent spelled as its letters: an "s" or "r", the attack, a "z", then
+// the residual level. Each part but the attack may be left out, though not
+// all of them at once, which leaves a plain mark.
+const ACCENT_SPELLINGS = new Map<string, AccentSpelling>()
+for (const prefix of ['', 's', 'r'] as const) {
+  for (const value of ATTACK_LEVELS) {
+    for (const suffix of ['', 'z'] as const) {
+      for (const residualValue of [undefined, ...RESIDUAL_LEVELS]) {
+        if (prefix === '' && suffix === '' && residualValue === undefined) continue
+        ACCENT_SPELLINGS.set(`${prefix}${value}${suffix}${residualValue ?? ''}`, {
+          value,
+          residualValue,
+          prefix,
+          suffix,
+        })
+      }
+    }
+  }
+}
+
+// The MusicXML elements for an accent, with the precomposed glyph from
+// SMuFL's dynamics range each is drawn as, carried so the mark is drawn as
+// written.
+const ACCENT_GLYPHS = new Map([
+  ['sf', 'dynamicSforzando1'],
+  ['sfz', 'dynamicSforzato'],
+  ['fz', 'dynamicForzando'],
+  ['rf', 'dynamicRinforzando1'],
+  ['rfz', 'dynamicRinforzando2'],
+  ['sffz', 'dynamicSforzatoFF'],
+  ['fp', 'dynamicFortePiano'],
+  ['sfp', 'dynamicSforzandoPiano'],
+  ['sfpp', 'dynamicSforzandoPianissimo'],
+  ['sfzp', 'dynamicSforzatoPiano'],
 ])
+
+type Mark =
+  | { kind: 'immediate'; value: DynamicValue }
+  | { kind: 'accent'; spelling: AccentSpelling; glyphs: readonly string[] }
+
+function namedMark(name: string): Mark | undefined {
+  const spelling = ACCENT_SPELLINGS.get(name)
+  const glyph = ACCENT_GLYPHS.get(name)
+  if (spelling !== undefined && glyph !== undefined)
+    return { kind: 'accent', spelling, glyphs: [glyph] }
+  return isDynamicValue(name) ? { kind: 'immediate', value: name } : undefined
+}
+
+/**
+ * The mark an <other-dynamics> spells out in letters, such as "sff", which
+ * MusicXML has no element for. A glyph the source names is the mark's own.
+ * The model does not carry one on an immediate dynamic, so there the glyph
+ * is left for the sweep to report.
+ */
+function writtenMark(mark: XmlElement, written: string): Mark | undefined {
+  const spelling = ACCENT_SPELLINGS.get(written)
+  if (spelling !== undefined) {
+    const glyph = attribute(mark, 'smufl')
+    return { kind: 'accent', spelling, glyphs: glyph === undefined ? [] : [glyph] }
+  }
+  return isDynamicValue(written) ? { kind: 'immediate', value: written } : undefined
+}
 
 export function readDirection(
   element: ElementReader,
@@ -805,33 +833,40 @@ function readDynamics(
 
   for (const mark of element.element.children) {
     element.read(mark)
-    const accent = ACCENT_DYNAMICS.get(mark.name)
+    let found: Mark | undefined
     if (mark.name === 'other-dynamics') {
-      // The glyph is reported before the text is read: an element naming a
-      // glyph and holding no text still says something the output cannot.
-      reportWordingGlyph(mark, trimmedText(mark), warnings, context)
-      if (trimmedText(mark) === '') continue
-      wording.push(mark)
-    } else if (isDynamicValue(mark.name)) {
+      const written = trimmedText(mark)
+      found = writtenMark(mark, written)
+      if (found === undefined) {
+        // The glyph is reported before the text is read: an element naming a
+        // glyph and holding no text still says something the output cannot.
+        reportWordingGlyph(mark, written, warnings, context)
+        if (written !== '') wording.push(mark)
+        continue
+      }
+    } else {
+      found = namedMark(mark.name)
+    }
+    if (found?.kind === 'immediate') {
       const prefix = wording.take()
       dynamics.push({
         kind: 'immediate',
         position,
-        value: mark.name,
+        value: found.value,
         staff,
         ...(prefix !== undefined ? { prefix: prefix.text } : {}),
         ...(placement !== undefined ? { placement } : {}),
       })
-    } else if (accent) {
+    } else if (found) {
       const prefix = wording.take()
       dynamics.push({
         kind: 'accent',
         position,
-        value: accent.value,
-        residualValue: accent.residualValue,
-        accentPrefix: accent.prefix,
-        accentSuffix: accent.suffix,
-        glyphs: [accent.glyph],
+        value: found.spelling.value,
+        residualValue: found.spelling.residualValue,
+        accentPrefix: found.spelling.prefix,
+        accentSuffix: found.spelling.suffix,
+        glyphs: found.glyphs,
         staff,
         ...(prefix !== undefined ? { prefix: prefix.text } : {}),
         ...(placement !== undefined ? { placement } : {}),

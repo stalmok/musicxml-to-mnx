@@ -402,6 +402,49 @@ function sourceOttavaSpans(root: XmlElement): string[] {
   return spans
 }
 
+// The MusicXML elements for a dynamic mark that convert: every level MNX
+// states, and the accents MusicXML has an element for.
+const MARK_ELEMENTS = new Set([
+  'pppppp',
+  'ppppp',
+  'pppp',
+  'ppp',
+  'pp',
+  'p',
+  'mp',
+  'mf',
+  'f',
+  'ff',
+  'fff',
+  'ffff',
+  'fffff',
+  'ffffff',
+  'n',
+  'sf',
+  'sfz',
+  'fz',
+  'rf',
+  'rfz',
+  'sffz',
+  'fp',
+  'sfp',
+  'sfpp',
+  'sfzp',
+])
+
+/** The name of every mark element in a direction's <dynamics>. */
+function sourceMarkElements(root: XmlElement): string[] {
+  const found: string[] = []
+  const walk = (element: XmlElement, parent: string): void => {
+    if (element.name === 'dynamics' && parent === 'direction-type') {
+      for (const mark of element.children) if (MARK_ELEMENTS.has(mark.name)) found.push(mark.name)
+    }
+    for (const child of element.children) walk(child, element.name)
+  }
+  walk(root, '')
+  return found
+}
+
 /**
  * Every <other-dynamics> wording in the source, trimmed as the reader trims
  * it, in document order. Whitespace-only wordings draw nothing and are left
@@ -552,30 +595,51 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     expect(converted).toEqual(sourceHairpins(parseXmlRoot(source)))
   })
 
-  // The wording around a dynamic becomes that mark's prefix or suffix. Each
-  // wording in the source must be in the output or in a warning. A substring
-  // match, because several wordings before one mark are joined into one
+  // The wording around a dynamic becomes that mark's prefix or suffix, and
+  // text spelling a mark becomes the mark. Each mark element converts. Each
+  // wording in the source must be a mark the elements do not account for, or
+  // be in the output's wording or in a warning. A substring match for the
+  // wording, because several wordings before one mark are joined into one
   // prefix.
-  test('carries or reports every dynamic wording the source writes', () => {
+  test('carries or reports every dynamic mark and wording the source writes', () => {
     const carried: string[] = []
+    const marks = new Map<string, number>()
     for (const part of mnx.parts) {
       for (const measure of part.measures) {
         for (const dynamic of measure.dynamics ?? []) {
           if (dynamic.prefix !== undefined) carried.push(dynamic.prefix)
           if (dynamic.suffix !== undefined) carried.push(dynamic.suffix)
+          const spelling =
+            dynamic.type === 'immediate'
+              ? dynamic.value
+              : dynamic.type === 'accent'
+                ? (dynamic.accentPrefix ?? 's') +
+                  dynamic.value +
+                  (dynamic.accentSuffix ?? 'z') +
+                  (dynamic.residualValue ?? '')
+                : undefined
+          if (spelling !== undefined) marks.set(spelling, (marks.get(spelling) ?? 0) + 1)
         }
       }
     }
+    const root = parseXmlRoot(source)
+    for (const name of sourceMarkElements(root)) marks.set(name, (marks.get(name) ?? 0) - 1)
     // Only the quoted wording in a warning counts, not the whole message.
     const reported = warnings.flatMap((warning) =>
       [...warning.message.matchAll(/"([^"]*)"/g)].map((m) => m[1] ?? ''),
     )
 
-    const lost = sourceWordings(parseXmlRoot(source)).filter(
-      (wording) => ![...carried, ...reported].some((text) => text.includes(wording)),
-    )
+    const lost = sourceWordings(root).filter((wording) => {
+      const unclaimed = marks.get(wording) ?? 0
+      if (unclaimed > 0) {
+        marks.set(wording, unclaimed - 1)
+        return false
+      }
+      return ![...carried, ...reported].some((text) => text.includes(wording))
+    })
 
     expect(lost).toEqual([])
+    expect([...marks].filter(([, count]) => count !== 0)).toEqual([])
     expect(carried.filter((text) => text === '')).toEqual([])
   })
 

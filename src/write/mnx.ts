@@ -602,8 +602,8 @@ function writeArpeggios(
 
 /**
  * A dynamic mark. A hairpin is gradual, and its end names the measure it
- * stops in. An accent states its glyphs, its attack value and the letters
- * around it, and a two-stage accent adds the level it settles to as the
+ * stops in. An accent states its attack value, the letters around it and
+ * any glyphs, and a two-stage accent adds the level it settles to as the
  * residual. MNX reads an unstated accent letter as the "s" and "z" of sfz, so
  * only a letter that differs is written.
  */
@@ -638,7 +638,7 @@ function writeDynamic(dynamic: Dynamic, names: MeasureNames): MNXDynamic {
         ...(dynamic.residualValue ? { residualValue: dynamic.residualValue } : {}),
         ...(dynamic.accentPrefix !== 's' ? { accentPrefix: dynamic.accentPrefix } : {}),
         ...(dynamic.accentSuffix !== 'z' ? { accentSuffix: dynamic.accentSuffix } : {}),
-        glyphs: [...dynamic.glyphs],
+        ...(dynamic.glyphs.length > 0 ? { glyphs: [...dynamic.glyphs] } : {}),
         ...wording,
         ...where,
       }

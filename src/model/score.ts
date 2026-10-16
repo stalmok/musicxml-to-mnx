@@ -558,10 +558,10 @@ export interface GradualDynamic extends DynamicBase {
 }
 
 /**
- * An accent, such as a sforzando, drawn as a single combined glyph. Its
- * spelling is the plain `value` for the attack level, with the accent's
- * letters around it, and a two-stage accent like fp adds the level it
- * settles to as the residual.
+ * An accent, such as a sforzando. Its spelling is the plain `value` for the
+ * attack level, with the accent's letters around it, and a two-stage accent
+ * like fp adds the level it settles to as the residual. The glyphs are the
+ * combined glyph it is drawn as, where the source gives one.
  */
 export interface AccentDynamic extends DynamicBase {
   readonly kind: 'accent'

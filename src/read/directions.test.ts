@@ -232,14 +232,20 @@ describe('dynamics', () => {
 
   // Every dynamic element MusicXML names converts, so only an element
   // from outside the format reaches the report.
-  test('reports a dynamic mark it does not know', () => {
-    const { measure, warnings } = read(
-      inMeasure(direction('<dynamics><fffffff/></dynamics>') + note('C')),
-    )
+  // An accent MusicXML has no element for, such as sff, is spelled only as text.
+  test.each(['fffffff', 'sff'])(
+    'reports the dynamic mark <%s/>, which it does not know',
+    (name) => {
+      const { measure, warnings } = read(
+        inMeasure(direction(`<dynamics><${name}/></dynamics>`) + note('C')),
+      )
 
-    expect(measure?.dynamics).toEqual([])
-    expect(warnings.map((w) => w.message)).toContain('A dynamic of "fffffff" is not converted yet.')
-  })
+      expect(measure?.dynamics).toEqual([])
+      expect(warnings.map((w) => w.message)).toContain(
+        `A dynamic of "${name}" is not converted yet.`,
+      )
+    },
+  )
 
   // The accent dynamics (sforzando and its family) are spelled out: the value
   // is the level of the attack, and the letters around it go as the accent's
@@ -441,13 +447,119 @@ describe('dynamics', () => {
 
   // MNX requires an immediate dynamic to state a level, and states wording
   // only beside one.
-  test('reports wording standing alone, and leaves it out', () => {
+  test.each(['m', 'pf', 'sp'])(
+    'reports the wording "%s" standing alone, and leaves it out',
+    (text) => {
+      const { measure, warnings } = read(
+        inMeasure(
+          direction(`<dynamics><other-dynamics>${text}</other-dynamics></dynamics>`) + note('C'),
+        ),
+      )
+
+      expect(measure?.dynamics).toEqual([])
+      expect(warnings).toMatchObject([lone(text)])
+    },
+  )
+
+  // MusicXML has an element for only some accents, so a source spells the
+  // rest as text. Text spelling a mark is read as that mark.
+  test.each([
+    ['sff', 'ff', undefined, 's', ''],
+    ['sfff', 'fff', undefined, 's', ''],
+    ['ffz', 'ff', undefined, '', 'z'],
+    ['sfffz', 'fff', undefined, 's', 'z'],
+    ['fpp', 'f', 'pp', '', ''],
+    ['sfmf', 'f', 'mf', 's', ''],
+    ['rfp', 'f', 'p', 'r', ''],
+    ['ffffz', 'ffff', undefined, '', 'z'],
+    ['sfffff', 'fffff', undefined, 's', ''],
+    ['rffffffz', 'ffffff', undefined, 'r', 'z'],
+    ['fmp', 'f', 'mp', '', ''],
+    ['fppp', 'f', 'ppp', '', ''],
+    ['fpppp', 'f', 'pppp', '', ''],
+    ['fppppp', 'f', 'ppppp', '', ''],
+    ['fpppppp', 'f', 'pppppp', '', ''],
+    [' sfz ', 'f', undefined, 's', 'z'],
+  ])('reads the text "%s" as an accent', (text, attack, residual, prefix, suffix) => {
     const { measure, warnings } = read(
+      inMeasure(
+        direction(`<dynamics><other-dynamics>${text}</other-dynamics></dynamics>`) + note('C'),
+      ),
+    )
+
+    expect(measure?.dynamics).toEqual([
+      {
+        kind: 'accent',
+        position: { num: 0, den: 1 },
+        value: attack,
+        residualValue: residual,
+        accentPrefix: prefix,
+        accentSuffix: suffix,
+        glyphs: [],
+      },
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  test.each(['f', 'pp', 'mf', 'n'])('reads the text "%s" as a plain mark', (text) => {
+    const { measure, warnings } = read(
+      inMeasure(
+        direction(`<dynamics><other-dynamics>${text}</other-dynamics></dynamics>`) + note('C'),
+      ),
+    )
+
+    expect(measure?.dynamics).toEqual([
+      { kind: 'immediate', position: { num: 0, den: 1 }, value: text },
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  test('reads wording around a mark spelled as text', () => {
+    const { measure } = read(
+      inMeasure(
+        direction(
+          '<dynamics><other-dynamics>più </other-dynamics><other-dynamics>sff</other-dynamics>' +
+            '<other-dynamics> sempre</other-dynamics></dynamics>',
+        ) + note('C'),
+      ),
+    )
+
+    expect(measure?.dynamics).toMatchObject([{ value: 'ff', prefix: 'più', suffix: 'sempre' }])
+  })
+
+  test('carries the glyph named for an accent spelled as text', () => {
+    const { measure, warnings } = read(
+      inMeasure(
+        direction(
+          '<dynamics><other-dynamics smufl="dynamicSforzatoFF">sffz</other-dynamics></dynamics>',
+        ) + note('C'),
+      ),
+    )
+
+    expect(measure?.dynamics).toMatchObject([{ value: 'ff', glyphs: ['dynamicSforzatoFF'] }])
+    expect(warnings).toEqual([])
+  })
+
+  test('reports the glyph named for a plain mark spelled as text', () => {
+    const { measure, warnings } = read(
+      inMeasure(
+        direction('<dynamics><other-dynamics smufl="dynamicForte">f</other-dynamics></dynamics>') +
+          note('C'),
+      ),
+    )
+
+    expect(measure?.dynamics).toMatchObject([{ kind: 'immediate', value: 'f' }])
+    expect(warnings).toMatchObject([{ element: 'other-dynamics', attribute: 'smufl' }])
+  })
+
+  test('writes an accent spelled as text with no glyphs', () => {
+    const { mnx } = convertValid(
       inMeasure(direction('<dynamics><other-dynamics>sff</other-dynamics></dynamics>') + note('C')),
     )
 
-    expect(measure?.dynamics).toEqual([])
-    expect(warnings).toMatchObject([lone('sff')])
+    expect(mnx.parts[0]?.measures[0]?.dynamics).toEqual([
+      { position: { fraction: [0, 1] }, type: 'accent', value: 'ff', accentSuffix: '' },
+    ])
   })
 
   test('writes a measure whose only dynamic is wording onto schema-valid MNX', () => {
