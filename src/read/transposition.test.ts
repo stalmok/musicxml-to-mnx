@@ -620,6 +620,24 @@ describe('a part stating more than one transposition', () => {
     expect(warnings).toEqual([])
   })
 
+  test('takes the transposition of the first note after a measure that only moves the cursor', () => {
+    const { part, warnings } = read(
+      '<score-partwise><part id="P1">' +
+        '<measure number="1"><attributes><divisions>4</divisions><staves>2</staves>' +
+        '<transpose number="2"><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>' +
+        '</attributes><forward><duration>4</duration></forward></measure>' +
+        `<measure number="2"><attributes><transpose number="1"><diatonic>-4</diatonic><chromatic>-7</chromatic></transpose>` +
+        `</attributes>${NOTE}</measure>` +
+        '</part></score-partwise>',
+    )
+
+    expect(part?.transposition).toEqual({ staffDistance: 4, halfSteps: 7 })
+    expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
+      ['unrepresentable:per-staff-transposition', 1],
+      ['unrepresentable:per-staff-transposition', 2],
+    ])
+  })
+
   test('takes the transposition of the first note after an empty measure at concert pitch', () => {
     const { part, warnings } = read(
       '<score-partwise><part id="P1">' +
