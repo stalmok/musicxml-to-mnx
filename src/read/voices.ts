@@ -84,12 +84,22 @@ export interface JoinedEvent extends PlacedEvent {
 }
 
 /**
+ * The most recent event, which a chord note joins. `duration` is how long it
+ * lasts and `share` how much of its written value, for chord notes to agree
+ * with. Both are unset on a grace note, which takes no time.
+ */
+interface LastEvent extends JoinedEvent {
+  readonly duration: Fraction | undefined
+  readonly share: Fraction | undefined
+}
+
+/**
  * The chord a member joins: the line it is in, the event the member is added
  * to, and the staff that event was placed on.
  */
 export interface ChordToJoin {
   readonly voice: VoiceLine
-  readonly last: JoinedEvent & { readonly duration: Fraction | undefined }
+  readonly last: LastEvent
   readonly body: EventNotes
   readonly staff: number | undefined
 }
@@ -154,13 +164,11 @@ interface VoiceBuilder {
   /**
    * The most recent event, which a chord note joins. Held directly rather
    * than looked up, because it can sit inside a tuplet or a grace group that
-   * has since closed. `duration` is how long it lasts, for chord notes to
-   * agree with, and is unset on a grace note, which takes no time. `start` is
-   * where it begins, held because a chord note is read after the cursor has
-   * moved past the event it joins, and an arpeggio over the chord belongs at
-   * the event's own place in the measure.
+   * has since closed. `start` is where it begins, held because a chord note
+   * is read after the cursor has moved past the event it joins, and an
+   * arpeggio over the chord belongs at the event's own place in the measure.
    */
-  last: (JoinedEvent & { duration: Fraction | undefined }) | undefined
+  last: LastEvent | undefined
   /**
    * The grace group at the end of this sequence that is still waiting for
    * the note it ornaments, where the sequence ends in one. `at` is where it
@@ -746,6 +754,7 @@ export class MeasureBuilder {
     voice: VoiceLine,
     event: Draft<Event>,
     notations: readonly EventNotation[],
+    share: Fraction | undefined,
     duration: Fraction,
     path: DocumentPath,
     line: number,
@@ -770,7 +779,7 @@ export class MeasureBuilder {
     builder.lastEvent = { id: event.id, staff }
     this.#lastWritten = voice
     const start = this.#cursor
-    builder.last = { event, notations, duration, start }
+    builder.last = { event, notations, duration, share, start }
     this.#eventStarts.push({ start, staff, grace: false })
     builder.tuplets.addTremoloNote(event, duration)
     builder.end = addFractions(start, duration)
@@ -1023,7 +1032,7 @@ export class MeasureBuilder {
     staff: number | undefined,
   ): PlacedEvent {
     this.#requireRoomForMeasureRest(voice, path, line)
-    const placed = this.addEvent(voice, event, notations, duration, path, line, staff)
+    const placed = this.addEvent(voice, event, notations, undefined, duration, path, line, staff)
     layerOf(voice).measureRest = { origin: 'fills-as-event' }
     return placed
   }
@@ -1341,7 +1350,7 @@ export class MeasureBuilder {
     // Grace notes have no duration of their own, so a chord note joining one
     // has nothing to agree with.
     const start = this.#cursor
-    builder.last = { event, notations, duration: undefined, start }
+    builder.last = { event, notations, duration: undefined, share: undefined, start }
     this.#eventStarts.push({ start, staff, grace: true })
     // Recorded like any other event, so the voice's staff counts it and a
     // grace note reaching across to the other staff says so.

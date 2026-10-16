@@ -2281,6 +2281,154 @@ describe('a note inside a bracket stating a ratio of its own', () => {
   })
 })
 
+describe('a chord member stating a ratio of its own', () => {
+  const member = (actual: number, normal: number) =>
+    '<note><chord/><pitch><step>G</step><octave>4</octave></pitch>' +
+    '<duration>4</duration><type>eighth</type>' +
+    `<time-modification><actual-notes>${String(actual)}</actual-notes>` +
+    `<normal-notes>${String(normal)}</normal-notes></time-modification></note>`
+  const plain = (step: string) =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    '<duration>4</duration><type>eighth</type></note>'
+
+  test('reports a ratio that disagrees with the note it joins, and keeps the chord', () => {
+    const { content, warnings } = read(
+      measure(
+        tupletNote('C', 4, 'eighth', 'start') +
+          tupletNote('D', 4, 'eighth') +
+          member(5, 4) +
+          tupletNote('E', 4, 'eighth', 'stop'),
+      ),
+    )
+    const tuplet = content?.[0]
+
+    expect(warnings.map((w) => [w.code, w.element, w.message])).toEqual([
+      [
+        'inconsistent:tuplet',
+        'time-modification',
+        "A chord note's <time-modification> gives it 4/5 of its written value. The note it " +
+          'joins lasts 2/3. The note it joins is the one converted.',
+      ],
+    ])
+    expect(tuplet?.kind === 'tuplet' && [tuplet.inner.multiple, tuplet.outer.multiple]).toEqual([
+      3, 2,
+    ])
+    const events = tuplet?.kind === 'tuplet' ? tuplet.content : []
+    expect(events.map((event) => event.kind === 'event' && notesOf(event).length)).toEqual([
+      1, 2, 1,
+    ])
+  })
+
+  // Six in the time of four plays each note as three in the time of two does.
+  test('passes over a ratio that counts differently but gives the same time', () => {
+    const { warnings } = read(
+      measure(
+        tupletNote('C', 4, 'eighth', 'start') +
+          tupletNote('D', 4, 'eighth') +
+          member(6, 4) +
+          tupletNote('E', 4, 'eighth', 'stop'),
+      ),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  test('compares the ratio with a note that closes the bracket', () => {
+    const { warnings } = read(measure(TRIPLET + member(5, 4)))
+
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([
+      ['inconsistent:tuplet', 'time-modification'],
+    ])
+  })
+
+  // The bracket overrules the ratio D states, so the chord lasts what the
+  // member states, and only D is reported.
+  test('compares the ratio with what the note it joins lasts, not what it states', () => {
+    const { warnings } = read(
+      measure(
+        tupletNote('C', 4, 'eighth', 'start') +
+          tupletNote('D', 4, 'eighth').replace('<actual-notes>3', '<actual-notes>5') +
+          member(3, 2) +
+          tupletNote('E', 4, 'eighth', 'stop'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.message)).toEqual([
+      "A note's <time-modification> gives it 2/5 of its written value. Inside the tuplet " +
+        'around it, it lasts 2/3. The tuplet is the one converted.',
+    ])
+  })
+
+  test('compares the ratio with the bracket where the note it joins states none', () => {
+    const { warnings } = read(
+      measure(
+        tupletNote('C', 4, 'eighth', 'start') +
+          plain('D') +
+          member(5, 4) +
+          tupletNote('E', 4, 'eighth', 'stop'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.message)).toEqual([
+      "A chord note's <time-modification> gives it 4/5 of its written value. The note it " +
+        'joins lasts 2/3. The note it joins is the one converted.',
+    ])
+  })
+
+  test('reports a ratio on a chord no tuplet scales', () => {
+    const eighth = (note: string) => note.replace('<duration>4', '<duration>6')
+    const { warnings } = read(measure(eighth(plain('C')) + eighth(member(3, 2))))
+
+    expect(warnings.map((w) => w.message)).toEqual([
+      "A chord note's <time-modification> gives it 2/3 of its written value. The note it " +
+        'joins lasts 1/1. The note it joins is the one converted.',
+    ])
+  })
+
+  test('compares the ratio with the note of a two-note tremolo it joins', () => {
+    const chord = (actual: number) =>
+      tremoloNote('G', 'start')
+        .replace('<note>', '<note><chord/>')
+        .replace('<actual-notes>2', `<actual-notes>${String(actual)}`)
+    const tremolo = (actual: number) =>
+      read(measure(tremoloNote('C', 'start') + chord(actual) + tremoloNote('E', 'stop'))).warnings
+
+    expect(tremolo(2)).toEqual([])
+    expect(tremolo(4).map((w) => w.message)).toEqual([
+      "A chord note's <time-modification> gives it 1/4 of its written value. The note it " +
+        'joins lasts 1/2. The note it joins is the one converted.',
+    ])
+  })
+
+  // A grace note takes none of the measure's time, so its ratio is not read.
+  test('passes over the ratio of a grace chord', () => {
+    const grace = (step: string, actual: number, extra = '') =>
+      `<note>${extra}<grace/><pitch><step>${step}</step><octave>4</octave></pitch>` +
+      '<type>eighth</type><time-modification>' +
+      `<actual-notes>${String(actual)}</actual-notes><normal-notes>2</normal-notes>` +
+      '</time-modification></note>'
+    const chord = (head: number, joining: number) =>
+      read(
+        measure(
+          tupletNote('C', 4, 'eighth', 'start') +
+            grace('D', head) +
+            grace('F', joining, '<chord/>') +
+            tupletNote('D', 4, 'eighth') +
+            tupletNote('E', 4, 'eighth', 'stop'),
+        ),
+      ).warnings
+
+    expect(chord(3, 5)).toEqual([])
+    expect(chord(0, 3)).toEqual([])
+  })
+
+  test('refuses a ratio that plays no notes', () => {
+    const error = readFailure(measure(TRIPLET + member(0, 2)))
+
+    expect(error.message).toContain('<actual-notes> is 0, outside the range 1 to 1000.')
+  })
+})
+
 // A <note> stating no <type> is measured from its <duration>, which is the
 // time it sounds. Inside a tuplet or a tremolo that time is the written value
 // scaled by the ratio, so the duration is divided by the ratio before the

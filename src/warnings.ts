@@ -284,7 +284,9 @@ export const WARNING_CODES = Object.freeze([
   // chord's tuplet bracket another way than the note it joins, whose own
   // drawing is the one converted. Also a note inside a tuplet or a two-note
   // tremolo whose <time-modification> gives it another share of its written
-  // value than they do, where they are the ones converted.
+  // value than they do, where they are the ones converted. Also a note of a
+  // chord whose <time-modification> gives it another share of its written
+  // value than the note it joins lasts, where that note is the one converted.
   'inconsistent:tuplet',
   // The two ends of a two-note tremolo count different beams, and the
   // start's count is the one converted. Also a note of a chord carrying a

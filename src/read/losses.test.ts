@@ -72,14 +72,19 @@ describe('a note that joins the chord before it', () => {
   })
 
   test('says nothing about the ratio it repeats, which is the chord it joins', () => {
-    expect(
-      lost(
-        chord(
-          '<time-modification><actual-notes>3</actual-notes>' +
-            '<normal-notes>2</normal-notes></time-modification>',
-        ),
-      ),
-    ).toEqual([])
+    const ratio =
+      '<time-modification><actual-notes>3</actual-notes>' +
+      '<normal-notes>2</normal-notes></time-modification>'
+    const triplet = (step: string) =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+      `<duration>8</duration><type>quarter</type>${ratio}</note>`
+    const member = triplet('G').replace('<note>', '<note><chord/>')
+    const source = measure(
+      triplet('C') + member + triplet('D') + triplet('E'),
+      '<divisions>12</divisions>',
+    )
+
+    expect(read(source).warnings).toEqual([])
   })
 })
 

@@ -25,7 +25,12 @@ import { readFermata, readMarkings, readStemDirection } from './marks.js'
 import { readLyrics } from './lyrics.js'
 import { dropRedundantRest, readRest, reportMarkersOnMeasureRest, setMeasureRest } from './rests.js'
 import type { NoteStatement, VoicedNote } from './noteStatement.js'
-import { closeTremoloAndTuplets, closeTuplets, openTupletsAndTremolo } from './noteTuplets.js'
+import {
+  closeTremoloAndTuplets,
+  closeTuplets,
+  openTupletsAndTremolo,
+  reportChordMemberRatio,
+} from './noteTuplets.js'
 import { readIntegerInRange } from './numbers.js'
 import { measureLength } from './state.js'
 import type { PartState } from './state.js'
@@ -344,6 +349,7 @@ export function readNote(
         voice,
         event,
         eventNotations,
+        scale.factor,
         duration ?? unstated,
         path,
         element.line,
@@ -416,8 +422,16 @@ function readChordMember(
   }
   // A chord member is drawn with the event it joins, so its stem and its
   // beams are that event's and are read from the note carrying them. The
-  // ratio it repeats is likewise the event's.
+  // ratio it repeats, one per note, is likewise the event's, and one that
+  // disagrees is reported.
   element.skip('stem', 'beam', 'time-modification')
+  reportChordMemberRatio(
+    child(element.element, 'time-modification'),
+    chord.last.share,
+    warnings,
+    context,
+    path,
+  )
   // A grace member's slash and the side it takes its time from are the
   // group's, carried from the note that opened it. Both are read here so
   // the sweep does not report a member for restating them; everything else

@@ -166,8 +166,7 @@ export function openTupletsAndTremolo(
     const tremoloed = opensTremolo || voice.insideTremolo()
     const tuplets = tupletRatios.reduce(multiplyFractions, fraction(1))
     const around = tremoloed ? multiplyFractions(tuplets, fraction(1, 2)) : tuplets
-    const { played, space } = readRatioCounts(ratio, path)
-    const own = fraction(space, played)
+    const own = ratioShare(ratio, path)
     if (compareFractions(own, around) !== 0) {
       const by = !tremoloed
         ? 'tuplet'
@@ -628,6 +627,36 @@ export function readCountedRatio(
   if (!value) return undefined
 
   return { inner: { value, multiple: played }, outer: { value, multiple: space } }
+}
+
+/**
+ * Reports a chord member whose <time-modification> gives it another share of
+ * its written value than the note it joins lasts. The chord lasts what that
+ * note does.
+ */
+export function reportChordMemberRatio(
+  member: XmlElement | undefined,
+  chord: Fraction | undefined,
+  warnings: WarningCollector,
+  context: ReportContext,
+  path: DocumentPath,
+): void {
+  if (!member) return
+  const own = ratioShare(member, path)
+  if (!chord || compareFractions(own, chord) === 0) return
+  warnings.add(
+    'inconsistent:tuplet',
+    `A chord note's <time-modification> gives it ${describeShare(own)} of its written value. ` +
+      `The note it joins lasts ${describeShare(chord)}. The note it joins is the one converted.`,
+    context,
+    member,
+  )
+}
+
+/** The share of its written value a <time-modification> gives a note. */
+function ratioShare(ratio: XmlElement, path: DocumentPath): Fraction {
+  const { played, space } = readRatioCounts(ratio, path)
+  return fraction(space, played)
 }
 
 /** How many notes a <time-modification> plays, and in the space of how many. */
