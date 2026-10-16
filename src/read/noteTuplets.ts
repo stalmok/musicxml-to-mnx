@@ -335,8 +335,12 @@ export function closeTuplets(
   const stated: string[] = []
   const closed: string[] = []
   const stops: XmlElement[] = []
-  for (const marker of markers) {
-    if (attribute(marker, 'type') !== 'stop') continue
+  const stopMarkers = markers
+    .filter((marker) => attribute(marker, 'type') === 'stop')
+    // A marker that states no number is tuplet 1, as the spec has it.
+    .map((marker) => ({ marker, number: attribute(marker, 'number') ?? '1' }))
+  voice.nestStoppingTuplets(new Set(stopMarkers.map(({ number }) => number)))
+  for (const { marker, number } of stopMarkers) {
     // A stop's placement and ratio restate the start's, which the tuplet
     // already carries, so they are read only for the record. MusicXML allows
     // at most one <tuplet-actual> and one <tuplet-normal> in a <tuplet>.
@@ -345,8 +349,6 @@ export function closeTuplets(
       const portion = child(marker, name)
       if (portion) readWholeElement(portion)
     }
-    // A marker that states no number is tuplet 1, as the spec has it.
-    const number = attribute(marker, 'number') ?? '1'
     // The start this stop matches was dropped where it could not be drawn,
     // and reported there. There is no bracket of its own to close, and
     // closing here would end the bracket around it instead.

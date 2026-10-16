@@ -503,32 +503,27 @@ describe('crossing tuplet numbers', () => {
     actual: number,
     normal: number,
     markers = '',
+    type = 'eighth',
   ): string =>
     `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
-    `<duration>${String(duration)}</duration><type>eighth</type>` +
+    `<duration>${String(duration)}</duration><type>${type}</type>` +
     `<time-modification><actual-notes>${String(actual)}</actual-notes>` +
     `<normal-notes>${String(normal)}</normal-notes></time-modification>` +
     (markers ? `<notations>${markers}</notations>` : '') +
     '</note>'
 
-  // Two tuplets start on one note; the one numbered 1 stops first, while the
-  // one numbered 2, opened later, runs on. Both stops close the innermost
-  // open tuplet instead, and each names a different one, so each reports the
-  // crossing.
+  // The tuplet numbered 1 opens first and stops first, while the one
+  // numbered 2, opened on the next note, runs on. Both stops close the
+  // innermost open tuplet instead, and each names a different one, so each
+  // reports the crossing.
   const crossed =
     '<score-partwise><part id="P1"><measure number="1">' +
-    '<attributes><divisions>9</divisions></attributes>' +
-    note(
-      'C',
-      2,
-      9,
-      4,
-      `<tuplet type="start" number="1">${threeInTwoEighths}</tuplet>` +
-        `<tuplet type="start" number="2">${threeInTwoEighths}</tuplet>`,
-    ) +
-    note('D', 2, 9, 4) +
-    note('E', 2, 9, 4, '<tuplet type="stop" number="1"/>') +
-    note('F', 3, 3, 2, '<tuplet type="stop" number="2"/>') +
+    '<attributes><divisions>18</divisions></attributes>' +
+    note('C', 3, 3, 2, `<tuplet type="start" number="1">${threeInTwoEighths}</tuplet>`, '16th') +
+    note('D', 4, 9, 4, `<tuplet type="start" number="2">${threeInTwoEighths}</tuplet>`) +
+    note('E', 4, 9, 4) +
+    note('F', 4, 9, 4, '<tuplet type="stop" number="1"/>') +
+    note('G', 3, 3, 2, '<tuplet type="stop" number="2"/>', '16th') +
     '</measure></part></score-partwise>'
 
   test('reports a stop naming a tuplet that is not the innermost open one', () => {
@@ -545,7 +540,7 @@ describe('crossing tuplet numbers', () => {
     const outer = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
     if (!outer || !('type' in outer) || outer.type !== 'tuplet')
       throw new Error('expected a tuplet')
-    const inner = outer.content[0]
+    const inner = outer.content[1]
     expect(inner && 'type' in inner && inner.type).toBe('tuplet')
   })
 
@@ -573,17 +568,18 @@ describe('crossing tuplet numbers', () => {
     expect(warnings).toEqual([])
   })
 
-  // Three tuplets start on one note. A later note's first stop closes the
-  // innermost, as it names; its second names the outermost but closes the
-  // middle one. The report is at the second stop, on its own line.
+  // One tuplet starts on a note and two more on the next. A later note's
+  // first stop closes the innermost, as it names; its second names the
+  // outermost but closes the middle one. The report is at the second stop, on
+  // its own line.
   test('reports the crossing at the stop that crosses, not the first stop of the note', () => {
     const start = (number: string): string =>
       `<tuplet type="start" number="${number}">${threeInTwoEighths}</tuplet>`
     const source = [
       '<score-partwise><part id="P1"><measure number="1">',
       '<attributes><divisions>54</divisions></attributes>',
-      note('C', 8, 27, 8, start('1') + start('2') + start('3')),
-      note('D', 8, 27, 8),
+      note('C', 18, 3, 2, start('1')),
+      note('D', 8, 27, 8, start('2') + start('3')),
       note('E', 8, 27, 8, '<tuplet type="stop" number="3"/>\n<tuplet type="stop" number="1"/>'),
       '</measure></part></score-partwise>',
     ].join('\n')
@@ -617,6 +613,173 @@ describe('crossing tuplet numbers', () => {
     )
 
     expect(warnings).toEqual([])
+  })
+})
+
+// MusicXML does not constrain the order of the start markers on one note, so
+// the stops are what say how tuplets opening together nest.
+describe('tuplets opening on one note', () => {
+  const ratioStart = (number: string, actual: number, normal: number, type: string): string =>
+    `<tuplet type="start" number="${number}">` +
+    `<tuplet-actual><tuplet-number>${String(actual)}</tuplet-number>` +
+    `<tuplet-type>${type}</tuplet-type></tuplet-actual>` +
+    `<tuplet-normal><tuplet-number>${String(normal)}</tuplet-number>` +
+    `<tuplet-type>${type}</tuplet-type></tuplet-normal></tuplet>`
+
+  const note = (
+    step: string,
+    duration: number,
+    type: string,
+    actual: number,
+    normal: number,
+    markers = '',
+  ): string =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    `<duration>${String(duration)}</duration><type>${type}</type>` +
+    `<time-modification><actual-notes>${String(actual)}</actual-notes>` +
+    `<normal-notes>${String(normal)}</normal-notes></time-modification>` +
+    (markers ? `<notations>${markers}</notations>` : '') +
+    '</note>'
+
+  const ratiosOf = (item: SequenceItem | undefined) =>
+    item?.kind === 'tuplet' && [item.inner.value.base, item.inner.multiple, item.outer.multiple]
+
+  // A quarter triplet whose first quarter is an eighth triplet, whose first
+  // eighth is a sixteenth triplet. The markers are written innermost first,
+  // and each stop closes the bracket it names. A <forward> in place of the
+  // second sixteenth is a skip, which moves with the notes.
+  test.each([
+    ['a note', note('D', 2, '16th', 27, 8)],
+    ['a forward', '<forward><duration>2</duration></forward>'],
+  ])('nests the tuplet that stops first innermost, the second sixteenth %s', (_, second) => {
+    const stop = (number: string) => `<tuplet type="stop" number="${number}"/>`
+    const { content, warnings } = read(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        '<attributes><divisions>27</divisions></attributes>' +
+        note(
+          'C',
+          2,
+          '16th',
+          27,
+          8,
+          ratioStart('1', 3, 2, '16th') +
+            ratioStart('2', 3, 2, 'eighth') +
+            ratioStart('3', 3, 2, 'quarter'),
+        ) +
+        second +
+        note('E', 2, '16th', 27, 8, stop('1')) +
+        note('F', 6, 'eighth', 9, 4) +
+        note('G', 6, 'eighth', 9, 4, stop('2')) +
+        note('A', 18, 'quarter', 3, 2) +
+        note('B', 18, 'quarter', 3, 2, stop('3')) +
+        '</measure></part></score-partwise>',
+    )
+    const quarters = content?.[0]
+    const eighths = quarters?.kind === 'tuplet' ? quarters.content[0] : undefined
+    const sixteenths = eighths?.kind === 'tuplet' ? eighths.content[0] : undefined
+
+    expect(warnings).toEqual([])
+    expect(content).toHaveLength(1)
+    expect(ratiosOf(quarters)).toEqual(['quarter', 3, 2])
+    expect(quarters?.kind === 'tuplet' && quarters.content).toHaveLength(3)
+    expect(ratiosOf(eighths)).toEqual(['eighth', 3, 2])
+    expect(eighths?.kind === 'tuplet' && eighths.content).toHaveLength(3)
+    expect(ratiosOf(sixteenths)).toEqual(['16th', 3, 2])
+    expect(sixteenths?.kind === 'tuplet' && sixteenths.content).toHaveLength(3)
+  })
+
+  // An eighth triplet whose first eighth is a sixteenth triplet, written
+  // outermost first, with the stop numbers the wrong way round. The three
+  // sixteenths fill the inner bracket and not the outer one the first stop
+  // names, so the stops are what cross.
+  test('keeps the written order where the notes do not fill the bracket a stop names', () => {
+    const { content, warnings } = read(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        '<attributes><divisions>9</divisions></attributes>' +
+        note(
+          'C',
+          1,
+          '16th',
+          9,
+          4,
+          ratioStart('1', 3, 2, 'eighth') + ratioStart('2', 3, 2, '16th'),
+        ) +
+        note('D', 1, '16th', 9, 4) +
+        note('E', 1, '16th', 9, 4, '<tuplet type="stop" number="1"/>') +
+        note('F', 3, 'eighth', 3, 2) +
+        note('G', 3, 'eighth', 3, 2, '<tuplet type="stop" number="2"/>') +
+        '</measure></part></score-partwise>',
+    )
+    const outer = content?.[0]
+
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:tuplet-crossing',
+      'unrepresentable:tuplet-crossing',
+    ])
+    expect(ratiosOf(outer)).toEqual(['eighth', 3, 2])
+    expect(ratiosOf(outer?.kind === 'tuplet' ? outer.content[0] : undefined)).toEqual([
+      '16th',
+      3,
+      2,
+    ])
+  })
+
+  // Two sixteenth triplets, the second written holding the first. The notes
+  // fill either one, so the stops say which is inside.
+  test('nests by the stops where the notes fill both brackets', () => {
+    const { content, warnings } = read(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        '<attributes><divisions>18</divisions></attributes>' +
+        note(
+          'C',
+          2,
+          '16th',
+          9,
+          4,
+          ratioStart('1', 3, 2, '16th').replace('number="1"', 'number="1" placement="above"') +
+            ratioStart('2', 3, 2, '16th'),
+        ) +
+        note('D', 2, '16th', 9, 4) +
+        note('E', 2, '16th', 9, 4, '<tuplet type="stop" number="1"/>') +
+        note('F', 3, '16th', 3, 2, '<tuplet type="stop" number="2"/>') +
+        '</measure></part></score-partwise>',
+    )
+    const outer = content?.[0]
+    const inner = outer?.kind === 'tuplet' ? outer.content[0] : undefined
+
+    expect(warnings).toEqual([])
+    expect(outer?.kind === 'tuplet' && outer.placement).toBeUndefined()
+    expect(inner?.kind === 'tuplet' && inner.placement).toBe('above')
+  })
+
+  // Both stop on one note, so the stops say nothing about which is inside,
+  // and the order the starts are written in stands, whichever stop comes
+  // first. The second states no ratio, so it takes 1:1 and is rewritten to
+  // the three eighths it holds.
+  test.each([
+    ['<tuplet type="stop" number="1"/><tuplet type="stop" number="2"/>'],
+    ['<tuplet type="stop" number="2"/><tuplet type="stop" number="1"/>'],
+  ])('keeps the written order where both stop on one note as %s', (stops) => {
+    const starts =
+      `<tuplet type="start" number="1" placement="above">` +
+      '<tuplet-actual><tuplet-number>3</tuplet-number><tuplet-type>eighth</tuplet-type>' +
+      '</tuplet-actual><tuplet-normal><tuplet-number>2</tuplet-number>' +
+      '<tuplet-type>eighth</tuplet-type></tuplet-normal></tuplet>' +
+      '<tuplet type="start" number="2" placement="below"/>'
+    const { content, warnings } = read(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        '<attributes><divisions>12</divisions></attributes>' +
+        note('C', 4, 'eighth', 3, 2, starts) +
+        note('D', 4, 'eighth', 3, 2) +
+        note('E', 4, 'eighth', 3, 2, stops) +
+        '</measure></part></score-partwise>',
+    )
+    const outer = content?.[0]
+    const inner = outer?.kind === 'tuplet' ? outer.content[0] : undefined
+
+    expect(warnings).toEqual([])
+    expect(outer?.kind === 'tuplet' && outer.placement).toBe('above')
+    expect(inner?.kind === 'tuplet' && inner.placement).toBe('below')
   })
 })
 

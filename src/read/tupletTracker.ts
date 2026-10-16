@@ -266,7 +266,8 @@ export class TupletTracker {
   }
 
   /**
-   * Starts the tuplets a note opens, outermost first. Notes added after them
+   * Starts the tuplets a note opens, outermost first as written, until a stop
+   * reorders them (see nestStopping). Notes added after them
    * go inside, until each is closed. `inner` and `outer` are the note's
    * cumulative <time-modification>; each level's own share is settled by
    * `tupletLevels`. `openEnd` is where the sequence has reached, before
@@ -509,6 +510,51 @@ export class TupletTracker {
     if (at < 0) return false
     this.#dropped.splice(at, 1)
     return true
+  }
+
+  /**
+   * Moves the brackets numbered in `stopping` inside the others opened on the
+   * same note, keeping the written order within each group. MusicXML does not
+   * constrain which start marker on a note is written first, so the order
+   * they open in says nothing about which is inside. Brackets that hold
+   * nothing but each other hold the same notes, so the one that stops first
+   * is the inner one. The stop numbers can be the mistake instead, so the
+   * brackets move only where the notes fill the last stopping one written.
+   * `stopping` holds the numbers the note's stops state.
+   */
+  nestStopping(stopping: ReadonlySet<string>): void {
+    const together: OpenTuplet[] = []
+    for (let at = this.#open.length - 1; at >= 0; at -= 1) {
+      const frame = this.#open[at]
+      if (frame?.opened !== 'tuplet' || frame.unbracketed) break
+      const inside = together[0]
+      if (inside && frame.list[0] !== inside.tuplet) break
+      together.unshift(frame)
+    }
+    const order = [
+      ...together.filter((open) => !stopping.has(open.number)),
+      ...together.filter((open) => stopping.has(open.number)),
+    ]
+    const [outermost] = together
+    const innermost = together.at(-1)
+    const inner = order.at(-1)
+    if (!outermost || !innermost || !inner) return
+    if (compareFractions(writtenLengthOf(innermost.list), countedLengthOf(inner)) < 0) return
+
+    // Only the innermost holds notes, closed brackets and skips.
+    const held = innermost.list
+    ;[inner.children, innermost.children] = [innermost.children, inner.children]
+    ;[inner.skips, innermost.skips] = [innermost.skips, inner.skips]
+    let { within } = outermost
+    removeLastFrom(within, outermost.tuplet)
+    for (const open of order) {
+      within.push(open.tuplet)
+      open.within = within
+      open.list = open === inner ? held : []
+      open.tuplet.content = open.list
+      within = open.list
+    }
+    this.#open.splice(this.#open.length - order.length, order.length, ...order)
   }
 
   /**

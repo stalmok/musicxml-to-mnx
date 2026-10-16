@@ -392,6 +392,14 @@ export class VoiceLine {
   }
 
   /**
+   * Moves the brackets numbered in `stopping` inside the others opened on the
+   * same note in this line. See TupletTracker.nestStopping.
+   */
+  nestStoppingTuplets(stopping: ReadonlySet<string>): void {
+    this.#layer.tuplets.nestStopping(stopping)
+  }
+
+  /**
    * Closes the innermost open tuplet in this line, handing back the number
    * its start marker stated, or nothing where no tuplet is open. `stop` is
    * the <tuplet> marker closing it.
