@@ -189,6 +189,15 @@ export class TupletTracker {
   }
 
   /**
+   * The ratio of each open tuplet, outermost first, where the source stated
+   * every one of them. Undefined where the converter worked any of them out.
+   */
+  statedRatios(): Fraction[] | undefined {
+    const open = this.#tuplets()
+    return open.every((tuplet) => tuplet.stated) ? open.map((tuplet) => tuplet.ratio) : undefined
+  }
+
+  /**
    * The same, with a two-note tremolo counted as well. Inside one each note is
    * written with the value of the pair, so it lasts half of it.
    */

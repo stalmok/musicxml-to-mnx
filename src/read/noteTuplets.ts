@@ -156,6 +156,35 @@ export function openTupletsAndTremolo(
   // whole, as is a ratio passed over above.
   if (ratio && !stated && starts.length === 0) element.readWhole(ratio)
 
+  // The brackets and the tremolo around the note say how long it lasts
+  // against its written value, and its own ratio has to say the same. A note
+  // a bracket starts on is what that bracket's ratio is read from. A ratio
+  // the converter divided out or read off a note is not the source's to
+  // disagree with. A grace note takes none of the measure's time.
+  const tupletRatios = voice.statedTupletRatios()
+  if (ratio && insideDrawnBracket && starts.length === 0 && !graceElement && tupletRatios) {
+    const tremoloed = opensTremolo || voice.insideTremolo()
+    const tuplets = tupletRatios.reduce(multiplyFractions, fraction(1))
+    const around = tremoloed ? multiplyFractions(tuplets, fraction(1, 2)) : tuplets
+    const { played, space } = readRatioCounts(ratio, path)
+    const own = fraction(space, played)
+    if (compareFractions(own, around) !== 0) {
+      const by = !tremoloed
+        ? 'tuplet'
+        : tupletRatios.length > 0
+          ? 'tuplet and two-note tremolo'
+          : 'two-note tremolo'
+      warnings.add(
+        'inconsistent:tuplet',
+        `A note's <time-modification> gives it ${describeShare(own)} of its written value. ` +
+          `Inside the ${by} around it, it lasts ${describeShare(around)}. ` +
+          `The ${by} is the one converted.`,
+        context,
+        ratio,
+      )
+    }
+  }
+
   // Full, or this note does not belong in it either way: the run ends here. A
   // grace note takes none of the measure's time, so it neither fills a run nor
   // ends one, and a run with room left reaches over it. A full run is over,
@@ -552,6 +581,11 @@ function scalesNothing(quantities: {
   )
 }
 
+/** A share of a written value, for a report to name. */
+function describeShare(share: Fraction): string {
+  return `${String(share.num)}/${String(share.den)}`
+}
+
 /** The derived ratio as a fraction, for the report that names it. */
 function describeRatio(quantities: { inner: NoteValueQuantity; outer: NoteValueQuantity }): string {
   return `${String(quantities.outer.multiple)}/${String(quantities.inner.multiple)}`
@@ -586,13 +620,20 @@ export function readCountedRatio(
   element: ElementReader,
   path: DocumentPath,
 ): { inner: NoteValueQuantity; outer: NoteValueQuantity } | undefined {
-  const played = readIntegerInRange(requireChild(ratio, 'actual-notes', path), path, 1, 1_000)
-  const space = readIntegerInRange(requireChild(ratio, 'normal-notes', path), path, 1, 1_000)
+  const { played, space } = readRatioCounts(ratio, path)
 
   const value = ratioCountedValue(ratio, element, path)
   if (!value) return undefined
 
   return { inner: { value, multiple: played }, outer: { value, multiple: space } }
+}
+
+/** How many notes a <time-modification> plays, and in the space of how many. */
+function readRatioCounts(ratio: XmlElement, path: DocumentPath): { played: number; space: number } {
+  return {
+    played: readIntegerInRange(requireChild(ratio, 'actual-notes', path), path, 1, 1_000),
+    space: readIntegerInRange(requireChild(ratio, 'normal-notes', path), path, 1, 1_000),
+  }
 }
 
 /**

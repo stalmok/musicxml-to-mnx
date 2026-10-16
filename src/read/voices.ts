@@ -254,6 +254,14 @@ export class VoiceLine {
   }
 
   /**
+   * The ratio of each tuplet open in this line, where the source stated every
+   * one of them.
+   */
+  statedTupletRatios(): Fraction[] | undefined {
+    return this.#layer.tuplets.statedRatios()
+  }
+
+  /**
    * What is open around a note in this line scaling its written value, for a
    * report to name.
    */

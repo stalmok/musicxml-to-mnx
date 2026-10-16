@@ -1942,6 +1942,182 @@ describe('a note inside a tuplet lasting the wrong time', () => {
   })
 })
 
+describe('a note inside a bracket stating a ratio of its own', () => {
+  const rated = (step: string, actual: number, normal: number, markers = '', units = 4) =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    `<duration>${String(units)}</duration><type>eighth</type>` +
+    `<time-modification><actual-notes>${String(actual)}</actual-notes>` +
+    `<normal-notes>${String(normal)}</normal-notes></time-modification>` +
+    (markers ? `<notations>${markers}</notations>` : '') +
+    '</note>'
+
+  test('reports a ratio that disagrees with the bracket, and keeps the bracket', () => {
+    const { content, warnings } = read(
+      measure(
+        tupletNote('C', 4, 'eighth', 'start') +
+          rated('D', 5, 4) +
+          tupletNote('E', 4, 'eighth', 'stop'),
+      ),
+    )
+    const tuplet = content?.[0]
+
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([
+      ['inconsistent:tuplet', 'time-modification'],
+    ])
+    expect(warnings[0]?.message).toBe(
+      "A note's <time-modification> gives it 4/5 of its written value. Inside the tuplet " +
+        'around it, it lasts 2/3. The tuplet is the one converted.',
+    )
+    expect(tuplet?.kind === 'tuplet' && [tuplet.inner.multiple, tuplet.outer.multiple]).toEqual([
+      3, 2,
+    ])
+    expect(tuplet?.kind === 'tuplet' && tuplet.content).toHaveLength(3)
+  })
+
+  test('reports a ratio that gives the note less time than the bracket', () => {
+    const { warnings } = read(
+      measure(
+        tupletNote('C', 4, 'eighth', 'start') +
+          rated('D', 9, 4) +
+          tupletNote('E', 4, 'eighth', 'stop'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.message)).toEqual([
+      "A note's <time-modification> gives it 4/9 of its written value. Inside the tuplet " +
+        'around it, it lasts 2/3. The tuplet is the one converted.',
+    ])
+  })
+
+  // Six in the time of four plays each note as three in the time of two does.
+  test('passes over a ratio that counts differently but gives the same time', () => {
+    const { warnings } = read(
+      measure(
+        tupletNote('C', 4, 'eighth', 'start') +
+          rated('D', 6, 4) +
+          tupletNote('E', 4, 'eighth', 'stop'),
+      ),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  // A <time-modification> states every level around the note multiplied.
+  test('compares the ratio with every bracket around the note', () => {
+    // At 18 divisions an eighth lasts 9: 6 at three in the time of two, and 4
+    // at that inside another three in the time of two.
+    const stops = '<tuplet type="stop" number="2"/><tuplet type="stop" number="1"/>'
+    const nested = (actual: number, normal: number) =>
+      read(
+        measures(
+          '<attributes><divisions>18</divisions></attributes>' +
+            rated('C', 3, 2, '<tuplet type="start" number="1"/>', 6) +
+            rated('D', 9, 4, '<tuplet type="start" number="2"/>') +
+            rated('E', actual, normal) +
+            rated('F', 9, 4, stops),
+        ),
+      ).warnings
+
+    expect(nested(9, 4)).toEqual([])
+    expect(nested(3, 2).map((w) => [w.code, w.element])).toEqual([
+      ['inconsistent:tuplet', 'time-modification'],
+    ])
+  })
+
+  // Each note of a two-note tremolo states the pair's 2:1 multiplied into the
+  // tuplet around it: six in the time of two inside a triplet.
+  test('counts a two-note tremolo with the bracket around it', () => {
+    const pair = (actual: number) => {
+      const note = (step: string, type: string, stop = '') =>
+        `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+        '<duration>4</duration><type>quarter</type>' +
+        `<time-modification><actual-notes>${String(actual)}</actual-notes>` +
+        '<normal-notes>2</normal-notes></time-modification>' +
+        `<notations><ornaments><tremolo type="${type}">3</tremolo></ornaments>${stop}` +
+        '</notations></note>'
+      // The pair is written as two quarters and lasts one triplet quarter, so
+      // the bracket holds three eighths.
+      return read(
+        measure(
+          tupletNote('C', 4, 'eighth', 'start') +
+            note('D', 'start') +
+            note('E', 'stop', '<tuplet type="stop"/>'),
+        ),
+      ).warnings
+    }
+
+    const reported =
+      "A note's <time-modification> gives it 2/3 of its written value. Inside the tuplet " +
+      'and two-note tremolo around it, it lasts 1/3. The tuplet and two-note tremolo is ' +
+      'the one converted.'
+
+    expect(pair(6)).toEqual([])
+    expect(pair(3).map((w) => w.message)).toEqual([reported, reported])
+  })
+
+  test('compares the ratio with a two-note tremolo where no bracket is open', () => {
+    const { warnings } = read(
+      measure(
+        tremoloNote('C', 'start') +
+          tremoloNote('E', 'stop').replace('<actual-notes>2', '<actual-notes>3'),
+      ),
+    )
+
+    expect(warnings.map((w) => w.message)).toEqual([
+      "A note's <time-modification> gives it 1/3 of its written value. Inside the two-note " +
+        'tremolo around it, it lasts 1/2. The two-note tremolo is the one converted.',
+    ])
+  })
+
+  // Two brackets open on C and neither marker says how its 9:4 divides
+  // between them, so the converter gives it all to the outer one. F states the
+  // outer bracket's share, which is the source's division, not a disagreement.
+  test('passes over a bracket whose ratio the converter divided out', () => {
+    const starts = '<tuplet type="start" number="1"/><tuplet type="start" number="2"/>'
+    const { warnings } = read(
+      measures(
+        '<attributes><divisions>18</divisions></attributes>' +
+          rated('C', 9, 4, starts) +
+          rated('D', 9, 4) +
+          rated('E', 9, 4, '<tuplet type="stop" number="2"/>') +
+          rated('F', 3, 2, '<tuplet type="stop" number="1"/>', 6),
+      ),
+    )
+
+    expect(warnings.filter((w) => w.element === 'time-modification')).toEqual([])
+  })
+
+  // A grace note takes none of the measure's time, so its ratio scales nothing.
+  test('passes over the ratio of a grace note', () => {
+    const grace =
+      '<note><grace/><pitch><step>B</step><octave>4</octave></pitch><type>16th</type>' +
+      '<time-modification><actual-notes>1</actual-notes><normal-notes>1</normal-notes>' +
+      '</time-modification></note>'
+    const { warnings } = read(
+      measure(
+        tupletNote('C', 4, 'eighth', 'start') +
+          grace +
+          tupletNote('D', 4, 'eighth') +
+          tupletNote('E', 4, 'eighth', 'stop'),
+      ),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  test('refuses a ratio that plays no notes', () => {
+    const error = readFailure(
+      measure(
+        tupletNote('C', 4, 'eighth', 'start') +
+          rated('D', 0, 2) +
+          tupletNote('E', 4, 'eighth', 'stop'),
+      ),
+    )
+
+    expect(error.message).toContain('<actual-notes> is 0, outside the range 1 to 1000.')
+  })
+})
+
 // A <note> stating no <type> is measured from its <duration>, which is the
 // time it sounds. Inside a tuplet or a tremolo that time is the written value
 // scaled by the ratio, so the duration is divided by the ratio before the
