@@ -176,9 +176,29 @@ export class TupletTracker {
     return this.#list().at(-1)
   }
 
-  /** Removes `expected`, which must be the item written last inside every bracket open. */
-  removeLast(expected: SequenceItem): void {
-    removeLastFrom(this.#list(), expected)
+  /**
+   * Moves `item`, which must be the item written last inside every bracket
+   * open, to the end of `to`. The brackets open around it that hold nothing
+   * else were opened where it stands, so they move with it. `openEnd` is
+   * where `to` has reached.
+   */
+  moveLastTo(item: SequenceItem, to: TupletTracker, openEnd: Fraction): void {
+    removeLastFrom(this.#list(), item)
+    const moving: OpenBracket[] = []
+    for (let frame = this.#open.at(-1); frame?.list.length === 0; frame = this.#open.at(-1)) {
+      this.#open.pop()
+      if (frame.opened === 'tuplet') removeLastFrom(frame.within, frame.tuplet)
+      moving.unshift(frame)
+    }
+    for (const frame of moving) {
+      if (frame.opened === 'tuplet') {
+        frame.within = to.#list()
+        frame.within.push(frame.tuplet)
+        frame.openEnd = openEnd
+      }
+      to.#open.push(frame)
+    }
+    to.#list().push(item)
   }
 
   /** How much of its written value a note lasts, given the tuplets around it. */

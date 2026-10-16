@@ -734,10 +734,9 @@ export class MeasureBuilder {
     if (from.tuplets.last() !== waiting.group) return
 
     // The sequence it joins may have been silent since it last sounded, and
-    // that silence comes before the group.
-    from.tuplets.removeLast(waiting.group)
+    // that silence comes before the group and the brackets it opened.
     this.#fillGap(to)
-    to.tuplets.append(waiting.group)
+    from.tuplets.moveLastTo(waiting.group, to.tuplets, to.end)
     from.graceBeamed = from.graceBeamed.filter((run) => run !== waiting.beams)
     to.graceBeamed.push(waiting.beams)
     to.placed.push(...from.placed.splice(waiting.placedFrom))

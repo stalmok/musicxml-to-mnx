@@ -3312,6 +3312,87 @@ describe('grace notes', () => {
     ])
     expect(warnings).toEqual([])
   })
+
+  // The note the grace note leads into overlaps the quarter before it, so it
+  // takes a new line, and the bracket the grace note opened goes with it.
+  describe('a bracket a grace note opens before a note that takes a new line', () => {
+    const graceOpening =
+      '<note><grace/><pitch><step>B</step><octave>5</octave></pitch><type>eighth</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+      '</time-modification><notations><tuplet type="start" bracket="yes"/></notations></note>'
+    const overlapping = bracketedNote('C') + '<backup><duration>12</duration></backup>'
+    const plainEighth = (step: string, bracket = '') =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>4</duration>` +
+      `<type>eighth</type>${bracket ? marker(bracket) : ''}</note>`
+
+    function readLines(source: string) {
+      const warnings = new WarningCollector()
+      const result = readValid(source, warnings)
+      const sequences = result.parts[0]?.measures[0]?.sequences ?? []
+      return { lines: sequences.map((sequence) => sequence.content), warnings: warnings.list() }
+    }
+
+    test('moves the bracket into the new line with its notes', () => {
+      const { lines, warnings } = readLines(
+        measure(
+          overlapping +
+            graceOpening +
+            tupletNote('D', 4, 'eighth') +
+            tupletNote('E', 4, 'eighth') +
+            tupletNote('F', 4, 'eighth', 'stop'),
+        ),
+      )
+      const tuplet = lines[1]?.[0]
+
+      expect(lines[0]?.map((item) => item.kind)).toEqual(['event'])
+      expect(lines[1]?.map((item) => item.kind)).toEqual(['tuplet'])
+      expect(tuplet?.kind === 'tuplet' && tuplet.bracket).toBe('yes')
+      expect(tuplet?.kind === 'tuplet' && tuplet.content.map((item) => item.kind)).toEqual([
+        'grace',
+        'event',
+        'event',
+        'event',
+      ])
+      expect(warnings.map((w) => w.code)).toEqual(['inconsistent:voice'])
+    })
+
+    // The notes state no ratio, so the bracket takes the ratio the grace note
+    // states, and counts the time it took from where the new line stood.
+    test('scales the notes of the new line that state no ratio', () => {
+      const { lines, warnings } = readLines(
+        measure(
+          overlapping +
+            graceOpening +
+            plainEighth('D') +
+            plainEighth('E') +
+            plainEighth('F', 'stop'),
+        ),
+      )
+      const tuplet = lines[1]?.[0]
+
+      expect(tuplet?.kind === 'tuplet' && [tuplet.inner.multiple, tuplet.outer.multiple]).toEqual([
+        3, 2,
+      ])
+      expect(tuplet?.kind === 'tuplet' && tuplet.content).toHaveLength(4)
+      expect(warnings.map((w) => w.code)).toEqual(['inconsistent:voice'])
+    })
+
+    test('converts it to MNX the schema accepts, the bracket drawn in the new line', () => {
+      const { mnx } = convertValid(
+        measure(
+          overlapping +
+            graceOpening +
+            tupletNote('D', 4, 'eighth') +
+            tupletNote('E', 4, 'eighth') +
+            tupletNote('F', 4, 'eighth', 'stop'),
+        ),
+      )
+      const sequences = mnx.parts[0]?.measures[0]?.sequences
+
+      expect(sequences?.[0]?.content.map((item) => item.type)).toEqual([undefined])
+      expect(sequences?.[1]?.content[0]).toMatchObject({ type: 'tuplet', bracket: 'yes' })
+    })
+  })
 })
 
 // A tremolo written across two notes gives each the value of the pair while
