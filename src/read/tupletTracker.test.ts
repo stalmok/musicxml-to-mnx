@@ -43,6 +43,7 @@ describe('moving the item written last to another sequence', () => {
     tracker.append(second)
     const other = new TupletTracker([])
 
+    expect(tracker.bracketOpensOnLast()).toBe(false)
     tracker.moveLastTo(second, other, fraction(0))
 
     expect(tracker.insideTremolo()).toBe(false)
@@ -71,6 +72,20 @@ describe('moving the item written last to another sequence', () => {
     expect(otherContent.map((moved) => moved.kind)).toEqual(['tuplet'])
   })
 
+  test('moves a tuplet that holds nothing else with it, which a bracket opened there', () => {
+    const tracker = new TupletTracker([])
+    openImplied(tracker)
+    const item = space(1)
+    tracker.append(item)
+    const otherContent: SequenceItem[] = []
+
+    expect(tracker.bracketOpensOnLast()).toBe(true)
+    tracker.moveLastTo(item, new TupletTracker(otherContent), fraction(0))
+
+    expect(tracker.insideBracket()).toBe(false)
+    expect(otherContent.map((moved) => moved.kind)).toEqual(['tuplet'])
+  })
+
   test('leaves a tuplet that holds something else where it is', () => {
     const content: SequenceItem[] = []
     const tracker = new TupletTracker(content)
@@ -82,6 +97,7 @@ describe('moving the item written last to another sequence', () => {
     const otherContent: SequenceItem[] = []
     const other = new TupletTracker(otherContent)
 
+    expect(tracker.bracketOpensOnLast()).toBe(false)
     tracker.moveLastTo(second, other, fraction(0))
 
     expect(tracker.insideImplied()).toBe(true)

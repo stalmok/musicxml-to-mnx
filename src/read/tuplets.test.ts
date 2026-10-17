@@ -4518,32 +4518,69 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
       expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-ratio'])
     })
 
-    // The note the grace note leads into overlaps the quarter before it, so
-    // it takes a new line, and the bracket goes with it at the ratio stated.
-    test('keeps the ratio of a bracket that goes to a new line', () => {
+    // The grace note's group holds nothing that takes time, so the bracket
+    // states no tuplet, and the run reaches over it.
+    test('leaves the run open over a bracket that closes on grace notes alone', () => {
+      const closing =
+        '<note><grace/><pitch><step>F</step><octave>5</octave></pitch><type>eighth</type>' +
+        '<notations><tuplet type="stop"/></notations></note>'
+      const { content, warnings } = read(
+        measure(
+          rated('A', 4, 'eighth') +
+            rated('B', 4, 'eighth') +
+            opening +
+            closing +
+            rated('C', 4, 'eighth'),
+        ),
+      )
+      const run = content?.[0]
+
+      expect(content).toHaveLength(1)
+      expect(run?.kind === 'tuplet' && run.content.map((item) => item.kind)).toEqual([
+        'event',
+        'event',
+        'grace',
+        'event',
+      ])
+      expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-untimed'])
+    })
+
+    // D overlaps A, so it takes a new line, and the bracket the grace note
+    // opened goes with it. B and C go back to A's line and fill its run.
+    test('leaves the run open in the line a bracket leaves', () => {
       const warnings = new WarningCollector()
       const result = readValid(
         measure(
           rated('A', 4, 'eighth') +
-            rated('G', 4, 'eighth') +
-            '<forward><duration>4</duration></forward><backup><duration>8</duration></backup>' +
+            '<backup><duration>4</duration></backup>' +
             opening +
             bracketed('D') +
             bracketed('E') +
-            bracketed('F', 'stop'),
+            bracketed('F', 'stop') +
+            '<backup><duration>8</duration></backup>' +
+            rated('B', 4, 'eighth') +
+            rated('C', 4, 'eighth'),
         ),
         warnings,
       )
-      const tuplet = result.parts[0]?.measures[0]?.sequences[1]?.content[1]
+      const [left, taken] = result.parts[0]?.measures[0]?.sequences ?? []
+      const run = left?.content[0]
+      const tuplet = taken?.content[0]
 
+      expect(left?.content).toHaveLength(1)
+      expect(run?.kind === 'tuplet' && run.content).toHaveLength(3)
+      expect(taken?.content).toHaveLength(1)
       expect(tuplet?.kind === 'tuplet' && [tuplet.inner.multiple, tuplet.outer.multiple]).toEqual([
         3, 2,
       ])
-      expect(tuplet?.kind === 'tuplet' && tuplet.content).toHaveLength(4)
-      expect(warnings.list().map((w) => w.code)).toEqual([
-        'unrepresentable:tuplet-ratio',
-        'inconsistent:voice',
+      expect(tuplet?.kind === 'tuplet' && tuplet.bracket).toBe('yes')
+      expect(tuplet?.kind === 'tuplet' && tuplet.content.map((item) => item.kind)).toEqual([
+        'grace',
+        'event',
+        'event',
+        'event',
       ])
+      expect(warnings.list().map((w) => w.code)).toEqual(['inconsistent:voice'])
     })
 
     // The note the grace note leads into overlaps the half in the line the
@@ -4602,6 +4639,68 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
     expect(run?.kind === 'tuplet' && run.content).toHaveLength(3)
     expect(rest.map((item) => item.kind)).toEqual(['grace', 'event'])
     expect(warnings.list().map((w) => w.code)).toEqual(['inconsistent:voice'])
+  })
+
+  // The silence before G fills what the run in its line still counts room
+  // for, so the silence goes inside the run, and the group after it.
+  test('leaves a grace group that goes to a line the silence fills the run of outside it', () => {
+    const grace =
+      '<note><grace/><pitch><step>F</step><octave>5</octave></pitch><type>eighth</type></note>'
+    const warnings = new WarningCollector()
+    const result = readValid(
+      measure(
+        rated('C', 4, 'eighth') +
+          rated('D', 4, 'eighth') +
+          '<backup><duration>8</duration></backup>' +
+          plain('A', 24, 'half') +
+          '<backup><duration>12</duration></backup>' +
+          grace +
+          plain('G', 12, 'quarter'),
+      ),
+      warnings,
+    )
+    const [run, ...rest] = result.parts[0]?.measures[0]?.sequences[0]?.content ?? []
+
+    expect(run?.kind === 'tuplet' && run.content.map((item) => item.kind)).toEqual([
+      'event',
+      'event',
+      'space',
+    ])
+    expect(rest.map((item) => item.kind)).toEqual(['grace', 'event'])
+    expect(warnings.list().map((w) => w.code)).toEqual(['inconsistent:voice'])
+  })
+
+  // The run in the line the group leaves holds C and D before it, so the
+  // run stays there, and the group joins the run in A's line.
+  test('leaves a run that holds more than the grace group in the line it leaves', () => {
+    const grace =
+      '<note><grace/><pitch><step>F</step><octave>5</octave></pitch><type>eighth</type></note>'
+    const warnings = new WarningCollector()
+    const result = readValid(
+      measure(
+        rated('A', 4, 'eighth') +
+          '<backup><duration>4</duration></backup>' +
+          rated('C', 4, 'eighth') +
+          rated('D', 4, 'eighth') +
+          '<backup><duration>4</duration></backup>' +
+          grace +
+          rated('B', 4, 'eighth'),
+      ),
+      warnings,
+    )
+    const [taken, left] = result.parts[0]?.measures[0]?.sequences ?? []
+    const run = taken?.content[0]
+    const other = left?.content[0]
+
+    expect(run?.kind === 'tuplet' && run.content.map((item) => item.kind)).toEqual([
+      'event',
+      'grace',
+      'event',
+    ])
+    expect(other?.kind === 'tuplet' && other.content.map((item) => item.kind)).toEqual([
+      'event',
+      'event',
+    ])
   })
 
   test('reaches over a grace group that goes to a line with a run that has room left', () => {

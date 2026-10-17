@@ -180,8 +180,35 @@ export class TupletTracker {
    * Whether a bracket opened where the item written last stands, so it holds
    * nothing else and moves with it. See moveLastTo.
    */
-  opensOnLast(): boolean {
-    return this.#open.at(-1)?.list.length === 1
+  bracketOpensOnLast(): boolean {
+    const innermost = this.#open.at(-1)
+    return innermost?.opened === 'tuplet' && innermost.list.length === 1
+  }
+
+  /**
+   * Closes the run the ratio alone opened where brackets are open inside it,
+   * and puts the brackets after it. Only a bracket starting on a grace note
+   * opens inside such a run. A note that takes time goes inside the bracket,
+   * so the run ends where the bracket starts, as it does before a bracket
+   * starting on that note. A bracket that closed over grace notes alone, or
+   * moved away with them, leaves the run open.
+   */
+  closeImpliedBeneath(
+    end: Fraction,
+    warnings: WarningCollector,
+    context: ReportContext,
+    path: DocumentPath,
+    line: number,
+  ): void {
+    const [run, ...above] = this.#open
+    const [first] = above
+    if (run?.opened !== 'tuplet' || !run.unbracketed || first?.opened !== 'tuplet') return
+    this.#open.length = 1
+    removeLastFrom(run.list, first.tuplet)
+    this.#close(run, end, warnings, context, path, line, false)
+    first.within = this.#list()
+    first.within.push(first.tuplet)
+    this.#open.push(...above)
   }
 
   /**
@@ -325,8 +352,13 @@ export class TupletTracker {
       throw new MusicXMLError('A tuplet starts inside a two-note tremolo.', { path, line })
     }
 
+    // A run the ratio alone opened is open here only where a grace note
+    // starts the bracket, and the run closes before the bracket's first note
+    // that takes time, so the bracket's share is not divided by it.
     const levels = tupletLevels(
-      this.#tuplets().map((open) => open.ratio),
+      this.#tuplets()
+        .filter((open) => !open.unbracketed)
+        .map((open) => open.ratio),
       inner,
       outer,
       starts,

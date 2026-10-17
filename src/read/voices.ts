@@ -705,6 +705,7 @@ export class MeasureBuilder {
     const before = layers.layers[layers.active] as VoiceBuilder
     const taken = this.#layerAt(voice, note)
     if (taken !== before) this.#carryGrace(before, taken, warnings, context, path, line)
+    taken.tuplets.closeImpliedBeneath(taken.end, warnings, context, path, line)
     return newLine(voice ?? UNNAMED_VOICE, taken)
   }
 
@@ -750,7 +751,7 @@ export class MeasureBuilder {
     // A bracket the group opened, or a run already full, ends the run the
     // ratio alone opened in the sequence it joins, as either does where the
     // group stays in its sequence.
-    if (from.tuplets.opensOnLast() || to.tuplets.impliedFullAt(this.#cursor, to.end)) {
+    if (from.tuplets.bracketOpensOnLast() || to.tuplets.impliedFullAt(this.#cursor, to.end)) {
       this.#closeImplied(to, warnings, context, path, line)
     }
     // The sequence it joins may have been silent since it last sounded, and
