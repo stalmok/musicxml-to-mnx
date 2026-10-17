@@ -197,6 +197,27 @@ export class TupletTracker {
   }
 
   /**
+   * The item written last before the brackets opened since that hold nothing
+   * but each other, where any such bracket is open.
+   */
+  lastBeforeOpened(): SequenceItem | undefined {
+    const outermost = this.#openedEmpty().at(0)
+    return outermost?.within.at(-2)
+  }
+
+  /**
+   * Moves `item`, the item written last before the brackets opened since that
+   * hold nothing but each other, inside the innermost of them.
+   */
+  moveIntoOpened(item: SequenceItem): void {
+    const [outermost] = this.#openedEmpty()
+    /* v8 ignore next -- the caller checks lastBeforeOpened first. */
+    if (outermost?.within.at(-2) !== item) throw new Error('The item is not before the brackets.')
+    outermost.within.splice(-2, 1)
+    this.#list().push(item)
+  }
+
+  /**
    * Whether a bracket opened where the item written last stands, so it holds
    * nothing else and moves with it. See moveLastTo.
    */
@@ -379,8 +400,7 @@ export class TupletTracker {
    * `tupletLevels`. `openEnd` is where the sequence has reached, before
    * anything the brackets hold. A bracket that states no ratio compares it
    * with where the sequence reaches when the bracket closes, to state the
-   * time it took. `leading` is the grace group the note joins, which goes
-   * inside the brackets with it.
+   * time it took.
    */
   openTuplets(
     inner: NoteValueQuantity,
@@ -396,14 +416,12 @@ export class TupletTracker {
     warnings: WarningCollector,
     path: DocumentPath,
     line: number,
-    leading?: SequenceItem,
   ): void {
     // A tremolo holds exactly its two notes, so no bracket may open inside
     // one.
     if (this.#tremolo()) {
       throw new MusicXMLError('A tuplet starts inside a two-note tremolo.', { path, line })
     }
-    if (leading) removeLastFrom(this.#list(), leading)
 
     const { levels, disagreeing } = tupletLevels(this.#drawnRatios(), inner, outer, starts)
     const opening: Opening = {
@@ -457,7 +475,6 @@ export class TupletTracker {
         opening,
       })
     }
-    if (leading) this.#list().push(leading)
   }
 
   /**
@@ -889,6 +906,21 @@ export class TupletTracker {
    */
   #list(): SequenceItem[] {
     return this.#open.at(-1)?.list ?? this.#content
+  }
+
+  /**
+   * The brackets open innermost that hold nothing but each other, outermost
+   * first.
+   */
+  #openedEmpty(): OpenTuplet[] {
+    const opened: OpenTuplet[] = []
+    for (let at = this.#open.length - 1; at >= 0; at -= 1) {
+      const frame = this.#open[at]
+      const held = opened.length === 0 ? 0 : 1
+      if (frame?.opened !== 'tuplet' || frame.list.length !== held) break
+      opened.unshift(frame)
+    }
+    return opened
   }
 
   /**

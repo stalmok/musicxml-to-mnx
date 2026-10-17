@@ -302,7 +302,6 @@ export function openTupletsAndTremolo(
         path,
         element.line,
         derived !== undefined,
-        graceElement !== undefined,
       )
     }
   }

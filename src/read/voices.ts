@@ -126,10 +126,24 @@ export interface FinishedMeasure {
   beamsOpenAtBarline: ReadonlyMap<string, number | undefined>
 }
 
-/** Where the last item of a voice takes its time from, where it is a grace group. */
-function graceTypeOf(builder: VoiceBuilder): GraceType | undefined {
+/**
+ * The grace group a grace note added now would join, if its sides agree: the
+ * last item of the voice, or the one written before the brackets this note
+ * opened. MNX states a grace group as one item, so a bracket starting on a
+ * later grace note of a group takes in the whole group. A group taking its
+ * time from the note before it is drawn after that note, so it stays outside
+ * the bracket, and the grace note starts a group of its own inside it.
+ */
+function graceGroupToJoin(builder: VoiceBuilder): GraceGroup | undefined {
   const last = builder.tuplets.last()
-  return last?.kind === 'grace' ? last.graceType : undefined
+  if (last?.kind === 'grace') return last
+  const before = builder.tuplets.lastBeforeOpened()
+  return before?.kind === 'grace' && before.graceType !== 'stealPrevious' ? before : undefined
+}
+
+/** Where the grace group a grace note added now would join takes its time from. */
+function graceTypeOf(builder: VoiceBuilder): GraceType | undefined {
+  return graceGroupToJoin(builder)?.graceType
 }
 
 /** The name a voice goes under when the source does not give it one. */
@@ -1077,35 +1091,12 @@ export class MeasureBuilder {
      * multiples are scaled to what the bracket holds once it closes.
      */
     derived: boolean,
-    grace: boolean,
   ): void {
     const builder = layerOf(voice)
     // Time this voice has passed over in silence belongs before the brackets,
     // not inside them, where the tuplets' ratios would scale it.
     this.#fillGap(builder)
-    // MNX states a grace group as one item, so a bracket starting on a grace
-    // note after others in its group takes in the whole group. A group taking
-    // its time from the note before it is drawn after that note, outside the
-    // bracket.
-    const waiting = builder.grace
-    const leading =
-      grace &&
-      waiting &&
-      waiting.group.graceType !== 'stealPrevious' &&
-      builder.tuplets.last() === waiting.group
-        ? waiting.group
-        : undefined
-    builder.tuplets.openTuplets(
-      inner,
-      outer,
-      starts,
-      derived,
-      builder.end,
-      warnings,
-      path,
-      line,
-      leading,
-    )
+    builder.tuplets.openTuplets(inner, outer, starts, derived, builder.end, warnings, path, line)
   }
 
   /**
@@ -1401,12 +1392,13 @@ export class MeasureBuilder {
     // is open.
     if (
       open !== undefined &&
-      builder.tuplets.last() === open.group &&
+      graceGroupToJoin(builder) === open.group &&
       (graceType === undefined ||
         open.group.graceType === undefined ||
         open.group.graceType === graceType)
     ) {
       const { group } = open
+      if (builder.tuplets.last() !== group) builder.tuplets.moveIntoOpened(group)
       group.content = [...group.content, event]
       if (slashed) group.slashed = true
       group.graceType ??= graceType

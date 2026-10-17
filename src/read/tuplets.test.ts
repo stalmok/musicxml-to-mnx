@@ -3369,6 +3369,10 @@ describe('grace notes', () => {
       ),
     )
     const [first, second] = content ?? []
+    const groupSizes = [
+      first?.kind === 'tuplet' && first.content[3],
+      second?.kind === 'tuplet' && second.content[0],
+    ].map((group) => group && group.kind === 'grace' && group.content.length)
 
     expect(content?.map((item) => item.kind)).toEqual(['tuplet', 'tuplet'])
     expect(first?.kind === 'tuplet' && first.content.map((item) => item.kind)).toEqual([
@@ -3383,10 +3387,100 @@ describe('grace notes', () => {
       'event',
       'event',
     ])
+    expect(groupSizes).toEqual([2, 1])
+    expect(warnings).toEqual([])
+  })
+
+  // MusicXML states a side on each grace note, and MNX one for each group. A
+  // grace note naming another side than the group before it, with no beam
+  // joining them, starts a group of its own, inside the bracket it opens.
+  const sided =
+    (side: string, beam = '') =>
+    (step: string, mark?: string) =>
+      (mark ? graceMarked(step, mark) : grace(step))
+        .replace('<grace/>', `<grace ${side}="10"/>`)
+        .replace(mark ? '<notations>' : '</note>', `${beam}${mark ? '<notations>' : '</note>'}`)
+  const TRIPLET_AFTER =
+    tupletNote('C', 4, 'eighth') +
+    tupletNote('D', 4, 'eighth') +
+    tupletNote('E', 4, 'eighth', 'stop')
+
+  test('leaves a group on another side outside a bracket a grace note opens', () => {
+    const { content } = read(
+      measure(
+        sided('steal-time-following')('A') + sided('make-time')('B', 'start') + TRIPLET_AFTER,
+      ),
+    )
+    const tuplet = content?.[1]
+    const group = tuplet?.kind === 'tuplet' ? tuplet.content[0] : undefined
+
+    expect(content?.map((item) => item.kind)).toEqual(['grace', 'tuplet'])
+    expect(group?.kind === 'grace' && [group.graceType, group.content.length]).toEqual([
+      'makeTime',
+      1,
+    ])
+  })
+
+  // The beam is what the engraver drew, so the side already stated is kept.
+  test('takes a group on another side beamed to the grace note into the bracket', () => {
+    const { content, warnings } = read(
+      measure(
+        sided('steal-time-following', '<beam number="1">begin</beam>')('A') +
+          sided('make-time', '<beam number="1">end</beam>')('B', 'start') +
+          TRIPLET_AFTER,
+      ),
+    )
+    const tuplet = content?.[0]
+    const group = tuplet?.kind === 'tuplet' ? tuplet.content[0] : undefined
+
+    expect(content?.map((item) => item.kind)).toEqual(['tuplet'])
+    expect(group?.kind === 'grace' && [group.graceType, group.content.length]).toEqual([
+      'stealFollowing',
+      2,
+    ])
+    expect(warnings.map((w) => w.code)).toContain('unrepresentable:grace-time')
+  })
+
+  // Triplet eighths inside a triplet state 9:4, and last 8 of 36 divisions.
+  test('takes the whole group into two brackets a later grace note in it opens', () => {
+    const ratio = (played: number, space: number) =>
+      `<time-modification><actual-notes>${String(played)}</actual-notes>` +
+      `<normal-notes>${String(space)}</normal-notes></time-modification>`
+    const stated =
+      '<tuplet-actual><tuplet-number>3</tuplet-number></tuplet-actual>' +
+      '<tuplet-normal><tuplet-number>2</tuplet-number></tuplet-normal>'
+    const note = (step: string, units: number, extra: string) =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+      `<duration>${String(units)}</duration><type>eighth</type>${extra}</note>`
+    const { content, warnings } = read(
+      measures(
+        '<attributes><divisions>36</divisions></attributes>' +
+          grace('A') +
+          '<note><grace/><pitch><step>B</step><octave>5</octave></pitch><type>eighth</type>' +
+          ratio(9, 4) +
+          `<notations><tuplet type="start" number="1">${stated}</tuplet>` +
+          `<tuplet type="start" number="2">${stated}</tuplet></notations></note>` +
+          note('C', 8, ratio(9, 4)) +
+          note('D', 8, ratio(9, 4)) +
+          note('E', 8, ratio(9, 4) + marker('stop', '2')) +
+          note('F', 12, ratio(3, 2) + marker('stop', '1')),
+      ),
+    )
+    const outer = content?.[0]
+    const inner = outer?.kind === 'tuplet' ? outer.content[0] : undefined
+    const group = inner?.kind === 'tuplet' ? inner.content[0] : undefined
+
+    expect(content?.map((item) => item.kind)).toEqual(['tuplet'])
+    expect(outer?.kind === 'tuplet' && outer.content.map((item) => item.kind)).toEqual([
+      'tuplet',
+      'event',
+    ])
+    expect(group?.kind === 'grace' && group.content).toHaveLength(2)
     expect(warnings).toEqual([])
   })
 
   // A group taking its time from the note before is drawn after that note.
+  // B starts a group of its own inside the bracket.
   test('leaves a group taking its time from the note before outside the bracket', () => {
     const { content, warnings } = read(
       measure(
@@ -3399,15 +3493,20 @@ describe('grace notes', () => {
       ),
     )
     const tuplet = content?.[2]
+    const inside = tuplet?.kind === 'tuplet' ? tuplet.content[0] : undefined
 
     expect(content?.map((item) => item.kind)).toEqual(['event', 'grace', 'tuplet'])
-    expect(content?.[1]?.kind === 'grace' && content[1].graceType).toBe('stealPrevious')
+    expect(content?.[1]?.kind === 'grace' && content[1]).toMatchObject({
+      graceType: 'stealPrevious',
+      content: [{}],
+    })
     expect(tuplet?.kind === 'tuplet' && tuplet.content.map((item) => item.kind)).toEqual([
       'grace',
       'event',
       'event',
       'event',
     ])
+    expect(inside?.kind === 'grace' && inside.content).toHaveLength(1)
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:grace-time'])
   })
 
@@ -3471,6 +3570,36 @@ describe('grace notes', () => {
       expect(lines[0]?.map((item) => item.kind)).toEqual(['event'])
       expect(lines[1]?.map((item) => item.kind)).toEqual(['tuplet'])
       expect(group?.kind === 'grace' && group.content).toHaveLength(2)
+    })
+
+    // B names another side than A with no beam joining them, so B's group
+    // holds B alone, and the bracket moves with it.
+    test('moves a bracket that holds only a group on its own side', () => {
+      const { lines, warnings } = readLines(
+        measure(
+          overlapping +
+            grace('A').replace('<grace/>', '<grace steal-time-following="10"/>') +
+            graceOpening.replace('<grace/>', '<grace make-time="10"/>') +
+            tupletNote('D', 4, 'eighth') +
+            tupletNote('E', 4, 'eighth') +
+            tupletNote('F', 4, 'eighth', 'stop'),
+        ),
+      )
+      const tuplet = lines[1]?.[0]
+
+      expect(lines[0]?.map((item) => item.kind)).toEqual(['event', 'grace'])
+      expect(lines[1]?.map((item) => item.kind)).toEqual(['tuplet'])
+      expect(tuplet?.kind === 'tuplet' && tuplet.bracket).toBe('yes')
+      expect(tuplet?.kind === 'tuplet' && tuplet.content.map((item) => item.kind)).toEqual([
+        'grace',
+        'event',
+        'event',
+        'event',
+      ])
+      // Each side names an amount, which MNX has no home for.
+      expect(
+        warnings.map((w) => w.code).filter((code) => code !== 'unrepresentable:grace-time'),
+      ).toEqual(['inconsistent:voice'])
     })
 
     // Triplet eighths inside a triplet state 9:4, and last 8 of 36 divisions.
