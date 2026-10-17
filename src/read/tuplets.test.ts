@@ -3899,6 +3899,94 @@ describe('two-note tremolos', () => {
     expect(content?.[0]?.kind === 'multiNoteTremolo' && content[0].marks).toBe(3)
   })
 
+  // MusicXML multiplies the pair's 2:1 into the tuplet around it, so the
+  // count played is even. A pair inside a triplet stating 3:2 left it out.
+  describe('a ratio holding no 2:1', () => {
+    const ratio = (played: number) =>
+      `<time-modification><actual-notes>${String(played)}</actual-notes>` +
+      '<normal-notes>2</normal-notes></time-modification>'
+    // A quarter written, lasting half a triplet quarter.
+    const pairNote = (step: string, type: string, played: number, extra = '') =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>4</duration>` +
+      `<type>quarter</type>${ratio(played)}` +
+      `<notations><ornaments><tremolo type="${type}">3</tremolo></ornaments>${extra}` +
+      '</notations></note>'
+    const tripletNote = (step: string, units: number, type: string, extra = '') =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+      `<duration>${String(units)}</duration><type>${type}</type>${ratio(3)}${extra}</note>`
+    const reported =
+      'A note opening a two-note tremolo states a <time-modification> of 3 in the time of 2, ' +
+      "which holds no 2:1 for the pair. The ratio is converted as the tuplet's own, and each " +
+      'note of the pair lasts half of what it gives.'
+    const tripletOf = (content: readonly SequenceItem[] | undefined) => {
+      const [tuplet] = content ?? []
+      return tuplet?.kind === 'tuplet'
+        ? [tuplet.inner.multiple, tuplet.outer.multiple, tuplet.content.map((item) => item.kind)]
+        : undefined
+    }
+
+    test('reads the ratio of a bracket the pair opens as the bracket’s own', () => {
+      const stop = '<notations><tuplet type="stop"/></notations>'
+      const { content, warnings } = read(
+        measure(
+          pairNote('C', 'start', 3, '<tuplet type="start"/>') +
+            pairNote('E', 'stop', 3) +
+            tripletNote('G', 8, 'quarter') +
+            tripletNote('A', 8, 'quarter', stop),
+        ),
+      )
+
+      expect(tripletOf(content)).toEqual([3, 2, ['multiNoteTremolo', 'event', 'event']])
+      expect(warnings.map((w) => [w.code, w.element])).toEqual([
+        ['inconsistent:tremolo', 'time-modification'],
+        ['inconsistent:tuplet', 'time-modification'],
+      ])
+      expect(warnings[0]?.message).toBe(reported)
+    })
+
+    test('reads the ratio of a run the pair opens as the run’s own', () => {
+      const { content, warnings } = read(
+        measure(
+          pairNote('C', 'start', 3) +
+            pairNote('E', 'stop', 3) +
+            tripletNote('G', 8, 'quarter') +
+            tripletNote('A', 8, 'quarter'),
+        ),
+      )
+
+      expect(content).toHaveLength(1)
+      expect(tripletOf(content)).toEqual([3, 2, ['multiNoteTremolo', 'event', 'event']])
+      expect(warnings.map((w) => w.message)).toEqual([reported])
+    })
+
+    test('reads the ratio of a stop where none is open as the run’s own', () => {
+      const { content, warnings } = read(
+        measure(
+          pairNote('E', 'stop', 3) +
+            tripletNote('F', 4, 'eighth') +
+            tripletNote('G', 8, 'quarter') +
+            tripletNote('A', 8, 'quarter'),
+        ),
+      )
+
+      expect(content).toHaveLength(1)
+      expect(tripletOf(content)).toEqual([3, 2, ['event', 'event', 'event', 'event']])
+      expect(warnings.map((w) => w.code)).toEqual(['unclosed:tremolo', 'inconsistent:tremolo'])
+    })
+
+    // One in the time of one holds no 2:1 and leaves no tuplet either.
+    test('opens no tuplet for a pair stating one in the time of one', () => {
+      const plain = (step: string, type: string) =>
+        pairNote(step, type, 1)
+          .replace('<duration>4', '<duration>6')
+          .replace('<normal-notes>2', '<normal-notes>1')
+      const { content, warnings } = read(measure(plain('C', 'start') + plain('E', 'stop')))
+
+      expect(content?.map((item) => item.kind)).toEqual(['multiNoteTremolo'])
+      expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tremolo', 'inconsistent:tuplet'])
+    })
+  })
+
   // Time the voice passed over in silence belongs before the tremolo. Stated
   // inside it, the pair would hold a space as well as its two notes, which is
   // no longer a pair.
@@ -5714,29 +5802,6 @@ describe('a tuplet opening on the note that starts a tremolo', () => {
     expect(tuplet?.kind === 'tuplet' && tuplet.inner.multiple).toBe(3)
     expect(tuplet?.kind === 'tuplet' && tuplet.outer.multiple).toBe(2)
     expect(warnings).toEqual([])
-  })
-
-  // A source that leaves the tremolo out of the ratio disagrees with the
-  // notes, which is reported rather than read as the bracket's own.
-  test('reports a ratio that does not count the tremolo', () => {
-    const understated = (duration: number, notations: string) =>
-      '<note><pitch><step>C</step><octave>4</octave></pitch>' +
-      `<duration>${String(duration)}</duration><type>quarter</type>` +
-      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
-      '</time-modification>' +
-      `<notations>${notations}</notations></note>`
-    const { warnings } = read(
-      measure(
-        understated(
-          4,
-          '<tuplet type="start"/><ornaments><tremolo type="start">3</tremolo></ornaments>',
-        ) +
-          understated(4, '<ornaments><tremolo type="stop">3</tremolo></ornaments>') +
-          closing,
-      ),
-    )
-
-    expect(warnings.map((w) => w.code)).toContain('inconsistent:duration')
   })
 
   test('writes legal MNX for it', () => {

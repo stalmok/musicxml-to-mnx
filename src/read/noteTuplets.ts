@@ -162,7 +162,8 @@ export function openTupletsAndTremolo(
       ratio,
     )
   }
-  const rated = stated && tremolo ? tupletShareOfRatio(stated) : stated
+  const rated =
+    ratio && stated && tremolo ? tupletShareOfRatio(stated, ratio, warnings, context) : stated
   // A start marker reads the ratio below. Elsewhere the drawn bracket or the
   // two-note tremolo the note stands in states it, so it is accounted for
   // whole, as is a ratio passed over above.
@@ -237,7 +238,11 @@ export function openTupletsAndTremolo(
     // MusicXML counts a tuplet and a two-note tremolo together, so a note
     // that opens a bracket and a tremolo states the two multiplied.
     // The tremolo's own half is not the bracket's to hold.
-    const quantities = opensTremolo || startsTremolo ? withoutTremoloShare(stated) : stated
+    const quantities = !(opensTremolo || startsTremolo)
+      ? stated
+      : ratio
+        ? pairTupletRatio(stated, ratio, warnings, context)
+        : withoutTremoloShare(stated)
     const opening = starts.map((marker) => ({
       display: tupletDisplayOf(marker, hiddenTuplets.has(marker)),
       stated: statedTupletRatio(marker, quantities, path),
@@ -551,9 +556,9 @@ function impliedTupletRatio(
  * The ratio a bracket holds, with the share a two-note tremolo opening on
  * the same note taken out of it. MusicXML counts the two together: a triplet
  * whose first note is a tremolo pair states six in the time of two and draws
- * three, so halving the count keeps the number the bracket draws. Where that
- * count is odd, which a tremolo's own 2:1 never leaves, the space it is
- * played in is doubled instead, for the same ratio.
+ * three, so halving the count keeps the number the bracket draws. A ratio
+ * read off the note's duration is reduced, so where its count is odd the
+ * space it is played in is doubled instead, for the same ratio.
  */
 function withoutTremoloShare(quantities: { inner: NoteValueQuantity; outer: NoteValueQuantity }): {
   inner: NoteValueQuantity
@@ -566,16 +571,43 @@ function withoutTremoloShare(quantities: { inner: NoteValueQuantity; outer: Note
 }
 
 /**
- * The ratio left for a tuplet once a two-note tremolo on the same note takes
- * its share, or undefined where the pair takes all of it: a plain pair states
+ * The ratio a <time-modification> leaves for a tuplet once a two-note tremolo
+ * opening on the same note takes its share. MusicXML multiplies the pair's
+ * 2:1 into the tuplet the pair stands in, so the count played is even. An odd
+ * count holds no 2:1 for the pair, and the whole ratio is the tuplet's own.
+ */
+function pairTupletRatio(
+  quantities: { inner: NoteValueQuantity; outer: NoteValueQuantity },
+  ratio: XmlElement,
+  warnings: WarningCollector,
+  context: ReportContext,
+): { inner: NoteValueQuantity; outer: NoteValueQuantity } {
+  const { inner, outer } = quantities
+  if (inner.multiple % 2 === 0) return withoutTremoloShare(quantities)
+  warnings.add(
+    'inconsistent:tremolo',
+    `A note opening a two-note tremolo states a <time-modification> of ` +
+      `${String(inner.multiple)} in the time of ${String(outer.multiple)}, which holds no 2:1 ` +
+      "for the pair. The ratio is converted as the tuplet's own, and each note of the pair " +
+      'lasts half of what it gives.',
+    context,
+    ratio,
+  )
+  return quantities
+}
+
+/**
+ * The same, or undefined where the pair takes all of it: a plain pair states
  * 2:1 and leaves one in the time of one, which is no tuplet. Both sides of a
  * <time-modification> count the same value, so the counts alone say it.
  */
-function tupletShareOfRatio(quantities: {
-  inner: NoteValueQuantity
-  outer: NoteValueQuantity
-}): { inner: NoteValueQuantity; outer: NoteValueQuantity } | undefined {
-  const left = withoutTremoloShare(quantities)
+function tupletShareOfRatio(
+  quantities: { inner: NoteValueQuantity; outer: NoteValueQuantity },
+  ratio: XmlElement,
+  warnings: WarningCollector,
+  context: ReportContext,
+): { inner: NoteValueQuantity; outer: NoteValueQuantity } | undefined {
+  const left = pairTupletRatio(quantities, ratio, warnings, context)
   return left.inner.multiple === left.outer.multiple ? undefined : left
 }
 

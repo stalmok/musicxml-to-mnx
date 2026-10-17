@@ -293,7 +293,10 @@ export const WARNING_CODES = Object.freeze([
   // tremolo marker the note it joins does not, or carrying it another way,
   // where the chord's own marker is the one converted. Also a grace note
   // that starts a two-note tremolo. It takes none of the measure's time, so
-  // it cannot be one of the pair, and the marker is not converted.
+  // it cannot be one of the pair, and the marker is not converted. Also a
+  // note opening a two-note tremolo whose <time-modification> states an odd
+  // count played, which holds no 2:1 for the pair. The ratio is converted as
+  // the tuplet's own.
   'inconsistent:tremolo',
   // A <backup> reaches back further than the measure has run, so the two
   // numbers disagree about how long the measure is. The cursor is taken to
