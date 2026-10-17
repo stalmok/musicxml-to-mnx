@@ -1,6 +1,6 @@
 {
   "name": "musicxml-to-mnx",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Convert MusicXML to MNX, the W3C JSON music notation format.",
   "license": "MIT",
   "author": "Kestutis Stalmok",
