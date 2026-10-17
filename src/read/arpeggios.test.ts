@@ -336,6 +336,13 @@ describe('the mark a chord marked both ways reports', () => {
 
     expect(warnings.map((w) => [w.code, w.element])).toEqual([['inconsistent:arpeggio', lost]])
   })
+
+  // A bracket draws no arrowhead, so the roll it joins takes none.
+  test('keeps the roll a bracket joins without an arrowhead', () => {
+    const { measure } = read(head(ROLL) + member('E', '<non-arpeggiate type="bottom"/>'))
+
+    expect(measure?.arpeggios).toEqual([expect.objectContaining({ kind: 'rolled', arrow: false })])
+  })
 })
 
 // Marks on one chord are compared together whatever their numbers, so a roll
