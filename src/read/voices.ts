@@ -692,12 +692,19 @@ export class MeasureBuilder {
    * have to reach the same one. A grace note and a chord member settle
    * nothing: see graceLine and chordToJoin.
    */
-  beginNote(voice: string | undefined, note: XmlElement): VoiceLine {
+  beginNote(
+    voice: string | undefined,
+    note: XmlElement,
+    warnings: WarningCollector,
+    context: ReportContext,
+    path: DocumentPath,
+    line: number,
+  ): VoiceLine {
     this.#writeAt()
     const layers = this.#layersFor(voice)
     const before = layers.layers[layers.active] as VoiceBuilder
     const taken = this.#layerAt(voice, note)
-    if (taken !== before) this.#carryGrace(before, taken)
+    if (taken !== before) this.#carryGrace(before, taken, warnings, context, path, line)
     return newLine(voice ?? UNNAMED_VOICE, taken)
   }
 
@@ -727,12 +734,25 @@ export class MeasureBuilder {
    * a group a bracket closed on: the bracket holds it, and it is no longer
    * the last thing written in its line.
    */
-  #carryGrace(from: VoiceBuilder, to: VoiceBuilder): void {
+  #carryGrace(
+    from: VoiceBuilder,
+    to: VoiceBuilder,
+    warnings: WarningCollector,
+    context: ReportContext,
+    path: DocumentPath,
+    line: number,
+  ): void {
     const waiting = from.grace
     if (!waiting || compareFractions(waiting.at, this.#cursor) !== 0) return
     if (waiting.group.graceType === 'stealPrevious') return
     if (from.tuplets.last() !== waiting.group) return
 
+    // A bracket the group opened, or a run already full, ends the run the
+    // ratio alone opened in the sequence it joins, as either does where the
+    // group stays in its sequence.
+    if (from.tuplets.opensOnLast() || to.tuplets.impliedFullAt(this.#cursor, to.end)) {
+      this.#closeImplied(to, warnings, context, path, line)
+    }
     // The sequence it joins may have been silent since it last sounded, and
     // that silence comes before the group and the brackets it opened.
     this.#fillGap(to)
@@ -1318,7 +1338,16 @@ export class MeasureBuilder {
     path: DocumentPath,
     line: number,
   ): void {
-    const builder = layerOf(voice)
+    this.#closeImplied(layerOf(voice), warnings, context, path, line)
+  }
+
+  #closeImplied(
+    builder: VoiceBuilder,
+    warnings: WarningCollector,
+    context: ReportContext,
+    path: DocumentPath,
+    line: number,
+  ): void {
     if (builder.tuplets.impliedCompletedAt(this.#cursor, builder.end)) this.#fillGap(builder)
     builder.tuplets.closeImplied(builder.end, warnings, context, path, line)
   }

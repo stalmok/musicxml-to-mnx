@@ -4545,6 +4545,92 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
         'inconsistent:voice',
       ])
     })
+
+    // The note the grace note leads into overlaps the half in the line the
+    // grace note was read into, so the group goes back to the run's line.
+    test('closes the run in the line the bracket goes to', () => {
+      const warnings = new WarningCollector()
+      const result = readValid(
+        measure(
+          rated('A', 4, 'eighth') +
+            '<backup><duration>4</duration></backup>' +
+            plain('C', 24, 'half') +
+            '<backup><duration>20</duration></backup>' +
+            opening +
+            bracketed('D') +
+            bracketed('E') +
+            bracketed('F', 'stop'),
+        ),
+        warnings,
+      )
+      const [run, tuplet] = result.parts[0]?.measures[0]?.sequences[0]?.content ?? []
+
+      expect(run?.kind === 'tuplet' && run.content.map((item) => item.kind)).toEqual(['event'])
+      expect(tuplet?.kind === 'tuplet' && [tuplet.inner.multiple, tuplet.outer.multiple]).toEqual([
+        3, 2,
+      ])
+      expect(tuplet?.kind === 'tuplet' && tuplet.content).toHaveLength(4)
+      expect(warnings.list().map((w) => w.code)).toEqual([
+        'unrepresentable:tuplet-ratio',
+        'inconsistent:voice',
+      ])
+    })
+  })
+
+  // The note the grace note leads into overlaps the half in the line the
+  // grace note was read into, so the group goes back to the run's line,
+  // which the run has filled.
+  test('leaves a grace group that goes to a line with a full run outside it', () => {
+    const grace =
+      '<note><grace/><pitch><step>F</step><octave>5</octave></pitch><type>eighth</type></note>'
+    const warnings = new WarningCollector()
+    const result = readValid(
+      measure(
+        rated('C', 4, 'eighth') +
+          rated('D', 4, 'eighth') +
+          rated('E', 4, 'eighth') +
+          '<backup><duration>12</duration></backup>' +
+          plain('A', 24, 'half') +
+          '<backup><duration>12</duration></backup>' +
+          grace +
+          plain('G', 12, 'quarter'),
+      ),
+      warnings,
+    )
+    const [run, ...rest] = result.parts[0]?.measures[0]?.sequences[0]?.content ?? []
+
+    expect(run?.kind === 'tuplet' && run.content).toHaveLength(3)
+    expect(rest.map((item) => item.kind)).toEqual(['grace', 'event'])
+    expect(warnings.list().map((w) => w.code)).toEqual(['inconsistent:voice'])
+  })
+
+  test('reaches over a grace group that goes to a line with a run that has room left', () => {
+    const grace =
+      '<note><grace/><pitch><step>F</step><octave>5</octave></pitch><type>eighth</type></note>'
+    const warnings = new WarningCollector()
+    const result = readValid(
+      measure(
+        rated('C', 4, 'eighth') +
+          rated('D', 4, 'eighth') +
+          '<backup><duration>8</duration></backup>' +
+          plain('A', 24, 'half') +
+          '<backup><duration>16</duration></backup>' +
+          grace +
+          rated('E', 4, 'eighth'),
+      ),
+      warnings,
+    )
+    const content = result.parts[0]?.measures[0]?.sequences[0]?.content
+    const run = content?.[0]
+
+    expect(content).toHaveLength(1)
+    expect(run?.kind === 'tuplet' && run.content.map((item) => item.kind)).toEqual([
+      'event',
+      'event',
+      'grace',
+      'event',
+    ])
+    expect(warnings.list().map((w) => w.code)).toEqual(['inconsistent:voice'])
   })
 
   /** A note of `units` divisions written as `type`, ending a tuplet it never opened. */

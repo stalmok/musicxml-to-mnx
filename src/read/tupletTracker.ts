@@ -177,6 +177,14 @@ export class TupletTracker {
   }
 
   /**
+   * Whether a bracket opened where the item written last stands, so it holds
+   * nothing else and moves with it. See moveLastTo.
+   */
+  opensOnLast(): boolean {
+    return this.#open.at(-1)?.list.length === 1
+  }
+
+  /**
    * Moves `item`, which must be the item written last inside every bracket
    * open, to the end of `to`. The brackets open around it that hold nothing
    * else were opened where it stands, so they move with it. `openEnd` is

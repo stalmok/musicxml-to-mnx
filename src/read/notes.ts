@@ -143,7 +143,7 @@ export function readNote(
     ? undefined
     : graceElement
       ? builder.graceLine(namedVoice)
-      : builder.beginNote(namedVoice, element.element)
+      : builder.beginNote(namedVoice, element.element, warnings, context, path, element.line)
 
   // Which staff the note names. It is range-checked even in a one-staff part,
   // so a note naming a staff that <staves> has not declared is rejected, not
