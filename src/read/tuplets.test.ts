@@ -459,6 +459,35 @@ describe('tuplet ratios stated on the start marker', () => {
     expect(warnings[0]?.message).toContain('start marker')
   })
 
+  // D's marker states 5:4 inside C's 3:2, which disagrees with D's 9:4.
+  test('reports a disagreeing marker on a bracket inside one another note opened', () => {
+    const ratio = (actual: number, normal: number) =>
+      `<time-modification><actual-notes>${String(actual)}</actual-notes>` +
+      `<normal-notes>${String(normal)}</normal-notes></time-modification>`
+    const quarter = (step: string, markers: string) =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>12</duration>` +
+      `<type>quarter</type>${ratio(3, 2)}<notations>${markers}</notations></note>`
+    const eighth = (step: string, markers = '') =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>4</duration>` +
+      `<type>eighth</type>${ratio(9, 4)}<notations>${markers}</notations></note>`
+    const fiveInFour =
+      '<tuplet-actual><tuplet-number>5</tuplet-number></tuplet-actual>' +
+      '<tuplet-normal><tuplet-number>4</tuplet-number></tuplet-normal>'
+    const { warnings } = read(
+      measures(
+        '<attributes><divisions>18</divisions></attributes>' +
+          quarter('C', '<tuplet type="start" number="1"/>') +
+          eighth('D', `<tuplet type="start" number="2">${fiveInFour}</tuplet>`) +
+          eighth('E') +
+          eighth('F', '<tuplet type="stop" number="2"/>') +
+          quarter('G', '<tuplet type="stop" number="1"/>'),
+      ),
+    )
+
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([['inconsistent:tuplet', 'tuplet']])
+    expect(warnings[0]?.message).toContain('start marker')
+  })
+
   // <tuplet-actual> and <tuplet-normal> may each be left out, and either may
   // state only its number. What is left out comes from <time-modification>.
   test('fills what the marker leaves out from the time-modification', () => {
@@ -3809,6 +3838,21 @@ describe('grace notes', () => {
 
         expect(warnings.map((w) => w.code)).toEqual([
           'inconsistent:tuplet',
+          'unrepresentable:tuplet-untimed',
+          'inconsistent:voice',
+        ])
+      })
+
+      // The markers' 3:2 and 3:2 disagree with 27:8 in the half's line, where
+      // A closes bracket 3. They agree with it inside the first triplet's 3:2,
+      // where bracket 2 moves with D.
+      test('checks a start marker against the line its last bracket moves to', () => {
+        const graces =
+          grace('B', 27, 8, start('2', STATED) + start('3', STATED)) +
+          grace('A', 27, 8, '<tuplet type="stop" number="3"/>')
+        const { warnings } = readLines(intoBracket(STATED).replace(opening(9, 4, STATED), graces))
+
+        expect(warnings.map((w) => w.code)).toEqual([
           'unrepresentable:tuplet-untimed',
           'inconsistent:voice',
         ])

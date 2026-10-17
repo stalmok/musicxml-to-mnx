@@ -51,13 +51,11 @@ interface Opening {
   /**
    * The start marker whose ratio disagrees with the note's
    * <time-modification>. It is reported in the note's place in the warning
-   * list when the first bracket the note opened closes, so a bracket that
+   * list when the last bracket the note opened closes, so a bracket that
    * moves to another line before then is checked against that line.
    */
   disagreeing: XmlElement | undefined
   place: WarningPlace
-  /** Set once a bracket the note opened has closed and reported it. */
-  reported: boolean
 }
 
 /**
@@ -433,7 +431,6 @@ export class TupletTracker {
       starts,
       disagreeing,
       place: warnings.reserve(),
-      reported: false,
     }
 
     for (const [index, level] of levels.entries()) {
@@ -803,7 +800,10 @@ export class TupletTracker {
     }
     this.#open.pop()
     const { opening } = closed
-    if (opening?.disagreeing && !opening.reported) {
+    const lastOpened =
+      opening !== undefined &&
+      !this.#open.some((frame) => frame.opened === 'tuplet' && frame.opening === opening)
+    if (lastOpened && opening.disagreeing) {
       warnings.addAt(
         opening.place,
         'inconsistent:tuplet',
@@ -812,7 +812,6 @@ export class TupletTracker {
         context,
         opening.disagreeing,
       )
-      opening.reported = true
     }
     // A run with no bracket has no stop, so it is reported where it opened,
     // and so is a bracket the barline closes.
