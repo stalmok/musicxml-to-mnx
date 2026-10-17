@@ -112,6 +112,7 @@ describe('a rest placed on the staff', () => {
 
     expect(item).toMatchObject({ body: { kind: 'rest', staffPosition: undefined } })
     expect(warnings.map((w) => w.element)).toEqual([stated])
+    expect(warnings[0]?.message).toContain('needs both')
   })
 
   test('writes a rest position the spec schema accepts', () => {
