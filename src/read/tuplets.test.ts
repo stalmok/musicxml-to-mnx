@@ -4478,6 +4478,75 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
     expect(warnings).toEqual([])
   })
 
+  // A bracket the source drew says where its tuplet starts, on a grace note
+  // as on any other, so the run before it ends there, short of its ratio.
+  describe('a run with room left before a grace note that opens a bracket', () => {
+    const opening =
+      '<note><grace/><pitch><step>B</step><octave>5</octave></pitch><type>eighth</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+      '</time-modification><notations><tuplet type="start" bracket="yes"/></notations></note>'
+    const bracketed = (step: string, bracket = '') =>
+      rated(step, 4, 'eighth').replace(
+        '</note>',
+        bracket ? `<notations><tuplet type="${bracket}"/></notations></note>` : '</note>',
+      )
+
+    test('closes the run before the bracket', () => {
+      const { content, warnings } = read(
+        measure(
+          rated('A', 4, 'eighth') +
+            opening +
+            bracketed('D') +
+            bracketed('E') +
+            bracketed('F', 'stop'),
+        ),
+      )
+      const [run, tuplet] = content ?? []
+
+      expect(content?.map((item) => item.kind)).toEqual(['tuplet', 'tuplet'])
+      expect(run?.kind === 'tuplet' && run.content.map((item) => item.kind)).toEqual(['event'])
+      expect(tuplet?.kind === 'tuplet' && [tuplet.inner.multiple, tuplet.outer.multiple]).toEqual([
+        3, 2,
+      ])
+      expect(tuplet?.kind === 'tuplet' && tuplet.bracket).toBe('yes')
+      expect(tuplet?.kind === 'tuplet' && tuplet.content.map((item) => item.kind)).toEqual([
+        'grace',
+        'event',
+        'event',
+        'event',
+      ])
+      expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-ratio'])
+    })
+
+    // The note the grace note leads into overlaps the quarter before it, so
+    // it takes a new line, and the bracket goes with it at the ratio stated.
+    test('keeps the ratio of a bracket that goes to a new line', () => {
+      const warnings = new WarningCollector()
+      const result = readValid(
+        measure(
+          rated('A', 4, 'eighth') +
+            rated('G', 4, 'eighth') +
+            '<forward><duration>4</duration></forward><backup><duration>8</duration></backup>' +
+            opening +
+            bracketed('D') +
+            bracketed('E') +
+            bracketed('F', 'stop'),
+        ),
+        warnings,
+      )
+      const tuplet = result.parts[0]?.measures[0]?.sequences[1]?.content[1]
+
+      expect(tuplet?.kind === 'tuplet' && [tuplet.inner.multiple, tuplet.outer.multiple]).toEqual([
+        3, 2,
+      ])
+      expect(tuplet?.kind === 'tuplet' && tuplet.content).toHaveLength(4)
+      expect(warnings.list().map((w) => w.code)).toEqual([
+        'unrepresentable:tuplet-ratio',
+        'inconsistent:voice',
+      ])
+    })
+  })
+
   /** A note of `units` divisions written as `type`, ending a tuplet it never opened. */
   const stopping = (step: string, units: number, type: string) =>
     `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +

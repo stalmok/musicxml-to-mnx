@@ -187,10 +187,12 @@ export function openTupletsAndTremolo(
   // Full, or this note does not belong in it either way: the run ends here. A
   // grace note takes none of the measure's time, so it neither fills a run nor
   // ends one, and a run with room left reaches over it. A full run is over,
-  // so the grace note leads to the note after it. A skip before the note that
-  // fills the run, or carries it past what its ratio counts, ends it too.
+  // so the grace note leads to the note after it. A bracket starting on a
+  // grace note says where its tuplet starts, so it ends the run as a bracket
+  // starting on any other note does. A skip before the note that fills the
+  // run, or carries it past what its ratio counts, ends it too.
   const endsRun = graceElement
-    ? builder.impliedTupletFull(voice)
+    ? starts.length > 0 || builder.impliedTupletFull(voice)
     : builder.impliedTupletEndsBefore(voice, rated)
   if (endsRun) builder.closeImpliedTuplet(voice, warnings, context, path, element.line)
 
