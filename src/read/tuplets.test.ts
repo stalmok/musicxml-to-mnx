@@ -3784,14 +3784,15 @@ describe('grace notes', () => {
       })
 
       // With no marker to divide 9:4 between the two brackets, the outer one
-      // takes all of it. The notes are not held to a ratio the source did
-      // not state.
+      // takes all of it, so G lasts less than it states. The converter worked
+      // that division out, so no note's <time-modification> is checked
+      // against it.
       test('leaves the ratio of a bracket that moves unstated where none of it was', () => {
         const { warnings } = readLines(
           newLine(grace('B', 9, 4, start('1') + start('2')), inner(9, 4, 8)),
         )
 
-        expect(warnings.map((w) => w.code)).not.toContain('inconsistent:tuplet')
+        expect(warnings.map((w) => w.code)).toEqual(['inconsistent:duration', 'inconsistent:voice'])
       })
 
       // The markers' 3:2 and 3:2 disagree with the note's 3:2. The inner
@@ -3815,9 +3816,17 @@ describe('grace notes', () => {
 
       test('reports a start marker that disagrees in the line the bracket moves to', () => {
         const { warnings } = readLines(outOfBracket(9, 4, 8, STATED))
-        const marker = warnings.find((w) => w.message.includes('start marker'))
 
-        expect(marker).toMatchObject({ code: 'inconsistent:tuplet', element: 'tuplet' })
+        // The marker is reported where the bracket opens, before what the
+        // bracket turned out to hold.
+        expect(warnings.map((w) => w.code)).toEqual([
+          'inconsistent:tuplet',
+          'inconsistent:tuplet',
+          'inconsistent:voice',
+        ])
+        expect(warnings[0]).toMatchObject({ element: 'tuplet' })
+        expect(warnings[0]?.message).toContain('start marker')
+        expect(warnings[1]?.message).not.toContain('start marker')
       })
     })
 
@@ -4324,6 +4333,30 @@ describe('two-note tremolos', () => {
     ])
   })
 
+  // The 6:2 counts the pair's 2:1 with the bracket's 3:2, as it does on a
+  // note that opens both.
+  test('takes the pair’s share out of a bracket a grace note marking a pair opens', () => {
+    const graceStart =
+      '<note><grace/><pitch><step>B</step><octave>4</octave></pitch><type>eighth</type>' +
+      '<time-modification><actual-notes>6</actual-notes><normal-notes>2</normal-notes>' +
+      '</time-modification><notations><tuplet type="start"/>' +
+      '<ornaments><tremolo type="start">3</tremolo></ornaments></notations></note>'
+    const { content, warnings } = read(
+      measure(
+        graceStart +
+          tupletNote('C', 4, 'eighth') +
+          tupletNote('D', 4, 'eighth') +
+          tupletNote('E', 4, 'eighth', 'stop'),
+      ),
+    )
+    const tuplet = content?.[0]
+
+    expect(tuplet?.kind === 'tuplet' && [tuplet.inner.multiple, tuplet.outer.multiple]).toEqual([
+      3, 2,
+    ])
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tremolo'])
+  })
+
   test('rejects a pair whose notes last different times', () => {
     const shorter =
       '<note><pitch><step>E</step><octave>4</octave></pitch><duration>6</duration>' +
@@ -4486,8 +4519,9 @@ describe('two-note tremolos', () => {
   })
 
   // A grace note opens no pair, so the pair it stands in stays open, and
-  // the grace note is gathered into it as any grace note there is.
-  test('reads a tremolo starting on a grace note inside another as a grace note there', () => {
+  // the grace note is gathered into it. A grace note inside a pair is
+  // refused, with or without the marker.
+  test('refuses a tremolo starting on a grace note inside another as a grace note there', () => {
     const graceStart =
       '<note><grace/><pitch><step>D</step><octave>4</octave></pitch><type>half</type>' +
       '<notations><ornaments><tremolo type="start">3</tremolo></ornaments></notations></note>'
@@ -4498,6 +4532,7 @@ describe('two-note tremolos', () => {
     )
     const plain = readFailure(measure(tremoloNote('C', 'start') + grace + tremoloNote('E', 'stop')))
 
+    expect(marked.message).toContain('holds something other than two notes')
     expect(marked.message).toBe(plain.message)
   })
 
