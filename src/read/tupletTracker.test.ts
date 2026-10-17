@@ -38,7 +38,7 @@ describe('moving the item written last to another sequence', () => {
     const tracker = new TupletTracker(content)
     const first = space(1)
     tracker.append(first)
-    tracker.openTremolo(1, parseXmlRoot('<tremolo/>'), [], 1)
+    tracker.openTremolo(1, parseXmlRoot('<tremolo/>'))
     const second = space(2)
     tracker.append(second)
     const other = new TupletTracker([])
@@ -56,7 +56,7 @@ describe('moving the item written last to another sequence', () => {
     const tracker = new TupletTracker([])
     openImplied(tracker)
     const tremolo = parseXmlRoot('<tremolo/>')
-    tracker.openTremolo(1, tremolo, [], 1)
+    tracker.openTremolo(1, tremolo)
     const item = space(1)
     tracker.append(item)
     const otherContent: SequenceItem[] = []

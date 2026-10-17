@@ -291,7 +291,9 @@ export const WARNING_CODES = Object.freeze([
   // The two ends of a two-note tremolo count different beams, and the
   // start's count is the one converted. Also a note of a chord carrying a
   // tremolo marker the note it joins does not, or carrying it another way,
-  // where the chord's own marker is the one converted.
+  // where the chord's own marker is the one converted. Also a grace note
+  // that starts a two-note tremolo. It takes none of the measure's time, so
+  // it cannot be one of the pair, and the marker is not converted.
   'inconsistent:tremolo',
   // A <backup> reaches back further than the measure has run, so the two
   // numbers disagree about how long the measure is. The cursor is taken to

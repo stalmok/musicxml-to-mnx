@@ -562,9 +562,10 @@ export class TupletTracker {
    * Starts a two-note tremolo. The notes added while it is open are
    * gathered, and join the content as one item when it closes.
    */
-  openTremolo(marks: number, element: XmlElement, path: DocumentPath, line: number): void {
+  openTremolo(marks: number, element: XmlElement): void {
+    /* v8 ignore next 3 -- a note that opens one converts the one open first, and a grace note opens none. */
     if (this.#tremolo()) {
-      throw new MusicXMLError('A tremolo starts inside another tremolo.', { path, line })
+      throw new Error('A tremolo starts inside another tremolo.')
     }
     this.#open.push({ opened: 'tremolo', list: [], marks, events: [], durations: [], element })
   }

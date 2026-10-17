@@ -77,7 +77,19 @@ export function openTupletsAndTremolo(
       tremolo.element,
     )
   }
-  const opensTremolo = tremolo?.type === 'start' || (unpaired && !graceElement)
+  // A grace note takes none of the measure's time, so it cannot be one of the
+  // pair either.
+  const startsTremolo = tremolo?.type === 'start'
+  const opensTremolo = !graceElement && (startsTremolo || unpaired)
+  if (graceElement && startsTremolo) {
+    warnings.add(
+      'inconsistent:tremolo',
+      "A two-note tremolo starts on a grace note, which takes none of the measure's time, " +
+        'so it cannot be one of the pair. The marker is not converted.',
+      context,
+      tremolo.element,
+    )
+  }
 
   // A tremolo on a single note carries no <time-modification> and lasts what
   // it is written as, so only the ornament itself is lost, and that is
@@ -225,7 +237,7 @@ export function openTupletsAndTremolo(
     // MusicXML counts a tuplet and a two-note tremolo together, so a note
     // that opens a bracket and a tremolo states the two multiplied.
     // The tremolo's own half is not the bracket's to hold.
-    const quantities = opensTremolo ? withoutTremoloShare(stated) : stated
+    const quantities = opensTremolo || startsTremolo ? withoutTremoloShare(stated) : stated
     const opening = starts.map((marker) => ({
       display: tupletDisplayOf(marker, hiddenTuplets.has(marker)),
       stated: statedTupletRatio(marker, quantities, path),
@@ -297,7 +309,7 @@ export function openTupletsAndTremolo(
 
   // Opened after any tuplet starting on the same note: the pair may sit
   // inside a tuplet, and the bracket is the outer grouping.
-  if (tremolo && opensTremolo) builder.openTremolo(voice, tremolo, path, element.line)
+  if (tremolo && opensTremolo) builder.openTremolo(voice, tremolo)
 
   return { markers, tremolo }
 }

@@ -117,15 +117,6 @@ const REFUSALS: readonly { what: string; body: readonly string[]; at: number }[]
     at: 1,
   },
   {
-    what: 'a tremolo starting inside another',
-    body: [
-      tremoloNote('C', 'start'),
-      '<note><grace/><pitch><step>D</step><octave>4</octave></pitch><type>half</type>' +
-        '<notations><ornaments><tremolo type="start">3</tremolo></ornaments></notations></note>',
-    ],
-    at: 1,
-  },
-  {
     what: 'a tremolo holding something other than two notes',
     body: [
       tremoloNote('C', 'start'),

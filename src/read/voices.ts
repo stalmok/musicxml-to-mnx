@@ -1254,16 +1254,11 @@ export class MeasureBuilder {
    * Starts a two-note tremolo in this voice. The notes added while it is
    * open are gathered, and join the content as one item when it closes.
    */
-  openTremolo(
-    voice: VoiceLine,
-    marker: { marks: number; element: XmlElement },
-    path: DocumentPath,
-    line: number,
-  ): void {
+  openTremolo(voice: VoiceLine, marker: { marks: number; element: XmlElement }): void {
     const builder = layerOf(voice)
     // Time this voice has passed over in silence belongs before the tremolo.
     this.#fillGap(builder)
-    builder.tuplets.openTremolo(marker.marks, marker.element, path, line)
+    builder.tuplets.openTremolo(marker.marks, marker.element)
   }
 
   /** Records what an event said about the beams it carries. */

@@ -4160,16 +4160,20 @@ describe('two-note tremolos', () => {
     ).toContain('holds something other than two notes')
   })
 
-  // A grace note takes none of the measure's time, so a pair opening on one
-  // holds a grace group and a single note rather than two notes.
-  test('rejects a pair opening on a grace note', () => {
+  // A grace note takes none of the measure's time, so it cannot be one of the
+  // pair, and the stop is the only end the pair has.
+  test('reports a pair opening on a grace note, and converts its stop as a plain note', () => {
     const graceStart =
       '<note><grace/><pitch><step>C</step><octave>4</octave></pitch><type>half</type>' +
       '<notations><ornaments><tremolo type="start">3</tremolo></ornaments></notations></note>'
+    const { content, warnings } = read(measure(graceStart + tremoloNote('E', 'stop')))
 
-    expect(readFailure(measure(graceStart + tremoloNote('E', 'stop'))).message).toContain(
-      'holds something other than two notes',
-    )
+    expect(content?.map((item) => item.kind)).toEqual(['grace', 'event'])
+    expect(content?.[1]?.kind === 'event' && content[1].value.base).toBe('quarter')
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([
+      ['inconsistent:tremolo', 'tremolo'],
+      ['unclosed:tremolo', 'tremolo'],
+    ])
   })
 
   test('rejects a pair whose notes last different times', () => {
@@ -4333,15 +4337,20 @@ describe('two-note tremolos', () => {
     expect(warnings).toEqual([])
   })
 
-  // A grace note does not end the pair it follows, so it cannot open another.
-  test('rejects a tremolo starting on a grace note inside another', () => {
+  // A grace note opens no pair, so the pair it stands in stays open, and
+  // the grace note is gathered into it as any grace note there is.
+  test('reads a tremolo starting on a grace note inside another as a grace note there', () => {
     const graceStart =
       '<note><grace/><pitch><step>D</step><octave>4</octave></pitch><type>half</type>' +
       '<notations><ornaments><tremolo type="start">3</tremolo></ornaments></notations></note>'
-
-    expect(readFailure(measure(tremoloNote('C', 'start') + graceStart)).message).toContain(
-      'inside another',
+    const grace =
+      '<note><grace/><pitch><step>D</step><octave>4</octave></pitch><type>half</type></note>'
+    const marked = readFailure(
+      measure(tremoloNote('C', 'start') + graceStart + tremoloNote('E', 'stop')),
     )
+    const plain = readFailure(measure(tremoloNote('C', 'start') + grace + tremoloNote('E', 'stop')))
+
+    expect(marked.message).toBe(plain.message)
   })
 
   // A note between the pair is not its second note, so each end is left on
