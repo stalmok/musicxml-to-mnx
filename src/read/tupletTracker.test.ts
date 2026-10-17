@@ -136,7 +136,9 @@ test('a run the ratio alone opened and nothing went into is removed when it clos
     fraction(1, 8),
   )
 
-  tracker.closeImplied(fraction(1, 8), new WarningCollector(), {}, [], 1)
+  const warnings = new WarningCollector()
+  tracker.closeImplied(fraction(1, 8), warnings, {}, [], 1)
 
   expect(content).toEqual([before])
+  expect(warnings.list()).toEqual([])
 })
