@@ -17,7 +17,7 @@ import {
 } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type { XmlElement } from '../xml/parse.js'
-import type { ReportContext, WarningCollector } from './collector.js'
+import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
 import {
   quantityLength,
   ratioOf,
@@ -38,6 +38,24 @@ import type {
 } from '../model/score.js'
 import { describeValue, lengthOf, noteValueOf } from './duration.js'
 import type { Draft } from './draft.js'
+
+/**
+ * What one note stated about the brackets it opened, kept so their levels can
+ * be worked out again against the brackets of the line they move to. See
+ * moveLastTo.
+ */
+interface Opening {
+  inner: NoteValueQuantity
+  outer: NoteValueQuantity
+  starts: readonly TupletStart[]
+  /**
+   * The start marker whose ratio disagrees with the note's
+   * <time-modification>, reported where the note is once a bracket closes,
+   * when the line the brackets end up in is known.
+   */
+  disagreeing: XmlElement | undefined
+  place: WarningPlace
+}
 
 /**
  * A tuplet bracket currently open: the list its notes go in, how much of
@@ -84,6 +102,8 @@ interface OpenTuplet {
   children: TupletClaim[]
   /** The skips filled directly inside this one, waiting for its frame. */
   skips: OpenSkip[]
+  /** What the note that opened it stated. Unset for a run with no bracket. */
+  opening: Opening | undefined
 }
 
 /**
@@ -214,8 +234,9 @@ export class TupletTracker {
   /**
    * Moves `item`, which must be the item written last inside every bracket
    * open, to the end of `to`. The brackets open around it that hold nothing
-   * else were opened where it stands, so they move with it. `openEnd` is
-   * where `to` has reached.
+   * else were opened where it stands, so they move with it. Each level's
+   * share of the note's ratio is worked out again against the brackets open
+   * in `to`. `openEnd` is where `to` has reached.
    */
   moveLastTo(item: SequenceItem, to: TupletTracker, openEnd: Fraction): void {
     removeLastFrom(this.#list(), item)
@@ -225,8 +246,14 @@ export class TupletTracker {
       if (frame.opened === 'tuplet') removeLastFrom(frame.within, frame.tuplet)
       moving.unshift(frame)
     }
+    let releveled: Opening | undefined
     for (const frame of moving) {
       if (frame.opened === 'tuplet') {
+        const { opening } = frame
+        if (opening && opening !== releveled) {
+          releveled = opening
+          to.#relevel(opening, moving)
+        }
         frame.within = to.#list()
         frame.within.push(frame.tuplet)
         frame.openEnd = openEnd
@@ -234,6 +261,30 @@ export class TupletTracker {
       to.#open.push(frame)
     }
     to.#list().push(item)
+  }
+
+  /**
+   * Sets the share of each bracket in `frames` that `opening` opened, against
+   * the brackets the source drew that are open here.
+   */
+  #relevel(opening: Opening, frames: readonly OpenBracket[]): void {
+    const { levels, disagreeing } = tupletLevels(
+      this.#drawnRatios(),
+      opening.inner,
+      opening.outer,
+      opening.starts,
+    )
+    opening.disagreeing = disagreeing
+    for (const frame of frames) {
+      if (frame.opened !== 'tuplet' || frame.opening !== opening) continue
+      const level = levels.find((candidate) => candidate.element === frame.element)
+      /* v8 ignore next -- each start a note opened gives one level. */
+      if (!level) throw new Error('A bracket opened with no level of its own.')
+      frame.tuplet.inner = level.inner
+      frame.tuplet.outer = level.outer
+      frame.ratio = ratioOf(level.inner, level.outer)
+      if (frame.stated) frame.stated = { inner: level.inner, outer: level.outer }
+    }
   }
 
   /** How much of its written value a note lasts, given the tuplets around it. */
@@ -343,7 +394,6 @@ export class TupletTracker {
     derived: boolean,
     openEnd: Fraction,
     warnings: WarningCollector,
-    context: ReportContext,
     path: DocumentPath,
     line: number,
     leading?: SequenceItem,
@@ -355,19 +405,14 @@ export class TupletTracker {
     }
     if (leading) removeLastFrom(this.#list(), leading)
 
-    // A run the ratio alone opened is open here only where a grace note
-    // starts the bracket, and the run closes before the bracket's first note
-    // that takes time, so the bracket's share is not divided by it.
-    const levels = tupletLevels(
-      this.#tuplets()
-        .filter((open) => !open.unbracketed)
-        .map((open) => open.ratio),
+    const { levels, disagreeing } = tupletLevels(this.#drawnRatios(), inner, outer, starts)
+    const opening: Opening = {
       inner,
       outer,
       starts,
-      warnings,
-      context,
-    )
+      disagreeing,
+      place: warnings.reserve(),
+    }
 
     for (const [index, level] of levels.entries()) {
       const { display } = level
@@ -409,6 +454,7 @@ export class TupletTracker {
         within,
         children: [],
         skips: [],
+        opening,
       })
     }
     if (leading) this.#list().push(leading)
@@ -446,6 +492,7 @@ export class TupletTracker {
       within,
       children: [],
       skips: [],
+      opening: undefined,
     })
   }
 
@@ -733,6 +780,18 @@ export class TupletTracker {
       throw new MusicXMLError('A tuplet closes inside a two-note tremolo.', { path, line })
     }
     this.#open.pop()
+    const { opening } = closed
+    if (opening?.disagreeing) {
+      warnings.addAt(
+        opening.place,
+        'inconsistent:tuplet',
+        "A tuplet's start marker states a ratio that disagrees with the notes' " +
+          '<time-modification>. The ratio the notes state is the one converted.',
+        context,
+        opening.disagreeing,
+      )
+      opening.disagreeing = undefined
+    }
     // A run with no bracket has no stop, so it is reported where it opened,
     // and so is a bracket the barline closes.
     const at = stop ?? closed.element
@@ -829,6 +888,18 @@ export class TupletTracker {
    */
   #list(): SequenceItem[] {
     return this.#open.at(-1)?.list ?? this.#content
+  }
+
+  /**
+   * The ratios of the brackets the source drew that are open, outermost
+   * first. A run the ratio alone opened is open around a bracket only where a
+   * grace note starts the bracket, and the run closes before the bracket's
+   * first note that takes time, so the bracket's share is not divided by it.
+   */
+  #drawnRatios(): Fraction[] {
+    return this.#tuplets()
+      .filter((open) => !open.unbracketed)
+      .map((open) => open.ratio)
   }
 
   /** The tuplets open around a note, outermost first. */

@@ -1069,7 +1069,6 @@ export class MeasureBuilder {
     outer: NoteValueQuantity,
     starts: readonly TupletStart[],
     warnings: WarningCollector,
-    context: ReportContext,
     path: DocumentPath,
     line: number,
     /**
@@ -1103,7 +1102,6 @@ export class MeasureBuilder {
       derived,
       builder.end,
       warnings,
-      context,
       path,
       line,
       leading,

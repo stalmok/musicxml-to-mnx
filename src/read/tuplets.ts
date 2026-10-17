@@ -197,16 +197,15 @@ interface TupletLevel {
  *
  * The notes' durations follow the <time-modification>, so it governs timing.
  * Markers whose stated ratios do not multiply out to it disagree with the
- * notes; the division is kept and the disagreement reported.
+ * notes; the division is kept, and the first marker stating a ratio is handed
+ * back as `disagreeing` for the caller to report.
  */
 export function tupletLevels(
   openRatios: readonly Fraction[],
   inner: NoteValueQuantity,
   outer: NoteValueQuantity,
   starts: readonly TupletStart[],
-  warnings: WarningCollector,
-  context: ReportContext,
-): TupletLevel[] {
+): { levels: TupletLevel[]; disagreeing: XmlElement | undefined } {
   const enclosing = openRatios.reduce(multiplyFractions, fraction(1))
   const cumulative = ratioOf(inner, outer)
   // What the levels opening on this note must multiply to, together.
@@ -225,11 +224,11 @@ export function tupletLevels(
       .reduce(multiplyFractions, fraction(1))
 
     if (holes === 0 && compareFractions(product, required) === 0) {
-      return known
+      return { levels: known, disagreeing: undefined }
     }
     if (holes === 1) {
       const rest = divideFractions(required, product)
-      return starts.map((start) => ({
+      const levels = starts.map((start) => ({
         ...(start.stated ?? {
           inner: { value: inner.value, multiple: rest.den },
           outer: { value: outer.value, multiple: rest.num },
@@ -238,14 +237,8 @@ export function tupletLevels(
         number: start.number,
         element: start.element,
       }))
+      return { levels, disagreeing: undefined }
     }
-    warnings.add(
-      'inconsistent:tuplet',
-      "A tuplet's start marker states a ratio that disagrees with the notes' " +
-        '<time-modification>. The ratio the notes state is the one converted.',
-      context,
-      stating.element,
-    )
   }
 
   const levels: TupletLevel[] = []
@@ -268,7 +261,7 @@ export function tupletLevels(
     open = multiplyFractions(open, ratioOf(level.inner, level.outer))
     depth += 1
   }
-  return levels
+  return { levels, disagreeing: stating?.element }
 }
 
 /** Whether two <time-modification> readings state the same counts. */

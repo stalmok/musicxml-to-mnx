@@ -287,7 +287,6 @@ export function openTupletsAndTremolo(
         quantities.outer,
         opened,
         warnings,
-        context,
         path,
         element.line,
         derived !== undefined,

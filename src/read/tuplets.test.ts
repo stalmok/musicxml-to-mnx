@@ -3473,6 +3473,206 @@ describe('grace notes', () => {
       expect(group?.kind === 'grace' && group.content).toHaveLength(2)
     })
 
+    // Triplet eighths inside a triplet state 9:4, and last 8 of 36 divisions.
+    describe('a bracket that moves to a line with other brackets open', () => {
+      const ratio = (played: number, space: number) =>
+        `<time-modification><actual-notes>${String(played)}</actual-notes>` +
+        `<normal-notes>${String(space)}</normal-notes></time-modification>`
+      const note = (step: string, units: number, type: string, extra = '') =>
+        `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+        `<duration>${String(units)}</duration><type>${type}</type>${extra}</note>`
+      const backup = (units: number) => `<backup><duration>${String(units)}</duration></backup>`
+      const STATED =
+        '<tuplet-actual><tuplet-number>3</tuplet-number></tuplet-actual>' +
+        '<tuplet-normal><tuplet-number>2</tuplet-number></tuplet-normal>'
+      const opening = (played: number, space: number, stated = '') =>
+        '<note><grace/><pitch><step>B</step><octave>5</octave></pitch><type>eighth</type>' +
+        ratio(played, space) +
+        `<notations><tuplet type="start" number="2">${stated}</tuplet></notations></note>`
+      const inner = (played: number, space: number, units: number) =>
+        note('D', units, 'eighth', ratio(played, space)) +
+        note('E', units, 'eighth', ratio(played, space)) +
+        note(
+          'F',
+          units,
+          'eighth',
+          ratio(played, space) + '<notations><tuplet type="stop" number="2"/></notations>',
+        )
+      const triplet = (step: string, bracket = '') =>
+        note('C', 24, 'quarter', ratio(3, 2) + (bracket ? marker(bracket) : '')).replace('C', step)
+
+      // A's line holds the outer bracket. The grace note is read into the
+      // half's line, which holds none, and D takes A's line.
+      const intoBracket = (stated = '') =>
+        measures(
+          '<attributes><divisions>36</divisions></attributes>' +
+            triplet('A', 'start') +
+            backup(12) +
+            note('G', 72, 'half') +
+            backup(60) +
+            opening(9, 4, stated) +
+            inner(9, 4, 8) +
+            triplet('B', 'stop'),
+        )
+
+      // The grace note is read into the line holding the outer bracket, and
+      // D takes A's line, which holds none.
+      const outOfBracket = (played: number, space: number, units: number, stated = '') =>
+        measures(
+          '<attributes><divisions>36</divisions></attributes>' +
+            note('A', 36, 'quarter') +
+            backup(36) +
+            triplet('B', 'start') +
+            triplet('C') +
+            backup(12) +
+            opening(played, space, stated) +
+            inner(played, space, units) +
+            backup(3 * units - 12) +
+            triplet('G', 'stop'),
+        )
+
+      test('divides its ratio by the bracket open in the line it moves to', () => {
+        const { lines, warnings } = readLines(intoBracket())
+        const outer = lines[0]?.[0]
+        const tuplet = outer?.kind === 'tuplet' ? outer.content[1] : undefined
+
+        expect(outer?.kind === 'tuplet' && outer.content.map((item) => item.kind)).toEqual([
+          'event',
+          'tuplet',
+          'event',
+        ])
+        expect(tuplet?.kind === 'tuplet' && [tuplet.inner.multiple, tuplet.outer.multiple]).toEqual(
+          [3, 2],
+        )
+        expect(warnings.map((w) => w.code)).toEqual(['inconsistent:voice'])
+      })
+
+      test('takes its whole ratio in a line with no bracket open', () => {
+        const { lines, warnings } = readLines(outOfBracket(3, 2, 12))
+        const tuplet = lines[0]?.[1]
+
+        expect(lines[0]?.map((item) => item.kind)).toEqual(['event', 'tuplet'])
+        expect(tuplet?.kind === 'tuplet' && [tuplet.inner.multiple, tuplet.outer.multiple]).toEqual(
+          [3, 2],
+        )
+        expect(tuplet?.kind === 'tuplet' && tuplet.content).toHaveLength(4)
+        expect(warnings.map((w) => w.code)).toEqual(['inconsistent:voice'])
+      })
+
+      // The marker's 3:2 disagrees with 9:4 in the half's line, and agrees
+      // with it inside A's 3:2.
+      test('checks a start marker against the line the bracket moves to', () => {
+        const { warnings } = readLines(intoBracket(STATED))
+
+        expect(warnings.map((w) => w.code)).toEqual(['inconsistent:voice'])
+      })
+
+      // A's line holds no bracket, and D overlaps A, so D takes a new line.
+      const newLine = (graces: string, inside: string) =>
+        measures(
+          '<attributes><divisions>36</divisions></attributes>' +
+            note('A', 36, 'quarter') +
+            backup(36) +
+            graces +
+            inside +
+            note('G', 12, 'eighth', ratio(3, 2) + marker('stop', '1')),
+        )
+      const grace = (step: string, played: number, space: number, starts: string) =>
+        `<note><grace/><pitch><step>${step}</step><octave>5</octave></pitch><type>eighth</type>` +
+        `${ratio(played, space)}<notations>${starts}</notations></note>`
+      const start = (number: string, stated = '') =>
+        `<tuplet type="start" number="${number}">${stated}</tuplet>`
+      const nestedLevels = (lines: readonly (readonly SequenceItem[])[]) => {
+        const outer = lines[1]?.[0]
+        const tuplet = outer?.kind === 'tuplet' ? outer.content[0] : undefined
+        return [outer, tuplet].map(
+          (item) => item?.kind === 'tuplet' && [item.inner.multiple, item.outer.multiple],
+        )
+      }
+
+      test('divides the note’s ratio between two brackets it opens that move', () => {
+        const { lines, warnings } = readLines(
+          newLine(grace('B', 9, 4, start('1', STATED) + start('2', STATED)), inner(9, 4, 8)),
+        )
+
+        expect(nestedLevels(lines)).toEqual([
+          [3, 2],
+          [3, 2],
+        ])
+        expect(warnings.map((w) => w.code)).toEqual(['inconsistent:voice'])
+      })
+
+      // Five sixteenths in the time of four inside three quarters in the time
+      // of two state 15:8, and last 24 of 180 divisions.
+      test('gives each bracket a note opens that moves its own marker’s share', () => {
+        const portion = (side: string, count: number, type: string) =>
+          `<tuplet-${side}><tuplet-number>${String(count)}</tuplet-number>` +
+          `<tuplet-type>${type}</tuplet-type></tuplet-${side}>`
+        const starts =
+          start('1', portion('actual', 3, 'quarter') + portion('normal', 2, 'quarter')) +
+          start('2', portion('actual', 5, '16th') + portion('normal', 4, '16th'))
+        const sixteenth = (step: string, extra = '') => note(step, 24, '16th', ratio(15, 8) + extra)
+        const quarter = (step: string, extra = '') =>
+          note(step, 120, 'quarter', ratio(3, 2) + extra)
+        const { lines, warnings } = readLines(
+          measures(
+            '<attributes><divisions>180</divisions></attributes>' +
+              note('A', 180, 'quarter') +
+              backup(180) +
+              '<note><grace/><pitch><step>B</step><octave>5</octave></pitch><type>16th</type>' +
+              `${ratio(15, 8)}<notations>${starts}</notations></note>` +
+              sixteenth('C') +
+              sixteenth('D') +
+              sixteenth('E') +
+              sixteenth('F') +
+              sixteenth('G', marker('stop', '2')) +
+              quarter('A') +
+              quarter('B', marker('stop', '1')),
+          ),
+        )
+
+        expect(nestedLevels(lines)).toEqual([
+          [3, 2],
+          [5, 4],
+        ])
+        expect(warnings.map((w) => w.code)).toEqual(['inconsistent:voice'])
+      })
+
+      test('divides the ratio of brackets two grace notes of one group open', () => {
+        const { lines, warnings } = readLines(
+          newLine(grace('B', 3, 2, start('1')) + grace('C', 9, 4, start('2')), inner(9, 4, 8)),
+        )
+        const outer = lines[1]?.[0]
+        const tuplet = outer?.kind === 'tuplet' ? outer.content[0] : undefined
+        const group = tuplet?.kind === 'tuplet' ? tuplet.content[0] : undefined
+
+        expect(nestedLevels(lines)).toEqual([
+          [3, 2],
+          [3, 2],
+        ])
+        expect(group?.kind === 'grace' && group.content).toHaveLength(2)
+        expect(warnings.map((w) => w.code)).toEqual(['inconsistent:voice'])
+      })
+
+      // With no marker to divide 9:4 between the two brackets, the outer one
+      // takes all of it. The notes are not held to a ratio the source did
+      // not state.
+      test('leaves the ratio of a bracket that moves unstated where none of it was', () => {
+        const { warnings } = readLines(
+          newLine(grace('B', 9, 4, start('1') + start('2')), inner(9, 4, 8)),
+        )
+
+        expect(warnings.map((w) => w.code)).not.toContain('inconsistent:tuplet')
+      })
+
+      test('reports a start marker that disagrees in the line the bracket moves to', () => {
+        const { warnings } = readLines(outOfBracket(9, 4, 8, STATED))
+        const marker = warnings.find((w) => w.message.includes('start marker'))
+
+        expect(marker).toMatchObject({ code: 'inconsistent:tuplet', element: 'tuplet' })
+      })
+    })
+
     // The notes state no ratio, so the bracket takes the ratio the grace note
     // states, and counts the time it took from where the new line stood.
     test('scales the notes of the new line that state no ratio', () => {
