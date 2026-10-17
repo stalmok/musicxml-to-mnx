@@ -7458,3 +7458,19 @@ describe('a bracket the silence before it completes', () => {
     convertValid(measures(TIMED + body))
   })
 })
+
+// A start marker reads the ratio on its note itself, so what that read passes
+// over is still reported.
+test('reports what the ratio on a note opening a bracket holds besides its counts', () => {
+  const opening =
+    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+    '<type>eighth</type><time-modification><actual-notes>3</actual-notes>' +
+    '<normal-notes>2</normal-notes><extra/></time-modification>' +
+    marker('start') +
+    '</note>'
+  const { warnings } = read(
+    measure(opening + tupletNote('D', 4, 'eighth') + tupletNote('E', 4, 'eighth', 'stop')),
+  )
+
+  expect(warnings.map((w) => [w.code, w.element])).toEqual([['unsupported:element', 'extra']])
+})
