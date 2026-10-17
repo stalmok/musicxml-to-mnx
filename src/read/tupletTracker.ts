@@ -51,7 +51,8 @@ interface Opening {
   /**
    * The start marker whose ratio disagrees with the note's
    * <time-modification>. It is reported in the note's place in the warning
-   * list once a bracket closes, when the line the brackets end up in is known.
+   * list when the first bracket the note opened closes, so a bracket that
+   * moves to another line before then is checked against that line.
    */
   disagreeing: XmlElement | undefined
   place: WarningPlace
