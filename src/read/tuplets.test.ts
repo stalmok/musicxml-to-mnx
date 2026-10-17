@@ -3959,9 +3959,8 @@ describe('two-note tremolos', () => {
       `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
       `<duration>${String(units)}</duration><type>${type}</type>${ratio(3)}${extra}</note>`
     const reported =
-      'A note opening a two-note tremolo states a <time-modification> of 3 in the time of 2, ' +
-      "which holds no 2:1 for the pair. The ratio is converted as the tuplet's own, and each " +
-      'note of the pair lasts half of what it gives.'
+      'A note of a two-note tremolo states a <time-modification> of 3 in the time of 2, ' +
+      'which holds no 2:1 for the tremolo. No share of the ratio is taken for the tremolo.'
     const tripletOf = (content: readonly SequenceItem[] | undefined) => {
       const [tuplet] = content ?? []
       return tuplet?.kind === 'tuplet'
@@ -4028,6 +4027,29 @@ describe('two-note tremolos', () => {
 
       expect(content?.map((item) => item.kind)).toEqual(['multiNoteTremolo'])
       expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tremolo', 'inconsistent:tuplet'])
+    })
+
+    // A grace note opens no pair, so its ratio is only the bracket's.
+    test('reports a grace note starting a tremolo once', () => {
+      const graceStart =
+        '<note><grace/><pitch><step>B</step><octave>4</octave></pitch><type>quarter</type>' +
+        `${ratio(3)}<notations><tuplet type="start"/>` +
+        '<ornaments><tremolo type="start">3</tremolo></ornaments></notations></note>'
+      const stop = '<notations><tuplet type="stop"/></notations>'
+      const { content, warnings } = read(
+        measure(
+          graceStart +
+            tripletNote('C', 8, 'quarter') +
+            tripletNote('D', 8, 'quarter') +
+            tripletNote('E', 8, 'quarter', stop),
+        ),
+      )
+
+      expect(tripletOf(content)).toEqual([3, 2, ['grace', 'event', 'event', 'event']])
+      expect(warnings.map((w) => w.message)).toEqual([
+        "A two-note tremolo starts on a grace note, which takes none of the measure's time, " +
+          'so it cannot be one of the pair. The marker is not converted.',
+      ])
     })
   })
 

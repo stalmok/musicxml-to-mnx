@@ -241,7 +241,8 @@ export function openTupletsAndTremolo(
     const quantities = !(opensTremolo || startsTremolo)
       ? stated
       : ratio
-        ? pairTupletRatio(stated, ratio, warnings, context)
+        ? // A grace note's marker is reported above, and opens no pair.
+          pairTupletRatio(stated, ratio, graceElement ? undefined : warnings, context)
         : withoutTremoloShare(stated)
     const opening = starts.map((marker) => ({
       display: tupletDisplayOf(marker, hiddenTuplets.has(marker)),
@@ -579,17 +580,16 @@ function withoutTremoloShare(quantities: { inner: NoteValueQuantity; outer: Note
 function pairTupletRatio(
   quantities: { inner: NoteValueQuantity; outer: NoteValueQuantity },
   ratio: XmlElement,
-  warnings: WarningCollector,
+  warnings: WarningCollector | undefined,
   context: ReportContext,
 ): { inner: NoteValueQuantity; outer: NoteValueQuantity } {
   const { inner, outer } = quantities
   if (inner.multiple % 2 === 0) return withoutTremoloShare(quantities)
-  warnings.add(
+  warnings?.add(
     'inconsistent:tremolo',
-    `A note opening a two-note tremolo states a <time-modification> of ` +
+    'A note of a two-note tremolo states a <time-modification> of ' +
       `${String(inner.multiple)} in the time of ${String(outer.multiple)}, which holds no 2:1 ` +
-      "for the pair. The ratio is converted as the tuplet's own, and each note of the pair " +
-      'lasts half of what it gives.',
+      'for the tremolo. No share of the ratio is taken for the tremolo.',
     context,
     ratio,
   )
