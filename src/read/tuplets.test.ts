@@ -3313,6 +3313,104 @@ describe('grace notes', () => {
     expect(warnings).toEqual([])
   })
 
+  test('takes the whole group into a bracket a later grace note in it opens', () => {
+    const { content, warnings } = read(
+      measure(
+        grace('A') +
+          graceMarked('B', 'start') +
+          tupletNote('C', 4, 'eighth') +
+          tupletNote('D', 4, 'eighth') +
+          tupletNote('E', 4, 'eighth', 'stop') +
+          REAL,
+      ),
+    )
+    const tuplet = content?.[0]
+    const group = tuplet?.kind === 'tuplet' ? tuplet.content[0] : undefined
+
+    expect(content?.map((item) => item.kind)).toEqual(['tuplet', 'event'])
+    expect(tuplet?.kind === 'tuplet' && tuplet.content.map((item) => item.kind)).toEqual([
+      'grace',
+      'event',
+      'event',
+      'event',
+    ])
+    expect(group?.kind === 'grace' && group.content).toHaveLength(2)
+    expect(warnings).toEqual([])
+  })
+
+  test('leaves a group before a note that opens a bracket outside the bracket', () => {
+    const { content, warnings } = read(
+      measure(
+        grace('A') +
+          tupletNote('C', 4, 'eighth', 'start') +
+          tupletNote('D', 4, 'eighth') +
+          tupletNote('E', 4, 'eighth', 'stop') +
+          REAL,
+      ),
+    )
+
+    expect(content?.map((item) => item.kind)).toEqual(['grace', 'tuplet', 'event'])
+    expect(warnings).toEqual([])
+  })
+
+  // The bracket that closed on B holds A and B, so F starts a group of its own.
+  test('leaves a group a bracket closed on out of the next bracket', () => {
+    const { content, warnings } = read(
+      measure(
+        tupletNote('C', 4, 'eighth', 'start') +
+          tupletNote('D', 4, 'eighth') +
+          tupletNote('E', 4, 'eighth') +
+          grace('A') +
+          graceMarked('B', 'stop') +
+          graceMarked('F', 'start') +
+          tupletNote('G', 4, 'eighth') +
+          tupletNote('A', 4, 'eighth') +
+          tupletNote('B', 4, 'eighth', 'stop'),
+      ),
+    )
+    const [first, second] = content ?? []
+
+    expect(content?.map((item) => item.kind)).toEqual(['tuplet', 'tuplet'])
+    expect(first?.kind === 'tuplet' && first.content.map((item) => item.kind)).toEqual([
+      'event',
+      'event',
+      'event',
+      'grace',
+    ])
+    expect(second?.kind === 'tuplet' && second.content.map((item) => item.kind)).toEqual([
+      'grace',
+      'event',
+      'event',
+      'event',
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  // A group taking its time from the note before is drawn after that note.
+  test('leaves a group taking its time from the note before outside the bracket', () => {
+    const { content, warnings } = read(
+      measure(
+        REAL +
+          grace('A', ' steal-time-previous="20"') +
+          graceMarked('B', 'start') +
+          tupletNote('C', 4, 'eighth') +
+          tupletNote('D', 4, 'eighth') +
+          tupletNote('E', 4, 'eighth', 'stop'),
+      ),
+    )
+    const tuplet = content?.[2]
+
+    expect(content?.map((item) => item.kind)).toEqual(['event', 'grace', 'tuplet'])
+    expect(content?.[1]?.kind === 'grace' && content[1].graceType).toBe('stealPrevious')
+    expect(tuplet?.kind === 'tuplet' && tuplet.content.map((item) => item.kind)).toEqual([
+      'grace',
+      'event',
+      'event',
+      'event',
+    ])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:grace-time'])
+  })
+
   // The note the grace note leads into overlaps the quarter before it, so it
   // takes a new line, and the bracket the grace note opened goes with it.
   describe('a bracket a grace note opens before a note that takes a new line', () => {
@@ -3354,6 +3452,25 @@ describe('grace notes', () => {
         'event',
       ])
       expect(warnings.map((w) => w.code)).toEqual(['inconsistent:voice'])
+    })
+
+    test('moves the whole group with a bracket a later grace note in it opens', () => {
+      const { lines } = readLines(
+        measure(
+          overlapping +
+            grace('A') +
+            graceOpening +
+            tupletNote('D', 4, 'eighth') +
+            tupletNote('E', 4, 'eighth') +
+            tupletNote('F', 4, 'eighth', 'stop'),
+        ),
+      )
+      const tuplet = lines[1]?.[0]
+      const group = tuplet?.kind === 'tuplet' ? tuplet.content[0] : undefined
+
+      expect(lines[0]?.map((item) => item.kind)).toEqual(['event'])
+      expect(lines[1]?.map((item) => item.kind)).toEqual(['tuplet'])
+      expect(group?.kind === 'grace' && group.content).toHaveLength(2)
     })
 
     // The notes state no ratio, so the bracket takes the ratio the grace note

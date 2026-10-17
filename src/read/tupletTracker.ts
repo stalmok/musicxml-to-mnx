@@ -328,7 +328,8 @@ export class TupletTracker {
    * `tupletLevels`. `openEnd` is where the sequence has reached, before
    * anything the brackets hold. A bracket that states no ratio compares it
    * with where the sequence reaches when the bracket closes, to state the
-   * time it took.
+   * time it took. `leading` is the grace group the note joins, which goes
+   * inside the brackets with it.
    */
   openTuplets(
     inner: NoteValueQuantity,
@@ -345,12 +346,14 @@ export class TupletTracker {
     context: ReportContext,
     path: DocumentPath,
     line: number,
+    leading?: SequenceItem,
   ): void {
     // A tremolo holds exactly its two notes, so no bracket may open inside
     // one.
     if (this.#tremolo()) {
       throw new MusicXMLError('A tuplet starts inside a two-note tremolo.', { path, line })
     }
+    if (leading) removeLastFrom(this.#list(), leading)
 
     // A run the ratio alone opened is open here only where a grace note
     // starts the bracket, and the run closes before the bracket's first note
@@ -408,6 +411,7 @@ export class TupletTracker {
         skips: [],
       })
     }
+    if (leading) this.#list().push(leading)
   }
 
   /**

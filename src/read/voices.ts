@@ -1078,11 +1078,24 @@ export class MeasureBuilder {
      * multiples are scaled to what the bracket holds once it closes.
      */
     derived: boolean,
+    grace: boolean,
   ): void {
     const builder = layerOf(voice)
     // Time this voice has passed over in silence belongs before the brackets,
     // not inside them, where the tuplets' ratios would scale it.
     this.#fillGap(builder)
+    // MNX states a grace group as one item, so a bracket starting on a grace
+    // note after others in its group takes in the whole group. A group taking
+    // its time from the note before it is drawn after that note, outside the
+    // bracket.
+    const waiting = builder.grace
+    const leading =
+      grace &&
+      waiting &&
+      waiting.group.graceType !== 'stealPrevious' &&
+      builder.tuplets.last() === waiting.group
+        ? waiting.group
+        : undefined
     builder.tuplets.openTuplets(
       inner,
       outer,
@@ -1093,6 +1106,7 @@ export class MeasureBuilder {
       context,
       path,
       line,
+      leading,
     )
   }
 
