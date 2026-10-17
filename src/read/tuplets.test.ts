@@ -3794,6 +3794,25 @@ describe('grace notes', () => {
         expect(warnings.map((w) => w.code)).not.toContain('inconsistent:tuplet')
       })
 
+      // The markers' 3:2 and 3:2 disagree with the note's 3:2. The inner
+      // bracket closes on A, over grace notes alone, before the outer one
+      // moves with D.
+      test('reports a start marker once where one of its brackets closed before moving', () => {
+        const { warnings } = readLines(
+          newLine(
+            grace('B', 3, 2, start('1', STATED) + start('2', STATED)) +
+              grace('A', 3, 2, '<tuplet type="stop" number="2"/>'),
+            note('D', 12, 'eighth', ratio(3, 2)) + note('E', 12, 'eighth', ratio(3, 2)),
+          ),
+        )
+
+        expect(warnings.map((w) => w.code)).toEqual([
+          'inconsistent:tuplet',
+          'unrepresentable:tuplet-untimed',
+          'inconsistent:voice',
+        ])
+      })
+
       test('reports a start marker that disagrees in the line the bracket moves to', () => {
         const { warnings } = readLines(outOfBracket(9, 4, 8, STATED))
         const marker = warnings.find((w) => w.message.includes('start marker'))
