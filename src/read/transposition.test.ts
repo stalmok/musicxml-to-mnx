@@ -1257,3 +1257,158 @@ describe('a score holding both a transposing part and a concert one', () => {
     expect(warnings.list()).toEqual([])
   })
 })
+
+// MNX applies a part's flip point to its notes as well as its signature: past
+// the point it writes each note one letter over, so a concert B for a B-flat
+// clarinet in five flats comes out as D-flat rather than C-sharp. The note is
+// stated in the score's key, so that the flip brings back what the part wrote.
+describe('a note in a part that flips its key signature', () => {
+  /** Written a minor third above what it sounds. */
+  const IN_A = '<transpose><diatonic>-2</diatonic><chromatic>-3</chromatic></transpose>'
+
+  const pitched = (step: string, alter: number, octave: number, grace = false) =>
+    `<note>${grace ? '<grace/>' : ''}<pitch><step>${step}</step>` +
+    `${alter !== 0 ? `<alter>${String(alter)}</alter>` : ''}<octave>${String(octave)}</octave></pitch>` +
+    `${grace ? '' : '<duration>4</duration>'}<type>quarter</type></note>`
+
+  /** Two parts, each a list of measures as [key, notes]. */
+  const twoParts = (
+    concert: readonly [number, string][],
+    transposing: readonly [number, string][],
+    transpose = IN_B_FLAT,
+  ) => {
+    const measures = (list: readonly [number, string][], extra: string) =>
+      list
+        .map(
+          ([fifths, body], index) =>
+            `<measure number="${String(index + 1)}"><attributes>` +
+            (index === 0 ? '<divisions>4</divisions>' : '') +
+            `<key><fifths>${String(fifths)}</fifths></key>${index === 0 ? extra : ''}` +
+            `</attributes>${body}</measure>`,
+        )
+        .join('')
+    return (
+      '<score-partwise><part-list>' +
+      '<score-part id="P1"><part-name>Flute</part-name></score-part>' +
+      '<score-part id="P2"><part-name>Clarinet</part-name></score-part>' +
+      '</part-list>' +
+      `<part id="P1">${measures(concert, '')}</part>` +
+      `<part id="P2">${measures(transposing, transpose)}</part>` +
+      '</score-partwise>'
+    )
+  }
+
+  const pitchesOf = (source: string) => {
+    const { score, warnings } = read(source)
+    const pitches = (score.parts[1]?.measures ?? []).map((measure) =>
+      (measure.sequences[0]?.content ?? []).flatMap((item) => {
+        if (item.kind === 'event') return notesOf(item).map((note) => note.pitch)
+        if (item.kind === 'grace')
+          return item.content.flatMap((e) => notesOf(e).map((n) => n.pitch))
+        return []
+      }),
+    )
+    return { pitches, warnings, flipAt: score.parts[1]?.transposition?.keyFifthsFlipAt }
+  }
+
+  test('states a note past the point in the score’s key', () => {
+    const { pitches, warnings, flipAt } = pitchesOf(
+      twoParts([[5, pitched('B', 0, 3)]], [[-5, pitched('D', -1, 4)]]),
+    )
+
+    expect(flipAt).toBe(7)
+    expect(pitches).toEqual([[{ step: 'B', octave: 3, alter: 0 }]])
+    expect(warnings).toEqual([])
+  })
+
+  test('states a grace note past the point in the score’s key', () => {
+    const { pitches } = pitchesOf(
+      twoParts([[5, pitched('B', 0, 3)]], [[-5, pitched('E', -1, 4, true) + pitched('D', -1, 4)]]),
+    )
+
+    expect(pitches).toEqual([
+      [
+        { step: 'C', octave: 4, alter: 1 },
+        { step: 'B', octave: 3, alter: 0 },
+      ],
+    ])
+  })
+
+  test('leaves a note short of the point as the part wrote it', () => {
+    const { pitches, flipAt } = pitchesOf(
+      twoParts(
+        [
+          [0, pitched('C', 0, 4)],
+          [5, pitched('B', 0, 3)],
+        ],
+        [
+          [2, pitched('D', 0, 4)],
+          [-5, pitched('D', -1, 4)],
+        ],
+      ),
+    )
+
+    expect(flipAt).toBe(7)
+    expect(pitches).toEqual([
+      [{ step: 'C', octave: 4, alter: 0 }],
+      [{ step: 'B', octave: 3, alter: 0 }],
+    ])
+  })
+
+  // An A clarinet asks for eight flats where the score is in five, and writes
+  // four sharps instead, so its notes come back one letter under.
+  test('states a note past a point below zero in the score’s key', () => {
+    const { pitches, flipAt } = pitchesOf(
+      twoParts([[-5, pitched('D', -1, 4)]], [[4, pitched('E', 0, 4)]], IN_A),
+    )
+
+    expect(flipAt).toBe(-8)
+    expect(pitches).toEqual([[{ step: 'D', octave: 4, alter: -1 }]])
+  })
+
+  // A tuplet, a skip, a rest, a whole-measure rest and a note struck on a kit all
+  // pass through, and only the pitches are re-spelled.
+  test('re-spells every pitch of a measure past the point, and nothing else', () => {
+    const triplet = (step: string) =>
+      `<note><pitch><step>${step}</step><alter>-1</alter><octave>4</octave></pitch>` +
+      '<duration>2</duration><type>eighth</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification></note>'
+    const measure = (number: number, attributes: string, body: string) =>
+      `<measure number="${String(number)}"><attributes>${attributes}</attributes>${body}</measure>`
+    const { mnx } = convertValid(
+      '<score-partwise><part-list>' +
+        '<score-part id="P1"><part-name>Flute</part-name></score-part>' +
+        '<score-part id="P2"><part-name>Clarinet</part-name></score-part>' +
+        '</part-list><part id="P1">' +
+        measure(1, '<divisions>6</divisions><key><fifths>5</fifths></key>', pitched('B', 0, 3)) +
+        measure(2, '', pitched('B', 0, 3)) +
+        '</part><part id="P2">' +
+        measure(
+          1,
+          `<divisions>6</divisions><key><fifths>-5</fifths></key>${IN_B_FLAT}`,
+          triplet('D') +
+            triplet('E') +
+            triplet('G') +
+            '<forward><duration>6</duration></forward>' +
+            '<note><unpitched><display-step>B</display-step><display-octave>4</display-octave>' +
+            '</unpitched><duration>6</duration><type>quarter</type></note>' +
+            '<note><rest/><duration>6</duration><type>quarter</type></note>',
+        ) +
+        measure(2, '', '<note><rest measure="yes"/><duration>24</duration></note>') +
+        '</part></score-partwise>',
+    )
+
+    const [first, second] = mnx.parts[1]?.measures ?? []
+    expect(JSON.stringify(first?.sequences[0]?.content)).toMatch(/kitComponent/)
+    expect(
+      JSON.stringify(first?.sequences[0]?.content)
+        .match(/"pitch":\{[^}]*\}/g)
+        ?.map((pitch) => JSON.parse(pitch.slice('"pitch":'.length)) as unknown),
+    ).toEqual([
+      { step: 'B', octave: 3 },
+      { step: 'C', octave: 4, alter: 1 },
+      { step: 'E', octave: 4 },
+    ])
+    expect(second?.sequences[0]?.fullMeasure).toBeDefined()
+  })
+})

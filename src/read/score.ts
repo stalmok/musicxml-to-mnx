@@ -46,6 +46,7 @@ import { readDirection, readSound } from './directions.js'
 import type { SoundTempo } from './directions.js'
 import { requireDuration } from './divisions.js'
 import { lyricLineOrder } from './lyrics.js'
+import { respellPastFlip } from './transposition.js'
 import { lengthOf } from './duration.js'
 import { ElementReader, reportUnreadAttributes } from './element.js'
 import type { Stated } from './element.js'
@@ -241,10 +242,17 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
       scorePart,
     )
   }
+  // MNX reads a measure stating no key, and none before it, as C major.
+  let inForce = 0
+  const concertKeys = globalMeasures.map((measure) => (inForce = measure.key?.fifths ?? inForce))
   const parts = readings.map(({ part }, index) => {
     const flipAt = flips[index]
     if (flipAt === undefined || !part.transposition) return part
-    return { ...part, transposition: { ...part.transposition, keyFifthsFlipAt: flipAt } }
+    return {
+      ...part,
+      transposition: { ...part.transposition, keyFifthsFlipAt: flipAt },
+      measures: respellPastFlip(part.measures, part.transposition, flipAt, concertKeys),
+    }
   })
   return renamePartIds(
     {

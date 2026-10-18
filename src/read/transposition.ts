@@ -6,7 +6,14 @@
 // written one. So both numbers are negated as <transpose> is read, and every
 // pitch of such a part is carried to what it sounds.
 
-import type { Pitch, Step, TranspositionInterval } from '../model/score.js'
+import type {
+  Event,
+  Measure,
+  Pitch,
+  SequenceItem,
+  Step,
+  TranspositionInterval,
+} from '../model/score.js'
 
 /** The steps of the scale in order, and where each sits in the octave. */
 const STEPS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'] as const satisfies readonly Step[]
@@ -114,4 +121,76 @@ export function keyFifthsFlipAt(
     return at < 0 && kept.every((naive) => naive > at) ? at : undefined
   }
   return undefined
+}
+
+/**
+ * The same pitch spelled `letters` steps higher on the staff, as a C-sharp is
+ * a D-flat one letter up.
+ */
+export function respelled(pitch: Pitch, letters: number): Pitch {
+  const stepsFromC = pitch.octave * 7 + STEPS.indexOf(pitch.step) + letters
+  /* v8 ignore next -- seven steps, and the remainder of seven is one of them. */
+  const step = STEPS[((stepsFromC % 7) + 7) % 7] ?? 'C'
+  const octave = Math.floor(stepsFromC / 7)
+  const semitonesFromC = pitch.octave * 12 + SEMITONES[pitch.step] + pitch.alter
+  return { step, octave, alter: semitonesFromC - (octave * 12 + SEMITONES[step]) }
+}
+
+/**
+ * Re-spells a flipping part's notes in the key the score sounds in, given the
+ * concert key in force at each measure.
+ *
+ * MNX moves every note of the part by a letter wherever the point flips its
+ * signature: one up where twelve fifths are taken off, one down where they
+ * are added. A note read from the flipped part is spelled the way the part
+ * wrote it, so it is moved the other way here, and the flip brings it back.
+ */
+export function respellPastFlip(
+  measures: readonly Measure[],
+  transposition: TranspositionInterval,
+  flipAt: number,
+  concertKeys: readonly number[],
+): Measure[] {
+  return measures.map((measure, index) => {
+    const concert = concertKeys[index] ?? 0
+    const letters =
+      (writtenFifthsWithFlip(concert, transposition, flipAt) -
+        writtenFifths(concert, transposition)) /
+      12
+    if (letters === 0) return measure
+    return {
+      ...measure,
+      sequences: measure.sequences.map((sequence) =>
+        sequence.fullMeasure
+          ? sequence
+          : { ...sequence, content: respellItems(sequence.content, letters) },
+      ),
+    }
+  })
+}
+
+function respellItems(items: readonly SequenceItem[], letters: number): SequenceItem[] {
+  return items.map((item) => {
+    switch (item.kind) {
+      case 'event':
+        return respellEvent(item, letters)
+      case 'tuplet':
+        return { ...item, content: respellItems(item.content, letters) }
+      case 'grace':
+      case 'multiNoteTremolo':
+        return { ...item, content: item.content.map((event) => respellEvent(event, letters)) }
+      case 'space':
+        return item
+    }
+  })
+}
+
+function respellEvent(event: Event, letters: number): Event {
+  if (event.body.kind === 'rest') return event
+  const [first, ...rest] = event.body.notes.map((note) => ({
+    ...note,
+    pitch: respelled(note.pitch, letters),
+  }))
+  if (!first) return event
+  return { ...event, body: { ...event.body, notes: [first, ...rest] } }
 }
