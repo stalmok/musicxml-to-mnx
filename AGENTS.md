@@ -20,14 +20,23 @@ pnpm format:check
 pnpm test:precommit
 ```
 
-The pre-commit hook runs the same checks. Enable it once per clone with `pnpm hooks:install`. `test:precommit` runs the whole suite without the vendored corpus and the performance tests, and holds the coverage thresholds. Run `pnpm test:perf` before you commit a change to the reader, the model or the writer.
+The pre-commit hook runs the same checks. Enable it once per clone with `pnpm hooks:install`. `test:precommit` runs the whole suite without the vendored corpus and the performance tests, and holds the coverage thresholds.
+
+Run the long checks once, at the end of a piece of work and before you open a pull request. Do not run them for each commit. A piece of work that changes the reader, the model or the writer needs all of these:
+
+- `pnpm test:perf`
+- `pnpm test:corpus`
+- Mutation tests over the changed source files (see [Workflow](#workflow))
+- `pnpm compare-output <base-ref>`, where `<base-ref>` is the commit before the work started. Every difference must be one that the work intends.
+
+If a long check finds a defect, fix it in a new commit. Then run the long checks again.
 
 There are two corpus runs:
 
-- **Vendored corpus**: 600 Lieder songs committed in `tests/corpus/`. Run `pnpm test:corpus` before you commit a change to the reader, the model or the writer. CI runs it on pushes to main and on pull requests that change the converter, the schema, the checks, the songs or the dependencies.
+- **Vendored corpus**: 600 Lieder songs committed in `tests/corpus/`. CI runs it on pushes to main and on pull requests that change the converter, the schema, the checks, the songs or the dependencies.
 - **Full Lieder corpus**: not in the repository. The weekly `corpus.yml` workflow clones it. To run it locally, clone the corpus and run `MUSICXML_TO_MNX_CORPUS=<clone>/scores pnpm corpus-gate`.
 
-The corpus checks do not compare whole output. For a refactor that must not change output, run `pnpm compare-output <base-ref> [directory...]`. It converts every score with a build of the base commit and a build of the working tree, and lists each file whose MNX, warnings or refusal differ. The directories default to `tests/corpus`. Use `--ignore-messages` for a change that rewords warnings on purpose, and `--mnx-only` for one that changes warnings on purpose. Neither option stops it comparing refusals. Both builds use this checkout's `node_modules`, so a dependency change is not compared. It exits 0 when every file matches, 1 when any differs, and 2 when it cannot run.
+The corpus checks do not compare whole output. `pnpm compare-output <base-ref> [directory...]` does. It converts every score with a build of the base commit and a build of the working tree, and lists each file whose MNX, warnings or refusal differ. The directories default to `tests/corpus`. Use `--ignore-messages` for a change that rewords warnings on purpose, and `--mnx-only` for one that changes warnings on purpose. Neither option stops it comparing refusals. Both builds use this checkout's `node_modules`, so a dependency change is not compared. It exits 0 when every file matches, 1 when any differs, and 2 when it cannot run.
 
 ## Workflow
 
@@ -36,7 +45,7 @@ The corpus checks do not compare whole output. For a refactor that must not chan
 - **Never drop notation silently.** Anything MusicXML expresses that MNX cannot, or that this converter does not handle yet, emits a `ConversionWarning` with a stable code and measure context.
 - **Use simple, standard music-notation language in comments, commit messages, docs, and names.** Use the terms MusicXML and MNX use: measure, note, rest, chord, voice, staff, beam, tuplet, slur, tie, clef, key signature, time signature, divisions. Do not invent project-specific synonyms.
 - **Keep test coverage at 98% or more.** `vite.config.ts` sets the thresholds. Cover new behavior with real tests. Do not add tests that assert nothing to raise coverage.
-- **Run mutation tests over new code.** `pnpm test:mutation` runs Stryker over all shipped source. To run it over only your files, use `npx stryker run --mutate 'src/read/a.ts,src/read/b.ts'` (one comma-separated list). Kill each surviving mutant with a test, or record it as equivalent, with the reason.
+- **Run mutation tests over new code at the end of a piece of work.** `pnpm test:mutation` runs Stryker over all shipped source. To run it over only your files, use `npx stryker run --mutate 'src/read/a.ts,src/read/b.ts'` (one comma-separated list). Kill each surviving mutant with a test, or record it as equivalent, with the reason.
 - **Run `pnpm audit` after you install or update a package.** Resolve its findings before you commit.
 
 ## Conventions
