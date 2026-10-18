@@ -514,6 +514,128 @@ describe('dynamics', () => {
     expect(warnings).toEqual([])
   })
 
+  // MusicXML combines the marks in one <dynamics> to spell one it has no
+  // element for, and a source may split the letters of any mark that way.
+  test.each([
+    ['<other-dynamics>s</other-dynamics><f/>', 'f', undefined, 's', ''],
+    ['<ff/><other-dynamics>z</other-dynamics>', 'ff', undefined, '', 'z'],
+    ['<sf/><other-dynamics>z</other-dynamics>', 'f', undefined, 's', 'z'],
+    ['<sf/><mp/>', 'f', 'mp', 's', ''],
+    ['<f/><p/>', 'f', 'p', '', ''],
+    [
+      '<other-dynamics>s</other-dynamics><other-dynamics>ff</other-dynamics>',
+      'ff',
+      undefined,
+      's',
+      '',
+    ],
+    [
+      '<other-dynamics>s</other-dynamics><f/><other-dynamics>z</other-dynamics>',
+      'f',
+      undefined,
+      's',
+      'z',
+    ],
+  ])('reads %s as one accent', (pieces, attack, residual, prefix, suffix) => {
+    const { measure, warnings } = read(
+      inMeasure(direction(`<dynamics>${pieces}</dynamics>`) + note('C')),
+    )
+
+    expect(measure?.dynamics).toEqual([
+      {
+        kind: 'accent',
+        position: { num: 0, den: 1 },
+        value: attack,
+        residualValue: residual,
+        accentPrefix: prefix,
+        accentSuffix: suffix,
+        glyphs: [],
+      },
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  test.each([
+    ['<other-dynamics>m</other-dynamics><p/>', 'mp'],
+    ['<other-dynamics>m</other-dynamics><other-dynamics>f</other-dynamics>', 'mf'],
+    ['<p/><p/>', 'pp'],
+  ])('reads %s as one plain mark', (pieces, value) => {
+    const { measure, warnings } = read(
+      inMeasure(direction(`<dynamics>${pieces}</dynamics>`) + note('C')),
+    )
+
+    expect(measure?.dynamics).toEqual([{ kind: 'immediate', position: { num: 0, den: 1 }, value }])
+    expect(warnings).toEqual([])
+  })
+
+  test('reads wording around a mark split into pieces', () => {
+    const { measure, warnings } = read(
+      inMeasure(
+        direction(
+          '<dynamics><other-dynamics>più </other-dynamics><other-dynamics>s</other-dynamics>' +
+            '<f/><other-dynamics> sempre</other-dynamics></dynamics>',
+        ) + note('C'),
+      ),
+    )
+
+    expect(measure?.dynamics).toMatchObject([
+      { kind: 'accent', value: 'f', accentPrefix: 's', prefix: 'più', suffix: 'sempre' },
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  test('joins the longest run of pieces that spells a mark', () => {
+    const { measure } = read(
+      inMeasure(
+        direction('<dynamics><other-dynamics>s</other-dynamics><f/><p/></dynamics>') + note('C'),
+      ),
+    )
+
+    expect(measure?.dynamics).toMatchObject([
+      { kind: 'accent', value: 'f', accentPrefix: 's', residualValue: 'p' },
+    ])
+  })
+
+  test('reads a mark after a split mark on its own', () => {
+    const { measure } = read(
+      inMeasure(
+        direction(
+          '<dynamics><other-dynamics>s</other-dynamics><f/>' +
+            '<other-dynamics>, 2nd </other-dynamics><pp/></dynamics>',
+        ) + note('C'),
+      ),
+    )
+
+    expect(measure?.dynamics).toMatchObject([
+      { kind: 'accent', value: 'f', accentPrefix: 's' },
+      { kind: 'immediate', value: 'pp', prefix: ', 2nd' },
+    ])
+  })
+
+  // Letters spelling no mark stay wording, and a piece naming a glyph is the
+  // source's own drawing of it.
+  test.each([
+    ['<other-dynamics>s</other-dynamics><ppp/>', 'ppp', 's'],
+    ['<other-dynamics>rin</other-dynamics><f/>', 'f', 'rin'],
+    ['<other-dynamics>s </other-dynamics><f/>', 'f', 's'],
+  ])('reads %s as wording on the mark', (pieces, value, prefix) => {
+    const { measure } = read(inMeasure(direction(`<dynamics>${pieces}</dynamics>`) + note('C')))
+
+    expect(measure?.dynamics).toMatchObject([{ kind: 'immediate', value, prefix }])
+  })
+
+  test('leaves a piece naming a glyph out of a split mark', () => {
+    const { measure } = read(
+      inMeasure(
+        direction(
+          '<dynamics><other-dynamics smufl="dynamicSforzando">s</other-dynamics><f/></dynamics>',
+        ) + note('C'),
+      ),
+    )
+
+    expect(measure?.dynamics).toMatchObject([{ kind: 'immediate', value: 'f', prefix: 's' }])
+  })
+
   test('reads wording around a mark spelled as text', () => {
     const { measure } = read(
       inMeasure(

@@ -30,7 +30,7 @@ import type { NamedSegno, DalSegno } from './globalMeasures.js'
 import { writtenAt } from './collector.js'
 import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
-import { attribute, text, trimmedText } from '../xml/tree.js'
+import { attribute, peekAttribute, text, trimmedText } from '../xml/tree.js'
 import { readColor } from './color.js'
 import { divisionsInForce } from './divisions.js'
 import type { ElementReader, Stated } from './element.js'
@@ -831,10 +831,19 @@ function readDynamics(
 ): Dynamic[] {
   const dynamics: Dynamic[] = []
 
-  for (const mark of element.element.children) {
+  const marks = element.element.children
+  // Where the pieces a split mark took in run out.
+  let joinedTo = 0
+  for (const [index, mark] of marks.entries()) {
+    if (index < joinedTo) continue
     element.read(mark)
+    const split = splitMark(marks, index)
     let found: Mark | undefined
-    if (mark.name === 'other-dynamics') {
+    if (split !== undefined) {
+      joinedTo = index + split.pieces
+      for (const piece of marks.slice(index + 1, joinedTo)) element.read(piece)
+      found = split.mark
+    } else if (mark.name === 'other-dynamics') {
       const written = trimmedText(mark)
       found = writtenMark(mark, written)
       if (found === undefined) {
@@ -895,6 +904,34 @@ function readDynamics(
   // sit in a sibling <dynamics> block or be the <wedge> beside this one, and
   // whatever is left once the <direction-type> runs out is settled there.
   return dynamics
+}
+
+/**
+ * The mark spelled by two or more pieces of one <dynamics>, starting at
+ * `start`, and how many pieces it takes. MusicXML combines the marks in one
+ * <dynamics> to spell one it has no element for, such as sfmp, and a source
+ * may split the letters of any mark that way: s and f, or ff and z. The
+ * longest run that spells a mark is taken. A space between two pieces keeps
+ * them apart, and a piece naming a glyph is the source's own drawing of it,
+ * so neither is joined.
+ */
+function splitMark(
+  marks: readonly XmlElement[],
+  start: number,
+): { mark: Mark; pieces: number } | undefined {
+  const letters: string[] = []
+  for (const piece of marks.slice(start)) {
+    if (piece.name !== 'other-dynamics') letters.push(piece.name)
+    else if (peekAttribute(piece, 'smufl') === undefined) letters.push(text(piece))
+    else break
+  }
+  for (let pieces = letters.length; pieces > 1; pieces -= 1) {
+    const written = letters.slice(0, pieces).join('').trim()
+    const spelling = ACCENT_SPELLINGS.get(written)
+    if (spelling !== undefined) return { mark: { kind: 'accent', spelling, glyphs: [] }, pieces }
+    if (isDynamicValue(written)) return { mark: { kind: 'immediate', value: written }, pieces }
+  }
+  return undefined
 }
 
 /**
