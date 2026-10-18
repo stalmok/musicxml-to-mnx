@@ -46,6 +46,26 @@ describe('a rolled chord', () => {
     expect(warnings).toEqual([])
   })
 
+  // MNX reads the notes a roll covers by pitch, so a roll across two staves
+  // runs by pitch even where the lower staff holds the higher note.
+  test('runs from the lowest pitch where the lower staff holds the higher note', () => {
+    const warnings = new WarningCollector()
+    const score = readValid(
+      '<score-partwise><part id="P1"><measure number="1"><attributes><divisions>4</divisions>' +
+        '<staves>2</staves><clef number="1"><sign>G</sign><line>2</line></clef>' +
+        '<clef number="2"><sign>F</sign><line>4</line></clef></attributes>' +
+        head(ROLL).replace('</note>', '<staff>1</staff></note>') +
+        member('E', ROLL).replace('</note>', '<staff>2</staff></note>') +
+        '</measure></part></score-partwise>',
+      warnings,
+    )
+
+    expect(score.parts[0]?.measures[0]?.arpeggios[0]?.span).toEqual({
+      start: 'note1',
+      end: 'note2',
+    })
+  })
+
   // Sources mark every note of the chord.
   test('states one roll however many notes carry the mark', () => {
     const { measure } = read(head(ROLL) + member('E', ROLL) + member('G', ROLL))

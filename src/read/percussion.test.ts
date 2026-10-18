@@ -671,6 +671,43 @@ describe('the MNX a percussion part converts to', () => {
       expect(warnings).toEqual([])
     })
 
+    // Each kit note is drawn at the height of the component it strikes.
+    test('places each kit note by its own component', () => {
+      const rolled =
+        pitched('C', '5', ROLL) +
+        kitNote('G', '5', ROLL) +
+        kitNote('D', '4', ROLL).replace('P1-I39', 'P1-I43')
+      const { span, kitNotes } = readWith(rolled, PERCUSSION_CLEF)
+
+      expect(span).toEqual({ start: kitNotes[1], end: kitNotes[0] })
+    })
+
+    test('places a chord that follows another note on its own staff', () => {
+      const rolled =
+        pitched('E', '5').replace('</note>', '<staff>1</staff></note>') +
+        pitched('C', '4', ROLL).replace('</note>', '<staff>2</staff></note>') +
+        kitNote('B', '3', ROLL).replace('</note>', '<staff>1</staff></note>')
+      const warnings = new WarningCollector()
+      const part = readValid(
+        source(
+          rolled,
+          DRUM_KIT,
+          '<attributes><divisions>1</divisions><staves>2</staves>' +
+            '<clef number="1"><sign>G</sign><line>2</line></clef>' +
+            '<clef number="2"><sign>F</sign><line>4</line></clef></attributes>',
+        ),
+        warnings,
+      ).parts[0]
+      const content = part?.measures[0]?.sequences.flatMap((sequence) => sequence.content) ?? []
+      const chord = content.find((item) => item.kind === 'event' && kitNotesOf(item).length > 0)
+      const event = chord?.kind === 'event' ? chord : undefined
+
+      expect(part?.measures[0]?.arpeggios[0]?.span).toEqual({
+        start: notesOf(event)[0]?.id,
+        end: kitNotesOf(event)[0]?.id,
+      })
+    })
+
     // The chord stands on the lower staff, in the bass clef, and its kit note
     // reaches up to the treble staff, where it is drawn below the C4.
     test('places the chord on the staff it stands on', () => {
@@ -711,6 +748,32 @@ describe('the MNX a percussion part converts to', () => {
         'unsupported:element',
         'unsupported:element',
       ])
+    })
+
+    // A roll numbered 1 joins a divided chord to a chord of another voice.
+    // The divided chord still leaves it unknown which roll its kit note is in.
+    test('reports a roll holding a divided chord beside a kit note', () => {
+      const one = '<notations><arpeggiate number="1"/></notations>'
+      const two = '<notations><arpeggiate number="2"/></notations>'
+      const voiced = (xml: string, voice: string) =>
+        xml.replace('</note>', `<voice>${voice}</voice></note>`)
+      const rolled =
+        voiced(pitched('C', '4', one), '1') +
+        voiced(pitched('E', '4', two, '<chord/>'), '1') +
+        voiced(kitNote('F', '5'), '1') +
+        '<backup><duration>1</duration></backup>' +
+        voiced(pitched('G', '4', one), '2')
+      const warnings = new WarningCollector()
+      const part = readValid(source(rolled, DRUM_KIT), warnings).parts[0]
+      const ids = (part?.measures[0]?.sequences ?? []).flatMap((sequence) =>
+        sequence.content.flatMap((item) => (item.kind === 'event' ? notesOf(item) : [])),
+      )
+
+      expect(part?.measures[0]?.arpeggios[0]?.span).toEqual({
+        start: ids.find((note) => note.pitch.step === 'C')?.id,
+        end: ids.find((note) => note.pitch.step === 'G')?.id,
+      })
+      expect(warnings.list().map((w) => w.code)).toContain('unsupported:element')
     })
 
     // With no clef in force a pitched note has no height to compare.
