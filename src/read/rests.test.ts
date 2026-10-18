@@ -72,6 +72,25 @@ describe('a rest placed on the staff', () => {
     expect(tenor.item).toMatchObject({ body: { kind: 'rest', staffPosition: 2 } })
   })
 
+  // Exporters state the height in the octave the clef sounds, as they state
+  // pitches: B3 is the middle line of a treble-8 staff, as of a bass-8va
+  // staff's D4.
+  test.each([
+    ['treble-8', 'G', 2, -1, 'B', 3],
+    ['bass-8va', 'F', 4, 1, 'D', 4],
+  ])(
+    'reads a rest under a %s clef in the octave the clef sounds',
+    (_name, sign, line, change, step, octave) => {
+      const clef =
+        `<clef><sign>${sign}</sign><line>${String(line)}</line>` +
+        `<clef-octave-change>${String(change)}</clef-octave-change></clef>`
+      const { item, warnings } = firstEvent(inMeasure(displayRest(step, octave), clef))
+
+      expect(item).toMatchObject({ body: { kind: 'rest', staffPosition: 0 } })
+      expect(warnings).toEqual([])
+    },
+  )
+
   test('follows a clef that changes partway through the measure', () => {
     const warnings = new WarningCollector()
     const score = readValid(

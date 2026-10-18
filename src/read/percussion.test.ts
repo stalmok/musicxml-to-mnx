@@ -659,9 +659,10 @@ describe('the MNX a percussion part converts to', () => {
       expect(span).toEqual({ start: notes[0], end: kitNotes[0] })
     })
 
-    // A treble-8 clef draws B3 on the middle line, above a kit note on A4.
+    // A treble-8 clef draws B3 on the middle line, above a kit note stated as
+    // A3, which the clef draws one step under it.
     test('places a pitched note by the octave its clef is drawn at', () => {
-      const rolled = pitched('B', '3', ROLL) + kitNote('A', '4', ROLL)
+      const rolled = pitched('B', '3', ROLL) + kitNote('A', '3', ROLL)
       const { span, notes, kitNotes } = readWith(
         rolled,
         clef('G', '2', '<clef-octave-change>-1</clef-octave-change>'),

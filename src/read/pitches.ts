@@ -37,9 +37,9 @@ const CLEF_REFERENCE: Record<PitchedClefSign, number> = {
 
 /**
  * The height a <display-step>/<display-octave> pair states, in steps from the
- * middle of the staff. The clef in force holds the position its reference
- * pitch sits at, and each diatonic step from there is one more step of
- * height. Undefined where the pair is incomplete or no clef is in force. The
+ * middle of the staff. Exporters state it as they state a pitch, so a clef's
+ * octave change moves it too. Undefined where the pair is incomplete or no
+ * clef is in force. The
  * caller decides what follows: a rest without a height is drawn at its
  * default, and an unpitched note without one has nowhere to sit.
  */
@@ -58,7 +58,7 @@ function displayStaffPosition(
     return undefined
   }
 
-  return clef.staffPosition + (diatonicIndex(step, octave) - CLEF_REFERENCE[clef.sign])
+  return pitchStaffPosition({ step, octave, alter: 0 }, clef)
 }
 
 /**
