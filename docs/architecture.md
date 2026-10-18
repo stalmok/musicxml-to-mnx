@@ -104,7 +104,7 @@ The reader modules are:
 | `score.ts`                    | Read parts and walk measures in document order.                                              |
 | `attributes.ts`               | Read divisions, staves, keys, time signatures, clefs, and measure styles.                    |
 | `signatures.ts`               | Settle key and time signatures per measure, per part, and across parts.                      |
-| `partSignatures.ts`           | Hold the key and time signatures a part carries from one measure to the next.                |
+| `partSignatures.ts`           | Hold the signatures a part carries to the next measure. Compare keys and time signatures.    |
 | `notes.ts`                    | Read a note, chord member or grace note into its voice.                                      |
 | `pitches.ts`                  | Read pitches, accidentals and kit components, and where a rest or kit note sits.             |
 | `marks.ts`                    | Read the marks, single-note tremolo, fermata and stem on an event, and a barline's fermata.  |

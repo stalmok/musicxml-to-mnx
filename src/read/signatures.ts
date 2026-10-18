@@ -2,9 +2,9 @@
 // in a measure, and in each part; MNX states one key and one time signature
 // for the whole score, only where a measure begins. A measure collects every
 // statement it reads, and settles them once it is whole. A statement after the
-// start is held for the next measure, and what is still held at the end of
-// the part is reported. The parts' keys and time signatures are then settled
-// against each other.
+// start is held for the next measure. PartSignatures reports what is still
+// held at the end of the part. The parts' keys and time signatures are then
+// settled against each other.
 //
 // Before any part is read, every part's time signatures are read ahead, so a
 // part that states none runs to the barline the other parts state.

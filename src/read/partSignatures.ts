@@ -1,6 +1,7 @@
-// The key and time signatures a part carries from one measure to the next,
-// and the report of one stated after a measure's start. signatures.ts settles
-// each measure against them.
+// The key and time signatures a part carries from one measure to the next.
+// Also how a key and a time signature are compared, and the report of one
+// stated after a measure's start, which signatures.ts uses as well.
+// signatures.ts settles each measure against this state.
 
 import type { Key, TimeSignature } from '../model/score.js'
 import type { XmlElement } from '../xml/parse.js'
