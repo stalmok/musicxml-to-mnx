@@ -297,14 +297,13 @@ export class Arpeggios {
         continue
       }
 
-      // Where no clef places a pitched note, or the chord is divided, a chord
-      // sounding on a pitched staff and a kit at once is spanned by its
-      // pitched notes. MNX reads
-      // the notes a mark covers as the ones whose pitch lies between its
-      // ends, so a kit note left out of the span is left out of the mark.
-      // Reported here rather than above, where the mark may still turn out
-      // not to be carried.
-      if (notes.length > 0 && kitNotes.length > 0 && drawn === undefined) {
+      // Kit notes left unordered sound beside pitched notes that no clef
+      // places, or in a divided chord, so the span runs over the pitched
+      // notes alone. MNX reads the notes a mark covers as the ones whose pitch
+      // lies between its ends, so a kit note left out of the span is left out
+      // of the mark. Reported here rather than above, where the mark may
+      // still turn out not to be carried.
+      if (kitNotes.length > 0 && drawn === undefined) {
         warnings.add(
           'unsupported:element',
           `A chord ${first.struck ? 'bracketed as struck together' : 'rolled'} across a ` +

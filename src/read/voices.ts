@@ -1223,7 +1223,7 @@ export class MeasureBuilder {
       for (const [line, layer] of layers.entries()) {
         if (leavesBeamOpen(layer)) lines.set(line, layer.lastEvent?.staff)
       }
-      if (lines.size > 0) open.set(voice, lines)
+      open.set(voice, lines)
     }
     return open
   }
