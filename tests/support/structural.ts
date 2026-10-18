@@ -188,8 +188,9 @@ interface VoiceLines {
 
 /**
  * Every pitch in the converted document, one line per part and measure. A
- * note stating written.diatonicDelta is moved by it, so every note is read at
- * the spelling MNX moves by the part's flip alone.
+ * note of a transposing part stating written.diatonicDelta is moved by it, so
+ * every note is read at the spelling MNX moves by the part's flip alone. MNX
+ * reads no written spelling in a part at concert pitch.
  */
 export function pitchesOf(document: MNXDocument): string[] {
   const lines: string[] = []
@@ -212,7 +213,7 @@ export function pitchesOf(document: MNXDocument): string[] {
                   pitchKey(
                     respelled(
                       { ...note.pitch, alter: note.pitch.alter ?? 0 },
-                      note.written?.diatonicDelta ?? 0,
+                      part.transposition ? (note.written?.diatonicDelta ?? 0) : 0,
                     ),
                   ),
                 )
