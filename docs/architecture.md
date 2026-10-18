@@ -65,7 +65,8 @@ The model is MNX-shaped, not neutral. It follows the MNX structure closely:
   carry multimeasure rests and system and page breaks, which MNX states elsewhere.
 - `Markings` is keyed by marking kind, and the kinds use MNX spellings.
 - A full-measure rest belongs to the sequence, as in MNX.
-- Beams belong to the measure, as in MNX.
+- Beams belong to the measure, as in MNX. A beam that crosses a barline belongs to
+  the measure it starts in.
 - `GraceType`, `JumpType`, and `Space` follow their MNX definitions.
   `Transposition` follows MNX closely.
 - A segno color is a `#` and six hex digits, with no alpha. It keeps the
@@ -202,8 +203,9 @@ vendored schema.
 The vendored schema defines the accepted MNX output format.
 Every conversion output in tests must validate against it.
 The schema checks the form of an id, not its target. Tests also check that
-every id reference in the output leads to an object. A beam must name events
-of its own measure. A tie or slur must name a target in its own part.
+every id reference in the output leads to an object. A beam must start in its
+own measure, and may name events of the measures after it. A tie or slur must
+name a target in its own part.
 The library does not run schema validation during conversion.
 The CLI provides optional validation through `--validate`.
 

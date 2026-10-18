@@ -24,7 +24,7 @@ import { describeLength, noteValueOf } from './duration.js'
 import type { ReportContext, WarningCollector } from './collector.js'
 import type { EventNotation } from './eventNotations.js'
 import type { XmlElement } from '../xml/parse.js'
-import type { BeamedEvent, BeamMarker } from './beams.js'
+import type { BeamedEvent, BeamedRun, BeamMarker } from './beams.js'
 import type { CarriedTupletStop, MeasureExtent, TupletStart } from './tuplets.js'
 import { TupletTracker } from './tupletTracker.js'
 import { Arpeggios } from './arpeggios.js'
@@ -112,7 +112,7 @@ export interface PlacedGraceNote extends PlacedEvent {
 /** What a measure holds once every pass that waits for it to be whole has run. */
 export interface FinishedMeasure {
   /** Each voice's events, in order, for its beams to be read from. */
-  beamedEvents: BeamedEvent[][]
+  beamedRuns: BeamedRun[]
   arpeggios: Arpeggio[]
   sequences: Sequence[]
   /** Tuplet stops no bracket here met, handed on to the next measure. */
@@ -1198,7 +1198,7 @@ export class MeasureBuilder {
     )
 
     return {
-      beamedEvents: this.#beamedEvents(),
+      beamedRuns: this.#beamedRuns(),
       arpeggios: this.arpeggios.settle(warnings, context, kit),
       sequences: this.#sequences(warnings, context),
       carriedTupletStops,
@@ -1207,20 +1207,12 @@ export class MeasureBuilder {
     }
   }
 
-  /**
-   * The voices whose last event begins or continues a primary beam, which
-   * the source then carries on over the barline or leaves open. An event
-   * with no primary marker, or no beam at all, closes the primary beam.
-   */
+  /** The voices whose primary beam is open at the barline, with the staff it was on. */
   #beamsOpenAtBarline(): Map<string, number | undefined> {
     const open = new Map<string, number | undefined>()
     for (const [voice, { layers }] of this.#voices) {
-      for (const { beamed, lastEvent } of layers) {
-        const last = beamed.at(-1)
-        const kind = last?.markers.get(1)?.kind
-        if (lastEvent?.id === last?.id && (kind === 'begin' || kind === 'continue')) {
-          open.set(voice, lastEvent?.staff)
-        }
+      for (const layer of layers) {
+        if (leavesBeamOpen(layer)) open.set(voice, layer.lastEvent?.staff)
       }
     }
     return open
@@ -1279,9 +1271,20 @@ export class MeasureBuilder {
   }
 
   /** What every voice said about its beams, voice by voice. */
-  #beamedEvents(): BeamedEvent[][] {
-    const builders = this.#allBuilders()
-    return [...builders.map((b) => b.beamed), ...builders.flatMap((b) => b.graceBeamed)]
+  #beamedRuns(): BeamedRun[] {
+    const voices = [...this.#voices].flatMap(([voice, { layers }]) =>
+      layers.map((layer) => ({ voice, layer })),
+    )
+    return [
+      ...voices.map(({ voice, layer }) => ({
+        voice,
+        events: layer.beamed,
+        openAtBarline: leavesBeamOpen(layer),
+      })),
+      ...voices.flatMap(({ layer }) =>
+        layer.graceBeamed.map((events) => ({ voice: undefined, events, openAtBarline: false })),
+      ),
+    ]
   }
 
   /**
@@ -1636,6 +1639,17 @@ export class MeasureBuilder {
   #allBuilders(): VoiceBuilder[] {
     return [...this.#voices.values()].flatMap((layers) => layers.layers)
   }
+}
+
+/**
+ * Whether the line's last event begins or continues a primary beam, which the
+ * source then carries on over the barline or leaves open. An event with no
+ * primary marker, or no beam at all, closes the primary beam.
+ */
+function leavesBeamOpen({ beamed, lastEvent }: VoiceBuilder): boolean {
+  const last = beamed.at(-1)
+  const kind = last?.markers.get(1)?.kind
+  return lastEvent?.id === last?.id && (kind === 'begin' || kind === 'continue')
 }
 
 function newVoiceBuilder(openedAt?: XmlElement): VoiceBuilder {

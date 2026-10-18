@@ -42,7 +42,6 @@ import { fixTransposition, readAttributes, settleTranspositions } from './attrib
 import type { MeasureRepeatReading } from './attributes.js'
 import { Endings, readBarline } from './barlines.js'
 import type { EndingStart, EndingStop } from './barlines.js'
-import { buildBeams } from './beams.js'
 import { readDirection, readSound } from './directions.js'
 import type { SoundTempo } from './directions.js'
 import { requireDuration } from './divisions.js'
@@ -748,7 +747,7 @@ function readMeasure(
       staffConfigs: dedupeStaffConfigs(staffConfigs, warnings, context),
       // Beams are stated over the measure in MNX rather than on the notes,
       // and each voice is beamed on its own.
-      beams: finished.beamedEvents.flatMap((events) => buildBeams(events, warnings, context)),
+      beams: state.openBeams.measure(finished.beamedRuns),
       dynamics,
       arpeggios: finished.arpeggios,
       // Filled in once the whole part has been read.

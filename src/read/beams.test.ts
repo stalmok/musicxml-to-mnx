@@ -5,14 +5,12 @@
 // a direction for a hook. The support block is tested in
 // tests/support-block.test.ts.
 
+import { convertValid } from '../../tests/support/convert.js'
 import { readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { WarningCollector } from './collector.js'
-import { buildBeams as buildReported, isBeamValue } from './beams.js'
+import { buildBeams, isBeamValue } from './beams.js'
 import type { BeamedEvent, BeamMarker } from './beams.js'
-
-const buildBeams = (events: readonly BeamedEvent[]) =>
-  buildReported(events, new WarningCollector(), {})
 
 /**
  * `levels` reads as "level:marker", separated by semicolons because a marker
@@ -484,32 +482,90 @@ describe('a beam crossing the barline', () => {
     }
   }
 
-  const CROSSES =
-    'A beam crosses the barline into this measure, which is not converted yet. It is ' +
-    'drawn as one beam each side of the barline, and a side holding one note is not beamed.'
-
-  test('reports a beam over two single notes, and beams neither', () => {
+  // MNX states the beam on the measure it starts in, listing the events of
+  // both measures.
+  test('joins a beam over two single notes into one beam', () => {
     const { beams, warnings } = readMeasures(eighth('C', 'begin'), eighth('D', 'end'))
 
-    expect(beams).toEqual([[], []])
-    expect(warnings).toEqual([
-      expect.objectContaining({
-        code: 'unsupported:element',
-        element: 'beam',
-        message: CROSSES,
-        context: expect.objectContaining({ measure: 2, line: 3 }),
-      }),
-    ])
+    expect(beams).toEqual([[['ev1', 'ev2']], []])
+    expect(warnings).toEqual([])
   })
 
-  test('beams the notes on each side of the barline on their own', () => {
+  test('joins the notes on each side of the barline into one beam', () => {
     const { beams, warnings } = readMeasures(
       eighth('C', 'begin') + eighth('D', 'continue'),
       eighth('E', 'continue') + eighth('F', 'continue') + eighth('G', 'end') + eighth('A'),
     )
 
-    expect(beams).toEqual([[['ev1', 'ev2']], [['ev3', 'ev4', 'ev5']]])
-    expect(warnings.map((w) => w.message)).toEqual([CROSSES])
+    expect(beams).toEqual([[['ev1', 'ev2', 'ev3', 'ev4', 'ev5']], []])
+    expect(warnings).toEqual([])
+  })
+
+  // The MNX specification's own example of a beam across the barline.
+  test('writes the joined beam on the measure it starts in', () => {
+    const rest = (type: string, duration: number) =>
+      `<note><rest/><duration>${String(duration)}</duration><type>${type}</type></note>`
+    const note = (step: string, marker: string) =>
+      `<note><pitch><step>${step}</step><octave>5</octave></pitch><duration>1</duration>` +
+      `<type>eighth</type><beam number="1">${marker}</beam></note>`
+    const { mnx, warnings } = convertValid(
+      '<score-partwise><part-list><score-part id="P1"><part-name/></score-part></part-list>' +
+        '<part id="P1"><measure number="1"><attributes><divisions>2</divisions>' +
+        '<time><beats>4</beats><beat-type>4</beat-type></time></attributes>' +
+        rest('half', 4) +
+        rest('quarter', 2) +
+        note('C', 'begin') +
+        note('D', 'continue') +
+        '</measure><measure number="2">' +
+        note('E', 'continue') +
+        note('F', 'end') +
+        rest('quarter', 2) +
+        rest('half', 4) +
+        '</measure></part></score-partwise>',
+    )
+
+    const [first, second] = mnx.parts[0]?.measures ?? []
+    const ids = (measure: typeof first) =>
+      (measure?.sequences[0]?.content ?? []).flatMap((item) =>
+        'notes' in item && item.id !== undefined ? [item.id] : [],
+      )
+    expect(first?.beams).toEqual([{ events: [...ids(first), ...ids(second)] }])
+    expect(second?.beams).toBeUndefined()
+    expect(ids(first)).toHaveLength(2)
+    expect(ids(second)).toHaveLength(2)
+    expect(warnings).toEqual([])
+  })
+
+  test('joins a beam across two barlines into one beam', () => {
+    const { beams } = readMeasures(
+      eighth('C', 'begin'),
+      eighth('D', 'continue'),
+      eighth('E', 'end') + eighth('F', 'begin') + eighth('G', 'end'),
+    )
+
+    expect(beams).toEqual([[['ev1', 'ev2', 'ev3']], [], [['ev4', 'ev5']]])
+  })
+
+  test('keeps the beams of the measure it starts in beside the joined beam', () => {
+    const { beams } = readMeasures(
+      eighth('A', 'begin') + eighth('B', 'end') + eighth('C', 'begin'),
+      eighth('D', 'end'),
+    )
+
+    expect(beams).toEqual([
+      [
+        ['ev1', 'ev2'],
+        ['ev3', 'ev4'],
+      ],
+      [],
+    ])
+  })
+
+  test('keeps a beam the part ends on', () => {
+    const { beams, warnings } = readMeasures(eighth('C', 'begin') + eighth('D', 'continue'))
+
+    expect(beams).toEqual([[['ev1', 'ev2']]])
+    expect(warnings).toEqual([])
   })
 
   // A source may leave the barline to close a beam, and then nothing is lost.
@@ -562,7 +618,7 @@ describe('a beam crossing the barline', () => {
     expect(warnings).toEqual([])
   })
 
-  test('reports a beam carried on past a beamed grace group', () => {
+  test('joins a beam carried on past a beamed grace group', () => {
     const grace = (step: string, marker: string) =>
       `<note><grace/><pitch><step>${step}</step><octave>5</octave></pitch>` +
       `<type>16th</type><beam number="1">${marker}</beam></note>`
@@ -571,11 +627,8 @@ describe('a beam crossing the barline', () => {
       grace('D', 'begin') + grace('E', 'end') + eighth('C', 'continue') + eighth('F', 'end'),
     )
 
-    expect(beams?.[1]).toEqual([
-      ['ev5', 'ev6'],
-      ['ev3', 'ev4'],
-    ])
-    expect(warnings.map((w) => w.message)).toEqual([CROSSES])
+    expect(beams).toEqual([[['ev1', 'ev2', 'ev5', 'ev6']], [['ev3', 'ev4']]])
+    expect(warnings).toEqual([])
   })
 
   test('says nothing where an unbeamed note follows the beam before the barline', () => {
@@ -613,20 +666,21 @@ describe('a beam crossing the barline', () => {
     expect(warnings).toEqual([])
   })
 
-  test('reports a beam a named voice carries over the barline onto another staff', () => {
+  test('joins a beam a named voice carries over the barline onto another staff', () => {
     const on = (staff: string, note: string) =>
       note
         .replace('<type>', '<voice>1</voice><type>')
         .replace('</note>', `<staff>${staff}</staff></note>`)
-    const { warnings } = readMeasures(
+    const { beams, warnings } = readMeasures(
       '<attributes><staves>2</staves></attributes>' + on('2', eighth('A', 'begin')),
       on('1', eighth('C', 'end')),
     )
 
-    expect(warnings.map((w) => w.message)).toEqual([CROSSES])
+    expect(beams).toEqual([[['ev1', 'ev2']], []])
+    expect(warnings).toEqual([])
   })
 
-  test('reports a beam crossing once where the voice runs in two lines', () => {
+  test('joins one line where the voice runs in two lines', () => {
     const backup = '<backup><duration>4</duration></backup>'
     const { beams, warnings } = readMeasures(
       eighth('A', 'begin') + eighth('B', 'continue'),
@@ -637,9 +691,8 @@ describe('a beam crossing the barline', () => {
         eighth('F', 'end'),
     )
 
-    expect(beams?.[1]).toEqual([['ev3', 'ev4']])
-    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:voice', 'unsupported:element'])
-    expect(warnings[1]?.message).toBe(CROSSES)
+    expect(beams).toEqual([[['ev1', 'ev2', 'ev3', 'ev4']], []])
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:voice'])
   })
 
   // The primary beam begins here, so a stray inner continue carries nothing on.
@@ -692,7 +745,7 @@ describe('a beam crossing the barline', () => {
     expect(warnings).toEqual([])
   })
 
-  test('draws an inner beam from the measure before as a partial beam to the left', () => {
+  test('joins an inner beam across the barline with the primary one', () => {
     const sixteenth = (step: string, inner: string) =>
       `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>1</duration>` +
       `<type>16th</type>${inner}</note>`
@@ -703,16 +756,47 @@ describe('a beam crossing the barline', () => {
     )
 
     expect(trees).toEqual([
-      [],
       [
         {
-          events: ['ev2', 'ev3'],
-          beams: [{ events: ['ev2'], beams: [], direction: 'left' }],
+          events: ['ev1', 'ev2', 'ev3'],
+          beams: [{ events: ['ev1', 'ev2'], beams: [], direction: undefined }],
           direction: undefined,
         },
       ],
+      [],
     ])
-    expect(warnings.map((w) => w.message)).toEqual([CROSSES])
+    expect(warnings).toEqual([])
+  })
+
+  // The last note before the barline continues a beam it never began, so
+  // there is nothing to join the notes after the barline to.
+  test('beams the notes carrying on a beam with no begin by themselves', () => {
+    const { beams, warnings } = readMeasures(
+      eighth('A', 'continue'),
+      eighth('B', 'continue') + eighth('C', 'end'),
+    )
+
+    expect(beams).toEqual([[], [['ev2', 'ev3']]])
+    expect(warnings).toEqual([])
+  })
+
+  test('draws an inner beam carried on with no begin as a partial beam to the left', () => {
+    const sixteenth = (step: string, inner: string) =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>1</duration>` +
+      `<type>16th</type>${inner}</note>`
+    const { trees } = readMeasures(
+      sixteenth('B', '<beam number="1">continue</beam><beam number="2">continue</beam>'),
+      sixteenth('C', '<beam number="1">continue</beam><beam number="2">end</beam>') +
+        sixteenth('D', '<beam number="1">end</beam>'),
+    )
+
+    expect(trees[1]).toEqual([
+      {
+        events: ['ev2', 'ev3'],
+        beams: [{ events: ['ev2'], beams: [], direction: 'left' }],
+        direction: undefined,
+      },
+    ])
   })
 
   test('reports nothing for an inner beam the primary one closes', () => {

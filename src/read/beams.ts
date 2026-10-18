@@ -102,6 +102,75 @@ const HOOK_DIRECTIONS = new Map<BeamValue, 'left' | 'right'>([
   ['backward hook', 'left'],
 ])
 
+/** One line of a voice's beam markers over a measure. */
+export interface BeamedRun {
+  /** The voice the line is in. Nothing for a grace group, which beams within itself. */
+  voice: string | undefined
+  events: readonly BeamedEvent[]
+  /** Whether the line's last event leaves its primary beam open at the barline. */
+  openAtBarline: boolean
+}
+
+/** A primary beam left open at a barline, waiting for the next measure. */
+interface OpenBeam {
+  /** Its events so far, from the measure it starts in on. */
+  events: readonly BeamedEvent[]
+  /** The beams of the measure it starts in, which is where MNX states it. */
+  home: Beam[]
+  /** The beam as stated so far, where it holds more than one event. */
+  stated: Beam | undefined
+}
+
+/**
+ * The primary beams a part leaves open at its barlines, by voice.
+ *
+ * A beam crossing the barline shows as a continue or end on the event that
+ * opens the measure, in a voice whose beam the measure before left open.
+ * MNX states such a beam on the measure it starts in, listing the events of
+ * every measure it runs over. An open beam is stated as it stands, since a
+ * source may leave the barline to close it, and replaced by the joined beam
+ * where the next measure carries it on.
+ */
+export class OpenBeams {
+  #open = new Map<string, OpenBeam>()
+
+  /** The beams of one measure, outermost first, less any it joins to an earlier measure. */
+  measure(runs: readonly BeamedRun[]): Beam[] {
+    const carried = this.#open
+    this.#open = new Map()
+    const beams: Beam[] = []
+    for (const { voice, events, openAtBarline } of runs) {
+      const first = events[0]
+      const kind = first?.markers.get(1)?.kind
+      const from =
+        voice !== undefined && first?.continuesFromBefore && (kind === 'continue' || kind === 'end')
+          ? carried.get(voice)
+          : undefined
+      const { beams: built, trailing } = beamRuns(from ? [...from.events, ...events] : events, 1)
+      for (const beam of built) {
+        if (from && beam.events[0] === from.events[0]?.id) restate(from, beam)
+        else beams.push(beam)
+      }
+      if (voice !== undefined && openAtBarline && trailing) {
+        const joined = from !== undefined && trailing.run[0] === from.events[0]
+        this.#open.set(voice, {
+          events: trailing.run,
+          home: joined ? from.home : beams,
+          stated: trailing.beam,
+        })
+      }
+    }
+    return beams
+  }
+}
+
+/** States the joined beam in place of the open beam it carries on. */
+function restate(open: OpenBeam, beam: Beam): void {
+  const at = open.stated === undefined ? -1 : open.home.indexOf(open.stated)
+  if (at < 0) open.home.push(beam)
+  else open.home[at] = beam
+}
+
 /**
  * The beams over one measure of one voice, outermost first.
  *
@@ -109,32 +178,29 @@ const HOOK_DIRECTIONS = new Map<BeamValue, 'left' | 'right'>([
  * A run the measure never closes is kept, since a source may leave the
  * barline to close it. A primary run over one event is dropped, because a
  * beam over a single note is a flag.
- *
- * A beam crossing the barline shows as a continue or end on the event that
- * opens the measure, in a voice whose beam the measure before left open.
- * MNX states such a beam on the measure it starts in, listing the events of
- * both. This converter does not join the two yet, so each side is beamed on
- * its own, and the crossing is reported.
  */
-export function buildBeams(
-  events: readonly BeamedEvent[],
-  warnings: WarningCollector,
-  context: ReportContext,
-): Beam[] {
-  return beamsAtLevel(events, 1, { warnings, context })
+export function buildBeams(events: readonly BeamedEvent[]): Beam[] {
+  return beamRuns(events, 1).beams
 }
 
-function beamsAtLevel(
+interface BeamedRuns {
+  beams: Beam[]
+  /**
+   * The run still open where the events run out, and the beam stated for it
+   * where it holds one.
+   */
+  trailing: { run: readonly BeamedEvent[]; beam: Beam | undefined } | undefined
+}
+
+function beamRuns(
   events: readonly BeamedEvent[],
   level: number,
-  /** Where to report a primary beam crossing the barline. */
-  report?: { warnings: WarningCollector; context: ReportContext },
   /**
    * Whether the run these events make up carries on a beam from the measure
    * before, so an inner beam can carry on with it.
    */
   carriesOn = true,
-): Beam[] {
+): BeamedRuns {
   const beams: Beam[] = []
   let run: BeamedEvent[] = []
   // Whether the run carries on a beam from the measure before.
@@ -145,7 +211,7 @@ function beamsAtLevel(
     if (run.length > 1) {
       beams.push({
         events: run.map((event) => event.id),
-        beams: beamsAtLevel(run, level + 1, undefined, fromBefore),
+        beams: beamRuns(run, level + 1, fromBefore).beams,
         direction: undefined,
       })
     } else if (only !== undefined && level > 1 && only.beamCount >= level) {
@@ -174,7 +240,7 @@ function beamsAtLevel(
       // double-dotted eighth does, and the deeper ones nest inside this one.
       beams.push({
         events: [event.id],
-        beams: beamsAtLevel([event], level + 1, undefined, false),
+        beams: beamRuns([event], level + 1, false).beams,
         direction: hook,
       })
       continue
@@ -187,16 +253,7 @@ function beamsAtLevel(
       if (run.length > 0) {
         run.push(event)
       } else if (carriesOn && event.continuesFromBefore) {
-        if (report) {
-          report.warnings.add(
-            'unsupported:element',
-            'A beam crosses the barline into this measure, which is not converted yet. ' +
-              'It is drawn as one beam each side of the barline, and a side holding one ' +
-              'note is not beamed.',
-            report.context,
-            found.element,
-          )
-        }
+        // The beam before it holds no begin, so there is nothing to join to.
         run = [event]
         fromBefore = true
       }
@@ -207,9 +264,14 @@ function beamsAtLevel(
       close()
     }
   }
+  const trailing = run.length > 0 && run.at(-1) === events.at(-1) ? run : undefined
+  const stated = beams.length
   close()
 
-  return beams
+  return {
+    beams,
+    trailing: trailing && { run: trailing, beam: beams.length > stated ? beams.at(-1) : undefined },
+  }
 }
 
 /**

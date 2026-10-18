@@ -35,7 +35,9 @@ function document(): MNXDocument {
         kit: { snare: { staffPosition: 0, sound: 'drum' } },
         measures: [
           {
-            beams: [{ events: ['e1', 'e2'], beams: [{ events: ['e1'] }] }],
+            beams: [
+              { events: ['e1', 'e2', 'e3'], beams: [{ events: ['e1'] }, { events: ['e3'] }] },
+            ],
             arpeggios: [{ position: at, span: { start: 'n1', end: 'k1' } }],
             nonArpeggios: [{ position: at, span: { start: 'n1', end: 'n2' } }],
             dynamics: [
@@ -132,6 +134,12 @@ function first(mnx: MNXDocument): MNXDocument['parts'][number]['measures'][numbe
   return measure
 }
 
+function second(mnx: MNXDocument): MNXDocument['parts'][number]['measures'][number] {
+  const measure = mnx.parts[0]?.measures[1]
+  if (measure === undefined) throw new Error('The document has no second measure.')
+  return measure
+}
+
 test('a document whose every reference leads somewhere has none dangling', () => {
   expect(danglingReferences(document())).toEqual([])
 })
@@ -139,11 +147,25 @@ test('a document whose every reference leads somewhere has none dangling', () =>
 describe('reports a reference that leads nowhere', () => {
   const cases: readonly [string, (mnx: MNXDocument) => void, string][] = [
     [
-      'a beam naming an event of another measure',
+      'a beam naming an event of an earlier measure',
       (mnx) => {
-        first(mnx).beams = [{ events: ['e1', 'e3'] }]
+        second(mnx).beams = [{ events: ['e3', 'e1'] }]
       },
-      'part 1 measure 1 beam names "e3"',
+      'part 1 measure 2 beam names "e1"',
+    ],
+    [
+      'a beam naming an event of another part',
+      (mnx) => {
+        first(mnx).beams = [{ events: ['e1', 'e9'] }]
+      },
+      'part 1 measure 1 beam names "e9"',
+    ],
+    [
+      'a beam starting in a later measure',
+      (mnx) => {
+        first(mnx).beams = [{ events: ['e3'] }]
+      },
+      'part 1 measure 1 beam start names "e3"',
     ],
     [
       'a secondary beam',

@@ -8,6 +8,7 @@ import type { Fraction } from '../fraction.js'
 import type { XmlElement } from '../xml/parse.js'
 import type { Stated } from './element.js'
 import { IdGenerator } from './idGenerator.js'
+import { OpenBeams } from './beams.js'
 import { PartSignatures } from './partSignatures.js'
 import { SpannerResolver } from './spanners.js'
 import type { CarriedTupletStop } from './tuplets.js'
@@ -141,6 +142,8 @@ export interface PartState {
    * with the staff it was on.
    */
   beamsOpenAtBarline: ReadonlyMap<string, number | undefined>
+  /** The beams left open at the barline, which the next measure may join. */
+  openBeams: OpenBeams
   /**
    * The first transposition in force at a pitched note, which is the one
    * written out. MNX states one per part, so a part that changes instrument
@@ -224,6 +227,7 @@ export function newPartState(
     carriedTupletStops: [],
     carriedTremolos: [],
     beamsOpenAtBarline: new Map(),
+    openBeams: new OpenBeams(),
     transposition: undefined,
     statedTransposition: undefined,
     unfixedKeys: [],

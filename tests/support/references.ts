@@ -71,8 +71,9 @@ function idsOf(items: readonly { id?: string }[]): Set<string> {
 
 /**
  * Every reference in the document that names nothing it may name, as a short
- * description. A beam or arpeggio joins what its measure holds, and a tie or
- * slur what its part holds.
+ * description. An arpeggio joins what its measure holds, and a tie or slur
+ * what its part holds. A beam starts in its measure and may run on over the
+ * measures after it.
  */
 export function danglingReferences(mnx: MNXDocument): string[] {
   const dangling: string[] = []
@@ -102,14 +103,17 @@ export function danglingReferences(mnx: MNXDocument): string[] {
       const where = `part ${String(partIndex + 1)} measure ${String(measureIndex + 1)}`
       const own = measureEvents(measure)
       const ownEvents = idsOf(own)
+      const fromHereOn = idsOf(part.measures.slice(measureIndex).flatMap(measureEvents))
       // An arpeggio over a kit chord runs between kit notes.
       const ownNotes = idsOf(
         own.flatMap((event) => [...(event.notes ?? []), ...(event.kitNotes ?? [])]),
       )
 
       const beams = [...(measure.beams ?? [])]
+      for (const beam of measure.beams ?? [])
+        check(`${where} beam start`, beam.events[0], ownEvents)
       for (const beam of beams) {
-        for (const id of beam.events) check(`${where} beam`, id, ownEvents)
+        for (const id of beam.events) check(`${where} beam`, id, fromHereOn)
         beams.push(...(beam.beams ?? []))
       }
       for (const arpeggio of [...(measure.arpeggios ?? []), ...(measure.nonArpeggios ?? [])]) {
