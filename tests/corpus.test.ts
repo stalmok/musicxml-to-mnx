@@ -432,35 +432,67 @@ const MARK_ELEMENTS = new Set([
   'sfzp',
 ])
 
-/** The name of every mark element in a direction's <dynamics>. */
-function sourceMarkElements(root: XmlElement): string[] {
-  const found: string[] = []
-  const walk = (element: XmlElement, parent: string): void => {
-    if (element.name === 'dynamics' && parent === 'direction-type') {
-      for (const mark of element.children) if (MARK_ELEMENTS.has(mark.name)) found.push(mark.name)
-    }
-    for (const child of element.children) walk(child, element.name)
+// A mark MusicXML spells by combining the pieces of one <dynamics>, as s and
+// f for sf. A pattern here rather than the reader's table, so a run of
+// pieces read as a mark is held against a second statement of the spellings.
+const PLAIN_MARK = /^(p{1,6}|mp|mf|f{1,6}|n)$/
+const ACCENT_MARK = /^[sr]?f{1,6}z?(p{1,6}|mp|mf)?$/
+
+/**
+ * The letters of the longest run of two or more pieces from `start` that
+ * spells a mark, and how many pieces it takes. A space between two pieces
+ * keeps them apart, and a piece naming a glyph is not joined.
+ */
+function splitMark(
+  pieces: readonly XmlElement[],
+  start: number,
+): { letters: string; count: number } | undefined {
+  const letters: string[] = []
+  for (const piece of pieces.slice(start)) {
+    if (piece.name !== 'other-dynamics') letters.push(piece.name)
+    else if (piece.attributes.smufl === undefined) letters.push(piece.rawText)
+    else break
   }
-  walk(root, '')
-  return found
+  for (let count = letters.length; count > 1; count -= 1) {
+    const joined = letters.slice(0, count).join('').trim()
+    if (PLAIN_MARK.test(joined) || ACCENT_MARK.test(joined)) return { letters: joined, count }
+  }
+  return undefined
 }
 
 /**
- * Every <other-dynamics> wording in the source, trimmed as the reader trims
- * it, in document order. Whitespace-only wordings draw nothing and are left
- * out.
+ * The mark elements of the source's direction dynamics, and every
+ * <other-dynamics> wording, trimmed as the reader trims it, in document
+ * order. A whitespace-only wording draws nothing and is left out. A run of
+ * pieces that spells a mark is given as one wording, the letters of that
+ * mark, for a converted mark to claim.
  */
-function sourceWordings(root: XmlElement): string[] {
-  const found: string[] = []
-  const walk = (element: XmlElement): void => {
-    if (element.name === 'other-dynamics') {
-      const wording = element.rawText.trim()
-      if (wording !== '') found.push(wording)
-    }
-    for (const child of element.children) walk(child)
+function sourceDynamics(root: XmlElement): { marks: string[]; wordings: string[] } {
+  const marks: string[] = []
+  const wordings: string[] = []
+  const addWording = (piece: XmlElement): void => {
+    const wording = piece.rawText.trim()
+    if (wording !== '') wordings.push(wording)
   }
-  walk(root)
-  return found
+  const walk = (element: XmlElement, parent: string): void => {
+    if (element.name === 'dynamics' && parent === 'direction-type') {
+      let joinedTo = 0
+      for (const [index, piece] of element.children.entries()) {
+        if (index < joinedTo) continue
+        const split = splitMark(element.children, index)
+        if (split !== undefined) {
+          wordings.push(split.letters)
+          joinedTo = index + split.count
+        } else if (piece.name === 'other-dynamics') addWording(piece)
+        else if (MARK_ELEMENTS.has(piece.name)) marks.push(piece.name)
+      }
+      return
+    }
+    if (element.name === 'other-dynamics') addWording(element)
+    for (const child of element.children) walk(child, element.name)
+  }
+  walk(root, '')
+  return { marks, wordings }
 }
 
 describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
@@ -596,7 +628,8 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   })
 
   // The wording around a dynamic becomes that mark's prefix or suffix, and
-  // text spelling a mark becomes the mark. Each mark element converts. Each
+  // text spelling a mark becomes the mark, as do pieces of one <dynamics>
+  // that spell a mark together. Each other mark element converts. Each
   // wording in the source must be a mark the elements do not account for, or
   // be in the output's wording or in a warning. A substring match for the
   // wording, because several wordings before one mark are joined into one
@@ -622,14 +655,14 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
         }
       }
     }
-    const root = parseXmlRoot(source)
-    for (const name of sourceMarkElements(root)) marks.set(name, (marks.get(name) ?? 0) - 1)
+    const written = sourceDynamics(parseXmlRoot(source))
+    for (const name of written.marks) marks.set(name, (marks.get(name) ?? 0) - 1)
     // Only the quoted wording in a warning counts, not the whole message.
     const reported = warnings.flatMap((warning) =>
       [...warning.message.matchAll(/"([^"]*)"/g)].map((m) => m[1] ?? ''),
     )
 
-    const lost = sourceWordings(root).filter((wording) => {
+    const lost = written.wordings.filter((wording) => {
       const unclaimed = marks.get(wording) ?? 0
       if (unclaimed > 0) {
         marks.set(wording, unclaimed - 1)
