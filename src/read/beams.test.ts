@@ -452,6 +452,8 @@ describe('a beam crossing the barline', () => {
     '<note><pitch><step>B</step><octave>3</octave></pitch><duration>4</duration>' +
     '<type>quarter</type></note>'
 
+  const higher = (note: string) => note.replace('<octave>4</octave>', '<octave>5</octave>')
+
   function eighth(step: string, marker?: string): string {
     return (
       `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>2</duration>` +
@@ -684,7 +686,10 @@ describe('a beam crossing the barline', () => {
     expect(warnings).toEqual([])
   })
 
-  test('joins one line where the voice runs in two lines', () => {
+  // The lines of a voice are told apart across the barline by height, which
+  // is also how they are named: the higher line here takes the voice's name,
+  // as the one line of the measure before did.
+  test('joins the higher line where the voice runs in two lines', () => {
     const backup = '<backup><duration>4</duration></backup>'
     const { beams, warnings } = readMeasures(
       eighth('A', 'begin') + eighth('B', 'continue'),
@@ -695,16 +700,16 @@ describe('a beam crossing the barline', () => {
         eighth('F', 'end'),
     )
 
-    expect(beams).toEqual([[['ev1', 'ev2', 'ev3', 'ev4']], [['ev5', 'ev6']]])
+    expect(beams).toEqual([[['ev1', 'ev2', 'ev5', 'ev6']], [['ev3', 'ev4']]])
     expect(warnings.map((w) => w.code)).toEqual(['inconsistent:voice'])
   })
 
-  test('joins the line that carries a beam on where the first line begins a new one', () => {
+  test('joins the line that carries a beam on where the higher line begins a new one', () => {
     const backup = '<backup><duration>4</duration></backup>'
     const { beams } = readMeasures(
       eighth('A', 'begin') + eighth('B', 'continue'),
-      eighth('C', 'begin') +
-        eighth('D', 'end') +
+      higher(eighth('C', 'begin')) +
+        higher(eighth('D', 'end')) +
         backup +
         eighth('E', 'continue') +
         eighth('F', 'end'),
@@ -713,7 +718,9 @@ describe('a beam crossing the barline', () => {
     expect(beams).toEqual([[['ev1', 'ev2', 'ev5', 'ev6']], [['ev3', 'ev4']]])
   })
 
-  test('joins each line of a voice to its own line where both cross the barline', () => {
+  // Written in the other order after the barline, so the lines are matched
+  // by height, not by the order the source writes them in.
+  test('joins each line of a voice to the line of its height where both cross the barline', () => {
     const backup = '<backup><duration>4</duration></backup>'
     const { beams } = readMeasures(
       eighth('A', 'begin') +
@@ -730,8 +737,8 @@ describe('a beam crossing the barline', () => {
 
     expect(beams).toEqual([
       [
-        ['ev1', 'ev2', 'ev5', 'ev6'],
-        ['ev3', 'ev4', 'ev7', 'ev8'],
+        ['ev1', 'ev2', 'ev7', 'ev8'],
+        ['ev3', 'ev4', 'ev5', 'ev6'],
       ],
       [],
     ])
@@ -757,7 +764,7 @@ describe('a beam crossing the barline', () => {
     ])
   })
 
-  test('joins the line that carries a beam on where the first line opens unbeamed', () => {
+  test('joins the line of its height where an unbeamed line is written first', () => {
     const backup = '<backup><duration>4</duration></backup>'
     const { beams } = readMeasures(
       eighth('A', 'begin') +
@@ -770,10 +777,96 @@ describe('a beam crossing the barline', () => {
 
     expect(beams).toEqual([
       [
-        ['ev1', 'ev2'],
-        ['ev3', 'ev4', 'ev6', 'ev7'],
+        ['ev1', 'ev2', 'ev6', 'ev7'],
+        ['ev3', 'ev4'],
       ],
       [],
+    ])
+  })
+
+  // Two lines left a beam open. After the barline the lower one's height is
+  // an unbeamed line, so the one beam no line carries on goes to the line
+  // below it.
+  test('joins the one open beam no line carries on where the line of its height is unbeamed', () => {
+    const backup = '<backup><duration>4</duration></backup>'
+    const low = (step: string, marker: string) =>
+      eighth(step, marker).replace('<octave>4', '<octave>3')
+    const { beams } = readMeasures(
+      higher(eighth('A', 'begin')) +
+        higher(eighth('B', 'continue')) +
+        backup +
+        eighth('C', 'begin') +
+        eighth('D', 'continue'),
+      higher(eighth('E', 'continue')) +
+        higher(eighth('F', 'end')) +
+        backup +
+        QUARTER +
+        backup +
+        low('G', 'continue') +
+        low('A', 'end'),
+    )
+
+    expect(beams).toEqual([
+      [
+        ['ev1', 'ev2', 'ev5', 'ev6'],
+        ['ev3', 'ev4', 'ev8', 'ev9'],
+      ],
+      [],
+    ])
+  })
+
+  test('beams a line by itself where two open beams are left and neither is of its height', () => {
+    const backup = '<backup><duration>4</duration></backup>'
+    const low = (step: string, marker: string) =>
+      eighth(step, marker).replace('<octave>4', '<octave>3')
+    const { beams } = readMeasures(
+      higher(eighth('A', 'begin')) +
+        higher(eighth('B', 'end')) +
+        backup +
+        eighth('C', 'begin') +
+        eighth('D', 'continue') +
+        backup +
+        low('E', 'begin') +
+        low('F', 'continue'),
+      eighth('G', 'continue') + eighth('A', 'end'),
+    )
+
+    expect(beams).toEqual([
+      [
+        ['ev1', 'ev2'],
+        ['ev3', 'ev4'],
+        ['ev5', 'ev6'],
+      ],
+      [['ev7', 'ev8']],
+    ])
+  })
+
+  test('beams a line by itself where it finds no beam to join among several left open', () => {
+    const backup = '<backup><duration>4</duration></backup>'
+    const low = (step: string, marker: string) =>
+      eighth(step, marker).replace('<octave>4', '<octave>3')
+    const { beams } = readMeasures(
+      higher(eighth('A', 'begin')) +
+        higher(eighth('B', 'continue')) +
+        backup +
+        eighth('C', 'begin') +
+        eighth('D', 'continue'),
+      higher(eighth('E', 'continue')) +
+        higher(eighth('F', 'end')) +
+        backup +
+        eighth('G', 'continue') +
+        eighth('A', 'end') +
+        backup +
+        low('B', 'continue') +
+        low('C', 'end'),
+    )
+
+    expect(beams).toEqual([
+      [
+        ['ev1', 'ev2', 'ev5', 'ev6'],
+        ['ev3', 'ev4', 'ev7', 'ev8'],
+      ],
+      [['ev9', 'ev10']],
     ])
   })
 

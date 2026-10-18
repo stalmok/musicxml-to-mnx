@@ -976,6 +976,100 @@ describe('the measure cursor', () => {
     ])
   })
 
+  test('names laid-over lines in the order written where the first sounds no pitch', () => {
+    const rest = '<note><rest/><duration>8</duration><voice>1</voice></note>'
+    const backup = '<backup><duration>8</duration></backup>'
+    const { measure: result } = read(
+      measure(rest + backup + note('C', 2) + backup + higher(note('E', 2))),
+    )
+
+    expect(result?.sequences.map((sequence) => sequence.voice)).toEqual(['1', '1.2', '1.3'])
+  })
+
+  test('ranks laid-over lines by the mean height of their notes, not by how many there are', () => {
+    const { measure: result } = read(
+      measure(
+        note('C', 1) +
+          note('D', 1) +
+          note('C', 1) +
+          note('D', 1) +
+          '<backup><duration>16</duration></backup>' +
+          higher(note('G', 4)),
+      ),
+    )
+
+    expect(result?.sequences.map((sequence) => sequence.voice)).toEqual(['1.2', '1'])
+  })
+
+  test('counts the notes of a two-note tremolo towards the height of its line', () => {
+    const tremolo = (step: string, type: string) =>
+      higher(note(step, 1)).replace(
+        '</note>',
+        '<type>half</type><time-modification><actual-notes>2</actual-notes>' +
+          '<normal-notes>1</normal-notes></time-modification>' +
+          `<notations><ornaments><tremolo type="${type}">3</tremolo></ornaments></notations></note>`,
+      )
+    const { measure: result } = read(
+      measure(
+        note('C', 2) +
+          '<backup><duration>8</duration></backup>' +
+          tremolo('G', 'start') +
+          tremolo('A', 'stop'),
+      ),
+    )
+
+    expect(result?.sequences[1]?.content.map((item) => item.kind)).toEqual(['multiNoteTremolo'])
+    expect(result?.sequences.map((sequence) => sequence.voice)).toEqual(['1.2', '1'])
+  })
+
+  test('gives each of three laid-over lines a name the measure does not use yet', () => {
+    const backup = '<backup><duration>8</duration></backup>'
+    const { measure: result } = read(
+      measure(
+        higher(note('C', 2)) +
+          backup +
+          note('E', 2) +
+          backup +
+          note('D', 2) +
+          backup +
+          note('B', 2, '1.2'),
+      ),
+    )
+    const named = result?.sequences.map((sequence) => sequence.voice) ?? []
+
+    expect(named).toEqual(['1', '1.3', '1.4', '1.2'])
+  })
+
+  test('steps past a name in use in the order of height, whatever order the lines are written in', () => {
+    const backup = '<backup><duration>8</duration></backup>'
+    const { measure: result } = read(
+      measure(
+        note('C', 2) +
+          backup +
+          higher(note('C', 2)) +
+          backup +
+          note('G', 2) +
+          backup +
+          note('B', 2, '1.2'),
+      ),
+    )
+
+    expect(result?.sequences.map((sequence) => sequence.voice)).toEqual(['1.4', '1', '1.3', '1.2'])
+  })
+
+  test('names the line laid over a voice the source does not name by its place alone', () => {
+    const unnamed = (xml: string) => xml.replace('<voice>1</voice>', '')
+    const { measure: result } = read(
+      measure(
+        unnamed(higher(note('C', 2))) +
+          '<backup><duration>8</duration></backup>' +
+          unnamed(note('E', 2)),
+      ),
+    )
+
+    expect(result?.sequences.map((sequence) => sequence.voice)).toEqual([undefined, '.2'])
+  })
+
   test('gives every sequence of a measure a name of its own', () => {
     const { measure: result } = read(
       measure(

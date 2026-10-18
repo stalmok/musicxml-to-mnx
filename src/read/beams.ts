@@ -47,8 +47,8 @@ export interface BeamedEvent {
    * Set where the event opens the measure with a primary continue or end, in
    * a voice whose primary beam the measure before left open. `line` names
    * the line whose beam it carries on, as lineKey names it, or nothing where
-   * another line of the voice carries that beam on. Never set for a grace
-   * note, whose beams stay in its group.
+   * it finds no beam to join. Never set for a grace note, whose beams stay
+   * in its group.
    */
   continuesFrom: { line: string | undefined } | undefined
   /**

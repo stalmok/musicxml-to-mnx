@@ -220,6 +220,17 @@ interface VoiceLayers {
   active: number
 }
 
+/** Each voice's lines in the order of their names, as rankedLines puts them. */
+type RankedLines = ReadonlyMap<string, readonly VoiceBuilder[]>
+
+/** A line that opens the measure with a primary continue or end, and the event that does. */
+interface CarryingOn {
+  voice: string
+  builder: VoiceBuilder
+  event: BeamedEvent
+  staff: number | undefined
+}
+
 // The builder alone reaches the sequence behind a line, and makes lines.
 let layerOf: (line: VoiceLine) => VoiceBuilder
 let newLine: (name: string, layer: VoiceBuilder) => VoiceLine
@@ -531,8 +542,8 @@ export class MeasureBuilder {
    * barline, by voice, with the staff of each.
    */
   readonly #beamsOpenBefore: BeamsOpenAtBarline
-  /** The open beams a line of this measure carries on, as lineKey names them. */
-  readonly #beamsCarriedOn = new Set<string>()
+  /** The lines that open the measure with a primary continue or end, in reading order. */
+  readonly #carryingOn: CarryingOn[] = []
 
   constructor(
     carriedStops: readonly CarriedTupletStop[],
@@ -1199,13 +1210,17 @@ export class MeasureBuilder {
       () => this.#lastEvents(),
     )
 
+    const ranked = new Map(
+      [...this.#voices].map(([voice, { layers }]) => [voice, rankedLines(layers)]),
+    )
+    this.#settleCarriedBeams(ranked)
     return {
-      beamedRuns: this.#beamedRuns(),
+      beamedRuns: this.#beamedRuns(ranked),
       arpeggios: this.arpeggios.settle(warnings, context, kit, (event) => this.#staffOf(event)),
       sequences: this.#sequences(warnings, context),
       carriedTupletStops,
       carriedTremolos,
-      beamsOpenAtBarline: this.#beamsOpenAtBarline(),
+      beamsOpenAtBarline: this.#beamsOpenAtBarline(ranked),
     }
   }
 
@@ -1217,9 +1232,9 @@ export class MeasureBuilder {
   }
 
   /** The lines whose primary beam is open at the barline, with the staff each was on. */
-  #beamsOpenAtBarline(): BeamsOpenAtBarline {
+  #beamsOpenAtBarline(ranked: RankedLines): BeamsOpenAtBarline {
     const open = new Map<string, Map<number, number | undefined>>()
-    for (const [voice, { layers }] of this.#voices) {
+    for (const [voice, layers] of ranked) {
       const lines = new Map<number, number | undefined>()
       for (const [line, layer] of layers.entries()) {
         if (leavesBeamOpen(layer)) lines.set(line, layer.lastEvent?.staff)
@@ -1267,44 +1282,57 @@ export class MeasureBuilder {
   ): void {
     if (markers.size === 0) return
     const builder = layerOf(voice)
+    const event: BeamedEvent = { id, markers, beamCount, continuesFrom: undefined }
+    ;(graceBeams ?? builder.beamed).push(event)
     const kind = markers.get(1)?.kind
-    const from =
-      graceBeams || !isZero(start) || (kind !== 'continue' && kind !== 'end')
-        ? undefined
-        : this.#openLineFor(voice, builder)
-    const run = graceBeams ?? builder.beamed
-    run.push({ id, markers, beamCount, continuesFrom: from })
+    if (!graceBeams && isZero(start) && (kind === 'continue' || kind === 'end')) {
+      this.#carryingOn.push({ voice: voice.name, builder, event, staff: builder.lastEvent?.staff })
+    }
   }
 
   /**
-   * The open beam of the voice that the line `builder` carries on. Where the
-   * voice left one beam open, any of its lines carries it on. Where it left
-   * several, each line carries on its own. The first line to carry a beam on
-   * joins it, and a later one starts a beam of its own.
+   * Settles the open beam each line opening the measure with a continue or
+   * end carries on, once the lines are ranked. A line carries on the beam of
+   * the line of its rank in the measure before. Where it finds none, it takes
+   * the voice's one open beam no other line carries on. Where none or several
+   * are left, it starts a beam of its own.
    *
    * A named voice may beam across staves. Where the source names no voice,
    * the staff is all that tells two lines apart, so the beam carries on only
    * on the staff it left.
    */
-  #openLineFor(voice: VoiceLine, builder: VoiceBuilder): BeamedEvent['continuesFrom'] {
-    const lines = this.#beamsOpenBefore.get(voice.name)
-    if (lines === undefined) return undefined
-    const line =
-      lines.size === 1
-        ? [...lines.keys()][0]
-        : this.#voices.get(voice.name)?.layers.indexOf(builder)
-    if (line === undefined || !lines.has(line)) return undefined
-    if (voice.name === UNNAMED_VOICE && lines.get(line) !== builder.lastEvent?.staff)
-      return undefined
-    const key = lineKey(voice.name, line)
-    if (this.#beamsCarriedOn.has(key)) return { line: undefined }
-    this.#beamsCarriedOn.add(key)
-    return { line: key }
+  #settleCarriedBeams(ranked: RankedLines): void {
+    const carried = new Set<string>()
+    const settled = new Set<CarryingOn>()
+    const leftOpen = ({ voice, staff }: CarryingOn): number[] =>
+      [...(this.#beamsOpenBefore.get(voice) ?? [])].flatMap(([line, left]) =>
+        voice !== UNNAMED_VOICE || left === staff ? [line] : [],
+      )
+    const join = (carry: CarryingOn, line: number): void => {
+      const key = lineKey(carry.voice, line)
+      carried.add(key)
+      settled.add(carry)
+      carry.event.continuesFrom = { line: key }
+    }
+
+    for (const lines of ranked.values()) {
+      for (const [rank, builder] of lines.entries()) {
+        const carry = this.#carryingOn.find((candidate) => candidate.builder === builder)
+        if (carry && leftOpen(carry).includes(rank)) join(carry, rank)
+      }
+    }
+    for (const carry of this.#carryingOn) {
+      if (settled.has(carry)) continue
+      const open = leftOpen(carry)
+      const [only, ...others] = open.filter((line) => !carried.has(lineKey(carry.voice, line)))
+      if (only !== undefined && others.length === 0) join(carry, only)
+      else if (open.length > 0) carry.event.continuesFrom = { line: undefined }
+    }
   }
 
   /** What every voice said about its beams, voice by voice. */
-  #beamedRuns(): BeamedRun[] {
-    const lines = [...this.#voices].flatMap(([voice, { layers }]) =>
+  #beamedRuns(ranked: RankedLines): BeamedRun[] {
+    const lines = [...ranked].flatMap(([voice, layers]) =>
       layers.map((layer, line) => ({ line: lineKey(voice, line), layer })),
     )
     return [
@@ -1556,18 +1584,8 @@ export class MeasureBuilder {
       )
     }
 
-    // A line opened for a note that was then dropped holds nothing, and a
-    // sequence stating nothing is not a line the source drew. The voice's
-    // first line stays whatever it holds, so a voice that wrote nothing is
-    // the one empty sequence it always was.
     const sounding = new Map(
-      [...this.#voices].map(([voice, layers]) => [
-        voice,
-        layers.layers.filter(
-          (builder, index) =>
-            index === 0 || builder.content.length > 0 || builder.fullMeasure !== undefined,
-        ),
-      ]),
+      [...this.#voices].map(([voice, { layers }]) => [voice, soundingLines(layers)]),
     )
 
     for (const [voice, layers] of sounding) {
@@ -1602,13 +1620,15 @@ export class MeasureBuilder {
       return name
     }
 
-    // The source states no division between the lines of a voice, and may
-    // write either first, so the higher line takes the voice's name, as in
-    // closed score.
     return [...sounding].flatMap(([voice, layers]) => {
-      const ranked = highestFirst(layers)
+      // Named highest first, so the stepping past names in use follows the rank.
+      const names = new Map(
+        highestFirst(layers).map((builder, rank) => [
+          builder,
+          rank > 0 ? nameFor(voice, rank) : voice === UNNAMED_VOICE ? undefined : voice,
+        ]),
+      )
       return layers.map((builder) => {
-        const index = ranked.indexOf(builder)
         const staff = commonestStaff(builder.placed.map((placed) => placed.staff))
 
         // Only the events that reach across to another staff say so.
@@ -1623,7 +1643,7 @@ export class MeasureBuilder {
           // Whenever the source named the voice. MNX treats the name as a label
           // for the line across the whole score, so deciding it per measure would
           // give one musical line a different identity from bar to bar.
-          voice: index > 0 ? nameFor(voice, index) : voice === UNNAMED_VOICE ? undefined : voice,
+          voice: names.get(builder),
         }
         return builder.fullMeasure
           ? { ...named, content: [], fullMeasure: builder.fullMeasure }
@@ -1687,6 +1707,31 @@ function leavesBeamOpen({ beamed, lastEvent }: VoiceBuilder): boolean {
   const last = beamed.at(-1)
   const kind = last?.markers.get(1)?.kind
   return lastEvent?.id === last?.id && (kind === 'begin' || kind === 'continue')
+}
+
+/**
+ * The lines of a voice that the measure states. A line opened for a note that
+ * was then dropped holds nothing, and a sequence stating nothing is not a line
+ * the source drew. The voice's first line stays whatever it holds, so a voice
+ * that wrote nothing is the one empty sequence it always was.
+ */
+function soundingLines(layers: readonly VoiceBuilder[]): VoiceBuilder[] {
+  return layers.filter(
+    (builder, index) =>
+      index === 0 || builder.content.length > 0 || builder.fullMeasure !== undefined,
+  )
+}
+
+/**
+ * The lines of a voice in the order of their names, which is also how a line
+ * is told apart from the others across the barline. The source states no
+ * division between the lines of a voice, and may write either first, so the
+ * higher line comes first, as in closed score. The lines the measure does not
+ * state come last.
+ */
+function rankedLines(layers: readonly VoiceBuilder[]): VoiceBuilder[] {
+  const sounding = soundingLines(layers)
+  return [...highestFirst(sounding), ...layers.filter((layer) => !sounding.includes(layer))]
 }
 
 /**
