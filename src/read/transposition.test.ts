@@ -1355,6 +1355,34 @@ describe('a note in a part that flips its key signature', () => {
     ])
   })
 
+  // MNX states whether an accidental is drawn, not which one. Spelled in the
+  // score's key, a note needs one in the concert score exactly where it
+  // needs one in the part: a D-flat in five flats needs none, and is a B in
+  // five sharps; a D natural needs one, and is a B-sharp.
+  test('needs an accidental in the score’s key where the part drew one', () => {
+    const { score } = read(
+      twoParts(
+        [[5, pitched('B', 0, 3)]],
+        [
+          [
+            -5,
+            pitched('D', -1, 4) +
+              '<note><pitch><step>D</step><octave>4</octave></pitch><duration>4</duration>' +
+              '<type>quarter</type><accidental>natural</accidental></note>',
+          ],
+        ],
+      ),
+    )
+    const notes = (score.parts[1]?.measures[0]?.sequences[0]?.content ?? []).flatMap((item) =>
+      item.kind === 'event' ? notesOf(item) : [],
+    )
+
+    expect(notes.map(({ pitch, accidentalDisplay }) => ({ pitch, accidentalDisplay }))).toEqual([
+      { pitch: { step: 'B', octave: 3, alter: 0 }, accidentalDisplay: undefined },
+      { pitch: { step: 'B', octave: 3, alter: 1 }, accidentalDisplay: { show: true } },
+    ])
+  })
+
   // An A clarinet asks for eight flats where the score is in five, and writes
   // four sharps instead, so its notes come back one letter under.
   test('states a note past a point below zero in the score’s key', () => {
