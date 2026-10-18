@@ -695,8 +695,22 @@ describe('a beam crossing the barline', () => {
         eighth('F', 'end'),
     )
 
-    expect(beams).toEqual([[['ev1', 'ev2', 'ev3', 'ev4']], []])
+    expect(beams).toEqual([[['ev1', 'ev2', 'ev3', 'ev4']], [['ev5', 'ev6']]])
     expect(warnings.map((w) => w.code)).toEqual(['inconsistent:voice'])
+  })
+
+  test('joins the line that carries a beam on where the first line begins a new one', () => {
+    const backup = '<backup><duration>4</duration></backup>'
+    const { beams } = readMeasures(
+      eighth('A', 'begin') + eighth('B', 'continue'),
+      eighth('C', 'begin') +
+        eighth('D', 'end') +
+        backup +
+        eighth('E', 'continue') +
+        eighth('F', 'end'),
+    )
+
+    expect(beams).toEqual([[['ev1', 'ev2', 'ev5', 'ev6']], [['ev3', 'ev4']]])
   })
 
   test('joins each line of a voice to its own line where both cross the barline', () => {

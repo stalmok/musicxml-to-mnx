@@ -44,12 +44,13 @@ export interface BeamedEvent {
   id: string
   markers: ReadonlyMap<number, BeamMarker>
   /**
-   * The line whose primary beam the measure before left open, where the
-   * event opens the measure in the voice that line is in. A beam continued
-   * or ended here carries on that one. Never set for a grace note, whose
-   * beams stay in its group.
+   * Set where the event opens the measure with a primary continue or end, in
+   * a voice whose primary beam the measure before left open. `line` names
+   * the line whose beam it carries on, as lineKey names it, or nothing where
+   * another line of the voice carries that beam on. Never set for a grace
+   * note, whose beams stay in its group.
    */
-  continuesFrom: string | undefined
+  continuesFrom: { line: string | undefined } | undefined
   /**
    * How many beams the note's value calls for: an eighth one, a 16th two. An
    * inner beam that closes on this event alone is kept only up to this level.
@@ -152,12 +153,8 @@ export class OpenBeams {
     this.#open = new Map()
     const beams: Beam[] = []
     for (const { line, events, openAtBarline } of runs) {
-      const first = events[0]
-      const kind = first?.markers.get(1)?.kind
-      const from =
-        first?.continuesFrom !== undefined && (kind === 'continue' || kind === 'end')
-          ? carried.get(first.continuesFrom)
-          : undefined
+      const joins = events[0]?.continuesFrom?.line
+      const from = joins === undefined ? undefined : carried.get(joins)
       const { beams: built, trailing } = beamRuns(from ? [...from.events, ...events] : events, 1)
       for (const beam of built) {
         if (from && beam.events[0] === from.events[0]?.id) restate(from, beam)

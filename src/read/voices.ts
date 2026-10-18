@@ -526,10 +526,11 @@ export class MeasureBuilder {
   readonly #soundingVoices: ReadonlySet<string>
   /**
    * The lines whose primary beam the measure before left open at the
-   * barline, by voice, with the staff of each. Each is taken by the first
-   * event to carry it on.
+   * barline, by voice, with the staff of each.
    */
-  readonly #beamsOpenBefore: Map<string, Map<number, number | undefined>>
+  readonly #beamsOpenBefore: BeamsOpenAtBarline
+  /** The open beams a line of this measure carries on, as lineKey names them. */
+  readonly #beamsCarriedOn = new Set<string>()
 
   constructor(
     carriedStops: readonly CarriedTupletStop[],
@@ -540,9 +541,7 @@ export class MeasureBuilder {
     this.#carriedStops = [...carriedStops]
     this.#carriedTremolos = new Set(carriedTremolos)
     this.#soundingVoices = new Set([...soundingVoices].map((voice) => voice ?? UNNAMED_VOICE))
-    this.#beamsOpenBefore = new Map(
-      [...beamsOpenBefore].map(([voice, lines]) => [voice, new Map(lines)]),
-    )
+    this.#beamsOpenBefore = beamsOpenBefore
   }
 
   /**
@@ -1266,22 +1265,26 @@ export class MeasureBuilder {
   ): void {
     if (markers.size === 0) return
     const builder = layerOf(voice)
-    const from = graceBeams || !isZero(start) ? undefined : this.#openLineFor(voice, builder)
+    const kind = markers.get(1)?.kind
+    const from =
+      graceBeams || !isZero(start) || (kind !== 'continue' && kind !== 'end')
+        ? undefined
+        : this.#openLineFor(voice, builder)
     const run = graceBeams ?? builder.beamed
     run.push({ id, markers, beamCount, continuesFrom: from })
   }
 
   /**
-   * The line of the voice whose open beam the line `builder` carries on, as
-   * lineKey names it, taken so no other line carries it on too. Where the
+   * The open beam of the voice that the line `builder` carries on. Where the
    * voice left one beam open, any of its lines carries it on. Where it left
-   * several, each line carries on its own.
+   * several, each line carries on its own. The first line to carry a beam on
+   * joins it, and a later one starts a beam of its own.
    *
    * A named voice may beam across staves. Where the source names no voice,
    * the staff is all that tells two lines apart, so the beam carries on only
    * on the staff it left.
    */
-  #openLineFor(voice: VoiceLine, builder: VoiceBuilder): string | undefined {
+  #openLineFor(voice: VoiceLine, builder: VoiceBuilder): BeamedEvent['continuesFrom'] {
     const lines = this.#beamsOpenBefore.get(voice.name)
     if (lines === undefined) return undefined
     const line =
@@ -1291,8 +1294,10 @@ export class MeasureBuilder {
     if (line === undefined || !lines.has(line)) return undefined
     if (voice.name === UNNAMED_VOICE && lines.get(line) !== builder.lastEvent?.staff)
       return undefined
-    lines.delete(line)
-    return lineKey(voice.name, line)
+    const key = lineKey(voice.name, line)
+    if (this.#beamsCarriedOn.has(key)) return { line: undefined }
+    this.#beamsCarriedOn.add(key)
+    return { line: key }
   }
 
   /** What every voice said about its beams, voice by voice. */
