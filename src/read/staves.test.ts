@@ -554,6 +554,30 @@ describe('the percussion, TAB, jianpu and "none" clef signs', () => {
     expect(warnings).toEqual([])
   })
 
+  // MNX states an octave on any clef sign, so the change is carried as
+  // the source writes it, though the percussion clef places no pitch.
+  test('carries the octave change of a percussion clef', () => {
+    const { mnx, warnings } = convertValid(
+      withSign('percussion', '<line>3</line><clef-octave-change>-1</clef-octave-change>'),
+    )
+
+    expect(mnx.parts[0]?.measures[0]?.clefs).toEqual([
+      { clef: { sign: 'P', staffPosition: 0, octave: -1, showOctave: true } },
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  test('reports the octave change of a percussion clef past three octaves', () => {
+    const { part, warnings } = read(
+      withSign('percussion', '<clef-octave-change>4</clef-octave-change>'),
+    )
+
+    expect(part?.measures[0]?.clefs[0]?.octave).toBeUndefined()
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([
+      ['unrepresentable:clef-octave', 'clef'],
+    ])
+  })
+
   test('names the sign it could not state', () => {
     const { warnings } = read(withSign('TAB'))
 
