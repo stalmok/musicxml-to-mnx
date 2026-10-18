@@ -64,7 +64,6 @@ import { settleJumps } from './jumps.js'
 import { MeasureRepeats } from './measureRepeats.js'
 import type { PartCollector } from './partCollector.js'
 import {
-  HeldSignatures,
   MeasureSignatures,
   scoreTimesInForce,
   timesInForce,
@@ -89,12 +88,11 @@ interface PartReading {
 
 /**
  * What the measures of a part hand on to be settled once the part is read,
- * besides the spans its notes and directions hand to the part's state. Each
+ * besides the spans and signatures they hand to the part's state. Each
  * is finished in the order it is listed here, which is the order of its
  * reports.
  */
 type MeasureCollectors = {
-  held: HeldSignatures
   endings: Endings
   measureRepeats: MeasureRepeats
 }
@@ -384,7 +382,6 @@ function readPart(
 
   const state = newPartState(ids, partList.soundsByInstrument.get(id))
   const collectors: MeasureCollectors = {
-    held: new HeldSignatures(),
     endings: new Endings(id),
     measureRepeats: new MeasureRepeats(id),
   }
@@ -408,7 +405,11 @@ function readPart(
   // Settled once the whole part is in, because the document's order is not
   // the music's and an end can be measures from its start. Each reports what
   // stays unsettled.
-  const settling: readonly PartCollector[] = [state.spanners, ...Object.values(collectors)]
+  const settling: readonly PartCollector[] = [
+    state.spanners,
+    state.signatures,
+    ...Object.values(collectors),
+  ]
   for (const collector of settling) collector.finish(readings, warnings)
 
   return {
@@ -533,7 +534,7 @@ function readMeasure(
 
   const clefs: Stated<Clef>[] = []
   const staffConfigs: Stated<StaffConfig>[] = []
-  const signatures = new MeasureSignatures(state, collectors.held, warnings, context, measurePath)
+  const signatures = new MeasureSignatures(state, warnings, context, measurePath)
   const dynamics: Dynamic[] = []
   const tempos: Stated<Tempo>[] = []
   // Every <sound tempo> of the measure, waiting on the score's marks to say

@@ -30,7 +30,8 @@ import { lengthOf } from './duration.js'
 import type { AcrossParts, ReadGlobalMeasure } from './globalMeasures.js'
 import { noteValueBaseOf } from './noteValues.js'
 import { parseExactDecimal } from './numbers.js'
-import type { PartCollector, PartMeasure } from './partCollector.js'
+import { KEY, reportLate, sameMeter, TIME } from './partSignatures.js'
+import type { HeldSignature, SignatureKind } from './partSignatures.js'
 import type { PartState } from './state.js'
 import {
   concertFifths,
@@ -48,45 +49,6 @@ interface LateSignature<T> {
   at: Fraction
   /** The <key> or <time> stating it. */
   element: XmlElement
-}
-
-/** What reports and compares a key or a time signature stated late. */
-interface SignatureKind<T> {
-  element: 'key' | 'time'
-  /** What to call one of these in a report, where "key" alone is too short. */
-  name: 'key' | 'time signature'
-  /** Whether a statement says what another says, down to how it is drawn. */
-  same: (a: T, b: T | undefined) => boolean
-  /**
-   * Whether two staves are in the same signature. Looser than `same` for a
-   * time signature: 4/4 as a C and 4/4 as numbers are one meter drawn two
-   * ways, which is not the staves disagreeing about the meter.
-   */
-  agrees: (a: T, b: T | undefined) => boolean
-}
-
-function sameMeter(a: TimeSignature, b: TimeSignature): boolean {
-  return a.count === b.count && a.unit === b.unit
-}
-
-function sameTime(a: TimeSignature, b: TimeSignature | undefined): boolean {
-  return b !== undefined && sameMeter(a, b) && a.display === b.display
-}
-
-const sameFifths = (a: Key, b: Key | undefined): boolean => b !== undefined && a.fifths === b.fifths
-
-const KEY: SignatureKind<Key> = {
-  element: 'key',
-  name: 'key',
-  same: sameFifths,
-  agrees: sameFifths,
-}
-
-const TIME: SignatureKind<TimeSignature> = {
-  element: 'time',
-  name: 'time signature',
-  same: sameTime,
-  agrees: (a, b) => b !== undefined && sameMeter(a, b),
 }
 
 /**
@@ -113,7 +75,6 @@ export interface SettledSignatures {
  */
 export class MeasureSignatures {
   readonly #state: PartState
-  readonly #held: HeldSignatures
   readonly #warnings: WarningCollector
   readonly #context: ReportContext
   readonly #path: DocumentPath
@@ -147,13 +108,11 @@ export class MeasureSignatures {
 
   constructor(
     state: PartState,
-    held: HeldSignatures,
     warnings: WarningCollector,
     context: ReportContext,
     path: DocumentPath,
   ) {
     this.#state = state
-    this.#held = held
     this.#warnings = warnings
     this.#context = context
     this.#path = path
@@ -242,31 +201,50 @@ export class MeasureSignatures {
   settle(end: Fraction): SettledSignatures {
     this.convertKeys()
     const state = this.#state
-    const held = this.#held
+    const signatures = state.signatures
     const warnings = this.#warnings
     const context = this.#context
     // Settled with the measure whole, so a staff stated in a block of its own
     // stands beside the staves the blocks around it state.
     for (const group of this.#keyGroups) {
-      settleStated(KEY, group, this.#key, state.staves, state.staffKeys, warnings, context)
+      settleStated(KEY, group, this.#key, state.staves, signatures.staffKeys, warnings, context)
     }
     for (const group of this.#timeGroups) {
-      settleStated(TIME, group, this.#time, state.staves, state.staffTimes, warnings, context)
+      settleStated(TIME, group, this.#time, state.staves, signatures.staffTimes, warnings, context)
     }
 
     // A measure stating none, or one MNX cannot carry, leaves the one before
     // in force.
-    const key = opening(KEY, held.key, { settled: this.#keySettled, value: this.#key }, warnings)
-    state.convertedKey = key ?? state.convertedKey
-    held.key = holdLate(KEY, this.#lateKeys, state.convertedKey, end, warnings, context)
+    const key = opening(
+      KEY,
+      signatures.heldKey,
+      { settled: this.#keySettled, value: this.#key },
+      warnings,
+    )
+    signatures.convertedKey = key ?? signatures.convertedKey
+    signatures.heldKey = holdLate(
+      KEY,
+      this.#lateKeys,
+      signatures.convertedKey,
+      end,
+      warnings,
+      context,
+    )
     const time = opening(
       TIME,
-      held.time,
+      signatures.heldTime,
       { settled: this.#timeSettled, value: this.#time },
       warnings,
     )
-    state.convertedTime = time ?? state.convertedTime
-    held.time = holdLate(TIME, this.#lateTimes, state.convertedTime, end, warnings, context)
+    signatures.convertedTime = time ?? signatures.convertedTime
+    signatures.heldTime = holdLate(
+      TIME,
+      this.#lateTimes,
+      signatures.convertedTime,
+      end,
+      warnings,
+      context,
+    )
 
     // Unmetered music is a loss whatever the measure converts. What it says
     // depends on that: a measure stating a time signature beside the unmetered
@@ -280,7 +258,7 @@ export class MeasureSignatures {
         'unrepresentable:senza-misura',
         'This music is written senza misura, and MNX states meter as a time signature ' +
           `or nothing. The measure is converted with ${
-            state.convertedTime ? 'the time signature in force' : 'no time signature'
+            signatures.convertedTime ? 'the time signature in force' : 'no time signature'
           }.`,
         context,
         senzaMisura,
@@ -296,39 +274,6 @@ export class MeasureSignatures {
     const group: StatedAt<T> = { at, place: this.#warnings.reserve(), first, statements: [] }
     groups.push(group)
     return group
-  }
-}
-
-/**
- * A key or time signature a measure stated after its start, held for the next
- * one.
- */
-interface HeldSignature<T> {
-  value: T
-  partway: boolean
-  context: ReportContext
-  /** The <key> or <time> stating it. */
-  element: XmlElement
-}
-
-/**
- * The key and time signature the measure last read stated after its start.
- * MNX states a signature only where a measure begins, so the next measure
- * takes it unless it states its own. Where it was stated partway through the
- * measure rather than after its notes, the move is a loss.
- */
-export class HeldSignatures implements PartCollector {
-  key: HeldSignature<Key> | undefined
-  time: HeldSignature<TimeSignature> | undefined
-
-  /**
-   * Reports a signature the part's last measure stated after its start,
-   * which no measure is left to take.
-   */
-  finish(_measures: readonly PartMeasure[], warnings: WarningCollector): void {
-    const outcome = 'This is the last measure of the part, so it is not converted.'
-    if (this.key) reportLate(KEY, this.key, outcome, warnings)
-    if (this.time) reportLate(TIME, this.time, outcome, warnings)
   }
 }
 
@@ -563,21 +508,6 @@ function reportSecondAtStart<T>(
       'The later one is not converted.',
     context,
     second.element,
-  )
-}
-
-function reportLate<T>(
-  kind: SignatureKind<T>,
-  late: HeldSignature<T>,
-  outcome: string,
-  warnings: WarningCollector,
-): void {
-  warnings.add(
-    `unrepresentable:mid-measure-${kind.element}`,
-    `A ${kind.element} signature is stated ${late.partway ? 'partway through' : 'at the end of'} this ` +
-      `measure, and MNX states one only where a measure begins. ${outcome}`,
-    late.context,
-    late.element,
   )
 }
 

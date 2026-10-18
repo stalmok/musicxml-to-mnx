@@ -170,9 +170,10 @@ export function readAttributes(
     // force, also where it is one the part dropped before. Its clef and line
     // count stay as they were: MNX keeps every staff for the whole part, so
     // those stay in force in the output while the staff is dropped.
+    const { staffKeys, staffTimes } = state.signatures
     for (let staff = had + 1; staff <= state.staves; staff += 1) {
-      state.staffKeys.set(staff, state.staffKeys.get(1))
-      state.staffTimes.set(staff, state.staffTimes.get(1))
+      staffKeys.set(staff, staffKeys.get(1))
+      staffTimes.set(staff, staffTimes.get(1))
     }
     // A staff the part drops loses the transposition it was given. Added
     // back, it takes the one every staff has.

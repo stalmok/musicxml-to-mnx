@@ -2,18 +2,13 @@
 // read without.
 
 import type { ReportContext, WarningPlace } from './collector.js'
-import type {
-  PitchedClefSign,
-  Key,
-  KitComponent,
-  TimeSignature,
-  Transposition,
-} from '../model/score.js'
+import type { PitchedClefSign, KitComponent, TimeSignature, Transposition } from '../model/score.js'
 import { fraction } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type { XmlElement } from '../xml/parse.js'
 import type { Stated } from './element.js'
 import { IdGenerator } from './idGenerator.js'
+import { PartSignatures } from './partSignatures.js'
 import { SpannerResolver } from './spanners.js'
 import type { CarriedTupletStop } from './tuplets.js'
 
@@ -79,23 +74,6 @@ export interface PartState {
    * follow notes written before a <backup>.
    */
   time: TimeSignature | undefined
-  /**
-   * The key and time signature MNX has in force after the measures read so
-   * far. A statement after a measure's start is compared with these rather
-   * than with what the source last stated, because the source can state one
-   * that is not converted, such as a second one at the measure start.
-   */
-  convertedKey: Key | undefined
-  convertedTime: TimeSignature | undefined
-  /**
-   * The key and time signature each staff of the part has in force, as the
-   * source states them, keyed by staff number. MusicXML states one per staff
-   * and MNX states one for the score, so only a staff given one of its own is
-   * reported as a loss. A key is held as it sounds, so a part that changes its
-   * transposition still compares sounding keys.
-   */
-  staffKeys: Map<number, Key | undefined>
-  staffTimes: Map<number, TimeSignature | undefined>
   /** How many staves the part is written on, once it says. */
   staves: number
   /**
@@ -120,6 +98,8 @@ export interface PartState {
   ids: IdGenerator
   /** Per part: a tie or slur may span measures, but not parts. */
   spanners: SpannerResolver
+  /** The key and time signatures the part carries from measure to measure. */
+  signatures: PartSignatures
   /**
    * What a note's <instrument> resolves to, keyed as the note names it. A kit
    * component takes its name and its sound from this.
@@ -231,16 +211,13 @@ export function newPartState(
     divisions: undefined,
     divisionsAssumed: false,
     time: undefined,
-    convertedKey: undefined,
-    convertedTime: undefined,
-    staffKeys: new Map(),
-    staffTimes: new Map(),
     staves: 1,
     mostStaves: 1,
     clefs: new Map(),
     staffLines: new Map(),
     ids,
     spanners: new SpannerResolver(),
+    signatures: new PartSignatures(),
     sounds,
     kit: new Map(),
     kitKeys: new Map(),
