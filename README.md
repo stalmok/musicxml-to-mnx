@@ -150,9 +150,9 @@ It writes `<basename>.mnx` beside each input, or into the directory set by `-o`.
 | `-h`, `--help`            | Print help.                                                      |
 | `-v`, `--version`         | Print the version.                                               |
 
-Input-read and conversion errors are reported per file. Processing then
-continues with the remaining inputs. Output-write and report-write errors
-can stop the batch before it finishes.
+Input-read, conversion and output-write errors are reported per file.
+Processing then continues with the remaining inputs. The report is written
+after every output, and a report that cannot be written fails the run.
 
 | Exit code | Meaning                                                             |
 | --------- | ------------------------------------------------------------------- |
