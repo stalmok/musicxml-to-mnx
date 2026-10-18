@@ -69,24 +69,10 @@ function staffOrder(pitch: Pitch): number {
 }
 
 /**
- * The notes of a kit chord, bottom to top. Ordered by walking the kit in
- * height order rather than by looking each note's component up, so a
- * component the kit does not hold cannot come back as a height of nothing.
- */
-function kitOrder(
-  notes: readonly KitNote[],
-  kit: ReadonlyMap<string, KitComponent>,
-): readonly KitNote[] {
-  return [...kit]
-    .sort(([, a], [, b]) => a.staffPosition - b.staffPosition)
-    .flatMap(([component]) => notes.filter((note) => note.component === component))
-}
-
-/**
- * The notes of a chord sounding on a pitched staff and a kit at once, bottom
- * to top: the lower staff first, then by height on the staff. A pitched note
- * is placed by the clef drawing it, and a kit note by its component. Nothing
- * where a pitched note has no clef to place it.
+ * The notes of chords struck on a kit, bottom to top as they are drawn: the
+ * lower staff first, then by height on the staff. A kit note is placed by the
+ * component it strikes, and a pitched note sounding with it by the clef
+ * drawing it. Nothing where a pitched note has no clef to place it.
  */
 function drawnOrder(
   chords: readonly {
@@ -268,21 +254,19 @@ export class Arpeggios {
       const notes = chords.flatMap((chord) => chord.notes)
       const kitNotes = chords.flatMap((chord) => chord.kitNotes)
       // A chord struck on a percussion kit carries no pitches to order by, so
-      // it is ordered by the height the part's kit draws each component at. A
-      // mark is written on a note and a kit note carries none, so such a roll
-      // spans the whole chord. A chord sounding on a pitched staff and a kit
-      // at once is ordered as it is drawn, since a pitch and a component's
-      // height compare only on the staff. Where marks numbered two ways
-      // divide such a chord, which roll a kit note belongs to is not known.
-      const mixed =
-        notes.length > 0 && kitNotes.length > 0 && !group.some((one) => divided.has(one.event))
+      // it is ordered as it is drawn, by staff and by the height the part's
+      // kit draws each component at. A mark is written on a note and a kit
+      // note carries none, so such a roll spans the whole chord. A chord
+      // sounding on a pitched staff and a kit at once is ordered as it is
+      // drawn too, since a pitch and a component's height compare only on the
+      // staff. Where marks numbered two ways divide such a chord, which roll a
+      // kit note belongs to is not known.
+      const drawn =
+        kitNotes.length > 0 && (notes.length === 0 || !group.some((one) => divided.has(one.event)))
           ? drawnOrder(chords, kit, staffOf)
           : undefined
       const ordered: readonly TieTarget[] =
-        mixed ??
-        (notes.length > 0
-          ? [...notes].sort((a, b) => staffOrder(a.pitch) - staffOrder(b.pitch))
-          : kitOrder(kitNotes, kit))
+        drawn ?? [...notes].sort((a, b) => staffOrder(a.pitch) - staffOrder(b.pitch))
 
       if (ordered.length === 0) {
         // MNX states a roll as the two notes it runs between, and there are
@@ -320,7 +304,7 @@ export class Arpeggios {
       // ends, so a kit note left out of the span is left out of the mark.
       // Reported here rather than above, where the mark may still turn out
       // not to be carried.
-      if (notes.length > 0 && kitNotes.length > 0 && mixed === undefined) {
+      if (notes.length > 0 && kitNotes.length > 0 && drawn === undefined) {
         warnings.add(
           'unsupported:element',
           `A chord ${first.struck ? 'bracketed as struck together' : 'rolled'} across a ` +

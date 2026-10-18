@@ -352,6 +352,34 @@ describe('a rolled chord struck on a kit', () => {
     expect(warnings).toEqual([])
   })
 
+  // The lower staff is drawn below, whatever the heights on each.
+  test('runs from the kit note on the lower staff where the chord spans two', () => {
+    const across =
+      struck('D', '4', 'P1-I39', '<staff>1</staff><notations><arpeggiate/></notations>') +
+      '<note><chord/><unpitched><display-step>G</display-step>' +
+      '<display-octave>5</display-octave></unpitched><duration>1</duration>' +
+      '<type>quarter</type><instrument id="P1-I43"/><staff>2</staff>' +
+      '<notations><arpeggiate/></notations></note>'
+    const warnings = new WarningCollector()
+    const part = readValid(
+      source(
+        across,
+        DRUM_KIT,
+        '<attributes><divisions>1</divisions><staves>2</staves>' +
+          '<clef number="1"><sign>percussion</sign></clef>' +
+          '<clef number="2"><sign>percussion</sign></clef></attributes>',
+      ),
+      warnings,
+    ).parts[0]
+    const event = firstEvent(part)
+
+    expect(part?.measures[0]?.arpeggios[0]?.span).toEqual({
+      start: kitNotesOf(event)[1]?.id,
+      end: kitNotesOf(event)[0]?.id,
+    })
+    expect(warnings.list()).toEqual([])
+  })
+
   test('writes the roll into legal MNX, naming the kit notes it runs between', () => {
     const { mnx, warnings } = convertValid(source(ROLLED, DRUM_KIT))
     const event = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
