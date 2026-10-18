@@ -267,7 +267,7 @@ describe('chords', () => {
 // A grace note is drawn small beside the note it ornaments and takes no time
 // of its own.
 // These tests check that it stays out of the cursor's path. What it converts
-// to is tested in tuplets.test.ts.
+// to is tested in tuplets.grace.test.ts.
 describe('grace notes', () => {
   const GRACE =
     '<note><grace/><pitch><step>D</step><octave>4</octave></pitch><type>eighth</type>' +
