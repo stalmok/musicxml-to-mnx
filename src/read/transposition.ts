@@ -154,10 +154,12 @@ function distanceFromKey(pitch: Pitch, fifths: number): number {
  * are added. A note read from the flipped part is spelled the way the part
  * wrote it, so it is moved the other way here, and the flip brings it back.
  *
- * A note off the key's scale comes out of that move with a double or triple
- * sharp or flat: a written E natural in five flats is a concert C
- * double-sharp. Such a note keeps the spelling its interval gives, which is
- * nearer the score's key, and states the letters MNX moves it back by.
+ * A note more than six fifths from the middle of the key's scale comes out
+ * of that move with a double or triple sharp or flat: a written E natural in
+ * five flats is a concert C double-sharp. Such a note keeps the spelling its
+ * interval gives, which is nearer the score's key, and states the letters MNX
+ * moves it back by. The later note of a tie takes whichever spelling the note
+ * it is tied from has.
  */
 export function respellPastFlip(
   measures: readonly Measure[],
@@ -165,18 +167,25 @@ export function respellPastFlip(
   flipAt: number,
   concertKeys: readonly number[],
 ): Measure[] {
+  // The pitch each tie starts from, keyed by the note it ends on.
+  const tiedFrom = new Map<string, Pitch>()
   return measures.map((measure, index) => {
     const concert = concertKeys[index] ?? 0
     const letters =
       (writtenFifthsWithFlip(concert, transposition, flipAt) -
         writtenFifths(concert, transposition)) /
       12
-    if (letters === 0) return measure
     const respell = (note: Note): Note => {
       const moved = respelled(note.pitch, letters)
-      return distanceFromKey(moved, concert) <= distanceFromKey(note.pitch, concert)
-        ? { ...note, pitch: moved }
-        : { ...note, diatonicDelta: letters }
+      const from = tiedFrom.get(note.id)
+      let keep = distanceFromKey(moved, concert) > distanceFromKey(note.pitch, concert)
+      if (from && samePitch(from, moved)) keep = false
+      else if (from && samePitch(from, note.pitch)) keep = true
+      const result = keep ? { ...note, diatonicDelta: letters } : { ...note, pitch: moved }
+      for (const tie of note.ties) {
+        if (tie.kind === 'target') tiedFrom.set(tie.target, result.pitch)
+      }
+      return result
     }
     return {
       ...measure,
@@ -187,6 +196,10 @@ export function respellPastFlip(
       ),
     }
   })
+}
+
+function samePitch(one: Pitch, other: Pitch): boolean {
+  return one.step === other.step && one.octave === other.octave && one.alter === other.alter
 }
 
 function respellItems(

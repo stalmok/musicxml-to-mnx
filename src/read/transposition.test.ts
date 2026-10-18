@@ -1417,6 +1417,47 @@ describe('a note in a part that flips its key signature', () => {
     ])
   })
 
+  // In five sharps a written E keeps the concert D; in six it takes C
+  // double-sharp. Tied over the barline, the later note takes the spelling of
+  // the note the tie starts on.
+  test.each([
+    ['five sharps into six', [5, 6], [-5, -4], { step: 'D', octave: 5, alter: 0 }, -1],
+    ['six sharps into five', [6, 5], [-4, -5], { step: 'C', octave: 5, alter: 2 }, undefined],
+  ] as const)(
+    'spells the later note of a tie from %s as the note the tie starts on',
+    (_name, concert, part, pitch, diatonicDelta) => {
+      const tied = (type: string) =>
+        '<note><pitch><step>E</step><octave>5</octave></pitch><duration>4</duration>' +
+        `<tie type="${type}"/><type>quarter</type>` +
+        `<notations><tied type="${type}"/></notations></note>`
+      const { score } = read(
+        twoParts(
+          [
+            [concert[0], pitched('B', 0, 3)],
+            [concert[1], pitched('B', 0, 3)],
+          ],
+          [
+            [part[0], tied('start')],
+            [part[1], tied('stop')],
+          ],
+        ),
+      )
+      const notes = (score.parts[1]?.measures ?? []).flatMap((measure) =>
+        (measure.sequences[0]?.content ?? []).flatMap((item) =>
+          item.kind === 'event' ? notesOf(item) : [],
+        ),
+      )
+
+      expect(
+        notes.map((note) => ({ pitch: note.pitch, diatonicDelta: note.diatonicDelta })),
+      ).toEqual([
+        { pitch, diatonicDelta },
+        { pitch, diatonicDelta },
+      ])
+      expect(notes[0]?.ties).toEqual([{ kind: 'target', target: notes[1]?.id, crossVoice: false }])
+    },
+  )
+
   // An A clarinet asks for eight flats where the score is in five, and writes
   // four sharps instead, so its notes come back one letter under.
   test('states a note past a point below zero in the score’s key', () => {
