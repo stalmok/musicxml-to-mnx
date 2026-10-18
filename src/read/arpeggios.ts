@@ -19,6 +19,12 @@ import { attribute } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
 import { upOrDown } from './marks.js'
 
+/**
+ * Where a pitch is drawn on a staff of the part, in steps from the middle
+ * line, as the part stood at the chord. Nothing where no clef places it.
+ */
+export type PitchHeight = (pitch: Pitch, staff: number) => number | undefined
+
 /** A chord marked as rolled or struck, held until its notes are all in. */
 interface MarkedArpeggio {
   event: Event
@@ -50,6 +56,7 @@ interface MarkedArpeggio {
   crossed: XmlElement | undefined
   direction: 'up' | 'down' | undefined
   arrow: boolean
+  heightOf: PitchHeight
 }
 
 /**
@@ -73,6 +80,39 @@ function kitOrder(
   return [...kit]
     .sort(([, a], [, b]) => a.staffPosition - b.staffPosition)
     .flatMap(([component]) => notes.filter((note) => note.component === component))
+}
+
+/**
+ * The notes of a chord sounding on a pitched staff and a kit at once, bottom
+ * to top: the lower staff first, then by height on the staff. A pitched note
+ * is placed by the clef drawing it, and a kit note by its component. Nothing
+ * where a pitched note has no clef to place it.
+ */
+function drawnOrder(
+  chords: readonly {
+    notes: readonly Note[]
+    kitNotes: readonly KitNote[]
+    marked: MarkedArpeggio
+  }[],
+  kit: ReadonlyMap<string, KitComponent>,
+  staffOf: (event: Event) => number | undefined,
+): readonly TieTarget[] | undefined {
+  const placed: { note: TieTarget; staff: number; height: number }[] = []
+  for (const { notes, kitNotes, marked } of chords) {
+    const eventStaff = staffOf(marked.event)
+    for (const note of notes) {
+      const staff = note.staff ?? eventStaff ?? 1
+      const height = marked.heightOf(note.pitch, staff)
+      if (height === undefined) return undefined
+      placed.push({ note, staff, height })
+    }
+    for (const [component, { staffPosition }] of kit) {
+      for (const note of kitNotes.filter((one) => one.component === component)) {
+        placed.push({ note, staff: note.staff ?? eventStaff ?? 1, height: staffPosition })
+      }
+    }
+  }
+  return placed.sort((a, b) => b.staff - a.staff || a.height - b.height).map(({ note }) => note)
 }
 
 /** What an event sounds, which for a rest is nothing. */
@@ -99,6 +139,8 @@ export class Arpeggios {
     arrow: boolean,
     /** The element the mark is written with, for the report that comes later. */
     element: XmlElement,
+    /** Places the chord's pitches on the staff, as the part stands at the chord. */
+    heights: () => PitchHeight,
   ): void {
     // Every note of a chord carries the mark, so the first one to arrive sets
     // it up and the rest join what it already covers. Marks on one chord are
@@ -142,6 +184,7 @@ export class Arpeggios {
       crossed: undefined,
       direction,
       arrow,
+      heightOf: heights(),
     })
   }
 
@@ -168,6 +211,8 @@ export class Arpeggios {
     context: ReportContext,
     /** The components this part strikes, which is where a kit note's height is. */
     kit: ReadonlyMap<string, KitComponent>,
+    /** The staff an event of the measure was placed on, where the part has more than one. */
+    staffOf: (event: Event) => number | undefined,
   ): Arpeggio[] {
     // Marks on one chord are compared together first, whatever they are
     // numbered, so a chord marked rolled on one note and struck on another is
@@ -215,18 +260,26 @@ export class Arpeggios {
       /* v8 ignore next -- a group exists because something was put in it. */
       if (!first) continue
 
-      const notes = group.flatMap((one) =>
-        divided.has(one.event) ? one.notes : soundOf(one.event).notes,
-      )
-      const kitNotes = group.flatMap((one) => soundOf(one.event).kitNotes)
+      const chords = group.map((marked) => ({
+        notes: divided.has(marked.event) ? marked.notes : soundOf(marked.event).notes,
+        kitNotes: soundOf(marked.event).kitNotes,
+        marked,
+      }))
+      const notes = chords.flatMap((chord) => chord.notes)
+      const kitNotes = chords.flatMap((chord) => chord.kitNotes)
       // A chord struck on a percussion kit carries no pitches to order by, so
       // it is ordered by the height the part's kit draws each component at. A
       // mark is written on a note and a kit note carries none, so such a roll
-      // spans the whole chord.
+      // spans the whole chord. A chord sounding on a pitched staff and a kit
+      // at once is ordered as it is drawn, since a pitch and a component's
+      // height compare only on the staff.
+      const mixed =
+        notes.length > 0 && kitNotes.length > 0 ? drawnOrder(chords, kit, staffOf) : undefined
       const ordered: readonly TieTarget[] =
-        notes.length > 0
+        mixed ??
+        (notes.length > 0
           ? [...notes].sort((a, b) => staffOrder(a.pitch) - staffOrder(b.pitch))
-          : kitOrder(kitNotes, kit)
+          : kitOrder(kitNotes, kit))
 
       if (ordered.length === 0) {
         // MNX states a roll as the two notes it runs between, and there are
@@ -257,14 +310,13 @@ export class Arpeggios {
         continue
       }
 
-      // A chord sounding on a pitched staff and a kit at once is spanned by
-      // its pitched notes: a diatonic index and a staff height do not
-      // compare, and ordering the two together would mean reading each pitch
-      // against the clef drawing it. MNX reads the notes a mark covers as the
-      // ones whose pitch lies between its ends, so a kit note left out of the
-      // span is left out of the mark. Reported here rather than above, where
-      // the mark may still turn out not to be carried.
-      if (notes.length > 0 && kitNotes.length > 0) {
+      // Where no clef places a pitched note, a chord sounding on a pitched
+      // staff and a kit at once is spanned by its pitched notes. MNX reads
+      // the notes a mark covers as the ones whose pitch lies between its
+      // ends, so a kit note left out of the span is left out of the mark.
+      // Reported here rather than above, where the mark may still turn out
+      // not to be carried.
+      if (notes.length > 0 && kitNotes.length > 0 && mixed === undefined) {
         warnings.add(
           'unsupported:element',
           `A chord ${first.struck ? 'bracketed as struck together' : 'rolled'} across a ` +
@@ -347,6 +399,7 @@ export function readArpeggio(
   arpeggios: Arpeggios,
   /** The note carrying these notations, or nothing where a rest carries them. */
   note: Note | undefined,
+  heights: () => PitchHeight,
 ): void {
   for (const block of notations) {
     for (const rolled of block.children('arpeggiate')) {
@@ -364,6 +417,7 @@ export function readArpeggio(
         direction,
         direction !== undefined,
         rolled,
+        heights,
       )
     }
     // <non-arpeggiate> says the opposite: a bracket meaning the notes are
@@ -372,7 +426,16 @@ export function readArpeggio(
     // it is read here only so the sweep knows it is accounted for.
     for (const struck of block.children('non-arpeggiate')) {
       attribute(struck, 'type')
-      arpeggios.mark(placed, note, attribute(struck, 'number'), true, undefined, false, struck)
+      arpeggios.mark(
+        placed,
+        note,
+        attribute(struck, 'number'),
+        true,
+        undefined,
+        false,
+        struck,
+        heights,
+      )
     }
   }
 }

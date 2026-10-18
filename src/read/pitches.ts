@@ -17,7 +17,8 @@ import type { XmlElement } from '../xml/parse.js'
 import { attribute, child, requireChild, trimmedText } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
 import { parseWholeNumber, readIntegerInRange } from './numbers.js'
-import type { PartState } from './state.js'
+import type { ClefInForce, PartState } from './state.js'
+import type { PitchHeight } from './arpeggios.js'
 import { soundingPitch } from './transposition.js'
 import { recogniser } from './tables.js'
 
@@ -66,6 +67,34 @@ function displayStaffPosition(
   }
 
   return clef.staffPosition + (diatonicIndex(step, octave) - CLEF_REFERENCE[clef.sign])
+}
+
+/**
+ * Where a pitch is drawn on a staff in this clef, in steps from the middle
+ * line. A treble-8 clef draws each pitch an octave above where a plain treble
+ * clef would.
+ */
+export function pitchStaffPosition(pitch: Pitch, clef: ClefInForce): number {
+  return (
+    clef.staffPosition +
+    diatonicIndex(pitch.step, pitch.octave) -
+    CLEF_REFERENCE[clef.sign] -
+    7 * clef.octave
+  )
+}
+
+/**
+ * Places a pitch on a staff of the part as the part stands now, for a mark
+ * read once the measure is whole. MNX states the pitch the part sounds, and
+ * the staff draws the one it writes.
+ */
+export function pitchHeights(state: PartState): PitchHeight {
+  const clefs = new Map(state.clefs)
+  const distance = state.transposition?.staffDistance ?? 0
+  return (pitch, staff) => {
+    const clef = clefs.get(staff)
+    return clef && pitchStaffPosition(pitch, clef) + distance
+  }
 }
 
 /** A rest's height, with the loss reported where the source states one it cannot place. */

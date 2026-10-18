@@ -40,7 +40,7 @@ import {
   readWrittenValue,
   reportDurationMismatch,
 } from './writtenValues.js'
-import { readKitNoteAt, readNoteAt, restStaffPosition } from './pitches.js'
+import { pitchHeights, readKitNoteAt, readNoteAt, restStaffPosition } from './pitches.js'
 import { entriesOf } from './tables.js'
 import { readSlurs, readTies, tiePairing } from './tiesAndSlurs.js'
 import { MeasureBuilder } from './voices.js'
@@ -528,10 +528,10 @@ function readChordMember(
     // A roll is drawn across the notes of a chord, so it is the pitched
     // members that say how far it reaches. A kit note has no pitch to order
     // it by, and the chord it sits on is what the roll spans anyway.
-    readArpeggio(notations, placed, builder.arpeggios, chordNote)
+    readArpeggio(notations, placed, builder.arpeggios, chordNote, () => pitchHeights(state))
   } else {
     placed = builder.addChordKitNote(chord, chordNote, chordDurationOrNone, path, element.line)
-    readArpeggio(notations, placed, builder.arpeggios, undefined)
+    readArpeggio(notations, placed, builder.arpeggios, undefined, () => pitchHeights(state))
   }
   // Exporters write a chord's marks, fermata, tremolo and tuplet bracket on
   // every note of it. What restates the chord's own is passed over: a
@@ -599,6 +599,7 @@ function readEventSpanners(
     placed,
     builder.arpeggios,
     body.kind === 'notes' ? body.notes[0] : undefined,
+    () => pitchHeights(state),
   )
   // A rest sounds nothing, so a tie in its voice reaches across it.
   if (body.kind === 'notes') state.spanners.sound(voice.name)

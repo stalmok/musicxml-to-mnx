@@ -814,6 +814,7 @@ function readClef(
     state.clefs.set(named ?? 1, {
       sign: 'G',
       staffPosition: staffPositionOfLine(DEFAULT_CLEF_LINES.G, staffLinesOf(state, named)),
+      octave: 0,
     })
 
     if (sign === 'percussion') {
@@ -866,19 +867,14 @@ function readClef(
   // from 0 at the middle of the staff, which moves with the line count.
   const staffPosition = staffPositionOfLine(line, staffLinesOf(state, named))
 
+  const octave = readClefOctave(element, warnings, context, path)
+
   // Kept in force on its staff so a later rest placed by <display-step> reads
   // its height against the right clef. A single-staff part names no staff, so
   // its one clef is held under staff 1.
-  state.clefs.set(staff ?? 1, { sign, staffPosition })
+  state.clefs.set(staff ?? 1, { sign, staffPosition, octave: octave?.amount ?? 0 })
 
-  return {
-    sign,
-    staffPosition,
-    staff,
-    position,
-    octave: readClefOctave(element, warnings, context, path),
-    hide,
-  }
+  return { sign, staffPosition, staff, position, octave, hide }
 }
 
 /**

@@ -558,55 +558,167 @@ describe('the MNX a percussion part converts to', () => {
   })
 
   // MNX reads the notes inside a roll as the ones whose pitch lies between
-  // its ends, and a kit note has none, so one left out of the span is left
-  // out of the roll. The span is the pitched pair and the loss is reported.
-  test('reports a roll over a chord sounding on a staff and a kit at once', () => {
-    const rolled =
-      '<note><pitch><step>C</step><octave>5</octave></pitch><duration>1</duration>' +
-      '<type>quarter</type><notations><arpeggiate/></notations></note>' +
-      '<note><chord/><pitch><step>E</step><octave>5</octave></pitch><duration>1</duration>' +
-      '<type>quarter</type><notations><arpeggiate/></notations></note>' +
-      '<note><chord/><unpitched><display-step>G</display-step><display-octave>5</display-octave>' +
-      '</unpitched><duration>1</duration><type>quarter</type><instrument id="P1-I39"/>' +
-      '<notations><arpeggiate/></notations></note>'
-    const { part, warnings } = read(rolled, DRUM_KIT)
-    const event = firstEvent(part)
-    const arpeggio = part?.measures[0]?.arpeggios[0]
+  // its ends, so the roll runs between the lowest and highest notes drawn,
+  // a kit note among them. A pitched note is drawn where its clef puts it.
+  describe('a roll over a chord sounding on a staff and a kit at once', () => {
+    const ROLL = '<notations><arpeggiate/></notations>'
+    const pitched = (step: string, octave: string, extra = '', chord = '') =>
+      `<note>${chord}<pitch><step>${step}</step><octave>${octave}</octave></pitch>` +
+      `<duration>1</duration><type>quarter</type>${extra}</note>`
+    const kitNote = (step: string, octave: string, extra = '') =>
+      `<note><chord/><unpitched><display-step>${step}</display-step>` +
+      `<display-octave>${octave}</display-octave></unpitched><duration>1</duration>` +
+      `<type>quarter</type><instrument id="P1-I39"/>${extra}</note>`
+    const clef = (sign: string, line: string, octaveChange = '') =>
+      `<attributes><divisions>1</divisions><clef><sign>${sign}</sign><line>${line}</line>` +
+      `${octaveChange}</clef></attributes>`
+    function readWith(body: string, attributes: string) {
+      const warnings = new WarningCollector()
+      const score = readValid(source(body, DRUM_KIT, attributes), warnings)
+      const part = score.parts[0]
+      const event = firstEvent(part)
+      return {
+        span: part?.measures[0]?.arpeggios[0]?.span,
+        notes: notesOf(event).map((note) => note.id),
+        kitNotes: kitNotesOf(event).map((note) => note.id),
+        warnings: warnings.list(),
+      }
+    }
 
-    expect(arpeggio?.span).toEqual({ start: notesOf(event)[0]?.id, end: notesOf(event)[1]?.id })
-    expect(warnings.map((w) => w.code)).toEqual(['unsupported:element'])
-    expect(warnings[0]?.element).toBe('arpeggiate')
-    convertValid(source(rolled, DRUM_KIT))
-  })
+    test('runs from the lowest note drawn to the highest, a kit note among them', () => {
+      const rolled =
+        pitched('C', '5', ROLL) + pitched('E', '5', ROLL, '<chord/>') + kitNote('G', '5', ROLL)
+      const { span, notes, kitNotes, warnings } = readWith(rolled, PERCUSSION_CLEF)
 
-  // A bracket marking the chord struck together is not a roll, so the report
-  // names the element the source wrote and says what it means.
-  test('names the bracket for a struck chord sounding on a staff and a kit', () => {
-    const struckTogether =
-      '<note><pitch><step>C</step><octave>5</octave></pitch><duration>1</duration>' +
-      '<type>quarter</type><notations><non-arpeggiate type="bottom"/></notations></note>' +
-      '<note><chord/><pitch><step>E</step><octave>5</octave></pitch><duration>1</duration>' +
-      '<type>quarter</type><notations><non-arpeggiate type="top"/></notations></note>' +
-      '<note><chord/><unpitched><display-step>G</display-step><display-octave>5</display-octave>' +
-      '</unpitched><duration>1</duration><type>quarter</type><instrument id="P1-I39"/>' +
-      '<notations><non-arpeggiate type="top"/></notations></note>'
-    const { warnings } = read(struckTogether, DRUM_KIT)
+      expect(span).toEqual({ start: notes[0], end: kitNotes[0] })
+      expect(warnings).toEqual([])
+      convertValid(source(rolled, DRUM_KIT))
+    })
 
-    expect(warnings.map((w) => w.element)).toEqual(['non-arpeggiate'])
-    expect(warnings[0]?.message).toContain('struck together')
-  })
+    test('runs from a kit note drawn below the pitched notes', () => {
+      const rolled =
+        pitched('C', '5', ROLL) + pitched('E', '5', ROLL, '<chord/>') + kitNote('D', '4', ROLL)
+      const { span, notes, kitNotes } = readWith(rolled, PERCUSSION_CLEF)
 
-  test('says nothing was carried where the bracket holds one note', () => {
-    const half =
-      '<note><pitch><step>C</step><octave>5</octave></pitch><duration>1</duration>' +
-      '<type>quarter</type><notations><non-arpeggiate type="bottom"/></notations></note>' +
-      '<note><chord/><unpitched><display-step>G</display-step><display-octave>5</display-octave>' +
-      '</unpitched><duration>1</duration><type>quarter</type><instrument id="P1-I39"/>' +
-      '<notations><non-arpeggiate type="top"/></notations></note>'
-    const { part, warnings } = read(half, DRUM_KIT)
+      expect(span).toEqual({ start: kitNotes[0], end: notes[1] })
+    })
 
-    expect(part?.measures[0]?.arpeggios).toEqual([])
-    expect(warnings.map((w) => w.code)).toEqual(['unclosed:spanner'])
+    test('runs from the highest note drawn where the mark rolls downwards', () => {
+      const down = '<notations><arpeggiate direction="down"/></notations>'
+      const rolled = pitched('C', '5', down) + kitNote('G', '5', down)
+      const { span, notes, kitNotes } = readWith(rolled, PERCUSSION_CLEF)
+
+      expect(span).toEqual({ start: kitNotes[0], end: notes[0] })
+    })
+
+    // In the bass clef C4 sits above the staff, over a kit note on its middle
+    // line. In the treble clef it would sit below.
+    test('places a pitched note by the clef drawing it', () => {
+      const rolled = pitched('C', '4', ROLL) + kitNote('D', '3', ROLL)
+      const { span, notes, kitNotes } = readWith(rolled, clef('F', '4'))
+
+      expect(span).toEqual({ start: kitNotes[0], end: notes[0] })
+    })
+
+    test('places a pitched note by the clef in force at the chord', () => {
+      const rolled =
+        pitched('C', '4', ROLL) +
+        kitNote('A', '4', ROLL) +
+        '<attributes><clef><sign>F</sign><line>4</line></clef></attributes>' +
+        pitched('C', '4')
+      const { span, notes, kitNotes } = readWith(rolled, clef('G', '2'))
+
+      expect(span).toEqual({ start: notes[0], end: kitNotes[0] })
+    })
+
+    // A treble-8 clef draws B3 on the middle line, above a kit note on A4.
+    test('places a pitched note by the octave its clef is drawn at', () => {
+      const rolled = pitched('B', '3', ROLL) + kitNote('A', '4', ROLL)
+      const { span, notes, kitNotes } = readWith(
+        rolled,
+        clef('G', '2', '<clef-octave-change>-1</clef-octave-change>'),
+      )
+
+      expect(span).toEqual({ start: kitNotes[0], end: notes[0] })
+    })
+
+    // A horn in F writes G5 for a sounding C5, and the staff draws the G5,
+    // above a kit note on E5.
+    test('places a pitched note of a transposing part where it is written', () => {
+      const rolled = pitched('G', '5', ROLL) + kitNote('E', '5', ROLL)
+      const { span, notes, kitNotes } = readWith(
+        rolled,
+        '<attributes><divisions>1</divisions><clef><sign>G</sign><line>2</line></clef>' +
+          '<transpose><diatonic>-4</diatonic><chromatic>-7</chromatic></transpose></attributes>',
+      )
+
+      expect(span).toEqual({ start: kitNotes[0], end: notes[0] })
+    })
+
+    // The lower staff is drawn below, whatever the heights on each.
+    test('orders notes on two staves by staff before height', () => {
+      const rolled =
+        pitched('C', '4', ROLL).replace('</note>', '<staff>1</staff></note>') +
+        kitNote('G', '5', ROLL).replace('</note>', '<staff>2</staff></note>')
+      const { span, notes, kitNotes, warnings } = readWith(
+        rolled,
+        '<attributes><divisions>1</divisions><staves>2</staves>' +
+          '<clef number="1"><sign>G</sign><line>2</line></clef>' +
+          '<clef number="2"><sign>percussion</sign></clef></attributes>',
+      )
+
+      expect(span).toEqual({ start: kitNotes[0], end: notes[0] })
+      expect(warnings).toEqual([])
+    })
+
+    // With no clef in force a pitched note has no height to compare.
+    test('reports a roll over its pitched notes only where no clef places them', () => {
+      const rolled =
+        pitched('C', '5', ROLL) + pitched('E', '5', ROLL, '<chord/>') + kitNote('G', '5', ROLL)
+      const { span, notes, warnings } = readWith(
+        rolled,
+        '<attributes><divisions>1</divisions></attributes>',
+      )
+
+      expect(span).toEqual({ start: notes[0], end: notes[1] })
+      expect(warnings.map((w) => w.code)).toEqual(['missing:display-step', 'unsupported:element'])
+      expect(warnings[1]?.element).toBe('arpeggiate')
+      expect(warnings[1]?.message).toContain('rolled')
+    })
+
+    // A bracket marking the chord struck together is not a roll, so the report
+    // names the element the source wrote and says what it means.
+    test('names the bracket for a struck chord it cannot place', () => {
+      const struckTogether =
+        pitched('C', '5', '<notations><non-arpeggiate type="bottom"/></notations>') +
+        pitched('E', '5', '<notations><non-arpeggiate type="top"/></notations>', '<chord/>') +
+        kitNote('G', '5', '<notations><non-arpeggiate type="top"/></notations>')
+      const { warnings } = readWith(
+        struckTogether,
+        '<attributes><divisions>1</divisions></attributes>',
+      )
+
+      expect(warnings.map((w) => w.element)).toEqual(['unpitched', 'non-arpeggiate'])
+      expect(warnings[1]?.message).toContain('struck together')
+    })
+
+    test('brackets a pitched note and a kit note struck together', () => {
+      const half =
+        pitched('C', '5', '<notations><non-arpeggiate type="bottom"/></notations>') +
+        kitNote('G', '5', '<notations><non-arpeggiate type="top"/></notations>')
+      const warnings = new WarningCollector()
+      const part = readValid(source(half, DRUM_KIT), warnings).parts[0]
+      const event = firstEvent(part)
+
+      expect(part?.measures[0]?.arpeggios).toEqual([
+        {
+          kind: 'struck',
+          position: { num: 0, den: 1 },
+          span: { start: notesOf(event)[0]?.id, end: kitNotesOf(event)[0]?.id },
+        },
+      ])
+      expect(warnings.list()).toEqual([])
+    })
   })
 
   // A mark is written on a note and a kit note carries none, so a kit chord

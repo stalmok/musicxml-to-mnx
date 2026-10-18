@@ -53,6 +53,8 @@ export function staffPositionOfLine(line: number, lines: number): number {
 export interface ClefInForce {
   sign: PitchedClefSign
   staffPosition: number
+  /** Octaves the clef is transposed for drawing: -1 for a treble-8. */
+  octave: number
 }
 
 /**

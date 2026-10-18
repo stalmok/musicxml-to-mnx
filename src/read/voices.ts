@@ -1199,12 +1199,19 @@ export class MeasureBuilder {
 
     return {
       beamedRuns: this.#beamedRuns(),
-      arpeggios: this.arpeggios.settle(warnings, context, kit),
+      arpeggios: this.arpeggios.settle(warnings, context, kit, (event) => this.#staffOf(event)),
       sequences: this.#sequences(warnings, context),
       carriedTupletStops,
       carriedTremolos,
       beamsOpenAtBarline: this.#beamsOpenAtBarline(),
     }
+  }
+
+  /** The staff an event was placed on, or nothing where it named none. */
+  #staffOf(event: Event): number | undefined {
+    return this.#allBuilders()
+      .flatMap((builder) => builder.placed)
+      .find((placed) => placed.event === event)?.staff
   }
 
   /** The voices whose primary beam is open at the barline, with the staff it was on. */
