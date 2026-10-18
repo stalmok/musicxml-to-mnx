@@ -112,9 +112,13 @@ export function readNote(
     }
   }
   // MNX states one fermata, the first written, so a hidden block holding only
-  // later ones hides nothing drawn. Their loss is reported as a fermata's.
+  // later ones hides nothing drawn. Their loss is reported as a fermata's. A
+  // chord's fermata is the one its own note writes, so a note joining it
+  // converts none of its own.
   const eventNotations = readEventNotations(notations)
-  const fermata = writtenFor(eventNotations, 'fermata')[0]?.found
+  const fermata = element.child('chord')
+    ? undefined
+    : writtenFor(eventNotations, 'fermata')[0]?.found
   const reportHiddenNote = (only?: 'fermata') => {
     reportHidden(element.element, warnings, context, undefined, hiddenPlace)
     for (const { block, place } of hiddenBlocks) {

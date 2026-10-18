@@ -268,6 +268,21 @@ describe('an element hidden with print-object="no"', () => {
     ])
   })
 
+  // MNX states the fermata of a chord from the note the others join.
+  test.each(['<notations><fermata/></notations>', ''])(
+    'says nothing about a hidden notations block on a chord member holding only a fermata',
+    (own) => {
+      const member =
+        '<note><chord/><pitch><step>E</step><octave>4</octave></pitch><duration>4</duration>' +
+        '<type>quarter</type><notations print-object="no"><fermata/></notations></note>'
+      const { warnings } = read(measure(note(own) + member))
+
+      expect(warnings.map((warning) => [warning.code, warning.element])).toEqual([
+        ['inconsistent:fermata', 'fermata'],
+      ])
+    },
+  )
+
   test('reports a hidden notations block holding a dropped fermata beside a mark', () => {
     expect(
       hidden(
