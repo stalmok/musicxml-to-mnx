@@ -276,7 +276,7 @@ function beamRuns(
       close()
     }
   }
-  const trailing = run.length > 0 && run.at(-1) === events.at(-1) ? run : undefined
+  const trailing = run.length > 0 ? run : undefined
   const stated = beams.length
   close()
 

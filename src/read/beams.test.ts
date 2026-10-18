@@ -743,6 +743,65 @@ describe('a beam crossing the barline', () => {
     ])
   })
 
+  test('joins the line that carries a beam on where the first line opens unbeamed', () => {
+    const backup = '<backup><duration>4</duration></backup>'
+    const { beams } = readMeasures(
+      eighth('A', 'begin') +
+        eighth('B', 'continue') +
+        backup +
+        eighth('C', 'begin') +
+        eighth('D', 'continue'),
+      QUARTER + backup + eighth('E', 'continue') + eighth('F', 'end'),
+    )
+
+    expect(beams).toEqual([
+      [
+        ['ev1', 'ev2'],
+        ['ev3', 'ev4', 'ev6', 'ev7'],
+      ],
+      [],
+    ])
+  })
+
+  test('joins the one beam a voice left open whichever line left it', () => {
+    const backup = '<backup><duration>4</duration></backup>'
+    const { beams } = readMeasures(
+      eighth('A', 'begin') +
+        eighth('B', 'end') +
+        backup +
+        eighth('C', 'begin') +
+        eighth('D', 'continue'),
+      eighth('E', 'continue') + eighth('F', 'end'),
+    )
+
+    expect(beams).toEqual([
+      [
+        ['ev1', 'ev2'],
+        ['ev3', 'ev4', 'ev5', 'ev6'],
+      ],
+      [],
+    ])
+  })
+
+  test('joins nothing to an end opening the measure after a beam ended on the barline', () => {
+    const { beams } = readMeasures(
+      eighth('A', 'begin') + eighth('B', 'end'),
+      eighth('C', 'continue') + eighth('D', 'end'),
+    )
+
+    expect(beams).toEqual([[['ev1', 'ev2']], []])
+  })
+
+  test('states a beam opened after a joined one on its own measure', () => {
+    const { beams } = readMeasures(
+      eighth('A', 'begin'),
+      eighth('B', 'end') + eighth('C', 'begin'),
+      eighth('D', 'end'),
+    )
+
+    expect(beams).toEqual([[['ev1', 'ev2']], [['ev3', 'ev4']], []])
+  })
+
   // The primary beam begins here, so a stray inner continue carries nothing on.
   test('carries no inner beam on where the primary beam begins at the barline', () => {
     const sixteenth = (step: string, inner: string) =>
