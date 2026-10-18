@@ -676,6 +676,25 @@ describe('a time signature stated after the measure start', () => {
     expect(warnings).toEqual([])
   })
 
+  // A <backup> of a half after a dotted half leaves the cursor past the start
+  // only when the dot is counted.
+  test('reads ahead a dotted note with no <duration> as lasting its dotted value', () => {
+    const dottedHalf = (duration: string) =>
+      `<note><pitch><step>C</step><octave>4</octave></pitch>${duration}` +
+      '<voice>1</voice><type>half</type><dot/></note>'
+    const first = (duration: string) =>
+      read(untimedBesideNext(timed(3) + dottedHalf(duration) + back(24) + timed(2), 36))
+    const stated = first('<duration>36</duration>')
+    const unstated = first('')
+
+    expect(stated.score.globalMeasures.map((m) => m.time)).toEqual([
+      { count: 3, unit: 4 },
+      { count: 2, unit: 4 },
+    ])
+    expect(unstated.score.globalMeasures).toEqual(stated.score.globalMeasures)
+    expect(unstated.warnings.map((w) => w.code)).toEqual(stated.warnings.map((w) => w.code))
+  })
+
   test('reads ahead a rest with no <duration> as lasting its written value', () => {
     const half = '<note><rest/><voice>1</voice><type>half</type></note>'
     const { warnings } = read(untimedBesideNext(timed(2) + half + timed(3), 24))
