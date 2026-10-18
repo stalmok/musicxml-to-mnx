@@ -254,8 +254,8 @@ A schema update can change these types and the generated output.
 ## Development
 
 Use Node 24, as specified in `.nvmrc`, and the pnpm version pinned in `package.json`.
-The `engines` field in `package.json` applies to the published package.
-Development needs Node 22.18 or later, because the build and the format check run TypeScript files with Node directly.
+The `engines` field in `package.json` is the Node range the package supports, and `pnpm install` refuses a Node outside it.
+Development needs Node 22.18 or later, because `build`, `format`, `format:check` and `compare-output` run TypeScript files with Node directly.
 
 ```bash
 pnpm install
