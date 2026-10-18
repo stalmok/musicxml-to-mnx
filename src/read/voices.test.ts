@@ -19,6 +19,11 @@ function note(step: string, quarters: number, voice = '1', extra = ''): string {
   )
 }
 
+/** The same note an octave higher, for the line of a voice that sounds above the other. */
+function higher(note: string): string {
+  return note.replace('<octave>4</octave>', '<octave>5</octave>')
+}
+
 function measure(body: string): string {
   return `<score-partwise><part id="P1"><measure number="1">${DIVISIONS}${body}</measure></part></score-partwise>`
 }
@@ -921,20 +926,64 @@ describe('the measure cursor', () => {
   // sequences are one.
   test('names the laid-over sequence after the voice and the line it is', () => {
     const { measure: result } = read(
-      measure(note('C', 2, '1') + '<backup><duration>4</duration></backup>' + note('E', 1, '1')),
+      measure(
+        higher(note('C', 2, '1')) + '<backup><duration>4</duration></backup>' + note('E', 1, '1'),
+      ),
     )
 
     expect(result?.sequences.map((s) => s.voice)).toEqual(['1', '1.2'])
   })
 
+  // MNX treats a voice's name as one line across the score. The source states
+  // no division between two lines laid over each other, and writes either
+  // first, so the higher line takes the voice's name, as in closed score.
+  test('names the higher of two laid-over lines after the voice in every measure', () => {
+    const backup = '<backup><duration>8</duration></backup>'
+    const result = readValid(
+      '<score-partwise><part id="P1">' +
+        `<measure number="1">${DIVISIONS}${higher(note('E', 2))}${backup}${note('C', 2)}</measure>` +
+        `<measure number="2">${note('D', 2)}${backup}${higher(note('F', 2))}</measure>` +
+        '</part></score-partwise>',
+      new WarningCollector(),
+    )
+    const lines = (result.parts[0]?.measures ?? []).map((m) =>
+      m.sequences.map((sequence) => {
+        const [first] = sequence.content
+        const step = first?.kind === 'event' ? notesOf(first)[0]?.pitch.step : undefined
+        return `${sequence.voice ?? ''}:${step ?? ''}`
+      }),
+    )
+
+    expect(lines).toEqual([
+      ['1:E', '1.2:C'],
+      ['1.2:D', '1:F'],
+    ])
+  })
+
+  test('names laid-over lines in the order written where one sounds no pitch', () => {
+    const rest = '<note><rest/><duration>4</duration><voice>1</voice></note>'
+    const { measure: result } = read(
+      measure(rest + '<backup><duration>4</duration></backup>' + note('C', 2, '1')),
+    )
+    const named = result?.sequences.map((sequence) => {
+      const [first] = sequence.content
+      return [sequence.voice, first?.kind === 'event' ? first.body.kind : undefined]
+    })
+
+    expect(named).toEqual([
+      ['1', 'rest'],
+      ['1.2', 'notes'],
+    ])
+  })
+
   test('gives every sequence of a measure a name of its own', () => {
     const { measure: result } = read(
       measure(
-        note('C', 2, '1') +
+        higher(note('C', 2, '1')) +
           '<backup><duration>8</duration></backup>' +
           note('E', 1, '1') +
           '<backup><duration>4</duration></backup>' +
-          note('G', 2, '2') +
+          higher(note('G', 2, '2')) +
           '<backup><duration>8</duration></backup>' +
           note('B', 1, '2'),
       ),
@@ -950,7 +999,7 @@ describe('the measure cursor', () => {
   test('steps past a name the measure already uses', () => {
     const { measure: result } = read(
       measure(
-        note('C', 2, '1') +
+        higher(note('C', 2, '1')) +
           '<backup><duration>4</duration></backup>' +
           note('E', 1, '1') +
           note('G', 1, '1.2'),

@@ -316,8 +316,8 @@ export const WARNING_CODES = Object.freeze([
   'inconsistent:tempo',
   // A voice sounds two notes at once, which one voice does not: closed-score
   // hymnals write two lines in one <voice>, laid over each other with
-  // <backup>. Each line is kept as a sequence of its own, and only the first
-  // carries the voice's name.
+  // <backup>. Each line is kept as a sequence of its own, and only the
+  // highest carries the voice's name.
   'inconsistent:voice',
   // A chord is rolled upwards by one mark and downwards by another, or marked
   // both as rolled and as struck together. The first is the one converted.

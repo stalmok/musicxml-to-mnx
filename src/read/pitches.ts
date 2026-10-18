@@ -20,27 +20,19 @@ import { parseWholeNumber, readIntegerInRange } from './numbers.js'
 import type { ClefInForce, PartState } from './state.js'
 import type { PitchHeight } from './arpeggios.js'
 import { soundingPitch } from './transposition.js'
+import { diatonicIndex } from './steps.js'
 import { recogniser } from './tables.js'
 
 // A recogniser narrows the value to the model's Step, so no cast is needed,
 // and the list and Step are checked against each other in both directions.
 const isStep = recogniser<Step>({ A: true, B: true, C: true, D: true, E: true, F: true, G: true })
 
-// The diatonic order of a step within its octave, counting from C, since staff
-// height is counted diatonically.
-const STEP_ORDER: Record<Step, number> = { C: 0, D: 1, E: 2, F: 3, G: 4, A: 5, B: 6 }
-
 // The diatonic index of the pitch each clef sign places on its line: G4 for a
 // G clef, F3 for an F clef, C4 for a C clef.
 const CLEF_REFERENCE: Record<PitchedClefSign, number> = {
-  G: 4 * 7 + STEP_ORDER.G,
-  F: 3 * 7 + STEP_ORDER.F,
-  C: 4 * 7 + STEP_ORDER.C,
-}
-
-/** A pitch's diatonic index: its octave times seven, plus the step's order. */
-function diatonicIndex(step: Step, octave: number): number {
-  return octave * 7 + STEP_ORDER[step]
+  G: diatonicIndex('G', 4),
+  F: diatonicIndex('F', 3),
+  C: diatonicIndex('C', 4),
 }
 
 /**

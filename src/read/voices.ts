@@ -25,6 +25,7 @@ import type { ReportContext, WarningCollector } from './collector.js'
 import type { EventNotation } from './eventNotations.js'
 import type { XmlElement } from '../xml/parse.js'
 import { lineKey } from './beams.js'
+import { diatonicIndex } from './steps.js'
 import type { BeamedEvent, BeamedRun, BeamMarker, BeamsOpenAtBarline } from './beams.js'
 import type { CarriedTupletStop, MeasureExtent, TupletStart } from './tuplets.js'
 import { TupletTracker } from './tupletTracker.js'
@@ -43,6 +44,7 @@ import type {
   KitNote,
   Note,
   NoteValueQuantity,
+  Pitch,
   Sequence,
   SequenceItem,
   Space,
@@ -1600,8 +1602,13 @@ export class MeasureBuilder {
       return name
     }
 
-    return [...sounding].flatMap(([voice, layers]) =>
-      layers.map((builder, index) => {
+    // The source states no division between the lines of a voice, and may
+    // write either first, so the higher line takes the voice's name, as in
+    // closed score.
+    return [...sounding].flatMap(([voice, layers]) => {
+      const ranked = highestFirst(layers)
+      return layers.map((builder) => {
+        const index = ranked.indexOf(builder)
         const staff = commonestStaff(builder.placed.map((placed) => placed.staff))
 
         // Only the events that reach across to another staff say so.
@@ -1621,8 +1628,8 @@ export class MeasureBuilder {
         return builder.fullMeasure
           ? { ...named, content: [], fullMeasure: builder.fullMeasure }
           : { ...named, content: builder.content, fullMeasure: undefined }
-      }),
-    )
+      })
+    })
   }
 
   /** The sequence of this voice that what comes next is written in. */
@@ -1680,6 +1687,43 @@ function leavesBeamOpen({ beamed, lastEvent }: VoiceBuilder): boolean {
   const last = beamed.at(-1)
   const kind = last?.markers.get(1)?.kind
   return lastEvent?.id === last?.id && (kind === 'begin' || kind === 'continue')
+}
+
+/**
+ * The lines of a voice, the highest first, by the mean height of their notes.
+ * Where a line sounds no pitch, nothing says which is higher, and the lines
+ * stay in the order the source wrote them.
+ */
+function highestFirst(lines: readonly VoiceBuilder[]): readonly VoiceBuilder[] {
+  const ranked: { line: VoiceBuilder; height: number }[] = []
+  for (const line of lines) {
+    const height = meanHeight(line.content)
+    if (height === undefined) return lines
+    ranked.push({ line, height })
+  }
+  return ranked.sort((a, b) => b.height - a.height).map(({ line }) => line)
+}
+
+function meanHeight(content: readonly SequenceItem[]): number | undefined {
+  const heights = pitchesIn(content).map((pitch) => diatonicIndex(pitch.step, pitch.octave))
+  if (heights.length === 0) return undefined
+  return heights.reduce((sum, height) => sum + height, 0) / heights.length
+}
+
+/** The pitches a line sounds, less its grace notes. */
+function pitchesIn(content: readonly SequenceItem[]): Pitch[] {
+  return content.flatMap((item) => {
+    switch (item.kind) {
+      case 'event':
+        return item.body.kind === 'notes' ? item.body.notes.map((note) => note.pitch) : []
+      case 'tuplet':
+      case 'multiNoteTremolo':
+        return pitchesIn(item.content)
+      case 'grace':
+      case 'space':
+        return []
+    }
+  })
 }
 
 function newVoiceBuilder(openedAt?: XmlElement): VoiceBuilder {
