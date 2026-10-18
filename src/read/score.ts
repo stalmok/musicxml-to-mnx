@@ -428,6 +428,8 @@ function readPart(
   }
 }
 
+const ECHO_TOLERANCE = 0.01
+
 /**
  * Reports every <sound tempo> the part states that no drawn metronome mark
  * echoes. A <sound tempo> is playback: where a mark at the same point states
@@ -442,6 +444,10 @@ function readPart(
  * MusicXML's tempo attribute counts. A mark of a dotted quarter at 72 and a
  * <sound tempo> of 108 are one statement; one of 110 is another.
  *
+ * Some editors write the echo rounded, as 70.0002 for a mark of 70, or to two
+ * decimals where the mark's tempo has more. Tempos closer than
+ * ECHO_TOLERANCE are one statement.
+ *
  * Each is reported at the place the <sound> reserved, so the report stays in
  * document order.
  */
@@ -453,11 +459,14 @@ function reportSoundTempos(
 ): void {
   soundTempos.forEach((measureTempos, index) => {
     for (const sound of measureTempos) {
-      const echoed = (globalMeasures[index]?.tempos ?? []).some(
-        (tempo) =>
-          compareFractions(tempo.position, sound.position) === 0 &&
-          quarterNotesPerMinute(tempo) === sound.bpm,
-      )
+      const { bpm } = sound
+      const echoed =
+        bpm !== undefined &&
+        (globalMeasures[index]?.tempos ?? []).some(
+          (tempo) =>
+            compareFractions(tempo.position, sound.position) === 0 &&
+            Math.abs(quarterNotesPerMinute(tempo) - bpm) < ECHO_TOLERANCE,
+        )
       if (echoed) continue
       const loss = attributeLoss('sound', 'tempo')
       warnings.addAt(

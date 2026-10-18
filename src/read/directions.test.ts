@@ -2236,6 +2236,34 @@ describe('the tempo a <sound> states', () => {
     expect(warnings).toEqual([])
   })
 
+  // An editor writes the echo of a quarter at 70 as 70.0002, and of a half at
+  // 33.333 rounded to two decimals.
+  test.each([
+    ['70.0002', 'quarter', '70'],
+    ['69.9998', 'quarter', '70'],
+    ['66.67', 'half', '33.333'],
+  ])('passes over %s as an echo of a %s at %s', (written, beat, perMinute) => {
+    const { warnings } = tempos(
+      `<direction><direction-type><metronome><beat-unit>${beat}</beat-unit>` +
+        `<per-minute>${perMinute}</per-minute></metronome></direction-type>` +
+        `<sound tempo="${written}"/></direction>` +
+        quarter,
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  test.each(['70.02', '69.98'])('reports a tempo of %s beside a mark of 70', (written) => {
+    const { warnings } = tempos(
+      '<direction><direction-type><metronome><beat-unit>quarter</beat-unit>' +
+        '<per-minute>70</per-minute></metronome></direction-type>' +
+        `<sound tempo="${written}"/></direction>` +
+        quarter,
+    )
+
+    expect(warnings.map((w) => w.message)).toEqual([soundTempoDropped])
+  })
+
   test('reports one whose number is not a tempo at all', () => {
     const { warnings } = tempos(
       '<direction><direction-type><metronome><beat-unit>quarter</beat-unit>' +
