@@ -49,10 +49,11 @@ describe('instrument sounds', () => {
     expect(warnings).toEqual([])
   })
 
-  test('writes the sound with no name where the name is empty', () => {
-    const { mnx, warnings } = convert(
-      '<score-instrument id="P1-I1"><instrument-name/></score-instrument>',
-    )
+  test.each([
+    ['is empty', '<instrument-name/>'],
+    ['is missing', ''],
+  ])('writes the sound with no name where the name %s', (_, name) => {
+    const { mnx, warnings } = convert(`<score-instrument id="P1-I1">${name}</score-instrument>`)
 
     expect(mnx.global.sounds).toEqual({ 'P1-I1': {} })
     expect(warnings).toEqual([])
