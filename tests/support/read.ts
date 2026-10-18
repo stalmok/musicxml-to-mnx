@@ -1,4 +1,4 @@
-// Reader tests read through this function, which holds every warning to the
+// Reader tests read through readValid, which holds every warning to the
 // source. ESLint rejects a direct call to readScore in a test, except where
 // the test expects it to throw.
 
@@ -42,8 +42,8 @@ export function readFailure(source: string): MusicXMLError {
 }
 
 // Everything a global measure can state beyond a key, a time and a tempo.
-// Spread into an expectation so that adding a field to the model does not
-// mean editing every one of them.
+// Tests spread it into their expectations, so a new field in the model
+// changes this one place.
 export const NO_BARLINE = {
   barline: undefined,
   repeatStart: false,

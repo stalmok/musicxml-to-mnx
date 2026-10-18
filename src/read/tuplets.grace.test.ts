@@ -1,4 +1,5 @@
-// Grace notes inside, before and after tuplet brackets.
+// Grace notes: how a group is read and converted, and grace notes inside,
+// before and after tuplet brackets.
 
 import { describe, expect, test } from 'vitest'
 import {

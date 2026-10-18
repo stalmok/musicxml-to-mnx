@@ -1,5 +1,5 @@
-// Builders for tuplet and two-note tremolo reader tests. Every measure states
-// 12 divisions to the quarter.
+// Builders for tuplet and two-note tremolo reader tests. measure() states 12
+// divisions to the quarter. measures() states none.
 
 export const DIVISIONS = '<attributes><divisions>12</divisions></attributes>'
 

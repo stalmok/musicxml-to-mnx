@@ -1,6 +1,7 @@
-// MNX states a measure's key, time signature, tempo and barline once for the
-// whole score. MusicXML states them inside each part, so the parts can repeat
-// each other or disagree.
+// MNX states the global measures once for the whole score: key, time
+// signature, tempo, barline, measure number, repeats, endings, jumps and
+// fermatas. MusicXML states them inside each part, so the parts can repeat
+// each other, disagree, or have different numbers of measures.
 
 import { describe, expect, test } from 'vitest'
 import { NO_BARLINE, readValid } from '../../tests/support/read.js'
