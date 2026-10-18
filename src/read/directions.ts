@@ -835,13 +835,12 @@ function readDynamics(
   // Where the pieces a split mark took in run out.
   let joinedTo = 0
   for (const [index, mark] of marks.entries()) {
-    if (index < joinedTo) continue
     element.read(mark)
+    if (index < joinedTo) continue
     const split = splitMark(marks, index)
     let found: Mark | undefined
     if (split !== undefined) {
       joinedTo = index + split.pieces
-      for (const piece of marks.slice(index + 1, joinedTo)) element.read(piece)
       found = split.mark
     } else if (mark.name === 'other-dynamics') {
       const written = trimmedText(mark)
