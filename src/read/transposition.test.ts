@@ -1405,6 +1405,18 @@ describe('a note in a part that flips its key signature', () => {
     ])
   })
 
+  // A written A natural in five flats sounds G, or F double-sharp once moved
+  // by the flip. Both sit six fifths from the middle of five sharps, and the
+  // flip's spelling keeps the raised fifth the part wrote.
+  test('takes the flip’s spelling where both are as near the score’s key', () => {
+    const { mnx } = convertValid(twoParts([[5, pitched('B', 0, 3)]], [[-5, pitched('A', 0, 4)]]))
+    const [event] = mnx.parts[1]?.measures[0]?.sequences[0]?.content ?? []
+
+    expect(event && 'notes' in event ? event.notes : undefined).toEqual([
+      { pitch: { step: 'F', octave: 4, alter: 2 } },
+    ])
+  })
+
   // An A clarinet asks for eight flats where the score is in five, and writes
   // four sharps instead, so its notes come back one letter under.
   test('states a note past a point below zero in the score’s key', () => {
