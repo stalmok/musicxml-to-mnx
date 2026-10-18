@@ -1,30 +1,14 @@
 import { describe, expect, test } from 'vitest'
-import { readValid } from '../../tests/support/read.js'
+import { readFailure, readValid } from '../../tests/support/read.js'
+import { NOTE, score } from '../../tests/support/musicxml.js'
 import { convertValid } from '../../tests/support/convert.js'
 import { MusicXMLError } from '../errors.js'
 import { WarningCollector } from './collector.js'
-
-/** Wraps `body` in the smallest document that can carry it. */
-function score(body: string): string {
-  return `<score-partwise version="4.0">${body}</score-partwise>`
-}
-
-const NOTE = '<note><pitch><step>C</step><octave>4</octave></pitch><type>whole</type></note>'
 
 function read(source: string) {
   const warnings = new WarningCollector()
   const result = readValid(source, warnings)
   return { score: result, warnings: warnings.list() }
-}
-
-function readFailure(source: string): MusicXMLError {
-  try {
-    read(source)
-  } catch (e) {
-    if (e instanceof MusicXMLError) return e
-    throw e
-  }
-  throw new Error('Expected the read to fail, but it succeeded.')
 }
 
 // MNX states a time signature at the start of a measure only. MusicXML can

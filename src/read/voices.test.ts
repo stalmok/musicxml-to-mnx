@@ -3,10 +3,9 @@
 // note to the one before it. MNX states each voice as its own sequence. These
 // cover the translation between the two.
 
-import { notesOf, readValid } from '../../tests/support/read.js'
+import { notesOf, readFailure, readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
-import { MusicXMLError } from '../errors.js'
 import { fraction } from '../fraction.js'
 import { WarningCollector } from './collector.js'
 
@@ -28,16 +27,6 @@ function read(source: string) {
   const warnings = new WarningCollector()
   const result = readValid(source, warnings)
   return { measure: result.parts[0]?.measures[0], warnings: warnings.list() }
-}
-
-function readFailure(source: string): MusicXMLError {
-  try {
-    read(source)
-  } catch (e) {
-    if (e instanceof MusicXMLError) return e
-    throw e
-  }
-  throw new Error('Expected the read to fail, but it succeeded.')
 }
 
 describe('voices', () => {

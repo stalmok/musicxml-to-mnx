@@ -1,21 +1,9 @@
 import { describe, expect, test } from 'vitest'
-import { notesOf, readValid } from '../../tests/support/read.js'
+import { notesOf, readFailure, readValid } from '../../tests/support/read.js'
+import { measure, NOTE, score } from '../../tests/support/musicxml.js'
 import { convertValid } from '../../tests/support/convert.js'
-import { MusicXMLError } from '../errors.js'
 import { WarningCollector } from './collector.js'
 import { GENERATED_ID_PATTERN } from '../ids.js'
-
-/** Wraps `body` in the smallest document that can carry it. */
-function score(body: string): string {
-  return `<score-partwise version="4.0">${body}</score-partwise>`
-}
-
-/** Wraps `body` in a one-part, one-measure document. */
-function measure(body: string): string {
-  return score(`<part id="P1"><measure number="1">${body}</measure></part>`)
-}
-
-const NOTE = '<note><pitch><step>C</step><octave>4</octave></pitch><type>whole</type></note>'
 
 /** A note that takes time, for a mark whose point in the measure is the subject. */
 const QUARTER =
@@ -36,16 +24,6 @@ function read(source: string) {
 function firstEvent(result: ReturnType<typeof read>['score'], measure = 0) {
   const item = result.parts[0]?.measures[measure]?.sequences[0]?.content[0]
   return item?.kind === 'event' ? item : undefined
-}
-
-function readFailure(source: string): MusicXMLError {
-  try {
-    read(source)
-  } catch (e) {
-    if (e instanceof MusicXMLError) return e
-    throw e
-  }
-  throw new Error('Expected the read to fail, but it succeeded.')
 }
 
 // Everything a global measure can state beyond a key, a time and a tempo.

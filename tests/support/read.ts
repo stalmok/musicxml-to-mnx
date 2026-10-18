@@ -3,6 +3,7 @@
 // the test expects it to throw.
 
 import { expect } from 'vitest'
+import { MusicXMLError } from '../../src/errors.js'
 import type { Event, KitNote, Note, Score } from '../../src/model/score.js'
 import { readScore } from '../../src/read/score.js'
 import { WarningCollector } from '../../src/read/collector.js'
@@ -27,4 +28,15 @@ export function notesOf(event: Event | undefined): readonly Note[] {
 /** The notes an event strikes on a percussion kit, which for a rest is none. */
 export function kitNotesOf(event: Event | undefined): readonly KitNote[] {
   return event?.body.kind === 'notes' ? event.body.kitNotes : []
+}
+
+/** The error a read of the source throws. Fails the test if the read succeeds. */
+export function readFailure(source: string): MusicXMLError {
+  try {
+    readValid(source)
+  } catch (e) {
+    if (e instanceof MusicXMLError) return e
+    throw e
+  }
+  throw new Error('Expected the read to fail, but it succeeded.')
 }
