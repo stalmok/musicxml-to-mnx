@@ -19,7 +19,7 @@ import type { BeamedEvent } from './beams.js'
 import { readDuration } from './divisions.js'
 import { describeLength, describeValue, lengthOf } from './duration.js'
 import type { ElementReader } from './element.js'
-import { readEventNotations, reconcile } from './eventNotations.js'
+import { readEventNotations, reconcile, writtenFor } from './eventNotations.js'
 import { reportHidden } from './unrepresentable.js'
 import { readFermata, readMarkings, readStemDirection } from './marks.js'
 import { readLyrics } from './lyrics.js'
@@ -111,10 +111,16 @@ export function readNote(
       hiddenBlocks.push({ block: block.element, place: warnings.reserve() })
     }
   }
+  // MNX states one fermata, the first written, so a hidden block holding only
+  // later ones hides nothing drawn. Their loss is reported as a fermata's.
+  const eventNotations = readEventNotations(notations)
+  const fermata = writtenFor(eventNotations, 'fermata')[0]?.found
   const reportHiddenNote = (only?: 'fermata') => {
     reportHidden(element.element, warnings, context, undefined, hiddenPlace)
     for (const { block, place } of hiddenBlocks) {
-      if (only !== undefined && !child(block, only)) continue
+      const holdsFermata = fermata !== undefined && block.children.includes(fermata)
+      if (only !== undefined && !holdsFermata) continue
+      if (!holdsFermata && block.children.every((one) => one.name === 'fermata')) continue
       reportHidden(block, warnings, context, only ?? block.children[0]?.name, place)
     }
   }
@@ -161,7 +167,6 @@ export function readNote(
     ? restStaffPosition(restElement, staff, state, warnings, context)
     : undefined
 
-  const eventNotations = readEventNotations(notations)
   const statement: NoteStatement = {
     element,
     notations,

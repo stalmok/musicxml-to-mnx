@@ -257,7 +257,7 @@ export function setMeasureRest(
   // a hidden one then loses nothing drawn. So its hiding, like its length, is
   // reported only where it stays on the sequence. Where the rest cannot stay
   // an event, only its fermata is converted, so only a hidden block holding
-  // one is drawn anyway.
+  // that fermata is drawn anyway.
   const hiddenDrawn = fills.canStayEvent ? undefined : 'fermata'
   if (restValue) note.reportHidden(hiddenDrawn)
 

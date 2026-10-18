@@ -252,6 +252,47 @@ describe('an element hidden with print-object="no"', () => {
     ])
   })
 
+  // MNX states one fermata, the first, so a hidden block holding only a later
+  // one hides nothing that is drawn.
+  test('says nothing about a hidden notations block holding only a dropped fermata', () => {
+    const { warnings } = read(
+      measure(
+        note(
+          '<notations><fermata/></notations><notations print-object="no"><fermata/></notations>',
+        ),
+      ),
+    )
+
+    expect(warnings.map((warning) => [warning.code, warning.element])).toEqual([
+      ['unrepresentable:fermata', 'fermata'],
+    ])
+  })
+
+  test('reports a hidden notations block holding a dropped fermata beside a mark', () => {
+    expect(
+      hidden(
+        measure(
+          note(
+            '<notations><fermata/></notations><notations print-object="no"><fermata/>' +
+              '<articulations><accent/></articulations></notations>',
+          ),
+        ),
+      ),
+    ).toEqual([['unrepresentable:attribute', 'notations']])
+  })
+
+  test('reports a hidden notations block holding the fermata converted', () => {
+    expect(
+      hidden(
+        measure(
+          note(
+            '<notations print-object="no"><fermata/></notations><notations><fermata/></notations>',
+          ),
+        ),
+      ),
+    ).toEqual([['unrepresentable:attribute', 'notations']])
+  })
+
   // An empty block hides nothing. The attribute is read, not left for the
   // sweep, which would report it as a loss.
   test('says nothing about an empty hidden notations block', () => {

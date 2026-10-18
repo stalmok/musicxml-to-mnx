@@ -37,8 +37,9 @@ export interface NoteStatement extends Omit<RestNote, 'voice'> {
   hidden: boolean
   /**
    * Reports the note and its <notations> blocks hidden, each in the place it
-   * was read. Given `only`, just a block holding a fermata is reported, naming
-   * it: nothing else in the block is converted, so hiding it loses nothing.
+   * was read. Given `only`, just a block holding the converted fermata is
+   * reported, naming it: nothing else in the block is converted, so hiding
+   * it loses nothing.
    */
   reportHidden: (only?: 'fermata') => void
 }

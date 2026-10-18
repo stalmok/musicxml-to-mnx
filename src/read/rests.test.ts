@@ -1708,6 +1708,15 @@ describe('a rest filling a measure a grace note leads into', () => {
     expect(kinds(rest + grace).warnings).toEqual(reported)
   })
 
+  test('says nothing about a hidden block holding only a fermata the rest drops', () => {
+    const rest = irregularRest.replace(
+      '</note>',
+      '<notations><fermata/></notations><notations print-object="no"><fermata/></notations></note>',
+    )
+
+    expect(kinds(rest).warnings).toEqual([['unrepresentable:fermata', 'fermata', 1]])
+  })
+
   test('reports a hidden rest and a hidden block holding its fermata as drawn', () => {
     const rest = hidden(
       '<notations print-object="no"><articulations><accent/></articulations><fermata/>' +
