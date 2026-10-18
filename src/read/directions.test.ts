@@ -522,6 +522,7 @@ describe('dynamics', () => {
     ['<sf/><other-dynamics>z</other-dynamics>', 'f', undefined, 's', 'z'],
     ['<sf/><mp/>', 'f', 'mp', 's', ''],
     ['<f/><p/>', 'f', 'p', '', ''],
+    ['<other-dynamics> s</other-dynamics><f/>', 'f', undefined, 's', ''],
     [
       '<other-dynamics>s</other-dynamics><other-dynamics>ff</other-dynamics>',
       'ff',
@@ -622,6 +623,22 @@ describe('dynamics', () => {
     const { measure } = read(inMeasure(direction(`<dynamics>${pieces}</dynamics>`) + note('C')))
 
     expect(measure?.dynamics).toMatchObject([{ kind: 'immediate', value, prefix }])
+  })
+
+  test('joins no pieces across one naming a glyph', () => {
+    const { measure } = read(
+      inMeasure(
+        direction(
+          '<dynamics><other-dynamics>s</other-dynamics>' +
+            '<other-dynamics smufl="dynamicForte">f</other-dynamics><f/></dynamics>',
+        ) + note('C'),
+      ),
+    )
+
+    expect(measure?.dynamics).toMatchObject([
+      { kind: 'immediate', value: 'f', prefix: 's' },
+      { kind: 'immediate', value: 'f' },
+    ])
   })
 
   test('leaves a piece naming a glyph out of a split mark', () => {
