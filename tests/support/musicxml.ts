@@ -11,3 +11,8 @@ export function measure(body: string): string {
 }
 
 export const NOTE = '<note><pitch><step>C</step><octave>4</octave></pitch><type>whole</type></note>'
+
+/** A note that takes time, for a mark whose point in the measure is the subject. */
+export const QUARTER =
+  '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+  '<duration>4</duration><type>quarter</type></note>'

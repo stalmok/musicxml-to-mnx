@@ -40,3 +40,16 @@ export function readFailure(source: string): MusicXMLError {
   }
   throw new Error('Expected the read to fail, but it succeeded.')
 }
+
+// Everything a global measure can state beyond a key, a time and a tempo.
+// Spread into an expectation so that adding a field to the model does not
+// mean editing every one of them.
+export const NO_BARLINE = {
+  barline: undefined,
+  repeatStart: false,
+  repeatEnd: undefined,
+  ending: undefined,
+  fermata: undefined,
+  systemBreak: false,
+  pageBreak: false,
+}
