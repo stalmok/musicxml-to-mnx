@@ -28,6 +28,7 @@ import {
   pitchesOf,
   sourceMicrotones,
   sourcePitches,
+  flipLetters,
   underfilledTuplets,
   unsourcedLosses,
 } from './support/structural.js'
@@ -126,7 +127,7 @@ function firstFailure(
   }
 
   const converted = pitchesOf(mnx)
-  const inSource = sourcePitches(root)
+  const inSource = sourcePitches(root, flipLetters(mnx))
   if (converted.length !== inSource.length || converted.some((p, i) => p !== inSource[i])) {
     const at = converted.findIndex((p, i) => p !== inSource[i])
     return {

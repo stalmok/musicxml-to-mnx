@@ -35,6 +35,7 @@ import {
   sourceMeasureLengths,
   sourceLyricPlaces,
   sourcePitches,
+  flipLetters,
   sourceSlurSpans,
   underfilledTuplets,
   crowdedMeasureRests,
@@ -939,7 +940,7 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   })
 
   test('keeps every pitch the source wrote, in order', () => {
-    expect(pitchesOf(mnx)).toEqual(sourcePitches(parseXmlRoot(source)))
+    expect(pitchesOf(mnx)).toEqual(sourcePitches(parseXmlRoot(source), flipLetters(mnx)))
   })
 
   // MNX advances the sequence cursor by a tuplet's outer, and its content must

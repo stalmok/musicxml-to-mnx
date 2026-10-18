@@ -15,6 +15,7 @@ import {
   layoutLosses,
   measureLengthDisagreements,
   holdsUnderfilledTuplet,
+  flipLetters,
   pitchesOf,
   sounding,
   sourceLyricPlaces,
@@ -65,11 +66,11 @@ test('a chord member without a voice counts toward its base note voice', () => {
   </part>
 </score-partwise>
 `
-  const inSource = sourcePitches(parseXmlRoot(source))
+  const { mnx } = convertValid(source)
+  const inSource = sourcePitches(parseXmlRoot(source), flipLetters(mnx))
   expect(inSource).toEqual(['part 1 measure 1: C5 D5 | G4 B4 A4'])
 
   // The converter reads it the same way.
-  const { mnx } = convertValid(source)
   expect(pitchesOf(mnx)).toEqual(inSource)
 })
 
@@ -97,11 +98,11 @@ test('a microtone is read as the whole alteration MNX states, and counted', () =
 </score-partwise>
 `
   const root = parseXmlRoot(source)
-  const inSource = sourcePitches(root)
+  const { mnx, warnings } = convertValid(source)
+  const inSource = sourcePitches(root, flipLetters(mnx))
   expect(inSource).toEqual(['part 1 measure 1: C4(-1) D4 E4 F4(2) G4(1)'])
   expect(sourceMicrotones(root)).toBe(4)
 
-  const { mnx, warnings } = convertValid(source)
   expect(pitchesOf(mnx)).toEqual(inSource)
   expect(warnings.filter((w) => w.code === 'unrepresentable:microtone')).toHaveLength(4)
 })
@@ -182,12 +183,44 @@ test('a transposing part is compared at the pitch it sounds', () => {
   </part>
 </score-partwise>
 `
-  const inSource = sourcePitches(parseXmlRoot(source))
+  const { mnx } = convertValid(source)
+  const inSource = sourcePitches(parseXmlRoot(source), flipLetters(mnx))
 
   // A written C sounds a B-flat, and a written E-flat a D-flat.
   expect(inSource).toEqual(['part 1 measure 1: B4(-1) D5(-1)'])
 
+  expect(pitchesOf(mnx)).toEqual(inSource)
+})
+
+// A B-flat clarinet in a score of five sharps writes five flats rather than
+// seven sharps. MNX draws the part by moving each note a letter up from its
+// sounding pitch, so the pitch it must state is the one spelled in the score's
+// key: a written D-flat is stated as B, not C-flat.
+test('a part that flips its key signature is compared in the score’s key', () => {
+  const part = (id: string, attributes: string, step: string, alter: number) =>
+    `<part id="${id}"><measure number="1"><attributes><divisions>1</divisions>${attributes}` +
+    `</attributes><note><pitch><step>${step}</step>` +
+    (alter !== 0 ? `<alter>${String(alter)}</alter>` : '') +
+    '<octave>5</octave></pitch><duration>1</duration><voice>1</voice><type>quarter</type>' +
+    '</note></measure></part>'
+  const source =
+    '<score-partwise version="3.0"><part-list>' +
+    '<score-part id="P1"><part-name>Flute</part-name></score-part>' +
+    '<score-part id="P2"><part-name>Clarinet</part-name></score-part></part-list>' +
+    part('P1', '<key><fifths>5</fifths></key>', 'B', 0) +
+    part(
+      'P2',
+      '<key><fifths>-5</fifths></key>' +
+        '<transpose><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>',
+      'D',
+      -1,
+    ) +
+    '</score-partwise>'
+
   const { mnx } = convertValid(source)
+  const inSource = sourcePitches(parseXmlRoot(source), flipLetters(mnx))
+
+  expect(inSource).toEqual(['part 1 measure 1: B5', 'part 2 measure 1: B4'])
   expect(pitchesOf(mnx)).toEqual(inSource)
 })
 
@@ -215,12 +248,12 @@ test('a transposition stated partway through a measure applies from there', () =
   </part>
 </score-partwise>
 `
-  const inSource = sourcePitches(parseXmlRoot(source))
+  const { mnx } = convertValid(source)
+  const inSource = sourcePitches(parseXmlRoot(source), flipLetters(mnx))
 
   // The first note is still at concert pitch; the second sounds a B-flat.
   expect(inSource).toEqual(['part 1 measure 1: C5 B4(-1)'])
 
-  const { mnx } = convertValid(source)
   expect(pitchesOf(mnx)).toEqual(inSource)
 })
 
@@ -547,10 +580,10 @@ test('a voice sounding two notes at once counts as two lines', () => {
   </part>
 </score-partwise>
 `
-  const inSource = sourcePitches(parseXmlRoot(source))
+  const { mnx } = convertValid(source)
+  const inSource = sourcePitches(parseXmlRoot(source), flipLetters(mnx))
   expect(inSource).toEqual(['part 1 measure 1: C5 | E4'])
 
-  const { mnx } = convertValid(source)
   expect(pitchesOf(mnx)).toEqual(inSource)
 })
 
@@ -587,10 +620,10 @@ test('a laid-over line keeps the notes written after it', () => {
   </part>
 </score-partwise>
 `
-  const inSource = sourcePitches(parseXmlRoot(source))
+  const { mnx } = convertValid(source)
+  const inSource = sourcePitches(parseXmlRoot(source), flipLetters(mnx))
   expect(inSource).toEqual(['part 1 measure 1: C5 | E4 G4'])
 
-  const { mnx } = convertValid(source)
   expect(pitchesOf(mnx)).toEqual(inSource)
 })
 
@@ -627,10 +660,10 @@ test('a grace note follows the note it leads into, not where it was written', ()
   </part>
 </score-partwise>
 `
-  const inSource = sourcePitches(parseXmlRoot(source))
+  const { mnx } = convertValid(source)
+  const inSource = sourcePitches(parseXmlRoot(source), flipLetters(mnx))
   expect(inSource).toEqual(['part 1 measure 1: B4 E4 | C5'])
 
-  const { mnx } = convertValid(source)
   expect(pitchesOf(mnx)).toEqual(inSource)
 })
 

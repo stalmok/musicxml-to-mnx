@@ -275,14 +275,62 @@ function sounded(
   }
 }
 
+/** The same pitch spelled `letters` steps higher on the staff. */
+function respelled(
+  pitch: { step: string; octave: number; alter: number },
+  letters: number,
+): { step: string; octave: number; alter: number } {
+  const index = STEP_ORDER.indexOf(pitch.step)
+  const steps = pitch.octave * 7 + index + letters
+  const octave = Math.floor(steps / 7)
+  const stepIndex = ((steps % 7) + 7) % 7
+  const semitones = pitch.octave * 12 + (STEP_SEMITONES[index] ?? 0) + pitch.alter
+  return {
+    step: STEP_ORDER[stepIndex] ?? 'C',
+    octave,
+    alter: semitones - (octave * 12 + (STEP_SEMITONES[stepIndex] ?? 0)),
+  }
+}
+
+/**
+ * How many letters MNX moves each note of a part when it draws the part at
+ * written pitch, measure by measure. Where the part's keyFifthsFlipAt flips
+ * the transposed key signature by twelve fifths, MNX moves every note by one
+ * letter as well: one up where twelve are taken off, one down where they are
+ * added. A key no measure states yet is C major.
+ */
+export function flipLetters(document: MNXDocument): (part: number, measure: number) => number {
+  const concertKeys: number[] = []
+  let inForce = 0
+  for (const measure of document.global.measures) {
+    inForce = measure.key?.fifths ?? inForce
+    concertKeys.push(inForce)
+  }
+  return (part, measure) => {
+    const transposition = document.parts[part]?.transposition
+    const flipAt = transposition?.keyFifthsFlipAt
+    if (!transposition || flipAt === undefined) return 0
+    const { staffDistance, halfSteps } = transposition.interval
+    const transposed = (concertKeys[measure] ?? inForce) + 7 * halfSteps - 12 * staffDistance
+    if (flipAt >= 0) return transposed >= flipAt ? 1 : 0
+    return transposed <= flipAt ? -1 : 0
+  }
+}
+
 /**
  * Every pitch in the source, one line per part and measure, read from the
  * XML.
  *
  * A transposing part is written at the pitch its player reads, and MNX states
- * the pitch the instrument sounds, so <transpose> is applied here.
+ * the pitch the instrument sounds, so <transpose> is applied here. Where MNX
+ * moves the part's notes by a letter to draw them, `letters` says so, and the
+ * pitch is moved back: the note MNX must state is the one it draws as the
+ * source wrote it.
  */
-export function sourcePitches(root: XmlElement): string[] {
+export function sourcePitches(
+  root: XmlElement,
+  letters: (part: number, measure: number) => number,
+): string[] {
   const lines: string[] = []
   root.children
     .filter((c) => c.name === 'part')
@@ -382,13 +430,16 @@ export function sourcePitches(root: XmlElement): string[] {
               pitch.children.find((c) => c.name === name)?.rawText.trim() ?? ''
             line.pitches.push(
               pitchKey(
-                sounded(
-                  {
-                    step: text('step'),
-                    octave: Number(text('octave')),
-                    alter: text('alter') === '' ? 0 : statedAlter(Number(text('alter'))),
-                  },
-                  transpose,
+                respelled(
+                  sounded(
+                    {
+                      step: text('step'),
+                      octave: Number(text('octave')),
+                      alter: text('alter') === '' ? 0 : statedAlter(Number(text('alter'))),
+                    },
+                    transpose,
+                  ),
+                  -letters(partIndex, measureIndex),
                 ),
               ),
             )
