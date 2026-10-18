@@ -131,7 +131,7 @@ The reader modules are:
 | `barlines.ts`                 | Read barlines and repeats. Join each ending's start and stop across the part.                |
 | `partList.ts`                 | Read the part list: each part's names and instrument setup, and the part group edges.        |
 | `part-groups.ts`, `print.ts`  | Read part groups and layout breaks.                                                          |
-| `transposition.ts`            | Convert written pitches and keys of transposing parts to sounding pitch.                     |
+| `transposition.ts`            | Convert transposing parts to sounding pitch, spelled in the score's key past a flip point.   |
 | `steps.ts`                    | Count a pitch's height in diatonic steps.                                                    |
 | `divisions.ts`, `duration.ts` | Read durations in divisions. Convert a duration back to a note value.                        |
 | `writtenValues.ts`            | Read a note's written value, or recover it from its duration. Report a mismatch.             |

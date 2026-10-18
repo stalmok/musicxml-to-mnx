@@ -39,9 +39,9 @@ const CLEF_REFERENCE: Record<PitchedClefSign, number> = {
  * The height a <display-step>/<display-octave> pair states, in steps from the
  * middle of the staff. Exporters state it as they state a pitch, so a clef's
  * octave change moves it too. Undefined where the pair is incomplete or no
- * clef is in force. The
- * caller decides what follows: a rest without a height is drawn at its
- * default, and an unpitched note without one has nowhere to sit.
+ * clef is in force. The caller decides what follows: a rest without a height
+ * is drawn at its default, and an unpitched note without one has nowhere to
+ * sit.
  */
 function displayStaffPosition(
   element: XmlElement,
