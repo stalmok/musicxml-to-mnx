@@ -905,6 +905,7 @@ function writeNote(note: Note, referenced: ReadonlySet<string>): MNXNote {
     ...(note.accidentalDisplay
       ? { accidentalDisplay: writeAccidental(note.accidentalDisplay) }
       : {}),
+    ...(note.diatonicDelta !== undefined ? { written: { diatonicDelta: note.diatonicDelta } } : {}),
   }
 }
 

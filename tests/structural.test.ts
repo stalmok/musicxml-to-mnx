@@ -224,6 +224,34 @@ test('a part that flips its key signature is compared in the score’s key', () 
   expect(pitchesOf(mnx)).toEqual(inSource)
 })
 
+// A written E natural in that part would be a concert C double-sharp moved
+// by the flip, so it keeps D and states one letter down as its own. The check
+// reads it at the spelling the flip alone would move.
+test('a note stating its own letter move is compared where the flip moves it from', () => {
+  const part = (id: string, attributes: string, step: string) =>
+    `<part id="${id}"><measure number="1"><attributes><divisions>1</divisions>${attributes}` +
+    `</attributes><note><pitch><step>${step}</step><octave>5</octave></pitch>` +
+    '<duration>1</duration><voice>1</voice><type>quarter</type></note></measure></part>'
+  const source =
+    '<score-partwise version="3.0"><part-list>' +
+    '<score-part id="P1"><part-name>Flute</part-name></score-part>' +
+    '<score-part id="P2"><part-name>Clarinet</part-name></score-part></part-list>' +
+    part('P1', '<key><fifths>5</fifths></key>', 'B') +
+    part(
+      'P2',
+      '<key><fifths>-5</fifths></key>' +
+        '<transpose><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>',
+      'E',
+    ) +
+    '</score-partwise>'
+
+  const { mnx } = convertValid(source)
+  const inSource = sourcePitches(parseXmlRoot(source), flipLetters(mnx))
+
+  expect(inSource).toEqual(['part 1 measure 1: B5', 'part 2 measure 1: C5(2)'])
+  expect(pitchesOf(mnx)).toEqual(inSource)
+})
+
 // A part changes instrument partway through a measure ("muta in A", "To
 // Piccolo"). Both sides read the notes before the change at the instrument
 // that played them.

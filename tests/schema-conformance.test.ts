@@ -235,8 +235,8 @@ const DYNAMIC_NOT_MODELLED = 'A continued dynamic, and the voice a mark belongs 
  */
 const NOT_MODELLED: Readonly<Record<string, { properties: readonly string[]; why: string }>> = {
   MNXNote: {
-    properties: ['perform', 'written'],
-    why: 'Playback, and a written pitch differing from the sounding one.',
+    properties: ['perform'],
+    why: 'Playback.',
   },
   MNXSlur: {
     properties: ['endNote', 'startNote'],

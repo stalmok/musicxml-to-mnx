@@ -134,6 +134,12 @@ export interface TieTarget {
 
 export interface Note extends TieTarget {
   readonly pitch: Pitch
+  /**
+   * The letters MNX moves the note by, after its part's transposition and any
+   * flip of the key signature, to write it as the part did. Set only on a
+   * note of a flipping part that keeps the spelling nearer the score's key.
+   */
+  readonly diatonicDelta?: number
   readonly accidentalDisplay: AccidentalDisplay | undefined
   /**
    * Set only where this note sits on a staff other than the event's, which is

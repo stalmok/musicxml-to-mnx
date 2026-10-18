@@ -97,12 +97,22 @@ export interface MNXAccidentalDisplay {
   force?: boolean
 }
 
+/**
+ * The letters to move a note by after its part's transposition and key flip,
+ * to reach the spelling the part writes.
+ */
+export interface MNXWritten {
+  diatonicDelta?: number
+}
+
 export interface MNXNote {
   /** Present only where something refers to this note. */
   id?: string
   pitch: MNXPitch
   ties?: MNXTie[]
   accidentalDisplay?: MNXAccidentalDisplay
+  /** How the note is written in a transposed part, where that is not the default. */
+  written?: MNXWritten
   /**
    * Present only where this note sits on a staff other than the event's, as a
    * note of a chord that straddles the two hands of a piano part does.

@@ -186,7 +186,11 @@ interface VoiceLines {
   grace: { at: number; from: number } | undefined
 }
 
-/** Every pitch in the converted document, one line per part and measure. */
+/**
+ * Every pitch in the converted document, one line per part and measure. A
+ * note stating written.diatonicDelta is moved by it, so every note is read at
+ * the spelling MNX moves by the part's flip alone.
+ */
 export function pitchesOf(document: MNXDocument): string[] {
   const lines: string[] = []
   document.parts.forEach((part, partIndex) => {
@@ -204,7 +208,14 @@ export function pitchesOf(document: MNXDocument): string[] {
             }
             if ('notes' in item && item.notes) {
               for (const note of item.notes) {
-                found.push(pitchKey({ ...note.pitch, alter: note.pitch.alter ?? 0 }))
+                found.push(
+                  pitchKey(
+                    respelled(
+                      { ...note.pitch, alter: note.pitch.alter ?? 0 },
+                      note.written?.diatonicDelta ?? 0,
+                    ),
+                  ),
+                )
               }
             }
           }

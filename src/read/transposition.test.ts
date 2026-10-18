@@ -1383,6 +1383,28 @@ describe('a note in a part that flips its key signature', () => {
     ])
   })
 
+  // Moved a letter, a written E natural in five flats would be a concert C
+  // double-sharp, and a written B-sharp a G triple-sharp. Each keeps the
+  // spelling its interval gives, and states the letter MNX moves it back by:
+  // D, plus one letter down, is written E again once the flip moves it up.
+  test('keeps a note off the key’s scale in the spelling nearer the score’s key', () => {
+    const { mnx } = convertValid(
+      twoParts(
+        [[5, pitched('B', 0, 3)]],
+        [[-5, pitched('E', 0, 4) + pitched('B', 1, 4) + pitched('F', 0, 4)]],
+      ),
+    )
+    const notes = (mnx.parts[1]?.measures[0]?.sequences[0]?.content ?? []).flatMap((item) =>
+      'notes' in item ? (item.notes ?? []) : [],
+    )
+
+    expect(notes.map(({ pitch, written }) => ({ pitch, written }))).toEqual([
+      { pitch: { step: 'D', octave: 4 }, written: { diatonicDelta: -1 } },
+      { pitch: { step: 'A', octave: 4, alter: 1 }, written: { diatonicDelta: -1 } },
+      { pitch: { step: 'D', octave: 4, alter: 1 }, written: undefined },
+    ])
+  })
+
   // An A clarinet asks for eight flats where the score is in five, and writes
   // four sharps instead, so its notes come back one letter under.
   test('states a note past a point below zero in the score’s key', () => {

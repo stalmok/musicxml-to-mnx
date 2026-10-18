@@ -9,6 +9,7 @@
 import type {
   Event,
   Measure,
+  Note,
   Pitch,
   SequenceItem,
   Step,
@@ -136,6 +137,14 @@ export function respelled(pitch: Pitch, letters: number): Pitch {
   return { step, octave, alter: semitonesFromC - (octave * 12 + SEMITONES[step]) }
 }
 
+// Where each letter sits on the line of fifths, counted from C.
+const FIFTHS: Readonly<Record<Step, number>> = { F: -1, C: 0, G: 1, D: 2, A: 3, E: 4, B: 5 }
+
+/** How many fifths a spelling sits from the middle of a key's scale. */
+function distanceFromKey(pitch: Pitch, fifths: number): number {
+  return Math.abs(FIFTHS[pitch.step] + 7 * pitch.alter - (fifths + 2))
+}
+
 /**
  * Re-spells a flipping part's notes in the key the score sounds in, given the
  * concert key in force at each measure.
@@ -144,6 +153,11 @@ export function respelled(pitch: Pitch, letters: number): Pitch {
  * signature: one up where twelve fifths are taken off, one down where they
  * are added. A note read from the flipped part is spelled the way the part
  * wrote it, so it is moved the other way here, and the flip brings it back.
+ *
+ * A note off the key's scale comes out of that move with a double or triple
+ * sharp or flat: a written E natural in five flats is a concert C
+ * double-sharp. Such a note keeps the spelling its interval gives, which is
+ * nearer the score's key, and states the letters MNX moves it back by.
  */
 export function respellPastFlip(
   measures: readonly Measure[],
@@ -158,39 +172,45 @@ export function respellPastFlip(
         writtenFifths(concert, transposition)) /
       12
     if (letters === 0) return measure
+    const respell = (note: Note): Note => {
+      const moved = respelled(note.pitch, letters)
+      return distanceFromKey(moved, concert) <= distanceFromKey(note.pitch, concert)
+        ? { ...note, pitch: moved }
+        : { ...note, diatonicDelta: letters }
+    }
     return {
       ...measure,
       sequences: measure.sequences.map((sequence) =>
         sequence.fullMeasure
           ? sequence
-          : { ...sequence, content: respellItems(sequence.content, letters) },
+          : { ...sequence, content: respellItems(sequence.content, respell) },
       ),
     }
   })
 }
 
-function respellItems(items: readonly SequenceItem[], letters: number): SequenceItem[] {
+function respellItems(
+  items: readonly SequenceItem[],
+  respell: (note: Note) => Note,
+): SequenceItem[] {
   return items.map((item) => {
     switch (item.kind) {
       case 'event':
-        return respellEvent(item, letters)
+        return respellEvent(item, respell)
       case 'tuplet':
-        return { ...item, content: respellItems(item.content, letters) }
+        return { ...item, content: respellItems(item.content, respell) }
       case 'grace':
       case 'multiNoteTremolo':
-        return { ...item, content: item.content.map((event) => respellEvent(event, letters)) }
+        return { ...item, content: item.content.map((event) => respellEvent(event, respell)) }
       case 'space':
         return item
     }
   })
 }
 
-function respellEvent(event: Event, letters: number): Event {
+function respellEvent(event: Event, respell: (note: Note) => Note): Event {
   if (event.body.kind === 'rest') return event
-  const [first, ...rest] = event.body.notes.map((note) => ({
-    ...note,
-    pitch: respelled(note.pitch, letters),
-  }))
+  const [first, ...rest] = event.body.notes.map(respell)
   if (!first) return event
   return { ...event, body: { ...event.body, notes: [first, ...rest] } }
 }
