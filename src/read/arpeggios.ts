@@ -272,9 +272,12 @@ export class Arpeggios {
       // mark is written on a note and a kit note carries none, so such a roll
       // spans the whole chord. A chord sounding on a pitched staff and a kit
       // at once is ordered as it is drawn, since a pitch and a component's
-      // height compare only on the staff.
+      // height compare only on the staff. Where marks numbered two ways
+      // divide such a chord, which roll a kit note belongs to is not known.
       const mixed =
-        notes.length > 0 && kitNotes.length > 0 ? drawnOrder(chords, kit, staffOf) : undefined
+        notes.length > 0 && kitNotes.length > 0 && !group.some((one) => divided.has(one.event))
+          ? drawnOrder(chords, kit, staffOf)
+          : undefined
       const ordered: readonly TieTarget[] =
         mixed ??
         (notes.length > 0
@@ -310,8 +313,9 @@ export class Arpeggios {
         continue
       }
 
-      // Where no clef places a pitched note, a chord sounding on a pitched
-      // staff and a kit at once is spanned by its pitched notes. MNX reads
+      // Where no clef places a pitched note, or the chord is divided, a chord
+      // sounding on a pitched staff and a kit at once is spanned by its
+      // pitched notes. MNX reads
       // the notes a mark covers as the ones whose pitch lies between its
       // ends, so a kit note left out of the span is left out of the mark.
       // Reported here rather than above, where the mark may still turn out

@@ -671,6 +671,48 @@ describe('the MNX a percussion part converts to', () => {
       expect(warnings).toEqual([])
     })
 
+    // The chord stands on the lower staff, in the bass clef, and its kit note
+    // reaches up to the treble staff, where it is drawn below the C4.
+    test('places the chord on the staff it stands on', () => {
+      const rolled =
+        pitched('C', '4', ROLL).replace('</note>', '<staff>2</staff></note>') +
+        kitNote('B', '3', ROLL).replace('</note>', '<staff>1</staff></note>')
+      const { span, notes, kitNotes } = readWith(
+        rolled,
+        '<attributes><divisions>1</divisions><staves>2</staves>' +
+          '<clef number="1"><sign>G</sign><line>2</line></clef>' +
+          '<clef number="2"><sign>F</sign><line>4</line></clef></attributes>',
+      )
+
+      expect(span).toEqual({ start: notes[0], end: kitNotes[0] })
+    })
+
+    // Marks numbered two ways divide the chord into two rolls, each over the
+    // notes that carried its own mark. A kit note carries no mark, so which
+    // roll it belongs to is not known, and each roll keeps to its own notes.
+    test('reports a chord divided into two rolls beside a kit note', () => {
+      const one = '<notations><arpeggiate number="1"/></notations>'
+      const two = '<notations><arpeggiate number="2"/></notations>'
+      const rolled =
+        pitched('C', '4', one) +
+        pitched('E', '4', one, '<chord/>') +
+        pitched('C', '5', two, '<chord/>') +
+        pitched('E', '5', two, '<chord/>') +
+        kitNote('F', '5')
+      const warnings = new WarningCollector()
+      const part = readValid(source(rolled, DRUM_KIT), warnings).parts[0]
+      const notes = notesOf(firstEvent(part)).map((note) => note.id)
+
+      expect(part?.measures[0]?.arpeggios.map((arpeggio) => arpeggio.span)).toEqual([
+        { start: notes[0], end: notes[1] },
+        { start: notes[2], end: notes[3] },
+      ])
+      expect(warnings.list().map((w) => w.code)).toEqual([
+        'unsupported:element',
+        'unsupported:element',
+      ])
+    })
+
     // With no clef in force a pitched note has no height to compare.
     test('reports a roll over its pitched notes only where no clef places them', () => {
       const rolled =
