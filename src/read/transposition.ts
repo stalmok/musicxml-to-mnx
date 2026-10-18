@@ -179,8 +179,10 @@ export function respellPastFlip(
       const moved = respelled(note.pitch, letters)
       const from = tiedFrom.get(note.id)
       let keep = distanceFromKey(moved, concert) > distanceFromKey(note.pitch, concert)
-      if (from && samePitch(from, moved)) keep = false
-      else if (from && samePitch(from, note.pitch)) keep = true
+      // A tie joins two notes that sound alike, so the letter alone tells
+      // one spelling of the sound from another.
+      if (from?.step === moved.step) keep = false
+      else if (from?.step === note.pitch.step) keep = true
       const result = keep ? { ...note, diatonicDelta: letters } : { ...note, pitch: moved }
       for (const tie of note.ties) {
         if (tie.kind === 'target') tiedFrom.set(tie.target, result.pitch)
@@ -196,10 +198,6 @@ export function respellPastFlip(
       ),
     }
   })
-}
-
-function samePitch(one: Pitch, other: Pitch): boolean {
-  return one.step === other.step && one.octave === other.octave && one.alter === other.alter
 }
 
 function respellItems(
