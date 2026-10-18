@@ -726,6 +726,99 @@ describe('grace notes', () => {
         ])
       })
 
+      // A note that moves with its group leaves the brackets of A's line. The
+      // markers then read the same as where the group stays.
+      const movesOrStays = (graces: string, after: string) =>
+        [true, false].map(
+          (moves) =>
+            readLines(
+              measures(
+                '<attributes><divisions>36</divisions></attributes>' +
+                  (moves ? note('A', 36, 'quarter') + backup(36) : '') +
+                  graces +
+                  after,
+              ),
+            ).warnings.filter((w) => w.code === 'inconsistent:tuplet').length,
+        )
+      const stop = (number: string) => `<tuplet type="stop" number="${number}"/>`
+
+      // C's 3:2 sits inside B's 3:2, and both make C's 9:4.
+      test('checks a start marker inside a bracket that closed over the same group', () => {
+        const graces =
+          grace('B', 3, 2, start('1', STATED)) +
+          grace('C', 9, 4, start('2', STATED)) +
+          grace('D', 9, 4, stop('2')) +
+          grace('E', 3, 2, stop('1'))
+
+        expect(movesOrStays(graces, note('F', 36, 'quarter'))).toEqual([0, 0])
+      })
+
+      // Inside the first triplet, B's 9:4 leaves its bracket 3:2. In A's line
+      // it leaves 9:4, so C's 3:2 inside it makes C's 27:8 in both lines.
+      test('checks a start marker against the share its outer bracket takes in the new line', () => {
+        const graces =
+          grace('B', 9, 4, start('1')) +
+          grace('C', 27, 8, start('2', STATED)) +
+          grace('D', 27, 8, stop('2')) +
+          grace('E', 9, 4, stop('1'))
+        const { warnings } = readLines(
+          measures(
+            '<attributes><divisions>36</divisions></attributes>' +
+              note('A', 36, 'quarter') +
+              backup(36) +
+              triplet('F', 'start') +
+              triplet('G') +
+              backup(12) +
+              graces +
+              note('D', 36, 'quarter') +
+              backup(24) +
+              triplet('B', 'stop'),
+          ),
+        )
+
+        expect(warnings.filter((w) => w.code === 'inconsistent:tuplet')).toEqual([])
+      })
+
+      // B's bracket closes before D opens one, so D's bracket is not around B.
+      test('checks a start marker apart from a bracket a later note of the group opens', () => {
+        const graces =
+          grace('B', 3, 2, start('1', STATED)) +
+          grace('C', 3, 2, stop('1')) +
+          grace('D', 3, 2, start('2', STATED))
+        const triplet =
+          note('E', 12, 'eighth', ratio(3, 2)) +
+          note('F', 12, 'eighth', ratio(3, 2) + marker('stop', '2'))
+
+        expect(movesOrStays(graces, triplet)).toEqual([0, 0])
+      })
+
+      // G's group takes its time from C before it and stays in B's line. Only
+      // the group after it moves with D.
+      test('checks a start marker in the line of the group holding its note', () => {
+        const eighth = (step: string, extra = '') => note(step, 12, 'eighth', ratio(3, 2) + extra)
+        const graces =
+          grace('G', 9, 4, start('5', STATED)).replace(
+            '<grace/>',
+            '<grace steal-time-previous="20"/>',
+          ) + grace('A', 9, 4, stop('5')).replace('<grace/>', '<grace steal-time-following="20"/>')
+        const { warnings } = readLines(
+          measures(
+            '<attributes><divisions>36</divisions></attributes>' +
+              note('A', 36, 'quarter') +
+              backup(36) +
+              eighth('B', marker('start', '1')) +
+              eighth('C') +
+              backup(12) +
+              graces +
+              note('D', 36, 'quarter') +
+              backup(24) +
+              eighth('E', marker('stop', '1')),
+          ),
+        )
+
+        expect(warnings.filter((w) => w.code === 'inconsistent:tuplet')).toEqual([])
+      })
+
       // A group taking its time from the note before stays in the half's
       // line, where the markers disagree. Only the group after it moves.
       test('checks a start marker against the line of a group that stays as another moves', () => {
