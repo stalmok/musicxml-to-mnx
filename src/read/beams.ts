@@ -44,11 +44,12 @@ export interface BeamedEvent {
   id: string
   markers: ReadonlyMap<number, BeamMarker>
   /**
-   * Whether the event opens the measure in a voice whose primary beam the
-   * measure before left open. A beam continued or ended here carries on
-   * that one. Never true for a grace note, whose beams stay in its group.
+   * The line whose primary beam the measure before left open, where the
+   * event opens the measure in the voice that line is in. A beam continued
+   * or ended here carries on that one. Never set for a grace note, whose
+   * beams stay in its group.
    */
-  continuesFromBefore: boolean
+  continuesFrom: string | undefined
   /**
    * How many beams the note's value calls for: an eighth one, a 16th two. An
    * inner beam that closes on this event alone is kept only up to this level.
@@ -102,10 +103,21 @@ const HOOK_DIRECTIONS = new Map<BeamValue, 'left' | 'right'>([
   ['backward hook', 'left'],
 ])
 
+/**
+ * The primary beams a measure leaves open at its barline: by voice, the
+ * staff each line of the voice left its beam open on, by line.
+ */
+export type BeamsOpenAtBarline = ReadonlyMap<string, ReadonlyMap<number, number | undefined>>
+
+/** Names a line of a voice across measures, as the voice and its line number. */
+export function lineKey(voice: string, line: number): string {
+  return `${voice}\n${String(line)}`
+}
+
 /** One line of a voice's beam markers over a measure. */
 export interface BeamedRun {
-  /** The voice the line is in. Nothing for a grace group, which beams within itself. */
-  voice: string | undefined
+  /** The line, as lineKey names it. Nothing for a grace group, which beams within itself. */
+  line: string | undefined
   events: readonly BeamedEvent[]
   /** Whether the line's last event leaves its primary beam open at the barline. */
   openAtBarline: boolean
@@ -122,7 +134,7 @@ interface OpenBeam {
 }
 
 /**
- * The primary beams a part leaves open at its barlines, by voice.
+ * The primary beams a part leaves open at its barlines, by line.
  *
  * A beam crossing the barline shows as a continue or end on the event that
  * opens the measure, in a voice whose beam the measure before left open.
@@ -139,21 +151,21 @@ export class OpenBeams {
     const carried = this.#open
     this.#open = new Map()
     const beams: Beam[] = []
-    for (const { voice, events, openAtBarline } of runs) {
+    for (const { line, events, openAtBarline } of runs) {
       const first = events[0]
       const kind = first?.markers.get(1)?.kind
       const from =
-        voice !== undefined && first?.continuesFromBefore && (kind === 'continue' || kind === 'end')
-          ? carried.get(voice)
+        first?.continuesFrom !== undefined && (kind === 'continue' || kind === 'end')
+          ? carried.get(first.continuesFrom)
           : undefined
       const { beams: built, trailing } = beamRuns(from ? [...from.events, ...events] : events, 1)
       for (const beam of built) {
         if (from && beam.events[0] === from.events[0]?.id) restate(from, beam)
         else beams.push(beam)
       }
-      if (voice !== undefined && openAtBarline && trailing) {
+      if (line !== undefined && openAtBarline && trailing) {
         const joined = from !== undefined && trailing.run[0] === from.events[0]
-        this.#open.set(voice, {
+        this.#open.set(line, {
           events: trailing.run,
           home: joined ? from.home : beams,
           stated: trailing.beam,
@@ -252,7 +264,7 @@ function beamRuns(
     } else if (found?.kind === 'continue' || found?.kind === 'end') {
       if (run.length > 0) {
         run.push(event)
-      } else if (carriesOn && event.continuesFromBefore) {
+      } else if (carriesOn && event.continuesFrom !== undefined) {
         // The beam before it holds no begin, so there is nothing to join to.
         run = [event]
         fromBefore = true

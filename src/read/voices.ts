@@ -24,7 +24,8 @@ import { describeLength, noteValueOf } from './duration.js'
 import type { ReportContext, WarningCollector } from './collector.js'
 import type { EventNotation } from './eventNotations.js'
 import type { XmlElement } from '../xml/parse.js'
-import type { BeamedEvent, BeamedRun, BeamMarker } from './beams.js'
+import { lineKey } from './beams.js'
+import type { BeamedEvent, BeamedRun, BeamMarker, BeamsOpenAtBarline } from './beams.js'
 import type { CarriedTupletStop, MeasureExtent, TupletStart } from './tuplets.js'
 import { TupletTracker } from './tupletTracker.js'
 import { Arpeggios } from './arpeggios.js'
@@ -119,11 +120,8 @@ export interface FinishedMeasure {
   carriedTupletStops: CarriedTupletStop[]
   /** The voices whose two-note tremolo is still open at the closing barline. */
   carriedTremolos: string[]
-  /**
-   * The voices whose primary beam is still open at the closing barline, with
-   * the staff the beam's last event named.
-   */
-  beamsOpenAtBarline: ReadonlyMap<string, number | undefined>
+  /** The lines whose primary beam is still open at the closing barline. */
+  beamsOpenAtBarline: BeamsOpenAtBarline
 }
 
 /**
@@ -527,21 +525,24 @@ export class MeasureBuilder {
   /** The voices that sound a note somewhere in the measure, rather than only rest. */
   readonly #soundingVoices: ReadonlySet<string>
   /**
-   * The voices whose primary beam the measure before left open at the
-   * barline, with its staff. Each is taken by the first event to carry it on.
+   * The lines whose primary beam the measure before left open at the
+   * barline, by voice, with the staff of each. Each is taken by the first
+   * event to carry it on.
    */
-  readonly #beamsOpenBefore: Map<string, number | undefined>
+  readonly #beamsOpenBefore: Map<string, Map<number, number | undefined>>
 
   constructor(
     carriedStops: readonly CarriedTupletStop[],
     carriedTremolos: readonly string[],
     soundingVoices: Iterable<string | undefined>,
-    beamsOpenBefore: ReadonlyMap<string, number | undefined>,
+    beamsOpenBefore: BeamsOpenAtBarline,
   ) {
     this.#carriedStops = [...carriedStops]
     this.#carriedTremolos = new Set(carriedTremolos)
     this.#soundingVoices = new Set([...soundingVoices].map((voice) => voice ?? UNNAMED_VOICE))
-    this.#beamsOpenBefore = new Map(beamsOpenBefore)
+    this.#beamsOpenBefore = new Map(
+      [...beamsOpenBefore].map(([voice, lines]) => [voice, new Map(lines)]),
+    )
   }
 
   /**
@@ -1214,13 +1215,15 @@ export class MeasureBuilder {
       .find((placed) => placed.event === event)?.staff
   }
 
-  /** The voices whose primary beam is open at the barline, with the staff it was on. */
-  #beamsOpenAtBarline(): Map<string, number | undefined> {
-    const open = new Map<string, number | undefined>()
+  /** The lines whose primary beam is open at the barline, with the staff each was on. */
+  #beamsOpenAtBarline(): BeamsOpenAtBarline {
+    const open = new Map<string, Map<number, number | undefined>>()
     for (const [voice, { layers }] of this.#voices) {
-      for (const layer of layers) {
-        if (leavesBeamOpen(layer)) open.set(voice, layer.lastEvent?.staff)
+      const lines = new Map<number, number | undefined>()
+      for (const [line, layer] of layers.entries()) {
+        if (leavesBeamOpen(layer)) lines.set(line, layer.lastEvent?.staff)
       }
+      if (lines.size > 0) open.set(voice, lines)
     }
     return open
   }
@@ -1263,33 +1266,48 @@ export class MeasureBuilder {
   ): void {
     if (markers.size === 0) return
     const builder = layerOf(voice)
-    const key = voice.name
-    // A named voice may beam across staves. Where the source names no
-    // voice, the staff is all that tells two lines apart, so the beam carries
-    // on only on the staff it left.
-    const continues =
-      !graceBeams &&
-      isZero(start) &&
-      this.#beamsOpenBefore.has(key) &&
-      (voice.name !== UNNAMED_VOICE || this.#beamsOpenBefore.get(key) === builder.lastEvent?.staff)
-    if (continues) this.#beamsOpenBefore.delete(key)
+    const from = graceBeams || !isZero(start) ? undefined : this.#openLineFor(voice, builder)
     const run = graceBeams ?? builder.beamed
-    run.push({ id, markers, beamCount, continuesFromBefore: continues })
+    run.push({ id, markers, beamCount, continuesFrom: from })
+  }
+
+  /**
+   * The line of the voice whose open beam the line `builder` carries on, as
+   * lineKey names it, taken so no other line carries it on too. Where the
+   * voice left one beam open, any of its lines carries it on. Where it left
+   * several, each line carries on its own.
+   *
+   * A named voice may beam across staves. Where the source names no voice,
+   * the staff is all that tells two lines apart, so the beam carries on only
+   * on the staff it left.
+   */
+  #openLineFor(voice: VoiceLine, builder: VoiceBuilder): string | undefined {
+    const lines = this.#beamsOpenBefore.get(voice.name)
+    if (lines === undefined) return undefined
+    const line =
+      lines.size === 1
+        ? [...lines.keys()][0]
+        : this.#voices.get(voice.name)?.layers.indexOf(builder)
+    if (line === undefined || !lines.has(line)) return undefined
+    if (voice.name === UNNAMED_VOICE && lines.get(line) !== builder.lastEvent?.staff)
+      return undefined
+    lines.delete(line)
+    return lineKey(voice.name, line)
   }
 
   /** What every voice said about its beams, voice by voice. */
   #beamedRuns(): BeamedRun[] {
-    const voices = [...this.#voices].flatMap(([voice, { layers }]) =>
-      layers.map((layer) => ({ voice, layer })),
+    const lines = [...this.#voices].flatMap(([voice, { layers }]) =>
+      layers.map((layer, line) => ({ line: lineKey(voice, line), layer })),
     )
     return [
-      ...voices.map(({ voice, layer }) => ({
-        voice,
+      ...lines.map(({ line, layer }) => ({
+        line,
         events: layer.beamed,
         openAtBarline: leavesBeamOpen(layer),
       })),
-      ...voices.flatMap(({ layer }) =>
-        layer.graceBeamed.map((events) => ({ voice: undefined, events, openAtBarline: false })),
+      ...lines.flatMap(({ layer }) =>
+        layer.graceBeamed.map((events) => ({ line: undefined, events, openAtBarline: false })),
       ),
     ]
   }

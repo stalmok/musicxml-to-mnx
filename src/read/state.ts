@@ -9,6 +9,7 @@ import type { XmlElement } from '../xml/parse.js'
 import type { Stated } from './element.js'
 import { IdGenerator } from './idGenerator.js'
 import { OpenBeams } from './beams.js'
+import type { BeamsOpenAtBarline } from './beams.js'
 import { PartSignatures } from './partSignatures.js'
 import { SpannerResolver } from './spanners.js'
 import type { CarriedTupletStop } from './tuplets.js'
@@ -140,10 +141,10 @@ export interface PartState {
    */
   carriedTremolos: readonly string[]
   /**
-   * The voices whose primary beam the last measure left open at its barline,
-   * with the staff it was on.
+   * The lines whose primary beam the last measure left open at its barline,
+   * by voice, with the staff each was on.
    */
-  beamsOpenAtBarline: ReadonlyMap<string, number | undefined>
+  beamsOpenAtBarline: BeamsOpenAtBarline
   /** The beams left open at the barline, which the next measure may join. */
   openBeams: OpenBeams
   /**

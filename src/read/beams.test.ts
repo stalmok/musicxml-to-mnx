@@ -30,7 +30,7 @@ function event(id: string, levels: string, beamCount?: number): BeamedEvent {
     })
     deepest = Math.max(deepest, Number(level))
   }
-  return { id, markers, beamCount: beamCount ?? deepest, continuesFromBefore: false }
+  return { id, markers, beamCount: beamCount ?? deepest, continuesFrom: undefined }
 }
 
 describe('a single beam', () => {
@@ -609,12 +609,13 @@ describe('a beam crossing the barline', () => {
   })
 
   // Beamed at an inner level only, the last note is outside the primary beam.
-  test('says nothing where the last note before the barline has no primary beam', () => {
+  test('joins nothing where the last note before the barline has no primary beam', () => {
     const inner =
       '<note><pitch><step>B</step><octave>4</octave></pitch><duration>1</duration>' +
       '<type>16th</type><beam number="2">backward hook</beam></note>'
-    const { warnings } = readMeasures(eighth('A', 'begin') + inner, eighth('C', 'end'))
+    const { beams, warnings } = readMeasures(eighth('A', 'begin') + inner, eighth('C', 'end'))
 
+    expect(beams).toEqual([[], []])
     expect(warnings).toEqual([])
   })
 
@@ -631,38 +632,41 @@ describe('a beam crossing the barline', () => {
     expect(warnings).toEqual([])
   })
 
-  test('says nothing where an unbeamed note follows the beam before the barline', () => {
-    const { warnings } = readMeasures(
+  test('joins nothing where an unbeamed note follows the beam before the barline', () => {
+    const { beams, warnings } = readMeasures(
       eighth('A', 'begin') + eighth('B', 'continue') + QUARTER,
       eighth('C', 'end'),
     )
 
+    expect(beams).toEqual([[['ev1', 'ev2']], []])
     expect(warnings).toEqual([])
   })
 
   // MusicXML reads a note naming no staff as on the first.
-  test('says nothing of a beam the same unnamed voice left open on another staff', () => {
+  test('joins nothing to a beam the same unnamed voice left open on another staff', () => {
     const on = (staff: string, note: string) =>
       note.replace('</note>', `<staff>${staff}</staff></note>`)
-    const { warnings } = readMeasures(
+    const { beams, warnings } = readMeasures(
       '<attributes><staves>2</staves></attributes>' + on('1', eighth('A', 'begin')),
       on('2', eighth('C', 'end')),
     )
 
+    expect(beams).toEqual([[], []])
     expect(warnings).toEqual([])
   })
 
   // An empty <voice> names no voice either.
-  test('says nothing of a beam an empty voice left open on another staff', () => {
+  test('joins nothing to a beam an empty voice left open on another staff', () => {
     const on = (staff: string, note: string) =>
       note
         .replace('<type>', '<voice></voice><type>')
         .replace('</note>', `<staff>${staff}</staff></note>`)
-    const { warnings } = readMeasures(
+    const { beams, warnings } = readMeasures(
       '<attributes><staves>2</staves></attributes>' + on('1', eighth('A', 'begin')),
       on('2', eighth('C', 'end')),
     )
 
+    expect(beams).toEqual([[], []])
     expect(warnings).toEqual([])
   })
 
@@ -695,6 +699,50 @@ describe('a beam crossing the barline', () => {
     expect(warnings.map((w) => w.code)).toEqual(['inconsistent:voice'])
   })
 
+  test('joins each line of a voice to its own line where both cross the barline', () => {
+    const backup = '<backup><duration>4</duration></backup>'
+    const { beams } = readMeasures(
+      eighth('A', 'begin') +
+        eighth('B', 'continue') +
+        backup +
+        eighth('C', 'begin') +
+        eighth('D', 'continue'),
+      eighth('E', 'continue') +
+        eighth('F', 'end') +
+        backup +
+        eighth('G', 'continue') +
+        eighth('A', 'end'),
+    )
+
+    expect(beams).toEqual([
+      [
+        ['ev1', 'ev2', 'ev5', 'ev6'],
+        ['ev3', 'ev4', 'ev7', 'ev8'],
+      ],
+      [],
+    ])
+  })
+
+  test('joins the first line of a voice where only it carries a beam on', () => {
+    const backup = '<backup><duration>4</duration></backup>'
+    const { beams } = readMeasures(
+      eighth('A', 'begin') +
+        eighth('B', 'continue') +
+        backup +
+        eighth('C', 'begin') +
+        eighth('D', 'continue'),
+      eighth('E', 'continue') + eighth('F', 'end'),
+    )
+
+    expect(beams).toEqual([
+      [
+        ['ev1', 'ev2', 'ev5', 'ev6'],
+        ['ev3', 'ev4'],
+      ],
+      [],
+    ])
+  })
+
   // The primary beam begins here, so a stray inner continue carries nothing on.
   test('carries no inner beam on where the primary beam begins at the barline', () => {
     const sixteenth = (step: string, inner: string) =>
@@ -708,6 +756,17 @@ describe('a beam crossing the barline', () => {
 
     expect(trees[1]).toEqual([{ events: ['ev2', 'ev3'], beams: [], direction: undefined }])
     expect(warnings).toEqual([])
+  })
+
+  // A hook is not a continue, so the open beam is not joined across it, and
+  // the notes after the hook continue nothing.
+  test('joins nothing across a primary hook opening the measure', () => {
+    const { beams } = readMeasures(
+      eighth('A', 'begin') + eighth('B', 'continue'),
+      eighth('C', 'backward hook') + eighth('D', 'continue') + eighth('E', 'end'),
+    )
+
+    expect(beams).toEqual([[['ev1', 'ev2']], [['ev3']]])
   })
 
   // A hook stands alone, so the inner beam on it carries nothing on either.
@@ -736,12 +795,13 @@ describe('a beam crossing the barline', () => {
   })
 
   // A grace group beams within itself, so its beams never cross the barline.
-  test('says nothing of a grace note opening the measure with an end', () => {
+  test('joins no grace note opening the measure with an end', () => {
     const grace =
       '<note><grace/><pitch><step>B</step><octave>4</octave></pitch>' +
       '<type>16th</type><beam number="1">end</beam></note>'
-    const { warnings } = readMeasures(eighth('A', 'begin'), grace + eighth('C'))
+    const { beams, warnings } = readMeasures(eighth('A', 'begin'), grace + eighth('C'))
 
+    expect(beams).toEqual([[], []])
     expect(warnings).toEqual([])
   })
 
