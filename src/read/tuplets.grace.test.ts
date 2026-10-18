@@ -676,6 +676,96 @@ describe('grace notes', () => {
         ])
       })
 
+      // B opens two brackets, and A and C close both, so the group holds no
+      // bracket when its line is settled.
+      const closedGraces = (steal = '') =>
+        (
+          grace('B', 27, 8, start('2', STATED) + start('3', STATED)) +
+          grace('A', 27, 8, '<tuplet type="stop" number="3"/>') +
+          grace('C', 27, 8, '<tuplet type="stop" number="2"/>')
+        ).replaceAll('<grace/>', `<grace${steal}/>`)
+      const untimed = ['unrepresentable:tuplet-untimed', 'unrepresentable:tuplet-untimed']
+
+      // The markers' 3:2 and 3:2 disagree with 27:8 in the half's line, where
+      // A and C close both brackets. They agree with it inside the first
+      // triplet's 3:2, where the grace group moves with D.
+      test('checks a start marker against the line a group moves to after its brackets close', () => {
+        const { warnings } = readLines(
+          intoBracket().replace(
+            opening(9, 4) + inner(9, 4, 8),
+            closedGraces() + note('D', 24, 'quarter', ratio(3, 2)),
+          ),
+        )
+
+        expect(warnings.map((w) => w.code)).toEqual([...untimed, 'inconsistent:voice'])
+      })
+
+      // The markers' 3:2 and 3:2 agree with 27:8 inside B's 3:2, where A and C
+      // close both brackets. The group moves with D to A's line, where no
+      // bracket is open and they make 9:4.
+      test('reports a start marker that disagrees in the line a group moves to', () => {
+        const { warnings } = readLines(
+          measures(
+            '<attributes><divisions>36</divisions></attributes>' +
+              note('A', 36, 'quarter') +
+              backup(36) +
+              triplet('B', 'start') +
+              triplet('C') +
+              backup(12) +
+              closedGraces() +
+              note('D', 36, 'quarter') +
+              backup(24) +
+              triplet('G', 'stop'),
+          ),
+        )
+
+        expect(warnings.map((w) => w.code)).toEqual([
+          'inconsistent:tuplet',
+          ...untimed,
+          'inconsistent:voice',
+        ])
+      })
+
+      // A group taking its time from the note before stays in the half's
+      // line, where the markers disagree. Only the group after it moves.
+      test('checks a start marker against the line of a group that stays as another moves', () => {
+        const { warnings } = readLines(
+          intoBracket().replace(
+            opening(9, 4) + inner(9, 4, 8),
+            closedGraces(' steal-time-previous="20"') +
+              '<note><grace steal-time-following="20"/><pitch><step>E</step><octave>5</octave>' +
+              '</pitch><type>eighth</type></note>' +
+              note('D', 24, 'quarter', ratio(3, 2)),
+          ),
+        )
+
+        // MNX states no share of the time a grace note takes.
+        const share = 'unrepresentable:grace-time'
+        expect(warnings.map((w) => w.code)).toEqual([
+          'inconsistent:tuplet',
+          share,
+          share,
+          untimed[0],
+          share,
+          untimed[1],
+          share,
+          'inconsistent:voice',
+        ])
+      })
+
+      // In a line with no bracket open, 3:2 and 3:2 make 9:4, not 27:8.
+      test.each([
+        ['before the note it leads into', note('D', 36, 'quarter')],
+        ['at the end of the measure', ''],
+      ])('reports a start marker on grace notes that stay in their line %s', (_, after) => {
+        const { warnings } = readLines(
+          measures('<attributes><divisions>36</divisions></attributes>' + closedGraces() + after),
+        )
+
+        expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tuplet', ...untimed])
+        expect(warnings[0]?.message).toContain('start marker')
+      })
+
       test('reports a start marker that disagrees in the line the bracket moves to', () => {
         const { warnings } = readLines(outOfBracket(9, 4, 8, STATED))
 

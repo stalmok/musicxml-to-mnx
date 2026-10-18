@@ -52,7 +52,9 @@ interface Opening {
    * The start marker whose ratio disagrees with the note's
    * <time-modification>. It is reported in the note's place in the warning
    * list when the last bracket the note opened closes, so a bracket that
-   * moves to another line before then is checked against that line.
+   * moves to another line before then is checked against that line. Where
+   * that bracket closes over grace notes alone, the group can still move,
+   * so the report waits for the barline.
    */
   disagreeing: XmlElement | undefined
   place: WarningPlace
@@ -161,6 +163,22 @@ function removeLastFrom(list: SequenceItem[], expected: SequenceItem): void {
   list.pop()
 }
 
+function reportDisagreeing(
+  opening: Opening,
+  warnings: WarningCollector,
+  context: ReportContext,
+): void {
+  if (!opening.disagreeing) return
+  warnings.addAt(
+    opening.place,
+    'inconsistent:tuplet',
+    "A tuplet's start marker states a ratio that disagrees with the notes' " +
+      '<time-modification>. The ratio the notes state is the one converted.',
+    context,
+    opening.disagreeing,
+  )
+}
+
 export class TupletTracker {
   /**
    * The brackets this sequence is inside, outermost first. Notes go into the
@@ -180,6 +198,12 @@ export class TupletTracker {
    * TupletClaim.
    */
   readonly #claims: TupletClaim[] = []
+  /**
+   * The openings whose brackets all closed over grace notes alone, with the
+   * item those notes were left as. The group may still move to another line
+   * with the note it leads into, so each is checked at the barline.
+   */
+  #held: { opening: Opening; item: SequenceItem | undefined }[] = []
   /** The sequence's own item list, which holds what no bracket does. */
   readonly #content: SequenceItem[]
 
@@ -283,6 +307,16 @@ export class TupletTracker {
       to.#open.push(frame)
     }
     to.#list().push(item)
+    for (const held of this.#held.filter((one) => one.item === item)) {
+      held.opening.disagreeing = tupletLevels(
+        to.#drawnRatios(),
+        held.opening.inner,
+        held.opening.outer,
+        held.opening.starts,
+      ).disagreeing
+      to.#held.push(held)
+    }
+    this.#held = this.#held.filter((one) => one.item !== item)
   }
 
   /**
@@ -750,6 +784,8 @@ export class TupletTracker {
     path: DocumentPath,
     line: number,
   ): string[] {
+    for (const { opening } of this.#held) reportDisagreeing(opening, warnings, context)
+    this.#held = []
     const numbers: string[] = []
     // Every frame left is a bracket: a tremolo left open is converted first.
     for (let open = this.#open.at(-1); open?.opened === 'tuplet'; open = this.#open.at(-1)) {
@@ -799,25 +835,17 @@ export class TupletTracker {
       throw new MusicXMLError('A tuplet closes inside a two-note tremolo.', { path, line })
     }
     this.#open.pop()
-    const { opening } = closed
+    const { opening, tuplet } = closed
     const lastOpened =
       opening !== undefined &&
       !this.#open.some((frame) => frame.opened === 'tuplet' && frame.opening === opening)
-    if (lastOpened && opening.disagreeing) {
-      warnings.addAt(
-        opening.place,
-        'inconsistent:tuplet',
-        "A tuplet's start marker states a ratio that disagrees with the notes' " +
-          '<time-modification>. The ratio the notes state is the one converted.',
-        context,
-        opening.disagreeing,
-      )
-    }
+    // A bracket that holds nothing taking any of the measure's time, which is
+    // what a bracket opening and closing on grace notes holds.
+    const untimed = writtenLengthOf(tuplet.content).num === 0
     // A run with no bracket has no stop, so it is reported where it opened,
     // and so is a bracket the barline closes.
     const at = stop ?? closed.element
 
-    const { tuplet } = closed
     // A run the ratio alone opened on a note that turned out not to be an
     // event holds nothing. It stands for no tuplet the source wrote, so it
     // goes rather than being drawn empty.
@@ -825,12 +853,11 @@ export class TupletTracker {
       removeLastFrom(closed.within, tuplet)
       return closed.number
     }
-    // A bracket that holds nothing taking any of the measure's time, which is
-    // what a bracket opening and closing on grace notes holds. MNX states a
-    // tuplet as a written length against the time it is played in, and a
-    // grace note gives neither, so there is no tuplet to write.
-    if (writtenLengthOf(tuplet.content).num === 0) {
+    // MNX states a tuplet as a written length against the time it is played
+    // in, and a grace note gives neither, so there is no tuplet to write.
+    if (untimed) {
       unwrapTuplet(closed.within, tuplet)
+      if (lastOpened) this.#held.push({ opening, item: closed.within.at(-1) })
       warnings.add(
         'unrepresentable:tuplet-untimed',
         "A tuplet bracket holds nothing that takes any of the measure's time, as a bracket " +
@@ -842,6 +869,7 @@ export class TupletTracker {
       )
       return closed.number
     }
+    if (lastOpened) reportDisagreeing(opening, warnings, context)
     // Sources contain brackets whose content does not add up to the
     // stated ratio: a lone quarter under a 3:2 eighth ratio, standing for a
     // triplet quarter. MNX sequences a tuplet by advancing the cursor over
