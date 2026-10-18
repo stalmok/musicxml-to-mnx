@@ -542,7 +542,7 @@ export class MeasureBuilder {
    * barline, by voice, with the staff of each.
    */
   readonly #beamsOpenBefore: BeamsOpenAtBarline
-  /** The lines that open the measure with a primary continue or end, in reading order. */
+  /** The lines that open the measure with a primary continue or end. */
   readonly #carryingOn: CarryingOn[] = []
 
   constructor(
@@ -1294,8 +1294,9 @@ export class MeasureBuilder {
    * Settles the open beam each line opening the measure with a continue or
    * end carries on, once the lines are ranked. A line carries on the beam of
    * the line of its rank in the measure before. Where it finds none, it takes
-   * the voice's one open beam no other line carries on. Where none or several
-   * are left, it starts a beam of its own.
+   * the voice's one open beam no other line carries on, the higher lines
+   * first. Where none or several are left, it starts a beam of its own. A
+   * line in a voice that left no beam open carries nothing on.
    *
    * A named voice may beam across staves. Where the source names no voice,
    * the staff is all that tells two lines apart, so the beam carries on only
@@ -1315,18 +1316,24 @@ export class MeasureBuilder {
       carry.event.continuesFrom = { line: key }
     }
 
-    for (const lines of ranked.values()) {
-      for (const [rank, builder] of lines.entries()) {
-        const carry = this.#carryingOn.find((candidate) => candidate.builder === builder)
-        if (carry && leftOpen(carry).includes(rank)) join(carry, rank)
-      }
+    const uncarried = (carry: CarryingOn): number[] =>
+      leftOpen(carry).filter((line) => !carried.has(lineKey(carry.voice, line)))
+    const byRank = [...ranked.values()].flatMap((lines) =>
+      lines.flatMap((builder, rank) =>
+        this.#carryingOn
+          .filter((carry) => carry.builder === builder)
+          .map((carry) => ({ carry, rank })),
+      ),
+    )
+
+    for (const { carry, rank } of byRank) {
+      if (uncarried(carry).includes(rank)) join(carry, rank)
     }
-    for (const carry of this.#carryingOn) {
+    for (const { carry } of byRank) {
       if (settled.has(carry)) continue
-      const open = leftOpen(carry)
-      const [only, ...others] = open.filter((line) => !carried.has(lineKey(carry.voice, line)))
+      const [only, ...others] = uncarried(carry)
       if (only !== undefined && others.length === 0) join(carry, only)
-      else if (open.length > 0) carry.event.continuesFrom = { line: undefined }
+      else if (leftOpen(carry).length > 0) carry.event.continuesFrom = { line: undefined }
     }
   }
 

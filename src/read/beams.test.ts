@@ -815,6 +815,26 @@ describe('a beam crossing the barline', () => {
     ])
   })
 
+  // The line of the open beam's height opens unbeamed, so the lines below it
+  // take the one open beam in order of height, not in the order written.
+  test('gives the one open beam no line of its height carries on to the next highest line', () => {
+    const backup = '<backup><duration>4</duration></backup>'
+    const low = (step: string, marker: string) =>
+      eighth(step, marker).replace('<octave>4', '<octave>3')
+    const { beams } = readMeasures(
+      eighth('A', 'begin') + eighth('B', 'continue'),
+      QUARTER.replace('<octave>3', '<octave>6') +
+        backup +
+        low('C', 'continue') +
+        low('D', 'end') +
+        backup +
+        eighth('E', 'continue') +
+        eighth('F', 'end'),
+    )
+
+    expect(beams).toEqual([[['ev1', 'ev2', 'ev6', 'ev7']], [['ev4', 'ev5']]])
+  })
+
   test('beams a line by itself where two open beams are left and neither is of its height', () => {
     const backup = '<backup><duration>4</duration></backup>'
     const low = (step: string, marker: string) =>

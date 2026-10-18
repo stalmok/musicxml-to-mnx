@@ -106,11 +106,11 @@ const HOOK_DIRECTIONS = new Map<BeamValue, 'left' | 'right'>([
 
 /**
  * The primary beams a measure leaves open at its barline: by voice, the
- * staff each line of the voice left its beam open on, by line.
+ * staff each line of the voice left its beam open on, by the line's rank.
  */
 export type BeamsOpenAtBarline = ReadonlyMap<string, ReadonlyMap<number, number | undefined>>
 
-/** Names a line of a voice across measures, as the voice and its line number. */
+/** Names a line of a voice across measures, as the voice and the line's rank by height. */
 export function lineKey(voice: string, line: number): string {
   return `${voice}\n${String(line)}`
 }
