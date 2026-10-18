@@ -242,12 +242,12 @@ describe('reporting losses', () => {
     expect(report[file]?.[0]?.code).toBe('unsupported:element')
   })
 
-  test('--fail-on-loss returns non-zero when a file loses notation', async () => {
+  test('--fail-on-loss returns 3 when a file loses notation', async () => {
     const file = input('song.xml', LOSSY)
 
     const code = await run(['to-mnx', file, '-o', dir, '--fail-on-loss'], io)
 
-    expect(code).toBe(1)
+    expect(code).toBe(3)
     expect(lines[0]).toBe(`${file} -> ${join(dir, 'song.mnx')} (1 lost)`)
     expect(lines.at(-1)).toBe('Converted 1 of 1, 1 with losses.')
   })
@@ -256,6 +256,22 @@ describe('reporting losses', () => {
     const file = input('song.xml', LOSSLESS)
 
     expect(await run(['to-mnx', file, '-o', dir, '--fail-on-loss'], io)).toBe(0)
+  })
+
+  test('--fail-on-loss returns 1 when another file is refused', async () => {
+    const lossy = input('lossy.xml', LOSSY)
+    const refused = input('refused.xml', '<not-a-score/>')
+
+    expect(await run(['to-mnx', lossy, refused, '-o', dir, '--fail-on-loss'], io)).toBe(1)
+  })
+
+  test('--fail-on-loss returns 1 when the lossy output is not valid MNX', async () => {
+    const file = input('song.xml', LOSSY)
+    const reject = () => ['/parts: must be an array']
+
+    const code = await run(['to-mnx', file, '-o', dir, '--fail-on-loss', '--validate'], io, reject)
+
+    expect(code).toBe(1)
   })
 })
 

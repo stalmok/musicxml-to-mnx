@@ -39,7 +39,7 @@ An explicit "to-mnx" before the files does the same thing, and keeps
 Options:
   -o, --out <dir>     write the .mnx files into <dir> instead of beside the input
       --validate      check every output against the MNX schema
-      --fail-on-loss  exit non-zero if any conversion loses notation
+      --fail-on-loss  exit with code 3 if any conversion loses notation
       --report <file> write the warnings from every file to <file> as JSON
   -h, --help          show this help
   -v, --version       show the version`
@@ -187,7 +187,9 @@ export async function run(
 
   if (failed > 0 || unwritten > 0 || reportFailed) return 1
   if (invalid > 0) return 1
-  if (values['fail-on-loss'] && lossy > 0) return 1
+  // A code of its own, so a pipeline can tell a batch that converted with
+  // losses from one that failed.
+  if (values['fail-on-loss'] && lossy > 0) return 3
   return 0
 }
 

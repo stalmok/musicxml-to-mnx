@@ -146,7 +146,7 @@ It writes `<basename>.mnx` beside each input, or into the directory set by `-o`.
 | `-o`, `--out <directory>` | Select the output directory.                                     |
 | `--validate`              | Check output against the vendored MNX schema.                    |
 | `--report <file>`         | Write warnings for converted files as JSON, keyed by input path. |
-| `--fail-on-loss`          | Exit with code 1 if any conversion reports warnings.             |
+| `--fail-on-loss`          | Exit with code 3 if any conversion reports warnings.             |
 | `-h`, `--help`            | Print help.                                                      |
 | `-v`, `--version`         | Print the version.                                               |
 
@@ -154,11 +154,12 @@ Input-read and conversion errors are reported per file. Processing then
 continues with the remaining inputs. Output-write and report-write errors
 can stop the batch before it finishes.
 
-| Exit code | Meaning                                                                  |
-| --------- | ------------------------------------------------------------------------ |
-| `0`       | All files converted. With `--fail-on-loss`, none reported warnings.      |
-| `1`       | A file failed, validation failed, or `--fail-on-loss` detected warnings. |
-| `2`       | Command usage error.                                                     |
+| Exit code | Meaning                                                             |
+| --------- | ------------------------------------------------------------------- |
+| `0`       | All files converted. With `--fail-on-loss`, none reported warnings. |
+| `1`       | A file failed, or validation failed.                                |
+| `2`       | Command usage error.                                                |
+| `3`       | `--fail-on-loss` detected warnings, and nothing else failed.        |
 
 The report contains warnings, not a complete failure log.
 Check the exit code and command output as well.
