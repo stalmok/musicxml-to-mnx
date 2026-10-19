@@ -849,8 +849,12 @@ describe('grace notes', () => {
 
       // G's group takes its time from the note before and stays in the half's
       // line. C's group moves with D into the first triplet, and bracket 5
-      // still holds C there: 3:2, 3:2 and 3:2 make C's 27:8.
-      test('checks a start marker inside a bracket that closed over two groups', () => {
+      // still holds C there: 3:2, 3:2 and 3:2 make C's 27:8. Bracket 5 holds
+      // grace notes alone whether F closes it or the barline does.
+      test.each([
+        ['closed', stop('5')],
+        ['still open', ''],
+      ])('checks a start marker inside a bracket over two groups, %s', (_, closing) => {
         const side = (graces: string, steal: string) =>
           graces.replaceAll('<grace/>', `<grace steal-time-${steal}="20"/>`)
         const graces =
@@ -858,7 +862,7 @@ describe('grace notes', () => {
           side(
             grace('C', 27, 8, start('6', STATED)) +
               grace('E', 27, 8, stop('6')) +
-              grace('F', 3, 2, stop('5')),
+              grace('F', 3, 2, closing),
             'following',
           )
 

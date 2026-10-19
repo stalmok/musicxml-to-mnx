@@ -177,16 +177,13 @@ function halfOf(value: NoteValue, path: DocumentPath, line: number): NoteValue {
 /**
  * Sets the share of each bracket `opening` opened, against `line`, the ratios
  * of the brackets the source drew that are open in the line the note moves
- * to, and the brackets around the note that move with it or closed over
- * grace notes alone. A bracket still open where the note stood holds what
- * takes time there, so it stays in that line.
+ * to, and the brackets around the note that hold nothing taking any of the
+ * measure's time: those that move with it, and those over grace notes alone,
+ * closed or not. A bracket holding what takes time stays in the line the
+ * note left.
  */
-function relevel(
-  opening: Opening,
-  line: readonly Fraction[],
-  moving: readonly OpenBracket[],
-): void {
-  const settles = (frame: OpenTuplet) => frame.untimed || moving.includes(frame)
+function relevel(opening: Opening, line: readonly Fraction[]): void {
+  const settles = (frame: OpenTuplet) => writtenLengthOf(frame.tuplet.content).num === 0
   const { levels, disagreeing } = tupletLevels(
     [...line, ...opening.around.filter(settles).map((frame) => frame.ratio)],
     opening.inner,
@@ -348,7 +345,7 @@ export class TupletTracker {
     // well, so the outer opening is settled first.
     const line = to.#drawnRatios()
     for (const opening of [...openings].sort((a, b) => a.around.length - b.around.length)) {
-      relevel(opening, line, moving)
+      relevel(opening, line)
     }
 
     for (const frame of moving) {
