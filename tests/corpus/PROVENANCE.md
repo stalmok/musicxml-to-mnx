@@ -72,7 +72,7 @@ not only compare them with the schema.
 `hawkins-anglerfish.mxl` holds a crescendo from `niente`, which no other file
 here holds. Nine of the 254,035 scores in PDMX use `niente`. This one is marked
 as an original work and released under CC0. It writes notes whose value
-disagrees with their duration, so the length and direction checks skip it.
+disagrees with their duration, so the checks that follow durations skip it.
 
 The vendored corpus does not cover measure repeats, `make-time` on grace
 notes, or a diminuendo to `niente`, which states `niente` on the stop of the
@@ -140,5 +140,6 @@ checks compare against the source, not against the time signature.
 Some write a note whose value disagrees with its duration, a dotted half
 lasting two beats. The converter carries the written value and reports it as
 `inconsistent:duration`. Its measures then sound as the written values do,
-not as the durations add up, so the length and direction checks skip those
-songs. The pitch and schema checks still run.
+not as the durations add up, so the checks that follow durations skip those
+songs: voice ends, octave shifts, measure lengths and slurs. The other checks
+still run.
