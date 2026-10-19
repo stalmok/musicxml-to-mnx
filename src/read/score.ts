@@ -48,7 +48,7 @@ import { requireDuration } from './divisions.js'
 import { lyricLineOrder } from './lyrics.js'
 import { respellPastFlip } from './transposition.js'
 import { lengthOf } from './duration.js'
-import { ElementReader, reportUnreadAttributes } from './element.js'
+import { ElementReader, reportUnreadAttributes, reportUnreadText } from './element.js'
 import type { Stated } from './element.js'
 import { writtenGrouping } from './part-groups.js'
 import { compareFractions, fraction, negate } from '../fraction.js'
@@ -387,6 +387,8 @@ function readPart(
     )
   }
 
+  reportUnreadText(element, warnings, { part: id })
+
   const state = newPartState(ids, partList.soundsByInstrument.get(id))
   const collectors: MeasureCollectors = {
     endings: new Endings(id),
@@ -532,9 +534,11 @@ function readMeasure(
   const label = readMeasureLabel(element, warnings, context)
   const measurePath: DocumentPath = [...path, `measure ${String(label ?? position)}`]
   // The measure element is walked child by child below rather than through
-  // one reader, so its own attributes are swept here: the label above read
-  // the number, and anything else (implicit, non-controlling) is a loss.
+  // one reader, so its own attributes and text are swept here: the label
+  // above read the number, and anything else (implicit, non-controlling) is a
+  // loss.
   reportUnreadAttributes(element, warnings, context)
+  reportUnreadText(element, warnings, context)
   // A time signature stated at the start after a <backup> stands where the
   // measure begins, so the notes written before it are measured against it.
   state.time = opensWith

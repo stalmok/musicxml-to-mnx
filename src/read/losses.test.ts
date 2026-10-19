@@ -374,6 +374,28 @@ describe('an element read plainly', () => {
   })
 })
 
+// MusicXML allows no text directly in <measure> or <part>.
+describe('stray text', () => {
+  test('reports text written directly in a measure', () => {
+    const { warnings } = read(measure('loose'))
+
+    expect(warnings.map((w) => [w.code, w.message, w.context.measure])).toEqual([
+      ['unsupported:element', 'The text "loose" of a <measure> is not converted yet.', 1],
+    ])
+  })
+
+  test('reports text written directly in a part', () => {
+    const { warnings } = read(
+      '<score-partwise><part id="P1">loose<measure number="1"><attributes>' +
+        '<divisions>4</divisions></attributes></measure></part></score-partwise>',
+    )
+
+    expect(warnings.map((w) => [w.code, w.message, w.context.part])).toEqual([
+      ['unsupported:element', 'The text "loose" of a <part> is not converted yet.', 'P1'],
+    ])
+  })
+})
+
 describe('a rest placed on the staff', () => {
   // <display-step>/<display-octave> fix a rest's height, read against the clef
   // in force. Where the measure states no clef, it is reported. Converting it

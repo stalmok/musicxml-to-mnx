@@ -210,7 +210,8 @@ function reportUnreadElement(
   warnings.add(loss.code, `<${element.name}> ${loss.ending}`, context, element)
 }
 
-function reportUnreadText(
+/** Report the text written directly in this element that nothing read. */
+export function reportUnreadText(
   element: XmlElement,
   warnings: WarningCollector,
   context: ReportContext,
