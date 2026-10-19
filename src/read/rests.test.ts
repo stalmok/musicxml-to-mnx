@@ -2038,6 +2038,17 @@ describe('a rest lasting exactly the measure', () => {
     expect(warnings).toEqual([])
   })
 
+  // A part can hold two measures' worth of rest in one measure where the
+  // other parts hold one. Only the first opens the measure.
+  test('rests the measure once where a second such rest follows it', () => {
+    const { mnx, warnings } = convertValid(metered(rest + rest))
+
+    expect(mnx.parts[0]?.measures[0]?.sequences).toEqual([
+      { voice: '1', content: [], fullMeasure: {} },
+    ])
+    expect(warnings.map((w) => w.code)).toEqual(['redundant:rest'])
+  })
+
   // A <backup> reaching further back than the measure has run writes what
   // follows at the measure start, so the rest after one opens the measure.
   test('rests the measure after a backup that reached past the start', () => {
