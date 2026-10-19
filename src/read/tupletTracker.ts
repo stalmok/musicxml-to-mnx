@@ -121,8 +121,6 @@ interface OpenTuplet {
   skips: OpenSkip[]
   /** What the note that opened it stated. Unset for a run with no bracket. */
   opening: Opening | undefined
-  /** True once it closed holding nothing that takes any of the measure's time. */
-  untimed: boolean
 }
 
 /**
@@ -147,6 +145,14 @@ export interface OpenTremolo {
  * held.
  */
 type OpenBracket = OpenTuplet | OpenTremolo
+
+/**
+ * Whether the tuplet holds nothing that takes any of the measure's time, as a
+ * bracket over grace notes alone does.
+ */
+function holdsNoTime(open: OpenTuplet): boolean {
+  return writtenLengthOf(open.tuplet.content).num === 0
+}
 
 /** Whether the tuplet holds at least what its ratio counts. */
 function tupletFilled(open: OpenTuplet): boolean {
@@ -183,15 +189,14 @@ function halfOf(value: NoteValue, path: DocumentPath, line: number): NoteValue {
  * note left.
  */
 function relevel(opening: Opening, line: readonly Fraction[]): void {
-  const settles = (frame: OpenTuplet) => writtenLengthOf(frame.tuplet.content).num === 0
   const { levels, disagreeing } = tupletLevels(
-    [...line, ...opening.around.filter(settles).map((frame) => frame.ratio)],
+    [...line, ...opening.around.filter(holdsNoTime).map((frame) => frame.ratio)],
     opening.inner,
     opening.outer,
     opening.starts,
   )
   opening.disagreeing = disagreeing
-  for (const frame of opening.frames.filter(settles)) {
+  for (const frame of opening.frames) {
     const level = levels.find((candidate) => candidate.element === frame.element)
     /* v8 ignore next -- each start a note opened gives one level. */
     if (!level) throw new Error('A bracket opened with no level of its own.')
@@ -533,7 +538,6 @@ export class TupletTracker {
         children: [],
         skips: [],
         opening,
-        untimed: false,
       }
       opening.frames.push(frame)
       this.#open.push(frame)
@@ -573,7 +577,6 @@ export class TupletTracker {
       children: [],
       skips: [],
       opening: undefined,
-      untimed: false,
     })
   }
 
@@ -865,7 +868,6 @@ export class TupletTracker {
     }
     this.#open.pop()
     const { tuplet } = closed
-    closed.untimed = writtenLengthOf(tuplet.content).num === 0
     this.#closeOpening(closed, warnings, context)
     // A run with no bracket has no stop, so it is reported where it opened,
     // and so is a bracket the barline closes.
@@ -882,7 +884,7 @@ export class TupletTracker {
     // what a bracket opening and closing on grace notes holds. MNX states a
     // tuplet as a written length against the time it is played in, and a
     // grace note gives neither, so there is no tuplet to write.
-    if (closed.untimed) {
+    if (holdsNoTime(closed)) {
       unwrapTuplet(closed.within, tuplet)
       warnings.add(
         'unrepresentable:tuplet-untimed',
@@ -936,8 +938,10 @@ export class TupletTracker {
   #closeOpening(closed: OpenTuplet, warnings: WarningCollector, context: ReportContext): void {
     const { opening } = closed
     if (!opening || opening.frames.some((frame) => this.#open.includes(frame))) return
-    const group = closed.tuplet.content.find((item) => item.kind === 'grace')
-    if (group && opening.frames.every((frame) => frame.untimed)) {
+    // The last bracket to close holds the others. Where it holds nothing that
+    // takes time, it holds grace groups alone, and the first holds the note.
+    const [group] = closed.tuplet.content
+    if (group && holdsNoTime(closed)) {
       this.#held.push({ opening, group })
     } else {
       reportDisagreeing(opening, warnings, context)
