@@ -1019,7 +1019,7 @@ describe('dynamics', () => {
 
   // The attributes of a <direction-type> child are swept like any other
   // reader's: a metronome mark drawn in parentheses has no home in MNX's
-  // tempo, and a hairpin starting from nothing none in its group.
+  // tempo.
   test('reports a parenthesized metronome mark', () => {
     const { warnings } = read(
       inMeasure(
@@ -1036,18 +1036,71 @@ describe('dynamics', () => {
     )
   })
 
-  test('reports a niente hairpin', () => {
-    const { warnings } = read(
-      inMeasure(
-        '<direction><direction-type><wedge type="crescendo" niente="yes"/>' +
-          '</direction-type></direction>' +
-          note('C') +
-          '<direction><direction-type><wedge type="stop"/></direction-type></direction>',
-      ),
-    )
+  // The circle of niente is drawn at a hairpin's point. A crescendo's point
+  // is where it starts, which MNX states as the hairpin's value. A
+  // diminuendo's is where it ends, and MNX states no level a hairpin ends at.
+  describe('niente', () => {
+    function hairpin(start: string, stop: string): string {
+      return inMeasure(direction(`<wedge ${start}/>`) + note('C') + direction(`<wedge ${stop}/>`))
+    }
 
-    expect(warnings.map((w) => w.code)).toEqual(['unsupported:attribute'])
-    expect(warnings[0]?.message).toBe('The "niente" attribute of a <wedge> is not converted yet.')
+    test('writes a crescendo from niente as starting at n', () => {
+      const { mnx, warnings } = convertValid(
+        hairpin('type="crescendo" niente="yes"', 'type="stop"'),
+      )
+
+      expect(mnx.parts[0]?.measures[0]?.dynamics?.[0]).toMatchObject({
+        type: 'gradual',
+        wedgeType: 'increasing',
+        value: 'n',
+      })
+      expect(warnings).toEqual([])
+    })
+
+    test.each([
+      ['on the stop', 'type="diminuendo"', 'type="stop" niente="yes"'],
+      ['on the start of a diminuendo', 'type="diminuendo" niente="yes"', 'type="stop"'],
+    ])('reports a diminuendo to niente stated %s', (_where, start, stop) => {
+      const { mnx, warnings } = convertValid(hairpin(start, stop))
+
+      expect(mnx.parts[0]?.measures[0]?.dynamics?.[0]).toMatchObject({
+        type: 'gradual',
+        wedgeType: 'decreasing',
+      })
+      expect(mnx.parts[0]?.measures[0]?.dynamics?.[0]).not.toHaveProperty('value')
+      expect(warnings.map((w) => [w.code, w.attribute, w.message])).toEqual([
+        [
+          'unrepresentable:attribute',
+          'niente',
+          'The niente circle at the end of a <wedge> cannot be expressed in MNX, ' +
+            'which states only the level a hairpin starts from.',
+        ],
+      ])
+    })
+
+    test('reads niente="no" as a hairpin drawn without the circle', () => {
+      const { mnx, warnings } = convertValid(
+        hairpin('type="crescendo" niente="no"', 'type="stop" niente="no"'),
+      )
+
+      expect(mnx.parts[0]?.measures[0]?.dynamics?.[0]).not.toHaveProperty('value')
+      expect(warnings).toEqual([])
+    })
+
+    test('reports a niente value MusicXML does not define', () => {
+      const { mnx, warnings } = convertValid(
+        hairpin('type="crescendo" niente="maybe"', 'type="stop"'),
+      )
+
+      expect(mnx.parts[0]?.measures[0]?.dynamics?.[0]).not.toHaveProperty('value')
+      expect(warnings.map((w) => [w.code, w.message])).toEqual([
+        [
+          'unresolved:attribute-value',
+          'A <wedge> of niente "maybe" is not one MusicXML defines, ' +
+            'so the hairpin is drawn without the circle.',
+        ],
+      ])
+    })
   })
 
   test('writes the hairpin wording onto schema-valid MNX', () => {

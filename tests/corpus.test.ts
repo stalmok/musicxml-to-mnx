@@ -151,6 +151,8 @@ function sourceHairpins(root: XmlElement): string[] {
       interface End {
         kind: 'start' | 'stop'
         wedge: string
+        // The level a crescendo from niente starts at, which MNX states.
+        from: string
         number: string
         staff: string
         measure: number
@@ -204,6 +206,7 @@ function sourceHairpins(root: XmlElement): string[] {
               ends.push({
                 kind: type === 'stop' ? 'stop' : 'start',
                 wedge: type === 'crescendo' ? 'increasing' : 'decreasing',
+                from: type === 'crescendo' && wedge.attributes.niente === 'yes' ? ' from n' : '',
                 number: wedge.attributes.number ?? '1',
                 staff: item.children.find((c) => c.name === 'staff')?.rawText.trim() ?? '',
                 measure: measureIndex,
@@ -273,7 +276,7 @@ function sourceHairpins(root: XmlElement): string[] {
         const stop = closed.get(end.order)
         if (!stop) continue
         paired.push(
-          `part ${String(partIndex + 1)} ${end.wedge} m${String(end.measure + 1)} -> ` +
+          `part ${String(partIndex + 1)} ${end.wedge}${end.from} m${String(end.measure + 1)} -> ` +
             `m${String(stop.measure + 1)}`,
         )
       }
@@ -618,7 +621,8 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
           if (dynamic.type !== 'gradual') continue
           const endsIn = named.get(dynamic.end.measure)
           converted.push(
-            `part ${String(partIndex + 1)} ${dynamic.wedgeType} ` +
+            `part ${String(partIndex + 1)} ${dynamic.wedgeType}` +
+              `${dynamic.value !== undefined ? ` from ${dynamic.value}` : ''} ` +
               `m${String(index + 1)} -> ${endsIn === undefined ? 'a measure the score does not name' : `m${String(endsIn + 1)}`}`,
           )
         }

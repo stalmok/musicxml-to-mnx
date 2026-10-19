@@ -633,6 +633,7 @@ function readWedge(
   const where = writtenAt(found, context, warnings)
 
   if (type === 'stop') {
+    if (readNiente(found, warnings, context)) reportNienteEnd(found, warnings, context)
     // Grace notes written before the stop are drawn under the hairpin. Which
     // of them it ends on is settled once the measure is whole, because the
     // ones read after it decide how MNX numbers the ones read before it.
@@ -661,18 +662,57 @@ function readWedge(
     return undefined
   }
 
-  // A hairpin states no value of its own: what it grows from and to is said
-  // by the plain marks around it.
+  // A hairpin states no value of its own, except a crescendo from niente:
+  // what it grows from and to is said by the plain marks around it.
+  const niente = readNiente(found, warnings, context)
+  if (niente && wedge === 'decreasing') reportNienteEnd(found, warnings, context)
   const hairpin: OpenHairpin = {
     measure,
     position,
     wedge,
+    ...(niente && wedge === 'increasing' ? { value: 'n' } : {}),
     staff,
     ...(placement !== undefined ? { placement } : {}),
     slot,
   }
   state.spanners.startWedge(hairpin, number, where)
   return { edge: 'start', hairpin }
+}
+
+/**
+ * Whether a <wedge> draws the circle of niente at its point. A crescendo's
+ * point is where it starts, and a diminuendo's is where it ends.
+ */
+function readNiente(
+  found: XmlElement,
+  warnings: WarningCollector,
+  context: ReportContext,
+): boolean {
+  const niente = attribute(found, 'niente')
+  if (niente === undefined || niente === 'no') return false
+  if (niente === 'yes') return true
+  warnings.addUndefinedAttribute(
+    found,
+    'niente',
+    'so the hairpin is drawn without the circle.',
+    context,
+  )
+  return false
+}
+
+function reportNienteEnd(
+  found: XmlElement,
+  warnings: WarningCollector,
+  context: ReportContext,
+): void {
+  warnings.add(
+    'unrepresentable:attribute',
+    'The niente circle at the end of a <wedge> cannot be expressed in MNX, ' +
+      'which states only the level a hairpin starts from.',
+    context,
+    found,
+    'niente',
+  )
 }
 
 /**

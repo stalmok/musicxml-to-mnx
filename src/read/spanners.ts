@@ -12,6 +12,7 @@ import { compareFractions, isZero } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type {
   CurveSide,
+  DynamicValue,
   GradualDynamic,
   Event,
   LineType,
@@ -80,6 +81,7 @@ export interface OpenHairpin {
   readonly measure: number
   readonly position: Fraction
   readonly wedge: WedgeType
+  readonly value?: DynamicValue
   readonly staff: number | undefined
   readonly placement?: 'above' | 'below'
   prefix?: string
@@ -1028,6 +1030,7 @@ export class SpannerResolver implements PartCollector {
         if (open.staff !== undefined && stop.staff !== undefined && stop.staff !== open.staff) {
           hairpin.staffEnd = stop.staff
         }
+        if (open.value !== undefined) hairpin.value = open.value
         if (open.placement !== undefined) hairpin.placement = open.placement
         if (open.prefix !== undefined) hairpin.prefix = open.prefix
         if (open.suffix !== undefined) hairpin.suffix = open.suffix

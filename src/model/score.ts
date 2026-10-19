@@ -557,6 +557,8 @@ export interface ImmediateDynamic extends DynamicBase {
 export interface GradualDynamic extends DynamicBase {
   readonly kind: 'gradual'
   readonly wedge: WedgeType
+  /** The level the hairpin starts from, where the source states one. */
+  readonly value?: DynamicValue
   /** Where the hairpin stops. */
   readonly end: SpanStop
   /** The staff the hairpin stops on, where that is not the one it starts on. */

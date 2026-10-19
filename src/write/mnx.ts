@@ -626,6 +626,7 @@ function writeDynamic(dynamic: Dynamic, names: MeasureNames): MNXDynamic {
         type: 'gradual',
         ...wording,
         wedgeType: dynamic.wedge,
+        ...(dynamic.value !== undefined ? { value: dynamic.value } : {}),
         end: writeSpanEnd(dynamic.end, names),
         ...where,
         ...(dynamic.staffEnd !== undefined ? { staffEnd: dynamic.staffEnd } : {}),
