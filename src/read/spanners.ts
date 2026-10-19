@@ -82,6 +82,8 @@ export interface OpenHairpin {
   readonly position: Fraction
   readonly wedge: WedgeType
   readonly value?: DynamicValue
+  /** Where a diminuendo states niente on its start, which is its end's circle. */
+  readonly nienteAt?: WrittenAt
   readonly staff: number | undefined
   readonly placement?: 'above' | 'below'
   prefix?: string
@@ -125,6 +127,8 @@ export interface WedgeStop {
   /** Wording at the closing edge. It waits until the pairing says which
    * hairpin the stop closes, and becomes that hairpin's suffix. */
   wording?: Wording
+  /** Whether the stop states niente, which only a diminuendo's stop can. */
+  niente?: boolean
 }
 
 /** A hairpin end, and on a stop the wording waiting at it. */
@@ -547,6 +551,48 @@ function startsWhereStops(start: EndPlace, stop: EndPlace): boolean {
   if (start.number !== stop.number || !openedIn(start, stop)) return false
   if (start.measure === stop.measure) return compareFractions(start.position, stop.position) === 0
   return stop.atBarline === true && start.measure === stop.measure + 1 && isZero(start.position)
+}
+
+/**
+ * Reports the niente circle at the end of a hairpin, once for each hairpin.
+ * MNX states the level a hairpin starts from and none it ends at. MusicXML
+ * draws the circle at the end only of a diminuendo.
+ */
+function reportNienteEnd(
+  open: OpenHairpin,
+  stop: StopEnd<WedgeStop>,
+  warnings: WarningCollector,
+): void {
+  const where = open.nienteAt ?? (stop.stop.niente === true ? stop.where : undefined)
+  if (where === undefined) return
+  if (open.wedge === 'decreasing') {
+    warnings.addAt(
+      where.place.place,
+      'unrepresentable:attribute',
+      'The niente circle at the end of a <wedge> cannot be expressed in MNX, ' +
+        'which states only the level a hairpin starts from.',
+      where.context,
+      where.element,
+      'niente',
+    )
+  } else {
+    warnings.addAt(
+      where.place.place,
+      'unresolved:attribute-value',
+      nienteOutOfPlace('closing a crescendo'),
+      where.context,
+      where.element,
+      'niente',
+    )
+  }
+}
+
+/** The report of a niente where MusicXML gives it no meaning. */
+export function nienteOutOfPlace(where: string): string {
+  return (
+    `A <wedge> ${where} states niente "yes", which MusicXML defines only where a ` +
+    'crescendo starts or a diminuendo stops, so it is not carried over.'
+  )
 }
 
 /** The wording a hairpin carries, quoted for a report, or '' where it has none. */
@@ -1031,6 +1077,7 @@ export class SpannerResolver implements PartCollector {
           hairpin.staffEnd = stop.staff
         }
         if (open.value !== undefined) hairpin.value = open.value
+        reportNienteEnd(open, stop, warnings)
         if (open.placement !== undefined) hairpin.placement = open.placement
         if (open.prefix !== undefined) hairpin.prefix = open.prefix
         if (open.suffix !== undefined) hairpin.suffix = open.suffix

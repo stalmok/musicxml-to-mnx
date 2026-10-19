@@ -37,6 +37,7 @@ import type { ElementReader, Stated } from './element.js'
 import { noteValueBaseOf } from './noteValues.js'
 import { parseDecimal, parseExactDecimal, parseWholeNumber, readIntegerInRange } from './numbers.js'
 import type { GraceNotesAt } from './voices.js'
+import { nienteOutOfPlace } from './spanners.js'
 import type { OpenHairpin, WedgeStop } from './spanners.js'
 import { placementOf } from './marks.js'
 import { measureLength } from './state.js'
@@ -633,21 +634,33 @@ function readWedge(
   const where = writtenAt(found, context, warnings)
 
   if (type === 'stop') {
-    if (readNiente(found, warnings, context)) reportNienteEnd(found, warnings, context)
     // Grace notes written before the stop are drawn under the hairpin. Which
     // of them it ends on is settled once the measure is whole, because the
     // ones read after it decide how MNX numbers the ones read before it.
-    return {
-      edge: 'stop',
-      stop: state.spanners.stopWedge(number, measure, position, overGrace, staff, where),
-    }
+    const stop = state.spanners.stopWedge(number, measure, position, overGrace, staff, where)
+    // What a niente here means depends on the hairpin it closes, which the
+    // pairing settles.
+    if (readNiente(found, warnings, context)) stop.niente = true
+    return { edge: 'stop', stop }
   }
 
   const wedge = type === undefined ? undefined : WEDGE_TYPES.get(type)
   if (!wedge) {
     // "continue" marks a point partway along a hairpin, which MNX has no need
     // of, since it states only where one begins and ends.
-    if (type !== 'continue') {
+    if (type === 'continue') {
+      if (readNiente(found, warnings, context)) {
+        warnings.add(
+          'unresolved:attribute-value',
+          nienteOutOfPlace('partway along a hairpin'),
+          context,
+          found,
+          'niente',
+        )
+      }
+    } else {
+      // Not carried over with the rest of the hairpin, which is reported whole.
+      attribute(found, 'niente')
       warnings.addUndefinedAttribute(
         found,
         'type',
@@ -662,15 +675,15 @@ function readWedge(
     return undefined
   }
 
-  // A hairpin states no value of its own, except a crescendo from niente:
-  // what it grows from and to is said by the plain marks around it.
+  // A hairpin states no value of its own: what it grows from and to is said
+  // by the plain marks around it. A crescendo from niente is the exception.
   const niente = readNiente(found, warnings, context)
-  if (niente && wedge === 'decreasing') reportNienteEnd(found, warnings, context)
   const hairpin: OpenHairpin = {
     measure,
     position,
     wedge,
     ...(niente && wedge === 'increasing' ? { value: 'n' } : {}),
+    ...(niente && wedge === 'decreasing' ? { nienteAt: where } : {}),
     staff,
     ...(placement !== undefined ? { placement } : {}),
     slot,
@@ -698,21 +711,6 @@ function readNiente(
     context,
   )
   return false
-}
-
-function reportNienteEnd(
-  found: XmlElement,
-  warnings: WarningCollector,
-  context: ReportContext,
-): void {
-  warnings.add(
-    'unrepresentable:attribute',
-    'The niente circle at the end of a <wedge> cannot be expressed in MNX, ' +
-      'which states only the level a hairpin starts from.',
-    context,
-    found,
-    'niente',
-  )
 }
 
 /**

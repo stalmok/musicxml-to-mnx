@@ -1078,6 +1078,79 @@ describe('dynamics', () => {
       ])
     })
 
+    test('reports a diminuendo to niente stated on both ends once', () => {
+      const { warnings } = convertValid(
+        hairpin('type="diminuendo" niente="yes"', 'type="stop" niente="yes"'),
+      )
+
+      expect(warnings.map((w) => [w.code, w.attribute])).toEqual([
+        ['unrepresentable:attribute', 'niente'],
+      ])
+    })
+
+    test.each([
+      [
+        'closing a crescendo',
+        hairpin('type="crescendo"', 'type="stop" niente="yes"'),
+        'A <wedge> closing a crescendo',
+      ],
+      [
+        'partway along a hairpin',
+        inMeasure(
+          direction('<wedge type="crescendo"/>') +
+            note('C') +
+            direction('<wedge type="continue" niente="yes"/>') +
+            note('D') +
+            direction('<wedge type="stop"/>'),
+        ),
+        'A <wedge> partway along a hairpin',
+      ],
+    ])(
+      'reports niente on a <wedge> %s as one MusicXML does not define',
+      (_where, source, opening) => {
+        const { mnx, warnings } = convertValid(source)
+
+        expect(mnx.parts[0]?.measures[0]?.dynamics?.[0]).not.toHaveProperty('value')
+        expect(warnings.map((w) => [w.code, w.attribute, w.message])).toEqual([
+          [
+            'unresolved:attribute-value',
+            'niente',
+            `${opening} states niente "yes", which MusicXML defines only where a crescendo ` +
+              'starts or a diminuendo stops, so it is not carried over.',
+          ],
+        ])
+      },
+    )
+
+    // The hairpin's own warning says it is not carried over, its circle with it.
+    test.each([
+      [
+        'an unclosed diminuendo',
+        inMeasure(direction('<wedge type="diminuendo" niente="yes"/>') + note('C')),
+      ],
+      [
+        'a stop with no start',
+        inMeasure(note('C') + direction('<wedge type="stop" niente="yes"/>')),
+      ],
+      [
+        'a hairpin of no length',
+        inMeasure(
+          direction('<wedge type="diminuendo" niente="yes"/>') +
+            direction('<wedge type="stop" niente="yes"/>') +
+            note('C'),
+        ),
+      ],
+      [
+        'a hairpin of an unknown type',
+        hairpin('type="bogus" niente="yes"', 'type="stop" niente="yes"'),
+      ],
+    ])('adds no niente warning to %s', (_what, source) => {
+      const { warnings } = convertValid(source)
+
+      expect(warnings).toHaveLength(1)
+      expect(warnings[0]?.attribute).not.toBe('niente')
+    })
+
     test('reads niente="no" as a hairpin drawn without the circle', () => {
       const { mnx, warnings } = convertValid(
         hairpin('type="crescendo" niente="no"', 'type="stop" niente="no"'),

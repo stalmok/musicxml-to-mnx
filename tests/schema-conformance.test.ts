@@ -1255,12 +1255,6 @@ const CALL_SITE_LIMITS: Readonly<
       says: 'a segno or a tempo states no side',
       holds: () => !has('segno', 'placement') && !has('tempo', 'placement'),
     },
-    {
-      says: 'a hairpin states only the level it starts from',
-      holds: () =>
-        propertiesOf('dynamic-group-gradual').join() ===
-        'end,placement,position,prefix,staff,staffEnd,suffix,type,value,visuallyContinues,voice,wedgeType',
-    },
   ],
   'src/read/marks.ts': [
     {
@@ -1298,6 +1292,12 @@ const CALL_SITE_LIMITS: Readonly<
     {
       says: 'a tie is always drawn',
       holds: () => propertiesOf('tie').join() === 'lv,side,target,targetType',
+    },
+    {
+      says: 'a hairpin states only the level it starts from',
+      holds: () =>
+        propertiesOf('dynamic-group-gradual').join() ===
+        'end,placement,position,prefix,staff,staffEnd,suffix,type,value,visuallyContinues,voice,wedgeType',
     },
   ],
   'src/read/tremolos.ts': [
