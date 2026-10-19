@@ -33,7 +33,7 @@ If a long check finds a defect, fix it in a new commit. Then run the long checks
 
 There are two corpus runs:
 
-- **Vendored corpus**: 600 Lieder songs committed in `tests/corpus/`. CI runs it on pushes to main and on pull requests that change the converter, the schema, the checks, the songs or the dependencies.
+- **Vendored corpus**: 600 Lieder songs, one PDMX score and seven feature files committed in `tests/corpus/`. CI runs it on pushes to main and on pull requests that change the converter, the schema, the checks, the songs or the dependencies.
 - **Full Lieder corpus**: not in the repository. The weekly `corpus.yml` workflow clones it. To run it locally, clone the corpus and run `MUSICXML_TO_MNX_CORPUS=<clone>/scores pnpm corpus-gate`.
 
 The corpus checks do not compare whole output. `pnpm compare-output <base-ref> [directory...]` does. It converts every score with a build of the base commit and a build of the working tree, and lists each file whose MNX, warnings or refusal differ. The directories default to `tests/corpus`. Use `--ignore-messages` for a change that rewords warnings on purpose, and `--mnx-only` for one that changes warnings on purpose. Neither option stops it comparing refusals. Both builds use this checkout's `node_modules`, so a dependency change is not compared. It exits 0 when every file matches, 1 when any differs, and 2 when it cannot run.

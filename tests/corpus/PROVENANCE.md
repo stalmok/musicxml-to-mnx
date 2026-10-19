@@ -1,7 +1,7 @@
 # Vendored corpus
 
-Six hundred published songs and seven feature files. Every check in
-`tests/corpus.test.ts` runs over both.
+Six hundred Lieder songs, one score from PDMX and seven feature files. Every
+check in `tests/corpus.test.ts` runs over all of them.
 
 Real music holds combinations that hand-written fixtures do not. Defects found
 this way include a grace note taking time it does not have, a chord member
@@ -16,8 +16,8 @@ Commons Zero**, so they can be redistributed here without condition.
 Transcribed by OpenScore volunteers and moderated by a professional
 proofreading team, from public-domain editions on IMSLP.
 
-`SOURCES.json` records the composer, work, and upstream path of each song.
-Every song is byte-for-byte the file at that path in upstream commit
+`SOURCES.json` records the composer, work, and upstream path of each Lieder
+song. Every Lieder song is byte-for-byte the file at that path in upstream commit
 [`6b2dc542ce2e8aa4b78c8ee62103b210efc07015`](https://github.com/OpenScore/Lieder/tree/6b2dc542ce2e8aa4b78c8ee62103b210efc07015)
 (2026-04-07). Later commits renumber some song folders, so the paths hold at
 that commit only.
@@ -32,7 +32,17 @@ byte-for-byte the file in `xmlFiles/` at upstream commit
 [`b2e6a1627b8574c9714e1fd0a8a5b1921e10f8f3`](https://github.com/cuthbertLab/musicxmlTestSuite/tree/b2e6a1627b8574c9714e1fd0a8a5b1921e10f8f3)
 (2026-07-05). Later commits change them.
 
-The two licences differ, so the two sets are kept apart on disk. Nothing here
+`hawkins-anglerfish.mxl` is "Anglerfish" by Matthew Hawkins, for electric
+piano, electric guitar, electric bass, drum set and congas. It comes from
+[PDMX](https://zenodo.org/records/15571083), a dataset of MuseScore scores
+published under **CC BY 4.0** by Phillip Long, Zachary Novack, Julian McAuley
+and Taylor Berg-Kirkpatrick. MuseScore records the score as an original work
+by its uploader, released under **Creative Commons Zero**, and PDMX records no
+licence conflict for it. It is byte-for-byte
+`mxl/16/13/QmYc9xbNQhCgnw11kR9Nv5wb2YFKn9pjHRqpPocGKjdLkw.mxl` in the
+dataset's `mxl.tar.gz`. It is kept with the Lieder songs because both are CC0.
+
+The feature files are MIT, not CC0, so they are kept apart on disk. Nothing here
 may be added from a source without a redistribution grant: the MakeMusic
 sample set is copyrighted piece by piece, and the music21 corpus states that
 its encodings carry whatever terms their encoders set.
@@ -59,12 +69,15 @@ failure names what broke:
 children that MNX cannot hold, so the tests exercise those registry entries,
 not only compare them with the schema.
 
-The vendored corpus does not cover measure repeats, `make-time` on grace
-notes, or hairpins ending at `niente`.
+`hawkins-anglerfish.mxl` holds a crescendo from `niente`, which no other file
+here holds. Nine of the 254,035 scores in PDMX use `niente`. This one is an
+original work, small, and released under CC0.
 
-Earlier searches found one measure repeat in the music21 corpus, but that
-file is not included here. Those searches found no examples of the other two
-features in Lieder, the test suite, MakeMusic, music21, or the CPDL and PDMX samples.
+The vendored corpus does not cover measure repeats or `make-time` on grace
+notes. The one measure repeat found in any corpus searched is in the music21
+corpus, which has no redistribution grant. No `make-time` was found in
+Lieder, the test suite, MakeMusic, music21, the CPDL sample or the whole of
+PDMX.
 
 ## Why `.mxl`
 
@@ -114,8 +127,8 @@ up correctly. The defect is in the export, not the transcription. The
 converter reports these ties and slurs and does not guess. The warning
 baseline records how many.
 
-Every one of the six hundred converts. Songs the converter refuses were
-skipped when the corpus was chosen, and the corpus test fails if any song is
+Every song converts. Songs the converter refuses were skipped when the corpus
+was chosen, and the corpus test fails if any song is
 refused.
 
 Some write a measure longer than its time signature, such as five quarters in
