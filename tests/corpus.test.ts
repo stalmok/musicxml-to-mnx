@@ -969,7 +969,7 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   // legal MNX.
   test('joins every slur the source states within one voice', () => {
     // Skipped where a written value disagrees with its duration, as for the
-    // measure lengths above. Nine songs are skipped here, and no other check
+    // measure lengths above. Ten files are skipped here, and no other check
     // covers their slurs.
     if (warnings.some((warning) => warning.code === 'inconsistent:duration')) return
 

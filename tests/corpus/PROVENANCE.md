@@ -36,8 +36,8 @@ byte-for-byte the file in `xmlFiles/` at upstream commit
 piano, electric guitar, electric bass, drum set and congas. It comes from
 [PDMX](https://zenodo.org/records/15571083), a dataset of MuseScore scores
 published under **CC BY 4.0** by Phillip Long, Zachary Novack, Julian McAuley
-and Taylor Berg-Kirkpatrick. MuseScore records the score as an original work
-by its uploader, released under **Creative Commons Zero**, and PDMX records no
+and Taylor Berg-Kirkpatrick. MuseScore marks the score as an original work,
+released by its uploader under **Creative Commons Zero**, and PDMX records no
 licence conflict for it. It is byte-for-byte
 `mxl/16/13/QmYc9xbNQhCgnw11kR9Nv5wb2YFKn9pjHRqpPocGKjdLkw.mxl` in the
 dataset's `mxl.tar.gz`. It is kept with the Lieder songs because both are CC0.
@@ -70,11 +70,13 @@ children that MNX cannot hold, so the tests exercise those registry entries,
 not only compare them with the schema.
 
 `hawkins-anglerfish.mxl` holds a crescendo from `niente`, which no other file
-here holds. Nine of the 254,035 scores in PDMX use `niente`. This one is an
-original work, small, and released under CC0.
+here holds. Nine of the 254,035 scores in PDMX use `niente`. This one is marked
+as an original work and released under CC0. It writes notes whose value
+disagrees with their duration, so the length and direction checks skip it.
 
-The vendored corpus does not cover measure repeats or `make-time` on grace
-notes. The one measure repeat found in any corpus searched is in the music21
+The vendored corpus does not cover measure repeats, `make-time` on grace
+notes, or a diminuendo to `niente`, which states `niente` on the stop of the
+wedge. The one measure repeat found in any corpus searched is in the music21
 corpus, which has no redistribution grant. No `make-time` was found in
 Lieder, the test suite, MakeMusic, music21, the CPDL sample or the whole of
 PDMX.
