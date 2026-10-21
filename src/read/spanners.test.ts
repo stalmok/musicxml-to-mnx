@@ -347,7 +347,9 @@ describe('ties', () => {
     ])
   })
 
-  test('keeps a tie within the line its voice first sounds as one voice', () => {
+  // The higher of two laid-over lines keeps the voice's name, whichever the
+  // source writes first.
+  test('keeps a tie into the higher of two laid-over lines as one voice', () => {
     const { notes } = readAllVoices(
       measures(
         DIVISIONS + note('E', tied('start')),
@@ -357,6 +359,18 @@ describe('ties', () => {
     const [started, stopped] = notes as [Note, Note, Note]
 
     expect(started.ties).toEqual([{ kind: 'target', target: stopped.id, crossVoice: false }])
+  })
+
+  test('marks a tie into the lower of two laid-over lines as crossing voices', () => {
+    const { notes } = readAllVoices(
+      measures(
+        DIVISIONS + note('E', tied('start')),
+        note('E', tied('stop')) + '<backup><duration>4</duration></backup>' + note('G'),
+      ),
+    )
+    const [started, stopped] = notes as [Note, Note, Note]
+
+    expect(started.ties).toEqual([{ kind: 'target', target: stopped.id, crossVoice: true }])
   })
 
   test('writes a tie into a line laid over its own voice with a crossVoice target', () => {
