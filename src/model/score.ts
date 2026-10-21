@@ -416,7 +416,10 @@ export interface FullMeasureRest {
 }
 
 interface SequenceBase {
-  /** The voice as the source named it, when a measure holds more than one. */
+  /**
+   * The voice as the source named it, where it named one. A line laid over
+   * its voice takes a name built from the voice's, such as "1.2".
+   */
   readonly voice: string | undefined
   /** The staff this voice sits on, where the part has more than one. */
   readonly staff: number | undefined

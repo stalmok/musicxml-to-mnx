@@ -643,11 +643,6 @@ export function tieKey(pitch: Pitch): string {
   return String((pitch.octave + 1) * 12 + STEP_SEMITONES[pitch.step] + pitch.alter)
 }
 
-// Slurs are matched on the number the source gives them, across the whole
-// part. In piano writing a slur often runs from one hand to the other, which
-// is a different voice and a different staff. Several slurs may share a
-// number, and a stop closes the most recently opened one.
-
 /** The voice of the sequence each note is written in, by the note's id. */
 function sequenceVoicesOf(measures: readonly Measure[]): Map<string, string | undefined> {
   const voices = new Map<string, string | undefined>()
@@ -666,6 +661,11 @@ function sequenceVoicesOf(measures: readonly Measure[]): Map<string, string | un
   }
   return voices
 }
+
+// Slurs are matched on the number the source gives them, across the whole
+// part. In piano writing a slur often runs from one hand to the other, which
+// is a different voice and a different staff. Several slurs may share a
+// number, and a stop closes the most recently opened one.
 
 export class SpannerResolver implements PartCollector {
   // Both ends of every tie in the part, paired once all of them are in.
@@ -761,9 +761,12 @@ export class SpannerResolver implements PartCollector {
    * away, across rests. A start its voice has sounded past is not one.
    *
    * A stop with no same-voice start falls back to the most recent open start
-   * of any voice, which is the cross-voice tie MNX marks. That pair is
-   * inferred, so it reaches back one measure at most: a cross-voice tie joins
-   * two notes sounding into each other, and a note never crosses a barline.
+   * of any voice. That pair is inferred, so it reaches back one measure at
+   * most: a cross-voice tie joins two notes sounding into each other, and a
+   * note never crosses a barline.
+   *
+   * Whether MNX marks a tie as crossing voices does not follow from which way
+   * it paired. It follows from the sequences its two notes are written in.
    */
   #resolveTies(measures: readonly Measure[], warnings: WarningCollector): void {
     const sequenceVoices = sequenceVoicesOf(measures)
