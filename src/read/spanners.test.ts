@@ -294,6 +294,63 @@ describe('ties', () => {
     expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([['unclosed:spanner', 1]])
   })
 
+  // Two lines laid over each other in one <voice> are two MNX sequences, so
+  // a tie from one line into the other crosses voices although the source
+  // names one voice for both.
+  test('marks a tie into a line laid over its own voice as crossing voices', () => {
+    const { notes } = readAllVoices(
+      measures(
+        DIVISIONS + note('E', tied('start')),
+        note('G') + '<backup><duration>4</duration></backup>' + note('E', tied('stop')),
+      ),
+    )
+    const [started, , stopped] = notes as [Note, Note, Note]
+
+    expect(started.ties).toEqual([{ kind: 'target', target: stopped.id, crossVoice: true }])
+  })
+
+  test('marks a tie out of a line laid over its own voice as crossing voices', () => {
+    const { notes } = readAllVoices(
+      measures(
+        DIVISIONS +
+          note('G') +
+          '<backup><duration>4</duration></backup>' +
+          note('E', tied('start')),
+        note('E', tied('stop')),
+      ),
+    )
+    const [, started, stopped] = notes as [Note, Note, Note]
+
+    expect(started.ties).toEqual([{ kind: 'target', target: stopped.id, crossVoice: true }])
+  })
+
+  test('keeps a tie within the line its voice first sounds as one voice', () => {
+    const { notes } = readAllVoices(
+      measures(
+        DIVISIONS + note('E', tied('start')),
+        note('E', tied('stop')) + '<backup><duration>4</duration></backup>' + note('C'),
+      ),
+    )
+    const [started, stopped] = notes as [Note, Note, Note]
+
+    expect(started.ties).toEqual([{ kind: 'target', target: stopped.id, crossVoice: false }])
+  })
+
+  test('writes a tie into a line laid over its own voice with a crossVoice target', () => {
+    const { mnx } = convertValid(
+      measures(
+        DIVISIONS + note('E', tied('start')),
+        note('G') + '<backup><duration>4</duration></backup>' + note('E', tied('stop')),
+      ),
+    )
+    const [first, second] = mnx.parts[0]?.measures ?? []
+    const tie = first?.sequences[0]?.content[0]
+    const target = second?.sequences.find((sequence) => sequence.voice === '1.2')
+
+    expect(tie).toMatchObject({ notes: [{ ties: [{ targetType: 'crossVoice' }] }] })
+    expect(target?.content[0]).toMatchObject({ notes: [{ pitch: { step: 'E' } }] })
+  })
+
   // A chord member of a grace chord sounds before the beat as the whole
   // chord does, so its tie orders like any grace note's, through the chord
   // path it is read on.

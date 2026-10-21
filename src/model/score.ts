@@ -70,7 +70,7 @@ export interface TargetTie {
   readonly kind: 'target'
   /** The note the tie ends on. */
   readonly target: string
-  /** True where the tie ends in a different voice from the one it starts in. */
+  /** True where the tie ends in a different sequence's voice from the one it starts in. */
   readonly crossVoice: boolean
   /** Which side the tie is drawn on, where the source states it. */
   readonly side?: CurveSide

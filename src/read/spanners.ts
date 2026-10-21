@@ -20,6 +20,7 @@ import type {
   Ottava,
   OttavaAmount,
   Pitch,
+  SequenceItem,
   SpanStop,
   Step,
   TieTarget,
@@ -647,6 +648,25 @@ export function tieKey(pitch: Pitch): string {
 // is a different voice and a different staff. Several slurs may share a
 // number, and a stop closes the most recently opened one.
 
+/** The voice of the sequence each note is written in, by the note's id. */
+function sequenceVoicesOf(measures: readonly Measure[]): Map<string, string | undefined> {
+  const voices = new Map<string, string | undefined>()
+  const walk = (items: readonly SequenceItem[], voice: string | undefined): void => {
+    for (const item of items) {
+      if (item.kind === 'event') {
+        if (item.body.kind === 'rest') continue
+        for (const note of [...item.body.notes, ...item.body.kitNotes]) voices.set(note.id, voice)
+      } else if (item.kind !== 'space') {
+        walk(item.content, voice)
+      }
+    }
+  }
+  for (const measure of measures) {
+    for (const sequence of measure.sequences) walk(sequence.content, sequence.voice)
+  }
+  return voices
+}
+
 export class SpannerResolver implements PartCollector {
   // Both ends of every tie in the part, paired once all of them are in.
   readonly #tieEnds: TieEnd[] = []
@@ -745,7 +765,8 @@ export class SpannerResolver implements PartCollector {
    * inferred, so it reaches back one measure at most: a cross-voice tie joins
    * two notes sounding into each other, and a note never crosses a barline.
    */
-  #resolveTies(warnings: WarningCollector): void {
+  #resolveTies(measures: readonly Measure[], warnings: WarningCollector): void {
+    const sequenceVoices = sequenceVoicesOf(measures)
     // A tie's two ends mark the very points they are written on, so no stop
     // covers a point before its start; the backwards message is here for the
     // shape of the report, as a slur's is.
@@ -777,10 +798,10 @@ export class SpannerResolver implements PartCollector {
           {
             kind: 'target',
             target: stop.stop.note.id,
-            // Voices are compared the way sequences are bucketed: a note
-            // stating no voice and one stating an empty voice are both the
-            // unnamed voice.
-            crossVoice: (start.voice ?? '') !== (stop.voice ?? ''),
+            // Compared by the sequences the two notes are written in, not by
+            // the source's <voice>: a line laid over its own voice is a
+            // sequence of its own, with a name of its own.
+            crossVoice: sequenceVoices.get(open.note.id) !== sequenceVoices.get(stop.stop.note.id),
             ...(open.side !== undefined ? { side: open.side } : {}),
           },
         ]
@@ -1036,7 +1057,7 @@ export class SpannerResolver implements PartCollector {
     this.#resolveWedges(partMeasures, warnings)
     this.#resolveOttavas(partMeasures, warnings)
     this.#resolveSlurs(warnings)
-    this.#resolveTies(warnings)
+    this.#resolveTies(partMeasures, warnings)
   }
 
   /** Joins every hairpin in the part, once all of both ends are in. */
