@@ -324,6 +324,29 @@ describe('ties', () => {
     expect(started.ties).toEqual([{ kind: 'target', target: stopped.id, crossVoice: true }])
   })
 
+  test('keeps a tie into a note inside a tuplet of its own voice as one voice', () => {
+    const triplet = (body: string): string =>
+      '<note><pitch><step>E</step><octave>4</octave></pitch><duration>2</duration>' +
+      '<voice>1</voice><type>eighth</type>' +
+      `<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>${body}</note>`
+    const score = readValid(
+      measures(
+        '<attributes><divisions>6</divisions></attributes>' +
+          '<note><pitch><step>E</step><octave>4</octave></pitch><duration>6</duration>' +
+          `<voice>1</voice><type>quarter</type>${tied('start')}</note>`,
+        triplet(tied('stop')) + triplet('') + triplet(''),
+      ),
+    )
+    const [first, second] = score.parts[0]?.measures ?? []
+    const started = first?.sequences[0]?.content[0] as Event
+    const tuplet = second?.sequences[0]?.content[0]
+    const stopped = tuplet?.kind === 'tuplet' ? (tuplet.content[0] as Event) : undefined
+
+    expect(notesOf(started)[0]?.ties).toEqual([
+      { kind: 'target', target: stopped && notesOf(stopped)[0]?.id, crossVoice: false },
+    ])
+  })
+
   test('keeps a tie within the line its voice first sounds as one voice', () => {
     const { notes } = readAllVoices(
       measures(
