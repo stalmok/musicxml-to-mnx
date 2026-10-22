@@ -544,13 +544,17 @@ export class MeasureBuilder {
   readonly #beamsOpenBefore: BeamsOpenAtBarline
   /** The lines that open the measure with a primary continue or end. */
   readonly #carryingOn: CarryingOn[] = []
+  /** Every voice name the part's notes state, in any measure. */
+  readonly #partVoices: ReadonlySet<string>
 
   constructor(
     carriedStops: readonly CarriedTupletStop[],
     carriedTremolos: readonly string[],
     soundingVoices: Iterable<string | undefined>,
     beamsOpenBefore: BeamsOpenAtBarline,
+    partVoices: ReadonlySet<string>,
   ) {
+    this.#partVoices = partVoices
     this.#carriedStops = [...carriedStops]
     this.#carriedTremolos = new Set(carriedTremolos)
     this.#soundingVoices = new Set([...soundingVoices].map((voice) => voice ?? UNNAMED_VOICE))
@@ -1616,8 +1620,9 @@ export class MeasureBuilder {
     // one, and leaving every laid-over sequence unnamed leaves two of them in
     // a measure that nothing can tell apart. Each takes a name of its own,
     // built from the voice it was laid over and its place among that voice's
-    // sequences, and stepped on past any name the measure already uses.
-    const taken = new Set(this.#voices.keys())
+    // sequences, and stepped on past any name the part's source gives a voice
+    // in any measure, since MNX reads one name as one line across the score.
+    const taken = new Set(this.#partVoices)
     const nameFor = (voice: string, index: number): string => {
       const base = voice === UNNAMED_VOICE ? '' : voice
       let line = index + 1

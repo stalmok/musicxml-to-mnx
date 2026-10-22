@@ -105,6 +105,12 @@ export interface PartState {
   /** The key and time signatures the part carries from measure to measure. */
   signatures: PartSignatures
   /**
+   * Every voice name the part's notes state, in any measure. MNX reads one
+   * voice name as one line across the score, so a name built for a laid-over
+   * line steps past all of them.
+   */
+  voiceNames: ReadonlySet<string>
+  /**
    * What a note's <instrument> resolves to, keyed as the note names it. A kit
    * component takes its name and its sound from this.
    */
@@ -212,6 +218,7 @@ export function measureLength(state: PartState): Fraction | undefined {
 export function newPartState(
   ids: IdGenerator,
   sounds: ReadonlyMap<string, ResolvedSound> = new Map(),
+  voiceNames: ReadonlySet<string> = new Set(),
 ): PartState {
   return {
     divisions: undefined,
@@ -224,6 +231,7 @@ export function newPartState(
     ids,
     spanners: new SpannerResolver(),
     signatures: new PartSignatures(),
+    voiceNames,
     sounds,
     kit: new Map(),
     kitKeys: new Map(),

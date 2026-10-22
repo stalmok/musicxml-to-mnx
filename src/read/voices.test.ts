@@ -1057,6 +1057,23 @@ describe('the measure cursor', () => {
     expect(result?.sequences.map((sequence) => sequence.voice)).toEqual(['1.4', '1', '1.3', '1.2'])
   })
 
+  // MNX reads one voice name as one line across the whole score.
+  test('steps past a name the source gives a voice in any measure of the part', () => {
+    const backup = '<backup><duration>16</duration></backup>'
+    const laidOver = higher(note('C', 4)) + backup + note('E', 4)
+    const result = readValid(
+      '<score-partwise><part id="P1">' +
+        `<measure number="1">${DIVISIONS}${laidOver}</measure>` +
+        `<measure number="2">${note('E', 4, '1.2')}</measure>` +
+        `<measure number="3">${laidOver}</measure>` +
+        '</part></score-partwise>',
+      new WarningCollector(),
+    )
+    const names = (result.parts[0]?.measures ?? []).map((m) => m.sequences.map((s) => s.voice))
+
+    expect(names).toEqual([['1', '1.3'], ['1.2'], ['1', '1.3']])
+  })
+
   test('names the line laid over a voice the source does not name by its place alone', () => {
     const unnamed = (xml: string) => xml.replace('<voice>1</voice>', '')
     const { measure: result } = read(

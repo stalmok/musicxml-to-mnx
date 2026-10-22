@@ -389,7 +389,7 @@ function readPart(
 
   reportUnreadText(element, warnings, { part: id })
 
-  const state = newPartState(ids, partList.soundsByInstrument.get(id))
+  const state = newPartState(ids, partList.soundsByInstrument.get(id), voiceNames(element))
   const collectors: MeasureCollectors = {
     endings: new Endings(id),
     measureRepeats: new MeasureRepeats(id),
@@ -518,6 +518,21 @@ function soundingVoices(measure: XmlElement): (string | undefined)[] {
   )
 }
 
+/** Every voice name the notes of a part state, in any measure. */
+function voiceNames(part: XmlElement): Set<string> {
+  return peeking(
+    () =>
+      new Set(
+        children(part, 'measure').flatMap((measure) =>
+          children(measure, 'note').flatMap((note) => {
+            const voice = child(note, 'voice')
+            return voice ? [trimmedText(voice)] : []
+          }),
+        ),
+      ),
+  )
+}
+
 function readMeasure(
   element: XmlElement,
   index: number,
@@ -570,6 +585,7 @@ function readMeasure(
     state.carriedTremolos,
     soundingVoices(element),
     state.beamsOpenAtBarline,
+    state.voiceNames,
   )
 
   // Walked in document order, because MusicXML states a measure as one stream
