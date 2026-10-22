@@ -384,10 +384,12 @@ describe('ties', () => {
     expect(started.ties).toEqual([{ kind: 'target', target: stopped.id, crossVoice: true }])
   })
 
+  const high = note('C').replace('<octave>4</octave>', '<octave>5</octave>')
+  const over = (body: string, low = high): string =>
+    low + '<backup><duration>4</duration></backup>' + body
+  const rest = '<note><rest/><duration>4</duration><type>quarter</type><voice>1</voice></note>'
+
   test('joins a tie within a laid-over line across rests of more than one measure', () => {
-    const high = note('C').replace('<octave>4</octave>', '<octave>5</octave>')
-    const over = (body: string): string => high + '<backup><duration>4</duration></backup>' + body
-    const rest = '<note><rest/><duration>4</duration><type>quarter</type><voice>1</voice></note>'
     const { notes, warnings } = readAllVoices(
       measures(
         DIVISIONS + over(note('E', tied('start'))),
@@ -401,17 +403,30 @@ describe('ties', () => {
     expect(warnings.map((w) => w.code)).not.toContain('unclosed:spanner')
   })
 
-  // Where the voice sounds one line only, nothing says which of its lines
-  // that is, so a laid-over line's tie does not reach across it.
-  test('does not join a tie within a laid-over line across a measure that sounds one line', () => {
-    const high = note('C').replace('<octave>4</octave>', '<octave>5</octave>')
-    const over = (body: string): string => high + '<backup><duration>4</duration></backup>' + body
+  test('joins a tie within a laid-over line across a measure that leaves the line out', () => {
     const { notes, warnings } = readAllVoices(
-      measures(
-        DIVISIONS + over(note('E', tied('start'))),
-        note('E'),
-        over(note('E', tied('stop'))),
-      ),
+      measures(DIVISIONS + over(note('E', tied('start'))), high, over(note('E', tied('stop')))),
+    )
+    const [, started, , , stopped] = notes as [Note, Note, Note, Note, Note]
+
+    expect(started.ties).toEqual([{ kind: 'target', target: stopped.id, crossVoice: false }])
+    expect(warnings.map((w) => w.code)).not.toContain('unclosed:spanner')
+  })
+
+  // Lines laid over each other are named measure by measure, so a line's
+  // name does not say which notes of its voice it holds. A tie within one
+  // line does not reach across its pitch sounded anywhere in its voice.
+  test.each([
+    ['a measure that sounds one line', note('E'), over(note('E', tied('stop')))],
+    ['a line of rests', over(rest, note('E')), over(note('E', tied('stop')))],
+    [
+      'the stop measure',
+      over(rest),
+      note('E') + high + '<backup><duration>8</duration></backup>' + rest + note('E', tied('stop')),
+    ],
+  ])('does not join a tie within a laid-over line across its pitch in %s', (_, second, third) => {
+    const { notes, warnings } = readAllVoices(
+      measures(DIVISIONS + over(note('E', tied('start'))), second, third),
     )
     const [, started] = notes as [Note, Note]
 
@@ -420,8 +435,6 @@ describe('ties', () => {
   })
 
   test('joins a tie from a measure that sounds one line into a laid-over line', () => {
-    const high = note('C').replace('<octave>4</octave>', '<octave>5</octave>')
-    const over = (body: string): string => high + '<backup><duration>4</duration></backup>' + body
     const { notes, warnings } = readAllVoices(
       measures(
         DIVISIONS + over(note('E', tied('start'))),
