@@ -217,8 +217,8 @@ export function measureLength(state: PartState): Fraction | undefined {
 
 export function newPartState(
   ids: IdGenerator,
+  voiceNames: ReadonlySet<string>,
   sounds: ReadonlyMap<string, ResolvedSound> = new Map(),
-  voiceNames: ReadonlySet<string> = new Set(),
 ): PartState {
   return {
     divisions: undefined,

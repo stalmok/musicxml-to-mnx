@@ -389,7 +389,7 @@ function readPart(
 
   reportUnreadText(element, warnings, { part: id })
 
-  const state = newPartState(ids, partList.soundsByInstrument.get(id), voiceNames(element))
+  const state = newPartState(ids, voiceNames(element), partList.soundsByInstrument.get(id))
   const collectors: MeasureCollectors = {
     endings: new Endings(id),
     measureRepeats: new MeasureRepeats(id),
