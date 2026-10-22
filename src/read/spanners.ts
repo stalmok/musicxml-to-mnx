@@ -261,9 +261,11 @@ export type SamePoint = 'stop-first' | 'as-written'
 /**
  * Which open start of its number a stop closes, for a span the rules of
  * pairSpans do not fit. A stop takes the most recently opened start it
- * `owns`, and where it owns none, the most recently opened one it `reaches`.
+ * `owns` and `prefers`, then the most recently opened one it owns, and where
+ * it owns none, the most recently opened one it `reaches`.
  */
 interface Claim<P extends EndPlace> {
+  prefers: (start: P, stop: P) => boolean
   owns: (start: P, stop: P) => boolean
   reaches: (start: P, stop: P) => boolean
 }
@@ -302,7 +304,7 @@ export function pairSpans<T, S, P extends EndPlace = EndPlace>(
   ) => void,
   atSamePoint: SamePoint = 'stop-first',
   noLength?: (start: (StartEnd<T> | DroppedStartEnd) & P, stop: StopEnd<S> & P) => void,
-  claim: Claim<P> = { owns: openedIn, reaches: () => true },
+  claim: Claim<P> = { prefers: () => false, owns: openedIn, reaches: () => true },
 ): void {
   const open = new Map<string, ((StartEnd<T> | DroppedStartEnd) & P)[]>()
   const ordered = inTimeOrder(ends, atSamePoint)
@@ -315,7 +317,9 @@ export function pairSpans<T, S, P extends EndPlace = EndPlace>(
     }
 
     const waiting = open.get(end.number) ?? []
-    const own = findLastOpened(waiting, (start) => claim.owns(start, end))
+    const own =
+      findLastOpened(waiting, (start) => claim.owns(start, end) && claim.prefers(start, end)) ??
+      findLastOpened(waiting, (start) => claim.owns(start, end))
     // No start open on the stop's staff, and every one open names another
     // staff: none of them can be the stop's own.
     const elsewhere = waiting.every((start) => start.staff !== undefined && end.staff !== undefined)
@@ -843,7 +847,9 @@ export class SpannerResolver implements PartCollector {
    * distance: a score can tie a note to its pitch's next sounding measures
    * away, across rests. A start its voice has sounded past is not one. Where a
    * voice writes two lines laid over each other, a tie within one line counts
-   * that line's events only (see soundsNext).
+   * that line's events only (see soundsNext). Where a stop's own line and
+   * another line each hold a start it could take, it takes the one in its
+   * own line.
    *
    * A stop with no same-voice start falls back to the most recent open start
    * of any voice. That pair is inferred, so it reaches back one measure at
@@ -904,6 +910,7 @@ export class SpannerResolver implements PartCollector {
       'as-written',
       undefined,
       {
+        prefers: (start, stop) => start.line?.voice === stop.line?.voice,
         owns: (start, stop) =>
           openedIn(start, stop) && soundsNext(start, stop, () => this.#soundedBetween(start, stop)),
         reaches: (start, stop) => stop.measure - start.measure <= 1,
