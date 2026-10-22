@@ -389,27 +389,78 @@ describe('ties', () => {
     low + '<backup><duration>4</duration></backup>' + body
   const rest = '<note><rest/><duration>4</duration><type>quarter</type><voice>1</voice></note>'
 
-  test('joins a tie within a laid-over line across rests of more than one measure', () => {
+  const graceE = (body: string): string =>
+    '<note><grace/><pitch><step>E</step><octave>4</octave></pitch>' +
+    `<type>eighth</type><voice>1</voice>${body}</note>`
+
+  test.each([
+    ['across rests of more than one measure', [over(rest)]],
+    ['across a measure that leaves the line out', [high]],
+    ['after its pitch sounds in an earlier measure', [over(rest)], [note('E')]],
+    [
+      'while another voice sounds its pitch',
+      [over(rest) + '<backup><duration>4</duration></backup>' + note('E', '', '2')],
+    ],
+  ])('joins a tie within a laid-over line %s', (_, between, before: string[] = []) => {
     const { notes, warnings } = readAllVoices(
       measures(
-        DIVISIONS + over(note('E', tied('start'))),
+        ...[
+          ...before,
+          over(note('E', tied('start'))),
+          ...between,
+          over(note('E', tied('stop'))),
+        ].map((body, index) => (index === 0 ? DIVISIONS + body : body)),
+      ),
+    )
+    const tying = notes.filter((n) => n.ties.length > 0)
+    const stopped = notes.filter((n) => n.pitch.step === 'E').at(-1)
+
+    expect(tying.map((n) => n.ties)).toEqual([
+      [{ kind: 'target', target: stopped?.id, crossVoice: false }],
+    ])
+    expect(warnings.map((w) => w.code)).not.toContain('unclosed:spanner')
+  })
+
+  test('joins a tie within a laid-over line after its pitch sounds earlier in the start measure', () => {
+    const { notes, warnings } = readAllVoices(
+      measures(
+        DIVISIONS +
+          high +
+          high +
+          '<backup><duration>8</duration></backup>' +
+          note('E') +
+          note('E', tied('start')),
         over(rest),
         over(note('E', tied('stop'))),
       ),
     )
-    const [, started, , , stopped] = notes as [Note, Note, Note, Note, Note]
+    const [, , , started, , , stopped] = notes as Note[]
 
-    expect(started.ties).toEqual([{ kind: 'target', target: stopped.id, crossVoice: false }])
+    expect(started?.ties).toEqual([{ kind: 'target', target: stopped?.id, crossVoice: false }])
     expect(warnings.map((w) => w.code)).not.toContain('unclosed:spanner')
   })
 
-  test('joins a tie within a laid-over line across a measure that leaves the line out', () => {
+  test('joins a tie within a laid-over line into a grace note', () => {
     const { notes, warnings } = readAllVoices(
-      measures(DIVISIONS + over(note('E', tied('start'))), high, over(note('E', tied('stop')))),
+      measures(
+        DIVISIONS + over(note('E', tied('start'))),
+        over(rest),
+        over(graceE(tied('stop')) + note('D')),
+      ),
     )
-    const [, started, , , stopped] = notes as [Note, Note, Note, Note, Note]
+    const [, started, , , stopped] = notes as Note[]
 
-    expect(started.ties).toEqual([{ kind: 'target', target: stopped.id, crossVoice: false }])
+    expect(started?.ties).toEqual([{ kind: 'target', target: stopped?.id, crossVoice: false }])
+    expect(warnings.map((w) => w.code)).not.toContain('unclosed:spanner')
+  })
+
+  test("joins a tie out of a laid-over line into its voice's next note across a measure of rests", () => {
+    const { notes, warnings } = readAllVoices(
+      measures(DIVISIONS + over(note('E', tied('start'))), rest, note('E', tied('stop'))),
+    )
+    const [, started, stopped] = notes as Note[]
+
+    expect(started?.ties).toEqual([{ kind: 'target', target: stopped?.id, crossVoice: true }])
     expect(warnings.map((w) => w.code)).not.toContain('unclosed:spanner')
   })
 
@@ -424,13 +475,7 @@ describe('ties', () => {
       note('C') + note('E').replace('<note>', '<note><chord/>'),
       over(note('E', tied('stop'))),
     ],
-    [
-      'a grace note before the stop',
-      over(rest),
-      '<note><grace/><pitch><step>E</step><octave>4</octave></pitch>' +
-        '<type>eighth</type><voice>1</voice></note>' +
-        over(note('E', tied('stop'))),
-    ],
+    ['a grace note before the stop', over(rest), graceE('') + over(note('E', tied('stop')))],
     [
       'the stop measure',
       over(rest),
