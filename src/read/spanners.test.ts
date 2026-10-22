@@ -384,6 +384,23 @@ describe('ties', () => {
     expect(started.ties).toEqual([{ kind: 'target', target: stopped.id, crossVoice: true }])
   })
 
+  test('joins a tie within a laid-over line across rests of more than one measure', () => {
+    const high = note('C').replace('<octave>4</octave>', '<octave>5</octave>')
+    const over = (body: string): string => high + '<backup><duration>4</duration></backup>' + body
+    const rest = '<note><rest/><duration>4</duration><type>quarter</type><voice>1</voice></note>'
+    const { notes, warnings } = readAllVoices(
+      measures(
+        DIVISIONS + over(note('E', tied('start'))),
+        over(rest),
+        over(note('E', tied('stop'))),
+      ),
+    )
+    const [, started, , , stopped] = notes as [Note, Note, Note, Note, Note]
+
+    expect(started.ties).toEqual([{ kind: 'target', target: stopped.id, crossVoice: false }])
+    expect(warnings.map((w) => w.code)).not.toContain('unclosed:spanner')
+  })
+
   test('writes a tie into a line laid over its own voice with a crossVoice target', () => {
     const { mnx } = convertValid(
       measures(

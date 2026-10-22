@@ -62,6 +62,9 @@ interface TieStopAt {
  */
 type TiePlace = EndPlace & { sounded: number }
 
+/** A tie's end, with the line its note is written in once the part is read. */
+type LinedTiePlace = TiePlace & { line: LinePlace | undefined }
+
 /** One end of a tie, and on a stop the note it is written on. */
 type TieEnd = (StartEnd<OpenTie> | StopEnd<TieStopAt>) & TiePlace
 
@@ -643,14 +646,28 @@ export function tieKey(pitch: Pitch): string {
   return String((pitch.octave + 1) * 12 + STEP_SEMITONES[pitch.step] + pitch.alter)
 }
 
-/** The voice of the sequence each note is written in, by the note's id. */
-function sequenceVoicesOf(measures: readonly Measure[]): Map<string, string | undefined> {
-  const voices = new Map<string, string | undefined>()
+/**
+ * Where a note is written: the voice of its sequence, and how many events
+ * that sequence's line has sounded in the part, the note's own included.
+ */
+interface LinePlace {
+  voice: string | undefined
+  sounded: number
+}
+
+/** The line each note is written in, by the note's id. */
+function linePlacesOf(measures: readonly Measure[]): Map<string, LinePlace> {
+  const places = new Map<string, LinePlace>()
+  const sounded = new Map<string, number>()
   const walk = (items: readonly SequenceItem[], voice: string | undefined): void => {
     for (const item of items) {
       if (item.kind === 'event') {
         if (item.body.kind === 'rest') continue
-        for (const note of [...item.body.notes, ...item.body.kitNotes]) voices.set(note.id, voice)
+        const count = (sounded.get(voice ?? '') ?? 0) + 1
+        sounded.set(voice ?? '', count)
+        for (const note of [...item.body.notes, ...item.body.kitNotes]) {
+          places.set(note.id, { voice, sounded: count })
+        }
       } else if (item.kind !== 'space') {
         walk(item.content, voice)
       }
@@ -659,7 +676,20 @@ function sequenceVoicesOf(measures: readonly Measure[]): Map<string, string | un
   for (const measure of measures) {
     for (const sequence of measure.sequences) walk(sequence.content, sequence.voice)
   }
-  return voices
+  return places
+}
+
+/**
+ * Whether a stop falls on the event its line sounds next after the start. A
+ * voice that writes two lines laid over each other sounds both, so within
+ * one line only that line's events count. Between two lines of a voice,
+ * every event of the voice counts.
+ */
+function soundsNext(start: LinedTiePlace, stop: LinedTiePlace): boolean {
+  if (start.line && stop.line && start.line.voice === stop.line.voice) {
+    return stop.line.sounded === start.line.sounded + 1
+  }
+  return stop.sounded === start.sounded + 1
 }
 
 // Slurs are matched on the number the source gives them, across the whole
@@ -758,7 +788,9 @@ export class SpannerResolver implements PartCollector {
    * sounded just before, so two hands each sustaining one pitch pair within a
    * hand. That pair is the source's own statement, and it holds at any
    * distance: a score can tie a note to its pitch's next sounding measures
-   * away, across rests. A start its voice has sounded past is not one.
+   * away, across rests. A start its voice has sounded past is not one. Where a
+   * voice writes two lines laid over each other, a tie within one line counts
+   * that line's events only (see soundsNext).
    *
    * A stop with no same-voice start falls back to the most recent open start
    * of any voice. That pair is inferred, so it reaches back one measure at
@@ -769,7 +801,11 @@ export class SpannerResolver implements PartCollector {
    * it paired. It follows from the sequences its two notes are written in.
    */
   #resolveTies(measures: readonly Measure[], warnings: WarningCollector): void {
-    const sequenceVoices = sequenceVoicesOf(measures)
+    const lines = linePlacesOf(measures)
+    const ends = this.#tieEnds.map((end) => ({
+      ...end,
+      line: lines.get(end.kind === 'start' ? end.payload.note.id : end.stop.note.id),
+    }))
     // A tie's two ends mark the very points they are written on, so no stop
     // covers a point before its start; the backwards message is here for the
     // shape of the report, as a slur's is.
@@ -780,8 +816,8 @@ export class SpannerResolver implements PartCollector {
     }
     // Two ties of one pitch can be open at once, as when two hands each
     // sustain it, so each pitch holds a stack rather than a single open tie.
-    pairSpans<OpenTie, TieStopAt, TiePlace>(
-      this.#tieEnds,
+    pairSpans<OpenTie, TieStopAt, LinedTiePlace>(
+      ends,
       (open, stop, start) => {
         // A tie stated in <tie> at both ends and in <tied> at neither sounds
         // but is not drawn, as MuseScore writes an invisible tie.
@@ -804,7 +840,7 @@ export class SpannerResolver implements PartCollector {
             // Compared by the sequences the two notes are written in, not by
             // the source's <voice>: a line laid over its own voice is a
             // sequence of its own, with a name of its own.
-            crossVoice: sequenceVoices.get(open.note.id) !== sequenceVoices.get(stop.stop.note.id),
+            crossVoice: start.line?.voice !== stop.line?.voice,
             ...(open.side !== undefined ? { side: open.side } : {}),
           },
         ]
@@ -815,7 +851,7 @@ export class SpannerResolver implements PartCollector {
       'as-written',
       undefined,
       {
-        owns: (start, stop) => openedIn(start, stop) && stop.sounded === start.sounded + 1,
+        owns: (start, stop) => openedIn(start, stop) && soundsNext(start, stop),
         reaches: (start, stop) => stop.measure - start.measure <= 1,
       },
     )
