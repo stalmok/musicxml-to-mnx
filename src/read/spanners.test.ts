@@ -401,6 +401,42 @@ describe('ties', () => {
     expect(warnings.map((w) => w.code)).not.toContain('unclosed:spanner')
   })
 
+  // Where the voice sounds one line only, nothing says which of its lines
+  // that is, so a laid-over line's tie does not reach across it.
+  test('does not join a tie within a laid-over line across a measure that sounds one line', () => {
+    const high = note('C').replace('<octave>4</octave>', '<octave>5</octave>')
+    const over = (body: string): string => high + '<backup><duration>4</duration></backup>' + body
+    const { notes, warnings } = readAllVoices(
+      measures(
+        DIVISIONS + over(note('E', tied('start'))),
+        note('E'),
+        over(note('E', tied('stop'))),
+      ),
+    )
+    const [, started] = notes as [Note, Note]
+
+    expect(started.ties).toEqual([])
+    expect(warnings.filter((w) => w.code === 'unclosed:spanner')).toHaveLength(2)
+  })
+
+  test('joins a tie from a measure that sounds one line into a laid-over line', () => {
+    const high = note('C').replace('<octave>4</octave>', '<octave>5</octave>')
+    const over = (body: string): string => high + '<backup><duration>4</duration></backup>' + body
+    const { notes, warnings } = readAllVoices(
+      measures(
+        DIVISIONS + over(note('E', tied('start'))),
+        note('E', tied('start')),
+        over(note('E', tied('stop'))),
+      ),
+    )
+    const [, unclosed, started, , stopped] = notes as [Note, Note, Note, Note, Note]
+
+    expect(unclosed.ties).toEqual([])
+    expect(started.ties).toEqual([{ kind: 'target', target: stopped.id, crossVoice: true }])
+    const unclosedAt = warnings.filter((w) => w.code === 'unclosed:spanner')
+    expect(unclosedAt.map((w) => w.context.measure)).toEqual([1])
+  })
+
   test('writes a tie into a line laid over its own voice with a crossVoice target', () => {
     const { mnx } = convertValid(
       measures(

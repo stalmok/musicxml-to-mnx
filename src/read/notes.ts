@@ -602,7 +602,7 @@ function readEventSpanners(
     () => pitchHeights(state),
   )
   // A rest sounds nothing, so a tie in its voice reaches across it.
-  if (body.kind === 'notes') state.spanners.sound(voice.name)
+  if (body.kind === 'notes') state.spanners.sound(voice.name, measureIndex)
   for (const note of body.kind === 'notes' ? [...body.notes, ...body.kitNotes] : []) {
     readTies(
       element,

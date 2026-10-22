@@ -682,14 +682,29 @@ function linePlacesOf(measures: readonly Measure[]): Map<string, LinePlace> {
 /**
  * Whether a stop falls on the event its line sounds next after the start. A
  * voice that writes two lines laid over each other sounds both, so within
- * one line only that line's events count. Between two lines of a voice,
- * every event of the voice counts.
+ * one line only that line's events count, where `heldBetween` says the line
+ * holds all the voice sounds between the two. Otherwise, and where either
+ * note's line is unknown, every event of the voice counts.
  */
-function soundsNext(start: LinedTiePlace, stop: LinedTiePlace): boolean {
-  if (start.line && stop.line && start.line.voice === stop.line.voice) {
+function soundsNext(
+  start: LinedTiePlace,
+  stop: LinedTiePlace,
+  heldBetween: (line: string | undefined) => boolean,
+): boolean {
+  if (
+    start.line &&
+    stop.line &&
+    start.line.voice === stop.line.voice &&
+    heldBetween(start.line.voice)
+  ) {
     return stop.line.sounded === start.line.sounded + 1
   }
   return stop.sounded === start.sounded + 1
+}
+
+/** A key for a voice sounding in a measure. */
+function soundsAt(voice: string | undefined, measure: number): string {
+  return `${String(measure)}:${voice ?? ''}`
 }
 
 // Slurs are matched on the number the source gives them, across the whole
@@ -702,19 +717,23 @@ export class SpannerResolver implements PartCollector {
   readonly #tieEnds: TieEnd[] = []
   // How many events each voice has sounded so far in the part.
   readonly #sounded = new Map<string, number>()
+  // Each measure a voice sounds in, by soundsAt.
+  readonly #soundsAt = new Set<string>()
   // Both ends of every slur in the part, paired once all of them are in.
   readonly #slurEnds: SlurEnd[] = []
   // Both ends of every hairpin in the part, paired once all of them are in.
   readonly #wedgeEnds: WedgeEnd[] = []
 
   /**
-   * Counts an event that sounds in a voice. A tie in its own voice joins one
-   * event to the next its voice sounds, so this is what tells a stop from a
-   * start its voice has sounded past.
+   * Counts an event that sounds in a voice, and notes the measure it sounds
+   * in. A tie in its own voice joins one event to the next its voice sounds,
+   * so this is what tells a stop from a start its voice has sounded past,
+   * where soundsNext does not count by the line instead.
    */
-  sound(voice: string | undefined): void {
+  sound(voice: string | undefined, measure: number): void {
     const key = voice ?? ''
     this.#sounded.set(key, this.#soundedIn(key) + 1)
+    this.#soundsAt.add(soundsAt(voice, measure))
   }
 
   #soundedIn(voice: string | undefined): number {
@@ -802,6 +821,19 @@ export class SpannerResolver implements PartCollector {
    */
   #resolveTies(measures: readonly Measure[], warnings: WarningCollector): void {
     const lines = linePlacesOf(measures)
+    const linesIn = measures.map(
+      (measure) => new Set(measure.sequences.map((sequence) => sequence.voice)),
+    )
+    // A measure where the voice sounds one line only does not say which of
+    // its lines that is, so a line holds the voice there only if it appears.
+    const heldBetween = (start: LinedTiePlace, stop: LinedTiePlace, line: string | undefined) =>
+      linesIn
+        .slice(start.measure + 1, stop.measure)
+        .every(
+          (present, offset) =>
+            present.has(line) ||
+            !this.#soundsAt.has(soundsAt(start.voice, start.measure + 1 + offset)),
+        )
     const ends = this.#tieEnds.map((end) => ({
       ...end,
       line: lines.get(end.kind === 'start' ? end.payload.note.id : end.stop.note.id),
@@ -851,7 +883,9 @@ export class SpannerResolver implements PartCollector {
       'as-written',
       undefined,
       {
-        owns: (start, stop) => openedIn(start, stop) && soundsNext(start, stop),
+        owns: (start, stop) =>
+          openedIn(start, stop) &&
+          soundsNext(start, stop, (line) => heldBetween(start, stop, line)),
         reaches: (start, stop) => stop.measure - start.measure <= 1,
       },
     )
