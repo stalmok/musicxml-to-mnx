@@ -703,15 +703,18 @@ function soundsNext(
   )
 }
 
-/** A point in the part's time. */
+/** A point in the part's time. A grace note sounds before the beat it is at. */
 interface Instant {
   measure: number
   position: Fraction
+  grace?: boolean
 }
 
 function isBefore(a: Instant, b: Instant): boolean {
   if (a.measure !== b.measure) return a.measure < b.measure
-  return compareFractions(a.position, b.position) < 0
+  const byPosition = compareFractions(a.position, b.position)
+  if (byPosition !== 0) return byPosition < 0
+  return a.grace === true && b.grace !== true
 }
 
 /** A key for what a tie pairs by, sounded in a voice. */
@@ -737,25 +740,28 @@ export class SpannerResolver implements PartCollector {
   readonly #wedgeEnds: WedgeEnd[] = []
 
   /**
-   * Counts an event that sounds in a voice, and notes where it sounds what
-   * each of its notes pairs a tie by. A tie in its own voice joins one event
-   * to the next its voice sounds, so this is what tells a stop from a start
-   * its voice has sounded past.
+   * Counts an event that sounds in a voice. A tie in its own voice joins one
+   * event to the next its voice sounds, so this is what tells a stop from a
+   * start its voice has sounded past.
    */
-  sound(
+  sound(voice: string | undefined): void {
+    const key = voice ?? ''
+    this.#sounded.set(key, this.#soundedIn(key) + 1)
+  }
+
+  /** Notes where a voice sounds a note, by what a tie on it pairs by. */
+  sounding(
+    pairedBy: string,
     voice: string | undefined,
     measure: number,
     position: Fraction,
-    pairedBy: readonly string[],
+    grace: boolean,
   ): void {
-    const key = voice ?? ''
-    this.#sounded.set(key, this.#soundedIn(key) + 1)
-    for (const paired of pairedBy) {
-      const sounding = soundingKey(voice, paired)
-      const at = this.#soundings.get(sounding)
-      if (at) at.push({ measure, position })
-      else this.#soundings.set(sounding, [{ measure, position }])
-    }
+    const key = soundingKey(voice, pairedBy)
+    const instant = { measure, position, grace }
+    const at = this.#soundings.get(key)
+    if (at) at.push(instant)
+    else this.#soundings.set(key, [instant])
   }
 
   /** Whether the voice of a tie sounds its pitch between the tie's two ends. */

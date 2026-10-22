@@ -38,6 +38,7 @@ export function readTies(
   context: ReportContext,
   tieds: readonly XmlElement[],
 ): void {
+  state.spanners.sounding(pairedBy, voice, measureIndex, at, grace)
   const ties = element.children('tie')
   const side = startTiedSide(tieds)
 

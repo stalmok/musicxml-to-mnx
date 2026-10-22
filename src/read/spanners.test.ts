@@ -420,6 +420,18 @@ describe('ties', () => {
     ['a measure that sounds one line', note('E'), over(note('E', tied('stop')))],
     ['a line of rests', over(rest, note('E')), over(note('E', tied('stop')))],
     [
+      'a chord',
+      note('C') + note('E').replace('<note>', '<note><chord/>'),
+      over(note('E', tied('stop'))),
+    ],
+    [
+      'a grace note before the stop',
+      over(rest),
+      '<note><grace/><pitch><step>E</step><octave>4</octave></pitch>' +
+        '<type>eighth</type><voice>1</voice></note>' +
+        over(note('E', tied('stop'))),
+    ],
+    [
       'the stop measure',
       over(rest),
       note('E') + high + '<backup><duration>8</duration></backup>' + rest + note('E', tied('stop')),
