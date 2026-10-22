@@ -103,6 +103,17 @@ describe('ties', () => {
     expect(first.ties).toEqual([{ kind: 'target', target: second.id, crossVoice: false }])
   })
 
+  test('marks a tie from a laid-over line into a source voice named like one as crossing voices', () => {
+    const laidOver =
+      note('C').replace('<octave>4</octave>', '<octave>5</octave>') +
+      '<backup><duration>4</duration></backup>' +
+      note('E', tied('start'))
+    const { notes } = readAllVoices(measures(DIVISIONS + laidOver, note('E', tied('stop'), '1.2')))
+    const [, start, stop] = notes as [Note, Note, Note]
+
+    expect(start.ties).toEqual([{ kind: 'target', target: stop.id, crossVoice: true }])
+  })
+
   // A note stating no voice and one stating an empty voice are both the
   // unnamed voice, which is how the sequences bucket them.
   test('treats a missing voice and an empty voice as the same voice', () => {
