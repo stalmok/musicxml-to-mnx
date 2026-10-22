@@ -282,7 +282,7 @@ interface Claim<P extends EndPlace> {
  * rule keeps two voices or two hands, each holding a span numbered 1, from
  * closing into each other. The fallback lets a span one voice opens close in
  * another. openedIn below states which rule applies to what. A `claim` gives
- * a span its own two rules, as a tie's are.
+ * a span its own rules, as a tie's are.
  *
  * A stop whose covered point falls before its start is reported as a
  * backwards-stop, not joined.
@@ -318,7 +318,7 @@ export function pairSpans<T, S, P extends EndPlace = EndPlace>(
 
     const waiting = open.get(end.number) ?? []
     const own =
-      findLastOpened(waiting, (start) => claim.owns(start, end) && claim.prefers(start, end)) ??
+      findLastOpened(waiting, (start) => claim.prefers(start, end) && claim.owns(start, end)) ??
       findLastOpened(waiting, (start) => claim.owns(start, end))
     // No start open on the stop's staff, and every one open names another
     // staff: none of them can be the stop's own.
