@@ -577,6 +577,23 @@ describe('ties', () => {
     expect(warnings.map((w) => w.code)).not.toContain('unclosed:spanner')
   })
 
+  test('does not join a tie from a chord member into another member of the chord', () => {
+    const chordE = (body: string): string => note('E', body).replace('<note>', '<note><chord/>')
+    const { notes } = read(
+      measures(
+        DIVISIONS +
+          note('E', tied('start')) +
+          note('C') +
+          chordE(tied('start')) +
+          chordE(tied('stop')),
+      ),
+    )
+    const [first, , chordStart, chordStop] = notes as Note[]
+
+    expect(first?.ties).toEqual([{ kind: 'target', target: chordStop?.id, crossVoice: false }])
+    expect(chordStart?.ties).toEqual([])
+  })
+
   test('does not join a tie in its own voice across a grace note on its pitch', () => {
     const graceE =
       '<note><grace/><pitch><step>E</step><octave>4</octave></pitch><voice>1</voice></note>'
