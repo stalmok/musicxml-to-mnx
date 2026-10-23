@@ -577,6 +577,25 @@ describe('ties', () => {
     expect(warnings.map((w) => w.code)).not.toContain('unclosed:spanner')
   })
 
+  test('does not join a tie in its own voice across a grace note on its pitch at the stop', () => {
+    const graceE = (body = ''): string =>
+      '<note><grace/><pitch><step>E</step><octave>4</octave></pitch>' +
+      `<voice>1</voice>${body}</note>`
+    const voices = (one: string, two: string): string =>
+      one + '<backup><duration>4</duration></backup>' + two
+    const { notes } = readAllVoices(
+      measures(
+        DIVISIONS + voices(note('E', tied('start')), note('E', tied('start'), '2')),
+        voices(graceE() + graceE(tied('stop')) + note('C'), note('E', tied('stop'), '2')),
+      ),
+    )
+    const [oneStart, , , graceStop] = notes as Note[]
+
+    expect(oneStart?.ties.map((tie) => tie.kind === 'target' && tie.target)).not.toContain(
+      graceStop?.id,
+    )
+  })
+
   test('writes a tie into a line laid over its own voice with a crossVoice target', () => {
     const { mnx } = convertValid(
       measures(

@@ -734,17 +734,22 @@ function nextPastGraces(start: SoundedPlace, stop: SoundedPlace): boolean {
   return stop.sounded > start.sounded && stop.sounded - start.sounded <= stop.gracesBefore + 1
 }
 
-/** A point in the part's time. A grace note sounds before the beat it is at. */
+/**
+ * A point in a voice's time. A grace note sounds before the beat it is at,
+ * and grace notes at one beat sound in the order the voice sounds them.
+ */
 interface Instant {
   measure: number
   position: Fraction
   grace?: boolean
+  sounded: number
 }
 
 function isBefore(a: Instant, b: Instant): boolean {
   if (a.measure !== b.measure) return a.measure < b.measure
   const byPosition = compareFractions(a.position, b.position)
   if (byPosition !== 0) return byPosition < 0
+  if (a.grace === true && b.grace === true) return a.sounded < b.sounded
   return a.grace === true && b.grace !== true
 }
 
@@ -790,7 +795,7 @@ export class SpannerResolver implements PartCollector {
     grace: boolean,
   ): void {
     const key = soundingKey(voice, pairedBy)
-    const instant = { measure, position, grace }
+    const instant = { measure, position, grace, sounded: this.#soundedIn(voice).sounded }
     const at = this.#soundings.get(key)
     if (at) at.push(instant)
     else this.#soundings.set(key, [instant])
