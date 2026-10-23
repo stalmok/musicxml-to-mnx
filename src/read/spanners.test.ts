@@ -524,6 +524,59 @@ describe('ties', () => {
     expect(warnings.map((w) => w.code)).not.toContain('unclosed:spanner')
   })
 
+  test.each([
+    ['upper', 0],
+    ['lower', 1],
+  ])(
+    'joins ties on one pitch in two laid-over lines past a grace note before the %s stop',
+    (_, graced) => {
+      const graceD =
+        '<note><grace/><pitch><step>D</step><octave>5</octave></pitch><voice>1</voice></note>'
+      const stops = [note('E', tied('stop')) + note('G'), note('E', tied('stop')) + note('C')]
+      stops[graced] = graceD + (stops[graced] ?? '')
+      const lines = (upper: string, lower: string): string =>
+        upper + '<backup><duration>8</duration></backup>' + lower
+      const { notes, warnings } = readAllVoices(
+        measures(
+          DIVISIONS +
+            lines(note('G') + note('E', tied('start')), note('C') + note('E', tied('start'))),
+          lines(stops[0] ?? '', stops[1] ?? ''),
+        ),
+      )
+      const [upperStart, lowerStart, upperStop, lowerStop] = (notes as Note[]).filter(
+        (n) => n.pitch?.step === 'E',
+      )
+
+      expect(upperStart?.ties).toEqual([
+        { kind: 'target', target: upperStop?.id, crossVoice: false },
+      ])
+      expect(lowerStart?.ties).toEqual([
+        { kind: 'target', target: lowerStop?.id, crossVoice: false },
+      ])
+      expect(warnings.map((w) => w.code)).not.toContain('unclosed:spanner')
+    },
+  )
+
+  test('joins a tie in its own voice past a grace note before the stop', () => {
+    const graceD =
+      '<note><grace/><pitch><step>D</step><octave>5</octave></pitch><voice>1</voice></note>'
+    const voices = (one: string, two: string): string =>
+      one + '<backup><duration>4</duration></backup>' + two
+    const { notes, warnings } = readAllVoices(
+      measures(
+        DIVISIONS + voices(note('E', tied('start')), note('E', tied('start'), '2')),
+        voices(graceD + note('E', tied('stop')), note('E', tied('stop'), '2')),
+      ),
+    )
+    const [oneStart, twoStart, oneStop, twoStop] = (notes as Note[]).filter(
+      (n) => n.pitch?.step === 'E',
+    )
+
+    expect(oneStart?.ties).toEqual([{ kind: 'target', target: oneStop?.id, crossVoice: false }])
+    expect(twoStart?.ties).toEqual([{ kind: 'target', target: twoStop?.id, crossVoice: false }])
+    expect(warnings.map((w) => w.code)).not.toContain('unclosed:spanner')
+  })
+
   test('writes a tie into a line laid over its own voice with a crossVoice target', () => {
     const { mnx } = convertValid(
       measures(

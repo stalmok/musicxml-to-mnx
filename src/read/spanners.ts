@@ -57,10 +57,16 @@ interface TieStopAt {
 }
 
 /**
- * Where a tie's end is written. `sounded` is how many events its voice has
- * sounded in the part, its own included.
+ * How many events a voice or line has sounded in the part, the note's own
+ * included, and how many of those just before the note were grace notes.
  */
-type TiePlace = EndPlace & { sounded: number }
+interface SoundedPlace {
+  sounded: number
+  gracesBefore: number
+}
+
+/** Where a tie's end is written, and how far its voice has sounded. */
+type TiePlace = EndPlace & SoundedPlace
 
 /** A tie's end, with the line its note is written in once the part is read. */
 type LinedTiePlace = TiePlace & { line: LinePlace | undefined }
@@ -650,47 +656,64 @@ export function tieKey(pitch: Pitch): string {
   return String((pitch.octave + 1) * 12 + STEP_SEMITONES[pitch.step] + pitch.alter)
 }
 
-/**
- * Where a note is written: the voice of its sequence, and how many events
- * that sequence's line has sounded in the part, the note's own included.
- */
-interface LinePlace {
+/** Where a note is written: the voice of its sequence, and how far that line has sounded. */
+interface LinePlace extends SoundedPlace {
   voice: string | undefined
+}
+
+/** How far a voice or line has sounded, and the grace notes it sounded last. */
+interface SoundCount {
   sounded: number
+  graceRun: number
+}
+
+/** Counts one event sounded in a voice or line, and says where it falls. */
+function countSound(
+  counts: Map<string, SoundCount>,
+  voice: string | undefined,
+  grace: boolean,
+): SoundedPlace {
+  const { sounded, graceRun } = counts.get(voice ?? '') ?? { sounded: 0, graceRun: 0 }
+  counts.set(voice ?? '', { sounded: sounded + 1, graceRun: grace ? graceRun + 1 : 0 })
+  return { sounded: sounded + 1, gracesBefore: graceRun }
 }
 
 /** The line each note is written in, by the note's id. */
 function linePlacesOf(measures: readonly Measure[]): Map<string, LinePlace> {
   const places = new Map<string, LinePlace>()
-  const sounded = new Map<string, number>()
-  const walk = (items: readonly SequenceItem[], voice: string | undefined): void => {
+  const counts = new Map<string, SoundCount>()
+  const walk = (
+    items: readonly SequenceItem[],
+    voice: string | undefined,
+    grace: boolean,
+  ): void => {
     for (const item of items) {
       if (item.kind === 'event') {
         if (item.body.kind === 'rest') continue
-        const count = (sounded.get(voice ?? '') ?? 0) + 1
-        sounded.set(voice ?? '', count)
+        const place = countSound(counts, voice, grace)
         for (const note of [...item.body.notes, ...item.body.kitNotes]) {
-          places.set(note.id, { voice, sounded: count })
+          places.set(note.id, { voice, ...place })
         }
       } else if (item.kind !== 'space') {
-        walk(item.content, voice)
+        walk(item.content, voice, grace || item.kind === 'grace')
       }
     }
   }
   for (const measure of measures) {
-    for (const sequence of measure.sequences) walk(sequence.content, sequence.voice)
+    for (const sequence of measure.sequences) walk(sequence.content, sequence.voice, false)
   }
   return places
 }
 
 /**
- * Whether a stop falls on the event its line sounds next after the start. A
- * voice that writes two lines laid over each other sounds both, so within
- * one line only that line's events count. Lines are named measure by
- * measure, so a line's name does not say which notes of its voice it holds,
- * and a tie within one line does not reach across its pitch sounded anywhere
- * in its voice. Between two lines, and where either note's line is unknown,
- * every event of the voice counts.
+ * Whether a stop falls on the event its line sounds next after the start,
+ * where grace notes before the stop do not count. A voice that writes two
+ * lines laid over each other sounds both, so within one line only that
+ * line's events count. Lines are named measure by measure, so a line's name
+ * does not say which notes of its voice it holds, and a tie within one line
+ * does not reach across its pitch sounded anywhere in its voice. Nor does a
+ * tie past grace notes. Between two lines, and where either note's line is
+ * unknown, every event of the voice counts.
  */
 function soundsNext(
   start: LinedTiePlace,
@@ -698,13 +721,17 @@ function soundsNext(
   soundedBetween: () => boolean,
 ): boolean {
   if (stop.sounded === start.sounded + 1) return true
-  return (
+  const inLine =
     start.line !== undefined &&
     stop.line !== undefined &&
     start.line.voice === stop.line.voice &&
-    stop.line.sounded === start.line.sounded + 1 &&
-    !soundedBetween()
-  )
+    nextPastGraces(start.line, stop.line)
+  return (inLine || nextPastGraces(start, stop)) && !soundedBetween()
+}
+
+/** Whether only grace notes sound between a start and a stop. */
+function nextPastGraces(start: SoundedPlace, stop: SoundedPlace): boolean {
+  return stop.sounded > start.sounded && stop.sounded - start.sounded <= stop.gracesBefore + 1
 }
 
 /** A point in the part's time. A grace note sounds before the beat it is at. */
@@ -734,8 +761,10 @@ function soundingKey(voice: string | undefined, pairedBy: string): string {
 export class SpannerResolver implements PartCollector {
   // Both ends of every tie in the part, paired once all of them are in.
   readonly #tieEnds: TieEnd[] = []
-  // How many events each voice has sounded so far in the part.
-  readonly #sounded = new Map<string, number>()
+  // How far each voice has sounded so far in the part.
+  readonly #sounded = new Map<string, SoundCount>()
+  // Where the event each voice sounded last falls.
+  readonly #lastSounded = new Map<string, SoundedPlace>()
   // Where each voice sounds what a tie pairs by, by soundingKey.
   readonly #soundings = new Map<string, Instant[]>()
   // Both ends of every slur in the part, paired once all of them are in.
@@ -748,9 +777,8 @@ export class SpannerResolver implements PartCollector {
    * event to the next its voice sounds, so this is what tells a stop from a
    * start its voice has sounded past.
    */
-  sound(voice: string | undefined): void {
-    const key = voice ?? ''
-    this.#sounded.set(key, this.#soundedIn(key) + 1)
+  sound(voice: string | undefined, grace: boolean): void {
+    this.#lastSounded.set(voice ?? '', countSound(this.#sounded, voice, grace))
   }
 
   /** Notes where a voice sounds a note, by what a tie on it pairs by. */
@@ -774,8 +802,8 @@ export class SpannerResolver implements PartCollector {
     return at.some((instant) => isBefore(start, instant) && isBefore(instant, stop))
   }
 
-  #soundedIn(voice: string | undefined): number {
-    return this.#sounded.get(voice ?? '') ?? 0
+  #soundedIn(voice: string | undefined): SoundedPlace {
+    return this.#lastSounded.get(voice ?? '') ?? { sounded: 0, gracesBefore: 0 }
   }
 
   /**
@@ -806,7 +834,7 @@ export class SpannerResolver implements PartCollector {
       covers: position,
       payload: { note, side, drawn },
       where,
-      sounded: this.#soundedIn(voice),
+      ...this.#soundedIn(voice),
     })
   }
 
@@ -831,7 +859,7 @@ export class SpannerResolver implements PartCollector {
       covers: position,
       where,
       stop: { note, drawn },
-      sounded: this.#soundedIn(voice),
+      ...this.#soundedIn(voice),
     })
   }
 
