@@ -577,6 +577,20 @@ describe('ties', () => {
     expect(warnings.map((w) => w.code)).not.toContain('unclosed:spanner')
   })
 
+  test('does not join a tie in its own voice across a grace note on its pitch', () => {
+    const graceE =
+      '<note><grace/><pitch><step>E</step><octave>4</octave></pitch><voice>1</voice></note>'
+    const rest = '<note><rest/><duration>4</duration><type>quarter</type><voice>1</voice></note>'
+    const { notes, warnings } = readAllVoices(
+      measures(DIVISIONS + note('E', tied('start')), rest, graceE + note('E', tied('stop'))),
+    )
+    const [started] = notes as Note[]
+
+    expect(started?.ties).toEqual([])
+    const unclosedAt = warnings.filter((w) => w.code === 'unclosed:spanner')
+    expect(unclosedAt.map((w) => w.context.measure)).toEqual([1, 3])
+  })
+
   test('does not join a tie in its own voice across a grace note on its pitch at the stop', () => {
     const graceE = (body = ''): string =>
       '<note><grace/><pitch><step>E</step><octave>4</octave></pitch>' +
