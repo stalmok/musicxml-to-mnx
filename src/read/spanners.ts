@@ -720,7 +720,6 @@ function soundsNext(
   stop: LinedTiePlace,
   soundedBetween: () => boolean,
 ): boolean {
-  if (stop.sounded === start.sounded + 1) return true
   const inLine =
     start.line !== undefined &&
     stop.line !== undefined &&
