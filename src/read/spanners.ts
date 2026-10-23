@@ -710,10 +710,10 @@ function linePlacesOf(measures: readonly Measure[]): Map<string, LinePlace> {
  * where grace notes before the stop do not count. A voice that writes two
  * lines laid over each other sounds both, so within one line only that
  * line's events count. Lines are named measure by measure, so a line's name
- * does not say which notes of its voice it holds, and a tie within one line
- * does not reach across its pitch sounded anywhere in its voice. Nor does a
- * tie past grace notes. Between two lines, and where either note's line is
- * unknown, every event of the voice counts.
+ * does not say which notes of its voice it holds. A tie does not reach
+ * across its pitch sounded anywhere in its voice, within one line or past
+ * grace notes. Between two lines, and where either note's line is unknown,
+ * every event of the voice counts.
  */
 function soundsNext(
   start: LinedTiePlace,
@@ -778,8 +778,8 @@ export class SpannerResolver implements PartCollector {
 
   /**
    * Counts an event that sounds in a voice. A tie in its own voice joins one
-   * event to the next its voice sounds, so this is what tells a stop from a
-   * start its voice has sounded past.
+   * event to the next its voice sounds, past any grace notes, so this is what
+   * tells a stop from a start its voice has sounded past.
    */
   sound(voice: string | undefined, grace: boolean): void {
     this.#lastSounded.set(voice ?? '', countSound(this.#sounded, voice, grace))
@@ -874,7 +874,7 @@ export class SpannerResolver implements PartCollector {
    * is (see SpanEnd).
    *
    * A stop takes the open start of its own voice on the event its voice
-   * sounded just before, so two hands each sustaining one pitch pair within a
+   * sounded just before, grace notes aside, so two hands each sustaining one pitch pair within a
    * hand. That pair is the source's own statement, and it holds at any
    * distance: a score can tie a note to its pitch's next sounding measures
    * away, across rests. A start its voice has sounded past is not one. Where a
