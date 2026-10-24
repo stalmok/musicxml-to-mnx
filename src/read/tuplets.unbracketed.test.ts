@@ -420,6 +420,34 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
         expect(markers).toEqual([])
       })
 
+      // The group goes to the run's line with its bracket still open, so the
+      // run there closes before it. The marker's 3:2 is the bracket's alone,
+      // against the notes' 9:4.
+      test('checks a bracket that goes on to hold notes against its own ratio alone', () => {
+        const nine = (step: string, bracket = '') =>
+          rated(step, 8, 'eighth', 9, 4).replace(
+            '</note>',
+            bracket ? `<notations>${bracket}</notations></note>` : '</note>',
+          )
+        const { warnings } = read(
+          measures(
+            '<attributes><divisions>36</divisions></attributes>' +
+              rated('C', 12, 'eighth') +
+              rated('D', 12, 'eighth') +
+              '<backup><duration>24</duration></backup>' +
+              plain('A', 72, 'half') +
+              '<backup><duration>48</duration></backup>' +
+              grace('B', 9, 4, stating()) +
+              nine('E') +
+              nine('F') +
+              nine('G', stop()),
+          ),
+        )
+        const markers = warnings.filter((w) => w.message.startsWith("A tuplet's start marker"))
+
+        expect(markers).toHaveLength(1)
+      })
+
       // E overlaps the half in the line the group was read into, so the
       // group goes to the run's line.
       test('checks a grace note against the run of the line its group goes to', () => {

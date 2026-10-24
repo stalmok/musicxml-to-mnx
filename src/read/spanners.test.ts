@@ -560,6 +560,24 @@ describe('ties', () => {
     expect(warnings.map((w) => w.code)).not.toContain('unclosed:spanner')
   })
 
+  // The fallback reaches across the lines of one measure.
+  test('joins a tie into another laid-over line of its own measure by the fallback', () => {
+    const { notes, warnings } = readAllVoices(
+      measures(
+        DIVISIONS +
+          '<forward><duration>12</duration></forward>' +
+          note('E', tied('stop')) +
+          '<backup><duration>16</duration></backup>' +
+          note('G') +
+          note('E', tied('start')),
+      ),
+    )
+    const [stopped, , started] = notes as Note[]
+
+    expect(started?.ties).toEqual([{ kind: 'target', target: stopped?.id, crossVoice: true }])
+    expect(warnings.map((w) => w.code)).not.toContain('unclosed:spanner')
+  })
+
   // Two lines of one measure sound at once, so neither runs on into the other.
   // The stop takes the start of another voice that touches it.
   test('does not hold a stop for a laid-over line of another name in its own measure', () => {
