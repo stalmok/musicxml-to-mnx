@@ -859,14 +859,14 @@ export function pairTouching(
     if (same) same.push(start)
     else startsOf.set(start.number, [start])
   }
-  const ownedElsewhere = (start: LinedTieStart, stop: LinedTieStop): boolean =>
-    (startsOf.get(stop.number) ?? []).some(
-      (other) => other !== start && !joined.has(other) && owns(other, stop),
-    )
+  // Asked at the any-voice level only, where the start is in another voice
+  // from the stop and owns nothing of it.
+  const ownedElsewhere = (stop: LinedTieStop): boolean =>
+    (startsOf.get(stop.number) ?? []).some((other) => !joined.has(other) && owns(other, stop))
   const levels = [
     sameLine,
     openedIn,
-    (start: LinedTieStart, stop: LinedTieStop) => !ownedElsewhere(start, stop),
+    (_: LinedTieStart, stop: LinedTieStop) => !ownedElsewhere(stop),
   ]
   for (const level of levels) {
     for (const start of starts) {
