@@ -952,6 +952,36 @@ describe('ties', () => {
     expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([['unclosed:spanner', 1]])
   })
 
+  test('joins a tie into a note past a rest after a grace note on its pitch', () => {
+    const inVoice = (voice: string, body: string): string =>
+      body.replaceAll('<voice>1</voice>', `<voice>${voice}</voice>`)
+    const graceE =
+      '<note><grace/><pitch><step>E</step><octave>4</octave></pitch>' +
+      '<type>eighth</type><voice>2</voice></note>'
+    const sixteenthE =
+      '<note><pitch><step>E</step><octave>4</octave></pitch><duration>1</duration>' +
+      `<type>16th</type><voice>3</voice>${tied('start')}</note>`
+    const { notes, warnings } = readAllVoices(
+      measures(
+        DIVISIONS +
+          note('E', tied('start')) +
+          restOf(4) +
+          backup(8) +
+          graceE +
+          inVoice('2', restOf(4) + note('E', tied('stop'))) +
+          backup(8) +
+          inVoice('3', restOf(2)) +
+          sixteenthE +
+          inVoice('3', restOf(1) + restOf(4)),
+      ),
+    )
+    const [started, , stopped, early] = notes as Note[]
+
+    expect(started?.ties).toEqual([{ kind: 'target', target: stopped?.id, crossVoice: true }])
+    expect(early?.ties).toEqual([])
+    expect(warnings.map((w) => w.code)).toEqual(['unclosed:spanner'])
+  })
+
   test('joins a tie from a grace note into the note it ornaments', () => {
     const graceE =
       '<note><grace/><pitch><step>E</step><octave>4</octave></pitch>' +

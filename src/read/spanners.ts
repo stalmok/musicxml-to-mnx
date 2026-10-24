@@ -725,7 +725,11 @@ function linePlacesOf(measures: readonly Measure[]): {
   ): void => {
     for (const item of items) {
       if (item.kind === 'event') {
-        if (item.body.kind === 'rest') continue
+        // A rest ends the grace notes sounded just before a note.
+        if (item.body.kind === 'rest') {
+          graceRuns.set(voice ?? '', [])
+          continue
+        }
         const place = countSound(counts, voice, grace)
         const notes = [...item.body.notes, ...item.body.kitNotes]
         const graceKeys = graceRuns.get(voice ?? '') ?? []
