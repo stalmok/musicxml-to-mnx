@@ -629,6 +629,25 @@ describe('ties', () => {
       high,
       over(note('E', tied('stop'))),
     ],
+    [
+      'by the fallback across its pitch after the start in its line',
+      under(high + high, note('E', tied('start')) + note('E'), 8),
+      note('E', tied('stop')),
+    ],
+    [
+      'by the fallback across its pitch in the other line',
+      under(high + note('E'), note('E', tied('start')) + note('D'), 8),
+      note('E', tied('stop')),
+    ],
+    [
+      'of its own measure by the fallback across its pitch in the stop line',
+      '<forward><duration>8</duration></forward>' +
+        note('E') +
+        note('E', tied('stop')) +
+        '<backup><duration>16</duration></backup>' +
+        note('G') +
+        note('E', tied('start')),
+    ],
   ])('does not join a tie into a laid-over line of another name %s', (_, ...bodies) => {
     const { notes, warnings } = readAllVoices(
       measures(...bodies.map((body, index) => (index === 0 ? DIVISIONS + body : body))),

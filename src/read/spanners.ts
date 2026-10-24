@@ -1124,11 +1124,12 @@ export class SpannerResolver implements PartCollector {
       line: places.get(end.kind === 'start' ? end.payload.note.id : end.stop.note.id),
     }))
     // Within one line, by that line's own events: the other line of a voice
-    // that writes two sounds its own notes. Where a line is unknown, by the
-    // voice's.
+    // that writes two sounds its own notes. Across two lines, or where a
+    // line is unknown, by the voice's.
     const soundedBetween = (start: LinedTiePlace, stop: LinedTiePlace): boolean => {
-      if (!start.line || !stop.line) return this.#soundedBetween(start, stop)
-      if (start.line.voice !== stop.line.voice) return false
+      if (!start.line || !stop.line || start.line.voice !== stop.line.voice) {
+        return this.#soundedBetween(start, stop)
+      }
       const from = start.line.sounded
       const to = stop.line.sounded
       const at = sounds.get(soundingKey(start.line.voice, start.number)) ?? []
