@@ -50,6 +50,8 @@ interface OpenTie {
    * note takes no time, so it is where the note begins.
    */
   until: Fraction
+  /** Whether the note sounds until the barline. Settled once its measure is whole. */
+  reachesBarline: boolean
   /** The side the tie is drawn on, where the start states it. */
   side: CurveSide | undefined
   /** Whether the start states the tie in <tied>, not in <tie> alone. */
@@ -81,7 +83,7 @@ type LinedTiePlace = TiePlace & { line: LinePlace | undefined }
 /** One end of a tie, and on a stop the note it is written on. */
 type TieEnd = (StartEnd<OpenTie> | StopEnd<TieStopAt>) & TiePlace
 
-type LinedTieEnd = TieEnd & LinedTiePlace
+export type LinedTieEnd = TieEnd & LinedTiePlace
 type LinedTieStart = Extract<LinedTieEnd, { kind: 'start' }>
 type LinedTieStop = Extract<LinedTieEnd, { kind: 'stop' }>
 
@@ -776,20 +778,12 @@ function sameLine(start: { line: LinePlace }, stop: { line: LinePlace }): boolea
  * instant that sounds after it: later in its line, or the beat note of
  * another line.
  */
-function touches(
-  start: PlacedTieEnd<LinedTieStart>,
-  stop: PlacedTieEnd<LinedTieStop>,
-  lengthOf: (measure: number) => Fraction | undefined,
-): boolean {
-  const { until } = start.payload
-  const length = lengthOf(start.measure)
+function touches(start: PlacedTieEnd<LinedTieStart>, stop: PlacedTieEnd<LinedTieStop>): boolean {
+  const { until, reachesBarline } = start.payload
   const atUntil =
     stop.measure === start.measure
       ? compareFractions(stop.position, until) === 0
-      : stop.measure === start.measure + 1 &&
-        isZero(stop.position) &&
-        length !== undefined &&
-        compareFractions(until, length) === 0
+      : stop.measure === start.measure + 1 && isZero(stop.position) && reachesBarline
   if (!atUntil || start.grace !== true) return atUntil
   return sameLine(start, stop) ? stop.line.sounded > start.line.sounded : stop.grace !== true
 }
@@ -817,9 +811,8 @@ function crossesGraceNote(
  * that, it takes the first written, so the ties of a pitch written twice in
  * one chord keep their order.
  */
-function pairTouching(
+export function pairTouching(
   ends: readonly LinedTieEnd[],
-  lengthOf: (measure: number) => Fraction | undefined,
   join: (start: LinedTieStart, stop: LinedTieStop) => void,
 ): Set<LinedTieEnd> {
   const placed = ends.filter((end): end is PlacedTieEnd<LinedTieEnd> => end.line !== undefined)
@@ -850,7 +843,7 @@ function pairTouching(
         (candidate) =>
           !joined.has(candidate) &&
           level(start, candidate) &&
-          touches(start, candidate, lengthOf) &&
+          touches(start, candidate) &&
           !crossesGraceNote(start, candidate),
       )
       if (!stop) continue
@@ -900,8 +893,8 @@ export class SpannerResolver implements PartCollector {
   readonly #lastSounded = new Map<string, SoundedPlace>()
   // Where each voice sounds what a tie pairs by, by soundingKey.
   readonly #soundings = new Map<string, Instant[]>()
-  // How long each measure runs, by its place in the part.
-  readonly #lengths = new Map<number, Fraction>()
+  // The ties begun in the measure being read, until it is whole.
+  readonly #startsInMeasure: OpenTie[] = []
   // Both ends of every slur in the part, paired once all of them are in.
   readonly #slurEnds: SlurEnd[] = []
   // Both ends of every hairpin in the part, paired once all of them are in.
@@ -960,6 +953,8 @@ export class SpannerResolver implements PartCollector {
     grace: boolean,
     where: WrittenAt,
   ): void {
+    const open = { note, until, reachesBarline: false, side, drawn }
+    this.#startsInMeasure.push(open)
     this.#tieEnds.push({
       kind: 'start',
       number: pairedBy,
@@ -968,7 +963,7 @@ export class SpannerResolver implements PartCollector {
       voice,
       grace,
       covers: position,
-      payload: { note, until, side, drawn },
+      payload: open,
       where,
       ...this.#soundedIn(voice),
     })
@@ -1076,13 +1071,9 @@ export class SpannerResolver implements PartCollector {
         },
       ]
     }
-    const joined = pairTouching(
-      ends,
-      (measure) => this.#lengths.get(measure),
-      (start, stop) => {
-        join(start.payload, stop, start)
-      },
-    )
+    const joined = pairTouching(ends, (start, stop) => {
+      join(start.payload, stop, start)
+    })
     // Two ties of one pitch can be open at once, as when two hands each
     // sustain it, so each pitch holds a stack rather than a single open tie.
     pairSpans<OpenTie, TieStopAt, LinedTiePlace>(
@@ -1508,7 +1499,10 @@ export class SpannerResolver implements PartCollector {
     graceNotesAt: GraceNotesAt,
     lastEvents: LastEvents,
   ): void {
-    this.#lengths.set(measure, length)
+    for (const open of this.#startsInMeasure) {
+      open.reachesBarline = compareFractions(open.until, length) === 0
+    }
+    this.#startsInMeasure.length = 0
     const overGraceNotes = (end: EndPlace): boolean => {
       if (!end.graceWritten) return false
       end.coversGraceIndex = graceNotesAt(end.covers, end.staff) - end.graceWritten + 1
