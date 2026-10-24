@@ -808,6 +808,25 @@ describe('ties', () => {
     expect(warnings.map((w) => w.code)).not.toContain('unclosed:spanner')
   })
 
+  test('keeps the ties of two voices past rests in their own voices where they touch across', () => {
+    const inTwo = (body: string): string => body.replaceAll('<voice>1</voice>', '<voice>2</voice>')
+    const { notes, warnings } = readAllVoices(
+      measures(
+        DIVISIONS +
+          lasting('C', 8, tied('start')) +
+          restOf(4) +
+          note('C', tied('stop')) +
+          backup(16) +
+          inTwo(note('C', tied('start')) + restOf(4) + lasting('C', 8, tied('stop'))),
+      ),
+    )
+    const [oneStart, oneStop, twoStart, twoStop] = notes as Note[]
+
+    expect(oneStart?.ties).toEqual([{ kind: 'target', target: oneStop?.id, crossVoice: false }])
+    expect(twoStart?.ties).toEqual([{ kind: 'target', target: twoStop?.id, crossVoice: false }])
+    expect(warnings).toEqual([])
+  })
+
   test('joins a tie into another voice across the barline past a rest', () => {
     const { notes, warnings } = readAllVoices(
       measures(
@@ -2529,7 +2548,11 @@ describe('pairing ties by time', () => {
   }
   const joined = (...ends: LinedTieEnd[]): string[][] => {
     const pairs: string[][] = []
-    pairTouching(ends, (start, stop) => pairs.push([start.payload.note.id, stop.stop.note.id]))
+    pairTouching(
+      ends,
+      () => false,
+      (start, stop) => pairs.push([start.payload.note.id, stop.stop.note.id]),
+    )
     return pairs
   }
   const graceStart = tieEnd('start', 'grace', { sounded: 1, grace: true })

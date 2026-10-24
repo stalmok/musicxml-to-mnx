@@ -821,9 +821,14 @@ function crossesGraceNote(
  * of one pitch in two lines or two hands stay apart. Among stops alike in
  * that, it takes the first written, so the ties of a pitch written twice in
  * one chord keep their order.
+ *
+ * A start of another voice does not take a stop that a start of the stop's
+ * own voice `owns`, by the rules the ends left over are paired by. A tie
+ * within one voice is the source's own statement, past rests too.
  */
 export function pairTouching(
   ends: readonly LinedTieEnd[],
+  owns: (start: LinedTieStart, stop: LinedTieStop) => boolean,
   join: (start: LinedTieStart, stop: LinedTieStop) => void,
 ): Set<LinedTieEnd> {
   const placed = ends.filter((end): end is PlacedTieEnd<LinedTieEnd> => end.line !== undefined)
@@ -842,7 +847,21 @@ export function pairTouching(
     placed.filter((end): end is PlacedTieEnd<LinedTieStart> => end.kind === 'start'),
     'as-written',
   )
-  const levels = [sameLine, openedIn, () => true]
+  const startsOf = new Map<string, LinedTieStart[]>()
+  for (const start of starts) {
+    const same = startsOf.get(start.number)
+    if (same) same.push(start)
+    else startsOf.set(start.number, [start])
+  }
+  const ownedElsewhere = (start: LinedTieStart, stop: LinedTieStop): boolean =>
+    (startsOf.get(stop.number) ?? []).some(
+      (other) => other !== start && !joined.has(other) && owns(other, stop),
+    )
+  const levels = [
+    sameLine,
+    openedIn,
+    (start: LinedTieStart, stop: LinedTieStop) => !ownedElsewhere(start, stop),
+  ]
   for (const level of levels) {
     for (const start of starts) {
       if (joined.has(start)) continue
@@ -853,8 +872,8 @@ export function pairTouching(
       const stop = candidates.find(
         (candidate) =>
           !joined.has(candidate) &&
-          level(start, candidate) &&
           touches(start, candidate) &&
+          level(start, candidate) &&
           !crossesGraceNote(start, candidate),
       )
       if (!stop) continue
@@ -1093,7 +1112,9 @@ export class SpannerResolver implements PartCollector {
         },
       ]
     }
-    const joined = pairTouching(ends, (start, stop) => {
+    const owns = (start: LinedTiePlace, stop: LinedTiePlace): boolean =>
+      openedIn(start, stop) && soundsNext(start, stop, () => this.#soundedBetween(start, stop))
+    const joined = pairTouching(ends, owns, (start, stop) => {
       join(start.payload, stop, start)
     })
     // Two ties of one pitch can be open at once, as when two hands each
@@ -1108,8 +1129,7 @@ export class SpannerResolver implements PartCollector {
       undefined,
       {
         prefers: (start, stop) => start.line?.voice === stop.line?.voice,
-        owns: (start, stop) =>
-          openedIn(start, stop) && soundsNext(start, stop, () => this.#soundedBetween(start, stop)),
+        owns,
         reaches: (start, stop) =>
           stop.measure - start.measure <= 1 &&
           !(openedIn(start, stop) && soundedBetween(start, stop)),
