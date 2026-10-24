@@ -207,6 +207,17 @@ function relevel(opening: Opening, line: readonly Fraction[]): void {
   }
 }
 
+/**
+ * Clears the disagreement of an opening whose brackets all closed over grace
+ * notes alone, where its markers fit the note's ratio counted inside `open`,
+ * which holds a run the ratio alone opened. Such a run stays open over the
+ * brackets, and a grace note may state its ratio with the run's or without.
+ */
+function acceptInsideRun(opening: Opening, open: readonly Fraction[]): void {
+  if (!opening.disagreeing) return
+  opening.disagreeing = tupletLevels(open, opening.inner, opening.outer, opening.starts).disagreeing
+}
+
 function reportDisagreeing(
   opening: Opening,
   warnings: WarningCollector,
@@ -347,13 +358,18 @@ export class TupletTracker {
     }
     for (const { opening } of held) openings.add(opening)
     // A note inside another note's bracket has that bracket around it as
-    // well, so the outer opening is settled first. A run the ratio alone
-    // opened stays open over a bracket that closed on grace notes alone.
-    const drawn = to.#drawnRatios()
+    // well, so the outer opening is settled first.
+    const line = to.#drawnRatios()
     const open = to.#tuplets().map((tuplet) => tuplet.ratio)
     const overGraceNotes = new Set(held.map((entry) => entry.opening))
     for (const opening of [...openings].sort((a, b) => a.around.length - b.around.length)) {
-      relevel(opening, overGraceNotes.has(opening) ? open : drawn)
+      relevel(opening, line)
+      if (overGraceNotes.has(opening)) {
+        acceptInsideRun(opening, [
+          ...open,
+          ...opening.around.filter(holdsNoTime).map((frame) => frame.ratio),
+        ])
+      }
     }
 
     for (const frame of moving) {
@@ -945,14 +961,10 @@ export class TupletTracker {
     // takes time, it holds grace groups alone, and the first holds the note.
     const [group] = closed.tuplet.content
     if (group && holdsNoTime(closed)) {
-      // A run the ratio alone opened stays open over the brackets, so the
-      // note's ratio is divided by it as well.
-      opening.disagreeing = tupletLevels(
+      acceptInsideRun(
+        opening,
         this.#tuplets().map((tuplet) => tuplet.ratio),
-        opening.inner,
-        opening.outer,
-        opening.starts,
-      ).disagreeing
+      )
       this.#held.push({ opening, group })
     } else {
       reportDisagreeing(opening, warnings, context)

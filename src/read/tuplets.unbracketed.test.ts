@@ -313,24 +313,27 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
       expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-untimed'])
     })
 
-    // The run stays open over a bracket that closes on grace notes alone, so
-    // the grace notes' ratio is the run's and the bracket's together.
+    // The run stays open over a bracket that closes on grace notes alone. A
+    // grace note may state the run's ratio with the bracket's, or leave it
+    // out, so a marker disagrees only where it fits neither.
     describe('a bracket over grace notes alone whose marker states its ratio', () => {
       const grace = (step: string, played: number, space: number, bracket: string) =>
         `<note><grace/><pitch><step>${step}</step><octave>5</octave></pitch><type>16th</type>` +
         `<time-modification><actual-notes>${String(played)}</actual-notes>` +
         `<normal-notes>${String(space)}</normal-notes></time-modification>` +
         `<notations>${bracket}</notations></note>`
-      const stating =
-        '<tuplet type="start"><tuplet-actual><tuplet-number>3</tuplet-number></tuplet-actual>' +
-        '<tuplet-normal><tuplet-number>2</tuplet-number></tuplet-normal></tuplet>'
+      const stating = (number = '1') =>
+        `<tuplet type="start" number="${number}"><tuplet-actual><tuplet-number>3</tuplet-number>` +
+        '</tuplet-actual><tuplet-normal><tuplet-number>2</tuplet-number></tuplet-normal></tuplet>'
+      const stop = (number = '1') => `<tuplet type="stop" number="${number}"/>`
       const group = (played: number, space: number) =>
-        grace('B', played, space, stating) + grace('D', played, space, '<tuplet type="stop"/>')
+        grace('B', played, space, stating()) + grace('D', played, space, stop())
 
       test.each([
         [9, 4, ['unrepresentable:tuplet-untimed']],
-        [3, 2, ['inconsistent:tuplet', 'unrepresentable:tuplet-untimed']],
-      ])('checks a %i:%i grace note against the run around it', (played, space, codes) => {
+        [3, 2, ['unrepresentable:tuplet-untimed']],
+        [5, 4, ['inconsistent:tuplet', 'unrepresentable:tuplet-untimed']],
+      ])('checks a %i:%i grace note with and without the run around it', (played, space, codes) => {
         const { warnings } = read(
           measure(
             rated('A', 4, 'eighth') +
@@ -341,6 +344,80 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
         )
 
         expect(warnings.map((w) => w.code)).toEqual(codes)
+      })
+
+      // The outer bracket opened inside the run, so its ratio holds the run's
+      // share already.
+      test('checks a bracket over grace notes alone inside another', () => {
+        const { warnings } = read(
+          measure(
+            rated('A', 4, 'eighth') +
+              rated('B', 4, 'eighth') +
+              grace('E', 9, 4, stating('1')) +
+              grace('F', 27, 8, stating('2')) +
+              grace('G', 27, 8, stop('2')) +
+              grace('A', 9, 4, stop('1')) +
+              rated('C', 4, 'eighth'),
+          ),
+        )
+
+        expect(warnings.map((w) => w.code)).toEqual([
+          'unrepresentable:tuplet-untimed',
+          'unrepresentable:tuplet-untimed',
+        ])
+      })
+
+      // The outer grace note leaves the run's ratio out and the inner one
+      // counts it. The group is read into the half's line where E overlaps
+      // the half, and goes to the run's line.
+      test.each([
+        ['where it stays', ''],
+        [
+          'where its group goes to the run',
+          '<backup><duration>8</duration></backup>' +
+            plain('A', 24, 'half') +
+            '<backup><duration>16</duration></backup>',
+        ],
+      ])('checks brackets over grace notes alone that count the run apart %s', (_, between) => {
+        const { warnings } = read(
+          measure(
+            rated('A', 4, 'eighth') +
+              rated('B', 4, 'eighth') +
+              between +
+              grace('E', 3, 2, stating('1')) +
+              grace('F', 27, 8, stating('2')) +
+              grace('G', 27, 8, stop('2')) +
+              grace('A', 3, 2, stop('1')) +
+              rated('C', 4, 'eighth'),
+          ),
+        )
+        const markers = warnings.filter((w) => w.message.startsWith("A tuplet's start marker"))
+
+        expect(markers).toEqual([])
+      })
+
+      // D enters the outer bracket, so the run closes before it, and the
+      // inner bracket is inside the outer one alone.
+      test('checks a bracket over grace notes alone inside one that goes on to hold notes', () => {
+        const outer = '<tuplet type="start" number="1"/>'
+        const { warnings } = read(
+          measure(
+            rated('A', 4, 'eighth') +
+              rated('B', 4, 'eighth') +
+              grace('G', 3, 2, outer) +
+              grace('B', 9, 4, stating('2')) +
+              grace('D', 9, 4, stop('2')) +
+              rated('D', 4, 'eighth') +
+              rated('E', 4, 'eighth') +
+              rated('F', 4, 'eighth').replace(
+                '</note>',
+                `<notations>${stop('1')}</notations></note>`,
+              ),
+          ),
+        )
+
+        const markers = warnings.filter((w) => w.message.startsWith("A tuplet's start marker"))
+        expect(markers).toEqual([])
       })
 
       // E overlaps the half in the line the group was read into, so the
