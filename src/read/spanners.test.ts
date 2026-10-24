@@ -688,6 +688,86 @@ describe('ties', () => {
     expect(started?.ties).toEqual([{ kind: 'target', target: stopped?.id, crossVoice: true }])
     expect(warnings).toEqual([])
   })
+
+  const lasting = (step: string, duration: number, body = ''): string =>
+    note(step, body)
+      .replace('<duration>4</duration>', `<duration>${String(duration)}</duration>`)
+      .replace('<type>quarter</type>', `<type>${duration === 16 ? 'whole' : 'half'}</type>`)
+  const backup = (duration: number): string =>
+    `<backup><duration>${String(duration)}</duration></backup>`
+
+  test('joins each tie on a pitch written twice in a chord to the same place in the next chord', () => {
+    const chordE = (body: string): string => note('E', body).replace('<note>', '<note><chord/>')
+    const { notes, warnings } = read(
+      measures(
+        DIVISIONS + note('E', tied('start')) + chordE(tied('start')),
+        note('E', tied('stop')) + chordE(tied('stop')),
+      ),
+    )
+    const [first, second, firstStop, secondStop] = notes as [Note, Note, Note, Note]
+
+    expect(first.ties).toEqual([{ kind: 'target', target: firstStop.id, crossVoice: false }])
+    expect(second.ties).toEqual([{ kind: 'target', target: secondStop.id, crossVoice: false }])
+    expect(warnings).toEqual([])
+  })
+
+  test('does not join a tie to a stop that begins with its start', () => {
+    const { notes, warnings } = readAllVoices(
+      measures(
+        DIVISIONS +
+          lasting('G', 8) +
+          lasting('E', 8, tied('start')) +
+          backup(16) +
+          lasting('C', 16),
+        lasting('E', 16, tied('start')) +
+          backup(16) +
+          lasting('E', 8, tied('stop')) +
+          lasting('C', 8),
+        lasting('E', 16, tied('stop')),
+      ),
+    )
+    const [, earlier, , upper, lower, , last] = notes as Note[]
+
+    expect(earlier?.ties).toEqual([{ kind: 'target', target: lower?.id, crossVoice: true }])
+    expect(upper?.ties).toEqual([{ kind: 'target', target: last?.id, crossVoice: false }])
+    expect(warnings.map((w) => w.code)).not.toContain('unclosed:spanner')
+  })
+
+  test('joins a tie from a grace note into the note it ornaments', () => {
+    const graceE =
+      '<note><grace/><pitch><step>E</step><octave>4</octave></pitch>' +
+      `<type>eighth</type><voice>1</voice>${tied('start')}</note>`
+    const { notes, warnings } = readAllVoices(
+      measures(DIVISIONS + graceE + note('E', tied('stop'))),
+    )
+    const [grace, ornamented] = notes as [Note, Note]
+
+    expect(grace.ties).toEqual([{ kind: 'target', target: ornamented.id, crossVoice: false }])
+    expect(warnings).toEqual([])
+  })
+
+  test('keeps a tie in its laid-over line where the other line sounds a grace note on its pitch', () => {
+    const graceE =
+      '<note><grace/><pitch><step>E</step><octave>4</octave></pitch>' +
+      '<type>eighth</type><voice>1</voice></note>'
+    const { notes, warnings } = readAllVoices(
+      measures(
+        DIVISIONS +
+          lasting('G', 8) +
+          lasting('E', 8, tied('start')) +
+          backup(16) +
+          lasting('C', 8) +
+          lasting('E', 8, tied('start')),
+        lasting('E', 16, tied('stop')) + backup(16) + graceE + lasting('E', 16, tied('stop')),
+      ),
+    )
+    const [, upperStart, , lowerStart, upperStop] = notes as Note[]
+
+    expect(upperStart?.ties).toEqual([{ kind: 'target', target: upperStop?.id, crossVoice: false }])
+    expect(lowerStart?.ties).toEqual([])
+    const unclosedAt = warnings.filter((w) => w.code === 'unclosed:spanner')
+    expect(unclosedAt.map((w) => w.context.measure)).toEqual([1, 2])
+  })
 })
 
 // <tie> is the sound of a tie and <tied> is the notation, so a note that is

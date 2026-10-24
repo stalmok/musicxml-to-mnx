@@ -42,7 +42,8 @@ import {
 } from './writtenValues.js'
 import { pitchHeights, readKitNoteAt, readNoteAt, restStaffPosition } from './pitches.js'
 import { entriesOf } from './tables.js'
-import { readSlurs, readTies, tiePairing } from './tiesAndSlurs.js'
+import { readSlurs, readTies } from './tiesAndSlurs.js'
+import { tiePairing } from './spanners.js'
 import { MeasureBuilder } from './voices.js'
 import type { JoinedEvent, PlacedEvent, VoiceLine } from './voices.js'
 
@@ -543,7 +544,7 @@ function readChordMember(
     tiePairing(chordNote),
     chord.voice.name,
     measureIndex,
-    placed.start,
+    placed,
     graceElement !== undefined,
     state,
     warnings,
@@ -610,7 +611,7 @@ function readEventSpanners(
       tiePairing(note),
       voice.name,
       measureIndex,
-      placed.start,
+      placed,
       inGraceGroup,
       state,
       warnings,

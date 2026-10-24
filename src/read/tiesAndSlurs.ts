@@ -1,8 +1,8 @@
 // Reading the tie and slur starts and stops a note carries. Each goes to the
 // part's spanner resolver, which pairs them once the whole part is read.
 
-import type { Fraction } from '../fraction.js'
-import type { CurveSide, KitNote, LineType, Note, TieTarget } from '../model/score.js'
+import { addFractions } from '../fraction.js'
+import type { CurveSide, LineType, TieTarget } from '../model/score.js'
 import { writtenAt } from './collector.js'
 import type { ReportContext, WarningCollector, WrittenAt } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
@@ -10,16 +10,7 @@ import { attribute } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
 import type { PartState } from './state.js'
 import { recogniser } from './tables.js'
-import { tieKey } from './spanners.js'
 import type { PlacedEvent } from './voices.js'
-
-/**
- * What a tie on this note pairs by: the pitch of a pitched note, and the kit
- * component struck for a note with no pitch to compare.
- */
-export function tiePairing(note: Note | KitNote): string {
-  return 'pitch' in note ? tieKey(note.pitch) : note.component
-}
 
 /**
  * A <tie> says a tie begins or ends on this note. A note in the middle of a
@@ -31,7 +22,7 @@ export function readTies(
   pairedBy: string,
   voice: string | undefined,
   measureIndex: number,
-  at: Fraction,
+  { start: at, duration }: PlacedEvent,
   grace: boolean,
   state: PartState,
   warnings: WarningCollector,
@@ -57,6 +48,7 @@ export function readTies(
         edge.drawn,
         measureIndex,
         at,
+        duration ? addFractions(at, duration) : at,
         grace,
         where,
       )

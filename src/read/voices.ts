@@ -72,13 +72,15 @@ export type LastEvents = () => ReadonlyMap<number, CoveredEvent>
 export type GraceNotesAt = (position: Fraction, staff?: number) => number
 
 /**
- * An event just put in its voice, and where it begins in the measure. A note's
- * notations are read once the cursor has moved past it, and a tie, slur or
- * roll written there belongs at the event's own place.
+ * An event just put in its voice, where it begins in the measure, and how
+ * long it lasts. A note's notations are read once the cursor has moved past
+ * it, and a tie, slur or roll written there belongs at the event's own place.
+ * `duration` is unset on a grace note, which takes no time.
  */
 export interface PlacedEvent {
   event: Event
   start: Fraction
+  duration: Fraction | undefined
 }
 
 /** The event a note of a chord joins, with what the chord's own note wrote on it. */
@@ -87,12 +89,11 @@ export interface JoinedEvent extends PlacedEvent {
 }
 
 /**
- * The most recent event, which a chord note joins. `duration` is how long it
- * lasts and `share` how much of its written value, for chord notes to agree
- * with. Both are unset on a grace note, which takes no time.
+ * The most recent event, which a chord note joins. `share` is how much of its
+ * written value it lasts, for chord notes to agree with. It is unset on a
+ * grace note, which takes no time.
  */
 interface LastEvent extends JoinedEvent {
-  readonly duration: Fraction | undefined
   readonly share: Fraction | undefined
 }
 
@@ -835,7 +836,7 @@ export class MeasureBuilder {
     builder.tuplets.addTremoloNote(event, duration)
     builder.end = addFractions(start, duration)
     this.#moveTo(builder.end)
-    return { event, start }
+    return { event, start, duration }
   }
 
   /**
@@ -980,7 +981,8 @@ export class MeasureBuilder {
   ): JoinedEvent {
     this.#agreeWithChord(chord, duration, path, line)
     chord.body.notes = [...chord.body.notes, note]
-    return { event: chord.last.event, start: chord.last.start, notations: chord.last.notations }
+    const { event, start, notations } = chord.last
+    return { event, start, duration: chord.last.duration, notations }
   }
 
   /** The same, for a note struck on a percussion kit. */
@@ -993,7 +995,8 @@ export class MeasureBuilder {
   ): JoinedEvent {
     this.#agreeWithChord(chord, duration, path, line)
     chord.body.kitNotes = [...chord.body.kitNotes, note]
-    return { event: chord.last.event, start: chord.last.start, notations: chord.last.notations }
+    const { event, start, notations } = chord.last
+    return { event, start, duration: chord.last.duration, notations }
   }
 
   /**
@@ -1476,7 +1479,7 @@ export class MeasureBuilder {
       group.content = [...group.content, event]
       if (slashed) group.slashed = true
       group.graceType ??= graceType
-      return { event, start, beams: open.beams }
+      return { event, start, duration: undefined, beams: open.beams }
     }
 
     const group: GraceGroup = { kind: 'grace', content: [event], slashed, graceType }
@@ -1487,7 +1490,7 @@ export class MeasureBuilder {
     // Held until the note it leads into says which sequence it is in. Its
     // own entry in `placed` is the one just pushed.
     builder.grace = { group, beams, at: start, placedFrom: builder.placed.length - 1 }
-    return { event, start, beams }
+    return { event, start, duration: undefined, beams }
   }
 
   #settleFillingRests(): void {
