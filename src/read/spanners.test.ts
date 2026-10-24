@@ -827,6 +827,25 @@ describe('ties', () => {
     expect(warnings).toEqual([])
   })
 
+  test('leaves a stop to its own voice past rests before a later start of another voice', () => {
+    const inTwo = (body: string): string => body.replaceAll('<voice>1</voice>', '<voice>2</voice>')
+    const { notes, warnings } = readAllVoices(
+      measures(
+        DIVISIONS +
+          note('C', tied('start')) +
+          restOf(8) +
+          note('C', tied('stop')) +
+          backup(16) +
+          inTwo(restOf(4) + lasting('C', 8, tied('start')) + restOf(4)),
+      ),
+    )
+    const [oneStart, oneStop, twoStart] = notes as Note[]
+
+    expect(oneStart?.ties).toEqual([{ kind: 'target', target: oneStop?.id, crossVoice: false }])
+    expect(twoStart?.ties).toEqual([])
+    expect(warnings.map((w) => w.code)).toEqual(['unclosed:spanner'])
+  })
+
   test('joins a tie into another voice across the barline past a rest', () => {
     const { notes, warnings } = readAllVoices(
       measures(
@@ -2538,6 +2557,7 @@ describe('pairing ties by time', () => {
   interface At {
     sounded: number
     line?: string
+    voice?: string
     grace?: boolean
     graceKeys?: string[][]
   }
@@ -2550,7 +2570,7 @@ describe('pairing ties by time', () => {
       position: fraction(0),
       covers: fraction(0),
       where: WRITTEN,
-      voice: '1',
+      voice: at.voice ?? '1',
       grace: at.grace ?? false,
       sounded: at.sounded,
       gracesBefore: graceKeys.length,
@@ -2576,12 +2596,14 @@ describe('pairing ties by time', () => {
         }
       : { ...place, kind, stop: { note, drawn: true } }
   }
-  const joined = (...ends: LinedTieEnd[]): string[][] => {
+  const joined = (...ends: LinedTieEnd[]): string[][] => joinedOwning(() => false, ...ends)
+  const joinedOwning = (
+    owns: (start: LinedTieEnd, stop: LinedTieEnd) => boolean,
+    ...ends: LinedTieEnd[]
+  ): string[][] => {
     const pairs: string[][] = []
-    pairTouching(
-      ends,
-      () => false,
-      (start, stop) => pairs.push([start.payload.note.id, stop.stop.note.id]),
+    pairTouching(ends, owns, (start, stop) =>
+      pairs.push([start.payload.note.id, stop.stop.note.id]),
     )
     return pairs
   }
@@ -2610,6 +2632,18 @@ describe('pairing ties by time', () => {
     const stop = tieEnd('stop', 'note', { sounded: 2, graceKeys: [['E']] })
 
     expect(joined(start, stop)).toEqual([])
+  })
+
+  test('joins a stop in another voice that only a start already joined owns', () => {
+    const owner = tieEnd('start', 'owner', { sounded: 1 })
+    const ownStop = tieEnd('stop', 'own', { sounded: 2 })
+    const other = tieEnd('start', 'other', { sounded: 1, line: '2', voice: '2' })
+    const stop = tieEnd('stop', 'stop', { sounded: 1, line: '3', voice: '3' })
+
+    expect(joinedOwning((start) => start === owner, owner, ownStop, other, stop)).toEqual([
+      ['owner', 'own'],
+      ['other', 'stop'],
+    ])
   })
 
   test('leaves an end whose note no sequence holds to the other rules', () => {
