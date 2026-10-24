@@ -491,6 +491,114 @@ describe('ties', () => {
     expect(warnings.filter((w) => w.code === 'unclosed:spanner')).toHaveLength(2)
   })
 
+  // Where the lines cross, one line changes its name across the barline: the
+  // lower line's E is the higher line where the tie ends.
+  const under = (body: string, low: string, length = 4): string =>
+    `${body}<backup><duration>${String(length)}</duration></backup>${low}`
+  const lowC = note('C').replace('<octave>4</octave>', '<octave>3</octave>')
+  const stopAbove = under(note('E', tied('stop')), lowC)
+
+  test.each([
+    [
+      'across rests, both ends written first',
+      under(note('E', tied('start')), high),
+      under(rest, rest),
+      stopAbove,
+    ],
+    [
+      'across rests, both ends written second',
+      over(note('E', tied('start'))),
+      under(rest, rest),
+      over(note('E', tied('stop')), lowC),
+    ],
+    [
+      'across a measure the other line sounds',
+      over(note('E', tied('start'))),
+      over(rest),
+      stopAbove,
+    ],
+    ['across a measure that leaves the line out', over(note('E', tied('start'))), high, stopAbove],
+    [
+      'from a measure that sounds one line',
+      note('E', tied('start')),
+      rest,
+      over(note('E', tied('stop'))),
+    ],
+  ])('joins a tie into a laid-over line of another name %s', (_, first, second, third) => {
+    const { notes, warnings } = readAllVoices(measures(DIVISIONS + first, second, third))
+    const started = notes.find((n) => n.ties.length > 0)
+    const stopped = notes.filter((n) => n.pitch.step === 'E').at(-1)
+
+    expect(started?.ties).toEqual([{ kind: 'target', target: stopped?.id, crossVoice: true }])
+    expect(warnings.map((w) => w.code)).not.toContain('unclosed:spanner')
+  })
+
+  test('joins a tie into a laid-over line of another name in a voice the source leaves unnamed', () => {
+    const source = measures(
+      DIVISIONS + under(note('E', tied('start')), high),
+      under(rest, rest),
+      stopAbove,
+    ).replaceAll('<voice>1</voice>', '')
+    const { notes, warnings } = readAllVoices(source)
+    const started = notes.find((n) => n.ties.length > 0)
+    const stopped = notes.filter((n) => n.pitch.step === 'E').at(-1)
+
+    expect(started?.ties).toEqual([{ kind: 'target', target: stopped?.id, crossVoice: true }])
+    expect(warnings.map((w) => w.code)).not.toContain('unclosed:spanner')
+  })
+
+  // Two lines of one measure sound at once, so neither runs on into the other.
+  // The stop takes the start of another voice that touches it.
+  test('does not hold a stop for a laid-over line of another name in its own measure', () => {
+    const forward = (length: number): string =>
+      `<forward><duration>${String(length)}</duration></forward>`
+    const { notes } = readAllVoices(
+      measures(
+        DIVISIONS +
+          forward(12) +
+          note('E', tied('stop')) +
+          '<backup><duration>16</duration></backup>' +
+          note('G') +
+          note('E', tied('start')) +
+          '<backup><duration>8</duration></backup>' +
+          forward(8) +
+          note('E', tied('start'), '2'),
+      ),
+    )
+    const [stopped, , laidOver, other] = notes as Note[]
+
+    expect(laidOver?.ties).toEqual([])
+    expect(other?.ties).toEqual([{ kind: 'target', target: stopped?.id, crossVoice: true }])
+  })
+
+  test.each([
+    [
+      'past a note after the start in its line',
+      under(high + high, note('E', tied('start')) + note('D'), 8),
+      over(rest),
+      under(note('E', tied('stop')), lowC),
+    ],
+    [
+      'past a note before the stop in its line',
+      over(note('E', tied('start'))),
+      over(rest),
+      under(note('D') + note('E', tied('stop')), lowC + lowC, 8),
+    ],
+    [
+      'across a measure both lines sound',
+      over(note('E', tied('start'))),
+      over(note('D')),
+      under(note('E', tied('stop')), lowC),
+    ],
+  ])('does not join a tie into a laid-over line of another name %s', (_, ...bodies) => {
+    const { notes, warnings } = readAllVoices(
+      measures(...bodies.map((body, index) => (index === 0 ? DIVISIONS + body : body))),
+    )
+
+    expect(notes.filter((n) => n.ties.length > 0)).toEqual([])
+    expect(warnings.filter((w) => w.code === 'unclosed:spanner')).toHaveLength(2)
+  })
+
   test('joins a tie from a measure that sounds one line into a laid-over line', () => {
     const { notes, warnings } = readAllVoices(
       measures(

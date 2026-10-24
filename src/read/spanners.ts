@@ -706,16 +706,22 @@ function countSound(
   return { sounded: sounded + 1, gracesBefore: graceRun }
 }
 
+/** How far a line had sounded by the end of a measure, from zero. */
+type SoundedBy = (line: string | undefined, measure: number) => number
+
 /**
- * The line each note is written in, by the note's id, and how far each line
- * had sounded at each note it sounds, by soundingKey.
+ * The line each note is written in, by the note's id, how far each line had
+ * sounded at each note it sounds, by soundingKey, and how far each line had
+ * sounded by each barline.
  */
 function linePlacesOf(measures: readonly Measure[]): {
   places: Map<string, LinePlace>
   sounds: Map<string, number[]>
+  soundedBy: SoundedBy
 } {
   const places = new Map<string, LinePlace>()
   const sounds = new Map<string, number[]>()
+  const atBarline: ReadonlyMap<string, number>[] = []
   const counts = new Map<string, SoundCount>()
   const graceRuns: GraceRuns = new Map()
   const walk = (
@@ -748,8 +754,10 @@ function linePlacesOf(measures: readonly Measure[]): {
   }
   for (const measure of measures) {
     for (const sequence of measure.sequences) walk(sequence.content, sequence.voice, false)
+    atBarline.push(new Map([...counts].map(([line, count]) => [line, count.sounded])))
   }
-  return { places, sounds }
+  const soundedBy: SoundedBy = (line, measure) => atBarline[measure]?.get(line ?? '') ?? 0
+  return { places, sounds, soundedBy }
 }
 
 /**
@@ -757,22 +765,49 @@ function linePlacesOf(measures: readonly Measure[]): {
  * where grace notes before the stop do not count. A voice that writes two
  * lines laid over each other sounds both, so within one line only that
  * line's events count. Lines are named measure by measure, so a line's name
- * does not say which notes of its voice it holds. A tie does not reach
- * across its pitch sounded anywhere in its voice, within one line or past
- * grace notes. Between two lines, and where either note's line is unknown,
- * every event of the voice counts.
+ * does not say which notes of its voice it holds, and where the lines cross,
+ * one line changes its name across the barline (see runsOnAcrossLines). A
+ * tie does not reach across its pitch sounded anywhere in its voice, within
+ * one line or past grace notes. Where either note's line is unknown, every
+ * event of the voice counts.
  */
 function soundsNext(
   start: LinedTiePlace,
   stop: LinedTiePlace,
+  soundedBy: SoundedBy,
   soundedBetween: () => boolean,
 ): boolean {
   const inLine =
     start.line !== undefined &&
     stop.line !== undefined &&
-    start.line.voice === stop.line.voice &&
-    nextPastGraces(start.line, stop.line)
+    (start.line.voice === stop.line.voice
+      ? nextPastGraces(start.line, stop.line)
+      : runsOnAcrossLines({ ...start, line: start.line }, { ...stop, line: stop.line }, soundedBy))
   return (inLine || nextPastGraces(start, stop)) && !soundedBetween()
+}
+
+/**
+ * Whether a stop in a later measure, in a line of another name, can be the
+ * next event of the start's line. The start is the last event its line
+ * sounds in its measure, and the stop the first its line sounds in its own,
+ * grace notes aside. In each measure between, the line under the start's name
+ * or the one under the stop's sounds nothing.
+ */
+function runsOnAcrossLines(
+  start: PlacedTieEnd<LinedTiePlace>,
+  stop: PlacedTieEnd<LinedTiePlace>,
+  soundedBy: SoundedBy,
+): boolean {
+  if (stop.measure <= start.measure) return false
+  const silent = (line: string | undefined, measure: number): boolean =>
+    soundedBy(line, measure) === soundedBy(line, measure - 1)
+  for (let measure = start.measure + 1; measure < stop.measure; measure++) {
+    if (!silent(start.line.voice, measure) && !silent(stop.line.voice, measure)) return false
+  }
+  return (
+    soundedBy(start.line.voice, start.measure) === start.line.sounded &&
+    stop.line.sounded - soundedBy(stop.line.voice, stop.measure - 1) <= stop.line.gracesBefore + 1
+  )
 }
 
 /** Whether only grace notes sound between a start and a stop. */
@@ -1063,7 +1098,7 @@ export class SpannerResolver implements PartCollector {
    * it paired. It follows from the sequences its two notes are written in.
    */
   #resolveTies(measures: readonly Measure[], warnings: WarningCollector): void {
-    const { places, sounds } = linePlacesOf(measures)
+    const { places, sounds, soundedBy } = linePlacesOf(measures)
     const ends = this.#tieEnds.map((end): LinedTieEnd => ({
       ...end,
       line: places.get(end.kind === 'start' ? end.payload.note.id : end.stop.note.id),
@@ -1119,7 +1154,8 @@ export class SpannerResolver implements PartCollector {
       ]
     }
     const owns = (start: LinedTiePlace, stop: LinedTiePlace): boolean =>
-      openedIn(start, stop) && soundsNext(start, stop, () => this.#soundedBetween(start, stop))
+      openedIn(start, stop) &&
+      soundsNext(start, stop, soundedBy, () => this.#soundedBetween(start, stop))
     const joined = pairTouching(ends, owns, (start, stop) => {
       join(start.payload, stop, start)
     })
