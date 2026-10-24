@@ -978,6 +978,66 @@ describe('the measure length check', () => {
     ])
   })
 
+  // The source may name a voice as the converter names a laid-over line.
+  test('holds a source voice named with a dot apart from the voice before the dot', () => {
+    const lines = [
+      TIMED,
+      quarter('C').replace('</duration>', '</duration><voice>1</voice>'),
+      quarter('D').replace('</duration>', '</duration><voice>1</voice>'),
+      '<backup><duration>24</duration></backup>',
+      quarter('E').replace('</duration>', '</duration><voice>1.2</voice>'),
+      quarter('F').replace('</duration>', '</duration><voice>1.2</voice>'),
+    ]
+    const source =
+      '<score-partwise><part-list><score-part id="P1"><part-name/></score-part></part-list>\n' +
+      `<part id="P1"><measure number="1">\n${lines.join('\n')}\n</measure></part></score-partwise>`
+    const { mnx } = convertValid(source)
+    const sequences = mnx.parts[0]?.measures[0]?.sequences ?? []
+    const last = sequences[1]?.content[1] as MNXEvent
+    last.duration = { base: 'half' }
+    const report: ConversionWarning = {
+      code: 'unrepresentable:tuplet-ratio',
+      message: '',
+      element: undefined,
+      attribute: undefined,
+      context: { part: 'P1', measure: 1, line: 4 },
+    }
+
+    expect(sequences.map((sequence) => sequence.voice)).toEqual(['1', '1.2'])
+    expect(measureLengthDisagreements(mnx, parseXmlRoot(source), [report])).toEqual([
+      'part 1 measure 1: voice 2 runs 0.75 against 0.5 in the source',
+    ])
+  })
+
+  test('maps a laid-over line to the voice it is laid over', () => {
+    const lines = [
+      TIMED,
+      quarter('C').replace('</duration>', '</duration><voice>1.2</voice>'),
+      quarter('D').replace('</duration>', '</duration><voice>1.2</voice>'),
+      '<backup><duration>24</duration></backup>',
+      quarter('E').replace('</duration>', '</duration><voice>1.2</voice>'),
+      quarter('F').replace('</duration>', '</duration><voice>1.2</voice>'),
+    ]
+    const source =
+      '<score-partwise><part-list><score-part id="P1"><part-name/></score-part></part-list>\n' +
+      `<part id="P1"><measure number="1">\n${lines.join('\n')}\n</measure></part></score-partwise>`
+    const { mnx } = convertValid(source)
+    const sequences = mnx.parts[0]?.measures[0]?.sequences ?? []
+    const laidOver = sequences.find((sequence) => sequence.voice === '1.2.2')
+    const last = laidOver?.content[1] as MNXEvent
+    last.duration = { base: 'half' }
+    const report: ConversionWarning = {
+      code: 'unrepresentable:tuplet-ratio',
+      message: '',
+      element: undefined,
+      attribute: undefined,
+      context: { part: 'P1', measure: 1, line: 4 },
+    }
+
+    expect(sequences.map((sequence) => sequence.voice).sort()).toEqual(['1.2', '1.2.2'])
+    expect(measureLengthDisagreements(mnx, parseXmlRoot(source), [report])).toEqual([])
+  })
+
   test('holds the other voices of a measure a tuplet ratio report names', () => {
     // One note to a line, since the report names the note by its line.
     const source = score(

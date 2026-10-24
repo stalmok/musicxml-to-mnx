@@ -587,9 +587,27 @@ function voicesWarned(
   return named
 }
 
-/** The voice the source names for a sequence: a line laid over voice "1" is "1.2". */
-function sourceVoiceOf(sequence: MNXSequence): string {
-  return (sequence.voice ?? '').split('.')[0] ?? ''
+/** Every voice name the notes of a part state, in any measure. */
+function statedVoices(part: XmlElement): Set<string> {
+  const notes = part.children
+    .filter((c) => c.name === 'measure')
+    .flatMap((measure) => measure.children.filter((c) => c.name === 'note'))
+  return new Set(
+    notes.flatMap((note) => {
+      const voice = note.children.find((c) => c.name === 'voice')
+      return voice ? [voice.rawText.trim()] : []
+    }),
+  )
+}
+
+/**
+ * The voice the source names for a sequence. A name the part's source states
+ * is its own. Any other name is built for a line laid over a voice: "1.2" for
+ * one laid over voice "1".
+ */
+function sourceVoiceOf(sequence: MNXSequence, stated: ReadonlySet<string>): string {
+  const voice = sequence.voice ?? ''
+  return stated.has(voice) ? voice : voice.slice(0, voice.lastIndexOf('.'))
 }
 
 /**
@@ -617,7 +635,9 @@ export function measureLengthDisagreements(
   const found: string[] = []
   let time: { count: number; unit: number } | undefined
 
-  const firstPart = root.children.find((c) => c.name === 'part')
+  const sourceParts = root.children.filter((c) => c.name === 'part')
+  const voiceNames = sourceParts.map(statedVoices)
+  const firstPart = sourceParts[0]
   const sourceMeasures = firstPart?.children.filter((c) => c.name === 'measure') ?? []
 
   document.global.measures.forEach((global, measureIndex) => {
@@ -652,8 +672,9 @@ export function measureLengthDisagreements(
 
       const passedOver = reported.get(`${String(partIndex)}:${String(measureIndex)}`)
       if (passedOver) {
+        const stated = voiceNames[partIndex] ?? new Set<string>()
         measure.sequences.forEach((sequence, index) => {
-          if (passedOver.has(undefined) || passedOver.has(sourceVoiceOf(sequence))) return
+          if (passedOver.has(undefined) || passedOver.has(sourceVoiceOf(sequence, stated))) return
           const total = totals[index] ?? 0
           if (overruns(sequence, total)) {
             found.push(
