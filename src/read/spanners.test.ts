@@ -395,7 +395,8 @@ describe('ties', () => {
 
   test.each([
     ['across rests of more than one measure', [over(rest)]],
-    ['across a measure that leaves the line out', [high]],
+    ['across a measure that leaves the voice out', [note('G', '', '2')]],
+    ['across a measure of rests in one line', [rest]],
     ['after its pitch sounds in an earlier measure', [over(rest)], [note('E')]],
     [
       'while another voice sounds its pitch',
@@ -419,6 +420,44 @@ describe('ties', () => {
       [{ kind: 'target', target: stopped?.id, crossVoice: false }],
     ])
     expect(warnings.map((w) => w.code)).not.toContain('unclosed:spanner')
+  })
+
+  // A measure that writes the voice in one line names that line after the
+  // voice, and the one line may be sounding the start's line.
+  test.each([
+    ['the higher line', high, '1'],
+    ['another pitch', note('D'), '1'],
+    ['another pitch, in a voice the source leaves unnamed', note('D'), ''],
+  ])(
+    'does not join a tie within a laid-over line across a measure that sounds one line on %s',
+    (_, between, voice) => {
+      const source = measures(
+        DIVISIONS + over(note('E', tied('start'))),
+        between,
+        over(note('E', tied('stop'))),
+      ).replaceAll('<voice>1</voice>', voice && `<voice>${voice}</voice>`)
+      const { notes, warnings } = readAllVoices(source)
+
+      expect(notes.filter((n) => n.ties.length > 0)).toEqual([])
+      expect(warnings.filter((w) => w.code === 'unclosed:spanner')).toHaveLength(2)
+    },
+  )
+
+  test('leaves a stop within a laid-over line to the touching start of another voice', () => {
+    const { notes, warnings } = readAllVoices(
+      measures(
+        DIVISIONS + over(note('E', tied('start'))),
+        note('D') + '<backup><duration>4</duration></backup>' + note('E', tied('start'), '2'),
+        over(note('E', tied('stop'))),
+      ),
+    )
+    const [, unclosed, , touching, , stopped] = notes as Note[]
+
+    expect(unclosed?.ties).toEqual([])
+    expect(touching?.ties).toEqual([{ kind: 'target', target: stopped?.id, crossVoice: true }])
+    expect(
+      warnings.filter((w) => w.code === 'unclosed:spanner').map((w) => w.context.measure),
+    ).toEqual([1])
   })
 
   test('joins a tie within a laid-over line after its pitch sounds earlier in the start measure', () => {
