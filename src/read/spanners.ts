@@ -732,7 +732,9 @@ function linePlacesOf(measures: readonly Measure[]): {
         for (const note of notes) {
           places.set(note.id, { voice, graceKeys, ...place })
           const key = soundingKey(voice, tiePairing(note))
-          sounds.set(key, [...(sounds.get(key) ?? []), place.sounded])
+          const at = sounds.get(key)
+          if (at) at.push(place.sounded)
+          else sounds.set(key, [place.sounded])
         }
         graceRuns.set(voice ?? '', grace ? [...graceKeys, notes.map(tiePairing)] : [])
       } else if (item.kind !== 'space') {
