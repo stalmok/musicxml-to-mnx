@@ -787,6 +787,27 @@ describe('ties', () => {
     expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([['unclosed:spanner', 2]])
   })
 
+  test('keeps a tie past a rest in its line where the other laid-over line sounds its pitch', () => {
+    const c5 = (body = ''): string =>
+      note('C', body).replace('<octave>4</octave>', '<octave>5</octave>')
+    const { notes, warnings } = readAllVoices(
+      measures(
+        DIVISIONS +
+          c5(tied('start')) +
+          restOf(4) +
+          lasting('C', 8, tied('stop')).replace('<octave>4</octave>', '<octave>5</octave>') +
+          backup(16) +
+          note('A') +
+          c5() +
+          lasting('F', 8),
+      ),
+    )
+    const [started, stopped] = notes as Note[]
+
+    expect(started?.ties).toEqual([{ kind: 'target', target: stopped?.id, crossVoice: false }])
+    expect(warnings.map((w) => w.code)).not.toContain('unclosed:spanner')
+  })
+
   test('joins a tie into another voice across the barline past a rest', () => {
     const { notes, warnings } = readAllVoices(
       measures(

@@ -706,9 +706,16 @@ function countSound(
   return { sounded: sounded + 1, gracesBefore: graceRun }
 }
 
-/** The line each note is written in, by the note's id. */
-function linePlacesOf(measures: readonly Measure[]): Map<string, LinePlace> {
+/**
+ * The line each note is written in, by the note's id, and how far each line
+ * had sounded at each note it sounds, by soundingKey.
+ */
+function linePlacesOf(measures: readonly Measure[]): {
+  places: Map<string, LinePlace>
+  sounds: Map<string, number[]>
+} {
   const places = new Map<string, LinePlace>()
+  const sounds = new Map<string, number[]>()
   const counts = new Map<string, SoundCount>()
   const graceRuns: GraceRuns = new Map()
   const walk = (
@@ -722,7 +729,11 @@ function linePlacesOf(measures: readonly Measure[]): Map<string, LinePlace> {
         const place = countSound(counts, voice, grace)
         const notes = [...item.body.notes, ...item.body.kitNotes]
         const graceKeys = graceRuns.get(voice ?? '') ?? []
-        for (const note of notes) places.set(note.id, { voice, graceKeys, ...place })
+        for (const note of notes) {
+          places.set(note.id, { voice, graceKeys, ...place })
+          const key = soundingKey(voice, tiePairing(note))
+          sounds.set(key, [...(sounds.get(key) ?? []), place.sounded])
+        }
         graceRuns.set(voice ?? '', grace ? [...graceKeys, notes.map(tiePairing)] : [])
       } else if (item.kind !== 'space') {
         walk(item.content, voice, grace || item.kind === 'grace')
@@ -732,7 +743,7 @@ function linePlacesOf(measures: readonly Measure[]): Map<string, LinePlace> {
   for (const measure of measures) {
     for (const sequence of measure.sequences) walk(sequence.content, sequence.voice, false)
   }
-  return places
+  return { places, sounds }
 }
 
 /**
@@ -1027,11 +1038,22 @@ export class SpannerResolver implements PartCollector {
    * it paired. It follows from the sequences its two notes are written in.
    */
   #resolveTies(measures: readonly Measure[], warnings: WarningCollector): void {
-    const lines = linePlacesOf(measures)
+    const { places, sounds } = linePlacesOf(measures)
     const ends = this.#tieEnds.map((end): LinedTieEnd => ({
       ...end,
-      line: lines.get(end.kind === 'start' ? end.payload.note.id : end.stop.note.id),
+      line: places.get(end.kind === 'start' ? end.payload.note.id : end.stop.note.id),
     }))
+    // Within one line, by that line's own events: the other line of a voice
+    // that writes two sounds its own notes. Where a line is unknown, by the
+    // voice's.
+    const soundedBetween = (start: LinedTiePlace, stop: LinedTiePlace): boolean => {
+      if (!start.line || !stop.line) return this.#soundedBetween(start, stop)
+      if (start.line.voice !== stop.line.voice) return false
+      const from = start.line.sounded
+      const to = stop.line.sounded
+      const at = sounds.get(soundingKey(start.line.voice, start.number)) ?? []
+      return at.some((sounded) => sounded > from && sounded < to)
+    }
     // A tie's two ends mark the very points they are written on, so no stop
     // covers a point before its start; the backwards message is here for the
     // shape of the report, as a slur's is.
@@ -1090,7 +1112,7 @@ export class SpannerResolver implements PartCollector {
           openedIn(start, stop) && soundsNext(start, stop, () => this.#soundedBetween(start, stop)),
         reaches: (start, stop) =>
           stop.measure - start.measure <= 1 &&
-          !(openedIn(start, stop) && this.#soundedBetween(start, stop)),
+          !(openedIn(start, stop) && soundedBetween(start, stop)),
       },
     )
     this.#tieEnds.length = 0
