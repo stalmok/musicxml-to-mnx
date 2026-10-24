@@ -524,6 +524,25 @@ describe('ties', () => {
     expect(warnings.map((w) => w.code)).not.toContain('unclosed:spanner')
   })
 
+  test('joins ties on one pitch in two laid-over lines each within its own line across rests', () => {
+    const lines = (upper: string, lower: string): string =>
+      upper + '<backup><duration>8</duration></backup>' + lower
+    const rests = lines(rest + rest, rest + rest)
+    const { notes, warnings } = readAllVoices(
+      measures(
+        DIVISIONS +
+          lines(note('G') + note('E', tied('start')), note('C') + note('E', tied('start'))),
+        rests,
+        lines(note('E', tied('stop')) + note('G'), note('E', tied('stop')) + note('C')),
+      ),
+    )
+    const [, upperStart, , lowerStart, upperStop, , lowerStop] = notes as Note[]
+
+    expect(upperStart?.ties).toEqual([{ kind: 'target', target: upperStop?.id, crossVoice: false }])
+    expect(lowerStart?.ties).toEqual([{ kind: 'target', target: lowerStop?.id, crossVoice: false }])
+    expect(warnings.map((w) => w.code)).not.toContain('unclosed:spanner')
+  })
+
   test.each([
     ['upper', 0],
     ['lower', 1],
