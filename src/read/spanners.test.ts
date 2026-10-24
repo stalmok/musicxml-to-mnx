@@ -517,7 +517,20 @@ describe('ties', () => {
       over(rest),
       stopAbove,
     ],
-    ['across a measure that leaves the line out', over(note('E', tied('start'))), high, stopAbove],
+    // A line that sounds no pitch keeps its written place, so the rests are
+    // the line under the stop's name.
+    [
+      "across a measure the stop's line rests in",
+      over(note('E', tied('start'))),
+      under(rest, note('D')),
+      stopAbove,
+    ],
+    [
+      'across a measure that leaves the voice out',
+      under(note('E', tied('start')), high),
+      note('G', '', '2'),
+      stopAbove,
+    ],
     [
       'from a measure that sounds one line',
       note('E', tied('start')),
@@ -590,6 +603,14 @@ describe('ties', () => {
       over(note('D')),
       under(note('E', tied('stop')), lowC),
     ],
+    // The one line may be the start's.
+    ['across a measure that sounds one line', over(note('E', tied('start'))), high, stopAbove],
+    [
+      'into the lower line across a measure that sounds one line',
+      under(note('E', tied('start')), lowC),
+      high,
+      over(note('E', tied('stop'))),
+    ],
   ])('does not join a tie into a laid-over line of another name %s', (_, ...bodies) => {
     const { notes, warnings } = readAllVoices(
       measures(...bodies.map((body, index) => (index === 0 ? DIVISIONS + body : body))),
@@ -597,6 +618,23 @@ describe('ties', () => {
 
     expect(notes.filter((n) => n.ties.length > 0)).toEqual([])
     expect(warnings.filter((w) => w.code === 'unclosed:spanner')).toHaveLength(2)
+  })
+
+  test('leaves a stop to the touching start of another voice past a measure that sounds one line', () => {
+    const { notes, warnings } = readAllVoices(
+      measures(
+        DIVISIONS + over(note('E', tied('start'))),
+        note('D') + '<backup><duration>4</duration></backup>' + note('E', tied('start'), '2'),
+        stopAbove,
+      ),
+    )
+    const [, unclosed, , touching, stopped] = notes as Note[]
+
+    expect(unclosed?.ties).toEqual([])
+    expect(touching?.ties).toEqual([{ kind: 'target', target: stopped?.id, crossVoice: true }])
+    expect(
+      warnings.filter((w) => w.code === 'unclosed:spanner').map((w) => w.context.measure),
+    ).toEqual([1])
   })
 
   test('joins a tie from a measure that sounds one line into a laid-over line', () => {
