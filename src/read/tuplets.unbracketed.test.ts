@@ -313,6 +313,67 @@ describe('a tuplet the source states as a ratio with no bracket', () => {
       expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:tuplet-untimed'])
     })
 
+    // The run stays open over a bracket that closes on grace notes alone, so
+    // the grace notes' ratio is the run's and the bracket's together.
+    describe('a bracket over grace notes alone whose marker states its ratio', () => {
+      const grace = (step: string, played: number, space: number, bracket: string) =>
+        `<note><grace/><pitch><step>${step}</step><octave>5</octave></pitch><type>16th</type>` +
+        `<time-modification><actual-notes>${String(played)}</actual-notes>` +
+        `<normal-notes>${String(space)}</normal-notes></time-modification>` +
+        `<notations>${bracket}</notations></note>`
+      const stating =
+        '<tuplet type="start"><tuplet-actual><tuplet-number>3</tuplet-number></tuplet-actual>' +
+        '<tuplet-normal><tuplet-number>2</tuplet-number></tuplet-normal></tuplet>'
+      const group = (played: number, space: number) =>
+        grace('B', played, space, stating) + grace('D', played, space, '<tuplet type="stop"/>')
+
+      test.each([
+        [9, 4, ['unrepresentable:tuplet-untimed']],
+        [3, 2, ['inconsistent:tuplet', 'unrepresentable:tuplet-untimed']],
+      ])('checks a %i:%i grace note against the run around it', (played, space, codes) => {
+        const { warnings } = read(
+          measure(
+            rated('A', 4, 'eighth') +
+              rated('B', 4, 'eighth') +
+              group(played, space) +
+              rated('C', 4, 'eighth'),
+          ),
+        )
+
+        expect(warnings.map((w) => w.code)).toEqual(codes)
+      })
+
+      // E overlaps the half in the line the group was read into, so the
+      // group goes to the run's line.
+      test('checks a grace note against the run of the line its group goes to', () => {
+        const warnings = new WarningCollector()
+        const result = readValid(
+          measure(
+            rated('C', 4, 'eighth') +
+              rated('D', 4, 'eighth') +
+              '<backup><duration>8</duration></backup>' +
+              plain('A', 24, 'half') +
+              '<backup><duration>16</duration></backup>' +
+              group(9, 4) +
+              rated('E', 4, 'eighth'),
+          ),
+          warnings,
+        )
+        const run = result.parts[0]?.measures[0]?.sequences[0]?.content[0]
+
+        expect(run?.kind === 'tuplet' && run.content.map((item) => item.kind)).toEqual([
+          'event',
+          'event',
+          'grace',
+          'event',
+        ])
+        expect(warnings.list().map((w) => w.code)).toEqual([
+          'unrepresentable:tuplet-untimed',
+          'inconsistent:voice',
+        ])
+      })
+    })
+
     // D overlaps A, so it takes a new line, and the bracket the grace note
     // opened goes with it. B and C go back to A's line and fill its run.
     test('leaves the run open in the line a bracket leaves', () => {

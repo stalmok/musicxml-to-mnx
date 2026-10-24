@@ -347,10 +347,13 @@ export class TupletTracker {
     }
     for (const { opening } of held) openings.add(opening)
     // A note inside another note's bracket has that bracket around it as
-    // well, so the outer opening is settled first.
-    const line = to.#drawnRatios()
+    // well, so the outer opening is settled first. A run the ratio alone
+    // opened stays open over a bracket that closed on grace notes alone.
+    const drawn = to.#drawnRatios()
+    const open = to.#tuplets().map((tuplet) => tuplet.ratio)
+    const overGraceNotes = new Set(held.map((entry) => entry.opening))
     for (const opening of [...openings].sort((a, b) => a.around.length - b.around.length)) {
-      relevel(opening, line)
+      relevel(opening, overGraceNotes.has(opening) ? open : drawn)
     }
 
     for (const frame of moving) {
@@ -942,6 +945,14 @@ export class TupletTracker {
     // takes time, it holds grace groups alone, and the first holds the note.
     const [group] = closed.tuplet.content
     if (group && holdsNoTime(closed)) {
+      // A run the ratio alone opened stays open over the brackets, so the
+      // note's ratio is divided by it as well.
+      opening.disagreeing = tupletLevels(
+        this.#tuplets().map((tuplet) => tuplet.ratio),
+        opening.inner,
+        opening.outer,
+        opening.starts,
+      ).disagreeing
       this.#held.push({ opening, group })
     } else {
       reportDisagreeing(opening, warnings, context)
@@ -1005,6 +1016,7 @@ export class TupletTracker {
    * first. A run the ratio alone opened is open around a bracket only where a
    * grace note starts the bracket, and the run closes before the bracket's
    * first note that takes time, so the bracket's share is not divided by it.
+   * A bracket that closes over grace notes alone leaves the run open.
    */
   #drawnRatios(): Fraction[] {
     return this.#tuplets()
