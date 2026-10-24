@@ -678,11 +678,12 @@ export function tiePairing(note: Note | KitNote): string {
 }
 
 /**
- * Where a note is written: the voice of its sequence, how far that line has
- * sounded, and what each grace note the line sounded just before it pairs by.
+ * Where a note is written: the voice and staff of its sequence, how far that
+ * line has sounded, and what each grace note the line sounded just before it pairs by.
  */
 interface LinePlace extends SoundedPlace {
   voice: string | undefined
+  staff: number | undefined
   graceKeys: readonly (readonly string[])[]
 }
 
@@ -712,6 +713,8 @@ interface LineCounts {
   soundedBy(line: string | undefined, measure: number): number
   /** Whether a measure writes a line of that voice. */
   writes(line: string | undefined, measure: number): boolean
+  /** The staff a measure writes a line on, where the part has more than one. */
+  staffOf(line: string | undefined, measure: number): number | undefined
 }
 
 /**
@@ -727,12 +730,13 @@ function linePlacesOf(measures: readonly Measure[]): {
   const places = new Map<string, LinePlace>()
   const sounds = new Map<string, number[]>()
   const atBarline: ReadonlyMap<string, number>[] = []
-  const written: ReadonlySet<string>[] = []
+  const written: ReadonlyMap<string, number | undefined>[] = []
   const counts = new Map<string, SoundCount>()
   const graceRuns: GraceRuns = new Map()
   const walk = (
     items: readonly SequenceItem[],
     voice: string | undefined,
+    staff: number | undefined,
     grace: boolean,
   ): void => {
     for (const item of items) {
@@ -746,7 +750,7 @@ function linePlacesOf(measures: readonly Measure[]): {
         const notes = [...item.body.notes, ...item.body.kitNotes]
         const graceKeys = graceRuns.get(voice ?? '') ?? []
         for (const note of notes) {
-          places.set(note.id, { voice, graceKeys, ...place })
+          places.set(note.id, { voice, staff, graceKeys, ...place })
           const key = soundingKey(voice, tiePairing(note))
           const at = sounds.get(key)
           if (at) at.push(place.sounded)
@@ -754,18 +758,23 @@ function linePlacesOf(measures: readonly Measure[]): {
         }
         graceRuns.set(voice ?? '', grace ? [...graceKeys, notes.map(tiePairing)] : [])
       } else if (item.kind !== 'space') {
-        walk(item.content, voice, grace || item.kind === 'grace')
+        walk(item.content, voice, staff, grace || item.kind === 'grace')
       }
     }
   }
   for (const measure of measures) {
-    for (const sequence of measure.sequences) walk(sequence.content, sequence.voice, false)
+    for (const sequence of measure.sequences) {
+      walk(sequence.content, sequence.voice, sequence.staff, false)
+    }
     atBarline.push(new Map([...counts].map(([line, count]) => [line, count.sounded])))
-    written.push(new Set(measure.sequences.map((sequence) => sequence.voice ?? '')))
+    written.push(
+      new Map(measure.sequences.map((sequence) => [sequence.voice ?? '', sequence.staff])),
+    )
   }
   const lines: LineCounts = {
     soundedBy: (line, measure) => atBarline[measure]?.get(line ?? '') ?? 0,
     writes: (line, measure) => written[measure]?.has(line ?? '') === true,
+    staffOf: (line, measure) => written[measure]?.get(line ?? ''),
   }
   return { places, sounds, lines }
 }
@@ -778,9 +787,10 @@ function linePlacesOf(measures: readonly Measure[]): {
  * does not say which notes of its voice it holds. Where the voice sounds one
  * line between the two ends, that line takes the voice's name (see
  * keepsLineBetween), and where the lines cross, one line changes its name
- * across the barline (see runsOnAcrossLines). Where the lines do not reach the stop, or either note's line is unknown,
- * every event of the voice counts. A tie does not reach across its pitch
- * sounded anywhere in its voice, within one line or past grace notes.
+ * across the barline (see runsOnAcrossLines). Where the lines do not reach
+ * the stop, or either note's line is unknown, every event of the voice
+ * counts. A tie does not reach across its pitch sounded anywhere in its
+ * voice, within one line or past grace notes.
  */
 function soundsNext(
   start: LinedTiePlace,
@@ -794,7 +804,12 @@ function soundsNext(
     stop.line !== undefined &&
     (start.line.voice === stop.line.voice
       ? nextPastGraces(start.line, stop.line) &&
-        keepsLineBetween({ ...start, line: start.line }, stop, lines, voiceSounds)
+        keepsLineBetween(
+          { ...start, line: start.line },
+          { ...stop, line: stop.line },
+          lines,
+          voiceSounds,
+        )
       : runsOnAcrossLines({ ...start, line: start.line }, { ...stop, line: stop.line }, lines))
   return (inLine || nextPastGraces(start, stop)) && !soundedBetween()
 }
@@ -804,18 +819,22 @@ type VoiceSounds = (voice: string | undefined, measure: number) => boolean
 
 /**
  * Whether each measure between a tie's two ends in one line writes that
- * line, or sounds nothing of the voice. A measure that writes the voice in
- * one line names that line after the voice, and the one line may be
- * sounding the tie's line.
+ * line, or sounds nothing of the voice, or sounds it on a staff neither end
+ * is on. A measure that writes the voice in one line names that line after
+ * the voice, and the one line may be sounding the tie's line.
  */
 function keepsLineBetween(
   start: PlacedTieEnd<LinedTiePlace>,
-  stop: LinedTiePlace,
+  stop: PlacedTieEnd<LinedTiePlace>,
   lines: LineCounts,
   voiceSounds: VoiceSounds,
 ): boolean {
   for (let measure = start.measure + 1; measure < stop.measure; measure++) {
-    if (!lines.writes(start.line.voice, measure) && voiceSounds(start.voice, measure)) return false
+    if (lines.writes(start.line.voice, measure) || !voiceSounds(start.voice, measure)) continue
+    const staff = lines.staffOf(start.voice, measure)
+    if (staff === undefined || staff === start.line.staff || staff === stop.line.staff) {
+      return false
+    }
   }
   return true
 }
@@ -1627,7 +1646,8 @@ export class SpannerResolver implements PartCollector {
    * any event of its measure, that event is in a measure before.
    *
    * A hairpin stop also learns whether it sits at the barline, which is the
-   * measure's `length` from its start.
+   * measure's `length` from its start. The voices that sounded in the
+   * measure are kept for the ties.
    */
   settleSpanCovers(
     measure: number,

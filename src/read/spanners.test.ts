@@ -443,6 +443,36 @@ describe('ties', () => {
     },
   )
 
+  // A voice written on two staves lays its line on one over its line on the
+  // other. The one line on a staff neither end is on is not the tie's.
+  test.each([
+    ['joins', 'on a staff neither end is on', '<staff>1</staff>', '<staff>2</staff>', 1, 0],
+    ['does not join', "on the start's staff", '<staff>2</staff>', '<staff>1</staff>', 0, 2],
+    ['does not join', "on the stop's staff", '<staff>1</staff>', '<staff>1</staff>', 0, 2],
+    ['does not join', 'that names no staff', '', '<staff>2</staff>', 0, 2],
+  ])(
+    '%s a tie within a laid-over line of two staves across a measure that sounds one line %s',
+    (_, _where, between, stopStaff, ties, unclosed) => {
+      const onStaff = (body: string, staff: string): string =>
+        body.replace('</voice>', `</voice>${staff}`)
+      const twoStaves = (body: string, staff: string): string =>
+        onStaff(high, '<staff>1</staff>') +
+        '<backup><duration>4</duration></backup>' +
+        onStaff(note('E', body).replace('<octave>4</octave>', '<octave>3</octave>'), staff)
+      const { notes, warnings } = readAllVoices(
+        measures(
+          '<attributes><divisions>4</divisions><staves>2</staves></attributes>' +
+            twoStaves(tied('start'), '<staff>2</staff>'),
+          onStaff(note('D'), between),
+          twoStaves(tied('stop'), stopStaff),
+        ),
+      )
+
+      expect(notes.filter((n) => n.ties.length > 0)).toHaveLength(ties)
+      expect(warnings.filter((w) => w.code === 'unclosed:spanner')).toHaveLength(unclosed)
+    },
+  )
+
   test('leaves a stop within a laid-over line to the touching start of another voice', () => {
     const { notes, warnings } = readAllVoices(
       measures(
@@ -2798,6 +2828,7 @@ describe('pairing ties by time', () => {
       gracesBefore: graceKeys.length,
       line: {
         voice: at.line ?? '1',
+        staff: undefined,
         sounded: at.sounded,
         gracesBefore: graceKeys.length,
         graceKeys,
