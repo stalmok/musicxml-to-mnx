@@ -164,9 +164,10 @@ function segnosReturnedTo(
 /**
  * Where each measure's to-coda jump goes: a coda, or nowhere where the jump
  * is not converted. A score drawing one coda settles it whatever either is
- * called. Past that the name decides, as it does for a segno. A to-coda jump
- * goes on through the score, so among codas sharing its name it goes to the
- * first after it.
+ * called. Past that the name decides, as it does for a segno. Where no coda
+ * has the jump's name, the codas with no name are the ones it can go to: many
+ * sources name the jump and not the sign. A to-coda jump goes on through the
+ * score, so among the codas it can go to it goes to the first after it.
  */
 function codasGoneTo(
   measures: readonly ReadGlobalMeasure[],
@@ -176,7 +177,9 @@ function codasGoneTo(
   const resolved = measures.map(({ jump }, index) => {
     if (jump?.value.sound !== 'tocoda') return undefined
     const { target, location } = jump.value
-    const named = signs.length === 1 ? signs : signs.filter((sign) => sign.name === target)
+    const byName = signs.filter((sign) => sign.name === target)
+    const unnamed = signs.filter((sign) => sign.name === undefined)
+    const named = signs.length === 1 ? signs : byName.length > 0 ? byName : unnamed
     const after = (sign: Sign) =>
       sign.index > index || (sign.index === index && compareFractions(sign.location, location) >= 0)
     const to = named.length === 1 ? named[0] : named.find(after)

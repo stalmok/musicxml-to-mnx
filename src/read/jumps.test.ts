@@ -377,6 +377,30 @@ describe('a to-coda jump in a score that draws several codas', () => {
     ).toEqual([false, false, true])
   })
 
+  // A source that names no coda says nothing to tell its codas apart by.
+  test('goes to the first coda after the jump where no coda is named', () => {
+    const coda = CODA + NOTE
+    const { globalMeasures } = readValid(
+      score(coda, NOTE + toCoda('coda'), NOTE + DA_CAPO, coda, coda),
+      new WarningCollector(),
+    )
+
+    expect(globalMeasures.map((measure) => measure.coda !== undefined)).toEqual([
+      false,
+      false,
+      false,
+      true,
+      false,
+    ])
+    expect(globalMeasures[2]?.jump?.type).toBe('dcAlCoda')
+  })
+
+  test('goes to an unnamed coda where no coda has the name the jump gives', () => {
+    const { types } = jumps(named('a') + NOTE, NOTE + toCoda('b'), NOTE + DA_CAPO, CODA + NOTE)
+
+    expect(types).toEqual([undefined, 'toCoda', 'dcAlCoda', undefined])
+  })
+
   // Only the coda's own measure is compared by point.
   test('passes over a coda in an earlier measure at a later point', () => {
     const { globalMeasures } = readValid(

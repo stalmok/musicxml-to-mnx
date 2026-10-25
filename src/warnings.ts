@@ -257,8 +257,8 @@ export const WARNING_CODES = Object.freeze([
   // score. With several, the jump is not converted.
   'unresolved:segno',
   // A to-coda jump whose coda the score does not draw: the score draws none,
-  // or draws several and the jump names none of them. The jump is not
-  // converted.
+  // or draws several and none of them can be the one the jump goes to, or
+  // none of those stands after the jump. The jump is not converted.
   'unresolved:coda',
   // An attribute whose value is not one MusicXML defines for it, so what the
   // source meant by it cannot be read. The attribute is not converted, nor
