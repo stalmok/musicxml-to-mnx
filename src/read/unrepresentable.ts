@@ -80,6 +80,8 @@ export const NO_HOME_IN_MNX: ReadonlySet<string> = new Set([
   'wavy-line',
   'accidental-mark',
   // A slide between two notes. The schema's only note-to-note line is a slur.
+  // Its slideIn and slideOut lead into or away from one note, with no note at
+  // the other end.
   'slide',
   // How a note is played on the instrument, beyond which way the bow travels.
   // The schema's event-markings are accent, bow direction, breath, caesura,

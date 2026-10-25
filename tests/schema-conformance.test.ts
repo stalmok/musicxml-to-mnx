@@ -981,6 +981,12 @@ describe('the registry of what MNX cannot hold, against the schema', () => {
     expect(usedBy(element)).toEqual([...(ELEMENT_COLLISIONS[element] ?? [])].sort())
   })
 
+  test('a slide into or out of a note joins no second note', () => {
+    // So neither is a home for <slide>, which runs between two notes.
+    expect(propertiesOf('slide-into-note')).toEqual(['type'])
+    expect(propertiesOf('slide-out-of-note')).toEqual(['type'])
+  })
+
   test('every collision exception names an element still on the list', () => {
     expect(Object.keys(ELEMENT_COLLISIONS).filter((one) => !NO_HOME_IN_MNX.has(one))).toEqual([])
   })
