@@ -669,6 +669,22 @@ describe('a segno on the barline', () => {
   })
 })
 
+// MNX states a coda sign, which the reader does not read yet.
+describe('a coda on the barline', () => {
+  test('reports the sign and the name it gives the coda as not converted yet', () => {
+    const { globals, warnings } = read(
+      left('<coda/>') + NOTE,
+      `<barline location="left" coda="c"/>` + NOTE,
+    )
+
+    expect(globals[0]?.segno).toBeUndefined()
+    expect(warnings.map((w) => [w.code, w.element, w.attribute, w.context.measure])).toEqual([
+      ['unsupported:element', 'coda', undefined, 1],
+      ['unsupported:attribute', 'barline', 'coda', 2],
+    ])
+  })
+})
+
 describe('a fermata over the barline', () => {
   test('states it on the score’s measure', () => {
     const { globals, warnings } = read(NOTE + right('<fermata type="upright"/>'))

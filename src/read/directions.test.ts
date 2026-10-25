@@ -1694,6 +1694,21 @@ describe('segno', () => {
 // repeat stops; a <sound dalsegno> is the jump back to the segno. Both belong
 // to the score's measure, like a segno, at the point the <sound> is written.
 describe('sound navigation', () => {
+  // MNX states a coda sign, which the reader does not read yet.
+  test('reports a coda direction as not converted yet', () => {
+    const { global, warnings } = read(inMeasure(direction('<coda/>') + note('C')))
+
+    expect(global?.jump).toBeUndefined()
+    expect(warnings).toMatchObject([
+      {
+        code: 'unsupported:element',
+        element: 'coda',
+        message: 'A <coda> direction is not converted yet.',
+        context: { measure: 1 },
+      },
+    ])
+  })
+
   test('puts a fine on the score measure where the <sound fine> sits', () => {
     const { global, warnings } = read(inMeasure(note('C') + '<sound fine="yes"/>'))
 
