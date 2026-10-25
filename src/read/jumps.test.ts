@@ -377,6 +377,20 @@ describe('a to-coda jump in a score that draws several codas', () => {
     ).toEqual([false, false, true])
   })
 
+  // Only the coda's own measure is compared by point.
+  test('passes over a coda in an earlier measure at a later point', () => {
+    const { globalMeasures } = readValid(
+      score(NOTE + NOTE + named('coda') + NOTE, toCoda('coda') + NOTE, named('coda') + NOTE),
+      new WarningCollector(),
+    )
+
+    expect(globalMeasures.map((measure) => measure.coda !== undefined)).toEqual([
+      false,
+      false,
+      true,
+    ])
+  })
+
   test('drops and reports a jump with no coda of its name after it', () => {
     const { types, warnings } = jumps(
       named('coda') + NOTE,
