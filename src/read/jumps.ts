@@ -15,13 +15,23 @@ interface Point {
 
 const START: Point = { index: 0, location: fraction(0) }
 
-/** A segno or a coda, with the name the source gives it. */
+/** A segno, a coda or a Fine, with the name the source gives it. */
 interface Sign extends Point {
   readonly name: string | undefined
 }
 
+/** The marks on a measure that a jump goes to or stops at. */
+type Destination = 'segno' | 'coda' | 'fine'
+
 /** What stops a replay: a Fine, a to-coda jump, or neither. */
 type ReplayEnd = 'fine' | 'toCoda' | 'none'
+
+/** A D.C. or D.S. replay, and the measure of the Fine that stops it. */
+interface Replay {
+  readonly settled: Record<ReplayEnd, JumpType>
+  readonly end: ReplayEnd
+  readonly fine?: number
+}
 
 const SETTLED: Readonly<Record<'dacapo' | 'dalsegno', Record<ReplayEnd, JumpType>>> = {
   dacapo: { fine: 'dcAlFine', toCoda: 'dcAlCoda', none: 'dc' },
@@ -42,6 +52,9 @@ const SETTLED: Readonly<Record<'dacapo' | 'dalsegno', Record<ReplayEnd, JumpType
  * wherever it stands. Marking that jump
  * "dsAlFine" would say the piece ends somewhere it does not, so a score with
  * several signs is matched sign by sign, by the name MusicXML gives them.
+ *
+ * MNX states a jump that goes to a segno, a coda or a Fine only in a score
+ * with exactly one of it, so a score with several keeps one. See keepOne.
  */
 export function settleJumps(
   measures: readonly ReadGlobalMeasure[],
@@ -50,15 +63,32 @@ export function settleJumps(
   const returns = segnosReturnedTo(measures, warnings)
   const goesTo = codasGoneTo(measures, warnings)
   const toCodas = goesTo.to.map((to, index) => (to ? measures[index]?.jump?.value : undefined))
-  const typeOf = (jump: ReadJump, index: number): JumpType | undefined => {
-    if (jump.sound === 'tocoda') return toCodas[index] && 'toCoda'
-    if (jump.sound === 'dacapo') return SETTLED.dacapo[replayEnd(measures, toCodas, START)]
+  const replays = measures.map(({ jump }, index): Replay | undefined => {
+    if (jump?.value.sound === 'dacapo') {
+      return { settled: SETTLED.dacapo, ...replayEnd(measures, toCodas, START) }
+    }
     const from = returns.to[index]
     if (from === undefined) return undefined
     // MNX states a jump to a segno only in a score with one, so a D.S. with
     // no segno to find is written as the D.C. a player takes.
     const settled = from === START ? SETTLED.dacapo : SETTLED.dalsegno
-    return settled[replayEnd(measures, toCodas, from)]
+    return { settled, ...replayEnd(measures, toCodas, from) }
+  })
+  const fines = signsOf(measures, 'fine')
+  const stopsAt = keepOne(
+    measures,
+    'fine',
+    fines,
+    replays.map((replay) => fines.find((fine) => fine.index === replay?.fine)),
+    warnings,
+  )
+  const typeOf = (jump: ReadJump, index: number): JumpType | undefined => {
+    if (jump.sound === 'tocoda') return toCodas[index] && 'toCoda'
+    const replay = replays[index]
+    if (replay === undefined || (replay.end === 'fine' && stopsAt.to[index] === undefined)) {
+      return undefined
+    }
+    return replay.settled[replay.end]
   }
 
   return measures.map(
@@ -94,7 +124,7 @@ export function settleJumps(
         coda && goesTo.keeps(index)
           ? { location: coda.value.location, glyph: coda.value.glyph, color: coda.value.color }
           : undefined,
-      fine: fine?.value,
+      fine: stopsAt.keeps(index) ? fine?.value : undefined,
       jump: jump && written(jump.value, typeOf(jump.value, index)),
       multimeasureRest: multimeasureRest?.value,
     }),
@@ -173,44 +203,76 @@ function codasGoneTo(
   return keepOne(measures, 'coda', signs, resolved, warnings)
 }
 
-function signsOf(measures: readonly ReadGlobalMeasure[], kind: 'segno' | 'coda'): Sign[] {
+function signsOf(measures: readonly ReadGlobalMeasure[], kind: Destination): Sign[] {
   return measures.flatMap((measure, index) => {
-    const sign = measure[kind]?.value
+    const sign: { location: Fraction; name?: string } | undefined = measure[kind]?.value
     return sign ? [{ index, location: sign.location, name: sign.name }] : []
   })
 }
 
-const JUMP_TO: Readonly<Record<'segno' | 'coda', { name: string; attribute: string }>> = {
-  segno: { name: 'dal segno', attribute: 'dalsegno' },
-  coda: { name: 'to-coda', attribute: 'tocoda' },
+const JUMP_NAMES: Readonly<Record<ReadJump['sound'], string>> = {
+  dacapo: 'da capo',
+  dalsegno: 'dal segno',
+  tocoda: 'to-coda',
+}
+
+/** How a sign not kept, and a jump going to one, are reported. */
+const NOT_KEPT: Readonly<
+  Record<Destination, { sign: string; attribute?: string; jump: (name: string) => string }>
+> = {
+  segno: {
+    sign:
+      'The score draws more than one segno and has a dal segno jump, and MNX states one ' +
+      'segno in such a score. The segno most jumps go to is kept, and this one is not ' +
+      'converted.',
+    jump: (name) =>
+      `This ${name} jump goes to a segno other than the one kept, and MNX states one ` +
+      'segno in a score with a dal segno jump. The jump is not converted.',
+  },
+  coda: {
+    sign:
+      'The score draws more than one coda and has a to-coda jump, and MNX states one ' +
+      'coda in such a score. The coda most jumps go to is kept, and this one is not ' +
+      'converted.',
+    jump: (name) =>
+      `This ${name} jump goes to a coda other than the one kept, and MNX states one coda ` +
+      'in a score with a to-coda jump. The jump is not converted.',
+  },
+  fine: {
+    sign:
+      'The score has more than one Fine and an al Fine jump, and MNX states one Fine in ' +
+      'such a score. The Fine most jumps stop at is kept, and this one is not converted.',
+    attribute: 'fine',
+    jump: (name) =>
+      `This ${name} jump stops at a Fine other than the one kept, and MNX states one Fine ` +
+      'in a score with an al Fine jump. The jump is not converted.',
+  },
 }
 
 /**
- * MNX states a jump to a segno only in a score with one segno, and a jump to
- * a coda only in a score with one coda. The sign most jumps go to is kept.
- * The others, and the jumps that go to them, are not converted. As many
- * jumps going to each keeps the first.
+ * MNX states a jump to a segno, a coda or a Fine only in a score with one of
+ * it. The sign most jumps go to is kept. The others, and the jumps that go
+ * to them, are not converted. As many jumps going to each keeps the first.
  */
 function keepOne(
   measures: readonly ReadGlobalMeasure[],
-  kind: 'segno' | 'coda',
+  kind: Destination,
   signs: readonly Sign[],
   resolved: readonly (Point | undefined)[],
   warnings: WarningCollector,
 ): Destinations {
-  const kept = mostReturnedTo(signs, resolved)
+  const kept = mostGoneTo(signs, resolved)
   if (kept === undefined) return { to: resolved, keeps: () => true }
-  const jump = JUMP_TO[kind]
+  const report = NOT_KEPT[kind]
   for (const sign of signs) {
     const drawn = measures[sign.index]?.[kind]
     if (sign === kept || drawn === undefined) continue
     warnings.add(
       'unrepresentable:jump-destination',
-      `The score draws more than one ${kind} and has a ${jump.name} jump, and MNX states ` +
-        `one ${kind} in such a score. The ${kind} most jumps go to is kept, and this one ` +
-        'is not converted.',
+      report.sign,
       { measure: sign.index + 1 },
       drawn.element,
+      report.attribute,
     )
   }
   const to = resolved.map((to, index) => {
@@ -218,11 +280,10 @@ function keepOne(
     if (to === undefined || to === kept || written === undefined) return to
     warnings.add(
       'unrepresentable:jump-destination',
-      `This ${jump.name} jump goes to a ${kind} other than the one kept, and MNX states ` +
-        `one ${kind} in a score with a ${jump.name} jump. The jump is not converted.`,
+      report.jump(JUMP_NAMES[written.value.sound]),
       { measure: index + 1 },
       written.element,
-      jump.attribute,
+      written.value.sound,
     )
     return undefined
   })
@@ -230,7 +291,7 @@ function keepOne(
 }
 
 /** The sign the most destinations name, the first of those named as often. */
-function mostReturnedTo<T>(signs: readonly T[], destinations: readonly unknown[]): T | undefined {
+function mostGoneTo<T>(signs: readonly T[], destinations: readonly unknown[]): T | undefined {
   let most: T | undefined
   let count = 0
   for (const sign of signs) {
@@ -251,7 +312,7 @@ function replayEnd(
   measures: readonly ReadGlobalMeasure[],
   toCodas: readonly (ReadJump | undefined)[],
   from: Point,
-): ReplayEnd {
+): Omit<Replay, 'settled'> {
   const met = (index: number, location: Fraction): boolean =>
     index > from.index || compareFractions(location, from.location) >= 0
   for (const [offset, { fine: written }] of measures.slice(from.index).entries()) {
@@ -260,11 +321,11 @@ function replayEnd(
     const jump = toCodas[index]
     const toCoda = jump && met(index, jump.location) ? jump : undefined
     if (fine && (!toCoda || compareFractions(fine.value.location, toCoda.location) <= 0)) {
-      return 'fine'
+      return { end: 'fine', fine: index }
     }
-    if (toCoda) return 'toCoda'
+    if (toCoda) return { end: 'toCoda' }
   }
-  return 'none'
+  return { end: 'none' }
 }
 
 /**

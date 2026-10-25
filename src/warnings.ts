@@ -69,9 +69,9 @@ export const WARNING_CODES = Object.freeze([
   // fines, or jumps on the same measure, and MNX states one of each there. The
   // element field names which mark. Segnos have their own code above.
   'unrepresentable:cross-part-mark',
-  // A score whose jumps go to more than one segno or coda, or that draws
-  // more than one where a jump goes to one. MNX states one segno, and one
-  // coda, in a score with a jump that goes to it. The one most jumps go to is kept. The others,
+  // A score whose jumps go to more than one segno, coda or Fine, or that has
+  // more than one where a jump goes to one. MNX states one segno, one coda
+  // and one Fine in a score with a jump that goes to it. The one most jumps go to is kept. The others,
   // and the jumps that go to them, are not converted. The element field
   // names the sign or the <sound> of the jump.
   'unrepresentable:jump-destination',

@@ -468,6 +468,99 @@ describe('a to-coda jump in a score that draws several codas', () => {
   })
 })
 
+// MNX states an al Fine jump only in a score with one Fine. The Fine most al
+// Fine jumps stop at is kept, as for a segno.
+describe('an al Fine jump in a score that has several Fines', () => {
+  const destinations = (warnings: readonly ConversionWarning[]) =>
+    warnings.filter((w) => w.code === 'unrepresentable:jump-destination')
+
+  test('keeps the Fine most jumps stop at', () => {
+    const warnings = new WarningCollector()
+    const { globalMeasures } = readValid(
+      score(
+        NOTE + FINE,
+        NOTE + '\n' + DA_CAPO,
+        SEGNO + NOTE + '\n' + FINE,
+        NOTE + DAL_SEGNO,
+        NOTE + DAL_SEGNO,
+      ),
+      warnings,
+    )
+
+    expect(globalMeasures.map((measure) => measure.fine !== undefined)).toEqual([
+      false,
+      false,
+      true,
+      false,
+      false,
+    ])
+    expect(globalMeasures.map((measure) => measure.jump?.type)).toEqual([
+      undefined,
+      undefined,
+      undefined,
+      'dsAlFine',
+      'dsAlFine',
+    ])
+    expect(destinations(warnings.list())).toEqual([
+      {
+        code: 'unrepresentable:jump-destination',
+        message:
+          'The score has more than one Fine and an al Fine jump, and MNX states one Fine ' +
+          'in such a score. The Fine most jumps stop at is kept, and this one is not ' +
+          'converted.',
+        element: 'sound',
+        attribute: 'fine',
+        context: { measure: 1, line: 1 },
+      },
+      {
+        code: 'unrepresentable:jump-destination',
+        message:
+          'This da capo jump stops at a Fine other than the one kept, and MNX states one ' +
+          'Fine in a score with an al Fine jump. The jump is not converted.',
+        element: 'sound',
+        attribute: 'dacapo',
+        context: { measure: 2, line: 2 },
+      },
+    ])
+  })
+
+  test('keeps every Fine where no jump is al Fine', () => {
+    const { types, warnings } = jumps(
+      NOTE + TO_CODA,
+      NOTE + FINE,
+      NOTE + FINE,
+      NOTE + DA_CAPO,
+      CODA + NOTE,
+    )
+
+    expect(types).toEqual(['toCoda', undefined, undefined, 'dcAlCoda', undefined])
+    expect(destinations(warnings)).toEqual([])
+  })
+
+  test('drops a Fine no jump stops at', () => {
+    const warnings = new WarningCollector()
+    const { globalMeasures } = readValid(score(NOTE + FINE, NOTE + DA_CAPO, NOTE + FINE), warnings)
+
+    expect(globalMeasures.map((measure) => measure.fine !== undefined)).toEqual([
+      true,
+      false,
+      false,
+    ])
+    expect(destinations(warnings.list()).map((w) => w.context.measure)).toEqual([3])
+  })
+
+  test('writes one Fine the spec schema accepts', () => {
+    const { mnx } = convertValid(score(NOTE + FINE, NOTE + DA_CAPO, NOTE + FINE))
+
+    expect(mnx.global.measures.map((measure) => measure.fine !== undefined)).toEqual([
+      true,
+      false,
+      false,
+    ])
+    expect(mnx.global.measures[1]?.jump?.type).toBe('dcAlFine')
+  })
+})
+
 // A jump is taken once, so a replay runs on past the jump that started it.
 // MusicXML states no al Fine on the jump: a Fine ends the piece once a jump
 // has been taken, wherever it stands.
