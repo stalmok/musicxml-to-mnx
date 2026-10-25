@@ -286,9 +286,7 @@
     "stem": 13,
     "dashes": 4,
     "pedal": 2,
-    "note@print-object": 11,
-    "other-dynamics": 1,
-    "beam": 1
+    "note@print-object": 11
   },
   "bantock-3-under-the-moon": {
     "midi-device": 2,
@@ -1198,8 +1196,7 @@
     "stem": 16,
     "type@size": 15,
     "non-arpeggiate": 1,
-    "note@print-object": 16,
-    "beam": 1
+    "note@print-object": 16
   },
   "boulanger-1-elle-etait-descendue-au-bas-de-la-prairie": {
     "midi-device": 2,
@@ -1480,8 +1477,7 @@
     "dashes": 6,
     "pedal": 76,
     "notehead": 7,
-    "note@print-object": 6,
-    "beam": 13
+    "note@print-object": 6
   },
   "boulton-4-truant-wings": {
     "midi-device": 2,
@@ -1519,8 +1515,7 @@
     "direction@system": 1,
     "sound@dynamics": 45,
     "extend": 4,
-    "pedal": 10,
-    "beam": 40
+    "pedal": 10
   },
   "boulton-6-robin-sly": {
     "midi-device": 2,
@@ -1645,8 +1640,7 @@
     "direction@system": 1,
     "extend": 4,
     "sound@dynamics": 14,
-    "pedal": 2,
-    "beam": 2
+    "pedal": 2
   },
   "brahms-2-magyarisch": {
     "midi-device": 2,
@@ -2155,8 +2149,7 @@
     "sound@dynamics": 20,
     "extend": 8,
     "pedal": 14,
-    "note@print-object": 3,
-    "other-dynamics": 2
+    "note@print-object": 3
   },
   "butterworth-2-when-i-was-one-and-twenty": {
     "midi-device": 2,
@@ -2277,8 +2270,7 @@
     "dashes": 2,
     "measure@implicit": 2,
     "dot@placement": 6,
-    "note@print-object": 11,
-    "other-dynamics": 3
+    "note@print-object": 11
   },
   "cellier-oh-woman-sweet-woman": {
     "midi-device": 2,
@@ -2313,8 +2305,7 @@
     "stem": 2,
     "cue": 2,
     "notehead": 2,
-    "note@print-object": 2,
-    "beam": 13
+    "note@print-object": 2
   },
   "chabrier-villanelle-des-petits-canards": {
     "midi-device": 2,
@@ -3044,8 +3035,7 @@
     "sound@tempo": 2,
     "direction@system": 2,
     "extend": 1,
-    "pedal": 34,
-    "beam": 2
+    "pedal": 34
   },
   "cowen-hail": {
     "midi-device": 2,
@@ -3100,8 +3090,7 @@
     "clef": 1,
     "pedal": 6,
     "dashes": 4,
-    "note@print-object": 2,
-    "other-dynamics": 2
+    "note@print-object": 2
   },
   "davies-1-the-apology": {
     "midi-device": 5,
@@ -3736,8 +3725,7 @@
     "stem": 1,
     "pedal": 4,
     "fingering": 4,
-    "note@print-object": 9,
-    "other-dynamics": 1
+    "note@print-object": 9
   },
   "elgar-1-the-torch": {
     "midi-device": 2,
@@ -4128,8 +4116,7 @@
     "dashes": 6,
     "sound@tempo": 2,
     "pedal": 56,
-    "note@print-object": 7,
-    "other-dynamics": 1
+    "note@print-object": 7
   },
   "farrenc-le-berger-fidele": {
     "midi-device": 2,
@@ -4739,8 +4726,7 @@
     "type@size": 6,
     "cue": 1,
     "pedal": 36,
-    "note@print-object": 4,
-    "other-dynamics": 7
+    "note@print-object": 4
   },
   "gonzaga-a-mulatinha": {
     "midi-device": 2,
@@ -5528,8 +5514,7 @@
     "dot@placement": 3,
     "notehead": 4,
     "pedal": 4,
-    "note@print-object": 2,
-    "beam": 2
+    "note@print-object": 2
   },
   "gurney-i-will-go-with-my-father-a-ploughing": {
     "midi-device": 2,
@@ -5804,8 +5789,7 @@
     "cue": 2,
     "measure": 2,
     "sound@dynamics": 37,
-    "note@print-object": 8,
-    "beam": 5
+    "note@print-object": 8
   },
   "haydn-2-fidelity-hob-xxvia30": {
     "midi-device": 2,
@@ -6461,8 +6445,7 @@
     "dashes": 6,
     "pedal": 16,
     "notehead": 6,
-    "note@print-object": 4,
-    "beam": 28
+    "note@print-object": 4
   },
   "jaell-2-causeries-de-vagues": {
     "midi-device": 2,
@@ -6487,8 +6470,7 @@
     "time": 2,
     "fingering": 11,
     "time@print-object": 2,
-    "note@print-object": 71,
-    "beam": 13
+    "note@print-object": 71
   },
   "jaell-2-eternel-amour": {
     "midi-device": 2,
@@ -7509,8 +7491,7 @@
     "dashes": 8,
     "notehead": 40,
     "staff-details": 20,
-    "time@print-object": 6,
-    "beam": 12
+    "time@print-object": 6
   },
   "mackenzie-1-the-first-rose": {
     "midi-device": 2,
@@ -7852,8 +7833,7 @@
     "wedge": 1,
     "staff-layout": 14,
     "pedal": 4,
-    "note@dynamics": 34,
-    "beam": 4
+    "note@dynamics": 34
   },
   "mayer-1-abendglocken": {
     "midi-device": 2,
@@ -8487,8 +8467,7 @@
     "sound@dynamics": 15,
     "extend": 15,
     "pedal": 4,
-    "note@print-object": 9,
-    "beam": 2
+    "note@print-object": 9
   },
   "netzel-4-je-pense-a-toi": {
     "midi-device": 2,
@@ -9292,8 +9271,7 @@
     "wedge": 6,
     "staff-layout": 27,
     "notehead": 5,
-    "pedal": 6,
-    "other-dynamics": 2
+    "pedal": 6
   },
   "quilter-3-blow-blow-thou-winter-wind": {
     "midi-device": 2,
@@ -9319,8 +9297,7 @@
     "wedge": 2,
     "staff-layout": 38,
     "pedal": 26,
-    "clef@after-barline": 1,
-    "other-dynamics": 2
+    "clef@after-barline": 1
   },
   "quilter-3-the-maiden-blush": {
     "midi-device": 2,
@@ -9660,8 +9637,7 @@
     "wedge": 1,
     "staff-layout": 17,
     "non-arpeggiate": 1,
-    "other-notation": 1,
-    "beam": 1
+    "other-notation": 1
   },
   "schoenberg-10-das-schone-beet-betracht-ich-mir-im-harren": {
     "midi-device": 2,
@@ -9739,8 +9715,7 @@
     "wedge": 6,
     "staff-layout": 15,
     "sound@dynamics": 12,
-    "other-articulation": 1,
-    "beam": 1
+    "other-articulation": 1
   },
   "schoenberg-4-da-meine-lippen-reglos-sind-und-brennen": {
     "midi-device": 2,
@@ -9819,8 +9794,7 @@
     "extend": 3,
     "wedge": 5,
     "staff-layout": 12,
-    "note@print-object": 1,
-    "beam": 1
+    "note@print-object": 1
   },
   "schroter-1-lied-der-morgenrote": {
     "midi-device": 2,
@@ -10862,7 +10836,10 @@
     "type@size": 2,
     "cue": 5,
     "sound@dynamics": 4,
-    "notehead": 1
+    "notehead": 1,
+    "segno": 1,
+    "sound@dalsegno": 1,
+    "coda": 2
   },
   "tosti-ideale": {
     "midi-device": 2,
@@ -11274,8 +11251,7 @@
     "dot@placement": 7,
     "dashes": 4,
     "pedal": 14,
-    "note@print-object": 1,
-    "beam": 2
+    "note@print-object": 1
   },
   "warlock-3-lusty-juventus": {
     "midi-device": 2,
@@ -11317,8 +11293,7 @@
     "sound@dynamics": 2,
     "pedal": 2,
     "dashes": 2,
-    "note@print-object": 1,
-    "beam": 1
+    "note@print-object": 1
   },
   "webern-1-dies-ist-ein-lied-fur-dich-allein": {
     "midi-device": 2,
