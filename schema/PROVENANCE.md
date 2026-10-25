@@ -5,9 +5,9 @@
 |                |                                                                                                                                                                                                      |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Source         | https://github.com/w3c-cg/mnx, `docs/mnx-schema.json`                                                                                                                                                |
-| Pinned commit  | `0be1b2a7d0f623b3cf3a7d41d4fbb16dbcc07f2a` ("Refactored how dynamics are represented in the JSON Schema.", 2026-09-29)                                                                               |
-| Retrieved      | 2026-10-03                                                                                                                                                                                           |
-| SHA-256        | `a0a3f0c7695be7a0cef07e106c7daa2c57df5cdbdc3da1702fded299ecc07be7`                                                                                                                                   |
+| Pinned commit  | `f2a9b5b9864f3c9bfdc74380ff2a760f74c7ce54` ("Added 'coda' object plus other jump types.", 2026-10-14)                                                                                                |
+| Retrieved      | 2026-10-24                                                                                                                                                                                           |
+| SHA-256        | `203ed196d43c64c27e6ebee60c47fece142a214b9e03a24a69544c78f7c11905`                                                                                                                                   |
 | Schema dialect | JSON Schema draft 2020-12                                                                                                                                                                            |
 | Licence        | The MNX specification is a draft published by the W3C Music Notation Community Group under the [W3C Community Contributor License Agreement (CLA)](https://www.w3.org/community/about/process/cla/). |
 

@@ -1844,17 +1844,16 @@ describe('sound navigation', () => {
   })
 
   // The rest of the playback the schema has nowhere for: the stereo field and
-  // the height above the listener, the three piano pedals, the plucking, the
-  // coda sign, and the name a segno is called by.
+  // the height above the listener, the three piano pedals, the plucking, and
+  // the name a segno is called by.
   test('reports the playback a <sound> carries that MNX cannot state', () => {
     const carried =
-      'coda="c" pan="0" elevation="0" damper-pedal="yes" soft-pedal="no" ' +
+      'pan="0" elevation="0" damper-pedal="yes" soft-pedal="no" ' +
       'sostenuto-pedal="no" pizzicato="yes" segno="A"'
     const { warnings } = read(inMeasure(note('C') + `<sound ${carried}/>`))
 
-    expect(warnings.map((w) => w.code)).toEqual(Array<string>(8).fill('unrepresentable:attribute'))
+    expect(warnings.map((w) => w.code)).toEqual(Array<string>(7).fill('unrepresentable:attribute'))
     expect(warnings.map((w) => w.attribute)).toEqual([
-      'coda',
       'pan',
       'elevation',
       'damper-pedal',
@@ -1874,25 +1873,30 @@ describe('sound navigation', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unsupported:attribute'])
   })
 
-  // MNX's jump-type has only "segno" and "dsalfine", so the D.C. and coda
-  // navigation a <sound> carries has no home.
-  test('reports the D.C. and coda navigation of a <sound>, which MNX cannot state', () => {
+  // MNX states a D.C., a to-coda jump and a coda sign. The reader does not
+  // read them yet.
+  test('reports the D.C. and coda navigation of a <sound> as not converted yet', () => {
     const { warnings } = read(
-      inMeasure(note('C') + '<sound dacapo="yes"/>' + note('D') + '<sound tocoda="coda"/>'),
+      inMeasure(
+        note('C') +
+          '<sound dacapo="yes"/>' +
+          note('D') +
+          '<sound tocoda="coda"/>' +
+          note('E') +
+          '<sound coda="coda"/>',
+      ),
     )
 
-    expect(warnings.map((w) => w.code)).toEqual([
-      'unrepresentable:attribute',
-      'unrepresentable:attribute',
-    ])
+    expect(warnings.map((w) => w.code)).toEqual(Array<string>(3).fill('unsupported:attribute'))
     expect(warnings.map((w) => w.message)).toEqual([
-      'The "dacapo" of a <sound> cannot be expressed in MNX.',
-      'The "tocoda" of a <sound> cannot be expressed in MNX.',
+      'The "dacapo" of a <sound> is not converted yet.',
+      'The "tocoda" of a <sound> is not converted yet.',
+      'The "coda" of a <sound> is not converted yet.',
     ])
   })
 
   // D.S. al Fine can be written as one <sound> carrying both attributes. Each
-  // reaches its own home, and the jump becomes "dsalfine": MusicXML says the
+  // reaches its own home, and the jump becomes "dsAlFine": MusicXML says the
   // al-Fine only through the Fine's presence, not on the dalsegno attribute.
   test('reads a fine and a jump written on the one <sound>', () => {
     const { global, warnings } = read(
@@ -1902,14 +1906,14 @@ describe('sound navigation', () => {
     expect(global?.fine).toEqual({ location: { num: 1, den: 4 } })
     expect(global?.jump).toEqual({
       location: { num: 1, den: 4 },
-      type: 'dsalfine',
+      type: 'dsAlFine',
     })
     expect(warnings).toEqual([])
   })
 
   // The al-Fine is the whole score's: a dalsegno jump in one measure and the
   // Fine it returns to in a later measure still make a D.S. al Fine.
-  test('upgrades a jump to dsalfine when a later measure carries a Fine', () => {
+  test('upgrades a jump to dsAlFine when a later measure carries a Fine', () => {
     const warnings = new WarningCollector()
     const score = readValid(
       '<score-partwise><part id="P1">' +
@@ -1926,7 +1930,7 @@ describe('sound navigation', () => {
 
     expect(score.globalMeasures[0]?.jump).toEqual({
       location: { num: 1, den: 4 },
-      type: 'dsalfine',
+      type: 'dsAlFine',
     })
     expect(score.globalMeasures[1]?.fine).toEqual({ location: { num: 1, den: 4 } })
     expect(warnings.list()).toEqual([])
@@ -1968,7 +1972,7 @@ describe('sound navigation', () => {
     // Back to the second segno, which stands after the Fine: a plain dal-segno.
     expect(score.globalMeasures[3]?.jump?.type).toBe('segno')
     // Back to the first, which stands before it: a D.S. al Fine.
-    expect(score.globalMeasures[4]?.jump?.type).toBe('dsalfine')
+    expect(score.globalMeasures[4]?.jump?.type).toBe('dsAlFine')
   })
 
   // With one segno the name settles nothing, so the Fine stops the jump
@@ -1987,7 +1991,7 @@ describe('sound navigation', () => {
       warnings,
     )
 
-    expect(score.globalMeasures[2]?.jump?.type).toBe('dsalfine')
+    expect(score.globalMeasures[2]?.jump?.type).toBe('dsAlFine')
   })
 
   // With no sign to go back to, a player takes the jump from the start, so a
@@ -1997,7 +2001,7 @@ describe('sound navigation', () => {
       inMeasure(note('C') + '\n<sound fine="yes" dalsegno="segno"/>'),
     )
 
-    expect(global?.jump?.type).toBe('dsalfine')
+    expect(global?.jump?.type).toBe('dsAlFine')
     expect(warnings).toEqual([
       {
         code: 'unresolved:segno',
@@ -2095,12 +2099,12 @@ describe('sound navigation', () => {
     expect(mnx.global.measures[0]?.jump).toEqual({ location: { fraction: [0, 1] }, type: 'segno' })
   })
 
-  test('writes a dsalfine jump the spec schema accepts', () => {
+  test('writes a dsAlFine jump the spec schema accepts', () => {
     const { mnx } = convertValid(inMeasure('<sound fine="yes" dalsegno="segno"/>' + note('C')))
 
     expect(mnx.global.measures[0]?.jump).toEqual({
       location: { fraction: [0, 1] },
-      type: 'dsalfine',
+      type: 'dsAlFine',
     })
   })
 })

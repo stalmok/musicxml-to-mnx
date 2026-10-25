@@ -634,7 +634,7 @@ describe('a segno on the barline', () => {
     )
 
     expect(globals[0]?.segno).toEqual({ location: { num: 0, den: 1 } })
-    expect(globals[3]?.jump?.type).toBe('dsalfine')
+    expect(globals[3]?.jump?.type).toBe('dsAlFine')
     expect(warnings).toEqual([])
   })
 

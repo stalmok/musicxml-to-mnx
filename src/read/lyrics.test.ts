@@ -313,12 +313,13 @@ describe('a verse written as several pieces', () => {
   })
 
   // A <lyric> holding only an <extend> is how MusicXML continues a melisma
-  // under a later note. There is no syllable in it to write.
+  // under a later note. There is no syllable in it to write. MNX states the
+  // line as a lyric extender, which is not converted yet.
   test('states no verse for a lyric that is only a melisma line', () => {
     const { events, warnings } = read(measure(note('C', '<lyric number="1"><extend/></lyric>')))
 
     expect(events[0]?.lyrics.size).toBe(0)
-    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:element'])
+    expect(warnings.map((w) => w.code)).toEqual(['unsupported:element'])
   })
 })
 

@@ -57,7 +57,8 @@ function document(): MNXDocument {
                     id: 'e1',
                     duration: quarter,
                     slurs: [{ target: 'e3' }],
-                    lyrics: { lines: { '1': { text: 'la' } } },
+                    // An extender line may end under an event of another part.
+                    lyrics: { lines: { '1': { text: 'la', extender: { target: 'e9' } } } },
                     notes: [
                       { id: 'n1', pitch: { step: 'C', octave: 4 }, ties: [{ target: 'n3' }] },
                     ],
@@ -250,6 +251,16 @@ describe('reports a reference that leads nowhere', () => {
         mnx.global.lyrics = { lineOrder: ['2'] }
       },
       'part 1 measure 1 lyric line names "1"',
+    ],
+    [
+      'a lyric extender naming a note rather than an event',
+      (mnx) => {
+        const event = first(mnx).sequences[0]?.content[0]
+        if (event && 'lyrics' in event) {
+          event.lyrics = { lines: { '1': { text: 'la', extender: { target: 'n1' } } } }
+        }
+      },
+      'part 1 measure 1 lyric extender names "n1"',
     ],
     [
       'a staff naming a part, outside a group',

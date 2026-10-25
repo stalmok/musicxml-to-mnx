@@ -843,7 +843,7 @@ export interface Fine {
 }
 
 /** The kinds of jump MNX states: a dal-segno jump, or a D.S. al Fine. */
-export type JumpType = 'dsalfine' | 'segno'
+export type JumpType = 'dsAlFine' | 'segno'
 
 /** A jump such as D.S., taken once the measure is played. */
 export interface Jump {

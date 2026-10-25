@@ -52,6 +52,15 @@ export type MNXLyricLineType = 'start' | 'middle' | 'end' | 'whole'
 export interface MNXLyricLine {
   text: string
   type?: MNXLyricLineType
+  extender?: MNXLyricLineExtender
+}
+
+/** The line after a syllable sung across later events. */
+export interface MNXLyricLineExtender {
+  /** False states that the syllable draws no line. */
+  show?: boolean
+  /** The id of the last event the line runs under. */
+  target?: string
 }
 
 /** The lyric under an event, its verses keyed by line. */
@@ -118,6 +127,25 @@ export interface MNXNote {
    * note of a chord that straddles the two hands of a piano part does.
    */
   staff?: number
+  markings?: MNXNoteMarkings
+}
+
+/** A slide into or out of one note, with no note at its other end. */
+export interface MNXNoteMarkings {
+  slideIn?: MNXSlideIntoNote
+  slideOut?: MNXSlideOutOfNote
+}
+
+export type MNXSlideIntoNoteType = 'scoop' | 'plop'
+
+export interface MNXSlideIntoNote {
+  type: MNXSlideIntoNoteType
+}
+
+export type MNXSlideOutOfNoteType = 'falloff' | 'doit'
+
+export interface MNXSlideOutOfNote {
+  type: MNXSlideOutOfNoteType
 }
 
 export interface MNXNoteValue {
@@ -174,7 +202,7 @@ export interface MNXEventMarkings {
 
 export type MNXCaesuraShape = 'normal' | 'thick' | 'short' | 'curved'
 
-/** A break in the sound after the event, drawn as strokes. It states no side. */
+/** A break in the sound, drawn as strokes. It states no side. */
 export interface MNXCaesura {
   /** How many strokes it is drawn with, 1 or 2. Absent means 2. */
   marks?: number
@@ -405,14 +433,14 @@ export interface MNXDynamicBase {
   staff?: number
   /** Which side of the staff it is drawn on. */
   placement?: MNXMultiStaffPlacement
+  /** The glyph(s) the mark is drawn as, by SMuFL name. */
+  glyphs?: string[]
 }
 
 /** A level that holds from here on, such as f. */
 export interface MNXImmediateDynamic extends MNXDynamicBase {
   type: 'immediate'
   value: MNXDynamicValue
-  /** The glyph(s) the mark is drawn as, by SMuFL name. */
-  glyphs?: string[]
 }
 
 /** A hairpin. */
@@ -434,6 +462,8 @@ export type MNXRelativeDynamicValue = 'louder' | 'softer'
 export interface MNXRelativeDynamic extends MNXDynamicBase {
   type: 'relative'
   relativeValue: MNXRelativeDynamicValue
+  /** The level stated beside the change: the "f" of "più f". */
+  value?: MNXDynamicValue
 }
 
 /** An accent on a single beat, such as sfz. */
@@ -447,8 +477,6 @@ export interface MNXAccentDynamic extends MNXDynamicBase {
   accentPrefix?: 's' | 'r' | ''
   /** The letter after the value. Reads as "z" when unstated. */
   accentSuffix?: 'z' | ''
-  /** The combined glyph(s) the accent is drawn as, by SMuFL name. */
-  glyphs?: string[]
 }
 
 export type MNXDynamic =
@@ -630,7 +658,15 @@ export interface MNXFine {
   location: MNXRhythmicPosition
 }
 
-export type MNXJumpType = 'dsalfine' | 'segno'
+/** A coda sign on a measure, where a to-coda jump continues from. */
+export interface MNXCoda {
+  location: MNXRhythmicPosition
+  glyph?: string
+  color?: string
+}
+
+export type MNXJumpType =
+  'dc' | 'dcAlCoda' | 'dcAlFine' | 'dsAlCoda' | 'dsAlFine' | 'segno' | 'toCoda'
 
 /** A jump on a measure, such as D.S., taken once the measure is played. */
 export interface MNXJump {
@@ -683,7 +719,10 @@ export interface MNXGlobalMeasure {
   repeatEnd?: MNXRepeatEnd
   ending?: MNXEnding
   fermata?: MNXFermata
+  /** A caesura over the barline that closes the measure. */
+  caesura?: MNXCaesura
   segno?: MNXSegno
+  coda?: MNXCoda
   fine?: MNXFine
   jump?: MNXJump
 }
@@ -704,6 +743,7 @@ export interface MNXGlobal {
 export interface MNXSupport {
   useAccidentalDisplay?: boolean
   useBeams?: boolean
+  useLyricExtenders?: boolean
 }
 
 /** A multi-measure rest, stated on the score rendering that draws it. */

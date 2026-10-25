@@ -209,6 +209,7 @@ const DEFINITION_OF: Readonly<Record<string, string | undefined>> = {
   MNXGraceGroup: 'grace',
   MNXLayoutStaff: 'staff',
   MNXLyricLine: 'event-lyric-line',
+  MNXLyricLineExtender: 'event-lyric-line-extender',
   MNXSingleNoteTremolo: 'tremolo-single',
   MNXPartTransposition: 'part-transposition',
   // A shared base for the marking types. The schema spells each mark out
@@ -767,7 +768,6 @@ const ELEMENT_CONCEPTS: readonly (Concept & { readonly elements: readonly string
     words: ['rehearsal', 'label', 'mark', 'marks'],
     homes: ['measure-global'],
   },
-  { elements: ['coda'], words: ['coda', 'toCoda'], homes: ['jump-type', 'measure-global'] },
   {
     elements: ['notehead'],
     words: ['notehead', 'head', 'shape', 'glyph'],
@@ -837,11 +837,6 @@ const ELEMENT_CONCEPTS: readonly (Concept & { readonly elements: readonly string
     ],
   },
   {
-    elements: ['extend'],
-    words: ['extend', 'extender', 'melisma', 'line'],
-    homes: ['event-lyric-line'],
-  },
-  {
     elements: ['mode', 'cancel', 'key-octave'],
     words: ['mode', 'cancel', 'naturals', 'octave'],
     homes: ['key'],
@@ -906,8 +901,8 @@ const ELEMENT_CONCEPTS: readonly (Concept & { readonly elements: readonly string
 ]
 
 /**
- * The words for hiding. The schema states hide for a clef and show for an
- * accidental, and nothing else.
+ * The words for hiding. The schema states hide for a clef, and show for an
+ * accidental and a lyric extender line, and nothing else.
  */
 const HIDING = ['hide', 'hidden', 'show', 'visible', 'invisible', 'print-object']
 
@@ -924,10 +919,6 @@ const ATTRIBUTE_CONCEPTS: Readonly<Record<string, Concept>> = {
     homes: ['note', 'perform-options'],
   },
   'sound dynamics': { words: ['dynamics', 'velocity', 'volume'], homes: ['sound'] },
-  // MNX jumps to a segno or plays to a Fine, and names nothing else.
-  'sound dacapo': { words: ['daCapo', 'dc', 'start'], homes: ['jump-type', 'jump'] },
-  'sound tocoda': { words: ['toCoda', 'coda'], homes: ['jump-type', 'jump'] },
-  'sound coda': { words: ['coda'], homes: ['jump-type', 'jump', 'measure-global'] },
   'sound pan': { words: ['pan', 'stereo'], homes: ['sound'] },
   'sound elevation': { words: ['elevation', 'height'], homes: ['sound'] },
   'sound damper-pedal': { words: ['pedal', 'sustain', 'damper'] },
@@ -1033,7 +1024,11 @@ describe('the registry of what MNX cannot hold, against the schema', () => {
   test('a word for hiding is used where the schema states it, and nowhere else', () => {
     // Hiding is looked for only in each attribute's own home, because a clef
     // can hide. This names every other place, so a new one is decided here.
-    expect(HIDING.flatMap((word) => usedBy(word))).toEqual(['clef', 'accidental-display'])
+    expect(HIDING.flatMap((word) => usedBy(word))).toEqual([
+      'clef',
+      'accidental-display',
+      'event-lyric-line-extender',
+    ])
   })
 })
 
@@ -1137,7 +1132,7 @@ const FORMAT_LIMITS: Readonly<Record<FormatLimit, () => boolean>> = {
     schemaDefs['bpm']?.exclusiveMinimum === 0 &&
     refers('tempo', 'value', 'note-value'),
   'unrepresentable:lyric-syllabic': () =>
-    propertiesOf('event-lyric-line').join() === 'text,type' &&
+    propertiesOf('event-lyric-line').join() === 'extender,text,type' &&
     refers('event-lyric-line', 'type', 'event-lyric-line-type'),
   'unrepresentable:lyric-line': () =>
     Object.values(definitionNamed('event-lyric-lines').patternProperties ?? {})
@@ -1297,7 +1292,7 @@ const CALL_SITE_LIMITS: Readonly<
       says: 'a hairpin states only the level it starts from',
       holds: () =>
         propertiesOf('dynamic-group-gradual').join() ===
-        'end,placement,position,prefix,staff,staffEnd,suffix,type,value,visuallyContinues,voice,wedgeType',
+        'end,glyphs,placement,position,prefix,staff,staffEnd,suffix,type,value,visuallyContinues,voice,wedgeType',
     },
   ],
   'src/read/tremolos.ts': [
@@ -1370,6 +1365,8 @@ const SEQUENCE_ITEM_TAG =
 /** Why the model states nothing about a relative dynamic. */
 const RELATIVE_NOT_CONVERTED =
   'Relative dynamics are not converted: MusicXML writes più f as words beside a mark.'
+
+const SLIDE_NOT_CONVERTED = 'A scoop, plop, doit or falloff is not converted yet.'
 
 /** The model's own tag for a dynamic, which MNX states as a type. */
 const DYNAMIC_TAG =
@@ -1489,6 +1486,10 @@ const NARROWER: Readonly<Record<string, { missing: readonly string[]; why: strin
     missing: ['auto', 'between'],
     why: `${UNSTATED_IS_UNDEFINED} A dynamic written between two staves of one part is not read.`,
   },
+  JumpType: {
+    missing: ['dc', 'dcAlCoda', 'dcAlFine', 'dsAlCoda', 'toCoda'],
+    why: 'A D.C. and a coda are not read yet, so the reader produces only a dal segno and a D.S. al Fine.',
+  },
   'PartGroup.barlineStyle': {
     missing: ['instrument'],
     why: "MusicXML's <group-barline> says yes, no or Mensurstrich, and none of them means one line per instrument.",
@@ -1575,6 +1576,8 @@ const NOT_RESTATED: Readonly<Record<string, string>> = {
   'MNXAccentDynamic.type': DYNAMIC_TAG,
   'MNXRelativeDynamic.type': RELATIVE_NOT_CONVERTED,
   MNXRelativeDynamicValue: RELATIVE_NOT_CONVERTED,
+  MNXSlideIntoNoteType: SLIDE_NOT_CONVERTED,
+  MNXSlideOutOfNoteType: SLIDE_NOT_CONVERTED,
   'MNXEvent.type': SEQUENCE_ITEM_TAG,
   'MNXSpace.type': SEQUENCE_ITEM_TAG,
   'MNXTuplet.type': SEQUENCE_ITEM_TAG,

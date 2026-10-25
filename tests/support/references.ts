@@ -18,6 +18,7 @@ import type {
 export const FOLLOWED_REFERENCES = [
   'arpeggio.span',
   'beam.events',
+  'event-lyric-line-extender.target',
   'kit-component.sound',
   'kit-note.kitComponent',
   'lyrics-global.lineOrder',
@@ -40,6 +41,7 @@ export const FOLLOWED_REFERENCES = [
 export const READ_AT: Readonly<Record<string, readonly string[]>> = {
   arpeggio: ['part-measure.arpeggios'],
   beam: ['beam.beams', 'part-measure.beams'],
+  'event-lyric-line-extender': ['event-lyric-line.extender'],
   'kit-component': ['part.kit'],
   'kit-note': ['event.kitNotes'],
   'lyrics-global': ['global.lyrics'],
@@ -87,6 +89,8 @@ export function danglingReferences(mnx: MNXDocument): string[] {
   const sounds = new Set(Object.keys(mnx.global.sounds ?? {}))
   const lineOrder = mnx.global.lyrics?.lineOrder
   const lines = new Set(lineOrder)
+  // A lyric extender line may end under an event of any part.
+  const allEvents = idsOf(mnx.parts.flatMap((part) => part.measures.flatMap(measureEvents)))
 
   for (const [partIndex, part] of mnx.parts.entries()) {
     const kit = new Set(Object.keys(part.kit ?? {}))
@@ -133,6 +137,9 @@ export function danglingReferences(mnx: MNXDocument): string[] {
           for (const line of Object.keys(event.lyrics?.lines ?? {})) {
             check(`${where} lyric line`, line, lines)
           }
+        }
+        for (const line of Object.values(event.lyrics?.lines ?? {})) {
+          check(`${where} lyric extender`, line.extender?.target, allEvents)
         }
         for (const slur of event.slurs ?? []) check(`${where} slur`, slur.target, events)
         for (const note of event.notes ?? []) {

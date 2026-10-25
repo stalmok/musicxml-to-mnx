@@ -64,9 +64,6 @@ export const NO_HOME_IN_MNX: ReadonlySet<string> = new Set([
   // The boxed rehearsal mark. The schema's measure holds no label or mark,
   // and nothing else can carry one.
   'rehearsal',
-  // The coda sign. The schema has segno and fine, and its jump-type is only
-  // "dsalfine" and "segno"; nothing names or jumps to a coda.
-  'coda',
   // The shape a notehead is drawn as, such as a diamond or a cross. The
   // schema's note states pitch, accidental, staff and ties, and nothing about
   // how the head is drawn.
@@ -119,9 +116,6 @@ export const NO_HOME_IN_MNX: ReadonlySet<string> = new Set([
   'harmon-mute',
   'golpe',
   'other-technical',
-  // The line drawn under a melisma, and the one under a held figured bass.
-  // MNX's event-lyric-line is a text and a type, with nowhere for either.
-  'extend',
   // What a key signature carries beyond its fifths: the mode, the courtesy
   // naturals of a cancelled signature, and the octave an accidental is drawn
   // in. MNX's key states a count of fifths and nothing else.
@@ -196,11 +190,6 @@ export const NO_HOME_ATTRIBUTES: ReadonlySet<string> = new Set([
   // schema's perform options hold nothing.
   'note dynamics',
   'sound dynamics',
-  // The D.C. and to-coda navigation a <sound> carries. The schema's jump-type
-  // is only "dsalfine" and "segno"; nothing names or jumps to a coda.
-  'sound dacapo',
-  'sound tocoda',
-  'sound coda',
   // Where a playback device places the sound in the stereo field, and how high
   // above the listener. The schema's sound states a name and a midiNumber.
   'sound pan',

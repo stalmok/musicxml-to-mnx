@@ -387,7 +387,7 @@ describe('several parts', () => {
       score(part('P1', !laterNames) + part('P2', laterNames)),
     )
 
-    expect(result.globalMeasures[2]?.jump?.type).toBe('dsalfine')
+    expect(result.globalMeasures[2]?.jump?.type).toBe('dsAlFine')
     expect(warnings.map((w) => [w.code, w.element, w.attribute])).toEqual([
       ['unrepresentable:attribute', 'sound', 'segno'],
       ['unrepresentable:attribute', 'sound', 'segno'],

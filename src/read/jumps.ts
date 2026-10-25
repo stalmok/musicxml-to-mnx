@@ -11,13 +11,13 @@ import type { DalSegno, ReadGlobalMeasure } from './globalMeasures.js'
  * back to the segno and stops at the Fine. MusicXML says the al-Fine only
  * through the Fine's presence, not on the <sound dalsegno> attribute, so each
  * jump is settled here once the whole score is known. MNX's jump-type enum
- * holds "dsalfine" for this.
+ * holds "dsAlFine" for this.
  *
  * A Fine only stops a jump that returns to a sign standing before it: replay
  * from a segno written after the Fine never reaches it, and such a jump is a
- * D.S. al Coda or similar, which MNX's jump-type enum cannot state. Marking
- * one "dsalfine" would say the piece ends somewhere it does not, so a score
- * with several signs is matched sign by sign, by the name MusicXML gives them.
+ * D.S. al Coda or similar, which is not read yet. Marking one "dsAlFine"
+ * would say the piece ends somewhere it does not, so a score with several
+ * signs is matched sign by sign, by the name MusicXML gives them.
  */
 export function settleJumps(
   measures: readonly ReadGlobalMeasure[],
@@ -67,7 +67,7 @@ export function settleJumps(
       fine: fine?.value,
       jump: jump && {
         location: jump.value.location,
-        type: reachesFine(jump, index) ? 'dsalfine' : 'segno',
+        type: reachesFine(jump, index) ? 'dsAlFine' : 'segno',
       },
       multimeasureRest: multimeasureRest?.value,
     }),
