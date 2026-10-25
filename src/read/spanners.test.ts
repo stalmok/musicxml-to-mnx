@@ -865,6 +865,26 @@ describe('ties', () => {
     expect(chordStart?.ties).toEqual([])
   })
 
+  // The rest keeps the first start from touching the chord, so the stop is
+  // not taken before the chord's own start is weighed.
+  test('does not join a tie from a chord member into another member of the chord past a rest', () => {
+    const chordE = (body: string): string => note('E', body).replace('<note>', '<note><chord/>')
+    const { notes } = read(
+      measures(
+        DIVISIONS +
+          note('E', tied('start')) +
+          '<note><rest/><duration>4</duration><voice>1</voice></note>' +
+          note('C') +
+          chordE(tied('start')) +
+          chordE(tied('stop')),
+      ),
+    )
+    const [first, , chordStart, chordStop] = notes as Note[]
+
+    expect(first?.ties).toEqual([{ kind: 'target', target: chordStop?.id, crossVoice: false }])
+    expect(chordStart?.ties).toEqual([])
+  })
+
   test('does not join a tie in its own voice across a grace note on its pitch', () => {
     const graceE =
       '<note><grace/><pitch><step>E</step><octave>4</octave></pitch><voice>1</voice></note>'
@@ -1146,6 +1166,21 @@ describe('ties', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unclosed:spanner'])
   })
 
+  test('joins a tie from a grace chord member into the note it ornaments, not into itself', () => {
+    const graceChord =
+      '<note><grace/><pitch><step>C</step><octave>4</octave></pitch>' +
+      '<type>eighth</type><voice>1</voice></note>' +
+      '<note><grace/><chord/><pitch><step>E</step><octave>4</octave></pitch>' +
+      `<type>eighth</type><voice>1</voice><tie type="stop"/>${tied('start')}</note>`
+    const { notes, warnings } = readAllVoices(
+      measures(DIVISIONS + graceChord + note('E', tied('stop'))),
+    )
+    const [, member, ornamented] = notes as [Note, Note, Note]
+
+    expect(member.ties).toEqual([{ kind: 'target', target: ornamented.id, crossVoice: false }])
+    expect(warnings.map((w) => w.code)).toEqual(['unclosed:spanner'])
+  })
+
   test('joins a tie from a grace note into the beat note of another voice, not a start at the beat', () => {
     const graceA =
       '<note><grace/><pitch><step>A</step><octave>4</octave></pitch>' +
@@ -1287,6 +1322,66 @@ describe('ties', () => {
     expect(lowerStart?.ties).toEqual([])
     const unclosedAt = warnings.filter((w) => w.code === 'unclosed:spanner')
     expect(unclosedAt.map((w) => w.context.measure)).toEqual([1, 2])
+  })
+
+  // The lower line sounds between the two ends, so only the upper line's own
+  // events say that the stop is the next one past its grace note.
+  test('joins a tie within a laid-over line across a measure of rests and past a grace note before the stop', () => {
+    const c5 = (duration: number, body = ''): string =>
+      lasting('C', duration, body).replace('<octave>4</octave>', '<octave>5</octave>')
+    const graceD =
+      '<note><grace/><pitch><step>D</step><octave>5</octave></pitch>' +
+      '<type>eighth</type><voice>1</voice></note>'
+    const { notes, warnings } = readAllVoices(
+      measures(
+        DIVISIONS + c5(8, tied('start')) + restOf(8) + backup(16) + lasting('E', 16),
+        restOf(16) + backup(16) + lasting('E', 16),
+        graceD + c5(16, tied('stop')) + backup(16) + lasting('E', 16),
+      ),
+    )
+    const [started, , , , stopped] = notes as Note[]
+
+    expect(stopped?.pitch.step).toBe('C')
+    expect(started?.ties).toEqual([{ kind: 'target', target: stopped?.id, crossVoice: false }])
+    expect(warnings.map((w) => w.code)).not.toContain('unclosed:spanner')
+  })
+
+  test('does not join a tie within a laid-over line past the notes of a tuplet', () => {
+    const at = (step: string, octave: number, duration: number, type: string, body = '') =>
+      `<note><pitch><step>${step}</step><octave>${String(octave)}</octave></pitch>` +
+      `<duration>${String(duration)}</duration><voice>1</voice><type>${type}</type>${body}</note>`
+    const rest = (duration: number): string =>
+      `<note><rest/><duration>${String(duration)}</duration><voice>1</voice></note>`
+    const triplet = (type?: string): string =>
+      at(
+        'D',
+        5,
+        2,
+        'eighth',
+        '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+          '</time-modification>' +
+          (type ? `<notations><tuplet type="${type}"/></notations>` : ''),
+      )
+    const lower = backup(24) + at('E', 4, 24, 'whole')
+    const { notes, warnings } = readAllVoices(
+      measures(
+        '<attributes><divisions>6</divisions></attributes>' +
+          at('C', 5, 12, 'half', tied('start')) +
+          rest(12) +
+          lower,
+        rest(24) + lower,
+        triplet('start') +
+          triplet() +
+          triplet('stop') +
+          at('C', 5, 18, 'half', '<dot/>' + tied('stop')) +
+          lower,
+      ),
+    )
+    const started = notes[0]
+
+    expect(started?.ties).toEqual([])
+    const unclosedAt = warnings.filter((w) => w.code === 'unclosed:spanner')
+    expect(unclosedAt.map((w) => w.context.measure)).toEqual([1, 3])
   })
 })
 
