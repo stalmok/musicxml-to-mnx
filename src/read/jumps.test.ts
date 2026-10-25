@@ -355,6 +355,28 @@ describe('a to-coda jump in a score that draws several codas', () => {
     ])
   })
 
+  test('compares the points of a coda and the jump in one measure', () => {
+    const codas = (...bodies: string[]) => {
+      const { globalMeasures } = readValid(score(...bodies), new WarningCollector())
+      return globalMeasures.map((measure) => measure.coda !== undefined)
+    }
+
+    expect(
+      codas(
+        named('coda') + NOTE,
+        NOTE + toCoda('coda') + named('coda') + NOTE,
+        named('coda') + NOTE,
+      ),
+    ).toEqual([false, true, false])
+    expect(
+      codas(
+        named('coda') + NOTE,
+        named('coda') + NOTE + toCoda('coda') + NOTE,
+        named('coda') + NOTE,
+      ),
+    ).toEqual([false, false, true])
+  })
+
   test('drops and reports a jump with no coda of its name after it', () => {
     const { types, warnings } = jumps(
       named('coda') + NOTE,
