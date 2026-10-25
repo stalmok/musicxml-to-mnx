@@ -410,6 +410,11 @@ export function readDirection(
     }
   }
 
+  // A coda glyph in the same <direction> as a <sound tocoda> is how a source
+  // draws "To Coda". It is the jump's drawing, which MNX's to-coda jump
+  // carries, not the sign the jump goes to.
+  if (reading.jumps.some((jump) => jump.value.sound === 'tocoda')) reading.codas = []
+
   return reading
 }
 

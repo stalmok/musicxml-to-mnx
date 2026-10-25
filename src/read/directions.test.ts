@@ -2010,6 +2010,28 @@ describe('sound navigation', () => {
     expect(warnings).toEqual([])
   })
 
+  // A coda glyph beside the words is how a source draws "To Coda". It is the
+  // jump's drawing, not the sign the jump goes to.
+  test('reads a coda drawn with a <sound tocoda> as part of the jump', () => {
+    const warnings = new WarningCollector()
+    const score = readValid(
+      '<score-partwise><part id="P1">' +
+        '<measure number="1"><attributes><divisions>4</divisions></attributes>' +
+        note('C') +
+        '<direction><direction-type><words>To</words></direction-type>' +
+        '<direction-type><coda/></direction-type><sound tocoda="coda"/></direction>' +
+        '</measure>' +
+        `<measure number="2">${direction('<coda/>')}${note('C')}</measure>` +
+        '</part></score-partwise>',
+      warnings,
+    )
+
+    expect(score.globalMeasures[0]?.jump?.type).toBe('toCoda')
+    expect(score.globalMeasures[0]?.coda).toBeUndefined()
+    expect(score.globalMeasures[1]?.coda).toEqual({ location: { num: 0, den: 1 } })
+    expect(warnings.list().map((w) => w.element)).toEqual(['words'])
+  })
+
   // Two different jumps at one point are two marks, where MNX states one.
   test('reports a second jump of another kind at the same point', () => {
     const { global, warnings } = read(
