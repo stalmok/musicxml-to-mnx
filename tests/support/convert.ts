@@ -12,15 +12,21 @@ import type { Score } from '../../src/model/score.js'
 import { writeMnx } from '../../src/write/mnx.js'
 import type { WriterOptions } from '../../src/write/mnx.js'
 import { parseXmlRoot } from '../../src/xml/parse.js'
-import { danglingReferences, staffNumbersPastParts, unorderedLyricLines } from './references.js'
+import {
+  danglingReferences,
+  jumpsWithoutOneDestination,
+  staffNumbersPastParts,
+  unorderedLyricLines,
+} from './references.js'
 import { schemaErrors } from './schema.js'
 import { unsourcedLosses } from './structural.js'
 
 /**
  * Converts the source and fails the test if the output breaks the schema, if
  * a reference in it leads nowhere, if a staff number in it is past its part,
- * if its verse lines and their order part ways, or if a warning names an
- * element or attribute the source does not hold.
+ * if its verse lines and their order part ways, if a jump goes to an object
+ * it holds none or several of, or if a warning names an element or attribute
+ * the source does not hold.
  */
 export function convertValid(
   source: string | Uint8Array,
@@ -31,6 +37,10 @@ export function convertValid(
   expect(danglingReferences(result.mnx), 'a reference in the output leads nowhere').toEqual([])
   expect(staffNumbersPastParts(result.mnx), 'a staff number is past its part').toEqual([])
   expect(unorderedLyricLines(result.mnx), 'the verse lines and their order part ways').toEqual([])
+  expect(
+    jumpsWithoutOneDestination(result.mnx),
+    'a jump goes to an object the output holds none or several of',
+  ).toEqual([])
   const text = typeof source === 'string' ? source : readMusicXML(source)
   expect(
     unsourcedLosses(parseXmlRoot(text), result.warnings),
@@ -41,8 +51,9 @@ export function convertValid(
 
 /**
  * Writes the score and fails the test if the output breaks the schema, if a
- * reference in it leads nowhere, if a staff number in it is past its part, or
- * if its verse lines and their order part ways.
+ * reference in it leads nowhere, if a staff number in it is past its part, if
+ * its verse lines and their order part ways, or if a jump goes to an object it
+ * holds none or several of.
  */
 export function writeValid(score: Score, options?: WriterOptions): MNXDocument {
   const mnx = writeMnx(score, options)
@@ -50,5 +61,9 @@ export function writeValid(score: Score, options?: WriterOptions): MNXDocument {
   expect(danglingReferences(mnx), 'a reference in the output leads nowhere').toEqual([])
   expect(staffNumbersPastParts(mnx), 'a staff number is past its part').toEqual([])
   expect(unorderedLyricLines(mnx), 'the verse lines and their order part ways').toEqual([])
+  expect(
+    jumpsWithoutOneDestination(mnx),
+    'a jump goes to an object the output holds none or several of',
+  ).toEqual([])
   return mnx
 }

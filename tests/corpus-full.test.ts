@@ -21,6 +21,7 @@ import { convertMusicXML, MusicXMLError } from '../src/index.js'
 import type { ConversionWarning, MNXDocument } from '../src/index.js'
 import { readMusicXML } from '../src/container.js'
 import { parseXmlRoot } from '../src/xml/parse.js'
+import { jumpsWithoutOneDestination } from './support/references.js'
 import { schemaErrors } from './support/schema.js'
 import {
   crowdedMeasureRests,
@@ -111,6 +112,11 @@ function firstFailure(
       detail: `rests its measure and holds content: ${crowded[0] ?? ''}`,
     }
   }
+
+  // MNX states that a jump to a segno, a coda or a Fine implies the document
+  // holds exactly one of it. The schema does not check this.
+  const jumps = jumpsWithoutOneDestination(mnx)
+  if (jumps.length > 0) return { file, kind: 'schema', detail: jumps[0] ?? '' }
 
   const root = parseXmlRoot(xml)
 

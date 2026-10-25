@@ -18,6 +18,7 @@ import { parseXmlRoot } from '../src/xml/parse.js'
 import type { XmlElement } from '../src/xml/parse.js'
 import {
   danglingReferences,
+  jumpsWithoutOneDestination,
   staffNumbersPastParts,
   unorderedLyricLines,
 } from './support/references.js'
@@ -549,6 +550,12 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
 
   test('names only staves its parts have', () => {
     expect(staffNumbersPastParts(mnx).slice(0, 5)).toEqual([])
+  })
+
+  // MNX states that a jump to a segno, a coda or a Fine implies the document
+  // holds exactly one of it. The schema does not check this.
+  test('holds one of each object a jump goes to', () => {
+    expect(jumpsWithoutOneDestination(mnx)).toEqual([])
   })
 
   test('orders exactly the verse lines it sings', () => {

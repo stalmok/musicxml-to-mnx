@@ -5,6 +5,7 @@ import { describe, expect, test } from 'vitest'
 import type { MNXDocument } from '../src/index.js'
 import {
   danglingReferences,
+  jumpsWithoutOneDestination,
   staffNumbersPastParts,
   unorderedLyricLines,
 } from './support/references.js'
@@ -436,6 +437,40 @@ describe('the staff numbers a document names', () => {
       'part 1 names staff 2 of 1',
       'part 1 names staff 2 of 1',
       'layout layout names staff 2 of part P1',
+    ])
+  })
+})
+
+describe('the objects the jumps of a document go to', () => {
+  const measures = (...marks: object[]): MNXDocument => ({
+    mnx: { version: 1 },
+    global: { measures: marks },
+    parts: [],
+  })
+  const segno = { segno: { location: at } }
+  const coda = { coda: { location: at } }
+  const fine = { fine: { location: at } }
+  const jump = (type: string) => ({ jump: { location: at, type } })
+
+  test('says nothing where each object a jump goes to is held once', () => {
+    expect(
+      jumpsWithoutOneDestination(
+        measures(segno, { ...jump('toCoda'), ...fine }, jump('dsAlCoda'), coda, jump('dc')),
+      ),
+    ).toEqual([])
+  })
+
+  test('says nothing of several objects no jump goes to', () => {
+    expect(jumpsWithoutOneDestination(measures(segno, segno, coda, coda, fine, fine))).toEqual([])
+  })
+
+  test('reports a jump to an object held none or several times', () => {
+    expect(
+      jumpsWithoutOneDestination(measures(fine, fine, jump('dsAlFine'), jump('toCoda'))),
+    ).toEqual([
+      'the dsAlFine jump in measure 3 goes to a segno, and the document holds 0',
+      'the dsAlFine jump in measure 3 goes to a fine, and the document holds 2',
+      'the toCoda jump in measure 4 goes to a coda, and the document holds 0',
     ])
   })
 })

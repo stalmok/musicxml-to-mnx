@@ -1,6 +1,6 @@
 // MNX names what a beam, tie, slur or span joins by id. The schema checks the
 // shape of an id, not whether it leads anywhere, so every conversion output in
-// a test is checked here too.
+// a test is checked here too. A jump names where it goes by its type alone.
 
 import type {
   MNXDocument,
@@ -249,4 +249,41 @@ export function unorderedLyricLines(mnx: MNXDocument): string[] {
   return lineOrder
     .filter((line) => !sung.has(line))
     .map((line) => `the order names line "${line}", which nothing sings`)
+}
+
+type JumpType = NonNullable<MNXDocument['global']['measures'][number]['jump']>['type']
+
+/**
+ * The objects each type of jump goes to or stops at. MNX states that a
+ * document with such a jump holds exactly one of each. The schema does not
+ * check this.
+ */
+const JUMP_DESTINATIONS: Readonly<Record<JumpType, readonly ('segno' | 'coda' | 'fine')[]>> = {
+  dc: [],
+  dcAlCoda: ['coda'],
+  dcAlFine: ['fine'],
+  dsAlCoda: ['segno', 'coda'],
+  dsAlFine: ['segno', 'fine'],
+  segno: ['segno'],
+  toCoda: ['coda'],
+}
+
+/**
+ * Every jump in a document that does not hold exactly one of each object
+ * the jump goes to or stops at, as a short description.
+ */
+export function jumpsWithoutOneDestination(mnx: MNXDocument): string[] {
+  const { measures } = mnx.global
+  const found: string[] = []
+  for (const [index, { jump }] of measures.entries()) {
+    for (const kind of jump ? JUMP_DESTINATIONS[jump.type] : []) {
+      const count = measures.filter((measure) => measure[kind] !== undefined).length
+      if (count === 1) continue
+      found.push(
+        `the ${jump?.type ?? ''} jump in measure ${String(index + 1)} goes to a ${kind}, ` +
+          `and the document holds ${String(count)}`,
+      )
+    }
+  }
+  return found
 }
