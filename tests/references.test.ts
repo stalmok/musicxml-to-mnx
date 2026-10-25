@@ -263,6 +263,16 @@ describe('reports a reference that leads nowhere', () => {
       'part 1 measure 1 lyric extender names "n1"',
     ],
     [
+      'a lyric extender ending before the lyric',
+      (mnx) => {
+        const event = second(mnx).sequences[0]?.content[0]
+        if (event && !('content' in event) && event.type !== 'space') {
+          event.lyrics = { lines: { '1': { text: 'la', extender: { target: 'e1' } } } }
+        }
+      },
+      'part 1 measure 2 lyric extender names "e1"',
+    ],
+    [
       'a staff naming a part, outside a group',
       (mnx) => {
         const part = mnx.parts[1]

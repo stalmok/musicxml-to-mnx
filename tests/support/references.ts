@@ -89,8 +89,10 @@ export function danglingReferences(mnx: MNXDocument): string[] {
   const sounds = new Set(Object.keys(mnx.global.sounds ?? {}))
   const lineOrder = mnx.global.lyrics?.lineOrder
   const lines = new Set(lineOrder)
-  // A lyric extender line may end under an event of any part.
-  const allEvents = idsOf(mnx.parts.flatMap((part) => part.measures.flatMap(measureEvents)))
+  // A lyric extender line may end under an event of any part, from the
+  // lyric's measure on.
+  const anyPartFrom = (measureIndex: number): Set<string> =>
+    idsOf(mnx.parts.flatMap((part) => part.measures.slice(measureIndex).flatMap(measureEvents)))
 
   for (const [partIndex, part] of mnx.parts.entries()) {
     const kit = new Set(Object.keys(part.kit ?? {}))
@@ -139,7 +141,10 @@ export function danglingReferences(mnx: MNXDocument): string[] {
           }
         }
         for (const line of Object.values(event.lyrics?.lines ?? {})) {
-          check(`${where} lyric extender`, line.extender?.target, allEvents)
+          const target = line.extender?.target
+          if (target !== undefined) {
+            check(`${where} lyric extender`, target, anyPartFrom(measureIndex))
+          }
         }
         for (const slur of event.slurs ?? []) check(`${where} slur`, slur.target, events)
         for (const note of event.notes ?? []) {
