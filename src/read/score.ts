@@ -60,7 +60,7 @@ import type { PartList } from './partList.js'
 import { readPrint } from './print.js'
 import { IdGenerator } from './idGenerator.js'
 import { mergeGlobalMeasures, sameFermata, sameNumbers, sameRepeatEnd } from './globalMeasures.js'
-import type { NamedSegno, ReadGlobalMeasure, ReadJump } from './globalMeasures.js'
+import type { NamedSign, ReadGlobalMeasure, ReadJump } from './globalMeasures.js'
 import { settleJumps } from './jumps.js'
 import { MeasureRepeats } from './measureRepeats.js'
 import type { PartCollector } from './partCollector.js'
@@ -567,8 +567,8 @@ function readMeasure(
   // Every <sound tempo> of the measure, waiting on the score's marks to say
   // whether each one echoes a mark or stands alone.
   const soundTempos: SoundTempo[] = []
-  const segnos: Stated<NamedSegno>[] = []
-  const codas: Stated<Coda>[] = []
+  const segnos: Stated<NamedSign>[] = []
+  const codas: Stated<NamedSign>[] = []
   const fines: Stated<Fine>[] = []
   const jumps: Stated<ReadJump>[] = []
   const multimeasureRests: Stated<number>[] = []

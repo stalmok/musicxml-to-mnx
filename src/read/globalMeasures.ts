@@ -18,12 +18,12 @@ import type { ReportContext, WarningCollector } from './collector.js'
 import type { Stated } from './element.js'
 
 /**
- * A segno with the name the source gives it. MNX names neither the segno nor
- * the sign a jump returns to, so the model carries no name. The reader needs
- * both to tell which segno a D.S. goes back to, and drops them once that is
+ * A segno or a coda with the name the source gives it. MNX names neither the
+ * sign nor the sign a jump goes to, so the model carries no name. The reader
+ * needs both to tell which sign a jump goes to, and drops them once that is
  * settled.
  */
-export interface NamedSegno extends Segno {
+export interface NamedSign extends Segno, Coda {
   /** What the source calls this sign, where it names one. */
   readonly name?: string
 }
@@ -36,7 +36,10 @@ export interface ReadJump {
   readonly sound: 'dacapo' | 'dalsegno' | 'tocoda'
   /** Where in the measure it is taken, counting from the start. */
   readonly location: Fraction
-  /** The name of the segno a D.S. returns to, where the source gives one. */
+  /**
+   * The name of the segno a D.S. returns to, or of the coda a to-coda jump
+   * goes to, where the source gives one.
+   */
   readonly target?: string
 }
 
@@ -48,8 +51,8 @@ interface ReadMarks {
   // Filled in once the part has met the ending's stop.
   ending: NonNullable<GlobalMeasure['ending']>
   readonly fermata: NonNullable<GlobalMeasure['fermata']>
-  readonly segno: NamedSegno
-  readonly coda: Coda
+  readonly segno: NamedSign
+  readonly coda: NamedSign
   readonly fine: NonNullable<GlobalMeasure['fine']>
   readonly jump: ReadJump
   readonly multimeasureRest: NonNullable<GlobalMeasure['multimeasureRest']>
@@ -167,7 +170,7 @@ export function mergeGlobalMeasures(
     // A segno is restated in each part the same way a barline is. Parts
     // stating different signs, at different points or drawn differently,
     // disagree about the one segno MNX can state, so that is reported.
-    if (existing?.segno && measure.segno && !sameSegno(existing.segno.value, measure.segno.value)) {
+    if (existing?.segno && measure.segno && !sameSign(existing.segno.value, measure.segno.value)) {
       warnings.add(
         'unrepresentable:cross-part-segno',
         'The parts of this score state different segnos on this measure, and MNX ' +
@@ -211,7 +214,7 @@ export function mergeGlobalMeasures(
       sameFermata,
       context,
     )
-    reportDifferingMark('coda', undefined, existing?.coda, measure.coda, sameCoda, context)
+    reportDifferingMark('coda', undefined, existing?.coda, measure.coda, sameSign, context)
     reportDifferingMark('fine', 'fine', existing?.fine, measure.fine, sameFine, context)
     reportDifferingMark(
       'jump',
@@ -235,11 +238,12 @@ export function mergeGlobalMeasures(
       repeatEnd: existing?.repeatEnd ?? measure.repeatEnd,
       ending: existing?.ending ?? measure.ending,
       fermata: existing?.fermata ?? measure.fermata,
-      // A segno is the score's navigation mark, restated in each part like the
-      // barline, so the first part to state one wins. A later part may name a
-      // sign the first left unnamed, and the name is kept for the jumps.
-      segno: namedSegno(existing?.segno, measure.segno),
-      coda: existing?.coda ?? measure.coda,
+      // A segno and a coda are the score's navigation marks, restated in each
+      // part like the barline, so the first part to state one wins. A later
+      // part may name a sign the first left unnamed, and the name is kept for
+      // the jumps.
+      segno: namedSign(existing?.segno, measure.segno),
+      coda: namedSign(existing?.coda, measure.coda),
       fine: existing?.fine ?? measure.fine,
       jump: existing?.jump ?? measure.jump,
       multimeasureRest: existing?.multimeasureRest ?? measure.multimeasureRest,
@@ -256,7 +260,7 @@ export function mergeGlobalMeasures(
 // jump is matched to the one it returns to, so parts naming the sign
 // differently disagree about which sign the measure carries. A part naming
 // none says nothing about the name.
-function sameSegno(a: NamedSegno, b: NamedSegno): boolean {
+function sameSign(a: NamedSign, b: NamedSign): boolean {
   return (
     compareFractions(a.location, b.location) === 0 &&
     a.glyph === b.glyph &&
@@ -265,13 +269,13 @@ function sameSegno(a: NamedSegno, b: NamedSegno): boolean {
   )
 }
 
-function namedSegno(
-  first: Stated<NamedSegno> | undefined,
-  later: Stated<NamedSegno> | undefined,
-): Stated<NamedSegno> | undefined {
+function namedSign(
+  first: Stated<NamedSign> | undefined,
+  later: Stated<NamedSign> | undefined,
+): Stated<NamedSign> | undefined {
   if (first === undefined || later === undefined) return first ?? later
   const { name } = later.value
-  if (name === undefined || !sameSegno(first.value, later.value)) return first
+  if (name === undefined || !sameSign(first.value, later.value)) return first
   return { ...first, value: { ...first.value, name } }
 }
 
@@ -290,12 +294,6 @@ export function sameNumbers(a: readonly number[], b: readonly number[]): boolean
 
 export function sameFermata(a: Fermata, b: Fermata): boolean {
   return a.symbol === b.symbol && a.pointing === b.pointing && a.placement === b.placement
-}
-
-function sameCoda(a: Coda, b: Coda): boolean {
-  return (
-    compareFractions(a.location, b.location) === 0 && a.glyph === b.glyph && a.color === b.color
-  )
 }
 
 function sameFine(a: Fine, b: Fine): boolean {

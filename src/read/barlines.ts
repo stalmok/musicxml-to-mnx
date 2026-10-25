@@ -11,12 +11,12 @@
 // measures it runs for. Endings joins the two, one part at a time.
 
 import type { Fraction } from '../fraction.js'
-import type { BarlineType, Coda, Fermata, RepeatEnd } from '../model/score.js'
-import type { NamedSegno } from './globalMeasures.js'
+import type { BarlineType, Fermata, RepeatEnd } from '../model/score.js'
+import type { NamedSign } from './globalMeasures.js'
 import type { ReportContext, WarningCollector } from './collector.js'
 import type { PartCollector, PartMeasure } from './partCollector.js'
 import type { XmlElement } from '../xml/parse.js'
-import { attribute, text, trimmedText } from '../xml/tree.js'
+import { attribute, peekAttribute, text, trimmedText } from '../xml/tree.js'
 import { readColor } from './color.js'
 import { stated } from './element.js'
 import type { ElementReader, Stated } from './element.js'
@@ -70,9 +70,9 @@ export interface BarlineReading {
   endingStop: EndingStop | undefined
   fermata: Stated<Fermata> | undefined
   /** A segno drawn on the barline, the same sign a direction can carry. */
-  segno: Stated<NamedSegno> | undefined
+  segno: Stated<NamedSign> | undefined
   /** A coda drawn on the barline, the same sign a direction can carry. */
-  coda: Stated<Coda> | undefined
+  coda: Stated<NamedSign> | undefined
 }
 
 const NOTHING: BarlineReading = {
@@ -149,7 +149,7 @@ function readSegno(
   position: Fraction,
   warnings: WarningCollector,
   context: ReportContext,
-): Stated<NamedSegno> | undefined {
+): Stated<NamedSign> | undefined {
   const segno = element.child('segno')
   if (!segno) return undefined
 
@@ -167,23 +167,26 @@ function readSegno(
 
 /**
  * A coda drawn on the barline, read the same way as a segno there. MusicXML
- * allows at most one <coda> per <barline>, so child() is correct. The coda attribute on
- * <barline> names the sign for playback; MNX's coda has no label, so the
- * attribute stays unread and is reported.
+ * allows at most one <coda> per <barline>, so child() is correct. The coda
+ * attribute on <barline> names the sign for playback. MNX's coda has no
+ * label, so the attribute is still reported; it is read only to match a
+ * to-coda jump to the coda it goes to.
  */
 function readCoda(
   element: ElementReader,
   position: Fraction,
   warnings: WarningCollector,
   context: ReportContext,
-): Stated<Coda> | undefined {
+): Stated<NamedSign> | undefined {
   const coda = element.child('coda')
   if (!coda) return undefined
+  const name = peekAttribute(element.element, 'coda')
   return {
     value: {
       location: position,
       glyph: attribute(coda, 'smufl'),
       color: readColor(coda, warnings, context),
+      ...(name !== undefined ? { name } : {}),
     },
     element: coda,
   }

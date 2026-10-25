@@ -69,9 +69,9 @@ export const WARNING_CODES = Object.freeze([
   // fines, or jumps on the same measure, and MNX states one of each there. The
   // element field names which mark. Segnos have their own code above.
   'unrepresentable:cross-part-mark',
-  // A score whose jumps go to more than one segno, or that draws more than
-  // one segno where a jump goes to one. MNX states one segno in a score with
-  // a jump that goes to it. The one most jumps go to is kept. The others,
+  // A score whose jumps go to more than one segno or coda, or that draws
+  // more than one where a jump goes to one. MNX states one segno, and one
+  // coda, in a score with a jump that goes to it. The one most jumps go to is kept. The others,
   // and the jumps that go to them, are not converted. The element field
   // names the sign or the <sound> of the jump.
   'unrepresentable:jump-destination',
@@ -256,7 +256,9 @@ export const WARNING_CODES = Object.freeze([
   // jump is converted as a da capo jump, which returns to the start of the
   // score. With several, the jump is not converted.
   'unresolved:segno',
-  // A to-coda jump in a score that draws no coda. The jump is not converted.
+  // A to-coda jump whose coda the score does not draw: the score draws none,
+  // or draws several and the jump names none of them. The jump is not
+  // converted.
   'unresolved:coda',
   // An attribute whose value is not one MusicXML defines for it, so what the
   // source meant by it cannot be read. The attribute is not converted, nor

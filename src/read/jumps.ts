@@ -15,7 +15,7 @@ interface Point {
 
 const START: Point = { index: 0, location: fraction(0) }
 
-/** A segno, with the name the source gives it. */
+/** A segno or a coda, with the name the source gives it. */
 interface Sign extends Point {
   readonly name: string | undefined
 }
@@ -47,32 +47,13 @@ export function settleJumps(
   measures: readonly ReadGlobalMeasure[],
   warnings: WarningCollector,
 ): GlobalMeasure[] {
-  const signs: Sign[] = measures.flatMap((measure, index) =>
-    measure.segno
-      ? [{ index, location: measure.segno.value.location, name: measure.segno.value.name }]
-      : [],
-  )
-  const drawsCoda = measures.some((measure) => measure.coda !== undefined)
-  // MNX states a to-coda jump only in a score with one coda, so one with no
-  // coda to go to is not written, and no D.C. or D.S. is al Coda by it.
-  const toCodas = measures.map(({ jump }, index) => {
-    if (jump?.value.sound !== 'tocoda') return undefined
-    if (drawsCoda) return jump.value
-    warnings.add(
-      'unresolved:coda',
-      'This to-coda jump goes on to a coda, but the score draws none. The jump is ' +
-        'not converted.',
-      { measure: index + 1 },
-      jump.element,
-      'tocoda',
-    )
-    return undefined
-  })
-  const returns = segnosReturnedTo(measures, signs, warnings)
+  const returns = segnosReturnedTo(measures, warnings)
+  const goesTo = codasGoneTo(measures, warnings)
+  const toCodas = goesTo.to.map((to, index) => (to ? measures[index]?.jump?.value : undefined))
   const typeOf = (jump: ReadJump, index: number): JumpType | undefined => {
     if (jump.sound === 'tocoda') return toCodas[index] && 'toCoda'
     if (jump.sound === 'dacapo') return SETTLED.dacapo[replayEnd(measures, toCodas, START)]
-    const from = returns.from[index]
+    const from = returns.to[index]
     if (from === undefined) return undefined
     // MNX states a jump to a segno only in a score with one, so a D.S. with
     // no segno to find is written as the D.C. a player takes.
@@ -109,7 +90,10 @@ export function settleJumps(
         segno && returns.keeps(index)
           ? { location: segno.value.location, glyph: segno.value.glyph, color: segno.value.color }
           : undefined,
-      coda: coda?.value,
+      coda:
+        coda && goesTo.keeps(index)
+          ? { location: coda.value.location, glyph: coda.value.glyph, color: coda.value.color }
+          : undefined,
       fine: fine?.value,
       jump: jump && written(jump.value, typeOf(jump.value, index)),
       multimeasureRest: multimeasureRest?.value,
@@ -121,18 +105,21 @@ function written(jump: ReadJump, type: JumpType | undefined): GlobalMeasure['jum
   return type && { location: jump.location, type }
 }
 
+/** Where each measure's jump goes, and whether a measure's sign is kept. */
+interface Destinations {
+  readonly to: readonly (Point | undefined)[]
+  readonly keeps: (index: number) => boolean
+}
+
 /**
  * Where each measure's D.S. returns to: a segno, the start of the score
  * where the score draws none, or nowhere where the jump is not converted.
- * MNX states a jump to a segno only in a score with one segno, so the segno
- * most jumps return to is kept. The others, and the jumps that return to
- * them, are not converted. As many jumps returning to each keeps the first.
  */
 function segnosReturnedTo(
   measures: readonly ReadGlobalMeasure[],
-  signs: readonly Sign[],
   warnings: WarningCollector,
-): { from: readonly (Point | undefined)[]; keeps: (index: number) => boolean } {
+): Destinations {
+  const signs = signsOf(measures, 'segno')
   const resolved = measures.map(({ jump }, index) => {
     if (jump?.value.sound !== 'dalsegno') return undefined
     const { from, unresolved } = segnoReturnedTo(signs, jump.value.target)
@@ -141,34 +128,105 @@ function segnosReturnedTo(
     }
     return from
   })
-  const kept = mostReturnedTo(signs, resolved)
-  if (kept === undefined) return { from: resolved, keeps: () => true }
-  for (const sign of signs) {
-    const segno = measures[sign.index]?.segno
-    if (sign === kept || segno === undefined) continue
+  return keepOne(measures, 'segno', signs, resolved, warnings)
+}
+
+/**
+ * Where each measure's to-coda jump goes: a coda, or nowhere where the jump
+ * is not converted. A score drawing one coda settles it whatever either is
+ * called. Past that the name decides, as it does for a segno. A to-coda jump
+ * goes on through the score, so among codas sharing its name it goes to the
+ * first after it.
+ */
+function codasGoneTo(
+  measures: readonly ReadGlobalMeasure[],
+  warnings: WarningCollector,
+): Destinations {
+  const signs = signsOf(measures, 'coda')
+  const resolved = measures.map(({ jump }, index) => {
+    if (jump?.value.sound !== 'tocoda') return undefined
+    const { target, location } = jump.value
+    const named = signs.length === 1 ? signs : signs.filter((sign) => sign.name === target)
+    const after = (sign: Sign) =>
+      sign.index > index || (sign.index === index && compareFractions(sign.location, location) >= 0)
+    const to = named.length === 1 ? named[0] : named.find(after)
+    if (to !== undefined) return to
     warnings.add(
-      'unrepresentable:jump-destination',
-      'The score draws more than one segno and has a dal segno jump, and MNX states one ' +
-        'segno in such a score. The segno most jumps return to is kept, and this one is ' +
-        'not converted.',
-      { measure: sign.index + 1 },
-      segno.element,
-    )
-  }
-  const from = resolved.map((from, index) => {
-    const jump = measures[index]?.jump
-    if (from === undefined || from === kept || jump === undefined) return from
-    warnings.add(
-      'unrepresentable:jump-destination',
-      'This dal segno jump returns to a segno other than the one kept, and MNX states ' +
-        'one segno in a score with a dal segno jump. The jump is not converted.',
+      'unresolved:coda',
+      signs.length === 0
+        ? 'This to-coda jump goes on to a coda, but the score draws none. The jump is ' +
+            'not converted.'
+        : target === undefined
+          ? 'This to-coda jump names no coda, and the score draws several. The jump is ' +
+            'not converted.'
+          : named.length === 0
+            ? `This to-coda jump goes on to the coda "${target}", which is none of the ` +
+              'codas the score draws. The jump is not converted.'
+            : `This to-coda jump goes on to the coda "${target}", but the score draws ` +
+              'several codas of that name and none after the jump. The jump is not converted.',
       { measure: index + 1 },
       jump.element,
-      'dalsegno',
+      'tocoda',
     )
     return undefined
   })
-  return { from, keeps: (index) => index === kept.index }
+  return keepOne(measures, 'coda', signs, resolved, warnings)
+}
+
+function signsOf(measures: readonly ReadGlobalMeasure[], kind: 'segno' | 'coda'): Sign[] {
+  return measures.flatMap((measure, index) => {
+    const sign = measure[kind]?.value
+    return sign ? [{ index, location: sign.location, name: sign.name }] : []
+  })
+}
+
+const JUMP_TO: Readonly<Record<'segno' | 'coda', { name: string; attribute: string }>> = {
+  segno: { name: 'dal segno', attribute: 'dalsegno' },
+  coda: { name: 'to-coda', attribute: 'tocoda' },
+}
+
+/**
+ * MNX states a jump to a segno only in a score with one segno, and a jump to
+ * a coda only in a score with one coda. The sign most jumps go to is kept.
+ * The others, and the jumps that go to them, are not converted. As many
+ * jumps going to each keeps the first.
+ */
+function keepOne(
+  measures: readonly ReadGlobalMeasure[],
+  kind: 'segno' | 'coda',
+  signs: readonly Sign[],
+  resolved: readonly (Point | undefined)[],
+  warnings: WarningCollector,
+): Destinations {
+  const kept = mostReturnedTo(signs, resolved)
+  if (kept === undefined) return { to: resolved, keeps: () => true }
+  const jump = JUMP_TO[kind]
+  for (const sign of signs) {
+    const drawn = measures[sign.index]?.[kind]
+    if (sign === kept || drawn === undefined) continue
+    warnings.add(
+      'unrepresentable:jump-destination',
+      `The score draws more than one ${kind} and has a ${jump.name} jump, and MNX states ` +
+        `one ${kind} in such a score. The ${kind} most jumps go to is kept, and this one ` +
+        'is not converted.',
+      { measure: sign.index + 1 },
+      drawn.element,
+    )
+  }
+  const to = resolved.map((to, index) => {
+    const written = measures[index]?.jump
+    if (to === undefined || to === kept || written === undefined) return to
+    warnings.add(
+      'unrepresentable:jump-destination',
+      `This ${jump.name} jump goes to a ${kind} other than the one kept, and MNX states ` +
+        `one ${kind} in a score with a ${jump.name} jump. The jump is not converted.`,
+      { measure: index + 1 },
+      written.element,
+      jump.attribute,
+    )
+    return undefined
+  })
+  return { to, keeps: (index) => index === kept.index }
 }
 
 /** The sign the most destinations name, the first of those named as often. */

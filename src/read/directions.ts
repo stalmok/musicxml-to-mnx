@@ -28,7 +28,7 @@ import type {
   Tempo,
   WedgeType,
 } from '../model/score.js'
-import type { NamedSegno, ReadJump } from './globalMeasures.js'
+import type { NamedSign, ReadJump } from './globalMeasures.js'
 import { writtenAt } from './collector.js'
 import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
@@ -53,8 +53,8 @@ import type { Wording } from './wording.js'
 export interface DirectionReading {
   dynamics: Dynamic[]
   tempos: Stated<Tempo>[]
-  segnos: Stated<NamedSegno>[]
-  codas: Stated<Coda>[]
+  segnos: Stated<NamedSign>[]
+  codas: Stated<NamedSign>[]
   fines: Stated<Fine>[]
   jumps: Stated<ReadJump>[]
   /** Each <sound tempo> the direction states. */
@@ -71,6 +71,8 @@ export interface SoundReading {
    * names the sign so a jump can be matched to the one it returns to.
    */
   segnoName: string | undefined
+  /** What the source calls the coda drawn in this direction, the same way. */
+  codaName: string | undefined
   /**
    * The <sound tempo> the element states, where it states one. Whether it is
    * a loss depends on the metronome marks the score draws at the same point,
@@ -401,13 +403,8 @@ export function readDirection(
     if (soundReading.tempo) reading.soundTempos.push(soundReading.tempo)
     // The <sound> naming the sign sits in the same <direction> as the <segno>
     // it names, so the name is put on the signs this direction just read.
-    if (soundReading.segnoName !== undefined) {
-      const name = soundReading.segnoName
-      reading.segnos = reading.segnos.map((segno) => ({
-        ...segno,
-        value: { ...segno.value, name },
-      }))
-    }
+    reading.segnos = withName(reading.segnos, soundReading.segnoName)
+    reading.codas = withName(reading.codas, soundReading.codaName)
   }
 
   // A coda glyph in the same <direction> as a <sound tocoda> is how a source
@@ -755,6 +752,11 @@ function closeWithWording(
 // ".5", with a leading plus. A duration is never negative, so no minus.
 const FINAL_NOTE_DURATION = /^\+?(\d+(\.\d*)?|\.\d+)$/
 
+function withName(signs: Stated<NamedSign>[], name: string | undefined): Stated<NamedSign>[] {
+  if (name === undefined) return signs
+  return signs.map((sign) => ({ ...sign, value: { ...sign.value, name } }))
+}
+
 /**
  * A segno or a coda drawn as a direction, at the point the direction sits. The
  * optional smufl attribute names a specific glyph, which MNX carries as the
@@ -795,6 +797,7 @@ export function readSound(
   let fine: Fine | undefined
   const jumps: ReadJump[] = []
   let segnoName: string | undefined
+  let codaName: string | undefined
   let tempo: SoundTempo | undefined
   for (const name of Object.keys(sound.element.attributes)) {
     if (name === 'tempo') {
@@ -849,9 +852,10 @@ export function readSound(
     }
     if (name === 'tocoda') {
       // The attribute names the coda to go on to. MNX's jump has no target:
-      // a to-coda jump goes to the score's coda, so the name is not written.
-      attribute(sound.element, 'tocoda')
-      jumps.push({ sound: 'tocoda', location: position })
+      // a to-coda jump goes to the score's coda, so the name is not written;
+      // it is kept to find the coda among several.
+      const target = attribute(sound.element, 'tocoda')
+      jumps.push({ sound: 'tocoda', location: position, ...(target ? { target } : {}) })
       continue
     }
     if (name === 'segno') {
@@ -860,6 +864,7 @@ export function readSound(
       // from another when matching a jump to the one it goes back to.
       segnoName = attribute(sound.element, 'segno')
     }
+    if (name === 'coda') codaName = attribute(sound.element, 'coda')
     // Classified by attribute name, not element name: <sound dynamics> is a
     // playback velocity with no home, unlike the <dynamics> element.
     const loss = attributeLoss('sound', name)
@@ -871,7 +876,7 @@ export function readSound(
       name,
     )
   }
-  return { fine, jumps, segnoName, tempo }
+  return { fine, jumps, segnoName, codaName, tempo }
 }
 
 /**
