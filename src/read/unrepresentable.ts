@@ -215,10 +215,12 @@ export const NO_HOME_ATTRIBUTES: ReadonlySet<string> = new Set([
   // staccato, stress, strong accent, tenuto, tremolo and unstress; nothing
   // plucks.
   'sound pizzicato',
-  // What the source calls the segno drawn beside it, so a jump can name the
-  // sign it goes back to. The schema's segno states a location, a colour and
-  // a glyph, and has no label.
+  // What the source calls the segno drawn beside it, on a <sound> or on the
+  // <barline> the sign sits on, so a jump can name the sign it goes back to.
+  // The schema's segno states a location, a colour and a glyph, and has no
+  // label.
   'sound segno',
+  'barline segno',
   // What the source calls the coda drawn beside it, on a <sound> or on the
   // <barline> the sign sits on. The schema's coda states a location, a colour
   // and a glyph, and has no label.

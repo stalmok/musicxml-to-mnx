@@ -637,7 +637,21 @@ describe('a segno on the barline', () => {
     expect(globals[3]?.jump?.type).toBe('dsAlFine')
     // MNX states one segno in a score with a dal segno jump.
     expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
+      ['unrepresentable:attribute', 1],
+      ['unrepresentable:attribute', 3],
       ['unrepresentable:jump-destination', 3],
+    ])
+  })
+
+  // MNX's segno has no label.
+  test('reports the name the barline gives the segno as a format limit', () => {
+    const { globals, warnings } = read(
+      `<barline location="left" segno="s"><segno/></barline>` + NOTE,
+    )
+
+    expect(globals[0]?.segno).toEqual({ location: { num: 0, den: 1 } })
+    expect(warnings.map((w) => [w.code, w.element, w.attribute])).toEqual([
+      ['unrepresentable:attribute', 'barline', 'segno'],
     ])
   })
 

@@ -141,8 +141,9 @@ export function readBarline(
  * <barline>, so child() is correct.
  *
  * The segno attribute on <barline> names the sign for playback, the same way
- * <sound segno> names one written as a direction, so it is carried the same
- * way: never written, only matching a jump to the sign it returns to.
+ * <sound segno> names one written as a direction. MNX's segno has no label, so
+ * the attribute is still reported; it is read only to match a jump to the sign
+ * it returns to.
  */
 function readSegno(
   element: ElementReader,
@@ -153,7 +154,7 @@ function readSegno(
   const segno = element.child('segno')
   if (!segno) return undefined
 
-  const name = attribute(element.element, 'segno')
+  const name = peekAttribute(element.element, 'segno')
   return {
     value: {
       location: position,

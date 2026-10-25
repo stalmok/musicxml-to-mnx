@@ -937,6 +937,7 @@ const ATTRIBUTE_CONCEPTS: Readonly<Record<string, Concept>> = {
   'sound pizzicato': { words: ['pizzicato', 'pluck', 'plucked'] },
   'sound segno': { words: ['name', 'label'], homes: ['segno'] },
   'sound coda': { words: ['name', 'label'], homes: ['coda'] },
+  'barline segno': { words: ['name', 'label'], homes: ['segno'] },
   'barline coda': { words: ['name', 'label'], homes: ['coda'] },
   // The same fact <staff-tuning>, <capo> and <fret> rest on: no tablature.
   'staff-details show-frets': { words: ['tablature', 'tuning', 'fret', 'frets', 'capo'] },
