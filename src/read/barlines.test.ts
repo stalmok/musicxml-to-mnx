@@ -635,7 +635,10 @@ describe('a segno on the barline', () => {
 
     expect(globals[0]?.segno).toEqual({ location: { num: 0, den: 1 } })
     expect(globals[3]?.jump?.type).toBe('dsAlFine')
-    expect(warnings).toEqual([])
+    // MNX states one segno in a score with a dal segno jump.
+    expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
+      ['unrepresentable:jump-destination', 3],
+    ])
   })
 
   // A sign on the barline and one written as a direction at another point are

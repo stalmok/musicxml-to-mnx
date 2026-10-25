@@ -1138,6 +1138,9 @@ const FORMAT_LIMITS: Readonly<Record<FormatLimit, () => boolean>> = {
   },
   'unrepresentable:cross-part-mark': () =>
     GLOBAL_MARKS.every((mark) => has('measure-global', mark) && !has('part-measure', mark)),
+  // A jump names no sign to go to, only the kind its type implies, and the
+  // MNX prose states one such sign in a document with the jump.
+  'unrepresentable:jump-destination': () => propertiesOf('jump').join() === 'location,type',
   'unrepresentable:repeat-times': () =>
     refers('repeat-end', 'times', 'repeat-times') &&
     schemaDefs['repeat-times']?.minimum === FEWEST_REPEAT_TIMES,

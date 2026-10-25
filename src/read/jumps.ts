@@ -5,7 +5,6 @@ import { compareFractions, fraction } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type { GlobalMeasure, JumpType } from '../model/score.js'
 import type { WarningCollector } from './collector.js'
-import type { Stated } from './element.js'
 import type { ReadGlobalMeasure, ReadJump } from './globalMeasures.js'
 
 /** A point in the score: a measure index and a location in that measure. */
@@ -15,6 +14,11 @@ interface Point {
 }
 
 const START: Point = { index: 0, location: fraction(0) }
+
+/** A segno, with the name the source gives it. */
+interface Sign extends Point {
+  readonly name: string | undefined
+}
 
 /** What stops a replay: a Fine, a to-coda jump, or neither. */
 type ReplayEnd = 'fine' | 'toCoda' | 'none'
@@ -43,7 +47,7 @@ export function settleJumps(
   measures: readonly ReadGlobalMeasure[],
   warnings: WarningCollector,
 ): GlobalMeasure[] {
-  const signs = measures.flatMap((measure, index) =>
+  const signs: Sign[] = measures.flatMap((measure, index) =>
     measure.segno
       ? [{ index, location: measure.segno.value.location, name: measure.segno.value.name }]
       : [],
@@ -64,17 +68,16 @@ export function settleJumps(
     )
     return undefined
   })
-  const typeOf = ({ value, element }: Stated<ReadJump>, index: number): JumpType | undefined => {
-    if (value.sound === 'tocoda') return toCodas[index] && 'toCoda'
-    if (value.sound === 'dacapo') return SETTLED.dacapo[replayEnd(measures, toCodas, START)]
-    const { from, unresolved } = segnoReturnedTo(signs, value.target)
-    if (unresolved !== undefined) {
-      warnings.add('unresolved:segno', unresolved, { measure: index + 1 }, element, 'dalsegno')
-    }
+  const returns = segnosReturnedTo(measures, signs, warnings)
+  const typeOf = (jump: ReadJump, index: number): JumpType | undefined => {
+    if (jump.sound === 'tocoda') return toCodas[index] && 'toCoda'
+    if (jump.sound === 'dacapo') return SETTLED.dacapo[replayEnd(measures, toCodas, START)]
+    const from = returns.from[index]
+    if (from === undefined) return undefined
     // MNX states a jump to a segno only in a score with one, so a D.S. with
     // no segno to find is written as the D.C. a player takes.
-    const settled = signs.length === 0 ? SETTLED.dacapo : SETTLED.dalsegno
-    return settled[from === undefined ? 'none' : replayEnd(measures, toCodas, from)]
+    const settled = from === START ? SETTLED.dacapo : SETTLED.dalsegno
+    return settled[replayEnd(measures, toCodas, from)]
   }
 
   return measures.map(
@@ -102,21 +105,81 @@ export function settleJumps(
       repeatEnd: repeatEnd?.value,
       ending: ending?.value,
       fermata: fermata?.value,
-      segno: segno && {
-        location: segno.value.location,
-        glyph: segno.value.glyph,
-        color: segno.value.color,
-      },
+      segno:
+        segno && returns.keeps(index)
+          ? { location: segno.value.location, glyph: segno.value.glyph, color: segno.value.color }
+          : undefined,
       coda: coda?.value,
       fine: fine?.value,
-      jump: jump && written(jump, typeOf(jump, index)),
+      jump: jump && written(jump.value, typeOf(jump.value, index)),
       multimeasureRest: multimeasureRest?.value,
     }),
   )
 }
 
-function written(jump: Stated<ReadJump>, type: JumpType | undefined): GlobalMeasure['jump'] {
-  return type && { location: jump.value.location, type }
+function written(jump: ReadJump, type: JumpType | undefined): GlobalMeasure['jump'] {
+  return type && { location: jump.location, type }
+}
+
+/**
+ * Where each measure's D.S. returns to: a segno, the start of the score
+ * where the score draws none, or nowhere where the jump is not converted.
+ * MNX states a jump to a segno only in a score with one segno, so the segno
+ * most jumps return to is kept. The others, and the jumps that return to
+ * them, are not converted. As many jumps returning to each keeps the first.
+ */
+function segnosReturnedTo(
+  measures: readonly ReadGlobalMeasure[],
+  signs: readonly Sign[],
+  warnings: WarningCollector,
+): { from: readonly (Point | undefined)[]; keeps: (index: number) => boolean } {
+  const resolved = measures.map(({ jump }, index) => {
+    if (jump?.value.sound !== 'dalsegno') return undefined
+    const { from, unresolved } = segnoReturnedTo(signs, jump.value.target)
+    if (unresolved !== undefined) {
+      warnings.add('unresolved:segno', unresolved, { measure: index + 1 }, jump.element, 'dalsegno')
+    }
+    return from
+  })
+  const kept = mostReturnedTo(signs, resolved)
+  if (kept === undefined) return { from: resolved, keeps: () => true }
+  for (const sign of signs) {
+    const segno = measures[sign.index]?.segno
+    if (sign === kept || segno === undefined) continue
+    warnings.add(
+      'unrepresentable:jump-destination',
+      'The score draws more than one segno and has a dal segno jump, and MNX states one ' +
+        'segno in such a score. The segno most jumps return to is kept, and this one is ' +
+        'not converted.',
+      { measure: sign.index + 1 },
+      segno.element,
+    )
+  }
+  const from = resolved.map((from, index) => {
+    const jump = measures[index]?.jump
+    if (from === undefined || from === kept || jump === undefined) return from
+    warnings.add(
+      'unrepresentable:jump-destination',
+      'This dal segno jump returns to a segno other than the one kept, and MNX states ' +
+        'one segno in a score with a dal segno jump. The jump is not converted.',
+      { measure: index + 1 },
+      jump.element,
+      'dalsegno',
+    )
+    return undefined
+  })
+  return { from, keeps: (index) => index === kept.index }
+}
+
+/** The sign the most destinations name, the first of those named as often. */
+function mostReturnedTo<T>(signs: readonly T[], destinations: readonly unknown[]): T | undefined {
+  let most: T | undefined
+  let count = 0
+  for (const sign of signs) {
+    const named = destinations.filter((destination) => destination === sign).length
+    if (named > count) [most, count] = [sign, named]
+  }
+  return most
 }
 
 /**
@@ -155,7 +218,7 @@ function replayEnd(
  * sign leaves the jump alone rather than guessing between them.
  */
 function segnoReturnedTo(
-  signs: readonly (Point & { name: string | undefined })[],
+  signs: readonly Sign[],
   target: string | undefined,
 ): { from: Point | undefined; unresolved: string | undefined } {
   if (signs.length === 0) {
@@ -169,13 +232,13 @@ function segnoReturnedTo(
   if (signs.length === 1) return { from: signs[0], unresolved: undefined }
   const from = signs.find((sign) => sign.name === target)
   if (from !== undefined) return { from, unresolved: undefined }
-  const plain = 'The jump is converted as a plain dal segno, not a D.S. al Fine or al Coda.'
   return {
     from,
     unresolved:
       target === undefined
-        ? `This dal segno jump names no segno, and the score draws several. ${plain}`
+        ? 'This dal segno jump names no segno, and the score draws several. The jump is ' +
+          'not converted.'
         : `This dal segno jump returns to the segno "${target}", which is none of the ` +
-          `segnos the score draws. ${plain}`,
+          'segnos the score draws. The jump is not converted.',
   }
 }

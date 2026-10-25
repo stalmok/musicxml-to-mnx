@@ -6,6 +6,7 @@ import { readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
 import { WarningCollector } from './collector.js'
+import type { ConversionWarning } from '../warnings.js'
 
 const NOTE =
   '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
@@ -147,6 +148,129 @@ describe('a D.S. in a score that draws no segno', () => {
       'dcAlFine',
     ])
     expect(mnx.global.measures.some((measure) => measure.segno !== undefined)).toBe(false)
+  })
+})
+
+// MNX states a jump to a segno only in a score with one segno. The segno most
+// jumps return to is kept. The other segnos, and the jumps that return to
+// them, are not converted.
+describe('a D.S. in a score that draws several segnos', () => {
+  const named = (name: string) =>
+    `<direction><direction-type><segno/></direction-type><sound segno="${name}"/></direction>`
+  const dalSegno = (name: string) => `<sound dalsegno="${name}"/>`
+  // A named segno also reports its name, which MNX cannot state.
+  const destinations = (warnings: readonly ConversionWarning[]) =>
+    warnings.filter((w) => w.code === 'unrepresentable:jump-destination')
+
+  test('keeps the segno most jumps return to', () => {
+    const warnings = new WarningCollector()
+    const { globalMeasures } = readValid(
+      score(
+        named('a') + NOTE,
+        named('b') + NOTE,
+        NOTE + dalSegno('a'),
+        NOTE + dalSegno('b'),
+        NOTE + dalSegno('b'),
+      ),
+      warnings,
+    )
+
+    expect(globalMeasures.map((measure) => measure.segno !== undefined)).toEqual([
+      false,
+      true,
+      false,
+      false,
+      false,
+    ])
+    expect(globalMeasures.map((measure) => measure.jump?.type)).toEqual([
+      undefined,
+      undefined,
+      undefined,
+      'segno',
+      'segno',
+    ])
+    expect(
+      destinations(warnings.list()).map((w) => [w.code, w.element, w.context.measure]),
+    ).toEqual([
+      ['unrepresentable:jump-destination', 'segno', 1],
+      ['unrepresentable:jump-destination', 'sound', 3],
+    ])
+  })
+
+  test('keeps the first segno where as many jumps return to each', () => {
+    const { types, warnings } = jumps(
+      named('a') + NOTE,
+      named('b') + NOTE,
+      NOTE + dalSegno('b'),
+      NOTE + dalSegno('a'),
+    )
+
+    expect(types).toEqual([undefined, undefined, undefined, 'segno'])
+    expect(destinations(warnings).map((w) => [w.element, w.context.measure])).toEqual([
+      ['segno', 2],
+      ['sound', 3],
+    ])
+  })
+
+  test('drops a segno no jump returns to', () => {
+    const warnings = new WarningCollector()
+    const { globalMeasures } = readValid(
+      score(named('a') + NOTE, NOTE + dalSegno('a'), named('b') + NOTE),
+      warnings,
+    )
+
+    expect(globalMeasures.map((measure) => measure.segno !== undefined)).toEqual([
+      true,
+      false,
+      false,
+    ])
+    expect(destinations(warnings.list())).toEqual([
+      {
+        code: 'unrepresentable:jump-destination',
+        message:
+          'The score draws more than one segno and has a dal segno jump, and MNX states ' +
+          'one segno in such a score. The segno most jumps return to is kept, and this ' +
+          'one is not converted.',
+        element: 'segno',
+        context: { measure: 3, line: 1 },
+      },
+    ])
+  })
+
+  test('reports a jump to a segno that is not kept', () => {
+    const { warnings } = jumps(
+      named('a') + NOTE,
+      named('b') + NOTE + '\n' + dalSegno('a'),
+      NOTE + dalSegno('b'),
+      NOTE + dalSegno('b'),
+    )
+
+    expect(warnings).toContainEqual({
+      code: 'unrepresentable:jump-destination',
+      message:
+        'This dal segno jump returns to a segno other than the one kept, and MNX ' +
+        'states one segno in a score with a dal segno jump. The jump is not converted.',
+      element: 'sound',
+      attribute: 'dalsegno',
+      context: { measure: 2, line: 2 },
+    })
+  })
+
+  test('keeps every segno where no jump returns to one', () => {
+    const { warnings } = jumps(named('a') + NOTE, named('b') + NOTE, NOTE + DA_CAPO)
+
+    expect(destinations(warnings)).toEqual([])
+  })
+
+  test('writes one segno the spec schema accepts', () => {
+    const { mnx } = convertValid(score(named('a') + NOTE, named('b') + NOTE, NOTE + dalSegno('b')))
+
+    expect(mnx.global.measures.map((measure) => measure.segno !== undefined)).toEqual([
+      false,
+      true,
+      false,
+    ])
+    expect(mnx.global.measures[2]?.jump?.type).toBe('segno')
   })
 })
 

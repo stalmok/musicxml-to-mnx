@@ -2145,35 +2145,35 @@ describe('sound navigation', () => {
     expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'segno' })
   })
 
-  // A score can carry two segno signs and a jump back to each. The Fine only
-  // stops the jump that returns to a segno before it: replaying from a segno
-  // written after the Fine never reaches it, so that jump is a plain dal-segno.
-  // Naming the sign is how a source keeps the two apart.
-  test('leaves a jump back to a segno written after the Fine a plain segno', () => {
-    const warnings = new WarningCollector()
-    const score = readValid(
-      '<score-partwise><part id="P1">' +
-        '<measure number="1"><attributes><divisions>4</divisions></attributes>' +
-        '<direction><direction-type><segno/></direction-type>' +
-        '<sound segno="first"/></direction>' +
-        note('C') +
-        '</measure>' +
-        `<measure number="2">${note('C')}<sound fine="yes"/></measure>` +
-        '<measure number="3">' +
-        '<direction><direction-type><segno/></direction-type>' +
-        '<sound segno="second"/></direction>' +
-        note('C') +
-        '</measure>' +
-        `<measure number="4">${note('C')}<sound dalsegno="second"/></measure>` +
-        `<measure number="5">${note('C')}<sound dalsegno="first"/></measure>` +
-        '</part></score-partwise>',
-      warnings,
-    )
+  // A Fine only stops a jump that returns to a segno before it: replaying from
+  // a segno written after the Fine never reaches it. With two segnos, naming
+  // the sign is how a source keeps them apart.
+  test('settles a jump by the segno it names', () => {
+    const jumpTo = (target: string) => {
+      const score = readValid(
+        '<score-partwise><part id="P1">' +
+          '<measure number="1"><attributes><divisions>4</divisions></attributes>' +
+          '<direction><direction-type><segno/></direction-type>' +
+          '<sound segno="first"/></direction>' +
+          note('C') +
+          '</measure>' +
+          `<measure number="2">${note('C')}<sound fine="yes"/></measure>` +
+          '<measure number="3">' +
+          '<direction><direction-type><segno/></direction-type>' +
+          '<sound segno="second"/></direction>' +
+          note('C') +
+          '</measure>' +
+          `<measure number="4">${note('C')}<sound dalsegno="${target}"/></measure>` +
+          '</part></score-partwise>',
+        new WarningCollector(),
+      )
+      return score.globalMeasures[3]?.jump?.type
+    }
 
     // Back to the second segno, which stands after the Fine: a plain dal-segno.
-    expect(score.globalMeasures[3]?.jump?.type).toBe('segno')
+    expect(jumpTo('second')).toBe('segno')
     // Back to the first, which stands before it: a D.S. al Fine.
-    expect(score.globalMeasures[4]?.jump?.type).toBe('dsAlFine')
+    expect(jumpTo('first')).toBe('dsAlFine')
   })
 
   // With one segno the name settles nothing, so the Fine stops the jump
@@ -2218,7 +2218,8 @@ describe('sound navigation', () => {
   })
 
   // With several signs, only the name says which one the jump returns to. A
-  // name matching none of them leaves open whether a Fine stops the jump.
+  // name matching none of them leaves the destination open, and MNX states
+  // a jump to a segno only where the score has one.
   test('reports a jump naming none of the segnos the score draws', () => {
     const warnings = new WarningCollector()
     const score = readValid(
@@ -2239,14 +2240,13 @@ describe('sound navigation', () => {
       warnings,
     )
 
-    expect(score.globalMeasures[3]?.jump?.type).toBe('segno')
+    expect(score.globalMeasures[3]?.jump).toBeUndefined()
     expect(warnings.list().filter((w) => w.code === 'unresolved:segno')).toEqual([
       {
         code: 'unresolved:segno',
         message:
           'This dal segno jump returns to the segno "third", which is none of the ' +
-          'segnos the score draws. The jump is converted as a plain dal segno, not a ' +
-          'D.S. al Fine or al Coda.',
+          'segnos the score draws. The jump is not converted.',
         element: 'sound',
         attribute: 'dalsegno',
         context: { measure: 4, line: 2 },
@@ -2284,7 +2284,7 @@ describe('sound navigation', () => {
         .map((w) => w.message),
     ).toEqual([
       'This dal segno jump names no segno, and the score draws several. The jump is ' +
-        'converted as a plain dal segno, not a D.S. al Fine or al Coda.',
+        'not converted.',
     ])
   })
 

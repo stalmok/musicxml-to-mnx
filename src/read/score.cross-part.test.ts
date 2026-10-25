@@ -388,10 +388,14 @@ describe('several parts', () => {
     )
 
     expect(result.globalMeasures[2]?.jump?.type).toBe('dsAlFine')
+    // MNX states one segno in a score with a dal segno jump, so the first,
+    // which no jump returns to, is not converted.
     expect(warnings.map((w) => [w.code, w.element, w.attribute])).toEqual([
       ['unrepresentable:attribute', 'sound', 'segno'],
       ['unrepresentable:attribute', 'sound', 'segno'],
+      ['unrepresentable:jump-destination', 'segno', undefined],
     ])
+    expect(result.globalMeasures[0]?.segno).toBeUndefined()
   })
 
   test('says nothing where the parts restate the same named segno', () => {
