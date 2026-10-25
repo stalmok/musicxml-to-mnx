@@ -57,7 +57,7 @@ export interface MNXLyricLine {
 
 /** The line after a syllable sung across later events. */
 export interface MNXLyricLineExtender {
-  /** False states that the syllable draws no line. */
+  /** False states that the syllable draws no line. Absent means true. */
   show?: boolean
   /** The id of the last event the line runs under. */
   target?: string
