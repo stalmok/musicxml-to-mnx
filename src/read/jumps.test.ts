@@ -121,6 +121,32 @@ describe('a Fine and a to-coda jump in one score', () => {
   })
 })
 
+describe('a to-coda jump', () => {
+  // The jump says where it goes only by the coda the score draws.
+  test('reports a to-coda jump in a score that draws no coda', () => {
+    const { types, warnings } = jumps(NOTE + '\n' + TO_CODA, NOTE + DA_CAPO)
+
+    expect(types).toEqual(['toCoda', 'dcAlCoda'])
+    expect(warnings).toEqual([
+      {
+        code: 'unresolved:coda',
+        message:
+          'This to-coda jump goes on to a coda, but the score draws none. The jump is ' +
+          'converted with no coda to go to.',
+        element: 'sound',
+        attribute: 'tocoda',
+        context: { measure: 1, line: 2 },
+      },
+    ])
+  })
+
+  test('says nothing where a coda is drawn on a barline', () => {
+    const { warnings } = jumps(NOTE + TO_CODA, '<barline location="left"><coda/></barline>' + NOTE)
+
+    expect(warnings).toEqual([])
+  })
+})
+
 describe('jumps written to MNX', () => {
   test('writes a D.S. al Coda the spec schema accepts', () => {
     const { mnx, warnings } = convertValid(

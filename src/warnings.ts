@@ -247,10 +247,13 @@ export const WARNING_CODES = Object.freeze([
   'unresolved:instrument-id',
   // A dal segno jump whose segno the score does not draw: the score draws
   // none, or draws several and the jump names none of them. With none, the
-  // jump is converted with no segno to return to, and a Fine anywhere in the
-  // score ends it. With several, it is converted as a plain dal segno, not a
-  // D.S. al Fine or al Coda.
+  // jump is converted with no segno to return to, and is settled as if it
+  // returned to the start of the score. With several, it is converted as a
+  // plain dal segno, not a D.S. al Fine or al Coda.
   'unresolved:segno',
+  // A to-coda jump in a score that draws no coda. The jump is converted with
+  // no coda to go to.
+  'unresolved:coda',
   // An attribute whose value is not one MusicXML defines for it, so what the
   // source meant by it cannot be read. The attribute is not converted, nor
   // what it is needed to read, such as the tie whose type it states.

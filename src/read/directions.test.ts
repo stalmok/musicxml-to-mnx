@@ -2013,7 +2013,7 @@ describe('sound navigation', () => {
   // Two different jumps at one point are two marks, where MNX states one.
   test('reports a second jump of another kind at the same point', () => {
     const { global, warnings } = read(
-      inMeasure(note('C') + '<sound tocoda="coda"/>\n<sound dacapo="yes"/>'),
+      inMeasure(note('C') + '<sound tocoda="coda"/>\n<sound dacapo="yes"/>' + direction('<coda/>')),
     )
 
     expect(global?.jump?.type).toBe('toCoda')
@@ -2148,8 +2148,8 @@ describe('sound navigation', () => {
         code: 'unresolved:segno',
         message:
           'This dal segno jump returns to a segno, but the score draws none. The jump ' +
-          'is converted with no segno to return to, and is ended by a Fine anywhere in ' +
-          'the score.',
+          'is converted with no segno to return to, and is settled as if it returned to ' +
+          'the start of the score.',
         element: 'sound',
         attribute: 'dalsegno',
         context: { measure: 1, line: 2 },

@@ -34,8 +34,21 @@ export function settleJumps(
   const signs = measures.flatMap((measure, index) =>
     measure.segno ? [{ index, name: measure.segno.value.name }] : [],
   )
+  const drawsCoda = measures.some((measure) => measure.coda !== undefined)
   const typeOf = ({ value, element }: Stated<ReadJump>, index: number): JumpType => {
-    if (value.sound === 'tocoda') return 'toCoda'
+    if (value.sound === 'tocoda') {
+      if (!drawsCoda) {
+        warnings.add(
+          'unresolved:coda',
+          'This to-coda jump goes on to a coda, but the score draws none. The jump is ' +
+            'converted with no coda to go to.',
+          { measure: index + 1 },
+          element,
+          'tocoda',
+        )
+      }
+      return 'toCoda'
+    }
     if (value.sound === 'dacapo') return SETTLED.dacapo[replayEnd(measures, 0)]
     const { from, unresolved } = segnoReturnedTo(signs, value.target)
     if (unresolved !== undefined) {
@@ -115,7 +128,8 @@ function segnoReturnedTo(
       from: 0,
       unresolved:
         'This dal segno jump returns to a segno, but the score draws none. The jump is ' +
-        'converted with no segno to return to, and is ended by a Fine anywhere in the score.',
+        'converted with no segno to return to, and is settled as if it returned to the ' +
+        'start of the score.',
     }
   }
   if (signs.length === 1) return { from: signs[0]?.index, unresolved: undefined }
