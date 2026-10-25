@@ -11,7 +11,7 @@
 // measures it runs for. Endings joins the two, one part at a time.
 
 import type { Fraction } from '../fraction.js'
-import type { BarlineType, Fermata, RepeatEnd } from '../model/score.js'
+import type { BarlineType, Coda, Fermata, RepeatEnd } from '../model/score.js'
 import type { NamedSegno } from './globalMeasures.js'
 import type { ReportContext, WarningCollector } from './collector.js'
 import type { PartCollector, PartMeasure } from './partCollector.js'
@@ -71,6 +71,8 @@ export interface BarlineReading {
   fermata: Stated<Fermata> | undefined
   /** A segno drawn on the barline, the same sign a direction can carry. */
   segno: Stated<NamedSegno> | undefined
+  /** A coda drawn on the barline, the same sign a direction can carry. */
+  coda: Stated<Coda> | undefined
 }
 
 const NOTHING: BarlineReading = {
@@ -81,6 +83,7 @@ const NOTHING: BarlineReading = {
   endingStop: undefined,
   fermata: undefined,
   segno: undefined,
+  coda: undefined,
 }
 
 export function readBarline(
@@ -104,7 +107,7 @@ export function readBarline(
     )
     // The one warning accounts for the whole element, so what it holds is not
     // reported a second time.
-    element.skip('bar-style', 'repeat', 'ending', 'fermata', 'segno')
+    element.skip('bar-style', 'repeat', 'ending', 'fermata', 'segno', 'coda')
     return NOTHING
   }
 
@@ -126,6 +129,7 @@ export function readBarline(
       ? reportOpeningFermata(element, warnings, context)
       : fermata && stated(readFermataAt(fermatas, warnings, context), fermata),
     segno: readSegno(element, position, warnings, context),
+    coda: readCoda(element, position, warnings, context),
   }
 }
 
@@ -158,6 +162,30 @@ function readSegno(
       ...(name !== undefined ? { name } : {}),
     },
     element: segno,
+  }
+}
+
+/**
+ * A coda drawn on the barline, read the same way as a segno there. MusicXML
+ * allows at most one <coda> per <barline>, so child() is correct. The coda attribute on
+ * <barline> names the sign for playback; MNX's coda has no label, so the
+ * attribute stays unread and is reported.
+ */
+function readCoda(
+  element: ElementReader,
+  position: Fraction,
+  warnings: WarningCollector,
+  context: ReportContext,
+): Stated<Coda> | undefined {
+  const coda = element.child('coda')
+  if (!coda) return undefined
+  return {
+    value: {
+      location: position,
+      glyph: attribute(coda, 'smufl'),
+      color: readColor(coda, warnings, context),
+    },
+    element: coda,
   }
 }
 

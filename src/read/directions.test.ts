@@ -94,10 +94,11 @@ describe('dynamics', () => {
     expect(measure?.dynamics[0]?.placement).toBe('above')
   })
 
-  // MNX states no side for a segno or a tempo, which are drawn above the
-  // staff. One placed below is drawn on a side the output cannot state.
+  // MNX states no side for a segno, a coda or a tempo, which are drawn above
+  // the staff. One placed below is drawn on a side the output cannot state.
   test.each([
     ['segno', '<segno/>'],
+    ['coda', '<coda/>'],
     ['tempo', '<metronome><beat-unit>quarter</beat-unit><per-minute>60</per-minute></metronome>'],
   ])('reports a %s placed below the staff', (_, mark) => {
     const { warnings } = read(
@@ -111,8 +112,8 @@ describe('dynamics', () => {
       {
         code: 'unrepresentable:attribute',
         message:
-          'This <direction> places a segno or a tempo below the staff, and MNX states no ' +
-          'side for either. The segno or tempo is converted without its placement.',
+          'This <direction> places a segno, a coda or a tempo below the staff, and MNX ' +
+          'states no side for any of them. The mark is converted without its placement.',
         element: 'direction',
         attribute: 'placement',
         context: { part: 'P1', measure: 1, line: 1 },
@@ -122,6 +123,7 @@ describe('dynamics', () => {
 
   test.each([
     ['segno', '<segno/>'],
+    ['coda', '<coda/>'],
     ['tempo', '<metronome><beat-unit>quarter</beat-unit><per-minute>60</per-minute></metronome>'],
   ])('says nothing of a %s placed above the staff', (_, mark) => {
     const { warnings } = read(
@@ -139,6 +141,7 @@ describe('dynamics', () => {
     ['segno', 'a dynamic', '<segno/>', '<dynamics><p/></dynamics>'],
     ['segno', 'a hairpin', '<segno/>', '<wedge type="crescendo"/>'],
     ['segno', 'an octave shift', '<segno/>', '<octave-shift type="down" size="8"/>'],
+    ['coda', 'a dynamic', '<coda/>', '<dynamics><p/></dynamics>'],
     ['tempo', 'a dynamic', tempo, '<dynamics><p/></dynamics>'],
   ])('reports a %s placed below beside %s', (_, __, first, mark) => {
     const { warnings } = read(
@@ -153,8 +156,8 @@ describe('dynamics', () => {
       {
         code: 'unrepresentable:attribute',
         message:
-          'This <direction> places a segno or a tempo below the staff, and MNX states no ' +
-          'side for either. The segno or tempo is converted without its placement.',
+          'This <direction> places a segno, a coda or a tempo below the staff, and MNX ' +
+          'states no side for any of them. The mark is converted without its placement.',
         element: 'direction',
         attribute: 'placement',
         context: { part: 'P1', measure: 1, line: 1 },
@@ -1690,25 +1693,91 @@ describe('segno', () => {
   })
 })
 
-// The navigation a <sound> carries. A <sound fine> is where a D.S. or D.C.
-// repeat stops; a <sound dalsegno> is the jump back to the segno. Both belong
-// to the score's measure, like a segno, at the point the <sound> is written.
-describe('sound navigation', () => {
-  // MNX states a coda sign, which the reader does not read yet.
-  test('reports a coda direction as not converted yet', () => {
-    const { global, warnings } = read(inMeasure(direction('<coda/>') + note('C')))
+// The coda sign belongs to the score's measure, like a segno.
+describe('coda', () => {
+  test('puts a coda on the score measure where the direction sits', () => {
+    const { global, warnings } = read(inMeasure(note('C') + direction('<coda/>')))
 
-    expect(global?.jump).toBeUndefined()
+    expect(global?.coda).toEqual({ location: { num: 1, den: 4 } })
+    expect(warnings).toEqual([])
+  })
+
+  test('keeps the glyph and color the source draws it with', () => {
+    const { global, warnings } = read(
+      inMeasure(direction('<coda smufl="codaSquare" color="#00FF00"/>') + note('C')),
+    )
+
+    expect(global?.coda).toEqual({
+      location: { num: 0, den: 1 },
+      glyph: 'codaSquare',
+      color: '#00FF00',
+    })
+    expect(warnings).toEqual([])
+  })
+
+  test('leaves the coda unset where the measure has none', () => {
+    const { global } = read(inMeasure(note('C')))
+
+    expect(global?.coda).toBeUndefined()
+  })
+
+  test('reports a second coda at a different point in the measure', () => {
+    const { global, warnings } = read(
+      inMeasure(direction('<coda/>') + note('C') + '\n' + direction('<coda/>')),
+    )
+
+    expect(global?.coda).toEqual({ location: { num: 0, den: 1 } })
+    expect(warnings.map((w) => [w.code, w.element, w.context.line])).toEqual([
+      ['unrepresentable:element', 'coda', 2],
+    ])
+    expect(warnings[0]?.message).toContain('more than one coda')
+  })
+
+  test('reports a second coda drawn differently at the same point', () => {
+    const { warnings } = read(inMeasure(direction('<coda/><coda smufl="codaSquare"/>')))
+
+    expect(warnings.map((w) => w.element)).toEqual(['coda'])
+  })
+
+  // The name a <sound coda> gives the sign. MNX's coda has no label.
+  test('reports the name the source gives the coda as a format limit', () => {
+    const { global, warnings } = read(
+      inMeasure(
+        '<direction><direction-type><coda/></direction-type><sound coda="c1"/></direction>' +
+          note('C'),
+      ),
+    )
+
+    expect(global?.coda).toEqual({ location: { num: 0, den: 1 } })
     expect(warnings).toMatchObject([
       {
-        code: 'unsupported:element',
-        element: 'coda',
-        message: 'A <coda> direction is not converted yet.',
-        context: { measure: 1 },
+        code: 'unrepresentable:attribute',
+        message: 'The "coda" of a <sound> cannot be expressed in MNX.',
+        element: 'sound',
+        attribute: 'coda',
       },
     ])
   })
 
+  test('writes a coda the spec schema accepts', () => {
+    const { mnx } = convertValid(
+      inMeasure(direction('<coda smufl="codaSquare" color="#00FF00"/>') + note('C')),
+    )
+
+    expect(mnx.global.measures[0]?.coda).toEqual({
+      location: { fraction: [0, 1] },
+      glyph: 'codaSquare',
+      color: '#00FF00',
+    })
+  })
+})
+
+// The navigation a <sound> carries. A <sound fine> is where a D.S. or D.C.
+// repeat stops; a <sound dalsegno> is the jump back to the segno, a <sound
+// dacapo> the jump back to the start and a <sound tocoda> the jump on to the
+// coda. All belong to the score's measure, like a segno, at the point the
+// <sound> is written.
+describe('sound navigation', () => {
   test('puts a fine on the score measure where the <sound fine> sits', () => {
     const { global, warnings } = read(inMeasure(note('C') + '<sound fine="yes"/>'))
 
@@ -1888,26 +1957,83 @@ describe('sound navigation', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unsupported:attribute'])
   })
 
-  // MNX states a D.C., a to-coda jump and a coda sign. The reader does not
-  // read them yet.
-  test('reports the D.C. and coda navigation of a <sound> as not converted yet', () => {
-    const { warnings } = read(
+  test('puts a jump of type dc on the measure for a <sound dacapo>', () => {
+    const { global, warnings } = read(inMeasure(note('C') + '<sound dacapo="yes"/>'))
+
+    expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'dc' })
+    expect(warnings).toEqual([])
+  })
+
+  test('takes the jump from a <sound dacapo> written inside a <direction>', () => {
+    const { global, warnings } = read(
       inMeasure(
         note('C') +
-          '<sound dacapo="yes"/>' +
-          note('D') +
-          '<sound tocoda="coda"/>' +
-          note('E') +
-          '<sound coda="coda"/>',
+          '<direction><direction-type><words>D.C.</words></direction-type>' +
+          '<sound dacapo="yes"/></direction>',
       ),
     )
 
-    expect(warnings.map((w) => w.code)).toEqual(Array<string>(3).fill('unsupported:attribute'))
-    expect(warnings.map((w) => w.message)).toEqual([
-      'The "dacapo" of a <sound> is not converted yet.',
-      'The "tocoda" of a <sound> is not converted yet.',
-      'The "coda" of a <sound> is not converted yet.',
+    expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'dc' })
+    expect(warnings.map((w) => w.element)).toEqual(['words'])
+  })
+
+  // "no" says there is no jump, which loses nothing.
+  test('reads a <sound dacapo="no"> as no jump', () => {
+    const { global, warnings } = read(inMeasure(note('C') + '<sound dacapo="no"/>'))
+
+    expect(global?.jump).toBeUndefined()
+    expect(warnings).toEqual([])
+  })
+
+  test('reports a <sound dacapo> whose value is neither "yes" nor "no"', () => {
+    const { global, warnings } = read(inMeasure(note('C') + '<sound dacapo="twice"/>'))
+
+    expect(global?.jump).toBeUndefined()
+    expect(warnings).toMatchObject([
+      {
+        code: 'unresolved:attribute-value',
+        message: 'The "dacapo" of a <sound> is "twice", which is neither "yes" nor "no".',
+        element: 'sound',
+        attribute: 'dacapo',
+      },
     ])
+  })
+
+  // The attribute names the coda to go on to. MNX's jump has no target: the
+  // score's coda is where it goes.
+  test('puts a jump of type toCoda on the measure for a <sound tocoda>', () => {
+    const { global, warnings } = read(
+      inMeasure(note('C') + '<sound tocoda="coda"/>' + direction('<coda/>')),
+    )
+
+    expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'toCoda' })
+    expect(warnings).toEqual([])
+  })
+
+  // Two different jumps at one point are two marks, where MNX states one.
+  test('reports a second jump of another kind at the same point', () => {
+    const { global, warnings } = read(
+      inMeasure(note('C') + '<sound tocoda="coda"/>\n<sound dacapo="yes"/>'),
+    )
+
+    expect(global?.jump?.type).toBe('toCoda')
+    expect(warnings.map((w) => [w.element, w.attribute, w.context.line])).toEqual([
+      ['sound', 'dacapo', 2],
+    ])
+    expect(warnings[0]?.message).toContain('more than one jump')
+  })
+
+  test('reports a second jump written on the one <sound>', () => {
+    const { global, warnings } = read(inMeasure(note('C') + '<sound dacapo="yes" tocoda="c"/>'))
+
+    expect(global?.jump?.type).toBe('dc')
+    expect(warnings.map((w) => [w.element, w.attribute])).toEqual([['sound', 'tocoda']])
+  })
+
+  test('writes a dc jump the spec schema accepts', () => {
+    const { mnx } = convertValid(inMeasure('<sound dacapo="yes"/>' + note('C')))
+
+    expect(mnx.global.measures[0]?.jump).toEqual({ location: { fraction: [0, 1] }, type: 'dc' })
   })
 
   // D.S. al Fine can be written as one <sound> carrying both attributes. Each
@@ -2060,7 +2186,7 @@ describe('sound navigation', () => {
         message:
           'This dal segno jump returns to the segno "third", which is none of the ' +
           'segnos the score draws. The jump is converted as a plain dal segno, not a ' +
-          'D.S. al Fine.',
+          'D.S. al Fine or al Coda.',
         element: 'sound',
         attribute: 'dalsegno',
         context: { measure: 4, line: 2 },
@@ -2098,7 +2224,7 @@ describe('sound navigation', () => {
         .map((w) => w.message),
     ).toEqual([
       'This dal segno jump names no segno, and the score draws several. The jump is ' +
-        'converted as a plain dal segno, not a D.S. al Fine.',
+        'converted as a plain dal segno, not a D.S. al Fine or al Coda.',
     ])
   })
 

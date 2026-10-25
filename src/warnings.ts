@@ -65,8 +65,8 @@ export const WARNING_CODES = Object.freeze([
   // no form, and the one form the schema states has no alpha, so the color is
   // converted opaque and the alpha is not.
   'unrepresentable:color',
-  // The parts of the score state different repeats, endings, fermatas, fines,
-  // or jumps on the same measure, and MNX states one of each there. The
+  // The parts of the score state different repeats, endings, fermatas, codas,
+  // fines, or jumps on the same measure, and MNX states one of each there. The
   // element field names which mark. Segnos have their own code above.
   'unrepresentable:cross-part-mark',
   // A repeat played fewer than two times. MNX plays a repeat at least twice,
@@ -249,7 +249,7 @@ export const WARNING_CODES = Object.freeze([
   // none, or draws several and the jump names none of them. With none, the
   // jump is converted with no segno to return to, and a Fine anywhere in the
   // score ends it. With several, it is converted as a plain dal segno, not a
-  // D.S. al Fine.
+  // D.S. al Fine or al Coda.
   'unresolved:segno',
   // An attribute whose value is not one MusicXML defines for it, so what the
   // source meant by it cannot be read. The attribute is not converted, nor

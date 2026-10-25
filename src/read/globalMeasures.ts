@@ -4,6 +4,7 @@
 import { compareFractions } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type {
+  Coda,
   Ending,
   Fermata,
   Fine,
@@ -28,13 +29,14 @@ export interface NamedSegno extends Segno {
 }
 
 /**
- * A dal-segno jump, the only jump the reader finds. Whether it is a D.S. al
- * Fine waits until the whole score is known.
+ * A jump, named by the <sound> attribute that states it. Whether a D.C. or a
+ * D.S. is al Fine or al Coda waits until the whole score is known.
  */
-export interface DalSegno {
+export interface ReadJump {
+  readonly sound: 'dacapo' | 'dalsegno' | 'tocoda'
   /** Where in the measure it is taken, counting from the start. */
   readonly location: Fraction
-  /** The name of the segno this jump returns to, where the source gives one. */
+  /** The name of the segno a D.S. returns to, where the source gives one. */
   readonly target?: string
 }
 
@@ -47,8 +49,9 @@ interface ReadMarks {
   ending: NonNullable<GlobalMeasure['ending']>
   readonly fermata: NonNullable<GlobalMeasure['fermata']>
   readonly segno: NamedSegno
+  readonly coda: Coda
   readonly fine: NonNullable<GlobalMeasure['fine']>
-  readonly jump: DalSegno
+  readonly jump: ReadJump
   readonly multimeasureRest: NonNullable<GlobalMeasure['multimeasureRest']>
 }
 
@@ -208,8 +211,16 @@ export function mergeGlobalMeasures(
       sameFermata,
       context,
     )
+    reportDifferingMark('coda', undefined, existing?.coda, measure.coda, sameCoda, context)
     reportDifferingMark('fine', 'fine', existing?.fine, measure.fine, sameFine, context)
-    reportDifferingMark('jump', 'dalsegno', existing?.jump, measure.jump, sameJump, context)
+    reportDifferingMark(
+      'jump',
+      measure.jump?.value.sound,
+      existing?.jump,
+      measure.jump,
+      sameJump,
+      context,
+    )
     target[index] = {
       key: existing?.key ?? contributed[index],
       time: existing?.time ?? measure.time,
@@ -228,6 +239,7 @@ export function mergeGlobalMeasures(
       // barline, so the first part to state one wins. A later part may name a
       // sign the first left unnamed, and the name is kept for the jumps.
       segno: namedSegno(existing?.segno, measure.segno),
+      coda: existing?.coda ?? measure.coda,
       fine: existing?.fine ?? measure.fine,
       jump: existing?.jump ?? measure.jump,
       multimeasureRest: existing?.multimeasureRest ?? measure.multimeasureRest,
@@ -280,12 +292,20 @@ export function sameFermata(a: Fermata, b: Fermata): boolean {
   return a.symbol === b.symbol && a.pointing === b.pointing && a.placement === b.placement
 }
 
+function sameCoda(a: Coda, b: Coda): boolean {
+  return (
+    compareFractions(a.location, b.location) === 0 && a.glyph === b.glyph && a.color === b.color
+  )
+}
+
 function sameFine(a: Fine, b: Fine): boolean {
   return compareFractions(a.location, b.location) === 0
 }
 
-function sameJump(a: DalSegno, b: DalSegno): boolean {
-  return compareFractions(a.location, b.location) === 0 && a.target === b.target
+function sameJump(a: ReadJump, b: ReadJump): boolean {
+  return (
+    compareFractions(a.location, b.location) === 0 && a.sound === b.sound && a.target === b.target
+  )
 }
 
 /**

@@ -450,10 +450,42 @@ describe('several parts', () => {
     expect(warnings[0]?.context.line).toBe(2)
   })
 
+  test('reports parts stating different kinds of jump at the same point', () => {
+    const { score: result, warnings } = read(
+      score(
+        `<part id="P1"><measure number="1"><sound dacapo="yes"/>${NOTE}</measure></part>` +
+          `\n<part id="P2"><measure number="1"><sound tocoda="c"/>${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.jump?.type).toBe('dc')
+    expect(warnings.map((w) => [w.code, w.element, w.attribute])).toEqual([
+      ['unrepresentable:cross-part-mark', 'sound', 'tocoda'],
+    ])
+    expect(warnings[0]?.context.line).toBe(2)
+  })
+
+  test('reports parts drawing different codas on the same measure', () => {
+    const sign = (glyph: string) =>
+      `<direction><direction-type><coda smufl="${glyph}"/></direction-type></direction>${NOTE}`
+    const { score: result, warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${sign('coda')}</measure></part>` +
+          `\n<part id="P2"><measure number="1">${sign('codaSquare')}</measure></part>`,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.coda?.glyph).toBe('coda')
+    expect(warnings.map((w) => [w.code, w.element, w.attribute])).toEqual([
+      ['unrepresentable:cross-part-mark', 'coda', undefined],
+    ])
+    expect(warnings[0]?.context.line).toBe(2)
+  })
+
   test('says nothing where the parts restate the same marks', () => {
     const marked =
       '<barline location="left"><ending number="1" type="start"/></barline>' +
-      `<direction><direction-type><segno/></direction-type></direction><sound dalsegno="A"/>${NOTE}<sound fine="yes"/>` +
+      `<direction><direction-type><segno/><coda/></direction-type></direction><sound dalsegno="A"/>${NOTE}<sound fine="yes"/>` +
       '<barline location="right"><ending number="1" type="stop"/>' +
       '<repeat direction="backward" times="2"/><fermata>angled</fermata></barline>'
     const { warnings } = read(
@@ -500,6 +532,35 @@ describe('two parts disagreeing on one field of a mark', () => {
 
     expect(result.globalMeasures[0]?.segno?.glyph).toBe('segnoSerpent1')
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-segno'])
+  })
+
+  test('reports a coda drawn at different points in the measure', () => {
+    const coda = '<direction><direction-type><coda/></direction-type></direction>'
+    const { score: result, warnings } = read(
+      score(
+        '<part id="P1"><measure number="1">' +
+          `<attributes><divisions>4</divisions></attributes>${coda}${QUARTER}</measure></part>` +
+          '<part id="P2"><measure number="1">' +
+          `<attributes><divisions>4</divisions></attributes>${QUARTER}${coda}</measure></part>`,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.coda?.location).toEqual({ num: 0, den: 1 })
+    expect(warnings.map((w) => w.element)).toEqual(['coda'])
+  })
+
+  test('reports a coda drawn in different colors', () => {
+    const coda = (color: string) =>
+      `<direction><direction-type><coda color="${color}"/></direction-type></direction>`
+    const { score: result, warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${coda('#FF0000')}${NOTE}</measure></part>` +
+          `<part id="P2"><measure number="1">${coda('#0000FF')}${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(result.globalMeasures[0]?.coda?.color).toBe('#FF0000')
+    expect(warnings.map((w) => w.element)).toEqual(['coda'])
   })
 
   // A bracket that closes with a hook and one that runs on are two different

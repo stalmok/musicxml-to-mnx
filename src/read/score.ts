@@ -13,6 +13,7 @@ import { GENERATED_ID_KINDS, GENERATED_ID_PATTERN, MNX_ID_PATTERN, renamedId } f
 import type {
   BarlineType,
   Clef,
+  Coda,
   Dynamic,
   Fermata,
   RepeatEnd,
@@ -59,7 +60,7 @@ import type { PartList } from './partList.js'
 import { readPrint } from './print.js'
 import { IdGenerator } from './idGenerator.js'
 import { mergeGlobalMeasures, sameFermata, sameNumbers, sameRepeatEnd } from './globalMeasures.js'
-import type { NamedSegno, ReadGlobalMeasure, DalSegno } from './globalMeasures.js'
+import type { NamedSegno, ReadGlobalMeasure, ReadJump } from './globalMeasures.js'
 import { settleJumps } from './jumps.js'
 import { MeasureRepeats } from './measureRepeats.js'
 import type { PartCollector } from './partCollector.js'
@@ -567,8 +568,9 @@ function readMeasure(
   // whether each one echoes a mark or stands alone.
   const soundTempos: SoundTempo[] = []
   const segnos: Stated<NamedSegno>[] = []
+  const codas: Stated<Coda>[] = []
   const fines: Stated<Fine>[] = []
-  const jumps: Stated<DalSegno>[] = []
+  const jumps: Stated<ReadJump>[] = []
   const multimeasureRests: Stated<number>[] = []
   const measureRepeats: MeasureRepeatReading[] = []
   let systemBreak = false
@@ -643,6 +645,7 @@ function readMeasure(
         dynamics.push(...reading.dynamics)
         tempos.push(...reading.tempos)
         segnos.push(...reading.segnos)
+        codas.push(...reading.codas)
         fines.push(...reading.fines)
         jumps.push(...reading.jumps)
         soundTempos.push(...reading.soundTempos)
@@ -694,9 +697,10 @@ function readMeasure(
         endingStart ??= reading.endingStart
         endingStop ??= reading.endingStop
         fermata ??= reading.fermata
-        // Collected with the segnos the directions read, so a sign stated
+        // Collected with the signs the directions read, so a sign stated
         // twice over is settled in one place for both forms.
         if (reading.segno) segnos.push(reading.segno)
+        if (reading.coda) codas.push(reading.coda)
         break
       }
 
@@ -714,7 +718,7 @@ function readMeasure(
       case 'sound': {
         const reading = readSound(reader, builder.position(), warnings, context)
         if (reading.fine) fines.push({ value: reading.fine, element: found })
-        if (reading.jump) jumps.push({ value: reading.jump, element: found })
+        jumps.push(...reading.jumps.map((jump) => ({ value: jump, element: found })))
         if (reading.tempo) soundTempos.push(reading.tempo)
         break
       }
@@ -802,8 +806,16 @@ function readMeasure(
       ending: undefined,
       fermata,
       segno: onePerMeasure(segnos, 'segno', undefined, warnings, context, drawnDifferently),
+      coda: onePerMeasure(codas, 'coda', undefined, warnings, context, drawnDifferently),
       fine: onePerMeasure(fines, 'fine', 'fine', warnings, context),
-      jump: onePerMeasure(jumps, 'jump', 'dalsegno', warnings, context),
+      jump: onePerMeasure(
+        jumps,
+        'jump',
+        (jump) => jump.sound,
+        warnings,
+        context,
+        (first, other) => first.sound !== other.sound,
+      ),
       multimeasureRest: oneMultimeasureRest(multimeasureRests, warnings, context),
       systemBreak,
       pageBreak,
@@ -822,7 +834,7 @@ function onePerMeasure<T extends { location: Fraction }>(
   marks: readonly Stated<T>[],
   name: string,
   // The attribute that states the mark. Undefined where the element states it.
-  attribute: string | undefined,
+  attribute: string | ((mark: T) => string) | undefined,
   warnings: WarningCollector,
   context: ReportContext,
   differs?: (first: T, other: T) => boolean,
@@ -840,7 +852,7 @@ function onePerMeasure<T extends { location: Fraction }>(
           'The first is the one converted.',
         context,
         element,
-        attribute,
+        typeof attribute === 'function' ? attribute(other) : attribute,
       )
     }
   }
@@ -848,12 +860,12 @@ function onePerMeasure<T extends { location: Fraction }>(
 }
 
 /**
- * Whether two segnos at the same point are different marks rather than the
- * same mark restated: drawn as different glyphs, or in different colors. The
- * name is not compared, because it is never written; it only matches a jump
- * to the sign it returns to.
+ * Whether two segnos or two codas at the same point are different marks
+ * rather than the same mark restated: drawn as different glyphs, or in
+ * different colors. A segno's name is not compared, because it is never
+ * written; it only matches a jump to the sign it returns to.
  */
-function drawnDifferently(a: Segno, b: Segno): boolean {
+function drawnDifferently(a: Segno | Coda, b: Segno | Coda): boolean {
   return a.glyph !== b.glyph || a.color !== b.color
 }
 

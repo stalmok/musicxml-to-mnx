@@ -26,6 +26,7 @@ import type {
   Measure,
   Note,
   NoteValue,
+  Coda,
   Fine,
   GroupingItem,
   Jump,
@@ -65,6 +66,7 @@ import type {
   MNXMarking,
   MNXEnding,
   MNXFermata,
+  MNXCoda,
   MNXFine,
   MNXFullMeasureRest,
   MNXGlobal,
@@ -438,6 +440,7 @@ function writeGlobalMeasure(measure: GlobalMeasure, id: string | undefined): MNX
     ...(measure.ending ? { ending: writeEnding(measure.ending) } : {}),
     ...(measure.fermata ? { fermata: writeFermata(measure.fermata) } : {}),
     ...(measure.segno ? { segno: writeSegno(measure.segno) } : {}),
+    ...(measure.coda ? { coda: writeCoda(measure.coda) } : {}),
     ...(measure.fine ? { fine: writeFine(measure.fine) } : {}),
     ...(measure.jump ? { jump: writeJump(measure.jump) } : {}),
   }
@@ -449,6 +452,14 @@ function writeSegno(segno: Segno): MNXSegno {
     location: writePosition(segno.location),
     ...(segno.glyph !== undefined ? { glyph: segno.glyph } : {}),
     ...(segno.color !== undefined ? { color: segno.color } : {}),
+  }
+}
+
+function writeCoda(coda: Coda): MNXCoda {
+  return {
+    location: writePosition(coda.location),
+    ...(coda.glyph !== undefined ? { glyph: coda.glyph } : {}),
+    ...(coda.color !== undefined ? { color: coda.color } : {}),
   }
 }
 

@@ -1,23 +1,31 @@
-// Settling each dal-segno jump once the whole score is known: which segno it
-// returns to, and whether it is a D.S. al Fine.
+// Settling each jump once the whole score is known: which segno a D.S. returns
+// to, and whether a D.C. or a D.S. is al Fine or al Coda.
 
-import type { GlobalMeasure } from '../model/score.js'
+import { compareFractions } from '../fraction.js'
+import type { GlobalMeasure, JumpType } from '../model/score.js'
 import type { WarningCollector } from './collector.js'
 import type { Stated } from './element.js'
-import type { DalSegno, ReadGlobalMeasure } from './globalMeasures.js'
+import type { ReadGlobalMeasure, ReadJump } from './globalMeasures.js'
+
+/** What stops a replay: a Fine, a to-coda jump, or neither. */
+type ReplayEnd = 'fine' | 'toCoda' | 'none'
+
+const SETTLED: Readonly<Record<'dacapo' | 'dalsegno', Record<ReplayEnd, JumpType>>> = {
+  dacapo: { fine: 'dcAlFine', toCoda: 'dcAlCoda', none: 'dc' },
+  dalsegno: { fine: 'dsAlFine', toCoda: 'dsAlCoda', none: 'segno' },
+}
 
 /**
- * A dal-segno jump returning to a Fine is a "D.S. al Fine": the player goes
- * back to the segno and stops at the Fine. MusicXML says the al-Fine only
- * through the Fine's presence, not on the <sound dalsegno> attribute, so each
- * jump is settled here once the whole score is known. MNX's jump-type enum
- * holds "dsAlFine" for this.
+ * A D.C. or D.S. that meets a Fine on the way back through is al Fine: the
+ * player stops there. One that meets a to-coda jump first is al Coda: the
+ * player goes on to the coda there. MusicXML says neither on the <sound
+ * dacapo> or <sound dalsegno> attribute, only through the marks the score
+ * holds, so each jump is settled here once the whole score is known.
  *
- * A Fine only stops a jump that returns to a sign standing before it: replay
- * from a segno written after the Fine never reaches it, and such a jump is a
- * D.S. al Coda or similar, which is not read yet. Marking one "dsAlFine"
- * would say the piece ends somewhere it does not, so a score with several
- * signs is matched sign by sign, by the name MusicXML gives them.
+ * A D.S. meets only the marks standing after the segno it returns to: replay
+ * from a segno written after a Fine never reaches it. Marking that jump
+ * "dsAlFine" would say the piece ends somewhere it does not, so a score with
+ * several signs is matched sign by sign, by the name MusicXML gives them.
  */
 export function settleJumps(
   measures: readonly ReadGlobalMeasure[],
@@ -26,13 +34,14 @@ export function settleJumps(
   const signs = measures.flatMap((measure, index) =>
     measure.segno ? [{ index, name: measure.segno.value.name }] : [],
   )
-  const reachesFine = ({ value, element }: Stated<DalSegno>, index: number): boolean => {
+  const typeOf = ({ value, element }: Stated<ReadJump>, index: number): JumpType => {
+    if (value.sound === 'tocoda') return 'toCoda'
+    if (value.sound === 'dacapo') return SETTLED.dacapo[replayEnd(measures, 0)]
     const { from, unresolved } = segnoReturnedTo(signs, value.target)
     if (unresolved !== undefined) {
       warnings.add('unresolved:segno', unresolved, { measure: index + 1 }, element, 'dalsegno')
     }
-    // A Fine at or after the sign is reached on the way back through.
-    return from !== undefined && measures.some((m, i) => i >= from && m.fine !== undefined)
+    return SETTLED.dalsegno[from === undefined ? 'none' : replayEnd(measures, from)]
   }
 
   return measures.map(
@@ -45,6 +54,7 @@ export function settleJumps(
         ending,
         fermata,
         segno,
+        coda,
         fine,
         jump,
         multimeasureRest,
@@ -64,14 +74,28 @@ export function settleJumps(
         glyph: segno.value.glyph,
         color: segno.value.color,
       },
+      coda: coda?.value,
       fine: fine?.value,
-      jump: jump && {
-        location: jump.value.location,
-        type: reachesFine(jump, index) ? 'dsAlFine' : 'segno',
-      },
+      jump: jump && { location: jump.value.location, type: typeOf(jump, index) },
       multimeasureRest: multimeasureRest?.value,
     }),
   )
+}
+
+/**
+ * The first Fine or to-coda jump a replay from the measure at `from` meets.
+ * A player going back meets them in score order. A Fine written at the same
+ * point as a to-coda jump ends the performance before the jump is taken.
+ */
+function replayEnd(measures: readonly ReadGlobalMeasure[], from: number): ReplayEnd {
+  for (const { fine, jump } of measures.slice(from)) {
+    const toCoda = jump?.value.sound === 'tocoda' ? jump.value : undefined
+    if (fine && (!toCoda || compareFractions(fine.value.location, toCoda.location) <= 0)) {
+      return 'fine'
+    }
+    if (toCoda) return 'toCoda'
+  }
+  return 'none'
 }
 
 /**
@@ -97,7 +121,7 @@ function segnoReturnedTo(
   if (signs.length === 1) return { from: signs[0]?.index, unresolved: undefined }
   const from = signs.find((sign) => sign.name === target)?.index
   if (from !== undefined) return { from, unresolved: undefined }
-  const plain = 'The jump is converted as a plain dal segno, not a D.S. al Fine.'
+  const plain = 'The jump is converted as a plain dal segno, not a D.S. al Fine or al Coda.'
   return {
     from,
     unresolved:

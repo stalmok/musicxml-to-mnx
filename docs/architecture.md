@@ -69,8 +69,8 @@ The model is MNX-shaped, not neutral. It follows the MNX structure closely:
   the measure it starts in.
 - `GraceType`, `JumpType`, and `Space` follow their MNX definitions.
   `Transposition` follows MNX closely.
-- A segno color is a `#` and six hex digits, with no alpha. It keeps the
-  source's letter case, which MNX allows because a segno color is a plain
+- A segno or coda color is a `#` and six hex digits, with no alpha. It keeps
+  the source's letter case, which MNX allows because the color is a plain
   string.
 
 The stage boundary is narrower than a neutral model. It means two things:
@@ -127,7 +127,7 @@ The reader modules are:
 | `directions.ts`               | Read dynamics, tempo marks, and navigation signs.                                            |
 | `globalMeasures.ts`           | Hold the score's measure while the parts are merged, and merge each part into it.            |
 | `measureRepeats.ts`           | Mark each measure a measure repeat sign starts a pattern on, once the part is read.          |
-| `jumps.ts`                    | Match each dal segno jump to its segno, and settle it as D.S. or D.S. al Fine.               |
+| `jumps.ts`                    | Match each D.S. to its segno, and settle each D.C. and D.S. as plain, al Fine or al Coda.    |
 | `barlines.ts`                 | Read barlines and repeats. Join each ending's start and stop across the part.                |
 | `partList.ts`                 | Read the part list: each part's names and instrument setup, and the part group edges.        |
 | `part-groups.ts`, `print.ts`  | Read part groups and layout breaks.                                                          |

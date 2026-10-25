@@ -808,6 +808,8 @@ export interface GlobalMeasure {
   readonly fermata: Fermata | undefined
   /** The segno sign, where the measure carries one. MNX draws one per measure. */
   readonly segno: Segno | undefined
+  /** The coda sign, where a to-coda jump goes. MNX draws one per measure. */
+  readonly coda: Coda | undefined
   /** A Fine, where a D.S. or D.C. repeat stops. One per measure. */
   readonly fine: Fine | undefined
   /** A jump such as D.S., taken once the measure is played. One per measure. */
@@ -836,14 +838,30 @@ export interface Segno {
   readonly color: string | undefined
 }
 
+/** A coda sign, the point a to-coda jump goes on to. */
+export interface Coda {
+  /** Where in the measure it is drawn, counting from the start. */
+  readonly location: Fraction
+  /** A specific SMuFL glyph, where the source names one. */
+  readonly glyph: string | undefined
+  /**
+   * The color it is drawn in, as six hex digits with no alpha and in the
+   * source's letter case, where the source states one.
+   */
+  readonly color: string | undefined
+}
+
 /** A Fine, where a D.S. or D.C. repeat stops. */
 export interface Fine {
   /** Where in the measure it is taken, counting from the start. */
   readonly location: Fraction
 }
 
-/** The kinds of jump the reader produces: a dal-segno jump, or a D.S. al Fine. */
-export type JumpType = 'dsAlFine' | 'segno'
+/**
+ * A D.C. or D.S., plain, al Fine or al Coda, or the to-coda jump an al Coda
+ * goes on from.
+ */
+export type JumpType = 'dc' | 'dcAlCoda' | 'dcAlFine' | 'dsAlCoda' | 'dsAlFine' | 'segno' | 'toCoda'
 
 /** A jump such as D.S., taken once the measure is played. */
 export interface Jump {

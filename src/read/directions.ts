@@ -19,14 +19,16 @@ import type { Fraction } from '../fraction.js'
 import type {
   AccentPrefix,
   AccentSuffix,
+  Coda,
   Dynamic,
   DynamicValue,
   Fine,
   OttavaAmount,
+  Segno,
   Tempo,
   WedgeType,
 } from '../model/score.js'
-import type { NamedSegno, DalSegno } from './globalMeasures.js'
+import type { NamedSegno, ReadJump } from './globalMeasures.js'
 import { writtenAt } from './collector.js'
 import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
@@ -52,8 +54,9 @@ export interface DirectionReading {
   dynamics: Dynamic[]
   tempos: Stated<Tempo>[]
   segnos: Stated<NamedSegno>[]
+  codas: Stated<Coda>[]
   fines: Stated<Fine>[]
-  jumps: Stated<DalSegno>[]
+  jumps: Stated<ReadJump>[]
   /** Each <sound tempo> the direction states. */
   soundTempos: SoundTempo[]
 }
@@ -61,7 +64,8 @@ export interface DirectionReading {
 /** The navigation a single <sound> element carries a home for. */
 export interface SoundReading {
   fine: Fine | undefined
-  jump: DalSegno | undefined
+  /** In the order the <sound> states them. MNX states one per measure. */
+  jumps: ReadJump[]
   /**
    * What the source calls the segno drawn in this direction. Not written: it
    * names the sign so a jump can be matched to the one it returns to.
@@ -225,6 +229,7 @@ export function readDirection(
     dynamics: [],
     tempos: [],
     segnos: [],
+    codas: [],
     fines: [],
     jumps: [],
     soundTempos: [],
@@ -339,16 +344,14 @@ export function readDirection(
           // Read plainly, being an empty element.
           directionType.children('segno')
           // A segno belongs to the score's measure, like a tempo, not to the
-          // part it is written in. The optional smufl attribute names a
-          // specific glyph; MNX carries it as the segno's glyph.
-          reading.segnos.push({
-            value: {
-              location: at,
-              glyph: attribute(found, 'smufl'),
-              color: readColor(found, warnings, context),
-            },
-            element: found,
-          })
+          // part it is written in.
+          reading.segnos.push({ value: readSign(found, at, warnings, context), element: found })
+          break
+        case 'coda':
+          // Read plainly, being an empty element.
+          directionType.children('coda')
+          // Belongs to the score's measure, like a segno.
+          reading.codas.push({ value: readSign(found, at, warnings, context), element: found })
           break
         default: {
           // Accounted for by the warning below, which names the whole of it.
@@ -370,14 +373,15 @@ export function readDirection(
     }
   }
 
-  // A segno and a tempo are drawn above the staff, and MNX states no side
-  // for either, so only one placed below loses its side. A dynamic beside it
-  // takes the placement and keeps it.
-  if (placement === 'below' && reading.segnos.length + reading.tempos.length > 0) {
+  // A segno, a coda and a tempo are drawn above the staff, and MNX states no
+  // side for any of them, so only one placed below loses its side. A dynamic
+  // beside it takes the placement and keeps it.
+  const sideless = reading.segnos.length + reading.codas.length + reading.tempos.length
+  if (placement === 'below' && sideless > 0) {
     warnings.add(
       'unrepresentable:attribute',
-      'This <direction> places a segno or a tempo below the staff, and MNX states no ' +
-        'side for either. The segno or tempo is converted without its placement.',
+      'This <direction> places a segno, a coda or a tempo below the staff, and MNX ' +
+        'states no side for any of them. The mark is converted without its placement.',
       context,
       element.element,
       'placement',
@@ -391,7 +395,9 @@ export function readDirection(
   for (const sound of element.blocks('sound')) {
     const soundReading = readSound(sound, at, warnings, context)
     if (soundReading.fine) reading.fines.push({ value: soundReading.fine, element: sound.element })
-    if (soundReading.jump) reading.jumps.push({ value: soundReading.jump, element: sound.element })
+    reading.jumps.push(
+      ...soundReading.jumps.map((jump) => ({ value: jump, element: sound.element })),
+    )
     if (soundReading.tempo) reading.soundTempos.push(soundReading.tempo)
     // The <sound> naming the sign sits in the same <direction> as the <segno>
     // it names, so the name is put on the signs this direction just read.
@@ -745,6 +751,24 @@ function closeWithWording(
 const FINAL_NOTE_DURATION = /^\+?(\d+(\.\d*)?|\.\d+)$/
 
 /**
+ * A segno or a coda drawn as a direction, at the point the direction sits. The
+ * optional smufl attribute names a specific glyph, which MNX carries as the
+ * sign's glyph.
+ */
+function readSign(
+  found: XmlElement,
+  at: Fraction,
+  warnings: WarningCollector,
+  context: ReportContext,
+): Segno & Coda {
+  return {
+    location: at,
+    glyph: attribute(found, 'smufl'),
+    color: readColor(found, warnings, context),
+  }
+}
+
+/**
  * A <sound> is mostly playback. Its tempo is playback, not notation: MNX's
  * tempo is always drawn, so a tempo written from a <sound> would draw a mark
  * the source did not. A <sound tempo> at the same point and tempo as a drawn
@@ -753,8 +777,9 @@ const FINAL_NOTE_DURATION = /^\+?(\d+(\.\d*)?|\.\d+)$/
  * for the caller to settle, because the mark can be written after the <sound>
  * or by another part. A velocity or a pan position has no home, and is reported as such.
  *
- * <sound fine> is a Fine and <sound dalsegno> a dal-segno jump. Both go on
- * the score's measure where the <sound> is written. The rest is reported.
+ * <sound fine> is a Fine, and <sound dalsegno>, <sound dacapo> and <sound
+ * tocoda> are jumps. Each goes on the score's measure where the <sound> is
+ * written. The rest is reported.
  */
 export function readSound(
   sound: ElementReader,
@@ -763,7 +788,7 @@ export function readSound(
   context: ReportContext,
 ): SoundReading {
   let fine: Fine | undefined
-  let jump: DalSegno | undefined
+  const jumps: ReadJump[] = []
   let segnoName: string | undefined
   let tempo: SoundTempo | undefined
   for (const name of Object.keys(sound.element.attributes)) {
@@ -799,7 +824,29 @@ export function readSound(
       // the name is not written; it is kept to find the sign the jump returns
       // to, which is what decides whether a Fine stops it.
       const target = attribute(sound.element, 'dalsegno')
-      jump = { location: position, ...(target ? { target } : {}) }
+      jumps.push({ sound: 'dalsegno', location: position, ...(target ? { target } : {}) })
+      continue
+    }
+    if (name === 'dacapo') {
+      // A yes-no attribute: "no" states that there is no jump.
+      const written = (attribute(sound.element, 'dacapo') ?? '').trim()
+      if (written === 'yes') jumps.push({ sound: 'dacapo', location: position })
+      if (written !== 'yes' && written !== 'no') {
+        warnings.add(
+          'unresolved:attribute-value',
+          `The "dacapo" of a <sound> is "${written}", which is neither "yes" nor "no".`,
+          context,
+          sound.element,
+          'dacapo',
+        )
+      }
+      continue
+    }
+    if (name === 'tocoda') {
+      // The attribute names the coda to go on to. MNX's jump has no target:
+      // a to-coda jump goes to the score's coda, so the name is not written.
+      attribute(sound.element, 'tocoda')
+      jumps.push({ sound: 'tocoda', location: position })
       continue
     }
     if (name === 'segno') {
@@ -819,7 +866,7 @@ export function readSound(
       name,
     )
   }
-  return { fine, jump, segnoName, tempo }
+  return { fine, jumps, segnoName, tempo }
 }
 
 /**

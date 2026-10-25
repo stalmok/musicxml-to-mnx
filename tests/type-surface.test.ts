@@ -1,10 +1,9 @@
 // Covers the parts of src/types/mnx.ts that the writer does not produce yet: a
 // tie targetType other than crossVoice, a relative dynamic, the useBeams and
 // useLyricExtenders support flags, the far ends of the note-value scale, a
-// coda, the jumps other than dal segno and D.S. al Fine, a caesura over a
-// barline, a slide into or out of a note, and a lyric extender line. Each fixture is typed as
-// an MNXDocument, so TypeScript holds it to the declared shape, and
-// schemaErrors holds that shape to the schema.
+// caesura over a barline, a slide into or out of a note, and a lyric extender
+// line. Each fixture is typed as an MNXDocument, so TypeScript holds it to the
+// declared shape, and schemaErrors holds that shape to the schema.
 
 import { describe, expect, test } from 'vitest'
 import { schemaErrors } from './support/schema.js'
@@ -13,7 +12,6 @@ import type {
   MNXDynamic,
   MNXEvent,
   MNXGlobalMeasure,
-  MNXJumpType,
   MNXLyricLine,
   MNXNoteMarkings,
   MNXNoteValueBase,
@@ -156,20 +154,6 @@ describe('the type surface the writer does not yet emit is still legal MNX', () 
 
   test.each(['useBeams', 'useLyricExtenders'] as const)('the %s support flag', (flag) => {
     expect(schemaErrors(documentWith({ support: { [flag]: true } }))).toEqual([])
-  })
-
-  test.each<MNXJumpType>(['dc', 'dcAlCoda', 'dcAlFine', 'dsAlCoda', 'dsAlFine', 'segno', 'toCoda'])(
-    'a jump of type %s',
-    (type) => {
-      expect(schemaErrors(documentWith({ measure: { jump: { location: start, type } } }))).toEqual(
-        [],
-      )
-    },
-  )
-
-  test('a coda sign', () => {
-    const measure = { coda: { location: start, glyph: 'coda', color: '#ff0000' } }
-    expect(schemaErrors(documentWith({ measure }))).toEqual([])
   })
 
   test('a caesura over the barline', () => {

@@ -219,6 +219,11 @@ export const NO_HOME_ATTRIBUTES: ReadonlySet<string> = new Set([
   // sign it goes back to. The schema's segno states a location, a colour and
   // a glyph, and has no label.
   'sound segno',
+  // What the source calls the coda drawn beside it, on a <sound> or on the
+  // <barline> the sign sits on. The schema's coda states a location, a colour
+  // and a glyph, and has no label.
+  'sound coda',
+  'barline coda',
   // Whether a tablature staff draws its fret numbers. The schema has no
   // tablature, which is why <staff-tuning>, <capo>, <fret> and
   // <string> are on the element list above.

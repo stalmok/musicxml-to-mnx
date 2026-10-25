@@ -54,6 +54,7 @@ const NO_BARLINE = {
   ending: undefined,
   fermata: undefined,
   segno: undefined,
+  coda: undefined,
   fine: undefined,
   jump: undefined,
   multimeasureRest: undefined,
@@ -216,7 +217,7 @@ describe('global measures', () => {
     })
   })
 
-  test('writes the number, barline, repeats, fermata and segno the measure states', () => {
+  test('writes the number, barline, repeats, fermata, segno and coda the measure states', () => {
     const score = scoreOf(measureOf(WHOLE_C), [
       {
         key: undefined,
@@ -229,6 +230,7 @@ describe('global measures', () => {
         repeatEnd: { times: 3 },
         fermata: { symbol: undefined, pointing: undefined, placement: 'above' },
         segno: { location: fraction(0, 1), glyph: 'segnoSerpent1', color: undefined },
+        coda: { location: fraction(1, 2), glyph: undefined, color: '#00FF00' },
       },
     ])
 
@@ -239,6 +241,7 @@ describe('global measures', () => {
       repeatEnd: { times: 3 },
       fermata: { placement: 'above' },
       segno: { location: { fraction: [0, 1] }, glyph: 'segnoSerpent1' },
+      coda: { location: { fraction: [1, 2] }, color: '#00FF00' },
     })
   })
 

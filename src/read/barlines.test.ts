@@ -669,19 +669,54 @@ describe('a segno on the barline', () => {
   })
 })
 
-// MNX states a coda sign, which the reader does not read yet.
 describe('a coda on the barline', () => {
-  test('reports the sign and the name it gives the coda as not converted yet', () => {
+  test('puts a coda on the opening barline at the start of the measure', () => {
+    const { globals, warnings } = read(left('<coda/>') + NOTE)
+
+    expect(globals[0]?.coda).toEqual({ location: { num: 0, den: 1 } })
+    expect(warnings).toEqual([])
+  })
+
+  test('puts a coda on the closing barline at the end of the measure', () => {
+    const { globals, warnings } = read(NOTE + right('<coda smufl="codaSquare" color="#FF0000"/>'))
+
+    expect(globals[0]?.coda).toEqual({
+      location: { num: 1, den: 4 },
+      glyph: 'codaSquare',
+      color: '#FF0000',
+    })
+    expect(warnings).toEqual([])
+  })
+
+  // The coda attribute names the sign for playback. MNX's coda has no label.
+  test('reports the name the barline gives the coda as a format limit', () => {
+    const { globals, warnings } = read(`<barline location="left" coda="c"><coda/></barline>` + NOTE)
+
+    expect(globals[0]?.coda).toEqual({ location: { num: 0, den: 1 } })
+    expect(warnings.map((w) => [w.code, w.element, w.attribute])).toEqual([
+      ['unrepresentable:attribute', 'barline', 'coda'],
+    ])
+  })
+
+  test('reports a second coda where a direction already drew one', () => {
     const { globals, warnings } = read(
-      left('<coda/>') + NOTE,
-      `<barline location="left" coda="c"/>` + NOTE,
+      '<direction><direction-type><coda/></direction-type></direction>' +
+        NOTE +
+        '\n' +
+        right('<coda/>'),
     )
 
-    expect(globals[0]?.segno).toBeUndefined()
-    expect(warnings.map((w) => [w.code, w.element, w.attribute, w.context.measure])).toEqual([
-      ['unsupported:element', 'coda', undefined, 1],
-      ['unsupported:attribute', 'barline', 'coda', 2],
-    ])
+    expect(globals[0]?.coda).toEqual({ location: { num: 0, den: 1 } })
+    expect(warnings.map((w) => w.element)).toEqual(['coda'])
+    expect(warnings[0]?.message).toContain('more than one coda')
+  })
+
+  // The one warning about the barline's position covers what it holds.
+  test('reports a coda on a barline partway through the measure with the barline', () => {
+    const { globals, warnings } = read(NOTE + '<barline location="middle"><coda/></barline>' + NOTE)
+
+    expect(globals[0]?.coda).toBeUndefined()
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:barline'])
   })
 })
 

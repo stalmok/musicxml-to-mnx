@@ -936,6 +936,8 @@ const ATTRIBUTE_CONCEPTS: Readonly<Record<string, Concept>> = {
   'lyric print-object': { words: HIDING, homes: ['event-lyric-line', 'lyrics'] },
   'sound pizzicato': { words: ['pizzicato', 'pluck', 'plucked'] },
   'sound segno': { words: ['name', 'label'], homes: ['segno'] },
+  'sound coda': { words: ['name', 'label'], homes: ['coda'] },
+  'barline coda': { words: ['name', 'label'], homes: ['coda'] },
   // The same fact <staff-tuning>, <capo> and <fret> rest on: no tablature.
   'staff-details show-frets': { words: ['tablature', 'tuning', 'fret', 'frets', 'capo'] },
   'caesura placement': { words: ['placement', 'side'], homes: ['caesura'] },
@@ -1088,7 +1090,16 @@ function heldOnlyAt(definition: string, place: string): boolean {
 }
 
 /** The marks MNX states once on a global measure. */
-const GLOBAL_MARKS = ['ending', 'fermata', 'fine', 'jump', 'repeatEnd', 'repeatStart', 'segno']
+const GLOBAL_MARKS = [
+  'coda',
+  'ending',
+  'fermata',
+  'fine',
+  'jump',
+  'repeatEnd',
+  'repeatStart',
+  'segno',
+]
 
 /**
  * The schema fact each format limit rests on, as a test of the schema that
@@ -1253,8 +1264,8 @@ const CALL_SITE_LIMITS: Readonly<
 > = {
   'src/read/directions.ts': [
     {
-      says: 'a segno or a tempo states no side',
-      holds: () => !has('segno', 'placement') && !has('tempo', 'placement'),
+      says: 'a segno, a coda or a tempo states no side',
+      holds: () => ['segno', 'coda', 'tempo'].every((mark) => !has(mark, 'placement')),
     },
   ],
   'src/read/marks.ts': [
@@ -1491,10 +1502,6 @@ const NARROWER: Readonly<Record<string, { missing: readonly string[]; why: strin
   'DynamicBase.placement': {
     missing: ['auto', 'between'],
     why: `${UNSTATED_IS_UNDEFINED} A dynamic written between two staves of one part is not read.`,
-  },
-  JumpType: {
-    missing: ['dc', 'dcAlCoda', 'dcAlFine', 'dsAlCoda', 'toCoda'],
-    why: 'A D.C. and a coda are not read yet, so the reader produces only a dal segno and a D.S. al Fine.',
   },
   'PartGroup.barlineStyle': {
     missing: ['instrument'],
