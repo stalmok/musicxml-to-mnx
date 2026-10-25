@@ -968,6 +968,25 @@ describe('a beam crossing the barline', () => {
     expect(trees[1]).toEqual([{ events: ['ev2'], beams: [], direction: 'left' }])
   })
 
+  test('carries no deeper beam on through an inner hook at the barline', () => {
+    const thirtySecond = (step: string, inner: string) =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>1</duration>` +
+      `<type>32nd</type>${inner}</note>`
+    const { trees } = readMeasures(
+      thirtySecond(
+        'B',
+        '<beam number="1">begin</beam><beam number="2">begin</beam><beam number="3">begin</beam>',
+      ),
+      thirtySecond(
+        'C',
+        '<beam number="1">continue</beam><beam number="2">backward hook</beam>' +
+          '<beam number="3">end</beam>',
+      ) + thirtySecond('D', '<beam number="1">end</beam>'),
+    )
+
+    expect(trees[0]?.[0]?.beams).toContainEqual({ events: ['ev2'], beams: [], direction: 'left' })
+  })
+
   test('says nothing of a beam another voice left open', () => {
     const voiced = (voice: string, note: string) =>
       note.replace('<type>', `<voice>${voice}</voice><type>`)
