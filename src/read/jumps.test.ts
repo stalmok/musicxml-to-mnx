@@ -87,6 +87,50 @@ describe('a D.S.', () => {
 
     expect(types).toEqual(['toCoda', undefined, 'segno', undefined])
   })
+
+  // Replay starts at the segno, not at the start of its measure.
+  test('ignores a to-coda jump earlier in the measure than the segno', () => {
+    const { types } = jumps(NOTE + TO_CODA + NOTE + SEGNO + NOTE, NOTE + DAL_SEGNO, CODA + NOTE)
+
+    expect(types).toEqual(['toCoda', 'segno', undefined])
+  })
+
+  test('ignores a Fine earlier in the measure than a segno on its closing barline', () => {
+    const { types } = jumps(
+      NOTE + FINE + NOTE + '<barline location="right"><segno/></barline>',
+      NOTE + DAL_SEGNO,
+    )
+
+    expect(types).toEqual([undefined, 'segno'])
+  })
+
+  test('takes a Fine at the same point as the segno', () => {
+    expect(jumps(NOTE + SEGNO + FINE + NOTE, NOTE + DAL_SEGNO).types).toEqual([
+      undefined,
+      'dsAlFine',
+    ])
+  })
+})
+
+// A jump is taken once, so a replay runs on past the jump that started it.
+// MusicXML states no al Fine on the jump: a Fine ends the piece once a jump
+// has been taken, wherever it stands.
+describe('a mark after the jump', () => {
+  test('makes a D.S. al Fine of a Fine after the jump', () => {
+    expect(jumps(SEGNO + NOTE, NOTE + DAL_SEGNO, NOTE + FINE).types).toEqual([
+      undefined,
+      'dsAlFine',
+      undefined,
+    ])
+  })
+
+  test('makes a D.C. al Fine of a Fine in a later section', () => {
+    expect(jumps(NOTE + DA_CAPO, SEGNO + NOTE + FINE, NOTE + DAL_SEGNO).types).toEqual([
+      'dcAlFine',
+      undefined,
+      'dsAlFine',
+    ])
+  })
 })
 
 // A player going back meets the marks in order, and the first one met

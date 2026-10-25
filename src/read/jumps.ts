@@ -1,11 +1,20 @@
 // Settling each jump once the whole score is known: which segno a D.S. returns
 // to, and whether a D.C. or a D.S. is al Fine or al Coda.
 
-import { compareFractions } from '../fraction.js'
+import { compareFractions, fraction } from '../fraction.js'
+import type { Fraction } from '../fraction.js'
 import type { GlobalMeasure, JumpType } from '../model/score.js'
 import type { WarningCollector } from './collector.js'
 import type { Stated } from './element.js'
 import type { ReadGlobalMeasure, ReadJump } from './globalMeasures.js'
+
+/** A point in the score: a measure index and a location in that measure. */
+interface Point {
+  readonly index: number
+  readonly location: Fraction
+}
+
+const START: Point = { index: 0, location: fraction(0) }
 
 /** What stops a replay: a Fine, a to-coda jump, or neither. */
 type ReplayEnd = 'fine' | 'toCoda' | 'none'
@@ -23,7 +32,10 @@ const SETTLED: Readonly<Record<'dacapo' | 'dalsegno', Record<ReplayEnd, JumpType
  * holds, so each jump is settled here once the whole score is known.
  *
  * A D.S. meets only the marks standing after the segno it returns to: replay
- * from a segno written after a Fine never reaches it. Marking that jump
+ * from a segno written after a Fine never reaches it. A jump is taken once,
+ * so the replay runs on past the jump that started it: MusicXML states no al
+ * Fine on the jump, and a Fine ends the piece once a jump has been taken,
+ * wherever it stands. Marking that jump
  * "dsAlFine" would say the piece ends somewhere it does not, so a score with
  * several signs is matched sign by sign, by the name MusicXML gives them.
  */
@@ -32,7 +44,9 @@ export function settleJumps(
   warnings: WarningCollector,
 ): GlobalMeasure[] {
   const signs = measures.flatMap((measure, index) =>
-    measure.segno ? [{ index, name: measure.segno.value.name }] : [],
+    measure.segno
+      ? [{ index, location: measure.segno.value.location, name: measure.segno.value.name }]
+      : [],
   )
   const drawsCoda = measures.some((measure) => measure.coda !== undefined)
   const typeOf = ({ value, element }: Stated<ReadJump>, index: number): JumpType => {
@@ -49,7 +63,7 @@ export function settleJumps(
       }
       return 'toCoda'
     }
-    if (value.sound === 'dacapo') return SETTLED.dacapo[replayEnd(measures, 0)]
+    if (value.sound === 'dacapo') return SETTLED.dacapo[replayEnd(measures, START)]
     const { from, unresolved } = segnoReturnedTo(signs, value.target)
     if (unresolved !== undefined) {
       warnings.add('unresolved:segno', unresolved, { measure: index + 1 }, element, 'dalsegno')
@@ -96,13 +110,19 @@ export function settleJumps(
 }
 
 /**
- * The first Fine or to-coda jump a replay from the measure at `from` meets.
- * A player going back meets them in score order. A Fine written at the same
- * point as a to-coda jump ends the performance before the jump is taken.
+ * The first Fine or to-coda jump a replay from `from` meets. A player going
+ * back meets them in score order, starting at the sign itself, so a mark
+ * earlier in the sign's measure is not met. A Fine written at the same point
+ * as a to-coda jump ends the performance before the jump is taken.
  */
-function replayEnd(measures: readonly ReadGlobalMeasure[], from: number): ReplayEnd {
-  for (const { fine, jump } of measures.slice(from)) {
-    const toCoda = jump?.value.sound === 'tocoda' ? jump.value : undefined
+function replayEnd(measures: readonly ReadGlobalMeasure[], from: Point): ReplayEnd {
+  const met = (index: number, location: Fraction): boolean =>
+    index > from.index || compareFractions(location, from.location) >= 0
+  for (const [offset, { fine: written, jump }] of measures.slice(from.index).entries()) {
+    const index = from.index + offset
+    const fine = written && met(index, written.value.location) ? written : undefined
+    const toCoda =
+      jump?.value.sound === 'tocoda' && met(index, jump.value.location) ? jump.value : undefined
     if (fine && (!toCoda || compareFractions(fine.value.location, toCoda.location) <= 0)) {
       return 'fine'
     }
@@ -112,7 +132,7 @@ function replayEnd(measures: readonly ReadGlobalMeasure[], from: number): Replay
 }
 
 /**
- * Where a jump goes back to, as a measure index, and why it cannot be told
+ * Where a jump goes back to, and why it cannot be told
  * where the source does not settle it. A score drawing one sign settles it
  * whatever either is called, since there is nothing to confuse it with. A
  * score drawing none is taken from its start, which is where a player with no
@@ -120,20 +140,20 @@ function replayEnd(measures: readonly ReadGlobalMeasure[], from: number): Replay
  * sign leaves the jump alone rather than guessing between them.
  */
 function segnoReturnedTo(
-  signs: readonly { index: number; name: string | undefined }[],
+  signs: readonly (Point & { name: string | undefined })[],
   target: string | undefined,
-): { from: number | undefined; unresolved: string | undefined } {
+): { from: Point | undefined; unresolved: string | undefined } {
   if (signs.length === 0) {
     return {
-      from: 0,
+      from: START,
       unresolved:
         'This dal segno jump returns to a segno, but the score draws none. The jump is ' +
         'converted with no segno to return to, and is settled as if it returned to the ' +
         'start of the score.',
     }
   }
-  if (signs.length === 1) return { from: signs[0]?.index, unresolved: undefined }
-  const from = signs.find((sign) => sign.name === target)?.index
+  if (signs.length === 1) return { from: signs[0], unresolved: undefined }
+  const from = signs.find((sign) => sign.name === target)
   if (from !== undefined) return { from, unresolved: undefined }
   const plain = 'The jump is converted as a plain dal segno, not a D.S. al Fine or al Coda.'
   return {
