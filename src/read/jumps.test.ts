@@ -121,6 +121,35 @@ describe('a D.S.', () => {
   })
 })
 
+// MNX states a jump to a segno only in a score with one segno. A player with
+// no segno to find goes back to the start, which MNX states as a D.C.
+describe('a D.S. in a score that draws no segno', () => {
+  test('is a plain D.C. where the replay meets no Fine and no to-coda jump', () => {
+    const { types, warnings } = jumps(NOTE, NOTE + DAL_SEGNO)
+
+    expect(types).toEqual([undefined, 'dc'])
+    expect(warnings.map((w) => w.code)).toEqual(['unresolved:segno'])
+  })
+
+  test('is a D.C. al Coda where the replay meets a to-coda jump', () => {
+    expect(jumps(NOTE + TO_CODA, NOTE + DAL_SEGNO, CODA + NOTE).types).toEqual([
+      'toCoda',
+      'dcAlCoda',
+      undefined,
+    ])
+  })
+
+  test('is written as a D.C. the spec schema accepts', () => {
+    const { mnx } = convertValid(score(NOTE + FINE, NOTE + DAL_SEGNO))
+
+    expect(mnx.global.measures.map((measure) => measure.jump?.type)).toEqual([
+      undefined,
+      'dcAlFine',
+    ])
+    expect(mnx.global.measures.some((measure) => measure.segno !== undefined)).toBe(false)
+  })
+})
+
 // A jump is taken once, so a replay runs on past the jump that started it.
 // MusicXML states no al Fine on the jump: a Fine ends the piece once a jump
 // has been taken, wherever it stands.

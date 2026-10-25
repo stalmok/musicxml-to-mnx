@@ -68,7 +68,10 @@ export function settleJumps(
     if (unresolved !== undefined) {
       warnings.add('unresolved:segno', unresolved, { measure: index + 1 }, element, 'dalsegno')
     }
-    return SETTLED.dalsegno[from === undefined ? 'none' : replayEnd(measures, from)]
+    // MNX states a jump to a segno only in a score with one, so a D.S. with
+    // no segno to find is written as the D.C. a player takes.
+    const settled = signs.length === 0 ? SETTLED.dacapo : SETTLED.dalsegno
+    return settled[from === undefined ? 'none' : replayEnd(measures, from)]
   }
 
   return measures.map(
@@ -148,8 +151,7 @@ function segnoReturnedTo(
       from: START,
       unresolved:
         'This dal segno jump returns to a segno, but the score draws none. The jump is ' +
-        'converted with no segno to return to, and is settled as if it returned to the ' +
-        'start of the score.',
+        'converted as a da capo jump, which returns to the start of the score.',
     }
   }
   if (signs.length === 1) return { from: signs[0], unresolved: undefined }

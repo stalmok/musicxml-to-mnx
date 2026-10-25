@@ -247,9 +247,9 @@ export const WARNING_CODES = Object.freeze([
   'unresolved:instrument-id',
   // A dal segno jump whose segno the score does not draw: the score draws
   // none, or draws several and the jump names none of them. With none, the
-  // jump is converted with no segno to return to, and is settled as if it
-  // returned to the start of the score. With several, it is converted as a
-  // plain dal segno, not a D.S. al Fine or al Coda.
+  // jump is converted as a da capo jump, which returns to the start of the
+  // score. With several, it is converted as a plain dal segno, not a D.S. al
+  // Fine or al Coda.
   'unresolved:segno',
   // A to-coda jump in a score that draws no coda. The jump is converted with
   // no coda to go to.

@@ -2138,7 +2138,9 @@ describe('sound navigation', () => {
   // Without a Fine anywhere in the score, a dalsegno jump is a plain dal-segno,
   // not a D.S. al Fine.
   test('leaves a jump a plain segno when the score carries no Fine', () => {
-    const { global } = read(inMeasure(note('C') + '<sound dalsegno="segno"/>'))
+    const { global } = read(
+      inMeasure(direction('<segno/>') + note('C') + '<sound dalsegno="segno"/>'),
+    )
 
     expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'segno' })
   })
@@ -2194,20 +2196,20 @@ describe('sound navigation', () => {
   })
 
   // With no sign to go back to, a player takes the jump from the start, so a
-  // Fine anywhere stops it. The source still names a sign it never draws.
-  test('reports a jump in a score that draws no segno', () => {
+  // Fine anywhere stops it. MNX states a jump to a segno only in a score with
+  // one segno, so the jump is written as the D.C. a player takes.
+  test('reports a jump in a score that draws no segno, and writes it as a D.C.', () => {
     const { global, warnings } = read(
       inMeasure(note('C') + '\n<sound fine="yes" dalsegno="segno"/>'),
     )
 
-    expect(global?.jump?.type).toBe('dsAlFine')
+    expect(global?.jump?.type).toBe('dcAlFine')
     expect(warnings).toEqual([
       {
         code: 'unresolved:segno',
         message:
           'This dal segno jump returns to a segno, but the score draws none. The jump ' +
-          'is converted with no segno to return to, and is settled as if it returned to ' +
-          'the start of the score.',
+          'is converted as a da capo jump, which returns to the start of the score.',
         element: 'sound',
         attribute: 'dalsegno',
         context: { measure: 1, line: 2 },
@@ -2293,13 +2295,17 @@ describe('sound navigation', () => {
   })
 
   test('writes a jump the spec schema accepts', () => {
-    const { mnx } = convertValid(inMeasure('<sound dalsegno="segno"/>' + note('C')))
+    const { mnx } = convertValid(
+      inMeasure(direction('<segno/>') + '<sound dalsegno="segno"/>' + note('C')),
+    )
 
     expect(mnx.global.measures[0]?.jump).toEqual({ location: { fraction: [0, 1] }, type: 'segno' })
   })
 
   test('writes a dsAlFine jump the spec schema accepts', () => {
-    const { mnx } = convertValid(inMeasure('<sound fine="yes" dalsegno="segno"/>' + note('C')))
+    const { mnx } = convertValid(
+      inMeasure(direction('<segno/>') + '<sound fine="yes" dalsegno="segno"/>' + note('C')),
+    )
 
     expect(mnx.global.measures[0]?.jump).toEqual({
       location: { fraction: [0, 1] },
