@@ -204,22 +204,36 @@ describe('a Fine and a to-coda jump in one score', () => {
 })
 
 describe('a to-coda jump', () => {
-  // The jump says where it goes only by the coda the score draws.
-  test('reports a to-coda jump in a score that draws no coda', () => {
+  // The jump says where it goes only by the coda the score draws, and MNX
+  // states a to-coda jump only in a score with one coda. Without the jump, the
+  // D.C. plays through to the end.
+  test('drops and reports a to-coda jump in a score that draws no coda', () => {
     const { types, warnings } = jumps(NOTE + '\n' + TO_CODA, NOTE + DA_CAPO)
 
-    expect(types).toEqual(['toCoda', 'dcAlCoda'])
+    expect(types).toEqual([undefined, 'dc'])
     expect(warnings).toEqual([
       {
         code: 'unresolved:coda',
         message:
           'This to-coda jump goes on to a coda, but the score draws none. The jump is ' +
-          'converted with no coda to go to.',
+          'not converted.',
         element: 'sound',
         attribute: 'tocoda',
         context: { measure: 1, line: 2 },
       },
     ])
+  })
+
+  test('leaves a D.S. that meets only a dropped to-coda jump al Fine', () => {
+    const { types } = jumps(SEGNO + NOTE + TO_CODA, NOTE + FINE, NOTE + DAL_SEGNO)
+
+    expect(types).toEqual([undefined, undefined, 'dsAlFine'])
+  })
+
+  test('writes no to-coda jump where the score draws no coda', () => {
+    const { mnx } = convertValid(score(NOTE + TO_CODA, NOTE + DA_CAPO))
+
+    expect(mnx.global.measures.map((measure) => measure.jump?.type)).toEqual([undefined, 'dc'])
   })
 
   test('says nothing where a coda is drawn on a barline', () => {

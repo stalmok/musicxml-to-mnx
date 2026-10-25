@@ -49,21 +49,24 @@ export function settleJumps(
       : [],
   )
   const drawsCoda = measures.some((measure) => measure.coda !== undefined)
-  const typeOf = ({ value, element }: Stated<ReadJump>, index: number): JumpType => {
-    if (value.sound === 'tocoda') {
-      if (!drawsCoda) {
-        warnings.add(
-          'unresolved:coda',
-          'This to-coda jump goes on to a coda, but the score draws none. The jump is ' +
-            'converted with no coda to go to.',
-          { measure: index + 1 },
-          element,
-          'tocoda',
-        )
-      }
-      return 'toCoda'
-    }
-    if (value.sound === 'dacapo') return SETTLED.dacapo[replayEnd(measures, START)]
+  // MNX states a to-coda jump only in a score with one coda, so one with no
+  // coda to go to is not written, and no D.C. or D.S. is al Coda by it.
+  const toCodas = measures.map(({ jump }, index) => {
+    if (jump?.value.sound !== 'tocoda') return undefined
+    if (drawsCoda) return jump.value
+    warnings.add(
+      'unresolved:coda',
+      'This to-coda jump goes on to a coda, but the score draws none. The jump is ' +
+        'not converted.',
+      { measure: index + 1 },
+      jump.element,
+      'tocoda',
+    )
+    return undefined
+  })
+  const typeOf = ({ value, element }: Stated<ReadJump>, index: number): JumpType | undefined => {
+    if (value.sound === 'tocoda') return toCodas[index] && 'toCoda'
+    if (value.sound === 'dacapo') return SETTLED.dacapo[replayEnd(measures, toCodas, START)]
     const { from, unresolved } = segnoReturnedTo(signs, value.target)
     if (unresolved !== undefined) {
       warnings.add('unresolved:segno', unresolved, { measure: index + 1 }, element, 'dalsegno')
@@ -71,7 +74,7 @@ export function settleJumps(
     // MNX states a jump to a segno only in a score with one, so a D.S. with
     // no segno to find is written as the D.C. a player takes.
     const settled = signs.length === 0 ? SETTLED.dacapo : SETTLED.dalsegno
-    return settled[from === undefined ? 'none' : replayEnd(measures, from)]
+    return settled[from === undefined ? 'none' : replayEnd(measures, toCodas, from)]
   }
 
   return measures.map(
@@ -106,26 +109,35 @@ export function settleJumps(
       },
       coda: coda?.value,
       fine: fine?.value,
-      jump: jump && { location: jump.value.location, type: typeOf(jump, index) },
+      jump: jump && written(jump, typeOf(jump, index)),
       multimeasureRest: multimeasureRest?.value,
     }),
   )
+}
+
+function written(jump: Stated<ReadJump>, type: JumpType | undefined): GlobalMeasure['jump'] {
+  return type && { location: jump.value.location, type }
 }
 
 /**
  * The first Fine or to-coda jump a replay from `from` meets. A player going
  * back meets them in score order, starting at the sign itself, so a mark
  * earlier in the sign's measure is not met. A Fine written at the same point
- * as a to-coda jump ends the performance before the jump is taken.
+ * as a to-coda jump ends the performance before the jump is taken. `toCodas`
+ * holds the to-coda jump written on each measure.
  */
-function replayEnd(measures: readonly ReadGlobalMeasure[], from: Point): ReplayEnd {
+function replayEnd(
+  measures: readonly ReadGlobalMeasure[],
+  toCodas: readonly (ReadJump | undefined)[],
+  from: Point,
+): ReplayEnd {
   const met = (index: number, location: Fraction): boolean =>
     index > from.index || compareFractions(location, from.location) >= 0
-  for (const [offset, { fine: written, jump }] of measures.slice(from.index).entries()) {
+  for (const [offset, { fine: written }] of measures.slice(from.index).entries()) {
     const index = from.index + offset
     const fine = written && met(index, written.value.location) ? written : undefined
-    const toCoda =
-      jump?.value.sound === 'tocoda' && met(index, jump.value.location) ? jump.value : undefined
+    const jump = toCodas[index]
+    const toCoda = jump && met(index, jump.location) ? jump : undefined
     if (fine && (!toCoda || compareFractions(fine.value.location, toCoda.location) <= 0)) {
       return 'fine'
     }

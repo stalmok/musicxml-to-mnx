@@ -251,8 +251,7 @@ export const WARNING_CODES = Object.freeze([
   // score. With several, it is converted as a plain dal segno, not a D.S. al
   // Fine or al Coda.
   'unresolved:segno',
-  // A to-coda jump in a score that draws no coda. The jump is converted with
-  // no coda to go to.
+  // A to-coda jump in a score that draws no coda. The jump is not converted.
   'unresolved:coda',
   // An attribute whose value is not one MusicXML defines for it, so what the
   // source meant by it cannot be read. The attribute is not converted, nor
