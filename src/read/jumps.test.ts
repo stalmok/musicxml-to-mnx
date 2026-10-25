@@ -104,6 +104,15 @@ describe('a D.S.', () => {
     expect(types).toEqual([undefined, 'segno'])
   })
 
+  // Only the segno's own measure is cut at the segno.
+  test('takes a Fine in a later measure at an earlier point than the segno', () => {
+    expect(jumps(NOTE + NOTE + SEGNO + NOTE, NOTE + FINE, NOTE + DAL_SEGNO).types).toEqual([
+      undefined,
+      undefined,
+      'dsAlFine',
+    ])
+  })
+
   test('takes a Fine at the same point as the segno', () => {
     expect(jumps(NOTE + SEGNO + FINE + NOTE, NOTE + DAL_SEGNO).types).toEqual([
       undefined,

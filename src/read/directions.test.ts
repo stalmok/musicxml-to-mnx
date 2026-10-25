@@ -1985,6 +1985,29 @@ describe('sound navigation', () => {
     expect(warnings).toEqual([])
   })
 
+  // A yes-no value is a token, which XML allows spaces around.
+  test('reads a <sound dacapo> written with spaces around "yes"', () => {
+    const { global, warnings } = read(inMeasure(note('C') + '<sound dacapo=" yes "/>'))
+
+    expect(global?.jump?.type).toBe('dc')
+    expect(warnings).toEqual([])
+  })
+
+  // The same jump stated twice at one point is one mark.
+  test('says nothing of the same jump stated twice at one point', () => {
+    const { global, warnings } = read(
+      inMeasure(
+        note('C') +
+          '<sound dacapo="yes"/>' +
+          '<direction><direction-type><words>D.C.</words></direction-type>' +
+          '<sound dacapo="yes"/></direction>',
+      ),
+    )
+
+    expect(global?.jump?.type).toBe('dc')
+    expect(warnings.map((w) => w.element)).toEqual(['words'])
+  })
+
   test('reports a <sound dacapo> whose value is neither "yes" nor "no"', () => {
     const { global, warnings } = read(inMeasure(note('C') + '<sound dacapo="twice"/>'))
 
@@ -2030,6 +2053,19 @@ describe('sound navigation', () => {
     expect(score.globalMeasures[0]?.coda).toBeUndefined()
     expect(score.globalMeasures[1]?.coda).toEqual({ location: { num: 0, den: 1 } })
     expect(warnings.list().map((w) => w.element)).toEqual(['words'])
+  })
+
+  // Only a to-coda jump draws a coda glyph as part of itself.
+  test('keeps a coda drawn in the same direction as a D.C.', () => {
+    const { global } = read(
+      inMeasure(
+        note('C') +
+          '<direction><direction-type><coda/></direction-type><sound dacapo="yes"/>' +
+          '</direction>',
+      ),
+    )
+
+    expect(global?.coda).toEqual({ location: { num: 1, den: 4 } })
   })
 
   // Two different jumps at one point are two marks, where MNX states one.
