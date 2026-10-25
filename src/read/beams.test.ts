@@ -968,23 +968,41 @@ describe('a beam crossing the barline', () => {
     expect(trees[1]).toEqual([{ events: ['ev2'], beams: [], direction: 'left' }])
   })
 
+  // A hook stands alone at its own level too, so the beam below it carries
+  // nothing on from the measure before.
   test('carries no deeper beam on through an inner hook at the barline', () => {
     const thirtySecond = (step: string, inner: string) =>
       `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>1</duration>` +
       `<type>32nd</type>${inner}</note>`
-    const { trees } = readMeasures(
-      thirtySecond(
-        'B',
-        '<beam number="1">begin</beam><beam number="2">begin</beam><beam number="3">begin</beam>',
-      ),
+    const { trees, warnings } = readMeasures(
+      '<attributes><divisions>8</divisions></attributes>' +
+        thirtySecond(
+          'B',
+          '<beam number="1">begin</beam><beam number="2">begin</beam><beam number="3">begin</beam>',
+        ),
       thirtySecond(
         'C',
         '<beam number="1">continue</beam><beam number="2">backward hook</beam>' +
           '<beam number="3">end</beam>',
-      ) + thirtySecond('D', '<beam number="1">end</beam>'),
+      ) +
+        '<note><pitch><step>D</step><octave>4</octave></pitch><duration>4</duration>' +
+        '<type>eighth</type><beam number="1">end</beam></note>',
     )
 
-    expect(trees[0]?.[0]?.beams).toContainEqual({ events: ['ev2'], beams: [], direction: 'left' })
+    expect(trees).toEqual([
+      [
+        {
+          events: ['ev1', 'ev2', 'ev3'],
+          beams: [
+            { events: ['ev2'], beams: [], direction: 'left' },
+            { events: ['ev1'], beams: [], direction: 'right' },
+          ],
+          direction: undefined,
+        },
+      ],
+      [],
+    ])
+    expect(warnings).toEqual([])
   })
 
   test('says nothing of a beam another voice left open', () => {

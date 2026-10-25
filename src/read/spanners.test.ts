@@ -867,13 +867,13 @@ describe('ties', () => {
 
   // The rest keeps the first start from touching the chord, so the stop is
   // not taken before the chord's own start is weighed.
-  test('does not join a tie from a chord member into another member of the chord past a rest', () => {
+  test('does not join a tie from a chord member into another member of the chord after a rest', () => {
     const chordE = (body: string): string => note('E', body).replace('<note>', '<note><chord/>')
-    const { notes } = read(
+    const { notes, warnings } = read(
       measures(
         DIVISIONS +
           note('E', tied('start')) +
-          '<note><rest/><duration>4</duration><voice>1</voice></note>' +
+          '<note><rest/><duration>4</duration><voice>1</voice><type>quarter</type></note>' +
           note('C') +
           chordE(tied('start')) +
           chordE(tied('stop')),
@@ -883,6 +883,7 @@ describe('ties', () => {
 
     expect(first?.ties).toEqual([{ kind: 'target', target: chordStop?.id, crossVoice: false }])
     expect(chordStart?.ties).toEqual([])
+    expect(warnings.map((w) => w.code)).toEqual(['unclosed:spanner'])
   })
 
   test('does not join a tie in its own voice across a grace note on its pitch', () => {
@@ -1178,7 +1179,7 @@ describe('ties', () => {
     const [, member, ornamented] = notes as [Note, Note, Note]
 
     expect(member.ties).toEqual([{ kind: 'target', target: ornamented.id, crossVoice: false }])
-    expect(warnings.map((w) => w.code)).toEqual(['unclosed:spanner'])
+    expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([['unclosed:spanner', 1]])
   })
 
   test('joins a tie from a grace note into the beat note of another voice, not a start at the beat', () => {
