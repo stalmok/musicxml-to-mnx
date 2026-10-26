@@ -982,14 +982,25 @@ function drawnLength(note: XmlElement): number | undefined {
  * Every lyric syllable in the source, as the place it is sung, the verse
  * line it belongs to and its text. Follows the cursor as sourceSlurSpans and
  * sourceMeasureLengths do.
+ *
+ * A syllable stating <extend> other than a stop draws a melisma line. The
+ * line runs to the last later note of its voice whose lyric for that verse is
+ * only an <extend>, before the next syllable of the verse, and a stop ends
+ * it. The place it runs to follows the syllable, where the source states
+ * one.
  */
 export function sourceLyricPlaces(root: XmlElement): string[] {
   const found: string[] = []
+  // Where each melisma line found runs to, by the index of its syllable.
+  const ends = new Map<number, string>()
 
   root.children
     .filter((c) => c.name === 'part')
     .forEach((part, partIndex) => {
       let divisions = 1
+      let voice = ''
+      // The syllable of each melisma line still open, by voice and verse.
+      const open = new Map<string, number>()
 
       part.children
         .filter((c) => c.name === 'measure')
@@ -1018,13 +1029,21 @@ export function sourceLyricPlaces(root: XmlElement): string[] {
 
             const isChord = item.children.some((c) => c.name === 'chord')
             const isGrace = item.children.some((c) => c.name === 'grace')
+            // A chord note sings in the voice of the note it joins.
+            if (!isChord) {
+              voice = item.children.find((c) => c.name === 'voice')?.rawText.trim() ?? ''
+            }
+            const at = place(partIndex, measureIndex, position)
 
             // One text per line per note, because MNX states one lyric per
             // line on an event. A source can write the same <lyric
-            // number="1"> twice on one note. differingLyricLines reports it
-            // where the two texts differ.
-            const perLine = new Map<string, string>()
+            // number="1"> twice on one note, and the first is the one sung.
+            // differingLyricLines reports it where the two texts differ.
+            const sung = new Set<string>()
             for (const lyric of item.children.filter((c) => c.name === 'lyric')) {
+              const line = String(lyric.attributes.number ?? '1')
+              const extend = lyric.children.find((c) => c.name === 'extend')
+              const stops = extend?.attributes.type === 'stop'
               // Every <text>, joined by what the source put between them.
               // Two syllables sung on one note are written as two <text>s.
               // Trimmed at the ends, with any line break inside dropped, as
@@ -1040,23 +1059,37 @@ export function sourceLyricPlaces(root: XmlElement): string[] {
                 .join('')
                 .replace(/[ \t\r\n]*[\r\n][ \t\r\n]*/g, '')
                 .trim()
-              if (text === '') continue
-              perLine.set(String(lyric.attributes.number ?? '1'), text)
-            }
-            for (const [line, text] of perLine) {
-              found.push(`${place(partIndex, measureIndex, position)} line ${line}: ${text}`)
+              const key = JSON.stringify([voice, line])
+              if (text === '') {
+                const syllable = open.get(key)
+                if (extend && syllable !== undefined) {
+                  ends.set(syllable, at)
+                  if (stops) open.delete(key)
+                }
+                continue
+              }
+              if (sung.has(line)) continue
+              sung.add(line)
+              const draws = extend !== undefined && !stops
+              open.delete(key)
+              if (draws) open.set(key, found.length)
+              found.push(`${at} line ${line}: ${text}${draws ? ' with a line' : ''}`)
             }
 
             if (!isChord && !isGrace) position += drawnLength(item) ?? durationOf()
           }
         })
     })
-  return found
+  return found.map((syllable, index) => {
+    const end = ends.get(index)
+    return end === undefined ? syllable : `${syllable} to ${end}`
+  })
 }
 
 /**
  * Every lyric syllable in the converted document, as the place it is sung,
- * the verse line it belongs to and its text.
+ * the verse line it belongs to and its text, and the place its melisma line
+ * runs to.
  *
  * Placed, not grouped by sequence: a voice written as two lines laid over
  * each other is two sequences in MNX and one voice in the source. Both sides
@@ -1064,10 +1097,20 @@ export function sourceLyricPlaces(root: XmlElement): string[] {
  * syllable moved to another note shows.
  */
 export function lyricPlaces(document: MNXDocument): string[] {
+  const placed = placedEvents(document)
+  const byId = new Map<string, string>()
+  for (const { item, place: at } of placed) {
+    if (item.id !== undefined) byId.set(item.id, at)
+  }
+
   const found: string[] = []
-  for (const { item, place: at } of placedEvents(document)) {
+  for (const { item, place: at } of placed) {
     for (const [line, verse] of Object.entries(item.lyrics?.lines ?? {})) {
-      found.push(`${at} line ${line}: ${verse.text}`)
+      const target = verse.extender?.target
+      const drawn = verse.extender
+        ? ` with a line${target === undefined ? '' : ` to ${byId.get(target) ?? target}`}`
+        : ''
+      found.push(`${at} line ${line}: ${verse.text}${drawn}`)
     }
   }
   return found

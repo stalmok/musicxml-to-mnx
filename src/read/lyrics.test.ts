@@ -159,8 +159,8 @@ describe('lyrics', () => {
   })
 
   // Hiding a lyric that draws no words hides nothing, so there is nothing to
-  // report about the hiding. The <extend> is the melisma line, which is a
-  // real loss and reports itself.
+  // report about the hiding. The <extend> continues a melisma line no
+  // syllable starts, which reports itself.
   test('says nothing about hiding a lyric that draws no words', () => {
     const { warnings } = read(
       measure(note('C', '<lyric number="1" print-object="no"><extend/></lyric>')),
@@ -313,13 +313,11 @@ describe('a verse written as several pieces', () => {
   })
 
   // A <lyric> holding only an <extend> is how MusicXML continues a melisma
-  // under a later note. There is no syllable in it to write. MNX states the
-  // line as a lyric extender, which is not converted yet.
+  // under a later note. There is no syllable in it to write.
   test('states no verse for a lyric that is only a melisma line', () => {
-    const { events, warnings } = read(measure(note('C', '<lyric number="1"><extend/></lyric>')))
+    const { events } = read(measure(note('C', '<lyric number="1"><extend/></lyric>')))
 
     expect(events[0]?.lyrics.size).toBe(0)
-    expect(warnings.map((w) => w.code)).toEqual(['unsupported:element'])
   })
 })
 
@@ -465,5 +463,176 @@ describe('one line stated twice on a note', () => {
     const { warnings } = read(measure(note('C', lyric('sing', 'begin') + lyric('sing', 'end'))))
 
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:lyric-line'])
+  })
+})
+
+// MusicXML draws a melisma line where a <lyric> states <extend>, and nowhere
+// else. MNX states the line on the syllable that starts it, and the event the
+// line runs under last as its target.
+describe('lyric extender lines', () => {
+  const extend = (type?: string) => (type === undefined ? '<extend/>' : `<extend type="${type}"/>`)
+  const sung = (text: string, extension = '', number = '1') =>
+    `<lyric number="${number}"><syllabic>single</syllabic><text>${text}</text>${extension}</lyric>`
+  const held = (extension: string, number = '1') => `<lyric number="${number}">${extension}</lyric>`
+  const voiced = (step: string, voice: string, body = '') =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    `<duration>4</duration><voice>${voice}</voice><type>quarter</type>${body}</note>`
+  const twoMeasures = (first: string, second: string) =>
+    '<score-partwise><part id="P1"><measure number="1">' +
+    '<attributes><divisions>4</divisions></attributes>' +
+    `${first}</measure><measure number="2">${second}</measure></part></score-partwise>`
+
+  const events = (mnx: ReturnType<typeof convertValid>['mnx'], measure = 0, sequence = 0) =>
+    (mnx.parts[0]?.measures[measure]?.sequences[sequence]?.content ?? []).flatMap((item) =>
+      'type' in item && item.type !== 'event' ? [] : [item as { id: string; lyrics?: unknown }],
+    )
+  const lineOf = (event: { lyrics?: unknown } | undefined, line = '1') =>
+    (event?.lyrics as { lines?: Record<string, { extender?: unknown }> } | undefined)?.lines?.[line]
+
+  test('states a line that the source ends nowhere with no target', () => {
+    const { mnx, warnings } = convertValid(
+      measure(note('C', sung('la', extend())) + note('D') + note('E', sung('lo'))),
+    )
+
+    expect(lineOf(events(mnx)[0])?.extender).toStrictEqual({})
+    expect(lineOf(events(mnx)[2])?.extender).toBeUndefined()
+    expect(warnings).toEqual([])
+  })
+
+  test('ends a line at the note whose lyric stops it', () => {
+    const { mnx, warnings } = convertValid(
+      measure(
+        note('C', sung('la', extend('start'))) +
+          note('D') +
+          note('E', held(extend('stop'))) +
+          note('F', sung('lo')),
+      ),
+    )
+    const [first, , third] = events(mnx)
+
+    expect(lineOf(first)?.extender).toStrictEqual({ target: third?.id })
+    expect(warnings).toEqual([])
+  })
+
+  test('runs a line under the last note whose lyric continues it', () => {
+    const { mnx, warnings } = convertValid(
+      measure(
+        note('C', sung('la', extend())) +
+          note('D', held(extend())) +
+          note('E', held(extend('continue'))) +
+          note('F', sung('lo')),
+      ),
+    )
+    const [first, , third] = events(mnx)
+
+    expect(lineOf(first)?.extender).toStrictEqual({ target: third?.id })
+    expect(warnings).toEqual([])
+  })
+
+  test('ends a line in a later measure', () => {
+    const { mnx } = convertValid(
+      twoMeasures(note('C', sung('la', extend('start'))), note('D', held(extend('stop')))),
+    )
+
+    expect(lineOf(events(mnx)[0])?.extender).toStrictEqual({ target: events(mnx, 1)[0]?.id })
+  })
+
+  test('keeps the lines of two verses apart', () => {
+    const { mnx } = convertValid(
+      measure(
+        note('C', sung('la', extend('start'), '1') + sung('lo', extend('start'), '2')) +
+          note('D', held(extend('stop'), '2')) +
+          note('E', held(extend('stop'), '1')),
+      ),
+    )
+    const [first, second, third] = events(mnx)
+
+    expect(lineOf(first, '1')?.extender).toStrictEqual({ target: third?.id })
+    expect(lineOf(first, '2')?.extender).toStrictEqual({ target: second?.id })
+  })
+
+  test('keeps the lines of two voices apart', () => {
+    const { mnx } = convertValid(
+      measure(
+        voiced('C', '1', sung('la', extend('start'))) +
+          voiced('D', '1', held(extend('stop'))) +
+          '<backup><duration>8</duration></backup>' +
+          voiced('E', '2', sung('lo', extend('start'))) +
+          voiced('F', '2'),
+      ),
+    )
+
+    expect(lineOf(events(mnx, 0, 0)[0])?.extender).toStrictEqual({
+      target: events(mnx, 0, 0)[1]?.id,
+    })
+    expect(lineOf(events(mnx, 0, 1)[0])?.extender).toStrictEqual({})
+  })
+
+  test('starts a line only from the syllable converted for its verse', () => {
+    const { mnx, warnings } = convertValid(
+      measure(
+        note('C', sung('la', extend('start')) + sung('lo', extend('start'))) +
+          note('D', held(extend('stop'))),
+      ),
+    )
+    const [first, second] = events(mnx)
+
+    expect(lineOf(first)?.extender).toStrictEqual({ target: second?.id })
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:lyric-line'])
+  })
+
+  test('ends a line under its own note, where a lyric of that note stops it', () => {
+    const { mnx, warnings } = convertValid(
+      measure(note('C', sung('la', extend('start')) + held(extend('stop'))) + note('D')),
+    )
+    const [first] = events(mnx)
+
+    expect(lineOf(first)?.extender).toStrictEqual({ target: first?.id })
+    expect(warnings).toEqual([])
+  })
+
+  test('ends a line at the next syllable of its verse', () => {
+    const { mnx, warnings } = convertValid(
+      measure(
+        note('C', sung('la', extend('start'))) +
+          note('D', sung('lo')) +
+          note('E', held(extend('stop'))),
+      ),
+    )
+
+    expect(lineOf(events(mnx)[0])?.extender).toStrictEqual({})
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([['unclosed:spanner', 'extend']])
+  })
+
+  test.each([['stop'], ['continue'], [undefined]])(
+    'reports a line with no syllable to start it, stated as %s',
+    (type) => {
+      const { warnings } = convertValid(measure(note('C', held(extend(type)))))
+
+      expect(warnings.map((w) => [w.code, w.element])).toEqual([['unclosed:spanner', 'extend']])
+    },
+  )
+
+  test('reads an <extend> of a type MusicXML does not define as stating none', () => {
+    const { mnx, warnings } = convertValid(
+      measure(note('C', sung('la', extend())) + note('D', held(extend('onward')))),
+    )
+
+    expect(lineOf(events(mnx)[0])?.extender).toStrictEqual({ target: events(mnx)[1]?.id })
+    expect(warnings.map((w) => [w.code, w.attribute])).toEqual([
+      ['unresolved:attribute-value', 'type'],
+    ])
+  })
+
+  test('states that every line is encoded, in a document with lyrics', () => {
+    const { mnx } = convertValid(measure(note('C', sung('la'))))
+
+    expect(mnx.mnx.support?.useLyricExtenders).toBe(true)
+  })
+
+  test('says nothing of lines in a document with no lyrics', () => {
+    const { mnx } = convertValid(measure(note('C')))
+
+    expect(mnx.mnx.support?.useLyricExtenders).toBeUndefined()
   })
 })

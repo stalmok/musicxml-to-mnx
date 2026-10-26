@@ -132,6 +132,9 @@ export function writeMnx(score: Score, options: WriterOptions = {}): MNXDocument
   // Without one, the flag follows what the source wrote.
   const useAccidentalDisplay = score.declaresAccidentals ?? survey.drawsAccidentals
   const useBeams = score.declaresBeams ?? survey.writesBeams
+  // MusicXML draws a melisma line only where a lyric states <extend>, so the
+  // lines read are every line the lyrics draw.
+  const useLyricExtenders = score.lyricLines.length > 0
 
   // Written before the global block, because what they point at is what
   // decides which measures the global block names.
@@ -155,11 +158,12 @@ export function writeMnx(score: Score, options: WriterOptions = {}): MNXDocument
   return {
     mnx: {
       version: MNX_VERSION,
-      ...(useAccidentalDisplay || useBeams
+      ...(useAccidentalDisplay || useBeams || useLyricExtenders
         ? {
             support: {
               ...(useAccidentalDisplay ? { useAccidentalDisplay: true } : {}),
               ...(useBeams ? { useBeams: true } : {}),
+              ...(useLyricExtenders ? { useLyricExtenders: true } : {}),
             },
           }
         : {}),
@@ -348,6 +352,9 @@ function surveyScore(score: Score): {
       }
       if (item.kind !== 'event') continue
       for (const slur of item.slurs) referenced.add(slur.target)
+      for (const lyric of item.lyrics.values()) {
+        if (lyric.extender?.target !== undefined) referenced.add(lyric.extender.target)
+      }
       if (item.body.kind === 'rest') continue
       for (const note of item.body.notes) {
         for (const tie of note.ties) if (tie.kind === 'target') referenced.add(tie.target)
@@ -886,6 +893,11 @@ function writeLyrics(lyrics: ReadonlyMap<string, Lyric>): MNXLyrics {
     lines[line] = {
       text: lyric.text,
       ...(lyric.type ? { type: lyric.type } : {}),
+      ...(lyric.extender
+        ? {
+            extender: lyric.extender.target === undefined ? {} : { target: lyric.extender.target },
+          }
+        : {}),
     }
   }
   return { lines }

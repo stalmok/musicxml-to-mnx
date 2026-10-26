@@ -339,8 +339,8 @@ export const WARNING_CODES = Object.freeze([
   // staves it is written on, and the statement names one beyond them. There
   // is no staff for it to be about, so it is not carried over.
   'inconsistent:staff',
-  // A tie, slur, hairpin or octave shift has only one of its two ends, so
-  // there is nothing to join it to. Real scores contain these, so it is
+  // A tie, slur, hairpin, octave shift or lyric melisma line has only one of
+  // its two ends, so there is nothing to join it to. Real scores contain these, so it is
   // reported rather than refused. A hairpin or octave shift with no end is
   // not carried over, because MNX requires one to state where it stops.
   'unclosed:spanner',

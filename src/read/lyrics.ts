@@ -9,9 +9,17 @@
 // as often in French, MusicXML writes each as its own <text> with the elision
 // character between them as an <elision>. Every piece is read, in the order
 // written.
+//
+// A melisma line starts at a syllable that states <extend>. MNX states it on
+// that syllable, with the last event it runs under as its target. MusicXML
+// states that event with a later <lyric> that holds only an <extend>: a stop,
+// or a continue, or one with no type. A line reaches the next syllable of its
+// verse in its voice at most.
 
-import type { Lyric, Part, SequenceItem } from '../model/score.js'
+import type { Lyric, LyricExtender, Part, SequenceItem } from '../model/score.js'
 import type { ReportContext, WarningCollector } from './collector.js'
+import type { Draft } from './draft.js'
+import type { XmlElement } from '../xml/parse.js'
 import { attribute, text, trimmedText } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
 import { reportHidden } from './unrepresentable.js'
@@ -26,22 +34,66 @@ const LYRIC_TYPES = new Map<string, 'start' | 'middle' | 'end' | undefined>([
   ['end', 'end'],
 ])
 
-/** The syllables under a note, by the verse line each is sung on. */
+/**
+ * The melisma lines open in a part, keyed by voice and verse line, which a
+ * lyric on a later note of that voice can reach.
+ */
+export type OpenExtenders = Map<string, Draft<LyricExtender>>
+
+const EXTEND_TYPES: ReadonlySet<string> = new Set(['start', 'stop', 'continue'])
+
+/**
+ * The syllables under a note, by the verse line each is sung on. `event` is
+ * the id of the event the note is part of, and `voice` the voice it is in.
+ */
 export function readLyrics(
   element: ElementReader,
+  voice: string,
+  event: string,
+  open: OpenExtenders,
   warnings: WarningCollector,
   context: ReportContext,
 ): Map<string, Lyric> {
   const lyrics = new Map<string, Lyric>()
   for (const lyric of element.blocks('lyric')) {
-    const verse = readVerse(lyric, warnings, context)
-    if (!verse) continue
+    const line = attribute(lyric.element, 'number') ?? '1'
+    const key = JSON.stringify([voice, line])
+    // A <lyric> holds one <extend> at most, so child() is correct.
+    const extend = lyric.child('extend')
+    const extendType = extend && readExtendType(extend, warnings, context)
+    const verse = readVerse(lyric, line, warnings, context)
+
+    if (!verse) {
+      if (!extend) continue
+      const reached = open.get(key)
+      if (!reached) {
+        warnings.add(
+          'unclosed:spanner',
+          `A lyric extends a melisma line of line ${line} under this note, and no syllable ` +
+            'before it in its voice starts one. The line is not converted.',
+          context,
+          extend,
+        )
+        continue
+      }
+      reached.target = event
+      if (extendType === 'stop') open.delete(key)
+      continue
+    }
 
     // MNX keys an event's lyrics by line, and the model does the same. A verse
     // stated twice the same way is read once. Where the two differ, the first
-    // is converted and the second is reported.
+    // is converted and the second is reported. Only the first starts or ends
+    // a melisma line.
     const stated = lyrics.get(verse.line)
     if (!stated) {
+      // A syllable ends the line before it in its verse.
+      open.delete(key)
+      if (extend && extendType !== 'stop') {
+        const extender: Draft<LyricExtender> = { target: undefined }
+        open.set(key, extender)
+        verse.lyric = { ...verse.lyric, extender }
+      }
       lyrics.set(verse.line, verse.lyric)
       continue
     }
@@ -87,20 +139,40 @@ interface Verse {
   lyric: Lyric
 }
 
+/**
+ * The type of an <extend>, or nothing where it states none. A type MusicXML
+ * does not define is reported, and read as none.
+ */
+function readExtendType(
+  extend: XmlElement,
+  warnings: WarningCollector,
+  context: ReportContext,
+): string | undefined {
+  const type = attribute(extend, 'type')
+  if (type === undefined || EXTEND_TYPES.has(type)) return type
+  warnings.add(
+    'unresolved:attribute-value',
+    `An <extend> of type "${type}" is not one MusicXML defines, so it is read as stating ` +
+      'no type.',
+    context,
+    extend,
+    'type',
+  )
+  return undefined
+}
+
 function readVerse(
   lyric: ElementReader,
+  line: string,
   warnings: WarningCollector,
   context: ReportContext,
 ): Verse | undefined {
-  const line = attribute(lyric.element, 'number') ?? '1'
   const text = joinSyllables(lyric)
 
   // A <lyric> can carry no words: one holding only an <extend> continues a
   // melisma under a later note, and a <text> holding one space draws nothing.
-  // There is no syllable to write. An <extend> is a melisma line, which is a
-  // real loss, and is reported like anything else unread. Hiding such a
-  // lyric hides nothing the output draws, so its print-object is read with no
-  // warning.
+  // There is no syllable to write. Hiding such a lyric hides nothing the
+  // output draws, so its print-object is read with no warning.
   if (text === undefined) {
     attribute(lyric.element, 'print-object')
     // A <syllabic> over no words joins a syllable that is not there. Nothing

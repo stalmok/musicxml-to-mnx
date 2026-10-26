@@ -94,6 +94,16 @@ export type Tie = TargetTie | LetRingTie
 export interface Lyric {
   readonly text: string
   readonly type: 'start' | 'middle' | 'end' | undefined
+  /** The melisma line after the syllable, where the source draws one. */
+  readonly extender?: LyricExtender
+}
+
+/**
+ * A melisma line after a syllable, sung across the events after it. The target
+ * is the event the line runs under last, where the source says which.
+ */
+export interface LyricExtender {
+  readonly target: string | undefined
 }
 
 /** A slur joining this event to a later one. */

@@ -1,6 +1,7 @@
 // What the readers of one part share: the running state a measure cannot be
 // read without.
 
+import type { OpenExtenders } from './lyrics.js'
 import type { ReportContext, WarningPlace } from './collector.js'
 import type { PitchedClefSign, KitComponent, TimeSignature, Transposition } from '../model/score.js'
 import { fraction } from '../fraction.js'
@@ -102,6 +103,8 @@ export interface PartState {
   ids: IdGenerator
   /** Per part: a tie or slur may span measures, but not parts. */
   spanners: SpannerResolver
+  /** The melisma lines still open, which a lyric on a later note can reach. */
+  lyricExtenders: OpenExtenders
   /** The key and time signatures the part carries from measure to measure. */
   signatures: PartSignatures
   /**
@@ -230,6 +233,7 @@ export function newPartState(
     staffLines: new Map(),
     ids,
     spanners: new SpannerResolver(),
+    lyricExtenders: new Map(),
     signatures: new PartSignatures(),
     voiceNames,
     sounds,

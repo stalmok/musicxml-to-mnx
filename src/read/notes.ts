@@ -327,13 +327,14 @@ export function readNote(
 
   // A draft, because a two-note tremolo found to have one end once the note
   // after it is read halves its value.
+  const id = state.ids.nextEvent()
   const event: Draft<Event> = {
     kind: 'event',
-    id: state.ids.nextEvent(),
+    id,
     staff: undefined,
     value,
     slurs: [],
-    lyrics: readLyrics(element, warnings, context),
+    lyrics: readLyrics(element, voice.name, id, state.lyricExtenders, warnings, context),
     stemDirection: fills ? restStem : readStemDirection(element, warnings, context),
     markings: restMarkings ?? readMarkings(eventNotations, warnings, context),
     fermata: readFermata(eventNotations, warnings, context),
