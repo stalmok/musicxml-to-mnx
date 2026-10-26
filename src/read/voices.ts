@@ -269,15 +269,6 @@ export class VoiceLine {
   }
 
   /**
-   * Whether this line holds grace notes and nothing else. They take none of
-   * the measure's time, so such a line is silent through it.
-   */
-  holdsOnlyGraceNotes(): boolean {
-    const { content } = this.#layer
-    return content.length > 0 && content.every((item) => item.kind === 'grace')
-  }
-
-  /**
    * How much of its written value a note in this line lasts, as the product of
    * every tuplet currently open around it: 2/3 inside a triplet, and the
    * ratios multiply where tuplets nest. Inside a two-note tremolo each note
