@@ -809,12 +809,23 @@ function settlePartKeys(
     return { ...measure.key, fifths: inScore }
   })
 
+  // Where no pair settles a measure, the reading contributed has to write the
+  // part's own signature back through the flip, or the part is drawn in
+  // another key.
   const keyDisagreesAt = (index: number): boolean => {
     const pair = keys[index]
-    return (
-      pair !== undefined &&
-      writtenFifthsWithFlip(pair.score, transposition, flipAt) !==
+    if (pair !== undefined) {
+      return (
+        writtenFifthsWithFlip(pair.score, transposition, flipAt) !==
         writtenFifths(pair.part, transposition)
+      )
+    }
+    const stated = found[index]?.key
+    if (flipAt === undefined || stated === undefined) return false
+    const read = contributed[index] ?? stated
+    return (
+      writtenFifthsWithFlip(read.fifths, transposition, flipAt) !==
+      writtenFifths(stated.fifths, transposition)
     )
   }
   return { flipAt, contributed, keyDisagreesAt }

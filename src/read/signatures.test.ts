@@ -1408,6 +1408,26 @@ describe('a part that flips its key signature enharmonically', () => {
     expect(result.parts[1]?.transposition?.keyFifthsFlipAt).toBe(8)
   })
 
+  // Seven sharps and, at the next measure, five flats both read back as the
+  // score's five sharps: the part flips at one and not the other. MNX states
+  // one flip point, so the seven sharps cannot be drawn, and that is reported.
+  test('reports a signature the flip point cannot write back', () => {
+    const both =
+      `<part id="P1"><measure number="1">${NOTE}</measure>` +
+      `<measure number="2"><attributes><key><fifths>5</fifths></key></attributes>` +
+      `${NOTE}</measure></part>` +
+      `<part id="P2"><measure number="1"><attributes><key><fifths>7</fifths></key>` +
+      `${B_FLAT}</attributes>${NOTE}</measure>` +
+      `<measure number="2"><attributes><key><fifths>-5</fifths></key></attributes>` +
+      `${NOTE}</measure></part>`
+    const { score: result, warnings } = read(score(both))
+
+    expect(result.parts[1]?.transposition?.keyFifthsFlipAt).toBe(7)
+    expect(warnings.map((w) => [w.code, w.context.part, w.context.measure])).toEqual([
+      ['unrepresentable:cross-part-key', 'P2', 1],
+    ])
+  })
+
   // The score's key in force settles the reading before any other measure
   // does, so a part restating its signature after the score changes spelling
   // takes the new spelling.
