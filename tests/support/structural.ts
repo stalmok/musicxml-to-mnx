@@ -348,10 +348,10 @@ const KEY_LOSSES: ReadonlySet<string> = new Set([
  * loss reported are passed over, and so are measures before the source
  * states a key.
  *
- * Parts that disagree about the key are reported against one of them, though
- * either can be the one drawing a key it is not in. So from a measure where
- * they are reported, every part is passed over until the score states a key
- * again.
+ * Parts that disagree about the key are reported where the disagreement
+ * starts, against one of them, though any part can be the one drawing a key
+ * it is not in. So from a measure where they are reported, a part drawn in
+ * another key is passed over until it states a key it is drawn in.
  */
 export function drawnKeyDisagreements(
   document: MNXDocument,
@@ -365,16 +365,11 @@ export function drawnKeyDisagreements(
       .map((w) => (w.context.measure ?? 0) - 1),
   )
   const concertKeys: number[] = []
-  const disagreeing: boolean[] = []
   let concert = 0
-  let disagree = false
-  document.global.measures.forEach((measure, index) => {
+  for (const measure of document.global.measures) {
     concert = measure.key?.fifths ?? concert
     concertKeys.push(concert)
-    if (disagreeAt.has(index)) disagree = true
-    else if (measure.key) disagree = false
-    disagreeing.push(disagree)
-  })
+  }
   const disagreements: string[] = []
   root.children
     .filter((c) => c.name === 'part')
@@ -383,16 +378,29 @@ export function drawnKeyDisagreements(
       if (lost.has(id)) return
       const transposition = document.parts[partIndex]?.transposition
       let stated: number | undefined
+      // A key written after a note of its measure, as at the barline before a
+      // change, is in force from the next measure.
+      let next: number | undefined
+      let disagreeing = false
       part.children
         .filter((c) => c.name === 'measure')
         .forEach((measure, measureIndex) => {
-          for (const attributes of measure.children.filter((c) => c.name === 'attributes')) {
-            for (const key of attributes.children.filter((c) => c.name === 'key')) {
+          let states = next !== undefined
+          stated = next ?? stated
+          next = undefined
+          let sounded = false
+          for (const item of measure.children) {
+            if (item.name === 'note') sounded = true
+            if (item.name !== 'attributes') continue
+            for (const key of item.children.filter((c) => c.name === 'key')) {
               const fifths = key.children.find((c) => c.name === 'fifths')
-              if (fifths) stated = Number(fifths.rawText.trim())
+              if (!fifths) continue
+              if (sounded) next = Number(fifths.rawText.trim())
+              else [stated, states] = [Number(fifths.rawText.trim()), true]
             }
           }
-          if (stated === undefined || disagreeing[measureIndex]) return
+          if (disagreeAt.has(measureIndex)) disagreeing = true
+          if (stated === undefined) return
           let drawn = concertKeys[measureIndex] ?? concert
           if (transposition) {
             const { staffDistance, halfSteps } = transposition.interval
@@ -401,7 +409,9 @@ export function drawnKeyDisagreements(
             if (flipAt !== undefined && flipAt >= 0 && drawn >= flipAt) drawn -= 12
             if (flipAt !== undefined && flipAt < 0 && drawn <= flipAt) drawn += 12
           }
-          if (drawn !== stated) {
+          if (drawn === stated) {
+            if (states) disagreeing = false
+          } else if (!disagreeing) {
             disagreements.push(
               `${id} measure ${String(measureIndex + 1)}: draws ${String(drawn)} fifths, ` +
                 `the source ${String(stated)}`,

@@ -1161,6 +1161,43 @@ describe('the key each part draws, against its source', () => {
     expect(check(part('P1', key(0), undefined, key(2)) + part('P2', key(0), key(2)))).toEqual([])
   })
 
+  // P2 and P3 change key a measure apart, and P1 stays in its own.
+  test('passes over a part drawn in another key until it is drawn in its own', () => {
+    expect(
+      check(
+        part('P1', key(0), undefined, undefined) +
+          part('P2', key(0), key(2)) +
+          part('P3', key(0), undefined, key(2)),
+      ),
+    ).toEqual([])
+  })
+
+  test('finds a part drawn in another key once it agreed again', () => {
+    const lost = check(
+      part('P1', key(0), undefined, key(2), undefined) +
+        part('P2', key(0), key(2), undefined, undefined),
+      (mnx) => {
+        const last = mnx.global.measures[3]
+        if (last) last.key = { fifths: 4 }
+      },
+    )
+
+    expect(lost).toEqual([
+      'P1 measure 4: draws 4 fifths, the source 2',
+      'P2 measure 4: draws 4 fifths, the source 2',
+    ])
+  })
+
+  test('takes a key written after the notes of a measure from the next', () => {
+    const late =
+      '<part id="P1"><measure number="1"><attributes><divisions>4</divisions>' +
+      `<key><fifths>0</fifths></key></attributes>${NOTE}` +
+      `<attributes><key><fifths>3</fifths></key></attributes></measure>` +
+      `<measure number="2">${NOTE}</measure></part>`
+
+    expect(check(late)).toEqual([])
+  })
+
   test('starts where the source first states a key', () => {
     expect(check(part('P1', undefined, key(2)))).toEqual([])
   })
