@@ -86,6 +86,9 @@ export const NO_HOME_IN_MNX: ReadonlySet<string> = new Set([
   // A figured bass under a continuo line. The schema has no figure, figured
   // bass or continuo anywhere.
   'figured-bass',
+  // A chord symbol such as "Cmaj7". The schema has no harmony, chord symbol or
+  // chord root anywhere.
+  'harmony',
   // How a note is played on the instrument, beyond which way the bow travels.
   // The schema's event-markings are accent, bow direction, breath, caesura,
   // soft accent, spiccato, staccatissimo, staccato, stress, strong accent,

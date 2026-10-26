@@ -1019,19 +1019,31 @@ describe('measure numbering', () => {
 describe('reporting what is not converted', () => {
   test('reports an unconverted element with its name, place, and line', () => {
     const { warnings } = read(
-      '<score-partwise>\n<part id="P1">\n<measure number="1">\n<harmony/>\n' +
+      '<score-partwise>\n<part id="P1">\n<measure number="1">\n<grouping type="start"/>\n' +
         `${NOTE}\n</measure>\n</part>\n</score-partwise>`,
     )
 
     expect(warnings).toEqual([
       {
         code: 'unsupported:element',
-        message: '<harmony> is not converted yet.',
+        message: '<grouping> is not converted yet.',
         // Named as a field, so a report can be grouped by what was lost
         // without parsing the sentence written for a person to read.
-        element: 'harmony',
+        element: 'grouping',
         context: { part: 'P1', measure: 1, line: 4 },
       },
+    ])
+  })
+
+  test('reports a chord symbol as notation MNX cannot express', () => {
+    const { warnings } = read(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        '<harmony><root><root-step>C</root-step></root><kind>major</kind></harmony>' +
+        `${NOTE}</measure></part></score-partwise>`,
+    )
+
+    expect(warnings.map((w) => [w.code, w.element, w.message])).toEqual([
+      ['unrepresentable:element', 'harmony', '<harmony> cannot be expressed in MNX.'],
     ])
   })
 

@@ -15,7 +15,7 @@ const LOSSLESS =
   '</attributes><note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration>' +
   '<type>quarter</type></note></measure></part></score-partwise>'
 
-// The same, plus a <harmony> the converter does not carry.
+// The same, plus a <harmony>, which MNX cannot carry.
 const LOSSY = LOSSLESS.replace('<note>', '<harmony/><note>')
 
 let dir: string
@@ -239,7 +239,7 @@ describe('reporting losses', () => {
       string,
       { code: string }[]
     >
-    expect(report[file]?.[0]?.code).toBe('unsupported:element')
+    expect(report[file]?.[0]?.code).toBe('unrepresentable:element')
   })
 
   test('--fail-on-loss returns 3 when a file loses notation', async () => {

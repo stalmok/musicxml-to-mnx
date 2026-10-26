@@ -791,6 +791,7 @@ const ELEMENT_CONCEPTS: readonly (Concept & { readonly elements: readonly string
     elements: ['figured-bass'],
     words: ['figure', 'figures', 'figured', 'continuo', 'thoroughbass'],
   },
+  { elements: ['harmony'], words: ['harmony', 'chord', 'chords', 'chordSymbol', 'kind'] },
   {
     elements: [
       'harmonic',
