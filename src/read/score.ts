@@ -32,6 +32,7 @@ import {
   attribute,
   child,
   children,
+  descendants,
   peekAttribute,
   peeking,
   requireAttribute,
@@ -150,10 +151,13 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
     for (const font of children(defaults, 'music-font')) {
       musicFont ??= attribute(font, 'font-family')
       reportUnreadAttributes(font, warnings, {})
+      reportUnreadText(font, warnings, {})
     }
     if (defaults.children.some((found) => found.name !== 'music-font')) {
       const loss = elementLoss('defaults')
       warnings.add(loss.code, `<defaults> ${loss.ending}`, {}, defaults)
+    } else {
+      reportUnreadText(defaults, warnings, {})
     }
   }
 
@@ -187,6 +191,12 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
     if (rest) {
       const loss = elementLoss('identification')
       warnings.add(loss.code, `<identification> ${loss.ending}`, {}, identification)
+    } else {
+      // Only <encoding> and its whole declarations are left, so text is all
+      // that can be lost in them.
+      for (const found of [identification, ...descendants(identification)]) {
+        reportUnreadText(found, warnings, {})
+      }
     }
   }
 

@@ -394,6 +394,49 @@ describe('stray text', () => {
       ['unsupported:element', 'The text "loose" of a <part> is not converted yet.', 'P1'],
     ])
   })
+
+  const MEASURE =
+    '<part id="P1"><measure number="1"><attributes><divisions>4</divisions></attributes>' +
+    '</measure></part>'
+  const textIn = (header: string) => {
+    const { warnings } = read(`<score-partwise>${header}${MEASURE}</score-partwise>`)
+    return warnings.map((w) => [w.code, w.message])
+  }
+
+  test('reports text written directly in a <defaults> holding only its music font', () => {
+    expect(textIn('<defaults>loose<music-font font-family="Bravura"/></defaults>')).toEqual([
+      ['unrepresentable:element', 'The text "loose" of a <defaults> cannot be expressed in MNX.'],
+    ])
+  })
+
+  test('reports text written in a <music-font>', () => {
+    expect(
+      textIn('<defaults><music-font font-family="Bravura">loose</music-font></defaults>'),
+    ).toEqual([['unsupported:element', 'The text "loose" of a <music-font> is not converted yet.']])
+  })
+
+  test('reports text written in an <identification> holding only supported declarations', () => {
+    expect(
+      textIn(
+        '<identification>one<encoding>two' +
+          '<supports element="beam" type="yes">three</supports></encoding></identification>',
+      ),
+    ).toEqual([
+      [
+        'unrepresentable:element',
+        'The text "one" of an <identification> cannot be expressed in MNX.',
+      ],
+      ['unsupported:element', 'The text "two" of an <encoding> is not converted yet.'],
+      ['unsupported:element', 'The text "three" of a <supports> is not converted yet.'],
+    ])
+  })
+
+  // The whole element is reported, which covers the text in it.
+  test('reports an <identification> holding a loss once, with the text in it', () => {
+    expect(textIn('<identification>loose<rights>R</rights></identification>')).toEqual([
+      ['unrepresentable:element', '<identification> cannot be expressed in MNX.'],
+    ])
+  })
 })
 
 describe('a rest placed on the staff', () => {
