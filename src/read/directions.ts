@@ -190,8 +190,34 @@ const ACCENT_GLYPHS = new Map([
   ['sfzp', 'dynamicSforzatoPiano'],
 ])
 
+// The letters each glyph in SMuFL's dynamics range draws, for a mark a source
+// writes as the glyph alone.
+const GLYPH_LETTERS = new Map([
+  ['dynamicPiano', 'p'],
+  ['dynamicMezzo', 'm'],
+  ['dynamicForte', 'f'],
+  ['dynamicRinforzando', 'r'],
+  ['dynamicSforzando', 's'],
+  ['dynamicZ', 'z'],
+  ['dynamicNiente', 'n'],
+  ['dynamicPPPPPP', 'pppppp'],
+  ['dynamicPPPPP', 'ppppp'],
+  ['dynamicPPPP', 'pppp'],
+  ['dynamicPPP', 'ppp'],
+  ['dynamicPP', 'pp'],
+  ['dynamicMP', 'mp'],
+  ['dynamicMF', 'mf'],
+  ['dynamicPF', 'pf'],
+  ['dynamicFF', 'ff'],
+  ['dynamicFFF', 'fff'],
+  ['dynamicFFFF', 'ffff'],
+  ['dynamicFFFFF', 'fffff'],
+  ['dynamicFFFFFF', 'ffffff'],
+  ...[...ACCENT_GLYPHS].map(([letters, glyph]) => [glyph, letters] as const),
+])
+
 type Mark =
-  | { kind: 'immediate'; value: DynamicValue }
+  | { kind: 'immediate'; value: DynamicValue; glyphs: readonly string[] }
   | { kind: 'accent'; spelling: AccentSpelling; glyphs: readonly string[] }
 
 function namedMark(name: string): Mark | undefined {
@@ -199,22 +225,22 @@ function namedMark(name: string): Mark | undefined {
   const glyph = ACCENT_GLYPHS.get(name)
   if (spelling !== undefined && glyph !== undefined)
     return { kind: 'accent', spelling, glyphs: [glyph] }
-  return isDynamicValue(name) ? { kind: 'immediate', value: name } : undefined
+  return isDynamicValue(name) ? { kind: 'immediate', value: name, glyphs: [] } : undefined
 }
 
 /**
  * The mark an <other-dynamics> spells out in letters, such as "sff", which
- * MusicXML has no element for. A glyph the source names is the mark's own.
- * The model does not carry one on an immediate dynamic, so there the glyph
- * is left for the sweep to report.
+ * MusicXML has no element for, or draws as a SMuFL glyph alone. A glyph the
+ * source names is the mark's own.
  */
 function writtenMark(mark: XmlElement, written: string): Mark | undefined {
-  const spelling = ACCENT_SPELLINGS.get(written)
-  if (spelling !== undefined) {
-    const glyph = attribute(mark, 'smufl')
-    return { kind: 'accent', spelling, glyphs: glyph === undefined ? [] : [glyph] }
-  }
-  return isDynamicValue(written) ? { kind: 'immediate', value: written } : undefined
+  const glyph = attribute(mark, 'smufl')
+  const glyphs = glyph === undefined ? [] : [glyph]
+  const letters = written === '' && glyph !== undefined ? GLYPH_LETTERS.get(glyph) : written
+  if (letters === undefined) return undefined
+  const spelling = ACCENT_SPELLINGS.get(letters)
+  if (spelling !== undefined) return { kind: 'accent', spelling, glyphs }
+  return isDynamicValue(letters) ? { kind: 'immediate', value: letters, glyphs } : undefined
 }
 
 export function readDirection(
@@ -973,6 +999,7 @@ function readDynamics(
         kind: 'immediate',
         position,
         value: found.value,
+        ...(found.glyphs.length > 0 ? { glyphs: found.glyphs } : {}),
         staff,
         ...(prefix !== undefined ? { prefix: prefix.text } : {}),
         ...(placement !== undefined ? { placement } : {}),
@@ -1040,7 +1067,9 @@ function splitMark(
     const written = letters.slice(0, pieces).join('').trim()
     const spelling = ACCENT_SPELLINGS.get(written)
     if (spelling !== undefined) return { mark: { kind: 'accent', spelling, glyphs: [] }, pieces }
-    if (isDynamicValue(written)) return { mark: { kind: 'immediate', value: written }, pieces }
+    if (isDynamicValue(written)) {
+      return { mark: { kind: 'immediate', value: written, glyphs: [] }, pieces }
+    }
   }
   return undefined
 }
@@ -1050,11 +1079,10 @@ function splitMark(
  * dynamic mark itself, so putting one there would redraw the mark, not the
  * words. The wording goes over as text and the glyph is reported.
  *
- * The two cases are different kinds of loss. A glyph with no text is the
- * mark itself, and a later release may read the level that glyph draws: a
- * converter gap. A glyph named for words that also
- * convert has no home, because the schema nowhere states how the
- * wording is drawn: a format limit.
+ * The two cases are different kinds of loss. A glyph with no text that
+ * draws no mark GLYPH_LETTERS reads is a converter gap. A glyph named for
+ * words that also convert has no home, because the schema nowhere states how
+ * the wording is drawn: a format limit.
  */
 function reportWordingGlyph(
   element: XmlElement,
@@ -1067,8 +1095,8 @@ function reportWordingGlyph(
   if (wording === '') {
     warnings.add(
       'unsupported:element',
-      `A dynamic drawn only as the glyph "${glyph}" is not converted yet, because MNX ` +
-        'states a glyph for the dynamic mark, not for its wording.',
+      `A dynamic drawn only as the glyph "${glyph}" is not converted yet, because the ` +
+        'glyph draws no mark the converter reads.',
       context,
       element,
       'smufl',

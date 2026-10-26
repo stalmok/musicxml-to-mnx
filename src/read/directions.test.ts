@@ -682,16 +682,18 @@ describe('dynamics', () => {
     expect(warnings).toEqual([])
   })
 
-  test('reports the glyph named for a plain mark spelled as text', () => {
-    const { measure, warnings } = read(
+  test('carries the glyph named for a plain mark spelled as text', () => {
+    const { mnx, warnings } = convertValid(
       inMeasure(
         direction('<dynamics><other-dynamics smufl="dynamicForte">f</other-dynamics></dynamics>') +
           note('C'),
       ),
     )
 
-    expect(measure?.dynamics).toMatchObject([{ kind: 'immediate', value: 'f' }])
-    expect(warnings).toMatchObject([{ element: 'other-dynamics', attribute: 'smufl' }])
+    expect(mnx.parts[0]?.measures[0]?.dynamics).toMatchObject([
+      { type: 'immediate', value: 'f', glyphs: ['dynamicForte'] },
+    ])
+    expect(warnings).toEqual([])
   })
 
   test('writes an accent spelled as text with no glyphs', () => {
@@ -1218,25 +1220,47 @@ describe('dynamics', () => {
   })
 
   // An element naming a glyph and holding no text is a mark drawn as that
-  // glyph alone, which is notation, not an empty element to pass over. It is
-  // a converter gap, not a format limit: a later release may read the level
-  // the glyph draws.
-  test('reports a wording drawn only as a glyph', () => {
-    const { measure, warnings } = read(
+  // glyph alone, which is notation, not an empty element to pass over. The
+  // letters the glyph draws say which mark it is.
+  test.each([
+    ['dynamicPP', { type: 'immediate', value: 'pp', glyphs: ['dynamicPP'] }],
+    ['dynamicMF', { type: 'immediate', value: 'mf', glyphs: ['dynamicMF'] }],
+    ['dynamicForte', { type: 'immediate', value: 'f', glyphs: ['dynamicForte'] }],
+    ['dynamicNiente', { type: 'immediate', value: 'n', glyphs: ['dynamicNiente'] }],
+    ['dynamicSforzatoFF', { type: 'accent', value: 'ff', glyphs: ['dynamicSforzatoFF'] }],
+    ['dynamicFortePiano', { type: 'accent', value: 'f', residualValue: 'p' }],
+  ])('reads a mark drawn only as the glyph %s', (glyph, written) => {
+    const { mnx, warnings } = convertValid(
       inMeasure(
-        direction(
-          '<dynamics><other-dynamics smufl="dynamicSforzatoFF"></other-dynamics>' + '</dynamics>',
-        ) + note('C'),
+        direction(`<dynamics><other-dynamics smufl="${glyph}"></other-dynamics></dynamics>`) +
+          note('C'),
       ),
     )
 
-    expect(measure?.dynamics).toEqual([])
-    expect(warnings.map((w) => w.code)).toEqual(['unsupported:element'])
-    expect(warnings.map((w) => w.message)).toEqual([
-      'A dynamic drawn only as the glyph "dynamicSforzatoFF" is not converted yet, because ' +
-        'MNX states a glyph for the dynamic mark, not for its wording.',
-    ])
+    expect(mnx.parts[0]?.measures[0]?.dynamics).toMatchObject([written])
+    expect(warnings).toEqual([])
   })
+
+  test.each([['dynamicMezzo'], ['dynamicCrescendoHairpin'], ['segno']])(
+    'reports a mark drawn only as the glyph %s, which draws no mark',
+    (glyph) => {
+      const { measure, warnings } = read(
+        inMeasure(
+          direction(`<dynamics><other-dynamics smufl="${glyph}"></other-dynamics></dynamics>`) +
+            note('C'),
+        ),
+      )
+
+      expect(measure?.dynamics).toEqual([])
+      expect(warnings.map((w) => [w.code, w.message])).toEqual([
+        [
+          'unsupported:element',
+          `A dynamic drawn only as the glyph "${glyph}" is not converted yet, because the ` +
+            'glyph draws no mark the converter reads.',
+        ],
+      ])
+    },
+  )
 
   test('reads which side of the staff an accent is placed', () => {
     const { measure } = read(

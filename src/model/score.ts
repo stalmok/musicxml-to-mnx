@@ -575,6 +575,8 @@ interface DynamicBase {
 export interface ImmediateDynamic extends DynamicBase {
   readonly kind: 'immediate'
   readonly value: DynamicValue
+  /** The SMuFL glyphs the mark is drawn with, where the source names them. */
+  readonly glyphs?: readonly string[]
 }
 
 /**

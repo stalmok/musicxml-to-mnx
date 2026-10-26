@@ -639,7 +639,14 @@ function writeDynamic(dynamic: Dynamic, names: MeasureNames): MNXDynamic {
   }
   switch (dynamic.kind) {
     case 'immediate':
-      return { position, type: 'immediate', value: dynamic.value, ...wording, ...where }
+      return {
+        position,
+        type: 'immediate',
+        value: dynamic.value,
+        ...(dynamic.glyphs ? { glyphs: [...dynamic.glyphs] } : {}),
+        ...wording,
+        ...where,
+      }
     case 'gradual':
       return {
         position,
