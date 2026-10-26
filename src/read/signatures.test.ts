@@ -3,6 +3,8 @@ import { readFailure, readValid } from '../../tests/support/read.js'
 import { NOTE, score } from '../../tests/support/musicxml.js'
 import { convertValid } from '../../tests/support/convert.js'
 import { MusicXMLError } from '../errors.js'
+import { parseXmlRoot } from '../xml/parse.js'
+import { timesInForce } from './signatures.js'
 import { WarningCollector } from './collector.js'
 
 function read(source: string) {
@@ -1568,5 +1570,79 @@ describe('a part that flips its key signature enharmonically', () => {
     // would be eight, written as four flats instead.
     expect(result.parts[1]?.transposition?.keyFifthsFlipAt).toBe(8)
     expect(warnings).toEqual([])
+  })
+})
+
+// The reader works out the time signature each measure opens with before it
+// reads the part, walking each measure with a cursor of its own. It has to
+// place a time signature where the measure builder does: at the measure
+// start, or partway through, where it takes effect at the next measure.
+describe('the time signature worked out ahead of a part', () => {
+  const pitch = '<pitch><step>C</step><octave>4</octave></pitch>'
+  const quarter = `<note>${pitch}<duration>4</duration><type>quarter</type></note>`
+  const threeFour = '<attributes><time><beats>3</beats><beat-type>4</beat-type></time></attributes>'
+
+  function opened(before: string, after: string): { readAhead: string[]; output: string[] } {
+    const measures = [
+      '<attributes><divisions>4</divisions><time><beats>2</beats><beat-type>4</beat-type>' +
+        `</time></attributes>${quarter}${quarter}`,
+      before + threeFour + after,
+      quarter,
+    ]
+    const source =
+      '<score-partwise><part-list><score-part id="P1"><part-name>P</part-name></score-part>' +
+      '</part-list><part id="P1">' +
+      measures
+        .map((body, index) => `<measure number="${String(index + 1)}">${body}</measure>`)
+        .join('') +
+      '</part></score-partwise>'
+    const named = (time: { count: number; unit: number } | undefined) =>
+      time ? `${String(time.count)}/${String(time.unit)}` : 'none'
+    let inForce: { count: number; unit: number } | undefined
+    const output = convertValid(source).mnx.global.measures.map((measure) =>
+      named((inForce = measure.time ?? inForce)),
+    )
+    const part = parseXmlRoot(source).children.find((found) => found.name === 'part')
+    return { readAhead: timesInForce(part!).map(named), output }
+  }
+
+  test.each([
+    ['nothing', '', '3/4'],
+    ['a <backup> to the measure start', `${quarter}<backup><duration>4</duration></backup>`, '3/4'],
+    ['a <forward>', '<forward><duration>4</duration></forward>', '2/4'],
+    ['a grace note', `<note><grace/>${pitch}<type>eighth</type></note>`, '3/4'],
+    [
+      'a <backup> past the start that a <forward> does not undo',
+      `${quarter}<backup><duration>8</duration></backup><forward><duration>2</duration></forward>`,
+      '3/4',
+    ],
+    [
+      'a note after a <backup> past the start',
+      `${quarter}<backup><duration>8</duration></backup>${quarter}`,
+      '2/4',
+    ],
+    [
+      'a chord note and a <backup> to the measure start',
+      `${quarter}<note><chord/>${pitch}<duration>4</duration><type>quarter</type></note>` +
+        '<backup><duration>4</duration></backup>',
+      '3/4',
+    ],
+    [
+      'a note with no <duration>, scaled by its ratio',
+      `<note>${pitch}<type>eighth</type><time-modification><actual-notes>3</actual-notes>` +
+        '<normal-notes>2</normal-notes></time-modification></note>',
+      '2/4',
+    ],
+    [
+      'a rest marked as the measure with no <duration>',
+      '<note><rest measure="yes"/></note>',
+      '2/4',
+    ],
+  ])('places a time signature after %s where the measure does', (_name, before, second) => {
+    // A rest filling the measure leaves no room in its voice for a note.
+    const { readAhead, output } = opened(before, before.includes('measure="yes"') ? '' : quarter)
+
+    expect(readAhead[1]).toBe(second)
+    expect(readAhead).toEqual(output)
   })
 })

@@ -13,7 +13,8 @@
 
 import { describe, expect, test } from 'vitest'
 import { MusicXMLError, convertMusicXML } from '../src/index.js'
-import type { MNXSequenceItem } from '../src/index.js'
+import type { ConversionWarning, MNXDocument, MNXSequenceItem, MNXTime } from '../src/index.js'
+import { timesInForce } from '../src/read/signatures.js'
 import { parseXmlRoot } from '../src/xml/parse.js'
 import type { XmlElement } from '../src/xml/parse.js'
 import {
@@ -500,6 +501,45 @@ function sourceDynamics(root: XmlElement): { marks: string[]; wordings: string[]
   return { marks, wordings }
 }
 
+// Where the parts can open a measure in a time signature other than the
+// score's, the output does not say which one the part opened with.
+const TIME_PARTS_WAYS: ReadonlySet<string> = new Set([
+  'unrepresentable:cross-part-time',
+  'unrepresentable:per-staff-time',
+  'unrepresentable:mid-measure-time',
+  'unrepresentable:senza-misura',
+])
+
+/**
+ * Where the time signature the reader works out ahead of a part, to open each
+ * measure with, is not the one in force in the output. The read-ahead walks
+ * each measure with a cursor of its own, apart from the measure builder's, to
+ * tell a time signature at the measure start from one partway through.
+ */
+function readAheadTimeDisagreements(
+  mnx: MNXDocument,
+  root: XmlElement,
+  warnings: readonly ConversionWarning[],
+): string[] {
+  if (warnings.some((warning) => TIME_PARTS_WAYS.has(warning.code))) return []
+  let time: MNXTime | undefined
+  const inForce = mnx.global.measures.map((measure) => (time = measure.time ?? time))
+  return root.children
+    .filter((part) => part.name === 'part')
+    .flatMap((part) =>
+      timesInForce(part).flatMap((opens, index) => {
+        const output = inForce[index]
+        if (opens === undefined) return []
+        if (output?.count === opens.count && output.unit === opens.unit) return []
+        const stated = output ? `${String(output.count)}/${String(output.unit)}` : 'none'
+        return [
+          `${part.attributes['id'] ?? ''} measure ${String(index + 1)}: ` +
+            `${String(opens.count)}/${String(opens.unit)}, output ${stated}`,
+        ]
+      }),
+    )
+}
+
 describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   test('produces MNX the spec schema accepts', () => {
     expect(schemaErrors(mnx)).toEqual([])
@@ -957,6 +997,10 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   // MNX advances the sequence cursor by a tuplet's outer, and its content must
   // come to inner. The schema checks the shape of a ratio, not the
   // arithmetic.
+  test('opens each measure in the time signature the read-ahead found', () => {
+    expect(readAheadTimeDisagreements(mnx, parseXmlRoot(source), warnings).slice(0, 5)).toEqual([])
+  })
+
   test('fills every tuplet it writes', () => {
     expect([...underfilledTuplets(mnx)]).toEqual([])
   })
