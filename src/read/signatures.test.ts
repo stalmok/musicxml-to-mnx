@@ -1242,6 +1242,52 @@ describe('a part that flips its key signature enharmonically', () => {
     expect(warnings).toEqual([])
   })
 
+  // A concert part states the score's key in the score's spelling, so its
+  // key is settled first wherever it stands in the file.
+  test('states where it flips when it comes before the concert part', () => {
+    const { score: result, warnings } = read(score(keyed('P1', -5, B_FLAT) + keyed('P2', 5)))
+
+    expect(result.globalMeasures[0]?.key).toEqual({ fifths: 5 })
+    expect(result.parts[0]?.transposition?.keyFifthsFlipAt).toBe(7)
+    expect(warnings).toEqual([])
+  })
+
+  // The concert part that settles the score's key is the third, after one
+  // that changes key at the second measure, which the flipping part stops at.
+  test('settles a flip against a concert part written after it, past a shorter part', () => {
+    const source = score(
+      `<part id="P1"><measure number="1"><attributes><key><fifths>0</fifths></key>` +
+        `</attributes>${NOTE}</measure></part>` +
+        `<part id="P2"><measure number="1"><attributes><key><fifths>2</fifths></key>` +
+        `${B_FLAT}</attributes>${NOTE}</measure>` +
+        `<measure number="2"><attributes><key><fifths>-5</fifths></key></attributes>` +
+        `${NOTE}</measure></part>` +
+        `<part id="P3"><measure number="1"><attributes><key><fifths>0</fifths></key>` +
+        `</attributes>${NOTE}</measure>` +
+        `<measure number="2"><attributes><key><fifths>5</fifths></key></attributes>` +
+        `${NOTE}</measure></part>`,
+    )
+    const { score: result, warnings } = read(source)
+
+    expect(result.globalMeasures.map((measure) => measure.key)).toEqual([
+      { fifths: 0 },
+      { fifths: 5 },
+    ])
+    expect(result.parts[1]?.transposition?.keyFifthsFlipAt).toBe(7)
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:measure-count'])
+  })
+
+  // A concert part and a transposing part in different keys: the concert
+  // part's key is converted, and the transposing part is the one reported.
+  test('converts the concert part’s key where a transposing part before it disagrees', () => {
+    const { score: result, warnings } = read(score(keyed('P1', 3, B_FLAT) + keyed('P2', 0)))
+
+    expect(result.globalMeasures[0]?.key).toEqual({ fifths: 0 })
+    expect(warnings.map((w) => [w.code, w.context.part])).toEqual([
+      ['unrepresentable:cross-part-key', 'P1'],
+    ])
+  })
+
   // The point is measured in the fifths the part would write without the
   // flip, so the seven sharps the source drew come back from the score's
   // key and the point together.

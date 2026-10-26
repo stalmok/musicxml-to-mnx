@@ -78,29 +78,33 @@ export type ReadGlobalMeasure = Omit<GlobalMeasure, keyof ReadMarks | 'tempos'> 
   [K in keyof ReadMarks]: Stated<ReadMarks[K]> | undefined
 } & { readonly tempos: readonly Stated<Tempo>[] }
 
-/** A part's signatures settled against those of the parts read before it. */
-export interface AcrossParts {
+/** A part's keys settled against the score's. */
+export interface KeysAcrossParts {
   /** Where the part flips to the enharmonic signature, if it does. */
   flipAt: number | undefined
-  /** The key each measure of the part gives the score. */
-  contributed: (Key | undefined)[]
   /** Whether the part is in a different key from the score at a measure. */
   keyDisagreesAt: (index: number) => boolean
+}
+
+/** A part's signatures settled against the score's. */
+export interface AcrossParts extends KeysAcrossParts {
+  /** The key the score is in at each measure, settled over every part. */
+  keys: readonly (Key | undefined)[]
   /** Whether the part is in a different meter from the score at a measure. */
   timeDisagreesAt: (index: number) => boolean
 }
 
-// Parts restate the same key and time; the first to declare one wins, so a
-// later part repeating it is not treated as a change. A part declaring a
-// different one cannot be carried, because MNX states one key and one time
-// signature for the whole score, so the disagreement is reported. `target`
-// grows as long as the longest part, because that list is the score's measure
-// list.
+// Parts restate the same time; the first to declare one wins, so a later
+// part repeating it is not treated as a change. A part declaring a different
+// one cannot be carried, because MNX states one key and one time signature
+// for the whole score, so the disagreement is reported. The keys are settled
+// over every part before the merge. `target` grows as long as the longest
+// part, because that list is the score's measure list.
 export function mergeGlobalMeasures(
   target: ReadGlobalMeasure[],
   found: readonly ReadGlobalMeasure[],
   part: string,
-  { contributed, keyDisagreesAt, timeDisagreesAt }: AcrossParts,
+  { keys, keyDisagreesAt, timeDisagreesAt }: AcrossParts,
   warnings: WarningCollector,
 ): void {
   // The barline's rule below holds for every mark MNX states once on the
@@ -135,7 +139,8 @@ export function mergeGlobalMeasures(
       warnings.addForMeasure(
         'unrepresentable:cross-part-key',
         'The parts of this score are in different keys, and MNX states one key for ' +
-          'the score. The first stated is the one converted.',
+          'the score. The first stated by a part at concert pitch is the one converted, ' +
+          'or else the first stated.',
         context,
         'key',
       )
@@ -236,7 +241,7 @@ export function mergeGlobalMeasures(
       context,
     )
     target[index] = {
-      key: existing?.key ?? contributed[index],
+      key: keys[index],
       time: existing?.time ?? measure.time,
       tempos: mergeTempos(existing?.tempos ?? [], measure.tempos, warnings, context),
       number: existing?.number ?? measure.number,

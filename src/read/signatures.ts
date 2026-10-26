@@ -27,7 +27,7 @@ import { firstTimeStated } from './attributes.js'
 import type { AttributesReading, StaffSignature } from './attributes.js'
 import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
 import { lengthOf } from './duration.js'
-import type { AcrossParts, ReadGlobalMeasure } from './globalMeasures.js'
+import type { KeysAcrossParts, ReadGlobalMeasure } from './globalMeasures.js'
 import { noteValueBaseOf } from './noteValues.js'
 import { parseExactDecimal } from './numbers.js'
 import { KEY, reportLate, sameMeter, TIME } from './partSignatures.js'
@@ -633,6 +633,9 @@ function inTwoNoteTremolo(note: XmlElement): boolean {
   )
 }
 
+/** A measure as far as its key goes. */
+type Keyed = Pick<ReadGlobalMeasure, 'key'>
+
 interface KeyPair {
   /** The fifths the score sounds in. */
   score: number
@@ -652,10 +655,7 @@ interface KeyPair {
  * once per measure it spans, and only where an earlier part has the measure,
  * since past that the key in force is this part's own.
  */
-function keysInForce(
-  target: readonly ReadGlobalMeasure[],
-  found: readonly ReadGlobalMeasure[],
-): (KeyPair | undefined)[] {
+function keysInForce(target: readonly Keyed[], found: readonly Keyed[]): (KeyPair | undefined)[] {
   let inScore: Key | undefined
   let inPart: Key | undefined
   return found.map((measure, index) => {
@@ -673,7 +673,7 @@ function keysInForce(
  * where one side states a time signature, and only where an earlier part has
  * the measure.
  */
-function timesDisagree(
+export function timesDisagree(
   target: readonly ReadGlobalMeasure[],
   found: readonly ReadGlobalMeasure[],
 ): boolean[] {
@@ -694,14 +694,40 @@ function timesDisagree(
 }
 
 /**
- * Settles a part's keys and time signatures against the score's, as the
- * parts before it merged them into `target`.
+ * Settles the keys of every part, and the key the score is in at each
+ * measure.
+ *
+ * A part that writes the concert key states the score's key in the spelling
+ * the score is in. A transposing part can write the enharmonic signature,
+ * which reads back twelve fifths away. Settled first, it would put that
+ * spelling on the score and set every concert part against it. So the
+ * concert parts are settled first, in the order the source writes them, and
+ * the transposing parts after them. Within each, the first stated wins.
  */
-export function settleAcrossParts(
-  target: readonly ReadGlobalMeasure[],
-  found: readonly ReadGlobalMeasure[],
+export function settleKeysAcrossParts(
+  parts: readonly { globals: readonly Keyed[]; transposition: Transposition | undefined }[],
+): { parts: KeysAcrossParts[]; keys: (Key | undefined)[] } {
+  const score: Keyed[] = []
+  const settled: KeysAcrossParts[] = []
+  const transposes = (index: number) => writtenFifths(0, parts[index]?.transposition) !== 0
+  const order = [...parts.keys()].sort((a, b) => Number(transposes(a)) - Number(transposes(b)))
+  for (const index of order) {
+    const { globals, transposition } = parts[index] as (typeof parts)[number]
+    const { contributed, ...keys } = settlePartKeys(score, globals, transposition)
+    contributed.forEach((key, at) => {
+      score[at] = { key: score[at]?.key ?? key }
+    })
+    settled[index] = keys
+  }
+  return { parts: settled, keys: score.map((measure) => measure.key) }
+}
+
+/** Settles a part's keys against the score's, as the parts before it set them in `target`. */
+function settlePartKeys(
+  target: readonly Keyed[],
+  found: readonly Keyed[],
   transposition: Transposition | undefined,
-): AcrossParts {
+): KeysAcrossParts & { contributed: (Key | undefined)[] } {
   // A transposing part writing the enharmonic signature reads back as a key
   // twelve fifths from the rest of the score's, which is the same key spelled
   // the other way rather than a different one. MNX states where such a part
@@ -758,11 +784,5 @@ export function settleAcrossParts(
         writtenFifths(pair.part, transposition)
     )
   }
-  const times = timesDisagree(target, found)
-  return {
-    flipAt,
-    contributed,
-    keyDisagreesAt,
-    timeDisagreesAt: (index) => times[index] === true,
-  }
+  return { flipAt, contributed, keyDisagreesAt }
 }

@@ -67,7 +67,13 @@ import {
   withName,
   withTarget,
 } from './globalMeasures.js'
-import type { NamedSign, ReadGlobalMeasure, ReadJump, UndrawnSign } from './globalMeasures.js'
+import type {
+  KeysAcrossParts,
+  NamedSign,
+  ReadGlobalMeasure,
+  ReadJump,
+  UndrawnSign,
+} from './globalMeasures.js'
 import { settleJumps } from './jumps.js'
 import { MeasureRepeats } from './measureRepeats.js'
 import type { PartCollector } from './partCollector.js'
@@ -75,7 +81,8 @@ import {
   MeasureSignatures,
   scoreTimesInForce,
   timesInForce,
-  settleAcrossParts,
+  settleKeysAcrossParts,
+  timesDisagree,
 } from './signatures.js'
 import { measureLength, newPartState } from './state.js'
 import { attributeLoss, elementLoss } from './unrepresentable.js'
@@ -216,13 +223,26 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
     readPart(element, partList, ids, times, scoreTimes, warnings, path),
   )
 
-  const merged: ReadGlobalMeasure[] = []
   // Held by position rather than by part id, which two parts can share.
-  const flips = readings.map(({ globals, part }) => {
-    const across = settleAcrossParts(merged, globals, part.transposition)
-    mergeGlobalMeasures(merged, globals, part.id, across, warnings)
-    return across.flipAt
+  const keys = settleKeysAcrossParts(
+    readings.map(({ globals, part }) => ({ globals, transposition: part.transposition })),
+  )
+  const merged: ReadGlobalMeasure[] = []
+  readings.forEach(({ globals, part }, index) => {
+    const times = timesDisagree(merged, globals)
+    mergeGlobalMeasures(
+      merged,
+      globals,
+      part.id,
+      {
+        ...(keys.parts[index] as KeysAcrossParts),
+        keys: keys.keys,
+        timeDisagreesAt: (at) => times[at] === true,
+      },
+      warnings,
+    )
   })
+  const flips = keys.parts.map((part) => part.flipAt)
   const globalMeasures = settleJumps(
     merged,
     readings.map((reading) => reading.undrawn),
