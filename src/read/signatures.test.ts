@@ -1306,6 +1306,17 @@ describe('a part that flips its key signature enharmonically', () => {
     ])
   })
 
+  // The part named is one of those that disagree, and either can be the one
+  // drawn in a key it does not state, so the message does not say which.
+  test('says a part is drawn in a key it does not state, not which key is kept', () => {
+    const { warnings } = read(score(keyed('P1', 3, B_FLAT) + keyed('P2', 0)))
+
+    expect(warnings[0]?.message).toBe(
+      'The parts of this score are in different keys, and MNX states one key for the ' +
+        'score, so a part is drawn in a key its source does not state.',
+    )
+  })
+
   // The point is measured in the fifths the part would write without the
   // flip, so the seven sharps the source drew come back from the score's
   // key and the point together.

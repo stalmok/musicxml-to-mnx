@@ -139,8 +139,7 @@ export function mergeGlobalMeasures(
       warnings.addForMeasure(
         'unrepresentable:cross-part-key',
         'The parts of this score are in different keys, and MNX states one key for ' +
-          'the score. The first stated by a part at concert pitch is the one converted, ' +
-          'or else the first stated.',
+          'the score, so a part is drawn in a key its source does not state.',
         context,
         'key',
       )
