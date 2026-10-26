@@ -861,10 +861,11 @@ export function readSound(
     if (name === 'segno') {
       // Names the sign drawn beside it. MNX has no label for a segno, so this
       // is still a loss and still reported; it is read only to tell one sign
-      // from another when matching a jump to the one it goes back to.
-      segnoName = attribute(sound.element, 'segno')
+      // from another when matching a jump to the one it goes back to. An
+      // empty name names nothing, as an empty jump target does.
+      segnoName = attribute(sound.element, 'segno') || undefined
     }
-    if (name === 'coda') codaName = attribute(sound.element, 'coda')
+    if (name === 'coda') codaName = attribute(sound.element, 'coda') || undefined
     // Classified by attribute name, not element name: <sound dynamics> is a
     // playback velocity with no home, unlike the <dynamics> element.
     const loss = attributeLoss('sound', name)

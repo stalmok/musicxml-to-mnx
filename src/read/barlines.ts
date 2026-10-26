@@ -155,7 +155,7 @@ function readSegno(
   const segno = element.child('segno')
   if (!segno) return undefined
 
-  const name = peekAttribute(element.element, 'segno')
+  const name = peekAttribute(element.element, 'segno') || undefined
   return {
     value: {
       location: position,
@@ -182,7 +182,7 @@ function readCoda(
 ): Stated<NamedSign> | undefined {
   const coda = element.child('coda')
   if (!coda) return undefined
-  const name = peekAttribute(element.element, 'coda')
+  const name = peekAttribute(element.element, 'coda') || undefined
   return {
     value: {
       location: position,

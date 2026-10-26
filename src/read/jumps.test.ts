@@ -766,6 +766,36 @@ describe('two marks at one point that only one names', () => {
     expect(elementLosses(warnings)).toEqual([])
   })
 
+  // An empty name names nothing, as an empty jump target does.
+  test.each([
+    ['a direction', namedSegno('')],
+    ['a barline', '<barline location="left" segno=""><segno/></barline>'],
+  ])('takes an empty segno name on %s as no name', (_, empty) => {
+    const { types, warnings } = jumps(
+      empty + namedSegno('a') + NOTE,
+      namedSegno('b') + NOTE,
+      NOTE + '<sound dalsegno="a"/>',
+    )
+
+    expect(types).toEqual([undefined, undefined, 'segno'])
+    expect(elementLosses(warnings)).toEqual([])
+  })
+
+  test.each([
+    ['a direction', namedCoda('')],
+    ['a barline', '<barline location="left" coda=""><coda/></barline>'],
+  ])('takes an empty coda name on %s as no name', (_, empty) => {
+    const { types, warnings } = jumps(
+      NOTE + '<sound tocoda="a"/>',
+      NOTE + DA_CAPO,
+      namedCoda('b') + NOTE,
+      empty + namedCoda('a') + NOTE,
+    )
+
+    expect(types).toEqual(['toCoda', 'dcAlCoda', undefined, undefined])
+    expect(elementLosses(warnings)).toEqual([])
+  })
+
   test('reports a second segno at one point that gives another name', () => {
     const { warnings } = jumps(namedSegno('a') + '\n' + namedSegno('b') + NOTE)
 
