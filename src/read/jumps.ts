@@ -60,28 +60,43 @@ export function settleJumps(
   measures: readonly ReadGlobalMeasure[],
   warnings: WarningCollector,
 ): GlobalMeasure[] {
-  const returns = segnosReturnedTo(measures, warnings)
+  const segnos = signsOf(measures, 'segno')
+  const toSegnos = segnosResolved(measures, segnos, warnings)
   const goesTo = codasGoneTo(measures, warnings)
   const toCodas = goesTo.to.map((to, index) => (to ? measures[index]?.jump?.value : undefined))
-  const replays = measures.map(({ jump }, index): Replay | undefined => {
-    if (jump?.value.sound === 'dacapo') {
-      return { settled: SETTLED.dacapo, ...replayEnd(measures, toCodas, START) }
-    }
-    const from = returns.to[index]
-    if (from === undefined) return undefined
-    // MNX states a jump to a segno only in a score with one, so a D.S. with
-    // no segno to find is written as the D.C. a player takes.
-    const settled = from === START ? SETTLED.dacapo : SETTLED.dalsegno
-    return { settled, ...replayEnd(measures, toCodas, from) }
-  })
+  const replaysFrom = (returnsTo: readonly (Point | undefined)[]) =>
+    measures.map(({ jump }, index): Replay | undefined => {
+      if (jump?.value.sound === 'dacapo') {
+        return { settled: SETTLED.dacapo, ...replayEnd(measures, toCodas, START) }
+      }
+      const from = returnsTo[index]
+      if (from === undefined) return undefined
+      // MNX states a jump to a segno only in a score with one, so a D.S. with
+      // no segno to find is written as the D.C. a player takes.
+      const settled = from === START ? SETTLED.dacapo : SETTLED.dalsegno
+      return { settled, ...replayEnd(measures, toCodas, from) }
+    })
   const fines = signsOf(measures, 'fine')
-  const stopsAt = keepOne(
+  const finesStoppedAt = (replays: readonly (Replay | undefined)[]) =>
+    replays.map((replay) => fines.find((fine) => fine.index === replay?.fine))
+  // The number of D.C. and D.S. jumps kept where only this segno is.
+  const keptWith = (segno: Sign): number => {
+    const replays = replaysFrom(toSegnos.map((to) => (to === segno ? to : undefined)))
+    const fine = mostGoneTo(fines, finesStoppedAt(replays))
+    return replays.filter(
+      (replay) => replay !== undefined && (replay.end !== 'fine' || replay.fine === fine?.index),
+    ).length
+  }
+  const returns = keepOne(
     measures,
-    'fine',
-    fines,
-    replays.map((replay) => fines.find((fine) => fine.index === replay?.fine)),
+    'segno',
+    segnos,
+    toSegnos,
     warnings,
+    segnoKept(segnos, toSegnos, keptWith),
   )
+  const replays = replaysFrom(returns.to)
+  const stopsAt = keepOne(measures, 'fine', fines, finesStoppedAt(replays), warnings)
   const typeOf = (jump: ReadJump, index: number): JumpType | undefined => {
     if (jump.sound === 'tocoda') return toCodas[index] && 'toCoda'
     const replay = replays[index]
@@ -145,12 +160,12 @@ interface Destinations {
  * Where each measure's D.S. returns to: a segno, the start of the score
  * where the score draws none, or nowhere where the jump is not converted.
  */
-function segnosReturnedTo(
+function segnosResolved(
   measures: readonly ReadGlobalMeasure[],
+  signs: readonly Sign[],
   warnings: WarningCollector,
-): Destinations {
-  const signs = signsOf(measures, 'segno')
-  const resolved = measures.map(({ jump }, index) => {
+): (Point | undefined)[] {
+  return measures.map(({ jump }, index) => {
     if (jump?.value.sound !== 'dalsegno') return undefined
     const { from, unresolved } = segnoReturnedTo(signs, jump.value.target, index)
     if (unresolved !== undefined) {
@@ -158,7 +173,28 @@ function segnosReturnedTo(
     }
     return from
   })
-  return keepOne(measures, 'segno', signs, resolved, warnings)
+}
+
+/**
+ * The segno to keep in a score that draws several: the one most D.S. jumps
+ * return to. A D.S. kept with it can still be lost where it stops at a Fine
+ * that is not kept, so a segno that keeps more jumps once the Fine is chosen
+ * wins. As many kept keeps the one most jumps return to.
+ */
+function segnoKept(
+  segnos: readonly Sign[],
+  returnsTo: readonly (Point | undefined)[],
+  keptWith: (segno: Sign) => number,
+): Sign | undefined {
+  let kept = mostGoneTo(segnos, returnsTo)
+  if (kept === undefined || segnos.length === 1) return kept
+  let most = keptWith(kept)
+  for (const segno of segnos) {
+    if (!returnsTo.includes(segno)) continue
+    const count = keptWith(segno)
+    if (count > most) [kept, most] = [segno, count]
+  }
+  return kept
 }
 
 /**
@@ -254,7 +290,7 @@ const NOT_KEPT: Readonly<
 
 /**
  * MNX states a jump to a segno, a coda or a Fine only in a score with one of
- * it. The sign most jumps go to is kept. The others, and the jumps that go
+ * it. The sign most jumps go to is kept, unless `kept` names another. The others, and the jumps that go
  * to them, are not converted. As many jumps going to each keeps the first.
  */
 function keepOne(
@@ -263,8 +299,8 @@ function keepOne(
   signs: readonly Sign[],
   resolved: readonly (Point | undefined)[],
   warnings: WarningCollector,
+  kept = mostGoneTo(signs, resolved),
 ): Destinations {
-  const kept = mostGoneTo(signs, resolved)
   if (kept === undefined) return { to: resolved, keeps: () => true }
   const report = NOT_KEPT[kind]
   for (const sign of signs) {

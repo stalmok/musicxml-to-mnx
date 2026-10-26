@@ -587,6 +587,53 @@ describe('an al Fine jump in a score that has several Fines', () => {
     ])
   })
 
+  // Keeping segno a, which as many jumps return to as b, would lose its D.S.
+  // to the Fine the two D.C. jumps stop at, and the D.S. to b with it.
+  test('keeps the segno whose jumps survive the Fine kept', () => {
+    const named = (name: string) =>
+      `<direction><direction-type><segno/></direction-type><sound segno="${name}"/></direction>`
+    const warnings = new WarningCollector()
+    const { globalMeasures } = readValid(
+      score(
+        NOTE + FINE,
+        NOTE + DA_CAPO,
+        NOTE + DA_CAPO,
+        named('a') + NOTE,
+        NOTE + FINE,
+        NOTE + '<sound dalsegno="a"/>',
+        named('b') + NOTE,
+        NOTE + '<sound dalsegno="b"/>',
+      ),
+      warnings,
+    )
+
+    expect(globalMeasures.map((measure) => measure.jump?.type)).toEqual([
+      undefined,
+      'dcAlFine',
+      'dcAlFine',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'segno',
+    ])
+    expect(globalMeasures.map((measure) => measure.segno !== undefined)).toEqual([
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+    ])
+    expect(destinations(warnings.list()).map((w) => [w.context.measure, w.attribute])).toEqual([
+      [4, undefined],
+      [6, 'dalsegno'],
+      [5, 'fine'],
+    ])
+  })
+
   test('keeps every Fine where no jump is al Fine', () => {
     const { types, warnings } = jumps(
       NOTE + TO_CODA,
