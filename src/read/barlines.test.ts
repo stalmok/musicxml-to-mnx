@@ -779,6 +779,14 @@ describe('what a barline can say that MNX cannot', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:barline'])
   })
 
+  test('reports a partway barline that names its segno and coda once', () => {
+    const { warnings } = read(
+      NOTE + '<barline location="middle" segno="s" coda="c"><segno/><coda/></barline>' + NOTE,
+    )
+
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:barline'])
+  })
+
   // A fermata at the opening edge is held over the barline that closes the
   // measure before. Moving it there would be a guess. The one warning covers
   // the whole mark, its facing included.

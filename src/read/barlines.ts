@@ -105,9 +105,10 @@ export function readBarline(
       context,
       element.element,
     )
-    // The one warning accounts for the whole element, so what it holds is not
-    // reported a second time.
+    // The one warning accounts for the whole element, so what it holds and
+    // the attributes it carries are not reported a second time.
     element.skip('bar-style', 'repeat', 'ending', 'fermata', 'segno', 'coda')
+    for (const name of Object.keys(element.element.attributes)) attribute(element.element, name)
     return NOTHING
   }
 
