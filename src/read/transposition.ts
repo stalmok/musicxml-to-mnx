@@ -91,7 +91,8 @@ export function writtenFifthsWithFlip(
  * so a part that flips both ways, or flips at one key change and not at a
  * further one, cannot be stated. Nothing is returned there, and nothing where
  * the part flips nowhere, which leaves the caller reporting whatever the
- * point does not account for.
+ * point does not account for. A measure in a different key outright is left
+ * to that report.
  */
 export function keyFifthsFlipAt(
   keys: readonly { score: number; part: number }[],
@@ -109,7 +110,8 @@ export function keyFifthsFlipAt(
     if (key.part === key.score) kept.push(naive)
     else if (key.part === key.score - 12) lowered.push(naive)
     else if (key.part === key.score + 12) raised.push(naive)
-    else return undefined
+    // Any other distance is a different key, which the caller reports, and
+    // which says nothing about the flip.
   }
   if (lowered.length > 0 && raised.length > 0) return undefined
 

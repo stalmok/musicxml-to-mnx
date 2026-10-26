@@ -173,6 +173,17 @@ describe('the point at which a part flips its key signature', () => {
   test('says nothing for a part in a different key outright', () => {
     expect(keyFifthsFlipAt([{ score: -9, part: -4 }], B_FLAT_CLARINET)).toBeUndefined()
   })
+
+  // That key is reported as a disagreement, and says nothing about where the
+  // part flips at the others.
+  test('stands where the part flips, past a measure in a different key outright', () => {
+    const keys = [
+      { score: 1, part: 0 },
+      { score: 4, part: -8 },
+    ]
+
+    expect(keyFifthsFlipAt(keys, B_FLAT_CLARINET)).toBe(6)
+  })
 })
 
 describe('the key a part writes past its flip point', () => {
