@@ -837,6 +837,25 @@ describe('a bracket completed by the run of notes after it', () => {
     ])
   })
 
+  // The run states 5:2 but sounds at the bracket's 3:2, so the bracket takes
+  // B in. What the run keeps is the skip and D, a quarter lasting 10
+  // divisions. The skip of 3 divisions is written in D's frame, 12 written
+  // per 10 sounded, so 3/40 of a whole note, and not at the 5:2 it was filled
+  // at.
+  test('writes a skip the run keeps in the frame of the notes it keeps', () => {
+    const { content } = timed(
+      stoppedEarly +
+        tripletNote('B', '', 8, 5) +
+        '<forward><duration>3</duration></forward>' +
+        tripletNote('D', '', 10, 5),
+    )
+
+    expect(content?.find((item) => item.kind === 'space')).toEqual({
+      kind: 'space',
+      duration: fraction(3, 40),
+    })
+  })
+
   test('leaves output the schema takes', () => {
     const source = measures(TIMED + plainRest(24, 'half') + stoppedEarly + tripletNote('D'))
 
