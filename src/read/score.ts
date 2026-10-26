@@ -42,7 +42,7 @@ import { fixTransposition, readAttributes, settleTranspositions } from './attrib
 import type { MeasureRepeatReading } from './attributes.js'
 import { Endings, readBarline } from './barlines.js'
 import type { EndingStart, EndingStop } from './barlines.js'
-import { readDirection, readSound, undrawnSigns } from './directions.js'
+import { readDirection, readSound, soundSigns } from './directions.js'
 import type { SoundTempo } from './directions.js'
 import { requireDuration } from './divisions.js'
 import { lyricLineOrder } from './lyrics.js'
@@ -771,8 +771,7 @@ function readMeasure(
         if (reading.fine) fines.push({ value: reading.fine, element: found })
         jumps.push(...reading.jumps.map((jump) => ({ value: jump, element: found })))
         if (reading.tempo) soundTempos.push(reading.tempo)
-        // Outside a <direction>, nothing is drawn beside it.
-        undrawn.push(...undrawnSigns(reading, position, found, { segno: false, coda: false }))
+        undrawn.push(...soundSigns(reading, position, found))
         break
       }
 

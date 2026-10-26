@@ -29,9 +29,9 @@ export interface NamedSign extends Segno, Coda {
 }
 
 /**
- * A segno or a coda the source marks only for playback, with <sound segno> or
- * <sound coda> and no sign drawn beside it. A jump that goes to one cannot be
- * converted.
+ * A segno or a coda a <sound segno> or <sound coda> names. Where no part draws
+ * a sign of the kind on the measure, it marks a destination for playback
+ * only, and a jump that goes to one cannot be converted.
  */
 export interface UndrawnSign {
   readonly kind: 'segno' | 'coda'

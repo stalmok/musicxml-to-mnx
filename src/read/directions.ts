@@ -405,13 +405,7 @@ export function readDirection(
     if (soundReading.tempo) reading.soundTempos.push(soundReading.tempo)
     // The <sound> naming the sign sits in the same <direction> as the <segno>
     // it names, so the name is put on the signs this direction just read.
-    // With no sign to name, it marks a destination for playback only.
-    reading.undrawn.push(
-      ...undrawnSigns(soundReading, at, sound.element, {
-        segno: reading.segnos.length > 0,
-        coda: reading.codas.length > 0,
-      }),
-    )
+    reading.undrawn.push(...soundSigns(soundReading, at, sound.element))
     reading.segnos = withName(reading.segnos, soundReading.segnoName)
     reading.codas = withName(reading.codas, soundReading.codaName)
   }
@@ -761,17 +755,16 @@ function closeWithWording(
 // ".5", with a leading plus. A duration is never negative, so no minus.
 const FINAL_NOTE_DURATION = /^\+?(\d+(\.\d*)?|\.\d+)$/
 
-/** The segno and coda a <sound> names where no sign of the kind is drawn beside it. */
-export function undrawnSigns(
+/** The segno and coda a <sound> names. */
+export function soundSigns(
   sound: SoundReading,
   location: Fraction,
   element: XmlElement,
-  drawn: Readonly<Record<UndrawnSign['kind'], boolean>>,
 ): Stated<UndrawnSign>[] {
   const named = { segno: sound.segnoName, coda: sound.codaName }
   return (['segno', 'coda'] as const).flatMap((kind) => {
     const name = named[kind]
-    return name === undefined || drawn[kind] ? [] : [{ value: { kind, location, name }, element }]
+    return name === undefined ? [] : [{ value: { kind, location, name }, element }]
   })
 }
 
