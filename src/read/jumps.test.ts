@@ -744,6 +744,19 @@ describe('an al Fine jump in a score that has several Fines', () => {
     ])
   })
 
+  // The segno kept is settled after the coda, but the source reads it first.
+  test('reports the segno not kept before the coda not kept', () => {
+    const { warnings } = jumps(
+      SEGNO + NOTE + TO_CODA,
+      SEGNO + NOTE,
+      NOTE + '<sound dalsegno=""/>',
+      CODA + NOTE,
+      CODA + NOTE,
+    )
+
+    expect(destinations(warnings).map((w) => w.element)).toEqual(['segno', 'coda'])
+  })
+
   test('keeps every Fine where no jump is al Fine', () => {
     const { types, warnings } = jumps(
       NOTE + TO_CODA,

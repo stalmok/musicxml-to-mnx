@@ -4,7 +4,7 @@
 import { compareFractions, fraction } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type { GlobalMeasure, JumpType } from '../model/score.js'
-import type { WarningCollector } from './collector.js'
+import type { WarningCollector, WarningPlace } from './collector.js'
 import type { Stated } from './element.js'
 import type { ReadGlobalMeasure, ReadJump, UndrawnSign } from './globalMeasures.js'
 
@@ -66,6 +66,9 @@ export function settleJumps(
   const unseen = undrawnNames(measures, undrawn)
   const segnos = signsOf(measures, 'segno')
   const toSegnos = segnosResolved(measures, segnos, unseen.segno, warnings)
+  // The segno kept waits on the coda, which says where each replay ends, but
+  // its reports come first.
+  const segnoReports = warnings.reserve()
   const goesTo = codasGoneTo(measures, unseen.coda, warnings)
   const toCodas = goesTo.to.map((to, index) => (to ? measures[index]?.jump?.value : undefined))
   const replaysFrom = (returnsTo: readonly (Point | undefined)[]) =>
@@ -98,6 +101,7 @@ export function settleJumps(
     toSegnos,
     warnings,
     segnoKept(segnos, toSegnos, keptWith),
+    segnoReports,
   )
   const replays = replaysFrom(returns.to)
   const stopsAt = keepOne(measures, 'fine', fines, finesStoppedAt(replays), warnings)
@@ -355,8 +359,9 @@ const NOT_KEPT: Readonly<
 
 /**
  * MNX states a jump to a segno, a coda or a Fine only in a score with one of
- * it. The sign most jumps go to is kept, unless `kept` names another. The others, and the jumps that go
- * to them, are not converted. As many jumps going to each keeps the first.
+ * it. The sign most jumps go to is kept, unless `kept` names another. The
+ * others, and the jumps that go to them, are not converted. As many jumps
+ * going to each keeps the first. The reports go at `place`, where given.
  */
 function keepOne(
   measures: readonly ReadGlobalMeasure[],
@@ -365,13 +370,15 @@ function keepOne(
   resolved: readonly (Point | undefined)[],
   warnings: WarningCollector,
   kept = mostGoneTo(signs, resolved),
+  place?: WarningPlace,
 ): Destinations {
   if (kept === undefined) return { to: resolved, keeps: () => true }
   const report = NOT_KEPT[kind]
   for (const sign of signs) {
     const drawn = measures[sign.index]?.[kind]
     if (sign === kept || drawn === undefined) continue
-    warnings.add(
+    warnings.addAt(
+      place ?? warnings.reserve(),
       'unrepresentable:jump-destination',
       report.sign,
       { measure: sign.index + 1 },
@@ -382,7 +389,8 @@ function keepOne(
   const to = resolved.map((to, index) => {
     const written = measures[index]?.jump
     if (to === undefined || to === kept || written === undefined) return to
-    warnings.add(
+    warnings.addAt(
+      place ?? warnings.reserve(),
       'unrepresentable:jump-destination',
       report.jump(JUMP_NAMES[written.value.sound]),
       { measure: index + 1 },
