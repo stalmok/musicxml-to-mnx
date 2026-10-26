@@ -428,6 +428,29 @@ describe('where an octave shift runs', () => {
     expect(ottavas[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 0, den: 1 } })
   })
 
+  // The stop covers the rest, which leaves the sequence, so the shift ends on
+  // the last event before it.
+  test('ends before a rest filling the measure that its stop is written over', () => {
+    const { ottavas, warnings } = read(
+      shift('down') + NOTE,
+      shift('stop') + '<note><rest measure="yes"/><duration>4</duration></note>',
+    )
+
+    expect(ottavas[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 0, den: 1 } })
+    expect(warnings).toEqual([])
+  })
+
+  // A rest lasting the measure with no written value is its measure rest too.
+  test('ends before a rest lasting the measure that its stop is written over', () => {
+    const { ottavas, warnings } = read(
+      shift('down') + NOTE,
+      shift('stop') + '<note><rest/><duration>4</duration></note>',
+    )
+
+    expect(ottavas[0]?.[0]?.end).toEqual({ measure: 0, position: { num: 0, den: 1 } })
+    expect(warnings).toEqual([])
+  })
+
   test('ends on the last event of its own staff before the barline', () => {
     const onStaff = (staff: number, step: string) =>
       `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>2</duration>` +
