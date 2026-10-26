@@ -722,6 +722,15 @@ export function settleKeysAcrossParts(
   return { parts: settled, keys: score.map((measure) => measure.key) }
 }
 
+/** The pair at the measure nearest `index` that has one, the earlier where two are as near. */
+function nearestPair(pairs: readonly (KeyPair | undefined)[], index: number): KeyPair | undefined {
+  for (let distance = 1; distance < pairs.length; distance++) {
+    const found = pairs[index - distance] ?? pairs[index + distance]
+    if (found) return found
+  }
+  return undefined
+}
+
 /** Settles a part's keys against the score's, as the parts before it set them in `target`. */
 function settlePartKeys(
   target: readonly Keyed[],
@@ -757,15 +766,30 @@ function settlePartKeys(
   // flip is settled by the signature the part writes rather than by how far
   // the merge has reached: the reading another measure of this part settled
   // for the same signature is the one contributed here. A signature no
-  // measure settles is read as it stands, since nothing says a flip covers it.
+  // measure settles has two readings twelve fifths apart where both write it
+  // back through the flip. The one nearer the score's key at the nearest
+  // measure that settles one is taken, so the spelling follows the music
+  // around it. As near either way, or where only one writes the signature
+  // back, it is read as it stands.
   //
   // A part with no point to state that writes the score's key in the other
   // spelling is reported as a disagreement. Where an earlier part has the
   // measure and the score's key is in force, that spelling is still the
   // score's key, so it does not re-spell the parts that stated it first.
   const settled = (index: number, fifths: number): number | undefined => {
-    if (flipAt !== undefined) return keys[index]?.score ?? spellings.get(fifths)
+    if (flipAt !== undefined) {
+      return keys[index]?.score ?? spellings.get(fifths) ?? nearestReading(index, fifths)
+    }
     return target[index] ? keys[index]?.score : undefined
+  }
+  const nearestReading = (index: number, fifths: number): number => {
+    const near = nearestPair(keys, index)
+    const written = writtenFifths(fifths, transposition)
+    const other = [fifths - 12, fifths + 12].find(
+      (reading) => writtenFifthsWithFlip(reading, transposition, flipAt) === written,
+    )
+    if (near === undefined || other === undefined) return fifths
+    return Math.abs(other - near.score) < Math.abs(fifths - near.score) ? other : fifths
   }
   const contributed = found.map((measure, index) => {
     if (!measure.key) return measure.key

@@ -1348,6 +1348,48 @@ describe('a part that flips its key signature enharmonically', () => {
     expect(warnings).toEqual([])
   })
 
+  // Four flats read back as G-flat or, through the flip, as F-sharp, and no
+  // other measure settles four flats. F-sharp is nearer the five sharps the
+  // score settles at the next measure, so the spelling stays on that side.
+  test('spells a signature no measure settles near the key of the nearest that is', () => {
+    const unsettled =
+      `<part id="P1"><measure number="1">${NOTE}</measure>` +
+      `<measure number="2"><attributes><key><fifths>5</fifths></key></attributes>` +
+      `${NOTE}</measure></part>` +
+      `<part id="P2"><measure number="1"><attributes><key><fifths>-4</fifths></key>` +
+      `${B_FLAT}</attributes>${NOTE}</measure>` +
+      `<measure number="2"><attributes><key><fifths>-5</fifths></key></attributes>` +
+      `${NOTE}</measure></part>`
+    const { score: result, warnings } = read(score(unsettled))
+
+    expect(result.globalMeasures.map((measure) => measure.key)).toEqual([
+      { fifths: 6 },
+      { fifths: 5 },
+    ])
+    expect(result.parts[1]?.transposition?.keyFifthsFlipAt).toBe(7)
+    expect(warnings).toEqual([])
+  })
+
+  // With the flip at eight, five sharps write seven sharps, not the five flats
+  // the part writes. Only the direct reading, C-flat, writes them back.
+  test('keeps the direct reading where the other does not write the signature back', () => {
+    const unsettled =
+      `<part id="P1"><measure number="1">${NOTE}</measure>` +
+      `<measure number="2"><attributes><key><fifths>6</fifths></key></attributes>` +
+      `${NOTE}</measure></part>` +
+      `<part id="P2"><measure number="1"><attributes><key><fifths>-5</fifths></key>` +
+      `${B_FLAT}</attributes>${NOTE}</measure>` +
+      `<measure number="2"><attributes><key><fifths>-4</fifths></key></attributes>` +
+      `${NOTE}</measure></part>`
+    const { score: result } = read(score(unsettled))
+
+    expect(result.globalMeasures.map((measure) => measure.key)).toEqual([
+      { fifths: -7 },
+      { fifths: 6 },
+    ])
+    expect(result.parts[1]?.transposition?.keyFifthsFlipAt).toBe(8)
+  })
+
   // The score's key in force settles the reading before any other measure
   // does, so a part restating its signature after the score changes spelling
   // takes the new spelling.
