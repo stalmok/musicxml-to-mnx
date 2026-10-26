@@ -105,8 +105,9 @@ export function readBarline(
       context,
       element.element,
     )
-    // The one warning accounts for the whole element, so what it holds and
-    // the attributes it carries are not reported a second time.
+    // The one warning accounts for the barline's own marks and attributes, so
+    // they are not reported a second time. A trill line, footnote or level
+    // written on it is notation of its own and is still reported.
     element.skip('bar-style', 'repeat', 'ending', 'fermata', 'segno', 'coda')
     for (const name of Object.keys(element.element.attributes)) attribute(element.element, name)
     return NOTHING

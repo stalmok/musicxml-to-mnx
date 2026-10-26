@@ -340,8 +340,8 @@ function replayEnd(
  * sign leaves the jump alone rather than guessing between them.
  *
  * Many sources give every segno one name, and a score in sections draws one
- * in each. Among the segnos of its name, a jump returns to the nearest in an
- * earlier measure. One in the jump's own measure is drawn beside the D.S.,
+ * in each. Among the segnos of its name, or the unnamed ones for a jump that
+ * names none, a jump returns to the nearest in an earlier measure. One in the jump's own measure is drawn beside the D.S.,
  * not returned to. With none in an earlier measure, the first is taken.
  */
 function segnoReturnedTo(
