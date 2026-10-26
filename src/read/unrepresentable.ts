@@ -83,6 +83,9 @@ export const NO_HOME_IN_MNX: ReadonlySet<string> = new Set([
   // Its slideIn and slideOut lead into or away from one note, with no note at
   // the other end.
   'slide',
+  // A figured bass under a continuo line. The schema has no figure, figured
+  // bass or continuo anywhere.
+  'figured-bass',
   // How a note is played on the instrument, beyond which way the bow travels.
   // The schema's event-markings are accent, bow direction, breath, caesura,
   // soft accent, spiccato, staccatissimo, staccato, stress, strong accent,

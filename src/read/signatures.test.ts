@@ -531,7 +531,7 @@ describe('a time signature stated after the measure start', () => {
     )
 
     expect(warnings.map((w) => [w.code, w.element])).toEqual([
-      ['unsupported:element', 'figured-bass'],
+      ['unrepresentable:element', 'figured-bass'],
     ])
   })
 

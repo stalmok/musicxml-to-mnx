@@ -788,6 +788,10 @@ const ELEMENT_CONCEPTS: readonly (Concept & { readonly elements: readonly string
   },
   { elements: ['slide'], words: ['slide', 'glissando', 'portamento'] },
   {
+    elements: ['figured-bass'],
+    words: ['figure', 'figures', 'figured', 'continuo', 'thoroughbass'],
+  },
+  {
     elements: [
       'harmonic',
       'open-string',
