@@ -12,6 +12,7 @@ import {
   crowdedMeasureRests,
   lyricPlaces,
   differingLyricLines,
+  drawnKeyDisagreements,
   layoutLosses,
   measureLengthDisagreements,
   holdsUnderfilledTuplet,
@@ -1113,5 +1114,54 @@ describe('the elements and attributes a warning names', () => {
 
     expect(named('missing:divisions')).toEqual([])
     expect(named('missing:voice')).toEqual(['missing:voice divisions@'])
+  })
+})
+
+describe('the key each part draws, against its source', () => {
+  const NOTE =
+    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+    '<type>quarter</type></note>'
+  /** Written a major second above what it sounds. */
+  const B_FLAT = '<transpose><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>'
+  const part = (id: string, ...keys: (string | undefined)[]) =>
+    `<part id="${id}">` +
+    keys
+      .map(
+        (key, index) =>
+          `<measure number="${String(index + 1)}">` +
+          (index === 0 ? '<attributes><divisions>4</divisions>' : '<attributes>') +
+          `${key ?? ''}</attributes>${NOTE}</measure>`,
+      )
+      .join('') +
+    '</part>'
+  const key = (fifths: number, extra = '') =>
+    `<key><fifths>${String(fifths)}</fifths></key>${extra}`
+  const check = (parts: string, change?: (mnx: MNXDocument) => void) => {
+    const source = `<score-partwise>${parts}</score-partwise>`
+    const { mnx, warnings } = convertValid(source)
+    change?.(mnx)
+    return drawnKeyDisagreements(mnx, parseXmlRoot(source), warnings)
+  }
+
+  test('finds nothing where a flipping part is drawn in the key it writes', () => {
+    expect(check(part('P1', key(5)) + part('P2', key(-5, B_FLAT)))).toEqual([])
+  })
+
+  test('finds a flipping part drawn without its flip point', () => {
+    const lost = check(part('P1', key(5)) + part('P2', key(-5, B_FLAT)), (mnx) => {
+      const transposition = mnx.parts[1]?.transposition
+      if (transposition) delete transposition.keyFifthsFlipAt
+    })
+
+    expect(lost).toEqual(['P2 measure 1: draws 7 fifths, the source -5'])
+  })
+
+  // P2 changes key a measure before P1, and the score takes P2's key.
+  test('passes over every part from a reported disagreement until the score states a key', () => {
+    expect(check(part('P1', key(0), undefined, key(2)) + part('P2', key(0), key(2)))).toEqual([])
+  })
+
+  test('starts where the source first states a key', () => {
+    expect(check(part('P1', undefined, key(2)))).toEqual([])
   })
 })

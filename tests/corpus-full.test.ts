@@ -29,6 +29,7 @@ import {
   pitchesOf,
   sourceMicrotones,
   sourcePitches,
+  drawnKeyDisagreements,
   flipLetters,
   underfilledTuplets,
   unsourcedLosses,
@@ -38,7 +39,7 @@ const corpusDir = process.env.MUSICXML_TO_MNX_CORPUS
 
 interface Failure {
   file: string
-  kind: 'crash' | 'schema' | 'pitches' | 'warnings' | 'lengths'
+  kind: 'crash' | 'schema' | 'pitches' | 'keys' | 'warnings' | 'lengths'
   detail: string
 }
 
@@ -145,6 +146,9 @@ function firstFailure(
           : `"${converted[at] ?? ''}" against "${inSource[at] ?? ''}" in the source`,
     }
   }
+
+  const key = drawnKeyDisagreements(mnx, root, warnings)[0]
+  if (key) return { file, kind: 'keys', detail: key }
 
   // MNX states a whole number of semitones, so the source pitches above are
   // read at the whole alteration a microtone converts to. Each such

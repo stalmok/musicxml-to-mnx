@@ -28,6 +28,7 @@ import { songs } from './support/corpus.js'
 import {
   collectStarts,
   differingLyricLines,
+  drawnKeyDisagreements,
   layoutLosses,
   measureLengthDisagreements,
   lyricPlaces,
@@ -997,6 +998,10 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   // MNX advances the sequence cursor by a tuplet's outer, and its content must
   // come to inner. The schema checks the shape of a ratio, not the
   // arithmetic.
+  test('draws each part in the key its source states', () => {
+    expect(drawnKeyDisagreements(mnx, parseXmlRoot(source), warnings).slice(0, 5)).toEqual([])
+  })
+
   test('opens each measure in the time signature the read-ahead found', () => {
     expect(readAheadTimeDisagreements(mnx, parseXmlRoot(source), warnings).slice(0, 5)).toEqual([])
   })

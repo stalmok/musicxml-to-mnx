@@ -329,6 +329,89 @@ export function flipLetters(document: MNXDocument): (part: number, measure: numb
   }
 }
 
+// The losses that leave a part drawing a key other than the one its source
+// states, each reported where it happens.
+const KEY_LOSSES: ReadonlySet<string> = new Set([
+  'unrepresentable:per-staff-key',
+  'unrepresentable:mid-measure-key',
+  'unrepresentable:non-traditional-key',
+  'unrepresentable:per-staff-transposition',
+  'unrepresentable:transposition-change',
+  'inconsistent:key',
+])
+
+/**
+ * Where the key signature a part draws is not the one its source has in
+ * force, one line per part and measure. MNX draws a part's key as the score's
+ * concert key moved by the part's interval, flipped by twelve fifths past its
+ * keyFifthsFlipAt. A key no measure states yet is C major. Parts with a key
+ * loss reported are passed over, and so are measures before the source
+ * states a key.
+ *
+ * Parts that disagree about the key are reported against one of them, though
+ * either can be the one drawing a key it is not in. So from a measure where
+ * they are reported, every part is passed over until the score states a key
+ * again.
+ */
+export function drawnKeyDisagreements(
+  document: MNXDocument,
+  root: XmlElement,
+  warnings: readonly ConversionWarning[],
+): string[] {
+  const lost = new Set(warnings.filter((w) => KEY_LOSSES.has(w.code)).map((w) => w.context.part))
+  const disagreeAt = new Set(
+    warnings
+      .filter((w) => w.code === 'unrepresentable:cross-part-key')
+      .map((w) => (w.context.measure ?? 0) - 1),
+  )
+  const concertKeys: number[] = []
+  const disagreeing: boolean[] = []
+  let concert = 0
+  let disagree = false
+  document.global.measures.forEach((measure, index) => {
+    concert = measure.key?.fifths ?? concert
+    concertKeys.push(concert)
+    if (disagreeAt.has(index)) disagree = true
+    else if (measure.key) disagree = false
+    disagreeing.push(disagree)
+  })
+  const disagreements: string[] = []
+  root.children
+    .filter((c) => c.name === 'part')
+    .forEach((part, partIndex) => {
+      const id = part.attributes['id'] ?? ''
+      if (lost.has(id)) return
+      const transposition = document.parts[partIndex]?.transposition
+      let stated: number | undefined
+      part.children
+        .filter((c) => c.name === 'measure')
+        .forEach((measure, measureIndex) => {
+          for (const attributes of measure.children.filter((c) => c.name === 'attributes')) {
+            for (const key of attributes.children.filter((c) => c.name === 'key')) {
+              const fifths = key.children.find((c) => c.name === 'fifths')
+              if (fifths) stated = Number(fifths.rawText.trim())
+            }
+          }
+          if (stated === undefined || disagreeing[measureIndex]) return
+          let drawn = concertKeys[measureIndex] ?? concert
+          if (transposition) {
+            const { staffDistance, halfSteps } = transposition.interval
+            drawn += 7 * halfSteps - 12 * staffDistance
+            const flipAt = transposition.keyFifthsFlipAt
+            if (flipAt !== undefined && flipAt >= 0 && drawn >= flipAt) drawn -= 12
+            if (flipAt !== undefined && flipAt < 0 && drawn <= flipAt) drawn += 12
+          }
+          if (drawn !== stated) {
+            disagreements.push(
+              `${id} measure ${String(measureIndex + 1)}: draws ${String(drawn)} fifths, ` +
+                `the source ${String(stated)}`,
+            )
+          }
+        })
+    })
+  return disagreements
+}
+
 /**
  * Every pitch in the source, one line per part and measure, read from the
  * XML.
