@@ -398,6 +398,24 @@ describe('several parts', () => {
     expect(result.globalMeasures[0]?.segno).toBeUndefined()
   })
 
+  // A sign at another point is a different sign, so its name is not taken.
+  test('keeps no name from a later part that draws the segno at another point', () => {
+    const named = (name: string) =>
+      `<direction><direction-type><segno/></direction-type><sound segno="${name}"/></direction>`
+    const segno = '<direction><direction-type><segno/></direction-type></direction>'
+    const part = (id: string, first: string) =>
+      `<part id="${id}">` +
+      `<measure number="1">${first}</measure>` +
+      `<measure number="2">${named('b')}${NOTE}</measure>` +
+      `<measure number="3">${NOTE}<sound dalsegno="a"/></measure>` +
+      '</part>'
+    const { warnings } = read(
+      score(part('P1', segno + NOTE) + part('P2', NOTE + named('a') + NOTE)),
+    )
+
+    expect(warnings.map((w) => w.code)).toContain('unresolved:segno')
+  })
+
   test.each([
     ['the first part', false],
     ['a later part', true],

@@ -271,7 +271,9 @@ describe('a D.S. in a score that draws several segnos', () => {
   }
 
   test('returns to the nearest segno of its name in an earlier measure', () => {
-    expect(kept(named('s') + NOTE, named('s') + NOTE, NOTE + dalSegno('s'))).toEqual([2])
+    expect(
+      kept(named('s') + NOTE, named('s') + NOTE, named('s') + NOTE, NOTE + dalSegno('s')),
+    ).toEqual([3])
   })
 
   // A segno in the jump's own measure is drawn beside the D.S., not returned to.
