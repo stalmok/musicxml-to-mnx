@@ -262,6 +262,29 @@ describe('a D.S. in a score that draws several segnos', () => {
     expect(destinations(warnings)).toEqual([])
   })
 
+  // Many sources give every segno one name. A score in sections returns each
+  // D.S. to the segno of its own section, the nearest one before it.
+  const kept = (...bodies: string[]) => {
+    const warnings = new WarningCollector()
+    const { globalMeasures } = readValid(score(...bodies), warnings)
+    return globalMeasures.flatMap((measure, index) => (measure.segno ? [index + 1] : []))
+  }
+
+  test('returns to the nearest segno of its name in an earlier measure', () => {
+    expect(kept(named('s') + NOTE, named('s') + NOTE, NOTE + dalSegno('s'))).toEqual([2])
+  })
+
+  // A segno in the jump's own measure is drawn beside the D.S., not returned to.
+  test('passes over a segno of its name in the measure of the jump', () => {
+    expect(kept(named('s') + NOTE, named('s') + NOTE, named('s') + NOTE + dalSegno('s'))).toEqual([
+      2,
+    ])
+  })
+
+  test('returns to the first segno of its name where none stands in an earlier measure', () => {
+    expect(kept(named('s') + NOTE + dalSegno('s'), named('s') + NOTE)).toEqual([1])
+  })
+
   test('writes one segno the spec schema accepts', () => {
     const { mnx } = convertValid(score(named('a') + NOTE, named('b') + NOTE, NOTE + dalSegno('b')))
 

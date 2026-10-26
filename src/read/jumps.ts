@@ -152,7 +152,7 @@ function segnosReturnedTo(
   const signs = signsOf(measures, 'segno')
   const resolved = measures.map(({ jump }, index) => {
     if (jump?.value.sound !== 'dalsegno') return undefined
-    const { from, unresolved } = segnoReturnedTo(signs, jump.value.target)
+    const { from, unresolved } = segnoReturnedTo(signs, jump.value.target, index)
     if (unresolved !== undefined) {
       warnings.add('unresolved:segno', unresolved, { measure: index + 1 }, jump.element, 'dalsegno')
     }
@@ -338,10 +338,16 @@ function replayEnd(
  * score drawing none is taken from its start, which is where a player with no
  * sign to find would go. Past that the name decides, and a name matching no
  * sign leaves the jump alone rather than guessing between them.
+ *
+ * Many sources give every segno one name, and a score in sections draws one
+ * in each. Among the segnos of its name, a jump returns to the nearest in an
+ * earlier measure. One in the jump's own measure is drawn beside the D.S.,
+ * not returned to. With none in an earlier measure, the first is taken.
  */
 function segnoReturnedTo(
   signs: readonly Sign[],
   target: string | undefined,
+  index: number,
 ): { from: Point | undefined; unresolved: string | undefined } {
   if (signs.length === 0) {
     return {
@@ -352,7 +358,8 @@ function segnoReturnedTo(
     }
   }
   if (signs.length === 1) return { from: signs[0], unresolved: undefined }
-  const from = signs.find((sign) => sign.name === target)
+  const named = signs.filter((sign) => sign.name === target)
+  const from = named.filter((sign) => sign.index < index).at(-1) ?? named[0]
   if (from !== undefined) return { from, unresolved: undefined }
   return {
     from,
