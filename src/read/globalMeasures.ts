@@ -29,6 +29,17 @@ export interface NamedSign extends Segno, Coda {
 }
 
 /**
+ * A segno or a coda the source marks only for playback, with <sound segno> or
+ * <sound coda> and no sign drawn beside it. A jump that goes to one cannot be
+ * converted.
+ */
+export interface UndrawnSign {
+  readonly kind: 'segno' | 'coda'
+  readonly location: Fraction
+  readonly name: string
+}
+
+/**
  * A jump, named by the <sound> attribute that states it. Whether a D.C. or a
  * D.S. is al Fine or al Coda waits until the whole score is known.
  */

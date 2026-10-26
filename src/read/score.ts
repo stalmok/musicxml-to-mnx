@@ -42,7 +42,7 @@ import { fixTransposition, readAttributes, settleTranspositions } from './attrib
 import type { MeasureRepeatReading } from './attributes.js'
 import { Endings, readBarline } from './barlines.js'
 import type { EndingStart, EndingStop } from './barlines.js'
-import { readDirection, readSound } from './directions.js'
+import { readDirection, readSound, undrawnSigns } from './directions.js'
 import type { SoundTempo } from './directions.js'
 import { requireDuration } from './divisions.js'
 import { lyricLineOrder } from './lyrics.js'
@@ -67,7 +67,7 @@ import {
   withName,
   withTarget,
 } from './globalMeasures.js'
-import type { NamedSign, ReadGlobalMeasure, ReadJump } from './globalMeasures.js'
+import type { NamedSign, ReadGlobalMeasure, ReadJump, UndrawnSign } from './globalMeasures.js'
 import { settleJumps } from './jumps.js'
 import { MeasureRepeats } from './measureRepeats.js'
 import type { PartCollector } from './partCollector.js'
@@ -92,6 +92,8 @@ interface PartReading {
   globals: readonly ReadGlobalMeasure[]
   /** The <sound tempo> statements of each of its measures, by position. */
   soundTempos: readonly (readonly SoundTempo[])[]
+  /** The signs each of its measures marks only for playback, by position. */
+  undrawn: readonly (readonly Stated<UndrawnSign>[])[]
 }
 
 /**
@@ -113,6 +115,7 @@ interface MeasureReading {
    * been read and the marks the score draws are known.
    */
   soundTempos: readonly SoundTempo[]
+  undrawn: readonly Stated<UndrawnSign>[]
 }
 
 export function readScore(root: XmlElement, warnings: WarningCollector): Score {
@@ -220,7 +223,11 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
     mergeGlobalMeasures(merged, globals, part.id, across, warnings)
     return across.flipAt
   })
-  const globalMeasures = settleJumps(merged, warnings)
+  const globalMeasures = settleJumps(
+    merged,
+    readings.map((reading) => reading.undrawn),
+    warnings,
+  )
 
   for (const reading of readings) {
     reportSoundTempos(reading.part.id, reading.soundTempos, globalMeasures, warnings)
@@ -452,6 +459,7 @@ function readPart(
     place,
     globals: readings.map((reading) => reading.global),
     soundTempos: readings.map((reading) => reading.soundTempos),
+    undrawn: readings.map((reading) => reading.undrawn),
   }
 }
 
@@ -583,6 +591,7 @@ function readMeasure(
   // Every <sound tempo> of the measure, waiting on the score's marks to say
   // whether each one echoes a mark or stands alone.
   const soundTempos: SoundTempo[] = []
+  const undrawn: Stated<UndrawnSign>[] = []
   const segnos: Stated<NamedSign>[] = []
   const codas: Stated<NamedSign>[] = []
   const fines: Stated<Fine>[] = []
@@ -665,6 +674,7 @@ function readMeasure(
         fines.push(...reading.fines)
         jumps.push(...reading.jumps)
         soundTempos.push(...reading.soundTempos)
+        undrawn.push(...reading.undrawn)
         break
       }
 
@@ -732,10 +742,13 @@ function readMeasure(
       // it is waits until every part is read, because the mark can be written
       // after the <sound> or by another part.
       case 'sound': {
-        const reading = readSound(reader, builder.position(), warnings, context)
+        const position = builder.position()
+        const reading = readSound(reader, position, warnings, context)
         if (reading.fine) fines.push({ value: reading.fine, element: found })
         jumps.push(...reading.jumps.map((jump) => ({ value: jump, element: found })))
         if (reading.tempo) soundTempos.push(reading.tempo)
+        // Outside a <direction>, nothing is drawn beside it.
+        undrawn.push(...undrawnSigns(reading, position, found, { segno: false, coda: false }))
         break
       }
 
@@ -846,6 +859,7 @@ function readMeasure(
       pageBreak,
     },
     soundTempos,
+    undrawn,
   }
 }
 

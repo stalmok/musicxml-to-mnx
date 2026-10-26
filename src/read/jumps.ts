@@ -5,7 +5,8 @@ import { compareFractions, fraction } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type { GlobalMeasure, JumpType } from '../model/score.js'
 import type { WarningCollector } from './collector.js'
-import type { ReadGlobalMeasure, ReadJump } from './globalMeasures.js'
+import type { Stated } from './element.js'
+import type { ReadGlobalMeasure, ReadJump, UndrawnSign } from './globalMeasures.js'
 
 /** A point in the score: a measure index and a location in that measure. */
 interface Point {
@@ -58,11 +59,14 @@ const SETTLED: Readonly<Record<'dacapo' | 'dalsegno', Record<ReplayEnd, JumpType
  */
 export function settleJumps(
   measures: readonly ReadGlobalMeasure[],
+  /** The signs each part marks only for playback, by part and then by measure. */
+  undrawn: readonly (readonly (readonly Stated<UndrawnSign>[])[])[],
   warnings: WarningCollector,
 ): GlobalMeasure[] {
+  const unseen = undrawnNames(measures, undrawn)
   const segnos = signsOf(measures, 'segno')
-  const toSegnos = segnosResolved(measures, segnos, warnings)
-  const goesTo = codasGoneTo(measures, warnings)
+  const toSegnos = segnosResolved(measures, segnos, unseen.segno, warnings)
+  const goesTo = codasGoneTo(measures, unseen.coda, warnings)
   const toCodas = goesTo.to.map((to, index) => (to ? measures[index]?.jump?.value : undefined))
   const replaysFrom = (returnsTo: readonly (Point | undefined)[]) =>
     measures.map(({ jump }, index): Replay | undefined => {
@@ -163,10 +167,15 @@ interface Destinations {
 function segnosResolved(
   measures: readonly ReadGlobalMeasure[],
   signs: readonly Sign[],
+  undrawn: ReadonlySet<string>,
   warnings: WarningCollector,
 ): (Point | undefined)[] {
   return measures.map(({ jump }, index) => {
     if (jump?.value.sound !== 'dalsegno') return undefined
+    if (goesToUndrawn(signs, undrawn, jump.value.target)) {
+      reportUndrawn('segno', jump, index, warnings)
+      return undefined
+    }
     const { from, unresolved } = segnoReturnedTo(signs, jump.value.target, index)
     if (unresolved !== undefined) {
       warnings.add('unresolved:segno', unresolved, { measure: index + 1 }, jump.element, 'dalsegno')
@@ -207,12 +216,17 @@ function segnoKept(
  */
 function codasGoneTo(
   measures: readonly ReadGlobalMeasure[],
+  undrawn: ReadonlySet<string>,
   warnings: WarningCollector,
 ): Destinations {
   const signs = signsOf(measures, 'coda')
   const resolved = measures.map(({ jump }, index) => {
     if (jump?.value.sound !== 'tocoda') return undefined
     const { target, location } = jump.value
+    if (goesToUndrawn(signs, undrawn, target)) {
+      reportUndrawn('coda', jump, index, warnings)
+      return undefined
+    }
     const byName = signs.filter((sign) => sign.name === target)
     const unnamed = signs.filter((sign) => sign.name === undefined)
     const named = signs.length === 1 ? signs : byName.length > 0 ? byName : unnamed
@@ -240,6 +254,57 @@ function codasGoneTo(
     return undefined
   })
   return keepOne(measures, 'coda', signs, resolved, warnings)
+}
+
+/**
+ * The names of the segnos and codas the parts mark only for playback, where
+ * no part draws a sign of that kind on the measure.
+ */
+function undrawnNames(
+  measures: readonly ReadGlobalMeasure[],
+  undrawn: readonly (readonly (readonly Stated<UndrawnSign>[])[])[],
+): Record<UndrawnSign['kind'], Set<string>> {
+  const names = { segno: new Set<string>(), coda: new Set<string>() }
+  for (const part of undrawn) {
+    part.forEach((marks, index) => {
+      for (const { value } of marks) {
+        if (measures[index]?.[value.kind] === undefined) names[value.kind].add(value.name)
+      }
+    })
+  }
+  return names
+}
+
+/**
+ * Whether a jump goes to a sign marked only for playback: the only kind of
+ * sign the score has, or the one the jump names where no drawn sign has that
+ * name.
+ */
+function goesToUndrawn(
+  signs: readonly Sign[],
+  undrawn: ReadonlySet<string>,
+  target: string | undefined,
+): boolean {
+  if (undrawn.size === 0) return false
+  if (signs.length === 0) return true
+  return target !== undefined && undrawn.has(target) && signs.every((sign) => sign.name !== target)
+}
+
+function reportUndrawn(
+  kind: UndrawnSign['kind'],
+  jump: Stated<ReadJump>,
+  index: number,
+  warnings: WarningCollector,
+): void {
+  const goes = kind === 'segno' ? 'This dal segno jump returns to' : 'This to-coda jump goes on to'
+  warnings.add(
+    'unrepresentable:undrawn-destination',
+    `${goes} a ${kind} the score marks only for playback, with <sound ${kind}>, and does ` +
+      `not draw. MNX states a ${kind} only as a drawn sign, so the jump is not converted.`,
+    { measure: index + 1 },
+    jump.element,
+    jump.value.sound,
+  )
 }
 
 function signsOf(measures: readonly ReadGlobalMeasure[], kind: Destination): Sign[] {

@@ -75,6 +75,10 @@ export const WARNING_CODES = Object.freeze([
   // and the jumps that go to them, are not converted. The element field
   // names the sign or the <sound> of the jump.
   'unrepresentable:jump-destination',
+  // A D.S. or a to-coda jump that goes to a segno or a coda the source marks
+  // only for playback, with <sound segno> or <sound coda>, and does not draw.
+  // MNX's segno and coda are drawn signs, so the jump is not converted.
+  'unrepresentable:undrawn-destination',
   // A repeat played fewer than two times. MNX plays a repeat at least twice,
   // so the repeat is converted and the count is not.
   'unrepresentable:repeat-times',

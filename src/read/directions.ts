@@ -28,7 +28,7 @@ import type {
   Tempo,
   WedgeType,
 } from '../model/score.js'
-import type { NamedSign, ReadJump } from './globalMeasures.js'
+import type { NamedSign, ReadJump, UndrawnSign } from './globalMeasures.js'
 import { writtenAt } from './collector.js'
 import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
@@ -59,6 +59,7 @@ export interface DirectionReading {
   jumps: Stated<ReadJump>[]
   /** Each <sound tempo> the direction states. */
   soundTempos: SoundTempo[]
+  undrawn: Stated<UndrawnSign>[]
 }
 
 /** The navigation a single <sound> element carries a home for. */
@@ -235,6 +236,7 @@ export function readDirection(
     fines: [],
     jumps: [],
     soundTempos: [],
+    undrawn: [],
   }
 
   // A direction says which staff it belongs under. A tempo is the score's,
@@ -403,6 +405,13 @@ export function readDirection(
     if (soundReading.tempo) reading.soundTempos.push(soundReading.tempo)
     // The <sound> naming the sign sits in the same <direction> as the <segno>
     // it names, so the name is put on the signs this direction just read.
+    // With no sign to name, it marks a destination for playback only.
+    reading.undrawn.push(
+      ...undrawnSigns(soundReading, at, sound.element, {
+        segno: reading.segnos.length > 0,
+        coda: reading.codas.length > 0,
+      }),
+    )
     reading.segnos = withName(reading.segnos, soundReading.segnoName)
     reading.codas = withName(reading.codas, soundReading.codaName)
   }
@@ -751,6 +760,20 @@ function closeWithWording(
 // it as a decimal, and XML's decimal allows every one of "8", "8.5", "8." and
 // ".5", with a leading plus. A duration is never negative, so no minus.
 const FINAL_NOTE_DURATION = /^\+?(\d+(\.\d*)?|\.\d+)$/
+
+/** The segno and coda a <sound> names where no sign of the kind is drawn beside it. */
+export function undrawnSigns(
+  sound: SoundReading,
+  location: Fraction,
+  element: XmlElement,
+  drawn: Readonly<Record<UndrawnSign['kind'], boolean>>,
+): Stated<UndrawnSign>[] {
+  const named = { segno: sound.segnoName, coda: sound.codaName }
+  return (['segno', 'coda'] as const).flatMap((kind) => {
+    const name = named[kind]
+    return name === undefined || drawn[kind] ? [] : [{ value: { kind, location, name }, element }]
+  })
+}
 
 function withName(signs: Stated<NamedSign>[], name: string | undefined): Stated<NamedSign>[] {
   if (name === undefined) return signs

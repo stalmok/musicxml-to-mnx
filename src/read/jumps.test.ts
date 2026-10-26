@@ -151,6 +151,116 @@ describe('a D.S. in a score that draws no segno', () => {
   })
 })
 
+// <sound segno> and <sound coda> with no sign beside them mark a destination
+// for playback only. MNX's segno and coda are drawn signs, so a jump that goes
+// to one is not converted.
+describe('a jump to a sign the score does not draw', () => {
+  const undrawn = (warnings: readonly ConversionWarning[]) =>
+    warnings
+      .filter((w) => w.code === 'unrepresentable:undrawn-destination')
+      .map((w) => [w.message, w.element, w.attribute, w.context.measure])
+
+  test('does not convert a D.S. to a segno marked only for playback', () => {
+    const { types, warnings } = jumps('<sound segno="a"/>' + NOTE, NOTE + '<sound dalsegno="a"/>')
+
+    expect(types).toEqual([undefined, undefined])
+    expect(undrawn(warnings)).toEqual([
+      [
+        'This dal segno jump returns to a segno the score marks only for playback, with ' +
+          '<sound segno>, and does not draw. MNX states a segno only as a drawn sign, so ' +
+          'the jump is not converted.',
+        'sound',
+        'dalsegno',
+        2,
+      ],
+    ])
+    expect(warnings.filter((w) => w.code === 'unresolved:segno')).toEqual([])
+  })
+
+  test('does not convert a D.S. to an undrawn segno in a direction', () => {
+    const { types, warnings } = jumps(
+      '<direction><direction-type><words>here</words></direction-type>' +
+        '<sound segno="a"/></direction>' +
+        NOTE,
+      NOTE + '<sound dalsegno="a"/>',
+    )
+
+    expect(types).toEqual([undefined, undefined])
+    expect(undrawn(warnings).map((w) => w[3])).toEqual([2])
+  })
+
+  // The name settles which sign, even where one other segno is drawn.
+  test('does not convert a D.S. naming an undrawn segno beside a drawn one', () => {
+    const { types, warnings } = jumps(
+      SEGNO + NOTE,
+      '<sound segno="a"/>' + NOTE,
+      NOTE + '<sound dalsegno="a"/>',
+    )
+
+    expect(types).toEqual([undefined, undefined, undefined])
+    expect(undrawn(warnings).map((w) => w[3])).toEqual([3])
+  })
+
+  test('returns a D.S. naming no sign to the one segno drawn', () => {
+    const { types, warnings } = jumps(
+      SEGNO + NOTE,
+      '<sound segno="a"/>' + NOTE,
+      NOTE + '<sound dalsegno=""/>',
+    )
+
+    expect(types).toEqual([undefined, undefined, 'segno'])
+    expect(undrawn(warnings)).toEqual([])
+  })
+
+  // Another part draws the sign at that measure.
+  test('converts a D.S. to a segno another part draws', () => {
+    const warnings = new WarningCollector()
+    const part = (id: string, first: string) =>
+      `<part id="${id}"><measure number="1"><attributes><divisions>4</divisions></attributes>` +
+      `${first}${NOTE}</measure><measure number="2">${NOTE}<sound dalsegno="a"/></measure></part>`
+    const { globalMeasures } = readValid(
+      '<score-partwise>' +
+        part('P1', '<sound segno="a"/>') +
+        part(
+          'P2',
+          '<direction><direction-type><segno/></direction-type><sound segno="a"/></direction>',
+        ) +
+        '</score-partwise>',
+      warnings,
+    )
+
+    expect(globalMeasures.map((measure) => measure.jump?.type)).toEqual([undefined, 'segno'])
+    expect(undrawn(warnings.list())).toEqual([])
+  })
+
+  test('does not convert a to-coda jump to a coda marked only for playback', () => {
+    const { types, warnings } = jumps(
+      NOTE + '<sound tocoda="c"/>',
+      NOTE + DA_CAPO,
+      '<sound coda="c"/>' + NOTE,
+    )
+
+    expect(types).toEqual([undefined, 'dc', undefined])
+    expect(undrawn(warnings)).toEqual([
+      [
+        'This to-coda jump goes on to a coda the score marks only for playback, with ' +
+          '<sound coda>, and does not draw. MNX states a coda only as a drawn sign, so ' +
+          'the jump is not converted.',
+        'sound',
+        'tocoda',
+        1,
+      ],
+    ])
+    expect(warnings.filter((w) => w.code === 'unresolved:coda')).toEqual([])
+  })
+
+  test('writes the score without the jump onto schema-valid MNX', () => {
+    const { mnx } = convertValid(score('<sound segno="a"/>' + NOTE, NOTE + '<sound dalsegno="a"/>'))
+
+    expect(mnx.global.measures.map((measure) => measure.jump)).toEqual([undefined, undefined])
+  })
+})
+
 // MNX states a jump to a segno only in a score with one segno. The segno most
 // jumps return to is kept. The other segnos, and the jumps that return to
 // them, are not converted.
