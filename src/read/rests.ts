@@ -374,13 +374,16 @@ function reportCarriedByUnwritableRest(
 }
 
 /**
- * Drops a rest written over its voice's rest through the measure. The rest
- * and each notation it carries are reported, and the cursor still moves past
- * where it stood.
+ * Drops a rest that adds nothing to its voice's measure: one written over the
+ * voice's rest through the measure, or one that repeats the rests before it
+ * (see MeasureBuilder.restRepeatsMeasure). The rest and each notation it
+ * carries are reported. The cursor moves past a rest written over the measure
+ * rest, where the source stood it, and stays where the repeated rests end.
  */
 export function dropRedundantRest(
   note: VoicedNote,
   rest: XmlElement,
+  over: 'measure rest' | 'rests before',
   state: PartState,
   builder: MeasureBuilder,
   measureIndex: number,
@@ -406,10 +409,18 @@ export function dropRedundantRest(
       scale.factor,
     )
 
+  const description =
+    over === 'measure rest'
+      ? 'written over a rest that already fills the measure'
+      : 'repeating the rests before it in the first measure of a multi-measure rest'
   warnings.add(
     'redundant:rest',
-    'A rest is written over a rest that already fills the measure in the same voice. The ' +
-      'measure rest is the one converted.',
+    over === 'measure rest'
+      ? 'A rest is written over a rest that already fills the measure in the same voice. ' +
+          'The measure rest is the one converted.'
+      : 'A rest with no <type> lasts as long as the rests before it in its voice, in the ' +
+          'first measure of a multi-measure rest. It writes the measure a second time, and ' +
+          'is not converted.',
     context,
     rest,
   )
@@ -438,14 +449,13 @@ export function dropRedundantRest(
     (found) => {
       warnings.add(
         'redundant:rest',
-        `A <${found.name}> on a rest written over a rest that already fills the measure is ` +
-          'not converted.',
+        `A <${found.name}> on a rest ${description} is not converted.`,
         context,
         found,
       )
     },
   )
-  builder.passOver(lasts)
+  builder.passOver(over === 'measure rest' ? lasts : fraction(0))
 }
 
 /**

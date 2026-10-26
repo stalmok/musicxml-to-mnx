@@ -398,7 +398,9 @@ export const WARNING_CODES = Object.freeze([
   // Each drawn thing the extra carries, such as a lyric or a fermata, is
   // reported under this code too, naming its element. A rest in another line
   // of the voice, where the voice sounds a note in the measure, is part of
-  // that line's music and is kept.
+  // that line's music and is kept. Also a rest with no value that writes the
+  // first measure of a multi-measure rest a second time, after rests that
+  // already last it.
   'redundant:rest',
 ] as const)
 

@@ -567,6 +567,21 @@ function soundingVoices(measure: XmlElement): (string | undefined)[] {
   )
 }
 
+/**
+ * Whether a <multiple-rest> in the measure opens a multi-measure rest there.
+ * An <attributes> can hold more than one <measure-style>, and a measure more
+ * than one <attributes>.
+ */
+function opensMultimeasureRest(measure: XmlElement): boolean {
+  return peeking(() =>
+    children(measure, 'attributes').some((attributes) =>
+      children(attributes, 'measure-style').some(
+        (style) => child(style, 'multiple-rest') !== undefined,
+      ),
+    ),
+  )
+}
+
 /** Every voice name the notes of a part state, in any measure. */
 function voiceNames(part: XmlElement): Set<string> {
   return peeking(
@@ -637,6 +652,7 @@ function readMeasure(
     soundingVoices(element),
     state.beamsOpenAtBarline,
     state.voiceNames,
+    opensMultimeasureRest(element),
   )
 
   // Walked in document order, because MusicXML states a measure as one stream

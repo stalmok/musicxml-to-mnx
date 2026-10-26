@@ -212,9 +212,39 @@ export function readNote(
   if (restElement && !graceElement && builder.restIsRedundant(voice)) {
     const reading = readRest(note, state, builder)
     if (reading.kind !== 'fills' || reading.unwritableLength !== undefined) {
-      dropRedundantRest(note, restElement, state, builder, measureIndex, warnings, context, path)
+      dropRedundantRest(
+        note,
+        restElement,
+        'measure rest',
+        state,
+        builder,
+        measureIndex,
+        warnings,
+        context,
+        path,
+      )
       return
     }
+  }
+  if (
+    restElement &&
+    !graceElement &&
+    written === undefined &&
+    duration !== undefined &&
+    builder.restRepeatsMeasure(voice, duration)
+  ) {
+    dropRedundantRest(
+      note,
+      restElement,
+      'rests before',
+      state,
+      builder,
+      measureIndex,
+      warnings,
+      context,
+      path,
+    )
+    return
   }
 
   const { markers, tremolo } = openTupletsAndTremolo(note, builder, warnings, context, path)

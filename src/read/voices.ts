@@ -538,6 +538,8 @@ export class MeasureBuilder {
   readonly #carryingOn: CarryingOn[] = []
   /** Every voice name the part's notes state, in any measure. */
   readonly #partVoices: ReadonlySet<string>
+  /** Whether a <multiple-rest> opens a multi-measure rest at this measure. */
+  readonly #opensMultimeasureRest: boolean
 
   constructor(
     carriedStops: readonly CarriedTupletStop[],
@@ -545,8 +547,10 @@ export class MeasureBuilder {
     soundingVoices: Iterable<string | undefined>,
     beamsOpenBefore: BeamsOpenAtBarline,
     partVoices: ReadonlySet<string>,
+    opensMultimeasureRest: boolean,
   ) {
     this.#partVoices = partVoices
+    this.#opensMultimeasureRest = opensMultimeasureRest
     this.#carriedStops = [...carriedStops]
     this.#carriedTremolos = new Set(carriedTremolos)
     this.#soundingVoices = new Set([...soundingVoices].map((voice) => voice ?? UNNAMED_VOICE))
@@ -653,6 +657,26 @@ export class MeasureBuilder {
   restIsRedundant(voice: VoiceLine): boolean {
     if (!this.restsTheMeasure(voice)) return false
     return restFills(layerOf(voice)) || !this.#soundingVoices.has(voice.name)
+  }
+
+  /**
+   * Whether a rest lasting `length` at the cursor writes this voice's measure
+   * a second time, in a measure that opens a multi-measure rest. Some
+   * exporters write that measure twice over: rests lasting the measure, then
+   * one rest lasting as long again. The voice sounds no note in the measure,
+   * and its line holds those rests alone, from the measure start to the
+   * cursor.
+   */
+  restRepeatsMeasure(voice: VoiceLine, length: Fraction): boolean {
+    const layer = layerOf(voice)
+    return (
+      this.#opensMultimeasureRest &&
+      !this.#soundingVoices.has(voice.name) &&
+      layer.content.length > 0 &&
+      layer.content.every((item) => item.kind === 'event' && item.body.kind === 'rest') &&
+      compareFractions(layer.end, length) === 0 &&
+      compareFractions(this.#cursor, length) === 0
+    )
   }
 
   /**

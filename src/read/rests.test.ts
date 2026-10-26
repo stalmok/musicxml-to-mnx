@@ -2434,3 +2434,67 @@ describe('a rest after a grace note that opens a tuplet', () => {
     )
   })
 })
+
+// Some exporters write the first measure of a multi-measure rest twice over
+// in a voice: rests with a value lasting the measure, then one rest with no
+// value lasting as long again.
+describe('a rest repeating the rests before it in a multi-measure rest', () => {
+  const opening = (style: string, body: string) =>
+    '<score-partwise><part id="P1"><measure number="1"><attributes><divisions>4</divisions>' +
+    `<time><beats>4</beats><beat-type>4</beat-type></time>${style}</attributes>` +
+    `${body}</measure></part></score-partwise>`
+  const multiRest = '<measure-style><multiple-rest>3</multiple-rest></measure-style>'
+  const rest = (duration: number, type?: string) =>
+    `<note><rest/><duration>${String(duration)}</duration><voice>1</voice>` +
+    (type === undefined ? '' : `<type>${type}</type>`) +
+    '</note>'
+  const durations = (mnx: ReturnType<typeof convertValid>['mnx']) =>
+    mnx.parts[0]?.measures[0]?.sequences[0]?.content.flatMap((item) =>
+      'duration' in item ? [item.duration] : [],
+    )
+
+  test('drops a rest with no value repeating a whole rest, reporting it', () => {
+    const { mnx, warnings } = convertValid(opening(multiRest, rest(16, 'whole') + rest(16)))
+
+    expect(durations(mnx)).toEqual([{ base: 'whole' }])
+    expect(warnings.map((warning) => [warning.code, warning.context.measure])).toEqual([
+      ['redundant:rest', 1],
+    ])
+  })
+
+  test('drops one repeating rests longer than the time signature states', () => {
+    const { mnx, warnings } = convertValid(
+      opening(multiRest, rest(16, 'whole') + rest(2, 'eighth') + rest(18)),
+    )
+
+    expect(durations(mnx)).toEqual([{ base: 'whole' }, { base: 'eighth' }])
+    expect(warnings.map((warning) => warning.code)).toEqual(['redundant:rest'])
+  })
+
+  test('keeps the rest in a measure that opens no multi-measure rest', () => {
+    const { mnx } = convertValid(opening('', rest(16, 'whole') + rest(16)))
+
+    expect(durations(mnx)).toEqual([{ base: 'whole' }, { base: 'whole' }])
+  })
+
+  test('keeps a rest lasting other than the rests before it', () => {
+    const { mnx } = convertValid(opening(multiRest, rest(16, 'whole') + rest(8)))
+
+    expect(durations(mnx)).toEqual([{ base: 'whole' }, { base: 'half' }])
+  })
+
+  test('keeps a rest with a value', () => {
+    const { mnx } = convertValid(opening(multiRest, rest(16, 'whole') + rest(16, 'whole')))
+
+    expect(durations(mnx)).toEqual([{ base: 'whole' }, { base: 'whole' }])
+  })
+
+  test('keeps a rest after a note', () => {
+    const note =
+      '<note><pitch><step>C</step><octave>5</octave></pitch><duration>16</duration>' +
+      '<voice>1</voice><type>whole</type></note>'
+    const { mnx } = convertValid(opening(multiRest, note + rest(16)))
+
+    expect(durations(mnx)).toEqual([{ base: 'whole' }, { base: 'whole' }])
+  })
+})

@@ -159,6 +159,54 @@ test('a note written before the measure starts counts from the start', () => {
   expect(sequences?.[1]?.content).toHaveLength(1)
 })
 
+// Some exporters write the first measure of a multi-measure rest twice over:
+// rests lasting the measure, then one rest with no <type> lasting as long
+// again.
+describe('a rest repeating the rests before it', () => {
+  const multiRest =
+    '<attributes><measure-style><multiple-rest>3</multiple-rest></measure-style></attributes>'
+  const rest = (duration: number, type?: string, voice = '1') =>
+    `<note><rest/><duration>${String(duration)}</duration><voice>${voice}</voice>` +
+    (type === undefined ? '' : `<type>${type}</type>`) +
+    '</note>'
+  const lengths = (body: string) => sourceMeasureLengths(parseXmlRoot(backupMeasure(body)))
+
+  test('adds no time in the first measure of a multi-measure rest', () => {
+    expect(lengths(multiRest + rest(4, 'whole') + rest(1, 'quarter') + rest(5))).toEqual([[1.25]])
+  })
+
+  test('adds its time in a measure that opens no multi-measure rest', () => {
+    expect(lengths(rest(4, 'whole') + rest(4))).toEqual([[2]])
+  })
+
+  test('adds its time where it states a <type>', () => {
+    expect(lengths(multiRest + rest(4, 'whole') + rest(4, 'whole'))).toEqual([[2]])
+  })
+
+  test('adds its time after a note', () => {
+    expect(lengths(multiRest + QUARTER + rest(1))).toEqual([[0.5]])
+  })
+
+  test('adds its time after rests in another voice', () => {
+    expect(lengths(multiRest + rest(4, 'whole', '2') + rest(4))).toEqual([[2]])
+  })
+
+  test('adds its time after a <backup>', () => {
+    expect(
+      lengths(
+        multiRest +
+          rest(4, 'whole') +
+          '<backup><duration>2</duration></backup><forward><duration>2</duration></forward>' +
+          rest(4),
+      ),
+    ).toEqual([[2]])
+  })
+
+  test('adds its time where it lasts other than the rests before it', () => {
+    expect(lengths(multiRest + rest(4, 'whole') + rest(2))).toEqual([[1.5]])
+  })
+})
+
 // A transposing part is written at the pitch its player reads. MNX states the
 // pitch the instrument sounds, so the source-side reader applies <transpose>
 // before it compares.
