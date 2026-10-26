@@ -225,7 +225,11 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
 
   // Held by position rather than by part id, which two parts can share.
   const keys = settleKeysAcrossParts(
-    readings.map(({ globals, part }) => ({ globals, transposition: part.transposition })),
+    readings.map(({ globals, part }) => ({
+      globals,
+      transposition: part.transposition,
+      strikesKit: part.kit.size > 0,
+    })),
   )
   const merged: ReadGlobalMeasure[] = []
   readings.forEach(({ globals, part }, index) => {

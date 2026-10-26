@@ -702,15 +702,24 @@ export function timesDisagree(
  * which reads back twelve fifths away. Settled first, it would put that
  * spelling on the score and set every concert part against it. So the
  * concert parts are settled first, in the order the source writes them, and
- * the transposing parts after them. Within each, the first stated wins.
+ * the transposing parts after them. A part that strikes a kit comes last: its
+ * key says nothing about pitch. Within each, the first stated wins.
  */
 export function settleKeysAcrossParts(
-  parts: readonly { globals: readonly Keyed[]; transposition: Transposition | undefined }[],
+  parts: readonly {
+    globals: readonly Keyed[]
+    transposition: Transposition | undefined
+    strikesKit: boolean
+  }[],
 ): { parts: KeysAcrossParts[]; keys: (Key | undefined)[] } {
   const score: Keyed[] = []
   const settled: KeysAcrossParts[] = []
-  const transposes = (index: number) => writtenFifths(0, parts[index]?.transposition) !== 0
-  const order = [...parts.keys()].sort((a, b) => Number(transposes(a)) - Number(transposes(b)))
+  const rank = (index: number): number => {
+    const part = parts[index]
+    if (part?.strikesKit) return 2
+    return writtenFifths(0, part?.transposition) === 0 ? 0 : 1
+  }
+  const order = [...parts.keys()].sort((a, b) => rank(a) - rank(b))
   for (const index of order) {
     const { globals, transposition } = parts[index] as (typeof parts)[number]
     const { contributed, ...keys } = settlePartKeys(score, globals, transposition)

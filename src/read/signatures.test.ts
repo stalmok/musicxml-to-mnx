@@ -1277,6 +1277,24 @@ describe('a part that flips its key signature enharmonically', () => {
     expect(warnings.map((w) => w.code)).toEqual(['inconsistent:measure-count'])
   })
 
+  // A drum part's key says nothing about pitch, so it does not settle the
+  // score's key before the trumpet.
+  test('settles a transposing part before a part that strikes a kit', () => {
+    const drums =
+      '<part id="P2"><measure number="1"><attributes><key><fifths>0</fifths></key>' +
+      '<clef><sign>percussion</sign></clef></attributes>' +
+      '<note><unpitched><display-step>C</display-step><display-octave>5</display-octave>' +
+      '</unpitched><duration>4</duration><type>quarter</type></note></measure></part>'
+    const { score: result, warnings } = read(score(keyed('P1', 1, B_FLAT) + drums))
+
+    expect(result.globalMeasures[0]?.key).toEqual({ fifths: -1 })
+    expect(
+      warnings
+        .filter((w) => w.code === 'unrepresentable:cross-part-key')
+        .map((w) => w.context.part),
+    ).toEqual(['P2'])
+  })
+
   // A concert part and a transposing part in different keys: the concert
   // part's key is converted, and the transposing part is the one reported.
   test('converts the concert part’s key where a transposing part before it disagrees', () => {
