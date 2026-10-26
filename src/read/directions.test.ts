@@ -1882,6 +1882,15 @@ describe('sound navigation', () => {
     expect(warnings[0]?.message).toContain('more than one fine')
   })
 
+  test('says nothing about two fines written at the same point', () => {
+    const { global, warnings } = read(
+      inMeasure('<sound fine="yes"/><sound fine="yes"/>' + note('C')),
+    )
+
+    expect(global?.fine).toEqual({ location: { num: 0, den: 1 } })
+    expect(warnings).toEqual([])
+  })
+
   test('reports a second jump at a different point in the measure', () => {
     const { global, warnings } = read(
       inMeasure(
