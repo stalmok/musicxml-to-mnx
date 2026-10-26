@@ -59,7 +59,13 @@ import { readPartList } from './partList.js'
 import type { PartList } from './partList.js'
 import { readPrint } from './print.js'
 import { IdGenerator } from './idGenerator.js'
-import { mergeGlobalMeasures, sameFermata, sameNumbers, sameRepeatEnd } from './globalMeasures.js'
+import {
+  mergeGlobalMeasures,
+  sameFermata,
+  sameName,
+  sameNumbers,
+  sameRepeatEnd,
+} from './globalMeasures.js'
 import type { NamedSign, ReadGlobalMeasure, ReadJump } from './globalMeasures.js'
 import { settleJumps } from './jumps.js'
 import { MeasureRepeats } from './measureRepeats.js'
@@ -814,7 +820,7 @@ function readMeasure(
         (jump) => jump.sound,
         warnings,
         context,
-        (first, other) => first.sound !== other.sound,
+        (first, other) => first.sound !== other.sound || !sameName(first.target, other.target),
       ),
       multimeasureRest: oneMultimeasureRest(multimeasureRests, warnings, context),
       systemBreak,

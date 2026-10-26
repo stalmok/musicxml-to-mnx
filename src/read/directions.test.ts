@@ -1898,6 +1898,18 @@ describe('sound navigation', () => {
     expect(warnings[0]?.message).toContain('more than one jump')
   })
 
+  test('reports a second jump at the same point that returns to another segno', () => {
+    const { warnings } = read(
+      inMeasure(note('C') + '<sound dalsegno="a"/>' + '\n<sound dalsegno="b"/>'),
+    )
+
+    expect(
+      warnings
+        .filter((w) => w.code === 'unrepresentable:element')
+        .map((w) => [w.element, w.attribute, w.context.line]),
+    ).toEqual([['sound', 'dalsegno', 2]])
+  })
+
   // A jump carries other playback the output cannot hold; the jump converts
   // and the rest is still reported.
   test('reports the playback a <sound dalsegno> carries besides the jump', () => {

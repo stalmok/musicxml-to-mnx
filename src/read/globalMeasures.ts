@@ -265,8 +265,13 @@ function sameSign(a: NamedSign, b: NamedSign): boolean {
     compareFractions(a.location, b.location) === 0 &&
     a.glyph === b.glyph &&
     a.color === b.color &&
-    (a.name === undefined || b.name === undefined || a.name === b.name)
+    sameName(a.name, b.name)
   )
+}
+
+/** Whether two names can be one sign's or one jump's: a mark naming none says nothing. */
+export function sameName(a: string | undefined, b: string | undefined): boolean {
+  return a === undefined || b === undefined || a === b
 }
 
 function namedSign(
