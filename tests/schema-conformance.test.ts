@@ -952,6 +952,20 @@ const ATTRIBUTE_CONCEPTS: Readonly<Record<string, Concept>> = {
     homes: ['clef', 'positioned-clef'],
   },
   'tied line-type': { words: ['lineType', 'dashed', 'dotted', 'style'], homes: ['tie'] },
+  ...Object.fromEntries(
+    (
+      [
+        ['scoop', 'slide-into-note'],
+        ['plop', 'slide-into-note'],
+        ['doit', 'slide-out-of-note'],
+        ['falloff', 'slide-out-of-note'],
+      ] as const
+    ).flatMap(([slide, home]) => [
+      [`${slide} line-shape`, { words: ['shape', 'curve', 'straight'], homes: [home] }],
+      [`${slide} line-type`, { words: ['lineType', 'dashed', 'dotted', 'wavy'], homes: [home] }],
+      [`${slide} line-length`, { words: ['length', 'short', 'long'], homes: [home] }],
+    ]),
+  ),
   'beam fan': {
     words: ['fan', 'feather', 'accel', 'rit', 'spread'],
     homes: ['beam', 'beam-hook-direction'],
@@ -1291,6 +1305,13 @@ const CALL_SITE_LIMITS: Readonly<
       says: 'a single-note tremolo counts from one beam',
       holds: () => schemaDefs['tremolo-single']?.properties?.['marks']?.minimum === 1,
     },
+    {
+      says: 'a slide is stated on a pitched note, and a rest and a kit note carry none',
+      holds: () =>
+        refers('note', 'markings', 'note-markings') &&
+        !propertiesOf('rest').includes('markings') &&
+        !propertiesOf('kit-note').includes('markings'),
+    },
   ],
   'src/read/pitches.ts': [
     {
@@ -1395,8 +1416,6 @@ const SEQUENCE_ITEM_TAG =
 const RELATIVE_NOT_CONVERTED =
   'Relative dynamics are not converted: MusicXML writes più f as words beside a mark.'
 
-const SLIDE_NOT_CONVERTED = 'A scoop, plop, doit or falloff is not converted yet.'
-
 /** The model's own tag for a dynamic, which MNX states as a type. */
 const DYNAMIC_TAG =
   'The model tags a dynamic with kind, spelled as MNX spells its type, and the writer states MNX type from it.'
@@ -1450,6 +1469,8 @@ const MNX_SPELLING: Readonly<Record<string, string>> = {
   'Lyric.type': 'MNXLyricLineType',
   GraceType: 'MNXGraceType',
   CaesuraShape: 'MNXCaesuraShape',
+  SlideIn: 'MNXSlideIntoNoteType',
+  SlideOut: 'MNXSlideOutOfNoteType',
   BreathSymbol: 'MNXBreathMarkSymbol',
   'Marking.placement': 'MNXPlacement',
   'StrongAccentMarking.pointing': 'MNXStrongAccent.pointing',
@@ -1601,8 +1622,6 @@ const NOT_RESTATED: Readonly<Record<string, string>> = {
   'MNXAccentDynamic.type': DYNAMIC_TAG,
   'MNXRelativeDynamic.type': RELATIVE_NOT_CONVERTED,
   MNXRelativeDynamicValue: RELATIVE_NOT_CONVERTED,
-  MNXSlideIntoNoteType: SLIDE_NOT_CONVERTED,
-  MNXSlideOutOfNoteType: SLIDE_NOT_CONVERTED,
   'MNXEvent.type': SEQUENCE_ITEM_TAG,
   'MNXSpace.type': SEQUENCE_ITEM_TAG,
   'MNXTuplet.type': SEQUENCE_ITEM_TAG,

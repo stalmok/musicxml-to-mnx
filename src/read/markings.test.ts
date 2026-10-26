@@ -142,10 +142,12 @@ describe('articulations', () => {
   })
 
   test('reports the marks event-markings has no room for', () => {
-    const { events, warnings } = read(note(articulations('<detached-legato/><doit/><falloff/>')))
+    const { events, warnings } = read(
+      note(articulations('<detached-legato/><other-articulation/>')),
+    )
 
     expect(events[0]?.markings).toEqual({})
-    expect(warnings.map((w) => w.element)).toEqual(['detached-legato', 'doit', 'falloff'])
+    expect(warnings.map((w) => w.element)).toEqual(['detached-legato', 'other-articulation'])
   })
 
   // Exporters put a tie in one <notations> and an articulation in another.
@@ -652,12 +654,13 @@ describe('marks on the notes of a chord', () => {
     const { warnings } = read(
       chord(
         marks,
-        articulations('<staccato/><doit/>') + '<technical><fingering>2</fingering></technical>',
+        articulations('<staccato/><detached-legato/>') +
+          '<technical><fingering>2</fingering></technical>',
       ),
     )
 
     expect(warnings.map((w) => [w.code, w.element])).toEqual([
-      ['unsupported:element', 'doit'],
+      ['unsupported:element', 'detached-legato'],
       ['unrepresentable:element', 'fingering'],
     ])
   })
@@ -855,5 +858,112 @@ describe('a fermata on the notes of a chord', () => {
       ['inconsistent:fermata', 'fermata'],
       ['unrepresentable:fermata', 'fermata'],
     ])
+  })
+})
+
+// MusicXML files a scoop, a plop, a doit and a falloff among a note's
+// articulations. MNX states them on the note, not the event, as a slide into
+// it or out of it.
+describe('a slide into or out of a note', () => {
+  const notesOf = (mnx: ReturnType<typeof convertValid>['mnx']) => {
+    const item = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
+    return item?.type === undefined ? (item?.notes ?? []) : []
+  }
+  const member = (step: string, notations: string) =>
+    `<note><chord/><pitch><step>${step}</step><octave>4</octave></pitch><duration>4</duration>` +
+    `<type>quarter</type><notations>${notations}</notations></note>`
+
+  test.each([
+    ['scoop', { slideIn: { type: 'scoop' } }],
+    ['plop', { slideIn: { type: 'plop' } }],
+    ['doit', { slideOut: { type: 'doit' } }],
+    ['falloff', { slideOut: { type: 'falloff' } }],
+  ])('reads a <%s> as the note’s', (name, markings) => {
+    const { mnx, warnings } = convertValid(score(`<${name}/>`))
+
+    expect(notesOf(mnx)[0]?.markings).toStrictEqual(markings)
+    expect(markingsOf(mnx)).toBeUndefined()
+    expect(warnings).toEqual([])
+  })
+
+  test('reads a slide into and a slide out of one note', () => {
+    const { mnx } = convertValid(score('<scoop/><falloff/>'))
+
+    expect(notesOf(mnx)[0]?.markings).toStrictEqual({
+      slideIn: { type: 'scoop' },
+      slideOut: { type: 'falloff' },
+    })
+  })
+
+  test.each([
+    ['into', '<plop/><scoop/>', { slideIn: { type: 'plop' } }, 'scoop'],
+    ['out of', '<doit/><falloff/>', { slideOut: { type: 'doit' } }, 'falloff'],
+  ])(
+    'keeps the first of two slides %s one note, reporting the second',
+    (side, slides, kept, second) => {
+      const { mnx, warnings } = convertValid(score(slides))
+
+      expect(notesOf(mnx)[0]?.markings).toStrictEqual(kept)
+      expect(warnings.map((w) => [w.code, w.element, w.message])).toEqual([
+        [
+          'unrepresentable:marking',
+          second,
+          `A note has two slides ${side} it, and MNX states one on a note. The first is the one converted.`,
+        ],
+      ])
+    },
+  )
+
+  test('reads each note of a chord for its own slides', () => {
+    const { mnx, warnings } = convertValid(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        '<attributes><divisions>4</divisions></attributes>' +
+        note(articulations('<doit/>')) +
+        member('E', articulations('<scoop/>')) +
+        member('G', '') +
+        '</measure></part></score-partwise>',
+    )
+
+    expect(notesOf(mnx).map((n) => n.markings)).toStrictEqual([
+      { slideOut: { type: 'doit' } },
+      { slideIn: { type: 'scoop' } },
+      undefined,
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  test('reports the line a slide is drawn with', () => {
+    const { mnx, warnings } = convertValid(score('<falloff line-type="dashed"/>'))
+
+    expect(notesOf(mnx)[0]?.markings).toStrictEqual({ slideOut: { type: 'falloff' } })
+    expect(warnings.map((w) => [w.code, w.attribute])).toEqual([
+      ['unrepresentable:attribute', 'line-type'],
+    ])
+  })
+
+  test('reports a slide on a rest, which has no note to carry it', () => {
+    const { warnings } = convertValid(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        '<attributes><divisions>4</divisions></attributes>' +
+        '<note><rest/><duration>4</duration><type>quarter</type>' +
+        `<notations>${articulations('<doit/>')}</notations></note>` +
+        '</measure></part></score-partwise>',
+    )
+
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([['unrepresentable:element', 'doit']])
+  })
+
+  test('reports a slide on a kit note, which MNX gives no markings', () => {
+    const { warnings } = convertValid(
+      '<score-partwise><part-list><score-part id="P1"><part-name>Drums</part-name>' +
+        '</score-part></part-list><part id="P1"><measure number="1">' +
+        '<attributes><divisions>4</divisions><clef><sign>percussion</sign></clef></attributes>' +
+        '<note><unpitched><display-step>C</display-step><display-octave>5</display-octave>' +
+        '</unpitched><duration>4</duration><type>quarter</type>' +
+        `<notations>${articulations('<plop/>')}</notations></note>` +
+        '</measure></part></score-partwise>',
+    )
+
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([['unrepresentable:element', 'plop']])
   })
 })

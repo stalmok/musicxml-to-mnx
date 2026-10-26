@@ -25,6 +25,7 @@ import type {
   GlobalMeasure,
   Measure,
   Note,
+  NoteMarkings,
   NoteValue,
   Coda,
   Fine,
@@ -46,6 +47,7 @@ import type {
   MNXEvent,
   MNXGlobalMeasure,
   MNXNote,
+  MNXNoteMarkings,
   MNXNoteValue,
   MNXPart,
   MNXPartMeasure,
@@ -930,6 +932,14 @@ function writeNote(note: Note, referenced: ReadonlySet<string>): MNXNote {
       ? { accidentalDisplay: writeAccidental(note.accidentalDisplay) }
       : {}),
     ...(note.diatonicDelta !== undefined ? { written: { diatonicDelta: note.diatonicDelta } } : {}),
+    ...(note.markings ? { markings: writeNoteMarkings(note.markings) } : {}),
+  }
+}
+
+function writeNoteMarkings({ slideIn, slideOut }: NoteMarkings): MNXNoteMarkings {
+  return {
+    ...(slideIn ? { slideIn: { type: slideIn } } : {}),
+    ...(slideOut ? { slideOut: { type: slideOut } } : {}),
   }
 }
 

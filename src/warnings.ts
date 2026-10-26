@@ -99,7 +99,9 @@ export const WARNING_CODES = Object.freeze([
   'unrepresentable:lyric-line',
   // An event carrying more than one fermata. MNX states one per event.
   'unrepresentable:fermata',
-  // An event carrying two marks of one kind. MNX keys them by name.
+  // An event carrying two marks of one kind. MNX keys them by name. Also a
+  // note sliding into itself twice, or out of itself twice: MNX states one of
+  // each on a note.
   'unrepresentable:marking',
   // An accidental drawn as a glyph other than the one its note's alter calls
   // for, such as a courtesy natural before a sharp. MNX's accidental display

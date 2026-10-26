@@ -11,6 +11,9 @@ import type {
   FermataSymbol,
   MarkingKind,
   Markings,
+  NoteMarkings,
+  SlideIn,
+  SlideOut,
   TremoloMarking,
 } from '../model/score.js'
 import type { Draft } from './draft.js'
@@ -335,4 +338,77 @@ export function readStemDirection(
 /** A rest is drawn with no stem, so a stem of none on one states nothing. */
 export function statesNoStem(stem: XmlElement): boolean {
   return trimmedText(stem) === 'none'
+}
+
+// MusicXML files the slides into and out of a note among its articulations,
+// named as MNX names them. MNX states them on the note. Keyed by the model's
+// own slide, so a slide the model gains with no element here does not
+// compile.
+const isSlideIn = recogniser<SlideIn>({ scoop: true, plop: true })
+const isSlideOut = recogniser<SlideOut>({ falloff: true, doit: true })
+
+/** Every slide a note writes, in document order, with the reader that holds it. */
+function* writtenSlides(
+  notations: readonly ElementReader[],
+): Generator<{ found: XmlElement; block: ElementReader; slide: Draft<NoteMarkings> }> {
+  for (const notation of notations) {
+    for (const block of notation.blocks('articulations')) {
+      for (const found of block.element.children) {
+        const name = found.name
+        if (isSlideIn(name)) yield { found, block, slide: { slideIn: name } }
+        if (isSlideOut(name)) yield { found, block, slide: { slideOut: name } }
+      }
+    }
+  }
+}
+
+/**
+ * The slides into and out of a note. MNX states one of each on a note, so
+ * the first of each is kept and a second reported.
+ */
+export function readNoteMarkings(
+  notations: readonly ElementReader[],
+  warnings: WarningCollector,
+  context: ReportContext,
+): NoteMarkings | undefined {
+  const markings: Draft<NoteMarkings> = {}
+  for (const { found, block, slide } of writtenSlides(notations)) {
+    const side = slide.slideIn !== undefined ? 'slideIn' : 'slideOut'
+    if (markings[side] === undefined) {
+      block.read(found)
+      Object.assign(markings, slide)
+      continue
+    }
+    block.readWhole(found)
+    warnings.add(
+      'unrepresentable:marking',
+      `A note has two slides ${side === 'slideIn' ? 'into' : 'out of'} it, and MNX states ` +
+        'one on a note. The first is the one converted.',
+      context,
+      found,
+    )
+  }
+  return Object.keys(markings).length > 0 ? markings : undefined
+}
+
+/**
+ * Reports the slides on a rest or a kit note. MNX states a slide on a pitched
+ * note, and neither is one.
+ */
+export function reportSlidesOff(
+  notations: readonly ElementReader[],
+  carrier: 'rest' | 'kit note',
+  warnings: WarningCollector,
+  context: ReportContext,
+): void {
+  for (const { found, block } of writtenSlides(notations)) {
+    block.readWhole(found)
+    warnings.add(
+      'unrepresentable:element',
+      `A <${found.name}> on a ${carrier} cannot be expressed in MNX, which states a slide on ` +
+        'a pitched note.',
+      context,
+      found,
+    )
+  }
 }

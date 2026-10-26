@@ -32,9 +32,9 @@ export type EventNotation = {
 
 // MusicXML's <articulations> children, in MNX's spelling. A caesura is read
 // apart, because it states no side. Everything else MusicXML allows there has
-// no home in event-markings and stays unread, which is what reports it. A
-// doit, falloff, scoop or plop has a home in a note's markings instead, and
-// is not converted yet. A tremolo is not an articulation: it is written among
+// no home in event-markings and stays unread, which is what reports it,
+// except a doit, falloff, scoop or plop, which a note's markings hold and
+// readNoteMarkings reads. A tremolo is not an articulation: it is written among
 // the ornaments, and read with the beam count it needs. Keyed by the mark, so
 // the compiler demands an entry for every kind the model holds.
 const ARTICULATIONS: Record<

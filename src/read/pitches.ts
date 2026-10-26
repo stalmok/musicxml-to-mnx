@@ -2,6 +2,7 @@
 // the kit component an unpitched note strikes. Also where on the staff a rest
 // or an unpitched note is written.
 
+import { readNoteMarkings, reportSlidesOff } from './marks.js'
 import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
 import type {
@@ -198,6 +199,7 @@ function kitComponent(
 export function readNoteAt(
   element: ElementReader,
   pitchElement: XmlElement,
+  notations: readonly ElementReader[],
   state: PartState,
   path: DocumentPath,
   staff: number | undefined,
@@ -208,6 +210,7 @@ export function readNoteAt(
   // sounds. They differ only for a transposing part, which states the
   // interval between them.
   const written = readPitch(pitchElement, path, warnings, context)
+  const markings = readNoteMarkings(notations, warnings, context)
 
   return {
     id: state.ids.nextNote(),
@@ -215,6 +218,7 @@ export function readNoteAt(
     ties: [],
     accidentalDisplay: readAccidentalDisplay(element, pitchElement, warnings, context),
     staff,
+    ...(markings ? { markings } : {}),
   }
 }
 
@@ -222,12 +226,14 @@ export function readNoteAt(
 export function readKitNoteAt(
   element: ElementReader,
   unpitchedElement: XmlElement,
+  notations: readonly ElementReader[],
   onStaff: number | undefined,
   staff: number | undefined,
   state: PartState,
   warnings: WarningCollector,
   context: ReportContext,
 ): KitNote {
+  reportSlidesOff(notations, 'kit note', warnings, context)
   return {
     id: state.ids.nextNote(),
     component: kitComponent(element, unpitchedElement, onStaff, state, warnings, context),

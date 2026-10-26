@@ -156,6 +156,20 @@ export interface Note extends TieTarget {
    * a chord straddling the two hands of a piano part.
    */
   readonly staff: number | undefined
+  /** Set only where the note slides in or out. */
+  readonly markings?: NoteMarkings
+}
+
+/** A slide into a note from below (a scoop) or from above (a plop). */
+export type SlideIn = 'scoop' | 'plop'
+
+/** A slide out of a note downward (a falloff) or upward (a doit). */
+export type SlideOut = 'falloff' | 'doit'
+
+/** What a note carries on itself rather than on its event. */
+export interface NoteMarkings {
+  readonly slideIn?: SlideIn
+  readonly slideOut?: SlideOut
 }
 
 /**

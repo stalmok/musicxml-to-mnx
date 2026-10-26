@@ -21,7 +21,7 @@ import { describeLength, describeValue, lengthOf } from './duration.js'
 import type { ElementReader } from './element.js'
 import { readEventNotations, reconcile, writtenFor } from './eventNotations.js'
 import { reportHidden } from './unrepresentable.js'
-import { readFermata, readMarkings, readStemDirection } from './marks.js'
+import { readFermata, readMarkings, readStemDirection, reportSlidesOff } from './marks.js'
 import { readLyrics } from './lyrics.js'
 import { dropRedundantRest, readRest, reportMarkersOnMeasureRest, setMeasureRest } from './rests.js'
 import type { NoteStatement, VoicedNote } from './noteStatement.js'
@@ -202,6 +202,10 @@ export function readNote(
   }
   const note: VoicedNote = { ...statement, voice }
 
+  // MNX states a slide on a pitched note, and a rest is none. Its slides are
+  // reported before any path below keeps or drops the rest.
+  if (restElement) reportSlidesOff(notations, 'rest', warnings, context)
+
   // Sources sometimes write an extra rest over a rest that already fills the
   // same voice's measure. Both are silence, so the measure rest stands and the
   // extra is dropped. That is settled before anything opens around the rest or
@@ -306,7 +310,9 @@ export function readNote(
     (pitchElement
       ? {
           kind: 'notes',
-          notes: [readNoteAt(element, pitchElement, state, path, undefined, warnings, context)],
+          notes: [
+            readNoteAt(element, pitchElement, notations, state, path, undefined, warnings, context),
+          ],
           kitNotes: [],
         }
       : {
@@ -316,6 +322,7 @@ export function readNote(
             readKitNoteAt(
               element,
               requireChild(element.element, 'unpitched', path),
+              notations,
               staff,
               undefined,
               state,
@@ -519,10 +526,11 @@ function readChordMember(
   // A chord member is a pitch or an unpitched note: a rest was refused just
   // above, and a note sounding none of the three never reached here.
   const chordNote = pitchElement
-    ? readNoteAt(element, pitchElement, state, path, reaches, warnings, context)
+    ? readNoteAt(element, pitchElement, notations, state, path, reaches, warnings, context)
     : readKitNoteAt(
         element,
         requireChild(element.element, 'unpitched', path),
+        notations,
         staff,
         reaches,
         state,

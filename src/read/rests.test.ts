@@ -1527,9 +1527,9 @@ describe('a rest filling a measure a grace note leads into', () => {
     )
 
     expect(kinds(rest).warnings).toEqual([
+      ['unrepresentable:element', 'doit', 1],
       ['unrepresentable:element', 'staccato', 1],
       ['unsupported:element', 'slur', 1],
-      ['unsupported:element', 'doit', 1],
     ])
   })
 
