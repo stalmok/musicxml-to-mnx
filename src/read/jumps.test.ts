@@ -692,6 +692,62 @@ describe('a to-coda jump', () => {
   })
 })
 
+// Two marks of one kind at one point are one mark. A mark naming none says
+// nothing about the name, so the name the other gives is kept for the jumps.
+describe('two marks at one point that only one names', () => {
+  const namedSegno = (name: string) =>
+    `<direction><direction-type><segno/></direction-type><sound segno="${name}"/></direction>`
+  const namedCoda = (name: string) =>
+    `<direction><direction-type><coda/></direction-type><sound coda="${name}"/></direction>`
+  const elementLosses = (warnings: readonly ConversionWarning[]) =>
+    warnings.filter((w) => w.code === 'unrepresentable:element')
+
+  test('keeps the name of a segno that the second of two at one point gives', () => {
+    const { types, warnings } = jumps(
+      SEGNO + namedSegno('a') + NOTE,
+      namedSegno('b') + NOTE,
+      NOTE + '<sound dalsegno="a"/>',
+    )
+
+    expect(types).toEqual([undefined, undefined, 'segno'])
+    expect(elementLosses(warnings)).toEqual([])
+  })
+
+  test('keeps the name of a coda that the second of two at one point gives', () => {
+    const { types, warnings } = jumps(
+      NOTE + '<sound tocoda="a"/>',
+      NOTE + DA_CAPO,
+      CODA + NOTE,
+      CODA + namedCoda('a') + NOTE,
+    )
+
+    expect(types).toEqual(['toCoda', 'dcAlCoda', undefined, undefined])
+    expect(
+      warnings
+        .filter((w) => w.code === 'unrepresentable:jump-destination')
+        .map((w) => w.context.measure),
+    ).toEqual([3])
+    expect(elementLosses(warnings)).toEqual([])
+  })
+
+  test('keeps the target of a jump that the second of two at one point names', () => {
+    const { types, warnings } = jumps(
+      namedSegno('a') + NOTE,
+      namedSegno('b') + NOTE,
+      NOTE + '<sound dalsegno=""/><sound dalsegno="b"/>',
+    )
+
+    expect(types).toEqual([undefined, undefined, 'segno'])
+    expect(elementLosses(warnings)).toEqual([])
+  })
+
+  test('reports a second segno at one point that gives another name', () => {
+    const { warnings } = jumps(namedSegno('a') + '\n' + namedSegno('b') + NOTE)
+
+    expect(elementLosses(warnings).map((w) => [w.element, w.context.line])).toEqual([['segno', 2]])
+  })
+})
+
 describe('jumps written to MNX', () => {
   test('writes a D.S. al Coda the spec schema accepts', () => {
     const { mnx, warnings } = convertValid(

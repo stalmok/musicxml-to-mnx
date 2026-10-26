@@ -485,6 +485,46 @@ describe('several parts', () => {
     expect(warnings[0]?.context.line).toBe(2)
   })
 
+  test.each([
+    ['the first part', false],
+    ['a later part', true],
+  ])('keeps the target of a jump that only %s names', (_, laterNames) => {
+    const sign = (name: string) =>
+      `<direction><direction-type><segno/></direction-type><sound segno="${name}"/></direction>`
+    const part = (id: string, naming: boolean) =>
+      `<part id="${id}">` +
+      `<measure number="1">${sign('s1')}${NOTE}</measure>` +
+      `<measure number="2">${sign('s2')}${NOTE}</measure>` +
+      `<measure number="3">${NOTE}<sound dalsegno="${naming ? 's2' : ''}"/></measure>` +
+      '</part>'
+    const { score: result, warnings } = read(
+      score(part('P1', !laterNames) + part('P2', laterNames)),
+    )
+
+    expect(result.globalMeasures[2]?.jump?.type).toBe('segno')
+    expect(result.globalMeasures.map((measure) => measure.segno !== undefined)).toEqual([
+      false,
+      true,
+      false,
+    ])
+    expect(warnings.filter((w) => w.code === 'unrepresentable:cross-part-mark')).toEqual([])
+  })
+
+  test('reports parts going on to differently named codas', () => {
+    const { warnings } = read(
+      score(
+        `<part id="P1"><measure number="1"><sound tocoda="A"/>${NOTE}</measure></part>` +
+          `\n<part id="P2"><measure number="1"><sound tocoda="B"/>${NOTE}</measure></part>`,
+      ),
+    )
+
+    expect(
+      warnings
+        .filter((w) => w.code === 'unrepresentable:cross-part-mark')
+        .map((w) => [w.element, w.attribute, w.context.line]),
+    ).toEqual([['sound', 'tocoda', 2]])
+  })
+
   test('reports parts stating different kinds of jump at the same point', () => {
     const { score: result, warnings } = read(
       score(

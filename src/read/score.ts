@@ -13,7 +13,6 @@ import { GENERATED_ID_KINDS, GENERATED_ID_PATTERN, MNX_ID_PATTERN, renamedId } f
 import type {
   BarlineType,
   Clef,
-  Coda,
   Dynamic,
   Fermata,
   RepeatEnd,
@@ -23,7 +22,6 @@ import type {
   Measure,
   Part,
   Score,
-  Segno,
   StaffConfig,
   Tempo,
   TimeSignature,
@@ -65,6 +63,8 @@ import {
   sameName,
   sameNumbers,
   sameRepeatEnd,
+  withName,
+  withTarget,
 } from './globalMeasures.js'
 import type { NamedSign, ReadGlobalMeasure, ReadJump } from './globalMeasures.js'
 import { settleJumps } from './jumps.js'
@@ -811,8 +811,16 @@ function readMeasure(
       // Filled in by the part, once the ending's other end has been met.
       ending: undefined,
       fermata,
-      segno: onePerMeasure(segnos, 'segno', undefined, warnings, context, drawnDifferently),
-      coda: onePerMeasure(codas, 'coda', undefined, warnings, context, drawnDifferently),
+      segno: onePerMeasure(
+        segnos,
+        'segno',
+        undefined,
+        warnings,
+        context,
+        drawnDifferently,
+        withName,
+      ),
+      coda: onePerMeasure(codas, 'coda', undefined, warnings, context, drawnDifferently, withName),
       fine: onePerMeasure(fines, 'fine', 'fine', warnings, context),
       jump: onePerMeasure(
         jumps,
@@ -821,6 +829,7 @@ function readMeasure(
         warnings,
         context,
         (first, other) => first.sound !== other.sound || !sameName(first.target, other.target),
+        withTarget,
       ),
       multimeasureRest: oneMultimeasureRest(multimeasureRests, warnings, context),
       systemBreak,
@@ -835,6 +844,7 @@ function readMeasure(
  * two of them at different points has no faithful conversion, so the first is
  * kept and the rest reported; two written at the same point are the same mark
  * and lose nothing, unless `differs` says they are drawn as different marks.
+ * Where only a later one of them names the mark, `named` keeps that name.
  */
 function onePerMeasure<T extends { location: Fraction }>(
   marks: readonly Stated<T>[],
@@ -844,35 +854,36 @@ function onePerMeasure<T extends { location: Fraction }>(
   warnings: WarningCollector,
   context: ReportContext,
   differs?: (first: T, other: T) => boolean,
+  named?: (kept: T, other: T) => T,
 ): Stated<T> | undefined {
   const first = marks[0]
   if (first === undefined) return undefined
+  let kept = first.value
   for (const { value: other, element } of marks.slice(1)) {
-    if (
-      compareFractions(other.location, first.value.location) !== 0 ||
-      differs?.(first.value, other)
-    ) {
-      warnings.add(
-        'unrepresentable:element',
-        `A measure carries more than one ${name}, and MNX states one per measure. ` +
-          'The first is the one converted.',
-        context,
-        element,
-        typeof attribute === 'function' ? attribute(other) : attribute,
-      )
+    if (compareFractions(other.location, kept.location) === 0 && !differs?.(kept, other)) {
+      if (named) kept = named(kept, other)
+      continue
     }
+    warnings.add(
+      'unrepresentable:element',
+      `A measure carries more than one ${name}, and MNX states one per measure. ` +
+        'The first is the one converted.',
+      context,
+      element,
+      typeof attribute === 'function' ? attribute(other) : attribute,
+    )
   }
-  return first
+  return kept === first.value ? first : { ...first, value: kept }
 }
 
 /**
  * Whether two segnos or two codas at the same point are different marks
- * rather than the same mark restated: drawn as different glyphs, or in
- * different colors. A segno's name is not compared, because it is never
- * written; it only matches a jump to the sign it returns to.
+ * rather than the same mark restated: drawn as different glyphs, in
+ * different colors, or named differently. The name is never drawn, but it
+ * tells one sign from another when a jump is matched to the one it goes to.
  */
-function drawnDifferently(a: Segno | Coda, b: Segno | Coda): boolean {
-  return a.glyph !== b.glyph || a.color !== b.color
+function drawnDifferently(a: NamedSign, b: NamedSign): boolean {
+  return a.glyph !== b.glyph || a.color !== b.color || !sameName(a.name, b.name)
 }
 
 /**

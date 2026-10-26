@@ -242,10 +242,12 @@ export function mergeGlobalMeasures(
       // part like the barline, so the first part to state one wins. A later
       // part may name a sign the first left unnamed, and the name is kept for
       // the jumps.
-      segno: namedSign(existing?.segno, measure.segno),
-      coda: namedSign(existing?.coda, measure.coda),
+      segno: restated(existing?.segno, measure.segno, sameSign, withName),
+      coda: restated(existing?.coda, measure.coda, sameSign, withName),
       fine: existing?.fine ?? measure.fine,
-      jump: existing?.jump ?? measure.jump,
+      // A jump is restated like a sign, and may name the sign it goes to
+      // where the first part names none.
+      jump: restated(existing?.jump, measure.jump, sameJump, withTarget),
       multimeasureRest: existing?.multimeasureRest ?? measure.multimeasureRest,
       // A break is one of those three, and is usually written into one part
       // only: the part not stating it leaves the layout to the parts that do.
@@ -274,14 +276,28 @@ export function sameName(a: string | undefined, b: string | undefined): boolean 
   return a === undefined || b === undefined || a === b
 }
 
-function namedSign(
-  first: Stated<NamedSign> | undefined,
-  later: Stated<NamedSign> | undefined,
-): Stated<NamedSign> | undefined {
+/** A sign with the name another statement of it gives, where it gives none itself. */
+export function withName(kept: NamedSign, other: NamedSign): NamedSign {
+  return kept.name !== undefined || other.name === undefined ? kept : { ...kept, name: other.name }
+}
+
+/** A jump with the target another statement of it names, where it names none itself. */
+export function withTarget(kept: ReadJump, other: ReadJump): ReadJump {
+  return kept.target !== undefined || other.target === undefined
+    ? kept
+    : { ...kept, target: other.target }
+}
+
+/** The first part's mark, with the name a later part's statement of it gives. */
+function restated<T>(
+  first: Stated<T> | undefined,
+  later: Stated<T> | undefined,
+  same: (a: T, b: T) => boolean,
+  named: (kept: T, other: T) => T,
+): Stated<T> | undefined {
   if (first === undefined || later === undefined) return first ?? later
-  const { name } = later.value
-  if (name === undefined || !sameSign(first.value, later.value)) return first
-  return { ...first, value: { ...first.value, name } }
+  if (!same(first.value, later.value)) return first
+  return { ...first, value: named(first.value, later.value) }
 }
 
 // Content equality for the marks two parts or two barlines state, one per shape.
@@ -307,7 +323,9 @@ function sameFine(a: Fine, b: Fine): boolean {
 
 function sameJump(a: ReadJump, b: ReadJump): boolean {
   return (
-    compareFractions(a.location, b.location) === 0 && a.sound === b.sound && a.target === b.target
+    compareFractions(a.location, b.location) === 0 &&
+    a.sound === b.sound &&
+    sameName(a.target, b.target)
   )
 }
 
