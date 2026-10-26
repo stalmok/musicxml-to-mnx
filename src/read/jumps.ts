@@ -63,7 +63,7 @@ export function settleJumps(
   undrawn: readonly (readonly (readonly Stated<UndrawnSign>[])[])[],
   warnings: WarningCollector,
 ): GlobalMeasure[] {
-  const unseen = undrawnNames(measures, undrawn)
+  const unseen = undrawnSigns(measures, undrawn)
   const segnos = signsOf(measures, 'segno')
   const toSegnos = segnosResolved(measures, segnos, unseen.segno, warnings)
   // The segno kept waits on the coda, which says where each replay ends, but
@@ -171,7 +171,7 @@ interface Destinations {
 function segnosResolved(
   measures: readonly ReadGlobalMeasure[],
   signs: readonly Sign[],
-  undrawn: ReadonlySet<string>,
+  undrawn: readonly Sign[],
   warnings: WarningCollector,
 ): (Point | undefined)[] {
   return measures.map(({ jump }, index) => {
@@ -220,22 +220,22 @@ function segnoKept(
  */
 function codasGoneTo(
   measures: readonly ReadGlobalMeasure[],
-  undrawn: ReadonlySet<string>,
+  undrawn: readonly Sign[],
   warnings: WarningCollector,
 ): Destinations {
   const signs = signsOf(measures, 'coda')
   const resolved = measures.map(({ jump }, index) => {
     if (jump?.value.sound !== 'tocoda') return undefined
     const { target, location } = jump.value
-    if (goesToUndrawn(signs, undrawn, target)) {
+    const after = (sign: Sign) =>
+      sign.index > index || (sign.index === index && compareFractions(sign.location, location) >= 0)
+    if (goesToUndrawn(signs, undrawn.filter(after), target)) {
       reportUndrawn('coda', jump, index, warnings)
       return undefined
     }
     const byName = signs.filter((sign) => sign.name === target)
     const unnamed = signs.filter((sign) => sign.name === undefined)
     const named = signs.length === 1 ? signs : byName.length > 0 ? byName : unnamed
-    const after = (sign: Sign) =>
-      sign.index > index || (sign.index === index && compareFractions(sign.location, location) >= 0)
     const to = named.length === 1 ? named[0] : named.find(after)
     if (to !== undefined) return to
     warnings.add(
@@ -261,37 +261,41 @@ function codasGoneTo(
 }
 
 /**
- * The names of the segnos and codas the parts mark only for playback, where
- * no part draws a sign of that kind on the measure.
+ * The segnos and codas the parts mark only for playback, where no part draws
+ * a sign of that kind on the measure.
  */
-function undrawnNames(
+function undrawnSigns(
   measures: readonly ReadGlobalMeasure[],
   undrawn: readonly (readonly (readonly Stated<UndrawnSign>[])[])[],
-): Record<UndrawnSign['kind'], Set<string>> {
-  const names = { segno: new Set<string>(), coda: new Set<string>() }
+): Record<UndrawnSign['kind'], Sign[]> {
+  const signs: Record<UndrawnSign['kind'], Sign[]> = { segno: [], coda: [] }
   for (const part of undrawn) {
     part.forEach((marks, index) => {
       for (const { value } of marks) {
-        if (measures[index]?.[value.kind] === undefined) names[value.kind].add(value.name)
+        if (measures[index]?.[value.kind] !== undefined) continue
+        signs[value.kind].push({ index, location: value.location, name: value.name })
       }
     })
   }
-  return names
+  return signs
 }
 
 /**
- * Whether a jump goes to a sign marked only for playback: the only kind of
- * sign the score has, or the one the jump names where no drawn sign has that
- * name.
+ * Whether a jump goes to a sign marked only for playback. One drawn sign with
+ * no name settles every jump, as it does among drawn signs. Past that, the
+ * jump goes to an undrawn sign where it names one and no drawn sign has that
+ * name, or, in a score that draws none, where it names none.
  */
 function goesToUndrawn(
   signs: readonly Sign[],
-  undrawn: ReadonlySet<string>,
+  undrawn: readonly Sign[],
   target: string | undefined,
 ): boolean {
-  if (undrawn.size === 0) return false
-  if (signs.length === 0) return true
-  return target !== undefined && undrawn.has(target) && signs.every((sign) => sign.name !== target)
+  if (undrawn.length === 0) return false
+  if (signs.length === 1 && signs[0]?.name === undefined) return false
+  const named = undrawn.some((sign) => sign.name === target)
+  if (signs.length === 0) return target === undefined || named
+  return named && signs.every((sign) => sign.name !== target)
 }
 
 function reportUndrawn(

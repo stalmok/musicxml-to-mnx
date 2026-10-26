@@ -192,7 +192,7 @@ describe('a jump to a sign the score does not draw', () => {
   // The name settles which sign, even where one other segno is drawn.
   test('does not convert a D.S. naming an undrawn segno beside a drawn one', () => {
     const { types, warnings } = jumps(
-      SEGNO + NOTE,
+      '<direction><direction-type><segno/></direction-type><sound segno="b"/></direction>' + NOTE,
       '<sound segno="a"/>' + NOTE,
       NOTE + '<sound dalsegno="a"/>',
     )
@@ -252,6 +252,60 @@ describe('a jump to a sign the score does not draw', () => {
       ],
     ])
     expect(warnings.filter((w) => w.code === 'unresolved:coda')).toEqual([])
+  })
+
+  // T names neither the undrawn segno nor any other.
+  test('converts a D.S. naming no sign the score marks as a D.C.', () => {
+    const { types, warnings } = jumps('<sound segno="S"/>' + NOTE, NOTE + '<sound dalsegno="T"/>')
+
+    expect(types).toEqual([undefined, 'dc'])
+    expect(undrawn(warnings)).toEqual([])
+    expect(warnings.filter((w) => w.code === 'unresolved:segno')).toHaveLength(1)
+  })
+
+  // One segno drawn, with no name, settles every D.S. whatever it names.
+  test('returns a D.S. to the one unnamed segno drawn, past a name marked elsewhere', () => {
+    const { types, warnings } = jumps(
+      NOTE,
+      SEGNO + NOTE,
+      '<direction><direction-type><words>here</words></direction-type>' +
+        '<sound segno="segno"/></direction>' +
+        NOTE,
+      NOTE + '<sound dalsegno="segno"/>',
+    )
+
+    expect(types).toEqual([undefined, undefined, undefined, 'segno'])
+    expect(undrawn(warnings)).toEqual([])
+  })
+
+  test('takes a to-coda jump naming its coda beside it to the one unnamed coda drawn', () => {
+    const { types, warnings } = jumps(
+      NOTE,
+      NOTE + '<sound tocoda="coda" coda="coda"/>',
+      NOTE + DA_CAPO,
+      CODA + NOTE,
+    )
+
+    expect(types).toEqual([undefined, 'toCoda', 'dcAlCoda', undefined])
+    expect(undrawn(warnings)).toEqual([])
+  })
+
+  // A to-coda jump goes on through the score, so the undrawn coda before it
+  // is not where it goes.
+  test('takes a to-coda jump past an undrawn coda before it to a drawn one after', () => {
+    const named = (name: string) =>
+      `<direction><direction-type><coda/></direction-type><sound coda="${name}"/></direction>`
+    const { types, warnings } = jumps(
+      named('a') + NOTE,
+      '<direction><direction-type><segno/></direction-type>' +
+        '<sound segno="s" coda="c"/></direction>' +
+        NOTE,
+      NOTE + '<sound tocoda="c"/>',
+      CODA + NOTE,
+    )
+
+    expect(types).toEqual([undefined, undefined, 'toCoda', undefined])
+    expect(undrawn(warnings)).toEqual([])
   })
 
   test('writes the score without the jump onto schema-valid MNX', () => {
