@@ -1399,6 +1399,54 @@ describe('a part that flips its key signature enharmonically', () => {
     expect(warnings).toEqual([])
   })
 
+  describe('spelling a signature no measure settles', () => {
+    /** P1 at concert pitch and P2 transposing, each a list of keys by measure. */
+    const parts = (
+      concert: (number | undefined)[],
+      transposing: (number | undefined)[],
+      transpose: string,
+    ) => {
+      const part = (id: string, keys: (number | undefined)[], extra: string) =>
+        `<part id="${id}">` +
+        keys
+          .map(
+            (fifths, index) =>
+              `<measure number="${String(index + 1)}"><attributes>` +
+              (fifths === undefined ? '' : `<key><fifths>${String(fifths)}</fifths></key>`) +
+              (index === 0 ? extra : '') +
+              `</attributes>${NOTE}</measure>`,
+          )
+          .join('') +
+        '</part>'
+      return read(score(part('P1', concert, '') + part('P2', transposing, transpose))).score
+    }
+
+    test('looks past a measure that settles nothing for the nearest that does', () => {
+      const result = parts([undefined, undefined, 5], [-4, undefined, -5], B_FLAT)
+
+      expect(result.globalMeasures[0]?.key).toEqual({ fifths: 6 })
+    })
+
+    // Flipping up: a D trumpet, written a major second below what it sounds,
+    // writes the score's six flats as four sharps. Three sharps read back as
+    // B major or as C-flat, which is nearer.
+    test('spells toward the nearest settled key for a part that flips up', () => {
+      const D_TRUMPET = '<transpose><diatonic>1</diatonic><chromatic>2</chromatic></transpose>'
+      const result = parts([undefined, -6], [3, 4], D_TRUMPET)
+
+      expect(result.parts[1]?.transposition?.keyFifthsFlipAt).toBe(-8)
+      expect(result.globalMeasures[0]?.key).toEqual({ fifths: -7 })
+    })
+
+    // One sharp reads back as F major or, through the flip, eleven sharps, each
+    // six fifths from the five sharps settled next.
+    test('reads a signature as it stands where both readings are as near', () => {
+      const result = parts([undefined, 5], [1, -5], B_FLAT)
+
+      expect(result.globalMeasures[0]?.key).toEqual({ fifths: -1 })
+    })
+  })
+
   // With the flip at eight, five sharps write seven sharps, not the five flats
   // the part writes. Only the direct reading, C-flat, writes them back.
   test('keeps the direct reading where the other does not write the signature back', () => {

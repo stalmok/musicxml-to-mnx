@@ -308,6 +308,106 @@ describe('a jump to a sign the score does not draw', () => {
     expect(undrawn(warnings)).toEqual([])
   })
 
+  describe('among several signs', () => {
+    const drawn = (name: string) =>
+      `<direction><direction-type><segno/></direction-type><sound segno="${name}"/></direction>`
+    const marked = (name: string) => `<sound segno="${name}"/>`
+    const dalSegno = (name: string) => `<sound dalsegno="${name}"/>`
+    const codes = (warnings: readonly ConversionWarning[]) =>
+      warnings
+        .map((w) => w.code)
+        .filter(
+          (code) => code === 'unrepresentable:undrawn-destination' || code === 'unresolved:segno',
+        )
+
+    test('converts a D.S. naming no segno as a D.C. where the score marks none', () => {
+      const { types, warnings } = jumps(NOTE, NOTE + dalSegno(''))
+
+      expect(types).toEqual([undefined, 'dc'])
+      expect(codes(warnings)).toEqual(['unresolved:segno'])
+    })
+
+    test('reports a D.S. naming no segno where the score marks one and draws none', () => {
+      const { types, warnings } = jumps(marked('a') + NOTE, NOTE + dalSegno(''))
+
+      expect(types).toEqual([undefined, undefined])
+      expect(codes(warnings)).toEqual(['unrepresentable:undrawn-destination'])
+    })
+
+    test('reports a D.S. to one of several segnos marked only for playback', () => {
+      const { types, warnings } = jumps(
+        marked('a') + NOTE,
+        marked('c') + NOTE,
+        NOTE + dalSegno('a'),
+      )
+
+      expect(types).toEqual([undefined, undefined, undefined])
+      expect(codes(warnings)).toEqual(['unrepresentable:undrawn-destination'])
+    })
+
+    test('leaves a D.S. naming no segno among several drawn unresolved', () => {
+      const { warnings } = jumps(
+        drawn('a') + NOTE,
+        drawn('b') + NOTE,
+        marked('c') + NOTE,
+        NOTE + dalSegno(''),
+      )
+
+      expect(codes(warnings)).toEqual(['unresolved:segno'])
+    })
+
+    test('returns a D.S. to the drawn segno of its name, past one only marked', () => {
+      const { types, warnings } = jumps(
+        drawn('a') + NOTE,
+        drawn('b') + NOTE,
+        marked('a') + NOTE,
+        NOTE + dalSegno('a'),
+      )
+
+      expect(types).toEqual([undefined, undefined, undefined, 'segno'])
+      expect(codes(warnings)).toEqual([])
+    })
+
+    test('returns a D.S. to the drawn segno it names beside one only marked', () => {
+      const { types, warnings } = jumps(
+        drawn('a') + NOTE,
+        drawn('b') + NOTE,
+        marked('c') + NOTE,
+        NOTE + dalSegno('b'),
+      )
+
+      expect(types).toEqual([undefined, undefined, undefined, 'segno'])
+      expect(codes(warnings)).toEqual([])
+    })
+
+    test('leaves a D.S. naming a segno neither drawn nor marked unresolved', () => {
+      const { warnings } = jumps(
+        drawn('a') + NOTE,
+        drawn('b') + NOTE,
+        marked('c') + NOTE,
+        NOTE + dalSegno('x'),
+      )
+
+      expect(codes(warnings)).toEqual(['unresolved:segno'])
+    })
+
+    // The measure draws a segno, so the name marks that sign, not a
+    // destination for playback only.
+    test('takes a name marked in a measure that draws a segno as that sign’s', () => {
+      const { warnings } = jumps(
+        drawn('a') + NOTE,
+        SEGNO +
+          '<direction><direction-type><words>x</words></direction-type>' +
+          marked('b') +
+          '</direction>' +
+          NOTE,
+        NOTE + dalSegno('b'),
+      )
+
+      expect(codes(warnings)).toEqual(['unresolved:segno'])
+    })
+  })
+
   test('writes the score without the jump onto schema-valid MNX', () => {
     const { mnx } = convertValid(score('<sound segno="a"/>' + NOTE, NOTE + '<sound dalsegno="a"/>'))
 
@@ -809,6 +909,34 @@ describe('an al Fine jump in a score that has several Fines', () => {
     )
 
     expect(destinations(warnings).map((w) => w.element)).toEqual(['segno', 'coda'])
+  })
+
+  // Segno a keeps its two D.S. jumps and their Fine, segno b its one D.S.
+  // and the D.C.'s Fine. As many kept either way keeps a, which more return to.
+  test('keeps the segno most jumps return to where its al Fine jumps keep their Fine', () => {
+    const named = (name: string) =>
+      `<direction><direction-type><segno/></direction-type><sound segno="${name}"/></direction>`
+    const { types } = jumps(
+      NOTE + FINE,
+      NOTE + DA_CAPO,
+      named('a') + NOTE,
+      NOTE + FINE,
+      NOTE + '<sound dalsegno="a"/>',
+      NOTE + '<sound dalsegno="a"/>',
+      named('b') + NOTE,
+      NOTE + '<sound dalsegno="b"/>',
+    )
+
+    expect(types).toEqual([
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'dsAlFine',
+      'dsAlFine',
+      undefined,
+      undefined,
+    ])
   })
 
   test('keeps every Fine where no jump is al Fine', () => {
