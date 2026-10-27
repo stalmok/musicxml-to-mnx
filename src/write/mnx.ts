@@ -638,6 +638,16 @@ function writeDynamic(dynamic: Dynamic, names: MeasureNames): MNXDynamic {
     ...(dynamic.placement ? { placement: dynamic.placement } : {}),
   }
   switch (dynamic.kind) {
+    case 'relative':
+      return {
+        position,
+        type: 'relative',
+        relativeValue: dynamic.relativeValue,
+        value: dynamic.value,
+        ...(dynamic.glyphs ? { glyphs: [...dynamic.glyphs] } : {}),
+        ...wording,
+        ...where,
+      }
     case 'immediate':
       return {
         position,

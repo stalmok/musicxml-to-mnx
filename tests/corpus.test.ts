@@ -695,8 +695,9 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
         for (const dynamic of measure.dynamics ?? []) {
           if (dynamic.prefix !== undefined) carried.push(dynamic.prefix)
           if (dynamic.suffix !== undefined) carried.push(dynamic.suffix)
+          // A relative dynamic draws its level, as in the "f" of "più f".
           const spelling =
-            dynamic.type === 'immediate'
+            dynamic.type === 'immediate' || dynamic.type === 'relative'
               ? dynamic.value
               : dynamic.type === 'accent'
                 ? (dynamic.accentPrefix ?? 's') +

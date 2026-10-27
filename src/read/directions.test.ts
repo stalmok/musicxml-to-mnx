@@ -1009,7 +1009,7 @@ describe('dynamics', () => {
     const { measure, warnings } = read(
       inMeasure(
         '<direction><direction-type>' +
-          '<dynamics><other-dynamics>più </other-dynamics></dynamics>' +
+          '<dynamics><other-dynamics>sempre </other-dynamics></dynamics>' +
           '<dynamics><f/></dynamics>' +
           '</direction-type></direction>' +
           note('C'),
@@ -1017,7 +1017,7 @@ describe('dynamics', () => {
     )
 
     expect(measure?.dynamics).toEqual([
-      { kind: 'immediate', position: { num: 0, den: 1 }, value: 'f', prefix: 'più' },
+      { kind: 'immediate', position: { num: 0, den: 1 }, value: 'f', prefix: 'sempre' },
     ])
     expect(warnings).toEqual([])
   })
@@ -1310,7 +1310,7 @@ describe('dynamics', () => {
     const { mnx } = convertValid(
       inMeasure(
         direction(
-          '<dynamics><other-dynamics>più </other-dynamics><f/>' +
+          '<dynamics><other-dynamics>sempre </other-dynamics><f/>' +
             '<other-dynamics> sub.</other-dynamics></dynamics>',
         ) + note('C'),
       ),
@@ -1320,9 +1320,47 @@ describe('dynamics', () => {
       position: { fraction: [0, 1] },
       type: 'immediate',
       value: 'f',
-      prefix: 'più',
+      prefix: 'sempre',
       suffix: 'sub.',
     })
+  })
+})
+
+// "più f" and "meno p" state a level against the one before: louder or
+// softer, and the level it arrives at. MNX states that as a relative dynamic,
+// and the words are still drawn before the mark.
+describe('a dynamic stated against the one before', () => {
+  const dynamicsOf = (pieces: string) =>
+    convertValid(inMeasure(direction(`<dynamics>${pieces}</dynamics>`) + note('C')))
+
+  test.each([
+    ['<other-dynamics>più </other-dynamics><f/>', 'louder', 'f', 'più'],
+    ['<other-dynamics>più </other-dynamics><p/>', 'softer', 'p', 'più'],
+    ['<other-dynamics>più </other-dynamics><mf/>', 'louder', 'mf', 'più'],
+    ['<other-dynamics>più </other-dynamics><mp/>', 'softer', 'mp', 'più'],
+    ['<other-dynamics>meno </other-dynamics><f/>', 'softer', 'f', 'meno'],
+    ['<other-dynamics>meno </other-dynamics><pp/>', 'louder', 'pp', 'meno'],
+    ['<other-dynamics>Più </other-dynamics><ff/>', 'louder', 'ff', 'Più'],
+    ['<other-dynamics>piu </other-dynamics><f/>', 'louder', 'f', 'piu'],
+    ['<other-dynamics>poco più </other-dynamics><p/>', 'softer', 'p', 'poco più'],
+  ])('reads %s as a relative dynamic', (pieces, relativeValue, value, prefix) => {
+    const { mnx, warnings } = dynamicsOf(pieces)
+
+    expect(mnx.parts[0]?.measures[0]?.dynamics).toStrictEqual([
+      { position: { fraction: [0, 1] }, type: 'relative', relativeValue, value, prefix },
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  test.each([
+    ['wording that states no change', '<other-dynamics>sempre </other-dynamics><f/>'],
+    ['più after the mark', '<f/><other-dynamics> più</other-dynamics>'],
+    ['più before niente', '<other-dynamics>più </other-dynamics><n/>'],
+    ['più before an accent', '<other-dynamics>più </other-dynamics><sfz/>'],
+  ])('keeps a mark with %s as it is', (_, pieces) => {
+    const { mnx } = dynamicsOf(pieces)
+
+    expect(mnx.parts[0]?.measures[0]?.dynamics?.[0]?.type).not.toBe('relative')
   })
 })
 

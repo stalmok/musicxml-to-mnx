@@ -22,6 +22,7 @@ import type {
   Coda,
   Dynamic,
   DynamicValue,
+  RelativeDynamicValue,
   Fine,
   OttavaAmount,
   Segno,
@@ -215,6 +216,28 @@ const GLYPH_LETTERS = new Map([
   ['dynamicFFFFFF', 'ffffff'],
   ...[...ACCENT_GLYPHS].map(([letters, glyph]) => [glyph, letters] as const),
 ])
+
+// The words that state a level against the one before it. "più f" is louder
+// and "più p" softer, and "meno" turns either round.
+const RELATIVE_WORDS = new Map([
+  ['più', 1],
+  ['piu', 1],
+  ['meno', -1],
+])
+
+/**
+ * Which way the level moves where the wording before the mark ends with più
+ * or meno, or nothing where it states no change. Niente has no side to move
+ * towards.
+ */
+function relativeValue(wording: string, value: DynamicValue): RelativeDynamicValue | undefined {
+  // The last word: everything after the last space.
+  const word = wording.replace(/^.*\s/su, '').toLowerCase()
+  const more = RELATIVE_WORDS.get(word)
+  if (more === undefined || value === 'n') return undefined
+  const loud = value.includes('f') ? 1 : -1
+  return more * loud > 0 ? 'louder' : 'softer'
+}
 
 type Mark =
   | { kind: 'immediate'; value: DynamicValue; glyphs: readonly string[] }
@@ -995,8 +1018,11 @@ function readDynamics(
     }
     if (found?.kind === 'immediate') {
       const prefix = wording.take()
+      const relative = prefix && relativeValue(prefix.text, found.value)
       dynamics.push({
-        kind: 'immediate',
+        ...(relative
+          ? { kind: 'relative', relativeValue: relative }
+          : { kind: 'immediate' as const }),
         position,
         value: found.value,
         ...(found.glyphs.length > 0 ? { glyphs: found.glyphs } : {}),

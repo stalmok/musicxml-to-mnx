@@ -609,7 +609,23 @@ export interface AccentDynamic extends DynamicBase {
   readonly glyphs: readonly string[]
 }
 
-export type Dynamic = ImmediateDynamic | GradualDynamic | AccentDynamic
+/** Which way a level stated against the one before it moves. */
+export type RelativeDynamicValue = 'louder' | 'softer'
+
+/**
+ * A level stated against the one before it, such as più f. The words are
+ * still drawn, as the prefix.
+ */
+export interface RelativeDynamic extends DynamicBase {
+  readonly kind: 'relative'
+  readonly relativeValue: RelativeDynamicValue
+  /** The level it arrives at: the "f" of "più f". */
+  readonly value: DynamicValue
+  /** The SMuFL glyphs the level is drawn with, where the source names them. */
+  readonly glyphs?: readonly string[]
+}
+
+export type Dynamic = ImmediateDynamic | GradualDynamic | AccentDynamic | RelativeDynamic
 
 /**
  * A chord rolled, or bracketed as struck together. MNX states either on the

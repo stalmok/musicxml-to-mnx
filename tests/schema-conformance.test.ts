@@ -1412,10 +1412,6 @@ describe('each format limit, against the schema fact it rests on', () => {
 const SEQUENCE_ITEM_TAG =
   'The model tags a sequence item with kind, and the writer states MNX type from it. The two do not always spell it alike: the model says multiNoteTremolo where MNX says tremolo.'
 
-/** Why the model states nothing about a relative dynamic. */
-const RELATIVE_NOT_CONVERTED =
-  'Relative dynamics are not converted: MusicXML writes più f as words beside a mark.'
-
 /** The model's own tag for a dynamic, which MNX states as a type. */
 const DYNAMIC_TAG =
   'The model tags a dynamic with kind, spelled as MNX spells its type, and the writer states MNX type from it.'
@@ -1456,6 +1452,7 @@ const MNX_SPELLING: Readonly<Record<string, string>> = {
   AccentPrefix: 'MNXAccentDynamic.accentPrefix',
   AccentSuffix: 'MNXAccentDynamic.accentSuffix',
   DynamicValue: 'MNXDynamicValue',
+  RelativeDynamicValue: 'MNXRelativeDynamicValue',
   WedgeType: 'MNXWedgeType',
   OttavaAmount: 'MNXOttavaAmount',
   TimeUnit: 'MNXTimeSignatureUnit',
@@ -1497,6 +1494,7 @@ const NOT_AN_MNX_ENUM: Readonly<Record<string, string>> = {
   'ImmediateDynamic.kind': DYNAMIC_TAG,
   'GradualDynamic.kind': DYNAMIC_TAG,
   'AccentDynamic.kind': DYNAMIC_TAG,
+  'RelativeDynamic.kind': DYNAMIC_TAG,
   'RolledArpeggio.kind': ARPEGGIO_TAG,
   'StruckArpeggio.kind': ARPEGGIO_TAG,
   'TargetTie.kind': TIE_TAG,
@@ -1620,8 +1618,7 @@ const NOT_RESTATED: Readonly<Record<string, string>> = {
   'MNXImmediateDynamic.type': DYNAMIC_TAG,
   'MNXGradualDynamic.type': DYNAMIC_TAG,
   'MNXAccentDynamic.type': DYNAMIC_TAG,
-  'MNXRelativeDynamic.type': RELATIVE_NOT_CONVERTED,
-  MNXRelativeDynamicValue: RELATIVE_NOT_CONVERTED,
+  'MNXRelativeDynamic.type': DYNAMIC_TAG,
   'MNXEvent.type': SEQUENCE_ITEM_TAG,
   'MNXSpace.type': SEQUENCE_ITEM_TAG,
   'MNXTuplet.type': SEQUENCE_ITEM_TAG,
