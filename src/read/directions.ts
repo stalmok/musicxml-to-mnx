@@ -193,7 +193,7 @@ const ACCENT_GLYPHS = new Map([
 
 // The letters each glyph in SMuFL's dynamics range draws, for a mark a source
 // writes as the glyph alone.
-const GLYPH_LETTERS = new Map([
+export const GLYPH_LETTERS: ReadonlyMap<string, string> = new Map([
   ['dynamicPiano', 'p'],
   ['dynamicMezzo', 'm'],
   ['dynamicForte', 'f'],
@@ -222,6 +222,7 @@ const GLYPH_LETTERS = new Map([
 const RELATIVE_WORDS = new Map([
   ['più', 1],
   ['piu', 1],
+  ['piú', 1],
   ['meno', -1],
 ])
 
@@ -256,14 +257,38 @@ function namedMark(name: string): Mark | undefined {
  * MusicXML has no element for, or draws as a SMuFL glyph alone. A glyph the
  * source names is the mark's own.
  */
-function writtenMark(mark: XmlElement, written: string): Mark | undefined {
+function writtenMark(
+  mark: XmlElement,
+  written: string,
+  warnings: WarningCollector,
+  context: ReportContext,
+): Mark | undefined {
   const glyph = attribute(mark, 'smufl')
-  const glyphs = glyph === undefined ? [] : [glyph]
-  const letters = written === '' && glyph !== undefined ? GLYPH_LETTERS.get(glyph) : written
+  const drawn = glyph === undefined ? undefined : GLYPH_LETTERS.get(glyph)
+  const letters = written === '' ? drawn : written
   if (letters === undefined) return undefined
   const spelling = ACCENT_SPELLINGS.get(letters)
-  if (spelling !== undefined) return { kind: 'accent', spelling, glyphs }
-  return isDynamicValue(letters) ? { kind: 'immediate', value: letters, glyphs } : undefined
+  const found: Mark | undefined =
+    spelling !== undefined
+      ? { kind: 'accent', spelling, glyphs: [] }
+      : isDynamicValue(letters)
+        ? { kind: 'immediate', value: letters, glyphs: [] }
+        : undefined
+  if (found === undefined) return undefined
+
+  // A glyph drawing other letters than the text would draw another mark.
+  const contradicts = glyph !== undefined && drawn !== undefined && drawn !== letters
+  if (contradicts) {
+    warnings.add(
+      'inconsistent:dynamic-glyph',
+      `A dynamic is written "${letters}" and names the glyph "${glyph}", which draws ` +
+        `"${drawn}". The text is the mark converted, and the glyph is not.`,
+      context,
+      mark,
+      'smufl',
+    )
+  }
+  return glyph === undefined || contradicts ? found : { ...found, glyphs: [glyph] }
 }
 
 export function readDirection(
@@ -1003,9 +1028,11 @@ function readDynamics(
     if (split !== undefined) {
       joinedTo = index + split.pieces
       found = split.mark
+      // The glyphs a split mark is drawn with are its own.
+      for (const piece of marks.slice(index, joinedTo)) attribute(piece, 'smufl')
     } else if (mark.name === 'other-dynamics') {
       const written = trimmedText(mark)
-      found = writtenMark(mark, written)
+      found = writtenMark(mark, written, warnings, context)
       if (found === undefined) {
         // The glyph is reported before the text is read: an element naming a
         // glyph and holding no text still says something the output cannot.
@@ -1076,25 +1103,41 @@ function readDynamics(
  * <dynamics> to spell one it has no element for, such as sfmp, and a source
  * may split the letters of any mark that way: s and f, or ff and z. The
  * longest run that spells a mark is taken. A space between two pieces keeps
- * them apart, and a piece naming a glyph is the source's own drawing of it,
- * so neither is joined.
+ * them apart. A piece naming a glyph is the source's own drawing of it, so it
+ * joins only other pieces drawn as glyphs alone, one glyph per letter, and
+ * the mark carries those glyphs.
  */
 function splitMark(
   marks: readonly XmlElement[],
   start: number,
 ): { mark: Mark; pieces: number } | undefined {
   const letters: string[] = []
+  const glyphs: string[] = []
+  const glyphOnly = (piece: XmlElement): string | undefined => {
+    const glyph = piece.name === 'other-dynamics' ? peekAttribute(piece, 'smufl') : undefined
+    return glyph !== undefined && text(piece).trim() === '' ? glyph : undefined
+  }
+  const drawnAsGlyphs = marks[start] !== undefined && glyphOnly(marks[start]) !== undefined
   for (const piece of marks.slice(start)) {
-    if (piece.name !== 'other-dynamics') letters.push(piece.name)
+    const glyph = glyphOnly(piece)
+    const drawn = glyph === undefined ? undefined : GLYPH_LETTERS.get(glyph)
+    if (drawnAsGlyphs) {
+      if (glyph === undefined || drawn === undefined) break
+      letters.push(drawn)
+      glyphs.push(glyph)
+    } else if (piece.name !== 'other-dynamics') letters.push(piece.name)
     else if (peekAttribute(piece, 'smufl') === undefined) letters.push(text(piece))
     else break
   }
   for (let pieces = letters.length; pieces > 1; pieces -= 1) {
     const written = letters.slice(0, pieces).join('').trim()
+    const drawn = glyphs.slice(0, pieces)
     const spelling = ACCENT_SPELLINGS.get(written)
-    if (spelling !== undefined) return { mark: { kind: 'accent', spelling, glyphs: [] }, pieces }
+    if (spelling !== undefined) {
+      return { mark: { kind: 'accent', spelling, glyphs: drawn }, pieces }
+    }
     if (isDynamicValue(written)) {
-      return { mark: { kind: 'immediate', value: written, glyphs: [] }, pieces }
+      return { mark: { kind: 'immediate', value: written, glyphs: drawn }, pieces }
     }
   }
   return undefined

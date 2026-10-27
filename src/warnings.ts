@@ -294,6 +294,9 @@ export const WARNING_CODES = Object.freeze([
   // carries it another way. MNX states one fermata on the event, and the
   // chord's own is the one converted.
   'inconsistent:fermata',
+  // A dynamic written as letters that names a SMuFL glyph drawing other
+  // letters. The letters are the mark converted, and the glyph is not.
+  'inconsistent:dynamic-glyph',
   // A tuplet whose written content does not add up to its stated ratio. The
   // content is converted as written. Also a note of a chord drawing the
   // chord's tuplet bracket another way than the note it joins, whose own

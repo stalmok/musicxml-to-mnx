@@ -1241,6 +1241,37 @@ describe('dynamics', () => {
     expect(warnings).toEqual([])
   })
 
+  // A source can draw one mark as several glyphs, one per letter.
+  test.each([
+    [['dynamicForte', 'dynamicForte'], { type: 'immediate', value: 'ff' }],
+    [['dynamicMezzo', 'dynamicForte'], { type: 'immediate', value: 'mf' }],
+    [['dynamicSforzando', 'dynamicForte', 'dynamicZ'], { type: 'accent', value: 'f' }],
+  ])('reads the glyphs %j as one mark', (glyphs, written) => {
+    const pieces = glyphs.map((glyph) => `<other-dynamics smufl="${glyph}"/>`).join('')
+    const { mnx, warnings } = convertValid(
+      inMeasure(direction(`<dynamics>${pieces}</dynamics>`) + note('C')),
+    )
+
+    expect(mnx.parts[0]?.measures[0]?.dynamics).toMatchObject([{ ...written, glyphs }])
+    expect(warnings).toEqual([])
+  })
+
+  test('drops a glyph that draws other letters than the text, reporting it', () => {
+    const { mnx, warnings } = convertValid(
+      inMeasure(
+        direction('<dynamics><other-dynamics smufl="dynamicPiano">ff</other-dynamics></dynamics>') +
+          note('C'),
+      ),
+    )
+
+    expect(mnx.parts[0]?.measures[0]?.dynamics).toStrictEqual([
+      { position: { fraction: [0, 1] }, type: 'immediate', value: 'ff' },
+    ])
+    expect(warnings.map((w) => [w.code, w.attribute])).toEqual([
+      ['inconsistent:dynamic-glyph', 'smufl'],
+    ])
+  })
+
   test.each([['dynamicMezzo'], ['dynamicCrescendoHairpin'], ['segno']])(
     'reports a mark drawn only as the glyph %s, which draws no mark',
     (glyph) => {
@@ -1342,6 +1373,7 @@ describe('a dynamic stated against the one before', () => {
     ['<other-dynamics>meno </other-dynamics><pp/>', 'louder', 'pp', 'meno'],
     ['<other-dynamics>Più </other-dynamics><ff/>', 'louder', 'ff', 'Più'],
     ['<other-dynamics>piu </other-dynamics><f/>', 'louder', 'f', 'piu'],
+    ['<other-dynamics>piú </other-dynamics><f/>', 'louder', 'f', 'piú'],
     ['<other-dynamics>poco più </other-dynamics><p/>', 'softer', 'p', 'poco più'],
   ])('reads %s as a relative dynamic', (pieces, relativeValue, value, prefix) => {
     const { mnx, warnings } = dynamicsOf(pieces)

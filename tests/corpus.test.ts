@@ -14,6 +14,7 @@
 import { describe, expect, test } from 'vitest'
 import { MusicXMLError, convertMusicXML } from '../src/index.js'
 import type { ConversionWarning, MNXDocument, MNXSequenceItem, MNXTime } from '../src/index.js'
+import { GLYPH_LETTERS } from '../src/read/directions.js'
 import { timesInForce } from '../src/read/signatures.js'
 import { parseXmlRoot } from '../src/xml/parse.js'
 import type { XmlElement } from '../src/xml/parse.js'
@@ -446,17 +447,35 @@ const PLAIN_MARK = /^(p{1,6}|mp|mf|f{1,6}|n)$/
 const ACCENT_MARK = /^[sr]?f{1,6}z?(p{1,6}|mp|mf)?$/
 
 /**
+ * The letters a piece draws as a SMuFL glyph alone, with no text, or nothing
+ * where it is not such a piece or its glyph draws no letters.
+ */
+function glyphLetters(piece: XmlElement): string | undefined {
+  const glyph = piece.attributes.smufl
+  if (piece.name !== 'other-dynamics' || glyph === undefined || piece.rawText.trim() !== '') {
+    return undefined
+  }
+  return GLYPH_LETTERS.get(glyph)
+}
+
+/**
  * The letters of the longest run of two or more pieces from `start` that
  * spells a mark, and how many pieces it takes. A space between two pieces
- * keeps them apart, and a piece naming a glyph is not joined.
+ * keeps them apart. A piece naming a glyph joins only pieces drawn as glyphs
+ * alone.
  */
 function splitMark(
   pieces: readonly XmlElement[],
   start: number,
 ): { letters: string; count: number } | undefined {
   const letters: string[] = []
+  const drawnAsGlyphs = pieces[start] !== undefined && glyphLetters(pieces[start]) !== undefined
   for (const piece of pieces.slice(start)) {
-    if (piece.name !== 'other-dynamics') letters.push(piece.name)
+    const drawn = glyphLetters(piece)
+    if (drawnAsGlyphs) {
+      if (drawn === undefined) break
+      letters.push(drawn)
+    } else if (piece.name !== 'other-dynamics') letters.push(piece.name)
     else if (piece.attributes.smufl === undefined) letters.push(piece.rawText)
     else break
   }
@@ -477,8 +496,9 @@ function splitMark(
 function sourceDynamics(root: XmlElement): { marks: string[]; wordings: string[] } {
   const marks: string[] = []
   const wordings: string[] = []
+  // A piece drawn as a glyph alone draws the letters of its glyph.
   const addWording = (piece: XmlElement): void => {
-    const wording = piece.rawText.trim()
+    const wording = glyphLetters(piece) ?? piece.rawText.trim()
     if (wording !== '') wordings.push(wording)
   }
   const walk = (element: XmlElement, parent: string): void => {
