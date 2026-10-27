@@ -250,6 +250,9 @@ export function readNote(
     )
     return
   }
+  // A rest that repeats the rests before it is dropped above only where each
+  // of them states its <type>.
+  if (restElement && written === undefined) builder.writesTypelessRest(voice)
 
   const { markers, tremolo } = openTupletsAndTremolo(note, builder, warnings, context, path)
 

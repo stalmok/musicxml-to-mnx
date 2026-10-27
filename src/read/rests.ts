@@ -377,8 +377,8 @@ function reportCarriedByUnwritableRest(
  * Drops a rest that adds nothing to its voice's measure: one written over the
  * voice's rest through the measure, or one that repeats the rests before it
  * (see MeasureBuilder.restRepeatsMeasure). The rest and each notation it
- * carries are reported. The cursor moves past a rest written over the measure
- * rest, where the source stood it, and stays where the repeated rests end.
+ * carries are reported. The cursor moves past the rest, where the source
+ * stood it, but a repeated rest does not make the measure longer.
  */
 export function dropRedundantRest(
   note: VoicedNote,
@@ -455,7 +455,8 @@ export function dropRedundantRest(
       )
     },
   )
-  builder.passOver(over === 'measure rest' ? lasts : fraction(0))
+  if (over === 'measure rest') builder.passOver(lasts)
+  else builder.passOverRepeat(lasts)
 }
 
 /**

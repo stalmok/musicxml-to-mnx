@@ -2471,10 +2471,34 @@ describe('a rest repeating the rests before it in a multi-measure rest', () => {
     expect(warnings.map((warning) => warning.code)).toEqual(['redundant:rest'])
   })
 
+  test('reads a <backup> over a voice whose rest is dropped from where the source stands', () => {
+    const { mnx, warnings } = convertValid(
+      opening(
+        multiRest,
+        rest(16, 'whole') +
+          rest(16) +
+          '<backup><duration>32</duration></backup>' +
+          rest(16, 'whole').replace('<voice>1</voice>', '<voice>2</voice>') +
+          rest(16).replace('<voice>1</voice>', '<voice>2</voice>'),
+      ),
+    )
+    const sequences = mnx.parts[0]?.measures[0]?.sequences ?? []
+
+    expect(sequences.map((sequence) => sequence.content.length)).toEqual([1, 1])
+    expect(warnings.map((warning) => warning.code)).toEqual(['redundant:rest', 'redundant:rest'])
+  })
+
   test('keeps the rest in a measure that opens no multi-measure rest', () => {
     const { mnx } = convertValid(opening('', rest(16, 'whole') + rest(16)))
 
     expect(durations(mnx)).toEqual([{ base: 'whole' }, { base: 'whole' }])
+  })
+
+  test('keeps a rest after a rest with no <type>', () => {
+    const { mnx, warnings } = convertValid(opening(multiRest, rest(4) + rest(4) + rest(8)))
+
+    expect(durations(mnx)).toEqual([{ base: 'quarter' }, { base: 'quarter' }, { base: 'half' }])
+    expect(warnings).toEqual([])
   })
 
   test('keeps a rest lasting other than the rests before it', () => {

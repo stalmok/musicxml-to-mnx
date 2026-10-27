@@ -164,7 +164,8 @@ test('a note written before the measure starts counts from the start', () => {
 // again.
 describe('a rest repeating the rests before it', () => {
   const multiRest =
-    '<attributes><measure-style><multiple-rest>3</multiple-rest></measure-style></attributes>'
+    '<attributes><time><beats>4</beats><beat-type>4</beat-type></time>' +
+    '<measure-style><multiple-rest>3</multiple-rest></measure-style></attributes>'
   const rest = (duration: number, type?: string, voice = '1') =>
     `<note><rest/><duration>${String(duration)}</duration><voice>${voice}</voice>` +
     (type === undefined ? '' : `<type>${type}</type>`) +
@@ -191,7 +192,7 @@ describe('a rest repeating the rests before it', () => {
     expect(lengths(multiRest + rest(4, 'whole', '2') + rest(4))).toEqual([[2]])
   })
 
-  test('adds its time after a <backup>', () => {
+  test('adds no time after a <backup> and <forward> back to where the rests end', () => {
     expect(
       lengths(
         multiRest +
@@ -199,7 +200,40 @@ describe('a rest repeating the rests before it', () => {
           '<backup><duration>2</duration></backup><forward><duration>2</duration></forward>' +
           rest(4),
       ),
-    ).toEqual([[2]])
+    ).toEqual([[1]])
+  })
+
+  test('adds its time where it starts elsewhere than where the rests end', () => {
+    expect(
+      lengths(multiRest + rest(4, 'whole') + '<backup><duration>4</duration></backup>' + rest(4)),
+    ).toEqual([[1]])
+    expect(
+      lengths(multiRest + rest(4, 'whole') + '<forward><duration>4</duration></forward>' + rest(4)),
+    ).toEqual([[3]])
+  })
+
+  test('adds its time after a rest with no <type>', () => {
+    expect(lengths(multiRest + rest(1) + rest(1) + rest(2))).toEqual([[1]])
+  })
+
+  test('adds no time in each voice that repeats its rests', () => {
+    expect(
+      lengths(
+        multiRest +
+          rest(4, 'whole') +
+          rest(4) +
+          '<backup><duration>8</duration></backup>' +
+          rest(4, 'whole', '2') +
+          rest(4, undefined, '2'),
+      ),
+    ).toEqual([[1]])
+  })
+
+  test('adds its time in a voice that sounds a note later in the measure', () => {
+    const note =
+      '<note><pitch><step>C</step><octave>5</octave></pitch>' +
+      '<duration>1</duration><voice>1</voice><type>quarter</type></note>'
+    expect(lengths(multiRest + rest(4, 'whole') + rest(4) + note)).toEqual([[2.25]])
   })
 
   test('adds its time where it lasts other than the rests before it', () => {

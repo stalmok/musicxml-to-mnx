@@ -578,8 +578,9 @@ export function sourcePitches(
  * the event before it and does not stand at the cursor.
  *
  * Some exporters write the first measure of a multi-measure rest twice over:
- * rests lasting the measure, then one rest with no <type> lasting as long
- * again. That rest writes nothing new, so it adds no time.
+ * rests that each state a <type>, from the measure start, then one rest with
+ * no <type> lasting as long again, in a voice that sounds no note in the
+ * measure. That rest writes nothing new, so it adds no time.
  */
 export function sourceMeasureLengths(root: XmlElement): number[][] {
   const perPart: number[][] = []
@@ -600,9 +601,18 @@ export function sourceMeasureLengths(root: XmlElement): number[][] {
               style.children.some((rest) => rest.name === 'multiple-rest'),
           ),
       )
-      // The voice of the notes written so far while each is a rest, from the
-      // measure start, with no <backup> between them.
-      let restsOnly: string | undefined | false
+      const sounding = new Set(
+        measure.children
+          .filter(
+            (c) =>
+              c.name === 'note' && !c.children.some((n) => n.name === 'rest' || n.name === 'chord'),
+          )
+          .map((c) => c.children.find((n) => n.name === 'voice')?.rawText.trim() ?? ''),
+      )
+      // Where each voice's rests run to, while the voice has written only
+      // rests one after another from the measure start.
+      const restsTo = new Map<string, number | false>()
+      const typeless = new Set<string>()
 
       for (const item of measure.children) {
         const durationOf = () =>
@@ -614,7 +624,6 @@ export function sourceMeasureLengths(root: XmlElement): number[][] {
           if (stated) divisions = Number(stated)
         } else if (item.name === 'backup') {
           position -= durationOf()
-          if (restsOnly !== undefined) restsOnly = false
         } else if (item.name === 'forward') {
           position += durationOf()
         } else if (item.name === 'note') {
@@ -622,18 +631,25 @@ export function sourceMeasureLengths(root: XmlElement): number[][] {
           const isGrace = item.children.some((c) => c.name === 'grace')
           const isRest = item.children.some((c) => c.name === 'rest')
           const voice = item.children.find((c) => c.name === 'voice')?.rawText.trim() ?? ''
+          const statesType = item.children.some((c) => c.name === 'type')
           const startsAt = Math.max(0, position)
+          const rested = restsTo.get(voice) ?? (startsAt === 0 ? 0 : false)
+          const follows = rested !== false && Math.abs(startsAt - rested) <= 1e-9
           const repeats =
             opensMultimeasureRest &&
             isRest &&
             !isChord &&
             !isGrace &&
-            restsOnly === voice &&
-            !item.children.some((c) => c.name === 'type') &&
-            Math.abs(durationOf() - startsAt) <= 1e-9
+            !sounding.has(voice) &&
+            follows &&
+            !typeless.has(voice) &&
+            !statesType &&
+            Math.abs(durationOf() - rested) <= 1e-9
           if (repeats) continue
-          if (restsOnly === undefined && startsAt === 0) restsOnly = voice
-          if (!isRest || isChord || isGrace || voice !== restsOnly) restsOnly = false
+          if (isRest && !statesType) typeless.add(voice)
+          if (!isChord) {
+            restsTo.set(voice, isRest && !isGrace && follows ? rested + durationOf() : false)
+          }
           // A chord note joins the event before it, so it does not move a
           // cursor that is before the measure start.
           if (!isChord) position = Math.max(0, position)

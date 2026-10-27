@@ -540,6 +540,8 @@ export class MeasureBuilder {
   readonly #partVoices: ReadonlySet<string>
   /** Whether a <multiple-rest> opens a multi-measure rest at this measure. */
   readonly #opensMultimeasureRest: boolean
+  /** The voices that write a rest with no <type> in this measure. */
+  readonly #typelessRests = new Set<string>()
 
   constructor(
     carriedStops: readonly CarriedTupletStop[],
@@ -633,6 +635,16 @@ export class MeasureBuilder {
     this.#moveTo(addFractions(this.#cursor, by))
   }
 
+  /**
+   * Passes over a rest that writes the measure a second time (see
+   * restRepeatsMeasure). The cursor moves on, so a <backup> after it is read
+   * from where the source stands, but the measure does not grow by it.
+   */
+  passOverRepeat(by: Fraction): void {
+    this.#lastWritten = 'rest'
+    this.#cursor = addFractions(this.#cursor, by)
+  }
+
   #moveTo(position: Fraction): void {
     this.#cursor = position
     if (compareFractions(position, this.#furthest) > 0) this.#furthest = position
@@ -665,18 +677,24 @@ export class MeasureBuilder {
    * exporters write that measure twice over: rests lasting the measure, then
    * one rest lasting as long again. The voice sounds no note in the measure,
    * and its line holds those rests alone, from the measure start to the
-   * cursor.
+   * cursor, and each of them states its <type>.
    */
   restRepeatsMeasure(voice: VoiceLine, length: Fraction): boolean {
     const layer = layerOf(voice)
     return (
       this.#opensMultimeasureRest &&
+      !this.#typelessRests.has(voice.name) &&
       !this.#soundingVoices.has(voice.name) &&
       layer.content.length > 0 &&
       layer.content.every((item) => item.kind === 'event' && item.body.kind === 'rest') &&
       compareFractions(layer.end, length) === 0 &&
       compareFractions(this.#cursor, length) === 0
     )
+  }
+
+  /** Records that this voice writes a rest with no <type> in the measure. */
+  writesTypelessRest(voice: VoiceLine): void {
+    this.#typelessRests.add(voice.name)
   }
 
   /**
