@@ -43,8 +43,9 @@ export type OpenExtenders = Map<string, Draft<LyricExtender>>
 const EXTEND_TYPES: ReadonlySet<string> = new Set(['start', 'stop', 'continue'])
 
 /**
- * The syllables under a note, by the verse line each is sung on. `event` is
- * the id of the event the note is part of, and `voice` the voice it is in.
+ * The syllables under a note, by the verse line each is sung on, and whether
+ * a melisma line ends at the note's event. `event` is the id of that event,
+ * and `voice` the voice it is in.
  */
 export function readLyrics(
   element: ElementReader,
@@ -53,8 +54,9 @@ export function readLyrics(
   open: OpenExtenders,
   warnings: WarningCollector,
   context: ReportContext,
-): Map<string, Lyric> {
+): { lyrics: Map<string, Lyric>; endsLine: boolean } {
   const lyrics = new Map<string, Lyric>()
+  let endsLine = false
   for (const lyric of element.blocks('lyric')) {
     const line = attribute(lyric.element, 'number') ?? '1'
     const key = JSON.stringify([voice, line])
@@ -77,6 +79,7 @@ export function readLyrics(
         continue
       }
       reached.target = event
+      endsLine = true
       if (extendType === 'stop') open.delete(key)
       continue
     }
@@ -106,7 +109,7 @@ export function readLyrics(
       lyric.element,
     )
   }
-  return lyrics
+  return { lyrics, endsLine }
 }
 
 /**

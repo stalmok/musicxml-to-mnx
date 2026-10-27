@@ -335,13 +335,21 @@ export function readNote(
   // A draft, because a two-note tremolo found to have one end once the note
   // after it is read halves its value.
   const id = state.ids.nextEvent()
+  const { lyrics, endsLine } = readLyrics(
+    element,
+    voice.name,
+    id,
+    state.lyricExtenders,
+    warnings,
+    context,
+  )
   const event: Draft<Event> = {
     kind: 'event',
     id,
     staff: undefined,
     value,
     slurs: [],
-    lyrics: readLyrics(element, voice.name, id, state.lyricExtenders, warnings, context),
+    lyrics,
     stemDirection: fills ? restStem : readStemDirection(element, warnings, context),
     markings: restMarkings ?? readMarkings(eventNotations, warnings, context),
     fermata: readFermata(eventNotations, warnings, context),
@@ -403,13 +411,14 @@ export function readNote(
         element.line,
         staff,
       )
-  // Only a rest is ever a candidate.
+  // Only a rest is ever a candidate. A melisma line ending at it needs its
+  // id, which the sequence's rest does not have, so it stays an event.
   if (candidate && rest) {
     const { written: drawn, duration: lasts } = candidate
-    voice.markMeasureRest(event, rest, {
-      event: () =>
-        reportDurationMismatch(element, drawn, lasts, scale, warnings, context, mismatchPlace),
-    })
+    const reportMismatch = () =>
+      reportDurationMismatch(element, drawn, lasts, scale, warnings, context, mismatchPlace)
+    if (endsLine) reportMismatch()
+    else voice.markMeasureRest(event, rest, { event: reportMismatch })
   }
   readEventSpanners(
     element,

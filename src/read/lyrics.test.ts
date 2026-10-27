@@ -537,6 +537,27 @@ describe('lyric extender lines', () => {
     expect(lineOf(events(mnx)[0])?.extender).toStrictEqual({ target: events(mnx, 1)[0]?.id })
   })
 
+  // A rest drawn as a whole rest and lasting the measure would otherwise
+  // move onto the sequence, which has no id for the line to end at.
+  test('keeps a rest that a line ends at as an event', () => {
+    const { mnx } = convertValid(
+      '<score-partwise><part id="P1"><measure number="1">' +
+        '<attributes><divisions>4</divisions>' +
+        '<time><beats>3</beats><beat-type>4</beat-type></time></attributes>' +
+        note('C', sung('la', extend('start'))) +
+        note('D') +
+        note('E') +
+        '</measure><measure number="2">' +
+        '<note><rest/><duration>12</duration><type>whole</type>' +
+        `${held(extend('stop'))}</note>` +
+        '</measure></part></score-partwise>',
+    )
+    const [rest] = events(mnx, 1)
+
+    expect(rest?.id).toBeDefined()
+    expect(lineOf(events(mnx)[0])?.extender).toStrictEqual({ target: rest?.id })
+  })
+
   test('keeps the lines of two verses apart', () => {
     const { mnx } = convertValid(
       measure(
