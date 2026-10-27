@@ -1352,6 +1352,16 @@ describe('a dynamic stated against the one before', () => {
     expect(warnings).toEqual([])
   })
 
+  test('carries the glyph named for the level', () => {
+    const { mnx } = dynamicsOf(
+      '<other-dynamics>più </other-dynamics><other-dynamics smufl="dynamicFF">ff</other-dynamics>',
+    )
+
+    expect(mnx.parts[0]?.measures[0]?.dynamics).toMatchObject([
+      { type: 'relative', value: 'ff', glyphs: ['dynamicFF'] },
+    ])
+  })
+
   test.each([
     ['wording that states no change', '<other-dynamics>sempre </other-dynamics><f/>'],
     ['più after the mark', '<f/><other-dynamics> più</other-dynamics>'],
