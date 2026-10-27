@@ -602,6 +602,16 @@ describe('lyric extender lines', () => {
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:lyric-line'])
   })
 
+  test('starts a line from a second copy of a verse that states it', () => {
+    const { mnx, warnings } = convertValid(
+      measure(note('C', sung('la') + sung('la', extend())) + note('D', held(extend('stop')))),
+    )
+    const [first, second] = events(mnx)
+
+    expect(lineOf(first)?.extender).toStrictEqual({ target: second?.id })
+    expect(warnings).toEqual([])
+  })
+
   test('ends a line under its own note, where a lyric of that note stops it', () => {
     const { mnx, warnings } = convertValid(
       measure(note('C', sung('la', extend('start')) + held(extend('stop'))) + note('D')),

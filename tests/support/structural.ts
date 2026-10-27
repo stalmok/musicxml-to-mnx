@@ -1054,8 +1054,9 @@ export function sourceLyricPlaces(root: XmlElement): string[] {
             // One text per line per note, because MNX states one lyric per
             // line on an event. A source can write the same <lyric
             // number="1"> twice on one note, and the first is the one sung.
-            // differingLyricLines reports it where the two texts differ.
-            const sung = new Set<string>()
+            // differingLyricLines reports it where the two texts differ. A
+            // copy with the same text can still start the line.
+            const sung = new Map<string, { text: string; index: number; draws: boolean }>()
             for (const lyric of item.children.filter((c) => c.name === 'lyric')) {
               const line = String(lyric.attributes.number ?? '1')
               const extend = lyric.children.find((c) => c.name === 'extend')
@@ -1084,9 +1085,17 @@ export function sourceLyricPlaces(root: XmlElement): string[] {
                 }
                 continue
               }
-              if (sung.has(line)) continue
-              sung.add(line)
               const draws = extend !== undefined && !stops
+              const first = sung.get(line)
+              if (first) {
+                if (first.text === text && draws && !first.draws) {
+                  first.draws = true
+                  open.set(key, first.index)
+                  found[first.index] += ' with a line'
+                }
+                continue
+              }
+              sung.set(line, { text, index: found.length, draws })
               open.delete(key)
               if (draws) open.set(key, found.length)
               found.push(`${at} line ${line}: ${text}${draws ? ' with a line' : ''}`)

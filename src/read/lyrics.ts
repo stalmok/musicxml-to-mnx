@@ -85,22 +85,21 @@ export function readLyrics(
     }
 
     // MNX keys an event's lyrics by line, and the model does the same. A verse
-    // stated twice the same way is read once. Where the two differ, the first
-    // is converted and the second is reported. Only the first starts or ends
-    // a melisma line.
+    // stated twice the same way is read once, with a melisma line where
+    // either copy starts one. Where the two differ, the first is converted
+    // and the second is reported, and only the first starts or ends a line.
+    const starts = extend !== undefined && extendType !== 'stop'
     const stated = lyrics.get(verse.line)
     if (!stated) {
       // A syllable ends the line before it in its verse.
       open.delete(key)
-      if (extend && extendType !== 'stop') {
-        const extender: Draft<LyricExtender> = { target: undefined }
-        open.set(key, extender)
-        verse.lyric = { ...verse.lyric, extender }
-      }
-      lyrics.set(verse.line, verse.lyric)
+      lyrics.set(verse.line, starts ? withLine(verse.lyric, key, open) : verse.lyric)
       continue
     }
-    if (stated.text === verse.lyric.text && stated.type === verse.lyric.type) continue
+    if (stated.text === verse.lyric.text && stated.type === verse.lyric.type) {
+      if (starts && !stated.extender) lyrics.set(verse.line, withLine(stated, key, open))
+      continue
+    }
     warnings.add(
       'unrepresentable:lyric-line',
       `A note sings line ${verse.line} twice, as "${stated.text}" and as "${verse.lyric.text}", ` +
@@ -140,6 +139,13 @@ export function lyricLineOrder(parts: readonly Part[]): string[] {
 interface Verse {
   line: string
   lyric: Lyric
+}
+
+/** The syllable with a melisma line starting at it, open under `key`. */
+function withLine(lyric: Lyric, key: string, open: OpenExtenders): Lyric {
+  const extender: Draft<LyricExtender> = { target: undefined }
+  open.set(key, extender)
+  return { ...lyric, extender }
 }
 
 /**

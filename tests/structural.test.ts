@@ -1284,3 +1284,40 @@ describe('the key each part draws, against its source', () => {
     expect(check(part('P1', undefined, key(2)))).toEqual([])
   })
 })
+
+// A melisma line runs from the syllable that starts it to the last later note
+// whose lyric holds only an <extend>, and the check reads it from the source
+// as the converter does.
+describe('a melisma line in the source', () => {
+  const note = (step: string, lyrics: string) =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>1</duration>` +
+    `<voice>1</voice><type>quarter</type>${lyrics}</note>`
+  const sung = (text: string, extend = '') =>
+    `<lyric number="1"><text>${text}</text>${extend}</lyric>`
+  const held = (type: string) => `<lyric number="1"><extend type="${type}"/></lyric>`
+  const source = (notes: string) =>
+    '<score-partwise><part id="P1"><measure number="1"><attributes><divisions>1</divisions>' +
+    `</attributes>${notes}</measure></part></score-partwise>`
+
+  test.each([
+    [
+      'a line to the note that stops it',
+      note('C', sung('la', '<extend/>')) + note('D', held('stop')),
+    ],
+    ['a line with no end', note('C', sung('la', '<extend/>')) + note('D', sung('lo'))],
+    [
+      'a line from a second copy of the verse',
+      note('C', sung('la') + sung('la', '<extend/>')) + note('D', held('stop')),
+    ],
+    [
+      'a line stopped on its own note',
+      note('C', sung('la', '<extend type="start"/>') + held('stop')) + note('D', ''),
+    ],
+  ])('agrees with the converter on %s', (_, notes) => {
+    const xml = source(notes)
+    const { mnx } = convertValid(xml)
+
+    expect(sourceLyricPlaces(parseXmlRoot(xml)).sort()).toEqual(lyricPlaces(mnx).sort())
+    expect(sourceLyricPlaces(parseXmlRoot(xml)).join()).toContain('with a line')
+  })
+})
