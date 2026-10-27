@@ -677,6 +677,19 @@ describe('a rest dropped over a measure rest', () => {
     }
   }
 
+  test('says the rest is written over the measure rest', () => {
+    const { warnings } = convertValid(
+      inMeasure(measureRest + wholeRest('<notations><fermata/></notations>')),
+    )
+
+    expect(warnings.map((w) => w.message)).toEqual([
+      'A rest is written over a rest that already fills the measure in the same voice. The ' +
+        'measure rest is the one converted.',
+      'A <fermata> on a rest written over a rest that already fills the measure is not ' +
+        'converted.',
+    ])
+  })
+
   test('reports each thing the rest carries', () => {
     const { sequences, lost: reported } = lost(
       measureRest +
@@ -2460,6 +2473,30 @@ describe('a rest repeating the rests before it in a multi-measure rest', () => {
     expect(warnings.map((warning) => [warning.code, warning.context.measure])).toEqual([
       ['redundant:rest', 1],
     ])
+    expect(warnings[0]?.message).toBe(
+      'A rest with no <type> lasts as long as the rests before it in its voice, in the first ' +
+        'measure of a multi-measure rest. It writes the measure a second time, and is not ' +
+        'converted.',
+    )
+  })
+
+  test('reports what the dropped rest carries', () => {
+    const { warnings } = convertValid(
+      opening(
+        multiRest,
+        rest(16, 'whole') + rest(16).replace('</note>', '<notations><fermata/></notations></note>'),
+      ),
+    )
+
+    expect(warnings.map((warning) => [warning.code, warning.element, warning.message])).toEqual([
+      expect.arrayContaining(['redundant:rest', 'rest']),
+      [
+        'redundant:rest',
+        'fermata',
+        'A <fermata> on a rest repeating the rests before it in the first measure of a ' +
+          'multi-measure rest is not converted.',
+      ],
+    ])
   })
 
   test('drops one repeating rests longer than the time signature states', () => {
@@ -2486,6 +2523,69 @@ describe('a rest repeating the rests before it in a multi-measure rest', () => {
 
     expect(sequences.map((sequence) => sequence.content.length)).toEqual([1, 1])
     expect(warnings.map((warning) => warning.code)).toEqual(['redundant:rest', 'redundant:rest'])
+  })
+
+  test('reads a <multiple-rest> in a later <attributes> of the measure', () => {
+    const { mnx } = convertValid(
+      opening('', `<attributes>${multiRest}</attributes>` + rest(16, 'whole') + rest(16)),
+    )
+
+    expect(durations(mnx)).toEqual([{ base: 'whole' }])
+  })
+
+  test('keeps the rest in a measure whose <measure-style> opens no multi-measure rest', () => {
+    const { mnx } = convertValid(
+      opening('<measure-style><slash type="start"/></measure-style>', rest(16, 'whole') + rest(16)),
+    )
+
+    expect(durations(mnx)).toEqual([{ base: 'whole' }, { base: 'whole' }])
+  })
+
+  test('keeps a rest written after the cursor moves past the rests before it', () => {
+    const { mnx, warnings } = convertValid(
+      opening(
+        multiRest,
+        rest(16, 'whole') + '<forward><duration>4</duration></forward>' + rest(16),
+      ),
+    )
+
+    expect(durations(mnx)).toEqual([{ base: 'whole' }, [1, 4], { base: 'whole' }])
+    expect(warnings.map((w) => w.code)).not.toContain('redundant:rest')
+  })
+
+  test('keeps a rest written after a gap that ends where it would repeat them', () => {
+    const { warnings } = convertValid(
+      opening(multiRest, rest(8, 'half') + '<forward><duration>8</duration></forward>' + rest(16)),
+    )
+
+    expect(warnings.map((w) => w.code)).not.toContain('redundant:rest')
+  })
+
+  test('keeps a rest written back over the rests before it', () => {
+    const { warnings } = convertValid(
+      opening(multiRest, rest(16, 'whole') + '<backup><duration>8</duration></backup>' + rest(8)),
+    )
+
+    expect(warnings.map((w) => w.code)).not.toContain('redundant:rest')
+  })
+
+  test('keeps a rest after rests in a tuplet', () => {
+    const triplet = (tuplet: string) =>
+      '<note><rest/><duration>4</duration><voice>1</voice><type>quarter</type>' +
+      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+      `</time-modification>${tuplet}</note>`
+    const { warnings } = convertValid(
+      opening(
+        multiRest,
+        triplet('<notations><tuplet type="start"/></notations>') +
+          triplet('') +
+          triplet('<notations><tuplet type="stop"/></notations>') +
+          rest(4, 'quarter') +
+          rest(16),
+      ),
+    )
+
+    expect(warnings.map((w) => w.code)).not.toContain('redundant:rest')
   })
 
   test('keeps the rest in a measure that opens no multi-measure rest', () => {

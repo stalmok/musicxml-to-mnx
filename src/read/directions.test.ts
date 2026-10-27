@@ -1256,6 +1256,53 @@ describe('dynamics', () => {
     expect(warnings).toEqual([])
   })
 
+  test('reads glyphs written with layout whitespace as one mark', () => {
+    const piece = '<other-dynamics smufl="dynamicForte">\n  </other-dynamics>'
+    const { mnx } = convertValid(
+      inMeasure(direction(`<dynamics>${piece}${piece}</dynamics>`) + note('C')),
+    )
+
+    expect(mnx.parts[0]?.measures[0]?.dynamics).toMatchObject([{ value: 'ff' }])
+  })
+
+  test('joins no glyph to a piece that also writes its letters', () => {
+    const { mnx } = convertValid(
+      inMeasure(
+        direction(
+          '<dynamics><other-dynamics smufl="dynamicForte">f</other-dynamics>' +
+            '<other-dynamics smufl="dynamicForte"/></dynamics>',
+        ) + note('C'),
+      ),
+    )
+
+    expect(mnx.parts[0]?.measures[0]?.dynamics).toMatchObject([{ value: 'f' }, { value: 'f' }])
+  })
+
+  test('carries only the glyphs of the pieces a mark takes', () => {
+    const pieces = ['dynamicForte', 'dynamicForte', 'dynamicMezzo']
+      .map((glyph) => `<other-dynamics smufl="${glyph}"/>`)
+      .join('')
+    const { mnx } = convertValid(inMeasure(direction(`<dynamics>${pieces}</dynamics>`) + note('C')))
+
+    expect(mnx.parts[0]?.measures[0]?.dynamics).toMatchObject([
+      { value: 'ff', glyphs: ['dynamicForte', 'dynamicForte'] },
+    ])
+  })
+
+  test('carries a glyph that draws no letters the converter knows', () => {
+    const { mnx, warnings } = convertValid(
+      inMeasure(
+        direction('<dynamics><other-dynamics smufl="dynamicFOwn">f</other-dynamics></dynamics>') +
+          note('C'),
+      ),
+    )
+
+    expect(mnx.parts[0]?.measures[0]?.dynamics).toMatchObject([
+      { value: 'f', glyphs: ['dynamicFOwn'] },
+    ])
+    expect(warnings).toEqual([])
+  })
+
   test('drops a glyph that draws other letters than the text, reporting it', () => {
     const { mnx, warnings } = convertValid(
       inMeasure(

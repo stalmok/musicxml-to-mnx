@@ -622,6 +622,28 @@ describe('lyric extender lines', () => {
     expect(warnings).toEqual([])
   })
 
+  test('reports a continue after the line has stopped', () => {
+    const { mnx, warnings } = convertValid(
+      measure(
+        note('C', sung('la', extend('start'))) +
+          note('D', held(extend('stop'))) +
+          note('E', held(extend('continue'))),
+      ),
+    )
+    const [first, second] = events(mnx)
+
+    expect(lineOf(first)?.extender).toStrictEqual({ target: second?.id })
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([['unclosed:spanner', 'extend']])
+  })
+
+  test('starts no line at a syllable whose <extend> stops one', () => {
+    const { mnx } = convertValid(
+      measure(note('C', sung('la', extend('stop'))) + note('D', held(extend('continue')))),
+    )
+
+    expect(lineOf(events(mnx)[0])?.extender).toBeUndefined()
+  })
+
   test('ends a line at the next syllable of its verse', () => {
     const { mnx, warnings } = convertValid(
       measure(

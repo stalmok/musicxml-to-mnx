@@ -217,13 +217,14 @@ export const GLYPH_LETTERS: ReadonlyMap<string, string> = new Map([
   ...[...ACCENT_GLYPHS].map(([letters, glyph]) => [glyph, letters] as const),
 ])
 
-// The words that state a level against the one before it. "più f" is louder
-// and "più p" softer, and "meno" turns either round.
+// The words that state a level against the one before it, and whether each
+// moves towards the mark. "più f" is louder and "più p" softer, and "meno"
+// turns either round.
 const RELATIVE_WORDS = new Map([
-  ['più', 1],
-  ['piu', 1],
-  ['piú', 1],
-  ['meno', -1],
+  ['più', true],
+  ['piu', true],
+  ['piú', true],
+  ['meno', false],
 ])
 
 /**
@@ -234,10 +235,9 @@ const RELATIVE_WORDS = new Map([
 function relativeValue(wording: string, value: DynamicValue): RelativeDynamicValue | undefined {
   // The last word: everything after the last space.
   const word = wording.replace(/^.*\s/su, '').toLowerCase()
-  const more = RELATIVE_WORDS.get(word)
-  if (more === undefined || value === 'n') return undefined
-  const loud = value.includes('f') ? 1 : -1
-  return more * loud > 0 ? 'louder' : 'softer'
+  const towards = RELATIVE_WORDS.get(word)
+  if (towards === undefined || value === 'n') return undefined
+  return value.includes('f') === towards ? 'louder' : 'softer'
 }
 
 type Mark =
@@ -277,7 +277,7 @@ function writtenMark(
   if (found === undefined) return undefined
 
   // A glyph drawing other letters than the text would draw another mark.
-  const contradicts = glyph !== undefined && drawn !== undefined && drawn !== letters
+  const contradicts = drawn !== undefined && drawn !== letters
   if (contradicts) {
     warnings.add(
       'inconsistent:dynamic-glyph',
@@ -1114,8 +1114,8 @@ function splitMark(
   const letters: string[] = []
   const glyphs: string[] = []
   const glyphOnly = (piece: XmlElement): string | undefined => {
-    const glyph = piece.name === 'other-dynamics' ? peekAttribute(piece, 'smufl') : undefined
-    return glyph !== undefined && text(piece).trim() === '' ? glyph : undefined
+    // Only an <other-dynamics> names a glyph.
+    return text(piece).trim() === '' ? peekAttribute(piece, 'smufl') : undefined
   }
   const drawnAsGlyphs = marks[start] !== undefined && glyphOnly(marks[start]) !== undefined
   for (const piece of marks.slice(start)) {

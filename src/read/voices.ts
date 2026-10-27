@@ -686,7 +686,8 @@ export class MeasureBuilder {
       !this.#typelessRests.has(voice.name) &&
       !this.#soundingVoices.has(voice.name) &&
       layer.content.length > 0 &&
-      layer.content.every((item) => item.kind === 'event' && item.body.kind === 'rest') &&
+      // The voice sounds no note, so each event is a rest.
+      layer.content.every((item) => item.kind === 'event') &&
       compareFractions(layer.end, length) === 0 &&
       compareFractions(this.#cursor, length) === 0
     )
