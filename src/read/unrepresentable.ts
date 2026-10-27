@@ -244,10 +244,11 @@ export const NO_HOME_ATTRIBUTES: ReadonlySet<string> = new Set([
   'clef after-barline',
   // A dashed tie. The schema's slur states a lineType; its tie does not.
   'tied line-type',
-  // The line a slide into or out of a note is drawn with: its shape, its
-  // dashes and its length. The schema's slides state a type and nothing else.
+  // The line a slide into or out of a note is drawn with (its shape, its
+  // dashes and its length) and the side it is drawn on. The schema's slides
+  // state a type and nothing else.
   ...['scoop', 'plop', 'doit', 'falloff'].flatMap((slide) =>
-    ['line-shape', 'line-type', 'line-length'].map((name) => `${slide} ${name}`),
+    ['line-shape', 'line-type', 'line-length', 'placement'].map((name) => `${slide} ${name}`),
   ),
   // A fanned beam, drawn for an accelerando or ritardando. The schema's beam
   // states its events, its inner beams and a hook direction.

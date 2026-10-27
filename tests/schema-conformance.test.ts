@@ -964,6 +964,7 @@ const ATTRIBUTE_CONCEPTS: Readonly<Record<string, Concept>> = {
       [`${slide} line-shape`, { words: ['shape', 'curve', 'straight'], homes: [home] }],
       [`${slide} line-type`, { words: ['lineType', 'dashed', 'dotted', 'wavy'], homes: [home] }],
       [`${slide} line-length`, { words: ['length', 'short', 'long'], homes: [home] }],
+      [`${slide} placement`, { words: ['placement', 'side', 'above', 'below'], homes: [home] }],
     ]),
   ),
   'beam fan': {

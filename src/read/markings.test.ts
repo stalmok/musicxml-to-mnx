@@ -932,6 +932,14 @@ describe('a slide into or out of a note', () => {
     expect(warnings).toEqual([])
   })
 
+  test('reports the side a slide is drawn on', () => {
+    const { warnings } = convertValid(score('<scoop placement="above"/>'))
+
+    expect(warnings.map((w) => [w.code, w.attribute])).toEqual([
+      ['unrepresentable:attribute', 'placement'],
+    ])
+  })
+
   test('reports the line a slide is drawn with', () => {
     const { mnx, warnings } = convertValid(score('<falloff line-type="dashed"/>'))
 
