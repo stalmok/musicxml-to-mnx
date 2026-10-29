@@ -23,7 +23,14 @@ import { readEventNotations, reconcile, writtenFor } from './eventNotations.js'
 import { reportHidden } from './unrepresentable.js'
 import { readFermata, readMarkings, readStemDirection, reportSlidesOff } from './marks.js'
 import { readLyrics } from './lyrics.js'
-import { dropRedundantRest, readRest, reportMarkersOnMeasureRest, setMeasureRest } from './rests.js'
+import {
+  dropRedundantRest,
+  readRest,
+  reportMarkersOnMeasureRest,
+  reportRestEventValue,
+  restEventValue,
+  setMeasureRest,
+} from './rests.js'
 import type { NoteStatement, VoicedNote } from './noteStatement.js'
 import {
   closeTremoloAndTuplets,
@@ -292,12 +299,14 @@ export function readNote(
   // Where the source states no <duration>, a rest filling the measure lasts
   // the measure.
   const lasts = duration ?? (fills ? measureLength(state) : undefined)
-  if (written && lasts && !candidate) {
+  if (fills) {
+    reportRestEventValue(element, written, lasts, warnings, context, mismatchPlace)
+  } else if (written && lasts && !candidate) {
     reportDurationMismatch(element, written, lasts, scale, warnings, context, mismatchPlace)
   }
 
   const value =
-    written ??
+    (fills || candidate ? restEventValue(written, lasts) : written) ??
     // A grace note carries no <duration> to measure a value from, so where it
     // states no <type> the beams over it are what say how it is drawn.
     (graceElement && duration === undefined
@@ -418,10 +427,10 @@ export function readNote(
   // id, which the sequence's rest does not have, so it stays an event.
   if (candidate && rest) {
     const { written: drawn, duration: lasts } = candidate
-    const reportMismatch = () =>
-      reportDurationMismatch(element, drawn, lasts, scale, warnings, context, mismatchPlace)
-    if (endsLine) reportMismatch()
-    else voice.markMeasureRest(event, rest, { event: reportMismatch })
+    const reportValue = () =>
+      reportRestEventValue(element, drawn, lasts, warnings, context, mismatchPlace)
+    if (endsLine) reportValue()
+    else voice.markMeasureRest(event, rest, drawn, { event: reportValue })
   }
   readEventSpanners(
     element,

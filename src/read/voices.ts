@@ -43,6 +43,7 @@ import type {
   KitComponent,
   KitNote,
   Note,
+  NoteValue,
   NoteValueQuantity,
   Pitch,
   Sequence,
@@ -446,9 +447,10 @@ export class VoiceLine {
   markMeasureRest(
     event: Event,
     body: EventRest,
+    drawn: NoteValue,
     reports: MeasureRestReports<'sequence' | 'event'>,
   ): void {
-    this.#layer.measureRest = { origin: 'candidate', event, body, reports }
+    this.#layer.measureRest = { origin: 'candidate', event, body, drawn, reports }
   }
 }
 

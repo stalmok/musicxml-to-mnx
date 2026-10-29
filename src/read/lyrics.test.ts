@@ -3,7 +3,7 @@
 // MNX states the lyric on the event, keyed by verse, with a line type where
 // the syllable is part of a word.
 
-import { readFailure, readValid } from '../../tests/support/read.js'
+import { readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
 import { WarningCollector } from './collector.js'
@@ -538,10 +538,9 @@ describe('lyric extender lines', () => {
   })
 
   // A rest drawn as a whole rest and lasting the measure would otherwise
-  // move onto the sequence, which has no id for the line to end at. Kept as
-  // an event, it is drawn as the whole it is written as, past 3/4.
-  test('refuses a rest that a line ends at, kept as an event past 3/4', () => {
-    const error = readFailure(
+  // move onto the sequence, which has no id for the line to end at.
+  test('keeps a rest that a line ends at as an event', () => {
+    const { mnx } = convertValid(
       '<score-partwise><part id="P1"><measure number="1">' +
         '<attributes><divisions>4</divisions>' +
         '<time><beats>3</beats><beat-type>4</beat-type></time></attributes>' +
@@ -553,8 +552,10 @@ describe('lyric extender lines', () => {
         `${held(extend('stop'))}</note>` +
         '</measure></part></score-partwise>',
     )
+    const [rest] = events(mnx, 1)
 
-    expect(error.detail).toContain('past the 3/4')
+    expect(rest?.id).toBeDefined()
+    expect(lineOf(events(mnx)[0])?.extender).toStrictEqual({ target: rest?.id })
   })
 
   test('keeps the lines of two verses apart', () => {

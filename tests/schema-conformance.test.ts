@@ -1204,6 +1204,8 @@ const FORMAT_LIMITS: Readonly<Record<FormatLimit, () => boolean>> = {
   'unrepresentable:rest-length': () =>
     !has('full-measure-rest', 'duration') &&
     refers('full-measure-rest', 'visualDuration', 'note-value'),
+  'unrepresentable:rest-value': () =>
+    !has('event', 'visualDuration') && refers('full-measure-rest', 'visualDuration', 'note-value'),
   'unrepresentable:time-symbol': () => valuesOf('time-signature-display').join() === 'common,cut',
   'unrepresentable:interchangeable-time': () =>
     !isList('measure-global', 'time') && propertiesOf('time').join() === 'count,display,unit',

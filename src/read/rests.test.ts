@@ -1851,14 +1851,45 @@ describe('a measure rest with no duration', () => {
     )
   })
 
-  // A rest kept as an event is drawn as the whole it is written as, which
-  // runs past 3/4.
+  // A rest kept as an event lasts the measure. An MNX event is drawn as the
+  // value it lasts, so the whole it is drawn as is reported as lost.
   test.each([
     ['for its lyric', wholeRest('<lyric><text>la</text></lyric>')],
     ['with a grace note before', grace + wholeRest()],
     ['with a grace note after', wholeRest() + grace],
-  ])('refuses the measure in 3/4 where the rest is kept as an event %s', (_, body) => {
-    expect(readFailure(inThreeFour(body)).detail).toContain('past the 3/4')
+  ])('writes the measure’s length where the rest is kept as an event %s', (_, body) => {
+    const withDuration = body.replace('<voice>1</voice><type>whole', '<duration>12</duration>$&')
+    const { mnx, warnings } = convertValid(inThreeFour(body))
+    const rest = mnx.parts[0]?.measures[0]?.sequences[0]?.content.find(
+      (item) => !('type' in item && item.type === 'grace'),
+    )
+
+    expect(rest).toMatchObject({ duration: { base: 'half', dots: 1 }, rest: {} })
+    expect(convertValid(inThreeFour(withDuration)).mnx).toEqual(mnx)
+    expect(warnings.map((w) => [w.code, w.message])).toEqual([
+      [
+        'unrepresentable:rest-value',
+        'A rest that fills the measure is drawn as a whole, and stays an event for what it ' +
+          'carries. An MNX event is drawn as the value it lasts, so the rest is converted ' +
+          'as a dotted half, and the whole is not.',
+      ],
+    ])
+  })
+
+  // No note value lasts 5/4, so the rest is written as the whole it is drawn
+  // as, and how long it lasts is what is lost.
+  test('writes the drawn value where no note value lasts the measure', () => {
+    const { mnx, warnings } = convertValid(
+      inThreeFour(wholeRest('<lyric><text>la</text></lyric>')).replace(
+        '<beats>3</beats>',
+        '<beats>5</beats>',
+      ),
+    )
+
+    expect(mnx.parts[0]?.measures[0]?.sequences[0]?.content).toMatchObject([
+      { duration: { base: 'whole' }, rest: {} },
+    ])
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:duration'])
   })
 })
 
@@ -2169,7 +2200,7 @@ describe('a rest drawn shorter than the measure it fills', () => {
       ),
     )
 
-    expect(codes).toEqual(['inconsistent:duration'])
+    expect(codes).toEqual(['unrepresentable:rest-value'])
   })
 
   test('reports the drawn value where the rest stands, before what follows it', () => {
@@ -2181,7 +2212,7 @@ describe('a rest drawn shorter than the measure it fills', () => {
       ),
     )
 
-    expect(codes).toEqual(['inconsistent:duration', 'unsupported:element'])
+    expect(codes).toEqual(['unrepresentable:rest-value', 'unsupported:element'])
   })
 
   // A grace note takes none of the measure's time, so a rest written as one
@@ -2210,7 +2241,7 @@ describe('a rest drawn shorter than the measure it fills', () => {
       inThreeTwo(rest('<notations><articulations><staccato/></articulations></notations>')),
     )
 
-    expect(codes).toEqual(['inconsistent:duration'])
+    expect(codes).toEqual(['unrepresentable:rest-value'])
   })
 
   test('keeps a rest drawn with a stem an event', () => {
@@ -2218,7 +2249,7 @@ describe('a rest drawn shorter than the measure it fills', () => {
       inThreeTwo(rest().replace('<type>whole</type>', '<type>whole</type><stem>down</stem>')),
     )
 
-    expect(codes).toEqual(['inconsistent:duration'])
+    expect(codes).toEqual(['unrepresentable:rest-value'])
   })
 
   test('keeps a rest drawn under a beam an event', () => {
@@ -2226,7 +2257,7 @@ describe('a rest drawn shorter than the measure it fills', () => {
       inThreeTwo(rest().replace('</note>', '<beam number="1">begin</beam></note>')),
     )
 
-    expect(codes).toEqual(['inconsistent:duration'])
+    expect(codes).toEqual(['unrepresentable:rest-value'])
   })
 
   test('keeps a rest marked as rolled an event', () => {
@@ -2235,7 +2266,10 @@ describe('a rest drawn shorter than the measure it fills', () => {
     )
 
     expect(sequences[0]?.fullMeasure).toBeUndefined()
-    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:duration', 'unsupported:element'])
+    expect(warnings.map((w) => w.code)).toEqual([
+      'unrepresentable:rest-value',
+      'unsupported:element',
+    ])
     // A roll runs between notes, and a rest has none. It is not a chord on a
     // kit, which has notes but no pitches to order them by.
     expect(warnings[1]?.message).toContain('A rest is marked as rolled')
@@ -2294,7 +2328,7 @@ describe('a rest drawn shorter than the measure it fills', () => {
       inThreeTwo(rest().replace('</note>', '<lyric><text>ah</text></lyric></note>')),
     )
 
-    expect(codes).toEqual(['inconsistent:duration'])
+    expect(codes).toEqual(['unrepresentable:rest-value'])
   })
 })
 

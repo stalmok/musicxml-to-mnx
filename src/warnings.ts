@@ -133,6 +133,11 @@ export const WARNING_CODES = Object.freeze([
   // note value can write. MNX states such a rest on the sequence, which
   // carries no length, so the length the source drew is not converted.
   'unrepresentable:rest-length',
+  // A rest filling the measure, kept as an event for what it carries, and
+  // drawn as a value other than the one it lasts, as a whole rest in 3/4 is.
+  // An MNX event is drawn as the value it lasts, so that value is converted,
+  // and the value the rest is drawn as is not.
+  'unrepresentable:rest-value',
   // A time signature drawn with a symbol other than a common or cut sign,
   // such as a single number or a beat note. MNX draws a C, a cut C, or the
   // numbers, so the numbers are drawn and the other glyphs are not.

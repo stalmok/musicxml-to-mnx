@@ -12,10 +12,11 @@ import { compareFractions, divideFractions, fraction, multiplyFractions } from '
 import type { Fraction } from '../fraction.js'
 import type { NoteValue } from '../model/score.js'
 import { writtenAt } from './collector.js'
-import type { ReportContext, WarningCollector } from './collector.js'
+import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
+import type { ElementReader } from './element.js'
 import { attribute, children, descendants, readWholeElement } from '../xml/tree.js'
-import { describeLength, lengthOf, noteValueOf } from './duration.js'
+import { describeLength, describeValue, lengthOf, noteValueOf } from './duration.js'
 import { readFermata, statesNoStem, writtenMarks } from './marks.js'
 import type { NoteStatement, RestNote, VoicedNote } from './noteStatement.js'
 import { readCountedRatio } from './noteTuplets.js'
@@ -281,7 +282,7 @@ export function setMeasureRest(
         kind: 'event',
         id: state.ids.nextEvent(),
         staff: undefined,
-        value: restValue,
+        value: restEventValue(restValue, lasts),
         slurs: [],
         lyrics: new Map(),
         stemDirection: undefined,
@@ -292,12 +293,7 @@ export function setMeasureRest(
     {
       // A tuplet or a tremolo open around the rest is refused, so nothing
       // scales its written value.
-      event: () => {
-        if (written && lasts) {
-          const scale = { factor: fraction(1), by: undefined }
-          reportDurationMismatch(element, written, lasts, scale, warnings, context, place)
-        }
-      },
+      event: () => reportRestEventValue(element, written, lasts, warnings, context, place),
       sequence: () => {
         if (!restValue) note.reportHidden(hiddenDrawn)
         // MNX's rest filling the measure states no length, so how long the
@@ -340,6 +336,57 @@ export function setMeasureRest(
     path,
     element.line,
   )
+}
+
+/**
+ * The value a rest filling the measure is written as where it stays an event:
+ * the value it lasts, which is what an MNX event is drawn as. Where no note
+ * value writes that length, the value it is drawn as.
+ */
+export function restEventValue<Drawn extends NoteValue | undefined>(
+  drawn: Drawn,
+  lasts: Fraction | undefined,
+): NoteValue | Drawn {
+  return (lasts && noteValueOf(lasts)) ?? drawn
+}
+
+/**
+ * A bar of silence is drawn as a whole rest in any meter, so a rest filling
+ * the measure can be drawn as a value other than the one it lasts. Kept as an
+ * event, it is written as the value it lasts, and the value it is drawn as is
+ * lost. Where no note value writes its length, the drawn value is written,
+ * and its length is what is lost.
+ */
+export function reportRestEventValue(
+  element: ElementReader,
+  written: NoteValue | undefined,
+  lasts: Fraction | undefined,
+  warnings: WarningCollector,
+  context: ReportContext,
+  place: WarningPlace,
+): void {
+  if (written === undefined || lasts === undefined) return
+  const value = noteValueOf(lasts) ?? written
+  if (value === written) {
+    const scale = { factor: fraction(1), by: undefined }
+    reportDurationMismatch(element, written, lasts, scale, warnings, context, place)
+    return
+  }
+  if (compareFractions(lengthOf(value), lengthOf(written)) === 0) return
+  warnings.addAt(
+    place,
+    'unrepresentable:rest-value',
+    `A rest that fills the measure is drawn as ${describeValue(written)}, and stays an ` +
+      'event for what it carries. An MNX event is drawn as the value it lasts, so the rest ' +
+      `is converted as ${describeValue(value)}, and the ${unnamed(written)} is not.`,
+    context,
+    element.element,
+  )
+}
+
+/** A note value's name without its article, as in "the whole". */
+function unnamed(value: NoteValue): string {
+  return describeValue(value).replace(/^an? /, '')
 }
 
 /**

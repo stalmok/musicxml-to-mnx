@@ -4,7 +4,14 @@
 import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
 import type { Fraction } from '../fraction.js'
-import type { Event, EventRest, FullMeasureRest, SequenceItem, Space } from '../model/score.js'
+import type {
+  Event,
+  EventRest,
+  FullMeasureRest,
+  NoteValue,
+  SequenceItem,
+  Space,
+} from '../model/score.js'
 import type { BeamedEvent } from './beams.js'
 
 /**
@@ -36,8 +43,11 @@ export type MeasureRest =
   | { readonly origin: 'fills-as-event' }
   | {
       readonly origin: 'candidate'
+      /** The event it was read as, written as the value it lasts. */
       readonly event: Event
       readonly body: EventRest
+      /** The value the source draws it as, which the sequence states. */
+      readonly drawn: NoteValue
       readonly reports: MeasureRestReports<'sequence' | 'event'>
     }
   | {
@@ -143,10 +153,9 @@ export function settleCandidateRest(
   // The rest is the whole of the voice, so the staff it named stays as
   // the sequence's own. Its entry keeps naming the event it came from,
   // which nothing writes once the content is empty.
-  const { value, fermata } = event
   stateOnSequence(voice, {
-    visualDuration: value,
-    fermata,
+    visualDuration: rest.drawn,
+    fermata: event.fermata,
     staffPosition: rest.body.staffPosition,
   })
   rest.reports.sequence?.()
