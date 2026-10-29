@@ -13,6 +13,7 @@ import { GENERATED_ID_KINDS, GENERATED_ID_PATTERN, MNX_ID_PATTERN, renamedId } f
 import type {
   BarlineType,
   Clef,
+  Coda,
   Dynamic,
   Fermata,
   RepeatEnd,
@@ -22,6 +23,7 @@ import type {
   Measure,
   Part,
   Score,
+  Segno,
   StaffConfig,
   Tempo,
   TimeSignature,
@@ -58,22 +60,8 @@ import { readPartList } from './partList.js'
 import type { PartList } from './partList.js'
 import { readPrint } from './print.js'
 import { IdGenerator } from './idGenerator.js'
-import {
-  mergeGlobalMeasures,
-  sameFermata,
-  sameName,
-  sameNumbers,
-  sameRepeatEnd,
-  withName,
-  withTarget,
-} from './globalMeasures.js'
-import type {
-  KeysAcrossParts,
-  NamedSign,
-  ReadGlobalMeasure,
-  ReadJump,
-  UndrawnSign,
-} from './globalMeasures.js'
+import { mergeGlobalMeasures, sameFermata, sameNumbers, sameRepeatEnd } from './globalMeasures.js'
+import type { KeysAcrossParts, ReadGlobalMeasure, ReadJump, UndrawnSign } from './globalMeasures.js'
 import { settleJumps } from './jumps.js'
 import { writtenLengthOf } from './tuplets.js'
 import { MeasureRepeats } from './measureRepeats.js'
@@ -684,8 +672,8 @@ function readMeasure(
   // whether each one echoes a mark or stands alone.
   const soundTempos: SoundTempo[] = []
   const undrawn: Stated<UndrawnSign>[] = []
-  const segnos: Stated<NamedSign>[] = []
-  const codas: Stated<NamedSign>[] = []
+  const segnos: Stated<Segno>[] = []
+  const codas: Stated<Coda>[] = []
   const fines: Stated<Fine>[] = []
   const jumps: Stated<ReadJump>[] = []
   const multimeasureRests: Stated<number>[] = []
@@ -840,7 +828,7 @@ function readMeasure(
         if (reading.fine) fines.push({ value: reading.fine, element: found })
         jumps.push(...reading.jumps.map((jump) => ({ value: jump, element: found })))
         if (reading.tempo) soundTempos.push(reading.tempo)
-        undrawn.push(...soundSigns(reading, position, found))
+        undrawn.push(...soundSigns(reading, found))
         break
       }
 
@@ -926,16 +914,8 @@ function readMeasure(
       // Filled in by the part, once the ending's other end has been met.
       ending: undefined,
       fermata,
-      segno: onePerMeasure(
-        segnos,
-        'segno',
-        undefined,
-        warnings,
-        context,
-        drawnDifferently,
-        withName,
-      ),
-      coda: onePerMeasure(codas, 'coda', undefined, warnings, context, drawnDifferently, withName),
+      segno: onePerMeasure(segnos, 'segno', undefined, warnings, context, drawnDifferently),
+      coda: onePerMeasure(codas, 'coda', undefined, warnings, context, drawnDifferently),
       fine: onePerMeasure(fines, 'fine', 'fine', warnings, context),
       jump: onePerMeasure(
         jumps,
@@ -943,8 +923,7 @@ function readMeasure(
         (jump) => jump.sound,
         warnings,
         context,
-        (first, other) => first.sound !== other.sound || !sameName(first.target, other.target),
-        withTarget,
+        (first, other) => first.sound !== other.sound,
       ),
       multimeasureRest: oneMultimeasureRest(multimeasureRests, warnings, context),
       systemBreak,
@@ -962,7 +941,6 @@ function readMeasure(
  * two of them at different points has no faithful conversion, so the first is
  * kept and the rest reported; two written at the same point are the same mark
  * and lose nothing, unless `differs` says they are drawn as different marks.
- * Where only a later one of them names the mark, `named` keeps that name.
  */
 function onePerMeasure<T extends { location: Fraction }>(
   marks: readonly Stated<T>[],
@@ -972,16 +950,12 @@ function onePerMeasure<T extends { location: Fraction }>(
   warnings: WarningCollector,
   context: ReportContext,
   differs?: (first: T, other: T) => boolean,
-  named?: (kept: T, other: T) => T,
 ): Stated<T> | undefined {
   const first = marks[0]
   if (first === undefined) return undefined
-  let kept = first.value
+  const kept = first.value
   for (const { value: other, element } of marks.slice(1)) {
-    if (compareFractions(other.location, kept.location) === 0 && !differs?.(kept, other)) {
-      if (named) kept = named(kept, other)
-      continue
-    }
+    if (compareFractions(other.location, kept.location) === 0 && !differs?.(kept, other)) continue
     warnings.add(
       'unrepresentable:element',
       `A measure carries more than one ${name}, and MNX states one per measure. ` +
@@ -991,17 +965,16 @@ function onePerMeasure<T extends { location: Fraction }>(
       typeof attribute === 'function' ? attribute(other) : attribute,
     )
   }
-  return kept === first.value ? first : { ...first, value: kept }
+  return first
 }
 
 /**
  * Whether two segnos or two codas at the same point are different marks
- * rather than the same mark restated: drawn as different glyphs, in
- * different colors, or named differently. The name is never drawn, but it
- * tells one sign from another when a jump is matched to the one it goes to.
+ * rather than the same mark restated: drawn as different glyphs, or in
+ * different colors.
  */
-function drawnDifferently(a: NamedSign, b: NamedSign): boolean {
-  return a.glyph !== b.glyph || a.color !== b.color || !sameName(a.name, b.name)
+function drawnDifferently(a: Segno, b: Segno): boolean {
+  return a.glyph !== b.glyph || a.color !== b.color
 }
 
 /**

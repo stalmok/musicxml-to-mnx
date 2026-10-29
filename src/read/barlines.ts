@@ -11,12 +11,11 @@
 // measures it runs for. Endings joins the two, one part at a time.
 
 import type { Fraction } from '../fraction.js'
-import type { BarlineType, Fermata, RepeatEnd } from '../model/score.js'
-import type { NamedSign } from './globalMeasures.js'
+import type { BarlineType, Coda, Fermata, RepeatEnd, Segno } from '../model/score.js'
 import type { ReportContext, WarningCollector } from './collector.js'
 import type { PartCollector, PartMeasure } from './partCollector.js'
 import type { XmlElement } from '../xml/parse.js'
-import { attribute, peekAttribute, text, trimmedText } from '../xml/tree.js'
+import { attribute, text, trimmedText } from '../xml/tree.js'
 import { readColor } from './color.js'
 import { stated } from './element.js'
 import type { ElementReader, Stated } from './element.js'
@@ -70,9 +69,9 @@ export interface BarlineReading {
   endingStop: EndingStop | undefined
   fermata: Stated<Fermata> | undefined
   /** A segno drawn on the barline, the same sign a direction can carry. */
-  segno: Stated<NamedSign> | undefined
+  segno: Stated<Segno> | undefined
   /** A coda drawn on the barline, the same sign a direction can carry. */
-  coda: Stated<NamedSign> | undefined
+  coda: Stated<Coda> | undefined
 }
 
 const NOTHING: BarlineReading = {
@@ -140,29 +139,23 @@ export function readBarline(
  * It is the same sign, at the measure edge the barline sits on, so it takes
  * the cursor's position there: the start of the measure at the opening edge,
  * the end at the closing one. MusicXML allows at most one <segno> per
- * <barline>, so child() is correct.
- *
- * The segno attribute on <barline> names the sign for playback, the same way
- * <sound segno> names one written as a direction. MNX's segno has no label, so
- * the attribute is still reported; it is read only to match a jump to the sign
- * it returns to.
+ * <barline>, so child() is correct. MNX's segno has no label, so the segno
+ * attribute on <barline>, which names the sign for playback, is reported.
  */
 function readSegno(
   element: ElementReader,
   position: Fraction,
   warnings: WarningCollector,
   context: ReportContext,
-): Stated<NamedSign> | undefined {
+): Stated<Segno> | undefined {
   const segno = element.child('segno')
   if (!segno) return undefined
 
-  const name = peekAttribute(element.element, 'segno') || undefined
   return {
     value: {
       location: position,
       glyph: attribute(segno, 'smufl'),
       color: readColor(segno, warnings, context),
-      ...(name !== undefined ? { name } : {}),
     },
     element: segno,
   }
@@ -170,26 +163,22 @@ function readSegno(
 
 /**
  * A coda drawn on the barline, read the same way as a segno there. MusicXML
- * allows at most one <coda> per <barline>, so child() is correct. The coda
- * attribute on <barline> names the sign for playback. MNX's coda has no
- * label, so the attribute is still reported; it is read only to match a
- * to-coda jump to the coda it goes to.
+ * allows at most one <coda> per <barline>, so child() is correct. MNX's coda
+ * has no label, so the coda attribute on <barline> is reported.
  */
 function readCoda(
   element: ElementReader,
   position: Fraction,
   warnings: WarningCollector,
   context: ReportContext,
-): Stated<NamedSign> | undefined {
+): Stated<Coda> | undefined {
   const coda = element.child('coda')
   if (!coda) return undefined
-  const name = peekAttribute(element.element, 'coda') || undefined
   return {
     value: {
       location: position,
       glyph: attribute(coda, 'smufl'),
       color: readColor(coda, warnings, context),
-      ...(name !== undefined ? { name } : {}),
     },
     element: coda,
   }

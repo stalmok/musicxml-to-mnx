@@ -419,19 +419,18 @@ describe('a Fine and a to-coda jump in one score', () => {
   })
 })
 
-// Two marks of one kind at one point are one mark, unless they give
-// different names.
+// MNX names no segno, so two at one point are one mark whatever the source
+// calls them.
 describe('two marks at one point', () => {
-  test('reports a second segno at one point that gives another name', () => {
+  test('takes two segnos at one point with different names as one', () => {
     const namedSegno = (name: string) =>
       `<direction><direction-type><segno/></direction-type><sound segno="${name}"/></direction>`
     const { warnings } = jumps(namedSegno('a') + '\n' + namedSegno('b') + NOTE)
 
-    expect(
-      warnings
-        .filter((w) => w.code === 'unrepresentable:element')
-        .map((w) => [w.element, w.context.line]),
-    ).toEqual([['segno', 2]])
+    expect(warnings.map((w) => [w.code, w.attribute])).toEqual([
+      ['unrepresentable:attribute', 'segno'],
+      ['unrepresentable:attribute', 'segno'],
+    ])
   })
 })
 

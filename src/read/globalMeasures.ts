@@ -18,25 +18,12 @@ import type { ReportContext, WarningCollector } from './collector.js'
 import type { Stated } from './element.js'
 
 /**
- * A segno or a coda with the name the source gives it. MNX names neither the
- * sign nor the sign a jump goes to, so the model carries no name. The reader
- * needs both to tell which sign a jump goes to, and drops them once that is
- * settled.
- */
-export interface NamedSign extends Segno, Coda {
-  /** What the source calls this sign, where it names one. */
-  readonly name?: string
-}
-
-/**
- * A segno or a coda a <sound segno> or <sound coda> names. Where no part draws
- * a sign of the kind on the measure, it marks a destination for playback
- * only, and a jump that goes to one cannot be converted.
+ * A segno or a coda a <sound segno> or <sound coda> names. In a score that
+ * draws no sign of the kind, it marks a destination for playback only, and a
+ * jump that goes to one cannot be converted.
  */
 export interface UndrawnSign {
   readonly kind: 'segno' | 'coda'
-  readonly location: Fraction
-  readonly name: string
 }
 
 /**
@@ -47,11 +34,6 @@ export interface ReadJump {
   readonly sound: 'dacapo' | 'dalsegno' | 'tocoda'
   /** Where in the measure it is taken, counting from the start. */
   readonly location: Fraction
-  /**
-   * The name of the segno a D.S. returns to, or of the coda a to-coda jump
-   * goes to, where the source gives one.
-   */
-  readonly target?: string
 }
 
 /** The marks one part states on the score's measure. */
@@ -62,8 +44,8 @@ interface ReadMarks {
   // Filled in once the part has met the ending's stop.
   ending: NonNullable<GlobalMeasure['ending']>
   readonly fermata: NonNullable<GlobalMeasure['fermata']>
-  readonly segno: NamedSign
-  readonly coda: NamedSign
+  readonly segno: Segno
+  readonly coda: Coda
   readonly fine: NonNullable<GlobalMeasure['fine']>
   readonly jump: ReadJump
   readonly multimeasureRest: NonNullable<GlobalMeasure['multimeasureRest']>
@@ -253,16 +235,13 @@ export function mergeGlobalMeasures(
       repeatEnd: existing?.repeatEnd ?? measure.repeatEnd,
       ending: existing?.ending ?? measure.ending,
       fermata: existing?.fermata ?? measure.fermata,
-      // A segno and a coda are the score's navigation marks, restated in each
-      // part like the barline, so the first part to state one wins. A later
-      // part may name a sign the first left unnamed, and the name is kept for
-      // the jumps.
-      segno: restated(existing?.segno, measure.segno, sameSign, withName),
-      coda: restated(existing?.coda, measure.coda, sameSign, withName),
+      // A segno, a coda, a Fine and a jump are the score's navigation marks,
+      // restated in each part like the barline, so the first part to state
+      // one wins.
+      segno: existing?.segno ?? measure.segno,
+      coda: existing?.coda ?? measure.coda,
       fine: existing?.fine ?? measure.fine,
-      // A jump is restated like a sign, and may name the sign it goes to
-      // where the first part names none.
-      jump: restated(existing?.jump, measure.jump, sameJump, withTarget),
+      jump: existing?.jump ?? measure.jump,
       multimeasureRest: existing?.multimeasureRest ?? measure.multimeasureRest,
       // A break is one of those three, and is usually written into one part
       // only: the part not stating it leaves the layout to the parts that do.
@@ -272,47 +251,11 @@ export function mergeGlobalMeasures(
   })
 }
 
-// The written sign: where it sits, its glyph and its color. The name is
-// compared too: it is never drawn, but it tells one sign from another when a
-// jump is matched to the one it returns to, so parts naming the sign
-// differently disagree about which sign the measure carries. A part naming
-// none says nothing about the name.
-function sameSign(a: NamedSign, b: NamedSign): boolean {
+// The written sign: where it sits, its glyph and its color.
+function sameSign(a: Segno, b: Segno): boolean {
   return (
-    compareFractions(a.location, b.location) === 0 &&
-    a.glyph === b.glyph &&
-    a.color === b.color &&
-    sameName(a.name, b.name)
+    compareFractions(a.location, b.location) === 0 && a.glyph === b.glyph && a.color === b.color
   )
-}
-
-/** Whether two names can be one sign's or one jump's: a mark naming none says nothing. */
-export function sameName(a: string | undefined, b: string | undefined): boolean {
-  return a === undefined || b === undefined || a === b
-}
-
-/** A sign with the name another statement of it gives, where it gives none itself. */
-export function withName(kept: NamedSign, other: NamedSign): NamedSign {
-  return kept.name !== undefined || other.name === undefined ? kept : { ...kept, name: other.name }
-}
-
-/** A jump with the target another statement of it names, where it names none itself. */
-export function withTarget(kept: ReadJump, other: ReadJump): ReadJump {
-  return kept.target !== undefined || other.target === undefined
-    ? kept
-    : { ...kept, target: other.target }
-}
-
-/** The first part's mark, with the name a later part's statement of it gives. */
-function restated<T>(
-  first: Stated<T> | undefined,
-  later: Stated<T> | undefined,
-  same: (a: T, b: T) => boolean,
-  named: (kept: T, other: T) => T,
-): Stated<T> | undefined {
-  if (first === undefined || later === undefined) return first ?? later
-  if (!same(first.value, later.value)) return first
-  return { ...first, value: named(first.value, later.value) }
 }
 
 // Content equality for the marks two parts or two barlines state, one per shape.
@@ -337,11 +280,7 @@ function sameFine(a: Fine, b: Fine): boolean {
 }
 
 function sameJump(a: ReadJump, b: ReadJump): boolean {
-  return (
-    compareFractions(a.location, b.location) === 0 &&
-    a.sound === b.sound &&
-    sameName(a.target, b.target)
-  )
+  return compareFractions(a.location, b.location) === 0 && a.sound === b.sound
 }
 
 /**

@@ -329,30 +329,6 @@ describe('several parts', () => {
     expect(warnings[0]?.context.line).toBe(2)
   })
 
-  // The name tells one sign from another when a jump is matched to the one it
-  // returns to, so parts naming it differently disagree about the sign
-  // itself. The <sound segno> attribute is itself reported as not converted,
-  // once per part, before the disagreement is.
-  test('reports parts naming the segno differently', () => {
-    const sign = (name: string) =>
-      `<direction><direction-type><segno/></direction-type><sound segno="${name}"/></direction>` +
-      NOTE
-    const { warnings } = read(
-      score(
-        `<part id="P1"><measure number="1">${sign('A')}</measure></part>` +
-          `\n<part id="P2"><measure number="1">${sign('B')}</measure></part>`,
-      ),
-    )
-
-    expect(warnings.map((w) => w.code)).toEqual([
-      'unrepresentable:attribute',
-      'unrepresentable:attribute',
-      'unrepresentable:cross-part-segno',
-    ])
-    expect(warnings[2]?.element).toBe('segno')
-    expect(warnings[2]?.context.line).toBe(2)
-  })
-
   test('says nothing where the parts restate the same named segno', () => {
     const sign =
       '<direction><direction-type><segno/></direction-type><sound segno="A"/></direction>' + NOTE
@@ -388,43 +364,6 @@ describe('several parts', () => {
       ['unrepresentable:cross-part-mark', 'sound', 'fine'],
     ])
     expect(warnings[0]?.context.line).toBe(2)
-  })
-
-  test('reports parts jumping back to differently named segnos', () => {
-    const { score: result, warnings } = read(
-      score(
-        `<part id="P1"><measure number="1"><direction><direction-type><segno/></direction-type></direction>` +
-          `<sound dalsegno="A"/>${NOTE}</measure></part>` +
-          `\n<part id="P2"><measure number="1"><sound dalsegno="B"/>${NOTE}</measure></part>`,
-      ),
-    )
-
-    expect(result.globalMeasures[0]?.jump).toEqual({
-      location: { num: 0, den: 1 },
-      type: 'segno',
-    })
-    expect(warnings.map((w) => [w.code, w.element, w.attribute])).toEqual([
-      ['unrepresentable:cross-part-mark', 'sound', 'dalsegno'],
-    ])
-    expect(warnings[0]?.context.line).toBe(2)
-  })
-
-  test('reports parts going on to differently named codas', () => {
-    const CODA =
-      '<measure number="2"><direction><direction-type><coda/></direction-type></direction>' +
-      `${NOTE}</measure>`
-    const { warnings } = read(
-      score(
-        `<part id="P1"><measure number="1"><sound tocoda="A"/>${NOTE}</measure>${CODA}</part>` +
-          `\n<part id="P2"><measure number="1"><sound tocoda="B"/>${NOTE}</measure>${CODA}</part>`,
-      ),
-    )
-
-    expect(
-      warnings
-        .filter((w) => w.code === 'unrepresentable:cross-part-mark')
-        .map((w) => [w.element, w.attribute, w.context.line]),
-    ).toEqual([['sound', 'tocoda', 2]])
   })
 
   test('reports parts stating different kinds of jump at the same point', () => {
