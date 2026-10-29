@@ -2387,18 +2387,22 @@ describe("a rest marked as the measure's standing beside other notes", () => {
   })
 
   // Inside a tuplet the <duration> is the time the rest is played in, which
-  // the ratio already scales its written value to.
-  test('writes a marked rest inside a tuplet as it writes an unmarked one', () => {
-    const duplet = (step: string, bracket: string, rest = '') =>
-      `<note>${rest || `<pitch><step>${step}</step><octave>4</octave></pitch>`}` +
-      '<duration>3</duration><voice>1</voice><type>eighth</type>' +
-      '<time-modification><actual-notes>2</actual-notes><normal-notes>3</normal-notes>' +
-      `</time-modification><notations><tuplet type="${bracket}"/></notations></note>`
+  // the ratio already scales its written value to. A rest lasting another
+  // time is reported as any note in the tuplet is.
+  test.each([
+    ['lasting what its ratio gives it', 3],
+    ['lasting another time', 2],
+  ])('writes a marked rest inside a tuplet %s as it writes an unmarked one', (_, units) => {
+    const duplet = (bracket: string, body: string, duration = 3) =>
+      `<note>${body}<duration>${String(duration)}</duration><voice>1</voice>` +
+      '<type>eighth</type><time-modification><actual-notes>2</actual-notes>' +
+      '<normal-notes>3</normal-notes></time-modification>' +
+      `<notations><tuplet type="${bracket}"/></notations></note>`
     const source = (rest: string) =>
       inMeasure(
         '<attributes><time><beats>6</beats><beat-type>8</beat-type></time></attributes>' +
-          duplet('C', 'start') +
-          duplet('', 'stop', rest) +
+          duplet('start', '<pitch><step>C</step><octave>4</octave></pitch>') +
+          duplet('stop', rest, units) +
           note(6, 'quarter').replace('</type>', '</type><dot/>'),
       )
     const marked = convertValid(source('<rest measure="yes"/>'))
@@ -2406,6 +2410,7 @@ describe("a rest marked as the measure's standing beside other notes", () => {
 
     expect(marked.mnx).toEqual(plain.mnx)
     expect(marked.warnings).toEqual(plain.warnings)
+    expect(marked.warnings.some((w) => w.code === 'inconsistent:duration')).toBe(units !== 3)
   })
 
   test('rests the measure where the rest is the whole of the voice', () => {
