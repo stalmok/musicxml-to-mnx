@@ -418,7 +418,9 @@ function requireEqualMeasureCounts(parts: readonly XmlElement[], path: DocumentP
 }
 
 // MNX treats a sequence that runs past the time signature in force as an
-// error. The score's time signature is the one in force, not the part's.
+// error. The score's time signature is the one in force, not the part's. The
+// length is the converted sequence's, which runs longer than the source's
+// where a written value or a tuplet's ratio is converted over a <duration>.
 function requireMeasuresWithinTime(
   readings: readonly PartReading[],
   globalMeasures: readonly GlobalMeasure[],
@@ -432,7 +434,7 @@ function requireMeasuresWithinTime(
         return
       }
       throw new MusicXMLError(
-        `This measure lasts ${describeLength(lasts)}, past the ` +
+        `This measure converts to ${describeLength(lasts)}, past the ` +
           `${String(time.count)}/${String(time.unit)} its time signature allows. ` +
           'MNX treats a measure that runs past its time signature as an error.',
         { path, line },

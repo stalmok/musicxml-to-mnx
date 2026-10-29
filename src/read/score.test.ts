@@ -1652,7 +1652,7 @@ describe('a measure running past its time signature', () => {
     const error = readFailure(measure(time(3) + quarter.repeat(4)))
 
     expect(error.detail).toBe(
-      'This measure lasts a whole, past the 3/4 its time signature allows. ' +
+      'This measure converts to a whole, past the 3/4 its time signature allows. ' +
         'MNX treats a measure that runs past its time signature as an error.',
     )
     expect(error.path).toEqual(['score-partwise', 'part P1', 'measure 1'])
