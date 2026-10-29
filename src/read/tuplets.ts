@@ -335,8 +335,6 @@ export interface MeasureExtent {
    * pickup runs to its cursor alone, having no silence past its own end.
    */
   length: Fraction
-  /** The time signature alone, unset where the part states none. */
-  signature: Fraction | undefined
 }
 
 /**

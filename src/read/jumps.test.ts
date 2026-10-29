@@ -100,6 +100,15 @@ describe('a D.S.', () => {
     ])
   })
 
+  // Replay from the segno never reaches a Fine written before it.
+  test('stays a plain D.S. where the Fine stands before the segno', () => {
+    expect(jumps(NOTE + FINE, SEGNO + NOTE, NOTE + DAL_SEGNO).types).toEqual([
+      undefined,
+      undefined,
+      'segno',
+    ])
+  })
+
   test('takes a Fine at the same point as the segno', () => {
     expect(jumps(NOTE + SEGNO + FINE + NOTE, NOTE + DAL_SEGNO).types).toEqual([
       undefined,
@@ -209,7 +218,7 @@ describe('a jump to a sign the score does not draw', () => {
     ])
   })
 
-  test('does not convert a D.S. naming another sign than the one marked', () => {
+  test('does not convert a D.S. to a segno marked only for playback, whatever it names', () => {
     const { types, warnings } = jumps('<sound segno="S"/>' + NOTE, NOTE + '<sound dalsegno="T"/>')
 
     expect(types).toEqual([undefined, undefined])
@@ -227,8 +236,8 @@ describe('a jump to a sign the score does not draw', () => {
     expect(undrawn(warnings).map((w) => w[3])).toEqual([3])
   })
 
-  // One segno drawn, with no name, settles every D.S. whatever it names.
-  test('returns a D.S. to the one unnamed segno drawn, past a name marked elsewhere', () => {
+  // A segno marked for playback counts only where the score draws none.
+  test('returns a D.S. to the one segno drawn, past a segno marked for playback', () => {
     const { types, warnings } = jumps(
       NOTE,
       SEGNO + NOTE,
@@ -242,7 +251,7 @@ describe('a jump to a sign the score does not draw', () => {
     expect(undrawn(warnings)).toEqual([])
   })
 
-  test('takes a to-coda jump naming its coda beside it to the one unnamed coda drawn', () => {
+  test('takes a to-coda jump marking a coda beside it to the one coda drawn', () => {
     const { types, warnings } = jumps(
       NOTE,
       NOTE + '<sound tocoda="coda" coda="coda"/>',
@@ -252,6 +261,40 @@ describe('a jump to a sign the score does not draw', () => {
 
     expect(types).toEqual([undefined, 'toCoda', 'dcAlCoda', undefined])
     expect(undrawn(warnings)).toEqual([])
+  })
+
+  test('does not convert a D.S. to a segno one part of several marks for playback', () => {
+    const warnings = new WarningCollector()
+    const part = (id: string, mark: string) =>
+      `<part id="${id}"><measure number="1"><attributes><divisions>4</divisions></attributes>` +
+      `${mark}${NOTE}</measure><measure number="2">${NOTE}<sound dalsegno="a"/></measure></part>`
+    const { globalMeasures } = readValid(
+      `<score-partwise>${part('P1', '')}${part('P2', '<sound segno="a"/>')}</score-partwise>`,
+      warnings,
+    )
+
+    expect(globalMeasures.map((measure) => measure.jump?.type)).toEqual([undefined, undefined])
+    expect(undrawn(warnings.list()).map((w) => w[3])).toEqual([2])
+  })
+
+  // A coda marked for playback is no segno.
+  test('refuses a D.S. where the score marks only a coda for playback', () => {
+    expect(readFailure(score('<sound coda="c"/>' + NOTE, NOTE + DAL_SEGNO)).detail).toContain(
+      'draws no segno',
+    )
+  })
+
+  // The dropped to-coda jump does not end the replay, so the Fine after it does.
+  test('makes a D.S. al Fine where it meets only a to-coda jump not converted', () => {
+    const { types, warnings } = jumps(
+      SEGNO + NOTE + '<sound tocoda="c"/>',
+      NOTE + FINE,
+      NOTE + DAL_SEGNO,
+      '<sound coda="c"/>' + NOTE,
+    )
+
+    expect(types).toEqual([undefined, undefined, 'dsAlFine', undefined])
+    expect(undrawn(warnings).map((w) => w[3])).toEqual([1])
   })
 
   test('writes the score without the jump onto schema-valid MNX', () => {

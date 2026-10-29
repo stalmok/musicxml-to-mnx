@@ -1212,7 +1212,8 @@ export class MeasureBuilder {
    * one there.
    */
   finish(
-    opening: Omit<MeasureExtent, 'length'>,
+    /** Where the beats line up, and the time signature alone, unset where none is stated. */
+    opening: Pick<MeasureExtent, 'anchor'> & { signature: Fraction | undefined },
     settleSpanCovers: (
       length: Fraction,
       lastEventBefore: LastEventBefore,
@@ -1243,7 +1244,7 @@ export class MeasureBuilder {
         ? signature
         : furthest
     this.#settleFillingRests()
-    this.#settleMeasure({ anchor, length, signature }, warnings, context)
+    this.#settleMeasure({ anchor, length }, warnings, context)
     this.#settleCandidateRests()
 
     settleSpanCovers(

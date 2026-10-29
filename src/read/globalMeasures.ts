@@ -80,8 +80,7 @@ export interface AcrossParts extends KeysAcrossParts {
 // part repeating it is not treated as a change. A part declaring a different
 // one cannot be carried, because MNX states one key and one time signature
 // for the whole score, so the disagreement is reported. The keys are settled
-// over every part before the merge. `target` grows as long as the longest
-// part, because that list is the score's measure list.
+// over every part before the merge. `target` is the score's measure list.
 export function mergeGlobalMeasures(
   target: ReadGlobalMeasure[],
   found: readonly ReadGlobalMeasure[],

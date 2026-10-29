@@ -1348,9 +1348,6 @@ describe('a rest filling a measure a grace note leads into', () => {
     expect(warnings).toEqual([])
   })
 
-  // The grace notes take none of the measure's time, so the silence a
-  // <forward> passes over after them stays a space before the rest, which
-  // overfills the measure as the source does.
   const refusal = (body: string, time?: string) => {
     try {
       convertMusicXML(irregular(body, time))
