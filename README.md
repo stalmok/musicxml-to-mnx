@@ -192,6 +192,7 @@ Important limits include:
 - Grace-note time amounts produce warnings. Grace notes with an unbracketed tuplet ratio cause a refusal.
 - Composite meters such as `3+2/8` cause a refusal.
 - A part with a different number of measures from the other parts causes a refusal.
+- A measure that lasts longer than its time signature causes a refusal. MNX treats one as an error.
 
 ## Testing with real scores
 

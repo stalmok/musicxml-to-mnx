@@ -83,17 +83,16 @@ const converted = attempted.filter(
   (song) => song.rejected === undefined && song.crashed === undefined,
 )
 
-// Every warning names the line of its element, except the two below. They
-// compare what the parts state once they are merged, and a part may state
-// nothing in the measure, so they name only the measure.
+// Every warning names the line of its element, except the one below. It
+// compares what the parts state once they are merged, and a part may state
+// nothing in the measure, so it names only the measure. Parts in different
+// time signatures are reported the same way, but the songs that have them
+// run past the score's time signature and are refused.
 //
 // The per-song check below fails on a warning with no line that is not
 // listed. The whole-corpus check fails on a listed code the corpus no longer
 // reaches.
-const REPORTED_WITHOUT_A_LINE: ReadonlySet<string> = new Set([
-  'unrepresentable:cross-part-key',
-  'unrepresentable:cross-part-time',
-])
+const REPORTED_WITHOUT_A_LINE: ReadonlySet<string> = new Set(['unrepresentable:cross-part-key'])
 
 // The list must equal the codes the corpus reports without a line.
 test('reports no line only for the losses recorded as having none', () => {
@@ -123,13 +122,31 @@ test('converts every song without crashing', () => {
 })
 
 // A song is refused only where converting it would give music the source did
-// not write. The refused songs are listed here, so that a change is visible.
+// not write, or MNX the format does not allow. The refused songs are listed
+// here, so that a change is visible.
 test('refuses only the songs it is known to refuse', () => {
   const refused = attempted
     .filter((song) => song.rejected !== undefined)
     .map((song) => `${song.name}: ${song.rejected ?? ''}`)
 
-  expect(refused.sort()).toEqual([])
+  expect(refused.sort()).toEqual([
+    'bantock-2-the-ghost-road: This measure lasts 27/8 of a whole note, past the 4/4 its time signature allows. MNX treats a measure that runs past its time signature as an error.',
+    'browne-forever-thine: This measure lasts 5/2 of a whole note, past the 4/4 its time signature allows. MNX treats a measure that runs past its time signature as an error.',
+    'corder-o-sun-that-wakenest: This measure lasts a dotted whole, past the 4/4 its time signature allows. MNX treats a measure that runs past its time signature as an error.',
+    'davies-3-a-tragedy: This measure lasts a dotted breve, past the 2/2 its time signature allows. MNX treats a measure that runs past its time signature as an error.',
+    'davies-6-bless-you: This measure lasts 13/8 of a whole note, past the 2/4 its time signature allows. MNX treats a measure that runs past its time signature as an error.',
+    'german-1-all-the-world-awakes-today: This measure lasts a dotted half, past the 2/4 its time signature allows. MNX treats a measure that runs past its time signature as an error.',
+    'grandval-1-les-clochettes: This measure lasts a dotted whole, past the 4/4 its time signature allows. MNX treats a measure that runs past its time signature as an error.',
+    'hodges-dreams: This measure lasts 5/4 of a whole note, past the 3/4 its time signature allows. MNX treats a measure that runs past its time signature as an error.',
+    'jaell-2-causeries-de-vagues: This measure lasts 9/16 of a whole note, past the 3/8 its time signature allows. MNX treats a measure that runs past its time signature as an error.',
+    'jaell-3-les-petits-oiseaux: This measure lasts 29/12 of a whole note, past the 12/8 its time signature allows. MNX treats a measure that runs past its time signature as an error.',
+    'kinkel-1-das-lied-der-nachtigall: This measure lasts 31/16 of a whole note, past the 6/8 its time signature allows. MNX treats a measure that runs past its time signature as an error.',
+    'paladilhe-les-roses-d-ispahan: This measure lasts 9/8 of a whole note, past the 3/4 its time signature allows. MNX treats a measure that runs past its time signature as an error.',
+    'parry-1-the-poet-s-song: This measure lasts a dotted whole, past the 4/4 its time signature allows. MNX treats a measure that runs past its time signature as an error.',
+    'strauss-3-heimliche-aufforderung: This measure lasts a dotted half, past the 2/4 its time signature allows. MNX treats a measure that runs past its time signature as an error.',
+    'viardot-les-attraits-vwv-1852: This measure lasts a whole, past the 3/4 its time signature allows. MNX treats a measure that runs past its time signature as an error.',
+    'warlock-1-roister-doister: This measure lasts a double-dotted half, past the 6/8 its time signature allows. MNX treats a measure that runs past its time signature as an error.',
+  ])
 })
 
 /**

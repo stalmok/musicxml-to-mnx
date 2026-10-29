@@ -359,10 +359,6 @@ export const WARNING_CODES = Object.freeze([
   // dropped, and a start nothing stops runs to the end of the part list.
   // Crossed edges are not this; they are 'unrepresentable:part-group-overlap'.
   'unclosed:part-group',
-  // A voice sounds past the end of the time signature in force. The measure
-  // is as long as its longest voice, so the others rest through what is left
-  // of it, which is not where the source draws the barline.
-  'inconsistent:measure-length',
   // The parts of the score number the same measure differently. The first
   // stated is the one converted.
   'inconsistent:measure-number',

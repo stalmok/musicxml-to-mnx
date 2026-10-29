@@ -3,7 +3,7 @@
 
 import { describe, expect, test } from 'vitest'
 import { measures, TRIPLET } from '../../tests/support/tuplets.js'
-import { readValid } from '../../tests/support/read.js'
+import { readFailure, readValid } from '../../tests/support/read.js'
 import { convertValid } from '../../tests/support/convert.js'
 import { fraction } from '../fraction.js'
 import type { SequenceItem } from '../model/score.js'
@@ -66,14 +66,6 @@ describe('a bracket the silence after it completes', () => {
     `<backup><duration>${String(written)}</duration></backup>` +
     '<note><pitch><step>A</step><octave>3</octave></pitch><duration>24</duration>' +
     '<voice>2</voice><type>half</type></note>'
-
-  /** A 2/4 measure whose voices run a dotted half, past the time signature. */
-  const overfull =
-    plain('D', 24, 'half') +
-    shortQuarter +
-    '<backup><duration>32</duration></backup>' +
-    '<note><pitch><step>A</step><octave>3</octave></pitch><duration>36</duration>' +
-    '<voice>2</voice><type>half</type><dot/></note>'
 
   /** A score of two parts, each writing one measure. */
   const twoParts = (first: string, second: string) =>
@@ -202,7 +194,7 @@ describe('a bracket the silence after it completes', () => {
       '<note><pitch><step>D</step><octave>4</octave></pitch><duration>4</duration>' +
       '<type>eighth</type><notations><tuplet type="stop"/></notations></note>' +
       '<note><rest/><duration>4</duration><type>eighth</type></note>'
-    const { content } = timed(marked + plain('F', 12, 'quarter'))
+    const { content } = timed(marked + plain('F', 6, 'eighth'))
 
     expect(stated(content?.[0])).toEqual({
       inner: { value: { base: 'eighth', dots: 0 }, multiple: 3 },
@@ -223,7 +215,7 @@ describe('a bracket the silence after it completes', () => {
       '<note><pitch><step>D</step><octave>4</octave></pitch><duration>4</duration>' +
       '<type>eighth</type><notations><tuplet type="stop"/></notations></note>' +
       plain('E', 4, 'eighth')
-    const { content } = timed(marked + plain('F', 12, 'quarter'))
+    const { content } = timed(marked + plain('F', 6, 'eighth'))
 
     expect(stated(content?.[0])?.held).toEqual(['event', 'event'])
     expect(content?.map((item) => item.kind)).toEqual(['tuplet', 'event', 'event'])
@@ -355,19 +347,19 @@ describe('a bracket the silence after it completes', () => {
 
   // A trailing <forward> past the time signature is how a source hangs a
   // direction after the last note. The bracket takes in the silence out
-  // there, so the voice sounds past where the source draws the barline.
-  test('says the voice sounds past its time signature where the silence reaches there', () => {
-    const { content, warnings } = timed(
-      plain('D', 12, 'quarter') +
-        plain('E', 6, 'eighth') +
-        shortEighth +
-        '<forward><duration>8</duration></forward>',
+  // there, so the voice runs past the time signature.
+  test('refuses a bracket the silence past the time signature completes', () => {
+    const error = readFailure(
+      measures(
+        TIMED +
+          plain('D', 12, 'quarter') +
+          plain('E', 6, 'eighth') +
+          shortEighth +
+          '<forward><duration>8</duration></forward>',
+      ),
     )
 
-    expect(stated(content?.[2])?.held).toEqual(['event', 'space'])
-    expect(warnings.map((w) => [w.code, w.context])).toEqual([
-      ['inconsistent:measure-length', { part: 'P1', measure: 1, line: 1 }],
-    ])
+    expect(error.detail).toContain('past the 2/4 its time signature allows')
   })
 
   // A bracket holding three eighths in the time of two states what the source
@@ -389,17 +381,6 @@ describe('a bracket the silence after it completes', () => {
       held: ['event', 'event', 'event'],
     })
     expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tuplet'])
-  })
-
-  test('states the silence where the measure runs past its time signature', () => {
-    const { content, warnings } = timed(overfull)
-
-    expect(stated(content?.[1])).toEqual({
-      inner: { value: { base: 'eighth', dots: 0 }, multiple: 3 },
-      outer: { value: { base: 'eighth', dots: 0 }, multiple: 2 },
-      held: ['event', 'space'],
-    })
-    expect(warnings.map((w) => w.code)).toEqual(['missing:voice'])
   })
 
   // The other parts fill the measure, so the part that stops early is silent
@@ -475,7 +456,6 @@ describe('a bracket the silence after it completes', () => {
 
   test.each([
     ['completed at the barline', measures(TIMED + TRIPLET + shortQuarter)],
-    ['completed past the time signature', measures(TIMED + overfull)],
     ['completed in a part that stops before the others', shortPart],
     ['completed in a part with no time signature', untimedPart],
     [
@@ -704,11 +684,12 @@ describe('a bracket completed by the run of notes after it', () => {
   // time it took before it gave notes up. One triplet quarter on its own is
   // a ratio no pair of note values states, which is reported.
   test('takes no more of the run than the bracket is missing', () => {
-    const { content, warnings } = timed(
-      plainRest(12, 'quarter') + stoppedEarly + tripletNote('D') + tripletNote('E'),
-    )
+    const { content, warnings } = timed(stoppedEarly + tripletNote('D') + tripletNote('E'))
 
-    expect(shape(content)).toEqual(['event', [3, 2, 3], [1, 2, 1]])
+    expect(shape(content)).toEqual([
+      [3, 2, 3],
+      [1, 2, 1],
+    ])
     expect(warnings.map((w) => w.code)).toEqual([
       'inconsistent:tuplet',
       'unrepresentable:tuplet-ratio',
@@ -733,7 +714,7 @@ describe('a bracket completed by the run of notes after it', () => {
 
   // A run stating another ratio sounds at that ratio, not at the bracket's.
   test('leaves a run stating another ratio where it stands', () => {
-    const { content } = timed(plainRest(24, 'half') + stoppedEarly + tripletNote('D', '', 6, 4))
+    const { content } = timed(plainRest(12, 'quarter') + stoppedEarly + tripletNote('D', '', 6, 4))
 
     expect(shape(content)).toEqual(['event', [2, 2, 2], [2, 1, 1]])
   })
@@ -742,14 +723,14 @@ describe('a bracket completed by the run of notes after it', () => {
   // longer what stands after it.
   test('leaves a run the bracket does not reach where it stands', () => {
     const { content } = timed(
-      plainRest(12, 'quarter') +
-        stoppedEarly +
-        '<forward><duration>8</duration></forward>' +
-        tripletNote('D'),
+      stoppedEarly + '<forward><duration>8</duration></forward>' + tripletNote('D'),
     )
 
-    expect(shape(content)).toEqual(['event', [3, 2, 3], [1, 2, 1]])
-    const bracket = content?.[1]
+    expect(shape(content)).toEqual([
+      [3, 2, 3],
+      [1, 2, 1],
+    ])
+    const bracket = content?.[0]
     expect(bracket?.kind === 'tuplet' && bracket.content.map((item) => item.kind)).toEqual([
       'event',
       'event',
@@ -761,7 +742,7 @@ describe('a bracket completed by the run of notes after it', () => {
   // disagreement into the bracket.
   test('leaves a run whose notes do not sound at the ratio where it stands', () => {
     const { content, warnings } = timed(
-      plainRest(24, 'half') + stoppedEarly + tripletNote('D', '', 6),
+      plainRest(12, 'quarter') + stoppedEarly + tripletNote('D', '', 6),
     )
 
     expect(shape(content)).toEqual(['event', [2, 2, 2], [2, 1, 1]])
@@ -1056,6 +1037,13 @@ describe('a bracket the silence before it completes', () => {
     return read(measures(TIMED + body))
   }
 
+  // A bracket its notes and the silence around it cannot complete takes the
+  // time its ratio gives it, more than its notes sound for. A 3/4 measure has
+  // room for that.
+  function roomy(body: string) {
+    return read(measures(TIMED.replace('<beats>2</beats>', '<beats>3</beats>') + body))
+  }
+
   /** Each item by kind, a bracket as what it holds. */
   function shape(content: readonly SequenceItem[] | undefined): unknown[] {
     return (content ?? []).map((item) =>
@@ -1162,7 +1150,7 @@ describe('a bracket the silence before it completes', () => {
   })
 
   test('counts what the bracket holds where the silence before it falls short', () => {
-    const { content, warnings } = timed(
+    const { content, warnings } = roomy(
       plain('D', 6, 'eighth') + skip(2) + alone('C', 8, 'quarter') + plain('E', 6, 'eighth'),
     )
 
@@ -1171,7 +1159,7 @@ describe('a bracket the silence before it completes', () => {
   })
 
   test('keeps the silence before where the silence after falls short', () => {
-    const { content, warnings } = timed(
+    const { content, warnings } = roomy(
       skip(4) + alone('C', 4, 'eighth') + plain('E', 12, 'quarter') + skip(4),
     )
 
@@ -1181,7 +1169,7 @@ describe('a bracket the silence before it completes', () => {
   })
 
   test('takes no more silence before than the bracket is missing', () => {
-    const { content, warnings } = timed(
+    const { content, warnings } = roomy(
       skip(8) + alone('C', 8, 'quarter') + plain('D', 6, 'eighth'),
     )
 

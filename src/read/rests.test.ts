@@ -3,7 +3,7 @@
 // rest.staffPosition, staff steps from the middle line, the same count the
 // clef itself is placed by.
 
-import { readValid } from '../../tests/support/read.js'
+import { readFailure, readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
 import { WarningCollector } from './collector.js'
@@ -1351,14 +1351,6 @@ describe('a rest filling a measure a grace note leads into', () => {
   // The grace notes take none of the measure's time, so the silence a
   // <forward> passes over after them stays a space before the rest, which
   // overfills the measure as the source does.
-  test('keeps the silence a forward passed over between the grace notes and the rest', () => {
-    expect(kinds(grace + '<forward><duration>4</duration></forward>' + irregularRest)).toEqual({
-      fullMeasure: undefined,
-      content: [['grace'], ['space', [1, 4]], space],
-      warnings: reported,
-    })
-  })
-
   const refusal = (body: string, time?: string) => {
     try {
       convertMusicXML(irregular(body, time))
@@ -1851,33 +1843,22 @@ describe('a measure rest with no duration', () => {
     '<note><pitch><step>C</step><octave>4</octave></pitch><duration>12</duration>' +
     '<voice>2</voice><type>half</type><dot/></note>'
 
-  test.each([
-    ['on the sequence', wholeRest(), ''],
-    ['kept as an event for its lyric', wholeRest('<lyric><text>la</text></lyric>'), ''],
-    ['followed by a grace note', wholeRest(), grace],
-  ])('lasts the measure in 3/4, %s', (_, measureRest, after) => {
-    const withDuration = measureRest.replace('<voice>', '<duration>12</duration><voice>')
+  test('lasts the measure in 3/4 on the sequence', () => {
+    const withDuration = wholeRest().replace('<voice>', '<duration>12</duration><voice>')
 
-    expect(convertValid(inThreeFour(measureRest + after + threeQuarters)).mnx).toEqual(
-      convertValid(inThreeFour(withDuration + after + threeQuarters)).mnx,
+    expect(convertValid(inThreeFour(wholeRest() + threeQuarters)).mnx).toEqual(
+      convertValid(inThreeFour(withDuration + threeQuarters)).mnx,
     )
   })
 
-  // Beside a grace note the rest stays an event, drawn as the whole it is
-  // written as, so the measure it lasts is reported as lost.
+  // A rest kept as an event is drawn as the whole it is written as, which
+  // runs past 3/4.
   test.each([
-    ['before', grace + wholeRest()],
-    ['after', wholeRest() + grace],
-  ])('reports the whole it is drawn as in 3/4, with a grace note %s', (_, body) => {
-    const withDuration = body.replace('<voice>1</voice><type>whole', '<duration>12</duration>$&')
-    const { mnx, warnings } = convertValid(inThreeFour(body))
-    const stated = convertValid(inThreeFour(withDuration))
-
-    expect(mnx).toEqual(stated.mnx)
-    expect(warnings.map((w) => [w.code, w.message])).toEqual(
-      stated.warnings.map((w) => [w.code, w.message]),
-    )
-    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:duration'])
+    ['for its lyric', wholeRest('<lyric><text>la</text></lyric>')],
+    ['with a grace note before', grace + wholeRest()],
+    ['with a grace note after', wholeRest() + grace],
+  ])('refuses the measure in 3/4 where the rest is kept as an event %s', (_, body) => {
+    expect(readFailure(inThreeFour(body)).detail).toContain('past the 3/4')
   })
 })
 
@@ -2038,9 +2019,6 @@ describe('a rest lasting exactly the measure', () => {
     '<attributes><divisions>4</divisions><time><beats>4</beats><beat-type>4</beat-type>' +
     `</time>${TREBLE}</attributes>${body}</measure></part></score-partwise>`
   const rest = '<note><rest/><duration>16</duration><voice>1</voice></note>'
-  const overrunning =
-    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>32</duration>' +
-    '<voice>1</voice><type>breve</type></note>'
 
   test('rests the measure where it opens the measure', () => {
     const { mnx, warnings } = convertValid(metered(rest))
@@ -2091,14 +2069,6 @@ describe('a rest lasting exactly the measure', () => {
     expect(sequence?.fullMeasure).toBeUndefined()
     expect(sequence?.content).toHaveLength(1)
     expect(warnings).toEqual([])
-  })
-
-  test('leaves a rest the voice does not open with an event', () => {
-    const { mnx } = convertValid(metered(overrunning + rest))
-    const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
-
-    expect(sequence?.fullMeasure).toBeUndefined()
-    expect(sequence?.content).toHaveLength(2)
   })
 })
 
@@ -2165,14 +2135,14 @@ describe('a rest drawn shorter than the measure it fills', () => {
         '<note><rest/><duration>24</duration><type>whole</type><voice>1</voice></note>' +
           '<backup><duration>24</duration></backup>' +
           '<note><pitch><step>C</step><octave>4</octave></pitch><duration>24</duration>' +
-          '<type>breve</type><voice>2</voice></note>',
+          '<type>whole</type><dot/><voice>2</voice></note>',
       ),
     )
 
     expect(sequences[0]?.fullMeasure).toEqual({ visualDuration: { base: 'whole' } })
     expect(sequences[1]?.fullMeasure).toBeUndefined()
     expect(sequences[1]?.content).toHaveLength(1)
-    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:duration'])
+    expect(warnings).toEqual([])
   })
 
   test('rests each staff of a part on its own', () => {
@@ -2363,27 +2333,6 @@ describe("a rest marked as the measure's standing beside other notes", () => {
   // A voice running past its time signature is how the source bars it, and
   // both events carry over as written, so nothing is lost and nothing is
   // reported. A plain whole note and a quarter in 4/4 convert the same way.
-  test('keeps both events where a rest carrying a lyric overruns the measure', () => {
-    const withLyric = marked.replace('</note>', '<lyric><text>ah</text></lyric></note>')
-    const quarterRest =
-      '<note><rest/><duration>4</duration><type>quarter</type><voice>1</voice></note>'
-    const { mnx, warnings } = convertValid(
-      inMeasure(
-        '<attributes><time><beats>4</beats><beat-type>4</beat-type></time></attributes>' +
-          withLyric +
-          quarterRest,
-      ),
-    )
-    const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
-
-    expect(sequence?.fullMeasure).toBeUndefined()
-    expect(sequence?.content).toMatchObject([
-      { duration: { base: 'whole' }, rest: {}, lyrics: { lines: { '1': { text: 'ah' } } } },
-      { duration: { base: 'quarter' }, rest: {} },
-    ])
-    expect(warnings).toEqual([])
-  })
-
   test('rests the measure where the rest is the whole of the voice', () => {
     const { mnx, warnings } = convertValid(inMeasure(marked))
     const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
@@ -2499,15 +2448,6 @@ describe('a rest repeating the rests before it in a multi-measure rest', () => {
     ])
   })
 
-  test('drops one repeating rests longer than the time signature states', () => {
-    const { mnx, warnings } = convertValid(
-      opening(multiRest, rest(16, 'whole') + rest(2, 'eighth') + rest(18)),
-    )
-
-    expect(durations(mnx)).toEqual([{ base: 'whole' }, { base: 'eighth' }])
-    expect(warnings.map((warning) => warning.code)).toEqual(['redundant:rest'])
-  })
-
   test('reads a <backup> over a voice whose rest is dropped from where the source stands', () => {
     const { mnx, warnings } = convertValid(
       opening(
@@ -2533,32 +2473,46 @@ describe('a rest repeating the rests before it in a multi-measure rest', () => {
     expect(durations(mnx)).toEqual([{ base: 'whole' }])
   })
 
-  test('keeps the rest in a measure whose <measure-style> opens no multi-measure rest', () => {
-    const { mnx } = convertValid(
-      opening('<measure-style><slash type="start"/></measure-style>', rest(16, 'whole') + rest(16)),
-    )
-
-    expect(durations(mnx)).toEqual([{ base: 'whole' }, { base: 'whole' }])
-  })
-
-  test('keeps a rest written after the cursor moves past the rests before it', () => {
-    const { mnx, warnings } = convertValid(
-      opening(
-        multiRest,
-        rest(16, 'whole') + '<forward><duration>4</duration></forward>' + rest(16),
-      ),
-    )
-
-    expect(durations(mnx)).toEqual([{ base: 'whole' }, [1, 4], { base: 'whole' }])
-    expect(warnings.map((w) => w.code)).not.toContain('redundant:rest')
-  })
-
-  test('keeps a rest written after a gap that ends where it would repeat them', () => {
-    const { warnings } = convertValid(
-      opening(multiRest, rest(8, 'half') + '<forward><duration>8</duration></forward>' + rest(16)),
-    )
-
-    expect(warnings.map((w) => w.code)).not.toContain('redundant:rest')
+  // A rest kept beside the rests before it runs the voice past the time
+  // signature, so the score is refused where the rest is not dropped.
+  const triplet = (tuplet: string) =>
+    '<note><rest/><duration>4</duration><voice>1</voice><type>quarter</type>' +
+    '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+    `</time-modification>${tuplet}</note>`
+  const note =
+    '<note><pitch><step>C</step><octave>5</octave></pitch><duration>16</duration>' +
+    '<voice>1</voice><type>whole</type></note>'
+  test.each([
+    [
+      'in a measure whose <measure-style> opens no multi-measure rest',
+      '<measure-style><slash type="start"/></measure-style>',
+      rest(16, 'whole') + rest(16),
+    ],
+    [
+      'written after the cursor moves past the rests before it',
+      multiRest,
+      rest(16, 'whole') + '<forward><duration>4</duration></forward>' + rest(16),
+    ],
+    [
+      'written after a gap that ends where it would repeat them',
+      multiRest,
+      rest(8, 'half') + '<forward><duration>8</duration></forward>' + rest(16),
+    ],
+    [
+      'after rests in a tuplet',
+      multiRest,
+      triplet('<notations><tuplet type="start"/></notations>') +
+        triplet('') +
+        triplet('<notations><tuplet type="stop"/></notations>') +
+        rest(4, 'quarter') +
+        rest(16),
+    ],
+    ['in a measure that opens no multi-measure rest', '', rest(16, 'whole') + rest(16)],
+    ['lasting other than the rests before it', multiRest, rest(16, 'whole') + rest(8)],
+    ['with a value', multiRest, rest(16, 'whole') + rest(16, 'whole')],
+    ['after a note', multiRest, note + rest(16)],
+  ])('keeps a rest %s', (_, style, body) => {
+    expect(readFailure(opening(style, body)).detail).toContain('past the 4/4')
   })
 
   test('keeps a rest written back over the rests before it', () => {
@@ -2569,56 +2523,10 @@ describe('a rest repeating the rests before it in a multi-measure rest', () => {
     expect(warnings.map((w) => w.code)).not.toContain('redundant:rest')
   })
 
-  test('keeps a rest after rests in a tuplet', () => {
-    const triplet = (tuplet: string) =>
-      '<note><rest/><duration>4</duration><voice>1</voice><type>quarter</type>' +
-      '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
-      `</time-modification>${tuplet}</note>`
-    const { warnings } = convertValid(
-      opening(
-        multiRest,
-        triplet('<notations><tuplet type="start"/></notations>') +
-          triplet('') +
-          triplet('<notations><tuplet type="stop"/></notations>') +
-          rest(4, 'quarter') +
-          rest(16),
-      ),
-    )
-
-    expect(warnings.map((w) => w.code)).not.toContain('redundant:rest')
-  })
-
-  test('keeps the rest in a measure that opens no multi-measure rest', () => {
-    const { mnx } = convertValid(opening('', rest(16, 'whole') + rest(16)))
-
-    expect(durations(mnx)).toEqual([{ base: 'whole' }, { base: 'whole' }])
-  })
-
   test('keeps a rest after a rest with no <type>', () => {
     const { mnx, warnings } = convertValid(opening(multiRest, rest(4) + rest(4) + rest(8)))
 
     expect(durations(mnx)).toEqual([{ base: 'quarter' }, { base: 'quarter' }, { base: 'half' }])
     expect(warnings).toEqual([])
-  })
-
-  test('keeps a rest lasting other than the rests before it', () => {
-    const { mnx } = convertValid(opening(multiRest, rest(16, 'whole') + rest(8)))
-
-    expect(durations(mnx)).toEqual([{ base: 'whole' }, { base: 'half' }])
-  })
-
-  test('keeps a rest with a value', () => {
-    const { mnx } = convertValid(opening(multiRest, rest(16, 'whole') + rest(16, 'whole')))
-
-    expect(durations(mnx)).toEqual([{ base: 'whole' }, { base: 'whole' }])
-  })
-
-  test('keeps a rest after a note', () => {
-    const note =
-      '<note><pitch><step>C</step><octave>5</octave></pitch><duration>16</duration>' +
-      '<voice>1</voice><type>whole</type></note>'
-    const { mnx } = convertValid(opening(multiRest, note + rest(16)))
-
-    expect(durations(mnx)).toEqual([{ base: 'whole' }, { base: 'whole' }])
   })
 })

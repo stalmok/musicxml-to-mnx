@@ -685,8 +685,8 @@ describe('a note inside a tuplet stating no <duration>', () => {
   const after =
     '<note><pitch><step>G</step><octave>4</octave></pitch><duration>12</duration>' +
     '<type>quarter</type></note>' +
-    '<note><pitch><step>A</step><octave>4</octave></pitch><duration>24</duration>' +
-    '<type>half</type></note>'
+    '<note><pitch><step>A</step><octave>4</octave></pitch><duration>12</duration>' +
+    '<type>quarter</type></note>'
 
   test.each([
     ['a tuplet', TRIPLET],

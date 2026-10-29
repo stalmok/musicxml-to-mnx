@@ -87,7 +87,7 @@ describe('a time signature stated after the measure start', () => {
 
   test('reports a change partway through a measure and converts it at the next', () => {
     const { score: result, warnings } = read(
-      part(opening + timed(2) + note(12) + '\n' + timed(3) + note(24), note(36)),
+      part(opening + timed(2) + note(12) + '\n' + timed(3) + note(12), note(36)),
     )
 
     expect(result.globalMeasures.map((m) => m.time)).toEqual([
@@ -236,7 +236,7 @@ describe('a time signature stated after the measure start', () => {
           timed(3) +
           note(12) +
           '<attributes><time><senza-misura/></time></attributes>',
-        note(36),
+        note(24),
       ),
     )
 
@@ -574,12 +574,24 @@ describe('a time signature stated after the measure start', () => {
   const untimedBesideNext = (first: string, length: number) =>
     score(
       `<part id="P1"><measure number="1">${opening + first}</measure>` +
-        `<measure number="2">${note(36)}</measure></part>` +
+        `<measure number="2">${note(24)}</measure></part>` +
         `<part id="P2"><measure number="1">${opening + note(length)}</measure>` +
         `<measure number="2">${note(24) + shortTriplet}</measure></part>`,
     )
   const back = (duration: number | string) =>
     `<backup><duration>${String(duration)}</duration></backup>`
+  // A read's measures and warnings, or the refusal it ends in. The second
+  // part's second measure runs past 2/4, so a read settling that time
+  // signature there is refused.
+  const outcome = (source: string) => {
+    try {
+      const { score: result, warnings } = read(source)
+      return { measures: result.globalMeasures, codes: warnings.map((w) => w.code) }
+    } catch (error) {
+      if (error instanceof MusicXMLError) return error.detail
+      throw error
+    }
+  }
 
   test.each([36, '36.0'])(
     'reads ahead a second statement at the start, after a <backup> of %s, as the first one stands',
@@ -685,16 +697,11 @@ describe('a time signature stated after the measure start', () => {
       `<note><pitch><step>C</step><octave>4</octave></pitch>${duration}` +
       '<voice>1</voice><type>half</type><dot/></note>'
     const first = (duration: string) =>
-      read(untimedBesideNext(timed(3) + dottedHalf(duration) + back(24) + timed(2), 36))
+      outcome(untimedBesideNext(timed(3) + dottedHalf(duration) + back(24) + timed(2), 36))
     const stated = first('<duration>36</duration>')
-    const unstated = first('')
 
-    expect(stated.score.globalMeasures.map((m) => m.time)).toEqual([
-      { count: 3, unit: 4 },
-      { count: 2, unit: 4 },
-    ])
-    expect(unstated.score.globalMeasures).toEqual(stated.score.globalMeasures)
-    expect(unstated.warnings.map((w) => w.code)).toEqual(stated.warnings.map((w) => w.code))
+    expect(stated).toEqual(expect.stringContaining('past the 2/4'))
+    expect(first('')).toEqual(stated)
   })
 
   test('reads ahead a rest with no <duration> as lasting its written value', () => {
@@ -705,22 +712,15 @@ describe('a time signature stated after the measure start', () => {
   })
 
   // A bar of silence is drawn as a whole rest in any meter, so a rest marked
-  // as the measure's lasts what the time signature states. A rest not marked
-  // lasts the whole it is drawn as. A <backup> of the measure's length after
-  // it tells the two apart.
-  test.each([
-    ['a rest marked as the measure', ' measure="yes"', '<duration>36</duration>'],
-    ['a rest not marked', '', '<duration>48</duration>'],
-  ])('reads ahead %s with no <duration> as the reader does', (_, mark, duration) => {
+  // as the measure's lasts what the time signature states. A <backup> of the
+  // measure's length after it returns to the start only where it does.
+  test("reads ahead a measure's rest with no <duration> as lasting the measure", () => {
     const whole = (stated: string) =>
-      `<note><rest${mark}/>${stated}<voice>1</voice><type>whole</type></note>`
+      `<note><rest measure="yes"/>${stated}<voice>1</voice><type>whole</type></note>`
     const first = (stated: string) =>
-      read(untimedBesideNext(timed(3) + whole(stated) + back(36) + timed(2), 36))
-    const stated = first(duration)
-    const unstated = first('')
+      outcome(untimedBesideNext(timed(3) + whole(stated) + back(36) + timed(2), 36))
 
-    expect(unstated.score.globalMeasures).toEqual(stated.score.globalMeasures)
-    expect(unstated.warnings.map((w) => w.code)).toEqual(stated.warnings.map((w) => w.code))
+    expect(first('')).toEqual(first('<duration>36</duration>'))
   })
 
   // With no time signature in force, the written value is all there is.
@@ -771,17 +771,14 @@ describe('a time signature stated after the measure start', () => {
         )
         .join('')
     const first = (duration: string) =>
-      read(
+      outcome(
         untimedBesideNext(
           timed(2) + triplet(duration) + note(12) + back(24) + timed(3) + note(24, 2),
           24,
         ),
       )
-    const stated = first('<duration>4</duration>')
-    const unstated = first('')
 
-    expect(unstated.score.globalMeasures).toEqual(stated.score.globalMeasures)
-    expect(unstated.warnings.map((w) => w.code)).toEqual(stated.warnings.map((w) => w.code))
+    expect(first('')).toEqual(first('<duration>4</duration>'))
   })
 
   // A note of a two-note tremolo lasts half its written value, whether or not
@@ -811,12 +808,9 @@ describe('a time signature stated after the measure start', () => {
         )
         .join('')
     const first = (duration: string) =>
-      read(untimedBesideNext(timed(2) + notes(duration) + back(12) + timed(3) + note(24, 2), 24))
-    const stated = first(`<duration>${String(units)}</duration>`)
-    const unstated = first('')
+      outcome(untimedBesideNext(timed(2) + notes(duration) + back(12) + timed(3) + note(12, 2), 24))
 
-    expect(unstated.score.globalMeasures).toEqual(stated.score.globalMeasures)
-    expect(unstated.warnings.map((w) => w.code)).toEqual(stated.warnings.map((w) => w.code))
+    expect(first('')).toEqual(first(`<duration>${String(units)}</duration>`))
   })
 
   test.each(['actual-notes', 'normal-notes'])(
@@ -839,13 +833,10 @@ describe('a time signature stated after the measure start', () => {
     const grace =
       '<note><grace/><pitch><step>D</step><octave>4</octave></pitch><duration>24</duration>' +
       '<voice>1</voice><type>eighth</type></note>'
-    const { warnings } = read(untimedBesideNext(timed(2) + grace + timed(3) + note(24), 24))
+    const error = readFailure(untimedBesideNext(timed(2) + grace + timed(3) + note(24), 24))
 
-    expect(warnings.map((w) => `${w.code} ${String(w.context.part)}`)).toEqual([
-      'inconsistent:time P1',
-      'inconsistent:duration P1',
-      'unrepresentable:tuplet-ratio P2',
-    ])
+    expect(error.detail).toContain('past the 2/4')
+    expect(error.path).toEqual(['score-partwise', 'part P2', 'measure 2'])
   })
 
   test.each(['0', '-3000000000000000'])(

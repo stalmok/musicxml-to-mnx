@@ -154,7 +154,10 @@ export function statesRatio(drawn: NoteValue, held: Fraction, sounded: Fraction)
   return noteValueOf(countingUnit(drawn, held, sounded)) !== undefined
 }
 
-/** How long a tuplet's content is written as, before its ratio scales it. */
+/**
+ * How long a run of items lasts in the sequence holding them: a measure's
+ * sequence, or a tuplet's content before its ratio scales it.
+ */
 export function writtenLengthOf(items: readonly SequenceItem[]): Fraction {
   let total = fraction(0)
   for (const item of items) {
@@ -605,7 +608,6 @@ function complete(
 
   tuplet.inner = taken.counted.inner
   tuplet.outer = taken.counted.outer
-  const reached = voice.end
   adopt(claim, voice, adopted, taken.moved)
   // Whatever the bracket takes in was drawn outside it in the source.
   if (adopted && taken.moved > 0) {
@@ -635,22 +637,6 @@ function complete(
     )
   }
   takeSilence(claim, voice, taken.lead, taken.left, taken.silent.span, ratio)
-  // The cursor can run past the time signature without the voice sounding
-  // there: over a trailing <forward> written to hang a direction after the
-  // last note, or a <backup> reaching before the measure start. A bracket
-  // completed on that silence carries the voice out there.
-  const { signature } = voice.measure
-  const past = (end: Fraction) => signature !== undefined && compareFractions(end, signature) > 0
-  if (past(voice.end) && !past(reached)) {
-    warnings.addAt(
-      claim.place,
-      'inconsistent:measure-length',
-      'A tuplet takes in the silence after it to keep the ratio the source states for it, ' +
-        'and the voice then sounds past the end of the time signature in force.',
-      context,
-      claim.element,
-    )
-  }
   return true
 }
 

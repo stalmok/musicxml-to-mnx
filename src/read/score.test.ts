@@ -196,7 +196,7 @@ describe('measure attributes', () => {
       measure(
         '<attributes>' +
           '<key><fifths>-3</fifths></key>' +
-          '<time><beats>3</beats><beat-type>4</beat-type></time>' +
+          '<time><beats>4</beats><beat-type>4</beat-type></time>' +
           '<clef><sign>F</sign><line>4</line></clef>' +
           '</attributes>' +
           NOTE,
@@ -205,7 +205,7 @@ describe('measure attributes', () => {
 
     expect(result.globalMeasures[0]).toEqual({
       key: { fifths: -3 },
-      time: { count: 3, unit: 4 },
+      time: { count: 4, unit: 4 },
       tempos: [],
       number: undefined,
       ...NO_BARLINE,
@@ -569,13 +569,13 @@ describe('measure attributes', () => {
     const { score: result, warnings } = read(
       measure(
         '<attributes><divisions>1</divisions>' +
-          '<time><beats>2</beats><beat-type>4</beat-type></time></attributes>' +
+          '<time><beats>4</beats><beat-type>4</beat-type></time></attributes>' +
           '<attributes><time><senza-misura/></time></attributes>' +
           NOTE,
       ),
     )
 
-    expect(result.globalMeasures[0]?.time).toEqual({ count: 2, unit: 4, display: undefined })
+    expect(result.globalMeasures[0]?.time).toEqual({ count: 4, unit: 4, display: undefined })
     expect(warnings.map((w) => w.code)).toEqual([
       'inconsistent:time',
       'unrepresentable:senza-misura',
@@ -1636,5 +1636,68 @@ describe('the music font, at its edges', () => {
 
     expect(mnx.parts[0]?.smuflFont).toBe('Leland')
     expect(warnings.map((w) => w.attribute)).toEqual(['xml:lang'])
+  })
+})
+
+// MNX treats a sequence running past the time signature in force as an error.
+describe('a measure running past its time signature', () => {
+  const quarter =
+    '<note><pitch><step>C</step><octave>4</octave></pitch>' +
+    '<duration>1</duration><voice>1</voice><type>quarter</type></note>'
+  const time = (count: number) =>
+    `<attributes><divisions>1</divisions><time><beats>${String(count)}</beats>` +
+    '<beat-type>4</beat-type></time></attributes>'
+
+  test('refuses a voice lasting longer than its time signature', () => {
+    const error = readFailure(measure(time(3) + quarter.repeat(4)))
+
+    expect(error.detail).toBe(
+      'This measure lasts a whole, past the 3/4 its time signature allows. ' +
+        'MNX treats a measure that runs past its time signature as an error.',
+    )
+    expect(error.path).toEqual(['score-partwise', 'part P1', 'measure 1'])
+    expect(error.line).toBe(1)
+  })
+
+  test('measures against a time signature stated in an earlier measure', () => {
+    const error = readFailure(
+      score(
+        `<part id="P1"><measure number="1">${time(3)}${quarter.repeat(3)}</measure>` +
+          `<measure number="2">${quarter.repeat(4)}</measure></part>`,
+      ),
+    )
+
+    expect(error.path).toEqual(['score-partwise', 'part P1', 'measure 2'])
+  })
+
+  // MNX states one time signature for the score, the first part's here.
+  test('measures against the score’s time signature, not the part’s', () => {
+    const error = readFailure(
+      score(
+        `<part id="P1"><measure number="1">${time(3)}${quarter.repeat(3)}</measure></part>` +
+          `<part id="P2"><measure number="1">${time(4)}${quarter.repeat(4)}</measure></part>`,
+      ),
+    )
+
+    expect(error.path).toEqual(['score-partwise', 'part P2', 'measure 1'])
+  })
+
+  test('reads a measure filling its time signature, or falling short of it', () => {
+    const { warnings } = read(
+      score(
+        `<part id="P1"><measure number="1">${time(3)}${quarter.repeat(3)}</measure>` +
+          `<measure number="2">${quarter.repeat(2)}</measure></part>`,
+      ),
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  test('reads a measure of any length where no time signature is in force', () => {
+    const { warnings } = read(
+      measure('<attributes><divisions>1</divisions></attributes>' + quarter.repeat(9)),
+    )
+
+    expect(warnings).toEqual([])
   })
 })

@@ -8,6 +8,9 @@ import { NO_BARLINE, readFailure, readValid } from '../../tests/support/read.js'
 import { NOTE, QUARTER, score } from '../../tests/support/musicxml.js'
 import { WarningCollector } from './collector.js'
 
+// A note short enough for any time signature these tests state.
+const SHORT = NOTE.replace('whole', 'eighth')
+
 function read(source: string) {
   const warnings = new WarningCollector()
   const result = readValid(source, warnings)
@@ -20,10 +23,10 @@ describe('several parts', () => {
       score(
         '<part id="P1"><measure number="1">' +
           '<attributes><time><beats>6</beats><beat-type>8</beat-type></time></attributes>' +
-          `${NOTE}</measure></part>` +
+          `${SHORT}</measure></part>` +
           '<part id="P2"><measure number="1">' +
           '<attributes><time><beats>6</beats><beat-type>8</beat-type></time></attributes>' +
-          `${NOTE}</measure></part>`,
+          `${SHORT}</measure></part>`,
       ),
     )
 
@@ -70,10 +73,10 @@ describe('several parts', () => {
       score(
         '<part id="P1"><measure number="1">' +
           '<attributes><time><beats>6</beats><beat-type>8</beat-type></time></attributes>' +
-          `${NOTE}</measure></part>` +
+          `${SHORT}</measure></part>` +
           '<part id="P2"><measure number="1">' +
           '<attributes><time><beats>3</beats><beat-type>4</beat-type></time></attributes>' +
-          `${NOTE}</measure></part>`,
+          `${SHORT}</measure></part>`,
       ),
     )
 
@@ -90,10 +93,10 @@ describe('several parts', () => {
       `<attributes><time><beats>${count}</beats><beat-type>${unit}</beat-type></time></attributes>`
     const { score: result, warnings } = read(
       score(
-        `<part id="P1"><measure number="1">${time('3', '4')}${NOTE}</measure>` +
-          `<measure number="2">${time('6', '8')}${NOTE}</measure></part>` +
-          `<part id="P2"><measure number="1">${time('3', '4')}${NOTE}</measure>` +
-          `<measure number="2">${NOTE}</measure></part>`,
+        `<part id="P1"><measure number="1">${time('3', '4')}${SHORT}</measure>` +
+          `<measure number="2">${time('6', '8')}${SHORT}</measure></part>` +
+          `<part id="P2"><measure number="1">${time('3', '4')}${SHORT}</measure>` +
+          `<measure number="2">${SHORT}</measure></part>`,
       ),
     )
 
@@ -762,8 +765,8 @@ describe('two parts disagreeing on one field of a mark', () => {
       `<attributes><time><beats>${count}</beats><beat-type>4</beat-type></time></attributes>`
     const { score: result, warnings } = read(
       score(
-        `<part id="P1"><measure number="1">${timed('3')}${NOTE}</measure></part>` +
-          `<part id="P2"><measure number="1">${timed('4')}${NOTE}</measure></part>`,
+        `<part id="P1"><measure number="1">${timed('3')}${SHORT}</measure></part>` +
+          `<part id="P2"><measure number="1">${timed('4')}${SHORT}</measure></part>`,
       ),
     )
 

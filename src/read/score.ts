@@ -47,7 +47,7 @@ import type { SoundTempo } from './directions.js'
 import { requireDuration } from './divisions.js'
 import { lyricLineOrder } from './lyrics.js'
 import { respellPastFlip } from './transposition.js'
-import { lengthOf } from './duration.js'
+import { describeLength, lengthOf } from './duration.js'
 import { ElementReader, reportUnreadAttributes, reportUnreadText } from './element.js'
 import type { Stated } from './element.js'
 import { writtenGrouping } from './part-groups.js'
@@ -75,6 +75,7 @@ import type {
   UndrawnSign,
 } from './globalMeasures.js'
 import { settleJumps } from './jumps.js'
+import { writtenLengthOf } from './tuplets.js'
 import { MeasureRepeats } from './measureRepeats.js'
 import type { PartCollector } from './partCollector.js'
 import {
@@ -101,6 +102,15 @@ interface PartReading {
   soundTempos: readonly (readonly SoundTempo[])[]
   /** The signs each of its measures marks only for playback, by position. */
   undrawn: readonly (readonly Stated<UndrawnSign>[])[]
+  /** How long each of its measures lasts, and where it is, by position. */
+  extents: readonly MeasureExtent[]
+}
+
+interface MeasureExtent {
+  /** How long the measure's longest sequence lasts. */
+  lasts: Fraction
+  path: DocumentPath
+  line: number
 }
 
 /**
@@ -123,6 +133,9 @@ interface MeasureReading {
    */
   soundTempos: readonly SoundTempo[]
   undrawn: readonly Stated<UndrawnSign>[]
+  /** Where the measure is, for a refusal that names it. */
+  path: DocumentPath
+  line: number
 }
 
 export function readScore(root: XmlElement, warnings: WarningCollector): Score {
@@ -258,6 +271,7 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
   for (const reading of readings) {
     reportSoundTempos(reading.part.id, reading.soundTempos, globalMeasures, warnings)
   }
+  requireMeasuresWithinTime(readings, globalMeasures)
 
   // A staff pointing at a part the score does not hold would dangle, so the
   // grouping keeps only parts that were written.
@@ -414,6 +428,30 @@ function requireEqualMeasureCounts(parts: readonly XmlElement[], path: DocumentP
   })
 }
 
+// MNX treats a sequence that runs past the time signature in force as an
+// error. The score's time signature is the one in force, not the part's.
+function requireMeasuresWithinTime(
+  readings: readonly PartReading[],
+  globalMeasures: readonly GlobalMeasure[],
+): void {
+  let inForce: TimeSignature | undefined
+  const times = globalMeasures.map((measure) => (inForce = measure.time ?? inForce))
+  for (const { extents } of readings) {
+    extents.forEach(({ lasts, path, line }, index) => {
+      const time = times[index]
+      if (time === undefined || compareFractions(lasts, fraction(time.count, time.unit)) <= 0) {
+        return
+      }
+      throw new MusicXMLError(
+        `This measure lasts ${describeLength(lasts)}, past the ` +
+          `${String(time.count)}/${String(time.unit)} its time signature allows. ` +
+          'MNX treats a measure that runs past its time signature as an error.',
+        { path, line },
+      )
+    })
+  }
+}
+
 function readPart(
   element: XmlElement,
   partList: PartList,
@@ -488,6 +526,16 @@ function readPart(
     globals: readings.map((reading) => reading.global),
     soundTempos: readings.map((reading) => reading.soundTempos),
     undrawn: readings.map((reading) => reading.undrawn),
+    extents: readings.map(({ measure, path, line }) => ({
+      lasts: measure.sequences
+        .map((sequence) => writtenLengthOf(sequence.content))
+        .reduce(
+          (longest, length) => (compareFractions(length, longest) > 0 ? length : longest),
+          fraction(0),
+        ),
+      path,
+      line,
+    })),
   }
 }
 
@@ -903,6 +951,8 @@ function readMeasure(
     },
     soundTempos,
     undrawn,
+    path: measurePath,
+    line: element.line,
   }
 }
 
