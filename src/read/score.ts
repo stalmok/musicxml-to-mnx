@@ -213,8 +213,10 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
   const partList = readPartList(reader, warnings)
   reader.reportUnread(warnings, {})
 
+  const partElements = children(root, 'part')
+  requireEqualMeasureCounts(partElements, path)
   const ids = new IdGenerator()
-  const timedParts = children(root, 'part').map((element) => ({
+  const timedParts = partElements.map((element) => ({
     element,
     times: timesInForce(element),
   }))
@@ -255,23 +257,6 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
 
   for (const reading of readings) {
     reportSoundTempos(reading.part.id, reading.soundTempos, globalMeasures, warnings)
-  }
-
-  // The global list is the score's measure list, and every part's measures
-  // line up with it by position. MNX gives a part a plain list of measures,
-  // so a short part is valid MNX that falls silent partway through. It is
-  // reported here.
-  for (const reading of readings) {
-    const found = reading.part.measures.length
-    if (found !== globalMeasures.length) {
-      warnings.add(
-        'inconsistent:measure-count',
-        `Part ${reading.part.id} has ${String(found)} measures where the score has ` +
-          `${String(globalMeasures.length)}.`,
-        { part: reading.part.id },
-        reading.element,
-      )
-    }
   }
 
   // A staff pointing at a part the score does not hold would dangle, so the
@@ -407,6 +392,25 @@ function renameGroupingParts(
       return renamed === undefined ? item : { ...item, part: renamed }
     }
     return { ...item, content: renameGroupingParts(item.content, renames) }
+  })
+}
+
+// MNX requires every part to have as many measures as the score. Each part is
+// held to the one before it, so the first that differs is named.
+function requireEqualMeasureCounts(parts: readonly XmlElement[], path: DocumentPath): void {
+  parts.forEach((part, index) => {
+    const before = parts[index - 1]
+    if (before === undefined) return
+    const found = children(part, 'measure').length
+    const expected = children(before, 'measure').length
+    if (found === expected) return
+    const id = requireAttribute(part, 'id', path)
+    throw new MusicXMLError(
+      `Part ${id} has ${String(found)} measures where part ` +
+        `${requireAttribute(before, 'id', path)} has ${String(expected)}. ` +
+        'MNX requires every part to have as many measures as the score.',
+      { path: [...path, `part ${id}`], line: part.line },
+    )
   })
 }
 

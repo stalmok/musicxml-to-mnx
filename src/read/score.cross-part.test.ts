@@ -1,10 +1,10 @@
 // MNX states the global measures once for the whole score: key, time
 // signature, tempo, barline, measure number, repeats, endings, jumps and
 // fermatas. MusicXML states them inside each part, so the parts can repeat
-// each other, disagree, or have different numbers of measures.
+// each other or disagree.
 
 import { describe, expect, test } from 'vitest'
-import { NO_BARLINE, readValid } from '../../tests/support/read.js'
+import { NO_BARLINE, readFailure, readValid } from '../../tests/support/read.js'
 import { NOTE, QUARTER, score } from '../../tests/support/musicxml.js'
 import { WarningCollector } from './collector.js'
 
@@ -100,24 +100,6 @@ describe('several parts', () => {
     expect(result.globalMeasures[1]?.time).toEqual({ count: 6, unit: 8, display: undefined })
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-time'])
     expect(warnings[0]?.context).toEqual({ part: 'P2', measure: 2 })
-  })
-
-  // Nothing states the score's meter past the last measure of every earlier
-  // part: the meter carried there is the one this part wrote itself, so there
-  // is no other part to disagree with.
-  test('says nothing about a meter change past the measures of a shorter earlier part', () => {
-    const time = (count: string, unit: string) =>
-      `<attributes><time><beats>${count}</beats><beat-type>${unit}</beat-type></time></attributes>`
-    const { score: result, warnings } = read(
-      score(
-        `<part id="P1"><measure number="1">${time('3', '4')}${NOTE}</measure></part>` +
-          `<part id="P2"><measure number="1">${time('3', '4')}${NOTE}</measure>` +
-          `<measure number="2">${time('6', '8')}${NOTE}</measure></part>`,
-      ),
-    )
-
-    expect(result.globalMeasures[1]?.time).toEqual({ count: 6, unit: 8, display: undefined })
-    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:measure-count'])
   })
 
   test('reports a part staying in its key while another changes', () => {
@@ -950,23 +932,26 @@ describe('a tempo stated by more than one part', () => {
   })
 })
 
-// The global list is the score's measure list and every part lines up with it
-// by position, so a part of a different length falls silent partway through
-// or runs past the end. MNX gives a part a plain list of measures, so nothing
-// downstream can tell.
+// MNX requires every part to have as many measures as the score.
 describe('parts of different lengths', () => {
-  test('reports a part that stops before the score does', () => {
-    const { warnings } = read(
+  test.each([
+    ['stops before', 1],
+    ['runs past', 3],
+  ])('refuses a part that %s the end of the score', (_name, count) => {
+    const measures = (n: number) =>
+      Array.from({ length: n }, (_, i) => `<measure number="${String(i + 1)}">${NOTE}</measure>`)
+    const error = readFailure(
       score(
-        `<part id="P1"><measure number="1">${NOTE}</measure>` +
-          `<measure number="2">${NOTE}</measure></part>` +
-          `<part id="P2"><measure number="1">${NOTE}</measure></part>`,
+        `<part id="P1">${measures(2).join('')}</part>` +
+          `<part id="P2">${measures(count).join('')}</part>`,
       ),
     )
 
-    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:measure-count'])
-    expect(warnings[0]?.message).toContain('P2 has 1 measures where the score has 2')
-    expect(warnings[0]?.context.part).toBe('P2')
+    expect(error.detail).toBe(
+      `Part P2 has ${String(count)} measures where part P1 has 2. ` +
+        'MNX requires every part to have as many measures as the score.',
+    )
+    expect(error.path).toEqual(['score-partwise', 'part P2'])
   })
 
   test('says nothing where every part runs the whole score', () => {

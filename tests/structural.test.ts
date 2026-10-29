@@ -1240,7 +1240,9 @@ describe('the key each part draws, against its source', () => {
 
   // P2 changes key a measure before P1, and the score takes P2's key.
   test('passes over every part from a reported disagreement until the score states a key', () => {
-    expect(check(part('P1', key(0), undefined, key(2)) + part('P2', key(0), key(2)))).toEqual([])
+    expect(
+      check(part('P1', key(0), undefined, key(2)) + part('P2', key(0), key(2), undefined)),
+    ).toEqual([])
   })
 
   // P2 and P3 change key a measure apart, and P1 stays in its own.
@@ -1248,7 +1250,7 @@ describe('the key each part draws, against its source', () => {
     expect(
       check(
         part('P1', key(0), undefined, undefined) +
-          part('P2', key(0), key(2)) +
+          part('P2', key(0), key(2), undefined) +
           part('P3', key(0), undefined, key(2)),
       ),
     ).toEqual([])

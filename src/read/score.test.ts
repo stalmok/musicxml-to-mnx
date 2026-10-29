@@ -1158,18 +1158,6 @@ describe('the global measure list', () => {
     })
   })
 
-  test('is as long as the longest part', () => {
-    const { score: result } = read(
-      score(
-        `<part id="P1"><measure number="1">${NOTE}</measure></part>` +
-          `<part id="P2"><measure number="1">${NOTE}</measure>` +
-          `<measure number="2">${NOTE}</measure></part>`,
-      ),
-    )
-
-    expect(result.globalMeasures).toHaveLength(2)
-  })
-
   // A pickup is numbered 0, which shifts every later measure's number one
   // below its position, so all of them have to be carried, not only the
   // pickup.

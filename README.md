@@ -191,6 +191,7 @@ Important limits include:
 - Transposition changes within a part and differing staff transpositions produce warnings.
 - Grace-note time amounts produce warnings. Grace notes with an unbracketed tuplet ratio cause a refusal.
 - Composite meters such as `3+2/8` cause a refusal.
+- A part with a different number of measures from the other parts causes a refusal.
 
 ## Testing with real scores
 

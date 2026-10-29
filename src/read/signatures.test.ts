@@ -1252,31 +1252,6 @@ describe('a part that flips its key signature enharmonically', () => {
     expect(warnings).toEqual([])
   })
 
-  // The concert part that settles the score's key is the third, after one
-  // that changes key at the second measure, which the flipping part stops at.
-  test('settles a flip against a concert part written after it, past a shorter part', () => {
-    const source = score(
-      `<part id="P1"><measure number="1"><attributes><key><fifths>0</fifths></key>` +
-        `</attributes>${NOTE}</measure></part>` +
-        `<part id="P2"><measure number="1"><attributes><key><fifths>2</fifths></key>` +
-        `${B_FLAT}</attributes>${NOTE}</measure>` +
-        `<measure number="2"><attributes><key><fifths>-5</fifths></key></attributes>` +
-        `${NOTE}</measure></part>` +
-        `<part id="P3"><measure number="1"><attributes><key><fifths>0</fifths></key>` +
-        `</attributes>${NOTE}</measure>` +
-        `<measure number="2"><attributes><key><fifths>5</fifths></key></attributes>` +
-        `${NOTE}</measure></part>`,
-    )
-    const { score: result, warnings } = read(source)
-
-    expect(result.globalMeasures.map((measure) => measure.key)).toEqual([
-      { fifths: 0 },
-      { fifths: 5 },
-    ])
-    expect(result.parts[1]?.transposition?.keyFifthsFlipAt).toBe(7)
-    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:measure-count'])
-  })
-
   // A drum part's key says nothing about pitch, so it does not settle the
   // score's key before the trumpet.
   test('settles a transposing part before a part that strikes a kit', () => {
@@ -1680,13 +1655,6 @@ describe('a part that flips its key signature enharmonically', () => {
       [5, undefined],
       [5, -7],
       [key(2)],
-    ],
-    [
-      'its own spelling past the measures of a shorter earlier part',
-      [5, undefined],
-      [5, undefined, -7],
-      [5, undefined, -7],
-      [['inconsistent:measure-count', { part: 'P1', line: 1 }]],
     ],
   ])('contributes %s', (_name, first, second, expected, reported) => {
     const source = score(concert(first, second))
