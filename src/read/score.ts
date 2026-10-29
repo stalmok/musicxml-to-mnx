@@ -266,6 +266,7 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
     merged,
     readings.map((reading) => reading.undrawn),
     warnings,
+    path,
   )
 
   for (const reading of readings) {

@@ -353,85 +353,6 @@ describe('several parts', () => {
     expect(warnings[2]?.context.line).toBe(2)
   })
 
-  // A part leaving the sign unnamed says nothing about its name, so it does
-  // not disagree with a part naming it, and the name is kept for the jump.
-  test.each([
-    ['the first part', false],
-    ['a later part', true],
-  ])('keeps the name of a segno that only %s gives', (_, laterNames) => {
-    const drawn = '<direction><direction-type><segno/></direction-type>'
-    const part = (id: string, naming: boolean) =>
-      `<part id="${id}">` +
-      `<measure number="1">${drawn}${naming ? '<sound segno="s1"/>' : ''}</direction>${NOTE}` +
-      '</measure>' +
-      `<measure number="2">${drawn}${naming ? '<sound segno="s2"/>' : ''}</direction>${NOTE}` +
-      '<sound fine="yes"/></measure>' +
-      `<measure number="3">${NOTE}<sound dalsegno="s2"/></measure>` +
-      '</part>'
-    const { score: result, warnings } = read(
-      score(part('P1', !laterNames) + part('P2', laterNames)),
-    )
-
-    expect(result.globalMeasures[2]?.jump?.type).toBe('dsAlFine')
-    // MNX states one segno in a score with a dal segno jump, so the first,
-    // which no jump returns to, is not converted.
-    expect(warnings.map((w) => [w.code, w.element, w.attribute])).toEqual([
-      ['unrepresentable:attribute', 'sound', 'segno'],
-      ['unrepresentable:attribute', 'sound', 'segno'],
-      ['unrepresentable:jump-destination', 'segno', undefined],
-    ])
-    expect(result.globalMeasures[0]?.segno).toBeUndefined()
-  })
-
-  // A sign at another point is a different sign, so its name is not taken.
-  test('keeps no name from a later part that draws the segno at another point', () => {
-    const named = (name: string) =>
-      `<direction><direction-type><segno/></direction-type><sound segno="${name}"/></direction>`
-    const segno = '<direction><direction-type><segno/></direction-type></direction>'
-    const part = (id: string, first: string) =>
-      `<part id="${id}">` +
-      `<measure number="1">${first}</measure>` +
-      `<measure number="2">${named('b')}${NOTE}</measure>` +
-      `<measure number="3">${NOTE}<sound dalsegno="a"/></measure>` +
-      '</part>'
-    const { warnings } = read(
-      score(part('P1', segno + NOTE) + part('P2', NOTE + named('a') + NOTE)),
-    )
-
-    expect(warnings.map((w) => w.code)).toContain('unresolved:segno')
-  })
-
-  test.each([
-    ['the first part', false],
-    ['a later part', true],
-  ])('keeps the name of a coda that only %s gives', (_, laterNames) => {
-    const drawn = '<direction><direction-type><coda/></direction-type>'
-    const part = (id: string, naming: boolean) =>
-      `<part id="${id}">` +
-      `<measure number="1">${NOTE}<sound tocoda="c2"/></measure>` +
-      `<measure number="2">${NOTE}<sound dacapo="yes"/></measure>` +
-      `<measure number="3">${drawn}${naming ? '<sound coda="c1"/>' : ''}</direction>${NOTE}` +
-      '</measure>' +
-      `<measure number="4">${drawn}${naming ? '<sound coda="c2"/>' : ''}</direction>${NOTE}` +
-      '</measure>' +
-      '</part>'
-    const { score: result, warnings } = read(
-      score(part('P1', !laterNames) + part('P2', laterNames)),
-    )
-
-    expect(result.globalMeasures.map((measure) => measure.coda !== undefined)).toEqual([
-      false,
-      false,
-      false,
-      true,
-    ])
-    expect(warnings.map((w) => [w.code, w.element, w.context.measure])).toEqual([
-      ['unrepresentable:attribute', 'sound', 3],
-      ['unrepresentable:attribute', 'sound', 4],
-      ['unrepresentable:jump-destination', 'coda', 3],
-    ])
-  })
-
   test('says nothing where the parts restate the same named segno', () => {
     const sign =
       '<direction><direction-type><segno/></direction-type><sound segno="A"/></direction>' + NOTE
@@ -488,36 +409,14 @@ describe('several parts', () => {
     expect(warnings[0]?.context.line).toBe(2)
   })
 
-  test.each([
-    ['the first part', false],
-    ['a later part', true],
-  ])('keeps the target of a jump that only %s names', (_, laterNames) => {
-    const sign = (name: string) =>
-      `<direction><direction-type><segno/></direction-type><sound segno="${name}"/></direction>`
-    const part = (id: string, naming: boolean) =>
-      `<part id="${id}">` +
-      `<measure number="1">${sign('s1')}${NOTE}</measure>` +
-      `<measure number="2">${sign('s2')}${NOTE}</measure>` +
-      `<measure number="3">${NOTE}<sound dalsegno="${naming ? 's2' : ''}"/></measure>` +
-      '</part>'
-    const { score: result, warnings } = read(
-      score(part('P1', !laterNames) + part('P2', laterNames)),
-    )
-
-    expect(result.globalMeasures[2]?.jump?.type).toBe('segno')
-    expect(result.globalMeasures.map((measure) => measure.segno !== undefined)).toEqual([
-      false,
-      true,
-      false,
-    ])
-    expect(warnings.filter((w) => w.code === 'unrepresentable:cross-part-mark')).toEqual([])
-  })
-
   test('reports parts going on to differently named codas', () => {
+    const CODA =
+      '<measure number="2"><direction><direction-type><coda/></direction-type></direction>' +
+      `${NOTE}</measure>`
     const { warnings } = read(
       score(
-        `<part id="P1"><measure number="1"><sound tocoda="A"/>${NOTE}</measure></part>` +
-          `\n<part id="P2"><measure number="1"><sound tocoda="B"/>${NOTE}</measure></part>`,
+        `<part id="P1"><measure number="1"><sound tocoda="A"/>${NOTE}</measure>${CODA}</part>` +
+          `\n<part id="P2"><measure number="1"><sound tocoda="B"/>${NOTE}</measure>${CODA}</part>`,
       ),
     )
 

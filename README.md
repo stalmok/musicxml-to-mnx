@@ -193,6 +193,7 @@ Important limits include:
 - Composite meters such as `3+2/8` cause a refusal.
 - A part with a different number of measures from the other parts causes a refusal.
 - A measure that lasts longer than its time signature causes a refusal. MNX treats one as an error.
+- A D.S., to-coda or al Fine jump causes a refusal unless the score draws exactly one segno, coda or Fine for it.
 
 ## Testing with real scores
 

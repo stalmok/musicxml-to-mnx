@@ -2,7 +2,7 @@
 // to-coda jump met on the way back through says whether it is al Fine or al
 // Coda.
 
-import { readValid } from '../../tests/support/read.js'
+import { readFailure, readValid } from '../../tests/support/read.js'
 import { describe, expect, test } from 'vitest'
 import { convertValid } from '../../tests/support/convert.js'
 import { WarningCollector } from './collector.js'
@@ -75,20 +75,6 @@ describe('a D.S.', () => {
     expect(types).toEqual(['toCoda', undefined, 'segno', undefined])
   })
 
-  // The jump returns to the second segno, after the to-coda jump.
-  test('ignores a to-coda jump before the segno the jump names', () => {
-    const named = (name: string) =>
-      `<direction><direction-type><segno/></direction-type><sound segno="${name}"/></direction>`
-    const { types } = jumps(
-      named('a') + NOTE + TO_CODA,
-      named('b') + NOTE,
-      NOTE + '<sound dalsegno="b"/>',
-      CODA + NOTE,
-    )
-
-    expect(types).toEqual(['toCoda', undefined, 'segno', undefined])
-  })
-
   // Replay starts at the segno, not at the start of its measure.
   test('ignores a to-coda jump earlier in the measure than the segno', () => {
     const { types } = jumps(NOTE + TO_CODA + NOTE + SEGNO + NOTE, NOTE + DAL_SEGNO, CODA + NOTE)
@@ -122,35 +108,6 @@ describe('a D.S.', () => {
   })
 })
 
-// MNX states a jump to a segno only in a score with one segno. A player with
-// no segno to find goes back to the start, which MNX states as a D.C.
-describe('a D.S. in a score that draws no segno', () => {
-  test('is a plain D.C. where the replay meets no Fine and no to-coda jump', () => {
-    const { types, warnings } = jumps(NOTE, NOTE + DAL_SEGNO)
-
-    expect(types).toEqual([undefined, 'dc'])
-    expect(warnings.map((w) => w.code)).toEqual(['unresolved:segno'])
-  })
-
-  test('is a D.C. al Coda where the replay meets a to-coda jump', () => {
-    expect(jumps(NOTE + TO_CODA, NOTE + DAL_SEGNO, CODA + NOTE).types).toEqual([
-      'toCoda',
-      'dcAlCoda',
-      undefined,
-    ])
-  })
-
-  test('is written as a D.C. the spec schema accepts', () => {
-    const { mnx } = convertValid(score(NOTE + FINE, NOTE + DAL_SEGNO))
-
-    expect(mnx.global.measures.map((measure) => measure.jump?.type)).toEqual([
-      undefined,
-      'dcAlFine',
-    ])
-    expect(mnx.global.measures.some((measure) => measure.segno !== undefined)).toBe(false)
-  })
-})
-
 // <sound segno> and <sound coda> with no sign beside them mark a destination
 // for playback only. MNX's segno and coda are drawn signs, so a jump that goes
 // to one is not converted.
@@ -174,7 +131,6 @@ describe('a jump to a sign the score does not draw', () => {
         2,
       ],
     ])
-    expect(warnings.filter((w) => w.code === 'unresolved:segno')).toEqual([])
   })
 
   test('does not convert a D.S. to an undrawn segno in a direction', () => {
@@ -189,16 +145,16 @@ describe('a jump to a sign the score does not draw', () => {
     expect(undrawn(warnings).map((w) => w[3])).toEqual([2])
   })
 
-  // The name settles which sign, even where one other segno is drawn.
-  test('does not convert a D.S. naming an undrawn segno beside a drawn one', () => {
+  // The score draws one segno, so the D.S. returns to it.
+  test('returns a D.S. naming an undrawn segno to the one drawn', () => {
     const { types, warnings } = jumps(
       '<direction><direction-type><segno/></direction-type><sound segno="b"/></direction>' + NOTE,
       '<sound segno="a"/>' + NOTE,
       NOTE + '<sound dalsegno="a"/>',
     )
 
-    expect(types).toEqual([undefined, undefined, undefined])
-    expect(undrawn(warnings).map((w) => w[3])).toEqual([3])
+    expect(types).toEqual([undefined, undefined, 'segno'])
+    expect(undrawn(warnings)).toEqual([])
   })
 
   test('returns a D.S. naming no sign to the one segno drawn', () => {
@@ -251,16 +207,24 @@ describe('a jump to a sign the score does not draw', () => {
         1,
       ],
     ])
-    expect(warnings.filter((w) => w.code === 'unresolved:coda')).toEqual([])
   })
 
-  // T names neither the undrawn segno nor any other.
-  test('converts a D.S. naming no sign the score marks as a D.C.', () => {
+  test('does not convert a D.S. naming another sign than the one marked', () => {
     const { types, warnings } = jumps('<sound segno="S"/>' + NOTE, NOTE + '<sound dalsegno="T"/>')
 
-    expect(types).toEqual([undefined, 'dc'])
-    expect(undrawn(warnings)).toEqual([])
-    expect(warnings.filter((w) => w.code === 'unresolved:segno')).toHaveLength(1)
+    expect(types).toEqual([undefined, undefined])
+    expect(undrawn(warnings).map((w) => w[3])).toEqual([2])
+  })
+
+  test('does not convert a D.S. to one of several segnos marked only for playback', () => {
+    const { types, warnings } = jumps(
+      '<sound segno="a"/>' + NOTE,
+      '<sound segno="c"/>' + NOTE,
+      NOTE + '<sound dalsegno="a"/>',
+    )
+
+    expect(types).toEqual([undefined, undefined, undefined])
+    expect(undrawn(warnings).map((w) => w[3])).toEqual([3])
   })
 
   // One segno drawn, with no name, settles every D.S. whatever it names.
@@ -290,124 +254,6 @@ describe('a jump to a sign the score does not draw', () => {
     expect(undrawn(warnings)).toEqual([])
   })
 
-  // A to-coda jump goes on through the score, so the undrawn coda before it
-  // is not where it goes.
-  test('takes a to-coda jump past an undrawn coda before it to a drawn one after', () => {
-    const named = (name: string) =>
-      `<direction><direction-type><coda/></direction-type><sound coda="${name}"/></direction>`
-    const { types, warnings } = jumps(
-      named('a') + NOTE,
-      '<direction><direction-type><segno/></direction-type>' +
-        '<sound segno="s" coda="c"/></direction>' +
-        NOTE,
-      NOTE + '<sound tocoda="c"/>',
-      CODA + NOTE,
-    )
-
-    expect(types).toEqual([undefined, undefined, 'toCoda', undefined])
-    expect(undrawn(warnings)).toEqual([])
-  })
-
-  describe('among several signs', () => {
-    const drawn = (name: string) =>
-      `<direction><direction-type><segno/></direction-type><sound segno="${name}"/></direction>`
-    const marked = (name: string) => `<sound segno="${name}"/>`
-    const dalSegno = (name: string) => `<sound dalsegno="${name}"/>`
-    const codes = (warnings: readonly ConversionWarning[]) =>
-      warnings
-        .map((w) => w.code)
-        .filter(
-          (code) => code === 'unrepresentable:undrawn-destination' || code === 'unresolved:segno',
-        )
-
-    test('converts a D.S. naming no segno as a D.C. where the score marks none', () => {
-      const { types, warnings } = jumps(NOTE, NOTE + dalSegno(''))
-
-      expect(types).toEqual([undefined, 'dc'])
-      expect(codes(warnings)).toEqual(['unresolved:segno'])
-    })
-
-    test('reports a D.S. naming no segno where the score marks one and draws none', () => {
-      const { types, warnings } = jumps(marked('a') + NOTE, NOTE + dalSegno(''))
-
-      expect(types).toEqual([undefined, undefined])
-      expect(codes(warnings)).toEqual(['unrepresentable:undrawn-destination'])
-    })
-
-    test('reports a D.S. to one of several segnos marked only for playback', () => {
-      const { types, warnings } = jumps(
-        marked('a') + NOTE,
-        marked('c') + NOTE,
-        NOTE + dalSegno('a'),
-      )
-
-      expect(types).toEqual([undefined, undefined, undefined])
-      expect(codes(warnings)).toEqual(['unrepresentable:undrawn-destination'])
-    })
-
-    test('leaves a D.S. naming no segno among several drawn unresolved', () => {
-      const { warnings } = jumps(
-        drawn('a') + NOTE,
-        drawn('b') + NOTE,
-        marked('c') + NOTE,
-        NOTE + dalSegno(''),
-      )
-
-      expect(codes(warnings)).toEqual(['unresolved:segno'])
-    })
-
-    test('returns a D.S. to the drawn segno of its name, past one only marked', () => {
-      const { types, warnings } = jumps(
-        drawn('a') + NOTE,
-        drawn('b') + NOTE,
-        marked('a') + NOTE,
-        NOTE + dalSegno('a'),
-      )
-
-      expect(types).toEqual([undefined, undefined, undefined, 'segno'])
-      expect(codes(warnings)).toEqual([])
-    })
-
-    test('returns a D.S. to the drawn segno it names beside one only marked', () => {
-      const { types, warnings } = jumps(
-        drawn('a') + NOTE,
-        drawn('b') + NOTE,
-        marked('c') + NOTE,
-        NOTE + dalSegno('b'),
-      )
-
-      expect(types).toEqual([undefined, undefined, undefined, 'segno'])
-      expect(codes(warnings)).toEqual([])
-    })
-
-    test('leaves a D.S. naming a segno neither drawn nor marked unresolved', () => {
-      const { warnings } = jumps(
-        drawn('a') + NOTE,
-        drawn('b') + NOTE,
-        marked('c') + NOTE,
-        NOTE + dalSegno('x'),
-      )
-
-      expect(codes(warnings)).toEqual(['unresolved:segno'])
-    })
-
-    // The measure draws a segno, so the name marks that sign, not a
-    // destination for playback only.
-    test('takes a name marked in a measure that draws a segno as that sign’s', () => {
-      const { warnings } = jumps(
-        drawn('a') + NOTE,
-        SEGNO +
-          '<direction><direction-type><words>x</words></direction-type>' +
-          marked('b') +
-          '</direction>' +
-          NOTE,
-        NOTE + dalSegno('b'),
-      )
-
-      expect(codes(warnings)).toEqual(['unresolved:segno'])
-    })
-  })
-
   test('writes the score without the jump onto schema-valid MNX', () => {
     const { mnx } = convertValid(score('<sound segno="a"/>' + NOTE, NOTE + '<sound dalsegno="a"/>'))
 
@@ -415,564 +261,108 @@ describe('a jump to a sign the score does not draw', () => {
   })
 })
 
-// MNX states a jump to a segno only in a score with one segno. The segno most
-// jumps return to is kept. The other segnos, and the jumps that return to
-// them, are not converted.
-describe('a D.S. in a score that draws several segnos', () => {
-  const named = (name: string) =>
+// MNX states a jump to a segno, a coda or a Fine only in a score with exactly
+// one of it.
+describe('a jump in a score without exactly one sign for it', () => {
+  const segno = (name: string) =>
     `<direction><direction-type><segno/></direction-type><sound segno="${name}"/></direction>`
-  const dalSegno = (name: string) => `<sound dalsegno="${name}"/>`
-  // A named segno also reports its name, which MNX cannot state.
-  const destinations = (warnings: readonly ConversionWarning[]) =>
-    warnings.filter((w) => w.code === 'unrepresentable:jump-destination')
-
-  test('keeps the segno most jumps return to', () => {
-    const warnings = new WarningCollector()
-    const { globalMeasures } = readValid(
-      score(
-        named('a') + NOTE,
-        named('b') + NOTE,
-        NOTE + dalSegno('a'),
-        NOTE + dalSegno('b'),
-        NOTE + dalSegno('b'),
-      ),
-      warnings,
-    )
-
-    expect(globalMeasures.map((measure) => measure.segno !== undefined)).toEqual([
-      false,
-      true,
-      false,
-      false,
-      false,
-    ])
-    expect(globalMeasures.map((measure) => measure.jump?.type)).toEqual([
-      undefined,
-      undefined,
-      undefined,
-      'segno',
-      'segno',
-    ])
-    expect(
-      destinations(warnings.list()).map((w) => [w.code, w.element, w.context.measure]),
-    ).toEqual([
-      ['unrepresentable:jump-destination', 'segno', 1],
-      ['unrepresentable:jump-destination', 'sound', 3],
-    ])
-  })
-
-  test('keeps the first segno where as many jumps return to each', () => {
-    const { types, warnings } = jumps(
-      named('a') + NOTE,
-      named('b') + NOTE,
-      NOTE + dalSegno('b'),
-      NOTE + dalSegno('a'),
-    )
-
-    expect(types).toEqual([undefined, undefined, undefined, 'segno'])
-    expect(destinations(warnings).map((w) => [w.element, w.context.measure])).toEqual([
-      ['segno', 2],
-      ['sound', 3],
-    ])
-  })
-
-  test('drops a segno no jump returns to', () => {
-    const warnings = new WarningCollector()
-    const { globalMeasures } = readValid(
-      score(named('a') + NOTE, NOTE + dalSegno('a'), named('b') + NOTE),
-      warnings,
-    )
-
-    expect(globalMeasures.map((measure) => measure.segno !== undefined)).toEqual([
-      true,
-      false,
-      false,
-    ])
-    expect(destinations(warnings.list())).toEqual([
-      {
-        code: 'unrepresentable:jump-destination',
-        message:
-          'The score draws more than one segno and has a dal segno jump, and MNX states ' +
-          'one segno in such a score. The segno most jumps go to is kept, and this one ' +
-          'is not converted.',
-        element: 'segno',
-        context: { measure: 3, line: 1 },
-      },
-    ])
-  })
-
-  test('reports a jump to a segno that is not kept', () => {
-    const { warnings } = jumps(
-      named('a') + NOTE,
-      named('b') + NOTE + '\n' + dalSegno('a'),
-      NOTE + dalSegno('b'),
-      NOTE + dalSegno('b'),
-    )
-
-    expect(warnings).toContainEqual({
-      code: 'unrepresentable:jump-destination',
-      message:
-        'This dal segno jump goes to a segno other than the one kept, and MNX states ' +
-        'one segno in a score with a dal segno jump. The jump is not converted.',
-      element: 'sound',
-      attribute: 'dalsegno',
-      context: { measure: 2, line: 2 },
-    })
-  })
-
-  test('keeps every segno where no jump returns to one', () => {
-    const { warnings } = jumps(named('a') + NOTE, named('b') + NOTE, NOTE + DA_CAPO)
-
-    expect(destinations(warnings)).toEqual([])
-  })
-
-  // Many sources give every segno one name. A score in sections returns each
-  // D.S. to the segno of its own section, the nearest one before it.
-  const kept = (...bodies: string[]) => {
-    const warnings = new WarningCollector()
-    const { globalMeasures } = readValid(score(...bodies), warnings)
-    return globalMeasures.flatMap((measure, index) => (measure.segno ? [index + 1] : []))
-  }
-
-  test('returns to the nearest segno of its name in an earlier measure', () => {
-    expect(
-      kept(named('s') + NOTE, named('s') + NOTE, named('s') + NOTE, NOTE + dalSegno('s')),
-    ).toEqual([3])
-  })
-
-  // A segno in the jump's own measure is drawn beside the D.S., not returned to.
-  test('passes over a segno of its name in the measure of the jump', () => {
-    expect(kept(named('s') + NOTE, named('s') + NOTE, named('s') + NOTE + dalSegno('s'))).toEqual([
-      2,
-    ])
-  })
-
-  test('returns to the first segno of its name where none stands in an earlier measure', () => {
-    expect(kept(named('s') + NOTE + dalSegno('s'), named('s') + NOTE)).toEqual([1])
-  })
-
-  test('writes one segno the spec schema accepts', () => {
-    const { mnx } = convertValid(score(named('a') + NOTE, named('b') + NOTE, NOTE + dalSegno('b')))
-
-    expect(mnx.global.measures.map((measure) => measure.segno !== undefined)).toEqual([
-      false,
-      true,
-      false,
-    ])
-    expect(mnx.global.measures[2]?.jump?.type).toBe('segno')
-  })
-})
-
-// MNX states a to-coda jump only in a score with one coda. The coda most
-// to-coda jumps go to is kept, as for a segno.
-describe('a to-coda jump in a score that draws several codas', () => {
-  const named = (name: string) =>
+  const coda = (name: string) =>
     `<direction><direction-type><coda/></direction-type><sound coda="${name}"/></direction>`
-  const toCoda = (name: string) => `<sound tocoda="${name}"/>`
-  const destinations = (warnings: readonly ConversionWarning[]) =>
-    warnings.filter((w) => w.code === 'unrepresentable:jump-destination')
 
-  test('keeps the coda most jumps go to', () => {
-    const warnings = new WarningCollector()
-    const { globalMeasures } = readValid(
-      score(
-        NOTE + toCoda('b'),
-        NOTE + DA_CAPO,
-        named('a') + NOTE + toCoda('a'),
-        named('b') + NOTE,
-        NOTE + toCoda('b'),
-      ),
-      warnings,
-    )
+  test.each([
+    [
+      'a D.S. where the score draws no segno',
+      [NOTE, NOTE + '\n' + DAL_SEGNO],
+      'The score has a dal segno jump and draws no segno. MNX requires exactly one segno ' +
+        'in a score with a dal segno jump.',
+      ['score-partwise', 'measure 2'],
+    ],
+    [
+      'a D.S. where the score draws two segnos',
+      [segno('a') + NOTE, segno('b') + NOTE, NOTE + '\n' + '<sound dalsegno="a"/>'],
+      'The score has a dal segno jump and draws 2 segnos. MNX requires exactly one segno ' +
+        'in a score with a dal segno jump.',
+      ['score-partwise', 'measure 3'],
+    ],
+    [
+      'a to-coda jump where the score draws no coda',
+      [NOTE + '\n' + TO_CODA, NOTE + DA_CAPO],
+      'The score has a to-coda jump and draws no coda. MNX requires exactly one coda ' +
+        'in a score with a to-coda jump.',
+      ['score-partwise', 'measure 1'],
+    ],
+    [
+      'a to-coda jump where the score draws two codas',
+      [NOTE + '\n' + TO_CODA, NOTE + DA_CAPO, coda('coda') + NOTE, coda('coda') + NOTE],
+      'The score has a to-coda jump and draws 2 codas. MNX requires exactly one coda ' +
+        'in a score with a to-coda jump.',
+      ['score-partwise', 'measure 1'],
+    ],
+    [
+      'an al Fine jump where the score has two Fines',
+      [NOTE + FINE, NOTE + '\n' + DA_CAPO, NOTE + FINE],
+      'The score has an al Fine jump and 2 Fines. MNX requires exactly one Fine in a score ' +
+        'with an al Fine jump.',
+      ['score-partwise', 'measure 2'],
+    ],
+  ])('refuses %s', (_, bodies, detail, path) => {
+    const error = readFailure(score(...bodies))
 
-    expect(globalMeasures.map((measure) => measure.coda !== undefined)).toEqual([
-      false,
-      false,
-      false,
-      true,
-      false,
-    ])
-    expect(globalMeasures.map((measure) => measure.jump?.type)).toEqual([
-      'toCoda',
-      'dcAlCoda',
-      undefined,
-      undefined,
-      'toCoda',
-    ])
-    expect(destinations(warnings.list())).toEqual([
-      {
-        code: 'unrepresentable:jump-destination',
-        message:
-          'The score draws more than one coda and has a to-coda jump, and MNX states one ' +
-          'coda in such a score. The coda most jumps go to is kept, and this one is not ' +
-          'converted.',
-        element: 'coda',
-        context: { measure: 3, line: 1 },
-      },
-      {
-        code: 'unrepresentable:jump-destination',
-        message:
-          'This to-coda jump goes to a coda other than the one kept, and MNX states one ' +
-          'coda in a score with a to-coda jump. The jump is not converted.',
-        element: 'sound',
-        attribute: 'tocoda',
-        context: { measure: 3, line: 1 },
-      },
-    ])
+    expect(error.detail).toBe(detail)
+    expect(error.path).toEqual(path)
+    expect(error.line).toBe(2)
   })
 
-  // MuseScore names every coda "coda". A to-coda jump goes on to a coda
-  // after it.
-  test('goes to the first coda after the jump among codas of one name', () => {
-    const warnings = new WarningCollector()
-    const { globalMeasures } = readValid(
-      score(named('coda') + NOTE, NOTE + toCoda('coda'), NOTE + DA_CAPO, named('coda') + NOTE),
-      warnings,
+  test('names the measure of the jump as the source numbers it', () => {
+    const source = score(NOTE, NOTE + DAL_SEGNO).replace(
+      '<measure number="2">',
+      '<measure number="7">',
     )
 
-    expect(globalMeasures.map((measure) => measure.coda !== undefined)).toEqual([
-      false,
-      false,
-      false,
-      true,
-    ])
-    expect(globalMeasures.map((measure) => measure.jump?.type)).toEqual([
-      undefined,
-      'toCoda',
-      'dcAlCoda',
-      undefined,
-    ])
+    expect(readFailure(source).path).toEqual(['score-partwise', 'measure 7'])
   })
 
-  test('compares the points of a coda and the jump in one measure', () => {
-    const codas = (...bodies: string[]) => {
-      const { globalMeasures } = readValid(score(...bodies), new WarningCollector())
-      return globalMeasures.map((measure) => measure.coda !== undefined)
-    }
+  test('keeps every segno and coda where no jump goes to them', () => {
+    const { mnx, warnings } = convertValid(
+      score(segno('a') + NOTE, segno('b') + NOTE, coda('c') + NOTE, coda('d') + NOTE + DA_CAPO),
+    )
 
     expect(
-      codas(
-        named('coda') + NOTE,
-        NOTE + toCoda('coda') + named('coda') + NOTE,
-        named('coda') + NOTE,
-      ),
-    ).toEqual([false, true, false])
-    expect(
-      codas(
-        named('coda') + NOTE,
-        named('coda') + NOTE + toCoda('coda') + NOTE,
-        named('coda') + NOTE,
-      ),
-    ).toEqual([false, false, true])
-  })
-
-  // A source that names no coda says nothing to tell its codas apart by.
-  test('goes to the first coda after the jump where no coda is named', () => {
-    const coda = CODA + NOTE
-    const { globalMeasures } = readValid(
-      score(coda, NOTE + toCoda('coda'), NOTE + DA_CAPO, coda, coda),
-      new WarningCollector(),
-    )
-
-    expect(globalMeasures.map((measure) => measure.coda !== undefined)).toEqual([
-      false,
-      false,
-      false,
-      true,
-      false,
+      mnx.global.measures.map((measure) => [
+        measure.segno !== undefined,
+        measure.coda !== undefined,
+      ]),
+    ).toEqual([
+      [true, false],
+      [true, false],
+      [false, true],
+      [false, true],
     ])
-    expect(globalMeasures[2]?.jump?.type).toBe('dcAlCoda')
+    expect(mnx.global.measures[3]?.jump?.type).toBe('dc')
+    expect(warnings.map((w) => w.code)).not.toContain('unrepresentable:element')
   })
 
-  test('goes to an unnamed coda where no coda has the name the jump gives', () => {
-    const { types } = jumps(named('a') + NOTE, NOTE + toCoda('b'), NOTE + DA_CAPO, CODA + NOTE)
+  test('keeps every Fine where no jump is al Fine', () => {
+    const { types } = jumps(NOTE + TO_CODA, NOTE + FINE, NOTE + FINE, NOTE + DA_CAPO, CODA + NOTE)
 
-    expect(types).toEqual([undefined, 'toCoda', 'dcAlCoda', undefined])
-  })
-
-  // Only the coda's own measure is compared by point.
-  test('passes over a coda in an earlier measure at a later point', () => {
-    const { globalMeasures } = readValid(
-      score(NOTE + NOTE + named('coda') + NOTE, toCoda('coda') + NOTE, named('coda') + NOTE),
-      new WarningCollector(),
-    )
-
-    expect(globalMeasures.map((measure) => measure.coda !== undefined)).toEqual([
-      false,
-      false,
-      true,
-    ])
-  })
-
-  test('drops and reports a jump with no coda of its name after it', () => {
-    const { types, warnings } = jumps(
-      named('coda') + NOTE,
-      named('coda') + NOTE,
-      NOTE + '\n' + toCoda('coda'),
-    )
-
-    expect(types).toEqual([undefined, undefined, undefined])
-    expect(warnings.filter((w) => w.code === 'unresolved:coda')).toEqual([
-      {
-        code: 'unresolved:coda',
-        message:
-          'This to-coda jump goes on to the coda "coda", but the score draws several ' +
-          'codas of that name and none after the jump. The jump is not converted.',
-        element: 'sound',
-        attribute: 'tocoda',
-        context: { measure: 3, line: 2 },
-      },
-    ])
-  })
-
-  test('matches a coda the barline names', () => {
-    const { types, warnings } = jumps(
-      NOTE + toCoda('b'),
-      NOTE + DA_CAPO,
-      '<barline location="left" coda="a"><coda/></barline>' + NOTE,
-      '<barline location="left" coda="b"><coda/></barline>' + NOTE,
-    )
-
-    expect(types).toEqual(['toCoda', 'dcAlCoda', undefined, undefined])
-    expect(destinations(warnings).map((w) => w.context.measure)).toEqual([3])
-  })
-
-  // Without the jump, the D.C. plays through to the end.
-  test('drops and reports a jump naming none of the codas', () => {
-    const { types, warnings } = jumps(
-      NOTE + '\n' + toCoda('c'),
-      NOTE + DA_CAPO,
-      named('a') + NOTE,
-      named('b') + NOTE,
-    )
-
-    expect(types).toEqual([undefined, 'dc', undefined, undefined])
-    expect(warnings.filter((w) => w.code === 'unresolved:coda')).toEqual([
-      {
-        code: 'unresolved:coda',
-        message:
-          'This to-coda jump goes on to the coda "c", which is none of the codas the ' +
-          'score draws. The jump is not converted.',
-        element: 'sound',
-        attribute: 'tocoda',
-        context: { measure: 1, line: 2 },
-      },
-    ])
-    expect(destinations(warnings)).toEqual([])
-  })
-
-  test('drops and reports a jump naming no coda', () => {
-    const { types, warnings } = jumps(
-      NOTE + '<sound tocoda=""/>',
-      named('a') + NOTE,
-      named('b') + NOTE,
-    )
-
-    expect(types).toEqual([undefined, undefined, undefined])
-    expect(warnings.filter((w) => w.code === 'unresolved:coda').map((w) => w.message)).toEqual([
-      'This to-coda jump names no coda, and the score draws several. The jump is not converted.',
-    ])
+    expect(types).toEqual(['toCoda', undefined, undefined, 'dcAlCoda', undefined])
   })
 
   test('goes to the only coda whatever it is named', () => {
-    const { types, warnings } = jumps(NOTE + toCoda('x'), NOTE + DA_CAPO, named('a') + NOTE)
+    const { types, warnings } = jumps(
+      NOTE + '<sound tocoda="x"/>',
+      NOTE + DA_CAPO,
+      coda('a') + NOTE,
+    )
 
     expect(types).toEqual(['toCoda', 'dcAlCoda', undefined])
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:attribute'])
   })
 
-  test('writes one coda the spec schema accepts', () => {
-    const { mnx } = convertValid(
-      score(NOTE + toCoda('b'), NOTE + DA_CAPO, named('a') + NOTE, named('b') + NOTE),
-    )
+  test('says nothing where a coda is drawn on a barline', () => {
+    const { warnings } = jumps(NOTE + TO_CODA, '<barline location="left"><coda/></barline>' + NOTE)
 
-    expect(mnx.global.measures.map((measure) => measure.coda !== undefined)).toEqual([
-      false,
-      false,
-      false,
-      true,
-    ])
-  })
-})
-
-// MNX states an al Fine jump only in a score with one Fine. The Fine most al
-// Fine jumps stop at is kept, as for a segno.
-describe('an al Fine jump in a score that has several Fines', () => {
-  const destinations = (warnings: readonly ConversionWarning[]) =>
-    warnings.filter((w) => w.code === 'unrepresentable:jump-destination')
-
-  test('keeps the Fine most jumps stop at', () => {
-    const warnings = new WarningCollector()
-    const { globalMeasures } = readValid(
-      score(
-        NOTE + FINE,
-        NOTE + '\n' + DA_CAPO,
-        SEGNO + NOTE + '\n' + FINE,
-        NOTE + DAL_SEGNO,
-        NOTE + DAL_SEGNO,
-      ),
-      warnings,
-    )
-
-    expect(globalMeasures.map((measure) => measure.fine !== undefined)).toEqual([
-      false,
-      false,
-      true,
-      false,
-      false,
-    ])
-    expect(globalMeasures.map((measure) => measure.jump?.type)).toEqual([
-      undefined,
-      undefined,
-      undefined,
-      'dsAlFine',
-      'dsAlFine',
-    ])
-    expect(destinations(warnings.list())).toEqual([
-      {
-        code: 'unrepresentable:jump-destination',
-        message:
-          'The score has more than one Fine and an al Fine jump, and MNX states one Fine ' +
-          'in such a score. The Fine most jumps stop at is kept, and this one is not ' +
-          'converted.',
-        element: 'sound',
-        attribute: 'fine',
-        context: { measure: 1, line: 1 },
-      },
-      {
-        code: 'unrepresentable:jump-destination',
-        message:
-          'This da capo jump stops at a Fine other than the one kept, and MNX states one ' +
-          'Fine in a score with an al Fine jump. The jump is not converted.',
-        element: 'sound',
-        attribute: 'dacapo',
-        context: { measure: 2, line: 2 },
-      },
-    ])
-  })
-
-  // Keeping segno a, which as many jumps return to as b, would lose its D.S.
-  // to the Fine the two D.C. jumps stop at, and the D.S. to b with it.
-  test('keeps the segno whose jumps survive the Fine kept', () => {
-    const named = (name: string) =>
-      `<direction><direction-type><segno/></direction-type><sound segno="${name}"/></direction>`
-    const warnings = new WarningCollector()
-    const { globalMeasures } = readValid(
-      score(
-        NOTE + FINE,
-        NOTE + DA_CAPO,
-        NOTE + DA_CAPO,
-        named('a') + NOTE,
-        NOTE + FINE,
-        NOTE + '<sound dalsegno="a"/>',
-        named('b') + NOTE,
-        NOTE + '<sound dalsegno="b"/>',
-      ),
-      warnings,
-    )
-
-    expect(globalMeasures.map((measure) => measure.jump?.type)).toEqual([
-      undefined,
-      'dcAlFine',
-      'dcAlFine',
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      'segno',
-    ])
-    expect(globalMeasures.map((measure) => measure.segno !== undefined)).toEqual([
-      false,
-      false,
-      false,
-      false,
-      false,
-      false,
-      true,
-      false,
-    ])
-    expect(destinations(warnings.list()).map((w) => [w.context.measure, w.attribute])).toEqual([
-      [4, undefined],
-      [6, 'dalsegno'],
-      [5, 'fine'],
-    ])
-  })
-
-  // The segno kept is settled after the coda, but the source reads it first.
-  test('reports the segno not kept before the coda not kept', () => {
-    const { warnings } = jumps(
-      SEGNO + NOTE + TO_CODA,
-      SEGNO + NOTE,
-      NOTE + '<sound dalsegno=""/>',
-      CODA + NOTE,
-      CODA + NOTE,
-    )
-
-    expect(destinations(warnings).map((w) => w.element)).toEqual(['segno', 'coda'])
-  })
-
-  // Segno a keeps its two D.S. jumps and their Fine, segno b its one D.S.
-  // and the D.C.'s Fine. As many kept either way keeps a, which more return to.
-  test('keeps the segno most jumps return to where its al Fine jumps keep their Fine', () => {
-    const named = (name: string) =>
-      `<direction><direction-type><segno/></direction-type><sound segno="${name}"/></direction>`
-    const { types } = jumps(
-      NOTE + FINE,
-      NOTE + DA_CAPO,
-      named('a') + NOTE,
-      NOTE + FINE,
-      NOTE + '<sound dalsegno="a"/>',
-      NOTE + '<sound dalsegno="a"/>',
-      named('b') + NOTE,
-      NOTE + '<sound dalsegno="b"/>',
-    )
-
-    expect(types).toEqual([
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      'dsAlFine',
-      'dsAlFine',
-      undefined,
-      undefined,
-    ])
-  })
-
-  test('keeps every Fine where no jump is al Fine', () => {
-    const { types, warnings } = jumps(
-      NOTE + TO_CODA,
-      NOTE + FINE,
-      NOTE + FINE,
-      NOTE + DA_CAPO,
-      CODA + NOTE,
-    )
-
-    expect(types).toEqual(['toCoda', undefined, undefined, 'dcAlCoda', undefined])
-    expect(destinations(warnings)).toEqual([])
-  })
-
-  test('drops a Fine no jump stops at', () => {
-    const warnings = new WarningCollector()
-    const { globalMeasures } = readValid(score(NOTE + FINE, NOTE + DA_CAPO, NOTE + FINE), warnings)
-
-    expect(globalMeasures.map((measure) => measure.fine !== undefined)).toEqual([
-      true,
-      false,
-      false,
-    ])
-    expect(destinations(warnings.list()).map((w) => w.context.measure)).toEqual([3])
-  })
-
-  test('writes one Fine the spec schema accepts', () => {
-    const { mnx } = convertValid(score(NOTE + FINE, NOTE + DA_CAPO, NOTE + FINE))
-
-    expect(mnx.global.measures.map((measure) => measure.fine !== undefined)).toEqual([
-      true,
-      false,
-      false,
-    ])
-    expect(mnx.global.measures[1]?.jump?.type).toBe('dcAlFine')
+    expect(warnings).toEqual([])
   })
 })
 
@@ -1029,129 +419,19 @@ describe('a Fine and a to-coda jump in one score', () => {
   })
 })
 
-describe('a to-coda jump', () => {
-  // The jump says where it goes only by the coda the score draws, and MNX
-  // states a to-coda jump only in a score with one coda. Without the jump, the
-  // D.C. plays through to the end.
-  test('drops and reports a to-coda jump in a score that draws no coda', () => {
-    const { types, warnings } = jumps(NOTE + '\n' + TO_CODA, NOTE + DA_CAPO)
-
-    expect(types).toEqual([undefined, 'dc'])
-    expect(warnings).toEqual([
-      {
-        code: 'unresolved:coda',
-        message:
-          'This to-coda jump goes on to a coda, but the score draws none. The jump is ' +
-          'not converted.',
-        element: 'sound',
-        attribute: 'tocoda',
-        context: { measure: 1, line: 2 },
-      },
-    ])
-  })
-
-  test('leaves a D.S. that meets only a dropped to-coda jump al Fine', () => {
-    const { types } = jumps(SEGNO + NOTE + TO_CODA, NOTE + FINE, NOTE + DAL_SEGNO)
-
-    expect(types).toEqual([undefined, undefined, 'dsAlFine'])
-  })
-
-  test('writes no to-coda jump where the score draws no coda', () => {
-    const { mnx } = convertValid(score(NOTE + TO_CODA, NOTE + DA_CAPO))
-
-    expect(mnx.global.measures.map((measure) => measure.jump?.type)).toEqual([undefined, 'dc'])
-  })
-
-  test('says nothing where a coda is drawn on a barline', () => {
-    const { warnings } = jumps(NOTE + TO_CODA, '<barline location="left"><coda/></barline>' + NOTE)
-
-    expect(warnings).toEqual([])
-  })
-})
-
-// Two marks of one kind at one point are one mark. A mark naming none says
-// nothing about the name, so the name the other gives is kept for the jumps.
-describe('two marks at one point that only one names', () => {
-  const namedSegno = (name: string) =>
-    `<direction><direction-type><segno/></direction-type><sound segno="${name}"/></direction>`
-  const namedCoda = (name: string) =>
-    `<direction><direction-type><coda/></direction-type><sound coda="${name}"/></direction>`
-  const elementLosses = (warnings: readonly ConversionWarning[]) =>
-    warnings.filter((w) => w.code === 'unrepresentable:element')
-
-  test('keeps the name of a segno that the second of two at one point gives', () => {
-    const { types, warnings } = jumps(
-      SEGNO + namedSegno('a') + NOTE,
-      namedSegno('b') + NOTE,
-      NOTE + '<sound dalsegno="a"/>',
-    )
-
-    expect(types).toEqual([undefined, undefined, 'segno'])
-    expect(elementLosses(warnings)).toEqual([])
-  })
-
-  test('keeps the name of a coda that the second of two at one point gives', () => {
-    const { types, warnings } = jumps(
-      NOTE + '<sound tocoda="a"/>',
-      NOTE + DA_CAPO,
-      CODA + NOTE,
-      CODA + namedCoda('a') + NOTE,
-    )
-
-    expect(types).toEqual(['toCoda', 'dcAlCoda', undefined, undefined])
-    expect(
-      warnings
-        .filter((w) => w.code === 'unrepresentable:jump-destination')
-        .map((w) => w.context.measure),
-    ).toEqual([3])
-    expect(elementLosses(warnings)).toEqual([])
-  })
-
-  test('keeps the target of a jump that the second of two at one point names', () => {
-    const { types, warnings } = jumps(
-      namedSegno('a') + NOTE,
-      namedSegno('b') + NOTE,
-      NOTE + '<sound dalsegno=""/><sound dalsegno="b"/>',
-    )
-
-    expect(types).toEqual([undefined, undefined, 'segno'])
-    expect(elementLosses(warnings)).toEqual([])
-  })
-
-  // An empty name names nothing, as an empty jump target does.
-  test.each([
-    ['a direction', namedSegno('')],
-    ['a barline', '<barline location="left" segno=""><segno/></barline>'],
-  ])('takes an empty segno name on %s as no name', (_, empty) => {
-    const { types, warnings } = jumps(
-      empty + namedSegno('a') + NOTE,
-      namedSegno('b') + NOTE,
-      NOTE + '<sound dalsegno="a"/>',
-    )
-
-    expect(types).toEqual([undefined, undefined, 'segno'])
-    expect(elementLosses(warnings)).toEqual([])
-  })
-
-  test.each([
-    ['a direction', namedCoda('')],
-    ['a barline', '<barline location="left" coda=""><coda/></barline>'],
-  ])('takes an empty coda name on %s as no name', (_, empty) => {
-    const { types, warnings } = jumps(
-      NOTE + '<sound tocoda="a"/>',
-      NOTE + DA_CAPO,
-      namedCoda('b') + NOTE,
-      empty + namedCoda('a') + NOTE,
-    )
-
-    expect(types).toEqual(['toCoda', 'dcAlCoda', undefined, undefined])
-    expect(elementLosses(warnings)).toEqual([])
-  })
-
+// Two marks of one kind at one point are one mark, unless they give
+// different names.
+describe('two marks at one point', () => {
   test('reports a second segno at one point that gives another name', () => {
+    const namedSegno = (name: string) =>
+      `<direction><direction-type><segno/></direction-type><sound segno="${name}"/></direction>`
     const { warnings } = jumps(namedSegno('a') + '\n' + namedSegno('b') + NOTE)
 
-    expect(elementLosses(warnings).map((w) => [w.element, w.context.line])).toEqual([['segno', 2]])
+    expect(
+      warnings
+        .filter((w) => w.code === 'unrepresentable:element')
+        .map((w) => [w.element, w.context.line]),
+    ).toEqual([['segno', 2]])
   })
 })
 

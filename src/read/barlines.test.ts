@@ -621,28 +621,6 @@ describe('a segno on the barline', () => {
     expect(warnings).toEqual([])
   })
 
-  // The segno attribute on <barline> names the sign for playback, the same
-  // way <sound segno> names one written as a direction. The name is never
-  // written; it only matches a jump to the sign it returns to. Here it picks
-  // the sign before the Fine, so the jump is a D.S. al Fine.
-  test('names the sign from the segno attribute on the barline', () => {
-    const { globals, warnings } = read(
-      `<barline location="left" segno="verse"><segno/></barline>` + NOTE,
-      NOTE + '<sound fine="yes"/>',
-      `<barline location="left" segno="coda"><segno/></barline>` + NOTE,
-      NOTE + '<sound dalsegno="verse"/>',
-    )
-
-    expect(globals[0]?.segno).toEqual({ location: { num: 0, den: 1 } })
-    expect(globals[3]?.jump?.type).toBe('dsAlFine')
-    // MNX states one segno in a score with a dal segno jump.
-    expect(warnings.map((w) => [w.code, w.context.measure])).toEqual([
-      ['unrepresentable:attribute', 1],
-      ['unrepresentable:attribute', 3],
-      ['unrepresentable:jump-destination', 3],
-    ])
-  })
-
   // MNX's segno has no label.
   test('reports the name the barline gives the segno as a format limit', () => {
     const { globals, warnings } = read(

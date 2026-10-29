@@ -1161,7 +1161,6 @@ const FORMAT_LIMITS: Readonly<Record<FormatLimit, () => boolean>> = {
     GLOBAL_MARKS.every((mark) => has('measure-global', mark) && !has('part-measure', mark)),
   // A jump names no sign to go to, only the kind its type implies, and the
   // MNX prose states one such sign in a document with the jump.
-  'unrepresentable:jump-destination': () => propertiesOf('jump').join() === 'location,type',
   'unrepresentable:undrawn-destination': () =>
     propertiesOf('segno').join() === 'color,glyph,location' &&
     propertiesOf('coda').join() === 'color,glyph,location',

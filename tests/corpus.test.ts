@@ -144,6 +144,7 @@ test('refuses only the songs it is known to refuse', () => {
     'paladilhe-les-roses-d-ispahan: This measure lasts 9/8 of a whole note, past the 3/4 its time signature allows. MNX treats a measure that runs past its time signature as an error.',
     'parry-1-the-poet-s-song: This measure lasts a dotted whole, past the 4/4 its time signature allows. MNX treats a measure that runs past its time signature as an error.',
     'strauss-3-heimliche-aufforderung: This measure lasts a dotted half, past the 2/4 its time signature allows. MNX treats a measure that runs past its time signature as an error.',
+    'thys-petit-negre: The score has a to-coda jump and draws 3 codas. MNX requires exactly one coda in a score with a to-coda jump.',
     'viardot-les-attraits-vwv-1852: This measure lasts a whole, past the 3/4 its time signature allows. MNX treats a measure that runs past its time signature as an error.',
     'warlock-1-roister-doister: This measure lasts a double-dotted half, past the 6/8 its time signature allows. MNX treats a measure that runs past its time signature as an error.',
   ])
