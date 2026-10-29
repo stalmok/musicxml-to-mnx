@@ -1869,9 +1869,9 @@ describe('a measure rest with no duration', () => {
     expect(warnings.map((w) => [w.code, w.message])).toEqual([
       [
         'unrepresentable:rest-value',
-        'A rest that fills the measure is drawn as a whole, and stays an event for what it ' +
-          'carries. An MNX event is drawn as the value it lasts, so the rest is converted ' +
-          'as a dotted half, and the whole is not.',
+        'A rest is drawn as a whole but lasts a dotted half, and stays an event. An MNX ' +
+          'event is drawn as the value it lasts, so the rest is converted as a dotted half, ' +
+          'and the value it is drawn as is not.',
       ],
     ])
   })
@@ -2364,9 +2364,53 @@ describe("a rest marked as the measure's standing beside other notes", () => {
     expect(warnings).toEqual([])
   })
 
-  // A voice running past its time signature is how the source bars it, and
-  // both events carry over as written, so nothing is lost and nothing is
-  // reported. A plain whole note and a quarter in 4/4 convert the same way.
+  // Early-music editions pad a voice with a marked whole rest lasting less
+  // than the measure. An MNX event is drawn as the value it lasts.
+  test('writes a marked rest lasting less than the measure as the value it lasts', () => {
+    const { mnx, warnings } = convertValid(
+      inMeasure(
+        '<attributes><time><beats>4</beats><beat-type>4</beat-type></time></attributes>' +
+          marked.replace('<duration>16</duration>', '<duration>8</duration>') +
+          note(8, 'half'),
+      ),
+    )
+
+    expect(mnx.parts[0]?.measures[0]?.sequences[0]?.content).toMatchObject([
+      { duration: { base: 'half' }, rest: {} },
+      { duration: { base: 'half' } },
+    ])
+    expect(warnings.map((w) => [w.code, w.message])).toEqual([
+      [
+        'unrepresentable:rest-value',
+        'A rest is drawn as a whole but lasts a half, and stays an event. An MNX event is ' +
+          'drawn as the value it lasts, so the rest is converted as a half, and the value it ' +
+          'is drawn as is not.',
+      ],
+    ])
+  })
+
+  // Inside a tuplet the <duration> is the time the rest is played in, which
+  // the ratio already scales its written value to.
+  test('writes a marked rest inside a tuplet as it writes an unmarked one', () => {
+    const duplet = (step: string, bracket: string, rest = '') =>
+      `<note>${rest || `<pitch><step>${step}</step><octave>4</octave></pitch>`}` +
+      '<duration>3</duration><voice>1</voice><type>eighth</type>' +
+      '<time-modification><actual-notes>2</actual-notes><normal-notes>3</normal-notes>' +
+      `</time-modification><notations><tuplet type="${bracket}"/></notations></note>`
+    const source = (rest: string) =>
+      inMeasure(
+        '<attributes><time><beats>6</beats><beat-type>8</beat-type></time></attributes>' +
+          duplet('C', 'start') +
+          duplet('', 'stop', rest) +
+          note(6, 'quarter').replace('</type>', '</type><dot/>'),
+      )
+    const marked = convertValid(source('<rest measure="yes"/>'))
+    const plain = convertValid(source('<rest/>'))
+
+    expect(marked.mnx).toEqual(plain.mnx)
+    expect(marked.warnings).toEqual(plain.warnings)
+  })
+
   test('rests the measure where the rest is the whole of the voice', () => {
     const { mnx, warnings } = convertValid(inMeasure(marked))
     const sequence = mnx.parts[0]?.measures[0]?.sequences[0]

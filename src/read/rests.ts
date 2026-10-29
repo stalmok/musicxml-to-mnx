@@ -376,17 +376,12 @@ export function reportRestEventValue(
   warnings.addAt(
     place,
     'unrepresentable:rest-value',
-    `A rest that fills the measure is drawn as ${describeValue(written)}, and stays an ` +
-      'event for what it carries. An MNX event is drawn as the value it lasts, so the rest ' +
-      `is converted as ${describeValue(value)}, and the ${unnamed(written)} is not.`,
+    `A rest is drawn as ${describeValue(written)} but lasts ${describeValue(value)}, and ` +
+      'stays an event. An MNX event is drawn as the value it lasts, so the rest is ' +
+      `converted as ${describeValue(value)}, and the value it is drawn as is not.`,
     context,
     element.element,
   )
-}
-
-/** A note value's name without its article, as in "the whole". */
-function unnamed(value: NoteValue): string {
-  return describeValue(value).replace(/^an? /, '')
 }
 
 /**

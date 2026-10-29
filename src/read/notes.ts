@@ -299,6 +299,10 @@ export function readNote(
   // Where the source states no <duration>, a rest filling the measure lasts
   // the measure.
   const lasts = duration ?? (fills ? measureLength(state) : undefined)
+  // A rest that fills the measure, or may, is written as the value it lasts.
+  // Inside a tuplet its <duration> is the time the ratio scales its written
+  // value to, so the written value stands, as for any other note.
+  const lasting = fills !== undefined || (candidate !== undefined && scale.by === undefined)
   if (fills) {
     reportRestEventValue(element, written, lasts, warnings, context, mismatchPlace)
   } else if (written && lasts && !candidate) {
@@ -306,7 +310,7 @@ export function readNote(
   }
 
   const value =
-    (fills || candidate ? restEventValue(written, lasts) : written) ??
+    (lasting ? restEventValue(written, lasts) : written) ??
     // A grace note carries no <duration> to measure a value from, so where it
     // states no <type> the beams over it are what say how it is drawn.
     (graceElement && duration === undefined
@@ -427,8 +431,9 @@ export function readNote(
   // id, which the sequence's rest does not have, so it stays an event.
   if (candidate && rest) {
     const { written: drawn, duration: lasts } = candidate
-    const reportValue = () =>
-      reportRestEventValue(element, drawn, lasts, warnings, context, mismatchPlace)
+    const reportValue = lasting
+      ? () => reportRestEventValue(element, drawn, lasts, warnings, context, mismatchPlace)
+      : () => reportDurationMismatch(element, drawn, lasts, scale, warnings, context, mismatchPlace)
     if (endsLine) reportValue()
     else voice.markMeasureRest(event, rest, drawn, { event: reportValue })
   }
