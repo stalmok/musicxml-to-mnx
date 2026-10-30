@@ -214,13 +214,13 @@ A converted file can still have warnings.
 
 | Corpus                                                                                        | Files  | Converted |
 | --------------------------------------------------------------------------------------------- | ------ | --------- |
-| [OpenScore Lieder](https://github.com/OpenScore/Lieder)                                       | 1,462  | 1,462     |
+| [OpenScore Lieder](https://github.com/OpenScore/Lieder)                                       | 1,462  | 1,429     |
 | [OpenScore String Quartets](https://github.com/OpenScore/StringQuartets), MuseScore 3 exports | 122    | 112       |
 | [Unofficial MusicXML Test Suite](https://github.com/cuthbertLab/musicxmlTestSuite)            | 150    | 144       |
 | [MusicXML example set](https://www.musicxml.com/music-in-musicxml/example-set/)               | 36     | 34        |
-| [PDMX](https://zenodo.org/records/15571083), random sample                                    | 20,000 | 19,985    |
-| [music21 bundled corpus](https://github.com/cuthbertLab/music21)                              | 654    | 646       |
-| [CPDL](https://www.cpdl.org), random sample                                                   | 2,000  | 1,985     |
+| [PDMX](https://zenodo.org/records/15571083), random sample                                    | 20,000 | 18,390    |
+| [music21 bundled corpus](https://github.com/cuthbertLab/music21)                              | 654    | 633       |
+| [CPDL](https://www.cpdl.org), random sample                                                   | 2,000  | 1,437     |
 
 The regular suite includes 600 vendored Lieder songs, one PDMX score and seven feature files.
 CI runs the vendored songs when the converter changes, and the full Lieder corpus weekly and on demand against its latest state.
