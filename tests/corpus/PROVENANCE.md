@@ -111,12 +111,12 @@ six hundred, all in classes already recorded.
 Four songs are pinned deliberately, because each has already caught a defect
 the rest of the suite missed:
 
-| File                                     | Work                          | What it caught                                                                                                                            |
-| ---------------------------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `brahms-wiegenlied`                      | Brahms, Op. 49 No. 4          | Grace notes taking time from the measure, which left two bars overfull.                                                                   |
-| `schumann-ich-stand-in-dunklen-traeumen` | Clara Schumann, Op. 13 No. 1  | A slur crossing between voices.                                                                                                           |
-| `schumann-im-wunderschoenen-monat-mai`   | Robert Schumann, Op. 48 No. 1 | Ties and slurs running between the pianist's two hands, which settled that spanner numbering is scoped to the part rather than the voice. |
-| `schubert-der-lindenbaum`                | Schubert, D. 911 No. 5        | Chord members inside tuplets, and notes carrying two `<notations>` blocks.                                                                |
+| File                                      | Work                          | What it caught                                                                                                                            |
+| ----------------------------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `brahms-4-wiegenlied`                     | Brahms, Op. 49 No. 4          | Grace notes taking time from the measure, which left two bars overfull.                                                                   |
+| `schumann-1-ich-stand-in-dunklen-traumen` | Clara Schumann, Op. 13 No. 1  | A slur crossing between voices.                                                                                                           |
+| `schumann-1-im-wunderschonen-monat-mai`   | Robert Schumann, Op. 48 No. 1 | Ties and slurs running between the pianist's two hands, which settled that spanner numbering is scoped to the part rather than the voice. |
+| `schubert-5-der-lindenbaum`               | Schubert, D. 911 No. 5        | Chord members inside tuplets, and notes carrying two `<notations>` blocks.                                                                |
 
 The feature files are kept as the `.xml` their suite publishes, uncompressed,
 so a diff shows each change. They come to sixty kilobytes together.
