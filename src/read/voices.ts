@@ -1212,8 +1212,15 @@ export class MeasureBuilder {
    * one there.
    */
   finish(
-    /** Where the beats line up, and the time signature alone, unset where none is stated. */
-    opening: Pick<MeasureExtent, 'anchor'> & { signature: Fraction | undefined },
+    /**
+     * Where the beats line up, the part's time signature alone, and the
+     * score's, which no measure may run past. Each is unset where none is
+     * stated.
+     */
+    opening: Pick<MeasureExtent, 'anchor'> & {
+      signature: Fraction | undefined
+      scoreSignature: Fraction | undefined
+    },
     settleSpanCovers: (
       length: Fraction,
       lastEventBefore: LastEventBefore,
@@ -1238,19 +1245,19 @@ export class MeasureBuilder {
     // A pickup measure's beats line up with the barline it ends on, and it
     // has no silence past its own end.
     const furthest = this.furthest()
-    const { anchor, signature } = opening
+    const { anchor, signature, scoreSignature } = opening
     const length =
       anchor === 'start' && signature && compareFractions(signature, furthest) > 0
         ? signature
         : furthest
     this.#settleFillingRests()
-    // A bracket takes in no silence past the time signature, since a voice
-    // that runs past it is refused.
-    this.#settleMeasure(
-      { anchor, length: anchor === 'start' && signature ? signature : furthest },
-      warnings,
-      context,
-    )
+    // A bracket takes in no silence past the score's time signature, since a
+    // measure that runs past it is refused.
+    const bound =
+      anchor === 'start' && scoreSignature && compareFractions(length, scoreSignature) > 0
+        ? scoreSignature
+        : length
+    this.#settleMeasure({ anchor, length: bound }, warnings, context)
     this.#settleCandidateRests()
 
     settleSpanCovers(

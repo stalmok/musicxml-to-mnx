@@ -331,8 +331,9 @@ export interface MeasureExtent {
   anchor: 'start' | 'end'
   /**
    * How far the measure runs, which bounds the silence a bracket may take:
-   * the time signature, or the part's cursor where none is stated. A pickup
-   * runs to its cursor alone, having no silence past its own end.
+   * the part's time signature, or its cursor where that runs further, up to
+   * the score's time signature. A pickup runs to its cursor alone, having no
+   * silence past its own end.
    */
   length: Fraction
 }
@@ -813,10 +814,7 @@ function silenceAfter(voice: VoiceTail, at: number): { time: Fraction; span: num
     if (item.kind === 'space') time = addFractions(time, item.duration)
     span += 1
   }
-  // A voice can run past its part's time signature and stay within the
-  // score's, which leaves it no tail.
-  const tail = subtractFractions(voice.measure.length, voice.end)
-  return { time: tail.num > 0 ? addFractions(time, tail) : time, span }
+  return { time: addFractions(time, subtractFractions(voice.measure.length, voice.end)), span }
 }
 
 /**

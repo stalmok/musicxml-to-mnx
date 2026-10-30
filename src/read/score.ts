@@ -864,10 +864,12 @@ function readMeasure(
   // stated after its start is the next measure's. The implicit attribute is
   // still a loss as a statement about the numbering, which the sweep above
   // reports.
+  const scoreSignature = scoreTime && fraction(scoreTime.count, scoreTime.unit)
   const finished = builder.finish(
     {
       anchor: peekAttribute(element, 'implicit') === 'yes' ? 'end' : 'start',
-      signature: measureLength(state) ?? (scoreTime && fraction(scoreTime.count, scoreTime.unit)),
+      signature: measureLength(state) ?? scoreSignature,
+      scoreSignature,
     },
     (length, lastEventBefore, graceNotesAt, lastEvents) => {
       state.spanners.settleSpanCovers(index, length, lastEventBefore, graceNotesAt, lastEvents)

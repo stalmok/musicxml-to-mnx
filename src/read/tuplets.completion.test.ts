@@ -365,36 +365,66 @@ describe('a bracket the silence after it completes', () => {
     expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tuplet'])
   })
 
+  /** The divisions and a time signature of `beats` eighths. */
+  const eighths = (beats: number) =>
+    TIMED.replace('<beats>2</beats><beat-type>4', `<beats>${String(beats)}</beats><beat-type>8`)
+
+  /** The second part's bracket, its first measure's content, and the codes reported. */
+  function secondPart(source: string) {
+    const warnings = new WarningCollector()
+    const score = readValid(source, warnings)
+    const content = score.parts[1]?.measures[0]?.sequences[0]?.content
+    return { content, codes: warnings.list().map((w) => w.code) }
+  }
+
   // The second part states 3/8, but the score's time signature is the first
   // part's 2/4, so its voice runs past 3/8 and stays within the measure. The
-  // silence the source writes after the bracket is still the bracket's.
-  test("takes in the silence written after it where the voice runs past its part's time signature", () => {
-    const threeEight = TIMED.replace('<beats>2</beats><beat-type>4', '<beats>3</beats><beat-type>8')
-    const warnings = new WarningCollector()
-    const score = readValid(
+  // silence after the bracket, up to where the part's cursor runs, is still
+  // the bracket's.
+  test.each([
+    ['', ['event', 'event', 'tuplet']],
+    [grace, ['event', 'event', 'tuplet', 'grace']],
+  ])(
+    "takes in the silence after it where the voice runs past its part's time signature %#",
+    (after, kinds) => {
+      const { content, codes } = secondPart(
+        twoParts(
+          TIMED + plain('D', 24, 'half'),
+          eighths(3) +
+            plain('D', 12, 'quarter') +
+            plain('E', 6, 'eighth') +
+            shortEighth +
+            '<forward><duration>2</duration></forward>' +
+            after,
+        ),
+      )
+
+      expect(stated(content?.[2])).toEqual({
+        inner: { value: { base: '16th', dots: 0 }, multiple: 3 },
+        outer: { value: { base: '16th', dots: 0 }, multiple: 2 },
+        held: ['event', 'space'],
+      })
+      expect(content?.map((item) => item.kind)).toEqual(kinds)
+      expect(codes).toEqual(['inconsistent:tuplet', 'unrepresentable:cross-part-time'])
+    },
+  )
+
+  // The second part states 2/4, but the score's time signature is the first
+  // part's 3/8, and the silence past 3/8 is not the measure's.
+  test("takes in no silence past the score's time signature where the part states a longer one", () => {
+    const { content, codes } = secondPart(
       twoParts(
-        TIMED + plain('D', 24, 'half'),
-        threeEight +
-          plain('D', 12, 'quarter') +
-          plain('E', 6, 'eighth') +
-          shortEighth +
-          '<forward><duration>2</duration></forward>' +
-          grace,
+        eighths(3) + plain('D', 12, 'quarter') + plain('E', 6, 'eighth'),
+        TIMED + plain('D', 12, 'quarter') + shortEighth,
       ),
-      warnings,
     )
 
-    const content = score.parts[1]?.measures[0]?.sequences[0]?.content
-    expect(stated(content?.[2])).toEqual({
+    expect(stated(content?.[1])).toEqual({
       inner: { value: { base: '16th', dots: 0 }, multiple: 3 },
       outer: { value: { base: '16th', dots: 0 }, multiple: 2 },
       held: ['event', 'space'],
     })
-    expect(content?.map((item) => item.kind)).toEqual(['event', 'event', 'tuplet', 'grace'])
-    expect(warnings.list().map((w) => w.code)).toEqual([
-      'inconsistent:tuplet',
-      'unrepresentable:cross-part-time',
-    ])
+    expect(codes).toEqual(['inconsistent:tuplet', 'unrepresentable:cross-part-time'])
   })
 
   // A bracket holding three eighths in the time of two states what the source
