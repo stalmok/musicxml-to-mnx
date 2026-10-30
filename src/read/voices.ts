@@ -1244,7 +1244,13 @@ export class MeasureBuilder {
         ? signature
         : furthest
     this.#settleFillingRests()
-    this.#settleMeasure({ anchor, length }, warnings, context)
+    // A bracket takes in no silence past the time signature, since a voice
+    // that runs past it is refused.
+    this.#settleMeasure(
+      { anchor, length: anchor === 'start' && signature ? signature : furthest },
+      warnings,
+      context,
+    )
     this.#settleCandidateRests()
 
     settleSpanCovers(

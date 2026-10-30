@@ -3,7 +3,7 @@
 
 import { describe, expect, test } from 'vitest'
 import { measures, TRIPLET } from '../../tests/support/tuplets.js'
-import { readFailure, readValid } from '../../tests/support/read.js'
+import { readValid } from '../../tests/support/read.js'
 import { convertValid } from '../../tests/support/convert.js'
 import { fraction } from '../fraction.js'
 import type { SequenceItem } from '../model/score.js'
@@ -346,20 +346,55 @@ describe('a bracket the silence after it completes', () => {
   })
 
   // A trailing <forward> past the time signature is how a source hangs a
-  // direction after the last note. The bracket takes in the silence out
-  // there, so the voice runs past the time signature.
-  test('refuses a bracket the silence past the time signature completes', () => {
-    const error = readFailure(
-      measures(
-        TIMED +
+  // direction after the last note. The silence out there is not the
+  // measure's, so the bracket takes in only what is left before the barline,
+  // in a narrower note value.
+  test('takes in no silence past the time signature', () => {
+    const { content, warnings } = timed(
+      plain('D', 12, 'quarter') +
+        plain('E', 6, 'eighth') +
+        shortEighth +
+        '<forward><duration>8</duration></forward>',
+    )
+
+    expect(stated(content?.[2])).toEqual({
+      inner: { value: { base: '16th', dots: 0 }, multiple: 3 },
+      outer: { value: { base: '16th', dots: 0 }, multiple: 2 },
+      held: ['event', 'space'],
+    })
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tuplet'])
+  })
+
+  // The second part states 3/8, but the score's time signature is the first
+  // part's 2/4, so its voice runs past 3/8 and stays within the measure. The
+  // silence the source writes after the bracket is still the bracket's.
+  test("takes in the silence written after it where the voice runs past its part's time signature", () => {
+    const threeEight = TIMED.replace('<beats>2</beats><beat-type>4', '<beats>3</beats><beat-type>8')
+    const warnings = new WarningCollector()
+    const score = readValid(
+      twoParts(
+        TIMED + plain('D', 24, 'half'),
+        threeEight +
           plain('D', 12, 'quarter') +
           plain('E', 6, 'eighth') +
           shortEighth +
-          '<forward><duration>8</duration></forward>',
+          '<forward><duration>2</duration></forward>' +
+          grace,
       ),
+      warnings,
     )
 
-    expect(error.detail).toContain('past the 2/4 its time signature allows')
+    const content = score.parts[1]?.measures[0]?.sequences[0]?.content
+    expect(stated(content?.[2])).toEqual({
+      inner: { value: { base: '16th', dots: 0 }, multiple: 3 },
+      outer: { value: { base: '16th', dots: 0 }, multiple: 2 },
+      held: ['event', 'space'],
+    })
+    expect(content?.map((item) => item.kind)).toEqual(['event', 'event', 'tuplet', 'grace'])
+    expect(warnings.list().map((w) => w.code)).toEqual([
+      'inconsistent:tuplet',
+      'unrepresentable:cross-part-time',
+    ])
   })
 
   // A bracket holding three eighths in the time of two states what the source
