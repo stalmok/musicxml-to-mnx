@@ -56,7 +56,8 @@ Moving to a newer spec snapshot is a release:
    or report it as a converter gap.
 6. Regenerate fixture goldens and review every diff. A changed golden is a
    changed wire format.
-7. Re-run the corpus gate and record any movement in the warning baseline.
+7. Run `pnpm test:corpus`, and record any movement in
+   `tests/corpus/warning-baseline.json`. Then run the full corpus gate.
 8. State the type changes in the version's
    [GitHub release](https://github.com/stalmok/musicxml-to-mnx/releases) notes. The package exports every type
    in `src/types/mnx.ts`, so a changed type is a breaking change.
