@@ -40,7 +40,9 @@ const SETTLED: Readonly<Record<'dacapo' | 'dalsegno', Record<ReplayEnd, JumpType
  * holds, so each jump is settled here once the whole score is known.
  *
  * MNX states a jump that goes to a segno, a coda or a Fine only in a score
- * with exactly one of it, so a score with none or several is refused.
+ * with exactly one of it, so a score with none or several is refused. Where
+ * the score draws no segno or coda but marks one only for playback, a jump to
+ * it is not converted, and is reported.
  */
 export function settleJumps(
   measures: readonly ReadGlobalMeasure[],
