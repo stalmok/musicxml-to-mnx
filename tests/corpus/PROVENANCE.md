@@ -104,9 +104,10 @@ composer in turn, the next songs not already vendored, ordered by their upstream
 path, one more per pass, until four hundred more convert. Eighty-six composers
 gained songs this way, at most six from any one.
 
-A song is skipped over where the converter refuses it: an empty metronome
-tempo, or a tuplet the source never bracketed. Ten were skipped over reaching
-six hundred, all in classes already recorded.
+A song was skipped over where the converter refused it at the time. The
+refusals then were an empty metronome tempo and a tuplet the source never
+bracketed, and the converter now converts both. Ten were skipped over reaching
+six hundred.
 
 Four songs are pinned deliberately, because each has already caught a defect
 the rest of the suite missed:
