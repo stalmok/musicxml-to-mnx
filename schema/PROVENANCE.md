@@ -43,9 +43,9 @@ Moving to a newer spec snapshot is a release:
    Each failure names the decision to make.
 3. Update `src/types/mnx.ts` to match any shape change the test reported. No
    other check finds a field the schema gained and the types lack.
-4. Run the same test again. Its fourth comparison is the model's MNX-spelled
-   enums in `src/model/score.ts` against the types, so it has nothing to report
-   until step 3 has moved the types. Carry each value the model states too into
+4. Run the same test again. It also compares the model's MNX-spelled enums in
+   `src/model/score.ts` with the types, so that comparison has nothing to
+   report until step 3 has moved the types. Carry each value the model states too into
    the model, or record the difference as deliberate. A whole enum MNX has
    gained is reported the same way: pair it with a model enum, or state why
    the model does not restate it.
