@@ -2189,16 +2189,20 @@ describe('a rest drawn shorter than the measure it fills', () => {
     expect(warnings).toEqual([])
   })
 
-  test('reports the drawn value where the rest is not the whole of its voice', () => {
-    const codes = keptAnEvent(
-      inThreeTwo(
-        rest() +
-          '<note><grace/><pitch><step>C</step><octave>4</octave></pitch><type>eighth</type></note>',
-      ),
-    )
+  const grace =
+    '<note><grace/><pitch><step>C</step><octave>4</octave></pitch><type>eighth</type></note>'
 
-    expect(codes).toEqual(['unrepresentable:rest-value'])
-  })
+  // A grace note takes none of the measure's time, so either side of the rest
+  // it stands on, the rest lasts the measure.
+  test.each([
+    ['after', rest() + grace],
+    ['before', grace + rest()],
+  ])(
+    'reports the drawn value where the rest is not the whole of its voice, a grace note %s',
+    (_, body) => {
+      expect(keptAnEvent(inThreeTwo(body))).toEqual(['unrepresentable:rest-value'])
+    },
+  )
 
   test('reports the drawn value where the rest stands, before what follows it', () => {
     const codes = keptAnEvent(
@@ -2210,6 +2214,34 @@ describe('a rest drawn shorter than the measure it fills', () => {
     )
 
     expect(codes).toEqual(['unrepresentable:rest-value', 'unsupported:element'])
+  })
+
+  // A rest written after the measure start lasts what is left of it at most,
+  // so the measure-long duration it states is the source's slip, and the
+  // value it is drawn as stands.
+  test.each([
+    [
+      'after a note',
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>8</duration>' +
+        '<type>half</type></note>' +
+        rest(),
+    ],
+    [
+      'where the cursor stands past the start',
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>24</duration>' +
+        '<voice>1</voice><type>whole</type><dot/></note>' +
+        '<backup><duration>20</duration></backup>' +
+        rest().replace('</note>', '<voice>2</voice></note>'),
+    ],
+  ])('keeps the drawn value of a rest written %s', (_, body) => {
+    const { mnx, warnings } = convert(inThreeTwo(body))
+    const sequences = mnx.parts[0]?.measures[0]?.sequences ?? []
+    const rests = sequences.flatMap((sequence) =>
+      sequence.content.flatMap((item) => ('rest' in item ? [item.duration] : [])),
+    )
+
+    expect(rests).toEqual([{ base: 'whole' }])
+    expect(warnings.map((w) => w.code)).toContain('inconsistent:duration')
   })
 
   // A grace note takes none of the measure's time, so a rest written as one

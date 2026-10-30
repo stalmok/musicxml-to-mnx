@@ -182,9 +182,10 @@ export function readRest(note: RestNote, state: PartState, builder: MeasureBuild
         // the measure's rest.
         !builder.restsTheMeasure(voice) &&
         // A rest the voice has already sounded past cannot be the measure's
-        // rest. Ruling it out here, not when the measure is settled, keeps its
-        // report where the rest stands.
-        builder.opensMeasure(voice)))
+        // rest. Grace notes before it take none of the measure's time. Ruling
+        // it out here, not when the measure is settled, keeps its report where
+        // the rest stands.
+        soundsFirst))
 
   if (fillsMeasure) {
     return {
