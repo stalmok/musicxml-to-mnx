@@ -185,7 +185,7 @@ Durations use exact fractions. The reader follows MusicXML's `<backup>` and
 Important limits include:
 
 - Free text directions, pedal marks, and unsupported ornaments produce warnings.
-- Chord symbols are not converted and produce `unsupported:` warnings.
+- Chord symbols and figured bass have no home in MNX. They produce `unrepresentable:` warnings.
 - Playback-only `<sound>` tempo is omitted with a warning unless a matching metronome mark already carries it.
 - A tie stated by `<tie>` with no `<tied>` on either note is not drawn in the source. It is omitted with a warning.
 - Transposition changes within a part and differing staff transpositions produce warnings.
