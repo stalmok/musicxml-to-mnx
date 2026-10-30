@@ -80,6 +80,7 @@ try {
 ```
 
 `path` contains document path segments. `line` is present when known.
+`document` is the `documentName` you passed, if any.
 `detail` contains the error message without its location.
 
 When conversion can continue, warnings report omitted notation and source
