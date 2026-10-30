@@ -45,10 +45,10 @@ Moving to a newer spec snapshot is a release:
    other check finds a field the schema gained and the types lack.
 4. Run the same test again. It also compares the model's MNX-spelled enums in
    `src/model/score.ts` with the types, so that comparison has nothing to
-   report until step 3 has moved the types. Carry each value the model states too into
-   the model, or record the difference as deliberate. A whole enum MNX has
-   gained is reported the same way: pair it with a model enum, or state why
-   the model does not restate it.
+   report until step 3 has moved the types. Where the model restates an MNX
+   enum, carry each new value into the model, or record the difference as
+   deliberate. A whole enum MNX has gained is reported the same way: pair it
+   with a model enum, or state why the model does not restate it.
 5. Move any entry the test reported out of `src/read/unrepresentable.ts` and
    into whatever now carries it. An element MNX can now hold is a gap in this
    converter, not a limit of the format. Treat an `unrepresentable:*` code
