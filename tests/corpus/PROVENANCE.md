@@ -1,7 +1,8 @@
 # Vendored corpus
 
 Six hundred Lieder songs, one score from PDMX and seven feature files. Every
-check in `tests/corpus.test.ts` runs over all of them.
+check in `tests/corpus.test.ts` runs over each file the converter does not
+refuse.
 
 Real music holds combinations that hand-written fixtures do not. Defects found
 this way include a grace note taking time it does not have, a chord member
@@ -129,13 +130,12 @@ up correctly. The defect is in the export, not the transcription. The
 converter reports these ties and slurs and does not guess. The warning
 baseline records how many.
 
-Every song converts. Songs the converter refuses were skipped when the corpus
-was chosen, and the corpus test fails if any song is
-refused.
-
-Some write a measure longer than its time signature, such as five quarters in
-a 3/4 bar. The converter keeps it as written, so the measure and direction
-checks compare against the source, not against the time signature.
+Songs the converter refused were skipped when the corpus was chosen. The
+converter now refuses seventeen of the others. Sixteen write a measure longer
+than its time signature, such as five quarters in a 3/4 bar, which MNX treats
+as an error. One draws three codas for one to-coda jump, where MNX requires
+exactly one. The corpus test lists each refused song with its reason, and
+fails when the list changes.
 
 Some write a note whose value disagrees with its duration, a dotted half
 lasting two beats. The converter carries the written value and reports it as
