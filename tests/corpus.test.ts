@@ -643,8 +643,7 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
 
   // A voice may stop before the barline, but it must not run past the end.
   //
-  // Measured against the source's own measure, not the time signature. One
-  // song here writes five quarters in a 3/4 bar, and the converter keeps them.
+  // Measured against the source's own measure, not the time signature.
   test('never writes a voice past the end of its measure', () => {
     // A note whose written value exceeds its duration keeps the written value
     // and is reported as inconsistent:duration. Its voice then sounds longer
@@ -1068,8 +1067,7 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   // legal MNX.
   test('joins every slur the source states within one voice', () => {
     // Skipped where a written value disagrees with its duration, as for the
-    // measure lengths above. Ten files are skipped here, and no other check
-    // covers their slurs.
+    // measure lengths above. No other check covers their slurs.
     if (warnings.some((warning) => warning.code === 'inconsistent:duration')) return
 
     const stated = sourceSlurSpans(parseXmlRoot(source))
