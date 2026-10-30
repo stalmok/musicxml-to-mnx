@@ -39,7 +39,7 @@ An explicit "to-mnx" before the files does the same thing, and keeps
 Options:
   -o, --out <dir>     write the .mnx files into <dir> instead of beside the input
       --validate      check every output against the MNX schema
-      --fail-on-loss  exit with code 3 if any conversion loses notation
+      --fail-on-loss  exit with code 3 if any conversion reports warnings
       --report <file> write the warnings from every file to <file> as JSON
   -h, --help          show this help
   -v, --version       show the version`
