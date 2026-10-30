@@ -2216,6 +2216,24 @@ describe('a rest drawn shorter than the measure it fills', () => {
     expect(codes).toEqual(['unrepresentable:rest-value', 'unsupported:element'])
   })
 
+  // Read as the whole it is drawn as, the rest would run past 3/4.
+  test('writes a whole rest lasting 3/4 after a grace note as the value it lasts', () => {
+    const { sequences, warnings } = convert(
+      inThreeTwo(grace + rest())
+        .replace(
+          '<beats>3</beats><beat-type>2</beat-type>',
+          '<beats>3</beats><beat-type>4</beat-type>',
+        )
+        .replace('<duration>24</duration>', '<duration>12</duration>'),
+    )
+
+    expect(sequences[0]?.content.map((item) => item.type ?? item.duration)).toEqual([
+      'grace',
+      { base: 'half', dots: 1 },
+    ])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:rest-value'])
+  })
+
   // A rest written after the measure start lasts what is left of it at most,
   // so the measure-long duration it states is the source's slip, and the
   // value it is drawn as stands.
