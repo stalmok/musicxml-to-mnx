@@ -427,6 +427,35 @@ describe('a bracket the silence after it completes', () => {
     expect(codes).toEqual(['inconsistent:tuplet', 'unrepresentable:cross-part-time'])
   })
 
+  // The half note states the <duration> of a whole, and its written value is
+  // kept, so the cursor runs past 3/4 while the voice is written within it.
+  // The silence the source writes after the bracket is still the bracket's.
+  test('takes in the silence written after it where the cursor runs past what is written', () => {
+    const triplet = (step: string, type: string) =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>2</duration>` +
+      '<type>eighth</type><time-modification><actual-notes>3</actual-notes>' +
+      `<normal-notes>2</normal-notes></time-modification>` +
+      `<notations><tuplet type="${type}"/></notations></note>`
+    const { content, warnings } = read(
+      measures(
+        '<attributes><divisions>6</divisions>' +
+          '<time><beats>3</beats><beat-type>4</beat-type></time></attributes>' +
+          plain('C', 24, 'half') +
+          triplet('E', 'start') +
+          triplet('F', 'stop') +
+          '<forward><duration>2</duration></forward>' +
+          grace,
+      ),
+    )
+
+    expect(stated(content?.[1])).toEqual({
+      inner: { value: { base: 'eighth', dots: 0 }, multiple: 3 },
+      outer: { value: { base: 'eighth', dots: 0 }, multiple: 2 },
+      held: ['event', 'event', 'space'],
+    })
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:duration'])
+  })
+
   // A bracket holding three eighths in the time of two states what the source
   // wrote and needs nothing invented. Stretching it back to the 6:4 the
   // source drew would draw it over silence the source did not.

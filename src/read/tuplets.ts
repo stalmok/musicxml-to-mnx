@@ -814,7 +814,10 @@ function silenceAfter(voice: VoiceTail, at: number): { time: Fraction; span: num
     if (item.kind === 'space') time = addFractions(time, item.duration)
     span += 1
   }
-  return { time: addFractions(time, subtractFractions(voice.measure.length, voice.end)), span }
+  // The cursor runs past what is written where a <duration> is longer than
+  // the written value kept, which leaves the voice no tail.
+  const tail = subtractFractions(voice.measure.length, voice.end)
+  return { time: tail.num > 0 ? addFractions(time, tail) : time, span }
 }
 
 /**
