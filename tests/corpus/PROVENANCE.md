@@ -131,10 +131,11 @@ converter reports these ties and slurs and does not guess. The warning
 baseline records how many.
 
 Songs the converter refused were skipped when the corpus was chosen. The
-converter now refuses seventeen of the others. Sixteen write a measure longer
-than its time signature, such as five quarters in a 3/4 bar, which MNX treats
-as an error. One draws three codas for one to-coda jump, where MNX requires
-exactly one. The corpus test lists each refused song with its reason, and
+converter now refuses seventeen of the others. Sixteen convert to a measure
+longer than its time signature, which MNX treats as an error. Fifteen write
+one, such as five quarters in a 3/4 bar. One writes a rest whose value is
+longer than its duration, and the converter keeps the value. One draws three
+codas for one to-coda jump, where MNX requires exactly one. The corpus test lists each refused song with its reason, and
 fails when the list changes.
 
 Some write a note whose value disagrees with its duration, a dotted half
