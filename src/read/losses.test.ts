@@ -44,8 +44,8 @@ describe('a note that joins the chord before it', () => {
         `<duration>4</duration><type>quarter</type>${body}</note>`,
     )
 
-  test('reports the words under it, which are not carried over', () => {
-    expect(lost(chord('<lyric number="1"><text>lost</text></lyric>'))).toEqual(['lyric'])
+  test('says nothing about the words under it, which the chord sings', () => {
+    expect(lost(chord('<lyric number="1"><text>sung</text></lyric>'))).toEqual([])
   })
 
   test('reports a slur starting on it, which is not carried over', () => {

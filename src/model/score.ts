@@ -300,8 +300,11 @@ export interface Event {
   readonly value: NoteValue
   /** Filled in by the spanner resolver, because a slur pairs across measures. */
   slurs: readonly Slur[]
-  /** What the event sings, by the verse line the source numbers it. */
-  readonly lyrics: ReadonlyMap<string, Lyric>
+  /**
+   * What the event sings, by the verse line the source numbers it. Each note
+   * of a chord adds the lines it sings.
+   */
+  lyrics: ReadonlyMap<string, Lyric>
   readonly stemDirection: 'up' | 'down' | undefined
   readonly markings: Markings
   readonly fermata: Fermata | undefined

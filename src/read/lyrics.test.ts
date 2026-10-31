@@ -689,3 +689,108 @@ describe('lyric extender lines', () => {
     expect(mnx.mnx.support?.useLyricExtenders).toBeUndefined()
   })
 })
+
+// A chord is one event, and MNX states lyrics on the event. Some exporters
+// write a chord's syllable on a note after the first, and a divisi sings two
+// syllables on one stem.
+describe('a lyric on a note of a chord', () => {
+  const member = (step: string, body = '') =>
+    `<note><chord/><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    `<duration>4</duration><type>quarter</type>${body}</note>`
+
+  test('states the syllable on the chord', () => {
+    const { events, warnings } = read(measure(note('C') + member('E', lyric('Are'))))
+
+    expect(events[0]?.lyrics).toEqual(new Map([['1', { text: 'Are', type: undefined }]]))
+    expect(warnings).toEqual([])
+  })
+
+  test('joins the verses its notes sing', () => {
+    const { events } = read(
+      measure(note('C', lyric('Are', 'single', '1')) + member('E', lyric('Am', 'single', '2'))),
+    )
+
+    expect(events[0]?.lyrics).toEqual(
+      new Map([
+        ['1', { text: 'Are', type: undefined }],
+        ['2', { text: 'Am', type: undefined }],
+      ]),
+    )
+  })
+
+  test('carries one and says nothing where two notes sing the same syllable', () => {
+    const { events, warnings } = read(
+      measure(note('C', lyric('same')) + member('E', lyric('same'))),
+    )
+
+    expect(events[0]?.lyrics).toEqual(new Map([['1', { text: 'same', type: undefined }]]))
+    expect(warnings).toEqual([])
+  })
+
+  test('carries the first and reports the second where two notes sing a line differently', () => {
+    const { events, warnings } = read(measure(note('C', lyric('is')) + member('E', lyric('tu'))))
+
+    expect(events[0]?.lyrics).toEqual(new Map([['1', { text: 'is', type: undefined }]]))
+    expect(warnings.map((w) => [w.code, w.element, w.message])).toEqual([
+      [
+        'unrepresentable:lyric-line',
+        'lyric',
+        'A chord sings line 1 twice, as "is" and as "tu", and MNX states one lyric per ' +
+          'line on an event. The first is the one converted.',
+      ],
+    ])
+  })
+
+  test('starts a melisma line from the syllable of a note of a chord', () => {
+    const { mnx, warnings } = convertValid(
+      measure(
+        note('C') +
+          member('E', '<lyric number="1"><text>la</text><extend type="start"/></lyric>') +
+          note('D', '<lyric number="1"><extend type="stop"/></lyric>'),
+      ),
+    )
+    const [first, second] = mnx.parts[0]?.measures[0]?.sequences[0]?.content ?? []
+
+    expect(first && 'lyrics' in first ? first.lyrics?.lines : undefined).toStrictEqual({
+      '1': { text: 'la', extender: { target: second && 'id' in second ? second.id : undefined } },
+    })
+    expect(warnings).toEqual([])
+  })
+
+  test('ends a melisma line at a chord whose second note stops it', () => {
+    const { mnx, warnings } = convertValid(
+      measure(
+        note('C', '<lyric number="1"><text>la</text><extend type="start"/></lyric>') +
+          note('D') +
+          member('F', '<lyric number="1"><extend type="stop"/></lyric>'),
+      ),
+    )
+    const [first, second] = mnx.parts[0]?.measures[0]?.sequences[0]?.content ?? []
+
+    expect(first && 'lyrics' in first ? first.lyrics?.lines : undefined).toStrictEqual({
+      '1': { text: 'la', extender: { target: second && 'id' in second ? second.id : undefined } },
+    })
+    expect(warnings).toEqual([])
+  })
+
+  // Sibelius leaves <voice> off a note of a chord, and the note is read in
+  // the chord's voice. So is the line its syllable starts.
+  test('keeps a line from a note that names no voice in the voice of its chord', () => {
+    const voiced = (step: string, body = '') =>
+      `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+      `<duration>4</duration><voice>1</voice><type>quarter</type>${body}</note>`
+    const { mnx, warnings } = convertValid(
+      measure(
+        voiced('C') +
+          member('E', '<lyric number="1"><text>la</text><extend type="start"/></lyric>') +
+          voiced('D', '<lyric number="1"><extend type="stop"/></lyric>'),
+      ),
+    )
+    const [first, second] = mnx.parts[0]?.measures[0]?.sequences[0]?.content ?? []
+
+    expect(first && 'lyrics' in first ? first.lyrics?.lines : undefined).toStrictEqual({
+      '1': { text: 'la', extender: { target: second && 'id' in second ? second.id : undefined } },
+    })
+    expect(warnings).toEqual([])
+  })
+})

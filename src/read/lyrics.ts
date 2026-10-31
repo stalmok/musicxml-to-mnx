@@ -45,7 +45,8 @@ const EXTEND_TYPES: ReadonlySet<string> = new Set(['start', 'stop', 'continue'])
 /**
  * The syllables under a note, by the verse line each is sung on, and whether
  * a melisma line ends at the note's event. `event` is the id of that event,
- * and `voice` the voice it is in.
+ * and `voice` the voice it is in. A note of a chord adds its syllables to
+ * those the chord's notes before it sing.
  */
 export function readLyrics(
   element: ElementReader,
@@ -54,8 +55,9 @@ export function readLyrics(
   open: OpenExtenders,
   warnings: WarningCollector,
   context: ReportContext,
+  chord?: ReadonlyMap<string, Lyric>,
 ): { lyrics: Map<string, Lyric>; endsLine: boolean } {
-  const lyrics = new Map<string, Lyric>()
+  const lyrics = new Map(chord)
   let endsLine = false
   for (const lyric of element.blocks('lyric')) {
     const line = attribute(lyric.element, 'number') ?? '1'
@@ -102,7 +104,7 @@ export function readLyrics(
     }
     warnings.add(
       'unrepresentable:lyric-line',
-      `A note sings line ${verse.line} twice, as "${stated.text}" and as "${verse.lyric.text}", ` +
+      `${chord ? 'A chord' : 'A note'} sings line ${verse.line} twice, as "${stated.text}" and as "${verse.lyric.text}", ` +
         'and MNX states one lyric per line on an event. The first is the one converted.',
       context,
       lyric.element,

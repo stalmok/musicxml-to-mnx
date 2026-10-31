@@ -599,6 +599,17 @@ function readChordMember(
     placed = builder.addChordKitNote(chord, chordNote, chordDurationOrNone, path, element.line)
     readArpeggio(notations, placed, builder.arpeggios, undefined, () => pitchHeights(state))
   }
+  // MNX states lyrics on the event, so a note of a chord sings on the chord's.
+  const { event } = chord.last
+  event.lyrics = readLyrics(
+    element,
+    chord.voice.name,
+    event.id,
+    state.lyricExtenders,
+    warnings,
+    context,
+    event.lyrics,
+  ).lyrics
   // Exporters write a chord's marks, fermata, tremolo and tuplet bracket on
   // every note of it. What restates the chord's own is passed over: a
   // tuplet stop read again would close a bracket nothing opened.
