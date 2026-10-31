@@ -824,6 +824,53 @@ test('a syllable on each of a voice two lines is read on the note that sings it'
   expect(lyricPlaces(mnx).sort()).toEqual(sourceLyricPlaces(parseXmlRoot(source)).sort())
 })
 
+// The cursor moves by each <duration>, and a voice places its next note after
+// the written value of the one before.
+describe('a syllable after a note whose duration differs from its written value', () => {
+  const note = (step: string, voice: number, duration: number, text?: string): string =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    `<duration>${String(duration)}</duration><voice>${String(voice)}</voice><type>quarter</type>` +
+    (text === undefined
+      ? ''
+      : `<lyric number="1"><syllabic>single</syllabic><text>${text}</text></lyric>`) +
+    '</note>'
+  const backup = (duration: number) => `<backup><duration>${String(duration)}</duration></backup>`
+  const source = (notes: string) => `<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.0">
+  <part-list>
+    <score-part id="P1"><part-name>Music</part-name></score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>1</divisions>
+        <time><beats>2</beats><beat-type>4</beat-type></time>
+        <clef><sign>G</sign><line>2</line></clef>
+      </attributes>
+      ${notes}
+    </measure>
+  </part>
+</score-partwise>
+`
+
+  test.each([
+    ['in the same voice', note('C', 1, 2, 'la') + note('D', 1, 1, 'lo')],
+    [
+      'in a voice after a <backup> past another voice',
+      note('C', 1, 1, 'la') + backup(1) + note('A', 2, 2) + backup(1) + note('D', 1, 1, 'lo'),
+    ],
+  ])('is read where the converter sings it, %s', (_, notes) => {
+    const xml = source(notes)
+    const { mnx } = convertValid(xml)
+
+    expect(lyricPlaces(mnx).sort()).toEqual([
+      'part 1 measure 1 at 0.000000000 line 1: la',
+      'part 1 measure 1 at 0.250000000 line 1: lo',
+    ])
+    expect(sourceLyricPlaces(parseXmlRoot(xml)).sort()).toEqual(lyricPlaces(mnx).sort())
+  })
+})
+
 // MNX advances the sequence cursor by a tuplet's outer and requires its
 // content to fill inner. A tuplet that holds less than its ratio counts still
 // takes its whole outer, so the check measures it that way. Scaling the

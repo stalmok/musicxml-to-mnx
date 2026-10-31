@@ -997,7 +997,10 @@ function drawnLength(note: XmlElement): number | undefined {
 /**
  * Every lyric syllable in the source, as the place it is sung, the verse
  * line it belongs to and its text. Follows the cursor as sourceSlurSpans and
- * sourceMeasureLengths do.
+ * sourceMeasureLengths do, by each <duration>. A note is placed after the
+ * written value of the one before it in its line of the voice, plus any time
+ * the cursor passed over since that one ended. A note the cursor reaches
+ * before its voice's line has ended starts another line, at the cursor.
  *
  * A syllable stating <extend> other than a stop draws a melisma line. The
  * line runs to the last later note of its voice whose lyric for that verse is
@@ -1022,6 +1025,13 @@ export function sourceLyricPlaces(root: XmlElement): string[] {
         .filter((c) => c.name === 'measure')
         .forEach((measure, measureIndex) => {
           let position = 0
+          // Each line of each voice: where the cursor stood when its last
+          // note ended, and where that note ends in the line's written values.
+          const sequences = new Map<
+            string,
+            { lines: { end: number; drawn: number }[]; active: number }
+          >()
+          let sequence = { end: 0, drawn: 0 }
           // A chord is one event: its notes sound where its first one does,
           // and sing one text per line between them.
           let at = ''
@@ -1052,7 +1062,18 @@ export function sourceLyricPlaces(root: XmlElement): string[] {
             // A chord note sings in the voice of the note it joins.
             if (!isChord) {
               voice = item.children.find((c) => c.name === 'voice')?.rawText.trim() ?? ''
-              at = place(partIndex, measureIndex, position)
+              // A <backup> past the measure start writes at the start.
+              position = Math.max(position, 0)
+              // The line the voice wrote last while it is free, then the
+              // first free one, as the reader takes them.
+              const voiceLines = sequences.get(voice) ?? { lines: [], active: 0 }
+              sequences.set(voice, voiceLines)
+              const { lines, active } = voiceLines
+              const free = (line: { end: number }) => position > line.end - 1e-9
+              const taken = lines[active] && free(lines[active]) ? active : lines.findIndex(free)
+              voiceLines.active = taken === -1 ? lines.push({ end: 0, drawn: 0 }) - 1 : taken
+              sequence = lines[voiceLines.active] as { end: number; drawn: number }
+              at = place(partIndex, measureIndex, sequence.drawn + position - sequence.end)
               sung = new Map()
             }
 
@@ -1108,7 +1129,15 @@ export function sourceLyricPlaces(root: XmlElement): string[] {
               found.push(`${at} line ${line}: ${text}${draws ? ' with a line' : ''}`)
             }
 
-            if (!isChord && !isGrace) position += drawnLength(item) ?? durationOf()
+            if (!isChord && !isGrace) {
+              const drawn = drawnLength(item)
+              const lasts = item.children.some((c) => c.name === 'duration')
+                ? durationOf()
+                : (drawn ?? 0)
+              sequence.drawn += position - sequence.end + (drawn ?? lasts)
+              position += lasts
+              sequence.end = position
+            }
           }
         })
     })
