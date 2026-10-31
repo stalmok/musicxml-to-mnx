@@ -871,6 +871,42 @@ describe('a syllable after a note whose duration differs from its written value'
   })
 })
 
+describe('a syllable where the voice lines and the cursor differ', () => {
+  const note = (voice: number, duration: number, text: string): string =>
+    `<note><pitch><step>C</step><octave>4</octave></pitch>` +
+    `<duration>${String(duration)}</duration><voice>${String(voice)}</voice><type>quarter</type>` +
+    `<lyric number="1"><syllabic>single</syllabic><text>${text}</text></lyric></note>`
+  const move = (name: string, duration: number) =>
+    `<${name}><duration>${String(duration)}</duration></${name}>`
+  const source = (notes: string) =>
+    '<score-partwise version="3.0"><part-list><score-part id="P1"><part-name>Music</part-name>' +
+    '</score-part></part-list><part id="P1"><measure number="1"><attributes>' +
+    '<divisions>4</divisions><time><beats>4</beats><beat-type>4</beat-type></time>' +
+    `<clef><sign>G</sign><line>2</line></clef></attributes>${notes}</measure></part></score-partwise>`
+
+  test.each([
+    // The second line of the voice ends later than its written values say,
+    // and the voice goes on in it although the first line is free too.
+    [
+      'in the line the voice wrote last',
+      note(1, 4, 'a') + move('backup', 4) + note(1, 8, 'b') + note(1, 4, 'c'),
+      ['at 0.000000000 line 1: a', 'at 0.000000000 line 1: b', 'at 0.250000000 line 1: c'],
+    ],
+    // The note after a <backup> past the measure start is written at the start.
+    [
+      'after a <backup> past the measure start',
+      note(1, 4, 'a') + move('backup', 8) + note(2, 4, 'b') + move('forward', 4) + note(1, 4, 'c'),
+      ['at 0.000000000 line 1: a', 'at 0.000000000 line 1: b', 'at 0.500000000 line 1: c'],
+    ],
+  ])('is read where the converter sings it, %s', (_, notes, places) => {
+    const xml = source(notes)
+    const { mnx } = convertValid(xml)
+
+    expect(lyricPlaces(mnx).sort()).toEqual(places.map((at) => `part 1 measure 1 ${at}`))
+    expect(sourceLyricPlaces(parseXmlRoot(xml)).sort()).toEqual(lyricPlaces(mnx).sort())
+  })
+})
+
 // A grace note goes in the line its voice wrote last. It moves to another line
 // only with a note that takes that line where the grace note stands.
 describe('a syllable on a grace note', () => {
