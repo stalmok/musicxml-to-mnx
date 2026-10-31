@@ -697,6 +697,15 @@ describe('a lyric on a note of a chord', () => {
   const member = (step: string, body = '') =>
     `<note><chord/><pitch><step>${step}</step><octave>4</octave></pitch>` +
     `<duration>4</duration><type>quarter</type>${body}</note>`
+  const linesOf = (mnx: ReturnType<typeof convertValid>['mnx']) => {
+    const content = mnx.parts[0]?.measures[0]?.sequences[0]?.content ?? []
+    const ids = content.map((item) => ('id' in item ? item.id : undefined))
+    const first = content[0]
+    return { lines: first && 'lyrics' in first ? first.lyrics?.lines : undefined, ids }
+  }
+  const sung = (text: string, extend = '') =>
+    `<lyric number="1"><text>${text}</text>${extend}</lyric>`
+  const held = (type: string) => `<lyric number="1"><extend type="${type}"/></lyric>`
 
   test('states the syllable on the chord', () => {
     const { events, warnings } = read(measure(note('C') + member('E', lyric('Are'))))
@@ -749,11 +758,9 @@ describe('a lyric on a note of a chord', () => {
           note('D', '<lyric number="1"><extend type="stop"/></lyric>'),
       ),
     )
-    const [first, second] = mnx.parts[0]?.measures[0]?.sequences[0]?.content ?? []
+    const { lines, ids } = linesOf(mnx)
 
-    expect(first && 'lyrics' in first ? first.lyrics?.lines : undefined).toStrictEqual({
-      '1': { text: 'la', extender: { target: second && 'id' in second ? second.id : undefined } },
-    })
+    expect(lines).toStrictEqual({ '1': { text: 'la', extender: { target: ids[1] } } })
     expect(warnings).toEqual([])
   })
 
@@ -765,11 +772,9 @@ describe('a lyric on a note of a chord', () => {
           member('F', '<lyric number="1"><extend type="stop"/></lyric>'),
       ),
     )
-    const [first, second] = mnx.parts[0]?.measures[0]?.sequences[0]?.content ?? []
+    const { lines, ids } = linesOf(mnx)
 
-    expect(first && 'lyrics' in first ? first.lyrics?.lines : undefined).toStrictEqual({
-      '1': { text: 'la', extender: { target: second && 'id' in second ? second.id : undefined } },
-    })
+    expect(lines).toStrictEqual({ '1': { text: 'la', extender: { target: ids[1] } } })
     expect(warnings).toEqual([])
   })
 
@@ -786,11 +791,52 @@ describe('a lyric on a note of a chord', () => {
           voiced('D', '<lyric number="1"><extend type="stop"/></lyric>'),
       ),
     )
-    const [first, second] = mnx.parts[0]?.measures[0]?.sequences[0]?.content ?? []
+    const { lines, ids } = linesOf(mnx)
 
-    expect(first && 'lyrics' in first ? first.lyrics?.lines : undefined).toStrictEqual({
-      '1': { text: 'la', extender: { target: second && 'id' in second ? second.id : undefined } },
-    })
+    expect(lines).toStrictEqual({ '1': { text: 'la', extender: { target: ids[1] } } })
     expect(warnings).toEqual([])
+  })
+
+  test('ends the line before it in its verse with its own syllable', () => {
+    const { mnx, warnings } = convertValid(
+      measure(
+        note('C', sung('la', '<extend type="start"/>')) +
+          note('D') +
+          member('F', sung('lo')) +
+          note('E', held('stop')),
+      ),
+    )
+
+    expect(linesOf(mnx).lines).toStrictEqual({ '1': { text: 'la', extender: {} } })
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([['unclosed:spanner', 'extend']])
+  })
+
+  test('starts a line from a syllable it restates with an <extend>', () => {
+    const { mnx, warnings } = convertValid(
+      measure(
+        note('C', sung('la')) +
+          member('E', sung('la', '<extend type="start"/>')) +
+          note('D', held('stop')),
+      ),
+    )
+    const { lines, ids } = linesOf(mnx)
+
+    expect(lines).toStrictEqual({ '1': { text: 'la', extender: { target: ids[1] } } })
+    expect(warnings).toEqual([])
+  })
+
+  test('states the syllable on a grace chord', () => {
+    const grace = (step: string, chord = '') =>
+      `<note><grace/>${chord}<pitch><step>${step}</step><octave>4</octave></pitch>` +
+      `<type>eighth</type>${chord ? sung('la') : ''}</note>`
+    const warnings = new WarningCollector()
+    const score = readValid(measure(grace('C') + grace('E', '<chord/>') + note('D')), warnings)
+    const group = score.parts[0]?.measures[0]?.sequences[0]?.content[0]
+    const graceNote = group?.kind === 'grace' ? group.content[0] : undefined
+
+    expect(graceNote?.kind === 'event' ? graceNote.lyrics : undefined).toEqual(
+      new Map([['1', { text: 'la', type: undefined }]]),
+    )
+    expect(warnings.list()).toEqual([])
   })
 })
