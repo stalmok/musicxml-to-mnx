@@ -95,6 +95,8 @@ export interface JoinedEvent extends PlacedEvent {
  * grace note, which takes no time.
  */
 interface LastEvent extends JoinedEvent {
+  /** Still being made: each note of the chord adds the lyrics it sings. */
+  readonly event: Draft<Event>
   readonly share: Fraction | undefined
 }
 
