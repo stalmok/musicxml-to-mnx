@@ -81,6 +81,8 @@ export function readLyrics(
         )
         continue
       }
+      // An <extend> that continues a line this event starts restates the start.
+      if (lyrics.get(line)?.extender === reached.line && extendType !== 'stop') continue
       reached.line.target = event
       endsLine = true
       if (extendType === 'stop') reached.stopped = true

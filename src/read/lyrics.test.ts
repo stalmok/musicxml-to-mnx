@@ -841,6 +841,16 @@ describe('a lyric on a note of a chord', () => {
     expect(warnings).toEqual([])
   })
 
+  // Finale writes the <extend> on every note of the chord that starts the line.
+  test('reads an <extend> restating the line its own chord starts as saying nothing new', () => {
+    const { mnx, warnings } = convertValid(
+      measure(note('C', sung('la', '<extend/>')) + member('E', held('continue')) + note('D')),
+    )
+
+    expect(linesOf(mnx).lines).toStrictEqual({ '1': { text: 'la', extender: {} } })
+    expect(warnings).toEqual([])
+  })
+
   test('states the syllable on a grace chord', () => {
     const grace = (step: string, chord = '') =>
       `<note><grace/>${chord}<pitch><step>${step}</step><octave>4</octave></pitch>` +
