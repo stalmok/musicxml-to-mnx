@@ -1089,6 +1089,28 @@ describe('a syllable in a voice whose tuplet the converter retimes', () => {
     expect(sourceLyricPlaces(root, retimed).sort()).toEqual(lyricPlaces(mnx, retimed).sort())
   })
 
+  // A chord note joins the event written last, whatever <voice> it states.
+  test('is read in order in the voice of the note a warned chord note joins', () => {
+    const chordNote = note('quarter', 8, ratio(5, 4))
+      .replace('<note>', '<note><chord/>')
+      .replace('<voice>1</voice>', '<voice>2</voice>')
+    const xml = source(
+      2,
+      note('quarter', 8, ratio(3, 2), 'a') +
+        chordNote +
+        note('quarter', 8, ratio(3, 2), 'b') +
+        note('quarter', 8, ratio(3, 2), 'c'),
+    )
+    const { warnings } = convertValid(xml)
+    const retimed = retimedVoices(parseXmlRoot(xml), warnings)
+
+    expect(warnings.map((warning) => warning.code).sort()).toEqual([
+      'inconsistent:tuplet',
+      'inconsistent:voice',
+    ])
+    expect(retimed(0, 0, '1')).toBe('1')
+  })
+
   test('is read by time in another voice of the measure', () => {
     const xml = source(
       2,

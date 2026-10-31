@@ -688,9 +688,9 @@ function bracketedSilence(items: readonly MNXSequenceItem[], inTuplet = false): 
 /**
  * The voices that warnings with the given code name, keyed by part and
  * measure as "partIndex:measureIndex", both from zero. A warning names its
- * <note> by line, and the voice is that note's: a chord note with no <voice>
- * is in the voice of the note it joins, and any other note with no <voice> is
- * in the unnamed voice, written ''. Where no single voice is at that line,
+ * <note> by line, and the voice is that note's: a chord note is in the voice
+ * of the note it joins, whatever <voice> it states, and any other note with
+ * no <voice> is in the unnamed voice, written ''. Where no single voice is at that line,
  * the warning names every voice of the measure, written undefined.
  */
 function voicesWarned(
@@ -714,7 +714,7 @@ function voicesWarned(
     for (const note of measure?.children.filter((c) => c.name === 'note') ?? []) {
       const stated = note.children.find((c) => c.name === 'voice')?.rawText.trim() ?? ''
       const isChord = note.children.some((c) => c.name === 'chord')
-      const own = stated === '' && isChord ? inForce : stated
+      const own = isChord ? inForce : stated
       if (!isChord) inForce = own
       if (note.line === warning.context.line) atLine.add(own)
     }
