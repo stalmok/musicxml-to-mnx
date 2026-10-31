@@ -899,11 +899,15 @@ export function underfilledTuplets(document: MNXDocument): Set<string> {
   return found
 }
 
-/** Where an event begins: its voice, and its time from the measure start. */
+/**
+ * Where an event begins: its voice, the line of that voice it is in, and its
+ * time from the measure start. The line is counted in the measure, from 0.
+ */
 interface Place {
   part: number
   measure: number
   voice: string
+  line: number
   at: number
 }
 
@@ -911,6 +915,7 @@ interface Place {
 interface PlacedEvent {
   item: { id?: string; slurs?: { target: string }[]; lyrics?: MNXLyrics }
   place: Place
+  grace: boolean
 }
 
 /**
@@ -922,12 +927,12 @@ function placedEvents(document: MNXDocument): PlacedEvent[] {
 
   document.parts.forEach((part, partIndex) => {
     part.measures?.forEach((measure, measureIndex) => {
-      for (const sequence of measure.sequences ?? []) {
-        const voice = sequence.voice ?? ''
-        placeEvents(sequence.content, 0, 1, (item, at) => {
-          placed.push({ item, place: { part: partIndex, measure: measureIndex, voice, at } })
+      measure.sequences?.forEach((sequence, line) => {
+        const where = { part: partIndex, measure: measureIndex, voice: sequence.voice ?? '', line }
+        placeEvents(sequence.content, 0, 1, (item, at, grace) => {
+          placed.push({ item, place: { ...where, at }, grace })
         })
-      }
+      })
     })
   })
   return placed
@@ -978,10 +983,13 @@ const NOTHING_RETIMED: Retimed = () => undefined
 
 /**
  * Names each place. A place in a retimed voice is named by its order among
- * the places of that voice in its measure, from 1.
+ * the given places of its line, from 1. Every event but a grace note must be
+ * among them, so a syllable moved to another note shows. The name leaves the
+ * line out, so the two sides need not agree on how a voice's lines divide.
  */
 function placeNames(places: readonly Place[], retimed: Retimed): (place: Place) => string {
-  const group = (where: Place, voice: string) => JSON.stringify([where.part, where.measure, voice])
+  const group = (where: Place, voice: string) =>
+    JSON.stringify([where.part, where.measure, voice, where.line])
   const times = new Map<string, number[]>()
   for (const where of places) {
     const voice = retimed(where.part, where.measure, where.voice)
@@ -1011,6 +1019,7 @@ function samePlace(one: Place, other: Place): boolean {
     one.part === other.part &&
     one.measure === other.measure &&
     one.voice === other.voice &&
+    one.line === other.line &&
     rounded(one.at) === rounded(other.at)
   )
 }
@@ -1020,7 +1029,7 @@ function placeEvents(
   items: readonly MNXSequenceItem[],
   at: number,
   scale: number,
-  found: (item: PlacedEvent['item'], at: number) => void,
+  found: (item: PlacedEvent['item'], at: number, grace: boolean) => void,
 ): number {
   for (const item of items) {
     if ('type' in item && item.type === 'tuplet') {
@@ -1034,7 +1043,7 @@ function placeEvents(
     if ('type' in item && item.type === 'tremolo') {
       const unit = writtenLength(item.outer.duration) * scale
       item.content.forEach((inner, index) => {
-        found(inner, at + index * unit)
+        found(inner, at + index * unit, false)
       })
       at += unit * item.outer.multiple
       continue
@@ -1042,14 +1051,14 @@ function placeEvents(
     // Grace notes take none of the time of the event they ornament, so every
     // note of a group begins where that event does.
     if ('type' in item && item.type === 'grace') {
-      for (const inner of item.content) found(inner, at)
+      for (const inner of item.content) found(inner, at, true)
       continue
     }
     if ('type' in item && item.type === 'space') {
       at += (item.duration[0] / item.duration[1]) * scale
       continue
     }
-    found(item, at)
+    found(item, at, false)
     at += writtenLength(item.duration) * scale
   }
   return at
@@ -1104,6 +1113,8 @@ export function sourceLyricPlaces(root: XmlElement, retimed = NOTHING_RETIMED): 
   const found: { at: Place; sung: string }[] = []
   // Where each melisma line found runs to, by the index of its syllable.
   const ends = new Map<number, Place>()
+  // Where each event other than a grace note begins.
+  const events: Place[] = []
 
   root.children
     .filter((c) => c.name === 'part')
@@ -1133,7 +1144,7 @@ export function sourceLyricPlaces(root: XmlElement, retimed = NOTHING_RETIMED): 
           let graceEvent: { syllables: number[]; ended: number[] } | undefined
           // A chord is one event: its notes sound where its first one does,
           // and sing one text per line between them.
-          let at: Place = { part: partIndex, measure: measureIndex, voice: '', at: 0 }
+          let at: Place = { part: partIndex, measure: measureIndex, voice: '', line: 0, at: 0 }
           let sung = new Map<string, { text: string; index: number; draws: boolean }>()
 
           for (const item of measure.children) {
@@ -1177,7 +1188,13 @@ export function sourceLyricPlaces(root: XmlElement, retimed = NOTHING_RETIMED): 
               if (!isGrace) voiceLines.active = taken === -1 ? lines.length - 1 : taken
               sequence = lines[voiceLines.active] as { end: number; drawn: number }
               const gap = Math.max(position - sequence.end, 0)
-              at = { part: partIndex, measure: measureIndex, voice, at: sequence.drawn + gap }
+              at = {
+                part: partIndex,
+                measure: measureIndex,
+                voice,
+                line: voiceLines.active,
+                at: sequence.drawn + gap,
+              }
               sung = new Map()
 
               // Grace notes waiting where the cursor stands move with the
@@ -1200,6 +1217,7 @@ export function sourceLyricPlaces(root: XmlElement, retimed = NOTHING_RETIMED): 
                 waiting.delete(voice)
               }
               graceEvent = isGrace ? waiting.get(voice) : undefined
+              if (!isGrace) events.push(at)
             }
 
             // One text per line per event, because MNX states one lyric per
@@ -1269,7 +1287,7 @@ export function sourceLyricPlaces(root: XmlElement, retimed = NOTHING_RETIMED): 
           }
         })
     })
-  const named = placeNames([...found.map(({ at }) => at), ...ends.values()], retimed)
+  const named = placeNames([...events, ...found.map(({ at }) => at), ...ends.values()], retimed)
   return found.map(({ at, sung }, index) => {
     const end = ends.get(index)
     return `${named(at)} ${sung}${end === undefined ? '' : ` to ${named(end)}`}`
@@ -1301,7 +1319,10 @@ export function lyricPlaces(document: MNXDocument, retimed = NOTHING_RETIMED): s
     }),
   )
   const named = placeNames(
-    sung.flatMap(({ at, end }) => (end ? [at, end] : [at])),
+    [
+      ...placed.filter(({ grace }) => !grace).map(({ place: at }) => at),
+      ...sung.flatMap(({ at, end }) => (end ? [at, end] : [at])),
+    ],
     retimed,
   )
 

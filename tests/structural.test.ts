@@ -972,11 +972,13 @@ describe('a syllable on a grace note', () => {
 // in that voice and measure it compares the order of the syllables, not
 // their time.
 describe('a syllable in a voice whose tuplet the converter retimes', () => {
-  const note = (type: string, duration: number, extra: string, text: string): string =>
+  // One note per line, because a warning names its note by line.
+  const note = (type: string, duration: number, extra: string, text?: string): string =>
     `<note><pitch><step>C</step><octave>4</octave></pitch>` +
     `<duration>${String(duration)}</duration><voice>1</voice><type>${type}</type>${extra}` +
-    `<lyric number="1"><syllabic>single</syllabic><text>${text}</text></lyric>` +
-    // A warning names its note by line.
+    (text === undefined
+      ? ''
+      : `<lyric number="1"><syllabic>single</syllabic><text>${text}</text></lyric>`) +
     '</note>\n'
   const ratio = (actual: number, normal: number) =>
     `<time-modification><actual-notes>${String(actual)}</actual-notes>` +
@@ -1043,6 +1045,47 @@ describe('a syllable in a voice whose tuplet the converter retimes', () => {
 
     expect(warnings.map((warning) => warning.code)).toContain(code)
     expect(sourceLyricPlaces(root).sort()).not.toEqual(lyricPlaces(mnx).sort())
+    expect(sourceLyricPlaces(root, retimed).sort()).toEqual(lyricPlaces(mnx, retimed).sort())
+  })
+
+  test('shows a syllable moved to a note that sings none', () => {
+    const xml = source(
+      2,
+      note('eighth', 4, marker('start'), 'a') +
+        note('eighth', 4, '') +
+        note('eighth', 4, marker('stop')) +
+        note('quarter', 12, '', 'd'),
+    )
+    const { mnx, warnings } = convertValid(xml)
+    const root = parseXmlRoot(xml)
+    const retimed = retimedVoices(root, warnings)
+    const tuplet = mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]
+    if (tuplet?.type !== 'tuplet') throw new Error('expected a tuplet first')
+    const [first, , third] = tuplet.content as MNXEvent[]
+    if (!first?.lyrics || !third) throw new Error('expected a tuplet of three notes')
+    third.lyrics = first.lyrics
+    delete first.lyrics
+
+    expect(lyricPlaces(mnx, retimed).sort()).not.toEqual(sourceLyricPlaces(root, retimed).sort())
+  })
+
+  test('is read in order in each line of the voice', () => {
+    const xml = source(
+      3,
+      note('quarter', 12, '', 'a') +
+        note('eighth', 4, marker('start'), 'b') +
+        note('eighth', 4, '', 'c') +
+        note('eighth', 4, marker('stop'), 'd') +
+        note('quarter', 12, '', 'e'),
+      '<backup><duration>36</duration></backup>' +
+        note('half', 24, '', 'x') +
+        note('quarter', 12, '', 'y'),
+    )
+    const { mnx, warnings } = convertValid(xml)
+    const root = parseXmlRoot(xml)
+    const retimed = retimedVoices(root, warnings)
+
+    expect(mnx.parts[0]?.measures[0]?.sequences).toHaveLength(2)
     expect(sourceLyricPlaces(root, retimed).sort()).toEqual(lyricPlaces(mnx, retimed).sort())
   })
 
