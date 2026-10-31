@@ -825,6 +825,22 @@ describe('a lyric on a note of a chord', () => {
     expect(warnings).toEqual([])
   })
 
+  // In a divisi both singers can end the melisma under one chord.
+  test('ends a line once where two notes of a chord stop it', () => {
+    const { mnx, warnings } = convertValid(
+      measure(
+        note('C', sung('la', '<extend type="start"/>')) +
+          note('D') +
+          note('E', held('stop')) +
+          member('G', held('stop')),
+      ),
+    )
+    const { lines, ids } = linesOf(mnx)
+
+    expect(lines).toStrictEqual({ '1': { text: 'la', extender: { target: ids[2] } } })
+    expect(warnings).toEqual([])
+  })
+
   test('states the syllable on a grace chord', () => {
     const grace = (step: string, chord = '') =>
       `<note><grace/>${chord}<pitch><step>${step}</step><octave>4</octave></pitch>` +

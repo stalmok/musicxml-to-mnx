@@ -36,9 +36,10 @@ const LYRIC_TYPES = new Map<string, 'start' | 'middle' | 'end' | undefined>([
 
 /**
  * The melisma lines open in a part, keyed by voice and verse line, which a
- * lyric on a later note of that voice can reach.
+ * lyric on a later note of that voice can reach. A line stays here once a
+ * lyric stops it, so another note of the same chord can stop it again.
  */
-export type OpenExtenders = Map<string, Draft<LyricExtender>>
+export type OpenExtenders = Map<string, { line: Draft<LyricExtender>; stopped: boolean }>
 
 const EXTEND_TYPES: ReadonlySet<string> = new Set(['start', 'stop', 'continue'])
 
@@ -70,7 +71,7 @@ export function readLyrics(
     if (!verse) {
       if (!extend) continue
       const reached = open.get(key)
-      if (!reached) {
+      if (!reached || (reached.stopped && reached.line.target !== event)) {
         warnings.add(
           'unclosed:spanner',
           `A lyric extends a melisma line of line ${line} under this note, and no syllable ` +
@@ -80,9 +81,9 @@ export function readLyrics(
         )
         continue
       }
-      reached.target = event
+      reached.line.target = event
       endsLine = true
-      if (extendType === 'stop') open.delete(key)
+      if (extendType === 'stop') reached.stopped = true
       continue
     }
 
@@ -146,7 +147,7 @@ interface Verse {
 /** The syllable with a melisma line starting at it, open under `key`. */
 function withLine(lyric: Lyric, key: string, open: OpenExtenders): Lyric {
   const extender: Draft<LyricExtender> = { target: undefined }
-  open.set(key, extender)
+  open.set(key, { line: extender, stopped: false })
   return { ...lyric, extender }
 }
 
