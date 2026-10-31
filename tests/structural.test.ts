@@ -871,6 +871,65 @@ describe('a syllable after a note whose duration differs from its written value'
   })
 })
 
+// A grace note goes in the line its voice wrote last. It moves to another line
+// only with a note that takes that line where the grace note stands.
+describe('a syllable on a grace note', () => {
+  const note = (type: string, voice: number, duration: number, text: string): string =>
+    `<note><pitch><step>C</step><octave>4</octave></pitch>` +
+    `<duration>${String(duration)}</duration><voice>${String(voice)}</voice><type>${type}</type>` +
+    `<lyric number="1"><syllabic>single</syllabic><text>${text}</text></lyric></note>`
+  const sung = '<lyric number="1"><syllabic>single</syllabic><text>g</text></lyric>'
+  const grace = (lyric = sung) =>
+    '<note><grace/><pitch><step>D</step><octave>4</octave></pitch><voice>1</voice>' +
+    `<type>eighth</type>${lyric}</note>`
+  const move = (name: string, duration: number) =>
+    `<${name}><duration>${String(duration)}</duration></${name}>`
+  const source = (notes: string) =>
+    '<score-partwise version="3.0"><part-list><score-part id="P1"><part-name>Music</part-name>' +
+    '</score-part></part-list><part id="P1"><measure number="1"><attributes>' +
+    '<divisions>4</divisions><time><beats>2</beats><beat-type>4</beat-type></time>' +
+    `<clef><sign>G</sign><line>2</line></clef></attributes>${notes}</measure></part></score-partwise>`
+
+  test.each([
+    [
+      'before a <forward> to its note',
+      note('quarter', 1, 2, 'a') +
+        move('backup', 2) +
+        note('eighth', 1, 4, 'b') +
+        move('backup', 2) +
+        grace() +
+        move('forward', 2) +
+        note('quarter', 1, 4, 'c'),
+    ],
+    [
+      'with no note after it in its voice',
+      note('quarter', 1, 8, 'a') +
+        move('backup', 8) +
+        note('quarter', 1, 4, 'b') +
+        move('backup', 2) +
+        grace() +
+        move('backup', 2) +
+        note('quarter', 2, 4, 'x'),
+    ],
+    [
+      'before a note that opens another line of its voice',
+      note('half', 1, 8, 'a') + move('backup', 4) + grace() + note('quarter', 1, 4, 'd'),
+    ],
+    [
+      'ending a melisma line before a note that opens another line of its voice',
+      note('half', 1, 8, 'a').replace('</text>', '</text><extend/>') +
+        move('backup', 4) +
+        grace('<lyric number="1"><extend type="stop"/></lyric>') +
+        note('quarter', 1, 4, 'd'),
+    ],
+  ])('is read where the converter sings it, %s', (_, notes) => {
+    const xml = source(notes)
+    const { mnx } = convertValid(xml)
+
+    expect(sourceLyricPlaces(parseXmlRoot(xml)).sort()).toEqual(lyricPlaces(mnx).sort())
+  })
+})
+
 // MNX advances the sequence cursor by a tuplet's outer and requires its
 // content to fill inner. A tuplet that holds less than its ratio counts still
 // takes its whole outer, so the check measures it that way. Scaling the

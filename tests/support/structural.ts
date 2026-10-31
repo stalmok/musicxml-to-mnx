@@ -999,8 +999,11 @@ function drawnLength(note: XmlElement): number | undefined {
  * line it belongs to and its text. Follows the cursor as sourceSlurSpans and
  * sourceMeasureLengths do, by each <duration>. A note is placed after the
  * written value of the one before it in its line of the voice, plus any time
- * the cursor passed over since that one ended. A note the cursor reaches
- * before its voice's line has ended starts another line, at the cursor.
+ * the cursor passed over since that one ended. A voice can write more than
+ * one line. A note goes in the line the voice wrote last while that line has
+ * ended, else in the first line that has, else in a new line. A grace note
+ * goes in the line the voice wrote last, and moves with the note after it
+ * where that note takes another line.
  *
  * A syllable stating <extend> other than a stop draws a melisma line. The
  * line runs to the last later note of its voice whose lyric for that verse is
@@ -1032,6 +1035,13 @@ export function sourceLyricPlaces(root: XmlElement): string[] {
             { lines: { end: number; drawn: number }[]; active: number }
           >()
           let sequence = { end: 0, drawn: 0 }
+          // By voice, the grace notes not yet followed by a note: where they
+          // stand, the syllables they sing and the melisma lines they end.
+          const waiting = new Map<
+            string,
+            { position: number; at: string; syllables: number[]; ended: number[] }
+          >()
+          let graceEvent: { syllables: number[]; ended: number[] } | undefined
           // A chord is one event: its notes sound where its first one does,
           // and sing one text per line between them.
           let at = ''
@@ -1065,16 +1075,40 @@ export function sourceLyricPlaces(root: XmlElement): string[] {
               // A <backup> past the measure start writes at the start.
               position = Math.max(position, 0)
               // The line the voice wrote last while it is free, then the
-              // first free one, as the reader takes them.
+              // first free one, as the reader takes them. A grace note takes
+              // the line the voice wrote last.
               const voiceLines = sequences.get(voice) ?? { lines: [], active: 0 }
               sequences.set(voice, voiceLines)
               const { lines, active } = voiceLines
               const free = (line: { end: number }) => position > line.end - 1e-9
               const taken = lines[active] && free(lines[active]) ? active : lines.findIndex(free)
-              voiceLines.active = taken === -1 ? lines.push({ end: 0, drawn: 0 }) - 1 : taken
+              if (lines.length === 0 || (!isGrace && taken === -1)) {
+                lines.push({ end: 0, drawn: 0 })
+              }
+              if (!isGrace) voiceLines.active = taken === -1 ? lines.length - 1 : taken
               sequence = lines[voiceLines.active] as { end: number; drawn: number }
-              at = place(partIndex, measureIndex, sequence.drawn + position - sequence.end)
+              const gap = Math.max(position - sequence.end, 0)
+              at = place(partIndex, measureIndex, sequence.drawn + gap)
               sung = new Map()
+
+              // Grace notes waiting where the cursor stands move with the
+              // note that follows them into the line it takes.
+              const held = waiting.get(voice)
+              const stays = held && Math.abs(held.position - position) < 1e-9
+              if (isGrace) {
+                if (!stays) waiting.set(voice, { position, at, syllables: [], ended: [] })
+              } else {
+                if (stays && held.at !== at) {
+                  for (const index of held.syllables) {
+                    found[index] = at + (found[index] as string).slice(held.at.length)
+                  }
+                  for (const index of held.ended) {
+                    if (ends.get(index) === held.at) ends.set(index, at)
+                  }
+                }
+                waiting.delete(voice)
+              }
+              graceEvent = isGrace ? waiting.get(voice) : undefined
             }
 
             // One text per line per event, because MNX states one lyric per
@@ -1109,6 +1143,7 @@ export function sourceLyricPlaces(root: XmlElement): string[] {
                 const restates = !stops && syllable === sung.get(line)?.index
                 if (extend && syllable !== undefined && !restates) {
                   ends.set(syllable, at)
+                  graceEvent?.ended.push(syllable)
                   if (stops) open.delete(key)
                 }
                 continue
@@ -1126,6 +1161,7 @@ export function sourceLyricPlaces(root: XmlElement): string[] {
               sung.set(line, { text, index: found.length, draws })
               open.delete(key)
               if (draws) open.set(key, found.length)
+              graceEvent?.syllables.push(found.length)
               found.push(`${at} line ${line}: ${text}${draws ? ' with a line' : ''}`)
             }
 
