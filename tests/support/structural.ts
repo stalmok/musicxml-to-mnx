@@ -1022,6 +1022,10 @@ export function sourceLyricPlaces(root: XmlElement): string[] {
         .filter((c) => c.name === 'measure')
         .forEach((measure, measureIndex) => {
           let position = 0
+          // A chord is one event: its notes sound where its first one does,
+          // and sing one text per line between them.
+          let at = ''
+          let sung = new Map<string, { text: string; index: number; draws: boolean }>()
 
           for (const item of measure.children) {
             const durationOf = () =>
@@ -1048,15 +1052,15 @@ export function sourceLyricPlaces(root: XmlElement): string[] {
             // A chord note sings in the voice of the note it joins.
             if (!isChord) {
               voice = item.children.find((c) => c.name === 'voice')?.rawText.trim() ?? ''
+              at = place(partIndex, measureIndex, position)
+              sung = new Map()
             }
-            const at = place(partIndex, measureIndex, position)
 
-            // One text per line per note, because MNX states one lyric per
+            // One text per line per event, because MNX states one lyric per
             // line on an event. A source can write the same <lyric
-            // number="1"> twice on one note, and the first is the one sung.
-            // differingLyricLines reports it where the two texts differ. A
-            // copy with the same text can still start the line.
-            const sung = new Map<string, { text: string; index: number; draws: boolean }>()
+            // number="1"> twice on one note or chord, and the first is the
+            // one sung. differingLyricLines reports it where the two texts
+            // differ. A copy with the same text can still start the line.
             for (const lyric of item.children.filter((c) => c.name === 'lyric')) {
               const line = String(lyric.attributes.number ?? '1')
               const extend = lyric.children.find((c) => c.name === 'extend')
@@ -1079,7 +1083,10 @@ export function sourceLyricPlaces(root: XmlElement): string[] {
               const key = JSON.stringify([voice, line])
               if (text === '') {
                 const syllable = open.get(key)
-                if (extend && syllable !== undefined) {
+                // An <extend> continuing a line its own event starts restates
+                // the start.
+                const restates = !stops && syllable === sung.get(line)?.index
+                if (extend && syllable !== undefined && !restates) {
                   ends.set(syllable, at)
                   if (stops) open.delete(key)
                 }
@@ -1503,8 +1510,8 @@ export function layoutLosses(document: MNXDocument): string[] {
 }
 
 /**
- * Every place the source states one lyric line twice on one note with
- * different texts. MNX states one lyric per line per event, so only one of
+ * Every place the source states one lyric line twice on one note or chord
+ * with different texts. MNX states one lyric per line per event, so only one of
  * the two reaches the output. Two with the same text lose nothing.
  *
  * Compared on the words and the syllabic, which are all MNX states for a
@@ -1514,8 +1521,10 @@ export function differingLyricLines(root: XmlElement): string[] {
   const found: string[] = []
   for (const part of root.children.filter((c) => c.name === 'part')) {
     for (const measure of part.children.filter((c) => c.name === 'measure')) {
+      // A chord is one event, so its notes share one lyric per line.
+      let perLine = new Map<string, string>()
       for (const note of measure.children.filter((c) => c.name === 'note')) {
-        const perLine = new Map<string, string>()
+        if (!note.children.some((c) => c.name === 'chord')) perLine = new Map()
         for (const lyric of note.children.filter((c) => c.name === 'lyric')) {
           const line = lyric.attributes.number ?? '1'
           const pieces = lyric.children.filter((c) => c.name === 'text' || c.name === 'elision')

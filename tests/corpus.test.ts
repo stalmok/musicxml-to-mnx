@@ -958,9 +958,9 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
     expect(lyricPlaces(mnx).sort()).toEqual(sourceLyricPlaces(parseXmlRoot(source)).sort())
   })
 
-  // The check above keeps one text per line per note, so it cannot see a
-  // note that states one line twice with different texts.
-  test('states no lyric line twice on one note with different words', () => {
+  // The check above keeps one text per line per note or chord, so it cannot
+  // see one that states a line twice with different texts.
+  test('states no lyric line twice on one note or chord with different words', () => {
     expect(differingLyricLines(parseXmlRoot(source))).toEqual([])
   })
 

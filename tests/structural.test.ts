@@ -614,6 +614,16 @@ test('an empty syllable beside a written one is not a loss', () => {
   expect(event).toMatchObject({ lyrics: { lines: { 1: { text: 'word' } } } })
 })
 
+// A chord is one event, so its notes sing one lyric per line between them.
+test('two notes of a chord singing one line differently is a loss', () => {
+  const member =
+    '<note><chord/><pitch><step>E</step><octave>4</octave></pitch>' +
+    `<duration>1</duration><type>quarter</type>${verse('tu')}</note>`
+  const source = parseXmlRoot(sourceOf(verse('is')).replace('</measure>', `${member}</measure>`))
+
+  expect(differingLyricLines(source)).toEqual(['part P1 measure 3 line 1: "is/" against "tu/"'])
+})
+
 // A lyric with no <text> is a melisma marker, not a verse, and the reader
 // skips it.
 test('a lyric with no text at all states no verse to lose', () => {
@@ -1297,6 +1307,9 @@ describe('a melisma line in the source', () => {
   const sung = (text: string, extend = '') =>
     `<lyric number="1"><text>${text}</text>${extend}</lyric>`
   const held = (type: string) => `<lyric number="1"><extend type="${type}"/></lyric>`
+  const chord = (step: string, lyrics: string) =>
+    `<note><chord/><pitch><step>${step}</step><octave>4</octave></pitch><duration>1</duration>` +
+    `<voice>1</voice><type>quarter</type>${lyrics}</note>`
   const source = (notes: string) =>
     '<score-partwise><part id="P1"><measure number="1"><attributes><divisions>1</divisions>' +
     `</attributes>${notes}</measure></part></score-partwise>`
@@ -1314,6 +1327,22 @@ describe('a melisma line in the source', () => {
     [
       'a line stopped on its own note',
       note('C', sung('la', '<extend type="start"/>') + held('stop')) + note('D', ''),
+    ],
+    [
+      'a line from a note of a chord',
+      note('C', '') + chord('E', sung('la', '<extend/>')) + note('D', held('stop')),
+    ],
+    [
+      'a syllable two notes of a chord sing',
+      note('C', sung('la', '<extend/>')) + chord('E', sung('la')) + note('D', held('stop')),
+    ],
+    [
+      'an <extend> restating the line its own chord starts',
+      note('C', sung('la', '<extend/>')) + chord('E', held('continue')) + note('D', ''),
+    ],
+    [
+      'a stop restated by a note of the chord',
+      note('C', sung('la', '<extend/>')) + note('D', held('stop')) + chord('F', held('stop')),
     ],
   ])('agrees with the converter on %s', (_, notes) => {
     const xml = source(notes)
