@@ -18,6 +18,7 @@ import {
   holdsUnderfilledTuplet,
   flipLetters,
   pitchesOf,
+  retimedVoices,
   sounding,
   sourceLyricPlaces,
   sourceMeasureLengths,
@@ -963,6 +964,110 @@ describe('a syllable on a grace note', () => {
     const { mnx } = convertValid(xml)
 
     expect(sourceLyricPlaces(parseXmlRoot(xml)).sort()).toEqual(lyricPlaces(mnx).sort())
+  })
+})
+
+// The converter can give a tuplet another time than the source's written
+// values give its notes, and reports it. The check reads written values, so
+// in that voice and measure it compares the order of the syllables, not
+// their time.
+describe('a syllable in a voice whose tuplet the converter retimes', () => {
+  const note = (type: string, duration: number, extra: string, text: string): string =>
+    `<note><pitch><step>C</step><octave>4</octave></pitch>` +
+    `<duration>${String(duration)}</duration><voice>1</voice><type>${type}</type>${extra}` +
+    `<lyric number="1"><syllabic>single</syllabic><text>${text}</text></lyric>` +
+    // A warning names its note by line.
+    '</note>\n'
+  const ratio = (actual: number, normal: number) =>
+    `<time-modification><actual-notes>${String(actual)}</actual-notes>` +
+    `<normal-notes>${String(normal)}</normal-notes></time-modification>`
+  const marker = (type: string) => `<notations><tuplet type="${type}"/></notations>`
+  const source = (beats: number, notes: string, below = '') =>
+    '<score-partwise version="3.0"><part-list><score-part id="P1"><part-name>Music</part-name>' +
+    '</score-part></part-list><part id="P1"><measure number="1"><attributes>' +
+    `<divisions>12</divisions><time><beats>${String(beats)}</beats><beat-type>4</beat-type>` +
+    `</time><clef><sign>G</sign><line>2</line></clef></attributes>${notes}${below}</measure>` +
+    '</part></score-partwise>'
+
+  test.each([
+    [
+      'to the time its ratio gives a bracket holding less than it counts',
+      'unrepresentable:tuplet-ratio',
+      source(
+        4,
+        note('quarter', 12, '', 'a') +
+          note('eighth', 4, ratio(3, 2) + marker('start'), 'b') +
+          note('eighth', 4, ratio(3, 2) + marker('stop'), 'c') +
+          note('eighth', 6, '', 'd') +
+          note('quarter', 12, '', 'e'),
+      ),
+    ],
+    [
+      'by a ratio rewritten over the notes a bracket holds',
+      'inconsistent:tuplet',
+      source(
+        3,
+        '<note><rest/><duration>6</duration><voice>1</voice><type>eighth</type>' +
+          `${ratio(2, 3)}${marker('start')}</note>` +
+          note('eighth', 9, ratio(2, 3) + marker('stop'), 'a') +
+          note('eighth', 9, ratio(2, 3) + marker('start'), 'b') +
+          note('eighth', 9, ratio(2, 3) + marker('stop'), 'c'),
+      ),
+    ],
+    [
+      'by the ratio of the bracket around a note that states another',
+      'inconsistent:tuplet',
+      source(
+        2,
+        note('eighth', 4, ratio(3, 2) + marker('start'), 'a') +
+          note('eighth', 4, ratio(5, 4), 'b') +
+          note('eighth', 4, ratio(3, 2) + marker('stop'), 'c') +
+          note('quarter', 12, '', 'd'),
+      ),
+    ],
+    [
+      'by a ratio read off a bracket on notes that state none',
+      'missing:time-modification',
+      source(
+        2,
+        note('eighth', 4, marker('start'), 'a') +
+          note('eighth', 4, '', 'b') +
+          note('eighth', 4, marker('stop'), 'c') +
+          note('quarter', 12, '', 'd'),
+      ),
+    ],
+  ])('is read in order %s', (_, code, xml) => {
+    const { mnx, warnings } = convertValid(xml)
+    const root = parseXmlRoot(xml)
+    const retimed = retimedVoices(root, warnings)
+
+    expect(warnings.map((warning) => warning.code)).toContain(code)
+    expect(sourceLyricPlaces(root).sort()).not.toEqual(lyricPlaces(mnx).sort())
+    expect(sourceLyricPlaces(root, retimed).sort()).toEqual(lyricPlaces(mnx, retimed).sort())
+  })
+
+  test('is read by time in another voice of the measure', () => {
+    const xml = source(
+      2,
+      note('eighth', 4, marker('start'), 'a') +
+        note('eighth', 4, '', 'b') +
+        note('eighth', 4, marker('stop'), 'c') +
+        note('quarter', 12, '', 'd'),
+      '<backup><duration>24</duration></backup>' +
+        note('quarter', 12, '', 'x').replaceAll('<voice>1</voice>', '<voice>2</voice>') +
+        note('quarter', 12, '', 'y').replaceAll('<voice>1</voice>', '<voice>2</voice>'),
+    )
+    const { mnx, warnings } = convertValid(xml)
+    const retimed = retimedVoices(parseXmlRoot(xml), warnings)
+
+    expect(lyricPlaces(mnx, retimed).sort()).toEqual([
+      'part 1 measure 1 at 0.000000000 line 1: x',
+      'part 1 measure 1 at 0.250000000 line 1: y',
+      'part 1 measure 1 voice 1 at #1 line 1: a',
+      'part 1 measure 1 voice 1 at #2 line 1: b',
+      'part 1 measure 1 voice 1 at #3 line 1: c',
+      'part 1 measure 1 voice 1 at #4 line 1: d',
+    ])
   })
 })
 

@@ -745,8 +745,7 @@ function statedVoices(part: XmlElement): Set<string> {
  * is its own. Any other name is built for a line laid over a voice: "1.2" for
  * one laid over voice "1".
  */
-function sourceVoiceOf(sequence: MNXSequence, stated: ReadonlySet<string>): string {
-  const voice = sequence.voice ?? ''
+function sourceVoiceOf(voice: string, stated: ReadonlySet<string>): string {
   return stated.has(voice) ? voice : voice.slice(0, voice.lastIndexOf('.'))
 }
 
@@ -814,7 +813,11 @@ export function measureLengthDisagreements(
       if (passedOver) {
         const stated = voiceNames[partIndex] ?? new Set<string>()
         measure.sequences.forEach((sequence, index) => {
-          if (passedOver.has(undefined) || passedOver.has(sourceVoiceOf(sequence, stated))) return
+          if (
+            passedOver.has(undefined) ||
+            passedOver.has(sourceVoiceOf(sequence.voice ?? '', stated))
+          )
+            return
           const total = totals[index] ?? 0
           if (overruns(sequence, total)) {
             found.push(
@@ -896,10 +899,18 @@ export function underfilledTuplets(document: MNXDocument): Set<string> {
   return found
 }
 
+/** Where an event begins: its voice, and its time from the measure start. */
+interface Place {
+  part: number
+  measure: number
+  voice: string
+  at: number
+}
+
 /** An event of the converted document, and where in the score it stands. */
 interface PlacedEvent {
   item: { id?: string; slurs?: { target: string }[]; lyrics?: MNXLyrics }
-  place: string
+  place: Place
 }
 
 /**
@@ -912,8 +923,9 @@ function placedEvents(document: MNXDocument): PlacedEvent[] {
   document.parts.forEach((part, partIndex) => {
     part.measures?.forEach((measure, measureIndex) => {
       for (const sequence of measure.sequences ?? []) {
+        const voice = sequence.voice ?? ''
         placeEvents(sequence.content, 0, 1, (item, at) => {
-          placed.push({ item, place: place(partIndex, measureIndex, at) })
+          placed.push({ item, place: { part: partIndex, measure: measureIndex, voice, at } })
         })
       }
     })
@@ -922,12 +934,85 @@ function placedEvents(document: MNXDocument): PlacedEvent[] {
 }
 
 function place(part: number, measure: number, at: number): string {
+  return `part ${String(part + 1)} measure ${String(measure + 1)} at ${rounded(at).toFixed(9)}`
+}
+
+function rounded(at: number): number {
   // Cursor arithmetic on one side can go back to the measure start and end
   // just below zero, which prints with a minus sign. Rounding makes the two
   // sides agree.
-  const rounded = Math.round(at * 1e9) / 1e9
-  const from = rounded === 0 ? 0 : rounded
-  return `part ${String(part + 1)} measure ${String(measure + 1)} at ${from.toFixed(9)}`
+  const near = Math.round(at * 1e9) / 1e9
+  return near === 0 ? 0 : near
+}
+
+/**
+ * The source voice a converter's voice name stands for in a measure where
+ * the converter gives a tuplet another time than the source's written values
+ * give its notes. Undefined in every other voice and measure. Parts and
+ * measures count from zero.
+ */
+export type Retimed = (part: number, measure: number, voice: string) => string | undefined
+
+const RETIMING = [
+  'unrepresentable:tuplet-ratio',
+  'inconsistent:tuplet',
+  'missing:time-modification',
+] as const satisfies readonly ConversionWarning['code'][]
+
+/** The voices the tuplet warnings name, as Retimed reads them. */
+export function retimedVoices(root: XmlElement, warnings: readonly ConversionWarning[]): Retimed {
+  const stated = root.children.filter((c) => c.name === 'part').map(statedVoices)
+  const named = RETIMING.map((code) => voicesWarned(root, warnings, code))
+  return (part, measure, voice) => {
+    const own = sourceVoiceOf(voice, stated[part] ?? new Set())
+    const key = `${String(part)}:${String(measure)}`
+    const warned = named.some((voices) => {
+      const inMeasure = voices.get(key)
+      return inMeasure !== undefined && (inMeasure.has(undefined) || inMeasure.has(own))
+    })
+    return warned ? own : undefined
+  }
+}
+
+const NOTHING_RETIMED: Retimed = () => undefined
+
+/**
+ * Names each place. A place in a retimed voice is named by its order among
+ * the places of that voice in its measure, from 1.
+ */
+function placeNames(places: readonly Place[], retimed: Retimed): (place: Place) => string {
+  const group = (where: Place, voice: string) => JSON.stringify([where.part, where.measure, voice])
+  const times = new Map<string, number[]>()
+  for (const where of places) {
+    const voice = retimed(where.part, where.measure, where.voice)
+    if (voice === undefined) continue
+    const key = group(where, voice)
+    times.set(key, [...(times.get(key) ?? []), rounded(where.at)])
+  }
+  for (const [key, at] of times)
+    times.set(
+      key,
+      [...new Set(at)].sort((a, b) => a - b),
+    )
+
+  return (where) => {
+    const voice = retimed(where.part, where.measure, where.voice)
+    if (voice === undefined) return place(where.part, where.measure, where.at)
+    const order = (times.get(group(where, voice)) ?? []).indexOf(rounded(where.at)) + 1
+    return (
+      `part ${String(where.part + 1)} measure ${String(where.measure + 1)} ` +
+      `voice ${voice} at #${String(order)}`
+    )
+  }
+}
+
+function samePlace(one: Place, other: Place): boolean {
+  return (
+    one.part === other.part &&
+    one.measure === other.measure &&
+    one.voice === other.voice &&
+    rounded(one.at) === rounded(other.at)
+  )
 }
 
 /** The same walk as collectStarts, handing back each event and where it is. */
@@ -1010,11 +1095,15 @@ function drawnLength(note: XmlElement): number | undefined {
  * only an <extend>, before the next syllable of the verse, and a stop ends
  * it. The place it runs to follows the syllable, where the source states
  * one.
+ *
+ * A place in a voice the converter retimes is named by its order, as
+ * placeNames gives it.
  */
-export function sourceLyricPlaces(root: XmlElement): string[] {
-  const found: string[] = []
+export function sourceLyricPlaces(root: XmlElement, retimed = NOTHING_RETIMED): string[] {
+  // Each syllable: where it is sung, and its line and text.
+  const found: { at: Place; sung: string }[] = []
   // Where each melisma line found runs to, by the index of its syllable.
-  const ends = new Map<number, string>()
+  const ends = new Map<number, Place>()
 
   root.children
     .filter((c) => c.name === 'part')
@@ -1039,12 +1128,12 @@ export function sourceLyricPlaces(root: XmlElement): string[] {
           // stand, the syllables they sing and the melisma lines they end.
           const waiting = new Map<
             string,
-            { position: number; at: string; syllables: number[]; ended: number[] }
+            { position: number; at: Place; syllables: number[]; ended: number[] }
           >()
           let graceEvent: { syllables: number[]; ended: number[] } | undefined
           // A chord is one event: its notes sound where its first one does,
           // and sing one text per line between them.
-          let at = ''
+          let at: Place = { part: partIndex, measure: measureIndex, voice: '', at: 0 }
           let sung = new Map<string, { text: string; index: number; draws: boolean }>()
 
           for (const item of measure.children) {
@@ -1088,7 +1177,7 @@ export function sourceLyricPlaces(root: XmlElement): string[] {
               if (!isGrace) voiceLines.active = taken === -1 ? lines.length - 1 : taken
               sequence = lines[voiceLines.active] as { end: number; drawn: number }
               const gap = Math.max(position - sequence.end, 0)
-              at = place(partIndex, measureIndex, sequence.drawn + gap)
+              at = { part: partIndex, measure: measureIndex, voice, at: sequence.drawn + gap }
               sung = new Map()
 
               // Grace notes waiting where the cursor stands move with the
@@ -1098,12 +1187,14 @@ export function sourceLyricPlaces(root: XmlElement): string[] {
               if (isGrace) {
                 if (!stays) waiting.set(voice, { position, at, syllables: [], ended: [] })
               } else {
-                if (stays && held.at !== at) {
+                if (stays && !samePlace(held.at, at)) {
                   for (const index of held.syllables) {
-                    found[index] = at + (found[index] as string).slice(held.at.length)
+                    const syllable = found[index]
+                    if (syllable) syllable.at = at
                   }
                   for (const index of held.ended) {
-                    if (ends.get(index) === held.at) ends.set(index, at)
+                    const end = ends.get(index)
+                    if (end && samePlace(end, held.at)) ends.set(index, at)
                   }
                 }
                 waiting.delete(voice)
@@ -1154,7 +1245,8 @@ export function sourceLyricPlaces(root: XmlElement): string[] {
                 if (first.text === text && draws && !first.draws) {
                   first.draws = true
                   open.set(key, first.index)
-                  found[first.index] += ' with a line'
+                  const syllable = found[first.index]
+                  if (syllable) syllable.sung += ' with a line'
                 }
                 continue
               }
@@ -1162,7 +1254,7 @@ export function sourceLyricPlaces(root: XmlElement): string[] {
               open.delete(key)
               if (draws) open.set(key, found.length)
               graceEvent?.syllables.push(found.length)
-              found.push(`${at} line ${line}: ${text}${draws ? ' with a line' : ''}`)
+              found.push({ at, sung: `line ${line}: ${text}${draws ? ' with a line' : ''}` })
             }
 
             if (!isChord && !isGrace) {
@@ -1177,9 +1269,10 @@ export function sourceLyricPlaces(root: XmlElement): string[] {
           }
         })
     })
-  return found.map((syllable, index) => {
+  const named = placeNames([...found.map(({ at }) => at), ...ends.values()], retimed)
+  return found.map(({ at, sung }, index) => {
     const end = ends.get(index)
-    return end === undefined ? syllable : `${syllable} to ${end}`
+    return `${named(at)} ${sung}${end === undefined ? '' : ` to ${named(end)}`}`
   })
 }
 
@@ -1191,26 +1284,33 @@ export function sourceLyricPlaces(root: XmlElement): string[] {
  * Placed, not grouped by sequence: a voice written as two lines laid over
  * each other is two sequences in MNX and one voice in the source. Both sides
  * can read the place without agreeing on how the lines divide, and a
- * syllable moved to another note shows.
+ * syllable moved to another note shows. A place in a voice the converter
+ * retimes is named by its order, as placeNames gives it.
  */
-export function lyricPlaces(document: MNXDocument): string[] {
+export function lyricPlaces(document: MNXDocument, retimed = NOTHING_RETIMED): string[] {
   const placed = placedEvents(document)
-  const byId = new Map<string, string>()
+  const byId = new Map<string, Place>()
   for (const { item, place: at } of placed) {
     if (item.id !== undefined) byId.set(item.id, at)
   }
 
-  const found: string[] = []
-  for (const { item, place: at } of placed) {
-    for (const [line, verse] of Object.entries(item.lyrics?.lines ?? {})) {
+  const sung = placed.flatMap(({ item, place: at }) =>
+    Object.entries(item.lyrics?.lines ?? {}).map(([line, verse]) => {
       const target = verse.extender?.target
-      const drawn = verse.extender
-        ? ` with a line${target === undefined ? '' : ` to ${byId.get(target) ?? target}`}`
-        : ''
-      found.push(`${at} line ${line}: ${verse.text}${drawn}`)
-    }
-  }
-  return found
+      return { at, line, verse, target, end: target === undefined ? undefined : byId.get(target) }
+    }),
+  )
+  const named = placeNames(
+    sung.flatMap(({ at, end }) => (end ? [at, end] : [at])),
+    retimed,
+  )
+
+  return sung.map(({ at, line, verse, target, end }) => {
+    const drawn = verse.extender
+      ? ` with a line${target === undefined ? '' : ` to ${end ? named(end) : target}`}`
+      : ''
+    return `${named(at)} line ${line}: ${verse.text}${drawn}`
+  })
 }
 
 /**
@@ -1222,11 +1322,12 @@ export function slurSpans(document: MNXDocument): Set<string> {
   const placed = placedEvents(document)
   const byId = new Map<string, string>()
   for (const { item, place: at } of placed) {
-    if (item.id !== undefined) byId.set(item.id, at)
+    if (item.id !== undefined) byId.set(item.id, place(at.part, at.measure, at.at))
   }
 
   const spans = new Set<string>()
-  for (const { item, place: from } of placed) {
+  for (const { item, place: at } of placed) {
+    const from = place(at.part, at.measure, at.at)
     for (const slur of item.slurs ?? []) {
       const to = byId.get(slur.target)
       if (to !== undefined) spans.add(`${from} -> ${to}`)

@@ -34,6 +34,7 @@ import {
   measureLengthDisagreements,
   lyricPlaces,
   pitchesOf,
+  retimedVoices,
   sounding,
   slurSpans,
   sourceMeasureLengths,
@@ -953,9 +954,12 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   // Compared by the place each syllable is sung and its verse line. The
   // source interleaves the voices of a measure through its cursor, lists a
   // note's verses in any order, and writes a voice's two laid-over lines as
-  // one voice, where MNX has two sequences.
+  // one voice, where MNX has two sequences. Where the converter retimes a
+  // tuplet, the syllables of its voice are compared in order in that measure.
   test('keeps every lyric syllable the source wrote, on the note that sings it', () => {
-    expect(lyricPlaces(mnx).sort()).toEqual(sourceLyricPlaces(parseXmlRoot(source)).sort())
+    const root = parseXmlRoot(source)
+    const retimed = retimedVoices(root, warnings)
+    expect(lyricPlaces(mnx, retimed).sort()).toEqual(sourceLyricPlaces(root, retimed).sort())
   })
 
   // The check above keeps one text per line per note or chord, so it cannot
