@@ -1242,6 +1242,23 @@ describe('a bracket the silence before it completes', () => {
     expect(warnings).toEqual([])
   })
 
+  // No whole number of quarters fills 5/8, so counting from the barline the
+  // measure ends on would not put the bracket on a beat.
+  test('counts the beats from the barline the measure begins on', () => {
+    const { content, warnings } = read(
+      measures(
+        TIMED.replace('<beats>2</beats><beat-type>4', '<beats>5</beats><beat-type>8') +
+          skip(4) +
+          alone('C', 8, 'quarter') +
+          plain('D', 12, 'quarter') +
+          plain('E', 6, 'eighth'),
+      ),
+    )
+
+    expect(shape(content)).toEqual([['space', 'event'], 'event', 'event'])
+    expect(warnings).toEqual([])
+  })
+
   test('takes the silence before rather than after where that puts the bracket on its beat', () => {
     const { content, warnings } = timed(
       skip(4) + alone('C', 8, 'quarter') + skip(4) + alone('D', 8, 'quarter'),
