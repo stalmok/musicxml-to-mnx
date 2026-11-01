@@ -427,6 +427,25 @@ describe('a bracket the silence after it completes', () => {
     expect(codes).toEqual(['inconsistent:tuplet', 'unrepresentable:cross-part-time'])
   })
 
+  // The second part states 3/8 and the score 2/4. The bracket is missing an
+  // eighth, and its part's barline leaves it a 16th, so the silence past 3/8
+  // that the score's time signature would allow is not the bracket's.
+  test("takes in no silence past its part's time signature where the score's is longer", () => {
+    const { content, codes } = secondPart(
+      twoParts(
+        TIMED + plain('D', 24, 'half'),
+        eighths(3) + plain('D', 12, 'quarter') + shortEighth,
+      ),
+    )
+
+    expect(stated(content?.[1])).toEqual({
+      inner: { value: { base: '16th', dots: 0 }, multiple: 3 },
+      outer: { value: { base: '16th', dots: 0 }, multiple: 2 },
+      held: ['event', 'space'],
+    })
+    expect(codes).toEqual(['inconsistent:tuplet', 'unrepresentable:cross-part-time'])
+  })
+
   // The half note states the <duration> of a whole, and its written value is
   // kept, so the cursor runs past 3/4 while the voice is written within it.
   // The silence the source writes after the bracket is still the bracket's.
