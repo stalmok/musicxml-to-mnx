@@ -1256,9 +1256,7 @@ export class MeasureBuilder {
     // A bracket takes in no silence past the score's time signature, since a
     // measure that runs past it is refused.
     const bound =
-      anchor === 'start' && scoreSignature && compareFractions(length, scoreSignature) > 0
-        ? scoreSignature
-        : length
+      scoreSignature && compareFractions(length, scoreSignature) > 0 ? scoreSignature : length
     this.#settleMeasure({ anchor, length: bound }, warnings, context)
     this.#settleCandidateRests()
 

@@ -333,7 +333,7 @@ export interface MeasureExtent {
    * How far the measure runs, which bounds the silence a bracket may take:
    * the part's time signature, or its cursor where that runs further, up to
    * the score's time signature. A pickup runs to its cursor alone, having no
-   * silence past its own end.
+   * silence past its own end, and also stops at the score's time signature.
    */
   length: Fraction
 }

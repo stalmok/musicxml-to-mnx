@@ -1092,6 +1092,33 @@ describe('a short bracket in a pickup measure', () => {
     expect(warnings).toEqual([])
   })
 
+  // A trailing <forward> runs the cursor past 4/4, which the pickup's own
+  // end does not reach past. The bracket takes in only what is left before
+  // the barline, in a narrower note value.
+  test('takes in no silence past the time signature', () => {
+    const quarter =
+      '<note><pitch><step>D</step><octave>4</octave></pitch><duration>12</duration>' +
+      '<type>quarter</type></note>'
+    const eighth =
+      '<note><pitch><step>E</step><octave>4</octave></pitch><duration>6</duration>' +
+      '<type>eighth</type></note>'
+    const shortEighth =
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+      '<type>eighth</type><time-modification><actual-notes>3</actual-notes>' +
+      '<normal-notes>2</normal-notes></time-modification>' +
+      '<notations><tuplet type="start" bracket="no"/><tuplet type="stop"/></notations></note>'
+    const { content, warnings } = pickup(
+      quarter.repeat(3) + eighth + shortEighth + '<forward><duration>8</duration></forward>',
+    )
+
+    expect(shape(content)).toEqual(['event', 'event', 'event', 'event', ['event', 'space']])
+    expect(content?.[4]?.kind === 'tuplet' && content[4].outer).toEqual({
+      value: { base: '16th', dots: 0 },
+      multiple: 2,
+    })
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tuplet'])
+  })
+
   test('leaves output the schema takes', () => {
     const source =
       '<score-partwise><part id="P1"><measure number="1" implicit="yes">' +
