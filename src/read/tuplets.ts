@@ -325,10 +325,10 @@ export interface TupletClaim {
 /** The shape of the measure a bracket is settled against. */
 export interface MeasureExtent {
   /**
-   * Where the beats line up: at the barline the measure begins on, or, in a
-   * pickup, at the barline it ends on.
+   * The barline the beats line up with: the one the measure begins on, or, in
+   * a pickup, the one it ends on, where its cursor stops.
    */
-  anchor: 'start' | 'end'
+  beatsFrom: Fraction
   /**
    * How far the measure runs, which bounds the silence a bracket may take:
    * the part's time signature, or its cursor where that runs further, up to
@@ -785,10 +785,7 @@ function leadOf(
   const none = fraction(0)
   if (!before) return none
   const beat = quantityLength(outer)
-  // The barline the beats are counted from: the one the measure begins on,
-  // or, in a pickup, the one it ends on.
-  const from = measure.anchor === 'end' ? measure.length : fraction(0)
-  const over = subtractFractions(claim.openEnd, from)
+  const over = subtractFractions(claim.openEnd, measure.beatsFrom)
   const beats = divideFractions(over, beat)
   const lead = subtractFractions(
     over,

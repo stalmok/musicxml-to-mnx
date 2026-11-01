@@ -1219,7 +1219,8 @@ export class MeasureBuilder {
      * score's, which no measure may run past. Each is unset where none is
      * stated.
      */
-    opening: Pick<MeasureExtent, 'anchor'> & {
+    opening: {
+      anchor: 'start' | 'end'
       signature: Fraction | undefined
       scoreSignature: Fraction | undefined
     },
@@ -1257,7 +1258,11 @@ export class MeasureBuilder {
     // measure that runs past it is refused.
     const bound =
       scoreSignature && compareFractions(length, scoreSignature) > 0 ? scoreSignature : length
-    this.#settleMeasure({ anchor, length: bound }, warnings, context)
+    this.#settleMeasure(
+      { beatsFrom: anchor === 'end' ? length : fraction(0), length: bound },
+      warnings,
+      context,
+    )
     this.#settleCandidateRests()
 
     settleSpanCovers(

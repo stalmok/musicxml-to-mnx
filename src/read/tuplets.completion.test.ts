@@ -1111,21 +1111,23 @@ describe('a short bracket in a pickup measure', () => {
     expect(warnings).toEqual([])
   })
 
+  const quarter =
+    '<note><pitch><step>D</step><octave>4</octave></pitch><duration>12</duration>' +
+    '<type>quarter</type></note>'
+  const eighth =
+    '<note><pitch><step>E</step><octave>4</octave></pitch><duration>6</duration>' +
+    '<type>eighth</type></note>'
+  /** An eighth taking one of the three eighth slots of its own bracket. */
+  const shortEighth =
+    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+    '<type>eighth</type><time-modification><actual-notes>3</actual-notes>' +
+    '<normal-notes>2</normal-notes></time-modification>' +
+    '<notations><tuplet type="start" bracket="no"/><tuplet type="stop"/></notations></note>'
+
   // A trailing <forward> runs the cursor past 4/4, which the pickup's own
   // end does not reach past. The bracket takes in only what is left before
   // the barline, in a narrower note value.
   test('takes in no silence past the time signature', () => {
-    const quarter =
-      '<note><pitch><step>D</step><octave>4</octave></pitch><duration>12</duration>' +
-      '<type>quarter</type></note>'
-    const eighth =
-      '<note><pitch><step>E</step><octave>4</octave></pitch><duration>6</duration>' +
-      '<type>eighth</type></note>'
-    const shortEighth =
-      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
-      '<type>eighth</type><time-modification><actual-notes>3</actual-notes>' +
-      '<normal-notes>2</normal-notes></time-modification>' +
-      '<notations><tuplet type="start" bracket="no"/><tuplet type="stop"/></notations></note>'
     const { content, warnings } = pickup(
       quarter.repeat(3) + eighth + shortEighth + '<forward><duration>8</duration></forward>',
     )
@@ -1136,6 +1138,22 @@ describe('a short bracket in a pickup measure', () => {
       multiple: 2,
     })
     expect(warnings.map((w) => w.code)).toEqual(['inconsistent:tuplet'])
+  })
+
+  // The cursor stops at 9/8, past 4/4, and the beats still line up with
+  // where it stops. A quarter back from there, the bracket starts an eighth
+  // into the skip before it.
+  test('counts the beats from where the cursor stops, past the time signature', () => {
+    const { content, warnings } = pickup(
+      quarter.repeat(2) +
+        '<forward><duration>12</duration></forward>' +
+        shortEighth +
+        '<forward><duration>14</duration></forward>',
+    )
+
+    expect(shape(content)).toEqual(['event', 'event', 'space', ['space', 'event', 'space']])
+    expect(content?.[2]?.kind === 'space' && content[2].duration).toEqual(fraction(1, 8))
+    expect(warnings).toEqual([])
   })
 
   test('leaves output the schema takes', () => {
