@@ -107,6 +107,7 @@ Warning prefixes identify three categories:
 | `unrepresentable:`                                                    | A limitation of the pinned MNX format.     | `isFormatLimit(code)`   |
 | `inconsistent:`, `missing:`, `unresolved:`, `unclosed:`, `redundant:` | A source problem or a reported correction. | `isSourceProblem(code)` |
 
+`categoryOf(code)` returns the category as `'converter-gap'`, `'format-limit'` or `'source-problem'`.
 `WARNING_CODES` lists every warning code.
 
 An empty warning array means no loss was detected.
