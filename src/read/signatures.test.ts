@@ -1687,37 +1687,36 @@ describe('the time signature worked out ahead of a part', () => {
       .join('')
   // A note of a two-note tremolo lasts half its written value, whether or not
   // it states the pair's ratio, and a single-note tremolo scales nothing. A
-  // note can carry more than one <notations> and <ornaments>.
-  const tremolos: [string, (type: string) => string, string][] = [
+  // note can carry more than one <notations> and <ornaments>. Each entry
+  // gives the divisions the pair of quarters lasts.
+  const tremolos: [string, (type: string) => string, number][] = [
     [
       'a two-note tremolo',
       (type) => `<ornaments><tremolo type="${type}">2</tremolo></ornaments>`,
-      '3/4',
+      4,
     ],
     [
       'a two-note tremolo in a second <notations>',
       (type) =>
         `<fermata/></notations><notations><ornaments><tremolo type="${type}">2</tremolo></ornaments>`,
-      '3/4',
+      4,
     ],
     [
       'a two-note tremolo in a second <ornaments>',
       (type) =>
         `<ornaments><trill-mark/></ornaments><ornaments><tremolo type="${type}">2</tremolo></ornaments>`,
-      '3/4',
+      4,
     ],
     [
       'a two-note tremolo after a single-note one',
       (type) =>
         `<ornaments><tremolo type="single">3</tremolo><tremolo type="${type}">2</tremolo></ornaments>`,
-      '3/4',
+      4,
     ],
-    [
-      'a single-note tremolo',
-      () => '<ornaments><tremolo type="single">3</tremolo></ornaments>',
-      '2/4',
-    ],
+    ['a single-note tremolo', () => '<ornaments><tremolo type="single">3</tremolo></ornaments>', 8],
   ]
+
+  const backup = (units: number) => `<backup><duration>${String(units)}</duration></backup>`
 
   function opened(before: string, after: string): { readAhead: string[]; output: string[] } {
     const measures = [
@@ -1775,22 +1774,25 @@ describe('the time signature worked out ahead of a part', () => {
       '<note><rest measure="yes"/></note>',
       '2/4',
     ],
-    // A <backup> of the length the note is read as lasting returns to the
-    // measure start, so a note read as lasting longer leaves the cursor past it.
-    [
-      'a tuplet with no <duration>, and a <backup> of the quarter its ratio gives it',
-      triplet + '<backup><duration>4</duration></backup>',
-      '3/4',
-    ],
-    [
-      'a rest with no <duration>, and a <backup> of its written value',
-      '<note><rest/><type>quarter</type></note><backup><duration>4</duration></backup>',
-      '3/4',
-    ],
-    ...tremolos.map(([name, ornament, second]) => [
-      `${name} stating no ratio and no <duration>, and a <backup> of a quarter`,
-      tremoloPair(ornament) + '<backup><duration>4</duration></backup>',
-      second,
+    // A <backup> of the divisions a note lasts returns to the measure start,
+    // and one a division shorter leaves the cursor past it, so a note read as
+    // lasting longer or shorter places the time signature elsewhere.
+    ...(
+      [
+        ['a tuplet with no <duration>', triplet, 4],
+        ['a rest with no <duration>', '<note><rest/><type>quarter</type></note>', 4],
+        ...tremolos.map(
+          ([name, ornament, lasts]) =>
+            [`${name} stating no ratio and no <duration>`, tremoloPair(ornament), lasts] as const,
+        ),
+      ] as const
+    ).flatMap(([name, notes, lasts]) => [
+      [
+        `${name}, and a <backup> of the ${String(lasts)} divisions it lasts`,
+        notes + backup(lasts),
+        '3/4',
+      ],
+      [`${name}, and a <backup> one division shorter`, notes + backup(lasts - 1), '2/4'],
     ]),
   ])('places a time signature after %s where the measure does', (_name, before, second) => {
     // A rest filling the measure leaves no room in its voice for a note.
