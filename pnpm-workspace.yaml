@@ -35,5 +35,13 @@ minimumReleaseAge: 1440
 # range (~2.3.0) cannot reach 3.x, so 6.16.2 is forced here. Remove when the
 # runner's typed-rest-client range reaches a version that needs qs 6.16.1 or
 # later.
+#
+# minimatch, pulled in by eslint, typescript-eslint and the mutation testing
+# runner (dev-only), is named by GHSA-g3hv-75wg-m249, a pattern amplification
+# denial of service reading <11.0.1. Only the 11.x major has the fix, and every
+# parent asks for ^10 or ~10.2, so 11.0.3 is forced here. Under 11.0.3 eslint
+# lints the same files with the same rules, and the runner's mutate globs
+# select the same files. Remove when the parents' ranges reach 11.0.1.
 overrides:
   qs: 6.16.2
+  minimatch: 11.0.3
