@@ -427,8 +427,8 @@ describe('a bracket the silence after it completes', () => {
     expect(codes).toEqual(['inconsistent:tuplet', 'unrepresentable:cross-part-time'])
   })
 
-  // The second part states 3/8 and the score 2/4. The bracket is missing an
-  // eighth, and its part's barline leaves it a 16th, so the silence past 3/8
+  // The second part states 3/8 and the score 2/4. The bracket is missing 8
+  // divisions, and its part's barline leaves it 2, so the silence past 3/8
   // that the score's time signature would allow is not the bracket's.
   test("takes in no silence past its part's time signature where the score's is longer", () => {
     const { content, codes } = secondPart(
