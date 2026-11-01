@@ -33,8 +33,8 @@ minimumReleaseAge: 1440
 # TypeError crash in stringify with arrayFormat 'comma', reading >=6.7.0
 # <=6.16.0. typed-rest-client 2.3.1 pins qs 6.15.1 exactly and the runner's
 # range (~2.3.0) cannot reach 3.x, so 6.16.2 is forced here. Remove when the
-# runner's typed-rest-client range reaches a version that needs qs 6.16.1 or
-# later.
+# runner's typed-rest-client range reaches a version whose qs range admits
+# 6.16.1 or later (3.x asks for ^6.16.0).
 #
 # minimatch, pulled in by eslint, typescript-eslint and the mutation testing
 # runner (dev-only), is named by GHSA-g3hv-75wg-m249, a pattern amplification
