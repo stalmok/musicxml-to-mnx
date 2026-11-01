@@ -756,63 +756,6 @@ describe('a time signature stated after the measure start', () => {
     expect(unstated.warnings.map((w) => w.code)).toEqual(stated.warnings.map((w) => w.code))
   })
 
-  // A <backup> of the two notes' length returns to the start only where the
-  // triplet lasts the quarter its ratio gives it.
-  test('reads ahead a note with no <duration> inside a tuplet as its ratio scales it', () => {
-    const triplet = (duration: string) =>
-      ['start', '', 'stop']
-        .map(
-          (bracket) =>
-            `<note><pitch><step>C</step><octave>4</octave></pitch>${duration}<voice>1</voice>` +
-            '<type>eighth</type><time-modification><actual-notes>3</actual-notes>' +
-            '<normal-notes>2</normal-notes></time-modification>' +
-            (bracket ? `<notations><tuplet type="${bracket}"/></notations>` : '') +
-            '</note>',
-        )
-        .join('')
-    const first = (duration: string) =>
-      outcome(
-        untimedBesideNext(
-          timed(2) + triplet(duration) + note(12) + back(24) + timed(3) + note(24, 2),
-          24,
-        ),
-      )
-
-    expect(first('')).toEqual(first('<duration>4</duration>'))
-  })
-
-  // A note of a two-note tremolo lasts half its written value, whether or not
-  // it states the pair's ratio. A single-note tremolo scales nothing. A
-  // <backup> of a quarter returns to the start only where the pair lasts one.
-  test.each([
-    ['a two-note tremolo', (type: string) => `<tremolo type="${type}">2</tremolo>`, 6],
-    [
-      'a two-note tremolo in a second <ornaments>',
-      (type: string) => `<trill-mark/></ornaments><ornaments><tremolo type="${type}">2</tremolo>`,
-      6,
-    ],
-    [
-      'a two-note tremolo after a single-note one',
-      (type: string) => `<tremolo type="single">3</tremolo><tremolo type="${type}">2</tremolo>`,
-      6,
-    ],
-    ['a single-note tremolo', () => '<tremolo type="single">3</tremolo>', 12],
-  ])('reads ahead %s stating no ratio and no <duration>', (_, ornament, units) => {
-    const notes = (duration: string) =>
-      ['start', 'stop']
-        .map(
-          (type) =>
-            `<note><pitch><step>C</step><octave>4</octave></pitch>${duration}<voice>1</voice>` +
-            `<type>quarter</type><notations><ornaments>${ornament(type)}</ornaments></notations>` +
-            '</note>',
-        )
-        .join('')
-    const first = (duration: string) =>
-      outcome(untimedBesideNext(timed(2) + notes(duration) + back(12) + timed(3) + note(12, 2), 24))
-
-    expect(first('')).toEqual(first(`<duration>${String(units)}</duration>`))
-  })
-
   test.each(['actual-notes', 'normal-notes'])(
     'reads ahead a <%s> of 0, which the part reader refuses',
     (name) => {
@@ -1726,6 +1669,56 @@ describe('the time signature worked out ahead of a part', () => {
   const quarter = `<note>${pitch}<duration>4</duration><type>quarter</type></note>`
   const threeFour = '<attributes><time><beats>3</beats><beat-type>4</beat-type></time></attributes>'
 
+  const triplet = ['start', '', 'stop']
+    .map(
+      (bracket) =>
+        `<note>${pitch}<type>eighth</type><time-modification><actual-notes>3</actual-notes>` +
+        '<normal-notes>2</normal-notes></time-modification>' +
+        (bracket ? `<notations><tuplet type="${bracket}"/></notations>` : '') +
+        '</note>',
+    )
+    .join('')
+  const tremoloPair = (ornament: (type: string) => string) =>
+    ['start', 'stop']
+      .map(
+        (type) =>
+          `<note>${pitch}<type>quarter</type><notations>${ornament(type)}</notations></note>`,
+      )
+      .join('')
+  // A note of a two-note tremolo lasts half its written value, whether or not
+  // it states the pair's ratio, and a single-note tremolo scales nothing. A
+  // note can carry more than one <notations> and <ornaments>.
+  const tremolos: [string, (type: string) => string, string][] = [
+    [
+      'a two-note tremolo',
+      (type) => `<ornaments><tremolo type="${type}">2</tremolo></ornaments>`,
+      '3/4',
+    ],
+    [
+      'a two-note tremolo in a second <notations>',
+      (type) =>
+        `<fermata/></notations><notations><ornaments><tremolo type="${type}">2</tremolo></ornaments>`,
+      '3/4',
+    ],
+    [
+      'a two-note tremolo in a second <ornaments>',
+      (type) =>
+        `<ornaments><trill-mark/></ornaments><ornaments><tremolo type="${type}">2</tremolo></ornaments>`,
+      '3/4',
+    ],
+    [
+      'a two-note tremolo after a single-note one',
+      (type) =>
+        `<ornaments><tremolo type="single">3</tremolo><tremolo type="${type}">2</tremolo></ornaments>`,
+      '3/4',
+    ],
+    [
+      'a single-note tremolo',
+      () => '<ornaments><tremolo type="single">3</tremolo></ornaments>',
+      '2/4',
+    ],
+  ]
+
   function opened(before: string, after: string): { readAhead: string[]; output: string[] } {
     const measures = [
       '<attributes><divisions>4</divisions><time><beats>2</beats><beat-type>4</beat-type>' +
@@ -1782,6 +1775,23 @@ describe('the time signature worked out ahead of a part', () => {
       '<note><rest measure="yes"/></note>',
       '2/4',
     ],
+    // A <backup> of the length the note is read as lasting returns to the
+    // measure start, so a note read as lasting longer leaves the cursor past it.
+    [
+      'a tuplet with no <duration>, and a <backup> of the quarter its ratio gives it',
+      triplet + '<backup><duration>4</duration></backup>',
+      '3/4',
+    ],
+    [
+      'a rest with no <duration>, and a <backup> of its written value',
+      '<note><rest/><type>quarter</type></note><backup><duration>4</duration></backup>',
+      '3/4',
+    ],
+    ...tremolos.map(([name, ornament, second]) => [
+      `${name} stating no ratio and no <duration>, and a <backup> of a quarter`,
+      tremoloPair(ornament) + '<backup><duration>4</duration></backup>',
+      second,
+    ]),
   ])('places a time signature after %s where the measure does', (_name, before, second) => {
     // A rest filling the measure leaves no room in its voice for a note.
     const { readAhead, output } = opened(before, before.includes('measure="yes"') ? '' : quarter)
