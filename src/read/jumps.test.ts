@@ -580,6 +580,36 @@ describe('a sign drawn at the point of a jump', () => {
     expect(result.warnings).toEqual(['sound'])
   })
 
+  test('keeps a segno beside a D.S. that is not converted in a score with a to-coda jump', () => {
+    const warnings = new WarningCollector()
+    const { globalMeasures } = readValid(
+      score(
+        NOTE + '<sound segno="s"/>' + TO_CODA,
+        NOTE + drawn('segno', DAL_SEGNO),
+        NOTE + DA_CAPO,
+        CODA + NOTE,
+      ),
+      warnings,
+    )
+
+    expect(globalMeasures.map((measure) => measure.jump?.type)).toEqual([
+      'toCoda',
+      undefined,
+      'dcAlCoda',
+      undefined,
+    ])
+    expect(globalMeasures.map((measure) => measure.segno !== undefined)).toEqual([
+      false,
+      true,
+      false,
+      false,
+    ])
+    expect(warnings.list().map((w) => w.code)).toEqual([
+      'unrepresentable:attribute',
+      'unrepresentable:undrawn-destination',
+    ])
+  })
+
   test('counts a coda at another point of the to-coda jump’s measure', () => {
     const error = readFailure(score(CODA + NOTE + TO_CODA, NOTE + DA_CAPO, CODA + NOTE))
 
