@@ -62,7 +62,7 @@ import { readPrint } from './print.js'
 import { IdGenerator } from './idGenerator.js'
 import { mergeGlobalMeasures, sameFermata, sameNumbers, sameRepeatEnd } from './globalMeasures.js'
 import type { KeysAcrossParts, ReadGlobalMeasure, ReadJump, UndrawnSign } from './globalMeasures.js'
-import { settleJumps } from './jumps.js'
+import { drawsSign, settleJumps } from './jumps.js'
 import { writtenLengthOf } from './tuplets.js'
 import { MeasureRepeats } from './measureRepeats.js'
 import type { PartCollector } from './partCollector.js'
@@ -858,6 +858,17 @@ function readMeasure(
 
   settleTranspositions(state, warnings)
   const { key, time } = signatures.settle(builder.furthest())
+  const jump = onePerMeasure(
+    jumps,
+    'jump',
+    (found) => found.sound,
+    warnings,
+    context,
+    (first, other) => first.sound !== other.sound,
+  )
+  // A sign at the point of the jump is how the source draws the jump.
+  const signs = <T extends Segno>(kind: UndrawnSign['kind'], found: readonly Stated<T>[]) =>
+    found.filter(({ value }) => !(jump && drawsSign(jump.value, kind, value)))
 
   // A part stating no time signature runs to the barline the score states.
   // Measured against the time signature the measure opens with, since one
@@ -918,17 +929,24 @@ function readMeasure(
       // Filled in by the part, once the ending's other end has been met.
       ending: undefined,
       fermata,
-      segno: onePerMeasure(segnos, 'segno', undefined, warnings, context, drawnDifferently),
-      coda: onePerMeasure(codas, 'coda', undefined, warnings, context, drawnDifferently),
-      fine: onePerMeasure(fines, 'fine', 'fine', warnings, context),
-      jump: onePerMeasure(
-        jumps,
-        'jump',
-        (jump) => jump.sound,
+      segno: onePerMeasure(
+        signs('segno', segnos),
+        'segno',
+        undefined,
         warnings,
         context,
-        (first, other) => first.sound !== other.sound,
+        drawnDifferently,
       ),
+      coda: onePerMeasure(
+        signs('coda', codas),
+        'coda',
+        undefined,
+        warnings,
+        context,
+        drawnDifferently,
+      ),
+      fine: onePerMeasure(fines, 'fine', 'fine', warnings, context),
+      jump,
       multimeasureRest: oneMultimeasureRest(multimeasureRests, warnings, context),
       systemBreak,
       pageBreak,

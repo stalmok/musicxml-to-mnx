@@ -409,6 +409,130 @@ describe('a jump in a score without exactly one sign for it', () => {
   })
 })
 
+// A segno or a coda at the point of a jump is how a source draws the jump:
+// "D.S." beside a segno, "To Coda" or "al Coda" beside a coda. It is not a
+// sign the jump goes to.
+describe('a sign drawn at the point of a jump', () => {
+  const drawn = (sign: string, sound: string) =>
+    `<direction><direction-type><${sign}/></direction-type>${sound}</direction>`
+  const TO_CODA_WORDS =
+    '<direction><direction-type><words>To Coda</words></direction-type>' + TO_CODA + '</direction>'
+
+  function signs(source: string) {
+    const warnings = new WarningCollector()
+    const { globalMeasures } = readValid(source, warnings)
+    return {
+      types: globalMeasures.map((measure) => measure.jump?.type),
+      segnos: globalMeasures.map((measure) => measure.segno !== undefined),
+      codas: globalMeasures.map((measure) => measure.coda !== undefined),
+      warnings: warnings.list().map((w) => w.element),
+    }
+  }
+
+  test.each([
+    ['in a direction before the <sound tocoda>', CODA + TO_CODA, []],
+    ['in a direction after the <sound tocoda>', TO_CODA + CODA, []],
+    ['apart from the direction that holds the <sound tocoda>', CODA + TO_CODA_WORDS, ['words']],
+    ['on the barline the <sound tocoda> stands at', TO_CODA + '<barline><coda/></barline>', []],
+  ])('takes a coda %s as the to-coda jump', (_, marks, losses) => {
+    const result = signs(score(NOTE + marks, NOTE + DA_CAPO, CODA + NOTE))
+
+    expect(result.types).toEqual(['toCoda', 'dcAlCoda', undefined])
+    expect(result.codas).toEqual([false, false, true])
+    expect(result.warnings).toEqual(losses)
+  })
+
+  test('takes a segno in the direction of a D.S. as the D.S.', () => {
+    const result = signs(score(SEGNO + NOTE, NOTE + drawn('segno', DAL_SEGNO)))
+
+    expect(result.types).toEqual([undefined, 'segno'])
+    expect(result.segnos).toEqual([true, false])
+    expect(result.warnings).toEqual([])
+  })
+
+  test.each([
+    ['D.C.', NOTE + TO_CODA, DA_CAPO, 'dcAlCoda'],
+    ['D.S.', SEGNO + NOTE + TO_CODA, DAL_SEGNO, 'dsAlCoda'],
+  ])('takes a coda in the direction of a %s as al Coda', (_, opening, sound, type) => {
+    const result = signs(score(opening, NOTE + drawn('coda', sound), CODA + NOTE))
+
+    expect(result.types).toEqual(['toCoda', type, undefined])
+    expect(result.codas).toEqual([false, false, true])
+    expect(result.warnings).toEqual([])
+  })
+
+  // Without a to-coda jump, nothing is al Coda, and a coda goes nowhere.
+  test.each([
+    ['D.C.', DA_CAPO, 'dc'],
+    ['D.S.', DAL_SEGNO, 'segno'],
+  ])('keeps a coda in the direction of a %s in a score with no to-coda jump', (_, sound, type) => {
+    const result = signs(score(SEGNO + NOTE, NOTE + drawn('coda', sound)))
+
+    expect(result.types).toEqual([undefined, type])
+    expect(result.codas).toEqual([false, true])
+  })
+
+  test('keeps a segno in the direction of a D.C.', () => {
+    const result = signs(score(NOTE + drawn('segno', DA_CAPO)))
+
+    expect(result.types).toEqual(['dc'])
+    expect(result.segnos).toEqual([true])
+  })
+
+  // MNX states one sign of each kind per measure. The jump's drawing is not
+  // a second one.
+  test.each([
+    ['segno', SEGNO + NOTE + drawn('segno', DAL_SEGNO), ['segno'], 'segno'],
+    ['coda', CODA + NOTE + CODA + TO_CODA, ['toCoda'], 'coda'],
+  ] as const)(
+    'keeps a %s at the start of the jump’s measure without a report',
+    (_, body, types, kind) => {
+      const warnings = new WarningCollector()
+      const { globalMeasures } = readValid(score(body), warnings)
+
+      expect(globalMeasures.map((measure) => measure.jump?.type)).toEqual(types)
+      expect(globalMeasures[0]?.[kind]?.location).toEqual({ num: 0, den: 1 })
+      expect(warnings.list()).toEqual([])
+    },
+  )
+
+  test('counts a coda at another point of the to-coda jump’s measure', () => {
+    const error = readFailure(score(CODA + NOTE + TO_CODA, NOTE + DA_CAPO, CODA + NOTE))
+
+    expect(error.detail).toContain('draws 2 codas')
+  })
+
+  // Each part restates the score's marks, one with the <sound> and one
+  // without.
+  test.each([
+    ['P1', 'P2'],
+    ['P2', 'P1'],
+  ])('takes the coda %s draws with no jump as the to-coda jump %s states', (_, sounding) => {
+    const part = (id: string) =>
+      `<part id="${id}">` +
+      `<measure number="1"><attributes><divisions>4</divisions></attributes>${NOTE}` +
+      (id === sounding ? drawn('coda', TO_CODA) : CODA) +
+      '</measure>' +
+      `<measure number="2">${NOTE}${id === sounding ? DA_CAPO : ''}</measure>` +
+      `<measure number="3">${CODA}${NOTE}</measure></part>`
+    const result = signs(`<score-partwise>${part('P1')}${part('P2')}</score-partwise>`)
+
+    expect(result.types).toEqual(['toCoda', 'dcAlCoda', undefined])
+    expect(result.codas).toEqual([false, false, true])
+    expect(result.warnings).toEqual([])
+  })
+
+  test('writes one coda to schema-valid MNX', () => {
+    const { mnx } = convertValid(score(NOTE + CODA + TO_CODA, NOTE + DA_CAPO, CODA + NOTE))
+
+    expect(mnx.global.measures.map((measure) => measure.coda !== undefined)).toEqual([
+      false,
+      false,
+      true,
+    ])
+  })
+})
+
 // A jump is taken once, so a replay runs on past the jump that started it.
 // MusicXML states no al Fine on the jump: a Fine ends the piece once a jump
 // has been taken, wherever it stands.

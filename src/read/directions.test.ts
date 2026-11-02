@@ -2011,13 +2011,15 @@ describe('sound navigation', () => {
   test('takes the jump from a <sound dalsegno> written inside a <direction>', () => {
     const { global } = read(
       inMeasure(
-        note('C') +
+        direction('<segno/>') +
+          note('C') +
           '<direction><direction-type><segno/></direction-type>' +
           '<sound dalsegno="segno"/></direction>',
       ),
     )
 
     expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'segno' })
+    expect(global?.segno?.location).toEqual({ num: 0, den: 1 })
   })
 
   // MNX states one fine per measure, so a second at another point is reported
@@ -2186,7 +2188,7 @@ describe('sound navigation', () => {
   // score's coda is where it goes.
   test('puts a jump of type toCoda on the measure for a <sound tocoda>', () => {
     const { global, warnings } = read(
-      inMeasure(note('C') + '<sound tocoda="coda"/>' + direction('<coda/>')),
+      inMeasure(direction('<coda/>') + note('C') + '<sound tocoda="coda"/>'),
     )
 
     expect(global?.jump).toEqual({ location: { num: 1, den: 4 }, type: 'toCoda' })
@@ -2215,7 +2217,7 @@ describe('sound navigation', () => {
     expect(warnings.list().map((w) => w.element)).toEqual(['words'])
   })
 
-  // Only a to-coda jump draws a coda glyph as part of itself.
+  // A coda beside a D.C. reads al Coda only in a score with a to-coda jump.
   test('keeps a coda drawn in the same direction as a D.C.', () => {
     const { global } = read(
       inMeasure(
@@ -2231,7 +2233,7 @@ describe('sound navigation', () => {
   // Two different jumps at one point are two marks, where MNX states one.
   test('reports a second jump of another kind at the same point', () => {
     const { global, warnings } = read(
-      inMeasure(note('C') + '<sound tocoda="coda"/>\n<sound dacapo="yes"/>' + direction('<coda/>')),
+      inMeasure(direction('<coda/>') + note('C') + '<sound tocoda="coda"/>\n<sound dacapo="yes"/>'),
     )
 
     expect(global?.jump?.type).toBe('toCoda')
@@ -2332,19 +2334,19 @@ describe('sound navigation', () => {
 
   test('writes a jump the spec schema accepts', () => {
     const { mnx } = convertValid(
-      inMeasure(direction('<segno/>') + '<sound dalsegno="segno"/>' + note('C')),
+      inMeasure(direction('<segno/>') + note('C') + '<sound dalsegno="segno"/>'),
     )
 
-    expect(mnx.global.measures[0]?.jump).toEqual({ location: { fraction: [0, 1] }, type: 'segno' })
+    expect(mnx.global.measures[0]?.jump).toEqual({ location: { fraction: [1, 4] }, type: 'segno' })
   })
 
   test('writes a dsAlFine jump the spec schema accepts', () => {
     const { mnx } = convertValid(
-      inMeasure(direction('<segno/>') + '<sound fine="yes" dalsegno="segno"/>' + note('C')),
+      inMeasure(direction('<segno/>') + note('C') + '<sound fine="yes" dalsegno="segno"/>'),
     )
 
     expect(mnx.global.measures[0]?.jump).toEqual({
-      location: { fraction: [0, 1] },
+      location: { fraction: [1, 4] },
       type: 'dsAlFine',
     })
   })

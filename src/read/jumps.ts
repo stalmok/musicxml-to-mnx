@@ -5,7 +5,7 @@ import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
 import { compareFractions, fraction } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
-import type { GlobalMeasure, JumpType } from '../model/score.js'
+import type { GlobalMeasure, JumpType, Segno } from '../model/score.js'
 import type { WarningCollector } from './collector.js'
 import type { Stated } from './element.js'
 import type { ReadGlobalMeasure, ReadJump, UndrawnSign } from './globalMeasures.js'
@@ -53,8 +53,17 @@ export function settleJumps(
 ): GlobalMeasure[] {
   const marked = (kind: UndrawnSign['kind']) =>
     undrawn.some((part) => part.some((marks) => marks.some(({ value }) => value.kind === kind)))
+  // A coda beside a D.C. or a D.S. reads "al Coda" only where a to-coda jump
+  // gives it a meaning. Elsewhere it stays a coda.
+  const alCoda = measures.some(({ jump }) => jump?.value.sound === 'tocoda')
+  const signs = (kind: UndrawnSign['kind']) =>
+    measures.map(({ [kind]: sign, jump }) =>
+      sign && jump && drawsSign(jump.value, kind, sign.value, alCoda) ? undefined : sign,
+    )
+  const segnos = signs('segno')
+  const codas = signs('coda')
   const destination = (kind: UndrawnSign['kind'], placed: PlacedJump) =>
-    onlySign(measures, kind, marked(kind), placed, path)
+    onlySign(kind === 'segno' ? segnos : codas, kind, marked(kind), placed, path)
   const toCodas = measures.map(({ jump, number }, index) => {
     if (jump?.value.sound !== 'tocoda') return undefined
     if (destination('coda', { jump, index, label: number?.value }) !== 'undrawn') {
@@ -86,8 +95,6 @@ export function settleJumps(
         repeatEnd,
         ending,
         fermata,
-        segno,
-        coda,
         fine,
         jump,
         multimeasureRest,
@@ -105,16 +112,8 @@ export function settleJumps(
         repeatEnd: repeatEnd?.value,
         ending: ending?.value,
         fermata: fermata?.value,
-        segno: segno && {
-          location: segno.value.location,
-          glyph: segno.value.glyph,
-          color: segno.value.color,
-        },
-        coda: coda && {
-          location: coda.value.location,
-          glyph: coda.value.glyph,
-          color: coda.value.color,
-        },
+        segno: segnos[index]?.value,
+        coda: codas[index]?.value,
         fine: fine?.value,
         jump: jump && type && { location: jump.value.location, type },
         multimeasureRest: multimeasureRest?.value,
@@ -153,16 +152,16 @@ function firstJump(
  * the jump to go.
  */
 function onlySign(
-  measures: readonly ReadGlobalMeasure[],
+  /** The sign of the kind each measure draws, if any. */
+  signs: readonly (Stated<Segno> | undefined)[],
   kind: UndrawnSign['kind'],
   marked: boolean,
   placed: PlacedJump,
   path: DocumentPath,
 ): Destination {
-  const drawn = measures.flatMap((measure, index) => {
-    const sign = measure[kind]?.value
-    return sign ? [{ index, location: sign.location }] : []
-  })
+  const drawn = signs.flatMap((sign, index) =>
+    sign ? [{ index, location: sign.value.location }] : [],
+  )
   const [only, ...others] = drawn
   if (only !== undefined && others.length === 0) return only
   if (only === undefined && marked) return 'undrawn'
@@ -173,6 +172,23 @@ function onlySign(
     placed,
     path,
   )
+}
+
+/**
+ * Whether a segno or a coda at the point of a jump is how the source draws
+ * the jump, and not a sign it goes to: "D.S." beside a segno, "To Coda"
+ * beside a coda. With `alCoda`, a coda beside a D.C. or a D.S. draws its
+ * "al Coda". MNX's jump carries its drawing.
+ */
+export function drawsSign(
+  jump: ReadJump,
+  kind: UndrawnSign['kind'],
+  sign: Segno,
+  alCoda = false,
+): boolean {
+  if (compareFractions(jump.location, sign.location) !== 0) return false
+  if (kind === 'segno') return jump.sound === 'dalsegno'
+  return jump.sound === 'tocoda' || alCoda
 }
 
 /** Refuses a score whose replays stop at a Fine where it has more than one. */
