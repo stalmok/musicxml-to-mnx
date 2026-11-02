@@ -814,7 +814,8 @@ function leadOf(
  * grace group takes none of the measure's time, so it neither gives silence
  * nor ends it, and the bracket may reach over one.
  *
- * `written` is how far the voice is written through item `at`.
+ * `written` is how far the voice is written through item `at`, which is the
+ * bracket or, where the bracket takes in the run after it, that run.
  */
 function silenceAfter(
   voice: VoiceTail,

@@ -2690,6 +2690,18 @@ describe('a rest in a part stating no time signature', () => {
     expect(warnings).toEqual([])
   })
 
+  test('writes a rest lasting the measure in an unmetered part on the sequence', () => {
+    const { sequences, warnings } = secondPart(
+      beside('<note><rest/><duration>3</duration></note>').replace(
+        '<divisions>1</divisions></attributes>',
+        '<divisions>1</divisions><time><senza-misura/></time></attributes>',
+      ),
+    )
+
+    expect(sequences).toEqual([expect.objectContaining({ content: [], fullMeasure: {} })])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:senza-misura'])
+  })
+
   test('reports an offset past the barline the score states', () => {
     const { warnings } = secondPart(
       beside(

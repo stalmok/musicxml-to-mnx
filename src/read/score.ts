@@ -663,7 +663,8 @@ function readMeasure(
   reportUnreadText(element, warnings, context)
   // A time signature stated at the start after a <backup> stands where the
   // measure begins, so the notes written before it are measured against it.
-  // A part stating no time signature runs to the barline the score states.
+  // A part stating no time signature, or one stating it is unmetered, runs to
+  // the barline the score states.
   state.time = opensWith ?? scoreTime
 
   const clefs: Stated<Clef>[] = []
