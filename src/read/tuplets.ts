@@ -330,12 +330,12 @@ export interface MeasureExtent {
    */
   beatsFrom: Fraction
   /**
-   * How far the measure runs, which bounds the silence a bracket may take:
-   * the part's time signature, or its cursor where that runs further, up to
-   * the score's time signature. A pickup runs to its cursor alone, having no
-   * silence past its own end, and also stops at the score's time signature.
+   * How far the silence a bracket may take reaches: the part's time
+   * signature, or its cursor where that runs further, up to the score's time
+   * signature. A pickup runs to its cursor alone, having no silence past its
+   * own end, and also stops at the score's time signature.
    */
-  length: Fraction
+  bound: Fraction
   /**
    * How far the measure may be written: the score's time signature, unset
    * where none is stated.
@@ -833,9 +833,9 @@ function silenceAfter(
   // away from what is written. The tail is the shorter of what the cursor
   // leaves of the measure and what the written values leave of the score's
   // time signature. Where either is used up, the voice has no tail.
-  const sounded = subtractFractions(voice.measure.length, voice.end)
-  const bound = voice.measure.written
-  const left = bound && subtractFractions(bound, addFractions(written, time))
+  const sounded = subtractFractions(voice.measure.bound, voice.end)
+  const scoreEnd = voice.measure.written
+  const left = scoreEnd && subtractFractions(scoreEnd, addFractions(written, time))
   const tail = left && compareFractions(left, sounded) < 0 ? left : sounded
   return { time: tail.num > 0 ? addFractions(time, tail) : time, span }
 }

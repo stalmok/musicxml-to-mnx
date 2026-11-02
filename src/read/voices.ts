@@ -1261,7 +1261,7 @@ export class MeasureBuilder {
     this.#settleMeasure(
       {
         beatsFrom: anchor === 'end' ? length : fraction(0),
-        length: bound,
+        bound,
         written: scoreSignature,
       },
       warnings,
