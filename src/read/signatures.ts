@@ -512,41 +512,64 @@ function reportSecondAtStart<T>(
 }
 
 /**
- * The time signature each measure of the score opens with, as the first part
- * stating one there has it. Takes each part's own, as timesInForce reads them.
+ * The time signature in force at each measure of the score: the first part's
+ * that states one there, or else the one before. Takes what each part states
+ * at each measure. The score's measures merge them by the same rule, so this
+ * is the time signature MNX states for the measure.
  */
 export function scoreTimesInForce(
   perPart: readonly (readonly (TimeSignature | undefined)[])[],
 ): (TimeSignature | undefined)[] {
   const longest = Math.max(0, ...perPart.map((times) => times.length))
-  return Array.from({ length: longest }, (_, index) =>
-    perPart.map((times) => times[index]).find((time) => time !== undefined),
+  let inForce: TimeSignature | undefined
+  return Array.from(
+    { length: longest },
+    (_, index) =>
+      (inForce =
+        perPart.map((times) => times[index]).find((time) => time !== undefined) ?? inForce),
   )
 }
 
+/** The time signatures a part has at the start of a measure. */
+export interface MeasureTimes {
+  /** The part's own: stated at the start, or carried from the measure before. */
+  inForce: TimeSignature | undefined
+  /**
+   * The one the part states for the measure, as the reader settles it: stated
+   * at the start, or else stated after the start of the measure before where
+   * it changes the time signature.
+   */
+  stated: TimeSignature | undefined
+}
+
 /**
- * The time signature each measure of a part opens with, read ahead of the
+ * The time signatures each measure of a part opens with, read ahead of the
  * part itself: a statement at the start can follow notes written before a
  * <backup>, and those are measured against it, and a part that states none
  * of its own runs to the barline the other parts state, and those may be read
- * after it. It answers one question
- * per statement, whether it stands where the measure begins, so its cursor
- * moves by the rules the measure builder's does. The first statement at the
- * start stands, and the last one after it opens the next measure. The part
- * reader reports or refuses whatever here is broken, so nothing here reports
- * anything, and a value it cannot read counts as nothing.
+ * after it. It answers one question per statement, whether it stands where
+ * the measure begins, so its cursor moves by the rules the measure builder's
+ * does. The first statement at the start stands, and the last one after it
+ * opens the next measure. The part reader reports or refuses whatever here is
+ * broken, so nothing here reports anything, and a value it cannot read counts
+ * as nothing.
  */
-export function timesInForce(part: XmlElement): (TimeSignature | undefined)[] {
+export function timesInForce(part: XmlElement): MeasureTimes[] {
   return peeking(() => readTimesInForce(part))
 }
 
-function readTimesInForce(part: XmlElement): (TimeSignature | undefined)[] {
+function readTimesInForce(part: XmlElement): MeasureTimes[] {
   let inForce: TimeSignature | undefined
+  // The last one the part states, which an unmetered statement does not clear.
+  let converted: TimeSignature | undefined
+  let held: TimeSignature | undefined
   let divisions = fraction(1)
   return children(part, 'measure').map((measure) => {
     let opens = inForce
     let settled = false
+    let atStart: TimeSignature | undefined
     let late = false
+    let lastLate: TimeSignature | undefined
     let cursor = fraction(0)
     const by = (found: XmlElement) => {
       const duration = child(found, 'duration')
@@ -607,14 +630,19 @@ function readTimesInForce(part: XmlElement): (TimeSignature | undefined)[] {
       }
       if (compareFractions(cursor, fraction(0)) > 0) {
         late = true
+        lastLate = time
         inForce = time
       } else if (!settled) {
         settled = true
+        atStart = time
         opens = time
         if (!late) inForce = time
       }
     }
-    return opens
+    const stated = settled ? atStart : held
+    converted = stated ?? converted
+    held = lastLate && !TIME.same(lastLate, converted) ? lastLate : undefined
+    return { inForce: opens, stated }
   })
 }
 

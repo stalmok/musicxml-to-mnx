@@ -15,7 +15,7 @@ import { describe, expect, test } from 'vitest'
 import { MusicXMLError, convertMusicXML } from '../src/index.js'
 import type { ConversionWarning, MNXDocument, MNXSequenceItem, MNXTime } from '../src/index.js'
 import { GLYPH_LETTERS } from '../src/read/directions.js'
-import { timesInForce } from '../src/read/signatures.js'
+import { scoreTimesInForce, timesInForce } from '../src/read/signatures.js'
 import { parseXmlRoot } from '../src/xml/parse.js'
 import type { XmlElement } from '../src/xml/parse.js'
 import {
@@ -562,22 +562,50 @@ function readAheadTimeDisagreements(
   warnings: readonly ConversionWarning[],
 ): string[] {
   if (warnings.some((warning) => TIME_PARTS_WAYS.has(warning.code))) return []
-  let time: MNXTime | undefined
-  const inForce = mnx.global.measures.map((measure) => (time = measure.time ?? time))
+  const inForce = outputTimesInForce(mnx)
   return root.children
     .filter((part) => part.name === 'part')
     .flatMap((part) =>
-      timesInForce(part).flatMap((opens, index) => {
+      timesInForce(part).flatMap(({ inForce: opens }, index) => {
         const output = inForce[index]
-        if (opens === undefined) return []
-        if (output?.count === opens.count && output.unit === opens.unit) return []
-        const stated = output ? `${String(output.count)}/${String(output.unit)}` : 'none'
+        if (opens === undefined || sameTime(opens, output)) return []
         return [
           `${part.attributes['id'] ?? ''} measure ${String(index + 1)}: ` +
-            `${String(opens.count)}/${String(opens.unit)}, output ${stated}`,
+            `${namedTime(opens)}, output ${namedTime(output)}`,
         ]
       }),
     )
+}
+
+/**
+ * Where the time signature the reader works out ahead of the parts, as the
+ * score's at each measure, is not the one the output states there. The
+ * reader bounds the silence a tuplet bracket takes by it, and the converter
+ * refuses a measure that runs past the one the output states.
+ */
+function readAheadScoreTimeDisagreements(mnx: MNXDocument, root: XmlElement): string[] {
+  const inForce = outputTimesInForce(mnx)
+  const parts = root.children.filter((part) => part.name === 'part')
+  return scoreTimesInForce(
+    parts.map((part) => timesInForce(part).map(({ stated }) => stated)),
+  ).flatMap((time, index) => {
+    const output = inForce[index]
+    if (time === undefined ? output === undefined : sameTime(time, output)) return []
+    return [`measure ${String(index + 1)}: ${namedTime(time)}, output ${namedTime(output)}`]
+  })
+}
+
+function outputTimesInForce(mnx: MNXDocument): (MNXTime | undefined)[] {
+  let time: MNXTime | undefined
+  return mnx.global.measures.map((measure) => (time = measure.time ?? time))
+}
+
+function sameTime(a: { count: number; unit: number }, b: MNXTime | undefined): boolean {
+  return a.count === b?.count && a.unit === b.unit
+}
+
+function namedTime(time: { count: number; unit: number } | undefined): string {
+  return time ? `${String(time.count)}/${String(time.unit)}` : 'none'
 }
 
 describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
@@ -1046,6 +1074,10 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
 
   test('opens each measure in the time signature the read-ahead found', () => {
     expect(readAheadTimeDisagreements(mnx, parseXmlRoot(source), warnings).slice(0, 5)).toEqual([])
+  })
+
+  test("states the score's time signature the read-ahead found", () => {
+    expect(readAheadScoreTimeDisagreements(mnx, parseXmlRoot(source)).slice(0, 5)).toEqual([])
   })
 
   test('fills every tuplet it writes', () => {

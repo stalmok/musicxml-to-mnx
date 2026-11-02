@@ -446,6 +446,34 @@ describe('a bracket the silence after it completes', () => {
     expect(codes).toEqual(['inconsistent:tuplet', 'unrepresentable:cross-part-time'])
   })
 
+  // Both parts open in 4/4. In the second measure the first part states
+  // nothing and the second states 3/4, which is the score's time signature
+  // there, so the silence past 3/4 is not the measure's.
+  test('takes in no silence past a time signature a later part states where an earlier one carries a longer one', () => {
+    const fourFour = TIMED.replace('<beats>2', '<beats>4')
+    const source =
+      '<score-partwise>' +
+      `<part id="P1"><measure number="1">${fourFour}${plain('D', 48, 'whole')}</measure>` +
+      `<measure number="2">${plain('D', 12, 'quarter').repeat(3)}</measure></part>` +
+      `<part id="P2"><measure number="1">${fourFour}${plain('D', 48, 'whole')}</measure>` +
+      '<measure number="2"><attributes><time><beats>3</beats><beat-type>4</beat-type></time>' +
+      `</attributes>${plain('D', 12, 'quarter').repeat(2)}${plain('E', 6, 'eighth')}` +
+      `${shortEighth}<forward><duration>14</duration></forward></measure></part>` +
+      '</score-partwise>'
+    const warnings = new WarningCollector()
+    const content = readValid(source, warnings).parts[1]?.measures[1]?.sequences[0]?.content
+
+    expect(stated(content?.[3])).toEqual({
+      inner: { value: { base: '16th', dots: 0 }, multiple: 3 },
+      outer: { value: { base: '16th', dots: 0 }, multiple: 2 },
+      held: ['event', 'space'],
+    })
+    expect(warnings.list().map((w) => w.code)).toEqual([
+      'inconsistent:tuplet',
+      'unrepresentable:cross-part-time',
+    ])
+  })
+
   // The half note states the <duration> of a whole, and its written value is
   // kept, so the cursor runs past 3/4 while the voice is written within it.
   // The silence the source writes after the bracket is still the bracket's.

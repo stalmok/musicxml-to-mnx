@@ -804,17 +804,25 @@ describe('a time signature stated after the measure start', () => {
     expect(failure.path).toEqual(['score-partwise', 'part P1', 'measure 1'])
   })
 
-  // An unmetered measure has no barline to measure silence to, so the time
-  // signature before it does not complete a bracket in it.
-  test('measures a senza misura measure against no time signature', () => {
-    const { warnings } = read(
+  // MNX cannot state that a measure is unmetered, so the time signature
+  // before it stays in force there, and that barline is the one the silence
+  // after a bracket runs to.
+  test('measures a senza misura measure against the time signature in force before it', () => {
+    const { score: result, warnings } = read(
       part(
         opening + timed(3) + note(36),
         '<attributes><time><senza-misura/></time></attributes>' + note(24) + shortTriplet,
       ),
     )
+    const content = result.parts[0]?.measures[1]?.sequences[0]?.content
 
-    expect(warnings.map((w) => w.code)).toContain('unrepresentable:tuplet-ratio')
+    const bracket = content?.[1]
+
+    expect(bracket?.kind === 'tuplet' && bracket.content.map((item) => item.kind)).toEqual([
+      'event',
+      'space',
+    ])
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:senza-misura'])
   })
 
   test('converts to legal MNX', () => {
@@ -1739,7 +1747,7 @@ describe('the time signature worked out ahead of a part', () => {
       named((inForce = measure.time ?? inForce)),
     )
     const part = parseXmlRoot(source).children.find((found) => found.name === 'part')
-    return { readAhead: timesInForce(part!).map(named), output }
+    return { readAhead: timesInForce(part!).map(({ inForce }) => named(inForce)), output }
   }
 
   test.each([
@@ -1800,5 +1808,68 @@ describe('the time signature worked out ahead of a part', () => {
 
     expect(readAhead[1]).toBe(second)
     expect(readAhead).toEqual(output)
+  })
+
+  // The score takes its time signature at each measure from the first part
+  // stating one there, so the read-ahead says which measures a part states
+  // one for, as the reader settles it.
+  const time = (beats: number, attributes = '') =>
+    `<attributes><time${attributes}><beats>${String(beats)}</beats>` +
+    '<beat-type>4</beat-type></time></attributes>'
+  const senzaMisura = '<attributes><time><senza-misura/></time></attributes>'
+
+  test.each([
+    ['a change after the notes', [time(2) + quarter + time(3), quarter], ['2/4', '3/4', 'none']],
+    [
+      'the time signature in force restated after the notes',
+      [time(2) + quarter + time(2), quarter],
+      ['2/4', 'none', 'none'],
+    ],
+    [
+      'the time signature in force restated at the start',
+      [time(2) + quarter, time(2) + quarter],
+      ['2/4', '2/4', 'none'],
+    ],
+    [
+      'the same meter drawn another way after the notes',
+      [time(2) + quarter + time(2, ' symbol="cut"'), quarter],
+      ['2/4', '2/4', 'none'],
+    ],
+    [
+      'a change after the notes, and another at the next start',
+      [time(2) + quarter + time(3), time(4) + quarter],
+      ['2/4', '4/4', 'none'],
+    ],
+    [
+      'senza misura after the notes',
+      [time(2) + quarter + senzaMisura, quarter],
+      ['2/4', 'none', 'none'],
+    ],
+    [
+      'senza misura at the start, and the time signature before it restated after the notes',
+      [time(2) + quarter, senzaMisura + quarter + time(2)],
+      ['2/4', 'none', 'none'],
+    ],
+  ])('says which measures a part states a time signature for, with %s', (_, written, stated) => {
+    const source =
+      '<score-partwise><part-list><score-part id="P1"><part-name>P</part-name></score-part>' +
+      '</part-list><part id="P1">' +
+      [
+        '<attributes><divisions>4</divisions></attributes>' + (written[0] ?? ''),
+        ...written.slice(1),
+        quarter,
+      ]
+        .map((body, index) => `<measure number="${String(index + 1)}">${body}</measure>`)
+        .join('') +
+      '</part></score-partwise>'
+    const named = (found: { count: number; unit: number } | undefined) =>
+      found ? `${String(found.count)}/${String(found.unit)}` : 'none'
+    const part = parseXmlRoot(source).children.find((found) => found.name === 'part')
+    const readAhead = timesInForce(part!).map((times) => named(times.stated))
+
+    expect(readAhead).toEqual(stated)
+    expect(readAhead).toEqual(
+      read(source).score.globalMeasures.map((measure) => named(measure.time)),
+    )
   })
 })

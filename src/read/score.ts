@@ -222,9 +222,19 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
     element,
     times: timesInForce(element),
   }))
-  const scoreTimes = scoreTimesInForce(timedParts.map(({ times }) => times))
+  const scoreTimes = scoreTimesInForce(
+    timedParts.map(({ times }) => times.map(({ stated }) => stated)),
+  )
   const readings = timedParts.map(({ element, times }) =>
-    readPart(element, partList, ids, times, scoreTimes, warnings, path),
+    readPart(
+      element,
+      partList,
+      ids,
+      times.map(({ inForce }) => inForce),
+      scoreTimes,
+      warnings,
+      path,
+    ),
   )
 
   // Held by position rather than by part id, which two parts can share.
@@ -261,7 +271,7 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
   for (const reading of readings) {
     reportSoundTempos(reading.part.id, reading.soundTempos, globalMeasures, warnings)
   }
-  requireMeasuresWithinTime(readings, globalMeasures)
+  requireMeasuresWithinTime(readings)
 
   // A staff pointing at a part the score does not hold would dangle, so the
   // grouping keeps only parts that were written.
@@ -422,12 +432,8 @@ function requireEqualMeasureCounts(parts: readonly XmlElement[], path: DocumentP
 // error. The score's time signature is the one in force, not the part's. The
 // length is the converted sequence's, which runs longer than the source's
 // where a written value or a tuplet's ratio is converted over a <duration>.
-function requireMeasuresWithinTime(
-  readings: readonly PartReading[],
-  globalMeasures: readonly GlobalMeasure[],
-): void {
-  let inForce: TimeSignature | undefined
-  const times = globalMeasures.map((measure) => (inForce = measure.time ?? inForce))
+function requireMeasuresWithinTime(readings: readonly PartReading[]): void {
+  const times = scoreTimesInForce(readings.map(({ globals }) => globals.map(({ time }) => time)))
   for (const { extents } of readings) {
     extents.forEach(({ lasts, path, line }, index) => {
       const time = times[index]
