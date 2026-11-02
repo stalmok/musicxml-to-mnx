@@ -468,6 +468,7 @@ describe('a bracket the silence after it completes', () => {
       outer: { value: { base: '16th', dots: 0 }, multiple: 2 },
       held: ['event', 'space'],
     })
+    expect(spaces(content?.[3])).toEqual([fraction(1, 16)])
     expect(warnings.list().map((w) => w.code)).toEqual([
       'inconsistent:tuplet',
       'unrepresentable:cross-part-time',
