@@ -1877,4 +1877,32 @@ describe('the time signature worked out ahead of a part', () => {
       read(source).score.globalMeasures.map((measure) => named(measure.time)),
     )
   })
+
+  // The statement at the start stands for this measure, and the one after the
+  // notes opens the next, whatever order the source writes them in.
+  test('opens the next measure with a statement after the notes that comes before one at the start', () => {
+    const source =
+      '<score-partwise><part-list><score-part id="P1"><part-name>P</part-name></score-part>' +
+      '</part-list><part id="P1">' +
+      [
+        '<attributes><divisions>4</divisions></attributes>' +
+          quarter +
+          time(3) +
+          '<backup><duration>4</duration></backup>' +
+          time(4),
+        quarter,
+      ]
+        .map((body, index) => `<measure number="${String(index + 1)}">${body}</measure>`)
+        .join('') +
+      '</part></score-partwise>'
+    const named = (found: { count: number; unit: number } | undefined) =>
+      found ? `${String(found.count)}/${String(found.unit)}` : 'none'
+    const part = parseXmlRoot(source).children.find((found) => found.name === 'part')
+
+    expect(timesInForce(part!).map(({ inForce }) => named(inForce))).toEqual(['4/4', '3/4'])
+    expect(read(source).score.globalMeasures.map((measure) => named(measure.time))).toEqual([
+      '4/4',
+      '3/4',
+    ])
+  })
 })
