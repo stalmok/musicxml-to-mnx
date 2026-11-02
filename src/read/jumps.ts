@@ -104,9 +104,9 @@ export function settleJumps(
     if (kind === 'segno' || !toCodas.some((jump) => jump !== undefined)) return sign.value
     warnings.add(
       'unrepresentable:element',
-      'This coda stands at the point of a D.C. or a D.S. that meets no to-coda jump, so ' +
-        'it does not draw an al Coda. MNX states one coda in a score with a to-coda jump, ' +
-        'and the coda the jump goes to is the one converted.',
+      'This coda stands at the point of a D.C. or a D.S. that is not converted as al ' +
+        'Coda. MNX states one coda in a score with a to-coda jump, and the coda the jump ' +
+        'goes to is the one converted.',
       { measure: index + 1 },
       sign.element,
     )

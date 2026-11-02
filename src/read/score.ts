@@ -866,9 +866,9 @@ function readMeasure(
     context,
     (first, other) => first.sound !== other.sound,
   )
-  // A sign at the point of a jump is how the source draws the jump, and goes
-  // with it. Where the measure has no other sign, the kept jump's drawing
-  // stays, for the score to settle once its jumps are known.
+  // A segno beside a D.S. and a coda beside a to-coda jump draw the jump,
+  // and go with it. Where the measure has no other sign, the kept jump's
+  // drawing stays, for the score to settle once its jumps are known.
   const signs = <T extends Segno>(kind: UndrawnSign['kind'], found: readonly Stated<T>[]) => {
     const draws = (jumped: ReadJump | undefined, sign: T) =>
       jumped !== undefined && drawingOf(jumped, kind, sign) === 'jump'

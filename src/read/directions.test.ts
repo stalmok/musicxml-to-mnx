@@ -2218,7 +2218,8 @@ describe('sound navigation', () => {
     expect(warnings.list().map((w) => w.element)).toEqual(['words'])
   })
 
-  // A coda beside a D.C. reads al Coda only in a score with a to-coda jump.
+  // A coda beside a D.C. reads al Coda only where a to-coda jump has another
+  // coda to go to.
   test('keeps a coda drawn in the same direction as a D.C.', () => {
     const { global } = read(
       inMeasure(
