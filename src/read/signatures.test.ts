@@ -1846,6 +1846,11 @@ describe('the time signature worked out ahead of a part', () => {
       ['2/4', 'none', 'none'],
     ],
     [
+      'senza misura at the start, then a rest marked as the measure and a change after it',
+      [time(3) + quarter, senzaMisura + '<note><rest measure="yes"/></note>' + time(2)],
+      ['3/4', 'none', '2/4'],
+    ],
+    [
       'senza misura at the start, and the time signature before it restated after the notes',
       [time(2) + quarter, senzaMisura + quarter + time(2)],
       ['2/4', 'none', 'none'],

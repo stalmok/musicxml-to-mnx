@@ -596,12 +596,15 @@ function readTimesInForce(part: XmlElement): MeasureTimes[] {
     // it, except a rest marked as the measure's, which lasts the measure where
     // a time signature says how long that is. That is the one in force when
     // the rest is reached, since its length is what places a later statement.
+    // In an unmetered measure it is the one the part stated before, which the
+    // score keeps in force.
     const noteLength = (found: XmlElement) => {
       if (child(found, 'grace')) return fraction(0)
       if (child(found, 'duration')) return by(found)
       const rest = child(found, 'rest')
-      if (rest && opens && attribute(rest, 'measure') === 'yes') {
-        return lengthOfTime(opens)
+      const measured = opens ?? converted
+      if (rest && measured && attribute(rest, 'measure') === 'yes') {
+        return lengthOfTime(measured)
       }
       const type = child(found, 'type')
       const base = type && noteValueBaseOf(type)
