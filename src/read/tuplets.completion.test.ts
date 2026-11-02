@@ -475,6 +475,31 @@ describe('a bracket the silence after it completes', () => {
     expect(warnings.map((w) => w.code)).toEqual(['inconsistent:duration'])
   })
 
+  // The half note states the <duration> of a quarter, and its written value
+  // is kept, so the voice is written past where the cursor stands. The
+  // cursor leaves the bracket the eighth of silence it is missing, but the
+  // written values leave it only a sixteenth.
+  test('takes in no silence past what the written values leave', () => {
+    const { content, warnings } = read(
+      measures(
+        '<attributes><divisions>12</divisions>' +
+          '<time><beats>4</beats><beat-type>4</beat-type></time></attributes>' +
+          plain('C', 12, 'half') +
+          plain('D', 12, 'quarter') +
+          plain('E', 6, 'eighth') +
+          shortEighth,
+      ),
+    )
+
+    expect(stated(content?.[3])).toEqual({
+      inner: { value: { base: '16th', dots: 0 }, multiple: 3 },
+      outer: { value: { base: '16th', dots: 0 }, multiple: 2 },
+      held: ['event', 'space'],
+    })
+    expect(spaces(content?.[3])).toEqual([fraction(1, 16)])
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:duration', 'inconsistent:tuplet'])
+  })
+
   // A bracket holding three eighths in the time of two states what the source
   // wrote and needs nothing invented. Stretching it back to the 6:4 the
   // source drew would draw it over silence the source did not.

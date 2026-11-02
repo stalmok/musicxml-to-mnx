@@ -579,6 +579,10 @@ function complete(
   const before = skipBefore(voice.content, at)
   const adopted = adoptable(claim, ratio, voice, next)
   const run = adopted?.notes ?? []
+  // How far the voice is written before the bracket, and the time the bracket
+  // and the run after it take before either is completed.
+  const writtenBefore = writtenLengthOf(voice.content.slice(0, at))
+  const sounding = run.reduce((total, note) => addFractions(total, note.time), claim.spent)
   const taken = countings(stated).flatMap((counted, narrower) => {
     const missing = subtractFractions(quantityLength(counted.inner), held)
     // A narrower value counts less, so once the bracket holds what the ratio
@@ -598,7 +602,9 @@ function complete(
     // The run stands between the bracket and the silence beyond it, so that
     // silence is the bracket's only once the whole run has moved in.
     const silent =
-      adopted && moved < run.length ? NO_SILENCE : silenceAfter(voice, adopted ? at + 1 : at)
+      adopted && moved < run.length
+        ? NO_SILENCE
+        : silenceAfter(voice, adopted ? at + 1 : at, addFractions(writtenBefore, sounding))
     return compareFractions(silent.time, left) < 0
       ? []
       : [{ counted, narrower, lead, moved, left, silent }]
@@ -802,8 +808,14 @@ function leadOf(
  * there, and the measure's tail where nothing sounds after them. A
  * grace group takes none of the measure's time, so it neither gives silence
  * nor ends it, and the bracket may reach over one.
+ *
+ * `written` is how far the voice is written through item `at`.
  */
-function silenceAfter(voice: VoiceTail, at: number): { time: Fraction; span: number } {
+function silenceAfter(
+  voice: VoiceTail,
+  at: number,
+  written: Fraction,
+): { time: Fraction; span: number } {
   let time = fraction(0)
   let span = 0
   for (const item of voice.content.slice(at + 1)) {
@@ -811,9 +823,13 @@ function silenceAfter(voice: VoiceTail, at: number): { time: Fraction; span: num
     if (item.kind === 'space') time = addFractions(time, item.duration)
     span += 1
   }
-  // The cursor runs past what is written where a <duration> is longer than
-  // the written value kept, which leaves the voice no tail.
-  const tail = subtractFractions(voice.measure.length, voice.end)
+  // A <duration> that differs from the written value kept moves the cursor
+  // away from what is written. The tail runs from whichever is further, so
+  // the measure neither sounds nor is written past its length. Where either
+  // already is, the voice has no tail.
+  const end = addFractions(written, time)
+  const further = compareFractions(end, voice.end) > 0 ? end : voice.end
+  const tail = subtractFractions(voice.measure.length, further)
   return { time: tail.num > 0 ? addFractions(time, tail) : time, span }
 }
 
