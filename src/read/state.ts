@@ -76,7 +76,8 @@ export interface PartState {
    * The time signature the measure being read is measured against, which like
    * <divisions> stays until restated. Set before the measure is walked, to the
    * one timesInForce reads ahead for it, since a statement at the start can
-   * follow notes written before a <backup>.
+   * follow notes written before a <backup>. A part stating none takes the
+   * score's.
    */
   time: TimeSignature | undefined
   /** How many staves the part is written on, once it says. */
@@ -212,7 +213,7 @@ export interface PartState {
 
 /**
  * How long the measure being read runs, as its time signature states.
- * Unknown where the part has stated none, or states it is unmetered.
+ * Unknown where no part has stated one, or the score is unmetered there.
  */
 export function measureLength(state: PartState): Fraction | undefined {
   return state.time && fraction(state.time.count, state.time.unit)

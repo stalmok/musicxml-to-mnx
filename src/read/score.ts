@@ -663,7 +663,8 @@ function readMeasure(
   reportUnreadText(element, warnings, context)
   // A time signature stated at the start after a <backup> stands where the
   // measure begins, so the notes written before it are measured against it.
-  state.time = opensWith
+  // A part stating no time signature runs to the barline the score states.
+  state.time = opensWith ?? scoreTime
 
   const clefs: Stated<Clef>[] = []
   const staffConfigs: Stated<StaffConfig>[] = []
@@ -876,7 +877,6 @@ function readMeasure(
     return own.length > 0 ? own : found.filter(({ value }) => draws(jump?.value, value))
   }
 
-  // A part stating no time signature runs to the barline the score states.
   // Measured against the time signature the measure opens with, since one
   // stated after its start is the next measure's. The implicit attribute is
   // still a loss as a statement about the numbering, which the sweep above
@@ -885,7 +885,7 @@ function readMeasure(
   const finished = builder.finish(
     {
       anchor: peekAttribute(element, 'implicit') === 'yes' ? 'end' : 'start',
-      signature: measureLength(state) ?? scoreSignature,
+      signature: measureLength(state),
       scoreSignature,
     },
     (length, lastEventBefore, graceNotesAt, lastEvents) => {

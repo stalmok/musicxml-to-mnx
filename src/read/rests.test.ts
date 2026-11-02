@@ -2660,3 +2660,44 @@ describe('a rest repeating the rests before it in a multi-measure rest', () => {
     expect(warnings).toEqual([])
   })
 })
+
+// A part stating no time signature runs to the barline the score states, so
+// its rests are measured against that time signature.
+describe('a rest in a part stating no time signature', () => {
+  const beside = (rest: string) =>
+    '<score-partwise><part id="P1"><measure number="1">' +
+    '<attributes><divisions>1</divisions>' +
+    '<time><beats>3</beats><beat-type>4</beat-type></time></attributes>' +
+    '<note><pitch><step>C</step><octave>4</octave></pitch><duration>3</duration>' +
+    '<type>half</type><dot/></note></measure></part>' +
+    '<part id="P2"><measure number="1"><attributes><divisions>1</divisions></attributes>' +
+    `${rest}</measure></part></score-partwise>`
+  const secondPart = (source: string) => {
+    const { mnx, warnings } = convertValid(source)
+    return { sequences: mnx.parts[1]?.measures[0]?.sequences, warnings }
+  }
+
+  test.each([
+    ['a whole rest', '<note><rest/><duration>3</duration><type>whole</type></note>'],
+    ['a rest with no <type>', '<note><rest/><duration>3</duration></note>'],
+    ['a marked rest with no <duration>', '<note><rest measure="yes"/><type>whole</type></note>'],
+  ])('writes %s lasting the measure on the sequence', (_, rest) => {
+    const { sequences, warnings } = secondPart(beside(rest))
+
+    expect(sequences).toEqual([
+      expect.objectContaining({ content: [], fullMeasure: expect.any(Object) as unknown }),
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  test('reports an offset past the barline the score states', () => {
+    const { warnings } = secondPart(
+      beside(
+        '<direction><direction-type><dynamics><p/></dynamics></direction-type>' +
+          '<offset>4</offset></direction><note><rest/><duration>3</duration></note>',
+      ),
+    )
+
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([['unsupported:element', 'offset']])
+  })
+})
