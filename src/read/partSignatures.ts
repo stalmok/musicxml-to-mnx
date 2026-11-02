@@ -1,8 +1,11 @@
 // The key and time signatures a part carries from one measure to the next.
-// Also how a key and a time signature are compared, and the report of one
-// stated after a measure's start, which signatures.ts uses as well.
+// Also how a key and a time signature are compared, how long a time
+// signature's measure runs, and the report of one stated after a measure's
+// start, which signatures.ts uses as well.
 // signatures.ts settles each measure against this state.
 
+import { fraction } from '../fraction.js'
+import type { Fraction } from '../fraction.js'
 import type { Key, TimeSignature } from '../model/score.js'
 import type { XmlElement } from '../xml/parse.js'
 import type { ReportContext, WarningCollector } from './collector.js'
@@ -25,6 +28,11 @@ export interface SignatureKind<T> {
 
 export function sameMeter(a: TimeSignature, b: TimeSignature): boolean {
   return a.count === b.count && a.unit === b.unit
+}
+
+/** How long a measure in this time signature runs, as a fraction of a whole note. */
+export function lengthOfTime(time: TimeSignature): Fraction {
+  return fraction(time.count, time.unit)
 }
 
 function sameTime(a: TimeSignature, b: TimeSignature | undefined): boolean {

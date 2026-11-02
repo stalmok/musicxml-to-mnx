@@ -4,14 +4,13 @@
 import type { OpenExtenders } from './lyrics.js'
 import type { ReportContext, WarningPlace } from './collector.js'
 import type { PitchedClefSign, KitComponent, TimeSignature, Transposition } from '../model/score.js'
-import { fraction } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type { XmlElement } from '../xml/parse.js'
 import type { Stated } from './element.js'
 import { IdGenerator } from './idGenerator.js'
 import { OpenBeams } from './beams.js'
 import type { BeamsOpenAtBarline } from './beams.js'
-import { PartSignatures } from './partSignatures.js'
+import { lengthOfTime, PartSignatures } from './partSignatures.js'
 import { SpannerResolver } from './spanners.js'
 import type { CarriedTupletStop } from './tuplets.js'
 
@@ -216,7 +215,7 @@ export interface PartState {
  * Unknown where no part states a meter there.
  */
 export function measureLength(state: PartState): Fraction | undefined {
-  return state.time && fraction(state.time.count, state.time.unit)
+  return state.time && lengthOfTime(state.time)
 }
 
 export function newPartState(

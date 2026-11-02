@@ -30,7 +30,7 @@ import { lengthOf } from './duration.js'
 import type { KeysAcrossParts, ReadGlobalMeasure } from './globalMeasures.js'
 import { noteValueBaseOf } from './noteValues.js'
 import { parseExactDecimal } from './numbers.js'
-import { KEY, reportLate, sameMeter, TIME } from './partSignatures.js'
+import { KEY, lengthOfTime, reportLate, sameMeter, TIME } from './partSignatures.js'
 import type { HeldSignature, SignatureKind } from './partSignatures.js'
 import type { PartState } from './state.js'
 import {
@@ -578,7 +578,7 @@ function readTimesInForce(part: XmlElement): (TimeSignature | undefined)[] {
       if (child(found, 'duration')) return by(found)
       const rest = child(found, 'rest')
       if (rest && opens && attribute(rest, 'measure') === 'yes') {
-        return fraction(opens.count, opens.unit)
+        return lengthOfTime(opens)
       }
       const type = child(found, 'type')
       const base = type && noteValueBaseOf(type)

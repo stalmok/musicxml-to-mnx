@@ -66,6 +66,7 @@ import { drawingOf, settleJumps } from './jumps.js'
 import { writtenLengthOf } from './tuplets.js'
 import { MeasureRepeats } from './measureRepeats.js'
 import type { PartCollector } from './partCollector.js'
+import { lengthOfTime } from './partSignatures.js'
 import {
   MeasureSignatures,
   scoreTimesInForce,
@@ -430,7 +431,7 @@ function requireMeasuresWithinTime(
   for (const { extents } of readings) {
     extents.forEach(({ lasts, path, line }, index) => {
       const time = times[index]
-      if (time === undefined || compareFractions(lasts, fraction(time.count, time.unit)) <= 0) {
+      if (time === undefined || compareFractions(lasts, lengthOfTime(time)) <= 0) {
         return
       }
       throw new MusicXMLError(
@@ -882,7 +883,7 @@ function readMeasure(
   // stated after its start is the next measure's. The implicit attribute is
   // still a loss as a statement about the numbering, which the sweep above
   // reports.
-  const scoreSignature = scoreTime && fraction(scoreTime.count, scoreTime.unit)
+  const scoreSignature = scoreTime && lengthOfTime(scoreTime)
   const finished = builder.finish(
     {
       anchor: peekAttribute(element, 'implicit') === 'yes' ? 'end' : 'start',
