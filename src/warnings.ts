@@ -115,7 +115,8 @@ export const WARNING_CODES = Object.freeze([
   // MNX draws the staff one way. The last declared is the one drawn.
   'unrepresentable:staff-config',
   // A measure marked senza misura is unmetered, and MNX states meter as a
-  // time signature or nothing. The measure carries no time signature.
+  // time signature or nothing. The measure keeps the time signature in force
+  // before it, where there is one.
   'unrepresentable:senza-misura',
   // A key or time signature stated partway through a measure, or after its
   // notes where no next measure takes it. MNX states one only where a measure

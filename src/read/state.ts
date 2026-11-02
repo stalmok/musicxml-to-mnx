@@ -212,7 +212,7 @@ export interface PartState {
 
 /**
  * How long the measure being read runs, as its time signature states.
- * Unknown where no part states a meter there.
+ * Unknown until a part states a meter.
  */
 export function measureLength(state: PartState): Fraction | undefined {
   return state.time && lengthOfTime(state.time)

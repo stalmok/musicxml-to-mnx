@@ -338,7 +338,7 @@ export interface MeasureExtent {
   bound: Fraction
   /**
    * How far the measure may be written: the score's time signature, unset
-   * where none is stated.
+   * until a part states one.
    */
   written: Fraction | undefined
 }
