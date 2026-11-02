@@ -53,15 +53,23 @@ export function settleJumps(
 ): GlobalMeasure[] {
   const marked = (kind: UndrawnSign['kind']) =>
     undrawn.some((part) => part.some((marks) => marks.some(({ value }) => value.kind === kind)))
-  // A coda beside a D.C. or a D.S. reads "al Coda" only where a to-coda jump
-  // gives it a meaning. Elsewhere it stays a coda.
-  const alCoda = measures.some(({ jump }) => jump?.value.sound === 'tocoda')
-  const signs = (kind: UndrawnSign['kind']) =>
-    measures.map(({ [kind]: sign, jump }) =>
-      sign && jump && drawsSign(jump.value, kind, sign.value, alCoda) ? undefined : sign,
+  const roles = (kind: UndrawnSign['kind']) =>
+    measures.map(
+      ({ [kind]: sign, jump }) => sign && jump && drawingOf(jump.value, kind, sign.value),
     )
-  const segnos = signs('segno')
-  const codas = signs('coda')
+  const segnoRoles = roles('segno')
+  const codaRoles = roles('coda')
+  // A coda beside a D.C. or a D.S. draws its "al Coda" only where another
+  // coda remains for the to-coda jump to go to. Otherwise it is that coda.
+  const otherCoda = measures.some(({ coda }, index) => coda && codaRoles[index] === undefined)
+  const drawn = (kind: UndrawnSign['kind'], index: number) => {
+    const role = (kind === 'segno' ? segnoRoles : codaRoles)[index]
+    return role === 'jump' || (role === 'alCoda' && otherCoda)
+  }
+  const counted = (kind: UndrawnSign['kind']) =>
+    measures.map((measure, index) => (drawn(kind, index) ? undefined : measure[kind]))
+  const segnos = counted('segno')
+  const codas = counted('coda')
   const destination = (kind: UndrawnSign['kind'], placed: PlacedJump) =>
     onlySign(kind === 'segno' ? segnos : codas, kind, marked(kind), placed, path)
   const toCodas = measures.map(({ jump, number }, index) => {
@@ -85,6 +93,25 @@ export function settleJumps(
     return { settled: SETTLED.dalsegno, ...replayEnd(measures, toCodas, segno) }
   })
   requireOneFine(measures, replays, path)
+
+  // A sign drawn as part of its jump goes with the jump where the jump's
+  // type carries it. Otherwise it stays a sign, unless the score's one coda
+  // is needed elsewhere.
+  const written = (kind: UndrawnSign['kind'], index: number, type: JumpType | undefined) => {
+    const sign = measures[index]?.[kind]
+    if (!sign || !drawn(kind, index)) return sign?.value
+    if (type !== undefined && CARRIED[kind].includes(type)) return undefined
+    if (kind === 'segno' || !toCodas.some((jump) => jump !== undefined)) return sign.value
+    warnings.add(
+      'unrepresentable:element',
+      'This coda stands at the point of a D.C. or a D.S. that meets no to-coda jump, so ' +
+        'it does not draw an al Coda. MNX states one coda in a score with a to-coda jump, ' +
+        'and the coda the jump goes to is the one converted.',
+      { measure: index + 1 },
+      sign.element,
+    )
+    return undefined
+  }
 
   return measures.map(
     (
@@ -112,14 +139,20 @@ export function settleJumps(
         repeatEnd: repeatEnd?.value,
         ending: ending?.value,
         fermata: fermata?.value,
-        segno: segnos[index]?.value,
-        coda: codas[index]?.value,
+        segno: written('segno', index, type),
+        coda: written('coda', index, type),
         fine: fine?.value,
         jump: jump && type && { location: jump.value.location, type },
         multimeasureRest: multimeasureRest?.value,
       }
     },
   )
+}
+
+/** The jump types that draw a sign of each kind as part of themselves. */
+const CARRIED: Readonly<Record<UndrawnSign['kind'], readonly JumpType[]>> = {
+  segno: ['segno', 'dsAlFine', 'dsAlCoda'],
+  coda: ['toCoda', 'dcAlCoda', 'dsAlCoda'],
 }
 
 const JUMP_NAMES: Readonly<Record<UndrawnSign['kind'], string>> = {
@@ -175,20 +208,19 @@ function onlySign(
 }
 
 /**
- * Whether a segno or a coda at the point of a jump is how the source draws
- * the jump, and not a sign it goes to: "D.S." beside a segno, "To Coda"
- * beside a coda. With `alCoda`, a coda beside a D.C. or a D.S. draws its
- * "al Coda". MNX's jump carries its drawing.
+ * How a segno or a coda at the point of a jump belongs to it. A segno beside
+ * a D.S. and a coda beside a to-coda jump draw the jump ("D.S.", "To Coda"),
+ * and are not signs it goes to. A coda beside a D.C. or a D.S. can draw its
+ * "al Coda", or be the coda the score goes on to.
  */
-export function drawsSign(
+export function drawingOf(
   jump: ReadJump,
   kind: UndrawnSign['kind'],
   sign: Segno,
-  alCoda = false,
-): boolean {
-  if (compareFractions(jump.location, sign.location) !== 0) return false
-  if (kind === 'segno') return jump.sound === 'dalsegno'
-  return jump.sound === 'tocoda' || alCoda
+): 'jump' | 'alCoda' | undefined {
+  if (compareFractions(jump.location, sign.location) !== 0) return undefined
+  if (kind === 'segno') return jump.sound === 'dalsegno' ? 'jump' : undefined
+  return jump.sound === 'tocoda' ? 'jump' : 'alCoda'
 }
 
 /** Refuses a score whose replays stop at a Fine where it has more than one. */

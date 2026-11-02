@@ -2049,8 +2049,9 @@ describe('sound navigation', () => {
       inMeasure(
         '<sound dalsegno="segno"/>' +
           note('C') +
-          '\n<direction><direction-type><segno/></direction-type>' +
-          '<sound dalsegno="segno"/></direction>',
+          direction('<segno/>') +
+          note('D') +
+          '\n<sound dalsegno="segno"/>',
       ),
     )
 

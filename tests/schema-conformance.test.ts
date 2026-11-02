@@ -1296,6 +1296,12 @@ const CALL_SITE_LIMITS: Readonly<
       holds: () => ['segno', 'coda', 'tempo'].every((mark) => !has(mark, 'placement')),
     },
   ],
+  'src/read/jumps.ts': [
+    {
+      says: 'a jump names no coda, so a to-coda jump goes to the score’s one coda',
+      holds: () => propertiesOf('jump').join() === 'location,type',
+    },
+  ],
   'src/read/marks.ts': [
     {
       says: 'a tremolo is a count of beams',

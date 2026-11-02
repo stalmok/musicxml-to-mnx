@@ -62,7 +62,7 @@ import { readPrint } from './print.js'
 import { IdGenerator } from './idGenerator.js'
 import { mergeGlobalMeasures, sameFermata, sameNumbers, sameRepeatEnd } from './globalMeasures.js'
 import type { KeysAcrossParts, ReadGlobalMeasure, ReadJump, UndrawnSign } from './globalMeasures.js'
-import { drawsSign, settleJumps } from './jumps.js'
+import { drawingOf, settleJumps } from './jumps.js'
 import { writtenLengthOf } from './tuplets.js'
 import { MeasureRepeats } from './measureRepeats.js'
 import type { PartCollector } from './partCollector.js'
@@ -866,9 +866,15 @@ function readMeasure(
     context,
     (first, other) => first.sound !== other.sound,
   )
-  // A sign at the point of the jump is how the source draws the jump.
-  const signs = <T extends Segno>(kind: UndrawnSign['kind'], found: readonly Stated<T>[]) =>
-    found.filter(({ value }) => !(jump && drawsSign(jump.value, kind, value)))
+  // A sign at the point of a jump is how the source draws the jump, and goes
+  // with it. Where the measure has no other sign, the kept jump's drawing
+  // stays, for the score to settle once its jumps are known.
+  const signs = <T extends Segno>(kind: UndrawnSign['kind'], found: readonly Stated<T>[]) => {
+    const draws = (jumped: ReadJump | undefined, sign: T) =>
+      jumped !== undefined && drawingOf(jumped, kind, sign) === 'jump'
+    const own = found.filter(({ value }) => !jumps.some((each) => draws(each.value, value)))
+    return own.length > 0 ? own : found.filter(({ value }) => draws(jump?.value, value))
+  }
 
   // A part stating no time signature runs to the barline the score states.
   // Measured against the time signature the measure opens with, since one

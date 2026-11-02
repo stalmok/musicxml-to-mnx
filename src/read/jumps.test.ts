@@ -496,6 +496,90 @@ describe('a sign drawn at the point of a jump', () => {
     },
   )
 
+  // A coda before the coda section can share the point of the D.C. or D.S.
+  // that leads there.
+  test.each([
+    ['D.C.', '', DA_CAPO, 'dcAlCoda'],
+    ['D.S.', SEGNO, DAL_SEGNO, 'dsAlCoda'],
+  ])('takes the only coda at the point of a %s as the coda', (_, segno, sound, type) => {
+    const result = signs(
+      score(segno + NOTE + TO_CODA, NOTE + sound + '<barline><coda/></barline>', NOTE),
+    )
+
+    expect(result.types).toEqual(['toCoda', type, undefined])
+    expect(result.codas).toEqual([false, true, false])
+    expect(result.warnings).toEqual([])
+  })
+
+  test('reports a coda at the point of a D.S. that meets no to-coda jump', () => {
+    const warnings = new WarningCollector()
+    const { globalMeasures } = readValid(
+      score(NOTE + TO_CODA, SEGNO + NOTE, NOTE + drawn('coda', DAL_SEGNO), CODA + NOTE),
+      warnings,
+    )
+
+    expect(globalMeasures.map((measure) => measure.jump?.type)).toEqual([
+      'toCoda',
+      undefined,
+      'segno',
+      undefined,
+    ])
+    expect(globalMeasures.map((measure) => measure.coda !== undefined)).toEqual([
+      false,
+      false,
+      false,
+      true,
+    ])
+    expect(warnings.list().map((w) => [w.code, w.element, w.context.measure])).toEqual([
+      ['unrepresentable:element', 'coda', 3],
+    ])
+  })
+
+  // The jump is not converted, so nothing else draws the sign.
+  test.each([
+    [
+      'segno beside a D.S.',
+      [NOTE + '<sound segno="s"/>', NOTE + drawn('segno', DAL_SEGNO)],
+      'segno',
+    ],
+    ['coda beside a to-coda jump', [NOTE + CODA + TO_CODA, NOTE + '<sound coda="coda"/>'], 'coda'],
+  ] as const)('keeps a %s to a sign marked only for playback', (_, bodies, kind) => {
+    const warnings = new WarningCollector()
+    const { globalMeasures } = readValid(score(...bodies), warnings)
+
+    expect(globalMeasures.map((measure) => measure.jump?.type)).toEqual([undefined, undefined])
+    expect(globalMeasures.map((measure) => measure[kind] !== undefined)).toEqual(
+      kind === 'segno' ? [false, true] : [true, false],
+    )
+    expect(warnings.list().map((w) => w.code)).toEqual([
+      'unrepresentable:attribute',
+      'unrepresentable:undrawn-destination',
+    ])
+  })
+
+  // MNX states one jump per measure, so the second is reported, and its
+  // drawing goes with it.
+  test.each([
+    [
+      'a second to-coda jump',
+      [NOTE + drawn('coda', TO_CODA) + NOTE + '\n' + drawn('coda', TO_CODA), NOTE + DA_CAPO, CODA],
+      ['toCoda', 'dcAlCoda', undefined],
+      [false, false, true],
+    ],
+    [
+      'a to-coda jump after a D.S.',
+      [SEGNO + NOTE, DAL_SEGNO + NOTE + '\n' + drawn('coda', TO_CODA)],
+      [undefined, 'segno'],
+      [false, false],
+    ],
+  ])('drops the coda drawn by %s the measure cannot hold', (_, bodies, types, codas) => {
+    const result = signs(score(...bodies))
+
+    expect(result.types).toEqual(types)
+    expect(result.codas).toEqual(codas)
+    expect(result.warnings).toEqual(['sound'])
+  })
+
   test('counts a coda at another point of the to-coda jump’s measure', () => {
     const error = readFailure(score(CODA + NOTE + TO_CODA, NOTE + DA_CAPO, CODA + NOTE))
 
