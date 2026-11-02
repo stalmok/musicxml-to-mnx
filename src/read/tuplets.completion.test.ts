@@ -500,6 +500,44 @@ describe('a bracket the silence after it completes', () => {
     expect(warnings.map((w) => w.code)).toEqual(['inconsistent:duration', 'inconsistent:tuplet'])
   })
 
+  // The written values run past the cursor, but no measure is held to where
+  // the cursor stops. Only the score's time signature bounds what is written.
+  test.each([
+    [
+      'in a pickup',
+      '<score-partwise><part id="P1"><measure number="1" implicit="yes">' +
+        TIMED.replace('<beats>2', '<beats>4') +
+        plain('C', 12, 'half') +
+        shortEighth +
+        '<backup><duration>16</duration></backup>' +
+        '<note><pitch><step>G</step><octave>3</octave></pitch><duration>24</duration>' +
+        '<voice>2</voice><type>half</type></note></measure></part></score-partwise>',
+      0,
+    ],
+    [
+      "in a part whose time signature is shorter than the score's",
+      twoParts(
+        TIMED.replace('<beats>2', '<beats>4') + plain('D', 48, 'whole'),
+        TIMED.replace('<beats>2', '<beats>3') +
+          plain('C', 12, 'half') +
+          plain('D', 12, 'quarter') +
+          shortEighth,
+      ),
+      1,
+    ],
+  ])('takes in the silence after it %s', (_, source, part) => {
+    const warnings = new WarningCollector()
+    const result = readValid(source, warnings)
+    const content = result.parts[part]?.measures[0]?.sequences[0]?.content
+
+    expect(stated(content?.at(-1))).toEqual({
+      inner: { value: { base: 'eighth', dots: 0 }, multiple: 3 },
+      outer: { value: { base: 'eighth', dots: 0 }, multiple: 2 },
+      held: ['event', 'space'],
+    })
+    expect(warnings.list().map((w) => w.code)).not.toContain('unrepresentable:tuplet-ratio')
+  })
+
   // A bracket holding three eighths in the time of two states what the source
   // wrote and needs nothing invented. Stretching it back to the 6:4 the
   // source drew would draw it over silence the source did not.

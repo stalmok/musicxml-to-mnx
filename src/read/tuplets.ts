@@ -336,6 +336,11 @@ export interface MeasureExtent {
    * silence past its own end, and also stops at the score's time signature.
    */
   length: Fraction
+  /**
+   * How far the measure may be written: the score's time signature, unset
+   * where none is stated.
+   */
+  written: Fraction | undefined
 }
 
 /**
@@ -824,12 +829,13 @@ function silenceAfter(
     span += 1
   }
   // A <duration> that differs from the written value kept moves the cursor
-  // away from what is written. The tail runs from whichever is further, so
-  // the measure neither sounds nor is written past its length. Where either
-  // already is, the voice has no tail.
-  const end = addFractions(written, time)
-  const further = compareFractions(end, voice.end) > 0 ? end : voice.end
-  const tail = subtractFractions(voice.measure.length, further)
+  // away from what is written. The tail is the shorter of what the cursor
+  // leaves of the measure and what the written values leave of the score's
+  // time signature. Where either is used up, the voice has no tail.
+  const sounded = subtractFractions(voice.measure.length, voice.end)
+  const bound = voice.measure.written
+  const left = bound && subtractFractions(bound, addFractions(written, time))
+  const tail = left && compareFractions(left, sounded) < 0 ? left : sounded
   return { time: tail.num > 0 ? addFractions(time, tail) : time, span }
 }
 

@@ -1259,7 +1259,11 @@ export class MeasureBuilder {
     const bound =
       scoreSignature && compareFractions(length, scoreSignature) > 0 ? scoreSignature : length
     this.#settleMeasure(
-      { beatsFrom: anchor === 'end' ? length : fraction(0), length: bound },
+      {
+        beatsFrom: anchor === 'end' ? length : fraction(0),
+        length: bound,
+        written: scoreSignature,
+      },
       warnings,
       context,
     )
