@@ -166,10 +166,10 @@ export function readNote(
   // Which staff the note names. It is range-checked even in a one-staff part,
   // so a note naming a staff that <staves> has not declared is rejected, not
   // placed on the first. It is stated only where the part has more than one
-  // staff.
+  // staff, and a note naming none there is on the first.
   const staffElement = element.child('staff')
   const named = staffElement ? readIntegerInRange(staffElement, path, 1, state.staves) : undefined
-  const staff = state.staves > 1 ? named : undefined
+  const staff = state.staves > 1 ? (named ?? 1) : undefined
 
   // A rest may be pinned to a height with <display-step>/<display-octave>, read
   // against the clef in force on its staff. MNX states it as rest.staffPosition,

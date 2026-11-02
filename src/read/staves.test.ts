@@ -794,6 +794,26 @@ describe('a voice that reaches across to the other staff', () => {
     expect(part?.measures[0]?.sequences.map((sequence) => sequence.staff)).toEqual([1, 2])
   })
 
+  // MusicXML reads a note that names no staff as on the first.
+  test('marks a note that names no staff as on the first staff', () => {
+    const unnamed =
+      '<note><pitch><step>F</step><octave>4</octave></pitch><duration>4</duration>' +
+      '<type>quarter</type><voice>1</voice></note>'
+    const { part, warnings } = read(
+      measures(GRAND_STAFF + note('C', '2') + note('D', '2') + note('E', '2') + unnamed),
+    )
+    const sequence = part?.measures[0]?.sequences[0]
+
+    expect(sequence?.staff).toBe(2)
+    expect(sequence?.content.map((item) => (item.kind === 'event' ? item.staff : null))).toEqual([
+      undefined,
+      undefined,
+      undefined,
+      1,
+    ])
+    expect(warnings).toEqual([])
+  })
+
   test('takes the voice to be on the staff it spends most of its time', () => {
     const { part } = read(measures(GRAND_STAFF + note('C', '1') + note('D', '2') + note('E', '2')))
     const sequence = part?.measures[0]?.sequences[0]
@@ -1755,6 +1775,20 @@ describe('a chord that straddles the two staves', () => {
     expect(event && 'notes' in event ? event.notes?.map((n) => n.staff) : []).toEqual([
       undefined,
       2,
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  test('carries the first staff for a note that names no staff on a chord on the second', () => {
+    const unnamed =
+      '<note><chord/><pitch><step>C</step><octave>4</octave></pitch>' +
+      '<duration>4</duration><type>quarter</type><voice>1</voice></note>'
+    const { part, warnings } = read(measures(GRAND_STAFF + note('C', '2') + unnamed))
+    const event = part?.measures[0]?.sequences[0]?.content[0]
+
+    expect(event?.kind === 'event' ? notesOf(event).map((n) => n.staff) : []).toEqual([
+      undefined,
+      1,
     ])
     expect(warnings).toEqual([])
   })

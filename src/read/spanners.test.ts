@@ -449,7 +449,7 @@ describe('ties', () => {
     ['joins', 'on a staff neither end is on', '<staff>1</staff>', '<staff>2</staff>', 1, 0],
     ['does not join', "on the start's staff", '<staff>2</staff>', '<staff>1</staff>', 0, 2],
     ['does not join', "on the stop's staff", '<staff>1</staff>', '<staff>1</staff>', 0, 2],
-    ['does not join', 'that names no staff', '', '<staff>2</staff>', 0, 2],
+    ['joins', 'that names no staff, which is the first', '', '<staff>2</staff>', 1, 0],
   ])(
     '%s a tie within a laid-over line of two staves across a measure that sounds one line %s',
     (_, _where, between, stopStaff, ties, unclosed) => {
