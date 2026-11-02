@@ -477,8 +477,8 @@ describe('a bracket the silence after it completes', () => {
 
   // The half note states the <duration> of a quarter, and its written value
   // is kept, so the voice is written past where the cursor stands. The
-  // cursor leaves the bracket the eighth of silence it is missing, but the
-  // written values leave it only a sixteenth.
+  // cursor leaves the bracket all the silence it is missing, but the written
+  // values leave it only a sixteenth of its own.
   test('takes in no silence past what the written values leave', () => {
     const { content, warnings } = read(
       measures(

@@ -506,8 +506,7 @@ export class MeasureBuilder {
   /**
    * Where each event of the measure begins, whatever voice it is in, the
    * staff it was placed on, and whether it is a grace note. An event states
-   * no staff where the part has only one, and where a multi-staff part leaves
-   * it off, which MusicXML reads as the first staff.
+   * no staff where the part has only one, which is the first staff.
    */
   readonly #eventStarts: { start: Fraction; staff: number | undefined; grace: boolean }[] = []
   #cursor: Fraction = fraction(0)
@@ -1215,7 +1214,8 @@ export class MeasureBuilder {
    */
   finish(
     /**
-     * Where the beats line up, the part's time signature alone, and the
+     * Where the beats line up, the time signature the part's measure runs
+     * against, which is the score's where the part states none, and the
      * score's, which no measure may run past. Each is unset where none is
      * stated.
      */
