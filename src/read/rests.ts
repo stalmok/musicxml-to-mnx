@@ -8,7 +8,7 @@
 // states and where it stands in its voice.
 
 import type { DocumentPath } from '../errors.js'
-import { compareFractions, divideFractions, fraction, multiplyFractions } from '../fraction.js'
+import { compareFractions, divideFractions, fraction } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type { NoteValue } from '../model/score.js'
 import { writtenAt } from './collector.js'
@@ -16,7 +16,7 @@ import type { ReportContext, WarningCollector, WarningPlace } from './collector.
 import type { XmlElement } from '../xml/parse.js'
 import type { ElementReader } from './element.js'
 import { attribute, children, descendants, readWholeElement } from '../xml/tree.js'
-import { describeLength, describeValue, lengthOf, noteValueOf } from './duration.js'
+import { describeLength, describeValue, lengthOf, noteLength, noteValueOf } from './duration.js'
 import { readFermata, statesNoStem, writtenMarks } from './marks.js'
 import type { NoteStatement, RestNote, VoicedNote } from './noteStatement.js'
 import { readCountedRatio } from './noteTuplets.js'
@@ -445,12 +445,10 @@ export function dropRedundantRest(
   if (written && duration) {
     reportDurationMismatch(element, written, duration, scale, warnings, context, warnings.reserve())
   }
+  // measuredValue refuses a rest stating neither a <type> nor a <duration>.
   const lasts =
-    duration ??
-    multiplyFractions(
-      lengthOf(written ?? measuredValue(element, duration, scale, state, path)),
-      scale.factor,
-    )
+    noteLength(duration, undefined, written, scale.factor) ??
+    lengthOf(measuredValue(element, duration, scale, state, path))
 
   const description =
     over === 'measure rest'

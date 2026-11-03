@@ -41,6 +41,32 @@ export function lengthOf(value: NoteValue): Fraction {
   )
 }
 
+/**
+ * How long a note lasts in its measure: the <duration> it states, or else the
+ * measure where it is a rest filling it, or else its written value as the
+ * tuplets and the two-note tremolo around it scale it by `factor`.
+ */
+export function noteLength(
+  duration: Fraction | undefined,
+  measure: Fraction | undefined,
+  written: NoteValue,
+  factor: Fraction,
+): Fraction
+export function noteLength(
+  duration: Fraction | undefined,
+  measure: Fraction | undefined,
+  written: NoteValue | undefined,
+  factor: Fraction,
+): Fraction | undefined
+export function noteLength(
+  duration: Fraction | undefined,
+  measure: Fraction | undefined,
+  written: NoteValue | undefined,
+  factor: Fraction,
+): Fraction | undefined {
+  return duration ?? measure ?? (written && multiplyFractions(lengthOf(written), factor))
+}
+
 /** How a note value reads in a sentence, for example "a double-dotted half". */
 export function describeValue(value: NoteValue): string {
   const prefix = ['', 'dotted ', 'double-dotted ', 'triple-dotted '][value.dots]

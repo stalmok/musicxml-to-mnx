@@ -11,7 +11,7 @@
 
 import { unlessRefused } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
-import { addFractions, compareFractions, fraction, multiplyFractions, negate } from '../fraction.js'
+import { addFractions, compareFractions, fraction, negate } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type { Key, TimeSignature, Transposition } from '../model/score.js'
 import type { XmlElement } from '../xml/parse.js'
@@ -20,7 +20,7 @@ import { firstTimeStated } from './attributes.js'
 import type { AttributesReading, StaffSignature } from './attributes.js'
 import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
 import { ASSUMED_DIVISIONS, lengthOfDuration, readDivisions } from './divisions.js'
-import { lengthOf } from './duration.js'
+import { noteLength } from './duration.js'
 import type { KeysAcrossParts, ReadGlobalMeasure } from './globalMeasures.js'
 import { endsTwoNoteTremolo } from './eventNotations.js'
 import { ratioShare } from './noteTuplets.js'
@@ -566,10 +566,9 @@ function readTimesInForce(part: XmlElement): MeasureTimes[] {
     let late = false
     let lastLate: TimeSignature | undefined
     let cursor = fraction(0)
-    const by = (found: XmlElement) => {
+    const durationOf = (found: XmlElement) => {
       const duration = child(found, 'duration')
-      const length = duration && unlessRefused(() => lengthOfDuration(duration, divisions, []))
-      return length ?? fraction(0)
+      return duration && unlessRefused(() => lengthOfDuration(duration, divisions, []))
     }
     // A note's own <time-modification> states every ratio around it, nested
     // ones and a two-note tremolo's multiplied. A note of a two-note tremolo
@@ -586,26 +585,30 @@ function readTimesInForce(part: XmlElement): MeasureTimes[] {
     // the rest is reached, since its length is what places a later statement.
     // In an unmetered measure it is the one the part stated before, which the
     // score keeps in force.
-    const noteLength = (found: XmlElement) => {
+    const lasts = (found: XmlElement) => {
       if (child(found, 'grace')) return fraction(0)
-      if (child(found, 'duration')) return by(found)
       const rest = child(found, 'rest')
       const measured = opens ?? converted
-      if (rest && measured && attribute(rest, 'measure') === 'yes') {
-        return lengthOfTime(measured)
-      }
-      const value = unlessRefused(() =>
-        writtenValueOf(child(found, 'type'), children(found, 'dot').length, []),
+      const length = noteLength(
+        durationOf(found),
+        rest && measured && attribute(rest, 'measure') === 'yes'
+          ? lengthOfTime(measured)
+          : undefined,
+        unlessRefused(() =>
+          writtenValueOf(child(found, 'type'), children(found, 'dot').length, []),
+        ),
+        ratioOf(found),
       )
-      return value ? multiplyFractions(lengthOf(value), ratioOf(found)) : fraction(0)
+      return length ?? fraction(0)
     }
     for (const found of measure.children) {
-      if (found.name === 'forward') cursor = addFractions(cursor, by(found))
-      else if (found.name === 'backup') cursor = addFractions(cursor, negate(by(found)))
-      else if (found.name === 'note' && !child(found, 'chord')) {
+      if (found.name === 'forward' || found.name === 'backup') {
+        const by = durationOf(found) ?? fraction(0)
+        cursor = addFractions(cursor, found.name === 'forward' ? by : negate(by))
+      } else if (found.name === 'note' && !child(found, 'chord')) {
         // Written out, a note before the measure start stands at the start.
         if (compareFractions(cursor, fraction(0)) < 0) cursor = fraction(0)
-        cursor = addFractions(cursor, noteLength(found))
+        cursor = addFractions(cursor, lasts(found))
       }
       if (found.name !== 'attributes') continue
       const stated = child(found, 'divisions')

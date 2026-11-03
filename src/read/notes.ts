@@ -7,7 +7,7 @@
 
 import { MusicXMLError } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
-import { compareFractions, fraction, multiplyFractions } from '../fraction.js'
+import { compareFractions, fraction } from '../fraction.js'
 import type { Event, EventNotes, EventRest, GraceType } from '../model/score.js'
 import type { Draft } from './draft.js'
 import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
@@ -17,7 +17,7 @@ import { beamCountForValue, beamMarkers } from './beams.js'
 import { readArpeggio } from './arpeggios.js'
 import type { BeamedEvent } from './beams.js'
 import { readDuration } from './divisions.js'
-import { describeLength, describeValue, lengthOf } from './duration.js'
+import { describeLength, describeValue, noteLength } from './duration.js'
 import type { ElementReader } from './element.js'
 import { readEventNotations, reconcile, writtenFor } from './eventNotations.js'
 import { reportHidden } from './unrepresentable.js'
@@ -298,7 +298,8 @@ export function readNote(
   const mismatchPlace = warnings.reserve()
   // Where the source states no <duration>, a rest filling the measure lasts
   // the measure.
-  const lasts = duration ?? (fills ? measureLength(state) : undefined)
+  const measure = fills ? measureLength(state) : undefined
+  const lasts = duration ?? measure
   // A rest that fills the measure, or may, is written as the value it lasts.
   // Inside a tuplet its <duration> is the time the ratio scales its written
   // value to, so the written value stands, as for any other note.
@@ -404,25 +405,15 @@ export function readNote(
     return
   }
 
-  // Where the source states no <duration>, the written value as the tuplets
-  // and tremolos around it scale it is how long the note lasts.
-  const unstated = multiplyFractions(lengthOf(value), scale.factor)
+  const length = noteLength(duration, measure, value, scale.factor)
   const placed = fills
-    ? builder.addMeasureRestEvent(
-        voice,
-        event,
-        eventNotations,
-        lasts ?? unstated,
-        path,
-        element.line,
-        staff,
-      )
+    ? builder.addMeasureRestEvent(voice, event, eventNotations, length, path, element.line, staff)
     : builder.addEvent(
         voice,
         event,
         eventNotations,
         scale.factor,
-        duration ?? unstated,
+        length,
         path,
         element.line,
         staff,
