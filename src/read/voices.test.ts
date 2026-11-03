@@ -127,6 +127,15 @@ describe('chords', () => {
     expect(first?.kind === 'event' && notesOf(first).map((n) => n.pitch.step)).toEqual(['C', 'E'])
   })
 
+  test('takes the voice of the note it joins when its voice is empty', () => {
+    const { measure: result, warnings } = read(
+      measure(note('C', 1, '1') + note('E', 1, '', '<chord/>')),
+    )
+
+    expect(result?.sequences.map((sequence) => sequence.voice)).toEqual(['1'])
+    expect(warnings).toEqual([])
+  })
+
   test('joins the note written just before it, not the last note of the voice it names', () => {
     const { measure: result, warnings } = read(
       measure(
