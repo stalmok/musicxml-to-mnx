@@ -63,6 +63,12 @@ const BOW_DIRECTIONS: Record<BowDirectionMarking['direction'], string> = {
   down: 'down-bow',
 }
 
+/** Whether a <tremolo> marks one end of a tremolo written across two notes. */
+export function endsTwoNoteTremolo(tremolo: XmlElement): boolean {
+  const type = attribute(tremolo, 'type')
+  return type === 'start' || type === 'stop'
+}
+
 /**
  * The event notations a note writes, block by block. The marks come in a
  * fixed order rather than the source's, because MNX keys them by name, so a
@@ -107,8 +113,7 @@ export function readEventNotations(notations: readonly ElementReader[]): readonl
     // which end of the pair the note is.
     for (const ornaments of block.blocks('ornaments')) {
       for (const found of children(ornaments.element, 'tremolo')) {
-        const type = attribute(found, 'type')
-        const kind = type === 'start' || type === 'stop' ? 'multiNoteTremolo' : 'tremolo'
+        const kind = endsTwoNoteTremolo(found) ? 'multiNoteTremolo' : 'tremolo'
         written.push({ kind, found, block: ornaments, notations: block })
       }
     }

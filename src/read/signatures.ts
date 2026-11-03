@@ -22,6 +22,7 @@ import type { ReportContext, WarningCollector, WarningPlace } from './collector.
 import { ASSUMED_DIVISIONS, lengthOfDuration, readDivisions } from './divisions.js'
 import { lengthOf } from './duration.js'
 import type { KeysAcrossParts, ReadGlobalMeasure } from './globalMeasures.js'
+import { endsTwoNoteTremolo } from './eventNotations.js'
 import { ratioShare } from './noteTuplets.js'
 import { KEY, lengthOfTime, reportLate, sameMeter, TIME } from './partSignatures.js'
 import type { HeldSignature, SignatureKind } from './partSignatures.js'
@@ -637,10 +638,7 @@ function readTimesInForce(part: XmlElement): MeasureTimes[] {
 function inTwoNoteTremolo(note: XmlElement): boolean {
   return children(note, 'notations').some((notations) =>
     children(notations, 'ornaments').some((ornaments) =>
-      children(ornaments, 'tremolo').some((tremolo) => {
-        const type = attribute(tremolo, 'type')
-        return type === 'start' || type === 'stop'
-      }),
+      children(ornaments, 'tremolo').some(endsTwoNoteTremolo),
     ),
   )
 }
