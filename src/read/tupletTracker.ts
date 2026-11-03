@@ -259,12 +259,23 @@ export class TupletTracker {
    */
   readonly #claims: TupletClaim[] = []
   /** The sequence's own item list, which holds what no bracket does. */
-  readonly #content: SequenceItem[]
+  readonly #content: SequenceItem[] = []
   /** The openings whose report waits for the measure to be whole. */
   readonly #held: HeldOpening[] = []
 
-  constructor(content: SequenceItem[]) {
-    this.#content = content
+  /** The sequence's own item list. */
+  content(): readonly SequenceItem[] {
+    return this.#content
+  }
+
+  /** Empties the sequence's own list, for a rest the sequence states. */
+  clear(): void {
+    this.#content.length = 0
+  }
+
+  /** Puts `by` in the place of `item` in the sequence's own list. */
+  replace(item: SequenceItem, by: SequenceItem): void {
+    this.#content[this.#content.indexOf(item)] = by
   }
 
   /** Adds an item after what is written so far, inside every bracket open. */
@@ -855,10 +866,14 @@ export class TupletTracker {
    * Settles every bracket this sequence closed, the measure being whole, and
    * hands back where the sequence runs to. See settleClaims.
    */
-  settle(voice: VoiceTail, warnings: WarningCollector, context: ReportContext): Fraction {
+  settle(
+    voice: Omit<VoiceTail, 'content'>,
+    warnings: WarningCollector,
+    context: ReportContext,
+  ): Fraction {
     for (const { opening } of this.#held) reportDisagreeing(opening, warnings, context)
     this.#held.length = 0
-    const end = settleClaims(this.#claims, voice, warnings, context)
+    const end = settleClaims(this.#claims, { ...voice, content: this.#content }, warnings, context)
     this.#claims.length = 0
     return end
   }

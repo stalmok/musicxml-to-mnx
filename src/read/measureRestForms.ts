@@ -64,9 +64,16 @@ export type MeasureRest =
       readonly line: number
     }
 
+/** A voice's own item list, which the tuplet tracker holds. */
+interface VoiceContent {
+  content(): readonly SequenceItem[]
+  clear(): void
+  replace(item: SequenceItem, by: SequenceItem): void
+}
+
 /** What a voice's sequence holds that its measure rest is settled against. */
 export interface RestingVoice {
-  content: SequenceItem[]
+  readonly tuplets: VoiceContent
   /** What each event said about its beams. */
   readonly beamed: readonly BeamedEvent[]
   measureRest: MeasureRest | undefined
@@ -76,7 +83,7 @@ export interface RestingVoice {
 
 /** States the rest on the sequence, which then holds nothing else. */
 function stateOnSequence(voice: RestingVoice, rest: FullMeasureRest): void {
-  voice.content.length = 0
+  voice.tuplets.clear()
   voice.fullMeasure = rest
 }
 
@@ -95,7 +102,7 @@ export function settleFillingRest(
   rest: Extract<MeasureRest, { origin: 'fills' }>,
 ): MeasureRestForm {
   // Anything in the content but a space is a grace note.
-  if (voice.content.every((item) => item.kind === 'space')) {
+  if (voice.tuplets.content().every((item) => item.kind === 'space')) {
     stateOnSequence(voice, rest.onSequence)
     return 'sequence'
   }
@@ -110,7 +117,7 @@ export function settleFillingRest(
   if (!asEvent) return 'space'
 
   const event = asEvent()
-  voice.content[voice.content.indexOf(space)] = event
+  voice.tuplets.replace(space, event)
   voice.spent.set(event, space.duration)
   rest.placed.event = event
   return 'event'
@@ -146,7 +153,8 @@ export function settleCandidateRest(
     event.lyrics.size > 0 ||
     Object.keys(event.markings).length > 0 ||
     marked
-  if (reached || voice.content.length !== 1 || voice.content[0] !== event) {
+  const content = voice.tuplets.content()
+  if (reached || content.length !== 1 || content[0] !== event) {
     rest.reports.event?.()
     return
   }

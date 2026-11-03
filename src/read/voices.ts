@@ -153,7 +153,6 @@ interface VoiceBuilder {
    * closed in this measure, waiting for it to be whole.
    */
   tuplets: TupletTracker
-  content: SequenceItem[]
   /** Where this voice's content runs out, measured from the measure start. */
   end: Fraction
   /**
@@ -641,13 +640,14 @@ export class MeasureBuilder {
    */
   restRepeatsMeasure(voice: VoiceLine, length: Fraction): boolean {
     const layer = layerOf(voice)
+    const content = layer.tuplets.content()
     return (
       this.#opensMultimeasureRest &&
       !this.#typelessRests.has(voice.name) &&
       !this.#soundingVoices.has(voice.name) &&
-      layer.content.length > 0 &&
+      content.length > 0 &&
       // The voice sounds no note, so each event is a rest.
-      layer.content.every((item) => item.kind === 'event') &&
+      content.every((item) => item.kind === 'event') &&
       compareFractions(layer.end, length) === 0 &&
       compareFractions(this.#cursor, length) === 0
     )
@@ -672,7 +672,7 @@ export class MeasureBuilder {
    * measure begins, so what comes next is the first thing the voice sounds.
    */
   opensMeasure(voice: VoiceLine): boolean {
-    return layerOf(voice).content.length === 0 && this.atMeasureStart()
+    return layerOf(voice).tuplets.content().length === 0 && this.atMeasureStart()
   }
 
   /**
@@ -681,7 +681,9 @@ export class MeasureBuilder {
    * take a rest filling the measure.
    */
   hasSoundedNothing(voice: VoiceLine): boolean {
-    return layerOf(voice).content.every((item) => item.kind === 'grace' || item.kind === 'space')
+    return layerOf(voice)
+      .tuplets.content()
+      .every((item) => item.kind === 'grace' || item.kind === 'space')
   }
 
   #requireRoomForMeasureRest(voice: VoiceLine, path: DocumentPath, line: number): void {
@@ -859,7 +861,6 @@ export class MeasureBuilder {
   #settleMeasure(measure: MeasureExtent, warnings: WarningCollector, context: ReportContext): void {
     for (const builder of this.#allBuilders()) {
       const voice = {
-        content: builder.content,
         end: builder.end,
         measure,
         spent: builder.spent,
@@ -1200,7 +1201,7 @@ export class MeasureBuilder {
 
   /** What a line of the measure writes, for the part to match it by. */
   #written(builder: VoiceBuilder): WrittenLine {
-    const sounded = soundedEvents(builder.content)
+    const sounded = soundedEvents(builder.tuplets.content())
     const timed = sounded.findIndex(({ grace }) => !grace)
     const carrying = this.#carryingOn.get(builder)
     return {
@@ -1557,7 +1558,7 @@ export class MeasureBuilder {
         }
         return builder.fullMeasure
           ? { ...named, content: [], fullMeasure: builder.fullMeasure }
-          : { ...named, content: builder.content, fullMeasure: undefined }
+          : { ...named, content: builder.tuplets.content(), fullMeasure: undefined }
       })
     })
   }
@@ -1627,7 +1628,7 @@ function leavesBeamOpen({ beamed, lastEvent }: VoiceBuilder): boolean {
 function soundingLines(layers: readonly VoiceBuilder[]): VoiceBuilder[] {
   return layers.filter(
     (builder, index) =>
-      index === 0 || builder.content.length > 0 || builder.fullMeasure !== undefined,
+      index === 0 || builder.tuplets.content().length > 0 || builder.fullMeasure !== undefined,
   )
 }
 
@@ -1648,7 +1649,7 @@ function rankedLines(layers: readonly VoiceBuilder[]): VoiceBuilder[] {
 function highestFirst(lines: readonly VoiceBuilder[]): readonly VoiceBuilder[] {
   const ranked: { line: VoiceBuilder; height: number }[] = []
   for (const line of lines) {
-    const height = meanHeight(line.content)
+    const height = meanHeight(line.tuplets.content())
     if (height === undefined) return lines
     ranked.push({ line, height })
   }
@@ -1701,16 +1702,13 @@ function soundedEvents(
 }
 
 function newVoiceBuilder(openedAt?: XmlElement): VoiceBuilder {
-  // One array: the tracker puts what no bracket holds in the voice's own list.
-  const content: SequenceItem[] = []
   return {
     openedAt,
     beamed: [],
     graceBeamed: [],
     placed: [],
     lastEvent: undefined,
-    tuplets: new TupletTracker(content),
-    content,
+    tuplets: new TupletTracker(),
     end: fraction(0),
     last: undefined,
     grace: undefined,
