@@ -7,6 +7,9 @@
 // here, once per measure, to a line the part has already written, and keeps
 // that line's name. Beams, sequence names and ties all follow this match.
 
+import type { Pitch, SequenceItem } from '../model/score.js'
+import { diatonicIndex } from './steps.js'
+
 /** One line of a voice as a measure writes it. */
 export interface WrittenLine {
   /** The staff most of its notes are on. */
@@ -274,4 +277,79 @@ export class PartLines {
     known.push(line)
     return line
   }
+}
+
+/**
+ * The lines of a voice, the highest first, by the mean height of their notes.
+ * Where a line sounds no pitch, nothing says which is higher, and the lines
+ * stay in the order the source wrote them.
+ */
+export function highestFirst<L>(
+  lines: readonly L[],
+  contentOf: (line: L) => readonly SequenceItem[],
+): readonly L[] {
+  const ranked: { line: L; height: number }[] = []
+  for (const line of lines) {
+    const height = meanHeight(contentOf(line))
+    if (height === undefined) return lines
+    ranked.push({ line, height })
+  }
+  return ranked.sort((a, b) => b.height - a.height).map(({ line }) => line)
+}
+
+function meanHeight(content: readonly SequenceItem[]): number | undefined {
+  const heights = pitchesIn(content).map((pitch) => diatonicIndex(pitch.step, pitch.octave))
+  if (heights.length === 0) return undefined
+  return heights.reduce((sum, height) => sum + height, 0) / heights.length
+}
+
+/** The pitches a line sounds, less its grace notes. */
+function pitchesIn(content: readonly SequenceItem[]): Pitch[] {
+  return content.flatMap((item) => {
+    switch (item.kind) {
+      case 'event':
+        return item.body.kind === 'notes' ? item.body.notes.map((note) => note.pitch) : []
+      case 'tuplet':
+      case 'multiNoteTremolo':
+        return pitchesIn(item.content)
+      case 'grace':
+      case 'space':
+        return []
+    }
+  })
+}
+
+/** The notes a line opens and closes with, for the part to match it by. */
+export function notesWritten(
+  content: readonly SequenceItem[],
+): Pick<WrittenLine, 'opening' | 'closing'> {
+  const sounded = soundedEvents(content)
+  const timed = sounded.findIndex(({ grace }) => !grace)
+  return {
+    opening: sounded.slice(0, timed + 1).flatMap(({ notes }) => notes),
+    closing: sounded.at(-1)?.notes,
+  }
+}
+
+/** The notes of each event a line sounds, in order, with whether it is a grace note. */
+function soundedEvents(
+  content: readonly SequenceItem[],
+  grace = false,
+): { notes: string[]; grace: boolean }[] {
+  return content.flatMap((item) => {
+    switch (item.kind) {
+      case 'event': {
+        const { body } = item
+        if (body.kind === 'rest') return []
+        return [{ notes: [...body.notes, ...body.kitNotes].map((note) => note.id), grace }]
+      }
+      case 'grace':
+        return soundedEvents(item.content, true)
+      case 'tuplet':
+      case 'multiNoteTremolo':
+        return soundedEvents(item.content, grace)
+      case 'space':
+        return []
+    }
+  })
 }
