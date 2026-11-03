@@ -9,6 +9,8 @@
 // it runs over, nested beams for the secondary levels, and a beam of one event
 // with a direction for a hook.
 
+import { isZero } from '../fraction.js'
+import type { Fraction } from '../fraction.js'
 import type { Beam, NoteValueBase } from '../model/score.js'
 import type { XmlElement } from '../xml/parse.js'
 import { attribute, trimmedText } from '../xml/tree.js'
@@ -114,6 +116,100 @@ export interface BeamedRun {
   events: readonly BeamedEvent[]
   /** Whether the line's last event leaves its primary beam open at the barline. */
   openAtBarline: boolean
+}
+
+/**
+ * What one line of a measure says about its beams: its events' markers, read
+ * once the measure is whole, and the primary beam it carries on or leaves
+ * open at a barline, which the part matches its lines by.
+ */
+export class LineBeams {
+  /** What each event said about its beams, in the order they were read. */
+  readonly #events: BeamedEvent[] = []
+  /**
+   * The same for the grace notes, kept apart from the rest. A grace group
+   * beams within itself, so its markers have to be read as their own run: a
+   * group sitting between two beamed notes would otherwise open a beam in the
+   * middle of theirs and leave the outer one with no end to close it.
+   */
+  #graceRuns: BeamedEvent[][] = []
+  /**
+   * The event the line opens the measure with where it is a primary continue
+   * or end, and the staff it is on.
+   */
+  #carrying: { event: BeamedEvent; staff: number | undefined } | undefined
+
+  /**
+   * Records what an event said about the beams it carries. `start` is where
+   * the event begins in the measure, `staff` the staff the line's last event
+   * named, and `graceRun` the run of a grace note's group.
+   */
+  add(
+    id: string,
+    markers: ReadonlyMap<number, BeamMarker>,
+    beamCount: number,
+    start: Fraction,
+    staff: number | undefined,
+    graceRun: BeamedEvent[] | undefined,
+  ): void {
+    if (markers.size === 0) return
+    const event: BeamedEvent = { id, markers, beamCount, continuesFrom: undefined }
+    ;(graceRun ?? this.#events).push(event)
+    const kind = markers.get(1)?.kind
+    if (!graceRun && isZero(start) && (kind === 'continue' || kind === 'end')) {
+      this.#carrying = { event, staff }
+    }
+  }
+
+  /** Starts the run of a new grace group. */
+  graceRun(): BeamedEvent[] {
+    const run: BeamedEvent[] = []
+    this.#graceRuns.push(run)
+    return run
+  }
+
+  /** Moves a grace group's run to the line its group moves to. */
+  moveGraceRun(run: BeamedEvent[], to: LineBeams): void {
+    this.#graceRuns = this.#graceRuns.filter((one) => one !== run)
+    to.#graceRuns.push(run)
+  }
+
+  /** Whether any event of the line but a grace note carries a beam. */
+  carriesAny(): boolean {
+    return this.#events.length > 0
+  }
+
+  /** The staff of the event that opens the line with a primary continue or end. */
+  carriesOn(): { staff: number | undefined } | undefined {
+    return this.#carrying && { staff: this.#carrying.staff }
+  }
+
+  /** Joins the primary beam the line opens with to the line `from` names. */
+  continueFrom(from: { line: string | undefined }): void {
+    if (this.#carrying) this.#carrying.event.continuesFrom = from
+  }
+
+  /**
+   * Whether the line's last event, `last`, begins or continues a primary
+   * beam, which the source then carries on over the barline or leaves open.
+   * An event with no primary marker, or no beam at all, closes the primary
+   * beam.
+   */
+  leavesOpen(last: string | undefined): boolean {
+    const beamed = this.#events.at(-1)
+    const kind = beamed?.markers.get(1)?.kind
+    return last === beamed?.id && (kind === 'begin' || kind === 'continue')
+  }
+
+  /** The line's own run, as the part's lines key it. */
+  run(line: string | undefined, last: string | undefined): BeamedRun {
+    return { line, events: this.#events, openAtBarline: this.leavesOpen(last) }
+  }
+
+  /** The run of each grace group, which no line carries on. */
+  graceRuns(): BeamedRun[] {
+    return this.#graceRuns.map((events) => ({ line: undefined, events, openAtBarline: false }))
+  }
 }
 
 /** A primary beam left open at a barline, waiting for the next measure. */

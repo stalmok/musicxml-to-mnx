@@ -12,7 +12,7 @@ import type {
   SequenceItem,
   Space,
 } from '../model/score.js'
-import type { BeamedEvent } from './beams.js'
+import type { LineBeams } from './beams.js'
 
 /**
  * How a voice's measure rest is written, settled once the measure is whole:
@@ -74,8 +74,7 @@ interface VoiceContent {
 /** What a voice's sequence holds that its measure rest is settled against. */
 export interface RestingVoice {
   readonly tuplets: VoiceContent
-  /** What each event said about its beams. */
-  readonly beamed: readonly BeamedEvent[]
+  readonly beams: LineBeams
   measureRest: MeasureRest | undefined
   fullMeasure: FullMeasureRest | undefined
   readonly spent: Map<SequenceItem, Fraction>
@@ -148,7 +147,7 @@ export function settleCandidateRest(
 ): void {
   const { event } = rest
   const reached =
-    voice.beamed.length > 0 ||
+    voice.beams.carriesAny() ||
     event.stemDirection !== undefined ||
     event.lyrics.size > 0 ||
     Object.keys(event.markings).length > 0 ||

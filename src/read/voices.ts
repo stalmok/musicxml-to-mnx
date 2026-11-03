@@ -16,7 +16,6 @@ import {
   compareFractions,
   divideFractions,
   fraction,
-  isZero,
   subtractFractions,
 } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
@@ -25,6 +24,7 @@ import type { ReportContext, WarningCollector } from './collector.js'
 import type { EventNotation } from './eventNotations.js'
 import type { XmlElement } from '../xml/parse.js'
 import { diatonicIndex } from './steps.js'
+import { LineBeams } from './beams.js'
 import type { BeamedEvent, BeamedRun, BeamMarker } from './beams.js'
 import type { PartLines, PlacedLine, WrittenLine } from './lines.js'
 import type { CarriedTupletStop, MeasureExtent, TupletStart } from './tuplets.js'
@@ -131,15 +131,7 @@ function graceTypeOf(builder: VoiceBuilder): GraceType | undefined {
 }
 
 interface VoiceBuilder {
-  /** What each event said about its beams, in the order they were read. */
-  beamed: BeamedEvent[]
-  /**
-   * The same for the grace notes, kept apart from the rest. A grace group
-   * beams within itself, so its markers have to be read as their own run: a
-   * group sitting between two beamed notes would otherwise open a beam in the
-   * middle of theirs and leave the outer one with no end to close it.
-   */
-  graceBeamed: BeamedEvent[][]
+  beams: LineBeams
   /**
    * Which staff each note named, paired with the event that named it. A rest
    * filling the measure names one without being an event, unless it is
@@ -494,11 +486,6 @@ export class MeasureBuilder {
   readonly #soundingVoices: ReadonlySet<string | undefined>
   /** The lines of the part, which each line of the measure is matched to. */
   readonly #lines: PartLines
-  /**
-   * The event each line opens the measure with where it is a primary
-   * continue or end, and the staff it is on.
-   */
-  readonly #carryingOn = new Map<VoiceBuilder, { event: BeamedEvent; staff: number | undefined }>()
   /** Whether a <multiple-rest> opens a multi-measure rest at this measure. */
   readonly #opensMultimeasureRest: boolean
   /** The voices that write a rest with no <type> in this measure. */
@@ -786,8 +773,7 @@ export class MeasureBuilder {
     // that silence comes before the group and the brackets it opened.
     this.#fillGap(to)
     from.tuplets.moveLastTo(waiting.group, to.tuplets, to.end)
-    from.graceBeamed = from.graceBeamed.filter((run) => run !== waiting.beams)
-    to.graceBeamed.push(waiting.beams)
+    from.beams.moveGraceRun(waiting.beams, to.beams)
     to.placed.push(...from.placed.splice(waiting.placedFrom))
     to.last = from.last
     to.grace = { ...waiting, placedFrom: to.placed.length - waiting.group.content.length }
@@ -1192,8 +1178,7 @@ export class MeasureBuilder {
       for (const [rank, layer] of layers.entries()) {
         const line = lines.get(voice)?.[rank] as PlacedLine
         placed.set(layer, line)
-        const carrying = this.#carryingOn.get(layer)
-        if (carrying && line.beamFrom) carrying.event.continuesFrom = line.beamFrom
+        if (line.beamFrom) layer.beams.continueFrom(line.beamFrom)
       }
     }
     return placed
@@ -1203,13 +1188,13 @@ export class MeasureBuilder {
   #written(builder: VoiceBuilder): WrittenLine {
     const sounded = soundedEvents(builder.tuplets.content())
     const timed = sounded.findIndex(({ grace }) => !grace)
-    const carrying = this.#carryingOn.get(builder)
+    const { beams, lastEvent } = builder
     return {
       staff: commonestStaff(builder.placed.map((placed) => placed.staff)),
       opening: sounded.slice(0, timed + 1).flatMap(({ notes }) => notes),
       closing: sounded.at(-1)?.notes,
-      carriesBeam: carrying && { staff: carrying.staff },
-      leavesBeamOpen: leavesBeamOpen(builder) ? { staff: builder.lastEvent?.staff } : undefined,
+      carriesBeam: beams.carriesOn(),
+      leavesBeamOpen: beams.leavesOpen(lastEvent?.id) ? { staff: lastEvent?.staff } : undefined,
     }
   }
 
@@ -1256,28 +1241,16 @@ export class MeasureBuilder {
     /** The run of a grace note's group, which its beams run within. */
     graceBeams: BeamedEvent[] | undefined,
   ): void {
-    if (markers.size === 0) return
     const builder = layerOf(voice)
-    const event: BeamedEvent = { id, markers, beamCount, continuesFrom: undefined }
-    ;(graceBeams ?? builder.beamed).push(event)
-    const kind = markers.get(1)?.kind
-    if (!graceBeams && isZero(start) && (kind === 'continue' || kind === 'end')) {
-      this.#carryingOn.set(builder, { event, staff: builder.lastEvent?.staff })
-    }
+    builder.beams.add(id, markers, beamCount, start, builder.lastEvent?.staff, graceBeams)
   }
 
   /** What every voice said about its beams, voice by voice. */
   #beamedRuns(placed: ReadonlyMap<VoiceBuilder, PlacedLine>): BeamedRun[] {
     const layers = [...this.#voices.values()].flatMap(({ layers }) => rankedLines(layers))
     return [
-      ...layers.map((layer) => ({
-        line: placed.get(layer)?.key,
-        events: layer.beamed,
-        openAtBarline: leavesBeamOpen(layer),
-      })),
-      ...layers.flatMap((layer) =>
-        layer.graceBeamed.map((events) => ({ line: undefined, events, openAtBarline: false })),
-      ),
+      ...layers.map((layer) => layer.beams.run(placed.get(layer)?.key, layer.lastEvent?.id)),
+      ...layers.flatMap((layer) => layer.beams.graceRuns()),
     ]
   }
 
@@ -1405,8 +1378,7 @@ export class MeasureBuilder {
     const group: GraceGroup = { kind: 'grace', content: [event], slashed, graceType }
     builder.tuplets.append(group)
     // Each group beams within itself, so each starts a run of its own.
-    const beams: BeamedEvent[] = []
-    builder.graceBeamed.push(beams)
+    const beams = builder.beams.graceRun()
     // Held until the note it leads into says which sequence it is in. Its
     // own entry in `placed` is the one just pushed.
     builder.grace = { group, beams, at: start, placedFrom: builder.placed.length - 1 }
@@ -1609,17 +1581,6 @@ export class MeasureBuilder {
 }
 
 /**
- * Whether the line's last event begins or continues a primary beam, which the
- * source then carries on over the barline or leaves open. An event with no
- * primary marker, or no beam at all, closes the primary beam.
- */
-function leavesBeamOpen({ beamed, lastEvent }: VoiceBuilder): boolean {
-  const last = beamed.at(-1)
-  const kind = last?.markers.get(1)?.kind
-  return lastEvent?.id === last?.id && (kind === 'begin' || kind === 'continue')
-}
-
-/**
  * The lines of a voice that the measure states. A line opened for a note that
  * was then dropped holds nothing, and a sequence stating nothing is not a line
  * the source drew. The voice's first line stays whatever it holds, so a voice
@@ -1704,8 +1665,7 @@ function soundedEvents(
 function newVoiceBuilder(openedAt?: XmlElement): VoiceBuilder {
   return {
     openedAt,
-    beamed: [],
-    graceBeamed: [],
+    beams: new LineBeams(),
     placed: [],
     lastEvent: undefined,
     tuplets: new TupletTracker(),
