@@ -51,7 +51,7 @@ import {
 import { pitchHeights, readKitNoteAt, readNoteAt, restStaffPosition } from './pitches.js'
 import { entriesOf } from './tables.js'
 import { readSlurs, readTies } from './tiesAndSlurs.js'
-import { tiePairing } from './spanners.js'
+import { tiePairing } from './ties.js'
 import { MeasureBuilder } from './voices.js'
 import type { JoinedEvent, PlacedEvent, VoiceLine } from './voices.js'
 
@@ -670,7 +670,7 @@ function readEventSpanners(
     () => pitchHeights(state),
   )
   // A rest sounds nothing, so a tie in its voice reaches across it.
-  if (body.kind === 'notes') state.spanners.sound(voice.name, inGraceGroup)
+  if (body.kind === 'notes') state.ties.sound(voice.name, inGraceGroup)
   for (const note of body.kind === 'notes' ? [...body.notes, ...body.kitNotes] : []) {
     readTies(
       element,

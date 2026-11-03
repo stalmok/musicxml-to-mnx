@@ -1343,14 +1343,16 @@ const CALL_SITE_LIMITS: Readonly<
   ],
   'src/read/spanners.ts': [
     {
-      says: 'a tie is always drawn',
-      holds: () => propertiesOf('tie').join() === 'lv,side,target,targetType',
-    },
-    {
       says: 'a hairpin states only the level it starts from',
       holds: () =>
         propertiesOf('dynamic-group-gradual').join() ===
         'end,glyphs,placement,position,prefix,staff,staffEnd,suffix,type,value,visuallyContinues,voice,wedgeType',
+    },
+  ],
+  'src/read/ties.ts': [
+    {
+      says: 'a tie is always drawn',
+      holds: () => propertiesOf('tie').join() === 'lv,side,target,targetType',
     },
   ],
   'src/read/tremolos.ts': [

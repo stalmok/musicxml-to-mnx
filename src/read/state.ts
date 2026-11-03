@@ -12,6 +12,8 @@ import { OpenBeams } from './beams.js'
 import { PartLines } from './lines.js'
 import { lengthOfTime, PartSignatures } from './partSignatures.js'
 import { SpannerResolver } from './spanners.js'
+import { SlurResolver } from './slurs.js'
+import { TieResolver } from './ties.js'
 import type { CarriedTupletStop } from './tuplets.js'
 
 /**
@@ -101,8 +103,12 @@ export interface PartState {
   staffLines: Map<number, number>
   /** Shared across the score, so every id in the document is distinct. */
   ids: IdGenerator
-  /** Per part: a tie or slur may span measures, but not parts. */
+  /** Per part: a hairpin or an octave shift may span measures, but not parts. */
   spanners: SpannerResolver
+  /** The same for slurs. */
+  slurs: SlurResolver
+  /** The same for ties. */
+  ties: TieResolver
   /** The melisma lines still open, which a lyric on a later note can reach. */
   lyricExtenders: OpenExtenders
   /** The key and time signatures the part carries from measure to measure. */
@@ -219,7 +225,7 @@ export function newPartState(
   voiceNames: ReadonlySet<string>,
   sounds: ReadonlyMap<string, ResolvedSound> = new Map(),
 ): PartState {
-  const spanners = new SpannerResolver()
+  const ties = new TieResolver()
   return {
     divisions: undefined,
     divisionsAssumed: false,
@@ -229,10 +235,12 @@ export function newPartState(
     clefs: new Map(),
     staffLines: new Map(),
     ids,
-    spanners,
+    spanners: new SpannerResolver(),
+    slurs: new SlurResolver(),
+    ties,
     lyricExtenders: new Map(),
     signatures: new PartSignatures(),
-    lines: new PartLines(voiceNames, (note) => spanners.tiesOn(note)),
+    lines: new PartLines(voiceNames, (note) => ties.tiesOn(note)),
     sounds,
     kit: new Map(),
     kitKeys: new Map(),

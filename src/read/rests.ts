@@ -238,7 +238,7 @@ export function setMeasureRest(
     const at = builder.position()
     reportCarriedByUnwritableRest(note, warnings, context, (type, slur) => {
       const number = attribute(slur, 'number') ?? '1'
-      state.spanners.dropSlurEnd(
+      state.slurs.dropSlurEnd(
         type,
         number,
         voice.name,
@@ -477,7 +477,7 @@ export function dropRedundantRest(
     notations,
     (type, slur) => {
       const number = attribute(slur, 'number') ?? '1'
-      state.spanners.dropSlurEnd(
+      state.slurs.dropSlurEnd(
         type,
         number,
         voice.name,

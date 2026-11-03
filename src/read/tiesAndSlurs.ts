@@ -29,7 +29,7 @@ export function readTies(
   context: ReportContext,
   tieds: readonly XmlElement[],
 ): void {
-  state.spanners.sounding(pairedBy, voice, measureIndex, at, grace)
+  state.ties.sounding(pairedBy, voice, measureIndex, at, grace)
   const ties = element.children('tie')
   const side = startTiedSide(tieds)
 
@@ -38,9 +38,9 @@ export function readTies(
   for (const edge of tieEdges(ties, tieds, warnings, context)) {
     const where = edge.where
     if (edge.kind === 'stop') {
-      state.spanners.stopTie(note, pairedBy, voice, edge.drawn, measureIndex, at, grace, where)
+      state.ties.stopTie(note, pairedBy, voice, edge.drawn, measureIndex, at, grace, where)
     } else {
-      state.spanners.startTie(
+      state.ties.startTie(
         note,
         pairedBy,
         voice,
@@ -171,9 +171,9 @@ export function readSlurs(
     // anywhere: a "continue" edge's side has no home in MNX and is dropped.
     const side = curveSide(slur)
     if (type === 'stop') {
-      state.spanners.stopSlur(event, number, side, voice, measureIndex, at, grace, where)
+      state.slurs.stopSlur(event, number, side, voice, measureIndex, at, grace, where)
     } else if (type === 'start') {
-      state.spanners.startSlur(
+      state.slurs.startSlur(
         event,
         number,
         side,

@@ -504,6 +504,8 @@ function readPart(
   // stays unsettled.
   const settling: readonly PartCollector[] = [
     state.spanners,
+    state.slurs,
+    state.ties,
     state.signatures,
     ...Object.values(collectors),
   ]
@@ -891,6 +893,7 @@ function readMeasure(
     },
     (length, timeline) => {
       state.spanners.settleSpanCovers(index, length, timeline)
+      state.ties.settleMeasure(index, length)
     },
     state.kit,
     warnings,
