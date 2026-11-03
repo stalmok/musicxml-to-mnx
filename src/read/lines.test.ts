@@ -113,6 +113,77 @@ describe('lines of a voice across the barline', () => {
     ])
   })
 
+  test('keeps the name of a line of the rank of a beam that two lines carry on', () => {
+    const lines = linesOf(
+      note('C5') + BACKUP + beamed('E4', 'begin') + beamed('F4', 'continue'),
+      beamed('D5', 'continue') +
+        beamed('E5', 'end') +
+        BACKUP +
+        beamed('G4', 'continue') +
+        beamed('A4', 'end'),
+    )
+
+    expect(lines[1]).toEqual(['1: D5 E5', '1.2: G4 A4'])
+  })
+
+  test('takes no line by a beam where two are left open and neither is of its rank', () => {
+    const lines = linesOf(
+      beamed('C5', 'begin') +
+        beamed('D5', 'continue') +
+        BACKUP +
+        beamed('E4', 'begin') +
+        beamed('F4', 'continue'),
+      note('G5') + BACKUP + note('B4') + BACKUP + beamed('C4', 'continue') + beamed('D4', 'end'),
+    )
+
+    expect(lines[1]).toEqual(['1: G5', '1.2: B4', '1.3: C4 D4'])
+  })
+
+  test('takes the line a beam names over the line a tie names', () => {
+    const lines = linesOf(
+      note('G4', tied('start')) + BACKUP + beamed('E4', 'begin') + beamed('F4', 'continue'),
+      note('G4', '<beam number="1">continue</beam>' + tied('stop'), 'eighth') +
+        beamed('A4', 'end') +
+        BACKUP +
+        note('C4'),
+    )
+
+    expect(lines[1]).toEqual(['1.2: G4 A4', '1: C4'])
+  })
+
+  test('keeps the name of a line a tie carries on past a grace note before its stop', () => {
+    const grace =
+      '<note><grace/><pitch><step>D</step><octave>4</octave></pitch>' +
+      '<type>eighth</type><voice>1</voice></note>'
+    const lines = linesOf(
+      note('C5') + BACKUP + note('E4', tied('start')),
+      grace + note('E4', tied('stop')) + BACKUP + note('C3'),
+    )
+
+    expect(lines[1]).toEqual(['1.2: E4', '1: C3'])
+  })
+
+  test('keeps the name of a line a tie carries on out of a two-note tremolo', () => {
+    const tremolo = (pitch: string, type: string, tie = '') => {
+      const [step = '', octave = ''] = pitch
+      return (
+        `<note><pitch><step>${step}</step><octave>${octave}</octave></pitch>` +
+        `<duration>2</duration><type>quarter</type><voice>1</voice>${tie && `<tie type="${tie}"/>`}` +
+        `<notations>${tie && `<tied type="${tie}"/>`}` +
+        `<ornaments><tremolo type="${type}">2</tremolo></ornaments></notations></note>`
+      )
+    }
+    const lines = linesOf(
+      note('C5') + BACKUP + tremolo('E4', 'start') + tremolo('G4', 'stop', 'start'),
+      note('G4', tied('stop')) + BACKUP + note('C3'),
+    )
+
+    expect(lines).toEqual([
+      ['1: C5', '1.2: E4 G4'],
+      ['1.2: G4', '1: C3'],
+    ])
+  })
+
   // The one line may be the line the tie starts in.
   test('carries no name past a measure that sounds the voice in one line', () => {
     const lines = linesOf(
