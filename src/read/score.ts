@@ -38,7 +38,6 @@ import {
   peekAttribute,
   peeking,
   requireAttribute,
-  trimmedText,
 } from '../xml/tree.js'
 import { fixTransposition, readAttributes, settleTranspositions } from './attributes.js'
 import type { MeasureRepeatReading } from './attributes.js'
@@ -56,6 +55,7 @@ import { writtenGrouping } from './part-groups.js'
 import { compareFractions, fraction, negate } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import { readNote } from './notes.js'
+import { voiceNamed } from './noteStatement.js'
 import { readPartList } from './partList.js'
 import type { PartList } from './partList.js'
 import { readPrint } from './print.js'
@@ -610,10 +610,7 @@ function soundingVoices(measure: XmlElement): (string | undefined)[] {
   return peeking(() =>
     children(measure, 'note')
       .filter((note) => !child(note, 'rest') && !child(note, 'chord'))
-      .map((note) => {
-        const voice = child(note, 'voice')
-        return voice && trimmedText(voice)
-      }),
+      .map((note) => voiceNamed(child(note, 'voice'))),
   )
 }
 
@@ -638,10 +635,7 @@ function voiceNames(part: XmlElement): Set<string> {
     () =>
       new Set(
         children(part, 'measure').flatMap((measure) =>
-          children(measure, 'note').flatMap((note) => {
-            const voice = child(note, 'voice')
-            return voice ? [trimmedText(voice)] : []
-          }),
+          children(measure, 'note').flatMap((note) => voiceNamed(child(note, 'voice')) ?? []),
         ),
       ),
   )

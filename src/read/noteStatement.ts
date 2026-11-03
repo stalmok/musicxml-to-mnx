@@ -3,6 +3,7 @@
 import type { Fraction } from '../fraction.js'
 import type { NoteValue } from '../model/score.js'
 import type { XmlElement } from '../xml/parse.js'
+import { trimmedText } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
 import type { EventNotation } from './eventNotations.js'
 import type { VoiceLine } from './voices.js'
@@ -46,3 +47,8 @@ export interface NoteStatement extends Omit<RestNote, 'voice'> {
 
 /** The same, once the note has the line of its voice it is written in. */
 export type VoicedNote = NoteStatement & RestNote
+
+/** The voice a <note>'s <voice> names, where it has one. */
+export function voiceNamed(voice: XmlElement | undefined): string | undefined {
+  return voice && trimmedText(voice)
+}

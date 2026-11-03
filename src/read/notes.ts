@@ -31,6 +31,7 @@ import {
   restEventValue,
   setMeasureRest,
 } from './rests.js'
+import { voiceNamed } from './noteStatement.js'
 import type { NoteStatement, VoicedNote } from './noteStatement.js'
 import {
   closeTremoloAndTuplets,
@@ -141,8 +142,7 @@ export function readNote(
   // and the drawn side live only on it, so it is read rather than skipped.
   const tieds = notations.flatMap((block) => block.children('tied'))
 
-  const voiceElement = element.child('voice')
-  const namedVoice = voiceElement && trimmedText(voiceElement)
+  const namedVoice = voiceNamed(element.child('voice'))
   const duration = readDuration(element, state, warnings, context, path)
   const written = readWrittenValue(element, path)
   const graceElement = element.child('grace')
