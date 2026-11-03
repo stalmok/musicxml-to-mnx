@@ -889,8 +889,8 @@ function readMeasure(
       signature: measureLength(state),
       scoreSignature,
     },
-    (length, lastEventBefore, graceNotesAt, lastEvents) => {
-      state.spanners.settleSpanCovers(index, length, lastEventBefore, graceNotesAt, lastEvents)
+    (length, timeline) => {
+      state.spanners.settleSpanCovers(index, length, timeline)
     },
     state.kit,
     warnings,

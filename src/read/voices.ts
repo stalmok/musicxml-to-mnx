@@ -29,6 +29,8 @@ import type { BeamedEvent, BeamedRun, BeamMarker } from './beams.js'
 import type { PartLines, PlacedLine, WrittenLine } from './lines.js'
 import type { CarriedTupletStop, MeasureExtent, TupletStart } from './tuplets.js'
 import { TupletTracker } from './tupletTracker.js'
+import { MeasureTimeline } from './timeline.js'
+import type { EventTimeline } from './timeline.js'
 import { Arpeggios } from './arpeggios.js'
 import { settleCandidateRest, settleFillingRest } from './measureRestForms.js'
 import type { MeasureRest, MeasureRestReports } from './measureRestForms.js'
@@ -51,26 +53,6 @@ import type {
   Space,
 } from '../model/score.js'
 import type { Draft } from './draft.js'
-
-/**
- * The event a span ends on: where it begins in the measure, and, where grace
- * notes sit there, which one of them it is. The index counts back from the
- * note the grace notes ornament, which is 0, so the rightmost grace note is
- * 1. Unset where nothing at that place is a grace note.
- */
-export interface CoveredEvent {
-  start: Fraction
-  graceIndex?: number
-}
-
-/** The last event of the measure before a point, on the staff given or any. */
-export type LastEventBefore = (position: Fraction, staff?: number) => CoveredEvent | undefined
-
-/** The last event of the measure on each staff that has one. */
-export type LastEvents = () => ReadonlyMap<number, CoveredEvent>
-
-/** How many grace notes stand at a point, on the staff given or any. */
-export type GraceNotesAt = (position: Fraction, staff?: number) => number
 
 /**
  * An event just put in its voice, where it begins in the measure, and how
@@ -487,12 +469,7 @@ export class MeasureBuilder {
    * barline, until the voice's first note is read.
    */
   readonly #carriedTremolos: Set<string | undefined>
-  /**
-   * Where each event of the measure begins, whatever voice it is in, the
-   * staff it was placed on, and whether it is a grace note. An event states
-   * no staff where the part has only one, which is the first staff.
-   */
-  readonly #eventStarts: { start: Fraction; staff: number | undefined; grace: boolean }[] = []
+  readonly #timeline = new MeasureTimeline()
   #cursor: Fraction = fraction(0)
   /**
    * The furthest the cursor has run in the measure, over notes, rests filling
@@ -849,7 +826,7 @@ export class MeasureBuilder {
     this.#lastWritten = voice
     const start = this.#cursor
     builder.last = { event, notations, duration, share, start }
-    this.#eventStarts.push({ start, staff, grace: false })
+    this.#timeline.add(start, staff, false)
     builder.tuplets.addTremoloNote(event, duration)
     builder.end = addFractions(start, duration)
     this.#moveTo(builder.end)
@@ -891,69 +868,9 @@ export class MeasureBuilder {
     }
   }
 
-  /**
-   * Where the last event before this point begins. MNX states the end of an
-   * octave shift as the place of the last event it covers, while MusicXML
-   * writes the stop after that event, with the cursor already past it. Asked
-   * once the measure is whole, so every event of it is counted whatever
-   * order the source wrote them in.
-   *
-   * A staff narrows it to that staff's own events, because a shift belongs to
-   * one staff and the other hand's notes lie under the same beats without
-   * being what it covers. An event that names no staff is the first staff,
-   * which is how MusicXML reads a note that leaves it off.
-   *
-   * No point asks for the last event of the whole measure.
-   */
-  #lastEventBefore(position: Fraction | undefined, staff?: number): CoveredEvent | undefined {
-    let latest: Fraction | undefined
-    for (const event of this.#eventStarts) {
-      if (staff !== undefined && (event.staff ?? 1) !== staff) continue
-      if (position !== undefined && compareFractions(event.start, position) >= 0) continue
-      if (!latest || compareFractions(event.start, latest) > 0) latest = event.start
-    }
-    if (!latest) return undefined
-
-    const here = this.#eventStarts.filter(
-      (event) =>
-        (staff === undefined || (event.staff ?? 1) === staff) &&
-        compareFractions(event.start, latest) === 0,
-    )
-    // Grace notes share the place of the note they ornament, so the last
-    // event here is that note where the source wrote one and the rightmost
-    // grace note where it did not.
-    if (!here.some((event) => event.grace)) return { start: latest }
-    return { start: latest, graceIndex: here.some((event) => !event.grace) ? 0 : 1 }
-  }
-
-  /** The last event of the measure on each staff, grace notes after it included. */
-  #lastEvents(): Map<number, CoveredEvent> {
-    const lastOn = new Map<number, CoveredEvent>()
-    for (const staff of new Set(this.#eventStarts.map((event) => event.staff ?? 1))) {
-      const last = this.#lastEventBefore(undefined, staff)
-      if (last) lastOn.set(staff, last)
-    }
-    return lastOn
-  }
-
-  /**
-   * How many grace notes stand at a point, on a staff or across them all.
-   * Asked twice about a span's stop: at the cursor while the measure is being
-   * read, which counts the grace notes written before the stop, and again
-   * once the measure is whole, which counts them all. MNX numbers a grace
-   * note back from the note it ornaments, so the two counts together say
-   * which one the stop was written after.
-   *
-   * A staff narrows it to that staff's own events, as an octave shift's end
-   * does, so grace notes under the other hand do not answer for this one.
-   */
+  /** See MeasureTimeline.graceNotesAt. */
   graceNotesAt(position: Fraction, staff?: number): number {
-    return this.#eventStarts.filter(
-      (event) =>
-        event.grace &&
-        (staff === undefined || (event.staff ?? 1) === staff) &&
-        compareFractions(event.start, position) === 0,
-    ).length
+    return this.#timeline.graceNotesAt(position, staff)
   }
 
   /**
@@ -1204,12 +1121,7 @@ export class MeasureBuilder {
       signature: Fraction | undefined
       scoreSignature: Fraction | undefined
     },
-    settleSpanCovers: (
-      length: Fraction,
-      lastEventBefore: LastEventBefore,
-      graceNotesAt: GraceNotesAt,
-      lastEvents: LastEvents,
-    ) => void,
+    settleSpanCovers: (length: Fraction, timeline: EventTimeline) => void,
     /** The components this part strikes, which is where a kit note's height is. */
     kit: ReadonlyMap<string, KitComponent>,
     warnings: WarningCollector,
@@ -1249,12 +1161,7 @@ export class MeasureBuilder {
     )
     this.#settleCandidateRests()
 
-    settleSpanCovers(
-      length,
-      (position, staff) => this.#lastEventBefore(position, staff),
-      (position, staff) => this.graceNotesAt(position, staff),
-      () => this.#lastEvents(),
-    )
+    settleSpanCovers(length, this.#timeline)
 
     const placed = this.#placeLines()
     return {
@@ -1467,7 +1374,7 @@ export class MeasureBuilder {
     // has nothing to agree with.
     const start = this.#cursor
     builder.last = { event, notations, duration: undefined, share: undefined, start }
-    this.#eventStarts.push({ start, staff, grace: true })
+    this.#timeline.add(start, staff, true)
     // Recorded like any other event, so the voice's staff counts it and a
     // grace note reaching across to the other staff says so.
     builder.placed.push({ event, staff })
@@ -1511,7 +1418,7 @@ export class MeasureBuilder {
       if (rest?.origin !== 'fills') continue
       const form = settleFillingRest(builder, rest)
       if (form === 'event') {
-        this.#eventStarts.push({ start: rest.at, staff: rest.placed.staff, grace: false })
+        this.#timeline.add(rest.at, rest.placed.staff, false)
       }
       rest.reports[form]?.()
     }

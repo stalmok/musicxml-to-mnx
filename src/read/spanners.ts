@@ -29,7 +29,7 @@ import type {
   WedgeType,
 } from '../model/score.js'
 import type { Draft } from './draft.js'
-import type { CoveredEvent, GraceNotesAt, LastEventBefore, LastEvents } from './voices.js'
+import type { CoveredEvent, EventTimeline } from './timeline.js'
 import { reportAt } from './collector.js'
 import type { WarningCollector, WrittenAt } from './collector.js'
 import type { PartCollector, PartMeasure } from './partCollector.js'
@@ -1615,13 +1615,7 @@ export class SpannerResolver implements PartCollector {
    * measure's `length` from its start. The voices that sounded in the
    * measure are kept for the ties.
    */
-  settleSpanCovers(
-    measure: number,
-    length: Fraction,
-    lastEventBefore: LastEventBefore,
-    graceNotesAt: GraceNotesAt,
-    lastEvents: LastEvents,
-  ): void {
+  settleSpanCovers(measure: number, length: Fraction, timeline: EventTimeline): void {
     for (const open of this.#startsInMeasure) {
       open.reachesBarline = compareFractions(open.until, length) === 0
     }
@@ -1630,7 +1624,7 @@ export class SpannerResolver implements PartCollector {
     this.#startsInMeasure.length = 0
     const overGraceNotes = (end: EndPlace): boolean => {
       if (!end.graceWritten) return false
-      end.coversGraceIndex = graceNotesAt(end.covers, end.staff) - end.graceWritten + 1
+      end.coversGraceIndex = timeline.graceNotesAt(end.covers, end.staff) - end.graceWritten + 1
       return true
     }
 
@@ -1656,7 +1650,8 @@ export class SpannerResolver implements PartCollector {
     // written, such a stop would end on the barline, where no event begins.
     for (const end of stoppingHere(this.#ottavaEnds)) {
       if (overGraceNotes(end)) continue
-      const inMeasure = lastEventBefore(end.covers, end.staff) ?? lastEventBefore(end.covers)
+      const inMeasure =
+        timeline.lastEventBefore(end.covers, end.staff) ?? timeline.lastEventBefore(end.covers)
       const before = inMeasure ? undefined : this.#lastSeenOn(end.staff)
       if (before) end.coversMeasure = before.measure
       const covered = inMeasure ?? before?.event
@@ -1665,7 +1660,9 @@ export class SpannerResolver implements PartCollector {
       if (covered.graceIndex !== undefined) end.coversGraceIndex = covered.graceIndex
     }
 
-    for (const [staff, event] of lastEvents()) this.#lastSeen.set(staff, { measure, event })
+    for (const [staff, event] of timeline.lastEvents()) {
+      this.#lastSeen.set(staff, { measure, event })
+    }
   }
 
   /**
