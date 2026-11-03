@@ -62,9 +62,6 @@ interface KnownLine {
   beamOpen: { staff: number | undefined } | undefined
 }
 
-/** The name a voice goes under when the source does not give it one. */
-const UNNAMED_VOICE = ''
-
 /**
  * The lines of every voice of a part, matched measure by measure.
  *
@@ -81,7 +78,7 @@ const UNNAMED_VOICE = ''
  * is a new one.
  */
 export class PartLines {
-  readonly #voices = new Map<string, KnownLine[]>()
+  readonly #voices = new Map<string | undefined, KnownLine[]>()
   /** Every voice name the part states or builds, which a built name steps past. */
   readonly #taken: Set<string>
   readonly #tiesOn: (note: string) => TiesOn
@@ -98,8 +95,8 @@ export class PartLines {
    * highest first, and hands back the line each one is.
    */
   measure(
-    voices: ReadonlyMap<string, readonly WrittenLine[]>,
-  ): ReadonlyMap<string, readonly PlacedLine[]> {
+    voices: ReadonlyMap<string | undefined, readonly WrittenLine[]>,
+  ): ReadonlyMap<string | undefined, readonly PlacedLine[]> {
     this.#measure += 1
     const openBefore = new Map<KnownLine, { staff: number | undefined }>()
     for (const line of [...this.#voices.values()].flat()) {
@@ -112,7 +109,7 @@ export class PartLines {
   }
 
   #place(
-    voice: string,
+    voice: string | undefined,
     lines: readonly WrittenLine[],
     openBefore: ReadonlyMap<KnownLine, { staff: number | undefined }>,
   ): PlacedLine[] {
@@ -127,8 +124,7 @@ export class PartLines {
         : known.filter((before) => {
             const open = openBefore.get(before)
             return (
-              open !== undefined &&
-              (voice !== UNNAMED_VOICE || open.staff === line.carriesBeam?.staff)
+              open !== undefined && (voice !== undefined || open.staff === line.carriesBeam?.staff)
             )
           })
 
@@ -147,7 +143,7 @@ export class PartLines {
   }
 
   #match(
-    voice: string,
+    voice: string | undefined,
     known: KnownLine[],
     lines: readonly WrittenLine[],
     leftOpen: (line: WrittenLine) => KnownLine[],
@@ -255,17 +251,17 @@ export class PartLines {
    * voice's lines, stepped on past every name the part uses, since MNX lets
    * no two lines share one.
    */
-  #newLine(voice: string, known: KnownLine[]): KnownLine {
+  #newLine(voice: string | undefined, known: KnownLine[]): KnownLine {
     const order = known.length
-    let name: string | undefined = voice === UNNAMED_VOICE ? undefined : voice
+    let name = voice
     if (order > 0) {
       let index = order + 1
-      while (this.#taken.has(`${voice}.${String(index)}`)) index += 1
-      name = `${voice}.${String(index)}`
+      while (this.#taken.has(`${voice ?? ''}.${String(index)}`)) index += 1
+      name = `${voice ?? ''}.${String(index)}`
       this.#taken.add(name)
     }
     const line: KnownLine = {
-      key: `${voice}\n${String(order)}`,
+      key: JSON.stringify([voice, order]),
       name,
       order,
       rank: order,

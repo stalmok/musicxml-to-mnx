@@ -479,15 +479,14 @@ function crossesVoicesInAMeasure(ends: readonly SlurEnd[]): ReadonlySet<string> 
 
   const crossing = new Set<string>()
   for (const [number, numberEnds] of byNumber) {
-    const byVoice = new Map<string, SlurEnd[]>()
+    const byVoice = new Map<string | undefined, SlurEnd[]>()
     for (const end of numberEnds) {
-      const voice = end.voice ?? ''
-      byVoice.set(voice, [...(byVoice.get(voice) ?? []), end])
+      byVoice.set(end.voice, [...(byVoice.get(end.voice) ?? []), end])
     }
 
     // Every other voice's leftover ends for this number, at the measure it
     // falls in, so a pair's own boundaries can be checked against it directly.
-    const residueAt = new Map<string, Map<number, 'unclosed' | 'orphan' | 'both'>>()
+    const residueAt = new Map<string | undefined, Map<number, 'unclosed' | 'orphan' | 'both'>>()
     for (const [voice, voiceEnds] of byVoice) {
       const byMeasure = new Map<number, SlurEnd[]>()
       for (const end of voiceEnds) {
@@ -502,7 +501,7 @@ function crossesVoicesInAMeasure(ends: readonly SlurEnd[]): ReadonlySet<string> 
     }
 
     const nearbyResidue = (
-      exceptVoice: string,
+      exceptVoice: string | undefined,
       measures: readonly number[],
       kinds: readonly ('unclosed' | 'orphan' | 'both')[],
     ): boolean =>
@@ -528,7 +527,7 @@ function crossesVoicesInAMeasure(ends: readonly SlurEnd[]): ReadonlySet<string> 
           [pair.stop.measure, pair.stop.measure - 1],
           ['unclosed', 'both'],
         )
-        if (confirmedAtStart && confirmedAtStop) crossing.add(`${voice} ${number}`)
+        if (confirmedAtStart && confirmedAtStop) crossing.add(voiceKey(voice, number))
       }
     }
   }
@@ -567,7 +566,7 @@ function startAtInstant<T, S, P extends EndPlace>(
  * octave shift, each of which states the one the other leaves unset.
  */
 function openedIn(start: EndPlace, end: EndPlace): boolean {
-  return (start.voice ?? '') === (end.voice ?? '') && start.staff === end.staff
+  return start.voice === end.voice && start.staff === end.staff
 }
 
 /**
@@ -695,16 +694,16 @@ interface SoundCount {
 }
 
 /** What each grace note a line sounded last pairs by, by the line's voice. */
-type GraceRuns = Map<string, string[][]>
+type GraceRuns = Map<string | undefined, string[][]>
 
 /** Counts one event sounded in a voice or line, and says where it falls. */
 function countSound(
-  counts: Map<string, SoundCount>,
+  counts: Map<string | undefined, SoundCount>,
   voice: string | undefined,
   grace: boolean,
 ): SoundedPlace {
-  const { sounded, graceRun } = counts.get(voice ?? '') ?? { sounded: 0, graceRun: 0 }
-  counts.set(voice ?? '', { sounded: sounded + 1, graceRun: grace ? graceRun + 1 : 0 })
+  const { sounded, graceRun } = counts.get(voice) ?? { sounded: 0, graceRun: 0 }
+  counts.set(voice, { sounded: sounded + 1, graceRun: grace ? graceRun + 1 : 0 })
   return { sounded: sounded + 1, gracesBefore: graceRun }
 }
 
@@ -718,7 +717,7 @@ interface MeasureLines {
 
 /**
  * The line each note is written in, by the note's id, how far each line had
- * sounded at each note it sounds, by soundingKey, and what each measure
+ * sounded at each note it sounds, by voiceKey, and what each measure
  * writes of each line.
  */
 function linePlacesOf(measures: readonly Measure[]): {
@@ -728,8 +727,8 @@ function linePlacesOf(measures: readonly Measure[]): {
 } {
   const places = new Map<string, LinePlace>()
   const sounds = new Map<string, number[]>()
-  const written: ReadonlyMap<string, number | undefined>[] = []
-  const counts = new Map<string, SoundCount>()
+  const written: ReadonlyMap<string | undefined, number | undefined>[] = []
+  const counts = new Map<string | undefined, SoundCount>()
   const graceRuns: GraceRuns = new Map()
   const walk = (
     items: readonly SequenceItem[],
@@ -741,20 +740,20 @@ function linePlacesOf(measures: readonly Measure[]): {
       if (item.kind === 'event') {
         // A rest ends the grace notes sounded just before a note.
         if (item.body.kind === 'rest') {
-          graceRuns.set(voice ?? '', [])
+          graceRuns.set(voice, [])
           continue
         }
         const place = countSound(counts, voice, grace)
         const notes = [...item.body.notes, ...item.body.kitNotes]
-        const graceKeys = graceRuns.get(voice ?? '') ?? []
+        const graceKeys = graceRuns.get(voice) ?? []
         for (const note of notes) {
           places.set(note.id, { voice, staff, graceKeys, ...place })
-          const key = soundingKey(voice, tiePairing(note))
+          const key = voiceKey(voice, tiePairing(note))
           const at = sounds.get(key)
           if (at) at.push(place.sounded)
           else sounds.set(key, [place.sounded])
         }
-        graceRuns.set(voice ?? '', grace ? [...graceKeys, notes.map(tiePairing)] : [])
+        graceRuns.set(voice, grace ? [...graceKeys, notes.map(tiePairing)] : [])
       } else if (item.kind !== 'space') {
         walk(item.content, voice, staff, grace || item.kind === 'grace')
       }
@@ -764,13 +763,11 @@ function linePlacesOf(measures: readonly Measure[]): {
     for (const sequence of measure.sequences) {
       walk(sequence.content, sequence.voice, sequence.staff, false)
     }
-    written.push(
-      new Map(measure.sequences.map((sequence) => [sequence.voice ?? '', sequence.staff])),
-    )
+    written.push(new Map(measure.sequences.map((sequence) => [sequence.voice, sequence.staff])))
   }
   const lines: MeasureLines = {
-    writes: (line, measure) => written[measure]?.has(line ?? '') === true,
-    staffOf: (line, measure) => written[measure]?.get(line ?? ''),
+    writes: (line, measure) => written[measure]?.has(line) === true,
+    staffOf: (line, measure) => written[measure]?.get(line),
   }
   return { places, sounds, lines }
 }
@@ -967,9 +964,9 @@ function isBefore(a: Instant, b: Instant): boolean {
   return a.grace === true && b.grace !== true
 }
 
-/** A key for what a tie pairs by, sounded in a voice. */
-function soundingKey(voice: string | undefined, pairedBy: string): string {
-  return JSON.stringify([voice ?? '', pairedBy])
+/** A key for something in a voice: what a tie pairs by, or a slur's number. */
+function voiceKey(voice: string | undefined, key: string): string {
+  return JSON.stringify([voice, key])
 }
 
 // Slurs are matched on the number the source gives them, across the whole
@@ -983,14 +980,14 @@ export class SpannerResolver implements PartCollector {
   /** What the ties written on each note pair by, by the note's id. */
   readonly #tiesOn = new Map<string, TiesOn>()
   // How far each voice has sounded so far in the part.
-  readonly #sounded = new Map<string, SoundCount>()
+  readonly #sounded = new Map<string | undefined, SoundCount>()
   // Where the event each voice sounded last falls.
-  readonly #lastSounded = new Map<string, SoundedPlace>()
+  readonly #lastSounded = new Map<string | undefined, SoundedPlace>()
   // The voices that sound in the measure being read, until it is whole.
-  readonly #soundingInMeasure = new Set<string>()
+  readonly #soundingInMeasure = new Set<string | undefined>()
   // The voices that sound in each measure.
-  readonly #soundingByMeasure: ReadonlySet<string>[] = []
-  // Where each voice sounds what a tie pairs by, by soundingKey.
+  readonly #soundingByMeasure: ReadonlySet<string | undefined>[] = []
+  // Where each voice sounds what a tie pairs by, by voiceKey.
   readonly #soundings = new Map<string, Instant[]>()
   // The ties begun in the measure being read, until it is whole.
   readonly #startsInMeasure: OpenTie[] = []
@@ -1005,9 +1002,8 @@ export class SpannerResolver implements PartCollector {
    * tells a stop from a start its voice has sounded past.
    */
   sound(voice: string | undefined, grace: boolean): void {
-    const key = voice ?? ''
-    this.#lastSounded.set(key, countSound(this.#sounded, voice, grace))
-    this.#soundingInMeasure.add(key)
+    this.#lastSounded.set(voice, countSound(this.#sounded, voice, grace))
+    this.#soundingInMeasure.add(voice)
   }
 
   /** Notes where a voice sounds a note, by what a tie on it pairs by. */
@@ -1018,7 +1014,7 @@ export class SpannerResolver implements PartCollector {
     position: Fraction,
     grace: boolean,
   ): void {
-    const key = soundingKey(voice, pairedBy)
+    const key = voiceKey(voice, pairedBy)
     const instant = { measure, position, grace, sounded: this.#soundedIn(voice).sounded }
     const at = this.#soundings.get(key)
     if (at) at.push(instant)
@@ -1027,12 +1023,12 @@ export class SpannerResolver implements PartCollector {
 
   /** Whether the voice of a tie sounds its pitch between the tie's two ends. */
   #soundedBetween(start: TiePlace, stop: TiePlace): boolean {
-    const at = this.#soundings.get(soundingKey(start.voice, start.number)) ?? []
+    const at = this.#soundings.get(voiceKey(start.voice, start.number)) ?? []
     return at.some((instant) => isBefore(start, instant) && isBefore(instant, stop))
   }
 
   #soundedIn(voice: string | undefined): SoundedPlace {
-    return this.#lastSounded.get(voice ?? '') ?? { sounded: 0, gracesBefore: 0 }
+    return this.#lastSounded.get(voice) ?? { sounded: 0, gracesBefore: 0 }
   }
 
   /** What the ties written on a note pair by, at each end it holds. */
@@ -1153,7 +1149,7 @@ export class SpannerResolver implements PartCollector {
       }
       const from = start.line.sounded
       const to = stop.line.sounded
-      const at = sounds.get(soundingKey(start.line.voice, start.number)) ?? []
+      const at = sounds.get(voiceKey(start.line.voice, start.number)) ?? []
       return at.some((sounded) => sounded > from && sounded < to)
     }
     // A tie's two ends mark the very points they are written on, so no stop
@@ -1196,7 +1192,7 @@ export class SpannerResolver implements PartCollector {
       ]
     }
     const voiceSounds: VoiceSounds = (voice, measure) =>
-      this.#soundingByMeasure[measure]?.has(voice ?? '') === true
+      this.#soundingByMeasure[measure]?.has(voice) === true
     const owns = (start: LinedTiePlace, stop: LinedTiePlace): boolean =>
       openedIn(start, stop) &&
       soundsNext(start, stop, lines, voiceSounds, () => this.#soundedBetween(start, stop))
@@ -1342,9 +1338,7 @@ export class SpannerResolver implements PartCollector {
 
     const streams = new Map<string, SlurEnd[]>()
     for (const end of this.#slurEnds) {
-      // A slur number holds no space, so the last space separates the two and
-      // no pair of voice and number keys another pair's stream.
-      const key = `${end.voice ?? ''} ${end.number}`
+      const key = voiceKey(end.voice, end.number)
       streams.set(key, [...(streams.get(key) ?? []), end])
     }
 

@@ -125,7 +125,7 @@ export interface FinishedMeasure {
   /** Tuplet stops no bracket here met, handed on to the next measure. */
   carriedTupletStops: CarriedTupletStop[]
   /** The voices whose two-note tremolo is still open at the closing barline. */
-  carriedTremolos: string[]
+  carriedTremolos: (string | undefined)[]
 }
 
 /**
@@ -147,9 +147,6 @@ function graceGroupToJoin(builder: VoiceBuilder): GraceGroup | undefined {
 function graceTypeOf(builder: VoiceBuilder): GraceType | undefined {
   return graceGroupToJoin(builder)?.graceType
 }
-
-/** The name a voice goes under when the source does not give it one. */
-const UNNAMED_VOICE = ''
 
 interface VoiceBuilder {
   /** What each event said about its beams, in the order they were read. */
@@ -224,7 +221,7 @@ interface VoiceLayers {
 
 // The builder alone reaches the sequence behind a line, and makes lines.
 let layerOf: (line: VoiceLine) => VoiceBuilder
-let newLine: (name: string, layer: VoiceBuilder) => VoiceLine
+let newLine: (name: string | undefined, layer: VoiceBuilder) => VoiceLine
 
 /**
  * The line of a voice a note is written in. The builder hands one out as the
@@ -237,8 +234,8 @@ export class VoiceLine {
   readonly #layer: VoiceBuilder
 
   private constructor(
-    /** The voice as the source named it, and '' where it names none. */
-    readonly name: string,
+    /** The voice as the source named it, where it names one. */
+    readonly name: string | undefined,
     layer: VoiceBuilder,
   ) {
     this.#layer = layer
@@ -480,7 +477,7 @@ function commonestStaff(staves: readonly (number | undefined)[]): number | undef
  * MusicXML's cursor. Callers push what they read in document order.
  */
 export class MeasureBuilder {
-  readonly #voices = new Map<string, VoiceLayers>()
+  readonly #voices = new Map<string | undefined, VoiceLayers>()
   /** The chords of the measure marked as rolled or struck together. */
   readonly arpeggios = new Arpeggios()
   /** The stops carried in from the measures before, consumed as they are met. */
@@ -489,7 +486,7 @@ export class MeasureBuilder {
    * The voices whose two-note tremolo the measure before left open at its
    * barline, until the voice's first note is read.
    */
-  readonly #carriedTremolos: Set<string>
+  readonly #carriedTremolos: Set<string | undefined>
   /**
    * Where each event of the measure begins, whatever voice it is in, the
    * staff it was placed on, and whether it is a grace note. An event states
@@ -518,7 +515,7 @@ export class MeasureBuilder {
   #reached: { warnings: WarningCollector; context: ReportContext; backup: XmlElement } | undefined
 
   /** The voices that sound a note somewhere in the measure, rather than only rest. */
-  readonly #soundingVoices: ReadonlySet<string>
+  readonly #soundingVoices: ReadonlySet<string | undefined>
   /** The lines of the part, which each line of the measure is matched to. */
   readonly #lines: PartLines
   /**
@@ -529,11 +526,11 @@ export class MeasureBuilder {
   /** Whether a <multiple-rest> opens a multi-measure rest at this measure. */
   readonly #opensMultimeasureRest: boolean
   /** The voices that write a rest with no <type> in this measure. */
-  readonly #typelessRests = new Set<string>()
+  readonly #typelessRests = new Set<string | undefined>()
 
   constructor(
     carriedStops: readonly CarriedTupletStop[],
-    carriedTremolos: readonly string[],
+    carriedTremolos: readonly (string | undefined)[],
     soundingVoices: Iterable<string | undefined>,
     lines: PartLines,
     opensMultimeasureRest: boolean,
@@ -542,7 +539,7 @@ export class MeasureBuilder {
     this.#opensMultimeasureRest = opensMultimeasureRest
     this.#carriedStops = [...carriedStops]
     this.#carriedTremolos = new Set(carriedTremolos)
-    this.#soundingVoices = new Set([...soundingVoices].map((voice) => voice ?? UNNAMED_VOICE))
+    this.#soundingVoices = new Set(soundingVoices)
   }
 
   /**
@@ -758,7 +755,7 @@ export class MeasureBuilder {
     const taken = this.#layerAt(voice, note)
     if (taken !== before) this.#carryGrace(before, taken, warnings, context, path, line)
     taken.tuplets.closeImpliedBeneath(taken.end, warnings, context, path, line)
-    return newLine(voice ?? UNNAMED_VOICE, taken)
+    return newLine(voice, taken)
   }
 
   /**
@@ -768,7 +765,7 @@ export class MeasureBuilder {
    * line once it begins.
    */
   graceLine(voice: string | undefined): VoiceLine {
-    return newLine(voice ?? UNNAMED_VOICE, this.#builderFor(voice))
+    return newLine(voice, this.#builderFor(voice))
   }
 
   /**
@@ -1562,8 +1559,8 @@ export class MeasureBuilder {
     context: ReportContext,
     path: DocumentPath,
     line: number,
-  ): string[] {
-    const carried: string[] = []
+  ): (string | undefined)[] {
+    const carried: (string | undefined)[] = []
     for (const [voice, layers] of this.#voices) {
       for (const builder of layers.layers) {
         const tremolo = builder.tuplets.convertUnclosedTremolo(path, line)
@@ -1608,7 +1605,7 @@ export class MeasureBuilder {
     // know the source meant them apart, so the split is reported rather than
     // silent.
     const unnamed = this.#unnamedNote
-    if (unnamed && this.#voices.size > 1 && this.#voices.has(UNNAMED_VOICE)) {
+    if (unnamed && this.#voices.size > 1 && this.#voices.has(undefined)) {
       warnings.add(
         'missing:voice',
         'A note names no voice while others in the measure do. It is kept as a ' + 'separate line.',
@@ -1628,7 +1625,7 @@ export class MeasureBuilder {
       if (openedAt === undefined) continue
       warnings.add(
         'inconsistent:voice',
-        `Voice ${voice === UNNAMED_VOICE ? '(unnamed)' : voice} sounds ` +
+        `Voice ${voice ?? '(unnamed)'} sounds ` +
           `${String(layers.length)} lines at once in this measure. Each is kept as a ` +
           'separate sequence.',
         context,
@@ -1665,12 +1662,11 @@ export class MeasureBuilder {
   }
 
   #layersFor(voice: string | undefined): VoiceLayers {
-    const key = voice ?? UNNAMED_VOICE
-    const existing = this.#voices.get(key)
+    const existing = this.#voices.get(voice)
     if (existing) return existing
 
     const created: VoiceLayers = { layers: [newVoiceBuilder()], active: 0 }
-    this.#voices.set(key, created)
+    this.#voices.set(voice, created)
     return created
   }
 

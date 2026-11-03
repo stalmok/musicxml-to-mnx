@@ -479,7 +479,7 @@ function readChordMember(
     warnings.add(
       'inconsistent:voice',
       `A note of a chord names voice ${namedVoice}, and the note it joins is in ` +
-        `${chord.voice.name === '' ? 'no named voice' : `voice ${chord.voice.name}`}. ` +
+        `${chord.voice.name === undefined ? 'no named voice' : `voice ${chord.voice.name}`}. ` +
         'It is converted in the voice of the note it joins.',
       context,
       requireChild(element.element, 'voice', path),

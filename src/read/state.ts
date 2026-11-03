@@ -144,7 +144,7 @@ export interface PartState {
    * barline. The note that stops it, where the voice's next note does, is
    * converted as one already reported.
    */
-  carriedTremolos: readonly string[]
+  carriedTremolos: readonly (string | undefined)[]
   /** The beams left open at the barline, which the next measure may join. */
   openBeams: OpenBeams
   /**

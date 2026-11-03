@@ -39,7 +39,7 @@ import type { Draft } from './draft.js'
  * MNX states a tuplet inside one measure's sequence.
  */
 export interface CarriedTupletStop {
-  readonly voice: string
+  readonly voice: string | undefined
   readonly number: string
 }
 

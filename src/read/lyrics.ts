@@ -51,7 +51,7 @@ const EXTEND_TYPES: ReadonlySet<string> = new Set(['start', 'stop', 'continue'])
  */
 export function readLyrics(
   element: ElementReader,
-  voice: string,
+  voice: string | undefined,
   event: string,
   open: OpenExtenders,
   warnings: WarningCollector,
