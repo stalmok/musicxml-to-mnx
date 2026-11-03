@@ -20,21 +20,21 @@ in memory. A fatal error returns no partial result.
 
 ## Module boundaries
 
-| Module             | Responsibility                                                     |
-| ------------------ | ------------------------------------------------------------------ |
-| `src/index.ts`     | Export the public conversion API, errors, warnings, and MNX types. |
-| `src/container.ts` | Decode input bytes and select the score from an archive.           |
-| `src/convert.ts`   | Run the pipeline from input to MNX and warnings.                   |
-| `src/xml/`         | Parse XML and provide typed tree access with source positions.     |
-| `src/read/`        | Interpret MusicXML, build the score model, and collect warnings.   |
-| `src/model/`       | Define the internal score model shared by reader and writer.       |
-| `src/write/`       | Turn the score model into MNX.                                     |
-| `src/types/mnx.ts` | Define the public MNX output types.                                |
-| `src/fraction.ts`  | Provide exact rational arithmetic.                                 |
-| `src/warnings.ts`  | Define warning codes, categories, and the warning shape.           |
-| `src/errors.ts`    | Define `MusicXMLError` and its location fields.                    |
-| `src/ids.ts`       | Define MNX's id pattern and the ids the converter generates.       |
-| `cli/`             | Handle files and command options through the public API.           |
+| Module             | Responsibility                                                       |
+| ------------------ | -------------------------------------------------------------------- |
+| `src/index.ts`     | Export the public conversion API, errors, warnings, and MNX types.   |
+| `src/container.ts` | Decode input bytes and select the score from an archive.             |
+| `src/convert.ts`   | Run the pipeline from input to MNX and warnings.                     |
+| `src/xml/`         | Parse XML and provide typed tree access with source positions.       |
+| `src/read/`        | Interpret MusicXML, build the score model, and collect warnings.     |
+| `src/model/`       | Define the internal score model shared by reader and writer.         |
+| `src/write/`       | Turn the score model into MNX.                                       |
+| `src/types/mnx.ts` | Define the public MNX output types.                                  |
+| `src/fraction.ts`  | Provide exact rational arithmetic.                                   |
+| `src/warnings.ts`  | Define warning codes, categories, and the warning shape.             |
+| `src/errors.ts`    | Define `MusicXMLError` and its location fields. Read past a refusal. |
+| `src/ids.ts`       | Define MNX's id pattern and the ids the converter generates.         |
+| `cli/`             | Handle files and command options through the public API.             |
 
 [Dependency rules](../.dependency-cruiser.js) enforce these boundaries for
 value imports and type imports:
@@ -133,7 +133,7 @@ The reader modules are:
 | `part-groups.ts`, `print.ts`  | Read part groups and layout breaks.                                                                                                                                                                                                                              |
 | `transposition.ts`            | Convert transposing parts to sounding pitch, spelled in the score's key past a flip point.                                                                                                                                                                       |
 | `steps.ts`                    | Count a pitch's height in diatonic steps.                                                                                                                                                                                                                        |
-| `divisions.ts`, `duration.ts` | Read durations in divisions. Convert a duration back to a note value.                                                                                                                                                                                            |
+| `divisions.ts`, `duration.ts` | Read durations in divisions. Order what says how long a note lasts. Convert a duration back to a note value.                                                                                                                                                     |
 | `writtenValues.ts`            | Read a note's written value, or recover it from its duration. Report a mismatch.                                                                                                                                                                                 |
 | `noteValues.ts`               | Map MusicXML note-type names to model note values.                                                                                                                                                                                                               |
 | `numbers.ts`                  | Read whole and decimal numbers strictly, and check ranges.                                                                                                                                                                                                       |
