@@ -11,11 +11,11 @@
 
 import { unlessRefused } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
-import { addFractions, compareFractions, fraction, negate } from '../fraction.js'
+import { addFractions, compareFractions, divideFractions, fraction, negate } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type { Key, TimeSignature, Transposition } from '../model/score.js'
 import type { XmlElement } from '../xml/parse.js'
-import { attribute, child, children, peeking, requireChild } from '../xml/tree.js'
+import { attribute, child, children, peeking, requireChild, trimmedText } from '../xml/tree.js'
 import { firstTimeStated } from './attributes.js'
 import type { AttributesReading, StaffSignature } from './attributes.js'
 import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
@@ -23,7 +23,7 @@ import { ASSUMED_DIVISIONS, lengthOfDuration, readDivisions } from './divisions.
 import { noteLength } from './duration.js'
 import type { KeysAcrossParts, ReadGlobalMeasure } from './globalMeasures.js'
 import { endsTwoNoteTremolo } from './eventNotations.js'
-import { ratioShare } from './noteTuplets.js'
+import { parseExactDecimal } from './numbers.js'
 import { KEY, lengthOfTime, reportLate, sameMeter, TIME } from './partSignatures.js'
 import type { HeldSignature, SignatureKind } from './partSignatures.js'
 import type { PartState } from './state.js'
@@ -573,10 +573,19 @@ function readTimesInForce(part: XmlElement): MeasureTimes[] {
     // A note's own <time-modification> states every ratio around it, nested
     // ones and a two-note tremolo's multiplied. A note of a two-note tremolo
     // stating none still lasts half its written value, as the builder reads it.
+    // The part reader measures some notes by what is open around them and
+    // passes over their ratio's counts, so any positive count is read here.
     const ratioOf = (found: XmlElement) => {
       const ratio = child(found, 'time-modification')
-      const share = ratio && unlessRefused(() => ratioShare(ratio, []))
-      return share ?? (inTwoNoteTremolo(found) ? fraction(1, 2) : fraction(1))
+      const count = (name: string) => {
+        const stated = ratio && child(ratio, name)
+        const value = stated && parseExactDecimal(trimmedText(stated))
+        return value && compareFractions(value, fraction(0)) > 0 ? value : undefined
+      }
+      const actual = count('actual-notes')
+      const normal = count('normal-notes')
+      if (actual && normal) return divideFractions(normal, actual)
+      return inTwoNoteTremolo(found) ? fraction(1, 2) : fraction(1)
     }
     // A grace note takes none of the measure's time, whatever it states. A
     // note stating no <duration> lasts its written value as its ratio scales

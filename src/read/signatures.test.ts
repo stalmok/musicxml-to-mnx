@@ -1810,6 +1810,31 @@ describe('the time signature worked out ahead of a part', () => {
     expect(readAhead).toEqual(output)
   })
 
+  // The part reader measures a two-note tremolo's stop note in a tuplet by the
+  // tuplet and the tremolo around it, and does not read its ratio's counts.
+  test('measures a tremolo stop note in a tuplet whatever counts its ratio states', () => {
+    const tremoloNote = (type: string, normal: string) =>
+      `<note>${pitch}<type>eighth</type><time-modification><actual-notes>6</actual-notes>` +
+      `<normal-notes>${normal}</normal-notes></time-modification>` +
+      `<notations><ornaments><tremolo type="${type}">2</tremolo></ornaments></notations></note>`
+    const tripletEighth =
+      `<note>${pitch}<type>eighth</type><time-modification><actual-notes>3</actual-notes>` +
+      '<normal-notes>2</normal-notes></time-modification></note>'
+    const half = `<note>${pitch}<duration>8</duration><type>half</type></note>`
+    const { readAhead, output } = opened(
+      tremoloNote('start', '2') +
+        tremoloNote('stop', '2.0') +
+        tripletEighth +
+        tripletEighth +
+        half +
+        backup(12),
+      quarter,
+    )
+
+    expect(readAhead[1]).toBe('3/4')
+    expect(readAhead).toEqual(output)
+  })
+
   // The score takes its time signature at each measure from the first part
   // stating one there, so the read-ahead says which measures a part states
   // one for, as the reader settles it.
