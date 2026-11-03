@@ -94,6 +94,25 @@ describe('lines of a voice across the barline', () => {
     expect(lines).toEqual([['1: C5', '1.2: E4'], ['1: E4'], ['1: C5', '1.2: E4']])
   })
 
+  // The E4 line of the first measure holds the rank the C4 line takes in the
+  // second, which the third follows.
+  test('keeps the name of a line a measure wrote over a line of its rank it left out', () => {
+    const lines = linesOf(
+      note('C5') + BACKUP + note('E4') + BACKUP + note('C4', tied('start')),
+      beamed('C5', 'begin') +
+        beamed('D5', 'continue') +
+        BACKUP +
+        note('C4', '<beam number="1">begin</beam>' + tied('stop'), 'eighth') +
+        beamed('D4', 'continue'),
+      note('E5') + BACKUP + beamed('E4', 'continue') + beamed('F4', 'end'),
+    )
+
+    expect(lines.slice(1)).toEqual([
+      ['1: C5 D5', '1.3: C4 D4'],
+      ['1: E5', '1.3: E4 F4'],
+    ])
+  })
+
   // The one line may be the line the tie starts in.
   test('carries no name past a measure that sounds the voice in one line', () => {
     const lines = linesOf(

@@ -48,6 +48,8 @@ interface KnownLine {
   readonly order: number
   /** Its rank among the lines of its voice in the last measure that wrote it. */
   rank: number
+  /** The last measure that wrote it, counted from the part's first. */
+  writtenIn: number
   staff: number | undefined
   /** What a tie started on the last event it sounded pairs by. */
   tied: ReadonlySet<string>
@@ -83,6 +85,8 @@ export class PartLines {
   /** Every voice name the part states or builds, which a built name steps past. */
   readonly #taken: Set<string>
   readonly #tiesOn: (note: string) => TiesOn
+  /** The measure being matched, counted from the part's first. */
+  #measure = -1
 
   constructor(partVoices: ReadonlySet<string>, tiesOn: (note: string) => TiesOn) {
     this.#taken = new Set(partVoices)
@@ -96,6 +100,7 @@ export class PartLines {
   measure(
     voices: ReadonlyMap<string, readonly WrittenLine[]>,
   ): ReadonlyMap<string, readonly PlacedLine[]> {
+    this.#measure += 1
     const openBefore = new Map<KnownLine, { staff: number | undefined }>()
     for (const line of [...this.#voices.values()].flat()) {
       if (line.beamOpen) openBefore.set(line, line.beamOpen)
@@ -147,8 +152,10 @@ export class PartLines {
     lines: readonly WrittenLine[],
     leftOpen: (line: WrittenLine) => KnownLine[],
   ): KnownLine[] {
-    // A stable sort, so lines of one rank stay in the order they were first written.
-    const byRank = [...known].sort((a, b) => a.rank - b.rank)
+    // Of two lines that held one rank, the one written later holds it now. A
+    // stable sort keeps lines of one rank and one measure in the order they
+    // were first written.
+    const byRank = [...known].sort((a, b) => a.rank - b.rank || b.writtenIn - a.writtenIn)
     const claims: (KnownLine | undefined)[] = lines.map(() => undefined)
     const claim = (candidates: (line: WrittenLine) => KnownLine[]): void => {
       const free = (line: WrittenLine) => candidates(line).filter((c) => !claims.includes(c))
@@ -228,6 +235,7 @@ export class PartLines {
     for (const [rank, line] of lines.entries()) {
       const into = placed[rank] as KnownLine
       into.rank = rank
+      into.writtenIn = this.#measure
       into.staff = line.staff
       into.unsure.clear()
       into.beamOpen = line.leavesBeamOpen
@@ -262,6 +270,7 @@ export class PartLines {
       name,
       order,
       rank: order,
+      writtenIn: this.#measure,
       staff: undefined,
       tied: new Set(),
       unsure: new Set(),
