@@ -183,7 +183,6 @@ export class PartLines {
    */
   #tiedFrom(known: readonly KnownLine[], line: WrittenLine): KnownLine[] {
     const stops = new Set(line.opening.flatMap((note) => this.#tiesOn(note).stop ?? []))
-    if (stops.size === 0) return []
     return known.filter(
       (before) =>
         [...before.tied].some((pairing) => stops.has(pairing)) &&
