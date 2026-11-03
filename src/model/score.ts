@@ -136,8 +136,8 @@ export interface TieTarget {
   /** Unique in the document. Written out only where something refers to it. */
   readonly id: string
   /**
-   * Added to as the note is read, and again by the spanner resolver, which
-   * is where the two ends of a tie across measures meet.
+   * Added to as the note is read, and again by the tie resolver, which is
+   * where the two ends of a tie across measures meet.
    */
   ties: readonly Tie[]
 }
@@ -298,7 +298,7 @@ export interface Event {
    */
   staff: number | undefined
   readonly value: NoteValue
-  /** Filled in by the spanner resolver, because a slur pairs across measures. */
+  /** Filled in by the slur resolver, because a slur pairs across measures. */
   slurs: readonly Slur[]
   /** What the event sings, by the verse line the source numbers it. */
   readonly lyrics: ReadonlyMap<string, Lyric>

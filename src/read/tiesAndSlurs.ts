@@ -1,5 +1,5 @@
 // Reading the tie and slur starts and stops a note carries. Each goes to the
-// part's spanner resolver, which pairs them once the whole part is read.
+// part's tie or slur resolver, which pairs them once the whole part is read.
 
 import { addFractions } from '../fraction.js'
 import type { CurveSide, LineType, TieTarget } from '../model/score.js'

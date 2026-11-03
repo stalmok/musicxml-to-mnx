@@ -510,7 +510,7 @@ export class TieResolver implements PartCollector {
    * instant, in a line laid over it, does not reach it.
    *
    * The ends left over are paired in time order, not as the ends are met,
-   * for the reason every span is (see SpanEnd). Sources tie a note into its
+   * for the reason every span is (see SpanEnd in spanPairing.ts). Sources tie a note into its
    * pitch past rests, past a note in between, or into a measure that runs
    * short.
    *
