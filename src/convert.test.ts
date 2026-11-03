@@ -104,12 +104,13 @@ describe('the document name', () => {
   })
 })
 
-// Two <divisions> values whose product is past the safe-integer range, so the
+// Three <divisions> values whose product is past the safe-integer range, so the
 // measure's length cannot be exact.
 const INEXACT =
   '<score-partwise><part id="P1"><measure number="1">' +
-  `<attributes><divisions>100000007</divisions></attributes>${NOTE}` +
-  `<attributes><divisions>100000037</divisions></attributes>${NOTE}` +
+  ['999983', '999979', '999961']
+    .map((divisions) => `<attributes><divisions>${divisions}</divisions></attributes>${NOTE}`)
+    .join('') +
   '</measure></part></score-partwise>'
 
 describe('arithmetic that cannot be exact', () => {

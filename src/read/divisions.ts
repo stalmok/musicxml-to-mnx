@@ -35,10 +35,29 @@ export function divisionsInForce(
       context,
       at,
     )
-    state.divisions = fraction(1)
+    state.divisions = ASSUMED_DIVISIONS
     state.divisionsAssumed = true
   }
   return state.divisions
+}
+
+/** The divisions a part counts in before any <divisions> states them. */
+export const ASSUMED_DIVISIONS = fraction(1)
+
+/** The divisions a <divisions> states. */
+export function readDivisions(divisions: XmlElement, path: DocumentPath): Fraction {
+  return readDecimalInRange(divisions, path, { above: 0, max: 1_000_000 })
+}
+
+/** How long a <duration> lasts in `divisions`, as a fraction of a whole note. */
+export function lengthOfDuration(
+  duration: XmlElement,
+  divisions: Fraction,
+  path: DocumentPath,
+): Fraction {
+  // <divisions> counts per quarter note, and a whole note is four of those.
+  const count = readDecimalInRange(duration, path, { min: 0, max: 1_000_000_000 })
+  return divideFractions(count, multiplyFractions(divisions, fraction(4)))
 }
 
 /** How long the element lasts, as a fraction of a whole note. */
@@ -53,10 +72,7 @@ export function readDuration(
   if (!durationElement) return undefined
 
   const divisions = divisionsInForce(state, warnings, context, durationElement)
-
-  // <divisions> counts per quarter note, and a whole note is four of those.
-  const count = readDecimalInRange(durationElement, path, { min: 0, max: 1_000_000_000 })
-  return divideFractions(count, multiplyFractions(divisions, fraction(4)))
+  return lengthOfDuration(durationElement, divisions, path)
 }
 
 /** The duration of a <backup> or <forward>, which must state one. */

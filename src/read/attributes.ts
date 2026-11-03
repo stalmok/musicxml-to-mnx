@@ -24,12 +24,8 @@ import type { XmlElement } from '../xml/parse.js'
 import { attribute, children, requireChild, text, trimmedText } from '../xml/tree.js'
 import { ElementReader } from './element.js'
 import type { Stated } from './element.js'
-import {
-  readAttributeInRange,
-  readDecimalInRange,
-  readInteger,
-  readIntegerInRange,
-} from './numbers.js'
+import { readDivisions } from './divisions.js'
+import { readAttributeInRange, readInteger, readIntegerInRange } from './numbers.js'
 import { staffLinesOf, staffPositionOfLine } from './state.js'
 import type { PartState } from './state.js'
 import { recogniser } from './tables.js'
@@ -146,7 +142,7 @@ export function readAttributes(
 ): AttributesReading {
   const divisionsElement = element.child('divisions')
   if (divisionsElement) {
-    state.divisions = readDecimalInRange(divisionsElement, path, { above: 0, max: 1_000_000 })
+    state.divisions = readDivisions(divisionsElement, path)
     state.divisionsAssumed = false
   }
 

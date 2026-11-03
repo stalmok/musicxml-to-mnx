@@ -9,27 +9,20 @@
 // Before any part is read, every part's time signatures are read ahead, so a
 // part that states none runs to the barline the other parts state.
 
-import { MusicXMLError } from '../errors.js'
+import { unlessRefused } from '../errors.js'
 import type { DocumentPath } from '../errors.js'
-import {
-  addFractions,
-  compareFractions,
-  divideFractions,
-  fraction,
-  multiplyFractions,
-  negate,
-} from '../fraction.js'
+import { addFractions, compareFractions, fraction, multiplyFractions, negate } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type { Key, TimeSignature, Transposition } from '../model/score.js'
 import type { XmlElement } from '../xml/parse.js'
-import { attribute, child, children, peeking, requireChild, trimmedText } from '../xml/tree.js'
+import { attribute, child, children, peeking, requireChild } from '../xml/tree.js'
 import { firstTimeStated } from './attributes.js'
 import type { AttributesReading, StaffSignature } from './attributes.js'
 import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
+import { ASSUMED_DIVISIONS, lengthOfDuration, readDivisions } from './divisions.js'
 import { lengthOf } from './duration.js'
 import type { KeysAcrossParts, ReadGlobalMeasure } from './globalMeasures.js'
-import { noteValueBaseOf } from './noteValues.js'
-import { parseExactDecimal } from './numbers.js'
+import { ratioShare } from './noteTuplets.js'
 import { KEY, lengthOfTime, reportLate, sameMeter, TIME } from './partSignatures.js'
 import type { HeldSignature, SignatureKind } from './partSignatures.js'
 import type { PartState } from './state.js'
@@ -39,6 +32,7 @@ import {
   writtenFifths,
   writtenFifthsWithFlip,
 } from './transposition.js'
+import { writtenValueOf } from './writtenValues.js'
 
 /**
  * A key or time signature stated after the start of a measure. A statement
@@ -563,7 +557,7 @@ function readTimesInForce(part: XmlElement): MeasureTimes[] {
   // The last one the part states, which an unmetered statement does not clear.
   let converted: TimeSignature | undefined
   let held: TimeSignature | undefined
-  let divisions = fraction(1)
+  let divisions = ASSUMED_DIVISIONS
   return children(part, 'measure').map((measure) => {
     let opens = inForce
     let settled = false
@@ -573,23 +567,16 @@ function readTimesInForce(part: XmlElement): MeasureTimes[] {
     let cursor = fraction(0)
     const by = (found: XmlElement) => {
       const duration = child(found, 'duration')
-      const count = duration && parseExactDecimal(trimmedText(duration))
-      return divideFractions(count ?? fraction(0), multiplyFractions(divisions, fraction(4)))
+      const length = duration && unlessRefused(() => lengthOfDuration(duration, divisions, []))
+      return length ?? fraction(0)
     }
     // A note's own <time-modification> states every ratio around it, nested
     // ones and a two-note tremolo's multiplied. A note of a two-note tremolo
     // stating none still lasts half its written value, as the builder reads it.
     const ratioOf = (found: XmlElement) => {
       const ratio = child(found, 'time-modification')
-      const count = (name: string) => {
-        const stated = ratio && child(ratio, name)
-        const value = stated && parseExactDecimal(trimmedText(stated))
-        return value && compareFractions(value, fraction(0)) > 0 ? value : undefined
-      }
-      const actual = count('actual-notes')
-      const normal = count('normal-notes')
-      if (actual && normal) return divideFractions(normal, actual)
-      return inTwoNoteTremolo(found) ? fraction(1, 2) : fraction(1)
+      const share = ratio && unlessRefused(() => ratioShare(ratio, []))
+      return share ?? (inTwoNoteTremolo(found) ? fraction(1, 2) : fraction(1))
     }
     // A grace note takes none of the measure's time, whatever it states. A
     // note stating no <duration> lasts its written value as its ratio scales
@@ -606,11 +593,10 @@ function readTimesInForce(part: XmlElement): MeasureTimes[] {
       if (rest && measured && attribute(rest, 'measure') === 'yes') {
         return lengthOfTime(measured)
       }
-      const type = child(found, 'type')
-      const base = type && noteValueBaseOf(type)
-      return base
-        ? multiplyFractions(lengthOf({ base, dots: children(found, 'dot').length }), ratioOf(found))
-        : fraction(0)
+      const value = unlessRefused(() =>
+        writtenValueOf(child(found, 'type'), children(found, 'dot').length, []),
+      )
+      return value ? multiplyFractions(lengthOf(value), ratioOf(found)) : fraction(0)
     }
     for (const found of measure.children) {
       if (found.name === 'forward') cursor = addFractions(cursor, by(found))
@@ -622,15 +608,10 @@ function readTimesInForce(part: XmlElement): MeasureTimes[] {
       }
       if (found.name !== 'attributes') continue
       const stated = child(found, 'divisions')
-      const count = stated && parseExactDecimal(trimmedText(stated))
-      if (count && compareFractions(count, fraction(0)) > 0) divisions = count
+      const count = stated && unlessRefused(() => readDivisions(stated, []))
+      if (count) divisions = count
       if (!child(found, 'time')) continue
-      let time: TimeSignature | undefined
-      try {
-        time = firstTimeStated(found)
-      } catch (error) {
-        if (!(error instanceof MusicXMLError)) throw error
-      }
+      const time = unlessRefused(() => firstTimeStated(found))
       if (compareFractions(cursor, fraction(0)) > 0) {
         late = true
         lastLate = time

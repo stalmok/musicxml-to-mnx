@@ -700,7 +700,7 @@ export function reportChordMemberRatio(
 }
 
 /** The share of its written value a <time-modification> gives a note. */
-function ratioShare(ratio: XmlElement, path: DocumentPath): Fraction {
+export function ratioShare(ratio: XmlElement, path: DocumentPath): Fraction {
   const { played, space } = readRatioCounts(ratio, path)
   return fraction(space, played)
 }

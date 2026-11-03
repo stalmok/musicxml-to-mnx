@@ -21,10 +21,17 @@ export function readWrittenValue(
   element: ElementReader,
   path: DocumentPath,
 ): NoteValue | undefined {
-  const typeElement = element.child('type')
   // <dot> is read either way: a note with dots and no <type> has still stated
   // them, and leaving them unread would report them as a loss.
-  const dots = element.children('dot').length
+  return writtenValueOf(element.child('type'), element.children('dot').length, path)
+}
+
+/** The value a <type> states, with `dots` <dot>s after it. */
+export function writtenValueOf(
+  typeElement: XmlElement | undefined,
+  dots: number,
+  path: DocumentPath,
+): NoteValue | undefined {
   if (!typeElement) return undefined
 
   const base = noteValueBaseOf(typeElement)

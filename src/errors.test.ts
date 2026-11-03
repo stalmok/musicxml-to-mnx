@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { MusicXMLError, formatPath } from './errors.js'
+import { MusicXMLError, formatPath, unlessRefused } from './errors.js'
 
 describe('formatPath', () => {
   test('joins path segments with a readable separator', () => {
@@ -114,5 +114,27 @@ describe('MusicXMLError', () => {
 
     expect(error).toBeInstanceOf(Error)
     expect(error.name).toBe('MusicXMLError')
+  })
+})
+
+describe('unlessRefused', () => {
+  test('returns what the read returns', () => {
+    expect(unlessRefused(() => 4)).toBe(4)
+  })
+
+  test('returns nothing where the read refuses the input', () => {
+    expect(
+      unlessRefused(() => {
+        throw new MusicXMLError('Bad note', { path: [] })
+      }),
+    ).toBeUndefined()
+  })
+
+  test('passes on a failure that is not a refusal', () => {
+    expect(() =>
+      unlessRefused(() => {
+        throw new TypeError('defect')
+      }),
+    ).toThrow(TypeError)
   })
 })

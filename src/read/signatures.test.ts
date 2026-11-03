@@ -1905,4 +1905,25 @@ describe('the time signature worked out ahead of a part', () => {
       '3/4',
     ])
   })
+
+  // A <forward> of -4 divisions would take the cursor back to the start, and
+  // the time signature after it would stand there.
+  test('passes over a value the part reader refuses', () => {
+    const source =
+      '<score-partwise><part-list><score-part id="P1"><part-name>P</part-name></score-part>' +
+      '</part-list><part id="P1">' +
+      [
+        '<attributes><divisions>4</divisions></attributes>' + time(2) + quarter + quarter,
+        quarter + '<forward><duration>-4</duration></forward>' + threeFour + quarter,
+      ]
+        .map((body, index) => `<measure number="${String(index + 1)}">${body}</measure>`)
+        .join('') +
+      '</part></score-partwise>'
+    const named = (found: { count: number; unit: number } | undefined) =>
+      found ? `${String(found.count)}/${String(found.unit)}` : 'none'
+    const part = parseXmlRoot(source).children.find((found) => found.name === 'part')
+
+    expect(timesInForce(part!).map(({ inForce }) => named(inForce))).toEqual(['2/4', '2/4'])
+    expect(readFailure(source).detail).toMatch(/^<duration> is -4, outside the range/)
+  })
 })

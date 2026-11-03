@@ -69,3 +69,13 @@ export class MusicXMLError extends Error {
     return named
   }
 }
+
+/** What `read` returns, or nothing where it refuses the input. */
+export function unlessRefused<T>(read: () => T): T | undefined {
+  try {
+    return read()
+  } catch (error) {
+    if (error instanceof MusicXMLError) return undefined
+    throw error
+  }
+}
