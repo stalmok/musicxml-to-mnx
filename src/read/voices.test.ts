@@ -771,6 +771,15 @@ describe('rests filling the measure', () => {
     expect(warnings.map((w) => w.code)).toContain('missing:voice')
   })
 
+  test('reads an empty voice as naming no voice', () => {
+    const { measure: result, warnings } = read(
+      measure(note('C', 4, '') + '<backup><duration>16</duration></backup>' + note('E', 4, '1')),
+    )
+
+    expect(result?.sequences).toHaveLength(2)
+    expect(warnings.map((w) => w.code)).toContain('missing:voice')
+  })
+
   test('does not warn when every note in the measure omits its voice', () => {
     const { measure: result, warnings } = read(
       measure(

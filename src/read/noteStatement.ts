@@ -48,7 +48,7 @@ export interface NoteStatement extends Omit<RestNote, 'voice'> {
 /** The same, once the note has the line of its voice it is written in. */
 export type VoicedNote = NoteStatement & RestNote
 
-/** The voice a <note>'s <voice> names, where it has one. */
+/** The voice a <note>'s <voice> names, where it has one. An empty <voice> names none. */
 export function voiceNamed(voice: XmlElement | undefined): string | undefined {
-  return voice && trimmedText(voice)
+  return (voice && trimmedText(voice)) || undefined
 }
