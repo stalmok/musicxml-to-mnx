@@ -14,7 +14,7 @@
 import { describe, expect, test } from 'vitest'
 import { MusicXMLError, convertMusicXML } from '../src/index.js'
 import type { ConversionWarning, MNXDocument, MNXSequenceItem, MNXTime } from '../src/index.js'
-import { GLYPH_LETTERS } from '../src/read/directions.js'
+import { GLYPH_LETTERS } from '../src/read/dynamics.js'
 import { scoreTimesInForce, timesInForce } from '../src/read/signatures.js'
 import { parseXmlRoot } from '../src/xml/parse.js'
 import type { XmlElement } from '../src/xml/parse.js'

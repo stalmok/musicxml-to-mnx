@@ -135,6 +135,18 @@ export default {
       to: { path: '^src/read/(measureRestForms|tupletTracker)\\.ts$' },
     },
 
+    {
+      name: 'direction-reader-parts-stay-inside',
+      comment:
+        'These modules read the parts of a <direction> for directions.ts. score.ts also reads a <sound> written outside a direction. Other readers go through directions.ts.',
+      severity: 'error',
+      from: {
+        path: '^(src|cli)/',
+        pathNot: ['^src/read/(directions|score)\\.ts$', '\\.(test|bench)\\.ts$'],
+      },
+      to: { path: '^src/read/(dynamics|hairpins|metronome|octaveShifts|sounds)\\.ts$' },
+    },
+
     // === The isomorphic core ===
     //
     // tsconfig.json withholds Node's and the DOM's types from src, which
