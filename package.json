@@ -65,7 +65,7 @@
     "compare-output": "node scripts/compare-output.ts"
   },
   "dependencies": {
-    "@rgrove/parse-xml": "5.0.0",
+    "@rgrove/parse-xml": "5.1.0",
     "fflate": "0.8.3"
   },
   "devDependencies": {
