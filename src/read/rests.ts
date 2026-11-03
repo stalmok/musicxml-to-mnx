@@ -8,7 +8,7 @@
 // states and where it stands in its voice.
 
 import type { DocumentPath } from '../errors.js'
-import { compareFractions, divideFractions, fraction } from '../fraction.js'
+import { compareFractions, divideFractions, fraction, multiplyFractions } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import type { NoteValue } from '../model/score.js'
 import { writtenAt } from './collector.js'
@@ -445,10 +445,9 @@ export function dropRedundantRest(
   if (written && duration) {
     reportDurationMismatch(element, written, duration, scale, warnings, context, warnings.reserve())
   }
-  // measuredValue refuses a rest stating neither a <type> nor a <duration>.
   const lasts =
     noteLength(duration, undefined, written, scale.factor) ??
-    lengthOf(measuredValue(element, duration, scale, state, path))
+    multiplyFractions(lengthOf(measuredValue(element, duration, scale, state, path)), scale.factor)
 
   const description =
     over === 'measure rest'
