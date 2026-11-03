@@ -55,8 +55,12 @@ export function lengthOfDuration(
   divisions: Fraction,
   path: DocumentPath,
 ): Fraction {
+  return wholeNotesOf(readDecimalInRange(duration, path, { min: 0, max: 1_000_000_000 }), divisions)
+}
+
+/** A count of `divisions`, as a fraction of a whole note. */
+export function wholeNotesOf(count: Fraction, divisions: Fraction): Fraction {
   // <divisions> counts per quarter note, and a whole note is four of those.
-  const count = readDecimalInRange(duration, path, { min: 0, max: 1_000_000_000 })
   return divideFractions(count, multiplyFractions(divisions, fraction(4)))
 }
 
