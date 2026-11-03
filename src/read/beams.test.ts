@@ -445,6 +445,30 @@ describe('beaming grace notes', () => {
       ['ev2', 'ev3'],
     ])
   })
+
+  // A grace group read into one line of a voice moves to the line its note
+  // takes, and its beam goes with it, listed under that line.
+  test('lists the beam of a grace group under the line of the note it leads into', () => {
+    const plain = (step: string, octave: number, duration: number) =>
+      `<note><pitch><step>${step}</step><octave>${String(octave)}</octave></pitch>` +
+      `<duration>${String(duration)}</duration></note>`
+    const { beams } = beamsOf(
+      plain('C', 5, 8) +
+        '<backup><duration>8</duration></backup>' +
+        graceNote('B', 'begin') +
+        graceNote('C', 'end') +
+        plain('C', 3, 16) +
+        '<backup><duration>8</duration></backup>' +
+        graceNote('E', 'begin') +
+        graceNote('F', 'end') +
+        plain('G', 5, 8),
+    )
+
+    expect(beams.map((beam) => beam.events)).toEqual([
+      ['ev5', 'ev6'],
+      ['ev2', 'ev3'],
+    ])
+  })
 })
 
 describe('a beam crossing the barline', () => {
