@@ -696,8 +696,7 @@ function readMeasure(
     state.carriedTupletStops,
     state.carriedTremolos,
     soundingVoices(element),
-    state.beamsOpenAtBarline,
-    state.voiceNames,
+    state.lines,
     opensMultimeasureRest(element),
   )
 
@@ -901,7 +900,6 @@ function readMeasure(
   )
   state.carriedTupletStops = finished.carriedTupletStops
   state.carriedTremolos = finished.carriedTremolos
-  state.beamsOpenAtBarline = finished.beamsOpenAtBarline
   collectors.endings.add(index, endingStart, endingStop)
   collectors.measureRepeats.add(index, measureRepeats)
 

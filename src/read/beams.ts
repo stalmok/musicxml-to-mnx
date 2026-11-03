@@ -104,20 +104,12 @@ const HOOK_DIRECTIONS = new Map<BeamValue, 'left' | 'right'>([
   ['backward hook', 'left'],
 ])
 
-/**
- * The primary beams a measure leaves open at its barline: by voice, the
- * staff each line of the voice left its beam open on, by the line's rank.
- */
-export type BeamsOpenAtBarline = ReadonlyMap<string, ReadonlyMap<number, number | undefined>>
-
-/** Names a line of a voice across measures, as the voice and the line's rank by height. */
-export function lineKey(voice: string, line: number): string {
-  return `${voice}\n${String(line)}`
-}
-
 /** One line of a voice's beam markers over a measure. */
 export interface BeamedRun {
-  /** The line, as lineKey names it. Nothing for a grace group, which beams within itself. */
+  /**
+   * The line, as the part's lines key it. Nothing for a grace group, which
+   * beams within itself, or for a line the measure does not state.
+   */
   line: string | undefined
   events: readonly BeamedEvent[]
   /** Whether the line's last event leaves its primary beam open at the barline. */

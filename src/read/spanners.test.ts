@@ -307,17 +307,23 @@ describe('ties', () => {
 
   // Two lines laid over each other in one <voice> are two MNX sequences, so
   // a tie from one line into the other crosses voices although the source
-  // names one voice for both.
+  // names one voice for both. The higher line carries the chord's line on.
   test('marks a tie into a line laid over its own voice as crossing voices', () => {
+    const chordC =
+      '<note><chord/><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
+      `<type>quarter</type><voice>1</voice>${tied('start')}</note>`
     const { notes } = readAllVoices(
       measures(
-        DIVISIONS + note('E', tied('start')),
-        note('G') + '<backup><duration>4</duration></backup>' + note('E', tied('stop')),
+        DIVISIONS + note('E', tied('start')) + chordC,
+        note('E', tied('stop')) +
+          '<backup><duration>4</duration></backup>' +
+          note('C', tied('stop')),
       ),
     )
-    const [started, , stopped] = notes as [Note, Note, Note]
+    const started = notes.find((n) => n.pitch.step === 'C')
+    const stopped = notes.filter((n) => n.pitch.step === 'C').at(-1)
 
-    expect(started.ties).toEqual([{ kind: 'target', target: stopped.id, crossVoice: true }])
+    expect(started?.ties).toEqual([{ kind: 'target', target: stopped?.id, crossVoice: true }])
   })
 
   test('marks a tie out of a line laid over its own voice as crossing voices', () => {
@@ -358,8 +364,8 @@ describe('ties', () => {
     ])
   })
 
-  // The higher of two laid-over lines keeps the voice's name, whichever the
-  // source writes first.
+  // The line a tie carries on keeps the voice's name, whichever of two
+  // laid-over lines it is and whichever the source writes first.
   test('keeps a tie into the higher of two laid-over lines as one voice', () => {
     const { notes } = readAllVoices(
       measures(
@@ -372,7 +378,7 @@ describe('ties', () => {
     expect(started.ties).toEqual([{ kind: 'target', target: stopped.id, crossVoice: false }])
   })
 
-  test('marks a tie into the lower of two laid-over lines as crossing voices', () => {
+  test('keeps a tie into the lower of two laid-over lines as one voice', () => {
     const { notes } = readAllVoices(
       measures(
         DIVISIONS + note('E', tied('start')),
@@ -381,7 +387,7 @@ describe('ties', () => {
     )
     const [started, stopped] = notes as [Note, Note, Note]
 
-    expect(started.ties).toEqual([{ kind: 'target', target: stopped.id, crossVoice: true }])
+    expect(started.ties).toEqual([{ kind: 'target', target: stopped.id, crossVoice: false }])
   })
 
   const high = note('C').replace('<octave>4</octave>', '<octave>5</octave>')
@@ -533,9 +539,9 @@ describe('ties', () => {
     expect(warnings.map((w) => w.code)).not.toContain('unclosed:spanner')
   })
 
-  // Lines laid over each other are named measure by measure, so a line's
-  // name does not say which notes of its voice it holds. A tie within one
-  // line does not reach across its pitch sounded anywhere in its voice.
+  // A line's name says which line it carries on only where a beam or a tie
+  // shows it, so a tie within one line does not reach across its pitch
+  // sounded anywhere in its voice.
   test.each([
     ['a measure that sounds one line', note('E'), over(note('E', tied('stop')))],
     ['a line of rests', over(rest, note('E')), over(note('E', tied('stop')))],
@@ -560,8 +566,8 @@ describe('ties', () => {
     expect(warnings.filter((w) => w.code === 'unclosed:spanner')).toHaveLength(2)
   })
 
-  // Where the lines cross, one line changes its name across the barline: the
-  // lower line's E is the higher line where the tie ends.
+  // Where the lines cross, the line a tie carries on keeps its name across the
+  // barline: the lower line's E is the higher line where the tie ends.
   const under = (body: string, low: string, length = 4): string =>
     `${body}<backup><duration>${String(length)}</duration></backup>${low}`
   const lowC = note('C').replace('<octave>4</octave>', '<octave>3</octave>')
@@ -586,14 +592,6 @@ describe('ties', () => {
       over(rest),
       stopAbove,
     ],
-    // A line that sounds no pitch keeps its written place, so the rests are
-    // the line under the stop's name.
-    [
-      "across a measure the stop's line rests in",
-      over(note('E', tied('start'))),
-      under(rest, note('D')),
-      stopAbove,
-    ],
     [
       'across a measure that leaves the voice out',
       under(note('E', tied('start')), high),
@@ -606,16 +604,16 @@ describe('ties', () => {
       rest,
       over(note('E', tied('stop'))),
     ],
-  ])('joins a tie into a laid-over line of another name %s', (_, first, second, third) => {
+  ])('keeps a tie within a laid-over line that crosses the other %s', (_, first, second, third) => {
     const { notes, warnings } = readAllVoices(measures(DIVISIONS + first, second, third))
     const started = notes.find((n) => n.ties.length > 0)
     const stopped = notes.filter((n) => n.pitch.step === 'E').at(-1)
 
-    expect(started?.ties).toEqual([{ kind: 'target', target: stopped?.id, crossVoice: true }])
+    expect(started?.ties).toEqual([{ kind: 'target', target: stopped?.id, crossVoice: false }])
     expect(warnings.map((w) => w.code)).not.toContain('unclosed:spanner')
   })
 
-  test('joins a tie into a laid-over line of another name in a voice the source leaves unnamed', () => {
+  test('keeps a tie within a laid-over line that crosses the other in a voice the source leaves unnamed', () => {
     const source = measures(
       DIVISIONS + under(note('E', tied('start')), high),
       under(rest, rest),
@@ -625,7 +623,7 @@ describe('ties', () => {
     const started = notes.find((n) => n.ties.length > 0)
     const stopped = notes.filter((n) => n.pitch.step === 'E').at(-1)
 
-    expect(started?.ties).toEqual([{ kind: 'target', target: stopped?.id, crossVoice: true }])
+    expect(started?.ties).toEqual([{ kind: 'target', target: stopped?.id, crossVoice: false }])
     expect(warnings.map((w) => w.code)).not.toContain('unclosed:spanner')
   })
 
@@ -684,6 +682,14 @@ describe('ties', () => {
       over(rest),
       under(note('D') + note('E', tied('stop')), lowC + lowC, 8),
     ],
+    // A line that sounds no pitch keeps its written place, so the D carries
+    // on the start's line.
+    [
+      "across a measure the start's line sounds another pitch in",
+      over(note('E', tied('start'))),
+      under(rest, note('D')),
+      stopAbove,
+    ],
     [
       'across a measure both lines sound',
       over(note('E', tied('start'))),
@@ -717,7 +723,7 @@ describe('ties', () => {
         note('G') +
         note('E', tied('start')),
     ],
-  ])('does not join a tie into a laid-over line of another name %s', (_, ...bodies) => {
+  ])('does not join a tie into the other laid-over line %s', (_, ...bodies) => {
     const { notes, warnings } = readAllVoices(
       measures(...bodies.map((body, index) => (index === 0 ? DIVISIONS + body : body))),
     )
@@ -754,7 +760,7 @@ describe('ties', () => {
     const [, unclosed, started, , stopped] = notes as [Note, Note, Note, Note, Note]
 
     expect(unclosed.ties).toEqual([])
-    expect(started.ties).toEqual([{ kind: 'target', target: stopped.id, crossVoice: true }])
+    expect(started.ties).toEqual([{ kind: 'target', target: stopped.id, crossVoice: false }])
     const unclosedAt = warnings.filter((w) => w.code === 'unclosed:spanner')
     expect(unclosedAt.map((w) => w.context.measure)).toEqual([1])
   })
@@ -919,19 +925,22 @@ describe('ties', () => {
     )
   })
 
-  test('writes a tie into a line laid over its own voice with a crossVoice target', () => {
+  test('writes a tie out of a line laid over its own voice with a crossVoice target', () => {
     const { mnx } = convertValid(
       measures(
-        DIVISIONS + note('E', tied('start')),
-        note('G') + '<backup><duration>4</duration></backup>' + note('E', tied('stop')),
+        DIVISIONS +
+          note('G') +
+          '<backup><duration>4</duration></backup>' +
+          note('E', tied('start')),
+        note('E', tied('stop')),
       ),
     )
-    const [first, second] = mnx.parts[0]?.measures ?? []
-    const tie = first?.sequences[0]?.content[0]
-    const target = second?.sequences.find((sequence) => sequence.voice === '1.2')
+    const [first] = mnx.parts[0]?.measures ?? []
+    const laidOver = first?.sequences.find((sequence) => sequence.voice === '1.2')
 
-    expect(tie).toMatchObject({ notes: [{ ties: [{ targetType: 'crossVoice' }] }] })
-    expect(target?.content[0]).toMatchObject({ notes: [{ pitch: { step: 'E' } }] })
+    expect(laidOver?.content[0]).toMatchObject({
+      notes: [{ pitch: { step: 'E' }, ties: [{ targetType: 'crossVoice' }] }],
+    })
   })
 
   // A chord member of a grace chord sounds before the beat as the whole
@@ -1149,8 +1158,8 @@ describe('ties', () => {
     )
     const [, earlier, , upper, lower, , last] = notes as Note[]
 
-    expect(earlier?.ties).toEqual([{ kind: 'target', target: lower?.id, crossVoice: true }])
-    expect(upper?.ties).toEqual([{ kind: 'target', target: last?.id, crossVoice: false }])
+    expect(earlier?.ties).toEqual([{ kind: 'target', target: lower?.id, crossVoice: false }])
+    expect(upper?.ties).toEqual([{ kind: 'target', target: last?.id, crossVoice: true }])
     expect(warnings.map((w) => w.code)).not.toContain('unclosed:spanner')
   })
 

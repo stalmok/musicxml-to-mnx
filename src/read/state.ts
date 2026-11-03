@@ -9,7 +9,7 @@ import type { XmlElement } from '../xml/parse.js'
 import type { Stated } from './element.js'
 import { IdGenerator } from './idGenerator.js'
 import { OpenBeams } from './beams.js'
-import type { BeamsOpenAtBarline } from './beams.js'
+import { PartLines } from './lines.js'
 import { lengthOfTime, PartSignatures } from './partSignatures.js'
 import { SpannerResolver } from './spanners.js'
 import type { CarriedTupletStop } from './tuplets.js'
@@ -107,12 +107,8 @@ export interface PartState {
   lyricExtenders: OpenExtenders
   /** The key and time signatures the part carries from measure to measure. */
   signatures: PartSignatures
-  /**
-   * Every voice name the part's notes state, in any measure. MNX reads one
-   * voice name as one line across the score, so a name built for a laid-over
-   * line steps past all of them.
-   */
-  voiceNames: ReadonlySet<string>
+  /** The lines each voice is written in, matched from measure to measure. */
+  lines: PartLines
   /**
    * What a note's <instrument> resolves to, keyed as the note names it. A kit
    * component takes its name and its sound from this.
@@ -149,11 +145,6 @@ export interface PartState {
    * converted as one already reported.
    */
   carriedTremolos: readonly string[]
-  /**
-   * The lines whose primary beam the last measure left open at its barline,
-   * by voice, with the staff each was on.
-   */
-  beamsOpenAtBarline: BeamsOpenAtBarline
   /** The beams left open at the barline, which the next measure may join. */
   openBeams: OpenBeams
   /**
@@ -220,9 +211,15 @@ export function measureLength(state: PartState): Fraction | undefined {
 
 export function newPartState(
   ids: IdGenerator,
+  /**
+   * Every voice name the part's notes state, in any measure. MNX reads one
+   * voice name as one line across the score, so a name built for a laid-over
+   * line steps past all of them.
+   */
   voiceNames: ReadonlySet<string>,
   sounds: ReadonlyMap<string, ResolvedSound> = new Map(),
 ): PartState {
+  const spanners = new SpannerResolver()
   return {
     divisions: undefined,
     divisionsAssumed: false,
@@ -232,16 +229,15 @@ export function newPartState(
     clefs: new Map(),
     staffLines: new Map(),
     ids,
-    spanners: new SpannerResolver(),
+    spanners,
     lyricExtenders: new Map(),
     signatures: new PartSignatures(),
-    voiceNames,
+    lines: new PartLines(voiceNames, (note) => spanners.tiesOn(note)),
     sounds,
     kit: new Map(),
     kitKeys: new Map(),
     carriedTupletStops: [],
     carriedTremolos: [],
-    beamsOpenAtBarline: new Map(),
     openBeams: new OpenBeams(),
     transposition: undefined,
     statedTransposition: undefined,
