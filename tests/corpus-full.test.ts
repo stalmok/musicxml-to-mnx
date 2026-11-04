@@ -9,8 +9,9 @@
 //
 //   MUSICXML_TO_MNX_CORPUS=<dir> [MUSICXML_TO_MNX_CORPUS_REPORT=<file.json>] pnpm corpus-gate
 //
-// It fails on a crash, on output the schema rejects, or on output whose notes
-// or measure lengths disagree with the source. A file refused with a
+// It fails on a crash, on output the schema rejects or that breaks a rule of
+// MNX the schema does not check, or on output whose notes or measure lengths
+// disagree with the source. A file refused with a
 // MusicXMLError is reported by reason, not failed. The warnings are counted
 // by the element lost.
 
