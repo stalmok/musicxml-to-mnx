@@ -1085,23 +1085,15 @@ describe('events', () => {
 // it covers, and leaves out what the source did not say.
 describe('endings', () => {
   function endingOf(ending: Ending) {
-    const score = scoreOf(measureOf(), [
-      {
-        key: undefined,
-        time: undefined,
-        tempos: [],
-        number: undefined,
-        ...NO_BARLINE,
-        ending,
-      },
-    ])
-    writeValid(score)
-    return writeValid(score).global.measures[0]?.ending
+    const global = { key: undefined, time: undefined, tempos: [], number: undefined, ...NO_BARLINE }
+    const score = scoreOf(measureOf(), [{ ...global, ending }, global])
+    const parts = score.parts.map((part) => ({ ...part, measures: [measureOf(), measureOf()] }))
+    return writeValid({ ...score, parts }).global.measures[0]?.ending
   }
 
   test('writes the times where the bracket names any', () => {
-    expect(endingOf({ duration: 1, numbers: [1, 2], open: false })).toEqual({
-      duration: 1,
+    expect(endingOf({ duration: 2, numbers: [1, 2], open: false })).toEqual({
+      duration: 2,
       numbers: [1, 2],
     })
   })
