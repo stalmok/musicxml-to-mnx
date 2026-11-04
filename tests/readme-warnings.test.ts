@@ -1,13 +1,16 @@
-// Compares the warning prefix table in README.md with the warning codes.
+// Compares the warning prefix table in README.md, and the categories it
+// names, with the warning codes.
 
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, test } from 'vitest'
 import {
+  categoryOf,
   isConverterGap,
   isFormatLimit,
   isSourceProblem,
   WARNING_CODES,
+  type WarningCategory,
   type WarningCode,
 } from '../src/index.js'
 
@@ -37,6 +40,19 @@ function prefixRows(): { prefixes: string[]; helper: string }[] {
     })
 }
 
+const CATEGORIES: Readonly<Record<WarningCategory, true>> = {
+  'converter-gap': true,
+  'format-limit': true,
+  'source-problem': true,
+}
+
+// The categories the sentence on categoryOf names, in the order it names them.
+function sentenceCategories(): string[] {
+  const sentence = readme.split('\n').find((line) => line.startsWith('`categoryOf(code)` returns'))
+  expect(sentence, 'README.md has no sentence on categoryOf').toBeDefined()
+  return [...(sentence ?? '').matchAll(/'([a-z-]+)'/g)].map((match) => match[1] ?? '')
+}
+
 function prefixOf(code: WarningCode): string {
   return code.slice(0, code.indexOf(':'))
 }
@@ -64,5 +80,18 @@ describe('the warning prefix table in README.md', () => {
   test('names only prefixes some warning code has', () => {
     const used = new Set(WARNING_CODES.map(prefixOf))
     expect(rows.flatMap((row) => row.prefixes).filter((prefix) => !used.has(prefix))).toEqual([])
+  })
+
+  test('names every category in the categoryOf sentence', () => {
+    expect(sentenceCategories().sort()).toEqual(Object.keys(CATEGORIES).sort())
+  })
+
+  test('names in the categoryOf sentence the category of each row, in row order', () => {
+    const categories = rows.map((row) => [
+      ...new Set(
+        WARNING_CODES.filter((code) => row.prefixes.includes(prefixOf(code))).map(categoryOf),
+      ),
+    ])
+    expect(categories).toEqual(sentenceCategories().map((category) => [category]))
   })
 })
