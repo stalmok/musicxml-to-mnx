@@ -30,15 +30,7 @@ import type {
 } from '../model/score.js'
 import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
 import type { XmlElement } from '../xml/parse.js'
-import {
-  attribute,
-  child,
-  children,
-  descendants,
-  peekAttribute,
-  peeking,
-  requireAttribute,
-} from '../xml/tree.js'
+import { attribute, children, descendants, peekAttribute, requireAttribute } from '../xml/tree.js'
 import { readAttributes } from './attributes.js'
 import type { MeasureRepeatReading } from './attributes.js'
 import { Endings, readBarline } from './barlines.js'
@@ -56,8 +48,8 @@ import { writtenGrouping } from './part-groups.js'
 import { compareFractions, fraction, negate } from '../fraction.js'
 import type { Fraction } from '../fraction.js'
 import { readNote } from './notes.js'
-import { voiceNamed } from './noteStatement.js'
 import { readPartList } from './partList.js'
+import { opensMultimeasureRest, soundingVoices, voiceNames } from './readAhead.js'
 import type { PartList } from './partList.js'
 import { readPrint } from './print.js'
 import { IdGenerator } from './idGenerator.js'
@@ -598,47 +590,6 @@ function reportSoundTempos(
 function quarterNotesPerMinute(tempo: Tempo): number {
   const beat = lengthOf(tempo.value)
   return (tempo.bpm * beat.num * 4) / beat.den
-}
-
-/**
- * The voices of a measure that sound a note, rather than only rest. A grace
- * note counts: a rest beside one in a line laid over the measure rest is
- * part of that line's music. A chord member sounds in its chord's voice,
- * whatever voice it names, so the note it joins already counts for it.
- */
-function soundingVoices(measure: XmlElement): (string | undefined)[] {
-  return peeking(() =>
-    children(measure, 'note')
-      .filter((note) => !child(note, 'rest') && !child(note, 'chord'))
-      .map((note) => voiceNamed(child(note, 'voice'))),
-  )
-}
-
-/**
- * Whether a <multiple-rest> in the measure opens a multi-measure rest there.
- * An <attributes> can hold more than one <measure-style>, and a measure more
- * than one <attributes>.
- */
-function opensMultimeasureRest(measure: XmlElement): boolean {
-  return peeking(() =>
-    children(measure, 'attributes').some((attributes) =>
-      children(attributes, 'measure-style').some(
-        (style) => child(style, 'multiple-rest') !== undefined,
-      ),
-    ),
-  )
-}
-
-/** Every voice name the notes of a part state, in any measure. */
-function voiceNames(part: XmlElement): Set<string> {
-  return peeking(
-    () =>
-      new Set(
-        children(part, 'measure').flatMap((measure) =>
-          children(measure, 'note').flatMap((note) => voiceNamed(child(note, 'voice')) ?? []),
-        ),
-      ),
-  )
 }
 
 function readMeasure(
