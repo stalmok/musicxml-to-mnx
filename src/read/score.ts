@@ -294,16 +294,20 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
       measures: respellPastFlip(part.measures, part.transposition, flipAt, concertKeys),
     }
   })
+  // MusicXML draws a melisma line only where a lyric states <extend>, so the
+  // lines read are every line the lyrics draw.
+  const lyricLines = lyricLineOrder(parts)
   return renamePartIds(
     {
       globalMeasures,
       parts,
       grouping: writtenGrouping(partList.grouping, writtenIds),
       sounds: partList.sounds,
-      lyricLines: lyricLineOrder(parts),
+      lyricLines,
       ...(musicFont !== undefined ? { musicFont } : {}),
       ...(declaresBeams ? { declaresBeams } : {}),
       ...(declaresAccidentals ? { declaresAccidentals } : {}),
+      ...(lyricLines.length > 0 ? { statesAllLyricExtenders: true } : {}),
     },
     readings,
     warnings,

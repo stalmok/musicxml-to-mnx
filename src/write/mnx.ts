@@ -134,9 +134,7 @@ export function writeMnx(score: Score, options: WriterOptions = {}): MNXDocument
   // Without one, the flag follows what the source wrote.
   const useAccidentalDisplay = score.declaresAccidentals ?? survey.drawsAccidentals
   const useBeams = score.declaresBeams ?? survey.writesBeams
-  // MusicXML draws a melisma line only where a lyric states <extend>, so the
-  // lines read are every line the lyrics draw.
-  const useLyricExtenders = score.lyricLines.length > 0
+  const useLyricExtenders = score.statesAllLyricExtenders === true
 
   // Written before the global block, because what they point at is what
   // decides which measures the global block names.

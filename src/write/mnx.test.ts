@@ -1370,3 +1370,22 @@ describe('lyric line order', () => {
     expect(writeValid(score).global).not.toHaveProperty('lyrics')
   })
 })
+
+describe('lyric extender support', () => {
+  const sung = {
+    ...scoreOf(
+      measureOf({ ...WHOLE_C, lyrics: new Map([['1', { text: 'Are', type: undefined }]]) }),
+    ),
+    lyricLines: ['1'],
+  }
+
+  test('states that every line is encoded where the model says so', () => {
+    const score = { ...sung, statesAllLyricExtenders: true }
+
+    expect(writeValid(score).mnx.support).toEqual({ useLyricExtenders: true })
+  })
+
+  test('says nothing of lines where the model does not, even where a verse is sung', () => {
+    expect(writeValid(sung).mnx).not.toHaveProperty('support')
+  })
+})

@@ -954,4 +954,9 @@ export interface Score {
    * whole of them, on the same terms as the beams.
    */
   readonly declaresAccidentals?: boolean
+  /**
+   * True where the lyrics state every melisma line they draw, so a renderer
+   * draws none of its own. Absent in a score with no lyrics.
+   */
+  readonly statesAllLyricExtenders?: boolean
 }
