@@ -19,6 +19,12 @@ import { scoreTimesInForce, timesInForce } from '../src/read/signatures.js'
 import { parseXmlRoot } from '../src/xml/parse.js'
 import type { XmlElement } from '../src/xml/parse.js'
 import {
+  duplicateIds,
+  misplacedEndings,
+  misplacedMultimeasureRests,
+  sequencesPastTime,
+} from './support/extents.js'
+import {
   danglingReferences,
   jumpsWithoutOneDestination,
   staffNumbersPastParts,
@@ -668,6 +674,24 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
 
   test('orders exactly the verse lines it sings', () => {
     expect(unorderedLyricLines(mnx)).toEqual([])
+  })
+
+  test('gives each id to one object', () => {
+    expect(duplicateIds(mnx).slice(0, 5)).toEqual([])
+  })
+
+  test('closes every ending inside the score, apart from the others', () => {
+    expect(misplacedEndings(mnx)).toEqual([])
+  })
+
+  test('closes every multi-measure rest inside the score, apart from the others', () => {
+    expect(misplacedMultimeasureRests(mnx)).toEqual([])
+  })
+
+  // MNX treats a sequence that runs past the time signature in force as an
+  // error. The schema does not check this.
+  test('runs no sequence past its time signature', () => {
+    expect(sequencesPastTime(mnx).slice(0, 5)).toEqual([])
   })
 
   // A voice may stop before the barline, but it must not run past the end.

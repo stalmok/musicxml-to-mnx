@@ -21,6 +21,12 @@ import { convertMusicXML, MusicXMLError } from '../src/index.js'
 import type { ConversionWarning, MNXDocument } from '../src/index.js'
 import { readMusicXML } from '../src/container.js'
 import { parseXmlRoot } from '../src/xml/parse.js'
+import {
+  duplicateIds,
+  misplacedEndings,
+  misplacedMultimeasureRests,
+  sequencesPastTime,
+} from './support/extents.js'
 import { jumpsWithoutOneDestination } from './support/references.js'
 import { schemaErrors } from './support/schema.js'
 import {
@@ -118,6 +124,17 @@ function firstFailure(
   // holds exactly one of it. The schema does not check this.
   const jumps = jumpsWithoutOneDestination(mnx)
   if (jumps.length > 0) return { file, kind: 'schema', detail: jumps[0] ?? '' }
+
+  // MNX holds each id unique in the document, and a sequence within the time
+  // signature in force. The schema checks neither, nor where an ending or a
+  // multi-measure rest reaches.
+  const misplaced = [
+    ...duplicateIds(mnx),
+    ...misplacedEndings(mnx),
+    ...misplacedMultimeasureRests(mnx),
+    ...sequencesPastTime(mnx),
+  ]
+  if (misplaced.length > 0) return { file, kind: 'schema', detail: misplaced[0] ?? '' }
 
   const root = parseXmlRoot(xml)
 
