@@ -29,7 +29,6 @@ import { readAttributeInRange, readInteger, readIntegerInRange } from './numbers
 import { staffLinesOf, staffPositionOfLine } from './state.js'
 import type { PartState } from './state.js'
 import { recogniser } from './tables.js'
-import { writtenFifths } from './transposition.js'
 import { elementLoss, reportHidden } from './unrepresentable.js'
 
 // A recogniser narrows the value it accepts to the model's type, so a
@@ -171,10 +170,8 @@ export function readAttributes(
       staffKeys.set(staff, staffKeys.get(1))
       staffTimes.set(staff, staffTimes.get(1))
     }
-    // A staff the part drops loses the transposition it was given. Added
-    // back, it takes the one every staff has.
-    const given = state.staffTranspositions.staves
-    for (const staff of given.keys()) if (staff > state.staves) given.delete(staff)
+    // A staff the part drops loses the transposition it was given.
+    state.transposition.dropStaves(state.staves)
   }
 
   // Each statement in <staff-details> is read on its own, and the sweep
@@ -574,20 +571,8 @@ function readTimeDisplay(
 /**
  * The part's instrument transposition, from <transpose>. MusicXML states the
  * interval from the written pitch to the sounding one and MNX states it the
- * other way round, so both numbers are negated.
- *
- * MusicXML writes one <transpose> per staff, told apart by a "number"
- * attribute, and MNX states one for the part. Each staff keeps the last one
- * given to it, and a staff given none sounds as written. Staves that disagree
- * are reported once the measure is read; see settleTranspositions. A part
- * that changes instrument partway keeps the first transposition in force at
- * a pitched note, and reports the change. A part with no pitched note keeps
- * the one its first key is converted with, or else the last one in force.
- * Together, the <transpose> statements before that point state where the
- * part starts, however many <attributes> they take.
- * The pitches follow the first staff that is given a transposition, also
- * where a <staves> drops the staff they followed. A block that drops it and
- * states a <transpose> is read as one step.
+ * other way round, so both numbers are negated. See PartTransposition for how
+ * the staves' statements combine.
  */
 function readTransposition(
   element: ElementReader,
@@ -610,7 +595,7 @@ function readTransposition(
       found.child('chromatic') ?? requireChild(found.element, 'chromatic', path)
     const chromatic = readInteger(chromaticElement, path)
 
-    const transposition: Transposition = {
+    const value: Transposition = {
       staffDistance: opposite(diatonic + 7 * octaves),
       halfSteps: opposite(chromatic + 12 * octaves),
       // Settled once the whole score is in: whether the part flips its
@@ -619,143 +604,10 @@ function readTransposition(
     }
     // Bounded like a clef's.
     const staff = readAttributeInRange(found.element, 'number', path, 1, state.staves)
-    return { transposition, staff, element: found.element }
+    return { value, staff, element: found.element }
   })
-
-  const [opening] = stated
-  if (!opening) {
-    if (resized === undefined) return
-    const change = followTransposition(state, resized)
-    if (change) transpositionCheck(state, warnings, context, resized).change ??= change
-    return
-  }
-
-  const given = state.staffTranspositions
-  for (const { transposition, staff, element: found } of stated) {
-    const value = { value: transposition, element: found }
-    if (staff === undefined) {
-      given.every = value
-      given.staves.clear()
-    } else {
-      given.staves.set(staff, value)
-    }
-  }
-  const check = transpositionCheck(state, warnings, context, opening.element)
-  // A <staves> earlier in the measure may have opened the check.
-  if (check.stated.size === 0) check.element = opening.element
-  for (const { element: found } of stated) check.stated.add(found)
-  check.change ??= followTransposition(state, opening.element)
+  state.transposition.state(stated, resized, state.staves, warnings, context)
 }
-
-function transpositionCheck(
-  state: PartState,
-  warnings: WarningCollector,
-  context: ReportContext,
-  element: XmlElement,
-): NonNullable<PartState['transpositionCheck']> {
-  return (state.transpositionCheck ??= {
-    place: warnings.reserve(),
-    context,
-    element,
-    stated: new Set(),
-    change: undefined,
-  })
-}
-
-/**
- * Moves the notes to the transposition of the first staff given one. Where
- * that changes the part to a transposition other than the one it is written
- * out in, returns what to report the change at: the <transpose> now in
- * force, or `cause` where no staff is given one.
- */
-function followTransposition(state: PartState, cause: XmlElement): XmlElement | undefined {
-  const before = state.transposition ?? CONCERT_PITCH
-  const inForce = staffTranspositions(state).find((one) => one !== undefined)
-  state.transposition = inForce?.value
-  const now = inForce?.value ?? CONCERT_PITCH
-  const first = state.statedTransposition
-  if (first === undefined || sameTransposition(before, now)) return undefined
-  if (sameTransposition(first.value ?? CONCERT_PITCH, now)) return undefined
-  return inForce?.element ?? cause
-}
-
-/**
- * Fixes the part in `transposition`, which is the one written out, unless
- * the part is fixed already. A key converted before then with a transposition
- * that writes other fifths is written out in a key the source does not state,
- * so the first such key is reported.
- */
-export function fixTransposition(
-  state: PartState,
-  warnings: WarningCollector,
-  transposition: Transposition | undefined,
-): void {
-  if (state.statedTransposition) return
-  state.statedTransposition = { value: transposition }
-  const fifths = writtenFifths(0, transposition)
-  const differing = state.unfixedKeys.find((key) => writtenFifths(0, key.transposition) !== fifths)
-  state.unfixedKeys = []
-  if (differing === undefined) return
-  warnings.addAt(
-    differing.place,
-    'unrepresentable:transposition-change',
-    'MNX states one transposition for a part, and this key is written in another one. ' +
-      "It is written out in the part's transposition, which gives it other fifths.",
-    differing.context,
-    differing.element,
-  )
-}
-
-/** What each staff of the part was last given, by staff number from one. */
-function staffTranspositions(state: PartState): (Stated<Transposition> | undefined)[] {
-  const { every, staves } = state.staffTranspositions
-  return Array.from({ length: state.staves }, (_, i) => staves.get(i + 1) ?? every)
-}
-
-/**
- * Reports what the <transpose> statements of a measure leave unconvertible,
- * once the measure is read: a source can give each staff its own in separate
- * <attributes>. Staves transposed by different intervals are reported at the
- * <transpose> of this measure given to the first staff that differs, or at the
- * measure's first <transpose> where that staff was given none here. A
- * <transpose> that puts the part in a transposition other than the one it is
- * written out in changes instrument. The first such <transpose> of the measure
- * is reported, even where a later one changes back.
- */
-export function settleTranspositions(state: PartState, warnings: WarningCollector): void {
-  const check = state.transpositionCheck
-  if (check === undefined) return
-  state.transpositionCheck = undefined
-
-  const given = staffTranspositions(state)
-  const first = given[0]?.value ?? CONCERT_PITCH
-  const differing = given.findIndex((one) => !sameTransposition(one?.value ?? CONCERT_PITCH, first))
-  if (differing !== -1) {
-    const named = given[differing]?.element
-    warnings.addAt(
-      check.place,
-      'unrepresentable:per-staff-transposition',
-      'The staves of this part are transposed by different intervals, and MNX states one ' +
-        'for the part. The notes follow the first staff that is given one.',
-      check.context,
-      named !== undefined && check.stated.has(named) ? named : check.element,
-    )
-  }
-
-  if (check.change !== undefined) {
-    warnings.addAt(
-      check.place,
-      'unrepresentable:transposition-change',
-      'A part changes instrument partway, and MNX states one transposition for the part. ' +
-        'The one in force at the first pitched note is written out; the notes sound as each ' +
-        'instrument plays them.',
-      check.context,
-      check.change,
-    )
-  }
-}
-
-const CONCERT_PITCH: Transposition = { staffDistance: 0, halfSteps: 0, keyFifthsFlipAt: undefined }
 
 /**
  * The same distance the other way. Zero is written without a sign, because a
@@ -763,10 +615,6 @@ const CONCERT_PITCH: Transposition = { staffDistance: 0, halfSteps: 0, keyFifths
  */
 function opposite(distance: number): number {
   return distance === 0 ? 0 : -distance
-}
-
-function sameTransposition(one: Transposition, other: Transposition): boolean {
-  return one.staffDistance === other.staffDistance && one.halfSteps === other.halfSteps
 }
 
 /**

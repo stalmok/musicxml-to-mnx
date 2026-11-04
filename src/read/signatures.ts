@@ -158,7 +158,7 @@ export class MeasureSignatures {
    */
   convertKeys(): void {
     const state = this.#state
-    const transposition = state.transposition
+    const transposition = state.transposition.inForce
     for (const { keys: written, at, first } of this.#writtenKeys.splice(0)) {
       const keys = written.map((stated) =>
         stated.value && transposition
@@ -171,14 +171,9 @@ export class MeasureSignatures {
       const group = this.#statedAt(this.#keyGroups, at, first)
       group.statements.push(...keys)
       const key = keys.map((stated) => stated.value).find((stated) => stated !== undefined)
-      if (key && !state.statedTransposition) {
+      if (key) {
         const element = statingOf(keys, first)
-        state.unfixedKeys.push({
-          transposition,
-          place: group.place,
-          context: this.#context,
-          element,
-        })
+        state.transposition.keyConverted(transposition, group.place, this.#context, element)
       }
       if (compareFractions(at, fraction(0)) === 0) {
         if (!this.#keySettled) this.#key = key

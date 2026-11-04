@@ -83,7 +83,7 @@ export function pitchStaffPosition(pitch: Pitch, clef: ClefInForce): number {
  */
 export function pitchHeights(state: PartState): PitchHeight {
   const clefs = new Map(state.clefs)
-  const distance = state.transposition?.staffDistance ?? 0
+  const distance = state.transposition.inForce?.staffDistance ?? 0
   return (pitch, staff) => {
     const clef = clefs.get(staff)
     return clef && pitchStaffPosition(pitch, clef) + distance
@@ -211,10 +211,11 @@ export function readNoteAt(
   // interval between them.
   const written = readPitch(pitchElement, path, warnings, context)
   const markings = readNoteMarkings(notations, warnings, context)
+  const transposition = state.transposition.atPitchedNote(warnings)
 
   return {
     id: state.ids.nextNote(),
-    pitch: state.transposition ? soundingPitch(written, state.transposition) : written,
+    pitch: transposition ? soundingPitch(written, transposition) : written,
     ties: [],
     accidentalDisplay: readAccidentalDisplay(element, pitchElement, warnings, context),
     staff,

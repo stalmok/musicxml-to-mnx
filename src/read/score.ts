@@ -39,7 +39,7 @@ import {
   peeking,
   requireAttribute,
 } from '../xml/tree.js'
-import { fixTransposition, readAttributes, settleTranspositions } from './attributes.js'
+import { readAttributes } from './attributes.js'
 import type { MeasureRepeatReading } from './attributes.js'
 import { Endings, readBarline } from './barlines.js'
 import type { EndingStart, EndingStop } from './barlines.js'
@@ -496,10 +496,7 @@ function readPart(
       partPath,
     ),
   )
-  // A part with no pitched note is fixed in the transposition of its first
-  // key, which writes that key as the source states it.
-  const [firstKey] = state.unfixedKeys
-  fixTransposition(state, warnings, firstKey ? firstKey.transposition : state.transposition)
+  const transposition = state.transposition.finish(warnings)
   // Settled once the whole part is in, because the document's order is not
   // the music's and an end can be measures from its start. Each reports what
   // stays unsettled.
@@ -519,7 +516,7 @@ function readPart(
       shortName: partList.shortNames.get(id),
       staves: state.mostStaves,
       kit: state.kit,
-      transposition: state.statedTransposition?.value,
+      transposition,
       measures: readings.map((reading) => reading.measure),
     },
     element,
@@ -734,12 +731,9 @@ function readMeasure(
 
       case 'note':
         // The <attributes> before a note can state the transposition over
-        // several blocks. The keys stated since the last note are converted
-        // here, and the part's transposition is fixed at its first pitched
-        // note. A rest or an unpitched note is not transposed.
-        // A note holds one of <pitch>, <unpitched> and <rest>.
+        // several blocks, so the keys stated since the last note are
+        // converted here.
         signatures.convertKeys()
-        if (child(found, 'pitch')) fixTransposition(state, warnings, state.transposition)
         readNote(reader, state, index, builder, warnings, context, measurePath)
         break
 
@@ -861,7 +855,7 @@ function readMeasure(
     warnings.settleHeld()
   }
 
-  settleTranspositions(state, warnings)
+  state.transposition.settleMeasure(state.staves, warnings)
   const { key, time } = signatures.settle(builder.furthest())
   const jump = onePerMeasure(
     jumps,

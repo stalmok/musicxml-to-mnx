@@ -2,14 +2,12 @@
 // read without.
 
 import type { OpenExtenders } from './lyrics.js'
-import type { ReportContext, WarningPlace } from './collector.js'
-import type { PitchedClefSign, KitComponent, TimeSignature, Transposition } from '../model/score.js'
+import type { PitchedClefSign, KitComponent, TimeSignature } from '../model/score.js'
 import type { Fraction } from '../fraction.js'
-import type { XmlElement } from '../xml/parse.js'
-import type { Stated } from './element.js'
 import { IdGenerator } from './idGenerator.js'
 import { OpenBeams } from './beams.js'
 import { PartLines } from './lines.js'
+import { PartTransposition } from './partTransposition.js'
 import { lengthOfTime, PartSignatures } from './partSignatures.js'
 import { SpannerResolver } from './spanners.js'
 import { SlurResolver } from './slurs.js'
@@ -133,12 +131,8 @@ export interface PartState {
    * written at.
    */
   kitKeys: Map<string, string>
-  /**
-   * The instrument transposition in force, from the part's <transpose>. Every
-   * pitch is carried by it to what the instrument sounds, and the key
-   * signature to the key the music sounds in. Undefined at concert pitch.
-   */
-  transposition: Transposition | undefined
+  /** The instrument transposition, from the part's <transpose>. */
+  transposition: PartTransposition
   /**
    * The <tuplet> stops still to be met: a bracket the reader closed at a
    * barline, because MNX states a tuplet inside one measure, leaves the stop
@@ -153,58 +147,6 @@ export interface PartState {
   carriedTremolos: readonly (string | undefined)[]
   /** The beams left open at the barline, which the next measure may join. */
   openBeams: OpenBeams
-  /**
-   * The first transposition in force at a pitched note, which is the one
-   * written out. MNX states one per part, so a part that changes instrument
-   * partway keeps this one and reports the change. A part with no pitched
-   * note keeps the one its first key is converted with, or else the last one
-   * in force. Undefined until the part is fixed; a value of undefined is
-   * concert pitch.
-   */
-  statedTransposition: { value: Transposition | undefined } | undefined
-  /**
-   * The keys converted before the part is fixed, each with the transposition
-   * it was converted with. Each is checked against the one the part is fixed
-   * in.
-   */
-  unfixedKeys: {
-    transposition: Transposition | undefined
-    place: WarningPlace
-    context: ReportContext
-    element: XmlElement
-  }[]
-  /**
-   * The transposition each staff was last given, with the <transpose> that
-   * gave it. A <transpose> naming no staff gives every staff, including any
-   * the part adds later, and clears what single staves were given before it.
-   * A staff given none sounds as written.
-   */
-  staffTranspositions: {
-    every: Stated<Transposition> | undefined
-    staves: Map<number, Stated<Transposition>>
-  }
-  /**
-   * Where the reports about a measure's <transpose> statements go, once the
-   * measure is read to its end.
-   */
-  transpositionCheck:
-    | {
-        place: WarningPlace
-        context: ReportContext
-        /**
-         * The measure's first <transpose>, or the <staves> that changed the
-         * transposition in force where the measure states none.
-         */
-        element: XmlElement
-        /** Every <transpose> the measure states. */
-        stated: Set<XmlElement>
-        /**
-         * The measure's first <transpose> or <staves> that puts the part in
-         * a transposition other than the one it is written out in.
-         */
-        change: XmlElement | undefined
-      }
-    | undefined
 }
 
 /**
@@ -247,10 +189,6 @@ export function newPartState(
     carriedTupletStops: [],
     carriedTremolos: [],
     openBeams: new OpenBeams(),
-    transposition: undefined,
-    statedTransposition: undefined,
-    unfixedKeys: [],
-    staffTranspositions: { every: undefined, staves: new Map() },
-    transpositionCheck: undefined,
+    transposition: new PartTransposition(),
   }
 }
