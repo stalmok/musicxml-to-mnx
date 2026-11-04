@@ -261,7 +261,7 @@ export function readNote(
   // of them states its <type>.
   if (restElement && written === undefined) builder.writesTypelessRest(voice)
 
-  const { markers, tremolo } = openTupletsAndTremolo(note, builder, warnings, context, path)
+  const opened = openTupletsAndTremolo(note, builder, warnings, context, path)
 
   const restReading = readRest(note, state, builder)
 
@@ -279,7 +279,7 @@ export function readNote(
     fills &&
     !((fills.needsEvent || carriesMarking || restStem !== undefined) && fills.canStayEvent)
   ) {
-    reportMarkersOnMeasureRest(markers, warnings, context)
+    reportMarkersOnMeasureRest(opened.markers, warnings, context)
     setMeasureRest(note, fills, state, builder, measureIndex, warnings, context, path)
     return
   }
@@ -401,7 +401,7 @@ export function readNote(
     // A bracket can stop on a grace note, and the stop is read here as it is
     // on any other note. Left unread, the bracket would run on past the group
     // and take in whatever sounded next.
-    closeTuplets(builder, voice, markers, warnings, context, path, element.line)
+    closeTremoloAndTuplets(opened, placed, builder, voice, warnings, context, path, element.line)
     return
   }
 
@@ -442,7 +442,7 @@ export function readNote(
     undefined,
   )
 
-  closeTremoloAndTuplets(builder, voice, markers, tremolo, warnings, context, path, element.line)
+  closeTremoloAndTuplets(opened, placed, builder, voice, warnings, context, path, element.line)
 }
 
 /** A note carrying <chord>, joined to the event before it. */

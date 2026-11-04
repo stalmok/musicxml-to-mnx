@@ -21,13 +21,18 @@ import { entriesOf } from './tables.js'
 import { multiNoteTremoloOf } from './tremolos.js'
 import type { TremoloMarker } from './tremolos.js'
 import type { TupletDisplaySettings } from './tuplets.js'
-import type { MeasureBuilder, VoiceLine } from './voices.js'
+import type { MeasureBuilder, PlacedEvent, VoiceLine } from './voices.js'
 import { readWrittenValue } from './writtenValues.js'
+
+/** The tuplet markers and the tremolo a note carries, which close once it is placed. */
+export interface OpenedAround {
+  readonly markers: readonly XmlElement[]
+  readonly tremolo: TremoloMarker | undefined
+}
 
 /**
  * Opens what the note starts around it: the tuplets, drawn or implied by a
- * run of ratios, and a two-note tremolo. Returns the tuplet markers and the
- * tremolo, which close once the note is placed.
+ * run of ratios, and a two-note tremolo.
  */
 export function openTupletsAndTremolo(
   note: VoicedNote,
@@ -35,7 +40,7 @@ export function openTupletsAndTremolo(
   warnings: WarningCollector,
   context: ReportContext,
   path: DocumentPath,
-): { markers: readonly XmlElement[]; tremolo: TremoloMarker | undefined } {
+): OpenedAround {
   const {
     element,
     eventNotations,
@@ -320,20 +325,25 @@ export function openTupletsAndTremolo(
 }
 
 /**
- * Closes what the note stops around it: a two-note tremolo, then the tuplets.
- * The tremolo closes first, because the pair sits inside the bracket.
+ * Closes what the note stops around it, once `placed`, its event, stands in
+ * the voice: a two-note tremolo, then the tuplets. The tremolo closes first,
+ * because the pair sits inside the bracket. A grace note takes none of the
+ * pair's time, so it closes no tremolo, but a bracket can stop on one.
  */
 export function closeTremoloAndTuplets(
+  { markers, tremolo }: OpenedAround,
+  placed: PlacedEvent,
   builder: MeasureBuilder,
   voice: VoiceLine,
-  markers: readonly XmlElement[],
-  tremolo: TremoloMarker | undefined,
   warnings: WarningCollector,
   context: ReportContext,
   path: DocumentPath,
   line: number,
 ): void {
-  if (tremolo?.type === 'stop') voice.closeTremolo(tremolo, warnings, context, path, line)
+  const grace = placed.duration === undefined
+  if (!grace && tremolo?.type === 'stop') {
+    voice.closeTremolo(tremolo, warnings, context, path, line)
+  }
   closeTuplets(builder, voice, markers, warnings, context, path, line)
 }
 
