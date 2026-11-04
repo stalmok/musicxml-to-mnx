@@ -680,6 +680,33 @@ describe('a part stating more than one transposition', () => {
     ])
   })
 
+  // A grace note and a chord member joining a kit note are pitched notes, so
+  // the part is fixed at each.
+  test.each([
+    [
+      'a grace note',
+      '<note><grace/><pitch><step>D</step><octave>4</octave></pitch><type>eighth</type></note>',
+    ],
+    [
+      'a chord member joining a kit note',
+      '<note><unpitched><display-step>C</display-step><display-octave>5</display-octave></unpitched>' +
+        '<duration>4</duration><type>quarter</type></note>' +
+        '<note><chord/><pitch><step>E</step><octave>4</octave></pitch>' +
+        '<duration>4</duration><type>quarter</type></note>',
+    ],
+  ])('fixes the part at its first pitched note where that is %s', (_, first) => {
+    const { part, warnings } = read(
+      inPart(IN_B_FLAT, `${first}<attributes>${IN_F}</attributes>${NOTE}`),
+    )
+
+    expect(part?.transposition).toEqual({ staffDistance: 1, halfSteps: 2 })
+    expect(
+      warnings
+        .map((w) => [w.code, w.element])
+        .filter(([code]) => code === 'unrepresentable:transposition-change'),
+    ).toEqual([['unrepresentable:transposition-change', 'transpose']])
+  })
+
   // The part changes back to the transposition it is written out in, which
   // loses nothing more.
   test('reports a change of instrument once where a later measure changes back', () => {
