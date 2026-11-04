@@ -18,6 +18,7 @@ import type { XmlElement } from '../xml/parse.js'
 import { attribute } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
 import { upOrDown } from './marks.js'
+import { diatonicIndex } from './steps.js'
 
 /**
  * Where a pitch is drawn on a staff of the part, in steps from the middle
@@ -65,7 +66,7 @@ interface MarkedArpeggio {
  * two notes a semitone apart can be drawn on the same line.
  */
 function staffOrder(pitch: Pitch): number {
-  return pitch.octave * 7 + 'CDEFGAB'.indexOf(pitch.step)
+  return diatonicIndex(pitch.step, pitch.octave)
 }
 
 /**

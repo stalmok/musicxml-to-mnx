@@ -14,7 +14,6 @@ import type {
   Note,
   Pitch,
   SequenceItem,
-  Step,
   TieTarget,
 } from '../model/score.js'
 import { reportAt } from './collector.js'
@@ -22,6 +21,7 @@ import type { WarningCollector, WrittenAt } from './collector.js'
 import type { PartCollector, PartMeasure } from './partCollector.js'
 import type { TiesOn } from './lines.js'
 import { inTimeOrder, openedIn, pairSpans, voiceKey } from './spanPairing.js'
+import { chromaticIndex } from './steps.js'
 import type { EndPlace, StartEnd, StopEnd } from './spanPairing.js'
 
 /** A tie that has begun, waiting for the note that ends it. */
@@ -76,10 +76,8 @@ type LinedTieStop = Extract<LinedTieEnd, { kind: 'stop' }>
 // end on a respelling of the same sound: G sharp to A flat, or B sharp to C
 // across the octave boundary. A pair that disagrees on the sound stays
 // unmatched and is reported.
-const STEP_SEMITONES: Record<Step, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }
-
 function tieKey(pitch: Pitch): string {
-  return String((pitch.octave + 1) * 12 + STEP_SEMITONES[pitch.step] + pitch.alter)
+  return String(chromaticIndex(pitch))
 }
 
 /**

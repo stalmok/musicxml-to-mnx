@@ -118,12 +118,12 @@ export default {
         'These modules serve many readers, so they import no reader. They may import each other, the model, and the shared modules outside the reader.',
       severity: 'error',
       from: {
-        path: '^src/read/(collector|color|draft|duration|element|idGenerator|noteValues|numbers|spanPairing|tables|timeline|transposition|unrepresentable|wording)\\.ts$',
+        path: '^src/read/(collector|color|draft|duration|element|idGenerator|noteValues|numbers|spanPairing|steps|tables|timeline|transposition|unrepresentable|wording)\\.ts$',
       },
       to: {
         path: '^src/read/',
         pathNot:
-          '^src/read/(collector|color|draft|duration|element|idGenerator|noteValues|numbers|spanPairing|tables|timeline|transposition|unrepresentable|wording)\\.ts$',
+          '^src/read/(collector|color|draft|duration|element|idGenerator|noteValues|numbers|spanPairing|steps|tables|timeline|transposition|unrepresentable|wording)\\.ts$',
       },
     },
     {

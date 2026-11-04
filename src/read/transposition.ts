@@ -15,10 +15,7 @@ import type {
   Step,
   TranspositionInterval,
 } from '../model/score.js'
-
-/** The steps of the scale in order, and where each sits in the octave. */
-const STEPS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'] as const satisfies readonly Step[]
-const SEMITONES: Readonly<Record<Step, number>> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }
+import { movedPitch } from './steps.js'
 
 /**
  * The pitch a written note sounds. The staff distance settles which letter
@@ -26,15 +23,7 @@ const SEMITONES: Readonly<Record<Step, number>> = { C: 0, D: 2, E: 4, F: 5, G: 7
  * written E-flat sounds a D-flat rather than the C-sharp beside it.
  */
 export function soundingPitch(written: Pitch, transposition: TranspositionInterval): Pitch {
-  const stepsFromC = written.octave * 7 + STEPS.indexOf(written.step) - transposition.staffDistance
-  /* v8 ignore next -- seven steps, and the remainder of seven is one of them. */
-  const step = STEPS[((stepsFromC % 7) + 7) % 7] ?? 'C'
-  const octave = Math.floor(stepsFromC / 7)
-
-  const semitonesFromC =
-    written.octave * 12 + SEMITONES[written.step] + written.alter - transposition.halfSteps
-
-  return { step, octave, alter: semitonesFromC - (octave * 12 + SEMITONES[step]) }
+  return movedPitch(written, -transposition.staffDistance, -transposition.halfSteps)
 }
 
 /**
@@ -131,12 +120,7 @@ export function keyFifthsFlipAt(
  * a D-flat one letter up.
  */
 export function respelled(pitch: Pitch, letters: number): Pitch {
-  const stepsFromC = pitch.octave * 7 + STEPS.indexOf(pitch.step) + letters
-  /* v8 ignore next -- seven steps, and the remainder of seven is one of them. */
-  const step = STEPS[((stepsFromC % 7) + 7) % 7] ?? 'C'
-  const octave = Math.floor(stepsFromC / 7)
-  const semitonesFromC = pitch.octave * 12 + SEMITONES[pitch.step] + pitch.alter
-  return { step, octave, alter: semitonesFromC - (octave * 12 + SEMITONES[step]) }
+  return movedPitch(pitch, letters, 0)
 }
 
 // Where each letter sits on the line of fifths, counted from C.
