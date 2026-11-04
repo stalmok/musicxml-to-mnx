@@ -10,7 +10,7 @@ import * as readAhead from './readAhead.js'
 import { timesInForce } from './signatures.js'
 
 // Every read the reader runs ahead of itself. Each one takes the element it
-// looks into, and is run on every part and every measure below.
+// looks into, and is run on every element below.
 const READ_AHEADS: readonly ((element: XmlElement) => unknown)[] = [
   ...Object.values(readAhead),
   timesInForce,
@@ -74,9 +74,7 @@ function recorded(root: XmlElement): string[] {
 describe('a read ahead of the reader', () => {
   test.each(documents)('records nothing it reads in $name', ({ source }) => {
     const root = parseXmlRoot(source)
-    const looked = [...descendants(root)].filter(
-      (element) => element.name === 'part' || element.name === 'measure',
-    )
+    const looked = [root, ...descendants(root)]
     for (const read of READ_AHEADS) for (const element of looked) read(element)
 
     expect(recorded(root)).toEqual([])
