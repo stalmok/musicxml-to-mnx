@@ -2531,10 +2531,14 @@ describe('a rest after a grace note that opens a tuplet', () => {
 // in a voice: rests with a value lasting the measure, then one rest with no
 // value lasting as long again.
 describe('a rest repeating the rests before it in a multi-measure rest', () => {
+  // The two measures after the first are the rest of the multi-measure rest.
+  const resting = (number: number) =>
+    `<measure number="${String(number)}"><note><rest measure="yes"/><duration>16</duration>` +
+    '<voice>1</voice></note></measure>'
   const opening = (style: string, body: string) =>
     '<score-partwise><part id="P1"><measure number="1"><attributes><divisions>4</divisions>' +
     `<time><beats>4</beats><beat-type>4</beat-type></time>${style}</attributes>` +
-    `${body}</measure></part></score-partwise>`
+    `${body}</measure>${resting(2)}${resting(3)}</part></score-partwise>`
   const multiRest = '<measure-style><multiple-rest>3</multiple-rest></measure-style>'
   const rest = (duration: number, type?: string) =>
     `<note><rest/><duration>${String(duration)}</duration><voice>1</voice>` +

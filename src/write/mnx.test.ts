@@ -181,7 +181,7 @@ test.each([
       [
         {
           key: { fifths: -3 },
-          time: { count: 6, unit: 8, display: undefined },
+          time: { count: 6, unit: 4, display: undefined },
           tempos: [],
           number: 0,
           ...NO_BARLINE,
@@ -204,7 +204,7 @@ describe('global measures', () => {
     const score = scoreOf(measureOf(WHOLE_C), [
       {
         key: { fifths: 2 },
-        time: { count: 3, unit: 8, display: undefined },
+        time: { count: 3, unit: 2, display: undefined },
         tempos: [],
         number: undefined,
         ...NO_BARLINE,
@@ -213,7 +213,7 @@ describe('global measures', () => {
 
     expect(writeValid(score).global.measures[0]).toEqual({
       key: { fifths: 2 },
-      time: { count: 3, unit: 8 },
+      time: { count: 3, unit: 2 },
     })
   })
 
@@ -1100,8 +1100,8 @@ describe('endings', () => {
   }
 
   test('writes the times where the bracket names any', () => {
-    expect(endingOf({ duration: 2, numbers: [1, 2], open: false })).toEqual({
-      duration: 2,
+    expect(endingOf({ duration: 1, numbers: [1, 2], open: false })).toEqual({
+      duration: 1,
       numbers: [1, 2],
     })
   })
