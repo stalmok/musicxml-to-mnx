@@ -86,6 +86,14 @@ describe('the multi-measure rests of a document', () => {
     ])
   })
 
+  test('holds the rests of each score apart from those of another', () => {
+    const mnx = withRests(4, ['m1', 3])
+    const second = { name: 'Part', multimeasureRests: [{ start: 'm2', duration: 1 }] }
+    expect(misplacedMultimeasureRests({ ...mnx, scores: [...(mnx.scores ?? []), second] })).toEqual(
+      [],
+    )
+  })
+
   // danglingReferences reports a start that leads nowhere.
   test('passes over a rest whose start names no measure', () => {
     expect(misplacedMultimeasureRests(withRests(1, ['m9', 5]))).toEqual([])
@@ -103,6 +111,26 @@ describe('the length of each sequence against the time signature in force', () =
   test('holds a measure to the time signature stated before it', () => {
     expect(sequencesPastTime(document([threeFour, {}], notes(3), notes(4)))).toEqual([
       'part 1 measure 2 sequence 1 lasts 1 of 0.75',
+    ])
+  })
+
+  test('holds a measure to a time signature that replaces the one before it', () => {
+    const twoFour: MNXGlobalMeasure = { time: { count: 2, unit: 4 } }
+    expect(sequencesPastTime(document([threeFour, twoFour], notes(3), notes(3)))).toEqual([
+      'part 1 measure 2 sequence 1 lasts 0.75 of 0.5',
+    ])
+  })
+
+  test('counts a space by its fraction and a tremolo by the time it takes', () => {
+    const tremolo: MNXSequenceItem = {
+      type: 'tremolo',
+      marks: 3,
+      outer: { duration: { base: 'quarter' }, multiple: 2 },
+      content: [{ duration: { base: 'half' } }, { duration: { base: 'half' } }],
+    }
+    const space: MNXSequenceItem = { type: 'space', duration: [3, 8] }
+    expect(sequencesPastTime(document([threeFour], [space, tremolo]))).toEqual([
+      'part 1 measure 1 sequence 1 lasts 0.875 of 0.75',
     ])
   })
 
