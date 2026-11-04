@@ -606,7 +606,7 @@ function readTransposition(
     const staff = readAttributeInRange(found.element, 'number', path, 1, state.staves)
     return { value, staff, element: found.element }
   })
-  state.transposition.state(stated, resized, state.staves, warnings, context)
+  state.transposition.takeStatements(stated, resized, state.staves, warnings, context)
 }
 
 /**

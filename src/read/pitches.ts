@@ -20,7 +20,6 @@ import type { ElementReader } from './element.js'
 import { parseWholeNumber, readIntegerInRange } from './numbers.js'
 import type { ClefInForce, PartState } from './state.js'
 import type { PitchHeight } from './arpeggios.js'
-import { soundingPitch } from './transposition.js'
 import { diatonicIndex } from './steps.js'
 import { recogniser } from './tables.js'
 
@@ -83,7 +82,7 @@ export function pitchStaffPosition(pitch: Pitch, clef: ClefInForce): number {
  */
 export function pitchHeights(state: PartState): PitchHeight {
   const clefs = new Map(state.clefs)
-  const distance = state.transposition.inForce?.staffDistance ?? 0
+  const distance = state.transposition.staffDistance
   return (pitch, staff) => {
     const clef = clefs.get(staff)
     return clef && pitchStaffPosition(pitch, clef) + distance
@@ -211,11 +210,10 @@ export function readNoteAt(
   // interval between them.
   const written = readPitch(pitchElement, path, warnings, context)
   const markings = readNoteMarkings(notations, warnings, context)
-  const transposition = state.transposition.atPitchedNote(warnings)
 
   return {
     id: state.ids.nextNote(),
-    pitch: transposition ? soundingPitch(written, transposition) : written,
+    pitch: state.transposition.sounding(written, warnings),
     ties: [],
     accidentalDisplay: readAccidentalDisplay(element, pitchElement, warnings, context),
     staff,

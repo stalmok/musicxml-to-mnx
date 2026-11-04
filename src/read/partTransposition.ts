@@ -12,10 +12,10 @@
 // the part starts, however many <attributes> they take.
 
 import type { ReportContext, WarningCollector, WarningPlace } from './collector.js'
-import type { Transposition } from '../model/score.js'
+import type { Pitch, Transposition } from '../model/score.js'
 import type { XmlElement } from '../xml/parse.js'
 import type { Stated } from './element.js'
-import { writtenFifths } from './transposition.js'
+import { concertFifths, soundingPitch, writtenFifths } from './transposition.js'
 
 /** One <transpose>, with the staff it names, if any. */
 export interface StatedTransposition {
@@ -53,6 +53,11 @@ interface MeasureCheck {
 const CONCERT_PITCH: Transposition = { staffDistance: 0, halfSteps: 0, keyFifthsFlipAt: undefined }
 
 export class PartTransposition {
+  /**
+   * The transposition in force now. Every pitch is carried by it to what the
+   * instrument sounds, and the key signature to the key the music sounds in.
+   * Undefined at concert pitch.
+   */
   #inForce: Transposition | undefined
   /**
    * The one written out. Undefined until the part is fixed; a value of
@@ -69,35 +74,33 @@ export class PartTransposition {
   #check: MeasureCheck | undefined
 
   /**
-   * The transposition in force now. Every pitch is carried by it to what the
-   * instrument sounds, and the key signature to the key the music sounds in.
-   * Undefined at concert pitch.
+   * The pitch a written note sounds, by the transposition in force. The part
+   * is fixed in that transposition at its first pitched note.
    */
-  get inForce(): Transposition | undefined {
-    return this.#inForce
-  }
-
-  /**
-   * The transposition a pitched note sounds by: the one in force. The part is
-   * fixed in it at its first pitched note.
-   */
-  atPitchedNote(warnings: WarningCollector): Transposition | undefined {
+  sounding(written: Pitch, warnings: WarningCollector): Pitch {
     this.#fix(warnings, this.#inForce)
-    return this.#inForce
+    return this.#inForce ? soundingPitch(written, this.#inForce) : written
+  }
+
+  /** The key the music sounds in, from the fifths the part writes now. */
+  concertFifths(written: number): number {
+    return this.#inForce ? concertFifths(written, this.#inForce) : written
+  }
+
+  /** How many staff steps the part writes a pitch above the one it sounds now. */
+  get staffDistance(): number {
+    return this.#inForce?.staffDistance ?? 0
   }
 
   /**
-   * Records a key converted with `transposition`, to be checked against the
-   * one the part is fixed in. A key converted once the part is fixed is
-   * converted with that one.
+   * Records a key converted now, to be checked against the transposition the
+   * part is fixed in. A key converted once the part is fixed is converted
+   * with that one.
    */
-  keyConverted(
-    transposition: Transposition | undefined,
-    place: WarningPlace,
-    context: ReportContext,
-    element: XmlElement,
-  ): void {
-    if (!this.#fixed) this.#unfixedKeys.push({ transposition, place, context, element })
+  keyConverted(place: WarningPlace, context: ReportContext, element: XmlElement): void {
+    if (!this.#fixed) {
+      this.#unfixedKeys.push({ transposition: this.#inForce, place, context, element })
+    }
   }
 
   /**
@@ -106,7 +109,7 @@ export class PartTransposition {
    * drop the staff the notes follow. A block that drops it and states a
    * <transpose> is read as one step.
    */
-  state(
+  takeStatements(
     stated: readonly StatedTransposition[],
     resized: XmlElement | undefined,
     staves: number,

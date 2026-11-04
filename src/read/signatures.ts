@@ -27,12 +27,7 @@ import { parseExactDecimal } from './numbers.js'
 import { KEY, lengthOfTime, reportLate, sameMeter, TIME } from './partSignatures.js'
 import type { HeldSignature, SignatureKind } from './partSignatures.js'
 import type { PartState } from './state.js'
-import {
-  concertFifths,
-  keyFifthsFlipAt,
-  writtenFifths,
-  writtenFifthsWithFlip,
-} from './transposition.js'
+import { keyFifthsFlipAt, writtenFifths, writtenFifthsWithFlip } from './transposition.js'
 import { writtenValueOf } from './writtenValues.js'
 
 /**
@@ -158,13 +153,13 @@ export class MeasureSignatures {
    */
   convertKeys(): void {
     const state = this.#state
-    const transposition = state.transposition.inForce
+    const { transposition } = state
     for (const { keys: written, at, first } of this.#writtenKeys.splice(0)) {
       const keys = written.map((stated) =>
-        stated.value && transposition
+        stated.value
           ? {
               ...stated,
-              value: { ...stated.value, fifths: concertFifths(stated.value.fifths, transposition) },
+              value: { ...stated.value, fifths: transposition.concertFifths(stated.value.fifths) },
             }
           : stated,
       )
@@ -173,7 +168,7 @@ export class MeasureSignatures {
       const key = keys.map((stated) => stated.value).find((stated) => stated !== undefined)
       if (key) {
         const element = statingOf(keys, first)
-        state.transposition.keyConverted(transposition, group.place, this.#context, element)
+        transposition.keyConverted(group.place, this.#context, element)
       }
       if (compareFractions(at, fraction(0)) === 0) {
         if (!this.#keySettled) this.#key = key
