@@ -48,8 +48,7 @@ interface ReadMarks {
   readonly coda: Coda
   readonly fine: NonNullable<GlobalMeasure['fine']>
   readonly jump: ReadJump
-  // Cut or dropped once the part is read, and settled over every part once
-  // all are merged.
+  // Dropped once the part is read where its own measures contradict it.
   multimeasureRest: NonNullable<GlobalMeasure['multimeasureRest']>
 }
 

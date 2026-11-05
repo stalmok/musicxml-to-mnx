@@ -357,6 +357,48 @@ describe('a multi-measure rest', () => {
     ])
   })
 
+  test('reports each part whose span is dropped', () => {
+    const resting = part('P1', [
+      { attributes: multipleRest('3'), body: REST },
+      { body: REST },
+      { body: REST },
+      { body: NOTE },
+    ])
+    const { mnx, warnings } = convert(
+      resting,
+      part('P2', [
+        { attributes: multipleRest('2'), body: REST },
+        { body: REST },
+        { body: NOTE },
+        { body: NOTE },
+      ]),
+      resting.replace('id="P1"', 'id="P3"'),
+    )
+
+    expect(mnx.scores?.[0]?.multimeasureRests).toEqual([
+      { start: mnx.global.measures[0]?.id, duration: 2 },
+    ])
+    expect(warnings.map((w) => [w.code, w.context.part])).toEqual([
+      ['unrepresentable:cross-part-multimeasure-rest', 'P1'],
+      ['unrepresentable:cross-part-multimeasure-rest', 'P3'],
+    ])
+  })
+
+  test('does not report the cut of one dropped for a note of another part', () => {
+    const { mnx, warnings } = convert(
+      part('P1', [
+        { attributes: multipleRest('5'), body: REST },
+        { body: REST },
+        { body: REST },
+        { body: REST },
+      ]),
+      part('P2', [{ body: REST }, { body: REST }, { body: REST }, { body: NOTE }]),
+    )
+
+    expect(mnx.scores).toBeUndefined()
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-multimeasure-rest'])
+  })
+
   test('keeps reporting the other measure-style children', () => {
     const { mnx, warnings } = convert(
       part('P1', [

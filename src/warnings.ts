@@ -355,7 +355,7 @@ export const WARNING_CODES = Object.freeze([
   // The parts of the score number the same measure differently. The first
   // stated is the one converted.
   'inconsistent:measure-number',
-  // A multi-measure rest spans more measures than the part has left, and is
+  // A multi-measure rest spans more measures than the score has left, and is
   // cut to the measures that are there. Also a rest that starts inside an
   // earlier one of its part, or spans a measure where its part sounds a note.
   // Such a rest is not converted.
