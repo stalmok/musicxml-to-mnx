@@ -144,7 +144,7 @@ describe('a multi-measure rest', () => {
   test('does not report a part that states no count at all', () => {
     const { mnx, warnings } = convert(
       part('P1', RESTING),
-      part('P2', [{ body: NOTE }, { body: NOTE }, { body: NOTE }, { body: NOTE }]),
+      part('P2', [{ body: REST }, { body: REST }, { body: REST }, { body: NOTE }]),
     )
 
     expect(mnx.scores?.[0]?.multimeasureRests?.[0]?.duration).toBe(3)
@@ -191,6 +191,85 @@ describe('a multi-measure rest', () => {
     ])
     expect(warnings.map((w) => [w.code, w.element, w.context.measure])).toEqual([
       ['inconsistent:multimeasure-rest', 'multiple-rest', 2],
+    ])
+  })
+
+  test('drops one that starts inside an earlier one of the same part', () => {
+    const { mnx, warnings } = convert(
+      part('P1', [
+        { attributes: multipleRest('3'), body: REST },
+        { attributes: multipleRest('2'), body: REST },
+        { body: REST },
+        { body: NOTE },
+      ]),
+    )
+
+    expect(mnx.scores?.[0]?.multimeasureRests).toEqual([
+      { start: mnx.global.measures[0]?.id, duration: 3 },
+    ])
+    expect(warnings.map((w) => [w.code, w.element, w.context.measure])).toEqual([
+      ['inconsistent:multimeasure-rest', 'multiple-rest', 2],
+    ])
+  })
+
+  test('drops one over a measure where its own part sounds a note', () => {
+    const { mnx, warnings } = convert(
+      part('P1', [{ attributes: multipleRest('2'), body: REST }, { body: NOTE }]),
+    )
+
+    expect(mnx.scores).toBeUndefined()
+    expect(warnings.map((w) => [w.code, w.element, w.context.measure])).toEqual([
+      ['inconsistent:multimeasure-rest', 'multiple-rest', 1],
+    ])
+  })
+
+  test('drops one that starts inside a rest of another part', () => {
+    const { mnx, warnings } = convert(
+      part('P1', [
+        { attributes: multipleRest('2'), body: REST },
+        { body: REST },
+        { body: REST },
+        { body: NOTE },
+      ]),
+      part('P2', [
+        { body: REST },
+        { attributes: multipleRest('2'), body: REST },
+        { body: REST },
+        { body: NOTE },
+      ]),
+    )
+
+    expect(mnx.scores?.[0]?.multimeasureRests).toEqual([
+      { start: mnx.global.measures[0]?.id, duration: 2 },
+    ])
+    expect(warnings.map((w) => [w.code, w.element, w.context.measure])).toEqual([
+      ['unrepresentable:cross-part-multimeasure-rest', 'multiple-rest', 2],
+    ])
+  })
+
+  test('drops one over a measure where another part sounds a note', () => {
+    const { mnx, warnings } = convert(
+      part('P1', [
+        { attributes: multipleRest('2'), body: REST },
+        { body: REST },
+        { body: REST },
+        { body: NOTE },
+      ]),
+      part('P2', [
+        { body: NOTE },
+        { attributes: multipleRest('2'), body: REST },
+        { body: REST },
+        { body: NOTE },
+      ]),
+    )
+
+    // P1's rest covers P2's note in measure 1. P2's rest no longer starts
+    // inside a rest, and P1 rests under it.
+    expect(mnx.scores?.[0]?.multimeasureRests).toEqual([
+      { start: mnx.global.measures[1]?.id, duration: 2 },
+    ])
+    expect(warnings.map((w) => [w.code, w.element, w.context.measure])).toEqual([
+      ['unrepresentable:cross-part-multimeasure-rest', 'multiple-rest', 1],
     ])
   })
 

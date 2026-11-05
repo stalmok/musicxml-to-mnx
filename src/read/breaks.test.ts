@@ -11,15 +11,16 @@ import { convertValid } from '../../tests/support/convert.js'
 const NOTE =
   '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>' +
   '<type>whole</type></note>'
+const REST = '<note><rest measure="yes"/><duration>4</duration></note>'
 
 /** A part whose measures each open with the given content before one note. */
-function part(id: string, measures: readonly string[]) {
+function part(id: string, measures: readonly string[], body = NOTE) {
   const written = measures
     .map(
       (opening, index) =>
         `<measure number="${String(index + 1)}">` +
         (index === 0 ? '<attributes><divisions>1</divisions></attributes>' : '') +
-        `${opening}${NOTE}</measure>`,
+        `${opening}${body}</measure>`,
     )
     .join('')
   return `<part id="${id}">${written}</part>`
@@ -142,11 +143,15 @@ describe('system and page breaks', () => {
 
   test('writes the pages beside a multi-measure rest', () => {
     const { mnx, warnings } = convert(
-      part('P1', [
-        '<attributes><measure-style><multiple-rest>2</multiple-rest></measure-style></attributes>',
-        '',
-        '<print new-page="yes"/>',
-      ]),
+      part(
+        'P1',
+        [
+          '<attributes><measure-style><multiple-rest>2</multiple-rest></measure-style></attributes>',
+          '',
+          '<print new-page="yes"/>',
+        ],
+        REST,
+      ),
     )
 
     expect(mnx.scores?.[0]?.multimeasureRests).toEqual([{ start: 'm1', duration: 2 }])

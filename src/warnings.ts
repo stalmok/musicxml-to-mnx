@@ -177,7 +177,9 @@ export const WARNING_CODES = Object.freeze([
   // one converted.
   'unrepresentable:multimeasure-rest',
   // The parts of the score state different multi-measure rest spans over the
-  // same measure, and MNX states one for the score.
+  // same measure, and MNX states one for the score. Also a rest that starts
+  // inside another part's, or spans a measure where another part sounds a
+  // note. Such a rest is not converted.
   'unrepresentable:cross-part-multimeasure-rest',
   // A multi-measure rest drawn with the stacked rest symbols rather than the
   // single bar, which MNX has no way to ask for. It is drawn the default way.
@@ -353,8 +355,10 @@ export const WARNING_CODES = Object.freeze([
   // The parts of the score number the same measure differently. The first
   // stated is the one converted.
   'inconsistent:measure-number',
-  // A multi-measure rest spans more measures than the part has left. It is
-  // cut to the measures that are there.
+  // A multi-measure rest spans more measures than the part has left, and is
+  // cut to the measures that are there. Also a rest that starts inside an
+  // earlier one of its part, or spans a measure where its part sounds a note.
+  // Such a rest is not converted.
   'inconsistent:multimeasure-rest',
   // An element leaves out an attribute MusicXML requires on it, such as the
   // type of a <tie>, so what the element states cannot be read. The element

@@ -58,7 +58,7 @@ import type { KeysAcrossParts, ReadGlobalMeasure, ReadJump, UndrawnSign } from '
 import { drawingOf, settleJumps } from './jumps.js'
 import { writtenLengthOf } from './tuplets.js'
 import { MeasureRepeats } from './measureRepeats.js'
-import { MultimeasureRests } from './multimeasureRests.js'
+import { MultimeasureRests, settleMultimeasureRests } from './multimeasureRests.js'
 import type { PartCollector } from './partCollector.js'
 import { lengthOfTime } from './partSignatures.js'
 import {
@@ -254,6 +254,11 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
       warnings,
     )
   })
+  settleMultimeasureRests(
+    merged,
+    readings.map(({ part }) => part.measures),
+    warnings,
+  )
   const flips = keys.parts.map((part) => part.flipAt)
   const globalMeasures = settleJumps(
     merged,
