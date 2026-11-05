@@ -851,6 +851,72 @@ describe('a lyric on a note of a chord', () => {
     expect(warnings).toEqual([])
   })
 
+  describe('a chord that sings a syllable and stops the line before it', () => {
+    const chordLines = (mnx: ReturnType<typeof convertValid>['mnx']) =>
+      (mnx.parts[0]?.measures[0]?.sequences[0]?.content ?? []).map((item) =>
+        'lyrics' in item ? item.lyrics?.lines : undefined,
+      )
+    const twoOrders = (syllable: string, other: string) => [
+      ['syllable first', note('E', syllable) + member('G', other)],
+      ['syllable last', note('E', other) + member('G', syllable)],
+    ]
+
+    test.each(twoOrders(sung('lo'), held('stop')))(
+      'ends the line before the chord at the chord, %s',
+      (_, chord) => {
+        const { mnx, warnings } = convertValid(
+          measure(note('C', sung('la', '<extend type="start"/>')) + note('D') + chord),
+        )
+        const { ids } = linesOf(mnx)
+
+        expect(chordLines(mnx)).toStrictEqual([
+          { '1': { text: 'la', extender: { target: ids[2] } } },
+          undefined,
+          { '1': { text: 'lo' } },
+        ])
+        expect(warnings).toEqual([])
+      },
+    )
+
+    test.each(twoOrders(sung('lo', '<extend type="start"/>'), held('stop')))(
+      'starts its own line and leaves it open, %s',
+      (_, chord) => {
+        const { mnx, warnings } = convertValid(
+          measure(
+            note('C', sung('la', '<extend type="start"/>')) +
+              note('D') +
+              chord +
+              note('F', held('stop')),
+          ),
+        )
+        const { ids } = linesOf(mnx)
+
+        expect(chordLines(mnx)).toStrictEqual([
+          { '1': { text: 'la', extender: { target: ids[2] } } },
+          undefined,
+          { '1': { text: 'lo', extender: { target: ids[3] } } },
+          undefined,
+        ])
+        expect(warnings).toEqual([])
+      },
+    )
+
+    test.each(twoOrders(sung('lo'), held('continue')))(
+      'runs the line before the chord on to the chord, %s',
+      (_, chord) => {
+        const { mnx, warnings } = convertValid(
+          measure(note('C', sung('la', '<extend type="start"/>')) + note('D') + chord),
+        )
+        const { ids } = linesOf(mnx)
+
+        expect(chordLines(mnx)[0]).toStrictEqual({
+          '1': { text: 'la', extender: { target: ids[2] } },
+        })
+        expect(warnings).toEqual([])
+      },
+    )
+  })
+
   test('states the syllable on a grace chord', () => {
     const grace = (step: string, chord = '') =>
       `<note><grace/>${chord}<pitch><step>${step}</step><octave>4</octave></pitch>` +

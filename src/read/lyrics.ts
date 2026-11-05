@@ -35,11 +35,25 @@ const LYRIC_TYPES = new Map<string, 'start' | 'middle' | 'end' | undefined>([
 ])
 
 /**
- * The melisma lines open in a part, keyed by voice and verse line, which a
- * lyric on a later note of that voice can reach. A line stays here once a
- * lyric stops it, so another note of the same chord can stop it again.
+ * Where each verse of a part stands, keyed by voice and verse line: the
+ * melisma line open in it, which a lyric on a later note of that voice can
+ * reach, and the event of the last syllable sung. A line stays open once a
+ * lyric stops it, so another note of the same chord can stop it again. The
+ * line open before the last syllable is kept too, for the other notes of that
+ * syllable's chord.
  */
-export type OpenExtenders = Map<string, { line: Draft<LyricExtender>; stopped: boolean }>
+export type OpenExtenders = Map<string, VerseState>
+
+interface VerseState {
+  open?: OpenLine
+  sungAt?: string
+  before?: OpenLine | undefined
+}
+
+interface OpenLine {
+  line: Draft<LyricExtender>
+  stopped: boolean
+}
 
 const EXTEND_TYPES: ReadonlySet<string> = new Set(['start', 'stop', 'continue'])
 
@@ -70,7 +84,14 @@ export function readLyrics(
 
     if (!verse) {
       if (!extend) continue
-      const reached = open.get(key)
+      // Under a chord that sings a syllable, the notes of the chord can come in
+      // any order. A stop there ends the line open before the chord, or else
+      // the line the syllable starts. Any other <extend> restates the line the
+      // syllable starts, where it starts one.
+      const state = open.get(key)
+      const sungHere = state?.sungAt === event
+      if (sungHere && state.open && extendType !== 'stop') continue
+      const reached = sungHere ? (state.before ?? state.open) : state?.open
       if (!reached || (reached.stopped && reached.line.target !== event)) {
         warnings.add(
           'unclosed:spanner',
@@ -81,8 +102,6 @@ export function readLyrics(
         )
         continue
       }
-      // An <extend> that continues a line this event starts restates the start.
-      if (lyrics.get(line)?.extender === reached.line && extendType !== 'stop') continue
       reached.line.target = event
       endsLine = true
       if (extendType === 'stop') reached.stopped = true
@@ -97,7 +116,7 @@ export function readLyrics(
     const stated = lyrics.get(verse.line)
     if (!stated) {
       // A syllable ends the line before it in its verse.
-      open.delete(key)
+      open.set(key, { sungAt: event, before: open.get(key)?.open })
       lyrics.set(verse.line, starts ? withLine(verse.lyric, key, open) : verse.lyric)
       continue
     }
@@ -149,7 +168,7 @@ interface Verse {
 /** The syllable with a melisma line starting at it, open under `key`. */
 function withLine(lyric: Lyric, key: string, open: OpenExtenders): Lyric {
   const extender: Draft<LyricExtender> = { target: undefined }
-  open.set(key, { line: extender, stopped: false })
+  open.set(key, { ...open.get(key), open: { line: extender, stopped: false } })
   return { ...lyric, extender }
 }
 
