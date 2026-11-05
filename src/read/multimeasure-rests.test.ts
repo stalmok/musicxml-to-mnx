@@ -245,6 +245,7 @@ describe('a multi-measure rest', () => {
     expect(warnings.map((w) => [w.code, w.element, w.context.measure])).toEqual([
       ['unrepresentable:cross-part-multimeasure-rest', 'multiple-rest', 2],
     ])
+    expect(warnings[0]?.message).toContain('starts inside one another part states from measure 1.')
   })
 
   test('drops one over a measure where another part sounds a note', () => {
@@ -397,6 +398,58 @@ describe('a multi-measure rest', () => {
 
     expect(mnx.scores).toBeUndefined()
     expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-multimeasure-rest'])
+  })
+
+  test('cuts the rest of each part that states one past the last measure', () => {
+    const { mnx, warnings } = convert(
+      part('P1', [{ attributes: multipleRest('5'), body: REST }, { body: REST }]),
+      part('P2', [{ attributes: multipleRest('6'), body: REST }, { body: REST }]),
+    )
+
+    expect(mnx.scores?.[0]?.multimeasureRests).toEqual([
+      { start: mnx.global.measures[0]?.id, duration: 2 },
+    ])
+    expect(warnings.map((w) => [w.code, w.context.part])).toEqual([
+      ['inconsistent:multimeasure-rest', 'P1'],
+      ['inconsistent:multimeasure-rest', 'P2'],
+    ])
+  })
+
+  test('drops one over a measure where one voice of another part sounds a note', () => {
+    const { mnx, warnings } = convert(
+      part('P1', [{ attributes: multipleRest('2'), body: REST }, { body: REST }]),
+      part('P2', [
+        { body: REST },
+        {
+          body:
+            NOTE.replace('</note>', '<voice>1</voice></note>') +
+            '<backup><duration>4</duration></backup>' +
+            '<note><rest measure="yes"/><duration>4</duration><voice>2</voice></note>',
+        },
+      ]),
+    )
+
+    expect(mnx.scores).toBeUndefined()
+    expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:cross-part-multimeasure-rest'])
+  })
+
+  test('keeps one over a measure where another part skips time and rests', () => {
+    const { mnx, warnings } = convert(
+      part('P1', [{ attributes: multipleRest('2'), body: REST }, { body: REST }]),
+      part('P2', [
+        { body: REST },
+        {
+          body:
+            '<forward><duration>2</duration></forward>' +
+            '<note><rest/><duration>2</duration><type>half</type></note>',
+        },
+      ]),
+    )
+
+    expect(mnx.scores?.[0]?.multimeasureRests).toEqual([
+      { start: mnx.global.measures[0]?.id, duration: 2 },
+    ])
+    expect(warnings).toEqual([])
   })
 
   test('keeps reporting the other measure-style children', () => {

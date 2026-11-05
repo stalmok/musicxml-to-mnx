@@ -40,8 +40,7 @@ export class MultimeasureRests implements PartCollector {
         global.multimeasureRest = undefined
         return
       }
-      const spans = Math.min(rest.value, measures.length - index)
-      if (measures.slice(index, index + spans).some(({ measure }) => sounds(measure))) {
+      if (measures.slice(index, index + rest.value).some(({ measure }) => sounds(measure))) {
         report(
           'The part sounds a note in the measures this multi-measure rest spans, so the ' +
             'rest is not converted.',
@@ -49,7 +48,7 @@ export class MultimeasureRests implements PartCollector {
         global.multimeasureRest = undefined
         return
       }
-      open = { start: index, end: index + spans }
+      open = { start: index, end: index + rest.value }
     })
   }
 }
@@ -101,17 +100,14 @@ export function settleMultimeasureRests(
         )
         continue
       }
-      if (kept === undefined && open !== undefined && index < open.end) {
+      if (open !== undefined && index < open.end) {
         cross(
           'This multi-measure rest starts inside one another part states from measure ' +
             `${String(open.start + 1)}.`,
         )
         continue
       }
-      if (
-        kept === undefined &&
-        parts.some((part) => part.measures.slice(index, index + spans).some(sounds))
-      ) {
+      if (parts.some((part) => part.measures.slice(index, index + spans).some(sounds))) {
         cross('Another part sounds a note in the measures this multi-measure rest spans.')
         continue
       }
