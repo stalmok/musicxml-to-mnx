@@ -87,10 +87,10 @@ export function readLyrics(
       if (!extend) continue
       // On the syllable's own note, the order is the source's: Finale writes
       // the stop of a line that ends on its own note after the syllable, and
-      // Dorico the stop of the line before it ahead of the syllable. A stop
-      // on another note of the chord ends the line open before the chord,
-      // whichever note is read first. An <extend> that is not a stop, at an
-      // event whose syllable starts a line, restates the start.
+      // Dorico the stop of the line before it ahead of the syllable. An
+      // <extend> on another note of the chord reaches the line open before
+      // the chord. Except for a stop, one at an event whose syllable starts
+      // a line restates the start instead.
       const state = open.get(key)
       const sungHere = state?.sungAt === event
       if (sungHere && state.open && extendType !== 'stop') continue
