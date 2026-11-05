@@ -2463,6 +2463,25 @@ describe("a rest marked as the measure's standing beside other notes", () => {
     expect(marked.warnings.some((w) => w.code === 'inconsistent:duration')).toBe(units !== 3)
   })
 
+  test('writes a marked rest that is the only note of a tuplet as it writes an unmarked one', () => {
+    const source = (rest: string) =>
+      inMeasure(
+        '<attributes><time><beats>2</beats><beat-type>4</beat-type></time></attributes>' +
+          `<note>${rest}<duration>8</duration><voice>1</voice><type>half</type><dot/>` +
+          '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes>' +
+          '<normal-type>quarter</normal-type></time-modification>' +
+          '<notations><tuplet type="start"/><tuplet type="stop"/></notations></note>',
+      )
+    const marked = convertValid(source('<rest measure="yes"/>'))
+    const plain = convertValid(source('<rest/>'))
+
+    expect(plain.mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]).toMatchObject({
+      type: 'tuplet',
+    })
+    expect(marked.mnx).toEqual(plain.mnx)
+    expect(marked.warnings).toEqual(plain.warnings)
+  })
+
   test('rests the measure where the rest is the whole of the voice', () => {
     const { mnx, warnings } = convertValid(inMeasure(marked))
     const sequence = mnx.parts[0]?.measures[0]?.sequences[0]
@@ -2655,6 +2674,14 @@ describe('a rest repeating the rests before it in a multi-measure rest', () => {
     )
 
     expect(warnings.map((w) => w.code)).not.toContain('redundant:rest')
+  })
+
+  test('reads no rests before a rest lasting nothing at the start of the voice', () => {
+    const { warnings } = convertValid(opening(multiRest, rest(0) + rest(16)))
+
+    expect(warnings.map((w) => w.message)).not.toContainEqual(
+      expect.stringContaining('as long as the rests before it'),
+    )
   })
 
   test('keeps a rest after a rest with no <type>', () => {
