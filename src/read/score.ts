@@ -256,7 +256,11 @@ export function readScore(root: XmlElement, warnings: WarningCollector): Score {
   })
   settleMultimeasureRests(
     merged,
-    readings.map(({ part }) => part.measures),
+    readings.map(({ part, globals }) => ({
+      id: part.id,
+      rests: globals.map((measure) => measure.multimeasureRest),
+      measures: part.measures,
+    })),
     warnings,
   )
   const flips = keys.parts.map((part) => part.flipAt)

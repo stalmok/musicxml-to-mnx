@@ -273,6 +273,90 @@ describe('a multi-measure rest', () => {
     ])
   })
 
+  test('keeps one that starts where the one before it ends', () => {
+    const { mnx, warnings } = convert(
+      part('P1', [
+        { attributes: multipleRest('2'), body: REST },
+        { body: REST },
+        { attributes: multipleRest('2'), body: REST },
+        { body: REST },
+        { body: NOTE },
+      ]),
+      part('P2', [
+        { body: REST },
+        { body: REST },
+        { attributes: multipleRest('2'), body: REST },
+        { body: REST },
+        { body: NOTE },
+      ]),
+    )
+
+    expect(mnx.scores?.[0]?.multimeasureRests).toEqual([
+      { start: mnx.global.measures[0]?.id, duration: 2 },
+      { start: mnx.global.measures[2]?.id, duration: 2 },
+    ])
+    expect(warnings).toEqual([])
+  })
+
+  test('reports only the overlap of one that also runs past the last measure', () => {
+    const { mnx, warnings } = convert(
+      part('P1', [
+        { attributes: multipleRest('3'), body: REST },
+        { attributes: multipleRest('5'), body: REST },
+        { body: REST },
+        { body: NOTE },
+      ]),
+    )
+
+    expect(mnx.scores?.[0]?.multimeasureRests).toEqual([
+      { start: mnx.global.measures[0]?.id, duration: 3 },
+    ])
+    expect(warnings.map((w) => w.message)).toEqual([
+      'This multi-measure rest starts inside the one from measure 1, and is not converted.',
+    ])
+  })
+
+  test('drops one over a grace note of another part', () => {
+    const grace =
+      '<note><grace/><pitch><step>D</step><octave>4</octave></pitch><type>eighth</type></note>'
+    const { mnx, warnings } = convert(
+      part('P1', [{ attributes: multipleRest('2'), body: REST }, { body: REST }]),
+      part('P2', [
+        { body: REST },
+        { body: grace + '<note><rest/><duration>4</duration><type>whole</type></note>' },
+      ]),
+    )
+
+    expect(mnx.scores).toBeUndefined()
+    expect(warnings.map((w) => [w.code, w.context.part, w.context.measure])).toEqual([
+      ['unrepresentable:cross-part-multimeasure-rest', 'P1', 1],
+    ])
+  })
+
+  test('converts the next span where the first spans a note of another part', () => {
+    const { mnx, warnings } = convert(
+      part('P1', [
+        { attributes: multipleRest('3'), body: REST },
+        { body: REST },
+        { body: REST },
+        { body: NOTE },
+      ]),
+      part('P2', [
+        { attributes: multipleRest('2'), body: REST },
+        { body: REST },
+        { body: NOTE },
+        { body: NOTE },
+      ]),
+    )
+
+    expect(mnx.scores?.[0]?.multimeasureRests).toEqual([
+      { start: mnx.global.measures[0]?.id, duration: 2 },
+    ])
+    expect(warnings.map((w) => [w.code, w.context.part])).toEqual([
+      ['unrepresentable:cross-part-multimeasure-rest', 'P1'],
+    ])
+  })
+
   test('keeps reporting the other measure-style children', () => {
     const { mnx, warnings } = convert(
       part('P1', [

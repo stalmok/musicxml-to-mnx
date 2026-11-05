@@ -48,7 +48,8 @@ interface ReadMarks {
   readonly coda: Coda
   readonly fine: NonNullable<GlobalMeasure['fine']>
   readonly jump: ReadJump
-  // Cut or dropped once the part is read, and dropped once the parts are merged.
+  // Cut or dropped once the part is read, and settled over every part once
+  // all are merged.
   multimeasureRest: NonNullable<GlobalMeasure['multimeasureRest']>
 }
 
@@ -133,23 +134,6 @@ export function mergeGlobalMeasures(
           'for the score. The first stated is the one converted.',
         context,
         'time',
-      )
-    }
-    // A multi-measure rest is the whole score's, like the barline: parts
-    // usually restate the same span. Parts stating different spans over the
-    // same measure disagree about the one MNX can state, so that is reported.
-    if (
-      existing?.multimeasureRest !== undefined &&
-      measure.multimeasureRest !== undefined &&
-      existing.multimeasureRest.value !== measure.multimeasureRest.value
-    ) {
-      warnings.add(
-        'unrepresentable:cross-part-multimeasure-rest',
-        'The parts of this score state multi-measure rests of different spans over ' +
-          'this measure, and MNX states one for the score. The first stated is the ' +
-          'one converted.',
-        context,
-        measure.multimeasureRest.element,
       )
     }
     // A barline is the whole score's: every part is cut at the same place,
@@ -242,7 +226,8 @@ export function mergeGlobalMeasures(
       coda: existing?.coda ?? measure.coda,
       fine: existing?.fine ?? measure.fine,
       jump: existing?.jump ?? measure.jump,
-      multimeasureRest: existing?.multimeasureRest ?? measure.multimeasureRest,
+      // Settled over every part once all are merged.
+      multimeasureRest: undefined,
       // A break is one of those three, and is usually written into one part
       // only: the part not stating it leaves the layout to the parts that do.
       systemBreak: (existing?.systemBreak ?? false) || measure.systemBreak,
