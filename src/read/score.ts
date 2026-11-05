@@ -58,6 +58,7 @@ import type { KeysAcrossParts, ReadGlobalMeasure, ReadJump, UndrawnSign } from '
 import { drawingOf, settleJumps } from './jumps.js'
 import { writtenLengthOf } from './tuplets.js'
 import { MeasureRepeats } from './measureRepeats.js'
+import { MultimeasureRests } from './multimeasureRests.js'
 import type { PartCollector } from './partCollector.js'
 import { lengthOfTime } from './partSignatures.js'
 import {
@@ -502,6 +503,7 @@ function readPart(
     state.ties,
     state.signatures,
     ...Object.values(collectors),
+    new MultimeasureRests(id),
   ]
   for (const collector of settling) collector.finish(readings, warnings)
 

@@ -353,6 +353,9 @@ export const WARNING_CODES = Object.freeze([
   // The parts of the score number the same measure differently. The first
   // stated is the one converted.
   'inconsistent:measure-number',
+  // A multi-measure rest spans more measures than the part has left. It is
+  // cut to the measures that are there.
+  'inconsistent:multimeasure-rest',
   // An element leaves out an attribute MusicXML requires on it, such as the
   // type of a <tie>, so what the element states cannot be read. The element
   // is not converted.

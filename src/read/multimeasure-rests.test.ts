@@ -181,6 +181,19 @@ describe('a multi-measure rest', () => {
     expect(warnings).toEqual([])
   })
 
+  test('cuts one that runs past the last measure to the measures left', () => {
+    const { mnx, warnings } = convert(
+      part('P1', [{ body: NOTE }, { attributes: multipleRest('4'), body: REST }, { body: REST }]),
+    )
+
+    expect(mnx.scores?.[0]?.multimeasureRests).toEqual([
+      { start: mnx.global.measures[1]?.id, duration: 2 },
+    ])
+    expect(warnings.map((w) => [w.code, w.element, w.context.measure])).toEqual([
+      ['inconsistent:multimeasure-rest', 'multiple-rest', 2],
+    ])
+  })
+
   test('keeps reporting the other measure-style children', () => {
     const { mnx, warnings } = convert(
       part('P1', [
