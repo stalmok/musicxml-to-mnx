@@ -1656,6 +1656,37 @@ describe('a melisma line in the source', () => {
       'a stop restated by a note of the chord',
       note('C', sung('la', '<extend/>')) + note('D', held('stop')) + chord('F', held('stop')),
     ],
+    [
+      'a stop on a note of the chord after the one that sings',
+      note('C', sung('la', '<extend/>')) + note('D', sung('lo')) + chord('F', held('stop')),
+    ],
+    [
+      'a stop on a note of the chord before the one that sings',
+      note('C', sung('la', '<extend/>')) + note('D', held('stop')) + chord('F', sung('lo')),
+    ],
+    [
+      'a continue on another note of the chord than the one that sings',
+      note('C', sung('la', '<extend/>')) + note('D', sung('lo')) + chord('F', held('continue')),
+    ],
+    [
+      'a stop on another note of a chord whose syllable starts a line',
+      note('C', sung('la', '<extend/>')) +
+        note('D', sung('lo', '<extend/>')) +
+        chord('F', held('stop')) +
+        note('E', held('stop')),
+    ],
+    [
+      'a stop after the syllable on its own note, with a line open before it',
+      note('C', sung('ka', '<extend/>')) +
+        note('D', sung('la', '<extend type="start"/>') + held('stop')) +
+        note('E', ''),
+    ],
+    [
+      'a continue on another note of the chord after a line stopped on its own note',
+      note('C', sung('ka', '<extend/>')) +
+        note('D', sung('la', '<extend type="start"/>') + held('stop')) +
+        chord('F', held('continue')),
+    ],
   ])('agrees with the converter on %s', (_, notes) => {
     const xml = source(notes)
     const { mnx } = convertValid(xml)

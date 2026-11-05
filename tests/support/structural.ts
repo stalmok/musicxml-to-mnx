@@ -1145,7 +1145,18 @@ export function sourceLyricPlaces(root: XmlElement, retimed = NOTHING_RETIMED): 
           // A chord is one event: its notes sound where its first one does,
           // and sing one text per line between them.
           let at: Place = { part: partIndex, measure: measureIndex, voice: '', line: 0, at: 0 }
-          let sung = new Map<string, { text: string; index: number; draws: boolean }>()
+          // `notes` are the notes that sing it, and `before` the line open
+          // in the verse before it.
+          let sung = new Map<
+            string,
+            {
+              text: string
+              index: number
+              draws: boolean
+              notes: Set<XmlElement>
+              before: number | undefined
+            }
+          >()
 
           for (const item of measure.children) {
             const durationOf = () =>
@@ -1245,21 +1256,24 @@ export function sourceLyricPlaces(root: XmlElement, retimed = NOTHING_RETIMED): 
                 .replace(/[ \t\r\n]*[\r\n][ \t\r\n]*/g, '')
                 .trim()
               const key = JSON.stringify([voice, line])
+              const first = sung.get(line)
               if (text === '') {
-                const syllable = open.get(key)
+                // An <extend> on another note of the chord than the one that
+                // sings the syllable reaches the line open before it.
+                const syllable = first && !first.notes.has(item) ? first.before : open.get(key)
                 // An <extend> continuing a line its own event starts restates
                 // the start.
-                const restates = !stops && syllable === sung.get(line)?.index
+                const restates = !stops && first?.draws === true
                 if (extend && syllable !== undefined && !restates) {
                   ends.set(syllable, at)
                   graceEvent?.ended.push(syllable)
-                  if (stops) open.delete(key)
+                  if (stops && open.get(key) === syllable) open.delete(key)
                 }
                 continue
               }
               const draws = extend !== undefined && !stops
-              const first = sung.get(line)
               if (first) {
+                first.notes.add(item)
                 if (first.text === text && draws && !first.draws) {
                   first.draws = true
                   open.set(key, first.index)
@@ -1268,7 +1282,13 @@ export function sourceLyricPlaces(root: XmlElement, retimed = NOTHING_RETIMED): 
                 }
                 continue
               }
-              sung.set(line, { text, index: found.length, draws })
+              sung.set(line, {
+                text,
+                index: found.length,
+                draws,
+                notes: new Set([item]),
+                before: open.get(key),
+              })
               open.delete(key)
               if (draws) open.set(key, found.length)
               graceEvent?.syllables.push(found.length)

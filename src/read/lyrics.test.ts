@@ -622,6 +622,23 @@ describe('lyric extender lines', () => {
     expect(warnings).toEqual([])
   })
 
+  // Finale writes the stop of a line that ends on its own note after the
+  // syllable, on that note.
+  test('ends the line of a syllable at its own note while the line before it is open', () => {
+    const { mnx, warnings } = convertValid(
+      measure(
+        note('C', sung('ka', extend('start'))) +
+          note('D', sung('la', extend('start')) + held(extend('stop'))) +
+          note('E'),
+      ),
+    )
+    const [first, second] = events(mnx)
+
+    expect(lineOf(first)?.extender).toStrictEqual({})
+    expect(lineOf(second)?.extender).toStrictEqual({ target: second?.id })
+    expect(warnings).toEqual([])
+  })
+
   test('reports a continue after the line has stopped', () => {
     const { mnx, warnings } = convertValid(
       measure(
@@ -909,10 +926,27 @@ describe('a lyric on a note of a chord', () => {
         )
         const { ids } = linesOf(mnx)
 
-        expect(chordLines(mnx)[0]).toStrictEqual({
-          '1': { text: 'la', extender: { target: ids[2] } },
-        })
+        expect(chordLines(mnx)).toStrictEqual([
+          { '1': { text: 'la', extender: { target: ids[2] } } },
+          undefined,
+          { '1': { text: 'lo' } },
+        ])
         expect(warnings).toEqual([])
+      },
+    )
+
+    test.each(twoOrders(sung('lo', '<extend type="start"/>'), held('stop')))(
+      'reports the stop where no line is open before the chord, %s',
+      (_, chord) => {
+        const { mnx, warnings } = convertValid(measure(note('C') + chord + note('F', held('stop'))))
+        const { ids } = linesOf(mnx)
+
+        expect(chordLines(mnx)).toStrictEqual([
+          undefined,
+          { '1': { text: 'lo', extender: { target: ids[2] } } },
+          undefined,
+        ])
+        expect(warnings.map((w) => [w.code, w.element])).toEqual([['unclosed:spanner', 'extend']])
       },
     )
   })
