@@ -16,6 +16,7 @@ function note(pitch: string, body = '', type = 'quarter'): string {
 
 const tied = (type: string): string =>
   `<tie type="${type}"/><notations><tied type="${type}"/></notations>`
+const on = (staff: number, body = ''): string => `<staff>${String(staff)}</staff>${body}`
 const beamed = (pitch: string, marker: string): string =>
   note(pitch, `<beam number="1">${marker}</beam>`, 'eighth')
 
@@ -193,5 +194,58 @@ describe('lines of a voice across the barline', () => {
     )
 
     expect(lines[2]).toEqual(['1: E4', '1.2: C3'])
+  })
+
+  // A line sounding on one staff cannot be the line the tie starts in on another.
+  test('keeps the name of a line a tie carries on past a measure of one line on another staff', () => {
+    const lines = linesOf(
+      '<attributes><staves>2</staves></attributes>' +
+        note('C5', on(1)) +
+        BACKUP +
+        note('E3', on(2, tied('start'))),
+      note('C5', on(1)),
+      note('E3', on(2, tied('stop'))) + BACKUP + note('C3', on(2)),
+    )
+
+    expect(lines[2]).toEqual(['1.2: E3', '1: C3'])
+  })
+
+  test('takes no line by a tie into a note after the first of the line', () => {
+    const lines = linesOf(
+      note('C5') + BACKUP + note('E4', tied('start')),
+      note('G4', '', 'eighth') + note('E4', tied('stop'), 'eighth') + BACKUP + note('C3'),
+    )
+
+    expect(lines[1]).toEqual(['1: G4 E4', '1.2: C3'])
+  })
+
+  test('keeps the name of a line a tie carries on past a measure that sounds no note', () => {
+    const lines = linesOf(
+      '<attributes><staves>2</staves></attributes>' +
+        note('C5', on(1)) +
+        BACKUP +
+        note('E3', on(2, tied('start'))),
+      REST.replace('</voice>', '</voice><staff>2</staff>'),
+      note('E3', on(2, tied('stop'))) + BACKUP + note('C3', on(2)),
+    )
+
+    expect(lines[2]).toEqual(['1.2: E3', '1: C3'])
+  })
+
+  // Once a line sounds again, the measures before it that it was left out of
+  // say nothing about it.
+  test('keeps the name of a line a tie carries on after a measure that wrote it again', () => {
+    const lines = linesOf(
+      '<attributes><staves>2</staves></attributes>' +
+        note('C5', on(1)) +
+        BACKUP +
+        note('E3', on(2)),
+      note('E3', on(2)),
+      note('C5', on(1)) + BACKUP + note('E3', on(2, tied('start'))),
+      note('E3', on(2, tied('stop'))) + BACKUP + note('C3', on(2)),
+    )
+
+    expect(lines[2]).toEqual(['1: C5', '1.2: E3'])
+    expect(lines[3]).toEqual(['1.2: E3', '1: C3'])
   })
 })
