@@ -64,7 +64,8 @@ interface FileIdentity {
 
 function identify(path: string): FileIdentity {
   // The nearest ancestor that exists is resolved through its links. The rest
-  // of the path does not exist yet, so it cannot be a link.
+  // of the path does not exist yet, so it cannot be a link. The walk ends at
+  // the root at the latest.
   let existing = resolve(path)
   const rest: string[] = []
   for (;;) {
@@ -72,11 +73,8 @@ function identify(path: string): FileIdentity {
       existing = realpathSync(existing)
       break
     } catch {
-      const parent = dirname(existing)
-      /* v8 ignore next -- the root always exists. */
-      if (parent === existing) break
       rest.unshift(basename(existing))
-      existing = parent
+      existing = dirname(existing)
     }
   }
   let inode: string | undefined
