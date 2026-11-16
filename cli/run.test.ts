@@ -502,6 +502,76 @@ describe('an --out that is not one directory', () => {
   })
 })
 
+describe('file names', () => {
+  test('takes a name after -- as a file, even one that starts with a dash', async () => {
+    const file = input('-song.xml', LOSSLESS)
+
+    const code = await run(['to-mnx', '-o', join(dir, 'out'), '--', file], io)
+
+    expect(code).toBe(0)
+    expect(() => readFileSync(join(dir, 'out', '-song.mnx'))).not.toThrow()
+  })
+
+  test('drops an extension in capitals', async () => {
+    const url = new URL('../tests/corpus/abbott-think-of-today.mxl', import.meta.url)
+    const packed = join(dir, 'SONG.MXL')
+    writeFileSync(packed, readFileSync(url))
+
+    expect(await run([packed], io)).toBe(0)
+    expect(readdirSync(dir).sort()).toEqual(['SONG.MXL', 'SONG.mnx'])
+  })
+
+  test('replaces a .mnx from an earlier run', async () => {
+    const file = input('song.xml', LOSSLESS)
+    writeFileSync(join(dir, 'song.mnx'), 'old')
+
+    expect(await run([file], io)).toBe(0)
+    expect(schemaErrors(JSON.parse(readFileSync(join(dir, 'song.mnx'), 'utf8')))).toEqual([])
+  })
+
+  test('leaves a .mnx from an earlier run when the input is now refused', async () => {
+    const file = input('song.xml', '<not-a-score/>')
+    writeFileSync(join(dir, 'song.mnx'), 'old')
+
+    expect(await run([file], io)).toBe(1)
+    expect(readFileSync(join(dir, 'song.mnx'), 'utf8')).toBe('old')
+  })
+})
+
+describe('the report', () => {
+  test('holds every written file, keyed by its path as given', async () => {
+    const lossless = input('lossless.xml', LOSSLESS)
+    const lossy = input('lossy.xml', LOSSY)
+    const refused = input('refused.xml', '<not-a-score/>')
+    const blocked = input('blocked.xml', LOSSLESS)
+    const self = input('self.mnx', LOSSLESS)
+    const relativeLossy = relative(process.cwd(), lossy)
+    mkdirSync(join(dir, 'blocked.mnx'))
+    const reportPath = join(dir, 'report.json')
+
+    await run([lossless, relativeLossy, refused, blocked, self, '--report', reportPath], io)
+
+    const report = JSON.parse(readFileSync(reportPath, 'utf8')) as Record<
+      string,
+      { code: string }[]
+    >
+    expect(Object.keys(report)).toEqual([lossless, relativeLossy])
+    expect(report[lossless]).toEqual([])
+    expect(report[relativeLossy]?.map((warning) => warning.code)).toEqual([
+      'unrepresentable:element',
+    ])
+  })
+
+  test('is written when no file converts', async () => {
+    const reportPath = join(dir, 'report.json')
+
+    const code = await run([input('bad.xml', '<not-a-score/>'), '--report', reportPath], io)
+
+    expect(code).toBe(1)
+    expect(JSON.parse(readFileSync(reportPath, 'utf8'))).toEqual({})
+  })
+})
+
 describe('the summary', () => {
   test('counts each outcome on its own', async () => {
     const files = [
