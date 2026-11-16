@@ -4,6 +4,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import {
   linkSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -279,6 +280,54 @@ describe('an output that would overwrite an input', () => {
 
     expect(code).toBe(1)
     expect(readFileSync(file, 'utf8')).toBe(LOSSLESS)
+  })
+})
+
+describe('the temporary file a write goes through', () => {
+  test('does not overwrite an input named like it', async () => {
+    const xml = input('song.xml', LOSSLESS)
+    const partial = input('song.mnx.partial', LOSSY)
+
+    const code = await run([xml, partial], io)
+
+    expect(code).toBe(0)
+    expect(readFileSync(partial, 'utf8')).toBe(LOSSY)
+    expect(readFileSync(xml, 'utf8')).toBe(LOSSLESS)
+  })
+
+  test('does not write through a link named like it', async () => {
+    const a = input('a.xml', LOSSLESS)
+    const b = input('b.xml', LOSSY)
+    symlinkSync(b, join(dir, 'a.mnx.partial'))
+
+    const code = await run([a, b], io)
+
+    expect(code).toBe(0)
+    expect(readFileSync(b, 'utf8')).toBe(LOSSY)
+  })
+
+  test('is not left behind', async () => {
+    const file = input('song.xml', LOSSLESS)
+
+    await run([file, '--report', join(dir, 'report.json')], io)
+
+    expect(readdirSync(dir).sort()).toEqual(['report.json', 'song.mnx', 'song.xml'])
+  })
+})
+
+describe('a --report that is a link', () => {
+  test('to an output not written yet is replaced, not written through', async () => {
+    const file = input('song.xml', LOSSLESS)
+    const out = join(dir, 'out')
+    const reportPath = join(dir, 'report.json')
+    symlinkSync(join(out, 'song.mnx'), reportPath)
+
+    const code = await run([file, '-o', out, '--report', reportPath], io)
+
+    expect(code).toBe(0)
+    expect(schemaErrors(JSON.parse(readFileSync(join(out, 'song.mnx'), 'utf8')))).toEqual([])
+    expect(lstatSync(reportPath).isSymbolicLink()).toBe(false)
+    expect(JSON.parse(readFileSync(reportPath, 'utf8'))).toEqual({ [file]: [] })
   })
 })
 

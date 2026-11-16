@@ -16,6 +16,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { basename, dirname, extname, join, resolve } from 'node:path'
+import { randomBytes } from 'node:crypto'
 import { parseArgs } from 'node:util'
 import { fileURLToPath } from 'node:url'
 import { convertMusicXML, MusicXMLError } from '../src/index.js'
@@ -89,6 +90,24 @@ function identify(path: string): FileIdentity {
 
 function sameFile(a: FileIdentity, b: FileIdentity): boolean {
   return a.path === b.path || (a.inode !== undefined && a.inode === b.inode)
+}
+
+/**
+ * Writes text to path through a new temporary file beside it, then renames it
+ * into place. A write that fails part way leaves nothing behind. The
+ * temporary file must not exist yet, so the write never replaces or follows
+ * another file. The rename replaces a link at path and does not follow it.
+ */
+function writeSafely(path: string, text: string): void {
+  mkdirSync(dirname(path), { recursive: true })
+  const partial = `${path}.${randomBytes(6).toString('hex')}.partial`
+  writeFileSync(partial, text, { flag: 'wx' })
+  try {
+    renameSync(partial, path)
+  } catch (error) {
+    rmSync(partial, { force: true })
+    throw error
+  }
 }
 
 type Parsed = ReturnType<typeof parseArgs<{ options: typeof OPTIONS; allowPositionals: true }>>
@@ -203,21 +222,10 @@ export async function run(
       continue
     }
 
-    // A failed write fails this file alone, as a refused file does. The file
-    // is written beside the output and moved into place, so a write that fails
-    // part way leaves no .mnx behind.
-    const partial = `${outPath}.partial`
+    // A failed write fails this file alone, as a refused file does.
     try {
-      mkdirSync(dirname(outPath), { recursive: true })
-      writeFileSync(partial, `${JSON.stringify(mnx, null, 2)}\n`)
-      renameSync(partial, outPath)
+      writeSafely(outPath, `${JSON.stringify(mnx, null, 2)}\n`)
     } catch (error) {
-      try {
-        rmSync(partial)
-      } catch {
-        // Nothing was written there, or it cannot be removed. The write's own
-        // failure is the one reported.
-      }
       io.log(`${file}: could not write ${outPath}: ${String(error)}`)
       unwritten += 1
       continue
@@ -244,8 +252,7 @@ export async function run(
     // Creates the report's directory, so --report into a new path does not
     // fail after the outputs are written.
     try {
-      mkdirSync(dirname(values.report), { recursive: true })
-      writeFileSync(values.report, `${JSON.stringify(report, null, 2)}\n`)
+      writeSafely(values.report, `${JSON.stringify(report, null, 2)}\n`)
     } catch (error) {
       io.log(`could not write the report ${values.report}: ${String(error)}`)
       reportFailed = true
