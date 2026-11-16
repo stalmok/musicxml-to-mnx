@@ -247,6 +247,23 @@ describe('a --report that names a file the run reads or writes', () => {
     ],
     ['empty', () => [input('song.xml', LOSSLESS), '--report=']],
     [
+      'a file with no extension',
+      () => [input('song.xml', LOSSLESS), '--report', input('score', 'a score')],
+    ],
+    [
+      'an output with a dot after it',
+      () => [input('song.xml', LOSSLESS), '--report', `${dir}/song.mnx.`],
+    ],
+    [
+      'a .json name with more after it',
+      () => [input('song.xml', LOSSLESS), '--report', join(dir, 'r.json.txt')],
+    ],
+    ['a directory not made yet', () => [input('song.xml', LOSSLESS), '--report', `${dir}/new/`]],
+    [
+      'the --out directory',
+      () => [input('song.xml', LOSSLESS), '-o', join(dir, 'out'), '--report', join(dir, 'out')],
+    ],
+    [
       'a directory',
       () => {
         mkdirSync(join(dir, 'report.json'))
@@ -274,6 +291,13 @@ describe('a --report that names a file the run reads or writes', () => {
     expect(code).toBe(2)
     expect(snapshot(dir)).toEqual(before)
     expect(lines[0]).toMatch(/^--report /)
+  })
+
+  test('is written under a .json name in capitals', async () => {
+    const reportPath = join(dir, 'REPORT.JSON')
+
+    expect(await run([input('song.xml', LOSSLESS), '--report', reportPath], io)).toBe(0)
+    expect(() => readFileSync(reportPath)).not.toThrow()
   })
 
   test('is written when it names an existing file the run does not touch', async () => {

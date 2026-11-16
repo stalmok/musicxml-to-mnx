@@ -147,7 +147,7 @@ It writes `<basename>.mnx` beside each input, or into the directory set by `-o`.
 | ------------------------- | ---------------------------------------------------------------- |
 | `-o`, `--out <directory>` | Select the output directory.                                     |
 | `--validate`              | Check output against the vendored MNX schema.                    |
-| `--report <file>`         | Write warnings for converted files as JSON, keyed by input path. |
+| `--report <file>.json`    | Write warnings for converted files as JSON, keyed by input path. |
 | `--fail-on-loss`          | Exit with code 3 if any conversion reports warnings.             |
 | `-h`, `--help`            | Print help.                                                      |
 | `-v`, `--version`         | Print the version.                                               |
@@ -157,9 +157,9 @@ Processing then continues with the remaining inputs. The report is written
 after every output, and a report that cannot be written fails the run.
 The command never overwrites an input. An output that would overwrite an input
 or an earlier output is skipped, and the run fails. These are usage errors,
-and nothing is written: a report that names an input, an existing directory,
-or a file ending in `.mnx`, `.musicxml`, `.xml` or `.mxl`; an empty `--out` or
-`--report`; and either option given twice.
+and nothing is written: a report whose name does not end in `.json`, or that
+names an input or an existing directory; an empty `--out`; and either option
+given twice.
 
 | Exit code | Meaning                                                             |
 | --------- | ------------------------------------------------------------------- |

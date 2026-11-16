@@ -46,7 +46,7 @@ Options:
   -o, --out <dir>     write the .mnx files into <dir> instead of beside the input
       --validate      check every output against the MNX schema
       --fail-on-loss  exit with code 3 if any conversion reports warnings
-      --report <file> write the warnings from every file to <file> as JSON
+      --report <file> write the warnings from every file to <file>.json
   -h, --help          show this help
   -v, --version       show the version`
 
@@ -169,12 +169,11 @@ export async function run(
   const inputs = files.map(fileId)
 
   // The report is written last, so these are refused before any output is
-  // written. An output always ends in .mnx, so the extension keeps the report
-  // off every output, in any letter case. The extension also catches a score
-  // taken as the report's file name.
+  // written. The .json name keeps the report off every output and off a
+  // score taken as the report's file name.
   if (reportPath !== undefined) {
-    if (/\.(mnx|musicxml|xml|mxl)$/i.test(reportPath)) {
-      io.log(`--report ${reportPath} must not end in .mnx, .musicxml, .xml or .mxl.`)
+    if (!/\.json$/i.test(reportPath)) {
+      io.log(`--report ${reportPath} must end in .json.`)
       return 2
     }
     if (isDirectory(reportPath)) {
