@@ -23,9 +23,12 @@ import { convertMusicXML, MusicXMLError } from '../src/index.js'
 import type { ConversionWarning } from '../src/index.js'
 import { schemaErrors } from './validate.js'
 
-/** Where the command's output lines go. The tests inject their own. */
+/** Where the command's lines go. The tests inject their own. */
 export interface CommandIO {
+  /** Progress and errors, for standard error. */
   log: (line: string) => void
+  /** What was asked for (help, the version), for standard output. */
+  print: (line: string) => void
 }
 
 const OPTIONS = {
@@ -149,11 +152,11 @@ export async function run(
 
   const { values, positionals } = parsed
   if (values.help) {
-    io.log(HELP)
+    io.print(HELP)
     return 0
   }
   if (values.version) {
-    io.log(version())
+    io.print(version())
     return 0
   }
 

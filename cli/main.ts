@@ -3,7 +3,10 @@
 
 import { run } from './run.js'
 
-run(process.argv.slice(2), { log: (line) => process.stderr.write(`${line}\n`) })
+run(process.argv.slice(2), {
+  log: (line) => process.stderr.write(`${line}\n`),
+  print: (line) => process.stdout.write(`${line}\n`),
+})
   .then((code) => {
     process.exitCode = code
   })

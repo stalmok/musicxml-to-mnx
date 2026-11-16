@@ -23,9 +23,13 @@ afterAll(() => {
   if (dir) rmSync(dir, { recursive: true, force: true })
 })
 
-function runBuilt(args: readonly string[]): { code: number; output: string } {
+function runBuilt(args: readonly string[]): { code: number; output: string; stdout: string } {
   const result = spawnSync('node', [cli, ...args], { encoding: 'utf8' })
-  return { code: result.status ?? 1, output: `${result.stdout}${result.stderr}` }
+  return {
+    code: result.status ?? 1,
+    output: `${result.stdout}${result.stderr}`,
+    stdout: result.stdout,
+  }
 }
 
 suite('the built command', () => {
@@ -50,10 +54,24 @@ suite('the built command', () => {
     expect(runBuilt(['to-mnx', join(dir, 'nope.xml')]).code).toBe(1)
   })
 
-  test('prints its version', () => {
-    const { code, output } = runBuilt(['--version'])
+  test('prints its version on standard output', () => {
+    const { code, stdout } = runBuilt(['--version'])
 
     expect(code).toBe(0)
-    expect(output.trim()).toMatch(/^\d+\.\d+\.\d+/)
+    expect(stdout.trim()).toMatch(/^\d+\.\d+\.\d+/)
+  })
+
+  test('prints help on standard output', () => {
+    const { code, stdout } = runBuilt(['--help'])
+
+    expect(code).toBe(0)
+    expect(stdout).toContain('Usage: musicxml-to-mnx')
+  })
+
+  test('reports progress on standard error only', () => {
+    const { code, stdout } = runBuilt(['to-mnx', song, '-o', dir])
+
+    expect(code).toBe(0)
+    expect(stdout).toBe('')
   })
 })

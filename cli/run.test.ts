@@ -30,11 +30,13 @@ const LOSSY = LOSSLESS.replace('<note>', '<harmony/><note>')
 
 let dir: string
 const lines: string[] = []
-const io = { log: (line: string) => lines.push(line) }
+const printed: string[] = []
+const io = { log: (line: string) => lines.push(line), print: (line: string) => printed.push(line) }
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'musicxml-to-mnx-cli-'))
   lines.length = 0
+  printed.length = 0
 })
 
 afterEach(() => {
@@ -614,14 +616,26 @@ describe('checking the output against the schema', () => {
 })
 
 describe('the command line itself', () => {
-  test('shows help and succeeds for --help', async () => {
+  test('prints help as output and succeeds for --help', async () => {
     expect(await run(['--help'], io)).toBe(0)
-    expect(lines[0]).toContain('Usage: musicxml-to-mnx <files...>')
+    expect(printed[0]).toContain('Usage: musicxml-to-mnx <files...>')
+    expect(lines).toEqual([])
   })
 
-  test('prints a version for --version', async () => {
+  test('prints the package version as output for --version', async () => {
+    const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
+      version: string
+    }
+
     expect(await run(['--version'], io)).toBe(0)
-    expect(lines[0]).toMatch(/^\d+\.\d+\.\d+/)
+    expect(printed).toEqual([pkg.version])
+    expect(lines).toEqual([])
+  })
+
+  test('writes nothing as output while converting', async () => {
+    await run([input('song.xml', LOSSY), '--report', join(dir, 'report.json')], io)
+
+    expect(printed).toEqual([])
   })
 
   test('reserves to-musicxml for the reverse direction', async () => {
