@@ -2,9 +2,18 @@
 // so a test can read the files it wrote and the lines it logged.
 
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  linkSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { dirname, join, relative } from 'node:path'
 import { schemaErrors } from '../tests/support/schema.js'
 import { run } from './run.js'
 
@@ -138,6 +147,177 @@ describe('two inputs that would write to the same file', () => {
     }
     expect(schemaErrors(mnx)).toEqual([])
     expect(mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]?.notes?.[0]?.pitch.step).toBe('C')
+  })
+})
+
+/** Every file under root, mapped to its bytes. Links are left out. */
+function snapshot(root: string): Map<string, string> {
+  const files = new Map<string, string>()
+  for (const entry of readdirSync(root, { recursive: true, withFileTypes: true })) {
+    if (entry.isDirectory() || entry.isSymbolicLink()) continue
+    const path = join(entry.parentPath, entry.name)
+    files.set(path, readFileSync(path, 'latin1'))
+  }
+  return files
+}
+
+describe('a --report that names a file the run reads or writes', () => {
+  // Each case returns the command line. The run must refuse it before it
+  // writes anything.
+  const cases: [string, () => string[]][] = [
+    [
+      'the output of its only input',
+      () => [input('song.musicxml', LOSSLESS), '--report', join(dir, 'song.mnx')],
+    ],
+    ['its input', () => [input('song.musicxml', LOSSLESS), '--report', join(dir, 'song.musicxml')]],
+    [
+      'the output of another input',
+      () => [input('a.xml', LOSSLESS), input('b.xml', LOSSY), '--report', join(dir, 'a.mnx')],
+    ],
+    [
+      'an output in the --out directory',
+      () => [
+        input('song.xml', LOSSLESS),
+        '-o',
+        join(dir, 'out'),
+        '--report',
+        join(dir, 'out', 'song.mnx'),
+      ],
+    ],
+    [
+      'an input by a relative path',
+      () => {
+        const file = input('song.xml', LOSSLESS)
+        return [file, '--report', relative(process.cwd(), file)]
+      },
+    ],
+    [
+      'an output by a path with . and .. in it',
+      () => [input('song.xml', LOSSLESS), '--report', `${dir}/./sub/../song.mnx`],
+    ],
+    [
+      'an input through a symbolic link',
+      () => {
+        const file = input('song.xml', LOSSLESS)
+        symlinkSync(file, join(dir, 'link.json'))
+        return [file, '-o', join(dir, 'out'), '--report', join(dir, 'link.json')]
+      },
+    ],
+    [
+      'an input through a hard link',
+      () => {
+        const file = input('song.xml', LOSSLESS)
+        linkSync(file, join(dir, 'link.json'))
+        return [file, '-o', join(dir, 'out'), '--report', join(dir, 'link.json')]
+      },
+    ],
+    [
+      'an output through a linked directory',
+      () => {
+        const file = input('song.xml', LOSSLESS)
+        symlinkSync(dir, join(dir, 'alias'))
+        return [file, '--report', join(dir, 'alias', 'song.mnx')]
+      },
+    ],
+    [
+      'an input that the converter refuses',
+      () => [input('bad.xml', '<not-a-score/>'), '--report', join(dir, 'bad.xml')],
+    ],
+  ]
+
+  test.each(cases)('is refused when it is %s, and nothing is written', async (_, argv) => {
+    const args = argv()
+    const before = snapshot(dir)
+
+    const code = await run(args, io)
+
+    expect(code).toBe(2)
+    expect(snapshot(dir)).toEqual(before)
+    expect(lines[0]).toMatch(/^--report .* would overwrite /)
+  })
+
+  test('is written when it names an existing file the run does not touch', async () => {
+    const file = input('song.xml', LOSSLESS)
+    const reportPath = input('old-report.json', 'stale')
+
+    expect(await run([file, '--report', reportPath], io)).toBe(0)
+    expect(JSON.parse(readFileSync(reportPath, 'utf8'))).toEqual({ [file]: [] })
+  })
+})
+
+describe('an output that would overwrite an input', () => {
+  test('is skipped when it is the input itself', async () => {
+    const file = input('song.mnx', LOSSLESS)
+
+    const code = await run([file], io)
+
+    expect(code).toBe(1)
+    expect(readFileSync(file, 'utf8')).toBe(LOSSLESS)
+    expect(lines[0]).toBe(`${file}: would overwrite the input ${file}; skipped.`)
+    expect(lines.at(-1)).toBe('Converted 0 of 1, 1 refused.')
+  })
+
+  test('is skipped when it is another input', async () => {
+    const xml = input('song.xml', LOSSLESS)
+    const mnx = input('song.mnx', LOSSY)
+
+    // song.xml writes song.mnx beside it, which is the second input.
+    const code = await run([xml, mnx], io)
+
+    expect(code).toBe(1)
+    expect(readFileSync(mnx, 'utf8')).toBe(LOSSY)
+    expect(lines[0]).toBe(`${xml}: would overwrite the input ${mnx}; skipped.`)
+  })
+
+  test('is skipped when the input is named through a link', async () => {
+    const file = input('song.xml', LOSSLESS)
+    const out = join(dir, 'out')
+    mkdirSync(out)
+    symlinkSync(file, join(out, 'song.mnx'))
+
+    const code = await run([file, '-o', out], io)
+
+    expect(code).toBe(1)
+    expect(readFileSync(file, 'utf8')).toBe(LOSSLESS)
+  })
+})
+
+describe('one input named twice', () => {
+  test('in two path forms is converted once', async () => {
+    const file = input('song.xml', LOSSLESS)
+
+    const code = await run([file, relative(process.cwd(), file)], io)
+
+    expect(code).toBe(1)
+    expect(lines.filter((line) => line.includes('would overwrite'))).toHaveLength(1)
+  })
+})
+
+describe('any run', () => {
+  // Every input either converts or is refused, and no input changes.
+  test.each([
+    ['beside the inputs', [] as string[]],
+    ['into --out', ['-o', 'out']],
+    ['with a report', ['--report', 'report.json']],
+    [
+      'with every option',
+      ['-o', 'out', '--report', 'out/report.json', '--validate', '--fail-on-loss'],
+    ],
+  ])('leaves every input as it was, %s', async (_, options) => {
+    const files = [
+      input('a.musicxml', LOSSLESS),
+      input('a.xml', LOSSY),
+      input('b.mnx', LOSSLESS),
+      input('nested/c.xml', LOSSLESS),
+      input('bad.xml', '<not-a-score/>'),
+    ]
+    const resolved = options.map((option) => (option.startsWith('-') ? option : join(dir, option)))
+    const before = snapshot(dir)
+
+    await run([...files, ...resolved], io)
+
+    const after = snapshot(dir)
+    for (const file of files) expect(after.get(file)).toBe(before.get(file))
   })
 })
 

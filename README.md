@@ -155,12 +155,15 @@ It writes `<basename>.mnx` beside each input, or into the directory set by `-o`.
 Input-read, conversion and output-write errors are reported per file.
 Processing then continues with the remaining inputs. The report is written
 after every output, and a report that cannot be written fails the run.
+The command never overwrites an input. An output that would overwrite an input
+or an earlier output is skipped, and the run fails. A report that would
+overwrite an input or an output is a usage error, and nothing is written.
 
 | Exit code | Meaning                                                             |
 | --------- | ------------------------------------------------------------------- |
 | `0`       | All files converted. With `--fail-on-loss`, none reported warnings. |
 | `1`       | A file failed, or validation failed.                                |
-| `2`       | Command usage error.                                                |
+| `2`       | Command usage error. Nothing is written.                            |
 | `3`       | `--fail-on-loss` detected warnings, and nothing else failed.        |
 
 The report contains warnings, not a complete failure log.

@@ -6,8 +6,16 @@
 // run() returns an exit code and does not call process.exit, so the tests
 // run it in-process.
 
-import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
-import { basename, dirname, extname, join } from 'node:path'
+import {
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs'
+import { basename, dirname, extname, join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { fileURLToPath } from 'node:url'
 import { convertMusicXML, MusicXMLError } from '../src/index.js'
@@ -43,6 +51,47 @@ Options:
       --report <file> write the warnings from every file to <file> as JSON
   -h, --help          show this help
   -v, --version       show the version`
+
+/**
+ * What a path names on disk: its real path, and its device and inode when the
+ * file exists. Two paths name one file when either matches. The inode catches
+ * a hard link and a case-insensitive file system.
+ */
+interface FileIdentity {
+  path: string
+  inode: string | undefined
+}
+
+function identify(path: string): FileIdentity {
+  // The nearest ancestor that exists is resolved through its links. The rest
+  // of the path does not exist yet, so it cannot be a link.
+  let existing = resolve(path)
+  const rest: string[] = []
+  for (;;) {
+    try {
+      existing = realpathSync(existing)
+      break
+    } catch {
+      const parent = dirname(existing)
+      /* v8 ignore next -- the root always exists. */
+      if (parent === existing) break
+      rest.unshift(basename(existing))
+      existing = parent
+    }
+  }
+  let inode: string | undefined
+  try {
+    const stats = statSync(path, { bigint: true })
+    inode = `${String(stats.dev)}:${String(stats.ino)}`
+  } catch {
+    // The file does not exist yet.
+  }
+  return { path: join(existing, ...rest), inode }
+}
+
+function sameFile(a: FileIdentity, b: FileIdentity): boolean {
+  return a.path === b.path || (a.inode !== undefined && a.inode === b.inode)
+}
 
 type Parsed = ReturnType<typeof parseArgs<{ options: typeof OPTIONS; allowPositionals: true }>>
 
@@ -98,16 +147,53 @@ export async function run(
     return 2
   }
 
+  const outputOf = (file: string) =>
+    join(values.out ?? dirname(file), `${basename(file, extname(file))}.mnx`)
+  const inputs = files.map(identify)
+
+  // The report is written last, so a collision is refused before any output
+  // is written.
+  if (values.report !== undefined) {
+    const target = identify(values.report)
+    for (const [index, file] of files.entries()) {
+      const what = sameFile(target, inputs[index] as FileIdentity)
+        ? `the input ${file}`
+        : sameFile(target, identify(outputOf(file)))
+          ? `the output of ${file}`
+          : undefined
+      if (what !== undefined) {
+        io.log(`--report ${values.report} would overwrite ${what}.`)
+        return 2
+      }
+    }
+  }
+
   const validate = values.validate ? check : undefined
   const report: Record<string, readonly ConversionWarning[]> = {}
-  // Catches two inputs with the same name written into one --out directory.
-  const writtenBy = new Map<string, string>()
+  // Catches two inputs with the same name written into one --out directory,
+  // and one input named twice.
+  const written: { output: FileIdentity; file: string }[] = []
   let failed = 0
   let unwritten = 0
   let lossy = 0
   let invalid = 0
 
   for (const file of files) {
+    const outPath = outputOf(file)
+    const output = identify(outPath)
+    const input = files.find((_, index) => sameFile(output, inputs[index] as FileIdentity))
+    if (input !== undefined) {
+      io.log(`${file}: would overwrite the input ${input}; skipped.`)
+      failed += 1
+      continue
+    }
+    const already = written.find((entry) => sameFile(output, entry.output))
+    if (already !== undefined) {
+      io.log(`${file}: would overwrite ${outPath}, already written from ${already.file}; skipped.`)
+      failed += 1
+      continue
+    }
+
     let mnx
     let warnings
     try {
@@ -119,21 +205,12 @@ export async function run(
       continue
     }
 
-    const outDir = values.out ?? dirname(file)
-    const outPath = join(outDir, `${basename(file, extname(file))}.mnx`)
-
-    const already = writtenBy.get(outPath)
-    if (already !== undefined) {
-      io.log(`${file}: would overwrite ${outPath}, already written from ${already}; skipped.`)
-      failed += 1
-      continue
-    }
     // A failed write fails this file alone, as a refused file does. The file
     // is written beside the output and moved into place, so a write that fails
     // part way leaves no .mnx behind.
     const partial = `${outPath}.partial`
     try {
-      mkdirSync(outDir, { recursive: true })
+      mkdirSync(dirname(outPath), { recursive: true })
       writeFileSync(partial, `${JSON.stringify(mnx, null, 2)}\n`)
       renameSync(partial, outPath)
     } catch (error) {
@@ -147,7 +224,7 @@ export async function run(
       unwritten += 1
       continue
     }
-    writtenBy.set(outPath, file)
+    written.push({ output: identify(outPath), file })
 
     report[file] = warnings
     if (warnings.length > 0) lossy += 1
