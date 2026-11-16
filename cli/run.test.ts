@@ -435,6 +435,17 @@ describe('the temporary file a write goes through', () => {
     expect(readdirSync(dir)).toEqual(['song.xml'])
   })
 
+  test('reports why it could not be made', async () => {
+    const file = input('song.xml', LOSSLESS)
+    const out = join(dir, 'locked')
+    mkdirSync(out, { mode: 0o555 })
+
+    const code = await run([file, '-o', out], io)
+
+    expect(code).toBe(1)
+    expect(lines[0]).toMatch(/could not write .*EACCES/)
+  })
+
   test('fits beside an output with a name as long as the system allows', async () => {
     const name = 'x'.repeat(250)
     const file = input(`${name}.xml`, LOSSLESS)
