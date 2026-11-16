@@ -29,10 +29,12 @@ export interface CommandIO {
 }
 
 const OPTIONS = {
-  out: { type: 'string', short: 'o' },
+  // Taken as lists, so that a second value is refused rather than silently
+  // replacing the first.
+  out: { type: 'string', short: 'o', multiple: true },
   validate: { type: 'boolean' },
   'fail-on-loss': { type: 'boolean' },
-  report: { type: 'string' },
+  report: { type: 'string', multiple: true },
   help: { type: 'boolean', short: 'h' },
   version: { type: 'boolean', short: 'v' },
 } as const
@@ -86,6 +88,14 @@ function identify(path: string): FileIdentity {
     // The file does not exist yet.
   }
   return { path: join(existing, ...rest), inode }
+}
+
+function isDirectory(path: string): boolean {
+  try {
+    return statSync(path).isDirectory()
+  } catch {
+    return false
+  }
 }
 
 function sameFile(a: FileIdentity, b: FileIdentity): boolean {
@@ -164,24 +174,46 @@ export async function run(
     return 2
   }
 
+  for (const [name, what] of [
+    ['out', 'directory'],
+    ['report', 'file'],
+  ] as const) {
+    const given = values[name]
+    if (given === undefined) continue
+    if (given.length > 1) {
+      io.log(`--${name} is given more than once.`)
+      return 2
+    }
+    if (given[0] === '') {
+      io.log(`--${name} needs a ${what} name.`)
+      return 2
+    }
+  }
+  const out = values.out?.[0]
+  const reportPath = values.report?.[0]
+
   const outputOf = (file: string) =>
-    join(values.out ?? dirname(file), `${basename(file, extname(file))}.mnx`)
+    join(out ?? dirname(file), `${basename(file, extname(file))}.mnx`)
   const inputs = files.map(identify)
 
-  // The report is written last, so a collision is refused before any output
-  // is written.
-  if (values.report !== undefined) {
-    const target = identify(values.report)
-    for (const [index, file] of files.entries()) {
-      const what = sameFile(target, inputs[index] as FileIdentity)
-        ? `the input ${file}`
-        : sameFile(target, identify(outputOf(file)))
-          ? `the output of ${file}`
-          : undefined
-      if (what !== undefined) {
-        io.log(`--report ${values.report} would overwrite ${what}.`)
-        return 2
-      }
+  // The report is written last, so these are refused before any output is
+  // written. An output always ends in .mnx, so the extension keeps the report
+  // off every output, in any letter case. The extension also catches a score
+  // taken as the report's file name.
+  if (reportPath !== undefined) {
+    if (/\.(mnx|musicxml|xml|mxl)$/i.test(reportPath)) {
+      io.log(`--report ${reportPath} must not end in .mnx, .musicxml, .xml or .mxl.`)
+      return 2
+    }
+    if (isDirectory(reportPath)) {
+      io.log(`--report ${reportPath} is a directory.`)
+      return 2
+    }
+    const target = identify(reportPath)
+    const index = inputs.findIndex((input) => sameFile(target, input))
+    if (index >= 0) {
+      io.log(`--report ${reportPath} would overwrite the input ${String(files[index])}.`)
+      return 2
     }
   }
 
@@ -248,13 +280,13 @@ export async function run(
   }
 
   let reportFailed = false
-  if (values.report !== undefined) {
+  if (reportPath !== undefined) {
     // Creates the report's directory, so --report into a new path does not
     // fail after the outputs are written.
     try {
-      writeSafely(values.report, `${JSON.stringify(report, null, 2)}\n`)
+      writeSafely(reportPath, `${JSON.stringify(report, null, 2)}\n`)
     } catch (error) {
-      io.log(`could not write the report ${values.report}: ${String(error)}`)
+      io.log(`could not write the report ${reportPath}: ${String(error)}`)
       reportFailed = true
     }
   }

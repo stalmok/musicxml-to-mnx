@@ -156,8 +156,10 @@ Input-read, conversion and output-write errors are reported per file.
 Processing then continues with the remaining inputs. The report is written
 after every output, and a report that cannot be written fails the run.
 The command never overwrites an input. An output that would overwrite an input
-or an earlier output is skipped, and the run fails. A report that would
-overwrite an input or an output is a usage error, and nothing is written.
+or an earlier output is skipped, and the run fails. These are usage errors,
+and nothing is written: a report that names an input, an existing directory,
+or a file ending in `.mnx`, `.musicxml`, `.xml` or `.mxl`; an empty `--out` or
+`--report`; and either option given twice.
 
 | Exit code | Meaning                                                             |
 | --------- | ------------------------------------------------------------------- |

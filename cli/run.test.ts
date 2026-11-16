@@ -224,6 +224,43 @@ describe('a --report that names a file the run reads or writes', () => {
       'an input that the converter refuses',
       () => [input('bad.xml', '<not-a-score/>'), '--report', join(dir, 'bad.xml')],
     ],
+    [
+      'an output through a link and ..',
+      () => {
+        const file = input('real/song.xml', LOSSLESS)
+        mkdirSync(join(dir, 'real', 'deeper'))
+        mkdirSync(join(dir, 'other'))
+        symlinkSync(join(dir, 'real', 'deeper'), join(dir, 'other', 'link'))
+        return [file, '--report', `${dir}/other/link/../song.mnx`]
+      },
+    ],
+    [
+      'an output named in capitals',
+      () => [input('song.xml', LOSSLESS), '--report', join(dir, 'SONG.MNX')],
+    ],
+    // parseArgs takes the word after --report as its value.
+    [
+      'a score that is not an input',
+      () => [input('song.xml', LOSSLESS), '--report', input('other.mxl', 'a score')],
+    ],
+    ['empty', () => [input('song.xml', LOSSLESS), '--report=']],
+    [
+      'a directory',
+      () => {
+        mkdirSync(join(dir, 'report.json'))
+        return [input('song.xml', LOSSLESS), '--report', join(dir, 'report.json')]
+      },
+    ],
+    [
+      'given twice',
+      () => [
+        input('song.xml', LOSSLESS),
+        '--report',
+        join(dir, 'one.json'),
+        '--report',
+        join(dir, 'two.json'),
+      ],
+    ],
   ]
 
   test.each(cases)('is refused when it is %s, and nothing is written', async (_, argv) => {
@@ -234,7 +271,7 @@ describe('a --report that names a file the run reads or writes', () => {
 
     expect(code).toBe(2)
     expect(snapshot(dir)).toEqual(before)
-    expect(lines[0]).toMatch(/^--report .* would overwrite /)
+    expect(lines[0]).toMatch(/^--report /)
   })
 
   test('is written when it names an existing file the run does not touch', async () => {
@@ -437,14 +474,29 @@ describe('an output that cannot be written', () => {
 describe('a report that cannot be written', () => {
   test('is reported after the outputs are written, and the run fails', async () => {
     const file = input('song.xml', LOSSLESS)
-    const reportPath = join(dir, 'report.json')
-    mkdirSync(reportPath)
+    const reportPath = join(input('plain-file', ''), 'report.json')
 
     const code = await run(['to-mnx', file, '--report', reportPath], io)
 
     expect(code).toBe(1)
     expect(() => readFileSync(join(dir, 'song.mnx'))).not.toThrow()
-    expect(lines).toContainEqual(expect.stringMatching(/^could not write the report .*EISDIR/))
+    expect(lines).toContainEqual(expect.stringMatching(/^could not write the report .*EEXIST/))
+  })
+})
+
+describe('an --out that is not one directory', () => {
+  test.each([
+    ['empty', ['--out=']],
+    ['given twice', ['-o', 'one', '-o', 'two']],
+  ])('is refused when it is %s, and nothing is written', async (_, options) => {
+    const file = input('song.xml', LOSSLESS)
+    const before = snapshot(dir)
+
+    const code = await run([file, ...options], io)
+
+    expect(code).toBe(2)
+    expect(snapshot(dir)).toEqual(before)
+    expect(lines[0]).toMatch(/^--out /)
   })
 })
 
