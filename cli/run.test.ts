@@ -294,7 +294,7 @@ describe('an output that would overwrite an input', () => {
     expect(code).toBe(1)
     expect(readFileSync(file, 'utf8')).toBe(LOSSLESS)
     expect(lines[0]).toBe(`${file}: would overwrite the input ${file}; skipped.`)
-    expect(lines.at(-1)).toBe('Converted 0 of 1, 1 refused.')
+    expect(lines.at(-1)).toBe('Converted 0 of 1, 1 skipped.')
   })
 
   test('is skipped when it is another input', async () => {
@@ -502,6 +502,26 @@ describe('an --out that is not one directory', () => {
   })
 })
 
+describe('the summary', () => {
+  test('counts each outcome on its own', async () => {
+    const files = [
+      input('lossless.xml', LOSSLESS),
+      input('lossy.xml', LOSSY),
+      input('refused.xml', '<not-a-score/>'),
+      input('blocked.xml', LOSSLESS),
+      input('self.mnx', LOSSLESS),
+    ]
+    mkdirSync(join(dir, 'blocked.mnx'))
+
+    const code = await run(files, io)
+
+    expect(code).toBe(1)
+    expect(lines.at(-1)).toBe(
+      'Converted 2 of 5, 1 refused, 1 skipped, 1 not written, 1 with losses.',
+    )
+  })
+})
+
 describe('a file that cannot be read', () => {
   test('is reported like a refused one, not thrown', async () => {
     const code = await run(['to-mnx', join(dir, 'missing.xml')], io)
@@ -596,7 +616,7 @@ describe('checking the output against the schema', () => {
       '  /parts: must be an array',
       '  /global: must be an object',
       `${file} -> ${join(dir, 'song.mnx')}`,
-      'Converted 1 of 1.',
+      'Converted 1 of 1, 1 not valid MNX.',
     ])
   })
 

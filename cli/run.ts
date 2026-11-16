@@ -227,6 +227,7 @@ export async function run(
   // and one input named twice.
   const written: { output: FileIdentity; file: string }[] = []
   let failed = 0
+  let skipped = 0
   let unwritten = 0
   let lossy = 0
   let invalid = 0
@@ -237,13 +238,13 @@ export async function run(
     const input = files.find((_, index) => sameFile(output, inputs[index] as FileIdentity))
     if (input !== undefined) {
       io.log(`${file}: would overwrite the input ${input}; skipped.`)
-      failed += 1
+      skipped += 1
       continue
     }
     const already = written.find((entry) => sameFile(output, entry.output))
     if (already !== undefined) {
       io.log(`${file}: would overwrite ${outPath}, already written from ${already.file}; skipped.`)
-      failed += 1
+      skipped += 1
       continue
     }
 
@@ -296,14 +297,16 @@ export async function run(
   }
 
   io.log(
-    `Converted ${String(files.length - failed - unwritten)} of ${String(files.length)}` +
+    `Converted ${String(files.length - failed - skipped - unwritten)} of ${String(files.length)}` +
       (failed > 0 ? `, ${String(failed)} refused` : '') +
+      (skipped > 0 ? `, ${String(skipped)} skipped` : '') +
       (unwritten > 0 ? `, ${String(unwritten)} not written` : '') +
+      (invalid > 0 ? `, ${String(invalid)} not valid MNX` : '') +
       (lossy > 0 ? `, ${String(lossy)} with losses` : '') +
       '.',
   )
 
-  if (failed > 0 || unwritten > 0 || reportFailed) return 1
+  if (failed > 0 || skipped > 0 || unwritten > 0 || reportFailed) return 1
   if (invalid > 0) return 1
   // A code of its own, so a pipeline can tell a batch that converted with
   // losses from one that failed.
