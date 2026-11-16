@@ -648,6 +648,25 @@ describe('a file that cannot be read', () => {
     expect(code).toBe(1)
     expect(lines[0]).toContain('missing.xml')
   })
+
+  // A missing input has no file to match, so nothing collides with it.
+  test('does not block the files after it', async () => {
+    const good = input('good.xml', LOSSLESS)
+
+    const code = await run([join(dir, 'missing.xml'), good], io)
+
+    expect(code).toBe(1)
+    expect(lines.at(-1)).toBe('Converted 1 of 2, 1 refused.')
+  })
+
+  test('does not block a new report', async () => {
+    const reportPath = join(dir, 'report.json')
+
+    const code = await run([join(dir, 'missing.xml'), '--report', reportPath], io)
+
+    expect(code).toBe(1)
+    expect(JSON.parse(readFileSync(reportPath, 'utf8'))).toEqual({})
+  })
 })
 
 describe('reporting losses', () => {

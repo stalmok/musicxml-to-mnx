@@ -209,8 +209,8 @@ export async function run(
       skipped += 1
       continue
     }
-    const already =
-      output === undefined ? undefined : written.find((entry) => entry.output === output)
+    // Every written output exists, so a missing output matches none.
+    const already = written.find((entry) => entry.output === output)
     if (already !== undefined) {
       io.log(`${file}: would overwrite ${outPath}, already written from ${already.file}; skipped.`)
       skipped += 1
