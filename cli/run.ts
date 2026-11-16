@@ -6,16 +6,8 @@
 // run() returns an exit code and does not call process.exit, so the tests
 // run it in-process.
 
-import {
-  mkdirSync,
-  readFileSync,
-  realpathSync,
-  renameSync,
-  rmSync,
-  statSync,
-  writeFileSync,
-} from 'node:fs'
-import { basename, dirname, extname, join, resolve } from 'node:path'
+import { mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { basename, dirname, extname, join } from 'node:path'
 import { randomBytes } from 'node:crypto'
 import { parseArgs } from 'node:util'
 import { fileURLToPath } from 'node:url'
@@ -59,38 +51,19 @@ Options:
   -v, --version       show the version`
 
 /**
- * What a path names on disk: its real path, and its device and inode when the
- * file exists. Two paths name one file when either matches. The inode catches
- * a hard link and a case-insensitive file system.
+ * The device and inode of the file at path, or undefined when nothing is
+ * there. Two paths name one file when these match, through links, other
+ * path forms and letter case. Each check compares with a file that exists: an
+ * input, or an output written earlier in the run. A bigint keeps a 64-bit
+ * Windows file id exact.
  */
-interface FileIdentity {
-  path: string
-  inode: string | undefined
-}
-
-function identify(path: string): FileIdentity {
-  // The nearest ancestor that exists is resolved through its links. The rest
-  // of the path does not exist yet, so it cannot be a link. The walk ends at
-  // the root at the latest.
-  let existing = resolve(path)
-  const rest: string[] = []
-  for (;;) {
-    try {
-      existing = realpathSync(existing)
-      break
-    } catch {
-      rest.unshift(basename(existing))
-      existing = dirname(existing)
-    }
-  }
-  let inode: string | undefined
+function fileId(path: string): string | undefined {
   try {
     const stats = statSync(path, { bigint: true })
-    inode = `${String(stats.dev)}:${String(stats.ino)}`
+    return `${String(stats.dev)}:${String(stats.ino)}`
   } catch {
-    // The file does not exist yet.
+    return undefined
   }
-  return { path: join(existing, ...rest), inode }
 }
 
 function isDirectory(path: string): boolean {
@@ -99,10 +72,6 @@ function isDirectory(path: string): boolean {
   } catch {
     return false
   }
-}
-
-function sameFile(a: FileIdentity, b: FileIdentity): boolean {
-  return a.path === b.path || (a.inode !== undefined && a.inode === b.inode)
 }
 
 /**
@@ -197,7 +166,7 @@ export async function run(
 
   const outputOf = (file: string) =>
     join(out ?? dirname(file), `${basename(file, extname(file))}.mnx`)
-  const inputs = files.map(identify)
+  const inputs = files.map(fileId)
 
   // The report is written last, so these are refused before any output is
   // written. An output always ends in .mnx, so the extension keeps the report
@@ -212,8 +181,8 @@ export async function run(
       io.log(`--report ${reportPath} is a directory.`)
       return 2
     }
-    const target = identify(reportPath)
-    const index = inputs.findIndex((input) => sameFile(target, input))
+    const target = fileId(reportPath)
+    const index = target === undefined ? -1 : inputs.indexOf(target)
     if (index >= 0) {
       io.log(`--report ${reportPath} would overwrite the input ${String(files[index])}.`)
       return 2
@@ -225,7 +194,7 @@ export async function run(
   const report = new Map<string, readonly ConversionWarning[]>()
   // Catches two inputs with the same name written into one --out directory,
   // and one input named twice.
-  const written: { output: FileIdentity; file: string }[] = []
+  const written: { output: string | undefined; file: string }[] = []
   let failed = 0
   let skipped = 0
   let unwritten = 0
@@ -234,14 +203,15 @@ export async function run(
 
   for (const file of files) {
     const outPath = outputOf(file)
-    const output = identify(outPath)
-    const input = files.find((_, index) => sameFile(output, inputs[index] as FileIdentity))
-    if (input !== undefined) {
-      io.log(`${file}: would overwrite the input ${input}; skipped.`)
+    const output = fileId(outPath)
+    const input = output === undefined ? -1 : inputs.indexOf(output)
+    if (input >= 0) {
+      io.log(`${file}: would overwrite the input ${String(files[input])}; skipped.`)
       skipped += 1
       continue
     }
-    const already = written.find((entry) => sameFile(output, entry.output))
+    const already =
+      output === undefined ? undefined : written.find((entry) => entry.output === output)
     if (already !== undefined) {
       io.log(`${file}: would overwrite ${outPath}, already written from ${already.file}; skipped.`)
       skipped += 1
@@ -267,7 +237,7 @@ export async function run(
       unwritten += 1
       continue
     }
-    written.push({ output: identify(outPath), file })
+    written.push({ output: fileId(outPath), file })
 
     report.set(file, warnings)
     if (warnings.length > 0) lossy += 1
