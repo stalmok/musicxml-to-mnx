@@ -523,6 +523,20 @@ describe('reporting losses', () => {
     expect(report[file]?.[0]?.code).toBe('unrepresentable:element')
   })
 
+  test('--report keeps a file named like an object property', async () => {
+    input('__proto__', LOSSY)
+    const cwd = process.cwd()
+    process.chdir(dir)
+    try {
+      await run(['__proto__', '-o', 'out', '--report', 'report.json'], io)
+    } finally {
+      process.chdir(cwd)
+    }
+
+    const report = JSON.parse(readFileSync(join(dir, 'report.json'), 'utf8')) as object
+    expect(Object.keys(report)).toEqual(['__proto__'])
+  })
+
   test('--fail-on-loss returns 3 when a file loses notation', async () => {
     const file = input('song.xml', LOSSY)
 

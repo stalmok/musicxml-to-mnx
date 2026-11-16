@@ -218,7 +218,8 @@ export async function run(
   }
 
   const validate = values.validate ? check : undefined
-  const report: Record<string, readonly ConversionWarning[]> = {}
+  // A Map, so that an input named like an object property is kept.
+  const report = new Map<string, readonly ConversionWarning[]>()
   // Catches two inputs with the same name written into one --out directory,
   // and one input named twice.
   const written: { output: FileIdentity; file: string }[] = []
@@ -264,7 +265,7 @@ export async function run(
     }
     written.push({ output: identify(outPath), file })
 
-    report[file] = warnings
+    report.set(file, warnings)
     if (warnings.length > 0) lossy += 1
 
     // Invalid MNX here is a bug in the converter.
@@ -284,7 +285,7 @@ export async function run(
     // Creates the report's directory, so --report into a new path does not
     // fail after the outputs are written.
     try {
-      writeSafely(reportPath, `${JSON.stringify(report, null, 2)}\n`)
+      writeSafely(reportPath, `${JSON.stringify(Object.fromEntries(report), null, 2)}\n`)
     } catch (error) {
       io.log(`could not write the report ${reportPath}: ${String(error)}`)
       reportFailed = true
