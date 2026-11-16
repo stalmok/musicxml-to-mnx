@@ -87,7 +87,7 @@ function writeSafely(path: string, text: string): void {
   try {
     renameSync(partial, path)
   } catch (error) {
-    rmSync(partial, { force: true })
+    rmSync(partial)
     throw error
   }
 }

@@ -1,7 +1,7 @@
 // The `musicxml-to-mnx` command, run in-process. run() returns an exit code,
 // so a test can read the files it wrote and the lines it logged.
 
-import { afterEach, beforeEach, describe, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import {
   linkSync,
   lstatSync,
@@ -17,6 +17,13 @@ import { tmpdir } from 'node:os'
 import { dirname, join, relative } from 'node:path'
 import { schemaErrors } from '../tests/support/schema.js'
 import { run } from './run.js'
+
+// Set by a test to fix the name of the temporary file a write goes through.
+const fixedBytes = vi.hoisted(() => ({ value: undefined as Buffer | undefined }))
+vi.mock('node:crypto', async (original) => {
+  const crypto = await original<typeof import('node:crypto')>()
+  return { ...crypto, randomBytes: (size: number) => fixedBytes.value ?? crypto.randomBytes(size) }
+})
 
 // A one-note score that converts with nothing lost.
 const LOSSLESS =
@@ -40,6 +47,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  fixedBytes.value = undefined
   rmSync(dir, { recursive: true, force: true })
 })
 
@@ -369,6 +377,18 @@ describe('the temporary file a write goes through', () => {
     expect(readFileSync(b, 'utf8')).toBe(LOSSY)
   })
 
+  test('is never one that exists already', async () => {
+    fixedBytes.value = Buffer.alloc(6)
+    const file = input('song.xml', LOSSLESS)
+    const taken = input('song.mnx.000000000000.partial', 'taken')
+
+    const code = await run([file], io)
+
+    expect(code).toBe(1)
+    expect(readFileSync(taken, 'utf8')).toBe('taken')
+    expect(lines[0]).toMatch(/could not write .*EEXIST/)
+  })
+
   test('is not left behind', async () => {
     const file = input('song.xml', LOSSLESS)
 
@@ -395,13 +415,18 @@ describe('a --report that is a link', () => {
 })
 
 describe('one input named twice', () => {
-  test('in two path forms is converted once', async () => {
+  test('in two path forms is written once, and the second is skipped', async () => {
     const file = input('song.xml', LOSSLESS)
+    const again = relative(process.cwd(), file)
 
-    const code = await run([file, relative(process.cwd(), file)], io)
+    const code = await run([file, again], io)
 
     expect(code).toBe(1)
-    expect(lines.filter((line) => line.includes('would overwrite'))).toHaveLength(1)
+    expect(lines.slice(0, 2)).toEqual([
+      `${file} -> ${join(dir, 'song.mnx')}`,
+      `${again}: would overwrite ${join(dirname(again), 'song.mnx')}, already written from ${file}; skipped.`,
+    ])
+    expect(readdirSync(dir).sort()).toEqual(['song.mnx', 'song.xml'])
   })
 })
 
