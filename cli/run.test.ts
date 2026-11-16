@@ -20,6 +20,20 @@ import { run } from './run.js'
 
 // Set by a test to fix the name of the temporary file a write goes through.
 const fixedBytes = vi.hoisted(() => ({ value: undefined as Buffer | undefined }))
+// Set by a test to make a write of the temporary file fail part way.
+const failWrite = vi.hoisted(() => ({ value: false }))
+vi.mock('node:fs', async (original) => {
+  const fs = await original<typeof import('node:fs')>()
+  return {
+    ...fs,
+    writeFileSync: (...args: Parameters<typeof fs.writeFileSync>) => {
+      fs.writeFileSync(...args)
+      if (failWrite.value && String(args[0]).endsWith('.partial')) {
+        throw Object.assign(new Error('ENOSPC: no space left on device'), { code: 'ENOSPC' })
+      }
+    },
+  }
+})
 vi.mock('node:crypto', async (original) => {
   const crypto = await original<typeof import('node:crypto')>()
   return { ...crypto, randomBytes: (size: number) => fixedBytes.value ?? crypto.randomBytes(size) }
@@ -48,6 +62,7 @@ beforeEach(() => {
 
 afterEach(() => {
   fixedBytes.value = undefined
+  failWrite.value = false
   rmSync(dir, { recursive: true, force: true })
 })
 
@@ -380,13 +395,33 @@ describe('the temporary file a write goes through', () => {
   test('is never one that exists already', async () => {
     fixedBytes.value = Buffer.alloc(6)
     const file = input('song.xml', LOSSLESS)
-    const taken = input('song.mnx.000000000000.partial', 'taken')
+    const taken = input('.000000000000.partial', 'taken')
 
     const code = await run([file], io)
 
     expect(code).toBe(1)
     expect(readFileSync(taken, 'utf8')).toBe('taken')
     expect(lines[0]).toMatch(/could not write .*EEXIST/)
+  })
+
+  test('is removed when the write fails part way', async () => {
+    failWrite.value = true
+    const file = input('song.xml', LOSSLESS)
+
+    const code = await run([file], io)
+
+    expect(code).toBe(1)
+    expect(lines[0]).toMatch(/could not write .*ENOSPC/)
+    expect(readdirSync(dir)).toEqual(['song.xml'])
+  })
+
+  test('fits beside an output with a name as long as the system allows', async () => {
+    const name = 'x'.repeat(250)
+    const file = input(`${name}.xml`, LOSSLESS)
+    const out = join(dir, 'out')
+
+    expect(await run([file, '-o', out], io)).toBe(0)
+    expect(readdirSync(out)).toEqual([`${name}.mnx`])
   })
 
   test('is not left behind', async () => {

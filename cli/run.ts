@@ -79,15 +79,18 @@ function isDirectory(path: string): boolean {
  * into place. A write that fails part way leaves nothing behind. The
  * temporary file must not exist yet, so the write never replaces or follows
  * another file. The rename replaces a link at path and does not follow it.
+ * The temporary name is short and not built from path, so it fits wherever
+ * path fits.
  */
 function writeSafely(path: string, text: string): void {
   mkdirSync(dirname(path), { recursive: true })
-  const partial = `${path}.${randomBytes(6).toString('hex')}.partial`
-  writeFileSync(partial, text, { flag: 'wx' })
+  const partial = join(dirname(path), `.${randomBytes(6).toString('hex')}.partial`)
   try {
+    writeFileSync(partial, text, { flag: 'wx' })
     renameSync(partial, path)
   } catch (error) {
-    rmSync(partial)
+    // A file already at the temporary name is not this write's to remove.
+    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') rmSync(partial, { force: true })
     throw error
   }
 }
