@@ -7,7 +7,7 @@
 // run it in-process.
 
 import { mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
-import { basename, dirname, extname, join } from 'node:path'
+import { basename, dirname, extname, join, resolve, sep } from 'node:path'
 import { randomBytes } from 'node:crypto'
 import { parseArgs } from 'node:util'
 import { fileURLToPath } from 'node:url'
@@ -46,7 +46,8 @@ Options:
   -o, --out <dir>     write the .mnx files into <dir> instead of beside the input
       --validate      check every output against the MNX schema
       --fail-on-loss  exit with code 3 if any conversion reports warnings
-      --report <file> write the warnings from every file to <file>.json
+      --report <file>.json
+                      write the warnings from every file to this file
   -h, --help          show this help
   -v, --version       show the version`
 
@@ -181,6 +182,13 @@ export async function run(
     }
     if (isDirectory(reportPath)) {
       io.log(`--report ${reportPath} is a directory.`)
+      return 2
+    }
+    // The outputs make --out and every directory above it.
+    const outDir = out === undefined ? undefined : resolve(out)
+    const report = resolve(reportPath)
+    if (outDir !== undefined && (outDir === report || outDir.startsWith(`${report}${sep}`))) {
+      io.log(`--report ${reportPath} names the --out directory or one above it.`)
       return 2
     }
     const target = fileId(reportPath)

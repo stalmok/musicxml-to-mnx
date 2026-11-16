@@ -283,6 +283,26 @@ describe('a --report that names a file the run reads or writes', () => {
     ],
     ['a directory not made yet', () => [input('song.xml', LOSSLESS), '--report', `${dir}/new/`]],
     [
+      'an --out directory not made yet',
+      () => [
+        input('song.xml', LOSSLESS),
+        '-o',
+        join(dir, 'x.json'),
+        '--report',
+        join(dir, 'x.json'),
+      ],
+    ],
+    [
+      'a parent of an --out directory not made yet',
+      () => [
+        input('song.xml', LOSSLESS),
+        '-o',
+        join(dir, 'x.json', 'out'),
+        '--report',
+        join(dir, 'x.json'),
+      ],
+    ],
+    [
       'the --out directory',
       () => [input('song.xml', LOSSLESS), '-o', join(dir, 'out'), '--report', join(dir, 'out')],
     ],

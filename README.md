@@ -158,8 +158,8 @@ after every output, and a report that cannot be written fails the run.
 The command never overwrites an input. An output that would overwrite an input
 or an earlier output is skipped, and the run fails. These are usage errors,
 and nothing is written: a report whose name does not end in `.json`, or that
-names an input or an existing directory; an empty `--out`; and either option
-given twice.
+names an input, a directory or the `--out` directory; an empty `--out`; and
+either option given twice. An output replaces the file or link at its path.
 
 | Exit code | Meaning                                                             |
 | --------- | ------------------------------------------------------------------- |
