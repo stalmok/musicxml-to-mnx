@@ -3,7 +3,7 @@
 // package is built.
 
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
@@ -23,8 +23,11 @@ afterAll(() => {
   if (dir) rmSync(dir, { recursive: true, force: true })
 })
 
-function runBuilt(args: readonly string[]): { code: number; output: string; stdout: string } {
-  const result = spawnSync('node', [cli, ...args], { encoding: 'utf8' })
+function runBuilt(
+  args: readonly string[],
+  cwd?: string,
+): { code: number; output: string; stdout: string } {
+  const result = spawnSync('node', [cli, ...args], { encoding: 'utf8', cwd })
   return {
     code: result.status ?? 1,
     output: `${result.stdout}${result.stderr}`,
@@ -73,5 +76,16 @@ suite('the built command', () => {
 
     expect(code).toBe(0)
     expect(stdout).toBe('')
+  })
+
+  // In-process tests cannot change the working directory under the mutation
+  // test runner, so this one runs here.
+  test('keeps a report entry for a file named like an object property', () => {
+    copyFileSync(song, join(dir, '__proto__'))
+
+    runBuilt(['__proto__', '-o', 'out', '--report', 'report.json'], dir)
+
+    const report = JSON.parse(readFileSync(join(dir, 'report.json'), 'utf8')) as object
+    expect(Object.keys(report)).toEqual(['__proto__'])
   })
 })
