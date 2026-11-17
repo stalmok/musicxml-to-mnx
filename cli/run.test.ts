@@ -3,6 +3,7 @@
 
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import {
+  existsSync,
   linkSync,
   lstatSync,
   mkdirSync,
@@ -524,6 +525,15 @@ describe('the temporary file a write goes through', () => {
     expect(code).toBe(1)
     expect(readFileSync(taken, 'utf8')).toBe('taken')
     expect(lines[0]).toMatch(/could not write .*EEXIST/)
+  })
+
+  test.skipIf(!existsSync('/proc/self/fd'))('is closed once it is written', async () => {
+    const open = () => readdirSync('/proc/self/fd').length
+    const files = ['a.xml', 'b.xml', 'c.xml'].map((name) => input(name, LOSSLESS))
+    const before = open()
+
+    expect(await run(files, io)).toBe(0)
+    expect(open()).toBe(before)
   })
 
   test('is removed when the rename fails, whatever the error', async () => {
