@@ -141,6 +141,8 @@ npx musicxml-to-mnx scores/*.mxl --fail-on-loss
 
 The command reads `.musicxml`, `.xml`, and `.mxl` files.
 It writes `<basename>.mnx` beside each input, or into the directory set by `-o`.
+Output and report paths have each `..` removed by text, before any link in
+them is followed.
 `musicxml-to-mnx to-mnx` is equivalent to `musicxml-to-mnx`.
 
 | Option                    | Effect                                                           |
