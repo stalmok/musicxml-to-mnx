@@ -223,17 +223,22 @@ function snapshot(root: string): Map<string, string> {
 }
 
 describe('a --report that names a file the run reads or writes', () => {
-  // Each case returns the command line. The run must refuse it before it
-  // writes anything.
-  const cases: [string, () => string[]][] = [
+  const JSON_NAME = /^--report .* must end in \.json\.$/
+  const INPUT = /^--report .* would overwrite the input /
+  const OUT = /^--report .* names the --out directory or one above it\.$/
+  // Each case returns the command line, and the message that refuses it. The
+  // run must refuse it before it writes anything. An output ends in .mnx, so
+  // the .json rule keeps the report off every output.
+  const cases: [string, () => string[], RegExp][] = [
     [
       'the output of its only input',
       () => [input('song.musicxml', LOSSLESS), '--report', join(dir, 'song.mnx')],
+      JSON_NAME,
     ],
-    ['its input', () => [input('song.musicxml', LOSSLESS), '--report', join(dir, 'song.musicxml')]],
     [
       'the output of another input',
       () => [input('a.xml', LOSSLESS), input('b.xml', LOSSY), '--report', join(dir, 'a.mnx')],
+      JSON_NAME,
     ],
     [
       'an output in the --out directory',
@@ -244,17 +249,26 @@ describe('a --report that names a file the run reads or writes', () => {
         '--report',
         join(dir, 'out', 'song.mnx'),
       ],
+      JSON_NAME,
     ],
+    // An input can be named anything, so these reach the input check.
+    ['its input', () => [input('song.json', LOSSLESS), '--report', join(dir, 'song.json')], INPUT],
     [
       'an input by a relative path',
       () => {
-        const file = input('song.xml', LOSSLESS)
+        const file = input('song.json', LOSSLESS)
         return [file, '--report', relative(process.cwd(), file)]
       },
+      INPUT,
     ],
     [
-      'an output by a path with . and .. in it',
-      () => [input('song.xml', LOSSLESS), '--report', `${dir}/./sub/../song.mnx`],
+      'an input by a path with . and .. in it',
+      () => {
+        const file = input('song.json', LOSSLESS)
+        mkdirSync(join(dir, 'sub'))
+        return [file, '--report', `${dir}/./sub/../song.json`]
+      },
+      INPUT,
     ],
     [
       'an input through a symbolic link',
@@ -263,6 +277,7 @@ describe('a --report that names a file the run reads or writes', () => {
         symlinkSync(file, join(dir, 'link.json'))
         return [file, '-o', join(dir, 'out'), '--report', join(dir, 'link.json')]
       },
+      INPUT,
     ],
     [
       'an input through a hard link',
@@ -271,52 +286,60 @@ describe('a --report that names a file the run reads or writes', () => {
         linkSync(file, join(dir, 'link.json'))
         return [file, '-o', join(dir, 'out'), '--report', join(dir, 'link.json')]
       },
+      INPUT,
     ],
     [
-      'an output through a linked directory',
+      'an input through a linked directory',
       () => {
-        const file = input('song.xml', LOSSLESS)
+        const file = input('song.json', LOSSLESS)
         symlinkSync(dir, join(dir, 'alias'))
-        return [file, '--report', join(dir, 'alias', 'song.mnx')]
+        return [file, '--report', join(dir, 'alias', 'song.json')]
       },
+      INPUT,
     ],
     [
       'an input that the converter refuses',
-      () => [input('bad.xml', '<not-a-score/>'), '--report', join(dir, 'bad.xml')],
+      () => [input('bad.json', '<not-a-score/>'), '--report', join(dir, 'bad.json')],
+      INPUT,
     ],
     [
-      'an output through a link and ..',
+      'an input through a link and ..',
       () => {
-        const file = input('real/song.xml', LOSSLESS)
+        const file = input('real/song.json', LOSSLESS)
         mkdirSync(join(dir, 'real', 'deeper'))
         mkdirSync(join(dir, 'other'))
         symlinkSync(join(dir, 'real', 'deeper'), join(dir, 'other', 'link'))
-        return [file, '--report', `${dir}/other/link/../song.mnx`]
+        return [file, '--report', `${dir}/other/link/../song.json`]
       },
-    ],
-    [
-      'an output named in capitals',
-      () => [input('song.xml', LOSSLESS), '--report', join(dir, 'SONG.MNX')],
+      INPUT,
     ],
     // parseArgs takes the word after --report as its value.
     [
       'a score that is not an input',
       () => [input('song.xml', LOSSLESS), '--report', input('other.mxl', 'a score')],
+      JSON_NAME,
     ],
-    ['empty', () => [input('song.xml', LOSSLESS), '--report=']],
+    ['empty', () => [input('song.xml', LOSSLESS), '--report='], /^--report needs a file name\.$/],
     [
       'a file with no extension',
       () => [input('song.xml', LOSSLESS), '--report', input('score', 'a score')],
+      JSON_NAME,
     ],
     [
       'an output with a dot after it',
       () => [input('song.xml', LOSSLESS), '--report', `${dir}/song.mnx.`],
+      JSON_NAME,
     ],
     [
       'a .json name with more after it',
       () => [input('song.xml', LOSSLESS), '--report', join(dir, 'r.json.txt')],
+      JSON_NAME,
     ],
-    ['a directory not made yet', () => [input('song.xml', LOSSLESS), '--report', `${dir}/new/`]],
+    [
+      'a directory not made yet',
+      () => [input('song.xml', LOSSLESS), '--report', `${dir}/new/`],
+      JSON_NAME,
+    ],
     [
       'an --out directory not made yet',
       () => [
@@ -326,6 +349,7 @@ describe('a --report that names a file the run reads or writes', () => {
         '--report',
         join(dir, 'x.json'),
       ],
+      OUT,
     ],
     [
       'a parent of an --out directory not made yet',
@@ -336,10 +360,21 @@ describe('a --report that names a file the run reads or writes', () => {
         '--report',
         join(dir, 'x.json'),
       ],
+      OUT,
     ],
     [
-      'the --out directory',
-      () => [input('song.xml', LOSSLESS), '-o', join(dir, 'out'), '--report', join(dir, 'out')],
+      'an existing --out directory',
+      () => {
+        mkdirSync(join(dir, 'out.json'))
+        return [
+          input('song.xml', LOSSLESS),
+          '-o',
+          join(dir, 'out.json'),
+          '--report',
+          join(dir, 'out.json'),
+        ]
+      },
+      /^--report .* is a directory\.$/,
     ],
     [
       'a directory',
@@ -347,6 +382,7 @@ describe('a --report that names a file the run reads or writes', () => {
         mkdirSync(join(dir, 'report.json'))
         return [input('song.xml', LOSSLESS), '--report', join(dir, 'report.json')]
       },
+      /^--report .* is a directory\.$/,
     ],
     [
       'given twice',
@@ -357,10 +393,11 @@ describe('a --report that names a file the run reads or writes', () => {
         '--report',
         join(dir, 'two.json'),
       ],
+      /^--report is given more than once\.$/,
     ],
   ]
 
-  test.each(cases)('is refused when it is %s, and nothing is written', async (_, argv) => {
+  test.each(cases)('is refused when it is %s, and nothing is written', async (_, argv, message) => {
     const args = argv()
     const before = snapshot(dir)
 
@@ -368,7 +405,7 @@ describe('a --report that names a file the run reads or writes', () => {
 
     expect(code).toBe(2)
     expect(snapshot(dir)).toEqual(before)
-    expect(lines[0]).toMatch(/^--report /)
+    expect(lines[0]).toMatch(message)
   })
 
   test('is written under a .json name in capitals', async () => {
