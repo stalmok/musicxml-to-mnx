@@ -22,6 +22,8 @@ import { run } from './run.js'
 const fixedBytes = vi.hoisted(() => ({ value: undefined as Buffer | undefined }))
 // Set by a test to make a write of the temporary file fail part way.
 const failWrite = vi.hoisted(() => ({ value: false }))
+// Set by a test to make a rename fail with this code.
+const failRename = vi.hoisted(() => ({ code: undefined as string | undefined }))
 // Set by a test to make a stat of one path fail.
 const failStat = vi.hoisted(() => ({ path: undefined as string | undefined }))
 vi.mock('node:fs', async (original) => {
@@ -30,9 +32,18 @@ vi.mock('node:fs', async (original) => {
     ...fs,
     writeFileSync: (...args: Parameters<typeof fs.writeFileSync>) => {
       fs.writeFileSync(...args)
-      if (failWrite.value && String(args[0]).endsWith('.partial')) {
+      // The command writes its temporary file through a descriptor.
+      if (failWrite.value && typeof args[0] === 'number') {
         throw Object.assign(new Error('ENOSPC: no space left on device'), { code: 'ENOSPC' })
       }
+    },
+    renameSync: (...args: Parameters<typeof fs.renameSync>) => {
+      if (failRename.code !== undefined) {
+        throw Object.assign(new Error(`${failRename.code}: rename failed`), {
+          code: failRename.code,
+        })
+      }
+      fs.renameSync(...args)
     },
     statSync: ((...args: Parameters<typeof fs.statSync>) => {
       if (String(args[0]) === failStat.path) {
@@ -72,6 +83,7 @@ afterEach(() => {
   fixedBytes.value = undefined
   failWrite.value = false
   failStat.path = undefined
+  failRename.code = undefined
   rmSync(dir, { recursive: true, force: true })
 })
 
@@ -445,6 +457,17 @@ describe('the temporary file a write goes through', () => {
     expect(code).toBe(1)
     expect(readFileSync(taken, 'utf8')).toBe('taken')
     expect(lines[0]).toMatch(/could not write .*EEXIST/)
+  })
+
+  test('is removed when the rename fails, whatever the error', async () => {
+    failRename.code = 'EEXIST'
+    const file = input('song.xml', LOSSLESS)
+
+    const code = await run([file], io)
+
+    expect(code).toBe(1)
+    expect(lines[0]).toMatch(/could not write .*EEXIST/)
+    expect(readdirSync(dir)).toEqual(['song.xml'])
   })
 
   test('is removed when the write fails part way', async () => {

@@ -6,7 +6,16 @@
 // run() returns an exit code and does not call process.exit, so the tests
 // run it in-process.
 
-import { mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import {
+  closeSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs'
 import { basename, dirname, extname, join, resolve, sep } from 'node:path'
 import { randomBytes } from 'node:crypto'
 import { parseArgs } from 'node:util'
@@ -86,12 +95,18 @@ function isDirectory(path: string): boolean {
 function writeSafely(path: string, text: string): void {
   mkdirSync(dirname(path), { recursive: true })
   const partial = join(dirname(path), `.${randomBytes(6).toString('hex')}.partial`)
+  // Throws when a file is already at the temporary name. That file is not
+  // this write's to remove.
+  const fd = openSync(partial, 'wx')
   try {
-    writeFileSync(partial, text, { flag: 'wx' })
+    try {
+      writeFileSync(fd, text)
+    } finally {
+      closeSync(fd)
+    }
     renameSync(partial, path)
   } catch (error) {
-    // A file already at the temporary name is not this write's to remove.
-    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') rmSync(partial, { force: true })
+    rmSync(partial, { force: true })
     throw error
   }
 }
