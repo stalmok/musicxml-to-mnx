@@ -204,7 +204,7 @@ export async function run(
   const report = new Map<string, readonly ConversionWarning[]>()
   // Catches two inputs with the same name written into one --out directory,
   // and one input named twice.
-  const written: { output: string | undefined; file: string }[] = []
+  const written: { output: string; file: string }[] = []
   let failed = 0
   let skipped = 0
   let unwritten = 0
@@ -247,7 +247,10 @@ export async function run(
       unwritten += 1
       continue
     }
-    written.push({ output: fileId(outPath), file })
+    // An output whose id cannot be read is left out, or every later output
+    // that does not exist yet would match it.
+    const id = fileId(outPath)
+    if (id !== undefined) written.push({ output: id, file })
 
     report.set(file, warnings)
     if (warnings.length > 0) lossy += 1

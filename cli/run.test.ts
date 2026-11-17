@@ -22,6 +22,8 @@ import { run } from './run.js'
 const fixedBytes = vi.hoisted(() => ({ value: undefined as Buffer | undefined }))
 // Set by a test to make a write of the temporary file fail part way.
 const failWrite = vi.hoisted(() => ({ value: false }))
+// Set by a test to make a stat of one path fail.
+const failStat = vi.hoisted(() => ({ path: undefined as string | undefined }))
 vi.mock('node:fs', async (original) => {
   const fs = await original<typeof import('node:fs')>()
   return {
@@ -32,6 +34,12 @@ vi.mock('node:fs', async (original) => {
         throw Object.assign(new Error('ENOSPC: no space left on device'), { code: 'ENOSPC' })
       }
     },
+    statSync: ((...args: Parameters<typeof fs.statSync>) => {
+      if (String(args[0]) === failStat.path) {
+        throw Object.assign(new Error('EIO: i/o error'), { code: 'EIO' })
+      }
+      return fs.statSync(...args)
+    }) as typeof fs.statSync,
   }
 })
 vi.mock('node:crypto', async (original) => {
@@ -63,6 +71,7 @@ beforeEach(() => {
 afterEach(() => {
   fixedBytes.value = undefined
   failWrite.value = false
+  failStat.path = undefined
   rmSync(dir, { recursive: true, force: true })
 })
 
@@ -173,6 +182,20 @@ describe('two inputs that would write to the same file', () => {
     }
     expect(schemaErrors(mnx)).toEqual([])
     expect(mnx.parts[0]?.measures[0]?.sequences[0]?.content[0]?.notes?.[0]?.pitch.step).toBe('C')
+  })
+})
+
+describe('an output that cannot be checked after it is written', () => {
+  test('does not block the outputs after it', async () => {
+    const a = input('a.xml', LOSSLESS)
+    const b = input('b.xml', LOSSLESS)
+    failStat.path = join(dir, 'a.mnx')
+
+    const code = await run([a, b], io)
+
+    expect(code).toBe(0)
+    expect(() => readFileSync(join(dir, 'b.mnx'))).not.toThrow()
+    expect(lines.at(-1)).toBe('Converted 2 of 2.')
   })
 })
 
