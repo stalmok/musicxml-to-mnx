@@ -158,15 +158,16 @@ after every output, and a report that cannot be written fails the run.
 The command never overwrites an input. An output that would overwrite an input
 or an earlier output is skipped, and the run fails. These are usage errors,
 and nothing is written: a report whose name does not end in `.json`, or that
-names an input, a directory or the `--out` directory; an empty `--out`; and
-either option given twice. An output replaces the file or link at its path.
+names an input, a directory, the `--out` directory or a directory above it;
+an empty `--out` or `--report`; and either option given twice. An output
+replaces a file or link at its path, unless it is an input.
 
-| Exit code | Meaning                                                             |
-| --------- | ------------------------------------------------------------------- |
-| `0`       | All files converted. With `--fail-on-loss`, none reported warnings. |
-| `1`       | A file failed, or validation failed.                                |
-| `2`       | Command usage error. Nothing is written.                            |
-| `3`       | `--fail-on-loss` detected warnings, and nothing else failed.        |
+| Exit code | Meaning                                                                         |
+| --------- | ------------------------------------------------------------------------------- |
+| `0`       | All files converted. With `--fail-on-loss`, none reported warnings.             |
+| `1`       | A file failed or was skipped, validation failed, or the report was not written. |
+| `2`       | Command usage error. Nothing is written.                                        |
+| `3`       | `--fail-on-loss` detected warnings, and nothing else failed.                    |
 
 The report contains warnings, not a complete failure log.
 Check the exit code and command output as well.
