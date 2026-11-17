@@ -48,7 +48,7 @@
     "build": "vite build && vite build --config vite.cli.config.ts && tsc -p tsconfig.build.json && node scripts/prune-declarations.ts",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json --noEmit",
     "test": "vitest run",
-    "bench": "vitest bench --run",
+    "bench": "vitest bench --run --reporter=verbose",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:precommit": "vitest run --coverage --exclude '**/corpus.test.ts' --exclude '**/performance.test.ts'",
@@ -74,7 +74,7 @@
     "@stryker-mutator/typescript-checker": "10.1.1",
     "@stryker-mutator/vitest-runner": "10.1.1",
     "@types/node": "26.6.6",
-    "@vitest/coverage-v8": "4.1.12",
+    "@vitest/coverage-v8": "5.1.0",
     "ajv": "8.20.0",
     "dependency-cruiser": "18.7.2",
     "eslint": "10.15.0",
@@ -83,7 +83,7 @@
     "typescript": "6.0.3",
     "typescript-eslint": "8.72.2",
     "vite": "8.3.8",
-    "vitest": "4.1.12"
+    "vitest": "5.1.0"
   },
   "bin": {
     "musicxml-to-mnx": "dist/cli.js"

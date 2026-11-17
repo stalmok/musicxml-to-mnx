@@ -24,6 +24,8 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts', 'cli/**/*.test.ts', 'tests/**/*.test.ts'],
+    // The default pattern also finds the copies in mutation test sandboxes.
+    benchmark: { include: ['tests/**/*.bench.ts'] },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
