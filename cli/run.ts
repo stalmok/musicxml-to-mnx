@@ -89,8 +89,8 @@ function isDirectory(path: string): boolean {
  * into place. A write that fails part way leaves nothing behind. The
  * temporary file must not exist yet, so the write never replaces or follows
  * another file. The rename replaces a link at path and does not follow it.
- * The temporary name is short and not built from path, so it fits wherever
- * path fits.
+ * The temporary name has a fixed length of 21 characters, so a long output
+ * name does not make it too long for the file system.
  */
 function writeSafely(path: string, text: string): void {
   mkdirSync(dirname(path), { recursive: true })
