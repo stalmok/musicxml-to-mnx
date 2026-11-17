@@ -26,6 +26,8 @@ export default defineConfig({
     include: ['src/**/*.test.ts', 'cli/**/*.test.ts', 'tests/**/*.test.ts'],
     // The default pattern also finds the copies in mutation test sandboxes.
     benchmark: { include: ['tests/**/*.bench.ts'] },
+    // The corpus gate prints its counts from a test that passes.
+    silent: false,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
