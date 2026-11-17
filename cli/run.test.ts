@@ -607,6 +607,19 @@ describe('one input named twice', () => {
     ])
     expect(readdirSync(dir).sort()).toEqual(['song.mnx', 'song.xml'])
   })
+
+  test('is called by the first name it was given', async () => {
+    const file = input('song.mnx', LOSSLESS)
+    const again = relative(process.cwd(), file)
+
+    const code = await run([file, again], io)
+
+    expect(code).toBe(1)
+    expect(lines.slice(0, 2)).toEqual([
+      `${file}: would overwrite the input ${file}; skipped.`,
+      `${again}: would overwrite the input ${file}; skipped.`,
+    ])
+  })
 })
 
 describe('any run', () => {
