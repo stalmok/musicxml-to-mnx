@@ -160,7 +160,9 @@ or an earlier output is skipped, and the run fails. These are usage errors,
 and nothing is written: a report whose name does not end in `.json`, or that
 names an input, a directory, the `--out` directory or a directory above it;
 an empty `--out` or `--report`; and either option given twice. An output
-replaces a file or link at its path, unless it is an input.
+replaces a file or link at its path, unless it is an input. A glob such as
+`scores/*` also matches earlier outputs, which then count as inputs. Name the
+score extensions, as in `scores/*.mxl`.
 
 | Exit code | Meaning                                                                         |
 | --------- | ------------------------------------------------------------------------------- |
