@@ -26,13 +26,23 @@ export interface XmlElement {
   readonly line: number
 }
 
+/**
+ * The deepest nesting of elements the reader accepts. MusicXML nests a few
+ * levels deep. The limit keeps a hostile document from exhausting the stack in
+ * the parser or in the reader.
+ */
+const MAX_ELEMENT_DEPTH = 256
+
 export function parseXmlRoot(source: string): XmlElement {
   try {
     // Two parser defaults give the security and must stay: DTDs are not
     // processed, so the external DTD every MusicXML file references is never
     // fetched; and an undefined entity is a parse error, which blocks
     // entity-expansion and external-entity attacks.
-    const document = parseXml(source, { includeOffsets: true })
+    const document = parseXml(source, {
+      includeOffsets: true,
+      maxElementDepth: MAX_ELEMENT_DEPTH,
+    })
     const root = document.root
     /* v8 ignore next 3 -- the parser rejects a rootless document before
        returning, so this only guards against that contract changing. */
@@ -41,9 +51,6 @@ export function parseXmlRoot(source: string): XmlElement {
     }
     return convertElement(root, lineStarts(source))
   } catch (cause) {
-    // Catches everything. Besides the parser's own errors, a document nested
-    // tens of thousands of elements deep overflows the stack in the parser, and
-    // the caller must get that as a MusicXMLError.
     throw parseFailure(cause)
   }
 }
@@ -83,28 +90,17 @@ function parseFailure(cause: unknown): MusicXMLError {
   /* v8 ignore next -- everything the parser throws is an Error; the fallback
      only keeps a stray non-Error throw from surfacing as "undefined". */
   const raw = cause instanceof Error ? cause.message : String(cause)
-  const summary = overflowed(cause)
-    ? 'The document is nested too deeply to read.'
-    : raw
-        .split('\n', 1)
-        .join('')
-        .replace(/\s*\(line \d+, column \d+\)\s*$/, '')
+  const first = raw.split('\n', 1).join('')
+  // The parser's message names its own option.
+  const summary = first.startsWith('Maximum element depth')
+    ? `The document is nested more than ${String(MAX_ELEMENT_DEPTH)} elements deep`
+    : first.replace(/\s*\(line \d+, column \d+\)\s*$/, '')
   const line = (cause as { line?: unknown }).line
   return new MusicXMLError(summary, {
     path: [],
     cause,
     ...(typeof line === 'number' ? { line } : {}),
   })
-}
-
-// A stack overflow is a RangeError in V8 and JavaScriptCore, and an
-// InternalError in Firefox. Each class has other causes too.
-function overflowed(cause: unknown): boolean {
-  return (
-    cause instanceof Error &&
-    (cause.name === 'RangeError' || cause.name === 'InternalError') &&
-    /call stack|too much recursion/i.test(cause.message)
-  )
 }
 
 // The parser reports character offsets. Line starts are computed once per

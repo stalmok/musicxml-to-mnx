@@ -188,21 +188,32 @@ describe('parseXmlRoot resists hostile documents', () => {
     expect((text ?? '').length).toBeLessThan(1000)
   })
 
-  // Nesting this deep exhausts the stack inside the parser. It must come out
-  // as a rejected document, not as an error that escapes the library.
-  test('rejects a document nested deep enough to overflow the stack', () => {
-    const depth = 50_000
-    const bomb = '<a>'.repeat(depth) + '</a>'.repeat(depth)
+  test('reads a document nested 256 elements deep', () => {
+    const depth = 256
+    const deep = '<a>'.repeat(depth) + '</a>'.repeat(depth)
 
-    expect(() => parseXmlRoot(bomb)).toThrow(MusicXMLError)
-    expect(() => parseXmlRoot(bomb)).toThrow(
-      expect.objectContaining({ message: 'The document is nested too deeply to read.', path: [] }),
+    expect(parseXmlRoot(deep).name).toBe('a')
+  })
+
+  test.each([257, 50_000])('rejects a document nested %i elements deep', (depth) => {
+    const deep = '<a>\n'.repeat(depth) + '</a>'.repeat(depth)
+
+    expect(() => parseXmlRoot(deep)).toThrow(MusicXMLError)
+    expect(() => parseXmlRoot(deep)).toThrow(
+      expect.objectContaining({
+        message: 'The document is nested more than 256 elements deep (line 257)',
+        line: 257,
+        path: [],
+      }),
     )
   })
 
-  // The parser's message quotes the document around the error.
-  test('keeps the parser message for a document whose text reads like an overflow', () => {
-    expect(() => parseXmlRoot('<words>call stack<a></b></words>')).toThrow('Missing end tag')
+  // The first line of the parser's message is its own, and the document is
+  // quoted below it.
+  test('keeps the parser message for a document whose text reads like the depth limit', () => {
+    expect(() => parseXmlRoot('<words>Maximum element depth<a></b></words>')).toThrow(
+      'Missing end tag',
+    )
   })
 
   test('still resolves the five entities XML itself defines', () => {
