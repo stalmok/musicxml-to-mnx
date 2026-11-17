@@ -11,6 +11,7 @@ import {
   mkdirSync,
   openSync,
   readFileSync,
+  realpathSync,
   renameSync,
   rmSync,
   statSync,
@@ -73,6 +74,27 @@ function fileId(path: string): string | undefined {
     return `${String(stats.dev)}:${String(stats.ino)}`
   } catch {
     return undefined
+  }
+}
+
+/**
+ * The path that a write to path reaches. The part of path that exists is
+ * resolved by the file system, so a `..` after a link goes to the parent of
+ * the link's target. The write makes the rest as new directories, so a `..`
+ * in the rest is removed by text.
+ */
+function writtenPath(path: string): string {
+  const rest: string[] = []
+  let head = path
+  for (;;) {
+    try {
+      return resolve(realpathSync.native(head), ...rest)
+    } catch {
+      const parent = dirname(head)
+      if (parent === head) return resolve(path)
+      rest.unshift(basename(head))
+      head = parent
+    }
   }
 }
 
@@ -211,7 +233,7 @@ export async function run(
       io.log(`--report ${reportPath} names the --out directory or one above it.`)
       return 2
     }
-    const target = fileId(reportPath)
+    const target = fileId(writtenPath(reportPath))
     const named = target === undefined ? undefined : inputs.get(target)
     if (named !== undefined) {
       io.log(`--report ${reportPath} would overwrite the input ${named}.`)
