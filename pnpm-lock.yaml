@@ -13,8 +13,8 @@ importers:
   .:
     dependencies:
       '@rgrove/parse-xml':
-        specifier: 5.1.0
-        version: 5.1.0
+        specifier: 5.2.0
+        version: 5.2.0
       fflate:
         specifier: 0.8.3
         version: 0.8.3
@@ -516,8 +516,8 @@ packages:
   '@oxc-project/types@0.156.0':
     resolution: {integrity: sha512-1Duyg48TdJNdyhEB8Xn1L36bT9Pv6GUtlKjHxOys8xkaF/rQq3XJE+bAurSK/AgIz5mGFsb77cn9Pb20+WCScw==}
 
-  '@rgrove/parse-xml@5.1.0':
-    resolution: {integrity: sha512-ExwK7gowU5XT/WFC81o/Ou7Zvi9zQwW4SmxqFM6UaADOr7gC44BGwKSpGe20OyRD9EjwnT3d8n4qMbnAdlt8PQ==}
+  '@rgrove/parse-xml@5.2.0':
+    resolution: {integrity: sha512-UDu4Ha/ZAEI0O/Vw869KWwMM0gksSO6GY217cPO9MsEeAq9Nkj3ISB5gVZZimoUAy0NOPurf4zTMNJg4njEz2w==}
     engines: {node: '>=22.12.0'}
 
   '@rolldown/binding-android-arm-eabi@1.2.19':
@@ -2275,7 +2275,7 @@ snapshots:
 
   '@oxc-project/types@0.156.0': {}
 
-  '@rgrove/parse-xml@5.1.0': {}
+  '@rgrove/parse-xml@5.2.0': {}
 
   '@rolldown/binding-android-arm-eabi@1.2.19':
     optional: true
