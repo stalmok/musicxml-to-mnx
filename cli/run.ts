@@ -86,7 +86,7 @@ function isDirectory(path: string): boolean {
 
 /**
  * Writes text to path through a new temporary file beside it, then renames it
- * into place. A write that fails part way leaves nothing behind. The
+ * into place. A write that fails part way leaves no temporary file behind. The
  * temporary file must not exist yet, so the write never replaces or follows
  * another file. The rename replaces a link at path and does not follow it.
  * The temporary name has a fixed length of 21 characters, so a long output
