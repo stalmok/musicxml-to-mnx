@@ -29,7 +29,7 @@ export interface XmlElement {
 /**
  * The deepest nesting of elements the reader accepts. MusicXML nests a few
  * levels deep. The limit keeps a hostile document from exhausting the stack in
- * the parser or in the reader.
+ * the parser and in each walk over the element tree.
  */
 const MAX_ELEMENT_DEPTH = 256
 

@@ -282,6 +282,7 @@ needs. If it inlines any, the build writes their licence to
 
 - The XML parser does not process DTDs or resolve external entities.
 - Undefined entities cause parse errors.
+- A document with elements nested more than 256 deep causes a `MusicXMLError`.
 - XML text remains untrimmed. Readers use `trimmedText()` for numbers and keywords.
 - Attribute objects have null prototypes.
 - Raw bytes follow a byte-order mark (UTF-8 or UTF-16) first, then the encoding in the XML declaration, then UTF-8.
