@@ -65,7 +65,8 @@ test('corpus songs', async ({ bench }) => {
   )
 })
 
-// Thirty conversions of the largest score take longer than the test timeout.
+// The largest score converts about 16 times, which is longer than the 60-second
+// timeout of a benchmark.
 test('generated scores', { timeout: 600_000 }, async ({ bench }) => {
   const sizes = [
     { parts: 1, measures: 100, notesPerMeasure: 8 },

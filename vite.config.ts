@@ -26,7 +26,8 @@ export default defineConfig({
     include: ['src/**/*.test.ts', 'cli/**/*.test.ts', 'tests/**/*.test.ts'],
     // The default pattern also finds the copies in mutation test sandboxes.
     benchmark: { include: ['tests/**/*.bench.ts'] },
-    // The corpus gate prints its counts from a test that passes.
+    // When run by an AI agent, vitest uses a reporter that hides the output of
+    // passed tests. The corpus gate prints its counts from a test that passes.
     silent: false,
     coverage: {
       provider: 'v8',
