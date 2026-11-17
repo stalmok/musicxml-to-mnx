@@ -11,7 +11,6 @@ import {
   mkdirSync,
   openSync,
   readFileSync,
-  realpathSync,
   renameSync,
   rmSync,
   statSync,
@@ -74,27 +73,6 @@ function fileId(path: string): string | undefined {
     return `${String(stats.dev)}:${String(stats.ino)}`
   } catch {
     return undefined
-  }
-}
-
-/**
- * The path that a write to path reaches. The part of path that exists is
- * resolved by the file system, so a `..` after a link goes to the parent of
- * the link's target. The write makes the rest as new directories, so a `..`
- * in the rest is removed by text.
- */
-function writtenPath(path: string): string {
-  const rest: string[] = []
-  let head = path
-  for (;;) {
-    try {
-      return resolve(realpathSync.native(head), ...rest)
-    } catch {
-      const parent = dirname(head)
-      if (parent === head) return resolve(path)
-      rest.unshift(basename(head))
-      head = parent
-    }
   }
 }
 
@@ -218,22 +196,28 @@ export async function run(
   // written. The .json name keeps the report off every output and off a
   // score taken as the report's file name.
   if (reportPath !== undefined) {
+    // The report is checked and written at this path, which has no `..` left
+    // in it, so the check and the write reach the same file. Outputs get the
+    // same from join().
+    const reportFile = resolve(reportPath)
     if (!/\.json$/i.test(reportPath)) {
       io.log(`--report ${reportPath} must end in .json.`)
       return 2
     }
-    if (isDirectory(reportPath)) {
+    if (isDirectory(reportFile)) {
       io.log(`--report ${reportPath} is a directory.`)
       return 2
     }
     // The outputs make --out and every directory above it.
     const outDir = out === undefined ? undefined : resolve(out)
-    const report = resolve(reportPath)
-    if (outDir !== undefined && (outDir === report || outDir.startsWith(`${report}${sep}`))) {
+    if (
+      outDir !== undefined &&
+      (outDir === reportFile || outDir.startsWith(`${reportFile}${sep}`))
+    ) {
       io.log(`--report ${reportPath} names the --out directory or one above it.`)
       return 2
     }
-    const target = fileId(writtenPath(reportPath))
+    const target = fileId(reportFile)
     const named = target === undefined ? undefined : inputs.get(target)
     if (named !== undefined) {
       io.log(`--report ${reportPath} would overwrite the input ${named}.`)
@@ -314,7 +298,7 @@ export async function run(
     // Creates the report's directory, so --report into a new path does not
     // fail after the outputs are written.
     try {
-      writeSafely(reportPath, `${JSON.stringify(Object.fromEntries(report), null, 2)}\n`)
+      writeSafely(resolve(reportPath), `${JSON.stringify(Object.fromEntries(report), null, 2)}\n`)
     } catch (error) {
       io.log(`could not write the report ${reportPath}: ${String(error)}`)
       reportFailed = true

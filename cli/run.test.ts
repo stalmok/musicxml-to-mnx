@@ -25,8 +25,6 @@ const fixedBytes = vi.hoisted(() => ({ value: undefined as Buffer | undefined })
 const failWrite = vi.hoisted(() => ({ value: false }))
 // Set by a test to make a rename fail with this code.
 const failRename = vi.hoisted(() => ({ code: undefined as string | undefined }))
-// Set by a test to make every realpath fail.
-const failRealpath = vi.hoisted(() => ({ value: false }))
 // Set by a test to make a stat of one path fail.
 const failStat = vi.hoisted(() => ({ path: undefined as string | undefined }))
 vi.mock('node:fs', async (original) => {
@@ -48,17 +46,6 @@ vi.mock('node:fs', async (original) => {
       }
       fs.renameSync(...args)
     },
-    realpathSync: Object.assign(
-      (...args: Parameters<typeof fs.realpathSync>) => fs.realpathSync(...args),
-      {
-        native: (...args: Parameters<typeof fs.realpathSync.native>) => {
-          if (failRealpath.value) {
-            throw Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' })
-          }
-          return fs.realpathSync.native(...args)
-        },
-      },
-    ),
     statSync: ((...args: Parameters<typeof fs.statSync>) => {
       if (String(args[0]) === failStat.path) {
         throw Object.assign(new Error('EIO: i/o error'), { code: 'EIO' })
@@ -98,7 +85,6 @@ afterEach(() => {
   failWrite.value = false
   failStat.path = undefined
   failRename.code = undefined
-  failRealpath.value = false
   rmSync(dir, { recursive: true, force: true })
 })
 
@@ -318,30 +304,8 @@ describe('a --report that names a file the run reads or writes', () => {
       INPUT,
     ],
     [
-      'an input through a link and ..',
-      () => {
-        const file = input('real/song.json', LOSSLESS)
-        mkdirSync(join(dir, 'real', 'deeper'))
-        mkdirSync(join(dir, 'other'))
-        symlinkSync(join(dir, 'real', 'deeper'), join(dir, 'other', 'link'))
-        return [file, '--report', `${dir}/other/link/../song.json`]
-      },
-      INPUT,
-    ],
-    [
       'an input by a path with .. through a directory not made yet',
       () => [input('song.json', LOSSLESS), '--report', `${dir}/new/../song.json`],
-      INPUT,
-    ],
-    [
-      'an input through a link and a directory not made yet',
-      () => {
-        const file = input('real/song.json', LOSSLESS)
-        mkdirSync(join(dir, 'real', 'deeper'))
-        mkdirSync(join(dir, 'other'))
-        symlinkSync(join(dir, 'real', 'deeper'), join(dir, 'other', 'link'))
-        return [file, '--report', `${dir}/other/link/../new/../song.json`]
-      },
       INPUT,
     ],
     // parseArgs takes the word after --report as its value.
@@ -439,15 +403,6 @@ describe('a --report that names a file the run reads or writes', () => {
     expect(lines[0]).toMatch(message)
   })
 
-  test('is refused when it is an input, on a file system that resolves no path', async () => {
-    failRealpath.value = true
-    const file = input('song.json', LOSSLESS)
-
-    expect(await run([file, '--report', `${dir}/new/../song.json`], io)).toBe(2)
-    expect(lines[0]).toMatch(INPUT)
-    expect(readFileSync(file, 'utf8')).toBe(LOSSLESS)
-  })
-
   test('is written under a .json name in capitals', async () => {
     const reportPath = join(dir, 'REPORT.JSON')
 
@@ -498,6 +453,33 @@ describe('an output that would overwrite an input', () => {
 
     expect(code).toBe(1)
     expect(readFileSync(file, 'utf8')).toBe(LOSSLESS)
+  })
+})
+
+describe('a --report path with .. in it', () => {
+  // A `..` is removed by text, before any link is followed, so the run checks
+  // the same path that it writes.
+  test.each([
+    ['after a link', 'other/link/../song.json', 'other/song.json'],
+    [
+      'after a link and a directory not made yet',
+      'other/link/../new/../song.json',
+      'other/song.json',
+    ],
+    [
+      'after a directory not made yet and then a link',
+      'other/new/../link/../song.json',
+      'other/song.json',
+    ],
+  ])('%s is written at the path left by text, not over the input', async (_, given, written) => {
+    const file = input('real/song.json', LOSSLESS)
+    mkdirSync(join(dir, 'real', 'deeper'))
+    mkdirSync(join(dir, 'other'))
+    symlinkSync(join(dir, 'real', 'deeper'), join(dir, 'other', 'link'))
+
+    expect(await run([file, '--report', `${dir}/${given}`], io)).toBe(0)
+    expect(readFileSync(file, 'utf8')).toBe(LOSSLESS)
+    expect(JSON.parse(readFileSync(join(dir, written), 'utf8'))).toEqual({ [file]: [] })
   })
 })
 
