@@ -170,7 +170,12 @@ export async function run(
 
   const outputOf = (file: string) =>
     join(out ?? dirname(file), `${basename(file, extname(file))}.mnx`)
-  const inputs = files.map(fileId)
+  // Each input's id, mapped to the first name it was given by.
+  const inputs = new Map<string, string>()
+  for (const file of files) {
+    const id = fileId(file)
+    if (id !== undefined && !inputs.has(id)) inputs.set(id, file)
+  }
 
   // The report is written last, so these are refused before any output is
   // written. The .json name keeps the report off every output and off a
@@ -192,9 +197,9 @@ export async function run(
       return 2
     }
     const target = fileId(reportPath)
-    const index = target === undefined ? -1 : inputs.indexOf(target)
-    if (index >= 0) {
-      io.log(`--report ${reportPath} would overwrite the input ${String(files[index])}.`)
+    const named = target === undefined ? undefined : inputs.get(target)
+    if (named !== undefined) {
+      io.log(`--report ${reportPath} would overwrite the input ${named}.`)
       return 2
     }
   }
@@ -204,7 +209,8 @@ export async function run(
   const report = new Map<string, readonly ConversionWarning[]>()
   // Catches two inputs with the same name written into one --out directory,
   // and one input named twice.
-  const written: { output: string; file: string }[] = []
+  // Each written output's id, mapped to the input it was written from.
+  const written = new Map<string, string>()
   let failed = 0
   let skipped = 0
   let unwritten = 0
@@ -214,16 +220,15 @@ export async function run(
   for (const file of files) {
     const outPath = outputOf(file)
     const output = fileId(outPath)
-    const input = output === undefined ? -1 : inputs.indexOf(output)
-    if (input >= 0) {
-      io.log(`${file}: would overwrite the input ${String(files[input])}; skipped.`)
+    const input = output === undefined ? undefined : inputs.get(output)
+    if (input !== undefined) {
+      io.log(`${file}: would overwrite the input ${input}; skipped.`)
       skipped += 1
       continue
     }
-    // Every written output exists, so a missing output matches none.
-    const already = written.find((entry) => entry.output === output)
+    const already = output === undefined ? undefined : written.get(output)
     if (already !== undefined) {
-      io.log(`${file}: would overwrite ${outPath}, already written from ${already.file}; skipped.`)
+      io.log(`${file}: would overwrite ${outPath}, already written from ${already}; skipped.`)
       skipped += 1
       continue
     }
@@ -250,7 +255,7 @@ export async function run(
     // An output whose id cannot be read is left out, or every later output
     // that does not exist yet would match it.
     const id = fileId(outPath)
-    if (id !== undefined) written.push({ output: id, file })
+    if (id !== undefined) written.set(id, file)
 
     report.set(file, warnings)
     if (warnings.length > 0) lossy += 1
