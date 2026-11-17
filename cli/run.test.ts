@@ -456,6 +456,26 @@ describe('an output that would overwrite an input', () => {
   })
 })
 
+describe('a --report that reaches an input only once the outputs are written', () => {
+  // The link dangles until the run makes the --out directory, and then leads
+  // to the input's directory.
+  test('is not written, and the run fails', async () => {
+    const score = input('s.xml', LOSSLESS)
+    const file = input('data/song.json', LOSSLESS)
+    mkdirSync(join(dir, 'r'))
+    symlinkSync('../new/../data', join(dir, 'r', 'D'))
+    const reportPath = join(dir, 'r', 'D', 'song.json')
+
+    const code = await run([score, file, '--out', join(dir, 'new'), '--report', reportPath], io)
+
+    expect(code).toBe(1)
+    expect(readFileSync(file, 'utf8')).toBe(LOSSLESS)
+    expect(lines).toContain(
+      `could not write the report ${reportPath}: it would overwrite the input ${file}.`,
+    )
+  })
+})
+
 describe('a --report path with .. in it', () => {
   // A `..` is removed by text, before any link is followed, so the run checks
   // the same path that it writes.

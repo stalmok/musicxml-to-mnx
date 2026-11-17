@@ -192,6 +192,12 @@ export async function run(
     if (id !== undefined && !inputs.has(id)) inputs.set(id, file)
   }
 
+  /** The name of the input at path, if there is one. */
+  const inputAt = (path: string) => {
+    const id = fileId(path)
+    return id === undefined ? undefined : inputs.get(id)
+  }
+
   // The report is written last, so these are refused before any output is
   // written. The .json name keeps the report off every output and off a
   // score taken as the report's file name.
@@ -217,8 +223,7 @@ export async function run(
       io.log(`--report ${reportPath} names the --out directory or one above it.`)
       return 2
     }
-    const target = fileId(reportFile)
-    const named = target === undefined ? undefined : inputs.get(target)
+    const named = inputAt(reportFile)
     if (named !== undefined) {
       io.log(`--report ${reportPath} would overwrite the input ${named}.`)
       return 2
@@ -295,13 +300,22 @@ export async function run(
 
   let reportFailed = false
   if (reportPath !== undefined) {
-    // Creates the report's directory, so --report into a new path does not
-    // fail after the outputs are written.
-    try {
-      writeSafely(resolve(reportPath), `${JSON.stringify(Object.fromEntries(report), null, 2)}\n`)
-    } catch (error) {
-      io.log(`could not write the report ${reportPath}: ${String(error)}`)
+    const reportFile = resolve(reportPath)
+    // The outputs make directories, and a link in the report path can lead
+    // through one of them to an input, so the check is made again.
+    const named = inputAt(reportFile)
+    if (named !== undefined) {
+      io.log(`could not write the report ${reportPath}: it would overwrite the input ${named}.`)
       reportFailed = true
+    } else {
+      // Creates the report's directory, so --report into a new path does not
+      // fail after the outputs are written.
+      try {
+        writeSafely(reportFile, `${JSON.stringify(Object.fromEntries(report), null, 2)}\n`)
+      } catch (error) {
+        io.log(`could not write the report ${reportPath}: ${String(error)}`)
+        reportFailed = true
+      }
     }
   }
 
