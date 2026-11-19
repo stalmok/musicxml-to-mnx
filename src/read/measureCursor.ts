@@ -76,7 +76,7 @@ export class MeasureCursor {
     if (compareFractions(this.#at, fraction(0)) >= 0) return
 
     const reached = this.#reached
-    /* v8 ignore next -- the cursor goes negative only through shift(). */
+    /* v8 ignore next -- only shift() takes the cursor before the start, and it records the reach. */
     if (reached) {
       reached.warnings.add(
         'inconsistent:backup',

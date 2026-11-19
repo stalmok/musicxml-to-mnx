@@ -268,7 +268,7 @@ function settleFillingRests(measure: ReadMeasure): void {
  * written, on the frame the brackets around it write in, and on the silence
  * after it.
  *
- * `measure` is the measure's own shape: where its beats line up, how far it
+ * `extent` is the measure's own shape: where its beats line up, how far it
  * runs, and the time signature it runs against.
  */
 function settleBrackets(
