@@ -283,6 +283,72 @@ describe('a note naming an instrument set up by another part', () => {
   })
 })
 
+// An xs:ID is unique in the document, so a source that sets up one id twice
+// is invalid. MNX names each sound once.
+describe('an instrument id set up twice', () => {
+  const drumPart = (part: string, name: string, pitch: string) => ({
+    list:
+      `<score-part id="${part}"><part-name>${name}</part-name>` +
+      `<score-instrument id="I1"><instrument-name>${name}</instrument-name></score-instrument>` +
+      `<midi-instrument id="I1"><midi-unpitched>${pitch}</midi-unpitched></midi-instrument>` +
+      '</score-part>',
+    part:
+      `<part id="${part}"><measure number="1">${PERCUSSION_CLEF}` +
+      `${struck('C', '5', 'I1')}</measure></part>`,
+  })
+  const snare = drumPart('P1', 'Snare', '39')
+  const kick = drumPart('P2', 'Kick', '37')
+  const shared =
+    `<score-partwise><part-list>${snare.list}${kick.list}</part-list>` +
+    `${snare.part}${kick.part}</score-partwise>`
+
+  test('keeps the sound of each part, and reports the later one renamed', () => {
+    const { mnx, warnings } = convertValid(shared)
+
+    const sounds = mnx.global.sounds ?? {}
+    const soundOf = (part: number) =>
+      Object.values(mnx.parts[part]?.kit ?? {}).map((component) => component.sound)
+    expect(soundOf(0)).toEqual(['I1'])
+    expect(soundOf(1)).toEqual(['sound1'])
+    expect(sounds).toEqual({
+      I1: { name: 'Snare', midiNumber: 38 },
+      sound1: { name: 'Kick', midiNumber: 36 },
+    })
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:instrument-id'])
+    expect(warnings[0]?.message).toContain('"I1"')
+    expect(warnings[0]?.context).toEqual({ part: 'P2', line: 1 })
+  })
+
+  test('keeps the first of two set up in one part, and reports the second', () => {
+    const { mnx, warnings } = convertValid(
+      source(
+        struck('C', '5', 'I1'),
+        '<score-instrument id="I1"><instrument-name>Snare</instrument-name></score-instrument>' +
+          '<score-instrument id="I1"><instrument-name>Kick</instrument-name></score-instrument>',
+      ),
+    )
+
+    expect(mnx.global.sounds).toEqual({ I1: { name: 'Snare' } })
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:instrument-id'])
+    expect(warnings[0]?.message).toContain('"I1"')
+    expect(warnings[0]?.context).toEqual({ part: 'P1', line: 1 })
+  })
+
+  test('keeps the first MIDI pitch set up for one instrument, and reports the second', () => {
+    const { mnx, warnings } = convertValid(
+      source(
+        struck('C', '5', 'I1'),
+        '<score-instrument id="I1"><instrument-name>Snare</instrument-name></score-instrument>' +
+          '<midi-instrument id="I1"><midi-unpitched>39</midi-unpitched></midi-instrument>' +
+          '<midi-instrument id="I1"><midi-unpitched>37</midi-unpitched></midi-instrument>',
+      ),
+    )
+
+    expect(mnx.global.sounds).toEqual({ I1: { name: 'Snare', midiNumber: 38 } })
+    expect(warnings.map((w) => w.element)).toEqual(['midi-unpitched'])
+  })
+})
+
 describe('a note struck on more than one instrument at once', () => {
   test('strikes the first and reports the rest', () => {
     const { part, warnings } = read(

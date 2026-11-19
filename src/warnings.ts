@@ -259,6 +259,11 @@ export const WARNING_CODES = Object.freeze([
   // one with no id. The kit component it strikes is kept, without a name or
   // a sound.
   'unresolved:instrument-id',
+  // Two instruments share one id. MNX names each sound once, so where two
+  // parts share the id, the later part's instrument is renamed to a generated
+  // id. Within one part, a note cannot tell the two apart, so the later one
+  // is not converted.
+  'inconsistent:instrument-id',
   // An attribute whose value is not one MusicXML defines for it, so what the
   // source meant by it cannot be read. The attribute is not converted, nor
   // what it is needed to read, such as the tie whose type it states.

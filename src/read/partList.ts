@@ -60,9 +60,9 @@ export function readPartList(root: ElementReader, warnings: WarningCollector): P
   const grouping = new GroupingBuilder()
   const sounds = new Map<string, InstrumentSound>()
   const soundsByInstrument = new Map<string, Map<string, ResolvedSound>>()
-  // Generated keys for instrument ids MNX cannot state, running sound1,
-  // sound2, ... and skipping any key already taken, so a rename cannot
-  // collide with an id the source wrote. Sounds are the score's, so every
+  // Generated keys for instrument ids MNX cannot state, or that another part
+  // sets up already, running sound1, sound2, ... and skipping any key already
+  // taken, so a rename cannot collide with an id the source wrote. Sounds are the score's, so every
   // part's instruments are taken, including those of parts not read yet.
   let renamed = 0
   const instrumentIds = new Set(
@@ -72,6 +72,14 @@ export function readPartList(root: ElementReader, warnings: WarningCollector): P
       .flatMap((part) => children(part, 'score-instrument'))
       .flatMap((instrument) => peekAttribute(instrument, 'id') ?? []),
   )
+  const rename = (): string => {
+    let key: string
+    do {
+      renamed += 1
+      key = renamedId('instrument', renamed)
+    } while (instrumentIds.has(key))
+    return key
+  }
   const LIST_PATH: DocumentPath = ['score-partwise', 'part-list']
 
   for (const list of root.blocks('part-list')) {
@@ -94,6 +102,7 @@ export function readPartList(root: ElementReader, warnings: WarningCollector): P
           continue
         }
         const scorePart = new ElementReader(element)
+        const context = id !== undefined ? { part: id } : {}
         if (id !== undefined) {
           listed.add(id)
           scoreParts.set(id, element)
@@ -111,8 +120,20 @@ export function readPartList(root: ElementReader, warnings: WarningCollector): P
         // part; what its reader passes over is reported by the sweep. A part
         // may set up several, one per kit component, so every block is read.
         const named = new Map<string, { name: string | undefined; element: XmlElement }>()
-        for (const instrument of scorePart.blocks('score-instrument')) {
-          const instrumentId = requireAttribute(instrument.element, 'id', LIST_PATH)
+        for (const found of children(element, 'score-instrument')) {
+          const instrumentId = requireAttribute(found, 'id', LIST_PATH)
+          if (named.has(instrumentId)) {
+            scorePart.readWhole(found)
+            warnings.addWhole(
+              'inconsistent:instrument-id',
+              `The part sets up the instrument "${instrumentId}" already, and a note names ` +
+                'one instrument by its id. This one is not converted.',
+              context,
+              found,
+            )
+            continue
+          }
+          const instrument = scorePart.block(found)
           const nameElement = instrument.child('instrument-name')
           const instrumentName = nameElement ? trimmedText(nameElement) : ''
           named.set(instrumentId, {
@@ -134,7 +155,7 @@ export function readPartList(root: ElementReader, warnings: WarningCollector): P
         const midiPitches = new Map<string, number>()
         for (const midi of scorePart.blocks('midi-instrument')) {
           const midiId = attribute(midi.element, 'id')
-          if (midiId === undefined || !named.has(midiId)) continue
+          if (midiId === undefined || !named.has(midiId) || midiPitches.has(midiId)) continue
           const unpitched = child(midi.element, 'midi-unpitched')
           const stated = unpitched ? trimmedText(unpitched) : ''
           // MusicXML numbers these from 1 and MIDI from 0.
@@ -150,10 +171,7 @@ export function readPartList(root: ElementReader, warnings: WarningCollector): P
           let key = instrumentId
           const fits = MNX_ID_PATTERN.test(key)
           if (!fits || GENERATED_ID_PATTERN.test(key)) {
-            do {
-              renamed += 1
-              key = renamedId('instrument', renamed)
-            } while (instrumentIds.has(key))
+            key = rename()
             warnings.add(
               'unrepresentable:instrument-id',
               fits
@@ -162,7 +180,16 @@ export function readPartList(root: ElementReader, warnings: WarningCollector): P
                     `instrument is renamed ${key}.`
                 : `The instrument id "${instrumentId}" does not fit MNX's id, which is 1 to 256 ` +
                     `printable ASCII characters, so the instrument is renamed ${key}.`,
-              id !== undefined ? { part: id } : {},
+              context,
+              instrument,
+            )
+          } else if (sounds.has(key)) {
+            key = rename()
+            warnings.add(
+              'inconsistent:instrument-id',
+              `Another part sets up the instrument "${instrumentId}" already, and MNX names ` +
+                `each sound once, so this part's instrument is renamed ${key}.`,
+              context,
               instrument,
             )
           }
@@ -177,7 +204,7 @@ export function readPartList(root: ElementReader, warnings: WarningCollector): P
           }
         }
 
-        scorePart.reportUnread(warnings, id !== undefined ? { part: id } : {})
+        scorePart.reportUnread(warnings, context)
       } else if (element.name === 'part-group') {
         const group = new ElementReader(element)
         grouping.edge(group, warnings, ['score-partwise', 'part-list'])
