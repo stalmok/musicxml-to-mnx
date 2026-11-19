@@ -244,6 +244,7 @@ See the [corpus source notes](tests/corpus/PROVENANCE.md) for selection and lice
 The XML parser does not resolve external entities or process DTDs.
 Undefined entities cause parse errors.
 A document with elements nested more than 256 deep is refused.
+A score with more than 256 part groups or more than 256 tuplets open at once is refused.
 
 The converter limits raw input length and selected archive entries to
 `100 * 1024 * 1024`. Raw byte input and declared archive sizes are measured
