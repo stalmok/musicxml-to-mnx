@@ -653,6 +653,29 @@ describe('lyric extender lines', () => {
     expect(warnings.map((w) => [w.code, w.element])).toEqual([['unclosed:spanner', 'extend']])
   })
 
+  // Dorico writes the stop of the line before a syllable as a lyric of its
+  // own, ahead of the syllable. Both encodings say the same thing.
+  test.each([
+    ['on its own lyric', sung('lo', extend('stop'))],
+    ['on a lyric ahead of it', held(extend('stop')) + sung('lo')],
+  ])('ends the line before a syllable at the syllable, where a stop %s ends it', (_, third) => {
+    const { mnx, warnings } = convertValid(
+      measure(note('C', sung('la', extend('start'))) + note('D') + note('E', third)),
+    )
+    const [first, , last] = events(mnx)
+
+    expect(lineOf(first)?.extender).toStrictEqual({ target: last?.id })
+    expect(lineOf(last)).toStrictEqual({ text: 'lo' })
+    expect(warnings).toEqual([])
+  })
+
+  test('reports a stop on a syllable where no line is open before it', () => {
+    const { mnx, warnings } = convertValid(measure(note('C', sung('la', extend('stop')))))
+
+    expect(lineOf(events(mnx)[0])).toStrictEqual({ text: 'la' })
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([['unclosed:spanner', 'extend']])
+  })
+
   test('starts no line at a syllable whose <extend> stops one', () => {
     const { mnx } = convertValid(
       measure(note('C', sung('la', extend('stop'))) + note('D', held(extend('continue')))),
@@ -894,6 +917,37 @@ describe('a lyric on a note of a chord', () => {
         expect(warnings).toEqual([])
       },
     )
+
+    test.each(twoOrders(sung('lo', '<extend type="stop"/>'), sung('lo')))(
+      'ends the line before the chord at the chord, where a copy of the syllable stops it, %s',
+      (_, chord) => {
+        const { mnx, warnings } = convertValid(
+          measure(note('C', sung('la', '<extend type="start"/>')) + note('D') + chord),
+        )
+        const { ids } = linesOf(mnx)
+
+        expect(chordLines(mnx)).toStrictEqual([
+          { '1': { text: 'la', extender: { target: ids[2] } } },
+          undefined,
+          { '1': { text: 'lo' } },
+        ])
+        expect(warnings).toEqual([])
+      },
+    )
+
+    test('leaves the line before the chord open where the syllable that stops it is not converted', () => {
+      const { mnx, warnings } = convertValid(
+        measure(
+          note('C', sung('la', '<extend type="start"/>')) +
+            note('D') +
+            note('E', sung('lo')) +
+            member('G', sung('tu', '<extend type="stop"/>')),
+        ),
+      )
+
+      expect(chordLines(mnx)[0]).toStrictEqual({ '1': { text: 'la', extender: {} } })
+      expect(warnings.map((w) => w.code)).toEqual(['unrepresentable:lyric-line'])
+    })
 
     test.each(twoOrders(sung('lo', '<extend type="start"/>'), held('stop')))(
       'starts its own line and leaves it open, %s',

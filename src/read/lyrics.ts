@@ -75,6 +75,29 @@ export function readLyrics(
   const lyrics = new Map(chord)
   let endsLine = false
   const sungByThisNote = new Set<string>()
+
+  // On the syllable's own note, the order is the source's: Finale writes the
+  // stop of a line that ends on its own note after the syllable, and Dorico
+  // the stop of the line before it ahead of the syllable. An <extend> on
+  // another note of the chord reaches the line open before the chord.
+  const reachLine = (key: string, line: string, extend: XmlElement, type: string | undefined) => {
+    const state = open.get(key)
+    const reached = state?.sungAt === event && !sungByThisNote.has(key) ? state.before : state?.open
+    if (!reached || (reached.stopped && reached.line.target !== event)) {
+      warnings.add(
+        'unclosed:spanner',
+        `A lyric extends a melisma line of line ${line} under this note, and no syllable ` +
+          'before it in its voice starts one. The line is not converted.',
+        context,
+        extend,
+      )
+      return
+    }
+    reached.line.target = event
+    endsLine = true
+    if (type === 'stop') reached.stopped = true
+  }
+
   for (const lyric of element.blocks('lyric')) {
     const line = attribute(lyric.element, 'number') ?? '1'
     const key = JSON.stringify([voice, line])
@@ -85,56 +108,42 @@ export function readLyrics(
 
     if (!verse) {
       if (!extend) continue
-      // On the syllable's own note, the order is the source's: Finale writes
-      // the stop of a line that ends on its own note after the syllable, and
-      // Dorico the stop of the line before it ahead of the syllable. An
-      // <extend> on another note of the chord reaches the line open before
-      // the chord. Except for a stop, one at an event whose syllable starts
-      // a line restates the start instead.
+      // Except for a stop, an <extend> at an event whose syllable starts a
+      // line restates the start.
       const state = open.get(key)
-      const sungHere = state?.sungAt === event
-      if (sungHere && state.open && extendType !== 'stop') continue
-      const reached = sungHere && !sungByThisNote.has(key) ? state.before : state?.open
-      if (!reached || (reached.stopped && reached.line.target !== event)) {
-        warnings.add(
-          'unclosed:spanner',
-          `A lyric extends a melisma line of line ${line} under this note, and no syllable ` +
-            'before it in its voice starts one. The line is not converted.',
-          context,
-          extend,
-        )
-        continue
-      }
-      reached.line.target = event
-      endsLine = true
-      if (extendType === 'stop') reached.stopped = true
+      if (state?.sungAt === event && state.open && extendType !== 'stop') continue
+      reachLine(key, line, extend, extendType)
       continue
     }
 
-    sungByThisNote.add(key)
     // MNX keys an event's lyrics by line, and the model does the same. A verse
     // stated twice the same way is read once, with a melisma line where
     // either copy starts one. Where the two differ, the first is converted
     // and the second is reported, and only the first starts or ends a line.
-    const starts = extend !== undefined && extendType !== 'stop'
     const stated = lyrics.get(verse.line)
+    if (stated && (stated.text !== verse.lyric.text || stated.type !== verse.lyric.type)) {
+      sungByThisNote.add(key)
+      warnings.add(
+        'unrepresentable:lyric-line',
+        `${chord ? 'A chord' : 'A note'} sings line ${verse.line} twice, as "${stated.text}" and as "${verse.lyric.text}", ` +
+          'and MNX states one lyric per line on an event. The first is the one converted.',
+        context,
+        lyric.element,
+      )
+      continue
+    }
+    // A stop on the syllable's own lyric ends the line before it, as a stop
+    // on a lyric of its own ahead of the syllable does.
+    if (extend && extendType === 'stop') reachLine(key, line, extend, extendType)
+    sungByThisNote.add(key)
+    const starts = extend !== undefined && extendType !== 'stop'
     if (!stated) {
       // A syllable ends the line before it in its verse.
       open.set(key, { sungAt: event, before: open.get(key)?.open })
       lyrics.set(verse.line, starts ? withLine(verse.lyric, key, open) : verse.lyric)
-      continue
+    } else if (starts && !stated.extender) {
+      lyrics.set(verse.line, withLine(stated, key, open))
     }
-    if (stated.text === verse.lyric.text && stated.type === verse.lyric.type) {
-      if (starts && !stated.extender) lyrics.set(verse.line, withLine(stated, key, open))
-      continue
-    }
-    warnings.add(
-      'unrepresentable:lyric-line',
-      `${chord ? 'A chord' : 'A note'} sings line ${verse.line} twice, as "${stated.text}" and as "${verse.lyric.text}", ` +
-        'and MNX states one lyric per line on an event. The first is the one converted.',
-      context,
-      lyric.element,
-    )
   }
   return { lyrics, endsLine }
 }
