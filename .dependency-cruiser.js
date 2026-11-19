@@ -144,10 +144,7 @@ export default {
       comment:
         'Other readers may name a VoiceLine and the events the measure builder hands back. Only the measure builder reaches the sequence behind a line, or makes a line.',
       severity: 'error',
-      from: {
-        path: '^(src|cli)/',
-        pathNot: ['^src/read/(finishedMeasure|voices)\\.ts$', '\\.(test|bench)\\.ts$'],
-      },
+      from: { path: '^(src|cli)/', pathNot: ['^src/read/voices\\.ts$', '\\.(test|bench)\\.ts$'] },
       to: { path: '^src/read/voiceLine\\.ts$', dependencyTypesNot: ['type-only'] },
     },
 

@@ -146,8 +146,8 @@ export interface VoiceLayers {
   active: number
 }
 
-// The measure builder alone reaches the sequence behind a line, and makes
-// lines.
+// For the measure builder alone. See voice-lines-stay-inside in
+// .dependency-cruiser.js.
 let layerOfLine: (line: VoiceLine) => VoiceBuilder
 let makeLine: (name: string | undefined, layer: VoiceBuilder) => VoiceLine
 
