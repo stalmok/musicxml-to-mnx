@@ -21,7 +21,8 @@ import { entriesOf } from './tables.js'
 import { multiNoteTremoloOf } from './tremolos.js'
 import type { TremoloMarker } from './tremolos.js'
 import type { TupletDisplaySettings } from './tuplets.js'
-import type { MeasureBuilder, PlacedEvent, VoiceLine } from './voices.js'
+import type { MeasureBuilder } from './voices.js'
+import type { PlacedEvent, VoiceLine } from './voiceLine.js'
 import { readWrittenValue } from './writtenValues.js'
 
 /** The tuplet markers and the tremolo a note carries, which close once it is placed. */

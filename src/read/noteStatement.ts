@@ -6,7 +6,7 @@ import type { XmlElement } from '../xml/parse.js'
 import { trimmedText } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
 import type { EventNotation } from './eventNotations.js'
-import type { VoiceLine } from './voices.js'
+import type { VoiceLine } from './voiceLine.js'
 
 /** What a <note> states that says whether it rests its voice's measure. */
 export interface RestNote {

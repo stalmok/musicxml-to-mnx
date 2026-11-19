@@ -10,7 +10,7 @@ import { attribute } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
 import type { PartState } from './state.js'
 import { recogniser } from './tables.js'
-import type { PlacedEvent } from './voices.js'
+import type { PlacedEvent } from './voiceLine.js'
 
 /**
  * A <tie> says a tie begins or ends on this note. A note in the middle of a

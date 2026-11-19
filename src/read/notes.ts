@@ -53,7 +53,7 @@ import { entriesOf } from './tables.js'
 import { readSlurs, readTies } from './tiesAndSlurs.js'
 import { tiePairing } from './ties.js'
 import { MeasureBuilder } from './voices.js'
-import type { JoinedEvent, PlacedEvent, VoiceLine } from './voices.js'
+import type { JoinedEvent, PlacedEvent, VoiceLine } from './voiceLine.js'
 
 export function readNote(
   element: ElementReader,

@@ -131,8 +131,19 @@ export default {
       comment:
         'The cursor, the tuplet tracker and the measure rest forms are parts of the measure builder in voices.ts. Other readers go through the measure builder.',
       severity: 'error',
-      from: { path: '^(src|cli)/', pathNot: ['^src/read/voices\\.ts$', '\\.(test|bench)\\.ts$'] },
+      from: {
+        path: '^(src|cli)/',
+        pathNot: ['^src/read/(voices|voiceLine)\\.ts$', '\\.(test|bench)\\.ts$'],
+      },
       to: { path: '^src/read/(measureCursor|measureRestForms|tupletTracker)\\.ts$' },
+    },
+    {
+      name: 'voice-lines-stay-inside',
+      comment:
+        'Other readers may name a VoiceLine and the events the measure builder hands back. Only the measure builder reaches the sequence behind a line, or makes a line.',
+      severity: 'error',
+      from: { path: '^(src|cli)/', pathNot: ['^src/read/voices\\.ts$', '\\.(test|bench)\\.ts$'] },
+      to: { path: '^src/read/voiceLine\\.ts$', dependencyTypesNot: ['type-only'] },
     },
 
     {
