@@ -13,11 +13,12 @@
 // It fails on a crash, on output the schema rejects or that breaks a rule of
 // MNX the schema does not check, or on output whose notes or measure lengths
 // disagree with the source. A file refused with a MusicXMLError is counted by
-// reason. Where MUSICXML_TO_MNX_CORPUS_REFUSALS names a file of counts by
-// reason, the gate fails on a reason the file does not hold or on a count
-// above the file's. A count may fall, since the corpus changes upstream. The
-// report's "refusals" has the same shape, to copy into that file. The
-// warnings are counted by the element lost.
+// reason, and by class of reason (see refusalClass). Where
+// MUSICXML_TO_MNX_CORPUS_REFUSALS names a file of counts by class, the gate
+// fails on a class the file does not hold or on a count above the file's. A
+// count may fall, since the corpus changes upstream. The report's
+// "refusalClasses" has the same shape, to copy into that file. The warnings
+// are counted by the element lost.
 
 import { describe, expect, test } from 'vitest'
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs'
@@ -189,6 +190,26 @@ function firstFailure(
   return undefined
 }
 
+/**
+ * The class of a refusal: the last sentence of its reason, with numbers and
+ * quoted values masked. A reason of several sentences ends with the MNX rule
+ * the file breaks, which stays the same when the measure or the length
+ * changes.
+ */
+function refusalClass(reason: string): string {
+  const last = reason.split(/(?<=\.)\s+/).at(-1) ?? reason
+  return last.replace(/"[^"]*"/g, '""').replace(/\d+/g, '#')
+}
+
+function classCounts(refusals: ReadonlyMap<string, number>): Map<string, number> {
+  const counts = new Map<string, number>()
+  for (const [reason, count] of refusals) {
+    const key = refusalClass(reason)
+    counts.set(key, (counts.get(key) ?? 0) + count)
+  }
+  return counts
+}
+
 function largestFirst(counts: ReadonlyMap<string, number>): [string, number][] {
   return [...counts].sort((a, b) => b[1] - a[1])
 }
@@ -238,6 +259,10 @@ gate('the full corpus', () => {
           total: files.length,
           converted,
           refusals: Object.fromEntries(refusals),
+          // Sorted, to copy into a file of recorded counts with a stable order.
+          refusalClasses: Object.fromEntries(
+            [...classCounts(refusals)].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+          ),
           losses: Object.fromEntries(losses),
           failures,
         },
@@ -259,11 +284,11 @@ gate('the full corpus', () => {
   })
 
   const bounded = refusalsFile === undefined ? test.skip : test
-  bounded('refuses no more files for any reason than the recorded counts', () => {
+  bounded('refuses no more files in any class than the recorded counts', () => {
     const recorded = JSON.parse(readFileSync(refusalsFile ?? '', 'utf8')) as Record<string, number>
-    const risen = [...refusals]
-      .filter(([reason, count]) => count > (recorded[reason] ?? 0))
-      .map(([reason, count]) => ({ reason, count, recorded: recorded[reason] ?? 0 }))
+    const risen = [...classCounts(refusals)]
+      .filter(([kind, count]) => count > (recorded[kind] ?? 0))
+      .map(([kind, count]) => ({ class: kind, count, recorded: recorded[kind] ?? 0 }))
     expect(risen).toEqual([])
   })
 })
