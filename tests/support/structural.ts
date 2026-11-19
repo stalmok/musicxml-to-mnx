@@ -697,6 +697,7 @@ function voicesWarned(
   root: XmlElement,
   warnings: readonly ConversionWarning[],
   codes: readonly ConversionWarning['code'][],
+  ignores: (warning: ConversionWarning, notes: readonly XmlElement[]) => boolean = () => false,
 ): Map<string, Set<string | undefined>> {
   const parts = root.children.filter((c) => c.name === 'part')
   const indexOfPart = new Map(parts.map((part, index) => [part.attributes['id'], index]))
@@ -711,13 +712,18 @@ function voicesWarned(
 
     let inForce = ''
     const atLine = new Set<string>()
+    const notes: XmlElement[] = []
     for (const note of measure?.children.filter((c) => c.name === 'note') ?? []) {
       const stated = note.children.find((c) => c.name === 'voice')?.rawText.trim() ?? ''
       const isChord = note.children.some((c) => c.name === 'chord')
       const own = isChord ? inForce : stated
       if (!isChord) inForce = own
-      if (note.line === warning.context.line) atLine.add(own)
+      if (note.line === warning.context.line) {
+        atLine.add(own)
+        notes.push(note)
+      }
     }
+    if (ignores(warning, notes)) continue
 
     const key = `${String(partIndex)}:${String(measureIndex)}`
     const voices = named.get(key) ?? new Set()
@@ -770,10 +776,18 @@ export function misplacedVoices(
   root: XmlElement,
   warnings: readonly ConversionWarning[],
 ): MisplacedVoices {
-  const named = voicesWarned(root, warnings, [
-    'inconsistent:duration',
-    'unrepresentable:tuplet-ratio',
-  ])
+  // A chord member is placed with the note it joins, so a duration of its
+  // own moves nothing.
+  const chordMember = (warning: ConversionWarning, notes: readonly XmlElement[]) =>
+    warning.code === 'inconsistent:duration' &&
+    notes.length > 0 &&
+    notes.every((note) => note.children.some((c) => c.name === 'chord'))
+  const named = voicesWarned(
+    root,
+    warnings,
+    ['inconsistent:duration', 'unrepresentable:tuplet-ratio'],
+    chordMember,
+  )
   const stated = root.children.filter((c) => c.name === 'part').map(statedVoices)
   const source = (partIndex: number, measureIndex: number, voice: string) => {
     const voices = named.get(`${String(partIndex)}:${String(measureIndex)}`)

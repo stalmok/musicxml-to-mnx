@@ -1738,6 +1738,26 @@ describe('a voice whose written values disagree with its durations', () => {
     expect(misplaced.measure(0, 1)).toBe(false)
   })
 
+  // A chord member is placed with the note it joins, so a duration of its own
+  // moves nothing.
+  test('marks no voice for a chord member whose duration disagrees', () => {
+    const chord =
+      '<score-partwise><part-list><score-part id="P1"><part-name/></score-part></part-list>\n' +
+      '<part id="P1"><measure number="1">\n' +
+      [
+        '<attributes><divisions>12</divisions></attributes>',
+        note('C', 'quarter', 12, '1'),
+        note('E', 'quarter', 6, '1').replace('<pitch>', '<chord/><pitch>'),
+      ].join('\n') +
+      '\n</measure></part></score-partwise>'
+    const { warnings } = convertValid(chord)
+    const misplaced = misplacedVoices(parseXmlRoot(chord), warnings)
+
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:duration'])
+    expect(misplaced.source(0, 0, '1')).toBe(false)
+    expect(misplaced.measure(0, 0)).toBe(false)
+  })
+
   test('passes over that voice in the measure length check, and holds the others', () => {
     const { mnx, warnings } = convertValid(source)
     const root = parseXmlRoot(source)
