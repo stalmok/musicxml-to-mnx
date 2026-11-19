@@ -38,6 +38,7 @@ import {
   drawnKeyDisagreements,
   layoutLosses,
   measureLengthDisagreements,
+  misplacedVoices,
   lyricPlaces,
   pitchesOf,
   retimedVoices,
@@ -698,13 +699,12 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   //
   // Measured against the source's own measure, not the time signature.
   test('never writes a voice past the end of its measure', () => {
-    // A note whose written value exceeds its duration keeps the written value
-    // and is reported as inconsistent:duration. Its voice then sounds longer
-    // than the source's durations add up to, so this check does not apply, as
-    // for the exact-length check below.
-    if (warnings.some((warning) => warning.code === 'inconsistent:duration')) return
-
-    const lengths = sourceMeasureLengths(parseXmlRoot(source))
+    // A voice the converter does not place by the source's durations sounds
+    // as long as its written values, not its durations, so it is skipped in
+    // that measure.
+    const root = parseXmlRoot(source)
+    const misplaced = misplacedVoices(root, warnings)
+    const lengths = sourceMeasureLengths(root)
     const overfull: string[] = []
 
     mnx.parts.forEach((part, partIndex) => {
@@ -713,6 +713,7 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
 
         measure.sequences.forEach((sequence, voice) => {
           if (sequence.fullMeasure) return
+          if (misplaced.sequence(partIndex, index, sequence.voice)) return
           const total = sequence.content.reduce((sum, item) => sum + sounding(item), 0)
           if (total > inSource + 1e-9) {
             overfull.push(
@@ -890,16 +891,16 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   // end must be where an event begins. The check walks into tuplets, because
   // one shift in the corpus starts partway through a cadenza run.
   test('starts every octave shift on an event', () => {
-    // A shift's start is the cursor position, measured by duration. Where a
-    // note's written value disagrees with its duration, the events are placed
-    // by their written values, so a correct shift can begin between events.
-    if (warnings.some((warning) => warning.code === 'inconsistent:duration')) return
-
+    // A shift's start is the cursor position, measured by duration. In a
+    // measure where a voice's events are not placed by their durations, a
+    // correct shift can begin between events, so that measure is skipped.
+    const misplaced = misplacedVoices(parseXmlRoot(source), warnings)
     const stray: string[] = []
 
     mnx.parts.forEach((part, partIndex) => {
       part.measures.forEach((measure, index) => {
         if ((measure.ottavas ?? []).length === 0) return
+        if (misplaced.measure(partIndex, index)) return
 
         const places = new Set<string>()
         for (const sequence of measure.sequences) collectStarts(sequence.content, 0, 1, places)
@@ -922,9 +923,8 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   // A shift's end is the last event it covers. The reader moves it back from
   // the point of the stop to reach one.
   test('ends every octave shift on an event', () => {
-    // Skipped for the same reason as the start check.
-    if (warnings.some((warning) => warning.code === 'inconsistent:duration')) return
-
+    // A measure is skipped for the same reason as in the start check.
+    const misplaced = misplacedVoices(parseXmlRoot(source), warnings)
     const named = new Map<string, number>()
     mnx.global.measures.forEach((measure, index) => {
       if (measure.id !== undefined) named.set(measure.id, index)
@@ -935,7 +935,7 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
       part.measures.forEach((measure, index) => {
         for (const ottava of measure.ottavas ?? []) {
           const endsIn = named.get(ottava.end.measure)
-          if (endsIn === undefined) continue
+          if (endsIn === undefined || misplaced.measure(partIndex, endsIn)) continue
           const closing = part.measures[endsIn]
           if (!closing) continue
 
@@ -1109,14 +1109,7 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   })
 
   test('sounds for as long as the source does, measure by measure', () => {
-    // Where a note's written value disagrees with its duration, the converter
-    // keeps the written value and warns inconsistent:duration. Its measures
-    // then add up by written values, so this check does not apply.
-    const inconsistent = warnings.some((warning) => warning.code === 'inconsistent:duration')
-
-    const disagreements = inconsistent
-      ? []
-      : measureLengthDisagreements(mnx, parseXmlRoot(source), warnings)
+    const disagreements = measureLengthDisagreements(mnx, parseXmlRoot(source), warnings)
 
     expect(disagreements.slice(0, 5)).toEqual([])
   })
@@ -1126,11 +1119,8 @@ describe.each(converted)('$name', ({ name, source, mnx, warnings }) => {
   // order is the time order. A slur that points at the wrong note is still
   // legal MNX.
   test('joins every slur the source states within one voice', () => {
-    // Skipped where a written value disagrees with its duration, as for the
-    // measure lengths above. No other check covers their slurs.
-    if (warnings.some((warning) => warning.code === 'inconsistent:duration')) return
-
-    const stated = sourceSlurSpans(parseXmlRoot(source))
+    const root = parseXmlRoot(source)
+    const stated = sourceSlurSpans(root, misplacedVoices(root, warnings))
     const converted = slurSpans(mnx)
     const missing = [...stated].filter((span) => !converted.has(span))
 

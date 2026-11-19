@@ -15,6 +15,7 @@ import {
   drawnKeyDisagreements,
   layoutLosses,
   measureLengthDisagreements,
+  misplacedVoices,
   holdsUnderfilledTuplet,
   flipLetters,
   pitchesOf,
@@ -24,6 +25,7 @@ import {
   sourceMeasureLengths,
   sourceMicrotones,
   sourcePitches,
+  sourceSlurSpans,
   unsourcedLosses,
 } from './support/structural.js'
 
@@ -1693,5 +1695,72 @@ describe('a melisma line in the source', () => {
 
     expect(sourceLyricPlaces(parseXmlRoot(xml)).sort()).toEqual(lyricPlaces(mnx).sort())
     expect(sourceLyricPlaces(parseXmlRoot(xml)).join()).toContain('with a line')
+  })
+})
+
+// A note whose written value disagrees with its <duration> keeps its written
+// value, so what follows it in its voice and measure is placed by written
+// values. Every other voice, and every other measure, is still placed by
+// durations.
+describe('a voice whose written values disagree with its durations', () => {
+  const note = (step: string, type: string, duration: number, voice: string, slur?: string) =>
+    `<note><pitch><step>${step}</step><octave>4</octave></pitch>` +
+    `<duration>${String(duration)}</duration><voice>${voice}</voice><type>${type}</type>` +
+    (slur === undefined ? '' : `<notations><slur type="${slur}"/></notations>`) +
+    '</note>'
+  // One note to a line, since a warning names its note by line. Voice 1
+  // writes a half that lasts a quarter. Each voice slurs its last two notes.
+  const lines = [
+    '<attributes><divisions>12</divisions>' +
+      '<time><beats>3</beats><beat-type>4</beat-type></time></attributes>',
+    note('C', 'half', 12, '1', 'start'),
+    note('D', 'quarter', 12, '1', 'stop'),
+    '<backup><duration>24</duration></backup>',
+    note('E', 'eighth', 6, '2'),
+    note('F', 'eighth', 6, '2', 'start'),
+    note('G', 'quarter', 12, '2', 'stop'),
+  ]
+  const source =
+    '<score-partwise><part-list><score-part id="P1"><part-name/></score-part></part-list>\n' +
+    `<part id="P1"><measure number="1">\n${lines.join('\n')}\n</measure>\n` +
+    `<measure number="2">${note('A', 'half', 24, '1')}</measure></part></score-partwise>`
+
+  test('marks that voice in that measure alone', () => {
+    const { warnings } = convertValid(source)
+    const misplaced = misplacedVoices(parseXmlRoot(source), warnings)
+
+    expect(warnings.map((w) => w.code)).toEqual(['inconsistent:duration'])
+    expect(misplaced.source(0, 0, '1')).toBe(true)
+    expect(misplaced.sequence(0, 0, '1')).toBe(true)
+    expect(misplaced.source(0, 0, '2')).toBe(false)
+    expect(misplaced.measure(0, 0)).toBe(true)
+    expect(misplaced.source(0, 1, '1')).toBe(false)
+    expect(misplaced.measure(0, 1)).toBe(false)
+  })
+
+  test('passes over that voice in the measure length check, and holds the others', () => {
+    const { mnx, warnings } = convertValid(source)
+    const root = parseXmlRoot(source)
+
+    expect(measureLengthDisagreements(mnx, root, [])).toEqual([
+      'part 1 measure 1: 0.75 against 0.5 in the source',
+    ])
+    expect(measureLengthDisagreements(mnx, root, warnings)).toEqual([])
+    const last = mnx.parts[0]?.measures[0]?.sequences[1]?.content[2] as MNXEvent
+    last.duration = { base: 'half' }
+    expect(measureLengthDisagreements(mnx, root, warnings)).toEqual([
+      'part 1 measure 1: voice 2 runs 0.75 against 0.5 in the source',
+    ])
+  })
+
+  test('leaves the slurs of that voice out, and keeps the others', () => {
+    const root = parseXmlRoot(source)
+    const { warnings } = convertValid(source)
+    const at = (eighths: number) => `part 1 measure 1 at ${(eighths / 8).toFixed(9)}`
+    const voice1 = `${at(0)} -> ${at(2)}`
+    const voice2 = `${at(1)} -> ${at(2)}`
+
+    expect([...sourceSlurSpans(root, misplacedVoices(root, []))].sort()).toEqual([voice1, voice2])
+    expect([...sourceSlurSpans(root, misplacedVoices(root, warnings))]).toEqual([voice2])
   })
 })

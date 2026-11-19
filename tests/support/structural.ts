@@ -686,7 +686,7 @@ function bracketedSilence(items: readonly MNXSequenceItem[], inTuplet = false): 
 }
 
 /**
- * The voices that warnings with the given code name, keyed by part and
+ * The voices that warnings with the given codes name, keyed by part and
  * measure as "partIndex:measureIndex", both from zero. A warning names its
  * <note> by line, and the voice is that note's: a chord note is in the voice
  * of the note it joins, whatever <voice> it states, and any other note with
@@ -696,14 +696,14 @@ function bracketedSilence(items: readonly MNXSequenceItem[], inTuplet = false): 
 function voicesWarned(
   root: XmlElement,
   warnings: readonly ConversionWarning[],
-  code: ConversionWarning['code'],
+  codes: readonly ConversionWarning['code'][],
 ): Map<string, Set<string | undefined>> {
   const parts = root.children.filter((c) => c.name === 'part')
   const indexOfPart = new Map(parts.map((part, index) => [part.attributes['id'], index]))
   const named = new Map<string, Set<string | undefined>>()
 
   for (const warning of warnings) {
-    if (warning.code !== code) continue
+    if (!codes.includes(warning.code)) continue
     const partIndex = indexOfPart.get(warning.context.part)
     const measureIndex = (warning.context.measure ?? 0) - 1
     if (partIndex === undefined || measureIndex < 0) continue
@@ -750,6 +750,48 @@ function sourceVoiceOf(voice: string, stated: ReadonlySet<string>): string {
 }
 
 /**
+ * The voices whose events the converter does not place by the source's
+ * durations. A note whose written value disagrees with its <duration> keeps
+ * its written value, with an inconsistent:duration warning. A bracket whose
+ * ratio no pair of note values states takes a time the source does not give
+ * its notes, with an unrepresentable:tuplet-ratio warning. Either moves what
+ * follows in that voice and measure, and nothing in any other.
+ */
+export interface MisplacedVoices {
+  /** Whether the source voice is misplaced in the part's measure. */
+  source(partIndex: number, measureIndex: number, voice: string): boolean
+  /** Whether the voice of an MNX sequence is misplaced in the part's measure. */
+  sequence(partIndex: number, measureIndex: number, voice: string | undefined): boolean
+  /** Whether any voice is misplaced in the part's measure. */
+  measure(partIndex: number, measureIndex: number): boolean
+}
+
+export function misplacedVoices(
+  root: XmlElement,
+  warnings: readonly ConversionWarning[],
+): MisplacedVoices {
+  const named = voicesWarned(root, warnings, [
+    'inconsistent:duration',
+    'unrepresentable:tuplet-ratio',
+  ])
+  const stated = root.children.filter((c) => c.name === 'part').map(statedVoices)
+  const source = (partIndex: number, measureIndex: number, voice: string) => {
+    const voices = named.get(`${String(partIndex)}:${String(measureIndex)}`)
+    return voices !== undefined && (voices.has(undefined) || voices.has(voice))
+  }
+  return {
+    source,
+    sequence: (partIndex, measureIndex, voice) =>
+      source(
+        partIndex,
+        measureIndex,
+        sourceVoiceOf(voice ?? '', stated[partIndex] ?? new Set<string>()),
+      ),
+    measure: (partIndex, measureIndex) => named.has(`${String(partIndex)}:${String(measureIndex)}`),
+  }
+}
+
+/**
  * Every measure whose converted length disagrees with the source's, part by
  * part. A measure is as long as its longest sequence.
  *
@@ -761,8 +803,9 @@ function sourceVoiceOf(voice: string, stated: ReadonlySet<string>): string {
  * barline is where its longest part ends. Second, a bracket whose ratio no
  * pair of note values states either takes a time the source does not give its
  * notes, with an unrepresentable:tuplet-ratio warning, or is dropped so its
- * notes take their written time. The voice that warning names is skipped in
- * its measure, and every other voice may run no further than the source.
+ * notes take their written time. A voice the converter does not place by the
+ * source's durations (see MisplacedVoices) is skipped in its measure, and
+ * every other voice there may run no further than the source.
  */
 export function measureLengthDisagreements(
   document: MNXDocument,
@@ -770,12 +813,11 @@ export function measureLengthDisagreements(
   warnings: readonly ConversionWarning[],
 ): string[] {
   const lengths = sourceMeasureLengths(root)
-  const reported = voicesWarned(root, warnings, 'unrepresentable:tuplet-ratio')
+  const misplaced = misplacedVoices(root, warnings)
   const found: string[] = []
   let time: { count: number; unit: number } | undefined
 
   const sourceParts = root.children.filter((c) => c.name === 'part')
-  const voiceNames = sourceParts.map(statedVoices)
   const firstPart = sourceParts[0]
   const sourceMeasures = firstPart?.children.filter((c) => c.name === 'measure') ?? []
 
@@ -809,15 +851,9 @@ export function measureLengthDisagreements(
         total > inSource + 1e-9 &&
         (total - bracketedSilence(sequence.content) > inSource + 1e-9 || total > barline + 1e-9)
 
-      const passedOver = reported.get(`${String(partIndex)}:${String(measureIndex)}`)
-      if (passedOver) {
-        const stated = voiceNames[partIndex] ?? new Set<string>()
+      if (misplaced.measure(partIndex, measureIndex)) {
         measure.sequences.forEach((sequence, index) => {
-          if (
-            passedOver.has(undefined) ||
-            passedOver.has(sourceVoiceOf(sequence.voice ?? '', stated))
-          )
-            return
+          if (misplaced.sequence(partIndex, measureIndex, sequence.voice)) return
           const total = totals[index] ?? 0
           if (overruns(sequence, total)) {
             found.push(
@@ -967,14 +1003,11 @@ const RETIMING = [
 /** The voices the tuplet warnings name, as Retimed reads them. */
 export function retimedVoices(root: XmlElement, warnings: readonly ConversionWarning[]): Retimed {
   const stated = root.children.filter((c) => c.name === 'part').map(statedVoices)
-  const named = RETIMING.map((code) => voicesWarned(root, warnings, code))
+  const named = voicesWarned(root, warnings, RETIMING)
   return (part, measure, voice) => {
     const own = sourceVoiceOf(voice, stated[part] ?? new Set())
-    const key = `${String(part)}:${String(measure)}`
-    const warned = named.some((voices) => {
-      const inMeasure = voices.get(key)
-      return inMeasure !== undefined && (inMeasure.has(undefined) || inMeasure.has(own))
-    })
+    const inMeasure = named.get(`${String(part)}:${String(measure)}`)
+    const warned = inMeasure !== undefined && (inMeasure.has(undefined) || inMeasure.has(own))
     return warned ? own : undefined
   }
 }
@@ -1513,9 +1546,10 @@ function crossesVoicesInAMeasure(ends: readonly SourceSlurEnd[]): ReadonlySet<st
  * and a stop written in sequence may be in different lines.
  *
  * A slur on a chord member is left out, because the converter reports it as
- * a loss.
+ * a loss. So is a slur with an end in a voice the converter does not place by
+ * the source's durations, in that measure.
  */
-export function sourceSlurSpans(root: XmlElement): Set<string> {
+export function sourceSlurSpans(root: XmlElement, misplaced: MisplacedVoices): Set<string> {
   const spans = new Set<string>()
 
   root.children
@@ -1597,12 +1631,12 @@ export function sourceSlurSpans(root: XmlElement): Set<string> {
       for (const [key, ends] of streams) {
         if (crossing.has(key)) continue
         if (ends.some((end) => laidOver.has(`${end.voice}|${String(end.measure)}`))) continue
-        const open: string[] = []
-        const paired: string[] = []
+        const open: SourceSlurEnd[] = []
+        const paired: [SourceSlurEnd, SourceSlurEnd][] = []
         let plain = true
         for (const end of ends) {
           if (end.kind === 'start') {
-            open.push(end.at)
+            open.push(end)
             if (open.length > 1) {
               plain = false
               break
@@ -1614,10 +1648,14 @@ export function sourceSlurSpans(root: XmlElement): Set<string> {
             plain = false
             break
           }
-          paired.push(`${from} -> ${end.at}`)
+          paired.push([from, end])
         }
         if (!plain || open.length > 0) continue
-        for (const span of paired) spans.add(span)
+        for (const [from, to] of paired) {
+          const placed = (end: SourceSlurEnd) =>
+            !misplaced.source(partIndex, end.measure, end.voice)
+          if (placed(from) && placed(to)) spans.add(`${from.at} -> ${to.at}`)
+        }
       }
     })
   return spans
