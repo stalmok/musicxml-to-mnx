@@ -1995,3 +1995,41 @@ test('reports what the ratio on a note opening a bracket holds besides its count
 
   expect(warnings.map((w) => [w.code, w.element])).toEqual([['unsupported:element', 'extra']])
 })
+
+describe('tuplets nested by number', () => {
+  // Brackets nest by number, not by element depth, so the XML depth limit
+  // does not bound them. Each level states a 1:1 ratio, so the note keeps
+  // its written length at any depth.
+  const nested = (depth: number) => {
+    const numbers = Array.from({ length: depth }, (_, index) => String(index + 1))
+    const level = '<tuplet-number>1</tuplet-number>'
+    const starts = numbers.map(
+      (number) =>
+        `<tuplet type="start" number="${number}"><tuplet-actual>${level}</tuplet-actual>` +
+        `<tuplet-normal>${level}</tuplet-normal></tuplet>`,
+    )
+    const stops = numbers.map((number) => `<tuplet type="stop" number="${number}"/>`)
+    return measure(
+      '<note><pitch><step>C</step><octave>4</octave></pitch><duration>12</duration>' +
+        '<type>quarter</type><time-modification><actual-notes>1</actual-notes>' +
+        `<normal-notes>1</normal-notes></time-modification><notations>${starts.join('')}` +
+        `${stops.join('')}</notations></note>`,
+    )
+  }
+
+  test('reads tuplets nested 256 deep', () => {
+    let item = read(nested(256)).content?.[0]
+    let depth = 0
+    while (item?.kind === 'tuplet') {
+      depth += 1
+      item = item.content[0]
+    }
+
+    expect(depth).toBe(256)
+    expect(item?.kind).toBe('event')
+  })
+
+  test.each([257, 5000])('rejects tuplets nested %i deep', (depth) => {
+    expect(readFailure(nested(depth)).message).toContain('Tuplets nest more than 256 deep')
+  })
+})

@@ -984,3 +984,39 @@ describe('a stop naming a number two open groups carry', () => {
     ])
   })
 })
+
+describe('part groups nested by number', () => {
+  // Groups nest by number, not by element depth, so the XML depth limit does
+  // not bound them.
+  const nested = (depth: number) => {
+    const numbers = Array.from({ length: depth }, (_, index) => String(index + 1))
+    const starts = numbers.map(
+      (number) =>
+        `<part-group type="start" number="${number}"><group-symbol>bracket</group-symbol></part-group>`,
+    )
+    const stops = numbers.map((number) => `<part-group type="stop" number="${number}"/>`)
+    return score(
+      starts.join('') +
+        '<score-part id="P1"><part-name>Solo</part-name></score-part>' +
+        stops.reverse().join(''),
+      part('P1'),
+    )
+  }
+
+  test('converts groups nested 256 deep', () => {
+    const { mnx } = convertValid(nested(256))
+    let item = mnx.layouts?.[0]?.content[0]
+    let depth = 0
+    while (item?.type === 'group') {
+      depth += 1
+      item = item.content[0]
+    }
+
+    expect(depth).toBe(256)
+    expect(item?.type).toBe('staff')
+  })
+
+  test.each([257, 5000])('rejects groups nested %i deep', (depth) => {
+    expect(failure(nested(depth)).message).toContain('Part groups nest more than 256 deep')
+  })
+})

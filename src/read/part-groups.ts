@@ -12,6 +12,13 @@ import { attribute, requireAttribute, trimmedText } from '../xml/tree.js'
 import type { ElementReader } from './element.js'
 import { drawnName } from './element.js'
 
+/**
+ * The most part groups open at once. Groups nest by number, not by element,
+ * so the parser's depth limit does not bound them. The same limit keeps a
+ * hostile part list from exhausting the stack in each walk over the grouping.
+ */
+const MAX_OPEN_GROUPS = 256
+
 /** A part group whose stop has not arrived yet. */
 interface OpenPartGroup {
   number: string
@@ -54,6 +61,12 @@ export class GroupingBuilder {
     const type = requireAttribute(element, 'type', path)
     const number = attribute(element, 'number') ?? '1'
     if (type === 'start') {
+      if (this.#open.length === MAX_OPEN_GROUPS) {
+        throw new MusicXMLError(`Part groups nest more than ${String(MAX_OPEN_GROUPS)} deep.`, {
+          path: [...path, 'part-group'],
+          line: element.line,
+        })
+      }
       this.#open.push({
         number,
         symbol: groupSymbolOf(group, warnings),

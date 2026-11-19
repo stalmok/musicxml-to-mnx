@@ -40,6 +40,13 @@ import { describeValue, lengthOf, noteValueOf } from './duration.js'
 import type { Draft } from './draft.js'
 
 /**
+ * The most tuplets open at once. Brackets nest by number, not by element, so
+ * the parser's depth limit does not bound them. The same limit keeps a
+ * hostile document from exhausting the stack in each walk over the brackets.
+ */
+const MAX_OPEN_TUPLETS = 256
+
+/**
  * What one note stated about the brackets it opened, kept so their levels can
  * be worked out again against the brackets of the line they move to. See
  * moveLastTo.
@@ -352,7 +359,13 @@ export class TupletTracker {
    * in `to`, for the brackets that move and for those that closed over grace
    * notes alone. `openEnd` is where `to` has reached.
    */
-  moveLastTo(item: SequenceItem, to: TupletTracker, openEnd: Fraction): void {
+  moveLastTo(
+    item: SequenceItem,
+    to: TupletTracker,
+    openEnd: Fraction,
+    path: DocumentPath,
+    line: number,
+  ): void {
     removeLastFrom(this.#list(), item)
     const moving: OpenBracket[] = []
     for (let frame = this.#open.at(-1); frame?.list.length === 0; frame = this.#open.at(-1)) {
@@ -360,6 +373,11 @@ export class TupletTracker {
       if (frame.opened === 'tuplet') removeLastFrom(frame.within, frame.tuplet)
       moving.unshift(frame)
     }
+    requireDepth(
+      to.#tuplets().length + moving.filter((frame) => frame.opened === 'tuplet').length,
+      path,
+      line,
+    )
     const held = this.#held.filter((entry) => entry.group === item)
     this.#held.splice(0, this.#held.length, ...this.#held.filter((entry) => entry.group !== item))
 
@@ -370,11 +388,11 @@ export class TupletTracker {
     for (const { opening } of held) openings.add(opening)
     // A note inside another note's bracket has that bracket around it as
     // well, so the outer opening is settled first.
-    const line = to.#drawnRatios()
+    const drawn = to.#drawnRatios()
     const open = to.#tuplets().map((tuplet) => tuplet.ratio)
     const overGraceNotes = new Set(held.map((entry) => entry.opening))
     for (const opening of [...openings].sort((a, b) => a.around.length - b.around.length)) {
-      relevel(opening, line)
+      relevel(opening, drawn)
       if (overGraceNotes.has(opening)) {
         acceptInsideRun(opening, [
           ...open,
@@ -517,6 +535,7 @@ export class TupletTracker {
       outer,
       starts,
     )
+    requireDepth(this.#tuplets().length + levels.length, path, line)
     const opening: Opening = {
       inner,
       outer,
@@ -1054,5 +1073,14 @@ export class TupletTracker {
   /** The tuplets open around a note, outermost first. */
   #tuplets(): OpenTuplet[] {
     return this.#open.filter((frame) => frame.opened === 'tuplet')
+  }
+}
+
+function requireDepth(open: number, path: DocumentPath, line: number): void {
+  if (open > MAX_OPEN_TUPLETS) {
+    throw new MusicXMLError(`Tuplets nest more than ${String(MAX_OPEN_TUPLETS)} deep.`, {
+      path,
+      line,
+    })
   }
 }

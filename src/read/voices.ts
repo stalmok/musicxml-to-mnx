@@ -328,7 +328,7 @@ export class MeasureBuilder {
     // The sequence it joins may have been silent since it last sounded, and
     // that silence comes before the group and the brackets it opened.
     this.#fillGap(to)
-    from.tuplets.moveLastTo(waiting.group, to.tuplets, to.end)
+    from.tuplets.moveLastTo(waiting.group, to.tuplets, to.end, path, line)
     from.beams.moveGraceRun(waiting.beams, to.beams)
     to.placed.push(...from.placed.splice(waiting.placedFrom))
     to.last = from.last
