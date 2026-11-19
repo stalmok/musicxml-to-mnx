@@ -345,7 +345,27 @@ describe('an instrument id set up twice', () => {
     )
 
     expect(mnx.global.sounds).toEqual({ I1: { name: 'Snare', midiNumber: 38 } })
-    expect(warnings.map((w) => w.element)).toEqual(['midi-unpitched'])
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([
+      ['inconsistent:instrument-id', 'midi-instrument'],
+    ])
+    expect(warnings[0]?.message).toContain('"I1"')
+  })
+
+  test('keeps no MIDI pitch where the first set up for one instrument is outside MIDI', () => {
+    const { mnx, warnings } = convertValid(
+      source(
+        struck('C', '5', 'I1'),
+        '<score-instrument id="I1"><instrument-name>Snare</instrument-name></score-instrument>' +
+          '<midi-instrument id="I1"><midi-unpitched>200</midi-unpitched></midi-instrument>' +
+          '<midi-instrument id="I1"><midi-unpitched>37</midi-unpitched></midi-instrument>',
+      ),
+    )
+
+    expect(mnx.global.sounds).toEqual({ I1: { name: 'Snare' } })
+    expect(warnings.map((w) => [w.code, w.element])).toEqual([
+      ['inconsistent:instrument-id', 'midi-instrument'],
+      ['unsupported:element', 'midi-unpitched'],
+    ])
   })
 })
 

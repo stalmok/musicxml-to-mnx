@@ -262,7 +262,7 @@ export const WARNING_CODES = Object.freeze([
   // Two instruments share one id. MNX names each sound once, so where two
   // parts share the id, the later part's instrument is renamed to a generated
   // id. Within one part, a note cannot tell the two apart, so the later one
-  // is not converted.
+  // is not converted, nor a later <midi-instrument> for the id.
   'inconsistent:instrument-id',
   // An attribute whose value is not one MusicXML defines for it, so what the
   // source meant by it cannot be read. The attribute is not converted, nor

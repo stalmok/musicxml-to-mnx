@@ -60,10 +60,11 @@ export function readPartList(root: ElementReader, warnings: WarningCollector): P
   const grouping = new GroupingBuilder()
   const sounds = new Map<string, InstrumentSound>()
   const soundsByInstrument = new Map<string, Map<string, ResolvedSound>>()
-  // Generated keys for instrument ids MNX cannot state, or that another part
-  // sets up already, running sound1, sound2, ... and skipping any key already
-  // taken, so a rename cannot collide with an id the source wrote. Sounds are the score's, so every
-  // part's instruments are taken, including those of parts not read yet.
+  // Generated keys for instrument ids MNX cannot state, or that another
+  // part sets up already, running sound1, sound2, ... and skipping any key
+  // already taken, so a rename cannot collide with an id the source wrote.
+  // Sounds are the score's, so every part's instruments are taken, including
+  // those of parts not read yet.
   let renamed = 0
   const instrumentIds = new Set(
     root
@@ -152,10 +153,27 @@ export function readPartList(root: ElementReader, warnings: WarningCollector): P
         // Nothing here is refused: a block naming no instrument, or a pitch
         // outside MIDI's range, is a playback detail. Whatever is not taken
         // here is reported by the sweep.
+        //
+        // The first block for an instrument sets up its sound, whatever it
+        // states; a later one for the same id is not converted.
         const midiPitches = new Map<string, number>()
-        for (const midi of scorePart.blocks('midi-instrument')) {
-          const midiId = attribute(midi.element, 'id')
-          if (midiId === undefined || !named.has(midiId) || midiPitches.has(midiId)) continue
+        const midiRead = new Set<string>()
+        for (const found of children(element, 'midi-instrument')) {
+          const midiId = attribute(found, 'id')
+          if (midiId !== undefined && midiRead.has(midiId)) {
+            scorePart.readWhole(found)
+            warnings.addWhole(
+              'inconsistent:instrument-id',
+              `The part sets up the sound of the instrument "${midiId}" already. This one is ` +
+                'not converted.',
+              context,
+              found,
+            )
+            continue
+          }
+          const midi = scorePart.block(found)
+          if (midiId === undefined || !named.has(midiId)) continue
+          midiRead.add(midiId)
           const unpitched = child(midi.element, 'midi-unpitched')
           const stated = unpitched ? trimmedText(unpitched) : ''
           // MusicXML numbers these from 1 and MIDI from 0.
