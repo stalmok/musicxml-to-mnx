@@ -44,13 +44,15 @@ jobs:
       - name: Fetch the OpenScore Lieder corpus
         run: git clone --depth 1 https://github.com/OpenScore/Lieder.git corpus-full
 
-      # Fails the job on a crash, illegal output, or output that disagrees with
-      # the source. The report file carries every refusal and loss for the
-      # summary step, which runs even when the gate fails.
+      # Fails the job on a crash, illegal output, output that disagrees with
+      # the source, or a refusal count above the recorded one. The report file
+      # carries every refusal and loss for the summary step, which runs even
+      # when the gate fails.
       - name: Run the corpus gate
         env:
           MUSICXML_TO_MNX_CORPUS: corpus-full/scores
           MUSICXML_TO_MNX_CORPUS_REPORT: corpus-report.json
+          MUSICXML_TO_MNX_CORPUS_REFUSALS: tests/corpus/lieder-refusals.json
         run: pnpm corpus-gate
 
       - name: Summarise the run

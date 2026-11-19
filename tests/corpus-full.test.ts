@@ -7,13 +7,17 @@
 // corpus workflow sets it after it clones the corpus, and a maintainer sets it
 // before a release.
 //
-//   MUSICXML_TO_MNX_CORPUS=<dir> [MUSICXML_TO_MNX_CORPUS_REPORT=<file.json>] pnpm corpus-gate
+//   MUSICXML_TO_MNX_CORPUS=<dir> [MUSICXML_TO_MNX_CORPUS_REPORT=<file.json>]
+//     [MUSICXML_TO_MNX_CORPUS_REFUSALS=<file.json>] pnpm corpus-gate
 //
 // It fails on a crash, on output the schema rejects or that breaks a rule of
 // MNX the schema does not check, or on output whose notes or measure lengths
-// disagree with the source. A file refused with a
-// MusicXMLError is reported by reason, not failed. The warnings are counted
-// by the element lost.
+// disagree with the source. A file refused with a MusicXMLError is counted by
+// reason. Where MUSICXML_TO_MNX_CORPUS_REFUSALS names a file of counts by
+// reason, the gate fails on a reason the file does not hold or on a count
+// above the file's. A count may fall, since the corpus changes upstream. The
+// report's "refusals" has the same shape, to copy into that file. The
+// warnings are counted by the element lost.
 
 import { describe, expect, test } from 'vitest'
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs'
@@ -43,6 +47,7 @@ import {
 } from './support/structural.js'
 
 const corpusDir = process.env.MUSICXML_TO_MNX_CORPUS
+const refusalsFile = process.env.MUSICXML_TO_MNX_CORPUS_REFUSALS
 
 interface Failure {
   file: string
@@ -211,8 +216,8 @@ gate('the full corpus', () => {
     }
   }
 
-  // Printed, not asserted: how many files converted, how many were refused,
-  // and what was lost by element. The report file holds the same data.
+  // Printed: how many files converted, how many were refused, and what was
+  // lost by element. The report file holds the same data.
   const refused = [...refusals.values()].reduce((sum, count) => sum + count, 0)
   const lines = [
     `${String(files.length)} files: ${String(converted)} converted, ${String(refused)} refused, ${String(failures.length)} failed.`,
@@ -251,5 +256,14 @@ gate('the full corpus', () => {
   // has them all.
   test('converts the whole corpus without a crash or a mismatch', () => {
     expect(failures.slice(0, 20)).toEqual([])
+  })
+
+  const bounded = refusalsFile === undefined ? test.skip : test
+  bounded('refuses no more files for any reason than the recorded counts', () => {
+    const recorded = JSON.parse(readFileSync(refusalsFile ?? '', 'utf8')) as Record<string, number>
+    const risen = [...refusals]
+      .filter(([reason, count]) => count > (recorded[reason] ?? 0))
+      .map(([reason, count]) => ({ reason, count, recorded: recorded[reason] ?? 0 }))
+    expect(risen).toEqual([])
   })
 })
