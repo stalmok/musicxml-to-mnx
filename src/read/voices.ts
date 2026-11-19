@@ -30,6 +30,7 @@ import type { PartLines, PlacedLine, WrittenLine } from './lines.js'
 import type { CarriedTupletStop, MeasureExtent, TupletStart } from './tuplets.js'
 import { TupletTracker } from './tupletTracker.js'
 import { MeasureTimeline } from './timeline.js'
+import { MeasureCursor } from './measureCursor.js'
 import type { EventTimeline } from './timeline.js'
 import { Arpeggios } from './arpeggios.js'
 import { settleCandidateRest, settleFillingRest } from './measureRestForms.js'
@@ -460,13 +461,7 @@ export class MeasureBuilder {
    */
   readonly #carriedTremolos: Set<string | undefined>
   readonly #timeline = new MeasureTimeline()
-  #cursor: Fraction = fraction(0)
-  /**
-   * The furthest the cursor has run in the measure, over notes, rests filling
-   * the measure and <forward> alike: a <forward> is how MusicXML writes
-   * silence it draws nothing for.
-   */
-  #furthest: Fraction = fraction(0)
+  readonly #cursor = new MeasureCursor()
   /**
    * What a chord member joins: the event written last, in whatever voice. A
    * rest written last, whether it fills the measure or is passed over,
@@ -475,11 +470,6 @@ export class MeasureBuilder {
   #lastWritten: VoiceLine | 'rest' | undefined
   // The first note naming no voice, for the report where others name one.
   #unnamedNote: XmlElement | undefined
-  /**
-   * The <backup> that carried the cursor before the measure start, held until
-   * something is written out there or a <forward> brings the cursor back.
-   */
-  #reached: { warnings: WarningCollector; context: ReportContext; backup: XmlElement } | undefined
 
   /** The voices that sound a note somewhere in the measure, rather than only rest. */
   readonly #soundingVoices: ReadonlySet<string | undefined>
@@ -504,68 +494,19 @@ export class MeasureBuilder {
     this.#soundingVoices = new Set(soundingVoices)
   }
 
-  /**
-   * Where the cursor has reached, from the start of the measure. A <backup>
-   * that carried it before the start reads as the start, since nothing sounds
-   * before a measure begins; the cursor itself is left where the source put
-   * it, because a <forward> can still bring it back.
-   */
+  /** See MeasureCursor.position. */
   position(): Fraction {
-    return compareFractions(this.#cursor, fraction(0)) < 0 ? fraction(0) : this.#cursor
+    return this.#cursor.position()
   }
 
   /** The furthest the cursor has run in the measure. */
   furthest(): Fraction {
-    return this.#furthest
+    return this.#cursor.furthest()
   }
 
-  /**
-   * Moves the cursor, as <backup> and <forward> do.
-   *
-   * A <backup> reaching past the start of the measure is how exporters return
-   * to the start of a measure a voice has not filled: the source backs up by
-   * the whole measure's length whatever that voice wrote. Whatever is written
-   * out there is written at the start instead.
-   *
-   * The cursor itself is left where the source put it, because a <forward>
-   * can bring it back: sources write the pair to reach a point they draw at
-   * the measure start. Taking the cursor to the start on the <backup> alone
-   * would put everything after the <forward> that much later. The
-   * <backup> that reached out is held rather than reported, so that a reach
-   * a <forward> cancels is not reported and a reach several
-   * <forward>s cancel is reported once.
-   */
+  /** Moves the cursor, as <backup> and <forward> do. See MeasureCursor.shift. */
   shift(by: Fraction, warnings: WarningCollector, context: ReportContext, moved: XmlElement): void {
-    this.#moveTo(addFractions(this.#cursor, by))
-    if (compareFractions(this.#cursor, fraction(0)) >= 0) {
-      this.#reached = undefined
-      return
-    }
-    this.#reached ??= { warnings, context, backup: moved }
-  }
-
-  /**
-   * The cursor where something is about to be written, and where it then
-   * stays: writing at the measure start settles what a <backup> reaching
-   * past it meant, and no later <forward> can take that back. The reach is
-   * reported here.
-   */
-  #writeAt(): void {
-    if (compareFractions(this.#cursor, fraction(0)) >= 0) return
-
-    const reached = this.#reached
-    /* v8 ignore next -- the cursor goes negative only through shift(). */
-    if (reached) {
-      reached.warnings.add(
-        'inconsistent:backup',
-        'A <backup> reaches back further than the measure has run, and the music written ' +
-          'out there is written at the start of the measure instead.',
-        reached.context,
-        reached.backup,
-      )
-    }
-    this.#reached = undefined
-    this.#cursor = fraction(0)
+    this.#cursor.shift(by, warnings, context, moved)
   }
 
   /**
@@ -575,9 +516,9 @@ export class MeasureBuilder {
    * start is taken to the start first, as it would be for a note written out.
    */
   passOver(by: Fraction): void {
-    this.#writeAt()
+    this.#cursor.writeAt()
     this.#lastWritten = 'rest'
-    this.#moveTo(addFractions(this.#cursor, by))
+    this.#cursor.advance(by)
   }
 
   /**
@@ -587,12 +528,7 @@ export class MeasureBuilder {
    */
   passOverRepeat(by: Fraction): void {
     this.#lastWritten = 'rest'
-    this.#cursor = addFractions(this.#cursor, by)
-  }
-
-  #moveTo(position: Fraction): void {
-    this.#cursor = position
-    if (compareFractions(position, this.#furthest) > 0) this.#furthest = position
+    this.#cursor.skip(by)
   }
 
   /**
@@ -635,7 +571,7 @@ export class MeasureBuilder {
       // The voice sounds no note, so each event is a rest.
       content.every((item) => item.kind === 'event') &&
       compareFractions(layer.end, length) === 0 &&
-      compareFractions(this.#cursor, length) === 0
+      compareFractions(this.#cursor.at(), length) === 0
     )
   }
 
@@ -714,7 +650,7 @@ export class MeasureBuilder {
     path: DocumentPath,
     line: number,
   ): VoiceLine {
-    this.#writeAt()
+    this.#cursor.writeAt()
     const layers = this.#layersFor(voice)
     const before = layers.layers[layers.active] as VoiceBuilder
     const taken = this.#layerAt(voice, note)
@@ -758,14 +694,14 @@ export class MeasureBuilder {
     line: number,
   ): void {
     const waiting = from.grace
-    if (!waiting || compareFractions(waiting.at, this.#cursor) !== 0) return
+    if (!waiting || compareFractions(waiting.at, this.#cursor.at()) !== 0) return
     if (waiting.group.graceType === 'stealPrevious') return
     if (from.tuplets.last() !== waiting.group) return
 
     // A bracket the group opened, or a run already full, ends the run the
     // ratio alone opened in the sequence it joins, as either does where the
     // group stays in its sequence.
-    if (from.tuplets.bracketOpensOnLast() || to.tuplets.impliedFullAt(this.#cursor, to.end)) {
+    if (from.tuplets.bracketOpensOnLast() || to.tuplets.impliedFullAt(this.#cursor.at(), to.end)) {
       this.#closeImplied(to, warnings, context, path, line)
     }
     // The sequence it joins may have been silent since it last sounded, and
@@ -796,7 +732,7 @@ export class MeasureBuilder {
     if (restFills(layerOf(voice))) throw restBesideNotes(path, line)
 
     const builder = layerOf(voice)
-    this.#writeAt()
+    this.#cursor.writeAt()
     this.#fillGap(builder)
 
     builder.tuplets.append(event)
@@ -811,12 +747,12 @@ export class MeasureBuilder {
     builder.placed.push({ event, staff })
     builder.lastEvent = { id: event.id, staff }
     this.#lastWritten = voice
-    const start = this.#cursor
+    const start = this.#cursor.at()
     builder.last = { event, notations, duration, share, start }
     this.#timeline.add(start, staff, false)
     builder.tuplets.addTremoloNote(event, duration)
     builder.end = addFractions(start, duration)
-    this.#moveTo(builder.end)
+    this.#cursor.moveTo(builder.end)
     return { event, start, duration }
   }
 
@@ -827,10 +763,10 @@ export class MeasureBuilder {
    * from wherever it starts.
    */
   #fillGap(builder: VoiceBuilder): void {
-    const gap = subtractFractions(this.#cursor, builder.end)
+    const gap = subtractFractions(this.#cursor.at(), builder.end)
     if (compareFractions(gap, fraction(0)) > 0) {
       builder.tuplets.addSkip(gap)
-      builder.end = this.#cursor
+      builder.end = this.#cursor.at()
     }
   }
 
@@ -964,9 +900,9 @@ export class MeasureBuilder {
     }
     this.#requireRoomForMeasureRest(voice, path, line)
 
-    this.#writeAt()
+    this.#cursor.writeAt()
     this.#fillGap(builder)
-    const at = this.#cursor
+    const at = this.#cursor.at()
     // The rest is the whole of this voice in this measure, so the staff it
     // names is the staff the sequence sits on.
     const placed = { event: undefined, staff }
@@ -975,7 +911,7 @@ export class MeasureBuilder {
     if (space) {
       builder.tuplets.append(space)
       builder.end = addFractions(at, space.duration)
-      this.#moveTo(builder.end)
+      this.#cursor.moveTo(builder.end)
     }
     builder.grace = undefined
     this.#lastWritten = 'rest'
@@ -1064,7 +1000,7 @@ export class MeasureBuilder {
    */
   impliedTupletFull(voice: VoiceLine): boolean {
     const builder = layerOf(voice)
-    return builder.tuplets.impliedFullAt(this.#cursor, builder.end)
+    return builder.tuplets.impliedFullAt(this.#cursor.at(), builder.end)
   }
 
   /**
@@ -1076,7 +1012,7 @@ export class MeasureBuilder {
     quantities: { inner: NoteValueQuantity; outer: NoteValueQuantity } | undefined,
   ): boolean {
     const builder = layerOf(voice)
-    return builder.tuplets.impliedEndsBefore(this.#cursor, builder.end, quantities)
+    return builder.tuplets.impliedEndsBefore(this.#cursor.at(), builder.end, quantities)
   }
 
   /**
@@ -1313,7 +1249,7 @@ export class MeasureBuilder {
     path: DocumentPath,
     line: number,
   ): void {
-    if (builder.tuplets.impliedCompletedAt(this.#cursor, builder.end)) this.#fillGap(builder)
+    if (builder.tuplets.impliedCompletedAt(this.#cursor.at(), builder.end)) this.#fillGap(builder)
     builder.tuplets.closeImplied(builder.end, warnings, context, path, line)
   }
 
@@ -1331,7 +1267,7 @@ export class MeasureBuilder {
     staff?: number,
   ): PlacedGraceNote {
     const builder = layerOf(voice)
-    this.#writeAt()
+    this.#cursor.writeAt()
     // A grace note is drawn before the note it ornaments, so time the voice
     // has passed over in silence goes before the group. This keeps the group
     // beside its note, not at the point the voice last sounded.
@@ -1342,7 +1278,7 @@ export class MeasureBuilder {
     this.#lastWritten = voice
     // Grace notes have no duration of their own, so a chord note joining one
     // has nothing to agree with.
-    const start = this.#cursor
+    const start = this.#cursor.at()
     builder.last = { event, notations, duration: undefined, share: undefined, start }
     this.#timeline.add(start, staff, true)
     // Recorded like any other event, so the voice's staff counts it and a
@@ -1557,7 +1493,8 @@ export class MeasureBuilder {
    */
   #layerAt(voice: string | undefined, note: XmlElement): VoiceBuilder {
     const layers = this.#layersFor(voice)
-    const free = (candidate: VoiceBuilder) => compareFractions(this.#cursor, candidate.end) >= 0
+    const free = (candidate: VoiceBuilder) =>
+      compareFractions(this.#cursor.at(), candidate.end) >= 0
 
     let index = free(layers.layers[layers.active] as VoiceBuilder)
       ? layers.active
