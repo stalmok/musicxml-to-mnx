@@ -1017,6 +1017,9 @@ describe('part groups nested by number', () => {
   })
 
   test.each([257, 5000])('rejects groups nested %i deep', (depth) => {
-    expect(failure(nested(depth)).message).toContain('Part groups nest more than 256 deep')
+    const error = failure(nested(depth))
+
+    expect(error.message).toContain('Part groups nest more than 256 deep')
+    expect(error.path).toEqual(['score-partwise', 'part-list', 'part-group'])
   })
 })

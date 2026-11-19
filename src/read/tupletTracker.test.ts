@@ -113,8 +113,10 @@ describe('moving the item written last to another sequence', () => {
       }))
       tracker.openTuplets(one, one, starts, false, fraction(0), new WarningCollector(), [], 1)
     }
+    // A tremolo moving with them is not a tuplet, so it does not count.
     const fits = new TupletTracker()
     opens(fits, 1)
+    fits.openTremolo(1, parseXmlRoot('<tremolo/>'))
     const fitting = space(1)
     fits.append(fitting)
     const full = new TupletTracker()
