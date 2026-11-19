@@ -669,6 +669,36 @@ describe('lyric extender lines', () => {
     expect(warnings).toEqual([])
   })
 
+  test.each([
+    ['the second copy of it on one note stops it', sung('lo') + sung('lo', extend('stop'))],
+    ['both copies of it on one note stop it', sung('lo', extend('stop')).repeat(2)],
+  ])('ends the line before a syllable at the syllable, where %s', (_, third) => {
+    const { mnx, warnings } = convertValid(
+      measure(note('C', sung('la', extend('start'))) + note('D') + note('E', third)),
+    )
+    const [first, , last] = events(mnx)
+
+    expect(lineOf(first)?.extender).toStrictEqual({ target: last?.id })
+    expect(lineOf(last)).toStrictEqual({ text: 'lo' })
+    expect(warnings).toEqual([])
+  })
+
+  test('leaves the line a syllable starts open, where a second copy of it stops the line before', () => {
+    const { mnx, warnings } = convertValid(
+      measure(
+        note('C', sung('la', extend('start'))) +
+          note('D') +
+          note('E', sung('lo', extend('start')) + sung('lo', extend('stop'))) +
+          note('F', held(extend('stop'))),
+      ),
+    )
+    const [first, , third, fourth] = events(mnx)
+
+    expect(lineOf(first)?.extender).toStrictEqual({ target: third?.id })
+    expect(lineOf(third)?.extender).toStrictEqual({ target: fourth?.id })
+    expect(warnings).toEqual([])
+  })
+
   test('reports a stop on a syllable where no line is open before it', () => {
     const { mnx, warnings } = convertValid(measure(note('C', sung('la', extend('stop')))))
 
